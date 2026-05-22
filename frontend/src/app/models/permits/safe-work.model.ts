@@ -11,13 +11,17 @@ import { mergeSwHazards } from '../../utils/hazard-merge.util';
 
 
 export class SwHazards {
+  // Column 1 — * requires Plant Manager approval, ** requires Energized Electrical WP
   highTemp: boolean = false;
   highPressure: boolean = false;
+  hazardousFlammablePipingMaint: boolean = false;
+  electricalTesting599V: boolean = false;
   energized: boolean = false;
   storedEnergy: boolean = false;
   eyeHazard: boolean = false;
   egressAccess: boolean = false;
   ergonomicHazard: boolean = false;
+  // Column 2
   fallingObject: boolean = false;
   highNoise: boolean = false;
   dustParticulate: boolean = false;
@@ -27,6 +31,8 @@ export class SwHazards {
   slippery: boolean = false;
   ventilationRequired: boolean = false;
   lightingRestrictions: boolean = false;
+  exposedRotatingParts: boolean = false;
+  // Column 3
   chemicalExposure: boolean = false;
   liftingHazard: boolean = false;
   handTraps: boolean = false;
@@ -35,6 +41,9 @@ export class SwHazards {
   environmental: boolean = false;
   weatherHazards: boolean = false;
   weatherHazardDescription: string = '';
+  testingTroubleshooting50V: boolean = false;
+  voltageDescription: string = '';
+  hexavalentChromium: boolean = false;
   other: boolean = false;
   otherDescription: string = '';
 
@@ -46,17 +55,20 @@ export class SwHazards {
 export class SwPermits {
   lotoRequired: boolean = false;
   lotoDescription: string = '';
-  confinedSpaceReclassified: boolean = false;
-  confinedSpacePermitRequired: boolean = false;
-  confinedSpaceDescription: string = '';
   hotWork: boolean = false;
   hotWorkDescription: string = '';
+  confinedSpace: boolean = false;
+  confinedSpaceDescription: string = '';
+  excavationPermit: boolean = false;
+  energizedPermit: boolean = false;
+  energizedPermitDescription: string = '';
   ventingPurging: boolean = false;
   ventingPurgingDescription: string = '';
   jha: boolean = true;
   gasTesting: boolean = false;
-  excavationPermit: boolean = false;
-  energizedPermit: boolean = false;
+  liftPlan: boolean = false;
+  confSpaceRescuePlanReview: boolean = false;
+  fallRescuePlan: boolean = false;
   other: boolean = false;
   otherDescription: string = '';
 
@@ -70,24 +82,24 @@ export class SwPpe {
   safetyGlasses: boolean = true;
   hearingProtection: boolean = true;
   boots: boolean = true;
-  fallProtection: boolean = false;
-  gfi: boolean = false;
-  respirator: boolean = false;
-  dustMask: boolean = false;
+  weldingPpe: boolean = false;
+  respiratorDustMask: boolean = false;
+  respiratorType: string = '';
   gloves: boolean = true;
-  iceCleats: boolean = false;
+  glovesType: string = '';
+  gasMonitor: boolean = false;
+  tyvekSuit: boolean = false;
   acidSuit: boolean = false;
   barricade: boolean = false;
   faceShield: boolean = false;
-  gasMonitor: boolean = false;
   arcFlashPpe: boolean = false;
-  weldingJacket: boolean = false;
-  weldingShield: boolean = false;
-  weldingGloves: boolean = false;
+  classCalRating: string = '';
+  gfi: boolean = false;
   purgingVentilation: boolean = false;
+  fallProtection: boolean = false;
+  fallClearance: string = '';
   other: boolean = false;
   otherDescription: string = '';
-  dummyCheckbox: string = '';
 
   constructor(data: Partial<SwPpe> = {}) {
     Object.assign(this, data);
@@ -384,84 +396,108 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
   }
 
   static getHazardFields(hazardsDto: SwHazards | null): { [key: string]: FormField } {
-    const hazards = hazardsDto || new SwHazards();
+    const h = hazardsDto || new SwHazards();
     const group = { label: 'Hazards', orientation: 'horizontal' } as const;
+    const cb = (key: keyof SwHazards, label: string): FormField =>
+      ({ name: `hazards.${key}`, label, type: 'checkbox', initialValue: h[key] as boolean, group });
+    const txt = (key: keyof SwHazards, label: string): FormField =>
+      ({ name: `hazards.${key}`, label, type: 'text', initialValue: h[key] as string, group });
     return {
-      'hazards.highTemp': { name: 'hazards.highTemp', label: 'High Temp', type: 'checkbox', initialValue: hazards.highTemp, group: group },
-      'hazards.highPressure': { name: 'hazards.highPressure', label: 'High Pressure', type: 'checkbox', initialValue: hazards.highPressure, group: group },
-      'hazards.energized': { name: 'hazards.energized', label: 'Energized', type: 'checkbox', initialValue: hazards.energized, group: group },
-      'hazards.storedEnergy': { name: 'hazards.storedEnergy', label: 'Stored Energy', type: 'checkbox', initialValue: hazards.storedEnergy, group: group },
-      'hazards.eyeHazard': { name: 'hazards.eyeHazard', label: 'Eye Hazard', type: 'checkbox', initialValue: hazards.eyeHazard, group: group },
-      'hazards.egressAccess': { name: 'hazards.egressAccess', label: 'Egress/Access', type: 'checkbox', initialValue: hazards.egressAccess, group: group },
-      'hazards.ergonomicHazard': { name: 'hazards.ergonomicHazard', label: 'Ergonomic Hazard', type: 'checkbox', initialValue: hazards.ergonomicHazard, group: group },
-      'hazards.fallingObject': { name: 'hazards.fallingObject', label: 'Falling Object', type: 'checkbox', initialValue: hazards.fallingObject, group: group },
-      'hazards.highNoise': { name: 'hazards.highNoise', label: 'High Noise', type: 'checkbox', initialValue: hazards.highNoise, group: group },
-      'hazards.dustParticulate': { name: 'hazards.dustParticulate', label: 'Dust/Particulate', type: 'checkbox', initialValue: hazards.dustParticulate, group: group },
-      'hazards.combustibleDust': { name: 'hazards.combustibleDust', label: 'Combustible Dust', type: 'checkbox', initialValue: hazards.combustibleDust, group: group },
-      'hazards.fireHazard': { name: 'hazards.fireHazard', label: 'Fire Hazard', type: 'checkbox', initialValue: hazards.fireHazard, group: group },
-      'hazards.hotSurface': { name: 'hazards.hotSurface', label: 'Hot Surface', type: 'checkbox', initialValue: hazards.hotSurface, group: group },
-      'hazards.slippery': { name: 'hazards.slippery', label: 'Slippery', type: 'checkbox', initialValue: hazards.slippery, group: group },
-      'hazards.ventilationRequired': { name: 'hazards.ventilationRequired', label: 'Ventilation Required', type: 'checkbox', initialValue: hazards.ventilationRequired, group: group },
-      'hazards.lightingRestrictions': { name: 'hazards.lightingRestrictions', label: 'Lighting Restrictions', type: 'checkbox', initialValue: hazards.lightingRestrictions, group: group },
-      'hazards.chemicalExposure': { name: 'hazards.chemicalExposure', label: 'Chemical Exposure', type: 'checkbox', initialValue: hazards.chemicalExposure, group: group },
-      'hazards.liftingHazard': { name: 'hazards.liftingHazard', label: 'Lifting Hazard', type: 'checkbox', initialValue: hazards.liftingHazard, group: group },
-      'hazards.handTraps': { name: 'hazards.handTraps', label: 'Hand Traps', type: 'checkbox', initialValue: hazards.handTraps, group: group },
-      'hazards.heatColdStress': { name: 'hazards.heatColdStress', label: 'Heat/Cold Stress', type: 'checkbox', initialValue: hazards.heatColdStress, group: group },
-      'hazards.elevatedSurface': { name: 'hazards.elevatedSurface', label: 'Elevated Surface', type: 'checkbox', initialValue: hazards.elevatedSurface, group: group },
-      'hazards.environmental': { name: 'hazards.environmental', label: 'Environmental', type: 'checkbox', initialValue: hazards.environmental, group: group },
-      'hazards.other': { name: 'hazards.other', label: 'Other', type: 'checkbox', initialValue: hazards.other, group: group },
-      'hazards.otherDescription': { name: 'hazards.otherDescription', label: 'Other Description', type: 'text', initialValue: hazards.otherDescription, group: group },
+      'hazards.highTemp': cb('highTemp', 'High Temperature (>140F) *'),
+      'hazards.highPressure': cb('highPressure', 'High Pressure (>100 psi) *'),
+      'hazards.hazardousFlammablePipingMaint': cb('hazardousFlammablePipingMaint', 'Hazardous or Flammable Piping Maint. *'),
+      'hazards.electricalTesting599V': cb('electricalTesting599V', 'Electrical Testing >599V *'),
+      'hazards.energized': cb('energized', 'Energized Electrical Work (>50V) **'),
+      'hazards.storedEnergy': cb('storedEnergy', 'Stored Energy (LOTO)'),
+      'hazards.eyeHazard': cb('eyeHazard', 'Eye Hazard'),
+      'hazards.egressAccess': cb('egressAccess', 'Egress & Access Hazard'),
+      'hazards.ergonomicHazard': cb('ergonomicHazard', 'Ergonomic Hazards'),
+      'hazards.fallingObject': cb('fallingObject', 'Falling Object Hazard'),
+      'hazards.highNoise': cb('highNoise', 'High Noise'),
+      'hazards.dustParticulate': cb('dustParticulate', 'Dust/Particulate'),
+      'hazards.combustibleDust': cb('combustibleDust', 'Combustible Dust'),
+      'hazards.fireHazard': cb('fireHazard', 'Fire/Explosion Hazard'),
+      'hazards.hotSurface': cb('hotSurface', 'Hot Surfaces'),
+      'hazards.slippery': cb('slippery', 'Slip/Trip/Fall Hazards'),
+      'hazards.ventilationRequired': cb('ventilationRequired', "Ventilation Req'd (Mech/Natural)"),
+      'hazards.lightingRestrictions': cb('lightingRestrictions', 'Lighting/Visibility Restrictions'),
+      'hazards.exposedRotatingParts': cb('exposedRotatingParts', 'Exposed Rotating Parts'),
+      'hazards.chemicalExposure': cb('chemicalExposure', 'Possible Chemical Exposure'),
+      'hazards.liftingHazard': cb('liftingHazard', 'Lifting Hazard'),
+      'hazards.handTraps': cb('handTraps', 'Hand Traps'),
+      'hazards.heatColdStress': cb('heatColdStress', 'Heat/Cold Stress'),
+      'hazards.elevatedSurface': cb('elevatedSurface', 'Elevated Work Surface'),
+      'hazards.environmental': cb('environmental', 'Environmental Concern'),
+      'hazards.weatherHazards': cb('weatherHazards', 'Weather Hazards'),
+      'hazards.weatherHazardDescription': txt('weatherHazardDescription', 'Weather Hazard Description'),
+      'hazards.testingTroubleshooting50V': cb('testingTroubleshooting50V', 'Testing/Troubleshooting >50V'),
+      'hazards.voltageDescription': txt('voltageDescription', 'Voltage'),
+      'hazards.hexavalentChromium': cb('hexavalentChromium', 'Hexavalent Chromium (Cr VI)'),
+      'hazards.other': cb('other', 'Other'),
+      'hazards.otherDescription': txt('otherDescription', 'Other Description'),
     };
   }
 
 
   static getPermitFields(permitsDto: SwPermits | null): { [key: string]: FormField } {
-    const permits = permitsDto || new SwPermits();
+    const p = permitsDto || new SwPermits();
     const group = { label: 'Permits', orientation: 'horizontal' } as const;
+    const cb = (key: keyof SwPermits, label: string): FormField =>
+      ({ name: `permits.${key}`, label, type: 'checkbox', initialValue: p[key] as boolean, group });
+    const txt = (key: keyof SwPermits, label: string): FormField =>
+      ({ name: `permits.${key}`, label, type: 'text', initialValue: p[key] as string, group });
     return {
-      'permits.lotoRequired': { name: 'permits.lotoRequired', label: 'LOTO Required', type: 'checkbox', initialValue: permits.lotoRequired, group: group },
-      'permits.lotoDescription': { name: 'permits.lotoDescription', label: 'LOTO Description', type: 'text', initialValue: permits.lotoDescription, group: group },
-      'permits.confinedSpaceReclassified': { name: 'permits.confinedSpaceReclassified', label: 'Confined Space (Reclassified)', type: 'checkbox', initialValue: permits.confinedSpaceReclassified, group: group },
-      'permits.confinedSpacePermitRequired': { name: 'permits.confinedSpacePermitRequired', label: 'Confined Space (Permit Required)', type: 'checkbox', initialValue: permits.confinedSpacePermitRequired, group: group },
-      'permits.confinedSpaceDescription': { name: 'permits.confinedSpaceDescription', label: 'Confined Space Description', type: 'text', initialValue: permits.confinedSpaceDescription, group: group },
-      'permits.hotWork': { name: 'permits.hotWork', label: 'Hot Work', type: 'checkbox', initialValue: permits.hotWork, group: group },
-      'permits.hotWorkDescription': { name: 'permits.hotWorkDescription', label: 'Hot Work Description', type: 'text', initialValue: permits.hotWorkDescription, group: group },
-      'permits.ventingPurging': { name: 'permits.ventingPurging', label: 'Venting/Purging', type: 'checkbox', initialValue: permits.ventingPurging, group: group },
-      'permits.ventingPurgingDescription': { name: 'permits.ventingPurgingDescription', label: 'Venting/Purging Description', type: 'text', initialValue: permits.ventingPurgingDescription, group: group },
-      'permits.jha': { name: 'permits.jha', label: 'JHA', type: 'checkbox', initialValue: permits.jha, group: group },
-      'permits.gasTesting': { name: 'permits.gasTesting', label: 'Gas Testing', type: 'checkbox', initialValue: permits.gasTesting, group: group },
-      'permits.excavationPermit': { name: 'permits.excavationPermit', label: 'Excavation Permit', type: 'checkbox', initialValue: permits.excavationPermit, group: group },
-      'permits.energizedPermit': { name: 'permits.energizedPermit', label: 'Energized Permit', type: 'checkbox', initialValue: permits.energizedPermit, group: group },
-      'permits.other': { name: 'permits.other', label: 'Other', type: 'checkbox', initialValue: permits.other, group: group },
-      'permits.otherDescription': { name: 'permits.otherDescription', label: 'Other Description', type: 'text', initialValue: permits.otherDescription, group: group },
+      'permits.lotoRequired': cb('lotoRequired', 'LOTO Required'),
+      'permits.lotoDescription': txt('lotoDescription', 'LOTO Number'),
+      'permits.hotWork': cb('hotWork', 'Hot Work Permit'),
+      'permits.hotWorkDescription': txt('hotWorkDescription', 'Hot Work Permit Number'),
+      'permits.confinedSpace': cb('confinedSpace', 'Confined Space'),
+      'permits.confinedSpaceDescription': txt('confinedSpaceDescription', 'Confined Space Number'),
+      'permits.excavationPermit': cb('excavationPermit', 'Excavation Permit'),
+      'permits.energizedPermit': cb('energizedPermit', 'Energized Electrical WP'),
+      'permits.energizedPermitDescription': txt('energizedPermitDescription', 'Energized Electrical WP Number'),
+      'permits.ventingPurging': cb('ventingPurging', 'Venting/Purging Procedure'),
+      'permits.ventingPurgingDescription': txt('ventingPurgingDescription', 'Venting/Purging Description'),
+      'permits.jha': cb('jha', 'JHA'),
+      'permits.gasTesting': cb('gasTesting', 'Air Monitoring within Safe Limits'),
+      'permits.liftPlan': cb('liftPlan', 'Lift Plan'),
+      'permits.confSpaceRescuePlanReview': cb('confSpaceRescuePlanReview', 'Conf. Space Rescue Plan Review'),
+      'permits.fallRescuePlan': cb('fallRescuePlan', 'Fall Rescue Plan'),
+      'permits.other': cb('other', 'Other'),
+      'permits.otherDescription': txt('otherDescription', 'Other Description'),
     };
   }
   
   static getPpeFields(ppeDto: SwPpe | null): { [key: string]: FormField } {
     const ppe = ppeDto || new SwPpe();
     const group = { label: 'PPE', orientation: 'horizontal' } as const;
+    const cb = (key: keyof SwPpe, label: string): FormField =>
+      ({ name: `ppe.${key}`, label, type: 'checkbox', initialValue: ppe[key] as boolean, group });
+    const txt = (key: keyof SwPpe, label: string): FormField =>
+      ({ name: `ppe.${key}`, label, type: 'text', initialValue: ppe[key] as string, group });
     return {
-      'ppe.hardhat': { name: 'ppe.hardhat', label: 'Hardhat', type: 'checkbox', initialValue: ppe.hardhat, group: group },
-      'ppe.safetyGlasses': { name: 'ppe.safetyGlasses', label: 'Safety Glasses', type: 'checkbox', initialValue: ppe.safetyGlasses, group: group },
-      'ppe.hearingProtection': { name: 'ppe.hearingProtection', label: 'Hearing Protection', type: 'checkbox', initialValue: ppe.hearingProtection, group: group },
-      'ppe.boots': { name: 'ppe.boots', label: 'Boots', type: 'checkbox', initialValue: ppe.boots, group: group },
-      'ppe.fallProtection': { name: 'ppe.fallProtection', label: 'Fall Protection', type: 'checkbox', initialValue: ppe.fallProtection, group: group },
-      'ppe.gfi': { name: 'ppe.gfi', label: 'GFI', type: 'checkbox', initialValue: ppe.gfi, group: group },
-      'ppe.respirator': { name: 'ppe.respirator', label: 'Respirator', type: 'checkbox', initialValue: ppe.respirator, group: group },
-      'ppe.dustMask': { name: 'ppe.dustMask', label: 'Dust Mask', type: 'checkbox', initialValue: ppe.dustMask, group: group },
-      'ppe.gloves': { name: 'ppe.gloves', label: 'Gloves', type: 'checkbox', initialValue: ppe.gloves, group: group },
-      'ppe.iceCleats': { name: 'ppe.iceCleats', label: 'Ice Cleats', type: 'checkbox', initialValue: ppe.iceCleats, group: group },
-      'ppe.acidSuit': { name: 'ppe.acidSuit', label: 'Acid Suit', type: 'checkbox', initialValue: ppe.acidSuit, group: group },
-      'ppe.barricade': { name: 'ppe.barricade', label: 'Barricade', type: 'checkbox', initialValue: ppe.barricade, group: group },
-      'ppe.faceShield': { name: 'ppe.faceShield', label: 'Face Shield', type: 'checkbox', initialValue: ppe.faceShield, group: group },
-      'ppe.gasMonitor': { name: 'ppe.gasMonitor', label: 'Gas Monitor', type: 'checkbox', initialValue: ppe.gasMonitor, group: group },
-      'ppe.arcFlashPpe': { name: 'ppe.arcFlashPpe', label: 'Arc Flash PPE', type: 'checkbox', initialValue: ppe.arcFlashPpe, group: group },
-      'ppe.weldingJacket': { name: 'ppe.weldingJacket', label: 'Welding Jacket', type: 'checkbox', initialValue: ppe.weldingJacket, group: group },
-      'ppe.weldingShield': { name: 'ppe.weldingShield', label: 'Welding Shield', type: 'checkbox', initialValue: ppe.weldingShield, group: group },
-      'ppe.weldingGloves': { name: 'ppe.weldingGloves', label: 'Welding Gloves', type: 'checkbox', initialValue: ppe.weldingGloves, group: group },
-      'ppe.purgingVentilation': { name: 'ppe.purgingVentilation', label: 'Purging Ventilation', type: 'checkbox', initialValue: ppe.purgingVentilation, group: group },
-      'ppe.other': { name: 'ppe.other', label: 'Other', type: 'checkbox', initialValue: ppe.other, group: group },
-      'ppe.otherDescription': { name: 'ppe.otherDescription', label: 'Other Description', type: 'text', initialValue: ppe.otherDescription, group: group },
+      'ppe.hardhat': cb('hardhat', 'Hardhat'),
+      'ppe.safetyGlasses': cb('safetyGlasses', 'Safety Glasses'),
+      'ppe.hearingProtection': cb('hearingProtection', 'Hearing Protection'),
+      'ppe.boots': cb('boots', 'Protective Footwear'),
+      'ppe.weldingPpe': cb('weldingPpe', 'Welding PPE'),
+      'ppe.respiratorDustMask': cb('respiratorDustMask', 'Respirator/Dust Mask'),
+      'ppe.respiratorType': txt('respiratorType', 'Respirator Type'),
+      'ppe.gloves': cb('gloves', 'Protective Gloves'),
+      'ppe.glovesType': txt('glovesType', 'Gloves Type'),
+      'ppe.gasMonitor': cb('gasMonitor', 'Air Monitor'),
+      'ppe.tyvekSuit': cb('tyvekSuit', 'Tyvek Suit'),
+      'ppe.acidSuit': cb('acidSuit', 'Acid Suit/Rainsuit'),
+      'ppe.barricade': cb('barricade', 'Barricade/Rope Off'),
+      'ppe.faceShield': cb('faceShield', 'Face Shield/Goggles'),
+      'ppe.arcFlashPpe': cb('arcFlashPpe', 'Arc Flash/Shock PPE'),
+      'ppe.classCalRating': txt('classCalRating', 'Class/Cal Rating'),
+      'ppe.gfi': cb('gfi', 'GFCI'),
+      'ppe.purgingVentilation': cb('purgingVentilation', 'Purging/Ventilation'),
+      'ppe.fallProtection': cb('fallProtection', 'Fall Protection (Restraint/Lanyard/SRL)'),
+      'ppe.fallClearance': txt('fallClearance', 'Fall Clearance'),
+      'ppe.other': cb('other', 'Other'),
+      'ppe.otherDescription': txt('otherDescription', 'Other Description'),
     };
   }
 

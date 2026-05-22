@@ -453,8 +453,7 @@ public class RedTagAutomationService {
                         .anyMatch(c -> c.getCsType() == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.RECLASSIFIED);
                 boolean hasPermitRequired = packageDto.getConfinedSpaces().stream()
                         .anyMatch(c -> c.getCsType() == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.PERMIT_REQUIRED);
-                if(hasReclassified) safeWork.getPermits().setConfinedSpaceReclassified(true);
-                if(hasPermitRequired) safeWork.getPermits().setConfinedSpacePermitRequired(true);
+                if(hasReclassified || hasPermitRequired) safeWork.getPermits().setConfinedSpace(true);
 
                 safeWork.setSpecialInstructions(specialInstructions);
 
@@ -924,10 +923,9 @@ public class RedTagAutomationService {
             // --- Permits section ---
             currentField = "Permits: LOTO Required";
             clickYesNo(SW_LOTO_REQUIRED, permits.isLotoRequired());
-            currentField = "Permits: Confined Space (Reclassified)";
-            clickYesNo(SW_CONFINED_SPACE_RECLASSIFIED, permits.isConfinedSpaceReclassified());
-            currentField = "Permits: Confined Space (Permit Required)";
-            clickYesNo(SW_CONFINED_SPACE_PERMIT_REQUIRED, permits.isConfinedSpacePermitRequired());
+            currentField = "Permits: Confined Space";
+            clickYesNo(SW_CONFINED_SPACE_RECLASSIFIED, permits.isConfinedSpace());
+            clickYesNo(SW_CONFINED_SPACE_PERMIT_REQUIRED, permits.isConfinedSpace());
             currentField = "Permits: Hot Work";
             clickYesNo(SW_HOT_WORK, permits.isHotWork());
             clickNoBelow(SW_HOT_WORK);
@@ -960,13 +958,13 @@ public class RedTagAutomationService {
             currentField = "PPE: GFI";
             clickYesNo(SW_GFI, ppe.isGfi());
             currentField = "PPE: Respirator";
-            clickYesNo(SW_RESPIRATOR, ppe.isRespirator());
+            clickYesNo(SW_RESPIRATOR, ppe.isRespiratorDustMask());
             currentField = "PPE: Dust Mask";
-            clickYesNo(SW_DUST_MASK, ppe.isDustMask());
+            clickYesNo(SW_DUST_MASK, ppe.isRespiratorDustMask());
             currentField = "PPE: Gloves";
             clickYesNo(SW_GLOVES, ppe.isGloves());
             currentField = "PPE: Ice Cleats";
-            clickYesNo(SW_ICE_CLEATS, ppe.isIceCleats());
+            clickYesNo(SW_ICE_CLEATS, false);
             currentField = "PPE: Acid Suit";
             clickYesNo(SW_ACID_SUIT, ppe.isAcidSuit());
             currentField = "PPE: Barricade";
@@ -978,11 +976,11 @@ public class RedTagAutomationService {
             currentField = "PPE: Arc Flash PPE";
             clickYesNo(SW_ARC_FLASH_PPE, ppe.isArcFlashPpe());
             currentField = "PPE: Welding Jacket";
-            clickYesNo(SW_WELDING_JACKET, ppe.isWeldingJacket());
+            clickYesNo(SW_WELDING_JACKET, ppe.isWeldingPpe());
             currentField = "PPE: Welding Shield";
-            clickYesNo(SW_WELDING_SHIELD, ppe.isWeldingShield());
+            clickYesNo(SW_WELDING_SHIELD, ppe.isWeldingPpe());
             currentField = "PPE: Welding Gloves";
-            clickYesNo(SW_WELDING_GLOVES, ppe.isWeldingGloves());
+            clickYesNo(SW_WELDING_GLOVES, ppe.isWeldingPpe());
             currentField = "PPE: Purging/Ventilation";
             clickYesNo(SW_PURGIN_VENTILATION, ppe.isPurgingVentilation());
 

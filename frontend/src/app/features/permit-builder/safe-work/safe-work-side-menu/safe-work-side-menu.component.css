@@ -16,3 +16,18 @@ app-permit-left-panel {
   overflow: hidden;
   flex: 1;
 }
+.rt-build-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 4px 0;
+  flex: none;
+}
+.rt-build-btn {
+  padding: 6px 14px;
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  background: #f3f3f3;
+  cursor: pointer;
+  font-size: 13px;
+}
+.rt-build-btn:disabled { opacity: 0.6; cursor: default; }

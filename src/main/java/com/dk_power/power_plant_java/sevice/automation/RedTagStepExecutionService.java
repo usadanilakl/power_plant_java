@@ -481,8 +481,7 @@ public class RedTagStepExecutionService {
                     boolean hasPermitRequired = allCs.stream()
                             .anyMatch(c -> c.getCsType() == ConfinedSpaceType.PERMIT_REQUIRED
                                     || c.getCsType() == null);
-                    swRef.getPermits().setConfinedSpaceReclassified(hasReclassified);
-                    swRef.getPermits().setConfinedSpacePermitRequired(hasPermitRequired);
+                    swRef.getPermits().setConfinedSpace(hasReclassified || hasPermitRequired);
                 }
                 swRef.setSpecialInstructions(specialInstructions);
                 return redTagService.openNewSafeWorkBuilder();

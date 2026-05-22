@@ -2,8 +2,11 @@ package com.dk_power.power_plant_java.controller.automation.redtag;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgSafeWorkService;
 import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagLotoAutomationService;
+import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagSafeWorkAutomationService;
 import com.dk_power.power_plant_java.sevice.automation.redtag.progress.RedTagProgressBroadcaster;
 import com.dk_power.power_plant_java.sevice.automation.redtag.session.AutomationSession;
 import jakarta.persistence.EntityNotFoundException;
@@ -35,8 +38,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class RedTagLotoAutomationController {
 
     private final RedTagLotoAutomationService automationService;
+    private final RedTagSafeWorkAutomationService safeWorkAutomationService;
     private final RedTagProgressBroadcaster broadcaster;
     private final NgLotoService lotoService;
+    private final NgSafeWorkService safeWorkService;
 
     /** Starts a full, end-to-end LOTO build in Red Tag for the given LOTO id. */
     @PostMapping("/loto/{lotoId}/build")
@@ -50,6 +55,23 @@ public class RedTagLotoAutomationController {
             log.error("[RedTag] Failed to start LOTO build for {}: {}", lotoId, e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(new NgApiResponse<>(null, "Failed to start LOTO build: " + e.getMessage()));
+        }
+    }
+
+    /** Starts a full, end-to-end Safe Work permit build in Red Tag. */
+    @PostMapping("/safe-work/{safeWorkId}/build")
+    public ResponseEntity<NgApiResponse<AutomationSession>> buildSafeWork(@PathVariable Long safeWorkId) {
+        try {
+            SafeWorkDto sw = safeWorkService.getDtoById(safeWorkId);
+            if (sw == null) {
+                throw new EntityNotFoundException("Safe Work permit not found with id " + safeWorkId);
+            }
+            AutomationSession session = safeWorkAutomationService.startSafeWorkBuild(sw);
+            return ResponseEntity.ok(new NgApiResponse<>(session, "Safe Work build started"));
+        } catch (Exception e) {
+            log.error("[RedTag] Failed to start Safe Work build for {}: {}", safeWorkId, e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to start Safe Work build: " + e.getMessage()));
         }
     }
 

@@ -65,6 +65,13 @@ export class RedTagAutomationService {
       `${this.baseUrl}/loto/${lotoId}/build`, {});
   }
 
+  /** Starts a full end-to-end Safe Work permit build in Red Tag. */
+  buildSafeWork(safeWorkId: number): Observable<SpringApiResponse<AutomationSessionState>> {
+    this.connect();
+    return this.http.post<SpringApiResponse<AutomationSessionState>>(
+      `${this.baseUrl}/safe-work/${safeWorkId}/build`, {});
+  }
+
   pause(): Observable<SpringApiResponse<AutomationSessionState>> {
     return this.http.post<SpringApiResponse<AutomationSessionState>>(`${this.baseUrl}/pause`, {});
   }

@@ -65,6 +65,9 @@ interface MonthMaps {
   nameToRow: Map<string, number>;
   rowToGroup: Map<number, string>;
   namesInOrder: string[];
+  /** All row indices that hold a person. Used to tell an override row
+   *  (followed-by no person) from the next person's row. */
+  personRows: Set<number>;
 }
 
 export class PersonnelManager {
@@ -243,15 +246,17 @@ export class PersonnelManager {
       const currentRow = currentMaps.nameToRow.get(name)!;
       const currentGroup = currentMaps.rowToGroup.get(currentRow) || '';
 
-      const todayShift = this.getBestShift(data, currentRow, todayCol);
+      const todayShift = this.getBestShift(data, currentRow, todayCol, currentMaps.personRows);
 
       // For each scheduled day, look up the person's row in THAT day's month
       const schedule = scheduleDays.map(sd => {
         const mMap = monthMaps.get(sd.month);
-        const row = (mMap && sd.month !== currentMonth)
-          ? (mMap.nameToRow.get(name) ?? currentRow)
+        const useOtherMonth = !!mMap && sd.month !== currentMonth;
+        const row = useOtherMonth
+          ? (mMap!.nameToRow.get(name) ?? currentRow)
           : currentRow;
-        return { date: sd.date, shift: this.getBestShift(data, row, sd.col) };
+        const personRows = useOtherMonth ? mMap!.personRows : currentMaps.personRows;
+        return { date: sd.date, shift: this.getBestShift(data, row, sd.col, personRows) };
       });
 
       // Track group per month for visual indication of rotation,
@@ -277,7 +282,12 @@ export class PersonnelManager {
 
   /**
    * Build name→row and row→group maps for a single month's data block.
-   * Each person occupies 2 rows in the spreadsheet (main shift + override).
+   * Crew members (A/B/C/D/Rel) occupy 2 rows (main shift + override row);
+   * On Call Managers occupy a single row each. We do NOT skip a fixed number
+   * of rows per person — instead every row with a name is treated as a person,
+   * and override rows (no name) are skipped naturally. `personRows` records
+   * which rows are people so the shift reader can tell an override row from
+   * the next person's row.
    */
   private buildMonthMaps(
     data: any[][],
@@ -286,6 +296,7 @@ export class PersonnelManager {
     const nameToRow = new Map<string, number>();
     const rowToGroup = new Map<number, string>();
     const namesInOrder: string[] = [];
+    const personRows = new Set<number>();
     let currentGroup = '';
 
     for (let r = range.dataStartRow; r < data.length; r++) {
@@ -300,24 +311,28 @@ export class PersonnelManager {
       nameToRow.set(nameCell, r);
       rowToGroup.set(r, currentGroup);
       namesInOrder.push(nameCell);
-      r++; // Skip the second row of this person's pair
+      personRows.add(r);
     }
 
-    return { nameToRow, rowToGroup, namesInOrder };
+    return { nameToRow, rowToGroup, namesInOrder, personRows };
   }
 
   /**
    * Get the effective shift for a person at a given column.
-   * Checks the main row first, then the row below (override row).
-   * The override row takes precedence if it has a valid shift code.
+   * Checks the main row first, then the row below — but only if that row is an
+   * actual override row, not the next person's row. `personRows` distinguishes
+   * the two: crew members have an override row below them, On Call Managers do
+   * not (the row below is the next OCM person).
    */
-  private getBestShift(data: any[][], row: number, col: number): ShiftCode {
+  private getBestShift(data: any[][], row: number, col: number, personRows: Set<number>): ShiftCode {
     if (col < 0) return '';
     const main = String(data[row]?.[col] || '').trim().toUpperCase();
-    const override = String(data[row + 1]?.[col] || '').trim().toUpperCase();
 
-    // Override row (P, U, T) takes priority if present
-    if (VALID_SHIFTS.has(override)) return override as ShiftCode;
+    // The row below is an override row only when it isn't itself a person row.
+    if (!personRows.has(row + 1)) {
+      const override = String(data[row + 1]?.[col] || '').trim().toUpperCase();
+      if (VALID_SHIFTS.has(override)) return override as ShiftCode;
+    }
     if (VALID_SHIFTS.has(main)) return main as ShiftCode;
     return '';
   }

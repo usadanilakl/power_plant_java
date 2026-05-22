@@ -35,7 +35,15 @@ On a different display, recapture the screenshots and re-run the script. The
 `redtag.automation.default-similarity` (0.80) absorbs minor anti-aliasing
 differences; lower it slightly if matches are flaky.
 
-## Pattern inventory (28)
+## Pattern inventory (50)
+
+The table below lists the original LOTO patterns. LOTO-information-form patterns
+(`loto-details/*`) and Safe Work patterns (`safe-work/*`) were added later — see
+`generate-patterns.py` for the full, authoritative list. The Safe Work checkbox
+**grid** uses no per-checkbox images: each checkbox is a calibrated offset from
+its section-header pattern (`safe-work/{hazards,permits,ppe}-header.png`) — the
+offset constants live in `SafeWorkBuildFlow` and need one calibration pass
+against the live app.
 
 | Logical name | Source screenshot | Output file |
 |---|---|---|

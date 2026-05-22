@@ -392,8 +392,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             com.dk_power.power_plant_java.entities.permits.pojo.SwPpe ppe,
             boolean hasHotWork, boolean hasReclassifiedCs, boolean hasPermitRequiredCs, boolean hasConfinedSpace) {
         permits.setHotWork(hasHotWork);
-        permits.setConfinedSpaceReclassified(hasReclassifiedCs);
-        permits.setConfinedSpacePermitRequired(hasPermitRequiredCs);
+        permits.setConfinedSpace(hasReclassifiedCs || hasPermitRequiredCs);
         permits.setGasTesting(hasHotWork || hasConfinedSpace);
         ppe.setGasMonitor(hasHotWork || hasConfinedSpace);
     }

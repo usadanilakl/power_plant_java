@@ -3,10 +3,13 @@ package com.dk_power.power_plant_java.sevice.automation.redtag.flow;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.sevice.automation.redtag.config.RedTagAutomationProperties;
+import com.dk_power.power_plant_java.sevice.automation.redtag.core.AutomationException;
 import com.dk_power.power_plant_java.sevice.automation.redtag.core.RedTagPattern;
 import com.dk_power.power_plant_java.sevice.automation.redtag.core.SikuliDriver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.sikuli.script.Match;
+import org.sikuli.script.Region;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -48,6 +51,14 @@ public class LotoBuildFlow {
     private static final int DEVICE_LOCATION_DX = 260;
     private static final int DEVICE_ISOLATED_POSITION_DX = 150;
     private static final int DEVICE_NORMAL_POSITION_DX = 150;
+
+    // --- LOTO information form (post-Continue) field offsets -----------------
+    private static final int LOCK_BOX_DX = 110;
+    private static final int OWNER_DX = 248;
+    private static final int WHY_DX = 158;
+    private static final int WHY_DY = 22;
+    private static final int REQUESTED_BY_NAME_DX = 143;
+    private static final int REQUESTED_BY_NAME_DY = 37;
 
     private final SikuliDriver driver;
     private final RedTagAutomationProperties properties;
@@ -111,19 +122,70 @@ public class LotoBuildFlow {
         driver.sleep(properties.getInterStepDelayMs());
     }
 
-    /**
-     * Clicks Continue on the LOTO builder.
-     *
-     * <p>NOTE: the "Information" form shown after Continue (lock box, requestor,
-     * work scope, requested-by) and the final save / permit-number read-back are
-     * not yet scripted — no screenshots of those screens have been supplied.
-     * Capture them and extend this method to finish full end-to-end automation.
-     */
-    public String clickContinue() {
+    /** Clicks Continue on the builder and waits for the LOTO information form. */
+    public String openLotoDetails() {
         driver.click(RedTagPattern.LOTO_BUILDER_CONTINUE_BUTTON);
+        driver.waitFor(RedTagPattern.LOTO_DETAILS_DIALOG_TITLE, 15);
+        return "LOTO information form opened";
+    }
+
+    /**
+     * Fills the LOTO information form. Per create-loto.md the owner of the LOTO
+     * and the "Requested By" name are the same person (the LOTO requestor), and
+     * "Why is this job being performed" repeats the job description.
+     *
+     * <p>The owner / requested-by fields are scrollable dropdowns; pasting the
+     * requestor name selects it when the text matches an entry — otherwise the
+     * operator may need to pick it manually (run with manual confirmation on for
+     * the first builds).
+     */
+    public String fillLotoDetails(LotoDto loto) {
+        String owner = nullToEmpty(loto.getLotoRequestor());
+        String lockBox = loto.getBoxNumber() != null ? String.valueOf(loto.getBoxNumber()) : "";
+        driver.pasteAt(RedTagPattern.LOTO_DETAILS_LOCK_BOX_LABEL, LOCK_BOX_DX, 0, lockBox);
+        driver.pasteAt(RedTagPattern.LOTO_DETAILS_OWNER_LABEL, OWNER_DX, 0, owner);
+        driver.pasteAt(RedTagPattern.LOTO_DETAILS_WHY_LABEL, WHY_DX, WHY_DY, nullToEmpty(loto.getWorkScope()));
+        driver.pasteAt(RedTagPattern.LOTO_DETAILS_REQUESTED_BY_HEADER,
+                REQUESTED_BY_NAME_DX, REQUESTED_BY_NAME_DY, owner);
+        return "LOTO information form filled";
+    }
+
+    /**
+     * Submits the LOTO information form and dismisses the optional post-save
+     * "procedure was modified" warning (the LOTO is still saved when it appears).
+     */
+    public String submitLotoDetails() {
+        driver.click(RedTagPattern.LOTO_DETAILS_OK_BUTTON);
         driver.sleep(properties.getInterStepDelayMs());
-        return "Clicked Continue — finish the Information form manually "
-                + "(post-Continue screens not yet captured)";
+        if (driver.exists(RedTagPattern.LOTO_SUBMISSION_WARNING_OK, 3)) {
+            driver.click(RedTagPattern.LOTO_SUBMISSION_WARNING_OK);
+            driver.sleep(properties.getInterStepDelayMs());
+        }
+        return "LOTO submitted";
+    }
+
+    /**
+     * Reads the Red Tag number of the just-created LOTO from the first row of the
+     * LOTO Procedures list via OCR. Assumes the list is ungrouped so the newest
+     * LOTO is the top row.
+     */
+    public String readPermitNumber() {
+        Match header = driver.waitFor(RedTagPattern.LOTO_NUMBER_COLUMN_HEADER, 10);
+        Region firstRow = driver.region(header.x - 6, header.y + header.h + 2,
+                header.w + 12, header.h + 6);
+        String text = driver.readText(firstRow);
+        String digits = text == null ? "" : text.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) {
+            throw new AutomationException(
+                    "Could not read the new LOTO number from the list. If the list is grouped "
+                            + "by Status, ungroup it (drag the Status header out of the yellow "
+                            + "band) so the newest LOTO is the first row, then retry this step.");
+        }
+        if (digits.length() > 6) {
+            digits = digits.substring(digits.length() - 6);
+        }
+        log.info("[RedTag] Read LOTO number from list: {}", digits);
+        return digits;
     }
 
     // --- field-value helpers -------------------------------------------------

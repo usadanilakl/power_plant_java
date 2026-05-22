@@ -5,3 +5,13 @@
   <app-safe-work-left-menu menu></app-safe-work-left-menu>
   <app-safe-work-table table></app-safe-work-table>
 </app-permit-left-panel>
+
+<div class="rt-build-bar">
+  <button class="rt-build-btn"
+          [disabled]="isBuildingInRedTag()"
+          (click)="buildInRedTag()">
+    {{ isBuildingInRedTag() ? 'Starting…' : 'Build in Red Tag' }}
+  </button>
+</div>
+
+<app-red-tag-automation-panel></app-red-tag-automation-panel>

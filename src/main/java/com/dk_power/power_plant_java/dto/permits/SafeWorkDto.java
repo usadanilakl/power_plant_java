@@ -68,7 +68,7 @@ public class SafeWorkDto extends BasePermitDto {
 
         SwPermits permits = new SwPermits();
         permits.setLotoRequired(true);
-        permits.setConfinedSpacePermitRequired(true);
+        permits.setConfinedSpace(true);
         permits.setHotWork(true);
         permits.setVentingPurging(false);
         permits.setJha(true);
@@ -84,18 +84,14 @@ public class SafeWorkDto extends BasePermitDto {
         ppe.setBoots(true);
         ppe.setFallProtection(false);
         ppe.setGfi(true);
-        ppe.setRespirator(true);
-        ppe.setDustMask(false);
+        ppe.setRespiratorDustMask(true);
         ppe.setGloves(true);
-        ppe.setIceCleats(false);
         ppe.setAcidSuit(true);
         ppe.setBarricade(false);
         ppe.setFaceShield(true);
         ppe.setGasMonitor(false);
         ppe.setArcFlashPpe(true);
-        ppe.setWeldingJacket(false);
-        ppe.setWeldingShield(true);
-        ppe.setWeldingGloves(true);
+        ppe.setWeldingPpe(true);
         ppe.setPurgingVentilation(true);
         dto.setPpe(ppe);
 
