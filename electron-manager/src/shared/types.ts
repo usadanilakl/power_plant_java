@@ -210,6 +210,41 @@ export interface PjmConfig {
   daEmailAddress?: string;        // mailbox UPN for PJM DA email polling via Graph API
 }
 
+// WebView AMS — "Rounds" Trend Table report scraper
+export interface WebViewAmsConfig {
+  url: string;                 // https://www.webviewams.com/reports.aspx
+  username: string;
+  password: string;
+  reportName: string;          // "Trend Table (Recurring Task Excel)"
+  savedSearch: string;         // "Rounds"
+  autoRefresh: boolean;        // scrape once per shift when true
+  dayShiftStartHour: number;   // 6  — Day shift begins
+  nightShiftStartHour: number; // 18 — Night shift begins
+}
+
+// Parsed Trend Table report (one scrape)
+export interface RoundsReport {
+  title: string;        // "Trend Table (Recurring Task Excel)"
+  facility: string;     // "Jackson Generation"
+  generatedAt: string;  // "Report generated on Thursday, May 21, 2026 at ..."
+  filterLine: string;   // "Date: This Week; Task Template: ...; Include: ACTIVE ONLY"
+  resultCount: number;  // 47
+  columns: string[];    // flattened question headers (first = "Response Date")
+  rows: string[][];     // each row: cell strings aligned to columns
+  scrapedAt: string;    // ISO timestamp of the scrape
+  contentHash: string;  // sha256 of columns+rows — used to dedup unchanged reports
+}
+
+export interface WebViewAmsStatus {
+  lastUpdate: string | null;
+  isRefreshing: boolean;
+  configured: boolean;
+  autoRefreshEnabled: boolean;
+  rowCount: number;
+  currentShift: string | null; // e.g. "2026-05-21-Day"
+  error?: string;
+}
+
 // IPC Result wrapper
 export interface IpcResult<T = void> {
   success: boolean;

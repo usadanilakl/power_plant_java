@@ -13,6 +13,7 @@ import { UpdateManager } from '../managers/update.manager';
 import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
+import { WebViewAmsManager } from '../managers/webview-ams.manager';
 import { WeatherManager } from '../managers/weather.manager';
 import { PerryWeatherManager } from '../managers/perry-weather.manager';
 import { PjmManager } from '../managers/pjm.manager';
@@ -25,7 +26,7 @@ import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -34,6 +35,7 @@ export class IpcHandlers {
   private syncStatusManager: SyncStatusManager;
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
+  private webViewAmsManager: WebViewAmsManager;
   private weatherManager: WeatherManager;
   private perryWeatherManager: PerryWeatherManager;
   private pjmManager: PjmManager;
@@ -58,6 +60,7 @@ export class IpcHandlers {
     this.resourcePackManager = new ResourcePackManager();
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
+    this.webViewAmsManager = new WebViewAmsManager();
     this.daEmailManager = new DaEmailManager();
     this.voskManager = new VoskManager(
       (result: VoskResult) => {
@@ -102,6 +105,12 @@ export class IpcHandlers {
         this.mainWindow.webContents.send(events.IPC_GATE_LOG_PEOPLE_UPDATED);
       }
     });
+    this.webViewAmsManager.setOnReportUpdated(() => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(events.IPC_WEBVIEW_AMS_UPDATED);
+      }
+    });
+    this.webViewAmsManager.start();
     this.syncUpdateManager = new SyncUpdateManager((entityType, entityId) => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_SYNC_ENTITY_UPDATED, entityType, entityId);
@@ -184,6 +193,7 @@ export class IpcHandlers {
     this.registerPermitsHandlers();
     this.registerMaximoHandlers();
     this.registerGateLogHandlers();
+    this.registerWebViewAmsHandlers();
     this.registerWeatherHandlers();
     this.registerPerryWeatherHandlers();
     this.registerPjmHandlers();
@@ -209,6 +219,10 @@ export class IpcHandlers {
 
   public getGateLogManager(): GateLogManager {
     return this.gateLogManager;
+  }
+
+  public getWebViewAmsManager(): WebViewAmsManager {
+    return this.webViewAmsManager;
   }
 
   public getColdResyncManager(): ColdResyncManager {
@@ -851,19 +865,20 @@ export class IpcHandlers {
 
   /**
    * Maximo bundle endpoints — read-only summaries Electron home widgets consume.
-   * Forwards to the Spring Boot bundle endpoint and trims the response to {count, top[]}
-   * so we don't ship the full WO list across IPC when the widget only renders 3 rows.
+   * Forwards to the Spring Boot bundle endpoint, maps to a slim {count, items[]} shape,
+   * and sorts by targetStart ascending (oldest scheduled first) so the widget's
+   * scrollable list shows the most-overdue work at the top.
    */
   private registerMaximoHandlers(): void {
     ipcMain.handle(events.IPC_MAXIMO_LEAD_OP_SUMMARY, async (_event, status?: string) => {
       try {
         const url = '/ng/maximo/bundle/lead-operators/work-orders'
-          + '?pageSize=100'
+          + '?pageSize=200'
           + (status ? '&status=' + encodeURIComponent(status) : '');
         const envelope = await this.springBootApiGet(url);
         const list: any[] = Array.isArray(envelope?.responseData) ? envelope.responseData : [];
-        // Top 5 — widget shows at most a few in its large/standard tier.
-        const top = list.slice(0, 5).map(w => ({
+
+        const items = list.map(w => ({
           href: w.href,
           wonum: w.wonum,
           description: w.description,
@@ -872,8 +887,21 @@ export class IpcHandlers {
           leadCraft: w.leadCraft,
           status: w.status,
           priority: w.priority,
+          targetStart: w.targetStart,
         }));
-        return { success: true, data: { count: list.length, top } };
+
+        // Oldest target-start first; WOs with no target start sink to the bottom.
+        // ISO-8601 strings sort chronologically as plain strings.
+        items.sort((a, b) => {
+          const at = a.targetStart || '';
+          const bt = b.targetStart || '';
+          if (!at && !bt) return 0;
+          if (!at) return 1;
+          if (!bt) return -1;
+          return at < bt ? -1 : at > bt ? 1 : 0;
+        });
+
+        return { success: true, data: { count: items.length, items } };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
@@ -941,6 +969,65 @@ export class IpcHandlers {
     ipcMain.handle(events.IPC_GATE_LOG_PRINT, async () => {
       try {
         await this.gateLogManager.print();
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  private registerWebViewAmsHandlers(): void {
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_GET_REPORT, async () => {
+      try {
+        return { success: true, data: this.webViewAmsManager.getCachedReport() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_GET_STATUS, async () => {
+      try {
+        return { success: true, data: this.webViewAmsManager.getStatus() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_REFRESH, async () => {
+      try {
+        const report = await this.webViewAmsManager.refresh();
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_WEBVIEW_AMS_UPDATED);
+        }
+        // A failed scrape returns the (possibly stale) cached report — surface
+        // the error so the renderer can show it instead of looking successful.
+        const status = this.webViewAmsManager.getStatus();
+        return { success: !status.error, data: report, error: status.error };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_GET_CONFIG, async () => {
+      try {
+        return { success: true, data: this.webViewAmsManager.getConfig() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_SAVE_CONFIG, async (_event, config: WebViewAmsConfig) => {
+      try {
+        this.webViewAmsManager.saveConfig(config);
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_SET_AUTO_REFRESH, async (_event, enabled: boolean) => {
+      try {
+        this.webViewAmsManager.setAutoRefresh(enabled);
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message };
@@ -1491,6 +1578,7 @@ export class IpcHandlers {
 
   public async cleanup(): Promise<void> {
     this.gateLogManager.cleanup();
+    this.webViewAmsManager.cleanup();
     this.weatherManager.cleanup();
     this.perryWeatherManager.cleanup();
     this.pjmManager.cleanup();

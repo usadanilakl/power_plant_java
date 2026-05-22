@@ -38,6 +38,7 @@ export interface MaximoWorkOrder {
   location: string;
   siteid: string;
   reportdate: string;
+  targetStart: string;
   schedstart: string;
   schedfinish: string;
   leadCraft: string;

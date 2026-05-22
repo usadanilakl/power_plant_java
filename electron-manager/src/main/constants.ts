@@ -76,3 +76,15 @@ export const DEFAULT_GATE_LOG_CONFIG = {
   autoRefresh: false,
   intervalMinutes: 60
 };
+
+// WebView AMS defaults (credentials loaded from webview-ams-config.json at runtime)
+export const DEFAULT_WEBVIEW_AMS_CONFIG = {
+  url: 'https://www.webviewams.com/reports.aspx',
+  username: '',
+  password: '',
+  reportName: 'Trend Table (Recurring Task Excel)',
+  savedSearch: 'Rounds',
+  autoRefresh: false,
+  dayShiftStartHour: 6,
+  nightShiftStartHour: 18
+};

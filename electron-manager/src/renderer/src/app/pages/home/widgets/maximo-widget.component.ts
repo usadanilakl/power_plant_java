@@ -4,12 +4,12 @@ import { RouterModule } from '@angular/router';
 import { AppStatus, APP_DISPLAY_NAME, MaximoLeadOpSummary } from '../../../services/electron.service';
 
 /**
- * Maximo bundle widget — currently surfaces "WOs assigned to Lead Operators with status=APPR".
- * Click → opens the Spring Boot bundle page via SpringBootUiComponent (iframe), so the live
- * filtering/sorting table users already know is the destination.
+ * Maximo bundle widget — surfaces "WOs assigned to Lead Operators with status=APPR".
+ * The standard tier shows the FULL list in a scrollable area, sorted oldest-target-start
+ * first (sort done in the IPC handler). Click → opens the Spring Boot bundle page (iframe).
  *
- * Compact (1x1): icon + count badge.
- * Standard (2x1+): adds a brief list of the top WO numbers + leads.
+ * Compact (1x1): icon + count badge only.
+ * Standard (2x1+): count + scrollable list of every WO.
  */
 @Component({
   selector: 'app-maximo-widget',
@@ -42,32 +42,33 @@ import { AppStatus, APP_DISPLAY_NAME, MaximoLeadOpSummary } from '../../../servi
 
       <!-- STANDARD (2x1+) -->
       <ng-container *ngIf="!isCompact">
-        <div class="feature-icon"><span class="material-icons" style="color: #26C6DA">engineering</span></div>
-        <div class="feature-info">
+        <div class="header-row">
+          <span class="material-icons" style="color: #26C6DA">engineering</span>
           <h3>Maximo · Lead Operator WOs</h3>
-          <p class="feature-desc">Approved work orders assigned to Lead Operators</p>
+          <span class="count-badge" *ngIf="summary && summary.count > 0">{{ summary.count }}</span>
+        </div>
+        <p class="feature-desc">Approved WOs · oldest target start first</p>
 
-          <div class="wo-count" *ngIf="summary && summary.count > 0">
-            <span class="count-badge">{{ summary.count }}</span>
-            APPR WO{{ summary.count !== 1 ? 's' : '' }}
-          </div>
-          <div class="no-wo" *ngIf="!summary || summary.count === 0">
-            No approved WOs right now
-          </div>
+        <div class="no-wo" *ngIf="!summary || summary.count === 0">
+          No approved WOs right now
+        </div>
 
-          <div class="wo-list" *ngIf="summary && summary.top.length > 0">
-            <div class="wo-row" *ngFor="let w of topToShow">
+        <!-- Full scrollable list -->
+        <div class="wo-scroll" *ngIf="summary && summary.items.length > 0">
+          <div class="wo-row" *ngFor="let w of summary.items">
+            <div class="wo-line1">
               <span class="wonum">{{ w.wonum }}</span>
-              <span class="wo-lead muted" *ngIf="w.leadCraft">· {{ w.leadCraft }}</span>
-              <span class="wo-desc">{{ w.description }}</span>
+              <span class="wo-target" [class.no-target]="!w.targetStart">
+                {{ w.targetStart ? fmtDate(w.targetStart) : 'no target' }}
+              </span>
+              <span class="wo-lead" *ngIf="w.leadCraft">{{ w.leadCraft }}</span>
             </div>
-            <span class="more-label" *ngIf="summary.count > topToShow.length">
-              +{{ summary.count - topToShow.length }} more
-            </span>
+            <div class="wo-desc">{{ w.description }}</div>
           </div>
         </div>
+
         <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
-          {{ status.state === 'running' ? 'Click to view' : 'Requires ' + appName }}
+          {{ status.state === 'running' ? 'Click to open full table' : 'Requires ' + appName }}
         </span>
       </ng-container>
     </a>
@@ -75,13 +76,14 @@ import { AppStatus, APP_DISPLAY_NAME, MaximoLeadOpSummary } from '../../../servi
   styles: [`
     :host { display: block; height: 100%; }
     .feature-card {
-      display: flex; flex-direction: column; gap: 10px; padding: 20px;
+      display: flex; flex-direction: column; gap: 8px; padding: 16px;
       background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
       text-decoration: none; color: inherit; transition: all var(--transition-normal); cursor: pointer;
-      overflow-y: auto; height: 100%; box-sizing: border-box;
+      height: 100%; box-sizing: border-box; overflow: hidden;
     }
-    .feature-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .feature-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); }
     .feature-card.no-navigate { pointer-events: none; }
+    .feature-card.compact { gap: 4px; padding: 20px; }
 
     .compact-header { display: flex; align-items: center; gap: 6px; }
     .compact-icon { font-size: 20px; }
@@ -91,28 +93,34 @@ import { AppStatus, APP_DISPLAY_NAME, MaximoLeadOpSummary } from '../../../servi
     .metric-label { font-size: 11px; color: var(--text-secondary); }
     .metric-label.ok { color: var(--accent-success); }
 
-    .feature-icon { font-size: 28px; }
-    .feature-info h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
-    .feature-desc { font-size: 12px; color: var(--text-muted); margin: 4px 0 6px; }
-    .feature-status { font-size: 11px; color: var(--accent-success); }
-    .feature-status.requires-sb { color: var(--text-muted); }
-
-    .wo-count { font-size: 12px; color: #26C6DA; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .header-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .header-row .material-icons { font-size: 22px; }
+    .header-row h3 { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1; }
     .count-badge {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border-radius: 50%;
+      min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
       font-size: 11px; font-weight: 700; color: #fff; background-color: #26C6DA;
     }
+    .feature-desc { font-size: 11px; color: var(--text-muted); margin: 0; flex-shrink: 0; }
+    .feature-status { font-size: 11px; color: var(--accent-success); flex-shrink: 0; }
+    .feature-status.requires-sb { color: var(--text-muted); }
     .no-wo { font-size: 12px; color: var(--accent-success); }
 
-    .wo-list { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
-    .wo-row { display: flex; gap: 6px; align-items: baseline; font-size: 11px;
-              white-space: nowrap; overflow: hidden; }
-    .wonum { font-family: ui-monospace, Consolas, monospace; color: var(--text-primary); font-weight: 600; }
-    .wo-lead { font-family: ui-monospace, Consolas, monospace; }
-    .wo-desc { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
-    .more-label { font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 2px; }
-    .muted { color: var(--text-muted); }
+    .wo-scroll {
+      flex: 1; min-height: 0; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 2px;
+      border-top: 1px solid var(--border-color); padding-top: 6px;
+    }
+    .wo-row { padding: 4px 2px; border-bottom: 1px solid var(--border-color); }
+    .wo-row:last-child { border-bottom: 0; }
+    .wo-line1 { display: flex; gap: 8px; align-items: baseline; font-size: 11px;
+                font-family: ui-monospace, Consolas, monospace; }
+    .wonum { color: var(--text-primary); font-weight: 600; }
+    .wo-target { color: #26C6DA; }
+    .wo-target.no-target { color: var(--text-muted); font-style: italic; }
+    .wo-lead { color: var(--text-secondary); margin-left: auto; }
+    .wo-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   `]
 })
 export class MaximoWidgetComponent {
@@ -125,10 +133,10 @@ export class MaximoWidgetComponent {
 
   get isCompact(): boolean { return this.cols === 1 && this.rows === 1; }
 
-  /** Show 3 rows on 2x1, 5 on anything larger — keeps the card from overflowing. */
-  get topToShow() {
-    if (!this.summary) return [];
-    const limit = this.cols > 1 && this.rows > 1 ? 5 : 3;
-    return this.summary.top.slice(0, limit);
+  /** ISO datetime → "MMM D" (target start times are usually midnight, so date is enough). */
+  fmtDate(iso: string): string {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 }

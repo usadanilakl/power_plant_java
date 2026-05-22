@@ -1,0 +1,1937 @@
+﻿Trend Table (Recurring Task Excel),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Jackson Generation,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"Report generated on Thursday, May 21, 2026 at 5/21/2026 5:57:08 PM",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"Date: This Week; Task Template: BOP, CRO checklist, Unit 1 Daily CEMS, Unit 1 Outside Rounds, Unit 2 Daily CEMS, Unit 2 Outside Rounds; Include: ACTIVE ONLY",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Results: 47,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Response Date,"ANSWER FIRST
+Which Shift
+(1)
+","ANSWER FIRST
+Which Shift
+(2)
+","UNIT 1 CEMS (01-CEMS)
+Instrument Air PG1 (90-100 psig)
+(3)
+","ANSWER FIRST
+Which Shift
+(4)
+","UNIT 2 CEMS (02-CEMS)
+Instrument Air PG1 (90-100 psig)
+(5)
+","Control Room Checks
+Any of the units on?
+(6)
+","Control Room Checks
+Day Ahead Gas Burn Sent
+(7)
+","UNIT 2 CEMS (02-CEMS)
+Sample Pressure PG2A (>2 psig)
+(8)
+","BOP
+Units Running
+(9)
+","UNIT 1 CEMS (01-CEMS)
+Sample Pressure PG2A (>2 psig)
+(10)
+","UNIT 2
+U2 Status
+(11)
+","UNIT 1
+U1 Status?
+(12)
+","UNIT 1 CEMS (01-CEMS)
+Sample Pressure PG2B (>2 psig)
+(13)
+","UNIT 2 CEMS (02-CEMS)
+Sample Pressure PG2B (>2 psig)
+(14)
+","Control Room Checks
+Review Log Book for TOI-TMOD (forced logic).
+(15)
+","Control Room Checks
+Check Point Review for points Off Scan on all units.
+(16)
+","UNIT 2 CEMS (02-CEMS)
+Probe vacuum VG1A (<10 inch HG)
+(17)
+","UNIT 1 CEMS (01-CEMS)
+Probe vacuum VG1A (<10 inch HG)
+(18)
+","UNIT 1 CEMS (01-CEMS)
+Probe vacuum VG1b (<10 inch HG)
+(19)
+","UNIT 2 CEMS (02-CEMS)
+Probe vacuum VG1b (<10 inch HG)
+(20)
+","Control Room Checks
+Security cameras and front gate operational and outside security checks complete.
+(21)
+","Control Room Checks
+Check that AED has a green light indication
+(22)
+","UNIT 2 CEMS (02-CEMS)
+Instrument air filter FR1 (80 psig)
+(23)
+","UNIT 1 CEMS (01-CEMS)
+Instrument air filter FR1 (80 psig)
+(24)
+","UNIT 1 CEMS (01-CEMS)
+Total sample flow RM1A (3-4 lpm)
+(25)
+","BOP
+Is RO ""A"" running?
+(26)
+","UNIT 2 CEMS (02-CEMS)
+Total sample flow RM1A (3-4 lpm)
+(27)
+","CLOSED COOLING WATER
+CCW Pump Oil Level
+(28)
+","CLOSED COOLING WATER
+CCW Pump Oil Level
+(29)
+","Service Water
+Service water pump running
+(30)
+","Service Water
+Diesel/Electric/Jokey fire pumps running
+(31)
+","CLOSED COOLING WATER
+Abnormal Conditions/Leaks
+(32)
+","CLOSED COOLING WATER
+Abnormal Conditions/Leaks
+(33)
+","UNIT 2 CEMS (02-CEMS)
+Total sample flow RM1b (3-4 lpm)
+(34)
+","DEMINERALIZED WATER
+Bag Filter DP A (<10)
+(35)
+","UNIT 1 CEMS (01-CEMS)
+Total sample flow RM1b (3-4 lpm)
+(36)
+","UNIT 1 CEMS (01-CEMS)
+NOX analyzer flow (all) RM2A (~1.5 lpm)
+(37)
+","DEMINERALIZED WATER
+Cartridge Filter DP A (<10)
+(38)
+","UNIT 2 CEMS (02-CEMS)
+NOX analyzer flow (all) RM2A (~1.5 lpm)
+(39)
+","Service Water
+Service water level
+(40)
+","Service Water
+Free Chlorine reading
+(41)
+","UNIT 2 CEMS (02-CEMS)
+NOX analyzer flow (all) RM2B (~1.5 lpm)
+(42)
+","DEMINERALIZED WATER
+Interstage pH in range? (9-10)
+(43)
+","UNIT 1 CEMS (01-CEMS)
+NOX analyzer flow (all) RM2B (~1.5 lpm)
+(44)
+","UNIT 1 CEMS (01-CEMS)
+CO analyzer flow RM3A (~1.5 lpm)
+(45)
+","DEMINERALIZED WATER
+RO ""A"" has no alarms and in auto.
+(46)
+","UNIT 2 CEMS (02-CEMS)
+CO analyzer flow RM3A (~1.5 lpm)
+(47)
+","Demin Water
+Demin Water Tank Level
+(48)
+","Demin Water
+Demin makeup to Tank YV-DWT115 in AUTO
+(49)
+","UNIT 2 CEMS (02-CEMS)
+Cal gas flow (when in cal) RM4 (2-3 lpm above total)
+(50)
+","UNIT 1 CEMS (01-CEMS)
+Cal gas flow (when in cal) RM4 (2-3 lpm above total)
+(51)
+","Demin Water
+Demin Dump to Water treatment sump  YV--DWT125  AUTO
+(52)
+","Demin Water
+Demin water pumps running
+(53)
+","Demin Water
+Demin Silica Final pbb (Must be < 10)
+(54)
+","Control air
+AIR COMPRESSORS RUNNING
+(55)
+","UNIT 1 CEMS (01-CEMS)
+Enclosure temperature (check HVAC controls) (72 Deg F +/- 5 Deg F)
+(56)
+","DEMINERALIZED WATER
+Is RO ""B"" running?
+(57)
+","UNIT 2 CEMS (02-CEMS)
+Enclosure temperature (check HVAC controls) (72 Deg F +/- 5 Deg F)
+(58)
+","GT TCA COOLER 01MBH05AC301 (01MBH05AC301)
+Abnormal Conditions/Leaks
+(59)
+","GT TCA COOLER 02MBH05AC301 (02MBH05AC301)
+Abnormal Conditions/Leaks
+(60)
+","UNIT 2 CEMS (02-CEMS)
+Moisture sensor and sample system filter MS1A, F1A (verify clean and dry. Relace if flow is restricted.)
+(61)
+","DEMINERALIZED WATER
+Bag filter DP (<10)
+(62)
+","UNIT 1 CEMS (01-CEMS)
+Moisture sensor and sample system filter MS1A, F1A (verify clean and dry. Relace if flow is restricted.)
+(63)
+","Control air
+PLANT AIR pressure
+(64)
+","UNIT 1 CEMS (01-CEMS)
+Moisture sensor and sample system filter MS1B, F1B (verify clean and dry. Relace if flow is restricted.)
+(65)
+","DEMINERALIZED WATER
+Cartridge Filter DP (<10)
+(66)
+","UNIT 2 CEMS (02-CEMS)
+Moisture sensor and sample system filter MS1B, F1B (verify clean and dry. Relace if flow is restricted.)
+(67)
+","UNIT 2 CEMS (02-CEMS)
+Cooler Temperature GC1A (Status Ok. 2 Deg C Nominal.)
+(68)
+","DEMINERALIZED WATER
+Interstage pH is in range (9-10)
+(69)
+","UNIT 1 CEMS (01-CEMS)
+Cooler Temperature GC1A (Status Ok. 2 Deg C Nominal.)
+(70)
+","UNIT 1 CEMS (01-CEMS)
+Cooler Temperature GC1B (Status Ok. 2 Deg C Nominal.)
+(71)
+","DEMINERALIZED WATER
+RO ""B"" has no alarms and in auto
+(72)
+","UNIT 2 CEMS (02-CEMS)
+Cooler Temperature GC1B (Status Ok. 2 Deg C Nominal.)
+(73)
+","UNIT 2 CEMS (02-CEMS)
+Drain pump DP1A/DP2A (Turning, draining.)
+(74)
+","UNIT 1 CEMS (01-CEMS)
+Drain pump DP1A/DP2A (Turning, draining.)
+(75)
+","UNIT 1 CEMS (01-CEMS)
+Drain pump DP1B/DP2B (Turning, draining.)
+(76)
+","UNIT 2 CEMS (02-CEMS)
+Drain pump DP1B/DP2B (Turning, draining.)
+(77)
+","UNIT 2 CEMS (02-CEMS)
+Check NH3 for moisture AS1, HV4 (Drain as needed)
+(78)
+","UNIT 1 CEMS (01-CEMS)
+Check NH3 for moisture AS1, HV4 (Drain as needed)
+(79)
+","UNIT 1 CEMS (01-CEMS)
+Sample Line TIC1 (250 Deg F, +/-5 Deg F)
+(80)
+","UNIT 2 CEMS (02-CEMS)
+Sample Line TIC1 (250 Deg F, +/-5 Deg F)
+(81)
+","UNIT 2 CEMS (02-CEMS)
+Probe heater T1C2 (250 Deg F, +/- 5 Deg F)
+(82)
+","UNIT 1 CEMS (01-CEMS)
+Probe heater T1C2 (250 Deg F, +/- 5 Deg F)
+(83)
+","UNIT 1 CEMS (01-CEMS)
+NH3 converter TIC3 (1250 Deg F, +/- 5 Deg F)
+(84)
+","UNIT 2 CEMS (02-CEMS)
+NH3 converter TIC3 (1250 Deg F, +/- 5 Deg F)
+(85)
+","UNIT 2 CEMS (02-CEMS)
+Daily Cal #1 cylinder pressure. Notify maintenance if below 200 PSIG.
+(86)
+","UNIT 1 CEMS (01-CEMS)
+Daily Cal #1 cylinder pressure. Notify maintenance if below 200 PSIG.
+(87)
+","UNIT 2 CEMS (02-CEMS)
+Daily Cal #2 cylinder pressure. Notify maintenance if below 200 PSIG.
+(88)
+","UNIT 1 CEMS (01-CEMS)
+Daily Cal #2 cylinder pressure. Notify maintenance if below 200 PSIG.
+(89)
+","UNIT 1 CEMS (01-CEMS)
+Daily Cal #3 cylinder pressure. Notify maintenance if below 200 PSIG.
+(90)
+","UNIT 2 CEMS (02-CEMS)
+Daily Cal #3 cylinder pressure. Notify maintenance if below 200 PSIG.
+(91)
+","UNIT 1 CEMS (01-CEMS)
+Check DAHS for normal operation. Is system logging data?
+(92)
+","GT2C/ECA COOLER COOLING WATER RECIRULATION PUMP A (LCA14AP101)
+Recirc Cooling Pump Oil Level
+(93)
+","GT2C/ECA COOLER COOLING WATER RECIRULATION PUMP A (LCA14AP101)
+Recirc Cooling Pump Oil Level
+(94)
+","UNIT 2 CEMS (02-CEMS)
+Check DAHS for normal operation. Is system logging data?
+(95)
+","SCR ammonia tanks
+NORTH TANK LEVEL
+(96)
+","SCR ammonia tanks
+SOUTH TANK LEVEL
+(97)
+","UNIT 2 CEMS (02-CEMS)
+Check and archive alarms. Log reason codes and action codes for any alarm conditions.
+(98)
+","GT2C/ECA COOLER COOLING WATER RECIRULATION PUMP A (LCA14AP101)
+Abnormal Conditions/Leaks
+(99)
+","GT2C/ECA COOLER COOLING WATER RECIRULATION PUMP A (LCA14AP101)
+Abnormal Conditions/Leaks
+(100)
+","UNIT 1 CEMS (01-CEMS)
+Check and archive alarms. Log reason codes and action codes for any alarm conditions.
+(101)
+","UNIT 1 CEMS (01-CEMS)
+Check calibration drift report for all analyzers/monitors.
+(102)
+","UNIT 2 CEMS (02-CEMS)
+Check calibration drift report for all analyzers/monitors.
+(103)
+","SCR ammonia tanks
+Aqueos ammonia pump running
+(104)
+","UNIT 2 CEMS (02-CEMS)
+Review daily summary reports. Report to supervisor any non-compliance episodes.
+(105)
+","UNIT 1 CEMS (01-CEMS)
+Review daily summary reports. Report to supervisor any non-compliance episodes.
+(106)
+","UNIT 1 CEMS (01-CEMS)
+Check all analyzer displays for error messages.
+(107)
+","DEMINERALIZED WATER
+Chem Tank Level - Sodium Bisulfite
+(108)
+","UNIT 2 CEMS (02-CEMS)
+Check all analyzer displays for error messages.
+(109)
+","DEMINERALIZED WATER
+Chem Tank Level - Caustic
+(110)
+","DEMINERALIZED WATER
+Chem Tank Level - Anti Scalant
+(111)
+","DEMINERALIZED WATER
+Chem Tank Level - Sodium Hypochlorite
+(112)
+","DEMINERALIZED WATER
+Draw Down - Sodium Bisulfite
+(113)
+","DEMINERALIZED WATER
+Draw Down - Caustic
+(114)
+","DEMINERALIZED WATER
+Draw Down - Anti Scalant
+(115)
+","DEMINERALIZED WATER
+Draw Down - Sodium Hypochlorite
+(116)
+","DEMINERALIZED WATER
+Demin Forwarding Pump Oil Level
+(117)
+","DEMINERALIZED WATER
+Demin Tank Heater (38-100 F)
+(118)
+","SCR skid
+SCR Fan ""A"" oil level
+(119)
+","SCR skid
+SCR Fan ""B"" oil level
+(120)
+","SCR skid
+Abnormal Conditions/Leaks
+(121)
+","SCR skid
+Ammonia injection strainer DP
+(122)
+","SCR skid
+Abnormal Conditions/Leaks
+(123)
+","SCR skid
+SCR Fan ""A"" oil level
+(124)
+","SERVICE WATER
+Pump Oil Level
+(125)
+","Fuel Gas System
+FGC running
+(126)
+","Fuel Gas System
+FGC setpoint
+(127)
+","SERVICE WATER
+Suction Pressure (>14)
+(128)
+","SCR skid
+SCR Fan ""B"" oil level
+(129)
+","SERVICE WATER
+Discharge Pressure (>65)
+(130)
+","SERVICE WATER
+Pump Vibration and Noises
+(131)
+","SCR skid
+Ammonia injection strainer DP
+(132)
+","SERVICE WATER
+Tank Heater Temp (40-100 F)
+(133)
+","SERVICE WATER
+Free Chlorine Analyzer Reading
+(134)
+","FIRE PROTECTION SYSTEM
+Check Local Alarms
+(135)
+","HRSG
+HRSG Sump Control Panel/Alarms
+(136)
+","HRSG
+HRSG Sump Control Panel/Alarms
+(137)
+","Electrical checks
+13.8 kv SWGR feed breaker that is open
+(138)
+","Electrical checks
+6.9KV SWGR feed breaker that is OPEN
+(139)
+","FIRE PROTECTION SYSTEM
+Header Pressure (155-180 PSI)
+(140)
+","FIRE PROTECTION SYSTEM
+Diesel Tank Level (>75%)
+(141)
+","HRSG
+Visual Steam/Water Leaks
+(142)
+","HRSG
+Visual Steam/Water Leaks
+(143)
+","Electrical checks
+EDG black out mode selected
+(144)
+","Electrical checks
+Any active alarms on electrical systems
+(145)
+","Electrical checks
+U1 Line Voltage
+(146)
+","Electrical checks
+U2 Line Voltage
+(147)
+","CEMS checks
+CEMS cals passed
+(148)
+","UNIT 1 CHEM SHACK (01-CHEMSHACK)
+Building Temperature
+(149)
+","SPARE GSU TRANSFORMER (00-XFMR)
+Abnormal Conditions/Leaks
+(150)
+","UNIT 1 CHEM SHACK (01-CHEMSHACK)
+Ammonia Pump Discharge Pressure
+(151)
+","UNIT 1 CHEM SHACK (01-CHEMSHACK)
+Ammonia pump drawdown
+(152)
+","UNIT 1 CHEM SHACK (01-CHEMSHACK)
+Ammonia Tote Level
+(153)
+","UNIT 1 CHEM SHACK (01-CHEMSHACK)
+Check Skid Display
+(154)
+","UNIT 1 CHEM SHACK (01-CHEMSHACK)
+Abnormal Conditions/Leaks
+(155)
+","UNIT 1
+Chemical Injection Pumps are off and system is ready for start.
+(156)
+","UNIT 1 SAMPLE PANEL (00-EWS-PWS620F)
+Check Resin Columns
+(157)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Abnormal Conditions/Leaks
+(158)
+","AMMONIA
+Pump Disch Press. (80-100 PSI)
+(159)
+","Auxiliary Steam
+Aux Boiler
+(160)
+","Auxiliary Steam
+Aux boiler available and ready for start
+(161)
+","AMMONIA
+Ammonia Tank Level SG North
+(162)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Building Temperature
+(163)
+","UNIT 1 SAMPLE PANEL (00-EWS-PWS620F)
+Make Sure Samples are Flowing
+(164)
+","UNIT 1 SAMPLE PANEL (00-EWS-PWS620F)
+Sample Temps are in Range
+(165)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Ammonia Pump Discharge Pressure
+(166)
+","AMMONIA
+Abnormal Conditions/Leaks
+(167)
+","AMMONIA
+Ammonia Tank Level SG South
+(168)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Ammonia pump drawdown
+(169)
+","UNIT 1 SAMPLE PANEL (00-EWS-PWS620F)
+TCU Display: Temp (76F) Pump Pressure (35-45psig)
+(170)
+","UNIT 1 SAMPLE PANEL (00-EWS-PWS620F)
+Sample System is in flush and ready for start.
+(171)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Ammonia Tote Level
+(172)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Check Skid Display
+(173)
+","UNIT 2 CHEM SHACK (02-CHEMSHACK)
+Is Chemical Injection System off and ready for start?
+(174)
+","SAMPLE PANEL
+Check Resin Columns
+(175)
+","BOILER FEEDWATER PUMP 1A (01-BFW-PMP-01A)
+Motor Oil Levels/Flow SG
+(176)
+","AUXILIARY BOILER
+FW Pump Oil Levels
+(177)
+","Control Room Checks
+Unit 1
+(178)
+","Control Room Checks
+Unit 2
+(179)
+","AUXILIARY BOILER
+Chem Tank Level/Draw Down
+(180)
+","BOILER FEEDWATER PUMP 1A (01-BFW-PMP-01A)
+CCW Temp Differential (In/out) is less then 10F
+(181)
+","SAMPLE PANEL
+Make Sure Samples are Flowing
+(182)
+","SAMPLE PANEL
+Sample Temps are in Range
+(183)
+","AUXILIARY BOILER
+Loovers/Building Heaters (Winter)
+(184)
+","SAMPLE PANEL
+TCU Display: Temp (76F) Pump Pressure (35-45psig)
+(185)
+","BOILER FEEDWATER PUMP MOTOR 1A (01-BFW-MPM-01A)
+BFP A Motor Cooling Air Screen Clean
+(186)
+","SAMPLE PANEL
+Sample System is in flush and ready for start
+(187)
+","AUXILIARY BOILER
+Check Local PLC/Alarms
+(188)
+","WASTE WATER SUMP (00-WDR-SMP-01)
+Check Display for Alarms
+(189)
+","BOILER FEEDWATER PUMP 1A (02-BFW-PMP-01A)
+Motor Oil Levels/Flow SG
+(190)
+","BOILER FEEDWATER PUMP 1B (01-BFW-PMP-01B)
+Motor Oil Levels/Flow SG
+(191)
+","HP Bypass system
+HP Stm Bypass to CRH PCV-HPS100 in auto
+(192)
+","HP Bypass system
+HP Stm Bypass Desup Block YV-BFW715 & TCV-BFW716 in AUTO
+(193)
+","BOILER FEEDWATER PUMP 1B (01-BFW-PMP-01B)
+CCW Temp Differential (In/out) is less then 10F
+(194)
+","BOILER FEEDWATER PUMP 1A (02-BFW-PMP-01A)
+CCW Temp Differential (In/out) is less then 10F
+(195)
+","WASTE WATER SUMP (00-WDR-SMP-01)
+Air Curtain Set Flow/Pressure
+(196)
+","HP Bypass system
+HP Bypass Desup Flow Transmitters All in Service and Reading Correctly
+(197)
+","HP Bypass system
+HP Superheater  Byp CTRL VLV PCV-HHS903 in auto
+(198)
+","BOILER FEEDWATER PUMP MOTOR 1A (02-BFW-MPM-01A)
+BFP A Motor Cooling Air Screen Clean
+(199)
+","BOILER FEEDWATER PUMP MOTOR 1A (01-BFW-MPM-01A)
+BFP B Motor Cooling Air Screen Clean
+(200)
+","HP Bypass system
+HP Steam Terminal Block YV-BFW705 & TCV-BFW706  in Auto and Temp in range
+(201)
+","HP Bypass system
+HP Terminal Desup Flow Transmitters All in Service and Reading Correctly
+(202)
+","HRH Bypass system
+HRH Stm Bypass to ACC PCV-HRH100 in auto
+(203)
+","HRH Bypass system
+HRH Stm Bypass Desup Block YV-CND702 & TCV-CND707 in AUTO
+(204)
+","HRH Bypass system
+HRH Bypass Desup Flow Transmitters All in Service and Reading Correctly
+(205)
+","HRH Bypass system
+HRH Steam Terminal Block YV-BFW735 & TCV-BFW736  in Auto and temp in range
+(206)
+","HRH Bypass system
+HRH Terminal Desup Flow Transmitters All in Service and Reading Correctly
+(207)
+","LP Bypass system
+LP Stm Bypass to ACC PCV-LPS100
+(208)
+","LP Bypass system
+LP Stm Bypass Desup Block YV-CND725 & TCV-CND726 in AUTO
+(209)
+","LP Bypass system
+LP Bypass Desup Flow Transmitters All in Service and Reading Correctly
+(210)
+","HP Bypass system
+HP Stm Bypass to CRH PCV-HPS100 in auto
+(211)
+","BOILER FEEDWATER PUMP 1B (02-BFW-PMP-01B)
+Motor Oil Levels/Flow SG
+(212)
+","AIR COMPRESSOR 1A (00-INA-CMP-01A)
+AIR COMPRESSOR STATUS
+(213)
+","AIR COMPRESSOR 1A (00-INA-CMP-01A)
+Alarms
+(214)
+","BOILER FEEDWATER PUMP 1B (02-BFW-PMP-01B)
+CCW Temp Differential (In/out) is less then 10F
+(215)
+","HP Bypass system
+HP Stm Bypass Desup Block YV-BFW715 & TCV-BFW716 in AUTO
+(216)
+","HP Bypass system
+HP Bypass Desup Flow Transmitters All in Service and Reading Correctly
+(217)
+","AIR DRYER 1A (00-INA-ADY-01A)
+Dew Point
+(218)
+","BOILER FEEDWATER PUMP MOTOR 1A (02-BFW-MPM-01A)
+BFP B Motor Cooling Air Screen Clean
+(219)
+","HP Bypass system
+HP Superheater  Byp CTRL VLV PCV-HHS903 in auto
+(220)
+","AIR COMPRESSOR 1B (00-INA-CMP-01B)
+AIR COMPRESSOR STATUS.
+(221)
+","HP Bypass system
+HP Steam Terminal Block YV-BFW705 & TCV-BFW706  in Auto and Temp in range
+(222)
+","AIR COMPRESSOR 1B (00-INA-CMP-01B)
+Alarms
+(223)
+","AIR DRYER 1B (00-INA-ADY-01B)
+Dew Point
+(224)
+","HP Bypass system
+HP Terminal Desup Flow Transmitters All in Service and Reading Correctly
+(225)
+","HRH Bypass system
+HRH Stm Bypass to ACC PCV-HRH100 in auto
+(226)
+","INSTRUMENT AIR
+Abnormal Conditions/Leaks
+(227)
+","INSTRUMENT AIR
+Test Solenoid on Wet and Dry Tanks
+(228)
+","HRH Bypass system
+HRH Stm Bypass Desup Block YV-CND702 & TCV-CND707 in AUTO
+(229)
+","HRH Bypass system
+HRH Bypass Desup Flow Transmitters All in Service and Reading Correctly
+(230)
+","HRH Bypass system
+HRH Steam Terminal Block YV-BFW735 & TCV-BFW736  in Auto and temp in range
+(231)
+","HRH Bypass system
+HRH Terminal Desup Flow Transmitters All in Service and Reading Correctly
+(232)
+","LP Bypass system
+LP Stm Bypass to ACC PCV-LPS100
+(233)
+","LP Bypass system
+LP Stm Bypass Desup Block YV-CND725 & TCV-CND726 in AUTO
+(234)
+","LP Bypass system
+LP Bypass Desup Flow Transmitters All in Service and Reading Correctly
+(235)
+","HP steam System
+HP Drum Level Control LCV-HHS932 & HHS921 in Auto
+(236)
+","HYDROGEN TRAILERS (HYDROGENTRAILERS)
+Main Header Pressure
+(237)
+","UNIT 1 HRSG MCC 111 (01-HRG-MCC-111)
+Building Temperature
+(238)
+","HYDROGEN TRAILERS (HYDROGENTRAILERS)
+Trailer in Service
+(239)
+","HP steam System
+HP Drum Level Transmitters All in Service and Reading Correctly
+(240)
+","HP steam System
+HP Feedwater Flow Transmitters All in Service and Reading Correctly
+(241)
+","BOP
+Is Standby Trailer full and available?
+(242)
+","HP steam System
+HP IBD Drum CV YCV-HHS901
+(243)
+","HP steam System
+HP continues BD MOV-HHS943
+(244)
+","HP steam System
+HP Interstage Attemperator  TCV-HHS801  in Auto and Temp in range
+(245)
+","HP steam System
+HP Interstage  Attemp Block Valve  MOV-HHS908  in Auto
+(246)
+","HP steam System
+HP Drum Level Control LCV-HHS932 & HHS921 in Auto
+(247)
+","NITROGEN GENERATOR SKID (00-FGS-SKD-13)
+Active alarms (North Unit)
+(248)
+","HRSG DUCT BURNER FUEL SKID 01-FGS-SKD-03 (01-FGS-SKD-03)
+Enclosure Pressure Ok
+(249)
+","SCANNER BLOWER (01-SCANNERBLOWER)
+Discharge Pressure
+(250)
+","UNIT 2 HRSG MCC 121 (02-HRG-MCC-121)
+Building Temperature
+(251)
+","HRSG DUCT BURNER FUEL SKID 01-FGS-SKD-03 (01-FGS-SKD-03)
+Check Display Screen/Alarms
+(252)
+","NITROGEN GENERATOR SKID (00-FGS-SKD-13)
+North Unit Running
+(253)
+","HP steam System
+HP Drum Level Transmitters All in Service and Reading Correctly
+(254)
+","HP steam System
+HP Feedwater Flow Transmitters All in Service and Reading Correctly
+(255)
+","NITROGEN GENERATOR SKID (00-FGS-SKD-13)
+North Unit in Auto
+(256)
+","NITROGEN GENERATOR SKID (00-FGS-SKD-13)
+Active alarms (South Unit)
+(257)
+","HP steam System
+HP IBD Drum CV YCV-HHS901
+(258)
+","HP steam System
+HP continues BD MOV-HHS943
+(259)
+","NITROGEN GENERATOR SKID (00-FGS-SKD-13)
+South Unit Running
+(260)
+","NITROGEN GENERATOR SKID (00-FGS-SKD-13)
+South Unit in Auto
+(261)
+","HP steam System
+HP Interstage Attemperator  TCV-HHS801  in Auto and Temp in range
+(262)
+","HP steam System
+HP Interstage  Attemp Block Valve  MOV-HHS908  in Auto
+(263)
+","IP Steam System
+IP Drum Level Control LCV-HIS931 in auto
+(264)
+","FUEL GAS COMPRESSOR (00-FGS-CMP-01A)
+Motor Oil Flow
+(265)
+","HRSG DUCT BURNER FUEL SKID 02-FGS-SKD-03 (02-FGS-SKD-03)
+Enclosure Pressure Ok
+(266)
+","SCANNER BLOWER (02-SCANNERBLOWER)
+Discharge Pressure
+(267)
+","FUEL GAS COMPRESSOR (00-FGS-CMP-01A)
+Check Display for Alarms
+(268)
+","IP Steam System
+IP Drum Level Transmitters All in Service and Reading Correctly
+(269)
+","IP Steam System
+IP Feedwater Flow Transmitters All in Service and Reading Correctly
+(270)
+","FUEL GAS COMPRESSOR (00-FGS-CMP-01A)
+Enclosure Pressure Ok
+(271)
+","FUEL GAS COMPRESSOR (00-FGS-CMP-01A)
+ACHE Noise and Vibrations
+(272)
+","IP Steam System
+IP IBD Drum CV YCV-HIS901 in auto
+(273)
+","IP Steam System
+IP continues BD MOV-HIS905 in auto
+(274)
+","FUEL GAS COMPRESSOR (00-FGS-CMP-01A)
+Abnormal Conditions/Leaks
+(275)
+","IP Steam System
+IP Steam Header PCV-HIS903 in auto
+(276)
+","IP Steam System
+RH Interstage Attemperator  TCV-HRS901  in Auto and Temp in range
+(277)
+","IP Steam System
+RH Interstage Attemperator  MOV-HRS912  in Auto
+(278)
+","IP Steam System
+IP Drum Level Control LCV-HIS931 in auto
+(279)
+","FUEL GAS CHROMATOGRAPH (00-FGS-FLG-11)
+Vent Fan On/Build Temp
+(280)
+","FUEL GAS PERFORMANCE HEATER 01-FGS-HEX-01 (01-FGS-HEX-01)
+Abnormal Conditions/Leaks
+(281)
+","FUEL GAS CHROMATOGRAPH (00-FGS-FLG-11)
+Check Panel for Alarms
+(282)
+","IP Steam System
+IP Drum Level Transmitters All in Service and Reading Correctly
+(283)
+","IP Steam System
+IP Feedwater Flow Transmitters All in Service and Reading Correctly
+(284)
+","IP Steam System
+IP IBD Drum CV YCV-HIS901 in auto
+(285)
+","IP Steam System
+IP continues BD MOV-HIS905 in auto
+(286)
+","IP Steam System
+IP Steam Header PCV-HIS903 in auto
+(287)
+","IP Steam System
+RH Interstage Attemperator  TCV-HRS901  in Auto and Temp in range
+(288)
+","IP Steam System
+RH Interstage Attemperator  MOV-HRS912  in Auto
+(289)
+","LP Steam System
+LP Drum Level Control LCV-HLS921 in auto
+(290)
+","FIRE PROTECTION SYSTEM
+Tank Pressure (290-310)
+(291)
+","FUEL GAS PERFORMANCE HEATER 02-FGS-HEX-01 (02-FGS-HEX-01)
+Abnormal Conditions/Leaks
+(292)
+","FIRE PROTECTION SYSTEM
+Tank Level % (>50%)
+(293)
+","LP Steam System
+LP Drum Level Transmitters All in Service and Reading Correctly
+(294)
+","LP Steam System
+LP Feedwater Flow Transmitters All in Service and Reading Correctly
+(295)
+","FIRE PROTECTION SYSTEM
+Alarms
+(296)
+","GAS TURBINE
+Are isolation valves open?
+(297)
+","LP Steam System
+LP IBD Drum Block MOV-HLS908 & CV YCV-HLS901
+(298)
+","LP Steam System
+LP Drum Level Control LCV-HLS921 in auto
+(299)
+","GAS TURBINE
+All streets have 112 gpm flow?
+(300)
+","FIRE PROTECTION SYSTEM
+Tank Pressure (290-310)
+(301)
+","GLYCOL/WATER RECIRCULATION PUMP SKID (00-FGS-SKD-06)
+Bladder Tank Desiccant color (White is normal)
+(302)
+","GLYCOL/WATER RECIRCULATION PUMP SKID (00-FGS-SKD-06)
+Which pump is running
+(303)
+","FIRE PROTECTION SYSTEM
+Tank Level % (>50%)
+(304)
+","LP Steam System
+LP Drum Level Transmitters All in Service and Reading Correctly
+(305)
+","LP Steam System
+LP Feedwater Flow Transmitters All in Service and Reading Correctly
+(306)
+","FIRE PROTECTION SYSTEM
+Alarms
+(307)
+","GLYCOL/WATER RECIRCULATION PUMP SKID (00-FGS-SKD-06)
+DP across Inlet Strainer of the running pump
+(308)
+","GAS TURBINE
+Are isolation valves open?
+(309)
+","LP Steam System
+LP IBD Drum Block MOV-HLS908 & CV YCV-HLS901
+(310)
+","GLYCOL HEATER
+Active Alarms
+(311)
+","GLYCOL HEATER
+Abnormal Conditions/Leaks
+(312)
+","GAS TURBINE
+All streets have 112 gpm flow?
+(313)
+","UNIT 1 EXCITOR ROOM (01-EXCITOR)
+Active Alarms
+(314)
+","UNIT 1 EXCITOR ROOM (01-EXCITOR)
+Building Temperature (65-85 F)
+(315)
+","LP ELECTRIC HEATER (00-FGS-SKD-11)
+Fuel Gas Outlet Temperature
+(316)
+","Duct Burner
+U1 Duct Burner Blower Running
+(317)
+","Duct Burner
+U2 Duct Burner Blower Running
+(318)
+","LP ELECTRIC HEATER (00-FGS-SKD-11)
+Check Control Panel/Alarms
+(319)
+","UNIT 1 EXCITOR ROOM (01-EXCITOR)
+Check Cubicle Filters
+(320)
+","LP ELECTRIC HEATER (00-FGS-SKD-11)
+Abnormal Conditions/Leaks
+(321)
+","GT IGNITION EXCITOR (MBM01GU001)
+Active Alarms
+(322)
+","GT IGNITION EXCITOR (MBM01GU001)
+Building Temperature (65-85 F)
+(323)
+","U1 SFC TRANSFORMER (52-11-04B)
+SFC Alarms on Display Screen
+(324)
+","GAS TURBINE FUEL GAS CARTRIDGE FILTER 01-FGS-FLT-01 (01-FGS-FLT-01)
+SG Level on Bottom of Main Tank
+(325)
+","Cycle chemical feed
+Ammonia  Pump Running
+(326)
+","Cycle chemical feed
+Cond After Chem Feed
+(327)
+","GAS TURBINE FUEL GAS CARTRIDGE FILTER 01-FGS-FLT-01 (01-FGS-FLT-01)
+SG on Drip Tank
+(328)
+","U1 SFC TRANSFORMER (52-11-04B)
+Building Temp (65-85 F)
+(329)
+","GT IGNITION EXCITOR (MBM01GU001)
+Check Cubicle Filters
+(330)
+","Cycle chemical feed
+Active Alarms
+(331)
+","Cycle chemical feed
+Ammonia  Pump Running
+(332)
+","FEEDER BREAKER U2 SFC XFMR (52-21-07B)
+SFC Alarms on Display Screen
+(333)
+","ST DRAINS TANK SUMP PUMP 1A 01-PDR-PMP-01A (01-PDR-PMP-01A)
+Sump free of Water
+(334)
+","EDG (01-EDG)
+Display Check
+(335)
+","EDG (01-EDG)
+Fuel Level (>90%)
+(336)
+","ST DRAINS TANK SUMP PUMP 1A 01-PDR-PMP-01A (01-PDR-PMP-01A)
+LP Drains Tank Pump Seal Water Pressure
+(337)
+","FEEDER BREAKER U2 SFC XFMR (52-21-07B)
+Building Temp (65-85 F)
+(338)
+","Cycle chemical feed
+Cond After Chem Feed
+(339)
+","Cycle chemical feed
+Active Alarms
+(340)
+","ST DRAINS TANK SUMP PUMP 1A 01-PDR-PMP-01A (01-PDR-PMP-01A)
+ST Drains Sump Pump Panel/Alarms
+(341)
+","EMERGENCY DIESEL GENERATOR
+Fuel tank free of any visible damage?
+(342)
+","EDG (01-EDG)
+Check for Leaks/Abnormal Conditions
+(343)
+","EDG (01-EDG)
+Battery Charger Status
+(344)
+","EDG (01-EDG)
+Switch in Auto
+(345)
+","MEDIUM VOLTAGE SYSTEM
+Check UPS Panel
+(346)
+","CONDENSATE
+Motor Oil Levels
+(347)
+","ST DRAINS TANK SUMP PUMP 1A 02-PDR-PMP-01A (02-PDR-PMP-01A)
+Sump free of Water
+(348)
+","SCR ammonia injection system
+NH3 Flow Cntrl  FCV-AQA803  in AUTO
+(349)
+","SCR ammonia injection system
+NH3 Flow Cntrl  FCV-AQA803  Flow
+(350)
+","ST DRAINS TANK SUMP PUMP 1A 02-PDR-PMP-01A (02-PDR-PMP-01A)
+LP Drains Tank Pump Seal Water Pressure
+(351)
+","MEDIUM VOLTAGE SYSTEM
+Main Dc panel Volts
+(352)
+","MEDIUM VOLTAGE SYSTEM
+Main DC Panel Amps
+(353)
+","ST DRAINS TANK SUMP PUMP 1A 02-PDR-PMP-01A (02-PDR-PMP-01A)
+ST Drains Sump Pump Panel/Alarms
+(354)
+","CONDENSATE
+Pump Seal Water flow
+(355)
+","SCR ammonia injection system
+Exhaust Gas Blowers Running
+(356)
+","SCR ammonia injection system
+Dilution Air Heater Running
+(357)
+","CONDENSATE
+Motor Cooling Air Screens Clean
+(358)
+","MEDIUM VOLTAGE SYSTEM
+Batt Chargers Volts A (130.5 VDC)
+(359)
+","MEDIUM VOLTAGE SYSTEM
+Batt Charger Volts B (130.5 VDC)
+(360)
+","CONDENSATE
+Electrical Box Desiccant is Blue
+(361)
+","SCR ammonia injection system
+Dilution Air Heater Temperature
+(362)
+","CONDENSATE
+Abnormal Conditions/Leaks
+(363)
+","MEDIUM VOLTAGE SYSTEM
+U1 Battery Room Temperature
+(364)
+","MEDIUM VOLTAGE SYSTEM
+U2 Battery Room Temperature
+(365)
+","MEDIUM VOLTAGE SYSTEM
+Building Temperature
+(366)
+","SEAL OIL VACUUM PUMP (A) (01-MKV05AP201)
+Separator Tank (50%)
+(367)
+","CONDENSATE
+Motor Oil Levels
+(368)
+","UNIT 1 OUTFALL (01-OUTFALL)
+Effluent Clear of Debris or no flow
+(369)
+","SCR ammonia injection system
+NH3 Flow Cntrl  FCV-AQA803  in AUTO
+(370)
+","SCR ammonia injection system
+NH3 Flow Cntrl  FCV-AQA803  Flow
+(371)
+","UNIT 1 OUTFALL (01-OUTFALL)
+Check for color or odors or no flow
+(372)
+","CONDENSATE
+Motor Cooling Air Screens Clean
+(373)
+","SEAL OIL VACUUM PUMP (A) (01-MKV05AP201)
+Seal Water Temperature on running pumps (40-150 F)
+(374)
+","CONDENSATE
+Electrical Box Desiccant is Blue
+(375)
+","BOP
+Is the north storage containment being used?
+(376)
+","SCR ammonia injection system
+Exhaust Gas Blowers Running
+(377)
+","SCR ammonia injection system
+Dilution Air Heater Running
+(378)
+","BOP
+Is there water level?
+(379)
+","BOP
+Is there evidence of oil in the containment?
+(380)
+","SCR ammonia injection system
+Dilution Air Heater Temperature
+(381)
+","CONDENSATE
+Pump Seal Water flow
+(382)
+","CONDENSATE
+Abnormal Conditions/Leaks
+(383)
+","BOP
+Was water pumped down?
+(384)
+","ACC
+Abnormal Conditions/Leaks
+(385)
+","SEAL OIL VACUUM PUMP (A) 02MKV05AP201 (02MKV05AP201)
+Separator Tank (50%)
+(386)
+","Boiler Feed Water System
+Boiler Feedwater Pump Running
+(387)
+","Boiler Feed Water System
+Lube Oil Temp of online BFWP (Highest)
+(388)
+","SEAL OIL VACUUM PUMP (A) 02MKV05AP201 (02MKV05AP201)
+Seal Water Temperature on running pumps (40-150 F)
+(389)
+","Boiler Feed Water System
+Standby BFWP in Auto
+(390)
+","Boiler Feed Water System
+Offline BFWP Lube oil pump running
+(391)
+","Boiler Feed Water System
+01A BFP Min Flow recirc FCV-BFW147, IP discharge MOV-BFW139/140, HP discharge  MOV-BFW145/146 are in auto
+(392)
+","Boiler Feed Water System
+01B BFP Min Flow recirc FCV-BFW187, IP discharge MOV-BFW179/80, HP discharge MOV-BFW185/186 are in auto
+(393)
+","Boiler Feed Water System
+NPSH on a running pump
+(394)
+","Boiler Feed Water System
+Boiler Feedwater Pump Running
+(395)
+","ACC
+Abnormal Conditions/Leaks
+(396)
+","ACC MCC (01-ACC-MCC)
+Building Temperature (65-85 F)
+(397)
+","Boiler Feed Water System
+Lube Oil Temp of online BFWP (Highest)
+(398)
+","Boiler Feed Water System
+Standby BFWP in Auto
+(399)
+","Boiler Feed Water System
+Offline BFWP Lube oil pump running
+(400)
+","Boiler Feed Water System
+01A BFP Min Flow recirc FCV-BFW147, IP discharge MOV-BFW139/140, HP discharge  MOV-BFW145/146 are in auto
+(401)
+","Boiler Feed Water System
+01B BFP Min Flow recirc FCV-BFW187, IP discharge MOV-BFW179/80, HP discharge MOV-BFW185/186 are in auto
+(402)
+","Boiler Feed Water System
+NPSH on a running pump
+(403)
+","Auxiliary Steam
+CRH to Aux Header PCV-CRG715 & PCV-CRH700 in auto
+(404)
+","C02 TANK HEATER (SGJ02AH001)
+CO2 Mini Bulk Tank Level (Order at <70%)
+(405)
+","ACC MCC (02-ACC-MCC)
+Building Temperature (65-85 F)
+(406)
+","C02 TANK HEATER (SGJ02AH001)
+CO2 Mini Bulk Tank Pressure
+(407)
+","Auxiliary Steam
+CRH To Aux Steam Attemp Block YV-BFW745 & TCV-BFW749  in Auto and Temp in range
+(408)
+","Auxiliary Steam
+CRH To Aux Steam Attemp Block YV-BFW757 & TCV-BFW761  in Auto and Temp in range
+(409)
+","Auxiliary Steam
+Auxiliary Electric Superheater in Auto
+(410)
+","Auxiliary Steam
+Aux steam crosstie valves are open MOV-AXS321/322
+(411)
+","GRAVEL/CALCITE TANK 6A 01-DWS-TNK-06A (01-DWS-TNK-06A)
+Check Display, Note any Alarms
+(412)
+","C02 TANK HEATER (SGJ02AH001)
+CO2 Mini Bulk Tank Level (Order at <70%)
+(413)
+","Auxiliary Steam
+CRH to Aux Header PCV-CRG715 & PCV-CRH700 in auto
+(414)
+","Auxiliary Steam
+CRH To Aux Steam Attemp Block YV-BFW745 & TCV-BFW749  in Auto and Temp in range
+(415)
+","C02 TANK HEATER (SGJ02AH001)
+CO2 Mini Bulk Tank Pressure
+(416)
+","Auxiliary Steam
+CRH To Aux Steam Attemp Block YV-BFW757 & TCV-BFW761  in Auto and Temp in range
+(417)
+","Auxiliary Steam
+Auxiliary Electric Superheater in Auto
+(418)
+","Auxiliary Steam
+Aux steam crosstie valves are open MOV-AXS321/322
+(419)
+","UNIT 1 CALCITE FILTER (00-EWS-PWS622)
+Check Display, Note any Alarms
+(420)
+","GAS TURBINE
+Abnormal Conditions/Leaks
+(421)
+","CRH system
+ST Ventilation Valve Closed
+(422)
+","CRH system
+CRH Stm Bypass Desup Block YV-CND705 & TCV-CND706 in AUTO
+(423)
+","CRH system
+ST Ventilation Valve Closed
+(424)
+","STEAM TURBINE
+Electric SPH PLC Alarms
+(425)
+","GAS TURBINE
+Abnormal Conditions/Leaks
+(426)
+","STEAM TURBINE
+Water in Basement
+(427)
+","CRH system
+CRH Stm Bypass Desup Block YV-CND705 & TCV-CND706 in AUTO
+(428)
+","STEAM TURBINE
+#7 Bearing Area Leaks
+(429)
+","GLAND STEAM CONDENSER 01-MAW01AC101 (01-MAW01AC101)
+Level in SG (about 1 inch)
+(430)
+","STEAM TURBINE
+Electric SPH PLC Alarms
+(431)
+","Drains
+Blowdown Tank TCV-HBD901 & YV-SWS717 IN AUTO
+(432)
+","Drains
+HRSG Drain Sump Pumps In AUTO
+(433)
+","STEAM TURBINE
+Water in Basement
+(434)
+","GLAND STEAM CONDENSER 01-MAW01AC101 (01-MAW01AC101)
+Turning Gear Oil Level
+(435)
+","GLAND STEAM CONDENSER 01-MAW01AC101 (01-MAW01AC101)
+Abnormal Conditions/Leaks
+(436)
+","STEAM TURBINE
+#7 Bearing Area Leaks
+(437)
+","Drains
+HRSG Drain Sump Level
+(438)
+","Drains
+HP Drains Tank Temp Cntrl TCV-CND717 in  AUTO  and Temperature in range
+(439)
+","Drains
+LP Drains Tank Temp Cntrl TCV-CND718 in  AUTO  and Temperature in range
+(440)
+","Drains
+HP Drains Tank Outlet Valve YV-STP131 & YV-STP132 in AUTO
+(441)
+","Drains
+LP Drains Tank Pump STP-PMP-01A & STP-PMP01B in AUTO
+(442)
+","Drains
+Blowdown Tank TCV-HBD901 & YV-SWS717 IN AUTO
+(443)
+","GLAND STEAM CONDENSER 02-MAW01AC101 (02-MAW01AC101)
+Level in SG (about 1 inch)
+(444)
+","SEAL OIL
+Seal Oil/H2 DP (8 PSI)
+(445)
+","SEAL OIL
+Discharge Filter DP
+(446)
+","GLAND STEAM CONDENSER 02-MAW01AC101 (02-MAW01AC101)
+Turning Gear Oil Level
+(447)
+","Drains
+HRSG Drain Sump Pumps In AUTO
+(448)
+","Drains
+HRSG Drain Sump Level
+(449)
+","GLAND STEAM CONDENSER 02-MAW01AC101 (02-MAW01AC101)
+Abnormal Conditions/Leaks
+(450)
+","SEAL OIL
+Vacuum Tank Level/float trap level (50%)
+(451)
+","Drains
+HP Drains Tank Temp Cntrl TCV-CND717 in  AUTO  and Temperature in range
+(452)
+","Drains
+LP Drains Tank Temp Cntrl TCV-CND718 in  AUTO  and Temperature in range
+(453)
+","SEAL OIL
+Vacuum tank pressure
+(454)
+","SEAL OIL
+Seal oil pump discharge pressure
+(455)
+","SEAL OIL
+Vacuum Pumps oil levels
+(456)
+","Drains
+HP Drains Tank Outlet Valve YV-STP131 & YV-STP132 in AUTO
+(457)
+","Drains
+LP Drains Tank Pump STP-PMP-01A & STP-PMP01B in AUTO
+(458)
+","SEAL OIL
+Vacuum tank pressure
+(459)
+","SEAL OIL
+Seal oil pump discharge pressure
+(460)
+","SEAL OIL
+Seal Oil/H2 DP (8 PSI)
+(461)
+","GENERATOR
+H2 Pressure (40-42 PSIG)
+(462)
+","Condensate System
+Demin Make-up LCV-DWS715 & YV-DWS719 In AUTO
+(463)
+","Condensate System
+Condensate Pumps Running
+(464)
+","GENERATOR
+Hydrogen Purity >95%
+(465)
+","SEAL OIL
+Discharge Filter DP
+(466)
+","GENERATOR
+Hydrogen flow to purity meter (500)
+(467)
+","Condensate System
+Condensate Reciever Tank Pressure
+(468)
+","Condensate System
+Condensate Reciever Tank Temperature
+(469)
+","SEAL OIL
+Vacuum Tank Level/float trap level (50%)
+(470)
+","Condensate System
+CND TO HRSG CONTROL VLV PCV-CND455 in AUTO
+(471)
+","Condensate System
+Condensate Pump Min Flow Recirc FCV-CND331 in AUTO
+(472)
+","SEAL OIL
+Vacuum Pumps oil levels
+(473)
+","Condensate System
+Condensate Dump YV-CND441 in AUTO
+(474)
+","Condensate System
+Gland Steam Exhauster in Service
+(475)
+","Condensate System
+All condensate pumps are in auto
+(476)
+","GENERATOR
+Hydrogen flow to purity meter (500)
+(477)
+","GENERATOR
+H2 Pressure (40-42 PSIG)
+(478)
+","HYDROGEN GAS DRYER (MKG03AT001)
+Check Display, Note any Alarms
+(479)
+","Condensate System
+Demin Make-up LCV-DWS715 & YV-DWS719 In AUTO
+(480)
+","Condensate System
+Condensate Pumps Running
+(481)
+","HYDROGEN GAS DRYER (MKG03AT001)
+Dryer Desiccant Indicator
+(482)
+","GENERATOR
+Hydrogen Purity >95%
+(483)
+","Condensate System
+Condensate Reciever Tank Pressure
+(484)
+","Condensate System
+Condensate Reciever Tank Temperature
+(485)
+","Condensate System
+CND TO HRSG CONTROL VLV PCV-CND455 in AUTO
+(486)
+","Condensate System
+Condensate Pump Min Flow Recirc FCV-CND331 in AUTO
+(487)
+","Condensate System
+Condensate Dump YV-CND441 in AUTO
+(488)
+","Condensate System
+Gland Steam Exhauster in Service
+(489)
+","Condensate System
+All condensate pumps are in auto
+(490)
+","Air Cooled Condenser
+ACC Duct Pressure
+(491)
+","CONTROL OIL
+Local pressure gauge readings = pressure indicating transmitter.
+(492)
+","HYDROGEN GAS DRYER (MKG03AT001)
+Check Display, Note any Alarms
+(493)
+","HYDROGEN GAS DRYER (MKG03AT001)
+Dryer Desiccant Indicator
+(494)
+","CONTROL OIL
+Polishing Filter Button Indicator
+(495)
+","Air Cooled Condenser
+Control Mode Selected by Operator
+(496)
+","Air Cooled Condenser
+ACC Duct Saturated Temp
+(497)
+","CONTROL OIL
+Tank Temperature
+(498)
+","CONTROL OIL
+Tank Level Normal
+(499)
+","CONTROL OIL
+Is nitrogen flow meter reading 30 SCFH?
+(500)
+","JACKING OIL
+Outlet Pressure (2442 PSIG)
+(501)
+","CONTROL OIL
+Local pressure gauge readings = pressure indicating transmitter.
+(502)
+","Air Cooled Condenser
+ACC Duct Pressure
+(503)
+","Air Cooled Condenser
+Control Mode Selected by Operator
+(504)
+","CONTROL OIL
+Polishing Filter Button Indicator
+(505)
+","JACKING OIL
+Filter DP Button Indicator
+(506)
+","CONTROL OIL
+Tank Temperature
+(507)
+","Air Cooled Condenser
+ACC Duct Saturated Temp
+(508)
+","CONTROL OIL
+Tank Level Normal
+(509)
+","CONTROL OIL
+Is nitrogen flow meter reading 30 SCFH?
+(510)
+","JACKING OIL
+Outlet Pressure (2442 PSIG)
+(511)
+","LUBE OIL
+Reservoir Level
+(512)
+","Air Removal System
+Vacuum Pumps Running
+(513)
+","Air Removal System
+Seal Water Temperature on Running Pump
+(514)
+","LUBE OIL
+Reservoir Temperature
+(515)
+","JACKING OIL
+Filter DP Button Indicator
+(516)
+","LUBE OIL
+Main Lube Oil Pressure (25 PSIG)
+(517)
+","Air Removal System
+Glycol Fin fans Running
+(518)
+","Air Removal System
+Glycol Receiver Tank Level
+(519)
+","LUBE OIL
+Mist Eliminator Vacuum (-10 inH20)
+(520)
+","LUBE OIL
+Purifier DP
+(521)
+","Air Removal System
+ACC VAC GLYCOL Pump Running
+(522)
+","LUBE OIL
+Purifier Tank Level SG
+(523)
+","GT 2C COOLER 01MBH04AC201 (01MBH04AC201)
+Abnormal Conditions/Leaks
+(524)
+","LUBE OIL
+Reservoir Level
+(525)
+","Air Removal System
+Vacuum Pumps Running
+(526)
+","Air Removal System
+Seal Water Temperature on Running Pump
+(527)
+","LUBE OIL
+Reservoir Temperature
+(528)
+","LUBE OIL
+Main Lube Oil Pressure (25 PSIG)
+(529)
+","Air Removal System
+Glycol Fin fans Running
+(530)
+","Air Removal System
+Glycol Receiver Tank Level
+(531)
+","LUBE OIL
+Mist Eliminator Vacuum (-10 inH20)
+(532)
+","LUBE OIL
+Purifier DP
+(533)
+","Air Removal System
+ACC VAC GLYCOL Pump Running
+(534)
+","LUBE OIL
+Purifier Tank Level SG
+(535)
+","GT 2C COOLER 02MBH04AC201 (02MBH04AC201)
+Abnormal Conditions/Leaks
+(536)
+","TCP (01-TCP)
+Building Temperature
+(537)
+","CCW
+Closed Cooling WATER Pump In Service
+(538)
+","CCW
+ACHE Bypass temp Control TCV-CCW181 In AUTO
+(539)
+","TCP (01-TCP)
+Battery Room Vent Fan On
+(540)
+","TCP (01-TCP)
+Benning display Check and Volts
+(541)
+","CCW
+Closed Cooling Water Pump Recirc PCV-CCW-191 In AUTO
+(542)
+","CCW
+Closed Cooling Water Head Tank Level
+(543)
+","TCP (01-TCP)
+Gutor Display and Volts
+(544)
+","TCP (02-TCP)
+Building Temperature
+(545)
+","CCW
+Closed Cooling WATER Pump In Service
+(546)
+","CCW
+ACHE Bypass temp Control TCV-CCW181 In AUTO
+(547)
+","TCP (02-TCP)
+Battery Room Vent Fan On
+(548)
+","TCP (02-TCP)
+Benning display Check and Volts
+(549)
+","CCW
+Closed Cooling Water Pump Recirc PCV-CCW-191 In AUTO
+(550)
+","CCW
+Closed Cooling Water Head Tank Level
+(551)
+","TCP (02-TCP)
+Gutor Display and Volts
+(552)
+","Sampling Analysis
+U1 Water and Steam Chemistry in range
+(553)
+","Sampling Analysis
+U2 Water and Steam Chemistry in range
+(554)
+","Turbine bearings
+Highest Vibration
+(555)
+","Turbine bearings
+Highest bearing metal temp
+(556)
+","Turbine bearings
+Highest Oil Drain temperature
+(557)
+","Control Oil System
+Oil System Active alarms
+(558)
+","Control Oil System
+Oil Pump running
+(559)
+","Control Oil System
+Oil Pumps and Heaters in auto
+(560)
+","Lube Oil System
+Oil System Active alarms
+(561)
+","Lube Oil System
+Oil Pump running
+(562)
+","Lube Oil System
+Jacking Oil Pumps in auto
+(563)
+","Lube Oil System
+Vapor Extractors are in auto and 1 running
+(564)
+","Lube Oil System
+Oil Pumps and Heaters in auto
+(565)
+","Lube Oil System
+Lube oil Temp after cooler
+(566)
+","Lube Oil System
+Turning Gear is in auto
+(567)
+","Seal Oil System
+Seal Oil DP
+(568)
+","Seal Oil System
+H2 purity
+(569)
+","Seal Oil System
+H2 pressure
+(570)
+","Seal Oil System
+Oil System Active alarms
+(571)
+","Enhanced Cooling Air System
+ECA compressor Running
+(572)
+","Enhanced Cooling Air System
+ECA system active alarms
+(573)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) Enclosure vent fan running (A) or (B)
+(574)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) vapor extractor running (A) or (B)
+(575)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) lube oil supply temp? < 165 alarms
+(576)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) lube oil reservoir Level
+(577)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) Enclosure vent fan running (A) or (B)
+(578)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) vapor extractor running (A) or (B)
+(579)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) lube oil supply temp? < 165alarm
+(580)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) lube oil reservoir level
+(581)
+","2C/ECA Cooler Cooling water system
+GT 2C/ECA cooler cooling water recirc pump running (A) or (B)
+(582)
+","Air and Flue Gas System Diagram
+GT Package Vent Fan Running (A) or (B)
+(583)
+","Air and Flue Gas System Diagram
+Evap Coolers in service?
+(584)
+","Air and Flue Gas System Diagram
+Inlet Air Filter Inner Pressure? < -6 inH2O alarm
+(585)
+","Air and Flue Gas System Diagram
+Anti-Icing Air Temp Control Vlvs In AUTO?
+(586)
+","Air and Flue Gas System Diagram
+GT inlet air filter DP
+(587)
+","Air and Flue Gas System Diagram
+GT Hepa Filter DP
+(588)
+","Generator
+Stator Coil Temp U/V/W Phase Highest Temp? < 235 alarms
+(589)
+","Generator
+Collector Housing Space Heater in AUTO?
+(590)
+","Generator
+Generator AVR and PSS mod on
+(591)
+","Turbine bearings
+Highest Vibration
+(592)
+","Turbine bearings
+Highest bearing metal temp
+(593)
+","Turbine bearings
+Highest Oil Drain temperature
+(594)
+","Control Oil System
+Oil System Active alarms
+(595)
+","Control Oil System
+Oil Pump running
+(596)
+","Control Oil System
+Oil Pumps and Heaters in auto
+(597)
+","Lube Oil System
+Oil System Active alarms
+(598)
+","Lube Oil System
+Oil Pump running
+(599)
+","Lube Oil System
+Jacking Oil Pumps in auto
+(600)
+","Lube Oil System
+Vapor Extractors are in auto and 1 running
+(601)
+","Lube Oil System
+Oil Pumps and Heaters in auto
+(602)
+","Lube Oil System
+Lube oil Temp after cooler
+(603)
+","Lube Oil System
+Turning Gear is in auto
+(604)
+","Seal Oil System
+Seal Oil DP
+(605)
+","Seal Oil System
+H2 purity
+(606)
+","Seal Oil System
+H2 pressure
+(607)
+","Seal Oil System
+Oil System Active alarms
+(608)
+","Enhanced Cooling Air System
+ECA compressor Running
+(609)
+","Enhanced Cooling Air System
+ECA system active alarms
+(610)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) Enclosure vent fan running (A) or (B)
+(611)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) vapor extractor running (A) or (B)
+(612)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) lube oil supply temp? < 165 alarms
+(613)
+","Enhanced Cooling Air System
+GT ECA Compressor (A) lube oil reservoir Level
+(614)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) Enclosure vent fan running (A) or (B)
+(615)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) vapor extractor running (A) or (B)
+(616)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) lube oil supply temp? < 165alarm
+(617)
+","Enhanced Cooling Air System
+GT ECA Compressor (B) lube oil reservoir level
+(618)
+","Enhanced Cooling Air System
+GT 2C/ECA cooler cooling water recirc pump running (A) or (B)
+(619)
+","Air and Flue Gas System Diagram
+GT Package Vent Fan Running (A) or (B)
+(620)
+","Air and Flue Gas System Diagram
+Evap Coolers in service?
+(621)
+","Air and Flue Gas System Diagram
+Inlet Air Filter Inner Pressure? < -6 inH2O alarm
+(622)
+","Air and Flue Gas System Diagram
+Anti-Icing Air Temp Control Vlvs In AUTO?
+(623)
+","Air and Flue Gas System Diagram
+GT inlet air filter DP
+(624)
+","Air and Flue Gas System Diagram
+GT Hepa Filter DP
+(625)
+","Generator
+Stator Coil Temp U/V/W Phase Highest Temp? < 235 alarms
+(626)
+","Generator
+Collector Housing Space Heater in AUTO?
+(627)
+","Generator
+Generator AVR and PSS mod on
+(628)
+"
+05/17/2026 05:22 AM,,,,,,No,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,33.3,.08,,,,,,,36.8,Yes,,,Yes,A,5.38,BOTH,,,,,,,,,105,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,81,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,52-T,52-T,,,,,Yes,No,,,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,Off,Off,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,NONE,,,,Yes,,,,NONE,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,No,A,Yes,No,A,Yes,Yes,Yes,113.4,Yes,8.7,99.9,41.2,No,,No,A,A,106,9.74,A,A,100,8.76,NONE,A,,,,0,0,,Yes,,,,,No,A,Yes,No,A,Yes,Yes,Yes,108.4,Yes,8.6,100,40.6,No,,No,A,A,94,10.82,A,A,92,9.46,NONE,B,,,,0,0,,Yes,
+05/17/2026 06:39 AM,,,,Day,,,,,Neither,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,25,90,,,,,Sat,70,,,,,,,Sat,,,13,,200,Sat,,66,Sat,Sat,,,,,164,65,,,,,,,,,Sat,,,,,,,,,,,,80,,,,,Sat,99,,,,,,,,,Sat,,,Sat,,,,,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-108.6,,,LAG,,No,-106.6,,,Sat,Sat,,,,,,,,,1150,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,2,,,No,Sat,,,,108,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,75,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,0,,,,,,130.1,130.1,,,,71,67,65,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/17/2026 06:58 AM,,,100,,,,,,,10.5,,,10,,,,,-2.5,-1.5,,,,,80,3.5,,,,,,,,,,,3.5,1.5,,,,,,,1.5,1.5,,,,,,0,,,,,68,,,,,,,Sat,,Sat,,,,,2.2,2.1,,,,Sat,Sat,,,Sat,250,,,250,1250,,,1150,,1170,1250,,Yes,,,,,,,,,Sat,Sat,,,,Sat,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/17/2026 07:13 AM,Day,,,,,,,,,,,Unit off/CND off/BFW off,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,,,24,,Sat,Yes,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,300,,80,,,Yes,No,,,System is Off,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,95,,170,,,,,,,,,,,,,,,,,,,,Sat,,Sat,,,,,,Sat,,,,,,,,,,9,2,,,,,Sat,,,-14.3,85,Sat,,,,,,41.3,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,115,10,Yes,2350,,,,,Sat,,,,,,36,,,115,,27,,,-13,2.2,,Sat,,,,,,,,,,,,,,68,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/17/2026 07:21 AM,,,,,100,,,9.5,,,,,,10.5,,,-.5,,,-1.0,,,80,,,,3.5,,,,,,,4,,,,,1.5,,,1.5,,,,,1.5,,,0,,,,,,,,67,,,Sat,,,,,,Sat,2,,,,,2.2,Sat,,,Sat,Sat,,,250,250,,,1250,1200,,1150,,,1280,,,,Yes,,,Sat,,,,,Sat,,Sat,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/17/2026 07:36 AM,,Day,,,,,,,,,Unit off/CND off/BFW off,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,28,,Yes,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,No,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,,,,,,,Unsat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,90,,,280,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Sat,,,Sat,,,,,,,,,-14.3,93,8.5,,,,,2.6,,,,Sat,,,Sat,,,,Sat,40.7,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,116,,10,Yes,2300,,,,,Sat,,,,,,,,,39,,,105,27,,,-11.7,0.5,,Sat,,,,,,,,,,70,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/17/2026 06:06 PM,,,,,,No,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,32.95,.0950,,,,,,,35.27,Yes,,,Yes,A,5.45,BOTH,,,,,,,,,103,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,81,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,52-T,52-T,,,,,Yes,No,,,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,On;\,Off,,,,,,,,,,,,,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,Yes,,,,Yes,Yes,,Yes,Yes,Yes,No,,,,,,,,,,,,,,,,,,Yes,,,,,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,,,,,,,,,,,,Yes,,,,Yes,Yes,,,Yes,,,,,,,,,,,,,,,,,,,A,,,,,,,,,A,19.19,,,,No,,,,,,,,,,,,,,,,,,Yes,325,,,,,,A,A,,,,,603,,,,,,,,,,,,,,,,,,,,,,,,,A,92,,Yes,Yes,Yes,Yes,92,NONE,,,,No,Yes,,,,Yes,,,,Yes,Yes,Yes,Yes,,,,,,,,,,,Yes,Yes,,,,,,,,,Yes,Yes,,,,,3.95,Yes,Yes,Yes,Yes,,,,,,,,,,,,,,,,,,,,,Yes,A|B,,,,3.76,122,,Yes,Yes,,Yes,A,Yes,,,,,,,,,,,,,,,3.96,,,,,Pressure Control,124,,,,,,,,,,,,,,,,A,116,,,,A|C|D|E,61,,,A|B,,,,,,,,,,,,,,,,A,Yes,,,Yes,79,,,,,,,,,,Yes,,3.50,187,158,No,A,Yes,No,A,Yes,Yes,Yes,113.1,Yes,8.6,99.9,42.9,No,Both,No,A,A,127,9.82,A,A,130,8.99,A,A,No,-3.14,Yes,0.96,1.42,154,Yes,Yes,,,,No,A,Yes,No,A,Yes,Yes,Yes,108.4,Yes,8.9,99.9,40.7,No,,No,A,A,108,10.04,A,A,106,8.89,NONE,B,,,,0,0,,Yes,
+05/18/2026 03:10 AM,,Night,,,,,,,,,Unit off/CND off/BFW off,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,32,,Yes,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,No,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Sat,,,,,,Unsat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,90,,,280,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Sat,,,Sat,,,,,,,,,-14.2,93,8.7,,,,,2.6,,,,Sat,,,Sat,,,,Unsat,40.7,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,120,,10,Yes,2350,,,,,Sat,,,,,,,,,39,,,110,27,,,13,0.5,,Sat,,,,,,,,,,70,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 03:14 AM,Night,,,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,30,Sat,Sat,,Sat,,,,,,,Sat,Sat,,,,,Sat,,,,,,Sat,,,,,6,,,,,Sat,,,,,Sat,,,4,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,Sat,47,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,300,,80,,,No,Yes,,,Yes,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,20,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,104,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,170,,,,,Sat,,,,,,,,,Sat,,,,Sat,,Sat,,Sat,Sat,,,,,Sat,Sat,,,,,,,,,9,2.4,,,,,Sat,,,-14.3,85,Sat,,,,,,41.3,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,114,10,Yes,,,,,,,,,,,,36,,,116,,27,,,-13,1.2,,Sat,Sat,,,,,,,,,,,,,69,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 03:57 AM,,,,Night,,,,,U1,,,,,,,,,,,,,,,,,Yes,,,,,,,,,0.8,,,1.58,,,,,Yes,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,25,90,Sat,Sat,Sat,Sat,Sat,70,,,,,,,Sat,,,13,,200,Sat,,66,Sat,Sat,,,,,164,65,,,,,,,,,Sat,,,,,,,,,108,,,71,,,,,Sat,88,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-40.72,,,LAG,,No,-70.24,,,Sat,Sat,,,,,,,,,1100,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.5,,,No,Sat,,,,109.7,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,75,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.2,,,,,,130.1,130.1,,,,68,71,67,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 07:37 AM,,,112,,,,,,,10.5,,,10,,,,,-2.5,-1.5,,,,,80,3.5,,,,,,,,,,,3.5,1.6,,,,,,,1.6,1.5,,,,,,0,,,,,68,,,,,,,Sat,,Sat,,,,,2.1,2,,,,Sat,Sat,,,Sat,250,,,250,1250,,,1100,,1150,1250,,Yes,,,,,,,,,Sat,Sat,,,,Sat,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 07:37 AM,,,,,112,,,9.5,,,,,,10.5,,,-.5,,,-1.0,,,80,,,,3.5,,,,,,,4,,,,,1.5,,,1.5,,,,,1.5,,,0,,,,,,,,68,,,Sat,,,,,,Sat,2.3,,,,,2.6,Sat,,,Sat,Sat,,,250,250,,,1250,1150,,1100,,,1250,,,,Yes,,,Sat,,,,,Sat,,Sat,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 08:15 AM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,34,.09,,,,,,,35,Yes,,,Yes,A,6.0,A,,,,,,,,,101,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,82,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,A|C,750/760,,,,,,,,,,,52-T,52-T,,,,,Yes,No,351,349,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,On;\,Off,,,,,,,,,,,,,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,Yes,,,,Yes,Yes,,Yes,Yes,Yes,No,,,,,,,,,,,,,,,,,,Yes,,,,,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,,,,,,,,,,,,Yes,,,,Yes,Yes,,,Yes,,,,,,,,,,,,,,,,,,,A,,,,,,,,,A,18.5,,,,No,,,,,,,,,,,,,,,,,,Yes,996,,,,,,A,A,,,,,666,,,,,,,,,,,,,,,,,,,,,,,,,A,114,,Yes,Yes,Yes,Yes,83.56,NONE,,,90,Yes,Yes,,,100,Yes,,,,Yes,Yes,Yes,Yes,,,,,,,,,,,Yes,Yes,,,,,,,,,Yes,Yes,,,,,3.96,Yes,Yes,Yes,Yes,,,,,,,,,,,,,,,,,,,,,Yes,A|B,,,,3.09,114,,Yes,Yes,,Yes,A,Yes,,,,,,,,,,,,,,,3.0,,,,,Pressure Control,105,,,,,,,,,,,,,,,,A,96,,,,E,65,,,A|B,,,,,,,,,,,,,,,,A,Yes,,,Yes,66.5,,,,,,,,,,Yes,,3.73,194,158,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,8.8,99.9,41.5,No,Both,No,A,A,126,9.88,A,A,137,9.03,A,A,No,-3.08,Yes,0.86,1.39,153,Yes,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 08:19 AM,Day,,,,,,,,,,,Unit off/CND on/BFW on,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,30,Sat,Sat,Yes,,,,,,,,,,,,,,,Yes,,,,,Sat,,,,,6,,,,,Sat,,,,,Sat,,,4,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,300,,80,,,No,Yes,,,No,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,30,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,88,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,,,,,,,,,,,,,,,,Sat,,Sat,,,,,,Sat,,,,,,,,,,9,1.6,,,,,Sat,,,-14.3,86,Sat,,,,,,41.3,,,99.9,,Unsat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,114,10,Yes,2400,,,,,Sat,,,,,,36,,,116,,27,,,-13,1.2,,Sat,,,,,,,,,,,,,,67,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 08:51 AM,,,,Day,,,,,U2,,,,,,,,,,,,,,,,,Yes,,,,,,,,,0.98,,,1.74,,,,,No,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,25,90,Sat,Sat,Sat,Sat,Sat,68,,,,,,,Sat,,,13,,200,Sat,,65,Sat,Sat,,,,,164,65,,,,,,,,,Sat,,,,,,,,,100,,,69,,,,,Sat,88,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-107,,,LAG,,No,-64,,,Sat,Sat,,,,,,,,,1100,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.7,,,No,Sat,,,,109,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.5,,,,,,130.1,130.1,,,,70,67,67,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 09:21 AM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,33,.09,,,,,,,,Yes,,,Yes,A,5.45,A,,,,,,,,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,78,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,B|C,750/760,,,,,,,,,,,52-T,52-T,,,,,Yes,No,349,348,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,Off,On;\,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Yes,,,,,Yes,Yes,,,Yes,,Yes,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,,,,,,,,Yes,,,,,,,Yes,Yes,,,Yes,Yes,,,Yes,Yes,,,,,,,,,,,,,,,,Yes,,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,,,,,,Yes,,,,,,Yes,Yes,,,,Yes,,,,,,,,A,,,,,,,,,,,,,,A,,,,,,,18,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Yes,928,,,,,,A,A,,,637,,,,,,NONE,,,,Yes,,,,A,,,,,Yes,Yes,Yes,,,,,,,,,,,,Yes,Yes,,Yes,Yes,Yes,,,,,Yes,,,,Yes,,,,,,,,,,,,,,,Yes,,,,,Yes,4.5,,,Yes,Yes,,,,Yes,Yes,,,,,,,,,,,,,,,,,,,,,,Yes,A|B,,,3.45,118,Yes,Yes,Yes,A,Yes,,,,,,,,,,,,,3.33,Pressure Control,,,,112,,,,,,,,,,,,,,,,,,A,107,,,A|B|C|E,55,,,A,,,,,,,,,,,,A,Yes,,,Yes,80,,,Yes,,,,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,9.1,99.9,41.2,No,,No,A,A,107,9.7,A,A,96,8.6,A,A,,,,0,0,,Yes,,4.5,183,158,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,8.8,99.9,42.3,No,Both,No,A,A,141,10.4,A,A,139,9.1,NONE,B,Yes,-3.41,Yes,1.51,0.61,161,Yes,Yes
+05/18/2026 09:34 AM,,Day,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,650,,,Sat,,,32,Sat,,Sat,,,,,,,Sat,Sat,,Sat,,,,,Sat,,,,,8,,,,Sat,,,,,,,,,,,,,Sat,,,0,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,Sat,57,,,,,,,,,,,,,,,,,,,,,,,,,Unsat,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,No,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Unsat,,,130,,,Unsat,,,,,,,,,,,,,,Sat,,,,,Sat,,Sat,,,,,,,Sat,Sat,,,Sat,,,98,,,,,,,Sat,,,,,,,,,,Sat,,,,,,,90,,,290,,,,Sat,,,,,,Sat,,,,,Unsat,,,Sat,,,Sat,,,,,,,Sat,,,Sat,,,Sat,,,,,,,,,-14.2,98,8.8,,,,,2.9,,,,Sat,,,Sat,,,,Sat,42.3,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,120,,10,Yes,,,,,,,,,,,,,,,39,,,138,26,,,-10,0.5,,Sat,Sat,,,,,,,,,70,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 06:15 PM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,33.27,.0950,,,,,,,36.67,Yes,,,Yes,A,5.26,A,,,,,,,,,115,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,91,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,B|C,760/750,,,,,,,,,,,52-T,52-T,,,,,Yes,No,351,350,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,On;\,On;\,,,,,,,,,,,,,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,,Yes,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,Yes,Yes,Yes,No,Yes,,,,,,,Yes,Yes,,,Yes,Yes,,,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,Yes,,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,,,,,,Yes,Yes,,,,Yes,,,,,,,A,A,,,,,,,,A,21.25,,,,No,A,,,,,,,20.27,No,,,,,,,,,Yes,442,,,,,,A,A,,,,,607,,,,,,,,Yes,431,,,,,,A,A,,,607,,,,,,A,122,,Yes,Yes,Yes,Yes,92,A,,,123,Yes,Yes,Yes,Yes,83,Yes,,,,Yes,Yes,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,,,Yes,Yes,Yes,,,,Yes,,,,Yes,Yes,,,,,4.49,Yes,Yes,Yes,Yes,Yes,,,,,Yes,3.78,,,Yes,Yes,,,,Yes,Yes,,,,,Yes,A|B,,,,3.02,115,,Yes,Yes,,Yes,A,Yes,,,,Yes,A|B,,,2.97,115,Yes,Yes,Yes,A,Yes,2.98,,,,,Pressure Control,109,,,,,,3.01,Pressure Control,,,,114,,,,,A,100,,,,A|E|D|C,59,,,A|B,,,,A,100,,,A|B|C|E,56,,,A|B,,,,A,Yes,,,Yes,73,,,A,Yes,,,Yes,72,,Yes,Yes,4.03,187,158,No,A,Yes,No,A,Yes,Yes,Yes,113.3,Yes,8.7,99.9,41.6,No,Both,No,A,A,126,9.85,A,A,129,8.99,A,A,No,-3.24,Yes,0.99,1.48,146,Yes,Yes,4.80,182,158,No,A,Yes,No,A,Yes,Yes,Yes,113.1,Yes,9.2,99.8,40.7,No,Both,No,A,A,138,10.41,A,A,137,9.07,A,B,No,-2.96,Yes,0.83,1.37,146,Yes,Yes
+05/18/2026 08:25 PM,Night,,,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,29,Sat,Sat,,Sat,,,,,,,Sat,Sat,,,,,Sat,,,,,,Sat,,,,,6,,,,,Sat,,,,,Sat,,,4,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,Sat,43,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,300,,80,,,No,Yes,,,No,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,25,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,94,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,Sat,,,,,,,,,Sat,,,,Sat,,Sat,,Sat,Sat,,,,,Sat,Sat,,,,,,,,,8.7,2.3,,,,,Sat,,,-14.3,83,Sat,,,,,,41,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,114,10,Yes,,,,,,,,,,,,36,,,144,,27,,,-12.3,1.2,,Sat,Sat,,,,,,,,,,,,,67,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/18/2026 08:30 PM,,,,Night,,,,,Both,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,25,90,Sat,Sat,Sat,Sat,Sat,69,,,,,,,Sat,,,13,,200,Sat,,66,Sat,Sat,,,,,164,65,,,,,,,,,Sat,,,,,,,,,100,,,80,,,,,Sat,88,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-110.4,,,LAG,,No,-65,,,Sat,Sat,,,,,,,,,1100,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,2.1,,,No,Sat,,,,115.6,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.5,,,,,,130.1,130.1,,,,70,67,66,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 04:20 AM,,Night,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,650,,,Sat,,,30,Sat,,Sat,,,,,,,Sat,Sat,,Sat,,,,,Sat,,,,,6,,,,Sat,,,,,,,,,,,,,Sat,,,0,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,Sat,58,,,,,,,,,,,,,,,,,,,,,,,,,Unsat,,,,,,,,,295,,,60,,,No,,Yes,,,,No,,,,,,,,,No,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Unsat,,,130,,,Unsat,,,,,,,,,,,,,,Sat,,,,,Sat,,Sat,,,,,,,Sat,Sat,,,Sat,,,82,,,,,,,Sat,,,,,,,,,,Sat,,,,,,,90,,,290,,,,Sat,,,,,,Sat,,,,,Unsat,,,Sat,,,Sat,,,,,,,Sat,,,Sat,,,Sat,,,,,,,,,-14.2,98,8.8,,,,,2.7,,,,Sat,,,Sat,,,,Sat,40.2,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,114,,10,Yes,,,,,,,,,,,,,,,39,,,144,27,,,-10,0.5,,Sat,Sat,,,,,,,,,70,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 06:18 AM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,34,.09,,,,,,,36,Yes,,,Yes,A,5.62,BOTH,,,,,,,,,109,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,87,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,B|C,760/750,,,,,,,,,,,52-T,52-T,,,,,Yes,No,351,350,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,On;\,On;\,,,,,,,,,,,,,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,,Yes,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,Yes,Yes,Yes,No,Yes,,,,,,,Yes,Yes,,,Yes,Yes,,,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,Yes,,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,,,,,,Yes,Yes,,,,Yes,,,,,,,A,A,,,,,,,,B,20.95,,,,No,A,,,,,,,20.56,No,,,,,,,,,Yes,352,,,,,,A,A,,,,,597,,,,,,,,Yes,372,,,,,,A,A,,,595,,,,,,A,118,,Yes,Yes,Yes,Yes,198,A,,,118,Yes,Yes,Yes,Yes,194,Yes,,,,Yes,Yes,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,,,Yes,Yes,Yes,,,,Yes,,,,Yes,Yes,,,,,4.47,Yes,Yes,Yes,Yes,Yes,,,,,Yes,4.07,,,Yes,Yes,,,,Yes,Yes,,,,,Yes,A|B,,,,2.97,114,,Yes,Yes,,Yes,A,Yes,,,,Yes,A|B,,,3.05,115,Yes,Yes,Yes,A,Yes,2.95,,,,,Pressure Control,114,,,,,,3.05,Pressure Control,,,,115,,,,,A,99,,,,A|C|D|E,60,,,A|B,,,,A,102,,,A|B|C|D|E,55,,,A|B,,,,A,Yes,,,Yes,68,,,A,Yes,,,Yes,72,,Yes,Yes,4.04,187,158,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,8.7,99.9,40.8,No,Both,No,A,A,124,9.85,A,A,129,8.99,A,A,No,-2:35,Yes,0.72,1.13,134,Yes,Yes,4.90,181,158,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,9.0,99.9,40.7,No,Both,No,A,A,139,10.4,A,A,138,9.0,A,B,No,-2.49,Yes,0.72,1.19,120,Yes,Yes
+05/19/2026 06:57 AM,,,,Day,,,,,Both,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,20,90,Sat,Sat,Sat,Sat,Sat,69,,,,,,,Sat,,,13,,200,Sat,,66,Sat,Sat,,,,,168,65,,,,,,,,,Sat,,,,,,,,,100,,,76,,,,,Sat,88,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-108,,,LAG,,No,-86,,,Sat,Sat,,,,,,,,,1100,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.5,,,No,Sat,,,,106,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.3,,,,,,130.1,130.1,,,,70,67,66,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 07:10 AM,,,118,,,,,,,10.5,,,10,,,,,-2.5,-1.5,,,,,80,3.5,,,,,,,,,,,3.5,1.6,,,,,,,1.6,1.5,,,,,,0,,,,,66,,,,,,,Sat,,Sat,,,,,2.3,2.2,,,,Sat,Sat,,,Sat,250,,,250,1250,,,900,,1000,1100,,Yes,,,,,,,,,Sat,Sat,,,,Sat,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 07:17 AM,Day,,,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,26,Sat,Sat,,Sat,,,,,,,Sat,Sat,,,,,Sat,,,,,,Sat,,,,,3,,,,,Sat,,,,,Sat,,,1,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,Sat,41,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,300,,80,,,No,Yes,,,No,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,20,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,90,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,Sat,,,,,,,,,Sat,,,,Sat,,Sat,,Sat,Sat,,,,,Sat,Sat,,,,,,,,,8.6,2.4,,,,,Sat,,,-14.3,83,Sat,,,,,,41,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,115,10,Yes,,,,,,,,,,,,36,,,144,,27,,,-12,1.2,,Sat,Sat,,,,,,,,,,,,,67,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 07:37 AM,,,,,120,,,9.5,,,,,,10.5,,,-.5,,,-1.0,,,80,,,,3.5,,,,,,,4,,,,,1.5,,,1.5,,,,,1.5,,,0,,,,,,,,69,,,Sat,,,,,,Sat,2.5,,,,,2.4,Sat,,,Sat,Sat,,,250,250,,,1250,1100,,1100,,,1200,,,,Yes,,,Sat,,,,,Sat,,Sat,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 01:06 PM,,Day,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,650,,,Sat,,,26,Sat,,Sat,,,,,,,Sat,Sat,,Sat,,,,,Sat,,,,,4,,,,Sat,,,,,,,,,,,,,Sat,,,1,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,Sat,58,,,,,,,,,,,,,,,,,,,,,,,,,Unsat,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,No,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Unsat,,,120,,,Unsat,,,,,,,,,,,,,,Sat,,,,,Sat,,Sat,,,,,,,Sat,Sat,,,Sat,,,80,,,,,,,Sat,,,,,,,,,,Sat,,,,,,,90,,,290,,,,Sat,,,,,,Sat,,,,,Sat,,,Sat,,,Sat,,,,,,,Sat,,,Sat,,,Sat,,,,,,,,,-14.2,98,8.8,,,,,2.7,,,,Sat,,,Sat,,,,Sat,40.6,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,115,,10,Yes,,,,,,,,,,,,,,,39,,,144,27,,,-10,0.5,,Sat,Sat,,,,,,,,,70,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 06:15 PM,,,,Night,,,,,Both,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,20,90,Sat,Sat,Sat,Sat,Sat,70,,,,,,,Sat,,,13,,200,Sat,,67,Sat,Sat,,,,,164,65,,,,,,,,,Sat,,,,,,,,,100,,,73,,,,,Sat,88,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-40.7,,,LAG,,No,-100.8,,,Sat,Sat,,,,,,,,,1100,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.5,,,No,Sat,,,,110.8,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.3,,,,,,130.1,130.1,,,,68,68,68,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 07:37 PM,Night,,,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,25,Sat,Sat,,Sat,,,,,,,Sat,Sat,,,,,Sat,,,,,,Sat,,,,,6,,,,,Sat,,,,,Sat,,,2,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,Sat,41,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,300,,80,,,No,Yes,,,No,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,20,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,90,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,Sat,,,,,,,,,Sat,,,,Sat,,Sat,,Sat,Sat,,,,,Sat,Sat,,,,,,,,,8.8,2.4,,,,,Sat,,,-14.3,83,Sat,,,,,,40.5,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,115,10,Yes,,,,,,,,,,,,36,,,144,,27,,,-12,1.2,,Sat,Sat,,,,,,,,,,,,,67,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/19/2026 09:47 PM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,34.20,.898,,,,,,,36.45,Yes,,,Yes,A,5.36,A,,,,,,,,,118,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,84,101,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,B|C,760/750,,,,,,,,,,,52-T,52-T,,,,,Yes,No,353,352,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,On;\,On;\,,,,,,,,,,,,,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,,Yes,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,Yes,Yes,Yes,No,Yes,,,,,,,Yes,Yes,,,Yes,Yes,,,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,Yes,,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,,,,,,Yes,Yes,,,,Yes,,,,,,,A,A,,,,,,,,B,23.7,,,,No,A,,,,,,,19.6,No,,,,,,,,,Yes,610,,,,,,A,A,,,,,616,,,,,,,,Yes,692,,,,,,A,A,,,614,,,,,,A,115,,Yes,Yes,Yes,Yes,91,A,,,116,Yes,Yes,Yes,Yes,85,Yes,,,,Yes,Yes,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,,,Yes,Yes,Yes,,,,Yes,,,,Yes,Yes,,,,,4.81,Yes,Yes,Yes,Yes,Yes,,,,,Yes,3.94,,,Yes,Yes,,,,Yes,Yes,,,,,Yes,A|B,,,,3.16,115,,Yes,Yes,,Yes,A,Yes,,,,Yes,A|B,,,3.12,114.8,Yes,Yes,Yes,A,Yes,3.10,,,,,Pressure Control,116,,,,,,3.05,Pressure Control,,,,115,,,,,A,102,,,,A|C|D|E,60,,,A|B,,,,A,100,,,A|B|C|D|E,55,,,A|B,,,,A,Yes,,,Yes,66,,,A,Yes,,,Yes,71,,Yes,Yes,3.36,188,159,No,A,Yes,No,A,Yes,Yes,Yes,113,Yes,8.7,99.9,40.6,No,Both,No,A,A,124,9.85,A,A,134,8.99,A,A,No,-3.28,Yes,0.95,1.46,132,Yes,Yes,4.96,182,159,No,A,Yes,No,A,Yes,Yes,Yes,113,Yes,9.0,99.9,39.8,No,Both,No,A,A,139,10.40,A,A,137,9.08,A,B,No,-2.80,Yes,0.77,1.28,123,Yes,Yes
+05/19/2026 10:15 PM,,Night,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Unsat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,650,,,Sat,,,24,Sat,,Sat,,,,,,,Unsat,Sat,,Sat,,,,,Sat,,,,,8,,,,Sat,,,,,,,,,,,,,Sat,,,6,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,Sat,59.4,,,,,,,,,,,,,,,,,,,,,,,,,Unsat,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,Yes,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Unsat,,,120,,,Unsat,,,,,,,,,,,,,,Sat,,,,,Sat,,Sat,,,,,,,Sat,Sat,,,Sat,,,88,,,,,,,Sat,,,,,,,,,,Sat,,,,,,,90,,,290,,,,Sat,,,,,,Sat,,,,,Sat,,,Sat,,,Sat,,,,,,,Sat,,,Sat,,,Sat,,,,,,,,,-14.34,98,9.26,,,,,2.7,,,,Sat,,,Sat,,,,Sat,39.5,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,118,,10,Yes,,,,,,,,,,,,,,,39,,,144,26,,,-10,0.5,,Sat,Sat,,,,,,,,,70,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 06:26 AM,,,,Day,,,,,Both,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,20,90,Sat,Sat,Sat,Sat,Sat,70,,,,,,,Sat,,,13,,200,Sat,,67,Sat,Sat,,,,,164,65,,,,,,,,,Sat,,,,,,,,,90,,,67,,,,,Sat,87,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-45,,,LAG,,No,-106,,,Sat,Sat,,,,,,,,,1100,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.5,,,No,Sat,,,,112,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.2,,,,,,130.1,130.1,,,,68,68,68,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 06:40 AM,,,118,,,,,,,10.5,,,10,,,,,-2.5,-1.5,,,,,80,3.5,,,,,,,,,,,3.5,1.6,,,,,,,1.6,1.5,,,,,,0,,,,,67,,,,,,,Sat,,Sat,,,,,2.5,2.4,,,,Sat,Sat,,,Sat,250,,,250,1250,,,900,,1000,1000,,Yes,,,,,,,,,Sat,Sat,,,,Sat,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 06:52 AM,Day,,,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,31,Sat,Sat,,Sat,,,,,,,Sat,Sat,,,,,Sat,,,,,,Sat,,,,,3,,,,,Sat,,,,,Sat,,,3,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,Sat,41,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,300,,80,,,No,Yes,,,System is Off,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,20,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,90,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,Sat,,,,,,,,,Sat,,,,Sat,,Sat,,Sat,Sat,,,,,Sat,Sat,,,,,,,,,8.6,2.4,,,,,Sat,,,-14.4,83,Sat,,,,,,41.3,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,118,10,Yes,,,,,,,,,,,,36,,,144,,27,,,-12,1.2,,Sat,Sat,,,,,,,,,,,,,67,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 07:10 AM,,,,,118,,,9.5,,,,,,10.5,,,-.5,,,-1.0,,,80,,,,3.5,,,,,,,4,,,,,1.5,,,1.5,,,,,1.5,,,0,,,,,,,,67,,,Sat,,,,,,Sat,2.3,,,,,2.2,Sat,,,Sat,Sat,,,250,250,,,1250,900,,900,,,1000,,,,Yes,,,Sat,,,,,Sat,,Sat,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 09:13 AM,,Day,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Unsat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,650,,,Sat,,,30,Sat,,Sat,,,,,,,Sat,Sat,,Sat,,,,,Sat,,,,,5,,,,Sat,,,,,,,,,,,,,Sat,,,4,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,Sat,58,,,,,,,,,,,,,,,,,,,,,,,,,Unsat,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,Yes,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Unsat,,,120,,,Unsat,,,,,,,,,,,,,,Sat,,,,,Sat,,Sat,,,,,,,Sat,Sat,,,Sat,,,90,,,,,,,Sat,,,,,,,,,,Sat,,,,,,,90,,,290,,,,Sat,,,,,,Sat,,,,,Sat,,,Sat,,,Sat,,,,,,,Sat,,,Sat,,,Sat,,,,,,,,,-14.4,98,8.8,,,,,2.7,,,,Sat,,,Sat,,,,Sat,40.6,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,115,,10,Yes,,,,,,,,,,,,,,,39,,,144,26,,,-10,0.5,,Sat,Sat,,,,,,,,,70,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 09:21 AM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,34.3,0.08,,,,,,,35.9,Yes,,,Yes,A,5.35,A,,,,,,,,,117,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,77,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,B|C,760/750,,,,,,,,,,,52-T,52-T,,,,,Yes,No,355,353,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,On;\,On;\,,,,,,,,,,,,,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,,Yes,,,Yes,Yes,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,Yes,Yes,Yes,No,Yes,,,,,,,Yes,Yes,,,Yes,Yes,,,Yes,Yes,Yes,,,,,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,Yes,,,,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,,,,Yes,Yes,,,Yes,Yes,,,,,,Yes,Yes,,,,Yes,,,,,,,A,A,,,,,,,,B,20.2,,,,No,A,,,,,,,20.7,No,,,,,,,,,Yes,949,,,,,,A,A,,,,,672,,,,,,,,Yes,1172,,,,,,A,A,,,664,,,,,,A,113,,Yes,Yes,Yes,Yes,88,A,,,114,Yes,Yes,Yes,Yes,79,Yes,,,,Yes,Yes,Yes,Yes,,,Yes,Yes,,Yes,Yes,Yes,,,Yes,Yes,Yes,,,,Yes,,,,Yes,Yes,,,,,4.1,Yes,Yes,Yes,Yes,Yes,,,,,Yes,4.86,,,Yes,Yes,,,,Yes,Yes,,,,,Yes,A|B,,,,3.0,115,,Yes,Yes,,Yes,A,Yes,,,,Yes,A|B,,,3.17,115,Yes,Yes,Yes,A,Yes,3.0,,,,,Pressure Control,105,,,,,,2.99,Pressure Control,,,,115,,,,,A,91,,,,A|C|D|E,62,,,A|B,,,,A,98,,,A|B|C|D|E,55,,,A|B,,,,A,Yes,,,Yes,66,,,A,Yes,,,Yes,71,,Yes,Yes,3.3,192,158,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,8.6,99.9,41.3,No,Both,No,A,A,125,9.8,A,A,133,8.99,A,A,No,-3.05,Yes,0.92,1.4,152,Yes,Yes,5.25,185,159,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,8.9,99.9,40.5,No,Both,No,A,A,139,10.4,A,A,138,9.07,A,B,No,-3.26,Yes,0.93,1.49,157,Yes,Yes
+05/20/2026 07:01 PM,,,,Night,,,,,Both,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,20,90,Sat,Sat,Sat,Sat,Sat,71,,,,,,,Sat,,,13,,200,Sat,,67,Sat,Sat,,,,,161,65,,,,,,,,,Sat,,,,,,,,,100,,,62,,,,,Sat,88,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-108.9,,,LAG,,No,-99.9,,,Sat,Sat,,,,,,,,,1050,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.4,,,No,Sat,,,,105.6,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.2,,,,,,130.1,130.1,,,,70,71,71,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 08:11 PM,,Night,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Unsat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,650,,,Sat,,,28,Sat,,Sat,,,,,,,Sat,Sat,,Sat,,,,,Sat,,,,,6,,,,Sat,,,,,,,,,,,,,Sat,,,8,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,Sat,53,,,,,,,,,,,,,,,,,,,,,,,,,Unsat,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,Yes,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Unsat,,,120,,,Unsat,,,,,,,,,,,,,,Sat,,,,,Sat,,Sat,,,,,,,Sat,Sat,,,Sat,,,84,,,,,,,Sat,,,,,,,,,,Sat,,,,,,,90,,,290,,,,Sat,,,,,,Sat,,,,,Sat,,,Sat,,,Sat,,,,,,,Sat,,,Sat,,,Sat,,,,,,,,,-14.4,98,9.02,,,,,2.7,,,,Sat,,,Sat,,,,Sat,40.2,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,112,,10,Yes,,,,,,,,,,,,,,,39,,,140,26,,,-10,0.5,,Sat,Sat,,,,,,,,,69,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/20/2026 09:03 PM,Night,,,,,,,,,,,Unit online;,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,650,Sat,27,Sat,Sat,,Sat,,,,,,,Sat,Sat,,,,,Sat,,,,,,Sat,,,,,6,,,,,Sat,,,,,Sat,,,2,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,Sat,44.5,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,300,,80,,,No,Yes,,,System is Off,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,20,,,,Sat,,,,,,Sat,,,,,,,,Sat,,,Sat,,,Sat,,Sat,,,,Sat,,,,,,,80,,,,,,,,,,,Sat,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,Sat,,,,,,,,,Sat,,,,Sat,,Sat,,Sat,Sat,,,,,Sat,Sat,,,,,,,,,8.58,2.4,,,,,Sat,,,-14.4,83.33,Sat,,,,,,41.2,,,99.9,,Sat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,118,10,Yes,,,,,,,,,,,,36,,,142,,27,,,-11.90,1.3,,Sat,Sat,,,,,,,,,,,,,68,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/21/2026 01:07 AM,,,,,,No,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,34,.11,,,,,,,35.7,Yes,,,Yes,A,5.62,BOTH,,,,,,,,,105,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,69,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,52-T,52-T,,,,,Yes,No,,,Yes,,,,,,,,,,,,On;\,,,,,,,,,,,,,,,,,,Off,Off,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,NONE,,,,Yes,,,,NONE,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,No,A,Yes,No,A,Yes,Yes,Yes,113,Yes,8.8,99.9,41.2,No,,No,A,A,98,10.35,A,A,104,9.40,NONE,A,,,,0,0,,Yes,,,,,No,A,Yes,No,A,Yes,Yes,Yes,108.2,Yes,8.6,100,40.3,No,,No,A,A,117,10.77,A,A,114,9.48,NONE,B,,,,0,0,,Yes,
+05/21/2026 08:41 AM,,,,,95,,,9.5,,,,,,11.5,,,-.5,,,-1.0,,,80,,,,3.5,,,,,,,3.5,,,,,1.5,,,1.6,,,,,1.6,,,0,,,,,,,,67,,,Sat,,,,,,Sat,2,,,,,2.3,Sat,,,Sat,Sat,,,250,250,,,1250,800,,800,,,800,,,,Yes,,,Sat,,,,,Sat,,Sat,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/21/2026 10:07 AM,,,,,,Yes,Yes,,,,,,,,Yes,Yes,,,,,Yes,Yes,,,,,,,,A,No,,,,,,,,,34,0.08,,,,,,,36.6,Yes,,,Yes,A,5.98,A,,,,,,,,,104,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,68,100,,,,,,,A,,,,,,,,,,,,,,,,,,,,,,None,700,,,,,,,,,,,52-T,52-T,,,,,Yes,No,352,351,Yes,,,,,,,,,,,,Off,Yes,,,,,,,,,,,,,,,,,Off,Off,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,NONE,,,,Yes,,,,NONE,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,No,A,Yes,No,A,Yes,Yes,Yes,114,Yes,8.2,99.9,41.1,No,,No,A,A,103,9.7,A,A,100,8.7,A,A,,,,0,0.01,,Yes,,,,,No,A,Yes,No,A,Yes,Yes,Yes,109,Yes,8.9,99.9,40.6,No,,No,A,A,106,10,A,A,109,8.8,A,B,,,,0,0,,Yes,
+05/21/2026 10:27 AM,,,100,,,,,,,10.5,,,10,,,,,-2.5,-1.5,,,,,80,3.5,,,,,,,,,,,3.5,1.6,,,,,,,1.6,1.5,,,,,,0,,,,,68,,,,,,,Sat,,Sat,,,,,2.2,2,,,,Sat,Sat,,,Sat,250,,,250,1250,,,700,,750,800,,Yes,,,,,,,,,Sat,Sat,,,,Sat,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/21/2026 10:46 AM,,Day,,,,,,,,,Unit off/CND off/BFW off,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,Sat,0.5,,,,,,,,,,,,,,,Sat,,,,,Unsat,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,32,,Yes,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,295,,,60,,,No,,Yes,,,,System is Off,,,,,,,,,Yes,Sat,,,,,,,Sat,,,No,,,,,Sat,,,,,,,,,,Sat,,,,,,Unsat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,90,,,290,,,,,,,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Sat,,,Sat,,,,,,,,,-14.75,92.8,9.19,,,,,2.54,,,,Sat,,,Sat,,,,Unsat,40.2,,,,,99.9,,,,,,,,,,Sat,Sat,,,,,,,,Yes,,,Sat,,115,,10,Yes,2400,,,,,Sat,,,,,,,,,38,,,110,27,,,-12,0.5,,Sat,,,,,,,,,,69,,,Yes,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/21/2026 11:05 AM,Day,,,,,,,,,,,Unit off/CND off/BFW off,,,,,,,,,,,,,,,,Sat,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,Sat,,,,,Sat,,,0.5,,,,Sat,,,,,,,Sat,,,,,,Sat,,,,31,,Sat,Yes,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,300,,80,,,No,Yes,,,System is Off,,,,,,,,,,,,,,No,Sat,,,,,Sat,,,,No,,,,,Sat,,,,,Sat,,,0,,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Sat,,,,,,,,95,,180,,,,,,,,,,,,,,,,,,,,Sat,,Sat,,,,,,Sat,,,,,,,,,,8.7,2.3,,,,,Sat,,,-14.4,84,Sat,,,,,,41.6,,,99.9,,Unsat,,,,,,,,,,,,Sat,,,Sat,,,,,,,,,,Yes,,,Sat,,,116,10,Yes,2400,,,,,Sat,,,,,,36,,,114,,27,,,-13,1.3,,Sat,,,,,,,,,,,,,,68,,,No,Sat,,,Sat,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+05/21/2026 11:20 AM,,,,Day,,,,,Neither,,,,,,,,,,,,,,,,,No,,,,,,,,,,,,,,,,,,,,Yes,,,,,,,,,,,No,,,,,,,,,,,,,,,Yes,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,45,,25,10,90,Sat,Sat,Sat,Sat,Sat,72,,,,,,,Sat,,,13,,200,Sat,,68,Sat,Sat,,,,,160,65,,,,,,,,,Sat,,,,,,,,,,,,59,,,,,Sat,87,,,,,,,,,Sat,,,Sat,,,,Sat,,,,Sat,Sat,,,,,,,Sat,,,,,,,,,,,,,,,,,LEAD,No,,,,-101,,,LAG,,Yes,-45,,,Sat,Sat,,,,,,,,,1000,,East,,,Yes,,,,,,Sat,,,,,Yes,,,Yes,Sat,,,No,Yes,,,,Sat,,,Sat,,,Sat,Sat,,,Sat,,,,,Sat,,Sat,,,,,,,,,,,,,,,,,,,,Sat,South,,,,,1.9,,,No,Sat,,,,111,,,Sat,,Sat,,,,0,,,0,,,,,,,Sat,70,,,,,,Yes,Sat,Sat,Yes,Sat,,,,,,129.7,-0.5,,,,,,130.1,130.1,,,,68,68,67,,,Sat,,,Sat,,,,Yes,,,No,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,

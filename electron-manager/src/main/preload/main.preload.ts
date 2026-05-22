@@ -160,7 +160,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPermitsMonitor: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PERMITS_OPEN_MONITOR),
 
   // Maximo bundles
-  maximoGetLeadOpSummary: (status?: string): Promise<IpcResult<{ count: number; top: any[] }>> =>
+  maximoGetLeadOpSummary: (status?: string): Promise<IpcResult<{ count: number; items: any[] }>> =>
     ipcRenderer.invoke(events.IPC_MAXIMO_LEAD_OP_SUMMARY, status),
 
   // Window Layout
@@ -180,6 +180,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const sub = () => callback();
     ipcRenderer.on(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub);
     return () => { ipcRenderer.removeListener(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub); };
+  },
+
+  // WebView AMS — Rounds report scraper
+  webViewAmsGetReport: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_REPORT),
+  webViewAmsGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_STATUS),
+  webViewAmsRefresh: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_REFRESH),
+  webViewAmsGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_CONFIG),
+  webViewAmsSaveConfig: (config: any): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_SAVE_CONFIG, config),
+  webViewAmsSetAutoRefresh: (enabled: boolean): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_SET_AUTO_REFRESH, enabled),
+  onWebViewAmsUpdated: (callback: () => void) => {
+    const sub = () => callback();
+    ipcRenderer.on(events.IPC_WEBVIEW_AMS_UPDATED, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_WEBVIEW_AMS_UPDATED, sub); };
   },
 
   // Weather

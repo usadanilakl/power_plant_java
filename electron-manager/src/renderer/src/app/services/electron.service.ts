@@ -107,11 +107,13 @@ export interface MaximoWoBrief {
   leadCraft: string;
   status: string;
   priority: string;
+  targetStart: string;
 }
 
 export interface MaximoLeadOpSummary {
   count: number;
-  top: MaximoWoBrief[];
+  /** All matching WOs, pre-sorted oldest target-start first. */
+  items: MaximoWoBrief[];
 }
 
 export interface GateLogStatus {
@@ -121,6 +123,39 @@ export interface GateLogStatus {
   isRefreshing: boolean;
   configured: boolean;
   totalPeople: number;
+  error?: string;
+}
+
+export interface WebViewAmsConfig {
+  url: string;
+  username: string;
+  password: string;
+  reportName: string;
+  savedSearch: string;
+  autoRefresh: boolean;
+  dayShiftStartHour: number;
+  nightShiftStartHour: number;
+}
+
+export interface RoundsReport {
+  title: string;
+  facility: string;
+  generatedAt: string;
+  filterLine: string;
+  resultCount: number;
+  columns: string[];
+  rows: string[][];
+  scrapedAt: string;
+  contentHash: string;
+}
+
+export interface WebViewAmsStatus {
+  lastUpdate: string | null;
+  isRefreshing: boolean;
+  configured: boolean;
+  autoRefreshEnabled: boolean;
+  rowCount: number;
+  currentShift: string | null;
   error?: string;
 }
 
@@ -390,6 +425,15 @@ interface ElectronAPI {
   gateLogSaveConfig: (config: GateLogConfig) => Promise<IpcResult>;
   gateLogPrint: () => Promise<IpcResult>;
   onGateLogPeopleUpdated: (callback: () => void) => () => void;
+
+  // WebView AMS — Rounds report scraper
+  webViewAmsGetReport: () => Promise<IpcResult<RoundsReport | null>>;
+  webViewAmsGetStatus: () => Promise<IpcResult<WebViewAmsStatus>>;
+  webViewAmsRefresh: () => Promise<IpcResult<RoundsReport | null>>;
+  webViewAmsGetConfig: () => Promise<IpcResult<WebViewAmsConfig>>;
+  webViewAmsSaveConfig: (config: WebViewAmsConfig) => Promise<IpcResult>;
+  webViewAmsSetAutoRefresh: (enabled: boolean) => Promise<IpcResult>;
+  onWebViewAmsUpdated: (callback: () => void) => () => void;
 
   // Cold Resync
   coldResync: () => Promise<IpcResult>;
@@ -799,6 +843,45 @@ export class ElectronService implements OnDestroy {
   onGateLogPeopleUpdated(callback: () => void): () => void {
     if (!this.isElectron) return () => {};
     return window.electronAPI!.onGateLogPeopleUpdated(() => {
+      this.ngZone.run(() => callback());
+    });
+  }
+
+  // WebView AMS — Rounds report scraper
+
+  async webViewAmsGetReport(): Promise<IpcResult<RoundsReport | null>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsGetReport();
+  }
+
+  async webViewAmsGetStatus(): Promise<IpcResult<WebViewAmsStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsGetStatus();
+  }
+
+  async webViewAmsRefresh(): Promise<IpcResult<RoundsReport | null>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsRefresh();
+  }
+
+  async webViewAmsGetConfig(): Promise<IpcResult<WebViewAmsConfig>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsGetConfig();
+  }
+
+  async webViewAmsSaveConfig(config: WebViewAmsConfig): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsSaveConfig(config);
+  }
+
+  async webViewAmsSetAutoRefresh(enabled: boolean): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsSetAutoRefresh(enabled);
+  }
+
+  onWebViewAmsUpdated(callback: () => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onWebViewAmsUpdated(() => {
       this.ngZone.run(() => callback());
     });
   }

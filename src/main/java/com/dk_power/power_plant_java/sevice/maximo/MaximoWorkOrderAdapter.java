@@ -25,7 +25,7 @@ public class MaximoWorkOrderAdapter {
     private static final String SELECT_FIELDS =
             "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
-            + "spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority";
+            + "spi:targstartdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority";
 
     private final MaximoAccessService access;
 
@@ -135,6 +135,7 @@ public class MaximoWorkOrderAdapter {
         d.setLocation(str(row, "location"));
         d.setSiteid(str(row, "siteid"));
         d.setReportdate(str(row, "reportdate"));
+        d.setTargetStart(str(row, "targstartdate"));
         d.setSchedstart(str(row, "schedstart"));
         d.setSchedfinish(str(row, "schedfinish"));
         d.setLeadCraft(str(row, "lead"));

@@ -16,9 +16,10 @@ export const WO_COLUMNS: Column[] = [
   { id: 'location',     header: 'Location',    accessorKey: 'location',    width: 120, sortable: true, filterable: true },
   { id: 'leadCraft',    header: 'Lead',        accessorKey: 'leadCraft',   width: 90,  sortable: true, filterable: true },
   { id: 'supervisor',   header: 'Supervisor',  accessorKey: 'supervisor',  width: 100, sortable: true, filterable: true },
-  { id: 'reportdate',   header: 'Reported',    accessorKey: 'reportdate',  width: 170, sortable: true, filterable: true },
-  { id: 'schedstart',   header: 'Sched start', accessorKey: 'schedstart',  width: 170, sortable: true, filterable: true },
-  { id: 'priority',     header: 'Pri',         accessorKey: 'priority',    width: 50,  sortable: true, filterable: true },
+  { id: 'reportdate',   header: 'Reported',     accessorKey: 'reportdate',  width: 170, sortable: true, filterable: true },
+  { id: 'targetStart',  header: 'Target start', accessorKey: 'targetStart', width: 170, sortable: true, filterable: true },
+  { id: 'schedstart',   header: 'Sched start',  accessorKey: 'schedstart',  width: 170, sortable: true, filterable: true },
+  { id: 'priority',     header: 'Pri',          accessorKey: 'priority',    width: 50,  sortable: true, filterable: true },
 ];
 
 export const SR_COLUMNS: Column[] = [

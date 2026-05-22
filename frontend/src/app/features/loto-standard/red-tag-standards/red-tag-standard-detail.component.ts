@@ -12,6 +12,10 @@ import {
 } from '../../../models/loto/red-tag-standard.model';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
+import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
+import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
+import { RfLotoStandardStateService } from '../refactored/services/rf-loto-standard-state.service';
 
 /** Working selection state for one Red Tag row. */
 interface RowState {
@@ -36,8 +40,13 @@ interface RowState {
 @Component({
   selector: 'app-red-tag-standard-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
   template: `
+    <app-main-layout [mainContentPadding]="false">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
     @if (loading()) {
       <p class="rt-note">Loading…</p>
     } @else if (!standard()) {
@@ -178,49 +187,60 @@ interface RowState {
         </div>
       </div>
     }
+      </ng-container>
+    </app-main-layout>
   `,
   styles: [`
-    .rt-note { color: #999; padding: 20px; }
-    .rt-detail { padding: 16px 20px; }
+    .rt-note { color: var(--secondary-text); padding: 20px; }
+    .rt-detail { padding: 16px 20px; color: var(--primary-text); background: var(--primary-background); }
     .rt-d-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .rt-d-header h2 { margin: 0; }
-    .rt-link { background: none; border: none; color: #2196F3; cursor: pointer; font-size: 13px; }
-    .rt-unit { background: #e5e7eb; color: #4b5563; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+    .rt-d-header h2 { margin: 0; color: var(--primary-text); }
+    .rt-link { background: none; border: none; color: var(--accent-color); cursor: pointer; font-size: 13px; }
+    .rt-unit { background: var(--secondary-background); color: var(--secondary-text);
+      padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
     .rt-spacer { flex: 1; }
     .rt-panes { display: flex; gap: 16px; align-items: flex-start; }
-    .rt-pane { border: 1px solid #e4e4e7; border-radius: 8px; padding: 12px; }
+    .rt-pane { border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;
+      background: var(--card-background); }
     .rt-image-pane { flex: 0 0 38%; }
     .rt-rows-pane { flex: 1; min-width: 0; }
-    .rt-pane h3 { margin: 0 0 10px; font-size: 14px; }
-    .rt-source-img { width: 100%; cursor: zoom-in; border: 1px solid #ddd; }
+    .rt-pane h3 { margin: 0 0 10px; font-size: 14px; color: var(--primary-text); }
+    .rt-pane h4 { color: var(--primary-text); }
+    .rt-source-img { width: 100%; cursor: zoom-in; border: 1px solid var(--border-color); background: #fff; }
     .rt-source-img.zoomed { width: auto; max-width: none; cursor: zoom-out; }
     .rt-rows-head { display: flex; justify-content: space-between; align-items: baseline; }
-    .rt-count { color: #2196F3; font-weight: 600; font-size: 13px; }
+    .rt-count { color: var(--accent-color); font-weight: 600; font-size: 13px; }
     .rt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .rt-table th { text-align: left; padding: 6px 8px; background: #f3f4f6; color: #4b5563;
-      font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #e4e4e7; }
-    .rt-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-    .rt-included { background: rgba(33,150,243,0.06); }
+    .rt-table th { text-align: left; padding: 6px 8px; background: var(--secondary-background);
+      color: var(--secondary-text); font-size: 10px; text-transform: uppercase;
+      border-bottom: 1px solid var(--border-color); }
+    .rt-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-color);
+      vertical-align: top; color: var(--primary-text); }
+    .rt-included { background: var(--hover-color); }
     .rt-desc { max-width: 260px; }
     .rt-pnid { font-family: 'Courier New', monospace; font-weight: 600; }
     .rt-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .rt-badge-matched { background: #bbf7d0; color: #14532d; }
     .rt-badge-done { background: #bbf7d0; color: #14532d; }
     .rt-create-form { display: flex; gap: 4px; flex-wrap: wrap; }
-    .rt-create-form input { font-size: 11px; padding: 2px 4px; }
-    .rt-btn { padding: 6px 12px; border-radius: 5px; border: 1px solid #d4d4d8; cursor: pointer;
-      font-size: 12px; background: #fff; }
+    .rt-create-form input { font-size: 11px; padding: 2px 4px;
+      background: var(--card-background); color: var(--primary-text); border: 1px solid var(--border-color); }
+    .rt-btn { padding: 6px 12px; border-radius: 5px; border: 1px solid var(--border-color); cursor: pointer;
+      font-size: 12px; background: var(--card-background); color: var(--primary-text); }
     .rt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .rt-btn-sm { padding: 3px 8px; font-size: 11px; }
-    .rt-btn-primary { background: #2196F3; color: #fff; border-color: #2196F3; font-weight: 600; }
-    .rt-extra { margin-top: 16px; border-top: 1px solid #e4e4e7; padding-top: 12px; }
-    .rt-extra h4 { margin: 0 0 8px; font-size: 13px; }
+    .rt-btn-primary { background: var(--accent-color); color: #fff; border-color: var(--accent-color); font-weight: 600; }
+    .rt-extra { margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; }
+    .rt-extra h4 { margin: 0 0 8px; font-size: 13px; color: var(--primary-text); }
     .rt-extra-search { display: flex; gap: 6px; margin-bottom: 8px; }
-    .rt-extra-search input { flex: 1; padding: 4px 8px; }
+    .rt-extra-search input { flex: 1; padding: 4px 8px;
+      background: var(--card-background); color: var(--primary-text); border: 1px solid var(--border-color); }
     .rt-extra-row { display: flex; justify-content: space-between; align-items: center;
-      padding: 4px 6px; font-size: 12px; border-bottom: 1px solid #f5f5f5; }
+      padding: 4px 6px; font-size: 12px; border-bottom: 1px solid var(--border-color); color: var(--primary-text); }
     .rt-generate { display: flex; gap: 8px; margin-top: 16px; }
-    .rt-generate input { flex: 1; padding: 8px; }
+    .rt-generate input { flex: 1; padding: 8px;
+      background: var(--card-background); color: var(--primary-text); border: 1px solid var(--border-color); }
+    select { background: var(--card-background); color: var(--primary-text); border: 1px solid var(--border-color); }
   `],
 })
 export class RedTagStandardDetailComponent implements OnInit {
@@ -229,6 +249,7 @@ export class RedTagStandardDetailComponent implements OnInit {
   private service = inject(RedTagStandardService);
   private http = inject(HttpClient);
   private messages = inject(GlobalMessageService);
+  private lotoStandardState = inject(RfLotoStandardStateService);
 
   standard = signal<RedTagStandard | null>(null);
   rowStates = signal<RowState[]>([]);
@@ -342,9 +363,10 @@ export class RedTagStandardDetailComponent implements OnInit {
   searchPoints(): void {
     const q = this.searchQuery.trim();
     if (!q) return;
+    // SearchCriteria.SearchType serializes lowercase ("global"/"column"/"sort").
     this.http.post<SpringApiResponse<any>>(
       `${environment.apiUrl}/loto-points/search?page=1&pageSize=20`,
-      { type: 'GLOBAL', query: q },
+      { type: 'global', query: q },
     ).subscribe({
       next: res => {
         const content: any[] = res.responseData?.content ?? res.responseData ?? [];
@@ -385,7 +407,13 @@ export class RedTagStandardDetailComponent implements OnInit {
     this.service.generateStandard(this.standardId, this.generateName.trim(), [...ids]).subscribe({
       next: res => {
         this.generating.set(false);
-        const created = res.responseData;
+        // Push the new standard into the shared (root-singleton) state service
+        // BEFORE navigating, so the LOTO standard page's left panel + table
+        // show it immediately — no refresh needed. The page also reads ?id=
+        // and re-selects it, but the list insertion is what fixes the gap.
+        const created = LotoStandardDto.fromJson(res.responseData);
+        this.lotoStandardState.updateLotoStandardInList(created);
+        this.lotoStandardState.setSelectedItem(created);
         this.messages.showSuccess(`Generated LOTO standard "${created?.name}".`);
         this.router.navigate(['/loto-standard'], { queryParams: { id: created?.id } });
       },

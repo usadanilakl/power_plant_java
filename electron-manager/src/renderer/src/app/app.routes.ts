@@ -10,12 +10,14 @@ import { SettingsComponent } from './pages/settings/settings.component';
 import { SpringBootUiComponent } from './pages/spring-boot-ui/spring-boot-ui.component';
 import { PersonnelComponent } from './pages/personnel/personnel.component';
 import { ToiComponent } from './pages/toi/toi.component';
+import { WebViewAmsComponent } from './pages/web-view-ams/web-view-ams.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'pid-app', component: SpringBootUiComponent },
   { path: 'fire-impairment', component: FireImpairmentComponent },
   { path: 'gate-log', component: GateLogComponent },
+  { path: 'web-view-ams', component: WebViewAmsComponent },
   { path: 'weather', component: WeatherComponent },
   { path: 'pjm', component: PjmComponent },
   { path: 'logs', component: LogsComponent },

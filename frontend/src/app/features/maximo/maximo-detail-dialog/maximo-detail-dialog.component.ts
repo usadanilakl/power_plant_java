@@ -89,6 +89,7 @@ export class MaximoDetailDialogComponent {
         ['Asset', w.assetnum],
         ['Location', w.location],
         ['Reported', w.reportdate],
+        ['Target start', w.targetStart],
         ['Sched start', w.schedstart],
         ['Sched finish', w.schedfinish],
         ['Lead', w.leadCraft],

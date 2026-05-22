@@ -42,6 +42,16 @@ export const IPC_GATE_LOG_PRINT = 'gate-log:print';
 // Gate Log broadcasts (send/on)
 export const IPC_GATE_LOG_PEOPLE_UPDATED = 'gate-log:people-updated';
 
+// WebView AMS — Rounds report scraper (invoke/handle)
+export const IPC_WEBVIEW_AMS_GET_REPORT = 'webview-ams:get-report';
+export const IPC_WEBVIEW_AMS_GET_STATUS = 'webview-ams:get-status';
+export const IPC_WEBVIEW_AMS_REFRESH = 'webview-ams:refresh';
+export const IPC_WEBVIEW_AMS_GET_CONFIG = 'webview-ams:get-config';
+export const IPC_WEBVIEW_AMS_SAVE_CONFIG = 'webview-ams:save-config';
+export const IPC_WEBVIEW_AMS_SET_AUTO_REFRESH = 'webview-ams:set-auto-refresh';
+// WebView AMS broadcasts (send/on)
+export const IPC_WEBVIEW_AMS_UPDATED = 'webview-ams:updated';
+
 // Weather (invoke/handle + send/on)
 export const IPC_WEATHER_GET_STATUS = 'weather:get-status';
 export const IPC_WEATHER_REFRESH = 'weather:refresh';
