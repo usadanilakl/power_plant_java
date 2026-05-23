@@ -2,8 +2,13 @@ package com.dk_power.power_plant_java.sevice.automation.redtag.session;
 
 import com.dk_power.power_plant_java.sevice.automation.redtag.core.AutomationException;
 import com.dk_power.power_plant_java.sevice.automation.redtag.progress.RedTagProgressBroadcaster;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.sikuli.basics.HotkeyEvent;
+import org.sikuli.basics.HotkeyListener;
+import org.sikuli.script.Env;
+import org.sikuli.script.Key;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -40,6 +45,39 @@ public class StepEngine {
     private volatile boolean stopRequested;
     private volatile boolean manualConfirmation;
     private Future<?> runningTask;
+
+    /**
+     * Registers ESC as a global OS-level hotkey that pauses the running build.
+     *
+     * <p>The Angular panel's {@code document:keydown.escape} handler only fires
+     * while the browser owns focus — and during a build SikuliX has stolen focus
+     * for Red Tag. A SikuliX global hotkey fires regardless of which window is
+     * active. Wrapped in {@code try/catch} so the app still starts on a
+     * headless host (hub/server profiles) where the keyboard hook can't bind.
+     */
+    @PostConstruct
+    void registerHotkeys() {
+        try {
+            Env.addHotkey(Key.ESC, 0, new HotkeyListener() {
+                @Override
+                public void hotkeyPressed(HotkeyEvent evt) {
+                    AutomationSession s = session;
+                    if (s != null && s.getStatus() == SessionStatus.RUNNING) {
+                        log.info("[RedTag] ESC pressed — pausing build");
+                        try {
+                            pause();
+                        } catch (Exception e) {
+                            log.warn("[RedTag] ESC-triggered pause failed: {}", e.getMessage());
+                        }
+                    }
+                }
+            });
+            log.info("[RedTag] Global ESC hotkey registered (pauses running build)");
+        } catch (Throwable t) {
+            log.warn("[RedTag] Could not register ESC hotkey ({}): {} — ESC pause unavailable",
+                    t.getClass().getSimpleName(), t.getMessage());
+        }
+    }
 
     // --- Public control surface ---------------------------------------------
 

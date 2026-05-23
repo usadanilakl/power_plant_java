@@ -3,10 +3,18 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { AutomationSessionState, AutomationStep } from './red-tag-progress.service';
+
+/** Optional step-range constraint for {@link RedTagAutomationService.buildLoto} / buildSafeWork. */
+export interface BuildOpts {
+  /** First step index to execute (0-based); earlier steps are marked SKIPPED. */
+  fromStep?: number;
+  /** Last step index to execute; later steps are marked SKIPPED. Equal to fromStep = single step. */
+  toStep?: number;
+}
 
 /**
  * Front-end client for the rebuilt Red Tag LOTO automation
@@ -58,18 +66,42 @@ export class RedTagAutomationService {
 
   // --- build trigger + controls -------------------------------------------
 
-  /** Starts a full end-to-end LOTO build in Red Tag. */
-  buildLoto(lotoId: number): Observable<SpringApiResponse<AutomationSessionState>> {
+  /** Starts a LOTO build. {@code opts.fromStep}/{@code opts.toStep} limit which steps run. */
+  buildLoto(lotoId: number, opts: BuildOpts = {}): Observable<SpringApiResponse<AutomationSessionState>> {
     this.connect();
     return this.http.post<SpringApiResponse<AutomationSessionState>>(
-      `${this.baseUrl}/loto/${lotoId}/build`, {});
+      this.buildUrl('loto', lotoId, opts), {});
   }
 
-  /** Starts a full end-to-end Safe Work permit build in Red Tag. */
-  buildSafeWork(safeWorkId: number): Observable<SpringApiResponse<AutomationSessionState>> {
+  /** Starts a Safe Work build. {@code opts.fromStep}/{@code opts.toStep} limit which steps run. */
+  buildSafeWork(safeWorkId: number, opts: BuildOpts = {}): Observable<SpringApiResponse<AutomationSessionState>> {
     this.connect();
     return this.http.post<SpringApiResponse<AutomationSessionState>>(
-      `${this.baseUrl}/safe-work/${safeWorkId}/build`, {});
+      this.buildUrl('safe-work', safeWorkId, opts), {});
+  }
+
+  /**
+   * Re-runs the current build starting at {@code stepIndex} (or only that one
+   * step when {@code single} is true). Reads {@code permitType} / {@code permitId}
+   * from the live session to route to the right endpoint.
+   */
+  restartFromStep(stepIndex: number, single: boolean = false): Observable<unknown> {
+    const s = this.session();
+    if (!s) return EMPTY;
+    const step = s.steps[stepIndex];
+    if (!step?.permitType || step.permitId == null) return EMPTY;
+    const opts: BuildOpts = { fromStep: stepIndex };
+    if (single) opts.toStep = stepIndex;
+    if (step.permitType === 'Loto') return this.buildLoto(step.permitId, opts);
+    if (step.permitType === 'SafeWork') return this.buildSafeWork(step.permitId, opts);
+    return EMPTY;
+  }
+
+  private buildUrl(kind: 'loto' | 'safe-work', id: number, opts: BuildOpts): string {
+    const params: string[] = [];
+    if (opts.fromStep != null) params.push(`fromStep=${opts.fromStep}`);
+    if (opts.toStep != null) params.push(`toStep=${opts.toStep}`);
+    return `${this.baseUrl}/${kind}/${id}/build` + (params.length ? '?' + params.join('&') : '');
   }
 
   pause(): Observable<SpringApiResponse<AutomationSessionState>> {

@@ -107,8 +107,10 @@ PATTERNS = [
      "loto-details/submission-warning-ok.png", (1243, 718, 1313, 746)),
 
     # ---- Safe Work permit ------------------------------------------------
-    ("SW_TAB", "permits/sw list ungrouped.png",
-     "safe-work/tab.png", (283, 74, 357, 94)),
+    # SW_TAB cropped from its *inactive* state (logged-in home page with LOTO tab
+    # active) — the automation navigates from the LOTO tab so SW is inactive.
+    ("SW_TAB", "logged in home page with ungrouped list.png",
+     "safe-work/tab.png", (270, 88, 350, 110)),
     ("SW_NEW_PERMIT_BUTTON", "permits/sw list ungrouped.png",
      "safe-work/new-permit-button.png", (26, 52, 132, 77)),
     ("SW_ISSUE_NO_TEMPLATE_BUTTON", "permits/issue permit with not template.png",
@@ -137,6 +139,22 @@ PATTERNS = [
      "safe-work/special-instructions-label.png", (848, 974, 977, 989)),
     ("SW_REQUESTOR_LABEL", "permits/zoomed out sw form view.png",
      "safe-work/requestor-label.png", (1535, 1036, 1610, 1050)),
+
+    # ---- Safe Work - Associate permits flow ------------------------------
+    # NOTE: SW_MODIFY_BUTTON has no source screenshot yet (the SW list left menu
+    # only shows 'Modify' when a permit row is selected) -> captured manually.
+    ("SW_ASSOCIATE_BUTTON", "permits/sw form under modification.png",
+     "safe-work/associate-button.png", (810, 41, 900, 61)),
+    ("SW_ASSOCIATE_DIALOG_TITLE", "permits/associate dialog maximized.png",
+     "safe-work/associate-dialog-title.png", (22, 4, 162, 19)),
+    ("SW_ASSOCIATE_SEARCH_BUTTON", "permits/associate dialog maximized.png",
+     "safe-work/associate-search-button.png", (138, 65, 204, 88)),
+    ("SW_ASSOCIATE_CLEAR_BUTTON", "permits/associate dialog maximized.png",
+     "safe-work/associate-clear-button.png", (138, 98, 204, 121)),
+    ("SW_ASSOCIATE_ISSUED_LOTOS_TAB", "permits/associate dialog maximized.png",
+     "safe-work/associate-issued-lotos-tab.png", (1538, 1305, 1652, 1322)),
+    ("SW_ASSOCIATE_ISSUED_PERMITS_TAB", "permits/associate dialog maximized.png",
+     "safe-work/associate-issued-permits-tab.png", (2153, 1305, 2272, 1322)),
 ]
 
 

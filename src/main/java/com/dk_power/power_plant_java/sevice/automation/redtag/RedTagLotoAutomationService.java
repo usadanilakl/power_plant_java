@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.sevice.automation.redtag.flow.LotoBuildFlow
 import com.dk_power.power_plant_java.sevice.automation.redtag.session.AutomationSession;
 import com.dk_power.power_plant_java.sevice.automation.redtag.session.AutomationStep;
 import com.dk_power.power_plant_java.sevice.automation.redtag.session.StepEngine;
+import com.dk_power.power_plant_java.sevice.automation.redtag.session.StepStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,15 +44,40 @@ public class RedTagLotoAutomationService {
 
     /** Builds the given LOTO in Red Tag, end to end, on a background thread. */
     public AutomationSession startLotoBuild(LotoDto loto) {
+        return startLotoBuild(loto, null, null);
+    }
+
+    /**
+     * Builds the given LOTO, optionally restricted to a contiguous step range.
+     * Steps outside {@code [fromStep, toStep]} are marked {@link StepStatus#SKIPPED}.
+     * Pass {@code fromStep==toStep} to run a single step.
+     */
+    public AutomationSession startLotoBuild(LotoDto loto, Integer fromStep, Integer toStep) {
         if (!properties.isEnabled()) {
             throw new IllegalStateException("Red Tag automation is disabled (redtag.automation.enabled=false)");
         }
         List<LotoPointDto> points = toPointDtos(loto);
         AutomationSession session = buildSession(loto);
+        applyStepRange(session, fromStep, toStep);
         Map<String, Supplier<String>> actions = buildActions(loto, points);
-        log.info("[RedTag] Starting LOTO build '{}' with {} point(s)",
-                session.getPackageName(), points.size());
+        log.info("[RedTag] Starting LOTO build '{}' with {} point(s) (steps {}-{})",
+                session.getPackageName(), points.size(),
+                fromStep != null ? fromStep : 0,
+                toStep != null ? toStep : session.getSteps().size() - 1);
         return stepEngine.run(session, actions);
+    }
+
+    /** Marks steps outside {@code [fromStep, toStep]} as SKIPPED and points currentStepIndex at fromStep. */
+    private void applyStepRange(AutomationSession session, Integer fromStep, Integer toStep) {
+        if (fromStep == null && toStep == null) return;
+        List<AutomationStep> steps = session.getSteps();
+        int last = steps.size() - 1;
+        int from = Math.max(0, Math.min(fromStep != null ? fromStep : 0, last));
+        int to = Math.max(from, Math.min(toStep != null ? toStep : last, last));
+        for (int i = 0; i < steps.size(); i++) {
+            if (i < from || i > to) steps.get(i).setStatus(StepStatus.SKIPPED);
+        }
+        session.setCurrentStepIndex(from);
     }
 
     // --- session / step assembly --------------------------------------------

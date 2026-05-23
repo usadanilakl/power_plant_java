@@ -30,7 +30,11 @@ export class FileMenuComponent implements OnInit{
 
   currentRoute = signal("");
 
-  selectedType = signal<string>("pid");
+  /** Starts empty; resolved to a P&ID-like type (or first available) on first load. */
+  selectedType = signal<string>("");
+
+  /** Dynamic list of file types from the backend, mirrored as a signal for the template. */
+  fileTypes = signal<string[]>([]);
 
 
 constructor(
@@ -41,7 +45,11 @@ constructor(
 ) { }
 
   ngOnInit(): void {
-    
+
+    this.currentFileService.fileTypes$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(types => this.fileTypes.set(types));
+
     this.currentFileService.filesLoaded$.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
@@ -86,9 +94,20 @@ constructor(
   }
 
 
-  loadFiles(type: string = 'pid'): void {
-        const criteria = type==='pid' ? 'vendor' : 'fileType';
-        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
+  loadFiles(type?: string): void {
+        const types = this.currentFileService.fileTypes;
+        const effective = type
+            ?? (this.selectedType() || null)
+            ?? types.find(t => t.toLowerCase().includes('pid'))
+            ?? types[0]
+            ?? '';
+        if (!effective) {
+            this.menuItems.set([]);
+            return;
+        }
+        this.selectedType.set(effective);
+        const criteria = effective.toLowerCase().includes('pid') ? 'vendor' : 'fileType';
+        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(effective), criteria);
         this.menuItems.set(nestedItems);
   }
 

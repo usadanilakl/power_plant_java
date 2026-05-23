@@ -1,10 +1,11 @@
 <div class="file-menu-container">
   <h2>File Menu</h2>
   <div class="file-menu-controls">
-    <button class="file-menu-button" (click)="loadFiles('pid')">PID</button>
-    <button class="file-menu-button" (click)="loadFiles('elect')">Electrical</button>
-    <button class="file-menu-button" (click)="loadFiles('ht panel')">Heat Trace</button>
-    <button class="file-menu-button" (click)="loadFiles('iso')">Isometrics</button>
+    @for (type of fileTypes(); track type) {
+      <button class="file-menu-button"
+              [class.active]="selectedType() === type"
+              (click)="loadFiles(type)">{{ type }}</button>
+    }
   </div>
   
   @if (isLoading()) {

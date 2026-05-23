@@ -131,4 +131,38 @@ public class PatternCatalog {
     public Path getBaseDir() {
         return baseDir;
     }
+
+    // --- Auto-generated SW label crops --------------------------------------
+
+    /**
+     * Folder where {@code SwLabelPatternGenerator} writes one cropped PNG per
+     * Safe Work checkbox label — {@code <baseDir>/safe-work/labels/<key>.png}.
+     * Runtime resolves these by string key (e.g. {@code "high-temp"}) rather
+     * than by {@link RedTagPattern} so the set can grow without touching the enum.
+     */
+    public Path getLabelsDir() {
+        return baseDir.resolve("safe-work").resolve("labels");
+    }
+
+    /** @return {@code true} if an auto-generated label crop exists for this key. */
+    public boolean labelExists(String key) {
+        return Files.isRegularFile(getLabelsDir().resolve(key + ".png"));
+    }
+
+    /**
+     * Resolves an auto-generated label crop to a SikuliX {@link Pattern}.
+     * Uses high similarity (0.85) because the crops are byte-identical to the
+     * on-screen pixels — anything lower would risk neighbouring rows matching.
+     */
+    public Pattern resolveLabel(String key) {
+        Path file = getLabelsDir().resolve(key + ".png");
+        if (!Files.isRegularFile(file)) {
+            throw new AutomationException(
+                    "Safe Work label pattern not found for key '" + key + "' — expected at " + file
+                            + ". Run POST /ng/red-tag-automation/admin/generate-sw-label-patterns once "
+                            + "on this machine to generate the crops.",
+                    key, null);
+        }
+        return new Pattern(file.toString()).similar(0.85);
+    }
 }

@@ -34,10 +34,18 @@ export class EquipmentDialogFileService {
   error = this.menuService.error;
 
   // Computed files list (for simple list view)
+  // fileMapByType is keyed by the actual fileType.name from the DB (whatever
+  // casing/wording is in use, e.g. "PID", "P&ID", "pid"), so we do a
+  // case-insensitive lookup for any P&ID-like key.
   files = computed(() => {
     const map = this.filesMap();
-    if (!map || !map.get('pid')) return [];
-    return map.get('pid') ?? [];
+    if (!map) return [];
+    for (const [key, files] of map.entries()) {
+      if (key && key.toLowerCase().includes('pid')) {
+        return files ?? [];
+      }
+    }
+    return [];
   });
 
   // Equipment from selected file

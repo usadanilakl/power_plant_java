@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.sevice.automation.redtag.core.RedTagPattern
 import com.dk_power.power_plant_java.sevice.automation.redtag.core.SikuliDriver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.sikuli.script.Location;
 import org.sikuli.script.Match;
 import org.sikuli.script.Region;
 import org.springframework.stereotype.Component;
@@ -24,39 +25,38 @@ import java.time.format.DateTimeFormatter;
  * out, fill the header + hazard / permit / PPE checkboxes + footer, save, and
  * read the new permit number back.
  *
- * <h2>Checkbox grid</h2>
- * The SW form is a fixed-layout grid of single checkboxes. Rather than ~60
- * brittle per-checkbox image patterns, each checkbox is reached by an
- * <b>offset from its section header</b> ({@code SW_HAZARDS_HEADER} /
- * {@code SW_PERMITS_HEADER} / {@code SW_PPE_HEADER}). The header is located once
- * by SikuliX; every checkbox in that section is then a fixed {@code (dx, dy)}
- * from the header's centre.
+ * <h2>Checkbox grid — per-label image matching</h2>
+ * Every checkbox is a small auto-generated PNG crop ("checkbox + label") at
+ * {@code safe-work/labels/<key>.png}, produced once per machine by
+ * {@code SwLabelPatternGenerator}. To tick a checkbox we image-find its crop
+ * inside the right section region and click {@code (match.x + 12,
+ * match.y + match.h / 2)} — the checkbox centre inside the crop (crops include
+ * {@code CROP_LEFT_PAD = 25 px} of pixels to the left of the label, where the
+ * checkbox lives).
  *
- * <p><b>CALIBRATION REQUIRED:</b> the {@code *_DX} / {@code *_ROW0_DY} /
- * {@code *_ROW_PITCH} constants below are measured from the supplied
- * {@code zoomed out sw form view.png}. They must be verified once against the
- * live app — run with manual confirmation on and adjust if a click misses.
- * Calibrating a whole section is ~3 numbers (column dx, first-row dy, pitch).
+ * <p>This replaces the previous OCR-readlines-and-guess-the-column approach,
+ * which was inconsistent because Tesseract returns different bounding boxes
+ * for asterisk-prefixed vs non-asterisked labels — one "column gap" can't be
+ * correct for every column at once. Image matching is pixel-deterministic
+ * and survives the column-gap problem entirely.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class SafeWorkBuildFlow {
 
-    /** Number of times to click the zoom-out magnifier so the whole form is visible. */
+    /** Number of times to scroll-out so the whole form is visible. */
     private static final int ZOOM_OUT_CLICKS = 3;
 
-    // === CALIBRATE: grid geometry (offsets from each section header centre) ===
-    // --- Hazards: 3 columns ---
-    private static final int HAZ_COL1_DX = -448, HAZ_COL2_DX = -155, HAZ_COL3_DX = 132;
-    private static final int HAZ_ROW0_DY = 3, HAZ_ROW_PITCH = 12;
-    // --- Permits: 3 columns (taller rows — they carry "#" text fields) ---
-    private static final int PER_COL1_DX = -447, PER_COL2_DX = -152, PER_COL3_DX = 133;
-    private static final int PER_ROW0_DY = 17, PER_ROW_PITCH = 18;
-    // --- PPE: 4 columns ---
-    private static final int PPE_COL1_DX = -456, PPE_COL2_DX = -141, PPE_COL3_DX = 112, PPE_COL4_DX = 349;
-    private static final int PPE_ROW0_DY = 43, PPE_ROW_PITCH = 18;
-    // === CALIBRATE: header / footer field offsets (from label centre) ===
+    /**
+     * Distance from the LEFT edge of a label-crop match to the checkbox centre.
+     * The crops are generated with {@code CROP_LEFT_PAD = 25} px to the left of
+     * the OCR'd label, so the checkbox roughly spans pixels 5–20 of the crop;
+     * 12 is its centre. Tune in one place if the form theme changes.
+     */
+    private static final int CHECKBOX_X_OFFSET = 12;
+
+    // === Header / footer field offsets (from label centre) ===
     private static final int DATE_FIELD_DY = 16;     // Date field sits below its label
     private static final int LOCATION_FIELD_DX = 140;
     private static final int DESCRIPTION_FIELD_DX = 170;
@@ -74,14 +74,33 @@ public class SafeWorkBuildFlow {
         driver.sleep(properties.getInterStepDelayMs());
         driver.click(RedTagPattern.SW_NEW_PERMIT_BUTTON);
         driver.sleep(properties.getInterStepDelayMs());
-        driver.click(RedTagPattern.SW_ISSUE_NO_TEMPLATE_BUTTON);
+        // OCR find with retry — the dialog sometimes hasn't fully painted when
+        // we look, and one-shot OCR has been intermittent.
+        findIssuePermitButton().click();
         driver.sleep(properties.getInterStepDelayMs());
-        for (int i = 0; i < ZOOM_OUT_CLICKS; i++) {
-            driver.click(RedTagPattern.SW_ZOOM_OUT_BUTTON);
-            driver.sleep(150);
-        }
+        // Zoom out via Ctrl+scroll rather than clicking the magnifier image —
+        // the icon hasn't matched reliably across machines.
+        driver.hoverCenter();
+        driver.ctrlScroll(-ZOOM_OUT_CLICKS);
+        driver.sleep(500);
         driver.waitFor(RedTagPattern.SW_HAZARDS_HEADER, 15);
         return "Safe Work form opened and zoomed out";
+    }
+
+    /** Retries OCR for "Issue Permit" — the post-NEW-PERMIT dialog renders intermittently. */
+    private Match findIssuePermitButton() {
+        AutomationException last = null;
+        for (int i = 0; i < 6; i++) {
+            try {
+                return driver.findText("Issue Permit");
+            } catch (AutomationException e) {
+                last = e;
+                driver.sleep(500);
+            }
+        }
+        throw new AutomationException(
+                "Could not OCR-locate 'Issue Permit' button after 6 retries (3s).",
+                "ISSUE_PERMIT", last);
     }
 
     // --- Header --------------------------------------------------------------
@@ -103,92 +122,92 @@ public class SafeWorkBuildFlow {
 
     // --- Hazard / permit / PPE checkbox grids --------------------------------
 
-    /** Ticks every selected hazard checkbox. */
+    /**
+     * Ticks every selected hazard checkbox by image-matching its auto-generated
+     * label crop inside the hazards section. Keys must match
+     * {@code SwLabelPatternGenerator.HAZ_LABELS}.
+     */
     public String fillHazards(SafeWorkDto sw) {
         SwHazards h = sw.getHazards() != null ? sw.getHazards() : new SwHazards();
-        Match anchor = driver.find(RedTagPattern.SW_HAZARDS_HEADER);
-        // Column 1
-        check(anchor, HAZ_COL1_DX, hazRow(0), h.isHighTemp());
-        check(anchor, HAZ_COL1_DX, hazRow(1), h.isHighPressure());
-        check(anchor, HAZ_COL1_DX, hazRow(2), h.isHazardousFlammablePipingMaint());
-        check(anchor, HAZ_COL1_DX, hazRow(3), h.isElectricalTesting599V());
-        check(anchor, HAZ_COL1_DX, hazRow(4), h.isEnergized());
-        check(anchor, HAZ_COL1_DX, hazRow(5), h.isStoredEnergy());
-        check(anchor, HAZ_COL1_DX, hazRow(6), h.isEyeHazard());
-        check(anchor, HAZ_COL1_DX, hazRow(7), h.isEgressAccess());
-        check(anchor, HAZ_COL1_DX, hazRow(8), h.isErgonomicHazard());
-        // Column 2
-        check(anchor, HAZ_COL2_DX, hazRow(0), h.isFallingObject());
-        check(anchor, HAZ_COL2_DX, hazRow(1), h.isHighNoise());
-        check(anchor, HAZ_COL2_DX, hazRow(2), h.isDustParticulate());
-        check(anchor, HAZ_COL2_DX, hazRow(3), h.isCombustibleDust());
-        check(anchor, HAZ_COL2_DX, hazRow(4), h.isFireHazard());
-        check(anchor, HAZ_COL2_DX, hazRow(5), h.isHotSurface());
-        check(anchor, HAZ_COL2_DX, hazRow(6), h.isSlippery());
-        check(anchor, HAZ_COL2_DX, hazRow(7), h.isVentilationRequired());
-        check(anchor, HAZ_COL2_DX, hazRow(8), h.isLightingRestrictions());
-        check(anchor, HAZ_COL2_DX, hazRow(9), h.isExposedRotatingParts());
-        // Column 3
-        check(anchor, HAZ_COL3_DX, hazRow(0), h.isChemicalExposure());
-        check(anchor, HAZ_COL3_DX, hazRow(1), h.isLiftingHazard());
-        check(anchor, HAZ_COL3_DX, hazRow(2), h.isHandTraps());
-        check(anchor, HAZ_COL3_DX, hazRow(3), h.isHeatColdStress());
-        check(anchor, HAZ_COL3_DX, hazRow(4), h.isElevatedSurface());
-        check(anchor, HAZ_COL3_DX, hazRow(5), h.isEnvironmental());
-        check(anchor, HAZ_COL3_DX, hazRow(6), h.isWeatherHazards());
-        check(anchor, HAZ_COL3_DX, hazRow(7), h.isTestingTroubleshooting50V());
-        check(anchor, HAZ_COL3_DX, hazRow(9), h.isHexavalentChromium()); // row 8 is the Voltage text line
-        check(anchor, HAZ_COL3_DX, hazRow(10), h.isOther());
+        Region sect = sectionRegion(RedTagPattern.SW_HAZARDS_HEADER, RedTagPattern.SW_PERMITS_HEADER);
+        log.info("[RedTag SW] hazards section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
+
+        tickLabel(sect, h.isHighTemp(), "high-temp");
+        tickLabel(sect, h.isHighPressure(), "high-pressure");
+        tickLabel(sect, h.isHazardousFlammablePipingMaint(), "hazardous-piping");
+        tickLabel(sect, h.isElectricalTesting599V(), "electrical-testing");
+        tickLabel(sect, h.isEnergized(), "energized-electrical-work");
+        tickLabel(sect, h.isStoredEnergy(), "stored-energy");
+        tickLabel(sect, h.isEyeHazard(), "eye-hazard");
+        tickLabel(sect, h.isEgressAccess(), "egress-access");
+        tickLabel(sect, h.isErgonomicHazard(), "ergonomic");
+        tickLabel(sect, h.isFallingObject(), "falling-object");
+        tickLabel(sect, h.isHighNoise(), "high-noise");
+        tickLabel(sect, h.isDustParticulate(), "dust-particulate");
+        tickLabel(sect, h.isCombustibleDust(), "combustible-dust");
+        tickLabel(sect, h.isFireHazard(), "fire-explosion");
+        tickLabel(sect, h.isHotSurface(), "hot-surfaces");
+        tickLabel(sect, h.isSlippery(), "slip-trip");
+        tickLabel(sect, h.isVentilationRequired(), "ventilation-required");
+        tickLabel(sect, h.isLightingRestrictions(), "lighting-restrictions");
+        tickLabel(sect, h.isExposedRotatingParts(), "exposed-rotating");
+        tickLabel(sect, h.isChemicalExposure(), "chemical-exposure");
+        tickLabel(sect, h.isLiftingHazard(), "lifting-hazard");
+        tickLabel(sect, h.isHandTraps(), "hand-traps");
+        tickLabel(sect, h.isHeatColdStress(), "heat-cold-stress");
+        tickLabel(sect, h.isElevatedSurface(), "elevated-surface");
+        tickLabel(sect, h.isEnvironmental(), "environmental");
+        tickLabel(sect, h.isWeatherHazards(), "weather-hazards");
+        tickLabel(sect, h.isTestingTroubleshooting50V(), "testing-troubleshooting");
+        tickLabel(sect, h.isHexavalentChromium(), "hexavalent-chromium");
+        tickLabel(sect, h.isOther(), "haz-other");
         return "Hazards filled";
     }
 
-    /** Ticks every selected permit/test/action checkbox. */
+    /** Ticks every selected permit/test/action checkbox via image matching. */
     public String fillPermits(SafeWorkDto sw) {
         SwPermits p = sw.getPermits() != null ? sw.getPermits() : new SwPermits();
-        Match anchor = driver.find(RedTagPattern.SW_PERMITS_HEADER);
-        // Column 1
-        check(anchor, PER_COL1_DX, perRow(0), p.isLotoRequired());
-        check(anchor, PER_COL1_DX, perRow(1), p.isHotWork());
-        check(anchor, PER_COL1_DX, perRow(2), p.isConfinedSpace());
-        check(anchor, PER_COL1_DX, perRow(3), p.isExcavationPermit());
-        check(anchor, PER_COL1_DX, perRow(4), p.isEnergizedPermit());
-        // Column 2
-        check(anchor, PER_COL2_DX, perRow(0), p.isVentingPurging());
-        check(anchor, PER_COL2_DX, perRow(1), p.isJha());
-        check(anchor, PER_COL2_DX, perRow(2), p.isGasTesting()); // "Air Monitoring within Safe Limits"
-        check(anchor, PER_COL2_DX, perRow(3), p.isLiftPlan());
-        // Column 3
-        check(anchor, PER_COL3_DX, perRow(0), p.isConfSpaceRescuePlanReview());
-        check(anchor, PER_COL3_DX, perRow(1), p.isFallRescuePlan());
-        check(anchor, PER_COL3_DX, perRow(2), p.isOther());
+        Region sect = sectionRegion(RedTagPattern.SW_PERMITS_HEADER, RedTagPattern.SW_PPE_HEADER);
+        log.info("[RedTag SW] permits section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
+
+        tickLabel(sect, p.isLotoRequired(), "loto-required");
+        tickLabel(sect, p.isHotWork(), "hot-work-permit");
+        tickLabel(sect, p.isConfinedSpace(), "confined-space");
+        tickLabel(sect, p.isExcavationPermit(), "excavation-permit");
+        tickLabel(sect, p.isEnergizedPermit(), "energized-elec-wp");
+        tickLabel(sect, p.isVentingPurging(), "venting-purging");
+        tickLabel(sect, p.isJha(), "jha");
+        tickLabel(sect, p.isGasTesting(), "air-monitoring");
+        tickLabel(sect, p.isLiftPlan(), "lift-plan");
+        tickLabel(sect, p.isConfSpaceRescuePlanReview(), "rescue-plan-review");
+        tickLabel(sect, p.isFallRescuePlan(), "fall-rescue-plan");
+        tickLabel(sect, p.isOther(), "per-other");
         return "Permits/tests/actions filled";
     }
 
-    /** Ticks every selected PPE checkbox. */
+    /** Ticks every selected PPE checkbox via image matching. */
     public String fillPpe(SafeWorkDto sw) {
         SwPpe ppe = sw.getPpe() != null ? sw.getPpe() : new SwPpe();
-        Match anchor = driver.find(RedTagPattern.SW_PPE_HEADER);
-        // Column 1
-        check(anchor, PPE_COL1_DX, ppeRow(0), ppe.isHardhat());
-        check(anchor, PPE_COL1_DX, ppeRow(1), ppe.isSafetyGlasses());
-        check(anchor, PPE_COL1_DX, ppeRow(2), ppe.isHearingProtection());
-        check(anchor, PPE_COL1_DX, ppeRow(3), ppe.isBoots());
-        check(anchor, PPE_COL1_DX, ppeRow(4), ppe.isWeldingPpe());
-        // Column 2 (rows 1 + 3 are "Type" text lines — skipped)
-        check(anchor, PPE_COL2_DX, ppeRow(0), ppe.isRespiratorDustMask());
-        check(anchor, PPE_COL2_DX, ppeRow(2), ppe.isGloves());
-        check(anchor, PPE_COL2_DX, ppeRow(4), ppe.isGasMonitor()); // "Air Monitor"
-        check(anchor, PPE_COL2_DX, ppeRow(5), ppe.isTyvekSuit());
-        // Column 3 (row 4 is the "Class/Cal Rating" text line — skipped)
-        check(anchor, PPE_COL3_DX, ppeRow(0), ppe.isAcidSuit());
-        check(anchor, PPE_COL3_DX, ppeRow(1), ppe.isBarricade());
-        check(anchor, PPE_COL3_DX, ppeRow(2), ppe.isFaceShield());
-        check(anchor, PPE_COL3_DX, ppeRow(3), ppe.isArcFlashPpe());
-        check(anchor, PPE_COL3_DX, ppeRow(5), ppe.isGfi()); // "GFCI"
-        // Column 4 (row 2 is the "Fall Clearance" text line — skipped)
-        check(anchor, PPE_COL4_DX, ppeRow(0), ppe.isPurgingVentilation());
-        check(anchor, PPE_COL4_DX, ppeRow(1), ppe.isFallProtection());
-        check(anchor, PPE_COL4_DX, ppeRow(3), ppe.isOther());
+        Region sect = sectionRegion(RedTagPattern.SW_PPE_HEADER, RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL);
+        log.info("[RedTag SW] ppe section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
+
+        tickLabel(sect, ppe.isHardhat(), "hardhat");
+        tickLabel(sect, ppe.isSafetyGlasses(), "safety-glasses");
+        tickLabel(sect, ppe.isHearingProtection(), "hearing-protection");
+        tickLabel(sect, ppe.isBoots(), "protective-footwear");
+        tickLabel(sect, ppe.isWeldingPpe(), "welding-ppe");
+        tickLabel(sect, ppe.isRespiratorDustMask(), "respirator-dust-mask");
+        tickLabel(sect, ppe.isGloves(), "protective-gloves");
+        tickLabel(sect, ppe.isGasMonitor(), "air-monitor");
+        tickLabel(sect, ppe.isTyvekSuit(), "tyvek-suit");
+        tickLabel(sect, ppe.isAcidSuit(), "acid-suit");
+        tickLabel(sect, ppe.isBarricade(), "barricade");
+        tickLabel(sect, ppe.isFaceShield(), "face-shield");
+        tickLabel(sect, ppe.isArcFlashPpe(), "arc-flash");
+        tickLabel(sect, ppe.isGfi(), "gfci");
+        tickLabel(sect, ppe.isPurgingVentilation(), "purging-ventilation");
+        tickLabel(sect, ppe.isFallProtection(), "fall-protection");
+        tickLabel(sect, ppe.isOther(), "ppe-other");
         return "PPE filled";
     }
 
@@ -242,26 +261,93 @@ public class SafeWorkBuildFlow {
         return digits;
     }
 
+    // --- Associate (Safe Work only) -----------------------------------------
+
+    /** CALIBRATE: search field is this far left of the 'Search' button centre. */
+    private static final int ASSOC_SEARCH_FIELD_DX = -100;
+    /** CALIBRATE: first result row of the source list, offset from the 'Search' button. */
+    private static final int ASSOC_RESULT_DX = -95, ASSOC_RESULT_DY = 72;
+
+    /**
+     * Runs the Safe Work association flow (create-permit.md step 9): select the
+     * just-created permit, Modify it, open the Associate dialog, and add the
+     * issued LOTOs + permits matching the work scope.
+     *
+     * <p>Per the doc this intentionally <b>stops before the final "Continue"</b> —
+     * the operator reviews the associations and submits manually. Each tab is
+     * searched by the Safe Work's own work scope and the first match is added;
+     * extend {@code searchAndAdd} if multiple matches must be added per tab.
+     */
+    public String associate(SafeWorkDto sw) {
+        // Select the just-created permit (first row of the list) and Modify it.
+        Match col = driver.waitFor(RedTagPattern.SW_PERMIT_NUMBER_COLUMN, 10);
+        col.offset(0, col.h + 4).click();
+        driver.sleep(properties.getInterStepDelayMs());
+        driver.click(RedTagPattern.SW_MODIFY_BUTTON);
+        driver.sleep(properties.getInterStepDelayMs());
+
+        // Open and maximise the Associate dialog.
+        driver.click(RedTagPattern.SW_ASSOCIATE_BUTTON);
+        Match title = driver.waitFor(RedTagPattern.SW_ASSOCIATE_DIALOG_TITLE, 10);
+        title.doubleClick(); // maximise via the title bar
+        driver.sleep(properties.getInterStepDelayMs());
+
+        String query = nullToEmpty(sw.getWorkScope());
+        driver.click(RedTagPattern.SW_ASSOCIATE_ISSUED_LOTOS_TAB);
+        searchAndAdd(query);
+        driver.click(RedTagPattern.SW_ASSOCIATE_ISSUED_PERMITS_TAB);
+        searchAndAdd(query);
+
+        return "Permits associated — review the dialog and click Continue manually";
+    }
+
+    /** Clears the search, searches a term, and double-clicks the first result to add it. */
+    private void searchAndAdd(String query) {
+        driver.click(RedTagPattern.SW_ASSOCIATE_CLEAR_BUTTON);
+        driver.sleep(150);
+        driver.clickOffset(RedTagPattern.SW_ASSOCIATE_SEARCH_BUTTON, ASSOC_SEARCH_FIELD_DX, 0);
+        driver.paste(query);
+        Match search = driver.click(RedTagPattern.SW_ASSOCIATE_SEARCH_BUTTON);
+        driver.sleep(400);
+        search.offset(ASSOC_RESULT_DX, ASSOC_RESULT_DY).doubleClick();
+        driver.sleep(properties.getInterStepDelayMs());
+    }
+
     // --- helpers -------------------------------------------------------------
 
-    private int hazRow(int row) {
-        return HAZ_ROW0_DY + row * HAZ_ROW_PITCH;
+    /**
+     * Builds a screen-wide region between two section anchors so SikuliX is scoped
+     * to the right section — prevents matching, say, the "haz-other" crop against
+     * the "per-other" or "ppe-other" crop (same word, different sections).
+     */
+    private Region sectionRegion(RedTagPattern top, RedTagPattern bottom) {
+        Match t = driver.find(top);
+        Match b = driver.find(bottom);
+        int y = t.y + t.h;
+        int h = Math.max(1, b.y - y);
+        return driver.region(0, y, driver.screenWidth(), h);
     }
 
-    private int perRow(int row) {
-        return PER_ROW0_DY + row * PER_ROW_PITCH;
-    }
-
-    private int ppeRow(int row) {
-        return PPE_ROW0_DY + row * PPE_ROW_PITCH;
-    }
-
-    /** Clicks a checkbox at an offset from the section anchor — only when {@code on}. */
-    private void check(Match sectionAnchor, int dx, int dy, boolean on) {
-        if (on) {
-            sectionAnchor.offset(dx, dy).click();
-            driver.sleep(40);
+    /**
+     * Image-matches the auto-generated label crop ({@code safe-work/labels/<key>.png})
+     * inside {@code region} and clicks the checkbox centre. No-op if {@code on} is
+     * false. Logs and continues on miss — one missing crop shouldn't kill a 60-
+     * checkbox section.
+     */
+    private void tickLabel(Region region, boolean on, String key) {
+        if (!on) return;
+        Match m = driver.findLabelOpt(key, region, 1.0);
+        if (m == null) {
+            log.warn("[RedTag SW] label crop '{}' not found in section — checkbox skipped "
+                    + "(was the generator run on this machine?)", key);
+            return;
         }
+        int clickX = m.x + CHECKBOX_X_OFFSET;
+        int clickY = m.y + m.h / 2;
+        log.info("[RedTag SW] tick [{}] @ ({},{}) — crop matched at ({},{}) {}x{}",
+                key, clickX, clickY, m.x, m.y, m.w, m.h);
+        new Location(clickX, clickY).click();
+        driver.sleep(40);
     }
 
     /** Converts an ISO date (2026-05-22) to US format (05/22/2026); passes other text through. */

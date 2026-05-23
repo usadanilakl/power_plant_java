@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagLotoAutomati
 import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagSafeWorkAutomationService;
 import com.dk_power.power_plant_java.sevice.automation.redtag.progress.RedTagProgressBroadcaster;
 import com.dk_power.power_plant_java.sevice.automation.redtag.session.AutomationSession;
+import com.dk_power.power_plant_java.sevice.automation.redtag.tools.SwLabelPatternGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,14 +43,23 @@ public class RedTagLotoAutomationController {
     private final RedTagProgressBroadcaster broadcaster;
     private final NgLotoService lotoService;
     private final NgSafeWorkService safeWorkService;
+    private final SwLabelPatternGenerator swLabelPatternGenerator;
 
-    /** Starts a full, end-to-end LOTO build in Red Tag for the given LOTO id. */
+    /**
+     * Starts an end-to-end LOTO build. Optional {@code fromStep} / {@code toStep}
+     * query parameters limit the run to a contiguous range of step indices —
+     * steps outside the range are marked SKIPPED. Use them to re-run from a step
+     * after a failure, or to run a single step ({@code fromStep == toStep}).
+     */
     @PostMapping("/loto/{lotoId}/build")
-    public ResponseEntity<NgApiResponse<AutomationSession>> buildLoto(@PathVariable Long lotoId) {
+    public ResponseEntity<NgApiResponse<AutomationSession>> buildLoto(
+            @PathVariable Long lotoId,
+            @RequestParam(required = false) Integer fromStep,
+            @RequestParam(required = false) Integer toStep) {
         try {
             LotoDto loto = lotoService.findDtoById(lotoId)
                     .orElseThrow(() -> new EntityNotFoundException("LOTO not found with id " + lotoId));
-            AutomationSession session = automationService.startLotoBuild(loto);
+            AutomationSession session = automationService.startLotoBuild(loto, fromStep, toStep);
             return ResponseEntity.ok(new NgApiResponse<>(session, "LOTO build started"));
         } catch (Exception e) {
             log.error("[RedTag] Failed to start LOTO build for {}: {}", lotoId, e.getMessage(), e);
@@ -58,15 +68,21 @@ public class RedTagLotoAutomationController {
         }
     }
 
-    /** Starts a full, end-to-end Safe Work permit build in Red Tag. */
+    /**
+     * Starts an end-to-end Safe Work permit build. Supports the same optional
+     * {@code fromStep} / {@code toStep} query parameters as the LOTO endpoint.
+     */
     @PostMapping("/safe-work/{safeWorkId}/build")
-    public ResponseEntity<NgApiResponse<AutomationSession>> buildSafeWork(@PathVariable Long safeWorkId) {
+    public ResponseEntity<NgApiResponse<AutomationSession>> buildSafeWork(
+            @PathVariable Long safeWorkId,
+            @RequestParam(required = false) Integer fromStep,
+            @RequestParam(required = false) Integer toStep) {
         try {
             SafeWorkDto sw = safeWorkService.getDtoById(safeWorkId);
             if (sw == null) {
                 throw new EntityNotFoundException("Safe Work permit not found with id " + safeWorkId);
             }
-            AutomationSession session = safeWorkAutomationService.startSafeWorkBuild(sw);
+            AutomationSession session = safeWorkAutomationService.startSafeWorkBuild(sw, fromStep, toStep);
             return ResponseEntity.ok(new NgApiResponse<>(session, "Safe Work build started"));
         } catch (Exception e) {
             log.error("[RedTag] Failed to start Safe Work build for {}: {}", safeWorkId, e.getMessage(), e);
@@ -120,6 +136,32 @@ public class RedTagLotoAutomationController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
         return broadcaster.register();
+    }
+
+    /**
+     * One-time per-machine generator: OCRs the Safe Work form screenshot and
+     * crops a "checkbox + label" PNG per hazard / permit / PPE label, saving
+     * to {@code <pattern-base>/safe-work/labels/<key>.png}. Subsequent SW
+     * builds use these crops via deterministic image matching — no runtime OCR.
+     *
+     * <p>Provide a different screenshot via the {@code screenshot} query param
+     * if the form layout changes.
+     */
+    @PostMapping("/admin/generate-sw-label-patterns")
+    public ResponseEntity<NgApiResponse<SwLabelPatternGenerator.Result>> generateSwLabelPatterns(
+            @RequestParam(required = false) String screenshot) {
+        try {
+            SwLabelPatternGenerator.Result result = (screenshot == null || screenshot.isBlank())
+                    ? swLabelPatternGenerator.generate()
+                    : swLabelPatternGenerator.generate(screenshot);
+            String msg = String.format("Generated %d label patterns (%d missed) -> %s",
+                    result.generated.size(), result.missed.size(), result.outputDir);
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            log.error("[RedTag] SW label pattern generation failed: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Generation failed: " + e.getMessage()));
+        }
     }
 
     private ResponseEntity<NgApiResponse<AutomationSession>> control(

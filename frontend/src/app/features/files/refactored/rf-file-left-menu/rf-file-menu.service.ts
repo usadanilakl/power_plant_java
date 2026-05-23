@@ -18,7 +18,8 @@ export class FileMenuService{
     isLoading = signal(false);
     error = signal<string | null>(null);
     currentFile = signal<FileDto | null>(null);
-    selectedType = signal<string>("pid");
+    /** Starts empty; resolved to the first P&ID-like type on first load. */
+    selectedType = signal<string>("");
 
     constructor(){
     this.currentFileService.filesLoaded$.pipe(
@@ -53,9 +54,23 @@ export class FileMenuService{
     }
     
     
-    loadFiles(type: string = 'pid'): void {
-        const criteria = type==='pid' ? 'vendor' : 'fileType';
-        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
+    loadFiles(type?: string): void {
+        // Resolve the type to use: explicit arg → current selection → first
+        // P&ID-like type from the dynamic list → first available type.
+        const types = this.currentFileService.fileTypes;
+        const effective = type
+            ?? (this.selectedType() || null)
+            ?? types.find(t => t.toLowerCase().includes('pid'))
+            ?? types[0]
+            ?? '';
+        if (!effective) {
+            this.menuItems.set([]);
+            return;
+        }
+        this.selectedType.set(effective);
+        // P&ID files group by vendor; other types group by fileType.
+        const criteria = effective.toLowerCase().includes('pid') ? 'vendor' : 'fileType';
+        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(effective), criteria);
         this.menuItems.set(nestedItems);
     }
 

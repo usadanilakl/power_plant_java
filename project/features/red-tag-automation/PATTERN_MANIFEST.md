@@ -35,7 +35,7 @@ On a different display, recapture the screenshots and re-run the script. The
 `redtag.automation.default-similarity` (0.80) absorbs minor anti-aliasing
 differences; lower it slightly if matches are flaky.
 
-## Pattern inventory (50)
+## Pattern inventory (56)
 
 The table below lists the original LOTO patterns. LOTO-information-form patterns
 (`loto-details/*`) and Safe Work patterns (`safe-work/*`) were added later — see
@@ -76,13 +76,16 @@ against the live app.
 | ADD_DEVICE_NORMAL_POSITION_LABEL | add devie manually dialog.png | add-device/normal-position-label.png |
 | ADD_DEVICE_OK_BUTTON | add devie manually dialog.png | add-device/ok-button.png |
 
-## Not yet captured (out of LOTO scope)
+The full generated set (56 patterns) also includes `loto-details/*` (post-Continue
+LOTO information form) and `safe-work/*` (Safe Work permit + associate flow).
 
-The post-**Continue** "Information" form (lock box, requestor, work scope,
-requested-by) and the final save / permit-number read-back are **not scripted** —
-no screenshots of those screens exist yet. `LotoBuildFlow.clickContinue()` stops
-at Continue. To finish full end-to-end automation:
+## Still needs a screenshot
 
-1. Screenshot the Information form and the saved-LOTO list row.
-2. Add the new patterns to `RedTagPattern` + `generate-patterns.py`.
-3. Extend `LotoBuildFlow` with `fillInformationForm()` + `readPermitNumber()`.
+**`SW_MODIFY_BUTTON`** (`safe-work/modify-button.png`) — the 'Modify' button in
+the Safe Work list's left menu. It only appears once a permit row is selected,
+and no screenshot of that state was supplied. The pattern is flagged
+`needsCapture` in `RedTagPattern`; the catalogue logs it as missing at startup
+and the `associate` step fails with a clear message until it is captured.
+To finish: screenshot the SW list with a permit row selected, crop the 'Modify'
+button to `safe-work/modify-button.png`, drop it in the patterns folder (or add
+a crop entry to `generate-patterns.py`).

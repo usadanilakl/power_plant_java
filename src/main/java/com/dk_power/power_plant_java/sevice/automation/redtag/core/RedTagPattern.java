@@ -17,23 +17,23 @@ public enum RedTagPattern {
 
     // ---- Application shell (home page, top bar, left menu) -------------------
     LOTO_PROCEDURES_TAB("shell/loto-procedures-tab.png",
-            "The 'LOTO Procedures' tab in the top bar"),
+            "The 'LOTO Procedures' tab in the top bar", 0.70),
     NEW_ISOLATION_BUTTON("shell/new-isolation-button.png",
             "The 'NEW ISOLATION' button in the left menu"),
     LOGIN_BUTTON("shell/login-button.png",
-            "The 'LOG IN' button in the left menu"),
+            "The 'LOG IN' button in the left menu", 0.70),
     STATUS_NO_ONE_LOGGED_IN("shell/status-no-one-logged-in.png",
-            "The 'No one Logged In' text in the bottom-left status bar (login-state probe)"),
+            "The 'No one Logged In' text in the bottom-left status bar (login-state probe)", 0.70),
 
     // ---- Login dialog -------------------------------------------------------
     LOGIN_DIALOG_TITLE("login/login-dialog-title.png",
-            "The 'Authentication' heading of the login dialog"),
+            "The 'Authentication' heading of the login dialog", 0.75),
     LOGIN_USERNAME_LABEL("login/username-label.png",
-            "The 'User Name:' label in the login dialog"),
+            "The 'User Name:' label in the login dialog", 0.75),
     LOGIN_PASSWORD_LABEL("login/password-label.png",
-            "The 'Password:' label in the login dialog"),
+            "The 'Password:' label in the login dialog", 0.75),
     LOGIN_SUBMIT_BUTTON("login/login-submit-button.png",
-            "The 'Login' button inside the login dialog"),
+            "The 'Login' button inside the login dialog", 0.75),
     LOGIN_SIGNED_ON_OK("login/signed-on-ok-button.png",
             "The 'OK' button on the 'you are now Signed ON' confirmation dialog"),
     LOGIN_FAILED_DIALOG("login/login-failed-dialog.png",
@@ -98,11 +98,11 @@ public enum RedTagPattern {
             "The 'OK' on the post-save 'procedure was modified' warning dialog"),
 
     // ---- Safe Work permit --------------------------------------------------
-    SW_TAB("safe-work/tab.png", "The 'Safe Work' tab in the top bar"),
+    SW_TAB("safe-work/tab.png", "The 'Safe Work' tab in the top bar", 0.70),
     SW_NEW_PERMIT_BUTTON("safe-work/new-permit-button.png",
             "The 'NEW PERMIT' button in the left menu"),
     SW_ISSUE_NO_TEMPLATE_BUTTON("safe-work/issue-no-template-button.png",
-            "The 'Issue Permit with NO Template' button"),
+            "The 'Issue Permit with NO Template' button", 0.70),
     SW_ZOOM_OUT_BUTTON("safe-work/zoom-out-button.png",
             "The zoom-out magnifier button on the permit form toolbar"),
     SW_SAVE_BUTTON("safe-work/save-button.png",
@@ -125,7 +125,23 @@ public enum RedTagPattern {
     SW_SPECIAL_INSTRUCTIONS_LABEL("safe-work/special-instructions-label.png",
             "The 'Special Instructions:' label"),
     SW_REQUESTOR_LABEL("safe-work/requestor-label.png",
-            "The 'Requestor' label in the signature row");
+            "The 'Requestor' label in the signature row"),
+
+    // ---- Safe Work — Associate permits flow --------------------------------
+    SW_MODIFY_BUTTON("safe-work/modify-button.png",
+            "The 'Modify' button in the left menu (shown when a permit row is selected)", true),
+    SW_ASSOCIATE_BUTTON("safe-work/associate-button.png",
+            "The 'Associate' button on the modify-mode form toolbar"),
+    SW_ASSOCIATE_DIALOG_TITLE("safe-work/associate-dialog-title.png",
+            "The 'NewAssociatePermitsForm' associate-dialog title bar"),
+    SW_ASSOCIATE_SEARCH_BUTTON("safe-work/associate-search-button.png",
+            "The 'Search' button in the associate dialog"),
+    SW_ASSOCIATE_CLEAR_BUTTON("safe-work/associate-clear-button.png",
+            "The 'Clear' button in the associate dialog"),
+    SW_ASSOCIATE_ISSUED_LOTOS_TAB("safe-work/associate-issued-lotos-tab.png",
+            "The 'Issued LOTOs' tab at the bottom of the associate dialog"),
+    SW_ASSOCIATE_ISSUED_PERMITS_TAB("safe-work/associate-issued-permits-tab.png",
+            "The 'Issued Permits' tab at the bottom of the associate dialog");
 
     private final String relativePath;
     private final String description;

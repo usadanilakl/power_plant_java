@@ -211,8 +211,24 @@ export class CurrentFileService {
       });
     }
 
+    /**
+     * Look up files by type. Case-insensitive — the map is keyed by the actual
+     * DB fileType.name (e.g. "PID", "P&ID", "Electrical Panel Schedule"), so
+     * callers passing legacy lowercase strings ('pid', 'elect') still work, and
+     * substring matches (e.g. 'pid' matching 'P&ID') are allowed.
+     */
     getFilesByType(type: string): FileDto[] {
-      return this.fileMapByTypeSubject.getValue().get(type) || [];
+      const map = this.fileMapByTypeSubject.getValue();
+      // Exact key first
+      if (map.has(type)) return map.get(type) ?? [];
+      // Case-insensitive / substring fallback
+      const lower = type.toLowerCase();
+      for (const [key, files] of map.entries()) {
+        if (key && key.toLowerCase().includes(lower)) {
+          return files ?? [];
+        }
+      }
+      return [];
     }
 
     /**

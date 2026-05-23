@@ -8,10 +8,16 @@ import org.sikuli.script.App;
 import org.sikuli.script.FindFailed;
 import org.sikuli.script.Key;
 import org.sikuli.script.KeyModifier;
+import org.sikuli.script.Location;
 import org.sikuli.script.Match;
+import org.sikuli.script.Mouse;
+import org.sikuli.script.OCR;
+import org.sikuli.script.Pattern;
 import org.sikuli.script.Region;
 import org.sikuli.script.Screen;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * Thin, intention-revealing wrapper over the SikuliX {@link Screen} API.
@@ -82,6 +88,21 @@ public class SikuliDriver {
     public boolean exists(RedTagPattern pattern, double seconds) {
         if (!catalog.isAvailable(pattern)) return false;
         return screen().exists(catalog.resolve(pattern), seconds) != null;
+    }
+
+    /**
+     * Finds an auto-generated SW label crop ({@code safe-work/labels/<key>.png})
+     * inside {@code region} and returns its match (or {@code null} if not found
+     * within {@code seconds}). The crop includes the checkbox to the LEFT of the
+     * label text, so {@code match.x + ~13, match.y + match.h/2} hits the
+     * checkbox centre.
+     *
+     * <p>Returns {@code null} (no throw) so a single missing label can't kill a
+     * 60-checkbox section — the caller logs and continues.
+     */
+    public Match findLabelOpt(String labelKey, Region region, double seconds) {
+        if (!catalog.labelExists(labelKey)) return null;
+        return region.exists(catalog.resolveLabel(labelKey), seconds);
     }
 
     // --- Clicking ------------------------------------------------------------
@@ -157,6 +178,84 @@ public class SikuliDriver {
     /** Reads text from a region via SikuliX OCR. */
     public String readText(Region region) {
         return region.text();
+    }
+
+    /**
+     * OCR-locates the given text within {@code region} and returns the matching region.
+     * Throws {@link AutomationException} when the text is not found.
+     */
+    public Match findText(Region region, String text) {
+        try {
+            return region.findText(text);
+        } catch (FindFailed e) {
+            throw new AutomationException(
+                    "OCR could not locate text '" + text + "' in the search region.", null, e);
+        }
+    }
+
+    /** OCR-locates the given text anywhere on screen. */
+    public Match findText(String text) {
+        return findText(screen(), text);
+    }
+
+    /** Same as {@link #findText(Region, String)} but returns {@code null} on miss instead of throwing. */
+    public Match findTextOpt(Region region, String text) {
+        try {
+            return region.findText(text);
+        } catch (FindFailed e) {
+            return null;
+        }
+    }
+
+    /**
+     * Single OCR pass over {@code region}: returns every text line found with its
+     * bounding box, in reading order. Much faster than 60 individual {@code findText}
+     * calls — the form-fill code reads lines once per section then looks each
+     * checkbox label up in memory.
+     *
+     * <p>The returned {@link Match} coordinates are translated to absolute screen
+     * coordinates. SikuliX 2.0.x {@code OCR.readLines} returns image-relative
+     * coordinates (relative to the input region's top-left), which would cause
+     * clicks to land at the top of the screen if used directly.
+     */
+    public List<Match> readLines(Region region) {
+        List<Match> lines = OCR.readLines(region);
+        for (Match m : lines) {
+            m.x += region.x;
+            m.y += region.y;
+        }
+        return lines;
+    }
+
+    // --- Mouse wheel ---------------------------------------------------------
+
+    /**
+     * Moves the mouse to the centre of the primary screen. Uses {@link Mouse#move}
+     * with an explicit absolute {@link Location} — {@code Screen.hover()} silently
+     * no-ops on some Windows DPI configurations, which left Ctrl+wheel scrolling
+     * landing on whatever the cursor happened to be over before the build started.
+     */
+    public void hoverCenter() {
+        Screen s = screen();
+        Mouse.move(new Location(s.x + s.w / 2, s.y + s.h / 2));
+    }
+
+    /**
+     * Holds Ctrl and scrolls the mouse wheel by {@code steps} ticks. Positive
+     * {@code steps} scrolls UP (zoom in in most apps), negative scrolls DOWN
+     * (zoom out). Caller should hover over the target area first so the wheel
+     * events land on the right window.
+     */
+    public void ctrlScroll(int steps) {
+        Screen s = screen();
+        int direction = steps < 0 ? -1 : 1;
+        int count = Math.abs(steps);
+        s.keyDown(Key.CTRL);
+        try {
+            s.wheel(direction, count);
+        } finally {
+            s.keyUp(Key.CTRL);
+        }
     }
 
     // --- Misc ----------------------------------------------------------------

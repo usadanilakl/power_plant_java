@@ -31,14 +31,26 @@ public class LoginFlow {
     private final RedTagWindow window;
     private final RedTagAutomationProperties properties;
 
-    /** Launches Red Tag (if needed), maximises it, and waits for the shell to be ready. */
+    /**
+     * Launches Red Tag (if needed), brings it forward and gives it time to come up.
+     *
+     * <p>Best-effort readiness check — looks for the LOG IN button (always shown
+     * when not logged in) or the NEW ISOLATION button (always present in the
+     * left menu). Doesn't fail hard if neither matches; subsequent steps fail
+     * with clearer messages if the app really isn't responsive.
+     */
     public String ensureAppOpen() {
         window.launch();
         window.focusAndMaximize();
         driver.sleep(800);
-        // The top-bar tab is present whether or not a user is logged in.
-        driver.waitFor(RedTagPattern.LOTO_PROCEDURES_TAB, 60);
-        return "Red Tag application is open and ready";
+        // Short best-effort readiness probe — was waiting up to 25 s when the
+        // patterns rendered differently, which made the build feel hung.
+        boolean ready = driver.exists(RedTagPattern.LOGIN_BUTTON, 2)
+                || driver.exists(RedTagPattern.NEW_ISOLATION_BUTTON, 2);
+        if (!ready) {
+            log.warn("[RedTag] Could not confirm app readiness in ~5s — continuing anyway");
+        }
+        return "Red Tag application is open";
     }
 
     /** Signs in if the status bar shows nobody is logged in; otherwise does nothing. */
