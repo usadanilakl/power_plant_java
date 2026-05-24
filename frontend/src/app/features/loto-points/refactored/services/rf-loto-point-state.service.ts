@@ -396,45 +396,35 @@ export class RfLotoPointStateService {
   }
 
   /**
-   * Load unique items for a column with server-side filtering and pagination
+   * Load unique items for a column with server-side filtering and pagination.
+   *
+   * The `searchString` (what the user typed into the column filter input) is
+   * merged as a filter for the same column so the backend returns only matching
+   * unique values — both refining the dropdown as the user types AND respecting
+   * other active column filters via `currentSearchCriteria`.
    */
   loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
     const cacheKey = `${columnKey}:${searchString}`;
     this.loadingUniqueItems.set(true);
 
-    // Check if we have cached results for this column and search term
-    const cached = this.uniqueValuesCache.get(cacheKey);
-    // if (cached) {
-    //   this.setUniqueItems(String(columnKey), cached.values);
-    //   return;
-    // }
-
-    const currentCriteria = this.getCurrentSearchCriteria();
-    const filters: SearchCriteria = currentCriteria
-      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
-      : { type: 'column', filters: {} };
+    const filters = this.buildFiltersForUniqueValues(columnKey, searchString);
 
     // Fetch from server with pagination
     this.apiService
       .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, 50)
       .pipe(
         tap((response) => {
-          if (
-            response.responseData?.content &&
-            response.responseData.content.length > 0
-          ) {
-            const uniqueValues = response.responseData.content;
-            this.setUniqueItems(String(columnKey), uniqueValues);
-            this.currentColumnUniqueItems.set(uniqueValues);
-            this.loadingUniqueItems.set(false);
+          const uniqueValues = response.responseData?.content ?? [];
+          this.setUniqueItems(String(columnKey), uniqueValues);
+          this.currentColumnUniqueItems.set(uniqueValues);
+          this.loadingUniqueItems.set(false);
 
-            // Cache the results
-            this.uniqueValuesCache.set(cacheKey, {
-              values: uniqueValues,
-              page: 1,
-              hasMore: !response.responseData.last,
-            });
-          }
+          // Cache the results (including empty arrays — they're valid)
+          this.uniqueValuesCache.set(cacheKey, {
+            values: uniqueValues,
+            page: 1,
+            hasMore: !response.responseData?.last,
+          });
         }),
         catchError((error) => {
           console.error(
@@ -447,6 +437,30 @@ export class RfLotoPointStateService {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  /**
+   * Builds the SearchCriteria sent to the unique-values endpoint:
+   *   - starts from current main-table criteria (so other column filters apply),
+   *   - overrides the target column's filter with the user's typed text
+   *     so the dropdown refines as they type.
+   */
+  private buildFiltersForUniqueValues(
+    columnKey: keyof LotoPointDto,
+    searchString: string
+  ): SearchCriteria {
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const baseFilters = currentCriteria?.filters
+      ? { ...currentCriteria.filters }
+      : {};
+    if (searchString && searchString.trim() !== '') {
+      baseFilters[String(columnKey)] = searchString;
+    }
+    return {
+      ...(currentCriteria ?? ({} as SearchCriteria)),
+      type: currentCriteria?.type ?? ('column' as any),
+      filters: baseFilters,
+    };
   }
 
   /**
@@ -466,10 +480,7 @@ export class RfLotoPointStateService {
     }
 
     const nextPage = cached.page + 1;
-    const currentCriteria = this.getCurrentSearchCriteria();
-    const filters: SearchCriteria = currentCriteria
-      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
-      : { type: 'column', filters: {} };
+    const filters = this.buildFiltersForUniqueValues(columnKey, searchString);
 
     this.apiService
       .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, 50)

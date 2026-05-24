@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal, computed, DestroyRef } from '@angular/core';
+import { Component, inject, input, output, signal, computed, DestroyRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -123,11 +123,17 @@ export class EquipmentUnifiedDialogComponent {
   /** LOTO point most recently picked in 'loto-points' mode (for UI feedback). */
   pickedLotoPoint = signal<LotoPointDto | null>(null);
 
+  /**
+   * Equipment ID we want to auto-select once the related file finishes loading
+   * (i.e. once `selectedFile.points` becomes populated). Cleared on use.
+   */
+  pendingEquipmentIdToSelect = signal<number | null>(null);
+
   setSearchMode(mode: 'files' | 'loto-points'): void {
     this.searchMode.set(mode);
-    if (mode === 'loto-points') {
-      this.pickedLotoPoint.set(null);
-    }
+    // Note: do NOT clear `pickedLotoPoint` here. The embedded table re-emits its
+    // restored selection on remount, which would re-trigger `onLotoPointPicked`
+    // (with the guard bypassed) and bounce us back to file mode.
   }
 
   // LOTO Point Form State - shown when equipment needs LOTO point
@@ -151,6 +157,34 @@ export class EquipmentUnifiedDialogComponent {
     isoPos: [null],
     normPos: [null],
   });
+
+  constructor() {
+    /**
+     * After picking a LOTO point and loading its related file, auto-select the
+     * point's equipment shape so the user only has to click "Save & Select" to
+     * pass the selection to the parent.
+     *
+     * Fires when `selectedFile.points` becomes populated AND a pending equipment
+     * ID is set.
+     */
+    effect(() => {
+      const file = this.selectedFile();
+      const pendingId = this.pendingEquipmentIdToSelect();
+      if (!file || !pendingId) return;
+
+      const eq = (file.points ?? []).find((e: EquipmentDto) => e.id === pendingId);
+      if (!eq) return; // points may load later — effect will re-run
+
+      const enriched = new EquipmentDto({
+        ...eq,
+        mainFileId: file.id,
+        mainFileObject: file,
+      });
+      this.selectedEquipment.set(enriched);
+      this.highlightEquipmentId.set(pendingId);
+      this.pendingEquipmentIdToSelect.set(null); // consume
+    });
+  }
 
   // Equipment from selected file
   equipment = computed(() => {
@@ -283,6 +317,12 @@ export class EquipmentUnifiedDialogComponent {
    */
   onLotoPointPicked(point: LotoPointDto | null): void {
     if (!point?.id) return;
+
+    // Re-mount of the embedded table re-emits the previously-selected row.
+    // Ignore re-picks of the same point — otherwise the dialog snaps back
+    // to file mode every time the user clicks the LOTO Points tab.
+    if (this.pickedLotoPoint()?.id === point.id) return;
+
     this.pickedLotoPoint.set(point);
     this.error.set(null);
 
@@ -292,16 +332,16 @@ export class EquipmentUnifiedDialogComponent {
       .subscribe({
         next: (res) => {
           const files = res?.responseData ?? [];
-          if (files.length > 0) {
-            // Load the first related file in the viewer and switch to file mode
-            this.fileService.selectFile(files[0]);
-            this.searchMode.set('files');
+          if (files.length > 0 && files[0].id != null) {
+            // Stage the equipment to auto-select once the file's points load
+            const firstEqId = point.equipmentList?.[0]?.id ?? point.equipmentIdList?.[0] ?? null;
+            this.pendingEquipmentIdToSelect.set(firstEqId);
 
-            // Try to pre-select the point's equipment on the loaded file
-            const firstEqId = point.equipmentList?.[0]?.id ?? point.equipmentIdList?.[0];
-            if (firstEqId != null) {
-              this.highlightEquipmentId.set(firstEqId);
-            }
+            // Load the FULL file (with `points`) so equipment shapes can render.
+            // We stay in 'loto-points' mode — the right-side viewer renders the
+            // file regardless of left-panel mode, so the user can browse multiple
+            // points in the filtered table while the P&ID updates next to it.
+            this.fileService.selectFileById(files[0].id);
           } else {
             // No P&ID — accept the LOTO point's existing equipment as the selection
             const firstEq = point.equipmentList?.[0];

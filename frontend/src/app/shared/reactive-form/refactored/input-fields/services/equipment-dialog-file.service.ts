@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed, DestroyRef } from '@angular/core'
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrentFileService } from '../../../../../services/current-file.service';
 import { FileMenuService } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-menu.service';
+import { FileService } from '../../../../../services/file.service';
 import { FileDto } from '../../../../../models/file/file.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
 
@@ -18,6 +19,7 @@ import { NestedItem } from '../../../../../models/ui/nested-item.model';
 export class EquipmentDialogFileService {
   private currentFileService = inject(CurrentFileService);
   private menuService = inject(FileMenuService);
+  private fileService = inject(FileService);
   private destroyRef = inject(DestroyRef);
 
   // State
@@ -74,6 +76,26 @@ export class EquipmentDialogFileService {
   selectFile(file: FileDto): void {
     this.selectedFile.set(file);
     this.currentFileService.setCurrentFile(file);
+  }
+
+  /**
+   * Select a file by ID. Fetches the FULL FileDto (with `points` populated) so
+   * the image viewer can render equipment shapes. Use this when the caller only
+   * has a partial file reference (e.g. result of `getRelatedFiles` on a LOTO point).
+   */
+  selectFileById(fileId: number): void {
+    this.fileService.getFileById(fileId.toString())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const fullFile = FileDto.fromJson(response.responseData);
+          this.selectedFile.set(fullFile);
+          this.currentFileService.setCurrentFile(fullFile);
+        },
+        error: (err) => {
+          console.error('Failed to load full file by id', fileId, err);
+        },
+      });
   }
 
   /**
