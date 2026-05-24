@@ -7,8 +7,36 @@
     </div>
   }
 
-  <!-- Dual Form Layout - Always show when unit-specific -->
+  <!-- View mode toggle -->
   @if (!isLoading() && isUnitSpecific()) {
+    <div class="view-mode-bar">
+      <button
+        class="view-mode-toggle"
+        (click)="toggleViewMode()"
+        [title]="viewMode() === 'dual' ? 'Switch to single view' : 'Switch to dual view'"
+      >
+        @if (viewMode() === 'dual') {
+          <span>◧ Dual</span>
+        } @else {
+          <span>▢ Single</span>
+        }
+      </button>
+    </div>
+  }
+
+  <!-- Single-view: render full RfLotoPointFormComponent (with tabs/images) for primary only -->
+  @if (!isLoading() && isUnitSpecific() && viewMode() === 'single') {
+    <div class="single-view-wrapper">
+      <app-rf-loto-point-form
+        [entityInput]="currentPrimaryValues() || primaryLotoPoint()"
+        [externalSaveMode]="true"
+        (formSubmit)="onSingleFormSubmit($event)"
+      ></app-rf-loto-point-form>
+    </div>
+  }
+
+  <!-- Dual Form Layout -->
+  @if (!isLoading() && isUnitSpecific() && viewMode() === 'dual') {
     <div class="dual-form-layout">
       <!-- Primary Form (Left) -->
       <div class="form-panel primary-panel">

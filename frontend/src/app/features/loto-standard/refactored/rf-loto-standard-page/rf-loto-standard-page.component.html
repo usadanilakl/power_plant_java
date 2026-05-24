@@ -25,13 +25,25 @@
   </ng-container>
 </app-main-layout>
 
-<!-- LOTO Point Form Popup -->
+<!-- LOTO Point Form Popup — dual form for unit-specific points (01/02), single form otherwise -->
 <app-rf-popup-projection
   [isOpen]="lotoPointStateService.isLotoPointFormOpen()"
   [fullHeight]="true"
   (close)="lotoPointStateService.closeForm()"
 >
-  <app-rf-loto-point-form [fieldsInput]="lotoPointStateService.formFields()"></app-rf-loto-point-form>
+  @if (lotoPointStateService.isLotoPointFormOpen()) {
+    @if (isSelectedPointUnitSpecific() && lotoPointStateService.selectedItem(); as point) {
+      <app-loto-point-dual-form
+        [primaryLotoPoint]="point"
+        (primarySaved)="onDualFormSaved($event)"
+        (counterpartSaved)="onDualFormSaved($event)"
+        (bothSaved)="onBothSaved($event)"
+        (formClosed)="onDualFormClosed()"
+      ></app-loto-point-dual-form>
+    } @else {
+      <app-rf-loto-point-form [fieldsInput]="lotoPointStateService.formFields()"></app-rf-loto-point-form>
+    }
+  }
 </app-rf-popup-projection>
 
 <!-- File Form Popup -->

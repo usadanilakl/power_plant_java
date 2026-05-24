@@ -189,6 +189,24 @@
             </span>
           </div>
         </div>
+
+        <!-- Apply-to-all toggle (edit mode only) -->
+        @if (dialogMode() === 'edit') {
+          <div class="edit-shared-toggle">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                [checked]="editSharedInDialog()"
+                (change)="onEditSharedToggle($any($event.target).checked)"
+              />
+              <span>Apply changes to all LOTO points that share this phrase</span>
+            </label>
+            <p class="edit-shared-hint">
+              If unchecked, only this LOTO point's phrase will be updated (a new shared record is created).
+              If checked, every LOTO point currently using this phrase will be updated.
+            </p>
+          </div>
+        }
       </div>
 
       <div class="dialog-footer">

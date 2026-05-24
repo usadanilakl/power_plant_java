@@ -4,7 +4,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
 import { RfToggleMenuComponent } from '../../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
+import { RfLotoPointTableComponent } from '../../../../../features/loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
 import { EquipmentDialogFileService } from '../services/equipment-dialog-file.service';
+// Isolated table services so the embedded LOTO point table has its own state
+import { RfLotoPointStateService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-state.service';
+import { TableSelectionService } from '../../../../table/refactored/services/table-selection.service';
+import { TableDragService } from '../../../../table/refactored/services/table-drag.service';
+import { TableStateService } from '../../../../table/refactored/services/table-state.service';
+import { TableSearchService } from '../../../../table/refactored/services/table-search.service';
+import { TableSortService } from '../../../../table/refactored/services/table-sort.service';
+import { TableResizeService } from '../../../../table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../table/refactored/services/table-sync.service';
+import { TableClickService } from '../../../../table/refactored/services/table-click.service';
+import { TableControlsService } from '../../../../table/refactored/services/table-controls.service';
+import { TableDataService } from '../../../../table/refactored/services/table-data.service';
+import { LotoPointBulkEditService } from '../../../../../features/loto-points/refactored/services/loto-point-bulk-edit.service';
+import { RfLotoPointTableDataService } from '../../../../../features/loto-points/refactored/rf-loto-point-table/rf-loto-point-table-data.service';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 import { RfEquipmentService } from '../../../../../features/equipment/refactored/services/rf-equipment.service';
 import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
@@ -40,9 +55,26 @@ import { GuideDirective } from '../../../../guide/guide.directive';
     ReactiveFormsModule,
     InteractiveImageComponent,
     RfToggleMenuComponent,
+    RfLotoPointTableComponent,
     GuideDirective
   ],
-  providers: [EquipmentDialogFileService],
+  providers: [
+    EquipmentDialogFileService,
+    // Isolated instances for the embedded LOTO point table (when in 'loto-points' search mode)
+    RfLotoPointStateService,
+    TableSelectionService,
+    TableStateService,
+    TableDragService,
+    TableSearchService,
+    TableSortService,
+    TableResizeService,
+    TableSyncService,
+    TableClickService,
+    TableControlsService,
+    LotoPointBulkEditService,
+    RfLotoPointTableDataService,
+    { provide: TableDataService, useClass: RfLotoPointTableDataService },
+  ],
   templateUrl: './equipment-unified-dialog.component.html',
   styleUrl: './equipment-unified-dialog.component.css'
 })
@@ -78,6 +110,25 @@ export class EquipmentUnifiedDialogComponent {
   highlightEquipmentId = signal<number | null>(null);
   isLoading = signal(false);
   error = signal<string | null>(null);
+
+  /**
+   * Search mode toggle:
+   *  - 'files'       = browse P&IDs in the toggle menu (default, original behavior)
+   *  - 'loto-points' = search by LOTO point. Clicking a point opens its associated P&ID
+   *                    (if any) and highlights its equipment; otherwise emits the LOTO
+   *                    point's first equipment as the selection.
+   */
+  searchMode = signal<'files' | 'loto-points'>('files');
+
+  /** LOTO point most recently picked in 'loto-points' mode (for UI feedback). */
+  pickedLotoPoint = signal<LotoPointDto | null>(null);
+
+  setSearchMode(mode: 'files' | 'loto-points'): void {
+    this.searchMode.set(mode);
+    if (mode === 'loto-points') {
+      this.pickedLotoPoint.set(null);
+    }
+  }
 
   // LOTO Point Form State - shown when equipment needs LOTO point
   showLotoPointForm = signal(false);
@@ -217,6 +268,66 @@ export class EquipmentUnifiedDialogComponent {
   onFileSelect(fileItem: NestedItem) {
     this.fileService.selectFileFromNestedItem(fileItem);
     this.clearSelection();
+  }
+
+  /**
+   * Handle a LOTO point pick from the embedded LOTO point table (search-by-loto-point mode).
+   *
+   * Resolution:
+   *   1. Fetch related files for the point.
+   *   2. If a file exists, switch to file mode, load it, and pre-select the point's
+   *      first equipment so the user sees the shape highlighted on the P&ID.
+   *   3. If no related file exists but the point has equipment, emit the first
+   *      equipment as the selection (`as-is` pick).
+   *   4. If neither, show an error.
+   */
+  onLotoPointPicked(point: LotoPointDto | null): void {
+    if (!point?.id) return;
+    this.pickedLotoPoint.set(point);
+    this.error.set(null);
+
+    this.lotoPointApiService
+      .getRelatedFiles(point.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          const files = res?.responseData ?? [];
+          if (files.length > 0) {
+            // Load the first related file in the viewer and switch to file mode
+            this.fileService.selectFile(files[0]);
+            this.searchMode.set('files');
+
+            // Try to pre-select the point's equipment on the loaded file
+            const firstEqId = point.equipmentList?.[0]?.id ?? point.equipmentIdList?.[0];
+            if (firstEqId != null) {
+              this.highlightEquipmentId.set(firstEqId);
+            }
+          } else {
+            // No P&ID — accept the LOTO point's existing equipment as the selection
+            const firstEq = point.equipmentList?.[0];
+            if (firstEq) {
+              const enriched = new EquipmentDto({ ...firstEq });
+              this.selectedEquipment.set(enriched);
+              if (this.immediateSelection()) {
+                this.equipmentAcquired.emit(enriched);
+              }
+            } else {
+              this.error.set('Selected LOTO point has no associated equipment or P&ID.');
+            }
+          }
+        },
+        error: (err) => {
+          console.error('Failed to load related files for LOTO point', err);
+          this.error.set('Could not load files for the selected LOTO point.');
+        },
+      });
+  }
+
+  /** Wrapper for the table's `selectedItemsEvent` — takes the first selected row. */
+  onLotoPointSelectedFromTable(items: LotoPointDto[]): void {
+    if (items && items.length > 0) {
+      this.onLotoPointPicked(items[0]);
+    }
   }
 
   // Handle click on existing equipment shape

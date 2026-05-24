@@ -94,4 +94,14 @@ export class FormGroupInputComponent {
       console.error('Failed to fetch zero energy usage count', e);
     }
   }
+
+  /**
+   * Bound to the editShared checkbox inside the zero-energy phrase builder edit dialog.
+   * Writes the value into the surrounding form group's `editShared` form control so
+   * it reaches the backend on save.
+   */
+  onEditSharedToggleFromDialog(value: boolean): void {
+    this.editSharedEnabled.set(value);
+    this.getFormControl('editShared')?.setValue(value);
+  }
 }

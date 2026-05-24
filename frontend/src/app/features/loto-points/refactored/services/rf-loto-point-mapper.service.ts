@@ -592,6 +592,8 @@ export class LotoPointMapperService {
           },
         },
         {
+          // Controlled by checkbox inside the zero-energy edit dialog (phrase builder).
+          // Kept as a hidden form field so its value reaches the backend on save.
           name: 'editShared',
           label: '',
           type: 'hidden',

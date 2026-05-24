@@ -1,17 +1,62 @@
 <div class="dialog-container">
   <div class="dialog-content">
-    <!-- Left Panel: File Navigation -->
+    <!-- Left Panel: File / LOTO Point Navigation -->
     <div class="navigation-panel">
-      <div class="menu-container"
-           appGuide="create-loto-point:file-selector"
-           guideMessage="Expand folders and click on a P&ID file to load it. The file's equipment will be displayed on the right."
-           [guideTooltipOnly]="true">
-        <h3>Select P&ID</h3>
-        <app-rf-toggle-menu
-          [menuItems]="fileMenuItems()"
-          (itemClick)="onFileSelect($event)"
-        ></app-rf-toggle-menu>
+      <!-- Mode toggle -->
+      <div class="search-mode-toggle" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          class="mode-btn"
+          [class.active]="searchMode() === 'files'"
+          [attr.aria-selected]="searchMode() === 'files'"
+          (click)="setSearchMode('files')"
+        >Files</button>
+        <button
+          type="button"
+          role="tab"
+          class="mode-btn"
+          [class.active]="searchMode() === 'loto-points'"
+          [attr.aria-selected]="searchMode() === 'loto-points'"
+          (click)="setSearchMode('loto-points')"
+        >LOTO Points</button>
       </div>
+
+      @if (searchMode() === 'files') {
+        <div class="menu-container"
+             appGuide="create-loto-point:file-selector"
+             guideMessage="Expand folders and click on a P&ID file to load it. The file's equipment will be displayed on the right."
+             [guideTooltipOnly]="true">
+          <h3>Select P&ID</h3>
+          <app-rf-toggle-menu
+            [menuItems]="fileMenuItems()"
+            (itemClick)="onFileSelect($event)"
+          ></app-rf-toggle-menu>
+        </div>
+      } @else {
+        <div class="loto-point-search-container">
+          <h3>Search LOTO Points</h3>
+          <p class="search-hint">
+            Pick a LOTO point. If it has a P&amp;ID, it'll open here; otherwise
+            its equipment is selected directly.
+          </p>
+          <div class="loto-point-table-wrapper">
+            <app-rf-loto-point-table
+              [tableId]="'equipment-dialog-loto-point-picker'"
+              [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'unit']"
+              (selectedItemsEvent)="onLotoPointSelectedFromTable($event)"
+              (rowDoubleClickedEvent)="onLotoPointPicked($event)"
+            ></app-rf-loto-point-table>
+          </div>
+          @if (pickedLotoPoint(); as p) {
+            <div class="picked-loto-point">
+              <span class="picked-label">Picked:</span>
+              <span class="picked-tag">{{ p.tagNumber }}</span>
+              <span class="picked-desc">{{ p.description }}</span>
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <!-- Right Panel: P&ID Viewer -->

@@ -32,6 +32,7 @@ import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-gene
 import { NamingConventionComponent } from '../../../tag-number/naming-convention/naming-convention.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 import { AiFormAssistantComponent } from '../../../../shared/reactive-form/refactored/ai-form-assistant/ai-form-assistant.component';
+import { RfLotoPointFormComponent } from '../rf-loto-point-form/rf-loto-point-form.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
@@ -81,6 +82,7 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
     NamingConventionComponent,
     PopupProjectionComponent,
     AiFormAssistantComponent,
+    RfLotoPointFormComponent,
   ],
   providers: [
     // Provide isolated instances for this component's table
@@ -139,6 +141,46 @@ export class LotoPointDualFormComponent {
   isSavingCounterpart = signal<boolean>(false);
   isSavingBoth = signal<boolean>(false);
   isLinking = signal<boolean>(false);
+
+  /**
+   * View mode toggle:
+   *  - 'dual'   = side-by-side primary + counterpart forms (default)
+   *  - 'single' = render full {@link RfLotoPointFormComponent} for the primary only (with tabs/images)
+   */
+  viewMode = signal<'dual' | 'single'>('dual');
+
+  toggleViewMode(): void {
+    this.viewMode.update((m) => (m === 'dual' ? 'single' : 'dual'));
+  }
+
+  /**
+   * Handle save from the embedded single-form view. The single form is in externalSaveMode
+   * so we run the save ourselves and emit primarySaved upstream.
+   */
+  onSingleFormSubmit(item: LotoPointDto): void {
+    this.isSavingPrimary.set(true);
+    this.apiService
+      .saveLotoPoint(item)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          if (response.responseData) {
+            const saved = LotoPointDto.fromJson(response.responseData);
+            this.currentPrimaryValues.set(saved);
+            this.primarySaved.emit(saved);
+            this.messageService.showSuccess(`Unit ${this.sourceUnit()} LOTO point saved`);
+          }
+          this.isSavingPrimary.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error saving primary (single view):', error);
+          this.messageService.showError('Failed to save LOTO point');
+          this.isSavingPrimary.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
 
   // For manual search mode
   showManualSearch = signal<boolean>(false);

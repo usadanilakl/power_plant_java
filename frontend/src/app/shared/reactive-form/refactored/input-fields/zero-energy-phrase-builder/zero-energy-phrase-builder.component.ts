@@ -55,6 +55,21 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
   // Output for placeholder count changes
   placeholderCountChange = output<number>();
 
+  /**
+   * Fires when user toggles the "Apply to all LOTO points sharing this phrase" checkbox
+   * inside the Edit dialog. Parent (`form-group-input`) writes this to the
+   * `editShared` form control on the surrounding form group.
+   */
+  editSharedChange = output<boolean>();
+
+  /** Edit-shared toggle state for the dialog */
+  editSharedInDialog = signal<boolean>(false);
+
+  onEditSharedToggle(value: boolean): void {
+    this.editSharedInDialog.set(value);
+    this.editSharedChange.emit(value);
+  }
+
   // State
   selectedPhraseId = signal<number | null>(null);
   disabled = signal<boolean>(false);
@@ -373,6 +388,7 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
 
     this.cursorPosition.set(0);
     this.errorMessage.set('');
+    this.editSharedInDialog.set(false); // Reset each time dialog opens
     this.showPhraseDialog.set(true);
   }
 

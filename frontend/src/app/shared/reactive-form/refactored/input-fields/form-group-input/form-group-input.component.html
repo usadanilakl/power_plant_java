@@ -1,14 +1,6 @@
 <div class="form-group-container" [formGroup]="formGroup()">
   <div class="form-group-header">
     <label class="form-group-label">{{ label() }}</label>
-    @if (context()?.zeroEnergyId) {
-      <button type="button"
-              class="edit-shared-btn"
-              [class.active]="editSharedEnabled()"
-              (click)="onEditForAllClick()">
-        {{ editSharedEnabled() ? 'Editing for All' : 'Edit for All' }}
-      </button>
-    }
   </div>
   <div class="form-group-fields" [class]="'form-group-layout-' + layout()">
     <ng-container *ngFor="let field of fields()">
@@ -61,6 +53,7 @@
               [selectedEquipment]="getFieldValue('templateEquipment')"
               [formControl]="getFormControl(field.name)"
               (clipboardItemSelected)="onZeroEnergyClipboardPaste($event)"
+              (editSharedChange)="onEditSharedToggleFromDialog($event)"
             >
             </app-zero-energy-phrase-builder>
           }

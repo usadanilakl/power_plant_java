@@ -294,7 +294,7 @@
   background: var(--danger-color-hover, #c53030);
 }
 
-/* Dialog Overlay */
+/* Dialog Overlay — above RfPopupProjectionComponent (z-index: 10000) */
 .dialog-overlay {
   position: fixed;
   top: 0;
@@ -305,7 +305,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 11000;
   animation: fadeIn 0.2s ease;
 }
 
@@ -684,4 +684,37 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ========== Edit-shared toggle inside dialog ========== */
+.edit-shared-toggle {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--secondary-background, #f5f5f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+}
+
+.edit-shared-toggle .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--primary-text, #212529);
+  cursor: pointer;
+}
+
+.edit-shared-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-color, #007bff);
+}
+
+.edit-shared-hint {
+  margin: 6px 0 0 24px;
+  font-size: 12px;
+  color: var(--secondary-text, #495057);
+  line-height: 1.4;
 }
