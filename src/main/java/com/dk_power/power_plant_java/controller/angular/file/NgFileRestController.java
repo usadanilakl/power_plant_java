@@ -168,13 +168,13 @@ public class NgFileRestController {
     @PutMapping
     public ResponseEntity<NgApiResponse<Object>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                             @RequestPart(value = "file", required = false) MultipartFile file,
-                                                            @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile) {
+                                                            @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile,
+                                                            @RequestParam(value = "convertToJpg", required = false) Boolean convertToJpg) {
 
-        System.out.println(fileDto.getRelatedSystems());
         try {
             Object responseObject = null;
             if (file != null) {
-                responseObject = ngFileService.processPidFile(fileDto, file, overrideFile);
+                responseObject = ngFileService.processPidFile(fileDto, file, overrideFile, convertToJpg);
             } else {
                 responseObject = ngFileService.updateFileObject(fileDto);
             }
@@ -233,6 +233,64 @@ public class NgFileRestController {
         }
     }
 
+    /**
+     * Generate the JPG derivative for a PDF FileObject if it's missing.
+     * Returns the jpg fileLink so the caller can immediately load it.
+     * Idempotent — calling again after generation is a no-op.
+     */
+    @PostMapping("/{id}/ensure-jpg")
+    public ResponseEntity<NgApiResponse<Map<String, String>>> ensureJpg(@PathVariable Long id) {
+        try {
+            String jpgLink = ngFileService.ensureJpgExists(id);
+            return ResponseEntity.ok(new NgApiResponse<>(Map.of("fileLink", jpgLink), "JPG ready"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Pre-upload duplicate check by name tokens only.
+     * Body: { "fileNumber": ["P-0001"] }
+     * Returns name-token matches so the user can review before clicking Upload.
+     */
+    @PostMapping("/check-duplicates/by-name")
+    public ResponseEntity<NgApiResponse<NgFileService.DuplicateReport>> checkDuplicatesByName(
+            @RequestBody Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> fileNumber = (List<String>) body.get("fileNumber");
+            NgFileService.DuplicateReport report = ngFileService.findDuplicates(fileNumber, null, null, null, 0);
+            return ResponseEntity.ok(new NgApiResponse<>(report, "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Post-upload duplicate check — reads hashes off the saved FileObject and
+     * compares against the rest of the DB. Used for the "Possible duplicate
+     * detected" toast with an Undo option.
+     */
+    @GetMapping("/{id}/check-duplicates")
+    public ResponseEntity<NgApiResponse<NgFileService.DuplicateReport>> checkDuplicatesPostUpload(
+            @PathVariable Long id,
+            @RequestParam(value = "phashThreshold", defaultValue = "10") int phashThreshold) {
+        try {
+            FileObject f = ngFileService.getEntityById(id);
+            if (f == null) {
+                return ResponseEntity.notFound().build();
+            }
+            List<String> fileNumber = f.getFileNumber() == null
+                    ? List.of()
+                    : java.util.Arrays.asList(f.getFileNumber().split("__SEP__"));
+            NgFileService.DuplicateReport report = ngFileService.findDuplicates(
+                    fileNumber, f.getFileHash(), f.getPerceptualHash(), id, phashThreshold);
+            return ResponseEntity.ok(new NgApiResponse<>(report, "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     /** Distinct fileType names actually used by FileObjects in the database. */
     @GetMapping("/distinct-types")
     public ResponseEntity<NgApiResponse<List<String>>> getDistinctFileTypes() {
@@ -262,7 +320,8 @@ public class NgFileRestController {
             @RequestPart("files") List<MultipartFile> files,
             @RequestParam("fileTypeId") Long fileTypeId,
             @RequestParam("vendorId") Long vendorId,
-            @RequestParam(value = "sharedFileName", required = false) String sharedFileName) {
+            @RequestParam(value = "sharedFileName", required = false) String sharedFileName,
+            @RequestParam(value = "convertToJpg", required = false) Boolean convertToJpg) {
         try {
             if (files == null || files.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -279,7 +338,7 @@ public class NgFileRestController {
                 }
             }
 
-            List<FileDto> uploadedFiles = ngFileService.processMultipleFiles(files, fileTypeId, vendorId, sharedFileName);
+            List<FileDto> uploadedFiles = ngFileService.processMultipleFiles(files, fileTypeId, vendorId, sharedFileName, convertToJpg);
             return ResponseEntity.ok(new NgApiResponse<>(uploadedFiles,
                     "Successfully uploaded " + uploadedFiles.size() + " files", LocalDateTime.now()));
         } catch (Exception e) {

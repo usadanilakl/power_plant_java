@@ -38,8 +38,14 @@ public interface UploadStrategy {
      * @param fileNumber    base name of the file(s) without extension
      * @param fileTypeName  the FileObject's fileType name (e.g. "PID", "Manual")
      * @param vendorName    the FileObject's vendor name
+     * @param convertToJpg  for PDF uploads: whether to split pages + generate jpg derivatives.
+     *                      Ignored by non-PDF strategies. True = legacy P&ID behavior.
      */
-    record UploadTarget(String fileNumber, String fileTypeName, String vendorName) {}
+    record UploadTarget(String fileNumber, String fileTypeName, String vendorName, boolean convertToJpg) {
+        public UploadTarget(String fileNumber, String fileTypeName, String vendorName) {
+            this(fileNumber, fileTypeName, vendorName, true);
+        }
+    }
 
     /**
      * One canonical source file that ended up on disk. The caller (NgFileService)

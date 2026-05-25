@@ -38,6 +38,13 @@ public class Value extends BaseAuditEntity implements Referenceable {
     @JsonBackReference
     private Category category;
 
+    /**
+     * Per-fileType policy for whether PDF uploads should be split + converted to JPG.
+     * Only meaningful for Values in the "fileType" category; null on others.
+     * Defaults to true on the upload side if null (preserves legacy P&ID behavior).
+     */
+    private Boolean convertToJpg;
+
 
 
 

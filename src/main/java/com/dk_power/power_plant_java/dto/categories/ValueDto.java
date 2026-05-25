@@ -12,6 +12,8 @@ public class ValueDto {
     private String name;
     private CategoryDto category;
     private String alias;
+    /** Only meaningful when this Value is in the "fileType" category. */
+    private Boolean convertToJpg;
 
     @Override
     public String toString() {

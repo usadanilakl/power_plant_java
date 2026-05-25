@@ -30,6 +30,24 @@
         </div>
       </div>
 
+      <!-- PDF→JPG conversion toggle (only matters for PDFs but shown always for transparency) -->
+      @if (hasPdfSelected()) {
+        <div class="shared-name-section">
+          <label class="toggle-label">
+            <input
+              type="checkbox"
+              [checked]="convertToJpg()"
+              (change)="onConvertToJpgChange($any($event.target).checked)"
+            />
+            <span class="toggle-text">Split PDF pages and convert to JPG</span>
+          </label>
+          <span class="shared-name-hint">
+            Recommended for P&IDs (enables canvas markup). Disable for manuals/procedures
+            to save disk and upload time — JPG can still be generated on demand later.
+          </span>
+        </div>
+      }
+
       <!-- Shared File Name Option -->
       <div class="shared-name-section">
         <label class="toggle-label">
@@ -144,6 +162,55 @@
           {{ uploadProgress() }}
         </div>
       }
+      @if (isCheckingPostUpload()) {
+        <div class="message info">
+          <span class="spinner"></span>
+          Checking for duplicates...
+        </div>
+      }
+
+      <!-- Post-upload hash-based duplicate toast -->
+      @if (postUploadDuplicates().length > 0) {
+        <div class="post-upload-dup-toast">
+          <div class="toast-header">
+            <span class="toast-icon">⚠️</span>
+            <strong>Possible duplicate detected</strong>
+          </div>
+          <p class="toast-text">
+            The file(s) you just uploaded look the same as existing files (matched by content hash or visual similarity).
+          </p>
+          @for (group of postUploadDuplicates(); track group.uploadedFile.id) {
+            <div class="dup-group">
+              <div class="dup-uploaded">
+                Just uploaded: <strong>{{ group.uploadedFile.name || group.uploadedFile.fileNumber?.join(', ') }}</strong>
+              </div>
+              @if (group.exactMatches.length > 0) {
+                <div class="dup-section">
+                  <span class="dup-label dup-label-exact">Byte-identical</span>
+                  @for (f of group.exactMatches; track f.id) {
+                    <span class="dup-match">{{ f.name || f.fileNumber?.join(', ') }}</span>
+                  }
+                </div>
+              }
+              @if (group.visualMatches.length > 0) {
+                <div class="dup-section">
+                  <span class="dup-label dup-label-visual">Visually similar</span>
+                  @for (m of group.visualMatches; track m.file.id) {
+                    <span class="dup-match">
+                      {{ m.file.name || m.file.fileNumber?.join(', ') }}
+                      <span class="dup-distance">(distance {{ m.hammingDistance }})</span>
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+          }
+          <div class="toast-actions">
+            <button class="cancel-btn" (click)="undoUpload()">Undo upload</button>
+            <button class="upload-btn" (click)="dismissPostUploadDuplicates()">Keep & close</button>
+          </div>
+        </div>
+      }
     </div>
 
     <div class="dialog-footer">
@@ -153,9 +220,11 @@
       <button
         class="upload-btn"
         (click)="upload()"
-        [disabled]="!canUpload()"
+        [disabled]="!canUpload() || isCheckingDuplicates()"
       >
-        @if (isUploading()) {
+        @if (isCheckingDuplicates()) {
+          Checking for duplicates...
+        } @else if (isUploading()) {
           Uploading...
         } @else {
           Upload {{ selectedFiles().length }} File(s)
@@ -164,3 +233,45 @@
     </div>
   </div>
 </div>
+
+<!-- Pre-upload duplicate modal — shown if name tokens overlap with existing files -->
+@if (duplicateReport(); as report) {
+  <div class="multi-upload-overlay" (click)="cancelDuplicateModal()">
+    <div class="multi-upload-dialog dup-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h2>Possible duplicates found</h2>
+        <button class="close-btn" (click)="cancelDuplicateModal()">&times;</button>
+      </div>
+      <div class="dialog-content">
+        <p class="dup-intro">
+          The following existing files share parts of the file number you're about to upload.
+          Please review before continuing.
+        </p>
+        <table class="dup-table">
+          <thead>
+            <tr>
+              <th>File Number</th>
+              <th>Name</th>
+              <th>File Type</th>
+              <th>Vendor</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of report.nameMatches; track f.id) {
+              <tr>
+                <td>{{ f.fileNumber?.join(', ') || '—' }}</td>
+                <td>{{ f.name || '—' }}</td>
+                <td>{{ f.fileType?.name || '—' }}</td>
+                <td>{{ f.vendor?.name || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="dialog-footer">
+        <button class="cancel-btn" (click)="cancelDuplicateModal()">Cancel upload</button>
+        <button class="upload-btn" (click)="acknowledgeNameDuplicates()">Continue anyway</button>
+      </div>
+    </div>
+  </div>
+}

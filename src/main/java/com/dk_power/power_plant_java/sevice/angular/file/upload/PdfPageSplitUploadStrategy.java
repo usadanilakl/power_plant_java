@@ -18,12 +18,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Splits a PDF into single-page PDFs and generates a jpg per page.
- * This is the legacy P&ID upload behavior, preserved for backward compatibility —
- * any file type that benefits from per-page browsing + canvas markup uses this.
+ * Handles PDF uploads. Behavior depends on {@link UploadTarget#convertToJpg()}:
  *
- * Produces one {@link UploadedFile} per split page, each claiming both "pdf" and
- * "jpg" as available extensions.
+ * <ul>
+ *   <li><b>true (legacy P&ID behavior)</b>: splits the PDF into single-page PDFs
+ *       and generates a jpg per page. Each split page becomes its own FileObject.
+ *       Result extensions: {@code [pdf, jpg]}.</li>
+ *   <li><b>false</b>: writes the original PDF as-is, no splitting, no jpg derivative.
+ *       Single result with extensions: {@code [pdf]}. JPG can be generated on demand
+ *       later via {@code POST /ng/files/{id}/ensure-jpg}.</li>
+ * </ul>
  */
 @Component
 @Order(1) // run before DirectUploadStrategy (which is the fallback)
@@ -45,6 +49,16 @@ public class PdfPageSplitUploadStrategy implements UploadStrategy {
         }
 
         Path pdfFolder = Paths.get(filesRootPath, "pdf", target.fileTypeName(), target.vendorName());
+
+        if (!target.convertToJpg()) {
+            // Plain PDF upload — no split, no jpg derivative.
+            MultipartFile renamed = new RenamedMultipartFile(file, target.fileNumber() + ".pdf");
+            String written = FileUtil.uploadFileToLocal(renamed, pdfFolder.toString(), override);
+            String writtenName = Paths.get(written).getFileName().toString();
+            String writtenFileNumber = FileUtil.getNameFromPathWithoutExtension(writtenName);
+            return List.of(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf")));
+        }
+
         Path jpgFolder = Paths.get(filesRootPath, "jpg", target.fileTypeName(), target.vendorName());
 
         // Rename incoming file so split-page naming is deterministic

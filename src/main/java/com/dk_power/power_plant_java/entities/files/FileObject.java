@@ -105,6 +105,17 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
      */
     private String fileHash;
 
+    /**
+     * Perceptual hash (64-bit, hex-encoded) of the file's visual content.
+     * Computed at upload time for images and PDFs (using the first page's JPG).
+     * Null for files without visual rendering (xlsx/docx/stl/obj/etc.).
+     *
+     * Two files with similar visuals will have a small Hamming distance —
+     * used for "same drawing re-exported" duplicate detection where
+     * {@link #fileHash} won't match because the bytes differ.
+     */
+    private String perceptualHash;
+
 
 
     public static final List<String> lightDto = List.of(

@@ -163,12 +163,14 @@ export class RfFileApiService {
    * Upload multiple PDF files at once
    * All files share the same fileType and vendor
    * @param sharedFileName - Optional shared file name to use for all files (if not provided, uses original filename)
+   * @param convertToJpg - Optional override for PDF split + JPG conversion. undefined = use fileType default.
    */
   uploadMultipleFiles(
     files: File[],
     fileTypeId: number,
     vendorId: number,
-    sharedFileName?: string
+    sharedFileName?: string,
+    convertToJpg?: boolean
   ): Observable<SpringApiResponse<FileDto[]>> {
     const formData = new FormData();
 
@@ -185,6 +187,9 @@ export class RfFileApiService {
     if (sharedFileName && sharedFileName.trim()) {
       params = params.set('sharedFileName', sharedFileName.trim());
     }
+    if (convertToJpg !== undefined) {
+      params = params.set('convertToJpg', String(convertToJpg));
+    }
 
     return this.http.post<SpringApiResponse<FileDto[]>>(
       `${this.apiUrl}/multi-upload`,
@@ -192,4 +197,40 @@ export class RfFileApiService {
       { params }
     );
   }
+
+  /** Pre-upload duplicate check by name tokens. */
+  checkDuplicatesByName(fileNumber: string[]): Observable<SpringApiResponse<DuplicateReport>> {
+    return this.http.post<SpringApiResponse<DuplicateReport>>(
+      `${this.apiUrl}/check-duplicates/by-name`,
+      { fileNumber }
+    );
+  }
+
+  /** Post-upload duplicate check using fileHash + perceptualHash on the saved entity. */
+  checkDuplicatesPostUpload(fileId: number, phashThreshold = 10): Observable<SpringApiResponse<DuplicateReport>> {
+    const params = new HttpParams().set('phashThreshold', String(phashThreshold));
+    return this.http.get<SpringApiResponse<DuplicateReport>>(
+      `${this.apiUrl}/${fileId}/check-duplicates`,
+      { params }
+    );
+  }
+
+  /** Lazy-generate the JPG derivative for a PDF FileObject. Returns the jpg fileLink. */
+  ensureJpg(fileId: number): Observable<SpringApiResponse<{ fileLink: string }>> {
+    return this.http.post<SpringApiResponse<{ fileLink: string }>>(
+      `${this.apiUrl}/${fileId}/ensure-jpg`,
+      {}
+    );
+  }
+}
+
+export interface VisualDuplicateMatch {
+  file: FileDto;
+  hammingDistance: number;
+}
+
+export interface DuplicateReport {
+  exactMatches: FileDto[];
+  visualMatches: VisualDuplicateMatch[];
+  nameMatches: FileDto[];
 }

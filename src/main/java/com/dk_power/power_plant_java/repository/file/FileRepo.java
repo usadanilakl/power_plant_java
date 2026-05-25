@@ -20,6 +20,14 @@ public interface FileRepo extends BaseRepository<FileObject> {
 
     @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.extension IN ?1")
     List<FileObject> findByExtensionIn(List<String> extensions);
+
+    /** Exact byte-content duplicate lookup. */
+    @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.fileHash = ?1")
+    List<FileObject> findByFileHash(String fileHash);
+
+    /** All files with a non-null perceptual hash — for in-memory Hamming distance comparison. */
+    @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.perceptualHash IS NOT NULL")
+    List<FileObject> findAllWithPerceptualHash();
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
     List<FileObject> findByVendor(Value vendor);

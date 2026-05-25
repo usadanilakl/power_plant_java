@@ -6,6 +6,8 @@ export interface ValueModel {
   name: string;
   alias: string;
   category: CategoryDto;
+  /** Only meaningful when this Value is in the "fileType" category. */
+  convertToJpg?: boolean | null;
 }
 
 export class ValueDto implements ValueModel {
@@ -13,12 +15,14 @@ export class ValueDto implements ValueModel {
   name: string;
   alias: string;
   category: CategoryDto;
+  convertToJpg?: boolean | null;
 
   constructor(data: Partial<ValueModel> = {}) {
     this.id = data.id || 0;
     this.name = data.name || '';
     this.alias = data.alias || '';
     this.category = data.category || new CategoryDto({ id: 0, name: '', alias: '' });
+    this.convertToJpg = data.convertToJpg ?? null;
   }
 
   toOption(): Option {
@@ -40,7 +44,8 @@ export class ValueDto implements ValueModel {
     return new ValueDto({
       id: json.id ?? 0, // Use nullish coalescing to provide a default value
       name: json.name || '',
-      category: json.category ? CategoryDto.fromJson(json.category) : new CategoryDto()
+      category: json.category ? CategoryDto.fromJson(json.category) : new CategoryDto(),
+      convertToJpg: json.convertToJpg ?? null,
     });
   }
 

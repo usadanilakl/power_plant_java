@@ -19,6 +19,7 @@ import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategyRe
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
 import com.dk_power.power_plant_java.sevice.file.TrashService;
 import com.dk_power.power_plant_java.util.FileUtil;
+import com.dk_power.power_plant_java.util.PerceptualHashUtil;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -99,6 +100,59 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                     fileObject.getId(), e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Compute the aHash perceptual hash of the file's visual content.
+     * For raster files: hashes the file directly. For PDFs: hashes the first
+     * page's generated JPG (only available when the pdf-split strategy ran).
+     * Returns null when no visual rendering is available (e.g. xlsx, docx, stl).
+     */
+    private String computePerceptualHash(FileObject fileObject) {
+        try {
+            String ext = fileObject.getExtension();
+            if (ext == null) return null;
+            String lower = ext.toLowerCase();
+
+            // Image file: hash directly
+            if (isRasterExtension(lower)) {
+                Path p = resolveToFileSystem(fileObject.buildFileLink(lower));
+                if (p != null && Files.exists(p)) {
+                    return PerceptualHashUtil.computeHash(p.toFile());
+                }
+            }
+
+            // PDF: hash the first-page JPG if it exists (pdf-split strategy generated it)
+            if ("pdf".equals(lower)) {
+                String jpgLink = fileObject.buildFileLink("jpg");
+                if (jpgLink != null) {
+                    Path jpg = resolveToFileSystem(jpgLink);
+                    if (Files.exists(jpg)) {
+                        return PerceptualHashUtil.computeHash(jpg.toFile());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to compute perceptual hash for FileObject #{}: {}",
+                    fileObject.getId(), e.getMessage());
+        }
+        return null;
+    }
+
+    private boolean isRasterExtension(String ext) {
+        return "png".equals(ext) || "jpg".equals(ext) || "jpeg".equals(ext)
+                || "tif".equals(ext) || "tiff".equals(ext) || "bmp".equals(ext)
+                || "gif".equals(ext) || "webp".equals(ext);
+    }
+
+    /**
+     * Decide whether to split + convert a PDF upload to JPG.
+     * Precedence: explicit param > fileType.convertToJpg > true (legacy default).
+     */
+    private boolean resolveConvertToJpg(Boolean explicit, com.dk_power.power_plant_java.entities.categories.Value fileType) {
+        if (explicit != null) return explicit;
+        if (fileType != null && fileType.getConvertToJpg() != null) return fileType.getConvertToJpg();
+        return true;
     }
 
     /**
@@ -257,6 +311,15 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override) throws IOException {
+        return processPidFile(fileDto, file, override, null);
+    }
+
+    /**
+     * @param convertToJpg explicit override for PDF→JPG conversion. {@code null}
+     *                     falls back to the fileType's {@code convertToJpg} policy
+     *                     (and ultimately to {@code true} for backwards compat).
+     */
+    public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override, Boolean convertToJpg) throws IOException {
 
         if (file == null) throw new RuntimeException("File is required");
 
@@ -280,7 +343,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         UploadStrategy.UploadTarget target = new UploadStrategy.UploadTarget(
                 baseName,
                 template.getFileType().getName(),
-                template.getVendor().getName()
+                template.getVendor().getName(),
+                resolveConvertToJpg(convertToJpg, template.getFileType())
         );
         UploadStrategy strategy = uploadStrategyRegistry.get(fileExtension);
         List<UploadStrategy.UploadedFile> uploaded = strategy.upload(file, target, override);
@@ -290,6 +354,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             UploadStrategy.UploadedFile u = uploaded.get(0);
             applyUploadResult(template, u);
             template.setFileHash(computeSourceHash(template));
+            template.setPerceptualHash(computePerceptualHash(template));
             fileDtos.add(toDto(save(template)));
         } else {
             for (UploadStrategy.UploadedFile u : uploaded) {
@@ -301,6 +366,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 newFile.setBaseLink(filesRelativePath);
                 applyUploadResult(newFile, u);
                 newFile.setFileHash(computeSourceHash(newFile));
+                newFile.setPerceptualHash(computePerceptualHash(newFile));
                 fileDtos.add(toDto(save(newFile)));
             }
         }
@@ -335,6 +401,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      * everything else through direct upload.
      */
     public List<FileDto> processMultipleFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName) throws IOException {
+        return processMultipleFiles(files, fileTypeId, vendorId, sharedFileName, null);
+    }
+
+    public List<FileDto> processMultipleFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName, Boolean convertToJpg) throws IOException {
         if (files == null || files.isEmpty()) {
             throw new RuntimeException("No files provided");
         }
@@ -346,6 +416,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
         boolean useSharedName = sharedFileName != null && !sharedFileName.trim().isEmpty();
         String effectiveSharedName = useSharedName ? sharedFileName.trim() : null;
+        boolean effectiveConvertToJpg = resolveConvertToJpg(convertToJpg, fileType);
 
         List<FileDto> uploadedFiles = new ArrayList<>();
 
@@ -365,7 +436,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             UploadStrategy.UploadTarget target = new UploadStrategy.UploadTarget(
                     fileNameWithoutExtension,
                     fileType.getName(),
-                    vendor.getName()
+                    vendor.getName(),
+                    effectiveConvertToJpg
             );
             UploadStrategy strategy = uploadStrategyRegistry.get(extension);
             List<UploadStrategy.UploadedFile> uploaded = strategy.upload(file, target, false);
@@ -378,6 +450,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 fileObject.setBaseLink(filesRelativePath);
                 applyUploadResult(fileObject, uploaded.get(0));
                 fileObject.setFileHash(computeSourceHash(fileObject));
+                fileObject.setPerceptualHash(computePerceptualHash(fileObject));
                 uploadedFiles.add(toDto(save(fileObject)));
             } else {
                 for (UploadStrategy.UploadedFile u : uploaded) {
@@ -389,6 +462,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                     newFile.setBaseLink(filesRelativePath);
                     applyUploadResult(newFile, u);
                     newFile.setFileHash(computeSourceHash(newFile));
+                    newFile.setPerceptualHash(computePerceptualHash(newFile));
                     uploadedFiles.add(toDto(save(newFile)));
                 }
             }
@@ -565,6 +639,151 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     public List<FileDto> findByExtensions(List<String> extensions) {
         return fileRepo.findByExtensionIn(extensions).stream().map(this::toDtoLight).toList();
     }
+
+    /**
+     * Find potential duplicates of an upload candidate.
+     *
+     * @param fileNumber       file number tokens (joined by __SEP__) being uploaded
+     * @param fileHash         SHA-256 of the source bytes (optional, set after upload)
+     * @param perceptualHash   aHash of the visual content (optional, set after upload)
+     * @param excludeId        FileObject ID to skip (the one just uploaded), null to include all
+     * @param phashThreshold   max Hamming distance to consider "visually similar" (typical: 10–15)
+     * @return categorized matches
+     */
+    public DuplicateReport findDuplicates(List<String> fileNumber, String fileHash,
+                                          String perceptualHash, Long excludeId, int phashThreshold) {
+        DuplicateReport report = new DuplicateReport();
+
+        // 1. Exact byte match
+        if (fileHash != null && !fileHash.isBlank()) {
+            fileRepo.findByFileHash(fileHash).stream()
+                    .filter(f -> excludeId == null || !excludeId.equals(f.getId()))
+                    .forEach(f -> report.exactMatches.add(toDtoLight(f)));
+        }
+
+        // 2. Visual match via perceptual hash + Hamming distance
+        if (perceptualHash != null && !perceptualHash.isBlank()) {
+            fileRepo.findAllWithPerceptualHash().forEach(f -> {
+                if (excludeId != null && excludeId.equals(f.getId())) return;
+                if (perceptualHash.equals(f.getPerceptualHash())) return; // already in exact set possibly
+                int d = com.dk_power.power_plant_java.util.PerceptualHashUtil
+                        .hammingDistance(perceptualHash, f.getPerceptualHash());
+                if (d <= phashThreshold) {
+                    VisualMatch m = new VisualMatch();
+                    m.file = toDtoLight(f);
+                    m.hammingDistance = d;
+                    report.visualMatches.add(m);
+                }
+            });
+            report.visualMatches.sort((a, b) -> Integer.compare(a.hammingDistance, b.hammingDistance));
+        }
+
+        // 3. Name-token match: any meaningful token from fileNumber appears in another file's fileNumber
+        if (fileNumber != null && !fileNumber.isEmpty()) {
+            java.util.Set<Long> seen = new java.util.HashSet<>();
+            report.exactMatches.forEach(d -> seen.add(d.getId()));
+            report.visualMatches.forEach(m -> seen.add(m.file.getId()));
+
+            java.util.LinkedHashSet<String> tokens = new java.util.LinkedHashSet<>();
+            for (String part : fileNumber) {
+                if (part == null) continue;
+                for (String t : part.split("[-_\\s\\.]+")) {
+                    String trimmed = t.trim();
+                    if (trimmed.length() >= 2) {
+                        tokens.add(trimmed);
+                    }
+                }
+            }
+            for (String token : tokens) {
+                fileRepo.findByFileNumberContaining(token).forEach(f -> {
+                    if (excludeId != null && excludeId.equals(f.getId())) return;
+                    if (seen.contains(f.getId())) return;
+                    seen.add(f.getId());
+                    report.nameMatches.add(toDtoLight(f));
+                });
+            }
+        }
+
+        return report;
+    }
+
+    public static class DuplicateReport {
+        public List<FileDto> exactMatches = new ArrayList<>();
+        public List<VisualMatch> visualMatches = new ArrayList<>();
+        public List<FileDto> nameMatches = new ArrayList<>();
+    }
+
+    public static class VisualMatch {
+        public FileDto file;
+        public int hammingDistance;
+    }
+
+    /**
+     * Generate the JPG derivative for a PDF FileObject if it's missing.
+     * No-op if the jpg already exists. Thread-safe per fileId via the
+     * {@code ensureJpgLocks} map.
+     *
+     * @return the FileObject's jpg fileLink (resolvable client-side)
+     * @throws IOException if the source pdf is missing or conversion fails
+     */
+    public String ensureJpgExists(Long fileId) throws IOException {
+        FileObject file = getEntityById(fileId);
+        if (file == null) throw new RuntimeException("File not found: " + fileId);
+        if (file.getFileType() == null || file.getVendor() == null) {
+            throw new RuntimeException("FileObject missing fileType/vendor — cannot resolve paths");
+        }
+
+        String jpgLink = file.buildFileLink("jpg");
+        Path jpgPath = resolveToFileSystem(jpgLink);
+        if (Files.exists(jpgPath)) {
+            ensureJpgListedOnEntity(file);
+            return jpgLink;
+        }
+
+        // Per-fileId lock so two concurrent requests don't both convert.
+        Object lock = ensureJpgLocks.computeIfAbsent(fileId, k -> new Object());
+        synchronized (lock) {
+            // Re-check inside the lock — another thread may have generated it.
+            if (Files.exists(jpgPath)) {
+                ensureJpgListedOnEntity(file);
+                return jpgLink;
+            }
+
+            String pdfLink = file.buildFileLink("pdf");
+            Path pdfPath = resolveToFileSystem(pdfLink);
+            if (!Files.exists(pdfPath)) {
+                throw new IOException("Source PDF not found at " + pdfPath + " — cannot generate JPG");
+            }
+
+            // Convert PDF → JPG via the existing utility; output dropped next to the temp source.
+            File pdfTempCopy = pdfPath.toFile();
+            File generatedJpg = com.dk_power.power_plant_java.util.PdfConverter.convertPdfToJpg(pdfTempCopy);
+
+            Files.createDirectories(jpgPath.getParent());
+            Files.move(generatedJpg.toPath(), jpgPath,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            ensureJpgListedOnEntity(file);
+            logger.info("Generated JPG for FileObject #{} at {}", fileId, jpgPath);
+            return jpgLink;
+        }
+    }
+
+    /** Add "jpg" to the entity's extensions CSV if not already there. */
+    private void ensureJpgListedOnEntity(FileObject file) {
+        String exts = file.getExtensions();
+        if (exts == null || !exts.toLowerCase().contains("jpg")) {
+            file.addExtension("jpg");
+            // Update perceptual hash now that a JPG exists, if it didn't before.
+            if (file.getPerceptualHash() == null) {
+                file.setPerceptualHash(computePerceptualHash(file));
+            }
+            save(file);
+        }
+    }
+
+    private final java.util.concurrent.ConcurrentHashMap<Long, Object> ensureJpgLocks =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     public List<FileDto> getByFileType(com.dk_power.power_plant_java.entities.categories.Value fileType) {
         return fileRepo.findByFileType(fileType).stream().map(this::toDto).toList();
