@@ -26,6 +26,7 @@ import { RfLotoPointApiService } from '../../../../../features/loto-points/refac
 import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
+import { FileDto } from '../../../../../models/file/file.model';
 import { ValueDto } from '../../../../../models/value.model';
 import { RfValueDto } from '../../../../../features/values/refactored/models/rf-value.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
@@ -123,9 +124,17 @@ export class EquipmentUnifiedDialogComponent {
   /** LOTO point most recently picked in 'loto-points' mode (for UI feedback). */
   pickedLotoPoint = signal<LotoPointDto | null>(null);
 
+  /** All files related to the picked LOTO point (one per associated equipment). */
+  relatedFiles = signal<FileDto[]>([]);
+
+  /** Index of the currently-shown related file in `relatedFiles`. */
+  activeRelatedFileIndex = signal<number>(0);
+
   /**
    * Equipment ID we want to auto-select once the related file finishes loading
    * (i.e. once `selectedFile.points` becomes populated). Cleared on use.
+   * Falls back to "any equipment of the picked point that's on the loaded file"
+   * when this is null but a point is picked.
    */
   pendingEquipmentIdToSelect = signal<number | null>(null);
 
@@ -160,20 +169,37 @@ export class EquipmentUnifiedDialogComponent {
 
   constructor() {
     /**
-     * After picking a LOTO point and loading its related file, auto-select the
-     * point's equipment shape so the user only has to click "Save & Select" to
-     * pass the selection to the parent.
+     * After picking a LOTO point and loading one of its related files, auto-select
+     * the equipment from that point that lives on the loaded file.
      *
-     * Fires when `selectedFile.points` becomes populated AND a pending equipment
-     * ID is set.
+     * If `pendingEquipmentIdToSelect` is set, prefer that ID (explicit pick).
+     * Otherwise fall back to "any equipment of the picked point that's on this file"
+     * — which makes file-switching work for points with equipment across many P&IDs.
+     *
+     * Fires when `selectedFile.points` becomes populated.
      */
     effect(() => {
       const file = this.selectedFile();
+      const point = this.pickedLotoPoint();
       const pendingId = this.pendingEquipmentIdToSelect();
-      if (!file || !pendingId) return;
+      if (!file) return;
 
-      const eq = (file.points ?? []).find((e: EquipmentDto) => e.id === pendingId);
-      if (!eq) return; // points may load later — effect will re-run
+      const points = file.points ?? [];
+      let eq: EquipmentDto | undefined;
+
+      if (pendingId != null) {
+        eq = points.find((e: EquipmentDto) => e.id === pendingId);
+      }
+
+      if (!eq && point) {
+        const candidateIds = new Set<number>([
+          ...(point.equipmentList?.map((e: any) => e.id).filter((id: any) => id != null) ?? []),
+          ...(point.equipmentIdList ?? []),
+        ]);
+        eq = points.find((e: EquipmentDto) => e.id != null && candidateIds.has(e.id));
+      }
+
+      if (!eq) return; // points may still be loading — effect will re-run
 
       const enriched = new EquipmentDto({
         ...eq,
@@ -181,7 +207,7 @@ export class EquipmentUnifiedDialogComponent {
         mainFileObject: file,
       });
       this.selectedEquipment.set(enriched);
-      this.highlightEquipmentId.set(pendingId);
+      this.highlightEquipmentId.set(eq.id ?? null);
       this.pendingEquipmentIdToSelect.set(null); // consume
     });
   }
@@ -332,7 +358,14 @@ export class EquipmentUnifiedDialogComponent {
       .subscribe({
         next: (res) => {
           const files = res?.responseData ?? [];
-          if (files.length > 0 && files[0].id != null) {
+          // De-dupe by file id (one point can map to many equipment on the same file)
+          const uniqueFiles = files.filter(
+            (f, i, arr) => f?.id != null && arr.findIndex((x) => x.id === f.id) === i
+          );
+          this.relatedFiles.set(uniqueFiles);
+          this.activeRelatedFileIndex.set(0);
+
+          if (uniqueFiles.length > 0 && uniqueFiles[0].id != null) {
             // Stage the equipment to auto-select once the file's points load
             const firstEqId = point.equipmentList?.[0]?.id ?? point.equipmentIdList?.[0] ?? null;
             this.pendingEquipmentIdToSelect.set(firstEqId);
@@ -341,7 +374,7 @@ export class EquipmentUnifiedDialogComponent {
             // We stay in 'loto-points' mode — the right-side viewer renders the
             // file regardless of left-panel mode, so the user can browse multiple
             // points in the filtered table while the P&ID updates next to it.
-            this.fileService.selectFileById(files[0].id);
+            this.fileService.selectFileById(uniqueFiles[0].id);
           } else {
             // No P&ID — accept the LOTO point's existing equipment as the selection
             const firstEq = point.equipmentList?.[0];
@@ -368,6 +401,21 @@ export class EquipmentUnifiedDialogComponent {
     if (items && items.length > 0) {
       this.onLotoPointPicked(items[0]);
     }
+  }
+
+  /**
+   * Switch to another file associated with the same LOTO point (chip click).
+   * Equipment auto-selection happens via the `selectedFile` effect — it picks
+   * an equipment from `pickedLotoPoint.equipmentList` that lives on the new file.
+   */
+  selectRelatedFile(index: number): void {
+    const files = this.relatedFiles();
+    if (index < 0 || index >= files.length) return;
+    const file = files[index];
+    if (!file?.id) return;
+    this.activeRelatedFileIndex.set(index);
+    this.pendingEquipmentIdToSelect.set(null); // let the effect fall back to "any on this file"
+    this.fileService.selectFileById(file.id);
   }
 
   // Handle click on existing equipment shape

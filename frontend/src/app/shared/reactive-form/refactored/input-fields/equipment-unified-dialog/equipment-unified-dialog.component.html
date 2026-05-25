@@ -70,6 +70,22 @@
             {{ statusMessage() }}
           </div>
         </div>
+
+        <!-- Related-file chips: shown when picked LOTO point has equipment on multiple P&IDs -->
+        @if (relatedFiles().length > 1) {
+          <div class="related-files-bar">
+            <span class="related-files-label">P&amp;IDs:</span>
+            @for (rf of relatedFiles(); track rf.id; let i = $index) {
+              <button
+                type="button"
+                class="related-file-chip"
+                [class.active]="i === activeRelatedFileIndex()"
+                (click)="selectRelatedFile(i)"
+                [title]="rf.name"
+              >{{ rf.name }}</button>
+            }
+          </div>
+        }
         <div class="viewer-content"
              appGuide="create-loto-point:image-unified"
              guideMessage="Left-click on an equipment shape to select it. Right-click and drag to draw a new equipment shape. Use the Symbol button to place P&ID symbols."
