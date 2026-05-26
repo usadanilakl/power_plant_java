@@ -314,13 +314,15 @@ export class FileMapperService {
       },
       overrideFile: {
         name: 'overrideFile',
-        label: 'If file already exists:',
+        label: 'If file already exists: (required — pick one)',
         type: 'radio-group',
         options: [
           { value: 'false', label: 'Revise (create new revision)' },
           { value: 'true', label: 'Override (replace existing)' },
         ],
-        initialValue: 'false',
+        // No default — force a conscious choice every time a file is attached.
+        initialValue: null,
+        validators: [Validators.required],
       },
       isVerified: {
         name: 'isVerified',
@@ -334,7 +336,12 @@ export class FileMapperService {
       },
     };
 
+    // The override-vs-revise toggle only matters when editing an existing file;
+    // for new uploads there's nothing to override, so filename collisions silently
+    // become a "-revN" copy on disk. Hide the field in that case.
+    const isNewFile = !file.id;
     return fields
+      .filter((fieldName) => !(isNewFile && fieldName === 'overrideFile'))
       .map((fieldName) => allFields[fieldName])
       .filter((field): field is RfFormField => field !== undefined);
   }

@@ -69,3 +69,65 @@
     (cancel)="onCancelDraftDialog()"
   ></app-file-draft-comparison-dialog>
 }
+
+<!-- Pre-upload duplicate review dialog -->
+@if (duplicateReport(); as report) {
+  <div class="dup-overlay" (click)="onDuplicateCancel()">
+    <div class="dup-modal" (click)="$event.stopPropagation()">
+      <div class="dup-header">
+        <h3>Possible duplicate files</h3>
+        <button class="dup-close" type="button" (click)="onDuplicateCancel()">&times;</button>
+      </div>
+      <div class="dup-body">
+        <p class="dup-intro">
+          The file you're about to upload has a similar (or identical) file number to existing files.
+          Exact matches are highlighted. Click <strong>View</strong> to open one before deciding.
+        </p>
+        <div class="dup-table-wrap">
+          <table class="dup-table">
+            <thead>
+              <tr>
+                <th>Match</th>
+                <th>File Number</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Vendor</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of report.nameMatches; track m.file.id) {
+                <tr [class.dup-exact]="m.distance === 0">
+                  <td>
+                    @if (m.distance === 0) {
+                      <span class="dup-badge dup-badge-exact">EXACT</span>
+                    } @else {
+                      <span class="dup-badge dup-badge-close">≈ {{ m.distance }}</span>
+                    }
+                  </td>
+                  <td class="dup-fn">{{ (m.file.fileNumber && m.file.fileNumber.length > 0 ? m.file.fileNumber.join(', ') : '—') }}</td>
+                  <td>{{ m.file.name || '—' }}</td>
+                  <td>{{ m.file.fileType?.name || '—' }}</td>
+                  <td>{{ m.file.vendor?.name || '—' }}</td>
+                  <td>
+                    @if (m.file.fileLink) {
+                      <a class="dup-view" [href]="resolveFileUrl(m.file.fileLink)" target="_blank" rel="noopener">View</a>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="dup-footer">
+        <button type="button" class="dup-btn dup-btn-cancel" (click)="onDuplicateCancel()">
+          Cancel upload
+        </button>
+        <button type="button" class="dup-btn dup-btn-primary" (click)="onDuplicateContinue()">
+          Continue anyway
+        </button>
+      </div>
+    </div>
+  </div>
+}

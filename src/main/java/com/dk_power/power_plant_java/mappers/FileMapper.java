@@ -155,15 +155,23 @@ public class FileMapper implements BaseMapper {
         if (dto.getDateCreated() != null) fileObject.setDateCreated(dto.getDateCreated());
         if (dto.getDateModified() != null) fileObject.setDateModified(dto.getDateModified());
 
-        // Set fields specific to FileIdDto
-        if (dto.getFileType() != null) fileObject.setFileType(valueService.findById(dto.getFileType()).orElse(null));
+        // Set fields specific to FileIdDto.
+        // Note: frontend defaults FK IDs to 0 when unset (see file-id.model.ts). Treat 0 as
+        // "not provided" so existing FKs on the loaded entity aren't overwritten with null.
+        if (dto.getFileType() != null && dto.getFileType() > 0) {
+            fileObject.setFileType(valueService.findById(dto.getFileType()).orElse(null));
+        }
         if (dto.getFileLink() != null) fileObject.setFileLink(dto.getFileLink());
         if (dto.getBaseLink() != null) fileObject.setBaseLink(dto.getBaseLink());
         if (dto.getFolder() != null) fileObject.setFolder(dto.getFolder());
-        if (dto.getSystem() != null) fileObject.setSystem(valueService.findById(dto.getSystem()).orElse(null));
+        if (dto.getSystem() != null && dto.getSystem() > 0) {
+            fileObject.setSystem(valueService.findById(dto.getSystem()).orElse(null));
+        }
         if (dto.getRelatedSystems() != null) fileObject.setRelatedSystems(dto.getRelatedSystemsAsString());
         if (dto.getFileNumber() != null && !dto.getFileNumber().isEmpty()) fileObject.setFileNumber(convertFileNumberArrayToString(dto.getFileNumber()));
-        if (dto.getVendor() != null) fileObject.setVendor(valueService.findById(dto.getVendor()).orElse(null));
+        if (dto.getVendor() != null && dto.getVendor() > 0) {
+            fileObject.setVendor(valueService.findById(dto.getVendor()).orElse(null));
+        }
         if (dto.getObjectType() != null) fileObject.setObjectType(dto.getObjectType());
         if (dto.getExtension() != null) fileObject.setExtension(dto.getExtension());
         if (dto.getBulkEditStep() != null) fileObject.setBulkEditStep(dto.getBulkEditStep());

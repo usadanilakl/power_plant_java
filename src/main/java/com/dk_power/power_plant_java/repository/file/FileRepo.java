@@ -28,6 +28,10 @@ public interface FileRepo extends BaseRepository<FileObject> {
     /** All files with a non-null perceptual hash — for in-memory Hamming distance comparison. */
     @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.perceptualHash IS NOT NULL")
     List<FileObject> findAllWithPerceptualHash();
+
+    /** All files with a non-empty file number — used for Levenshtein-based name dedup. */
+    @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.fileNumber IS NOT NULL AND e.fileNumber <> ''")
+    List<FileObject> findAllWithFileNumber();
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
     List<FileObject> findByVendor(Value vendor);

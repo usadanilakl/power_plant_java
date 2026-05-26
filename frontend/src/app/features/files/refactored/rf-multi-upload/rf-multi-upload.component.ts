@@ -393,6 +393,13 @@ export class RfMultiUploadComponent implements OnInit {
     this.onClose();
   }
 
+  /** Build a clickable URL for a file's stored fileLink. */
+  resolveFileUrl(fileLink: string | null | undefined): string {
+    if (!fileLink) return '';
+    if (fileLink.startsWith('http')) return fileLink;
+    return fileLink.startsWith('/') ? fileLink : '/' + fileLink;
+  }
+
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;

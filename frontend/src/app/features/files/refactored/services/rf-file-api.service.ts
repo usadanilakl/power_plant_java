@@ -229,8 +229,14 @@ export interface VisualDuplicateMatch {
   hammingDistance: number;
 }
 
+export interface NameDuplicateMatch {
+  file: FileDto;
+  /** Levenshtein distance from the queried file number. 0 = exact. */
+  distance: number;
+}
+
 export interface DuplicateReport {
   exactMatches: FileDto[];
   visualMatches: VisualDuplicateMatch[];
-  nameMatches: FileDto[];
+  nameMatches: NameDuplicateMatch[];
 }

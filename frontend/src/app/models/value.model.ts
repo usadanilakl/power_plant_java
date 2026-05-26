@@ -41,6 +41,15 @@ export class ValueDto implements ValueModel {
   // Deserialization method (static)
   static fromJson(json: any): ValueDto {
     if (!json) return new ValueDto(); // Return a default ValueDto if json is null or undefined
+    // Form fields often hand us a raw number (the Value's id) rather than an object.
+    // Treat that as the id so downstream extractId() picks it up instead of returning 0.
+    if (typeof json === 'number') {
+      return new ValueDto({ id: json });
+    }
+    if (typeof json === 'string') {
+      const n = Number(json);
+      if (!Number.isNaN(n)) return new ValueDto({ id: n });
+    }
     return new ValueDto({
       id: json.id ?? 0, // Use nullish coalescing to provide a default value
       name: json.name || '',

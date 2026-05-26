@@ -16,12 +16,15 @@ import { ClipboardFormComponent } from '../../../../shared/reactive-form/refacto
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
 import { FileMapperService } from '../services/rf-file-mapper.service';
 import { FileDraftComparisonDialogComponent } from '../file-draft-comparison-dialog/file-draft-comparison-dialog.component';
+import { CommonModule } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
+import { DuplicateReport, RfFileApiService } from '../services/rf-file-api.service';
 
 type FileFieldName = keyof FileDto;
 
 @Component({
   selector: 'app-rf-file-form',
-  imports: [RfReactiveFormComponent, ClipboardFormComponent, FileDraftComparisonDialogComponent],
+  imports: [CommonModule, RfReactiveFormComponent, ClipboardFormComponent, FileDraftComparisonDialogComponent],
   templateUrl: './rf-file-form.component.html',
   styleUrl: './rf-file-form.component.css',
 })
@@ -29,6 +32,13 @@ export class RfFileFormComponent {
   protected stateService = inject(RfFileStateService);
   protected mapperService = inject(FileMapperService);
   protected clipboardService = inject(ClipboardService);
+  private fileApi = inject(RfFileApiService);
+
+  // Pre-upload duplicate check state
+  protected duplicateReport = signal<DuplicateReport | null>(null);
+  protected isCheckingDuplicates = signal<boolean>(false);
+  // Held until user resolves the duplicate modal.
+  private pendingSubmit: { fileDtoData: any; file: File; overrideFile: string } | null = null;
 
   entityInput = input<FileDto>();
   fieldsInput = input<FileFieldName[]>([]);
@@ -231,7 +241,7 @@ export class RfFileFormComponent {
     }
   }
 
-  onSubmit(formData: any) {
+  async onSubmit(formData: any) {
     // Extract file and overrideFile from form data (they're not part of FileDto)
     const file: File | null = formData.file instanceof File ? formData.file : null;
     const overrideFile: string = formData.overrideFile ?? 'false';
@@ -239,13 +249,76 @@ export class RfFileFormComponent {
     // Remove file upload fields from the data before creating FileDto
     const { file: _, overrideFile: __, ...fileDtoData } = formData;
 
-    // If a file is being uploaded, use the file upload flow
-    if (file) {
-      this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
-    } else {
-      // No file - just update metadata
+    // Metadata-only update: no dedup needed.
+    if (!file) {
       this.stateService.submitForm(fileDtoData);
+      return;
     }
+
+    // Pre-upload name duplicate check — only for NEW uploads (no id).
+    // For edits, the current file would trivially match itself.
+    const isNew = !fileDtoData.id;
+    if (isNew) {
+      const proceed = await this.runPreUploadCheck(file, fileDtoData);
+      if (!proceed) {
+        // Either user cancelled, or modal is now open awaiting their choice.
+        // Hold the submit data — modal callbacks will resume.
+        if (this.duplicateReport()) {
+          this.pendingSubmit = { fileDtoData, file, overrideFile };
+        }
+        return;
+      }
+    }
+
+    this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
+  }
+
+  /**
+   * Returns true if upload should proceed immediately, false if blocked (either
+   * cancelled or a modal was opened to be resolved by the user).
+   */
+  private async runPreUploadCheck(file: File, fileDtoData: any): Promise<boolean> {
+    // Use the form's fileNumber if set (multi-token); fall back to the filename.
+    const tokens: string[] = Array.isArray(fileDtoData?.fileNumber) && fileDtoData.fileNumber.length > 0
+      ? fileDtoData.fileNumber
+      : [file.name.replace(/\.[^.]+$/, '')];
+    this.isCheckingDuplicates.set(true);
+    try {
+      const res = await firstValueFrom(this.fileApi.checkDuplicatesByName(tokens));
+      this.isCheckingDuplicates.set(false);
+      const report = res.responseData;
+      if (!report || !report.nameMatches || report.nameMatches.length === 0) {
+        return true; // no duplicates, proceed
+      }
+      this.duplicateReport.set(report);
+      return false; // modal opened; resumed via modal callbacks
+    } catch {
+      this.isCheckingDuplicates.set(false);
+      return true; // don't block on duplicate-check failures
+    }
+  }
+
+  /** User confirmed they want to proceed despite duplicates. */
+  protected onDuplicateContinue(): void {
+    this.duplicateReport.set(null);
+    if (this.pendingSubmit) {
+      const { fileDtoData, file, overrideFile } = this.pendingSubmit;
+      this.pendingSubmit = null;
+      this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
+    }
+  }
+
+  /** User cancelled the upload from the duplicate modal. */
+  protected onDuplicateCancel(): void {
+    this.duplicateReport.set(null);
+    this.pendingSubmit = null;
+  }
+
+  /** Build a clickable URL for an existing file's stored fileLink. */
+  protected resolveFileUrl(fileLink: string | null | undefined): string {
+    if (!fileLink) return '';
+    if (fileLink.startsWith('http')) return fileLink;
+    return fileLink.startsWith('/') ? fileLink : '/' + fileLink;
   }
 
   // Draft dialog handlers

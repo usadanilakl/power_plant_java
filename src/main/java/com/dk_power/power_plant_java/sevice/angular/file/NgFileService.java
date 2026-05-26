@@ -678,44 +678,71 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             report.visualMatches.sort((a, b) -> Integer.compare(a.hammingDistance, b.hammingDistance));
         }
 
-        // 3. Name-token match: any meaningful token from fileNumber appears in another file's fileNumber
+        // 3. Name match: full-string normalized comparison. Levenshtein distance
+        //    against the FULL joined file number — the old per-token approach was
+        //    far too loose for hierarchical numbers like "94.03.32.100-PD-0013-001.08.INF.08.01"
+        //    where individual tokens ("94", "PD", "001") appear in thousands of files.
         if (fileNumber != null && !fileNumber.isEmpty()) {
-            java.util.Set<Long> seen = new java.util.HashSet<>();
-            report.exactMatches.forEach(d -> seen.add(d.getId()));
-            report.visualMatches.forEach(m -> seen.add(m.file.getId()));
+            String normalizedInput = com.dk_power.power_plant_java.util.StringSimilarityUtil.normalize(
+                    String.join("__SEP__", fileNumber.stream()
+                            .filter(java.util.Objects::nonNull)
+                            .toList())
+            );
+            if (!normalizedInput.isEmpty()) {
+                java.util.Set<Long> seen = new java.util.HashSet<>();
+                report.exactMatches.forEach(d -> seen.add(d.getId()));
+                report.visualMatches.forEach(m -> seen.add(m.file.getId()));
 
-            java.util.LinkedHashSet<String> tokens = new java.util.LinkedHashSet<>();
-            for (String part : fileNumber) {
-                if (part == null) continue;
-                for (String t : part.split("[-_\\s\\.]+")) {
-                    String trimmed = t.trim();
-                    if (trimmed.length() >= 2) {
-                        tokens.add(trimmed);
+                // Width filter: only consider candidates whose length is in the ballpark.
+                // This avoids running Levenshtein against the entire table.
+                int len = normalizedInput.length();
+                int widthSlack = Math.max(nameDistanceThreshold + 2, len / 3);
+                int minLen = Math.max(1, len - widthSlack);
+                int maxLen = len + widthSlack;
+
+                for (FileObject f : fileRepo.findAllWithFileNumber()) {
+                    if (excludeId != null && excludeId.equals(f.getId())) continue;
+                    if (seen.contains(f.getId())) continue;
+                    String candidate = com.dk_power.power_plant_java.util.StringSimilarityUtil.normalize(f.getFileNumber());
+                    if (candidate.isEmpty()) continue;
+                    if (candidate.length() < minLen || candidate.length() > maxLen) continue;
+
+                    int distance = com.dk_power.power_plant_java.util.StringSimilarityUtil
+                            .levenshtein(normalizedInput, candidate);
+                    if (distance <= nameDistanceThreshold) {
+                        NameMatch nm = new NameMatch();
+                        nm.file = toDtoLight(f);
+                        nm.distance = distance;
+                        report.nameMatches.add(nm);
+                        seen.add(f.getId());
                     }
                 }
-            }
-            for (String token : tokens) {
-                fileRepo.findByFileNumberContaining(token).forEach(f -> {
-                    if (excludeId != null && excludeId.equals(f.getId())) return;
-                    if (seen.contains(f.getId())) return;
-                    seen.add(f.getId());
-                    report.nameMatches.add(toDtoLight(f));
-                });
+                report.nameMatches.sort((a, b) -> Integer.compare(a.distance, b.distance));
             }
         }
 
         return report;
     }
 
+    /** Max Levenshtein distance for a file-number to count as a potential duplicate. */
+    private static final int nameDistanceThreshold = 5;
+
     public static class DuplicateReport {
         public List<FileDto> exactMatches = new ArrayList<>();
         public List<VisualMatch> visualMatches = new ArrayList<>();
-        public List<FileDto> nameMatches = new ArrayList<>();
+        /** Files whose normalized fileNumber is within {@link #nameDistanceThreshold} of the input. */
+        public List<NameMatch> nameMatches = new ArrayList<>();
     }
 
     public static class VisualMatch {
         public FileDto file;
         public int hammingDistance;
+    }
+
+    public static class NameMatch {
+        public FileDto file;
+        /** Levenshtein distance from the queried file number. 0 = exact. */
+        public int distance;
     }
 
     /**

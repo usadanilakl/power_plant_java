@@ -5,7 +5,7 @@ import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { tap, catchError, switchMap, debounceTime } from "rxjs/operators";
-import { of } from "rxjs";
+import { firstValueFrom, of } from "rxjs";
 import { RfFormField } from "../../../../models/ui/form-field.model";
 import { RfFileApiService } from "./rf-file-api.service";
 import { FileLocalStorageService } from "./rf-file-local-storage.service";
@@ -315,9 +315,14 @@ export class RfFileStateService {
       .subscribe();
   }
 
-  submitFormWithFile(item: Partial<FileDto>, file: File, overrideFile: string): void {
+  async submitFormWithFile(item: Partial<FileDto>, file: File, overrideFile: string): Promise<void> {
     const fileId = item.id || null;
     const isNew = !fileId;
+
+    // Pre-upload duplicate check is now handled by the FORM component, which
+    // shows a proper modal with View links. By the time we get here the user
+    // has already acknowledged any name matches. The post-upload hash check
+    // (with self-exclusion) still runs below in both flows.
 
     // Set processing state
     this.isProcessing.set(true);
@@ -361,6 +366,9 @@ export class RfFileStateService {
             : 'File uploaded successfully');
           // Close the form (this also clears processing state)
           this.closeForm();
+
+          // ---- Post-upload duplicate check by hash (fire-and-forget) ----
+          this.runPostUploadDuplicateCheck(fileDtos);
         }),
         catchError((error) => {
           console.error('Error uploading file:', error);
@@ -374,6 +382,48 @@ export class RfFileStateService {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  /**
+   * After save, ask the backend whether each new file's hash/perceptual-hash
+   * matches an existing entry. If yes, offer to undo the upload.
+   */
+  private async runPostUploadDuplicateCheck(uploaded: FileDto[]): Promise<void> {
+    for (const f of uploaded) {
+      try {
+        const res = await firstValueFrom(this.apiService.checkDuplicatesPostUpload(f.id));
+        const report = res.responseData;
+        const exact = report?.exactMatches ?? [];
+        const visual = report?.visualMatches ?? [];
+        if (exact.length === 0 && visual.length === 0) continue;
+
+        let msg = `"${f.name || (f.fileNumber || []).join(', ')}" looks like a duplicate:\n\n`;
+        if (exact.length > 0) {
+          msg += `Byte-identical:\n` + exact.slice(0, 5)
+            .map(m => `• ${(m.fileNumber || []).join(', ') || m.name}`).join('\n') + '\n\n';
+        }
+        if (visual.length > 0) {
+          msg += `Visually similar:\n` + visual.slice(0, 5)
+            .map(m => `• ${(m.file.fileNumber || []).join(', ') || m.file.name} (distance ${m.hammingDistance})`)
+            .join('\n') + '\n\n';
+        }
+        msg += `Undo this upload (move to trash)?`;
+
+        if (window.confirm(msg)) {
+          try {
+            await firstValueFrom(this.apiService.deleteFile(String(f.id)));
+            // Drop it from the cached files list
+            const current = this.allLoadedFilesSubject.value;
+            this.allLoadedFilesSubject.next(current.filter(x => x.id !== f.id));
+            this.messageService.showWarning(`Upload undone: ${f.name || f.id}`);
+          } catch (e) {
+            this.messageService.showError('Failed to undo upload');
+          }
+        }
+      } catch {
+        // Ignore — duplicate check is best-effort.
+      }
+    }
   }
 
   saveDraft(item: FileDto): void {
