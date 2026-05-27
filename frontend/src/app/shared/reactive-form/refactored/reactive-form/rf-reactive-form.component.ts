@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -83,6 +83,7 @@ export class RfReactiveFormComponent {
   private validationService = inject(FormValidationService);
   private dataService = inject(FormDataService);
   private destroyRef = inject(DestroyRef);
+  private elementRef = inject(ElementRef);
 
   // State
   formErrors = signal<{ [key: string]: string }>({});
@@ -338,7 +339,26 @@ export class RfReactiveFormComponent {
     } else {
       this.form.markAllAsTouched();
       this.updateFormErrors();
+      this.focusFirstInvalidField();
     }
+  }
+
+  /** Scroll the first invalid field into view and focus its input. */
+  private focusFirstInvalidField(): void {
+    // Run after Angular flushes the touched-state changes so error styling renders.
+    setTimeout(() => {
+      const host: HTMLElement = this.elementRef?.nativeElement ?? document.body;
+      const invalid = host.querySelector(
+        '.ng-invalid.ng-touched, input.ng-invalid, textarea.ng-invalid, select.ng-invalid'
+      ) as HTMLElement | null;
+      if (invalid) {
+        invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const focusable = (invalid.matches('input,textarea,select')
+          ? invalid
+          : invalid.querySelector('input,textarea,select')) as HTMLElement | null;
+        focusable?.focus();
+      }
+    }, 0);
   }
 
   onDelete(): void {

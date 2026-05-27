@@ -37,3 +37,74 @@
 
 <!-- Export Dialog -->
 <app-export-dialog></app-export-dialog>
+
+<!-- Post-upload duplicate review modal — lives at the page level so it survives the form closing -->
+@if (stateService.postUploadDuplicate(); as pending) {
+  <div class="dup-overlay" (mousedown)="stateService.resolvePostUploadKeep()">
+    <div class="dup-modal" (mousedown)="$event.stopPropagation()">
+      <div class="dup-header">
+        <h3>Possible duplicate detected</h3>
+        <button class="dup-close" type="button" (click)="stateService.resolvePostUploadKeep()">&times;</button>
+      </div>
+      <div class="dup-body">
+        <p class="dup-intro">
+          Your upload
+          <strong>"{{ pending.uploadedFile.name || (pending.uploadedFile.fileNumber && pending.uploadedFile.fileNumber.length > 0 ? pending.uploadedFile.fileNumber.join(', ') : '—') }}"</strong>
+          matches existing file(s) by content hash. Review and decide whether to keep it or undo the upload.
+        </p>
+        <div class="dup-table-wrap">
+          <table class="dup-table">
+            <thead>
+              <tr>
+                <th>Match</th>
+                <th>File Number</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Vendor</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of pending.exactMatches; track m.id) {
+                <tr class="dup-exact">
+                  <td><span class="dup-badge dup-badge-exact">BYTE-MATCH</span></td>
+                  <td class="dup-fn">{{ (m.fileNumber && m.fileNumber.length > 0 ? m.fileNumber.join(', ') : '—') }}</td>
+                  <td>{{ m.name || '—' }}</td>
+                  <td>{{ m.fileType?.name || '—' }}</td>
+                  <td>{{ m.vendor?.name || '—' }}</td>
+                  <td>
+                    @if (m.fileLink) {
+                      <a class="dup-view" [href]="resolveFileUrl(m)" target="_blank" rel="noopener">View</a>
+                    }
+                  </td>
+                </tr>
+              }
+              @for (m of pending.visualMatches; track m.file.id) {
+                <tr>
+                  <td><span class="dup-badge dup-badge-close">VISUAL ~{{ m.hammingDistance }}</span></td>
+                  <td class="dup-fn">{{ (m.file.fileNumber && m.file.fileNumber.length > 0 ? m.file.fileNumber.join(', ') : '—') }}</td>
+                  <td>{{ m.file.name || '—' }}</td>
+                  <td>{{ m.file.fileType?.name || '—' }}</td>
+                  <td>{{ m.file.vendor?.name || '—' }}</td>
+                  <td>
+                    @if (m.file.fileLink) {
+                      <a class="dup-view" [href]="resolveFileUrl(m.file)" target="_blank" rel="noopener">View</a>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="dup-footer">
+        <button type="button" class="dup-btn dup-btn-cancel" (click)="stateService.resolvePostUploadUndo()">
+          Undo upload (move to trash)
+        </button>
+        <button type="button" class="dup-btn dup-btn-primary" (click)="stateService.resolvePostUploadKeep()">
+          Keep upload
+        </button>
+      </div>
+    </div>
+  </div>
+}

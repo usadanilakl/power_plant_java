@@ -32,6 +32,14 @@ public interface FileRepo extends BaseRepository<FileObject> {
     /** All files with a non-empty file number — used for Levenshtein-based name dedup. */
     @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.fileNumber IS NOT NULL AND e.fileNumber <> ''")
     List<FileObject> findAllWithFileNumber();
+
+    /** IDs of files missing either fileHash or perceptualHash — for incremental backfill. */
+    @Query("SELECT e.id FROM FileObject e WHERE e.fileHash IS NULL OR e.fileHash = '' OR e.perceptualHash IS NULL OR e.perceptualHash = ''")
+    List<Long> findIdsNeedingHash();
+
+    /** All file IDs — for full re-hash when the perceptual algorithm itself changes. */
+    @Query("SELECT e.id FROM FileObject e")
+    List<Long> findAllIds();
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
     List<FileObject> findByVendor(Value vendor);

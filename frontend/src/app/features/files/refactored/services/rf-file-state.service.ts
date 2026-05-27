@@ -7,7 +7,16 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { tap, catchError, switchMap, debounceTime } from "rxjs/operators";
 import { firstValueFrom, of } from "rxjs";
 import { RfFormField } from "../../../../models/ui/form-field.model";
-import { RfFileApiService } from "./rf-file-api.service";
+import { RfFileApiService, VisualDuplicateMatch } from "./rf-file-api.service";
+
+/** Pending post-upload duplicate review surfaced to the host component as a modal. */
+export interface PostUploadDuplicate {
+  uploadedFile: FileDto;
+  exactMatches: FileDto[];
+  visualMatches: VisualDuplicateMatch[];
+  /** Resolved when the user picks Keep or Undo — lets the service await the user's choice. */
+  resolve: () => void;
+}
 import { FileLocalStorageService } from "./rf-file-local-storage.service";
 import { GlobalMessageService } from "../../../../shared/global-message/global-message.service";
 import { CurrentFileService } from "../../../../services/current-file.service";
@@ -388,42 +397,58 @@ export class RfFileStateService {
    * After save, ask the backend whether each new file's hash/perceptual-hash
    * matches an existing entry. If yes, offer to undo the upload.
    */
+  /** State of the post-upload duplicate review modal (rendered by the host component). */
+  postUploadDuplicate = signal<PostUploadDuplicate | null>(null);
+
   private async runPostUploadDuplicateCheck(uploaded: FileDto[]): Promise<void> {
     for (const f of uploaded) {
       try {
+        console.log('[DupCheck] Checking file id=' + f.id + ' name=' + f.name);
         const res = await firstValueFrom(this.apiService.checkDuplicatesPostUpload(f.id));
         const report = res.responseData;
         const exact = report?.exactMatches ?? [];
         const visual = report?.visualMatches ?? [];
+        console.log('[DupCheck] Result for id=' + f.id + ':',
+          { exact: exact.length, visual: visual.length, report });
         if (exact.length === 0 && visual.length === 0) continue;
 
-        let msg = `"${f.name || (f.fileNumber || []).join(', ')}" looks like a duplicate:\n\n`;
-        if (exact.length > 0) {
-          msg += `Byte-identical:\n` + exact.slice(0, 5)
-            .map(m => `• ${(m.fileNumber || []).join(', ') || m.name}`).join('\n') + '\n\n';
-        }
-        if (visual.length > 0) {
-          msg += `Visually similar:\n` + visual.slice(0, 5)
-            .map(m => `• ${(m.file.fileNumber || []).join(', ') || m.file.name} (distance ${m.hammingDistance})`)
-            .join('\n') + '\n\n';
-        }
-        msg += `Undo this upload (move to trash)?`;
-
-        if (window.confirm(msg)) {
-          try {
-            await firstValueFrom(this.apiService.deleteFile(String(f.id)));
-            // Drop it from the cached files list
-            const current = this.allLoadedFilesSubject.value;
-            this.allLoadedFilesSubject.next(current.filter(x => x.id !== f.id));
-            this.messageService.showWarning(`Upload undone: ${f.name || f.id}`);
-          } catch (e) {
-            this.messageService.showError('Failed to undo upload');
-          }
-        }
-      } catch {
-        // Ignore — duplicate check is best-effort.
+        // Surface a proper modal to the host component. Show one duplicate group
+        // at a time — user resolves it (Keep or Undo), then we move to the next.
+        await new Promise<void>(resolve => {
+          this.postUploadDuplicate.set({
+            uploadedFile: f,
+            exactMatches: exact,
+            visualMatches: visual,
+            resolve,
+          });
+        });
+      } catch (e) {
+        console.error('[DupCheck] Failed for id=' + f.id, e);
       }
     }
+  }
+
+  /** Called from the modal when the user clicks "Keep upload". */
+  resolvePostUploadKeep(): void {
+    const pending = this.postUploadDuplicate();
+    this.postUploadDuplicate.set(null);
+    pending?.resolve();
+  }
+
+  /** Called from the modal when the user clicks "Undo upload". Deletes the just-uploaded file. */
+  async resolvePostUploadUndo(): Promise<void> {
+    const pending = this.postUploadDuplicate();
+    if (!pending) return;
+    try {
+      await firstValueFrom(this.apiService.deleteFile(String(pending.uploadedFile.id)));
+      const current = this.allLoadedFilesSubject.value;
+      this.allLoadedFilesSubject.next(current.filter(x => x.id !== pending.uploadedFile.id));
+      this.messageService.showWarning(`Upload undone: ${pending.uploadedFile.name || pending.uploadedFile.id}`);
+    } catch {
+      this.messageService.showError('Failed to undo upload');
+    }
+    this.postUploadDuplicate.set(null);
+    pending.resolve();
   }
 
   saveDraft(item: FileDto): void {

@@ -1,5 +1,5 @@
-<div class="multi-upload-overlay" (click)="onClose()">
-  <div class="multi-upload-dialog" (click)="$event.stopPropagation()">
+<div class="multi-upload-overlay" (mousedown)="onClose()">
+  <div class="multi-upload-dialog" (mousedown)="$event.stopPropagation()">
     <div class="dialog-header">
       <h2>Upload Multiple Files</h2>
       <button class="close-btn" (click)="onClose()" [disabled]="isUploading()">
@@ -236,8 +236,8 @@
 
 <!-- Pre-upload duplicate modal — shown if name tokens overlap with existing files -->
 @if (duplicateReport(); as report) {
-  <div class="multi-upload-overlay" (click)="cancelDuplicateModal()">
-    <div class="multi-upload-dialog dup-dialog" (click)="$event.stopPropagation()">
+  <div class="multi-upload-overlay" (mousedown)="cancelDuplicateModal()">
+    <div class="multi-upload-dialog dup-dialog" (mousedown)="$event.stopPropagation()">
       <div class="dialog-header">
         <h2>Possible duplicates found</h2>
         <button class="close-btn" (click)="cancelDuplicateModal()">&times;</button>
@@ -247,6 +247,11 @@
           Existing files with similar (or identical) file numbers were found. Exact matches are highlighted.
           Click <strong>View</strong> to open one in a new tab before deciding.
         </p>
+        <div class="dup-action-note">
+          <strong>Note:</strong> "Save as new file" creates a new FileObject (on-disk filename gets
+          auto-suffixed with <code>-rev1</code> on collision). To update an existing file's bytes or
+          attach a revision to a specific entry, cancel and use the file editor instead.
+        </div>
         <table class="dup-table">
           <thead>
             <tr>
@@ -274,7 +279,7 @@
                 <td>{{ m.file.vendor?.name || '—' }}</td>
                 <td>
                   @if (m.file.fileLink) {
-                    <a class="view-link" [href]="resolveFileUrl(m.file.fileLink)" target="_blank" rel="noopener">View</a>
+                    <a class="view-link" [href]="resolveFileUrl(m.file)" target="_blank" rel="noopener">View</a>
                   }
                 </td>
               </tr>
@@ -284,7 +289,7 @@
       </div>
       <div class="dialog-footer">
         <button class="cancel-btn" (click)="cancelDuplicateModal()">Cancel upload</button>
-        <button class="upload-btn" (click)="acknowledgeNameDuplicates()">Continue anyway</button>
+        <button class="upload-btn" (click)="acknowledgeNameDuplicates()">Save as new file</button>
       </div>
     </div>
   </div>

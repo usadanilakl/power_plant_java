@@ -298,7 +298,7 @@ export class RfFileFormComponent {
     }
   }
 
-  /** User confirmed they want to proceed despite duplicates. */
+  /** User confirmed they want to proceed despite duplicates — saves as a NEW FileObject. */
   protected onDuplicateContinue(): void {
     this.duplicateReport.set(null);
     if (this.pendingSubmit) {
@@ -308,17 +308,71 @@ export class RfFileFormComponent {
     }
   }
 
+  /**
+   * User chose to OVERRIDE a specific matched file — replaces its bytes,
+   * keeps the matched file's identity (id, fileNumber, fileType, vendor).
+   */
+  protected onOverrideMatch(matchFile: FileDto): void {
+    this.applyToMatch(matchFile, 'true');
+  }
+
+  /**
+   * User chose to REVISE a specific matched file — writes new bytes with a
+   * "-revN" suffix on disk. Matched FileObject is updated to point at the new
+   * revision; the old bytes are preserved on disk for recovery.
+   */
+  protected onReviseMatch(matchFile: FileDto): void {
+    this.applyToMatch(matchFile, 'false');
+  }
+
+  /** Submit using the matched file's identity, attaching the user's selected bytes. */
+  private applyToMatch(matchFile: FileDto, overrideFile: string): void {
+    if (!this.pendingSubmit) return;
+    const { file } = this.pendingSubmit;
+    const targetDto: any = {
+      id: matchFile.id,
+      name: matchFile.name,
+      fileNumber: matchFile.fileNumber,
+      fileType: matchFile.fileType?.id ?? null,
+      vendor: matchFile.vendor?.id ?? null,
+      baseLink: matchFile.baseLink,
+      isVerified: matchFile.isVerified,
+    };
+    this.duplicateReport.set(null);
+    this.pendingSubmit = null;
+    this.stateService.submitFormWithFile(targetDto, file, overrideFile);
+  }
+
   /** User cancelled the upload from the duplicate modal. */
   protected onDuplicateCancel(): void {
     this.duplicateReport.set(null);
     this.pendingSubmit = null;
   }
 
-  /** Build a clickable URL for an existing file's stored fileLink. */
-  protected resolveFileUrl(fileLink: string | null | undefined): string {
-    if (!fileLink) return '';
-    if (fileLink.startsWith('http')) return fileLink;
-    return fileLink.startsWith('/') ? fileLink : '/' + fileLink;
+  /**
+   * Build a clickable URL for an existing file. The backend SHOULD store fileLink
+   * with its baseLink prefix (e.g. "uploads-prod/pdf/PID/..."), but some legacy
+   * entries were saved with empty baseLink, producing "/pdf/PID/..." which
+   * Spring's static resource handler doesn't map.
+   *
+   * Resolution order:
+   *   1. If fileLink already starts with an "uploads*" segment, trust it.
+   *   2. Use file.baseLink if set.
+   *   3. Fall back to "uploads" — WebConfigurer always maps /uploads/** to the
+   *      profile folder regardless of profile, so this is a safe universal prefix.
+   */
+  protected resolveFileUrl(file: FileDto | null | undefined): string {
+    if (!file?.fileLink) return '';
+    if (file.fileLink.startsWith('http')) return file.fileLink;
+    let path = file.fileLink.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!/^uploads(-|\/)/.test(path)) {
+      const base = (file.baseLink || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+      const prefix = base || 'uploads';
+      if (!path.startsWith(prefix + '/')) {
+        path = prefix + '/' + path;
+      }
+    }
+    return '/' + path;
   }
 
   // Draft dialog handlers

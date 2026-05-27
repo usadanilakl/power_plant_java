@@ -207,7 +207,7 @@ export class RfFileApiService {
   }
 
   /** Post-upload duplicate check using fileHash + perceptualHash on the saved entity. */
-  checkDuplicatesPostUpload(fileId: number, phashThreshold = 10): Observable<SpringApiResponse<DuplicateReport>> {
+  checkDuplicatesPostUpload(fileId: number, phashThreshold = 6): Observable<SpringApiResponse<DuplicateReport>> {
     const params = new HttpParams().set('phashThreshold', String(phashThreshold));
     return this.http.get<SpringApiResponse<DuplicateReport>>(
       `${this.apiUrl}/${fileId}/check-duplicates`,

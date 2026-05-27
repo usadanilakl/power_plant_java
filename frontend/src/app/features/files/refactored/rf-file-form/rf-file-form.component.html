@@ -72,16 +72,18 @@
 
 <!-- Pre-upload duplicate review dialog -->
 @if (duplicateReport(); as report) {
-  <div class="dup-overlay" (click)="onDuplicateCancel()">
-    <div class="dup-modal" (click)="$event.stopPropagation()">
+  <div class="dup-overlay" (mousedown)="onDuplicateCancel()">
+    <div class="dup-modal" (mousedown)="$event.stopPropagation()">
       <div class="dup-header">
         <h3>Possible duplicate files</h3>
         <button class="dup-close" type="button" (click)="onDuplicateCancel()">&times;</button>
       </div>
       <div class="dup-body">
         <p class="dup-intro">
-          The file you're about to upload has a similar (or identical) file number to existing files.
-          Exact matches are highlighted. Click <strong>View</strong> to open one before deciding.
+          Existing files match the file number you're uploading. <strong>Override</strong> replaces a
+          file's bytes (old bytes lost). <strong>Revise</strong> writes the new bytes alongside the old
+          ones with a <code>-revN</code> suffix and points the entry at the new revision. Use
+          <strong>View</strong> to inspect a file first.
         </p>
         <div class="dup-table-wrap">
           <table class="dup-table">
@@ -92,7 +94,7 @@
                 <th>Name</th>
                 <th>Type</th>
                 <th>Vendor</th>
-                <th></th>
+                <th class="dup-actions-col">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -109,23 +111,34 @@
                   <td>{{ m.file.name || '—' }}</td>
                   <td>{{ m.file.fileType?.name || '—' }}</td>
                   <td>{{ m.file.vendor?.name || '—' }}</td>
-                  <td>
+                  <td class="dup-actions-col">
                     @if (m.file.fileLink) {
-                      <a class="dup-view" [href]="resolveFileUrl(m.file.fileLink)" target="_blank" rel="noopener">View</a>
+                      <a class="dup-view" [href]="resolveFileUrl(m.file)" target="_blank" rel="noopener">View</a>
                     }
+                    <button type="button" class="dup-action dup-action-override" (click)="onOverrideMatch(m.file)">
+                      Override
+                    </button>
+                    <button type="button" class="dup-action dup-action-revise" (click)="onReviseMatch(m.file)">
+                      Revise
+                    </button>
                   </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+        <div class="dup-action-note">
+          <strong>None of these are the right target?</strong> Click <em>Save as new file</em> below
+          to upload anyway as a separate FileObject (on-disk filename will be auto-suffixed with
+          <code>-rev1</code> on collision).
+        </div>
       </div>
       <div class="dup-footer">
         <button type="button" class="dup-btn dup-btn-cancel" (click)="onDuplicateCancel()">
           Cancel upload
         </button>
-        <button type="button" class="dup-btn dup-btn-primary" (click)="onDuplicateContinue()">
-          Continue anyway
+        <button type="button" class="dup-btn dup-btn-secondary" (click)="onDuplicateContinue()">
+          Save as new file
         </button>
       </div>
     </div>

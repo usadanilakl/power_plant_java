@@ -11,6 +11,7 @@ import { RfFileFormComponent } from '../rf-file-form/rf-file-form.component';
 import { RfFileLeftPanelComponent } from '../rf-file-left-panel/rf-file-left-panel.component';
 import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
 import { ExportDialogComponent } from '../../../../shared/export-dialog/export-dialog.component';
+import { FileDto } from '../../../../models/file/file.model';
 
 @Component({
   selector: 'app-rf-file-page',
@@ -31,4 +32,19 @@ import { ExportDialogComponent } from '../../../../shared/export-dialog/export-d
 })
 export class RfFilePageComponent {
   stateService = inject(RfFileStateService);
+
+  /** URL helper for the post-upload duplicate modal's "View" links. Mirrors rf-file-form's resolver. */
+  resolveFileUrl(file: FileDto | null | undefined): string {
+    if (!file?.fileLink) return '';
+    if (file.fileLink.startsWith('http')) return file.fileLink;
+    let path = file.fileLink.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!/^uploads(-|\/)/.test(path)) {
+      const base = (file.baseLink || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+      const prefix = base || 'uploads';
+      if (!path.startsWith(prefix + '/')) {
+        path = prefix + '/' + path;
+      }
+    }
+    return '/' + path;
+  }
 }

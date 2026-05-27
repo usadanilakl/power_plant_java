@@ -55,6 +55,27 @@ export interface AssignAttributesResult {
   error?: string;
 }
 
+export interface BackfillHashesResult {
+  running: boolean;
+  total: number;
+  processed: number;
+  updated: number;
+  missingOnDisk: number;
+  errors: number;
+  limit: number;
+  recomputePerceptual: boolean;
+  startedAt: number;
+  finishedAt: number;
+  // Sub-counters for `missingOnDisk`
+  skipEntityMissing: number;
+  skipNoTypeOrVendor: number;
+  skipNoExtension: number;
+  skipNoFileLink: number;
+  skipFileMissing: number;
+  skipIoError: number;
+  sampleSkipped: string[];
+}
+
 export interface FixExtensionsResult {
   success: boolean;
   dryRun: boolean;
@@ -311,6 +332,33 @@ export class AdminFunctionalitiesService {
       `${this.apiUrl}/fix-file-extensions`,
       {},
       { params }
+    );
+  }
+
+  /**
+   * Kick off a BACKGROUND backfill of fileHash + perceptualHash. Returns
+   * immediately with the live state. Poll {@link #getBackfillHashesStatus} for
+   * progress until {@code running} is false.
+   * @param limit Cap how many files to process in this run (0 = all)
+   * @param recomputePerceptual When true, walks ALL files and replaces the
+   *        perceptual hash. Use after a perceptual algorithm change (e.g.
+   *        aHash → dHash) so old stale values get overwritten.
+   */
+  backfillFileHashes(limit: number = 0, recomputePerceptual: boolean = false): Observable<SpringApiResponse<BackfillHashesResult>> {
+    const params = new HttpParams()
+      .set('limit', limit.toString())
+      .set('recomputePerceptual', String(recomputePerceptual));
+    return this.http.post<SpringApiResponse<BackfillHashesResult>>(
+      `${environment.apiUrl}/files/backfill-hashes`,
+      {},
+      { params }
+    );
+  }
+
+  /** Read the current state of the background hash backfill. */
+  getBackfillHashesStatus(): Observable<SpringApiResponse<BackfillHashesResult>> {
+    return this.http.get<SpringApiResponse<BackfillHashesResult>>(
+      `${environment.apiUrl}/files/backfill-hashes/status`
     );
   }
 

@@ -234,6 +234,29 @@ public class NgFileRestController {
     }
 
     /**
+     * Start a background backfill of fileHash + perceptualHash for files that don't
+     * have them. Returns immediately with the current state — poll {@code /backfill-hashes/status}
+     * for progress. Safe to re-run; calling while a backfill is in progress returns the live state.
+     */
+    @PostMapping("/backfill-hashes")
+    public ResponseEntity<NgApiResponse<NgFileService.BackfillState>> backfillHashes(
+            @RequestParam(value = "limit", defaultValue = "0") int limit,
+            @RequestParam(value = "recomputePerceptual", defaultValue = "false") boolean recomputePerceptual) {
+        try {
+            NgFileService.BackfillState state = ngFileService.startBackfillHashes(limit, recomputePerceptual);
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Backfill started"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Current state of the background hash backfill (running flag + counters). */
+    @GetMapping("/backfill-hashes/status")
+    public ResponseEntity<NgApiResponse<NgFileService.BackfillState>> backfillHashesStatus() {
+        return ResponseEntity.ok(new NgApiResponse<>(ngFileService.getBackfillStatus(), "ok"));
+    }
+
+    /**
      * Generate the JPG derivative for a PDF FileObject if it's missing.
      * Returns the jpg fileLink so the caller can immediately load it.
      * Idempotent — calling again after generation is a no-op.
@@ -274,19 +297,27 @@ public class NgFileRestController {
     @GetMapping("/{id}/check-duplicates")
     public ResponseEntity<NgApiResponse<NgFileService.DuplicateReport>> checkDuplicatesPostUpload(
             @PathVariable Long id,
-            @RequestParam(value = "phashThreshold", defaultValue = "10") int phashThreshold) {
+            @RequestParam(value = "phashThreshold", defaultValue = "6") int phashThreshold) {
         try {
             FileObject f = ngFileService.getEntityById(id);
             if (f == null) {
+                log.warn("[DupCheck] File id={} not found", id);
                 return ResponseEntity.notFound().build();
             }
             List<String> fileNumber = f.getFileNumber() == null
                     ? List.of()
                     : java.util.Arrays.asList(f.getFileNumber().split("__SEP__"));
+            log.info("[DupCheck] id={} fileNumber={} fileHash={} perceptualHash={}",
+                    id, fileNumber,
+                    f.getFileHash() == null ? "null" : f.getFileHash().substring(0, Math.min(12, f.getFileHash().length())) + "…",
+                    f.getPerceptualHash() == null ? "null" : f.getPerceptualHash());
             NgFileService.DuplicateReport report = ngFileService.findDuplicates(
                     fileNumber, f.getFileHash(), f.getPerceptualHash(), id, phashThreshold);
+            log.info("[DupCheck] id={} → exact={} visual={} name={}",
+                    id, report.exactMatches.size(), report.visualMatches.size(), report.nameMatches.size());
             return ResponseEntity.ok(new NgApiResponse<>(report, "ok"));
         } catch (Exception e) {
+            log.error("[DupCheck] failed for id=" + id, e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }

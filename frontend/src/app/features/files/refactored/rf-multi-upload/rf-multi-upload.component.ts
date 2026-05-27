@@ -393,11 +393,25 @@ export class RfMultiUploadComponent implements OnInit {
     this.onClose();
   }
 
-  /** Build a clickable URL for a file's stored fileLink. */
-  resolveFileUrl(fileLink: string | null | undefined): string {
-    if (!fileLink) return '';
-    if (fileLink.startsWith('http')) return fileLink;
-    return fileLink.startsWith('/') ? fileLink : '/' + fileLink;
+  /**
+   * Build a clickable URL for a file. Resolution order:
+   *   1. If fileLink already starts with an "uploads*" segment, trust it.
+   *   2. Use file.baseLink if set.
+   *   3. Fall back to "uploads" — WebConfigurer always maps /uploads/** to the
+   *      profile folder, so this works regardless of which profile is active.
+   */
+  resolveFileUrl(file: FileDto | null | undefined): string {
+    if (!file?.fileLink) return '';
+    if (file.fileLink.startsWith('http')) return file.fileLink;
+    let path = file.fileLink.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!/^uploads(-|\/)/.test(path)) {
+      const base = (file.baseLink || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+      const prefix = base || 'uploads';
+      if (!path.startsWith(prefix + '/')) {
+        path = prefix + '/' + path;
+      }
+    }
+    return '/' + path;
   }
 
   formatFileSize(bytes: number): string {

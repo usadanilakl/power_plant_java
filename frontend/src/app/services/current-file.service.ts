@@ -324,14 +324,20 @@ export class CurrentFileService {
      * Public method to allow other services to trigger file list updates
      */
     updateMapByType(type: string, file: FileDto): void {
-      const types = this.fileTypes;
-      const matchedType = types.find(t => type.toLowerCase().includes(t.toLowerCase()));
+      if (!type) return;
+      const types = this.fileTypesSubject.getValue();
 
-      // Prefer a matching known type; if none match, fall back to the first available
-      // type so the file still shows up somewhere. If no types are loaded yet, bail.
-      const targetType = matchedType || types[0];
+      // Resolution: exact (case-insensitive) wins over substring so e.g.
+      // "PID-Equipment-Test" doesn't get bucketed into the "PID" tab.
+      const lower = type.toLowerCase();
+      let targetType = types.find(t => t.toLowerCase() === lower)
+        ?? types.find(t => t.toLowerCase().includes(lower));
+
+      // Brand-new fileType that isn't in the tab list yet — register it so the
+      // tab appears alongside the file.
       if (!targetType) {
-        return;
+        targetType = type;
+        this.fileTypesSubject.next([...types, type]);
       }
 
       const currentFilesByType = this.getFilesByType(targetType);

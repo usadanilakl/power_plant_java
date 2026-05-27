@@ -87,15 +87,34 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      * entity; the hash will be filled in next time the file is (re)uploaded.
      */
     private String computeSourceHash(FileObject fileObject) {
+        return computeSourceHashDiagnostic(fileObject, null);
+    }
+
+    /**
+     * Same as {@link #computeSourceHash} but optionally writes the skip reason
+     * to {@code reasonOut} (length-1 array) so the backfill can categorize misses.
+     * Reasons: "no-extension", "no-filelink", "missing-on-disk", "io-error".
+     */
+    private String computeSourceHashDiagnostic(FileObject fileObject, String[] reasonOut) {
         try {
             String sourceExt = fileObject.getExtension();
-            if (sourceExt == null || sourceExt.isBlank()) return null;
+            if (sourceExt == null || sourceExt.isBlank()) {
+                if (reasonOut != null) reasonOut[0] = "no-extension";
+                return null;
+            }
             String sourceLink = fileObject.buildFileLink(sourceExt);
-            if (sourceLink == null) return null;
+            if (sourceLink == null) {
+                if (reasonOut != null) reasonOut[0] = "no-filelink";
+                return null;
+            }
             Path sourcePath = resolveToFileSystem(sourceLink);
-            if (!Files.exists(sourcePath)) return null;
+            if (!Files.exists(sourcePath)) {
+                if (reasonOut != null) reasonOut[0] = "missing-on-disk:" + sourcePath;
+                return null;
+            }
             return computeSha256(Files.readAllBytes(sourcePath));
         } catch (IOException e) {
+            if (reasonOut != null) reasonOut[0] = "io-error:" + e.getMessage();
             logger.warn("Failed to compute source hash for FileObject #{}: {}",
                     fileObject.getId(), e.getMessage());
             return null;
@@ -331,6 +350,12 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String fileExtension = FileUtil.getFileExtension(originalFilename).toLowerCase();
         uploadStrategyRegistry.validate(fileExtension);
 
+        // Hash the ORIGINAL uploaded bytes here, before any strategy/PdfBox processing.
+        // PdfBox re-writes PDFs when it splits pages, producing different bytes each run —
+        // hashing the post-strategy disk file would mean uploading the same source twice
+        // produces different fileHash values, breaking duplicate detection.
+        String originalSourceHash = computeSha256(file.getBytes());
+
         String baseName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
         // Template entity carries the target metadata (fileType, vendor, name, etc.)
         FileObject template = convertIdDtoToEntity(fileDto);
@@ -353,7 +378,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         if (uploaded.size() == 1) {
             UploadStrategy.UploadedFile u = uploaded.get(0);
             applyUploadResult(template, u);
-            template.setFileHash(computeSourceHash(template));
+            template.setFileHash(originalSourceHash);
             template.setPerceptualHash(computePerceptualHash(template));
             fileDtos.add(toDto(save(template)));
         } else {
@@ -365,7 +390,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 newFile.setSystem(template.getSystem());
                 newFile.setBaseLink(filesRelativePath);
                 applyUploadResult(newFile, u);
-                newFile.setFileHash(computeSourceHash(newFile));
+                newFile.setFileHash(originalSourceHash);
                 newFile.setPerceptualHash(computePerceptualHash(newFile));
                 fileDtos.add(toDto(save(newFile)));
             }
@@ -430,6 +455,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             String extension = FileUtil.getFileExtension(originalFilename).toLowerCase();
             uploadStrategyRegistry.validate(extension);
 
+            // Hash original input bytes (before any PdfBox processing that rewrites the file).
+            String originalSourceHash = computeSha256(file.getBytes());
+
             String fileNameWithoutExtension = FileUtil.getNameFromPathWithoutExtension(originalFilename);
             String effectiveName = useSharedName ? effectiveSharedName : fileNameWithoutExtension;
 
@@ -449,7 +477,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 fileObject.setVendor(vendor);
                 fileObject.setBaseLink(filesRelativePath);
                 applyUploadResult(fileObject, uploaded.get(0));
-                fileObject.setFileHash(computeSourceHash(fileObject));
+                fileObject.setFileHash(originalSourceHash);
                 fileObject.setPerceptualHash(computePerceptualHash(fileObject));
                 uploadedFiles.add(toDto(save(fileObject)));
             } else {
@@ -461,7 +489,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                     newFile.setVendor(vendor);
                     newFile.setBaseLink(filesRelativePath);
                     applyUploadResult(newFile, u);
-                    newFile.setFileHash(computeSourceHash(newFile));
+                    newFile.setFileHash(originalSourceHash);
                     newFile.setPerceptualHash(computePerceptualHash(newFile));
                     uploadedFiles.add(toDto(save(newFile)));
                 }
@@ -647,7 +675,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      * @param fileHash         SHA-256 of the source bytes (optional, set after upload)
      * @param perceptualHash   aHash of the visual content (optional, set after upload)
      * @param excludeId        FileObject ID to skip (the one just uploaded), null to include all
-     * @param phashThreshold   max Hamming distance to consider "visually similar" (typical: 10–15)
+     * @param phashThreshold   max Hamming distance to consider "visually similar"
+     *                         (dHash typical: 6 for "same", 12 for "similar")
      * @return categorized matches
      */
     public DuplicateReport findDuplicates(List<String> fileNumber, String fileHash,
@@ -811,6 +840,210 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     private final java.util.concurrent.ConcurrentHashMap<Long, Object> ensureJpgLocks =
             new java.util.concurrent.ConcurrentHashMap<>();
+
+    // ===== Backfill Hashes (async background task) =====
+    // Done as a background task because:
+    //   1. Hashing every file can take many minutes (disk I/O bound).
+    //   2. The old @Transactional wrapper held one DB connection for the entire
+    //      run, triggering HikariCP leak warnings.
+    //   3. Synchronous HTTP requests hit Spring's async timeout long before the
+    //      work finishes.
+    // Each individual save runs in its own short transaction via TransactionTemplate.
+
+    private final BackfillState backfillState = new BackfillState();
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.transaction.PlatformTransactionManager backfillTxManager;
+
+    /**
+     * Kick off a backfill in the background. Returns immediately with the live state.
+     *
+     * @param recomputePerceptual when true, recomputes {@code perceptualHash} for every
+     *                            file that has a rendered JPG — used when the hash
+     *                            algorithm itself changes (e.g. aHash → dHash) so old
+     *                            values get replaced. When false, only fills gaps.
+     */
+    public BackfillState startBackfillHashes(int limit, boolean recomputePerceptual) {
+        synchronized (backfillState) {
+            if (backfillState.running) {
+                return backfillState.snapshot(); // already running, return current state
+            }
+            backfillState.reset(limit);
+            backfillState.recomputePerceptual = recomputePerceptual;
+            backfillState.running = true;
+        }
+        runBackfillAsync(limit, recomputePerceptual);
+        return backfillState.snapshot();
+    }
+
+    /** Live snapshot of the backfill progress. */
+    public BackfillState getBackfillStatus() {
+        return backfillState.snapshot();
+    }
+
+    @org.springframework.scheduling.annotation.Async
+    public void runBackfillAsync(int limit, boolean recomputePerceptual) {
+        org.springframework.transaction.support.TransactionTemplate tx =
+                new org.springframework.transaction.support.TransactionTemplate(backfillTxManager);
+        try {
+            // When recomputing perceptual hashes (algorithm change), walk ALL files;
+            // otherwise only those missing one of the hashes.
+            List<Long> candidateIds = tx.execute(status -> recomputePerceptual
+                    ? fileRepo.findAllIds()
+                    : fileRepo.findIdsNeedingHash());
+            if (candidateIds == null) candidateIds = List.of();
+
+            backfillState.total = candidateIds.size();
+
+            int processed = 0;
+            for (Long id : candidateIds) {
+                if (limit > 0 && processed >= limit) break;
+                processed++;
+                backfillState.processed = processed;
+
+                try {
+                    tx.execute(status -> {
+                        FileObject f = fileRepo.findById(id).orElse(null);
+                        if (f == null) {
+                            backfillState.missingOnDisk++;
+                            backfillState.skipEntityMissing++;
+                            return null;
+                        }
+                        if (f.getFileType() == null || f.getVendor() == null) {
+                            backfillState.missingOnDisk++;
+                            backfillState.skipNoTypeOrVendor++;
+                            recordSample(backfillState.sampleSkipped, "id=" + id + " no fileType/vendor");
+                            return null;
+                        }
+                        boolean changed = false;
+                        if (f.getFileHash() == null || f.getFileHash().isBlank()) {
+                            String[] reason = new String[1];
+                            String h = computeSourceHashDiagnostic(f, reason);
+                            if (h != null) {
+                                f.setFileHash(h);
+                                changed = true;
+                            } else {
+                                backfillState.missingOnDisk++;
+                                String r = reason[0] == null ? "unknown" : reason[0];
+                                if (r.startsWith("no-extension")) backfillState.skipNoExtension++;
+                                else if (r.startsWith("no-filelink")) backfillState.skipNoFileLink++;
+                                else if (r.startsWith("missing-on-disk")) backfillState.skipFileMissing++;
+                                else if (r.startsWith("io-error")) backfillState.skipIoError++;
+                                recordSample(backfillState.sampleSkipped, "id=" + id + " " + r);
+                            }
+                        }
+                        boolean needsPerceptual = recomputePerceptual
+                                || f.getPerceptualHash() == null
+                                || f.getPerceptualHash().isBlank();
+                        if (needsPerceptual) {
+                            String p = computePerceptualHash(f);
+                            if (p != null && !p.equals(f.getPerceptualHash())) {
+                                f.setPerceptualHash(p);
+                                changed = true;
+                            }
+                        }
+                        if (changed) {
+                            fileRepo.save(f);
+                            backfillState.updated++;
+                        }
+                        return null;
+                    });
+                } catch (Exception e) {
+                    logger.warn("Backfill: failed to hash file id={}: {}", id, e.getMessage());
+                    backfillState.errors++;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Backfill: aborted with error", e);
+            backfillState.errors++;
+        } finally {
+            synchronized (backfillState) {
+                backfillState.running = false;
+                backfillState.finishedAt = System.currentTimeMillis();
+            }
+            logger.info("Backfill finished: processed={} updated={} missingOnDisk={} errors={} recomputePerceptual={}",
+                    backfillState.processed, backfillState.updated, backfillState.missingOnDisk, backfillState.errors, recomputePerceptual);
+        }
+    }
+
+    private static final int SAMPLE_SKIPPED_CAP = 10;
+
+    /** Append to a sample list, bounded so we don't grow unbounded across runs. */
+    private static void recordSample(List<String> sample, String line) {
+        synchronized (sample) {
+            if (sample.size() < SAMPLE_SKIPPED_CAP) sample.add(line);
+        }
+    }
+
+    /** Mutable state shared between the background task and status queries. */
+    public static class BackfillState {
+        public volatile boolean running;
+        public volatile int total;
+        public volatile int processed;
+        public volatile int updated;
+        public volatile int missingOnDisk;
+        public volatile int errors;
+        public volatile int limit;
+        public volatile boolean recomputePerceptual;
+        public volatile long startedAt;
+        public volatile long finishedAt;
+
+        /** Sub-categories of {@code missingOnDisk} so the user knows what to fix. */
+        public volatile int skipEntityMissing;
+        public volatile int skipNoTypeOrVendor;
+        public volatile int skipNoExtension;
+        public volatile int skipNoFileLink;
+        public volatile int skipFileMissing;
+        public volatile int skipIoError;
+
+        /** First few skipped files with their reason — for triage in the admin UI. */
+        public final List<String> sampleSkipped = new java.util.ArrayList<>();
+
+        synchronized void reset(int limit) {
+            this.running = false;
+            this.total = 0;
+            this.processed = 0;
+            this.updated = 0;
+            this.missingOnDisk = 0;
+            this.errors = 0;
+            this.limit = limit;
+            this.recomputePerceptual = false;
+            this.startedAt = System.currentTimeMillis();
+            this.finishedAt = 0L;
+            this.skipEntityMissing = 0;
+            this.skipNoTypeOrVendor = 0;
+            this.skipNoExtension = 0;
+            this.skipNoFileLink = 0;
+            this.skipFileMissing = 0;
+            this.skipIoError = 0;
+            synchronized (this.sampleSkipped) {
+                this.sampleSkipped.clear();
+            }
+        }
+
+        synchronized BackfillState snapshot() {
+            BackfillState s = new BackfillState();
+            s.running = this.running;
+            s.total = this.total;
+            s.processed = this.processed;
+            s.updated = this.updated;
+            s.missingOnDisk = this.missingOnDisk;
+            s.errors = this.errors;
+            s.limit = this.limit;
+            s.recomputePerceptual = this.recomputePerceptual;
+            s.startedAt = this.startedAt;
+            s.finishedAt = this.finishedAt;
+            s.skipEntityMissing = this.skipEntityMissing;
+            s.skipNoTypeOrVendor = this.skipNoTypeOrVendor;
+            s.skipNoExtension = this.skipNoExtension;
+            s.skipNoFileLink = this.skipNoFileLink;
+            s.skipFileMissing = this.skipFileMissing;
+            s.skipIoError = this.skipIoError;
+            synchronized (this.sampleSkipped) {
+                s.sampleSkipped.addAll(this.sampleSkipped);
+            }
+            return s;
+        }
+    }
 
     public List<FileDto> getByFileType(com.dk_power.power_plant_java.entities.categories.Value fileType) {
         return fileRepo.findByFileType(fileType).stream().map(this::toDto).toList();

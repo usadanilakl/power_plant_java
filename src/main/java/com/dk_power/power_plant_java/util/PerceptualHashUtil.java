@@ -9,31 +9,34 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 /**
- * Simple 64-bit aHash (average hash) implementation for visual duplicate detection.
+ * 64-bit dHash (difference hash) for visual duplicate detection.
  *
- * Algorithm:
- *   1. Shrink image to 8x8 (64 pixels)
- *   2. Convert to grayscale
- *   3. Compute the average pixel intensity
- *   4. For each pixel, set bit = 1 if pixel > average else 0
- *   5. Pack 64 bits into a hex string
+ * Encodes whether each pixel is brighter than its right neighbor — captures
+ * gradient direction, which on line drawings (P&IDs, schematics) is the
+ * structural signal you actually want. Robust to small re-renders, DPI
+ * changes, and PdfBox-rewriting that doesn't alter rendered pixels.
  *
- * Comparison via Hamming distance (XOR + popcount) on the 64-bit values.
- *   0     = identical
- *   <= 10 = likely same image (re-export, different DPI)
- *   <= 20 = similar
- *   > 20  = different
+ *   9x8 grayscale → 8 rows × 8 horizontal-diff bits = 64-bit fingerprint.
  *
- * aHash is simpler than pHash/dHash but works well for binary documents (P&IDs,
- * schematics) where the visual content is high-contrast and structurally stable.
+ * Typical thresholds (lower than aHash):
+ *   0     = identical render
+ *   <= 6  = same source, different export/DPI
+ *   <= 12 = visually similar
+ *   > 12  = different
+ *
+ * Previously used aHash (average hash) — replaced because it produced
+ * near-zero hashes on sparse line drawings, where most pixels share the
+ * white-paper background and thresholding against the mean collapses.
  */
 public final class PerceptualHashUtil {
 
+    /** dHash needs one extra horizontal column so each row produces SIZE horizontal diffs. */
     private static final int SIZE = 8;
+    private static final int WIDTH = SIZE + 1;
 
     private PerceptualHashUtil() {}
 
-    /** Compute the 64-bit aHash of an image file, returned as a 16-char hex string. */
+    /** Compute the 64-bit dHash of an image file, returned as a 16-char hex string. */
     public static String computeHash(File imageFile) throws IOException {
         BufferedImage source = ImageIO.read(imageFile);
         if (source == null) {
@@ -43,31 +46,26 @@ public final class PerceptualHashUtil {
     }
 
     public static String computeHash(BufferedImage source) {
-        BufferedImage scaled = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_BYTE_GRAY);
+        BufferedImage scaled = new BufferedImage(WIDTH, SIZE, BufferedImage.TYPE_BYTE_GRAY);
         Graphics2D g = scaled.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(source, 0, 0, SIZE, SIZE, null);
+            g.drawImage(source, 0, 0, WIDTH, SIZE, null);
         } finally {
             g.dispose();
         }
 
-        // Average intensity
-        int[] pixels = new int[SIZE * SIZE];
-        int sum = 0;
-        for (int y = 0; y < SIZE; y++) {
-            for (int x = 0; x < SIZE; x++) {
-                int p = scaled.getRGB(x, y) & 0xFF;
-                pixels[y * SIZE + x] = p;
-                sum += p;
-            }
-        }
-        int avg = sum / pixels.length;
-
         long bits = 0L;
-        for (int i = 0; i < pixels.length; i++) {
-            if (pixels[i] > avg) {
-                bits |= (1L << i);
+        int bitIndex = 0;
+        for (int y = 0; y < SIZE; y++) {
+            int left = scaled.getRGB(0, y) & 0xFF;
+            for (int x = 1; x < WIDTH; x++) {
+                int right = scaled.getRGB(x, y) & 0xFF;
+                if (left > right) {
+                    bits |= (1L << bitIndex);
+                }
+                left = right;
+                bitIndex++;
             }
         }
         return String.format("%016x", bits);

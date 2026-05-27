@@ -317,3 +317,52 @@
 }
 .dup-btn-primary:hover { background: #1565c0; }
 .dup-btn-cancel { color: #ccc; }
+
+.dup-action-note {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #2a2418;
+  border-left: 3px solid #ffa726;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #ccc;
+}
+.dup-action-note strong { color: #ffd180; }
+.dup-action-note code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+/* Per-row Override/Revise actions */
+.dup-actions-col { white-space: nowrap; }
+.dup-action {
+  display: inline-block;
+  padding: 3px 10px;
+  margin-left: 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+.dup-action-override {
+  background: #5a1a1a;
+  color: #ffd0d0;
+  border-color: #7a2a2a;
+}
+.dup-action-override:hover { background: #7a2424; }
+.dup-action-revise {
+  background: #4a3a1a;
+  color: #ffe0a0;
+  border-color: #6a5424;
+}
+.dup-action-revise:hover { background: #6a5224; }
+.dup-btn-secondary {
+  background: transparent;
+  border: 1px solid #555;
+  color: #ccc;
+}
+.dup-btn-secondary:hover { background: #2a2a2a; }
