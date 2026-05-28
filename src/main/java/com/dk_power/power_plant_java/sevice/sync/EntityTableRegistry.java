@@ -44,6 +44,7 @@ public class EntityTableRegistry {
         Map.entry("LotoPoint", "loto_point"),
         Map.entry("Loto", "loto"),
         Map.entry("LotoStandard", "loto_standard"),
+        Map.entry("RedTagStandard", "red_tag_standard"),
         Map.entry("LotoSnapshot", "loto_snapshot"),
         Map.entry("LotoBox", "loto_boxes"),        // @Table(name = "loto_boxes")
         Map.entry("Lock", "lock"),
@@ -88,6 +89,9 @@ public class EntityTableRegistry {
         Map.entry("InventoryItem", "inventory_item"),
         Map.entry("InventoryUsage", "inventory_usage"),
 
+        // SDS
+        Map.entry("SdsChemical", "sds_chemical"),
+
         // Permits - additional
         Map.entry("JobLog", "job_log"),
         Map.entry("EnergizedWorkPermit", "energized_work_permit"),
@@ -127,6 +131,7 @@ public class EntityTableRegistry {
         "LotoPoint",
         "Loto",
         "LotoStandard",
+        "RedTagStandard",
         "LotoSnapshot",
         "LotoBox",
         "Lock",
@@ -164,6 +169,7 @@ public class EntityTableRegistry {
         "FieldListItem",
         "InventoryItem",
         "InventoryUsage",
+        "SdsChemical",
         "PrintableForm",
         "FormContainer",
         "Flow",

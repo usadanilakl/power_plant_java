@@ -24,9 +24,12 @@ These accompany a checkbox and feed the free-text fill logic:
 - `fall-clearance-field.png` — the "Fall Clearance" field under Fall Protection.
 - `voltage-field.png` — the "Voltage" field under Testing/Troubleshooting.
 
-The runtime does NOT match these directly (the field content varies); it anchors
-on the checkbox crop and clicks at a fixed offset. They're kept for documentation
-and re-measuring offsets if the layout changes.
+`voltage-field`, `arc-flash-class-field` and `fall-clearance-field` ARE matched
+directly at runtime (`fillAnchoredField`): each crop shows the label + an EMPTY
+field, which matches the empty runtime field; we then click near the crop's right
+edge to land in the box and paste. The two Respirator/Gloves "Type" combined crops
+are NOT matched directly (the gloves one has prefilled sample text) — those use a
+measured offset down-right from the checkbox crop instead.
 
 ## Free-text field wiring (SafeWorkBuildFlow)
 

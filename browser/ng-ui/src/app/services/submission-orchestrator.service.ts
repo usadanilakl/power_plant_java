@@ -819,6 +819,108 @@ export class SubmissionOrchestratorService {
     );
   }
 
+  // ====================== SDS Chemicals ======================
+
+  submitSdsChemical(payload: any): Observable<SubmissionResult> {
+    const localUuid = payload.localUuid || crypto.randomUUID();
+    payload.localUuid = localUuid;
+
+    return this.serverApi.submitSdsChemical(payload).pipe(
+      map(response => ({
+        success: !!response.success,
+        method: (response.method === 'local' ? 'local' : 'server') as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || localUuid,
+        message: response.method === 'local'
+          ? 'Saved on server. Will sync to SharePoint when available.'
+          : 'Submitted successfully via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for SDS, trying Power Automate:', serverError.message);
+        return this.tryPowerAutomateSds(payload, localUuid);
+      })
+    );
+  }
+
+  updateSdsChemical(payload: any): Observable<SubmissionResult> {
+    return this.serverApi.updateSdsChemical(payload).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'server' as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || payload.localUuid,
+        message: 'Updated successfully.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for SDS update, trying Power Automate:', serverError.message);
+        return this.tryPowerAutomateSds({ ...payload, actionType: 'update' }, payload.localUuid);
+      })
+    );
+  }
+
+  private tryPowerAutomateSds(payload: any, localUuid: string): Observable<SubmissionResult> {
+    if (!this.powerAutomate.isV2Configured('sds')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'Server unavailable and Power Automate not configured.',
+        requiresEmail: true
+      });
+    }
+
+    const primaryName = (payload.names || '').split(/\r?\n/).map((s: string) => s.trim()).filter(Boolean)[0] || '';
+    const paData: Record<string, any> = {
+      Title: primaryName,
+      PwaId: localUuid,
+      Names: payload.names || '',
+      Locations: payload.locations || '',
+      Status: payload.statusName || 'Pending',
+      Notes: payload.notes || '',
+      ProcessedByName: payload.processedByName || '',
+      ProcessedByEmail: payload.processedByEmail || '',
+      SubmitterName: payload.submitterName || '',
+      SubmitterEmail: payload.submitterEmail || '',
+      SubmitterPhone: payload.submitterPhone || '',
+    };
+
+    const paRequest = {
+      actionType: payload.actionType || 'create',
+      id: payload.sharepointId,
+      data: paData,
+      attachments: (payload.attachments || []).map((a: any) => ({
+        fileName: a.fileName || a.name,
+        contentType: a.contentType || 'application/octet-stream',
+        base64Content: a.base64Content || a.content
+      }))
+    };
+
+    return this.powerAutomate.submitV2('sds', paRequest).pipe(
+      map(response => {
+        const isSuccess = response.success === true || String(response.success).toLowerCase() === 'true';
+        return {
+          success: isSuccess,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: isSuccess
+            ? 'Submitted directly to SharePoint via Power Automate.'
+            : (response.message || 'Power Automate submission failed.')
+        };
+      }),
+      catchError(paError => {
+        console.error('[Orchestrator] PA also failed for SDS:', paError.message);
+        return of({
+          success: false,
+          method: 'email' as const,
+          localUuid,
+          message: 'Both server and Power Automate unavailable. Item saved locally.',
+          requiresEmail: true
+        });
+      })
+    );
+  }
+
   // ====================== Inventory ======================
 
   submitInventoryItem(payload: any): Observable<SubmissionResult> {

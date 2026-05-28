@@ -208,7 +208,13 @@ public class SharePointListProvisioner {
                         text("PwaId"), text("InventoryItemId"), text("QrToken"),
                         text("UserName"), text("UserEmail"),
                         text("Location"), text("Purpose"), note("Comments"),
-                        text("EventType"), text("ScannedAt"), text("ReturnedAt"))
+                        text("EventType"), text("ScannedAt"), text("ReturnedAt")),
+
+                list("SDS",
+                        text("PwaId"), note("Names"), note("Locations"), text("Status"),
+                        text("BookNumber"), text("Section"), note("Notes"),
+                        text("ProcessedByName"), text("ProcessedByEmail"),
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"))
         );
     }
 

@@ -13,6 +13,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/instruments', label: 'Instrumentation' },
     { route: '/field-lists', label: 'Field Lists' },
     { route: '/inventory', label: 'Inventory' },
+    { route: '/sds', label: 'SDS Chemicals' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

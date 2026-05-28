@@ -61,6 +61,9 @@ public class PowerAutomateV2Client {
     @Value("${pa.flow.inventory-url:}")
     private String inventoryFlowUrl;
 
+    @Value("${pa.flow.sds-url:}")
+    private String sdsFlowUrl;
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -220,6 +223,15 @@ public class PowerAutomateV2Client {
 
     public boolean isInventoryConfigured() {
         return inventoryFlowUrl != null && !inventoryFlowUrl.isBlank();
+    }
+
+    /** Single SDS flow — serves the "SDS" SharePoint list. */
+    public PaResponseDto sds(PaRequestDto request) {
+        return sendRequest(sdsFlowUrl, request);
+    }
+
+    public boolean isSdsConfigured() {
+        return sdsFlowUrl != null && !sdsFlowUrl.isBlank();
     }
 
 }

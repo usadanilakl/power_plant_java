@@ -63,6 +63,13 @@ public class SafeWorkBuildFlow {
     private static final int FIELD_BELOW_DX = 120;
     private static final int FIELD_BELOW_DY = 80;
 
+    /**
+     * Time to let the freshly-opened form finish painting its fields BEFORE we scan
+     * or click. We sleep (no screen-grabs) through the form's initial repaint, so it
+     * doesn't flicker. Sized to cover the "few seconds" of paint the operator saw.
+     */
+    private static final int FORM_SETTLE_MS = 3500;
+
     /** Wheel ticks per scroll step when bringing a section into view. */
     private static final int SCROLL_TICKS = 3;
     /** Max scroll steps before giving up trying to reveal a section. */
@@ -102,6 +109,14 @@ public class SafeWorkBuildFlow {
         // we look, and one-shot OCR has been intermittent.
         findIssuePermitButton().click();
         driver.sleep(properties.getInterStepDelayMs());
+        // The form repaints its fields one-by-one for a few seconds as it opens.
+        // That "flicker" is driven by SikuliX repeatedly grabbing the screen — on
+        // Windows a screen-grab forces the foreground form to redraw. So we do NOT
+        // scan while it paints: park the cursor off the form and just SLEEP through
+        // the render (no captures = no flicker), then verify the header once (it's
+        // already rendered, so it matches on the first scan).
+        driver.parkMouse();
+        driver.sleep(FORM_SETTLE_MS);
         driver.waitFor(RedTagPattern.SW_HAZARDS_HEADER, 15);
         return "Safe Work form opened";
     }
@@ -180,9 +195,10 @@ public class SafeWorkBuildFlow {
         tickLabel(sect, h.isEnvironmental(), "environmental");
         Match weather = tickLabel(sect, h.isWeatherHazards(), "weather-hazards");
         fillFieldRight(weather, h.getWeatherHazardDescription());
-        // Testing/Troubleshooting carries a "Voltage" text field on the sub-row below it.
-        Match testing = tickLabel(sect, h.isTestingTroubleshooting50V(), "testing-troubleshooting");
-        fillFieldBelow(testing, h.getVoltageDescription());
+        // Testing/Troubleshooting carries a "Voltage" text field on the sub-row below it,
+        // matched by its own (label + empty field) crop.
+        tickLabel(sect, h.isTestingTroubleshooting50V(), "testing-troubleshooting");
+        fillAnchoredField(sect, "voltage-field", h.getVoltageDescription());
         tickLabel(sect, h.isHexavalentChromium(), "hexavalent-chromium");
         Match hazOther = tickLabel(sect, h.isOther(), "haz-other");
         fillFieldRight(hazOther, h.getOtherDescription());
@@ -237,14 +253,15 @@ public class SafeWorkBuildFlow {
         tickLabel(sect, ppe.isAcidSuit(), "acid-suit");
         tickLabel(sect, ppe.isBarricade(), "barricade");
         tickLabel(sect, ppe.isFaceShield(), "face-shield");
-        // Arc Flash/Shock PPE carries a "Class/Cal Rating" text field below it.
-        Match arcFlash = tickLabel(sect, ppe.isArcFlashPpe(), "arc-flash");
-        fillFieldBelow(arcFlash, ppe.getClassCalRating());
+        // Arc Flash/Shock PPE carries a "Class/Cal Rating" text field on the sub-row
+        // below it, matched by its own (label + empty field) crop.
+        tickLabel(sect, ppe.isArcFlashPpe(), "arc-flash");
+        fillAnchoredField(sect, "arc-flash-class-field", ppe.getClassCalRating());
         tickLabel(sect, ppe.isGfi(), "gfci");
         tickLabel(sect, ppe.isPurgingVentilation(), "purging-ventilation");
-        // Fall Protection carries a "Fall Clearance" text field below it.
-        Match fallProt = tickLabel(sect, ppe.isFallProtection(), "fall-protection");
-        fillFieldBelow(fallProt, ppe.getFallClearance());
+        tickLabel(sect, ppe.isFallProtection(), "fall-protection");
+        // Fall Protection carries a "Fall Clearance" text field on the sub-row below it.
+        fillAnchoredField(sect, "fall-clearance-field", ppe.getFallClearance());
         fillFieldRight(tickLabel(sect, ppe.isOther(), "ppe-other"), ppe.getOtherDescription());
         return "PPE filled";
     }
@@ -458,6 +475,24 @@ public class SafeWorkBuildFlow {
         driver.sleep(60);
         driver.paste(text);
         driver.sleep(40);
+    }
+
+    /**
+     * Fills a sub-row free-text field that has its OWN label crop showing the label
+     * plus the (empty) input box — e.g. {@code voltage-field}, {@code arc-flash-class-field},
+     * {@code fall-clearance-field}. We match the crop directly (deterministic, since
+     * the captured field is empty and so is the runtime field before we type) and
+     * click near its right edge, which lands in the input box. More reliable than
+     * guessing an offset down from the parent checkbox. No-op when text is blank.
+     */
+    private void fillAnchoredField(Region region, String anchorKey, String text) {
+        if (text == null || text.isBlank()) return;
+        Match m = driver.findLabelOpt(anchorKey, region, 1.0);
+        if (m == null) {
+            log.warn("[RedTag SW] field-anchor crop '{}' not found — field skipped", anchorKey);
+            return;
+        }
+        fillFieldRight(m, text);
     }
 
     /** Converts an ISO date (2026-05-22) to US format (05/22/2026); passes other text through. */

@@ -52,6 +52,12 @@ public class SikuliDriver {
         if (screen == null) {
             Settings.TypeDelay = 0;
             Settings.MoveMouseDelay = 0;
+            // Scan ~once/sec instead of the default 3/sec. The form is static, so a
+            // present pattern is still matched on the first (immediate) scan; this
+            // just cuts how often SikuliX grabs the screen, which on Windows can make
+            // the Red Tag form repaint/flicker while we wait for it to render.
+            Settings.WaitScanRate = 1f;
+            Settings.ObserveScanRate = 1f;
             screen = new Screen();
             screen.setAutoWaitTimeout(properties.getAutoWaitTimeoutSeconds());
             log.info("[RedTag] SikuliX screen initialised ({}x{})", screen.w, screen.h);
@@ -244,6 +250,15 @@ public class SikuliDriver {
     public void hoverCenter() {
         Screen s = screen();
         Mouse.move(new Location(s.x + s.w / 2, s.y + s.h / 2));
+    }
+
+    /**
+     * Moves the cursor to the top-left corner, off any interactive field. Call this
+     * after opening a form so its input fields don't hover-highlight ("flicker") one
+     * by one under a parked cursor while the form paints or while SikuliX scans.
+     */
+    public void parkMouse() {
+        Mouse.move(new Location(screen().x + 2, screen().y + 2));
     }
 
     /**

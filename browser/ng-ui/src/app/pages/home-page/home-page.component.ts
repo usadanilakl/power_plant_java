@@ -168,6 +168,12 @@ export class HomePageComponent {
       description: 'Track tools and equipment with QR codes',
       icon: '📦',
       route: '/inventory'
+    },
+    {
+      title: 'SDS Chemicals',
+      description: 'Record Safety Data Sheet chemicals',
+      icon: '🧪',
+      route: '/sds'
     }
   ];
 

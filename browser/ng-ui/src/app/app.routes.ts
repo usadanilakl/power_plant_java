@@ -14,6 +14,8 @@ import { FieldListPageComponent } from './pages/field-list-page/field-list-page.
 import { FieldListComponent } from './features/field-list/field-list.component';
 import { InventoryPageComponent } from './pages/inventory-page/inventory-page.component';
 import { InventoryComponent } from './features/inventory/inventory.component';
+import { SdsPageComponent } from './pages/sds-page/sds-page.component';
+import { SdsComponent } from './features/sds/sds.component';
 import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -92,6 +94,15 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: InventoryComponent }
+      ]
+    },
+    {
+      path: 'sds',
+      component: SdsPageComponent,
+      canActivate: [standaloneGuard, userSetupGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: SdsComponent }
       ]
     },
     {

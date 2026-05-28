@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
 import { IAttachment } from '../models/permits/attachment.model';
 import { ServerApiService } from './server-api.service';
 
-export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrumentLog' | 'instrument' | 'fieldList' | 'inventory';
+export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrumentLog' | 'instrument' | 'fieldList' | 'inventory' | 'sds';
 
 export interface PaV2Request {
   actionType: string;

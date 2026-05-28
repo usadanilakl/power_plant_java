@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.sevice.sharepoint.adapters.FieldListItemSha
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.InstrumentLogSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.InventoryItemSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.SdsChemicalSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class PermitAttachmentSyncService {
     private final InstrumentLogSharePointAdapter instrumentLogAdapter;
     private final FieldListItemSharePointAdapter fieldListItemAdapter;
     private final InventoryItemSharePointAdapter inventoryItemAdapter;
+    private final SdsChemicalSharePointAdapter sdsChemicalAdapter;
     private final PermitAttachmentRepo attachmentRepo;
     private final SyncConfig syncConfig;
 
@@ -54,6 +56,11 @@ public class PermitAttachmentSyncService {
     public int syncAttachmentsForInventoryItem(Long entityId, String sharepointId) {
         return syncAttachments("InventoryItem", entityId, sharepointId,
                 () -> inventoryItemAdapter.getAttachments(sharepointId));
+    }
+
+    public int syncAttachmentsForSdsChemical(Long entityId, String sharepointId) {
+        return syncAttachments("SdsChemical", entityId, sharepointId,
+                () -> sdsChemicalAdapter.getAttachments(sharepointId));
     }
 
     private int syncAttachments(String entityType, Long entityId, String sharepointId,

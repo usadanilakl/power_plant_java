@@ -791,6 +791,28 @@ export class ServerApiService {
     );
   }
 
+  // ====================== SDS Chemicals ======================
+
+  submitSdsChemical(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/sds-chemical/submit`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
+  updateSdsChemical(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.put<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/sds-chemical/update`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
   getFieldListItemStatus(localUuid: string): Observable<PwaStatusResult> {
     return this.http.get<{ responseData: PwaStatusResult }>(
       `${this.baseUrl}/api/pwa/field-list-item/status/${localUuid}`

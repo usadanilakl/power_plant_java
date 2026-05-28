@@ -9,10 +9,12 @@ import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
 import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.entities.rounds.RoundsReport;
+import com.dk_power.power_plant_java.entities.loto.RedTagStandard;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.inventory.InventoryItem;
 import com.dk_power.power_plant_java.entities.inventory.InventoryUsage;
+import com.dk_power.power_plant_java.entities.sds.SdsChemical;
 import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
@@ -44,6 +46,7 @@ import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.angular.field_list.FieldListItemSyncService;
 import com.dk_power.power_plant_java.sevice.angular.inventory.InventoryItemSyncService;
 import com.dk_power.power_plant_java.sevice.angular.inventory.InventoryUsageSyncService;
+import com.dk_power.power_plant_java.sevice.angular.sds.SdsChemicalSyncService;
 import com.dk_power.power_plant_java.sevice.fire_impairment.FireImpairmentService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
@@ -57,6 +60,7 @@ import com.dk_power.power_plant_java.sevice.etapro.EtaProPointService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScrapeJobService;
 import com.dk_power.power_plant_java.sevice.angular.rounds.NgRoundsService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgRedTagStandardService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import org.springframework.context.annotation.Lazy;
@@ -137,8 +141,12 @@ public class ServiceFacade {
             // Inventory
             @Lazy InventoryItemSyncService inventoryItemSyncService,
             @Lazy InventoryUsageSyncService inventoryUsageSyncService,
+            // SDS
+            @Lazy SdsChemicalSyncService sdsChemicalSyncService,
             // Rounds (WebView AMS scraper)
-            @Lazy NgRoundsService ngRoundsService
+            @Lazy NgRoundsService ngRoundsService,
+            // Red Tag standards (digitized LOTO standards from Red Tag)
+            @Lazy NgRedTagStandardService ngRedTagStandardService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -160,6 +168,7 @@ public class ServiceFacade {
         serviceMap.put(LotoPoint.class.getSimpleName(), lotoPointService);
         serviceMap.put(Loto.class.getSimpleName(), ngLotoService);
         serviceMap.put(LotoStandard.class.getSimpleName(), ngLotoStandardService);
+        serviceMap.put(RedTagStandard.class.getSimpleName(), ngRedTagStandardService);
         serviceMap.put(LotoBox.class.getSimpleName(), ngLotoBoxService);
         serviceMap.put(Lock.class.getSimpleName(), ngLockService);
         serviceMap.put(ZeroEnergy.class.getSimpleName(), zeroEnergyService);
@@ -205,6 +214,8 @@ public class ServiceFacade {
         // Inventory
         serviceMap.put(InventoryItem.class.getSimpleName(), inventoryItemSyncService);
         serviceMap.put(InventoryUsage.class.getSimpleName(), inventoryUsageSyncService);
+        // SDS
+        serviceMap.put(SdsChemical.class.getSimpleName(), sdsChemicalSyncService);
         // Rounds (WebView AMS scraper)
         serviceMap.put(RoundsReport.class.getSimpleName(), ngRoundsService);
     }

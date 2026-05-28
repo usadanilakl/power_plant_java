@@ -28,7 +28,7 @@ public class NgRedTagStandardController {
 
     @GetMapping
     public ResponseEntity<NgApiResponse<List<RedTagStandardDto>>> getAll() {
-        return ResponseEntity.ok(new NgApiResponse<>(service.getAll(), "Red Tag standards retrieved"));
+        return ResponseEntity.ok(new NgApiResponse<>(service.getAllDtos(), "Red Tag standards retrieved"));
     }
 
     @GetMapping("/{id}")

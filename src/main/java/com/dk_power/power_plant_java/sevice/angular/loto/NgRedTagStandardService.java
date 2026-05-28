@@ -9,15 +9,19 @@ import com.dk_power.power_plant_java.entities.loto.RedTagStandard;
 import com.dk_power.power_plant_java.entities.loto.RedTagStandardRow;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.RedTagStandardRepo;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -39,7 +43,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class NgRedTagStandardService {
+public class NgRedTagStandardService implements SyncableService<RedTagStandard> {
 
     private static final String SEED_JSON = "red-tag-standards/seed.json";
     private static final String IMAGE_DIR = "red-tag-standards/images/";
@@ -49,10 +53,61 @@ public class NgRedTagStandardService {
     private final LotoPointRepo lotoPointRepo;
     private final NgLotoStandardService ngLotoStandardService;
 
+    // ── SyncableService contract (desktop ⇄ hub field-level sync) ─────────────
+    // RedTagStandard participates in sync like any other domain entity. The
+    // persistent columns (rowsJson, sourceImageBase64, unit, name,
+    // generatedStandardId, importNotes) sync field-by-field; the transient
+    // rows accessor isn't a Hibernate property so it's never captured.
+
+    @Override public RedTagStandard getEntity() { return new RedTagStandard(); }
+
+    @Override
+    public RedTagStandard getEntityById(Long id) {
+        return id == null ? null : repo.findById(id).orElse(null);
+    }
+
+    @Override
+    public List<RedTagStandard> getAll() {
+        return repo.findAll();
+    }
+
+    @Override public RedTagStandard save(RedTagStandard entity) { return repo.save(entity); }
+
+    @Override public RedTagStandard saveAndFlush(RedTagStandard entity) { return repo.saveAndFlush(entity); }
+
+    @Override public void deleteById(Long id) { repo.deleteById(id); }
+
+    @Override
+    public List<RedTagStandard> getAllSince(LocalDateTime since) {
+        return repo.findAllByDateModifiedAfter(since);
+    }
+
+    @Override
+    public void processSyncItem(RedTagStandard item) {
+        if (item == null || item.getId() == null) return;
+        repo.saveAndFlush(item);
+    }
+
+    @Override
+    public void processSyncItems(List<RedTagStandard> items) {
+        if (items == null) return;
+        items.forEach(this::processSyncItem);
+    }
+
+    @Override
+    public Page<RedTagStandard> getAllSincePaginated(LocalDateTime lastSyncTime, Pageable pageable) {
+        return repo.findAllByDateModifiedAfterOrderByDateModifiedAsc(lastSyncTime, pageable);
+    }
+
+    @Override
+    public Page<RedTagStandard> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable) {
+        return repo.findAllByDateModifiedBetween(since, until, pageable);
+    }
+
     // ── Read ──────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public List<RedTagStandardDto> getAll() {
+    public List<RedTagStandardDto> getAllDtos() {
         return repo.findAll().stream().map(this::toDto).toList();
     }
 
