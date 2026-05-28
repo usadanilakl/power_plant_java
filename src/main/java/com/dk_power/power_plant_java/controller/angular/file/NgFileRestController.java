@@ -322,6 +322,23 @@ public class NgFileRestController {
         }
     }
 
+    /**
+     * Map of {@code <relative-folder>/<base-name> -> [physical revisions]} for every
+     * on-disk document that has more than one revision (an original plus one or more
+     * "-revN" siblings written by the Revise action). The client reproduces the key
+     * from each row's fileLink to badge it and list its revisions. One filesystem
+     * walk, cached client-side — no per-row scans.
+     */
+    @GetMapping("/revisions-map")
+    public ResponseEntity<NgApiResponse<Map<String, List<NgFileService.RevisionInfo>>>> getRevisionsMap() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngFileService.getRevisionsMap(),
+                    "Revisions map retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     /** Distinct fileType names actually used by FileObjects in the database. */
     @GetMapping("/distinct-types")
     public ResponseEntity<NgApiResponse<List<String>>> getDistinctFileTypes() {

@@ -10,6 +10,7 @@ import { CurrentFileService } from '../../../../services/current-file.service';
 import { RfToggleMenuComponent } from "../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component";
 import { FileContextMenuService } from '../services/file-context-menu.service';
 import { RfFileStateService } from '../services/rf-file-state.service';
+import { RfFileApiService, RevisionInfo, deriveRevisionKey, buildRevisionFileDto } from '../services/rf-file-api.service';
 import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
 import { QaDirective } from '../../../../shared/qa/qa.directive';
 import { tap } from 'rxjs';
@@ -41,15 +42,26 @@ export class RfFileLeftMenuComponent implements OnInit{
   /** Currently selected tab. Starts empty and is set to the first available type on load. */
   selectedType = signal<string>("");
 
+  /** Disk-based revisions map (key -> physical revisions); drives expandable revision nodes. */
+  revisionsMap = signal<Record<string, RevisionInfo[]>>({});
+
+  /** Transient FileDtos for non-current revision tree nodes, keyed by synthetic node id. */
+  private revisionFileLookup = new Map<string, FileDto>();
+
 
 constructor(
-  private fileService: FileService, 
+  private fileService: FileService,
   private routService: RouteService,
   private destroyRef: DestroyRef,
   private currentFileService: CurrentFileService,
+  private fileApi: RfFileApiService,
 ) { }
 
   ngOnInit(): void {
+
+    // Load the disk-based revisions map, then rebuild the menu so files with
+    // physical revisions become expandable. Refreshed again on file updates.
+    this.loadRevisionsMap();
 
     // Keep our tab list in sync with the dynamic file types. When the list
     // first resolves (or changes), auto-select the first type if none chosen.
@@ -58,7 +70,9 @@ constructor(
     ).subscribe(types => {
       this.fileTypes.set(types);
       if (!this.selectedType() && types.length > 0) {
-        this.selectedType.set(types[0]);
+        // Default to PID when present (most-used type), else the first available.
+        const pid = types.find(t => t.toLowerCase() === 'pid');
+        this.selectedType.set(pid ?? types[0]);
       }
     });
 
@@ -84,6 +98,7 @@ constructor(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
+        this.loadRevisionsMap();
         this.loadFiles(this.selectedType());
       },
       error: (error) => {
@@ -126,6 +141,19 @@ constructor(
     this.loadFiles(this.selectedType());
   }
 
+  private loadRevisionsMap(): void {
+    this.fileApi.getRevisionsMap().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        this.revisionsMap.set(res.responseData ?? {});
+        // Rebuild with revision info now available.
+        this.loadFiles(this.selectedType());
+      },
+      error: () => { /* revisions are best-effort */ }
+    });
+  }
+
   onAddNewFile(): void {
     // Create a new empty FileDto and open the form
     this.stateService.setSelectedItem(new FileDto());
@@ -147,6 +175,8 @@ constructor(
   }
 
   private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {
+    // Rebuild the transient-revision lookup from scratch on each (re)build.
+    this.revisionFileLookup.clear();
     const groupFiles = (files: FileDto[], key: 'vendor' | 'system' | 'fileType'): Record<string, FileDto[]> => {
     
       return files.reduce((acc, file, index) => {
@@ -176,21 +206,89 @@ constructor(
         isExpanded: false,
         objectType: groupBy
       });
-  
-      parentItem.values = files.map(file => new NestedItemImpl({
-        id: file.id.toString(),
-        name: file.name && file.name.trim() !== '' ? file.name : 'Unnamed File',
-        subtitle: file.fileNumber && file.fileNumber.length > 0 ? file.fileNumber.join(', ') : undefined,
-        isExpanded: false,
-        objectType: file.objectType,
-        color: this.setFileItemColor(file)
-      }));
-  
+
+      parentItem.values = files.map(file => this.fileNode(file));
+
       return parentItem;
     });
   }
 
+  /**
+   * Build the tree node for a file. Revisions are physical sibling files on disk
+   * (the Revise action writes "-revN" copies but keeps one DB row), so a file with
+   * revisions becomes an EXPANDABLE node whose children are the physical revisions.
+   * Files without revisions stay plain, directly-clickable leaves.
+   */
+  private fileNode(file: FileDto): NestedItem {
+    const revisions = this.revisionsMap()[deriveRevisionKey(file.fileLink)] ?? [];
+    if (revisions.length <= 1) {
+      return this.fileLeaf(file);
+    }
+
+    const docNode = new NestedItemImpl({
+      id: 'revgroup_' + file.id,
+      name: file.name && file.name.trim() !== '' ? file.name : 'Unnamed File',
+      subtitle: `${file.fileNumber && file.fileNumber.length > 0 ? file.fileNumber.join(', ') : ''} · ${revisions.length} revisions`,
+      isExpanded: false,
+      objectType: 'revisionGroup',
+      color: this.setFileItemColor(file),
+    });
+
+    const currentRev = this.fileRevNum(file);
+    docNode.values = revisions.map(rev => {
+      const label = rev.revisionNumber === 0 ? 'Original' : `rev ${rev.revisionNumber}`;
+      if (rev.revisionNumber === currentRev) {
+        // The DB row points at this revision — open it normally (full equipment markup).
+        return new NestedItemImpl({
+          id: file.id.toString(),
+          name: `${label} (current) — ${file.name && file.name.trim() !== '' ? file.name : 'Unnamed File'}`,
+          subtitle: rev.fileName,
+          isExpanded: false,
+          objectType: file.objectType,
+          color: this.setFileItemColor(file),
+        });
+      }
+      // Older physical revision with no DB row — open as a transient file in the
+      // same in-app viewer (pdf/jpg toggle works via the editor's format switch).
+      const nodeId = `revfile::${file.id}::${rev.revisionNumber}`;
+      this.revisionFileLookup.set(nodeId, buildRevisionFileDto(file, rev, 'jpg'));
+      return new NestedItemImpl({
+        id: nodeId,
+        name: `${label} — ${rev.fileName}`,
+        subtitle: rev.fileName,
+        isExpanded: false,
+        objectType: 'revisionFile',
+        color: this.setFileItemColor(file),
+      });
+    });
+    return docNode;
+  }
+
+  private fileLeaf(file: FileDto): NestedItem {
+    return new NestedItemImpl({
+      id: file.id.toString(),
+      name: file.name && file.name.trim() !== '' ? file.name : 'Unnamed File',
+      subtitle: file.fileNumber && file.fileNumber.length > 0 ? file.fileNumber.join(', ') : undefined,
+      isExpanded: false,
+      objectType: file.objectType,
+      color: this.setFileItemColor(file),
+    });
+  }
+
+  /** Revision number the DB row currently points at, from its fileNumber's -revN suffix. */
+  private fileRevNum(file: FileDto): number {
+    const joined = (file.fileNumber ?? []).join('__SEP__');
+    const m = joined.match(/-rev(\d+)$/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
   onItemClick(item: NestedItem): void {
+    // Older physical revision (no DB row) — open its transient FileDto in the viewer.
+    if (item.objectType === 'revisionFile') {
+      const transient = this.revisionFileLookup.get(item.id?.toString() ?? '');
+      if (transient) this.currentFileService.setCurrentFile(transient);
+      return;
+    }
     switch (this.currentRoute()) {
       case 'table':
         this.handleFileTableClick(item);
@@ -373,13 +471,16 @@ constructor(
   }
 
   private setFileItemColor(item: FileDto): string{
+    // Status semantics: missing name = red, not yet verified = amber, verified = green.
+    // Returned as hex (not raw 'red'/'yellow') so the toggle list's tint + status-bar
+    // styling renders pleasant, readable colors.
     if(!item.name || item.name === ''){
-      return 'red';
+      return '#e74c3c';
     }
     if(!item.isVerified){
-      return 'yellow';
+      return '#e6a700';
     }
-    return 'green';
+    return '#27ae60';
   }
 
 }

@@ -1,62 +1,62 @@
 # Safe Work label crops
 
-58 cropped PNGs — one per checkbox label on the **zoomed-out** SW form.
-Used by `SafeWorkBuildFlow` to find each checkbox via SikuliX image match
-(no runtime OCR). Click position = `match.x + 12, match.y + match.h/2`
-(the crop includes ~25 px of pixels left of the label, where the checkbox lives).
+One PNG per checkbox label on the SW form, captured at the form's **normal zoom**
+(the zoom the automation now runs at — it scrolls to each section instead of
+zooming out). `SafeWorkBuildFlow` finds each by SikuliX image match and clicks
+the checkbox at `match.x + 22, match.y + match.h/2` (offset measured from these
+crops — the checkbox spans ~x=0..44 of each crop).
 
-## How they were generated
+## Source
 
-Hand-cropped from `project/features/red-tag-automation/screenshots/permits/zoomed out sw form view.png`
-by the test `HandCropSwLabelsIT` using measured grid coordinates:
+Hand-captured by the operator (2026-05-28) and identified/renamed from the
+originals in `project/features/red-tag-automation/safe work/{hazards,permits,ppe}/`.
+58 checkbox crops + 5 special crops below.
 
-- **Hazards** (29 rows): `Y0 = 402`, pitch = 23, 3 columns at `x = {820, 1100, 1405}`, width 275.
-- **Permits** (12 rows): `Y0 = 685`, pitch = 23, 3 columns at `x = {820, 1100, 1405}`, width 275.
-- **PPE** (17 rows): `Y0 = 843`, 4 columns at `x = {820, 1020, 1250, 1480}`, width 200.
-  PPE is **not** uniform — cols 2/3/4 have `Type [input]` sub-rows between checkboxes,
-  so each row's y-offset is specified explicitly. See `HandCropSwLabelsIT.PPE_COL*`.
+## Special crops (free-text fields, not checkboxes)
 
-OCR-based auto-generation (`SwLabelPatternGenerator`) does **not** work on this
-screenshot — Tesseract gives up on text ~9 px tall. Kept as code in case a
-higher-zoom screenshot is captured later. Hand-crop is the source of truth.
+These accompany a checkbox and feed the free-text fill logic:
 
-## Why this approach (vs OCR at runtime)
+- `respirator-type-combined.png`, `gloves-type-combined.png` — reference captures
+  showing the "Type" field under Respirator/Dust Mask and Protective Gloves.
+  Used to measure the field offset (`FIELD_BELOW_DX/DY` in SafeWorkBuildFlow);
+  the runtime ticks the checkbox crop then clicks the field at that offset.
+- `arc-flash-class-field.png` — the "Class/Cal Rating" field under Arc Flash.
+- `fall-clearance-field.png` — the "Fall Clearance" field under Fall Protection.
+- `voltage-field.png` — the "Voltage" field under Testing/Troubleshooting.
 
-The previous runtime OCR approach had two structural failure modes:
+The runtime does NOT match these directly (the field content varies); it anchors
+on the checkbox crop and clicks at a fixed offset. They're kept for documentation
+and re-measuring offsets if the layout changes.
 
-1. **Per-column bbox variance** — Tesseract returns slightly different bounding
-   boxes for asterisked vs non-asterisked labels, so a single "column gap"
-   constant clicks correctly in one column and misses in others.
-2. **Adjacent column merging** — Tesseract sometimes joins text from two columns
-   into one line, causing multiple checkboxes to map to the same Y.
+## Free-text field wiring (SafeWorkBuildFlow)
 
-Per-checkbox image matching avoids both — each crop is a unique 200-px-wide
-slice that only matches its row.
+- `fillFieldBelow(checkbox, text)` — Type (respirator, gloves), Class/Cal Rating,
+  Fall Clearance, Voltage. Clicks `+120,+80` from the checkbox-crop match.
+- `fillFieldRight(checkbox, text)` — permit "#" descriptions (LOTO/Hot Work/
+  Confined Space/Energized WP/Venting), Weather Hazard desc, and the three
+  "Other" descriptions. Clicks near the crop's right edge (the crop includes the
+  input box).
 
-## To regenerate / fix a specific crop
+Both no-op when the box wasn't ticked or the text is blank.
 
-Edit coordinates in `src/test/java/.../HandCropSwLabelsIT.java`, then run:
-```
-mvn -Dtest=HandCropSwLabelsIT -DskipTests=false -DfailIfNoTests=false test
-```
+## Section headers (../)
 
-To verify visually, run:
-```
-mvn -Dtest=InspectSwLabelsIT -DskipTests=false -DfailIfNoTests=false test
-```
-This stitches all 58 crops into `target/sw-inspect/labels-mosaic.png` so you
-can scroll through them next to their key names.
+`../hazards-header.png`, `../permits-header.png`, `../ppe-header.png` were
+re-cropped at normal zoom from the whole-section screenshots; used as
+scroll-to-section targets and region bounds.
 
-## Known caveats
+## Header / footer field labels (../) — done at normal zoom
 
-- Hazards (29) and Permits (12) crops are visually verified — all show the
-  expected label with checkbox visible at the left.
-- PPE col 1 (Hardhat..Welding PPE) verified.
-- PPE cols 2/3/4 use explicit y-offsets to skip sub-input rows; some entries
-  may still be slightly off in the source screenshot. If a particular PPE
-  checkbox isn't ticked at runtime, the log will show
-  `[RedTag SW] label crop 'X' not found` — adjust the `yOffset` for that entry
-  in `HandCropSwLabelsIT` and regenerate.
-- Missing/wrong crops are non-fatal: `SafeWorkBuildFlow.tickLabel` logs a
-  warning and continues. The operator can hand-tick anything the automation
-  skips, then continue the build.
+`../date-issued-label.png`, `../location-label.png`, `../description-label.png`,
+`../special-instructions-label.png`, `../requestor-label.png` were re-cropped at
+normal zoom from `safe work/header.png` and `safe work/footer.png`. The
+label→field offset constants in SafeWorkBuildFlow (DATE_FIELD_DY=55,
+LOCATION_FIELD_DX=310, DESCRIPTION_FIELD_DX=420, SPECIAL_INSTR_DY=76,
+REQUESTOR_FIELD_DX=106/DY=40) were measured from the detected field rectangles in
+those screenshots. Verify at runtime; nudge a constant if a paste lands off-field.
+
+## Regenerate / verify
+
+To stitch all crops into one mosaic for visual review:
+`mvn -Dtest=InspectSwLabelsIT -DskipTests=false -DfailIfNoTests=false test`
+→ `target/sw-inspect/labels-mosaic.png`.

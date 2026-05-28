@@ -130,10 +130,14 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     private List<String> systems;
 
     public String buildFileLink(){
+        // Null-safe: files with missing fileType/vendor (data-quality issues) must not
+        // crash list/search mapping. Keep the stored fileLink rather than NPE.
+        if(fileType == null || fileType.getName()==null || vendor == null || vendor.getName()==null) return fileLink;
         fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;
         return fileLink;
     }
     public String buildFolder(){
+        if(fileType == null || fileType.getName()==null || vendor == null || vendor.getName()==null) return folder;
         folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
         return folder;
     }

@@ -35,6 +35,17 @@ cdk-virtual-scroll-viewport.toggle-list {
   transform: translateX(2px);
 }
 
+/* Status coloring (red = missing data, yellow = unverified, green = verified).
+   Shown as a left status bar + faint tint so the row text stays readable, instead
+   of painting the whole row a saturated color. */
+.item-content.status-flagged {
+  box-shadow: inset 4px 0 0 0 var(--status-color);
+  background-color: color-mix(in srgb, var(--status-color) 13%, var(--primary-background));
+}
+.item-content.status-flagged:hover {
+  background-color: color-mix(in srgb, var(--status-color) 22%, var(--hover-color));
+}
+
 /* .item-content.clicked {
   border: 2px solid #007bff;
 }

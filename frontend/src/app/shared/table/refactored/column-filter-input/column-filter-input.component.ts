@@ -30,9 +30,27 @@ export class ColumnFilterInputComponent {
   private closeDropdownTimeout: any;
 
   constructor(private cdr: ChangeDetectorRef) {
+    // Narrow the dropdown to options matching what's typed, on top of whatever the
+    // server returned. Without this the option list stays the full set while the
+    // table itself filters — the two get visibly out of sync.
     effect(() => {
-      this.filteredOptions.set(this.uniqueValues());
+      const all = this.uniqueValues();
+      const q = this.filterValue().trim().toLowerCase();
+      this.filteredOptions.set(
+        q ? all.filter(o => (o ?? '').toLowerCase().includes(q)) : all
+      );
     });
+  }
+
+  /** Externally clear this input's text/dropdown without emitting (parent does the search). */
+  reset(): void {
+    this.filterValue.set('');
+    this.filteredOptions.set(this.uniqueValues());
+    this.filterDropdownOpen.set(false);
+    if (this.closeDropdownTimeout) {
+      clearTimeout(this.closeDropdownTimeout);
+      this.closeDropdownTimeout = null;
+    }
   }
 
   onInputChange(event: Event): void {

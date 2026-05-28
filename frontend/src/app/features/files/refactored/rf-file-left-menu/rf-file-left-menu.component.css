@@ -87,30 +87,44 @@
 
 /* File Type Controls */
 .file-type-controls {
-  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
   background-color: var(--card-background);
   border-bottom: 1px solid var(--border-color);
 }
 
 .controls-label {
-  display: block;
-  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--secondary-text);
-  margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
+/* Single horizontally-scrollable row so the type tabs don't eat vertical space
+   that the file list needs. */
 .file-type-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+.file-type-buttons::-webkit-scrollbar { height: 6px; }
+.file-type-buttons::-webkit-scrollbar-thumb {
+  background: var(--scroll-bar-color, #888);
+  border-radius: 3px;
 }
 
 .type-button {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8rem;
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
   background-color: var(--secondary-background);
   color: var(--primary-text);
   border: 1px solid var(--border-color);
@@ -205,13 +219,3 @@ app-rf-toggle-menu {
   width: 100%;
 }
 
-/* Responsive */
-@media (max-width: 600px) {
-  .file-type-buttons {
-    flex-direction: column;
-  }
-
-  .type-button {
-    width: 100%;
-  }
-}

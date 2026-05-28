@@ -1,9 +1,10 @@
 
 <div class="table-wrapper" [class.resizing]="resizeService.isResizing()">
 
-  <div class="search-bar">
+  <div class="search-bar" style="display:flex; align-items:center; gap:8px;">
     <button
       class="filter-logic-toggle global-logic-toggle"
+      style="flex:0 0 auto; width:48px; min-width:48px; text-align:center;"
       [class.active]="searchService.getGlobalFilterLogic() === 'OR'"
       (click)="searchService.toggleGlobalFilterLogic()"
       [title]="'Global filter logic: ' + searchService.getGlobalFilterLogic()">
@@ -15,7 +16,18 @@
       [(ngModel)]="dataService.globalSearchQuery"
       (input)="searchService.onGlobalSearchChange()"
       class="global-search"
+      style="flex:1 1 0; min-width:0; width:auto; background:#fff; color:#333;"
     />
+    <button
+      type="button"
+      class="clear-all-filters-btn"
+      style="flex:0 0 auto;"
+      [disabled]="!hasActiveFilters()"
+      (click)="clearAllFilters()"
+      title="Clear all column filters and search"
+    >
+      ✕ Clear filters
+    </button>
   </div>
   
   <div class="table-controls">

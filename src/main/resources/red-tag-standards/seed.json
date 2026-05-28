@@ -4858,5 +4858,613 @@
    }
   ],
   "importNotes": null
+ },
+ {
+  "name": "Demin water pumps",
+  "unit": "BOP",
+  "image": "demin-water-pumps.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "DEMIN WATER PUMP MTR A",
+    "pnid": "00-DWS-MPM-01A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "DEMIN WATER PUMP MTR B",
+    "pnid": "00-DWS-MPM-01B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "DEMIN WATER PUMP MTR C",
+    "pnid": "00-DWS-MPM-01C",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "DEMIN OUTLET TANK ISOLATION",
+    "pnid": "00-VDWS605",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Demin pump A discharge outlet valve",
+    "pnid": "00-VDWS808",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "Demin pump B discharge outlet valve",
+    "pnid": "00-VDWS819",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Demin pump C discharge outlet valve",
+    "pnid": "00-VDWS830",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "DEMIN PUMP A SUCTION ISO",
+    "pnid": "00-VDWS800",
+    "isolatedPosition": "",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "Demin Pump B Suction ISO",
+    "pnid": "00-VDWS-811",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "Demin Pump C Suction ISO",
+    "pnid": "00-DWS822",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Service water",
+  "unit": "BOP",
+  "image": "service-water.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "SERVICE WATER PUMP MOTOR A",
+    "pnid": "00-SWS-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "SERVICE WATER PUMP MTR B",
+    "pnid": "00-SWS-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "SERVICE WATER PUMP \"A\" SUCTION ISOLATION",
+    "pnid": "00-VSWS800",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "SERVICE WATER PUMP \"B\" SUCTION ISOLATION",
+    "pnid": "00-VSWS811",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "SWS TANK ISOLATION - PUMP RECIRC",
+    "pnid": "00-VSWS605",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "SWS Recirc drain",
+    "pnid": "00-VSWS686",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Sodium Hypochlorite Discharge Isolation",
+    "pnid": "00-VDWT650F",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Instrument Air compressor Alpha",
+  "unit": "BOP",
+  "image": "instrument-air-compressor-alpha.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR A",
+    "pnid": "01-INA-PNL-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR 01A ISOLATION",
+    "pnid": "00-VINA636",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "INSTRUMENT AIR DRAIN",
+    "pnid": "00-VINA670",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Instrument Air compressor Bravo",
+  "unit": "BOP",
+  "image": "instrument-air-compressor-bravo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR B",
+    "pnid": "00-INA-CMP-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR 01B ISOLATION",
+    "pnid": "00-VINA648",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "COMPRESSED AIR DRAIN",
+    "pnid": "00-VINA615",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Air Dryer Alpha",
+  "unit": "BOP",
+  "image": "air-dryer-alpha.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "Air Dryer A PWR FEED",
+    "pnid": "00-INA-CPL-02A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "Inlet to A Dryer",
+    "pnid": "VINA-612",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "Outlet to A Dryer",
+    "pnid": "VINA-624",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "A AIR DRYER INA DRAIN",
+    "pnid": "00-VINA676",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Air Dryer Bravo",
+  "unit": "BOP",
+  "image": "air-dryer-bravo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "AIR DRYER B PWR FEED",
+    "pnid": "00-INA-CPL-02B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "Inlet to B Dryer",
+    "pnid": "VINA622",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "Outlet to 01B Dryer",
+    "pnid": "VINA626",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "INLET B AIR DRYER INA DRAIN",
+    "pnid": "00-VINA716",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Aux Boiler inspection",
+  "unit": "BOP",
+  "image": "aux-boiler-inspection.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "AUX BOILER NATURAL GAS MAIN LINE MANUAL VALVE",
+    "pnid": "00-VAXS800",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "AUX BOILER COMBUSTION AIR FAN",
+    "pnid": "00-AXS-MFN-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "AUX BOILER FEED PUMP MTR 1",
+    "pnid": "00-AXS-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "AUX BOILER FEED PUMP MTR 2",
+    "pnid": "00-AXS-VFD-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "AUX BLR FEED WTR ISOLATION MOV 480VAC",
+    "pnid": "00-MOV-AXS-900",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "AUX BOILER ECONOMIZER LOWER HEADER DRAIN VALVE",
+    "pnid": "00-VAXS910",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "AUX BOILER ECONOMIZER OUTLET HEADER VENT VALVE",
+    "pnid": "00-VAXS909",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "AUX BOILER BOTTOM BLOWDOWN VALVE (WEST)",
+    "pnid": "00-VAXS938",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "AUX BOILER BOTTOM BLOWDOWN VALVE (EAST)",
+    "pnid": "00-VAXS939",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "AUX BOILER BOTTOM BLOWDOWN DRAIN VALVE",
+    "pnid": "00-VAXS940",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "AUX BOILER BLOCK VALVE BEFORE BACK PRESSURE CONTROL VALVE",
+    "pnid": "00-V-AXS623",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "BYPASS VALVE FOR BACK PRESSURE CONTROL VALVE",
+    "pnid": "00-V-AXS624",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "DOWN STREAM BACK PRESSURE CONTROL VALVE ISO AXS625",
+    "pnid": "00-VAXS625",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "Aux Boiler Main Gas Manual Isolation (Outside)",
+    "pnid": "00-VFGS228",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "CCF AUX BLR Ammonia feed pmp CPL 480V VAC Brk 1/3/5",
+    "pnid": "00-CCF-CPL-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "Demin Supply Block Valve",
+    "pnid": "00-V-AXS978",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 17,
+    "tagType": "Danger",
+    "description": "Demin Supply Root Valve",
+    "pnid": "00-V-AXS975",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 18,
+    "tagType": "Danger",
+    "description": "Demin Supply Bypass valve",
+    "pnid": "00-V-AXS979",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 19,
+    "tagType": "Danger",
+    "description": "Demin Supply drain After Regulator",
+    "pnid": "00-V-AXS-977",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 20,
+    "tagType": "Danger",
+    "description": "BOILER DA MAKEUP WTR LCV OUTLET DRAIN VALVE",
+    "pnid": "00-VAXS980",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 21,
+    "tagType": "Danger",
+    "description": "AUX BLR MAIN STEAM STOP MOV 480VAC",
+    "pnid": "00-MOV-AXS901",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 22,
+    "tagType": "Danger",
+    "description": "00-MOV-AXS901 HANDWHEEL",
+    "pnid": "00-MOV-AXS901",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 23,
+    "tagType": "Danger",
+    "description": "BOILER DRUM MAIN STEAM OUTLET VALVE",
+    "pnid": "00-V-AXS948",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 24,
+    "tagType": "Danger",
+    "description": "AUX BOILER DRUM VENT",
+    "pnid": "00-VAXS914",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 25,
+    "tagType": "Danger",
+    "description": "ROOT VALVE TO THE START UP VENT VALVES",
+    "pnid": "00-VAXS953",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 26,
+    "tagType": "Danger",
+    "description": "AUX BLR 120 VAC PWR (PLC Panel)",
+    "pnid": "00-AXS-CPL-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 27,
+    "tagType": "Danger",
+    "description": "Aux Boiler DA Storage Drain",
+    "pnid": "00-V-AXS959",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 28,
+    "tagType": "Danger",
+    "description": "Aux Boiler BD Tank Drain",
+    "pnid": "00-V-AXS944",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 29,
+    "tagType": "Danger",
+    "description": "Aux Boiler BD Quench Water ISO",
+    "pnid": "00-VAXS946",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 30,
+    "tagType": "Danger",
+    "description": "Aux Boiler BD Quench Water Bypass",
+    "pnid": "00-V-AXS947",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 31,
+    "tagType": "Danger",
+    "description": "Inlet Fuel gas vent (next to Y strainer YTS-832)",
+    "pnid": "00-VAXS833",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 32,
+    "tagType": "Danger",
+    "description": "Root INA manual Iso",
+    "pnid": "VINA463",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 33,
+    "tagType": "Danger",
+    "description": "INA vent downstream Vina463",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 34,
+    "tagType": "Danger",
+    "description": "INA iso to flame scanner 1 & 2",
+    "pnid": "00-VAXS857",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 35,
+    "tagType": "Danger",
+    "description": "INA iso to ignitor",
+    "pnid": "00-VAXS856",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 36,
+    "tagType": "Danger",
+    "description": "INA to East sight glass sweep air",
+    "pnid": "VINA425",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 37,
+    "tagType": "Danger",
+    "description": "AIR SUPPLY TO WEST BOTTOM BLOWDOWN VALVE",
+    "pnid": "00-VINA-145",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 38,
+    "tagType": "Danger",
+    "description": "AIR SUPPLY TO EAST BOTTOM BLOWDOWN VALVE",
+    "pnid": "00-VINA-189",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR/hand-read draft \u2014 verify rows against the source image."
  }
 ]

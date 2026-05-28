@@ -45,30 +45,54 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 public class SafeWorkBuildFlow {
 
-    /** Number of times to scroll-out so the whole form is visible. */
-    private static final int ZOOM_OUT_CLICKS = 3;
-
     /**
      * Distance from the LEFT edge of a label-crop match to the checkbox centre.
-     * The crops are generated with {@code CROP_LEFT_PAD = 25} px to the left of
-     * the OCR'd label, so the checkbox roughly spans pixels 5–20 of the crop;
-     * 12 is its centre. Tune in one place if the form theme changes.
+     * Measured across the captured normal-zoom crops (MeasureCheckboxOffsetIT):
+     * the checkbox spans roughly x=0..44 of each crop, centre ≈ 22.
      */
-    private static final int CHECKBOX_X_OFFSET = 12;
+    private static final int CHECKBOX_X_OFFSET = 22;
 
-    // === Header / footer field offsets (from label centre) ===
-    private static final int DATE_FIELD_DY = 16;     // Date field sits below its label
-    private static final int LOCATION_FIELD_DX = 140;
-    private static final int DESCRIPTION_FIELD_DX = 170;
-    private static final int SPECIAL_INSTR_DY = 22;  // text area below the label
-    private static final int REQUESTOR_FIELD_DX = 40, REQUESTOR_FIELD_DY = 26;
+    /**
+     * Offset from a checkbox-crop match's top-left to the free-text field that sits
+     * just below-right of it (the "Type" box under Respirator/Dust Mask and
+     * Protective Gloves, etc.). Measured from the combined crops
+     * (MeasureTypeFieldOffsetsIT): the field's left edge is ~80 px right of the
+     * crop origin and ~55 px below the checkbox row. We click well inside the
+     * field so a few px of variance still lands in it.
+     */
+    private static final int FIELD_BELOW_DX = 120;
+    private static final int FIELD_BELOW_DY = 80;
+
+    /** Wheel ticks per scroll step when bringing a section into view. */
+    private static final int SCROLL_TICKS = 3;
+    /** Max scroll steps before giving up trying to reveal a section. */
+    private static final int SCROLL_MAX_STEPS = 25;
+    /** A section header is "in view enough" once it sits in the top fraction of the screen. */
+    private static final double SECTION_TOP_FRACTION = 0.45;
+
+    // === Header / footer field offsets (from label-crop centre) ===
+    // Measured at normal zoom from header.png / footer.png field detection
+    // (MeasureHeaderFooterFieldsIT) against the label crops' known centres.
+    private static final int DATE_FIELD_DY = 55;      // Date field sits below its label
+    private static final int LOCATION_FIELD_DX = 310; // field to the right, same row
+    private static final int DESCRIPTION_FIELD_DX = 420;
+    private static final int SPECIAL_INSTR_DY = 76;   // large text area below the label
+    private static final int REQUESTOR_FIELD_DX = 106, REQUESTOR_FIELD_DY = 40; // field below-right, after the "X"
 
     private final SikuliDriver driver;
     private final RedTagAutomationProperties properties;
 
     // --- Navigation ----------------------------------------------------------
 
-    /** Opens a fresh Safe Work permit form (no template) and zooms it out. */
+    /**
+     * Opens a fresh Safe Work permit form (no template) at the normal zoom.
+     *
+     * <p>The form is left at its default zoom — the checkbox label patterns are
+     * captured at that zoom, and each section is scrolled into view at fill time
+     * (see {@link #scrollToSection}). The old "Ctrl+scroll to zoom the whole form
+     * out" step is gone: at zoom-out the labels render too small to match
+     * reliably.
+     */
     public String openSafeWorkForm() {
         driver.click(RedTagPattern.SW_TAB);
         driver.sleep(properties.getInterStepDelayMs());
@@ -78,13 +102,8 @@ public class SafeWorkBuildFlow {
         // we look, and one-shot OCR has been intermittent.
         findIssuePermitButton().click();
         driver.sleep(properties.getInterStepDelayMs());
-        // Zoom out via Ctrl+scroll rather than clicking the magnifier image —
-        // the icon hasn't matched reliably across machines.
-        driver.hoverCenter();
-        driver.ctrlScroll(-ZOOM_OUT_CLICKS);
-        driver.sleep(500);
         driver.waitFor(RedTagPattern.SW_HAZARDS_HEADER, 15);
-        return "Safe Work form opened and zoomed out";
+        return "Safe Work form opened";
     }
 
     /** Retries OCR for "Issue Permit" — the post-NEW-PERMIT dialog renders intermittently. */
@@ -107,6 +126,7 @@ public class SafeWorkBuildFlow {
 
     /** Fills the header block: date, time, company/person, location, description. */
     public String fillHeader(SafeWorkDto sw) {
+        scrollToTop();
         // Date / Time / Company sit in a row — fill the date field, then TAB across.
         driver.clickOffset(RedTagPattern.SW_DATE_ISSUED_LABEL, 0, DATE_FIELD_DY);
         driver.paste(formatDate(sw.getDate()));
@@ -129,6 +149,7 @@ public class SafeWorkBuildFlow {
      */
     public String fillHazards(SafeWorkDto sw) {
         SwHazards h = sw.getHazards() != null ? sw.getHazards() : new SwHazards();
+        scrollToSection(RedTagPattern.SW_HAZARDS_HEADER);
         Region sect = sectionRegion(RedTagPattern.SW_HAZARDS_HEADER, RedTagPattern.SW_PERMITS_HEADER);
         log.info("[RedTag SW] hazards section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
 
@@ -157,37 +178,45 @@ public class SafeWorkBuildFlow {
         tickLabel(sect, h.isHeatColdStress(), "heat-cold-stress");
         tickLabel(sect, h.isElevatedSurface(), "elevated-surface");
         tickLabel(sect, h.isEnvironmental(), "environmental");
-        tickLabel(sect, h.isWeatherHazards(), "weather-hazards");
-        tickLabel(sect, h.isTestingTroubleshooting50V(), "testing-troubleshooting");
+        Match weather = tickLabel(sect, h.isWeatherHazards(), "weather-hazards");
+        fillFieldRight(weather, h.getWeatherHazardDescription());
+        // Testing/Troubleshooting carries a "Voltage" text field on the sub-row below it.
+        Match testing = tickLabel(sect, h.isTestingTroubleshooting50V(), "testing-troubleshooting");
+        fillFieldBelow(testing, h.getVoltageDescription());
         tickLabel(sect, h.isHexavalentChromium(), "hexavalent-chromium");
-        tickLabel(sect, h.isOther(), "haz-other");
+        Match hazOther = tickLabel(sect, h.isOther(), "haz-other");
+        fillFieldRight(hazOther, h.getOtherDescription());
         return "Hazards filled";
     }
 
     /** Ticks every selected permit/test/action checkbox via image matching. */
     public String fillPermits(SafeWorkDto sw) {
         SwPermits p = sw.getPermits() != null ? sw.getPermits() : new SwPermits();
+        scrollToSection(RedTagPattern.SW_PERMITS_HEADER);
         Region sect = sectionRegion(RedTagPattern.SW_PERMITS_HEADER, RedTagPattern.SW_PPE_HEADER);
         log.info("[RedTag SW] permits section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
 
-        tickLabel(sect, p.isLotoRequired(), "loto-required");
-        tickLabel(sect, p.isHotWork(), "hot-work-permit");
-        tickLabel(sect, p.isConfinedSpace(), "confined-space");
+        // The first four permits carry a "#" field to their right for the related
+        // permit/procedure number; fill it when a description was entered.
+        fillFieldRight(tickLabel(sect, p.isLotoRequired(), "loto-required"), p.getLotoDescription());
+        fillFieldRight(tickLabel(sect, p.isHotWork(), "hot-work-permit"), p.getHotWorkDescription());
+        fillFieldRight(tickLabel(sect, p.isConfinedSpace(), "confined-space"), p.getConfinedSpaceDescription());
         tickLabel(sect, p.isExcavationPermit(), "excavation-permit");
-        tickLabel(sect, p.isEnergizedPermit(), "energized-elec-wp");
-        tickLabel(sect, p.isVentingPurging(), "venting-purging");
+        fillFieldRight(tickLabel(sect, p.isEnergizedPermit(), "energized-elec-wp"), p.getEnergizedPermitDescription());
+        fillFieldRight(tickLabel(sect, p.isVentingPurging(), "venting-purging"), p.getVentingPurgingDescription());
         tickLabel(sect, p.isJha(), "jha");
         tickLabel(sect, p.isGasTesting(), "air-monitoring");
         tickLabel(sect, p.isLiftPlan(), "lift-plan");
         tickLabel(sect, p.isConfSpaceRescuePlanReview(), "rescue-plan-review");
         tickLabel(sect, p.isFallRescuePlan(), "fall-rescue-plan");
-        tickLabel(sect, p.isOther(), "per-other");
+        fillFieldRight(tickLabel(sect, p.isOther(), "per-other"), p.getOtherDescription());
         return "Permits/tests/actions filled";
     }
 
     /** Ticks every selected PPE checkbox via image matching. */
     public String fillPpe(SafeWorkDto sw) {
         SwPpe ppe = sw.getPpe() != null ? sw.getPpe() : new SwPpe();
+        scrollToSection(RedTagPattern.SW_PPE_HEADER);
         Region sect = sectionRegion(RedTagPattern.SW_PPE_HEADER, RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL);
         log.info("[RedTag SW] ppe section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
 
@@ -196,18 +225,27 @@ public class SafeWorkBuildFlow {
         tickLabel(sect, ppe.isHearingProtection(), "hearing-protection");
         tickLabel(sect, ppe.isBoots(), "protective-footwear");
         tickLabel(sect, ppe.isWeldingPpe(), "welding-ppe");
-        tickLabel(sect, ppe.isRespiratorDustMask(), "respirator-dust-mask");
-        tickLabel(sect, ppe.isGloves(), "protective-gloves");
+        // Respirator/Dust Mask and Protective Gloves each carry a "Type" text field
+        // just below them — fill it when the box is ticked and a type was entered.
+        Match respirator = tickLabel(sect, ppe.isRespiratorDustMask(), "respirator-dust-mask");
+        fillFieldBelow(respirator, ppe.getRespiratorType());
+        Match gloves = tickLabel(sect, ppe.isGloves(), "protective-gloves");
+        fillFieldBelow(gloves, ppe.getGlovesType());
+
         tickLabel(sect, ppe.isGasMonitor(), "air-monitor");
         tickLabel(sect, ppe.isTyvekSuit(), "tyvek-suit");
         tickLabel(sect, ppe.isAcidSuit(), "acid-suit");
         tickLabel(sect, ppe.isBarricade(), "barricade");
         tickLabel(sect, ppe.isFaceShield(), "face-shield");
-        tickLabel(sect, ppe.isArcFlashPpe(), "arc-flash");
+        // Arc Flash/Shock PPE carries a "Class/Cal Rating" text field below it.
+        Match arcFlash = tickLabel(sect, ppe.isArcFlashPpe(), "arc-flash");
+        fillFieldBelow(arcFlash, ppe.getClassCalRating());
         tickLabel(sect, ppe.isGfi(), "gfci");
         tickLabel(sect, ppe.isPurgingVentilation(), "purging-ventilation");
-        tickLabel(sect, ppe.isFallProtection(), "fall-protection");
-        tickLabel(sect, ppe.isOther(), "ppe-other");
+        // Fall Protection carries a "Fall Clearance" text field below it.
+        Match fallProt = tickLabel(sect, ppe.isFallProtection(), "fall-protection");
+        fillFieldBelow(fallProt, ppe.getFallClearance());
+        fillFieldRight(tickLabel(sect, ppe.isOther(), "ppe-other"), ppe.getOtherDescription());
         return "PPE filled";
     }
 
@@ -215,6 +253,7 @@ public class SafeWorkBuildFlow {
 
     /** Fills Special Instructions and the Requestor signature line. */
     public String fillFooter(SafeWorkDto sw) {
+        scrollToSection(RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL);
         driver.pasteAt(RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL, 0, SPECIAL_INSTR_DY,
                 nullToEmpty(sw.getSpecialInstructions()));
         driver.pasteAt(RedTagPattern.SW_REQUESTOR_LABEL, REQUESTOR_FIELD_DX, REQUESTOR_FIELD_DY,
@@ -319,34 +358,105 @@ public class SafeWorkBuildFlow {
      * Builds a screen-wide region between two section anchors so SikuliX is scoped
      * to the right section — prevents matching, say, the "haz-other" crop against
      * the "per-other" or "ppe-other" crop (same word, different sections).
+     *
+     * <p>The bottom anchor may be scrolled off-screen (a tall section near the
+     * bottom of the form); in that case the region runs to the bottom of the screen.
      */
     private Region sectionRegion(RedTagPattern top, RedTagPattern bottom) {
         Match t = driver.find(top);
-        Match b = driver.find(bottom);
+        Match b = driver.findOpt(bottom, 0.4);
         int y = t.y + t.h;
-        int h = Math.max(1, b.y - y);
+        int h = (b != null) ? Math.max(1, b.y - y) : (driver.screenHeight() - y);
         return driver.region(0, y, driver.screenWidth(), h);
     }
 
     /**
-     * Image-matches the auto-generated label crop ({@code safe-work/labels/<key>.png})
-     * inside {@code region} and clicks the checkbox centre. No-op if {@code on} is
-     * false. Logs and continues on miss — one missing crop shouldn't kill a 60-
-     * checkbox section.
+     * Scrolls the form down until {@code header} sits in the top
+     * {@link #SECTION_TOP_FRACTION} of the screen, so that section's checkboxes
+     * are visible below it. Best-effort: logs and returns after
+     * {@link #SCROLL_MAX_STEPS} if the header never reaches the top band (label
+     * matching then works on whatever is visible).
      */
-    private void tickLabel(Region region, boolean on, String key) {
-        if (!on) return;
+    private void scrollToSection(RedTagPattern header) {
+        driver.hoverCenter();
+        int topBand = (int) (driver.screenHeight() * SECTION_TOP_FRACTION);
+        for (int i = 0; i < SCROLL_MAX_STEPS; i++) {
+            Match m = driver.findOpt(header, 0.4);
+            if (m != null && m.y <= topBand) {
+                return;
+            }
+            driver.scrollDown(SCROLL_TICKS);
+            driver.sleep(150);
+        }
+        log.warn("[RedTag SW] could not bring section header '{}' into the top band "
+                + "after {} scroll steps — matching against whatever is visible",
+                header.name(), SCROLL_MAX_STEPS);
+    }
+
+    /** Scrolls the form back to the top so the header fields / first section are visible. */
+    private void scrollToTop() {
+        driver.hoverCenter();
+        driver.scrollUp(SCROLL_MAX_STEPS * SCROLL_TICKS);
+        driver.sleep(200);
+    }
+
+    /**
+     * Image-matches the label crop ({@code safe-work/labels/<key>.png}) inside
+     * {@code region} and clicks the checkbox centre. No-op if {@code on} is false.
+     * Logs and continues on miss — one missing crop shouldn't kill a section.
+     *
+     * @return the crop match (so callers can locate an adjacent field), or
+     *         {@code null} if {@code on} was false or the crop wasn't found.
+     */
+    private Match tickLabel(Region region, boolean on, String key) {
+        if (!on) return null;
         Match m = driver.findLabelOpt(key, region, 1.0);
         if (m == null) {
             log.warn("[RedTag SW] label crop '{}' not found in section — checkbox skipped "
-                    + "(was the generator run on this machine?)", key);
-            return;
+                    + "(is the crop present for this machine's zoom?)", key);
+            return null;
         }
         int clickX = m.x + CHECKBOX_X_OFFSET;
         int clickY = m.y + m.h / 2;
         log.info("[RedTag SW] tick [{}] @ ({},{}) — crop matched at ({},{}) {}x{}",
                 key, clickX, clickY, m.x, m.y, m.w, m.h);
         new Location(clickX, clickY).click();
+        driver.sleep(40);
+        return m;
+    }
+
+    /**
+     * Fills the free-text field that sits just below-right of a checkbox (e.g. the
+     * "Type" box under Respirator/Dust Mask). No-op when the checkbox wasn't
+     * ticked ({@code checkbox == null}) or the text is blank. Clicks into the
+     * field at a fixed offset from the checkbox-crop match, then pastes.
+     */
+    private void fillFieldBelow(Match checkbox, String text) {
+        if (checkbox == null || text == null || text.isBlank()) return;
+        int clickX = checkbox.x + FIELD_BELOW_DX;
+        int clickY = checkbox.y + FIELD_BELOW_DY;
+        log.info("[RedTag SW] fill field below checkbox @ ({},{}) = '{}'", clickX, clickY, text);
+        new Location(clickX, clickY).click();
+        driver.sleep(60);
+        driver.paste(text);
+        driver.sleep(40);
+    }
+
+    /**
+     * Fills the free-text field that sits to the RIGHT of a checkbox on the same
+     * row (the "#" permit-number fields, the "Other ___" descriptions). The label
+     * crops for these include the input box, so we click near the crop's right
+     * edge — which lands inside the field — then paste. No-op when not ticked or
+     * the text is blank.
+     */
+    private void fillFieldRight(Match checkbox, String text) {
+        if (checkbox == null || text == null || text.isBlank()) return;
+        int clickX = checkbox.x + checkbox.w - 25;
+        int clickY = checkbox.y + checkbox.h / 2;
+        log.info("[RedTag SW] fill field right of checkbox @ ({},{}) = '{}'", clickX, clickY, text);
+        new Location(clickX, clickY).click();
+        driver.sleep(60);
+        driver.paste(text);
         driver.sleep(40);
     }
 

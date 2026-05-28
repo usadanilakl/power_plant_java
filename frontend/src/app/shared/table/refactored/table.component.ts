@@ -13,6 +13,7 @@ import {
   PLATFORM_ID,
   TemplateRef,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import {
   CdkVirtualScrollViewport,
@@ -109,7 +110,10 @@ export class TableComponent implements OnInit, AfterViewInit {
   loadMoreOptions = output<{ column: string; filter: string, logic: filterLogic }>();
   loadInitialOptions = output<{ column: string; filter: string, logic: filterLogic }>();
   rowDoubleClicked = output<any>();
+  /** Emitted when the user clears all filters — server-backed tables should reload. */
+  filtersCleared = output<void>();
 
+  filterInputs = viewChildren(ColumnFilterInputComponent);
   headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
   headerTable = viewChild<ElementRef<HTMLTableElement>>('headerTable');
   bodyTable = viewChild<ElementRef<HTMLTableElement>>('bodyTable');
@@ -261,6 +265,32 @@ export class TableComponent implements OnInit, AfterViewInit {
         this.dataService.rowDoubleClicked.set(null);
       }
     });
+  }
+
+  /** True when any column filter or the global search has a value. */
+  hasActiveFilters = computed(() => {
+    if ((this.dataService.globalSearchQuery ?? '').trim().length > 0) return true;
+    const filters = this.dataService.columnFilters();
+    return Object.values(filters).some(v => (v ?? '').toString().trim().length > 0);
+  });
+
+  /**
+   * Clear every column filter and the global search, reset the filter inputs, then
+   * refresh. Client-side (isolated) tables re-show all loaded rows immediately;
+   * server-backed tables get a {@link filtersCleared} event so the parent can reload
+   * (the normal `search` output is suppressed for empty criteria, so it can't be
+   * used to signal a clear).
+   */
+  clearAllFilters(): void {
+    this.dataService.globalSearchQuery = '';
+    this.dataService.columnFilters.set({});
+    this.filterInputs().forEach(input => input.reset());
+    const criteria = this.utilService.buildSearchCriteria(
+      '', {}, this.dataService.columnFilterLogic, this.dataService.globalFilterLogic);
+    this.dataService.currentSearchCriteria = criteria;
+    this.localStorageService.saveTableFilters(criteria, this.dataService.tableId);
+    this.searchService.updateFilteredItems();
+    this.filtersCleared.emit();
   }
 
   ngOnInit(): void {}

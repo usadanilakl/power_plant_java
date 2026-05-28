@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, input, OnInit, signal, computed, effect, output } from '@angular/core';
+import { Component, DestroyRef, inject, input, OnInit, signal, computed, effect, output, TemplateRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError, switchMap, exhaustMap, debounceTime, filter } from 'rxjs/operators';
@@ -23,6 +23,8 @@ import { FileDto } from '../../../../models/file/file.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { RfFileNavClickService } from './rf-file-nav-click.service';
+import { CurrentFileService } from '../../../../services/current-file.service';
+import { RevisionInfo, deriveRevisionKey, buildRevisionFileDto } from '../services/rf-file-api.service';
 
 /**
  * Compact file navigation table for left panels.
@@ -59,9 +61,23 @@ import { RfFileNavClickService } from './rf-file-nav-click.service';
         </div>
       }
 
+      <!-- Revision badge cell: rendered in the leftmost column for rows whose
+           file number is the head of a multi-revision group. -->
+      <ng-template #revBadgeTpl let-item>
+        @if (revisionCountFor(item) > 1) {
+          <button
+            type="button"
+            class="rev-badge"
+            title="Show revisions"
+            (mousedown)="$event.stopPropagation()"
+            (click)="openRevisions(item, $event)"
+          >▾ {{ revisionCountFor(item) }}</button>
+        }
+      </ng-template>
+
       <app-table
         [tableId]="tableId()"
-        [items]="items()"
+        [items]="displayItems()"
         [columns]="columns()"
         [isTableIsolated]="isTableIsolated()"
         [columnUniqueOptions]="currentColumnUniqueItems()!"
@@ -79,7 +95,35 @@ import { RfFileNavClickService } from './rf-file-nav-click.service';
         (selectedItemsEvent)="selectedItemsEvent.emit($event)"
         (itemsReordered)="itemsReorderedEvent.emit($event)"
         (rowHoveredEvent)="rowHoveredEvent.emit($event)"
+        (filtersCleared)="onClearFilters()"
       ></app-table>
+
+      <!-- Revision popover: lists the physical revisions of a document. -->
+      @if (revPopover(); as pop) {
+        <div class="rev-popover-backdrop" (mousedown)="closeRevisions()"></div>
+        <div
+          class="rev-popover"
+          [style.left.px]="pop.x"
+          [style.top.px]="pop.y"
+          (mousedown)="$event.stopPropagation()"
+        >
+          <div class="rev-popover-header">
+            Revisions
+            <button type="button" class="rev-popover-close" (click)="closeRevisions()">&times;</button>
+          </div>
+          @if (pop.items.length === 0) {
+            <div class="rev-popover-msg">No revisions found.</div>
+          } @else {
+            @for (rev of pop.items; track rev.fileName) {
+              <button type="button" class="rev-row" (click)="openRevision(rev)">
+                <span class="rev-label" [class.rev-current]="rev.revisionNumber === currentRev(pop.parent)">{{ revLabel(rev) }}</span>
+                <span class="rev-fn">{{ rev.fileName }}</span>
+                <span class="rev-view">Open</span>
+              </button>
+            }
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -128,6 +172,100 @@ import { RfFileNavClickService } from './rf-file-nav-click.service';
       margin: 8px;
       flex-shrink: 0;
     }
+
+    /* Revision badge in the leftmost table cell */
+    .rev-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #fff;
+      background: var(--primary-color, #2196F3);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .rev-badge:hover { filter: brightness(0.92); }
+
+    /* Revision popover */
+    .rev-popover-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: transparent;
+    }
+    .rev-popover {
+      position: fixed;
+      z-index: 1001;
+      min-width: 280px;
+      max-width: 420px;
+      max-height: 60vh;
+      overflow-y: auto;
+      background: var(--primary-background, #fff);
+      border: 1px solid var(--border-color, #d0d0d0);
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+      padding: 4px 0;
+    }
+    .rev-popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--secondary-text, #666);
+      border-bottom: 1px solid var(--border-color, #eee);
+    }
+    .rev-popover-close {
+      background: none; border: none; cursor: pointer;
+      font-size: 18px; line-height: 1; color: var(--secondary-text, #888);
+    }
+    .rev-popover-msg { padding: 12px; font-size: 13px; color: var(--secondary-text, #777); }
+    .rev-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 7px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      background: none;
+      border: none;
+      text-decoration: none;
+      color: var(--primary-text, #333);
+      border-bottom: 1px solid var(--border-color, #f2f2f2);
+    }
+    .rev-row:last-child { border-bottom: none; }
+    .rev-row:hover { background: rgba(33, 150, 243, 0.08); }
+    .rev-label {
+      flex-shrink: 0;
+      min-width: 54px;
+      font-weight: 600;
+      color: var(--secondary-text, #888);
+    }
+    .rev-label.rev-current { color: var(--primary-color, #2196F3); }
+    .rev-fn {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--primary-text, #333);
+    }
+    .rev-view {
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--primary-color, #2196F3);
+      text-decoration: none;
+    }
+    .rev-view:hover { text-decoration: underline; }
   `],
 })
 export class RfFileNavTableComponent implements OnInit {
@@ -135,6 +273,7 @@ export class RfFileNavTableComponent implements OnInit {
   protected stateService = inject(RfFileStateService);
   private mapperService = inject(FileMapperService);
   private tableUtilService = inject(TableUtilService);
+  private currentFileService = inject(CurrentFileService);
   private destroyRef = inject(DestroyRef);
 
   // Inputs
@@ -160,9 +299,25 @@ export class RfFileNavTableComponent implements OnInit {
     initialValue: [],
   });
   columnInFocus = signal<string | null>(null);
-  columns = signal<Column[]>([]);
+  baseColumns = signal<Column[]>([]);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
+
+  // Revisions (disk-based): map of revision-key -> physical revision files.
+  private revBadgeTpl = viewChild<TemplateRef<any>>('revBadgeTpl');
+  revisionsMap = signal<Record<string, RevisionInfo[]>>({});
+  revPopover = signal<{ x: number; y: number; parent: FileDto; items: RevisionInfo[] } | null>(null);
+
+  // Columns = revision badge column (leftmost) + the configured display columns.
+  columns = computed<Column[]>(() => {
+    const cols = this.baseColumns();
+    const tpl = this.revBadgeTpl();
+    if (!tpl) return cols;
+    const revCol: Column = {
+      id: 'revisions', header: '', template: tpl, width: 64, sortable: false, filterable: false,
+    };
+    return [revCol, ...cols];
+  });
 
   uniqueOptionsMap = computed(() => {
     if (this.isTableIsolated() && this.inputItems() && this.columns()) {
@@ -178,6 +333,11 @@ export class RfFileNavTableComponent implements OnInit {
     return this.inputItems() ?? this.items$();
   });
 
+  // Revisions are physical sibling files, not separate DB rows — so there is one
+  // table row per FileObject and nothing to collapse. The badge column simply
+  // flags rows whose on-disk document has more than one revision.
+  displayItems = computed<FileDto[]>(() => this.items());
+
   currentColumnUniqueItems = computed(() => {
     if (this.uniqueOptionsMap() && this.columnInFocus()) {
       return this.uniqueOptionsMap()!.get(this.columnInFocus()!);
@@ -188,7 +348,7 @@ export class RfFileNavTableComponent implements OnInit {
   constructor() {
     effect(() => {
       const fields = this.fieldsToDisplay();
-      this.columns.set(this.mapperService.toTableColumns(fields));
+      this.baseColumns.set(this.mapperService.toTableColumns(fields));
     });
 
     // Search pipeline: debounce 300ms + switchMap (cancels stale requests)
@@ -244,6 +404,17 @@ export class RfFileNavTableComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadInitialData();
+    this.loadRevisionsMap();
+  }
+
+  private loadRevisionsMap(): void {
+    if (this.inputItems()) return;
+    this.apiService.getRevisionsMap().pipe(
+      catchError(() => of(null)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(res => {
+      if (res?.responseData) this.revisionsMap.set(res.responseData);
+    });
   }
 
   private loadInitialData(): void {
@@ -294,6 +465,31 @@ export class RfFileNavTableComponent implements OnInit {
     this.searchInDatabase(criteria);
   }
 
+  /** Clear-all from the shared table: drop search criteria and reload the first page. */
+  onClearFilters(): void {
+    if (this.inputItems()) return;
+    this.stateService.setSearchCriteria(null);
+    this.stateService.clearFiles();
+    this.stateService.resetPage();
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+    this.apiService.getFiles(this.stateService.getCurrentPage(), 50).pipe(
+      catchError((error) => {
+        console.error('Error reloading files:', error);
+        this.errorMessage.set('Failed to load files');
+        this.isLoading.set(false);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(response => {
+      if (response?.responseData?.content?.length) {
+        this.stateService.addFiles(response.responseData.content);
+        this.stateService.incrementPage();
+      }
+      this.isLoading.set(false);
+    });
+  }
+
   private searchInDatabase(criteria: SearchCriteria): void {
     const existingCriteria = this.stateService.getCurrentSearchCriteria() || {};
     const mergedCriteria: SearchCriteria = {
@@ -333,5 +529,54 @@ export class RfFileNavTableComponent implements OnInit {
       page: this.stateService.getCurrentPage(),
     };
     this.loadMoreTrigger$.next(loadMoreCriteria);
+  }
+
+  // ===== Revisions (disk-based) =====
+
+  /** Physical revisions for a row's on-disk document, keyed by its fileLink. */
+  private revisionsFor(f: FileDto): RevisionInfo[] {
+    return this.revisionsMap()[deriveRevisionKey(f.fileLink)] ?? [];
+  }
+
+  /** Number of physical revisions for a row (0 or 1 means "no revision badge"). */
+  revisionCountFor(f: FileDto): number {
+    return this.revisionsFor(f).length;
+  }
+
+  revLabel(rev: RevisionInfo): string {
+    return rev.revisionNumber === 0 ? 'Original' : `rev ${rev.revisionNumber}`;
+  }
+
+  /** Revision number the row's DB entry currently points at (from its fileNumber). */
+  currentRev(f: FileDto): number {
+    const joined = (f.fileNumber ?? []).join('__SEP__');
+    const m = joined.match(/-rev(\d+)$/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  openRevisions(item: FileDto, event: MouseEvent): void {
+    event.stopPropagation();
+    const items = this.revisionsFor(item);
+    // Position the popover near the click, clamped to the viewport.
+    const x = Math.min(event.clientX, window.innerWidth - 440);
+    const y = Math.min(event.clientY, window.innerHeight - 200);
+    this.revPopover.set({ x: Math.max(8, x), y: Math.max(8, y), parent: item, items });
+  }
+
+  closeRevisions(): void {
+    this.revPopover.set(null);
+  }
+
+  /** Open a revision in the main in-app viewer (pdf/jpg toggle works there). */
+  openRevision(rev: RevisionInfo): void {
+    const parent = this.revPopover()?.parent;
+    this.closeRevisions();
+    if (!parent) return;
+    if (rev.revisionNumber === this.currentRev(parent)) {
+      // The DB row already points at this revision — open it with full markup.
+      this.currentFileService.setCurrentFile(parent);
+    } else {
+      this.currentFileService.setCurrentFile(buildRevisionFileDto(parent, rev, 'jpg'));
+    }
   }
 }

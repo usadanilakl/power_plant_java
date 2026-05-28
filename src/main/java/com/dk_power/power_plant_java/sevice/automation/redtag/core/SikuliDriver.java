@@ -90,6 +90,12 @@ public class SikuliDriver {
         return screen().exists(catalog.resolve(pattern), seconds) != null;
     }
 
+    /** Finds a pattern within {@code seconds}, returning {@code null} on miss instead of throwing. */
+    public Match findOpt(RedTagPattern pattern, double seconds) {
+        if (!catalog.isAvailable(pattern)) return null;
+        return screen().exists(catalog.resolve(pattern), seconds);
+    }
+
     /**
      * Finds an auto-generated SW label crop ({@code safe-work/labels/<key>.png})
      * inside {@code region} and returns its match (or {@code null} if not found
@@ -256,6 +262,16 @@ public class SikuliDriver {
         } finally {
             s.keyUp(Key.CTRL);
         }
+    }
+
+    /** Scrolls the mouse wheel DOWN by {@code ticks} (content moves up the screen). */
+    public void scrollDown(int ticks) {
+        screen().wheel(1, ticks); // 1 == WHEEL_DOWN
+    }
+
+    /** Scrolls the mouse wheel UP by {@code ticks} (content moves down the screen). */
+    public void scrollUp(int ticks) {
+        screen().wheel(-1, ticks); // -1 == WHEEL_UP
     }
 
     // --- Misc ----------------------------------------------------------------

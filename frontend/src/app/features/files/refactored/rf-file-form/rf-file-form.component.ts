@@ -298,15 +298,6 @@ export class RfFileFormComponent {
     }
   }
 
-  /** User confirmed they want to proceed despite duplicates — saves as a NEW FileObject. */
-  protected onDuplicateContinue(): void {
-    this.duplicateReport.set(null);
-    if (this.pendingSubmit) {
-      const { fileDtoData, file, overrideFile } = this.pendingSubmit;
-      this.pendingSubmit = null;
-      this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
-    }
-  }
 
   /**
    * User chose to OVERRIDE a specific matched file — replaces its bytes,

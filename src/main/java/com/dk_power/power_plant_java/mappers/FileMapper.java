@@ -85,8 +85,10 @@ public class FileMapper implements BaseMapper {
         if (file.getBulkEditStep() != null) fileDto.setBulkEditStep(file.getBulkEditStep());
 //        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
-        if (file.getHighlights() != null)
-            fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
+        // NOTE: highlights is a LAZY collection. The light DTO is mapped outside the
+        // query's transaction (e.g. search → page.map(toDtoLight)), so touching it here
+        // throws LazyInitializationException. Highlights aren't needed for list/table
+        // rows anyway — the full convertToDto leaves it out too. Keep it out of light.
         if (file.getDocNum() != null) fileDto.setDocNum(file.getDocNum());
         if (file.getIsVerified() != null) fileDto.setIsVerified(file.getIsVerified());
         return fileDto;

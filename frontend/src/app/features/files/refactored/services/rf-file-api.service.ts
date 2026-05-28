@@ -215,6 +215,17 @@ export class RfFileApiService {
     );
   }
 
+  /**
+   * Map of `<relative-folder>/<base-name>` -> physical revisions, for on-disk
+   * documents that have more than one revision. Reproduce the key on the client
+   * from a row's fileLink (see deriveRevisionKey) to badge it and list revisions.
+   */
+  getRevisionsMap(): Observable<SpringApiResponse<Record<string, RevisionInfo[]>>> {
+    return this.http.get<SpringApiResponse<Record<string, RevisionInfo[]>>>(
+      `${this.apiUrl}/revisions-map`
+    );
+  }
+
   /** Lazy-generate the JPG derivative for a PDF FileObject. Returns the jpg fileLink. */
   ensureJpg(fileId: number): Observable<SpringApiResponse<{ fileLink: string }>> {
     return this.http.post<SpringApiResponse<{ fileLink: string }>>(
@@ -222,6 +233,54 @@ export class RfFileApiService {
       {}
     );
   }
+}
+
+/** One revision of a document, with every on-disk format (see getRevisionsMap). */
+export interface RevisionInfo {
+  revisionNumber: number;
+  fileName: string;
+  /** extension (lowercase, no dot) -> resolvable baseLink-prefixed link. */
+  formats: Record<string, string>;
+}
+
+/**
+ * Reproduce the backend's revisions-map key from a file's fileLink: drop the
+ * leading baseLink segment (e.g. "uploads-prod") AND the format-folder segment
+ * (pdf/jpg/…), then strip the extension and any trailing "-revN". Yields e.g.
+ * "PID/Vendor/94...01111" — format-agnostic so a doc's pdf and jpg share a key.
+ */
+export function deriveRevisionKey(fileLink: string | null | undefined): string {
+  if (!fileLink) return '';
+  let p = fileLink.replace(/\\/g, '/').replace(/^\/+/, '');
+  let i = p.indexOf('/');
+  if (i >= 0) p = p.substring(i + 1); // drop baseLink segment
+  i = p.indexOf('/');
+  if (i >= 0) p = p.substring(i + 1); // drop format-folder segment (pdf/jpg/…)
+  p = p.replace(/\.[^./]+$/, '');     // strip extension
+  p = p.replace(/-rev\d+$/, '');      // strip -revN
+  return p;
+}
+
+/**
+ * Build a transient FileDto for viewing a specific physical revision in the
+ * in-app editor. Borrows the parent's metadata but points fileLink at the
+ * revision's file and sets `extensions` to the available formats so the editor's
+ * pdf/jpg toggle works. id is 0 so CurrentFileService treats it as complete and
+ * does NOT re-fetch (which would overwrite fileLink with the parent's current one).
+ */
+export function buildRevisionFileDto(parent: FileDto, rev: RevisionInfo, preferExt?: string): FileDto {
+  const exts = Object.keys(rev.formats);
+  const ext = preferExt && exts.includes(preferExt)
+    ? preferExt
+    : (exts.includes('jpg') ? 'jpg' : exts[0]);
+  return new FileDto({
+    ...parent,
+    id: 0,
+    points: [],
+    extension: ext,
+    extensions: exts,
+    fileLink: rev.formats[ext],
+  });
 }
 
 export interface VisualDuplicateMatch {

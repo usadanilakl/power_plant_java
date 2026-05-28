@@ -774,6 +774,91 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         public int distance;
     }
 
+    // ===== Revisions (disk-based) =====
+    // The "Revise" action writes a "-revN" file ALONGSIDE the original on disk
+    // (e.g. X.pdf + X-rev1.pdf) but keeps a single FileObject row pointing at the
+    // latest. So revisions are physical sibling files, NOT separate DB rows —
+    // grouping by DB row finds nothing. We surface them by walking the uploads
+    // tree once and grouping files by their on-disk base (path minus extension
+    // and "-revN" suffix). Both the table and tree views consume this one map,
+    // so neither needs per-row filesystem scans.
+
+    private static final java.util.regex.Pattern REV_SUFFIX =
+            java.util.regex.Pattern.compile("-rev(\\d+)$");
+
+    /**
+     * One revision of a document, aggregating every on-disk format (pdf, jpg, …)
+     * for that revision number so the viewer can offer a format toggle.
+     */
+    public static class RevisionInfo {
+        /** N from the "-revN" suffix; 0 for the original (no suffix). */
+        public int revisionNumber;
+        /** Base filename (incl. -revN, no extension) for display. */
+        public String fileName;
+        /** extension (lowercase, no dot) -> resolvable baseLink-prefixed link. */
+        public Map<String, String> formats = new HashMap<>();
+    }
+
+    /**
+     * Map of {@code <fileType>/<vendor>/<base-name> -> [revisions]} for every on-disk
+     * document with more than one revision. The key is format-agnostic (the leading
+     * format folder — pdf/jpg/… — is dropped) so a revision's pdf and jpg variants
+     * collapse into one entry. The client reproduces the key from a row's fileLink
+     * (drop the baseLink and format-folder segments, strip extension and -revN).
+     * Each list is sorted original-first.
+     */
+    public Map<String, List<RevisionInfo>> getRevisionsMap() {
+        Path root = Paths.get(filesRootPath);
+        if (!Files.exists(root)) return new HashMap<>();
+        // key -> (revisionNumber -> RevisionInfo)
+        Map<String, Map<Integer, RevisionInfo>> grouped = new HashMap<>();
+        try (java.util.stream.Stream<Path> walk = Files.walk(root)) {
+            walk.filter(Files::isRegularFile).forEach(p -> {
+                String rel = root.relativize(p).toString().replace("\\", "/");
+                int firstSlash = rel.indexOf('/');
+                if (firstSlash < 0) return; // file directly under root — not a managed file
+                String afterFormat = rel.substring(firstSlash + 1); // drop format folder (pdf/jpg/…)
+                String fileName = p.getFileName().toString();
+                String ext = extensionOf(fileName);
+                if (ext.isEmpty()) return;
+                String key = REV_SUFFIX.matcher(stripExtension(afterFormat)).replaceFirst("");
+                int revNum = FileUtil.extractRevisionNumber(fileName);
+
+                RevisionInfo ri = grouped
+                        .computeIfAbsent(key, k -> new HashMap<>())
+                        .computeIfAbsent(revNum, n -> {
+                            RevisionInfo r = new RevisionInfo();
+                            r.revisionNumber = n;
+                            r.fileName = stripExtension(fileName);
+                            return r;
+                        });
+                ri.formats.put(ext, filesRelativePath + "/" + rel);
+            });
+        } catch (IOException e) {
+            logger.warn("getRevisionsMap: walk of {} failed: {}", filesRootPath, e.getMessage());
+        }
+
+        Map<String, List<RevisionInfo>> result = new HashMap<>();
+        for (Map.Entry<String, Map<Integer, RevisionInfo>> e : grouped.entrySet()) {
+            if (e.getValue().size() <= 1) continue; // need >1 distinct revision number
+            List<RevisionInfo> list = new ArrayList<>(e.getValue().values());
+            list.sort(Comparator.comparingInt(r -> r.revisionNumber));
+            result.put(e.getKey(), list);
+        }
+        return result;
+    }
+
+    private static String extensionOf(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        return dot >= 0 ? fileName.substring(dot + 1).toLowerCase() : "";
+    }
+
+    private static String stripExtension(String s) {
+        int slash = s.lastIndexOf('/');
+        int dot = s.lastIndexOf('.');
+        return dot > slash ? s.substring(0, dot) : s;
+    }
+
     /**
      * Generate the JPG derivative for a PDF FileObject if it's missing.
      * No-op if the jpg already exists. Thread-safe per fileId via the
@@ -841,18 +926,35 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final java.util.concurrent.ConcurrentHashMap<Long, Object> ensureJpgLocks =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    // ===== Backfill Hashes (async background task) =====
-    // Done as a background task because:
+    // ===== Backfill Hashes (background task on dedicated thread) =====
+    // Runs in the background because:
     //   1. Hashing every file can take many minutes (disk I/O bound).
-    //   2. The old @Transactional wrapper held one DB connection for the entire
-    //      run, triggering HikariCP leak warnings.
-    //   3. Synchronous HTTP requests hit Spring's async timeout long before the
-    //      work finishes.
-    // Each individual save runs in its own short transaction via TransactionTemplate.
+    //   2. NgFileService is @Transactional at class level — so any public method
+    //      opens a transaction → acquires a connection from the pool. If the
+    //      backfill runs on the calling thread, that connection is held for the
+    //      entire run, triggering HikariCP leak warnings.
+    //   3. Synchronous HTTP requests would hit Spring's async timeout long
+    //      before the work finishes.
+    //
+    // We use an explicit single-thread ExecutorService rather than @Async
+    // because @Async on a self-invocation (calling our own @Async method from
+    // another method in this class) bypasses the Spring proxy and silently
+    // becomes synchronous — that was the prior bug.
+    //
+    // startBackfillHashes is marked @Transactional(propagation = NOT_SUPPORTED)
+    // so the HTTP request thread does NOT open a transaction while spawning
+    // the worker. Each per-file save inside the worker runs in its own short
+    // transaction via TransactionTemplate, keeping connection holds tiny.
 
     private final BackfillState backfillState = new BackfillState();
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.transaction.PlatformTransactionManager backfillTxManager;
+    private final java.util.concurrent.ExecutorService backfillExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "file-hash-backfill");
+                t.setDaemon(true);
+                return t;
+            });
 
     /**
      * Kick off a backfill in the background. Returns immediately with the live state.
@@ -862,6 +964,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      *                            algorithm itself changes (e.g. aHash → dHash) so old
      *                            values get replaced. When false, only fills gaps.
      */
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public BackfillState startBackfillHashes(int limit, boolean recomputePerceptual) {
         synchronized (backfillState) {
             if (backfillState.running) {
@@ -871,16 +975,22 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             backfillState.recomputePerceptual = recomputePerceptual;
             backfillState.running = true;
         }
-        runBackfillAsync(limit, recomputePerceptual);
+        backfillExecutor.submit(() -> runBackfillAsync(limit, recomputePerceptual));
         return backfillState.snapshot();
     }
 
     /** Live snapshot of the backfill progress. */
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public BackfillState getBackfillStatus() {
         return backfillState.snapshot();
     }
 
-    @org.springframework.scheduling.annotation.Async
+    /**
+     * The actual hashing loop. Runs on the {@code file-hash-backfill} thread; uses
+     * {@link #backfillTxManager} via TransactionTemplate so each per-file save is a
+     * tiny short-lived transaction (connection released between files).
+     */
     public void runBackfillAsync(int limit, boolean recomputePerceptual) {
         org.springframework.transaction.support.TransactionTemplate tx =
                 new org.springframework.transaction.support.TransactionTemplate(backfillTxManager);

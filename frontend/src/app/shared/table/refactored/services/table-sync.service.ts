@@ -21,6 +21,9 @@ export class TableSyncService {
     headerContainer: null,
   };
 
+  /** Prevents the header↔body scroll handlers from echoing each other into a loop. */
+  private isSyncingScroll = false;
+
   setupHorizontalScrollSync(): void {
     if (!this.dataService.viewport()) return;
 
@@ -32,20 +35,37 @@ export class TableSyncService {
         this.checkForLoadMore();
       });
 
-    // Store the handler reference so it can be removed
-    const scrollHandler = () => this.syncHeaderScroll();
+    // Body viewport scroll → move the header.
     const viewportElement =
       this.dataService.viewport()!.elementRef.nativeElement;
-
+    const scrollHandler = () => this.syncHeaderScroll();
     viewportElement.addEventListener('scroll', scrollHandler);
-
     this.destroyRef.onDestroy(() => {
       viewportElement.removeEventListener('scroll', scrollHandler);
     });
+
+    // Header is the visible horizontal scrollbar (the body's is hidden), so the
+    // user can scroll columns even when there are no rows. Sync header → body.
+    const headerElement = this.dataService.headerContainer()?.nativeElement;
+    if (headerElement) {
+      const headerScrollHandler = () => {
+        if (this.isSyncingScroll) return;
+        const vp = this.dataService.viewport()?.elementRef.nativeElement;
+        if (!vp) return;
+        this.isSyncingScroll = true;
+        vp.scrollLeft = headerElement.scrollLeft;
+        this.isSyncingScroll = false;
+      };
+      headerElement.addEventListener('scroll', headerScrollHandler);
+      this.destroyRef.onDestroy(() => {
+        headerElement.removeEventListener('scroll', headerScrollHandler);
+      });
+    }
   }
 
   private syncHeaderScroll(): void {
     if (
+      this.isSyncingScroll ||
       !this.dataService.viewport() ||
       !this.dataService.headerContainer()?.nativeElement
     )
@@ -53,7 +73,9 @@ export class TableSyncService {
 
     const scrollLeft =
       this.dataService.viewport()!.elementRef.nativeElement.scrollLeft;
+    this.isSyncingScroll = true;
     this.dataService.headerContainer()!.nativeElement.scrollLeft = scrollLeft;
+    this.isSyncingScroll = false;
   }
 
   private checkForLoadMore(): void {

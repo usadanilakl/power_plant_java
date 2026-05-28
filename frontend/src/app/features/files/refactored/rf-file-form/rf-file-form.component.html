@@ -128,17 +128,14 @@
           </table>
         </div>
         <div class="dup-action-note">
-          <strong>None of these are the right target?</strong> Click <em>Save as new file</em> below
-          to upload anyway as a separate FileObject (on-disk filename will be auto-suffixed with
-          <code>-rev1</code> on collision).
+          <strong>None of these are the right target?</strong> Use <em>Override</em> to replace one,
+          or <em>Revise</em> to add a new revision to one (both keep a single entry). If this is a
+          genuinely different document, cancel and give it a distinct file number.
         </div>
       </div>
       <div class="dup-footer">
         <button type="button" class="dup-btn dup-btn-cancel" (click)="onDuplicateCancel()">
           Cancel upload
-        </button>
-        <button type="button" class="dup-btn dup-btn-secondary" (click)="onDuplicateContinue()">
-          Save as new file
         </button>
       </div>
     </div>

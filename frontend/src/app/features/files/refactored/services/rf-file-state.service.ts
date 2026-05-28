@@ -491,7 +491,7 @@ export class RfFileStateService {
     this.currentSortDirectionSubject.next(sortDirection);
   }
 
-  setSearchCriteria(criteria: SearchCriteria): void {
+  setSearchCriteria(criteria: SearchCriteria | null): void {
     this.currentSearchCriteriaSubject.next(criteria);
   }
 
