@@ -43,7 +43,8 @@ interface EquipmentListItem {
     RfPopupProjectionComponent,
     EquipmentBrowserDialogComponent,
     EquipmentShapeDrawerDialogComponent,
-    EquipmentUnifiedDialogComponent,
+    // forwardRef: part of the bulk-edit import cycle (see loto-point-bulk-edit-form).
+    forwardRef(() => EquipmentUnifiedDialogComponent),
     RfEquipmentEditorComponent,
     EquipmentConflictDialogComponent
   ],

@@ -88,6 +88,13 @@ export const DEFAULT_WEBVIEW_AMS_CONFIG = {
   showScrapeWindow: false
 };
 
+// SDS eBinder scraper defaults (anonymous token link; overridable via sds-scraper-config.json).
+export const DEFAULT_SDS_SCRAPER_CONFIG = {
+  url: 'https://chemmanagement.ehs.com/9/92a2f98a-0e59-4ba4-b8dd-7b45ad65d25d/ebinder/?nas=True',
+  locationName: 'Jackson Generation',
+  showScrapeWindow: false
+};
+
 // Reports the scraper pulls on each refresh. `reportName` is the row to pick in
 // the report-type dialog; `savedSearch` is the saved-search preset to apply.
 // `wireMode` controls how cells are pinned: 'column' wires a whole column

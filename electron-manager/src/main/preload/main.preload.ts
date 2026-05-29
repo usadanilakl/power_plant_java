@@ -42,6 +42,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openWebView: (target: string, url: string): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_WEBVIEW_OPEN, target, url),
 
+  // SDS eBinder scraper (chemmanagement.ehs.com → Spring Boot import + source-audit)
+  sdsScrapeRun: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_RUN),
+  sdsGapReport: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_GAP_REPORT),
+  sdsScrapeGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_STATUS),
+  sdsScrapeGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_CONFIG),
+  sdsScrapeSaveConfig: (config: any): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_SDS_SCRAPE_SAVE_CONFIG, config),
+
   // Fire Impairment
   fireImpList: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_FIRE_IMP_LIST),
   fireImpListClosed: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_FIRE_IMP_LIST_CLOSED),

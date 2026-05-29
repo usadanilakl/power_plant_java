@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.sevice.angular.sds;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
 import com.dk_power.power_plant_java.dto.sds.SdsChemicalDto;
+import com.dk_power.power_plant_java.dto.sds.SdsImportItemDto;
+import com.dk_power.power_plant_java.dto.sds.SdsImportReportDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.sds.SdsChemical;
 import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
@@ -16,9 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -94,6 +99,11 @@ public class NgSdsChemicalService {
             entity.setStatus(valueService.createValue(STATUS_CATEGORY, STATUS_PENDING));
         }
 
+        // Stamp a localUuid on first save so the hub's outbound SP push + inbound pull can bind it.
+        if (entity.getLocalUuid() == null || entity.getLocalUuid().isBlank()) {
+            entity.setLocalUuid(UUID.randomUUID().toString());
+        }
+
         entity = repo.save(entity);
 
         // Best-effort SP push for updates that already have a SP id
@@ -152,6 +162,116 @@ public class NgSdsChemicalService {
         if (fileName == null) return "";
         int dot = fileName.lastIndexOf('.');
         return dot > 0 ? fileName.substring(0, dot) : fileName;
+    }
+
+    // ============ Source import + reconcile (scraper) ============
+
+    /**
+     * Import a full snapshot scraped from the source eBinder and reconcile it against our DB.
+     * Matches by {@code sourceId} (the eBinder item id): new items are created as Incoming with the
+     * SDS PDF attached; existing items get names/manufacturer/revision refreshed (a changed revision
+     * date is flagged). Active chemicals whose sourceId is absent from the snapshot are reported as
+     * missing-from-source. Names/locations/book/section/status of existing rows are otherwise kept.
+     */
+    public SdsImportReportDto importFromSource(List<SdsImportItemDto> items) {
+        SdsImportReportDto report = new SdsImportReportDto();
+        if (items == null) return report;
+        report.setSourceCount(items.size());
+
+        Set<String> sourceIds = new HashSet<>();
+        for (SdsImportItemDto item : items) {
+            String sourceId = item.getSourceItemId();
+            if (sourceId == null || sourceId.isBlank()) continue;   // can't match without an id
+            sourceIds.add(sourceId);
+
+            String names = normalizeNames(item.getNames());
+            String primary = SdsChemicalMapper.primaryName(names);
+            String label = primary != null ? primary : sourceId;
+
+            SdsChemical entity = repo.findFirstBySourceIdOrderByIdAsc(sourceId).orElse(null);
+            boolean isNew = entity == null;
+            if (isNew) {
+                entity = new SdsChemical();
+                entity.setSourceId(sourceId);
+                entity.setLocalUuid(UUID.randomUUID().toString());
+                entity.setStatus(valueService.createValue(STATUS_CATEGORY, STATUS_INCOMING));
+            } else if (item.getRevisionDate() != null
+                    && !item.getRevisionDate().equals(entity.getSourceRevisionDate())) {
+                report.getRevisedChemicals().add(label);
+            }
+
+            if (names != null) entity.setNames(names);
+            if (item.getManufacturer() != null) entity.setManufacturer(item.getManufacturer());
+            if (item.getRevisionDate() != null) entity.setSourceRevisionDate(item.getRevisionDate());
+            // Merge step carries Book/Section from the index; the PDF pass leaves them null (don't clobber).
+            if (item.getBookNumber() != null) entity.setBookNumber(item.getBookNumber());
+            if (item.getSectionNumber() != null) entity.setSectionNumber(item.getSectionNumber());
+            // A new chemical that already has a physical address is already Filed, not Incoming.
+            if (isNew && entity.getBookNumber() != null && entity.getSectionNumber() != null) {
+                entity.setStatus(valueService.createValue(STATUS_CATEGORY, STATUS_FILED));
+            }
+            entity = repo.saveAndFlush(entity);
+
+            if (isNew) {
+                report.setCreated(report.getCreated() + 1);
+                report.getNewChemicals().add(label);
+            } else {
+                report.setUpdated(report.getUpdated() + 1);
+            }
+
+            PaAttachmentDto pdf = item.getPdf();
+            if (pdf != null && pdf.getBase64Content() != null && !pdf.getBase64Content().isBlank()) {
+                String hash = computeContentHash(pdf.getBase64Content());
+                boolean dup = attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                        SdsChemicalMapper.ENTITY_TYPE, entity.getId(), pdf.getFileName(), hash);
+                if (!dup) {
+                    uploadAttachment(entity.getId(), pdf.getFileName(), pdf.getContentType(), pdf.getBase64Content());
+                    report.setPdfsAttached(report.getPdfsAttached() + 1);
+                }
+            }
+        }
+
+        // Source reconcile: active chemicals that came from the eBinder (have a sourceId) but are no
+        // longer present in this snapshot — candidates for removal at the source.
+        for (SdsChemical c : repo.findByStatus_NameIn(ACTIVE_STATUSES)) {
+            String sid = c.getSourceId();
+            if (sid != null && !sid.isBlank() && !sourceIds.contains(sid)) {
+                report.getMissingFromSource().add(SdsChemicalMapper.primaryName(c.getNames()));
+            }
+        }
+        return report;
+    }
+
+    /**
+     * Reconcile only: given the full set of sourceIds present in the latest eBinder snapshot, return
+     * the primary names of active chemicals that came from the eBinder (have a sourceId) but are no
+     * longer present. Used after a batched import to compute missing-from-source in one call.
+     */
+    public List<String> reconcileMissing(List<String> sourceIds) {
+        Set<String> present = sourceIds == null ? Set.of() : new HashSet<>(sourceIds);
+        List<String> missing = new ArrayList<>();
+        for (SdsChemical c : repo.findByStatus_NameIn(ACTIVE_STATUSES)) {
+            String sid = c.getSourceId();
+            if (sid != null && !sid.isBlank() && !present.contains(sid)) {
+                missing.add(SdsChemicalMapper.primaryName(c.getNames()));
+            }
+        }
+        return missing;
+    }
+
+    /** Accept names as comma-separated (eBinder) or newline-separated; return newline-delimited. */
+    private static String normalizeNames(String raw) {
+        if (raw == null) return null;
+        String[] parts = raw.contains("\n") ? raw.split("\\r?\\n") : raw.split(",");
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) {
+            String t = p.trim();
+            if (!t.isEmpty()) {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append(t);
+            }
+        }
+        return sb.toString();
     }
 
     // ============ Attachments ============

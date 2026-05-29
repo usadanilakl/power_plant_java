@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal, computed, DestroyRef, effect } from '@angular/core';
+import { Component, inject, input, output, signal, computed, DestroyRef, effect, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -56,7 +56,12 @@ import { GuideDirective } from '../../../../guide/guide.directive';
     ReactiveFormsModule,
     InteractiveImageComponent,
     RfToggleMenuComponent,
-    RfLotoPointTableComponent,
+    // forwardRef breaks the import cycle equipment-unified-dialog → rf-loto-point-table
+    // → loto-point-bulk-edit-form → bulk-edit-menu → rf-reactive-form →
+    // equipment-list-manager → (here). When the LOTO point table is the entry module,
+    // THIS edge captures an undefined RfLotoPointTableComponent, crashing the bulk-edit
+    // overlay with "Cannot read properties of undefined (reading 'ɵcmp')".
+    forwardRef(() => RfLotoPointTableComponent),
     GuideDirective
   ],
   providers: [

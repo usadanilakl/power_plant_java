@@ -1,4 +1,4 @@
-import { Component, inject, output, signal, computed, effect, ViewChild, TemplateRef, ViewContainerRef, OnDestroy } from '@angular/core';
+import { Component, inject, input, output, signal, computed, effect, ViewChild, TemplateRef, ViewContainerRef, OnDestroy, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Overlay, OverlayRef, OverlayConfig } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
@@ -16,7 +16,12 @@ import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 @Component({
   selector: 'app-loto-point-bulk-edit-form',
   standalone: true,
-  imports: [CommonModule, BulkEditMenuComponent],
+  // forwardRef breaks a circular import cycle: bulk-edit-menu → rf-reactive-form
+  // → equipment-list-manager → equipment-unified-dialog → rf-loto-point-table →
+  // loto-point-bulk-edit-form → (here) bulk-edit-menu. Without it, this component's
+  // captured BulkEditMenuComponent reference is undefined at render time, crashing
+  // with "Cannot read properties of undefined (reading 'ɵcmp')" when the overlay opens.
+  imports: [CommonModule, forwardRef(() => BulkEditMenuComponent)],
   templateUrl: './loto-point-bulk-edit-form.component.html',
   styleUrl: './loto-point-bulk-edit-form.component.css'
 })
@@ -37,9 +42,19 @@ export class LotoPointBulkEditFormComponent implements OnDestroy {
   // Outputs
   bulkEditApplied = output<LotoPointDto[]>();
 
-  // Use state service's selectedItems (root-level singleton, always available)
-  selectedItems = this.stateService.selectedItems;
+  /**
+   * Per-table selection, set by the host table (alias 'selectedItems'). When a
+   * host provides it, the bulk edit operates on THAT table's selection — this
+   * is required when two tables (e.g. the double-table's source + destination)
+   * share the root state service and would otherwise clobber each other's
+   * selection. Falls back to the root singleton when not bound (backward compat).
+   */
+  selectionInput = input<LotoPointDto[] | null>(null, { alias: 'selectedItems' });
+
   isBulkEditOpen = this.bulkEditService.isBulkEditOpen;
+
+  // Effective selection: the host-provided one if bound, else the root singleton.
+  selectedItems = computed(() => this.selectionInput() ?? this.stateService.selectedItems());
 
   // Counterpart state
   showCounterpartConfirmation = signal<boolean>(false);

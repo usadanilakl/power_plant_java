@@ -1,10 +1,16 @@
 package com.dk_power.power_plant_java.controller.automation.redtag;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.permits.ConfinedSpaceDto;
+import com.dk_power.power_plant_java.dto.permits.HotWorkDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgConfinedSpaceService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgHotWorkService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgSafeWorkService;
+import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagConfinedSpaceAutomationService;
+import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagHotWorkAutomationService;
 import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagLotoAutomationService;
 import com.dk_power.power_plant_java.sevice.automation.redtag.RedTagSafeWorkAutomationService;
 import com.dk_power.power_plant_java.sevice.automation.redtag.progress.RedTagProgressBroadcaster;
@@ -40,9 +46,13 @@ public class RedTagLotoAutomationController {
 
     private final RedTagLotoAutomationService automationService;
     private final RedTagSafeWorkAutomationService safeWorkAutomationService;
+    private final RedTagHotWorkAutomationService hotWorkAutomationService;
+    private final RedTagConfinedSpaceAutomationService confinedSpaceAutomationService;
     private final RedTagProgressBroadcaster broadcaster;
     private final NgLotoService lotoService;
     private final NgSafeWorkService safeWorkService;
+    private final NgHotWorkService hotWorkService;
+    private final NgConfinedSpaceService confinedSpaceService;
     private final SwLabelPatternGenerator swLabelPatternGenerator;
 
     /**
@@ -88,6 +98,53 @@ public class RedTagLotoAutomationController {
             log.error("[RedTag] Failed to start Safe Work build for {}: {}", safeWorkId, e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(new NgApiResponse<>(null, "Failed to start Safe Work build: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Starts an end-to-end Hot Work permit build. Supports the same optional
+     * {@code fromStep} / {@code toStep} query parameters as the LOTO/SW endpoints.
+     */
+    @PostMapping("/hot-work/{hotWorkId}/build")
+    public ResponseEntity<NgApiResponse<AutomationSession>> buildHotWork(
+            @PathVariable Long hotWorkId,
+            @RequestParam(required = false) Integer fromStep,
+            @RequestParam(required = false) Integer toStep) {
+        try {
+            HotWorkDto hw = hotWorkService.getDtoById(hotWorkId);
+            if (hw == null) {
+                throw new EntityNotFoundException("Hot Work permit not found with id " + hotWorkId);
+            }
+            AutomationSession session = hotWorkAutomationService.startHotWorkBuild(hw, fromStep, toStep);
+            return ResponseEntity.ok(new NgApiResponse<>(session, "Hot Work build started"));
+        } catch (Exception e) {
+            log.error("[RedTag] Failed to start Hot Work build for {}: {}", hotWorkId, e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to start Hot Work build: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Starts an end-to-end Confined Space permit build. The {@code csType} on the
+     * DTO selects the Permit-Required vs Reclassified tab.
+     */
+    @PostMapping("/confined-space/{confinedSpaceId}/build")
+    public ResponseEntity<NgApiResponse<AutomationSession>> buildConfinedSpace(
+            @PathVariable Long confinedSpaceId,
+            @RequestParam(required = false) Integer fromStep,
+            @RequestParam(required = false) Integer toStep) {
+        try {
+            ConfinedSpaceDto cs = confinedSpaceService.getDtoById(confinedSpaceId);
+            if (cs == null) {
+                throw new EntityNotFoundException("Confined Space permit not found with id " + confinedSpaceId);
+            }
+            AutomationSession session = confinedSpaceAutomationService.startConfinedSpaceBuild(cs, fromStep, toStep);
+            return ResponseEntity.ok(new NgApiResponse<>(session, "Confined Space build started"));
+        } catch (Exception e) {
+            log.error("[RedTag] Failed to start Confined Space build for {}: {}",
+                    confinedSpaceId, e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to start Confined Space build: " + e.getMessage()));
         }
     }
 

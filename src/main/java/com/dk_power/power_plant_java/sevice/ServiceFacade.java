@@ -15,6 +15,7 @@ import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.inventory.InventoryItem;
 import com.dk_power.power_plant_java.entities.inventory.InventoryUsage;
 import com.dk_power.power_plant_java.entities.sds.SdsChemical;
+import com.dk_power.power_plant_java.entities.sds.SdsAuditRecord;
 import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
@@ -47,6 +48,7 @@ import com.dk_power.power_plant_java.sevice.angular.field_list.FieldListItemSync
 import com.dk_power.power_plant_java.sevice.angular.inventory.InventoryItemSyncService;
 import com.dk_power.power_plant_java.sevice.angular.inventory.InventoryUsageSyncService;
 import com.dk_power.power_plant_java.sevice.angular.sds.SdsChemicalSyncService;
+import com.dk_power.power_plant_java.sevice.angular.sds.SdsAuditRecordSyncService;
 import com.dk_power.power_plant_java.sevice.fire_impairment.FireImpairmentService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
@@ -143,6 +145,7 @@ public class ServiceFacade {
             @Lazy InventoryUsageSyncService inventoryUsageSyncService,
             // SDS
             @Lazy SdsChemicalSyncService sdsChemicalSyncService,
+            @Lazy SdsAuditRecordSyncService sdsAuditRecordSyncService,
             // Rounds (WebView AMS scraper)
             @Lazy NgRoundsService ngRoundsService,
             // Red Tag standards (digitized LOTO standards from Red Tag)
@@ -216,6 +219,7 @@ public class ServiceFacade {
         serviceMap.put(InventoryUsage.class.getSimpleName(), inventoryUsageSyncService);
         // SDS
         serviceMap.put(SdsChemical.class.getSimpleName(), sdsChemicalSyncService);
+        serviceMap.put(SdsAuditRecord.class.getSimpleName(), sdsAuditRecordSyncService);
         // Rounds (WebView AMS scraper)
         serviceMap.put(RoundsReport.class.getSimpleName(), ngRoundsService);
     }

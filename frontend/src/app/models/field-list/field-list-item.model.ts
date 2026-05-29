@@ -145,9 +145,9 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
         header: 'List Type',
         accessorKey: 'listTypeName',
         conditionalStyling: (item: any, _col: Column): { [key: string]: string } => {
-          if (item.listTypeName === 'Insulation Removal') return { 'background-color': 'var(--status-attention)', color: 'white' };
-          if (item.listTypeName === 'Leaks') return { 'background-color': 'var(--status-error)', color: 'white' };
-          if (item.listTypeName === 'Winterization') return { 'background-color': 'var(--status-info)', color: 'white' };
+          if (item.listTypeName === 'Insulation Removal') return { 'background-color': 'var(--status-incomplete)', color: 'var(--primary-text)' };
+          if (item.listTypeName === 'Leaks') return { 'background-color': 'var(--status-attention)', color: 'var(--primary-text)' };
+          if (item.listTypeName === 'Winterization') return { 'background-color': 'var(--status-in-progress)', color: 'var(--primary-text)' };
           return {} as { [key: string]: string };
         }
       },
@@ -156,10 +156,10 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
         header: 'Status',
         accessorKey: 'statusName',
         conditionalStyling: (item: any, _col: Column): { [key: string]: string } => {
-          if (item.statusName === 'Open') return { 'background-color': 'var(--status-attention)', color: 'white' };
-          if (item.statusName === 'In Progress') return { 'background-color': 'var(--status-info)', color: 'white' };
-          if (item.statusName === 'Resolved') return { 'background-color': 'var(--status-complete)', color: 'white' };
-          if (item.statusName === 'Closed') return { 'background-color': 'var(--status-neutral)', color: 'white' };
+          if (item.statusName === 'Open') return { 'background-color': 'var(--status-attention)', color: 'var(--primary-text)' };
+          if (item.statusName === 'In Progress') return { 'background-color': 'var(--status-in-progress)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Resolved') return { 'background-color': 'var(--status-complete)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Closed') return { 'background-color': 'var(--status-not-processed)', color: 'var(--primary-text)' };
           return {} as { [key: string]: string };
         }
       },

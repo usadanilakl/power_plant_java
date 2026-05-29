@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, effect, OnInit, OnDestroy } from '@angular/core';
+import { Component, input, output, signal, computed, effect, forwardRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent, MenuPosition } from '../../menu/floating-menu/floating-menu.component';
 import { FieldSelectorComponent } from '../field-selector/field-selector.component';
@@ -17,7 +17,8 @@ interface BulkEditPreset {
 @Component({
   selector: 'app-bulk-edit-menu',
   standalone: true,
-  imports: [CommonModule, FloatingMenuComponent, FieldSelectorComponent, RfReactiveFormComponent, ClipboardFormComponent],
+  // forwardRef on rf-reactive-form breaks the import cycle (see loto-point-bulk-edit-form).
+  imports: [CommonModule, FloatingMenuComponent, FieldSelectorComponent, forwardRef(() => RfReactiveFormComponent), ClipboardFormComponent],
   templateUrl: './bulk-edit-menu.component.html',
   styleUrl: './bulk-edit-menu.component.css'
 })

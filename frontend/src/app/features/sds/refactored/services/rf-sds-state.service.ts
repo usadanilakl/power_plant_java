@@ -21,6 +21,9 @@ export class RfSdsStateService {
   isDetailOpen = signal(false);
   detailItem = signal<SdsChemicalDto | null>(null);
 
+  isWizardOpen = signal(false);
+  wizardItem = signal<SdsChemicalDto | null>(null);
+
   constructor() {
     this.apiService.itemDeleted$.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -120,6 +123,17 @@ export class RfSdsStateService {
         error: () => {}
       });
     }
+  }
+
+  /** Open the guided intake wizard, optionally for an existing (e.g. Incoming) record. */
+  openWizard(item?: SdsChemicalDto | null): void {
+    this.wizardItem.set(item ? SdsChemicalDto.fromJson(item) : null);
+    this.isWizardOpen.set(true);
+  }
+
+  closeWizard(): void {
+    this.isWizardOpen.set(false);
+    this.wizardItem.set(null);
   }
 
   dumpPdfs(files: { fileName: string; contentType: string; base64Content: string }[]): void {

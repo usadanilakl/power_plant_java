@@ -26,7 +26,8 @@ import java.time.Instant;
         @Index(name = "idx_sds_sharepoint_id", columnList = "sharepointId"),
         @Index(name = "idx_sds_local_uuid", columnList = "localUuid"),
         @Index(name = "idx_sds_status", columnList = "status_id"),
-        @Index(name = "idx_sds_book_number", columnList = "bookNumber")
+        @Index(name = "idx_sds_book_number", columnList = "bookNumber"),
+        @Index(name = "idx_sds_source_id", columnList = "sourceId")
 })
 @Getter
 @Setter
@@ -53,6 +54,15 @@ public class SdsChemical extends BaseAuditEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    /** Source eBinder item id — the stable match key for scraper import + source reconcile. */
+    private String sourceId;
+
+    /** Manufacturer/supplier from the source eBinder (reference only). */
+    private String manufacturer;
+
+    /** SDS revision date from the source eBinder — drives the "newer revision" reconcile check. */
+    private String sourceRevisionDate;
 
     private String processedByName;
 

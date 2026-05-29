@@ -8,9 +8,17 @@ Mirrors the Inventory / Field Lists architecture.
 
 Requirements: `project/features/sds/chemical-inventory.md`.
 
-**This is a phased build.** Phase 1 (core CRUD + sync + SharePoint + UI) and **Phase 2 (book/section
-numbering + Incoming queue)** are **complete and building**. Phases 3–4 (document generation, intake
-wizard, audit) are deferred — see §7. Phase 2 design detail: `sds-phase2-plan.md`.
+**This is a phased build — all phases now built.** Phase 1 (core CRUD + sync + SharePoint + UI),
+Phase 2 (book/section numbering + Incoming queue), Phase 3 (3A document generation + 3B guided intake
+wizard), and **Phase 4 (PWA audit + campaigns)** are **complete and building**. Design detail:
+`sds-phase2-plan.md`, `sds-phase3-plan.md`. **Browser testing in progress** — user is testing all
+phases together.
+
+> **SharePoint push (important):** the orchestrator only *pulls* from SP, and only the PWA pushes
+> on submit — so desktop/hub-created records weren't reaching SP. Fixed with a **hub-only outbound
+> sweep**: `SdsOutboundSharePointSync` (chemicals) + `SdsAuditOutboundSharePointSync` (audit records)
+> push any record lacking a `sharepointId` to SP via the certificate every 60s. Desktop-created
+> chemicals get a `localUuid` stamped on save for clean rebinding.
 
 ### Confirmed design decisions (2026-05-28)
 - **Names + locations** are newline-delimited strings in single TEXT columns (`names`,
@@ -166,6 +174,65 @@ PWA unchanged in Phase 2 (still submits Pending; address assigned later on deskt
 
 ---
 
+## 4c. Phase 3A — Document Generation (DONE)
+
+Desktop-only, client-side HTML → browser print (no backend). Reused by the Phase 3B wizard.
+- `features/sds/refactored/services/rf-sds-print.service.ts` (new):
+  - `printTitleSheet(c)` — one chemical: primary name large + aliases, storage-location list, **Book/
+    Section in a boxed top-right corner**; opens a print window. (Layout designed for user review.)
+  - `printMasterIndex(chemicals)` — **one master alphabetical index**: one row per name (a chemical's
+    aliases each appear, all pointing to its single Book/Section), columns Chemical | Book | Section |
+    Location; excludes Removed + not-yet-filed (no book/section). HTML-escaped; `@page` + repeated
+    table header for multi-page print.
+- Detail dialog — **"Print Title Sheet"** button (amber `.btn-print`).
+- Page toolbar — **"Print Index"** button → `api.getAll()` → `printMasterIndex(...)` (prints the full
+  list regardless of the active status tab).
+
+---
+
+## 4d. Phase 3B — Guided Intake Wizard (DONE)
+
+Desktop-only, transient 6-step wizard over one `SdsChemical` (`rf-sds-wizard.component.ts`):
+1. Names → 2. Locations → 3. Attach PDF (held in memory until save; shows existing attachments for an
+Incoming record) → 4. Save + approve suggested address ("Start new book" + "Processed by"; saves as
+**Pending**, uploads held files) → 5. Generate + manual-steps checklist (Print title sheet / Print
+index / Open SDS PDF — each ticks its box; all required) → 6. Confirm overview + final checkbox →
+`changeStatus(Filed)`.
+- Entry points: **"Guided intake"** button on the page (`openWizard(null)`); **"Process"** button on
+  the detail dialog for Incoming/Pending records (`openWizard(item)`).
+- State: `RfSdsStateService.isWizardOpen` / `wizardItem` / `openWizard()` / `closeWizard()`.
+- Reuses `RfSdsPrintService` (title + index) and the Phase 2 `suggest-address`. PDF "print" opens the
+  attached PDF in a new tab.
+- Choices made (defaults from `sds-phase3-plan.md`): transient UI (status tracks progress); SDS PDF
+  opens in a new tab; all checklist boxes + final confirm required before Filed.
+
+---
+
+## 4e. Phase 4 — Audit (PWA) + Campaigns (DONE)
+
+Hub-independent auditing: audit records are their own **SP-backed entity + "SDS Audit" list**, so the
+PWA writes them via Power Automate when the hub is offline and via the hub's certificate when online.
+- **Backend:** `SdsAuditRecord` (entity/DTO/PwaDto/repo/mapper), `NgSdsAuditService`,
+  `SdsAuditRecordSyncService`, `PwaSdsAuditService`, controllers `/ng/sds-audit` + `/api/pwa/sds-audit`,
+  `SdsAuditRecordSharePointAdapter` + `SdsAuditRecordSharePointSyncable` (append-only create-if-absent
+  merge), `SdsAuditOutboundSharePointSync` (hub push), `PowerAutomateV2Client.sdsAudit()` +
+  `pa.flow.sds-audit-url`, "SDS Audit" list in the provisioner, `SdsAuditCampaign` seed
+  ("Initial Audit"), registered in `ServiceFacade` + `EntityTableRegistry`.
+- **Old snapshot** stored as a JSON Note column `OldSnapshot` (hide from the default SP view) — not an
+  attachment; attachments stay reserved for the SDS PDFs.
+- **Campaign** = a simple label (Values category `SdsAuditCampaign`); the PWA fetches campaigns (cached
+  in localStorage for offline). Due-list = active chemicals whose localUuid has no audit record for the
+  active campaign.
+- **PWA audit UI** (`features/sds-audit/sds-audit.component.ts`, route `/sds-audit`): pick campaign +
+  Location/Alphabetical → due list (grouped by location or sorted) → per chemical **Confirm correct**
+  (writes a Confirmed record, drops from list) or **Edit** (updates the chemical + writes an Edited
+  record with the old-snapshot JSON). Both go through the orchestrator's server → PA → email chain, so
+  auditing works offline. Auditor identity from `UserSetupService`.
+- **Desktop:** audit records sync in (registered), so a read-only desktop audit-history view is a
+  trivial future add-on; not built (audit UI is PWA-only per the chosen scope).
+
+---
+
 ## 5. Build Status
 
 - Backend: `mvn compile -q` → exit 0.
@@ -216,7 +283,8 @@ features/sds/refactored/rf-sds-page/
 features/sds/refactored/rf-sds-table/
 features/sds/refactored/rf-sds-form/
 features/sds/refactored/rf-sds-detail-dialog/
-features/sds/refactored/services/   (api, state, context-menu, table-click)
+features/sds/refactored/rf-sds-wizard/            (Phase 3B guided intake)
+features/sds/refactored/services/   (api, state, context-menu, table-click, print [Phase 3A])
 routes/sds.routes.ts
 app.routes.ts                — SDS_ROUTES
 models/ui/navigation-card.model.ts — SDS card
@@ -238,17 +306,20 @@ models/menu/router-menu.model.ts       — SDS menu
 
 ---
 
-## 7. Deferred — Phases 3–4 (design with the user before building)
+## 7. Status — all phases built; remaining work
 
-- **Phase 3 — Document generation + guided intake wizard.** Title sheet (names + locations + Book/
-  Section in the top-right corner) and index sheet (alphabetical — one row per *name*, all of a
-  chemical's names pointing to its single Book/Section) as server-side HTML → print. Stateful
-  "new SDS arrived" wizard with a manual-steps checklist + confirmation step.
-- **Phase 4 — Audit flow.** Select by location / alphabetical → per-item confirm-correct (drops from
-  list) or edit; on edit save the OLD snapshot in the hub DB (NOT SharePoint) + audit trail
-  (who/when/comments). `lastAuditedAt` field already present. Pattern reference:
-  `DailyPermitPackage.modificationsJson` / `PackageModification`.
-- **Electron overview** of newly-added / unprocessed chemicals (`/ng/sds-chemicals/unprocessed`
-  endpoint already exists).
-- **Skipped:** GitHub-Pages SDS-status publishing — PWA auto-sets "Pending", so no offline status
-  dropdown is needed.
+- **Phases 1–4 — DONE** (§1–§4e). All compile / build clean.
+- **Operational setup (per `sync.role=hub`, after restart):**
+  1. Admin > SharePoint > create the **"SDS"** and **"SDS Audit"** lists (then hide the `OldSnapshot`
+     column from the SDS Audit default view).
+  2. Cert sync + the hub outbound sweeps then push/pull automatically — no PA flow required.
+  3. (Optional, PWA-offline fallback only) build the "SDS" and "SDS Audit" PA flows and fill
+     `pa.flow.sds-url` / `pa.flow.sds-audit-url` + PWA `paFlowUrls.sds` / `paFlowUrls.sdsAudit`.
+- **Design change (Phase 4):** the audit snapshot is **on SharePoint** (in the "SDS Audit" list), NOT
+  hub-DB-only as originally planned — required so PWA auditing works independently of the hub. Old
+  snapshot is a hidden JSON Note column.
+- **Deferred / optional:**
+  - **Electron overview** of newly-added / unprocessed chemicals (`/ng/sds-chemicals/unprocessed`
+    returns Incoming + Pending).
+  - **Read-only desktop audit-history view** (audit records already sync to desktop).
+  - **Skipped:** GitHub-Pages SDS-status publishing (status auto-set; no offline dropdown needed).

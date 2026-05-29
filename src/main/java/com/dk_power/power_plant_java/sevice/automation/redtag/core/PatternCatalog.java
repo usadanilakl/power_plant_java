@@ -132,37 +132,49 @@ public class PatternCatalog {
         return baseDir;
     }
 
-    // --- Auto-generated SW label crops --------------------------------------
+    // --- Per-permit label crops ---------------------------------------------
 
     /**
-     * Folder where {@code SwLabelPatternGenerator} writes one cropped PNG per
-     * Safe Work checkbox label — {@code <baseDir>/safe-work/labels/<key>.png}.
-     * Runtime resolves these by string key (e.g. {@code "high-temp"}) rather
-     * than by {@link RedTagPattern} so the set can grow without touching the enum.
+     * Folder holding one cropped PNG per checkbox/field label for a permit type —
+     * {@code <baseDir>/<permitFolder>/labels/<key>.png} (e.g. {@code safe-work},
+     * {@code hot-work}). Runtime resolves these by string key (e.g.
+     * {@code "high-temp"}) rather than by {@link RedTagPattern}, so the set can
+     * grow without touching the enum.
      */
-    public Path getLabelsDir() {
-        return baseDir.resolve("safe-work").resolve("labels");
+    public Path getLabelsDir(String permitFolder) {
+        return baseDir.resolve(permitFolder).resolve("labels");
     }
 
-    /** @return {@code true} if an auto-generated label crop exists for this key. */
-    public boolean labelExists(String key) {
-        return Files.isRegularFile(getLabelsDir().resolve(key + ".png"));
+    /** @return {@code true} if a label crop exists for this key under the permit folder. */
+    public boolean labelExists(String permitFolder, String key) {
+        return Files.isRegularFile(getLabelsDir(permitFolder).resolve(key + ".png"));
     }
 
     /**
-     * Resolves an auto-generated label crop to a SikuliX {@link Pattern}.
-     * Uses high similarity (0.85) because the crops are byte-identical to the
-     * on-screen pixels — anything lower would risk neighbouring rows matching.
+     * Resolves a label crop to a SikuliX {@link Pattern}. Uses high similarity
+     * (0.85) because the crops are byte-identical to the on-screen pixels —
+     * anything lower would risk neighbouring rows matching.
      */
-    public Pattern resolveLabel(String key) {
-        Path file = getLabelsDir().resolve(key + ".png");
+    public Pattern resolveLabel(String permitFolder, String key) {
+        Path file = getLabelsDir(permitFolder).resolve(key + ".png");
         if (!Files.isRegularFile(file)) {
             throw new AutomationException(
-                    "Safe Work label pattern not found for key '" + key + "' — expected at " + file
-                            + ". Run POST /ng/red-tag-automation/admin/generate-sw-label-patterns once "
-                            + "on this machine to generate the crops.",
+                    "Label pattern not found for '" + permitFolder + "/" + key + "' — expected at " + file,
                     key, null);
         }
         return new Pattern(file.toString()).similar(0.85);
+    }
+
+    // Safe Work convenience overloads (default folder) — keep existing SW callers working.
+    public Path getLabelsDir() {
+        return getLabelsDir("safe-work");
+    }
+
+    public boolean labelExists(String key) {
+        return labelExists("safe-work", key);
+    }
+
+    public Pattern resolveLabel(String key) {
+        return resolveLabel("safe-work", key);
     }
 }

@@ -163,10 +163,10 @@ export class InventoryItemDto extends BaseDto implements InventoryItemModel {
         header: 'Status',
         accessorKey: 'statusName',
         conditionalStyling: (item: any, _col: Column): { [key: string]: string } => {
-          if (item.statusName === 'Available') return { 'background-color': 'var(--status-complete)', color: 'white' };
-          if (item.statusName === 'Checked Out') return { 'background-color': 'var(--status-info)', color: 'white' };
-          if (item.statusName === 'Missing') return { 'background-color': 'var(--status-error)', color: 'white' };
-          if (item.statusName === 'Retired') return { 'background-color': 'var(--status-neutral)', color: 'white' };
+          if (item.statusName === 'Available') return { 'background-color': 'var(--status-complete)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Checked Out') return { 'background-color': 'var(--status-in-progress)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Missing') return { 'background-color': 'var(--status-attention)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Retired') return { 'background-color': 'var(--status-not-processed)', color: 'var(--primary-text)' };
           return {} as { [key: string]: string };
         }
       },

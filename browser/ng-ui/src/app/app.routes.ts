@@ -16,6 +16,8 @@ import { InventoryPageComponent } from './pages/inventory-page/inventory-page.co
 import { InventoryComponent } from './features/inventory/inventory.component';
 import { SdsPageComponent } from './pages/sds-page/sds-page.component';
 import { SdsComponent } from './features/sds/sds.component';
+import { SdsAuditPageComponent } from './pages/sds-audit-page/sds-audit-page.component';
+import { SdsAuditComponent } from './features/sds-audit/sds-audit.component';
 import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -103,6 +105,15 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: SdsComponent }
+      ]
+    },
+    {
+      path: 'sds-audit',
+      component: SdsAuditPageComponent,
+      canActivate: [standaloneGuard, userSetupGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: SdsAuditComponent }
       ]
     },
     {

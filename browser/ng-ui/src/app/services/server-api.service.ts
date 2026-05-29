@@ -728,6 +728,49 @@ export class ServerApiService {
     );
   }
 
+  // ====================== SDS Audit ======================
+
+  /** Active SDS chemicals (Incoming + Pending + Filed) for the audit list. */
+  getActiveSdsChemicals(): Observable<any[]> {
+    return this.http.get<{ responseData: any[] }>(
+      `${this.baseUrl}/api/pwa/sds-chemical/active`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(() => of([]))
+    );
+  }
+
+  getSdsCampaigns(): Observable<string[]> {
+    return this.http.get<{ responseData: string[] }>(
+      `${this.baseUrl}/api/pwa/sds-audit/campaigns`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData || []),
+      catchError(() => of([]))
+    );
+  }
+
+  getSdsAuditedUuids(campaign: string): Observable<string[]> {
+    return this.http.get<{ responseData: string[] }>(
+      `${this.baseUrl}/api/pwa/sds-audit/audited-uuids/${encodeURIComponent(campaign)}`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData || []),
+      catchError(() => of([]))
+    );
+  }
+
+  submitSdsAudit(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/sds-audit/submit`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
   // ====================== Inventory ======================
 
   getInventoryTypes(): Observable<{ id: number; name: string }[]> {

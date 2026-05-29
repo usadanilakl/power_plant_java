@@ -1,10 +1,23 @@
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { PointPrerequisiteDto } from '../../../../../models/loto/loto-standard.model';
+import { ZeroEnergyEditorDialogComponent } from '../../../../../shared/loto/zero-energy-editor-dialog/zero-energy-editor-dialog.component';
+import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
 
 type Side = 'INSTALL' | 'REMOVAL';
+
+/**
+ * Emitted when zero energy is edited in the install procedure. The same payload
+ * covers single (one id) and bulk (many ids) edits — the host applies the
+ * `zeroEnergy` group value to every listed point.
+ */
+export interface ZeroEnergyChange {
+  pointIds: number[];
+  /** zeroEnergy group value: { zeroEnergyTemplate: number|null, templateEquipment: EquipmentDto[], editShared: boolean }. */
+  zeroEnergy: any;
+}
 
 interface RowState {
   pointId: number;
@@ -16,12 +29,16 @@ interface RowState {
   notes: string;
   removalOrder: number | null; // only meaningful on REMOVAL tab
   inheritingFromInstall: boolean; // removal-only flag — true when removal fields are empty
+  // zero-energy (point-level, INSTALL side only) — sourced from the LotoPoint itself.
+  // Display-only here; editing happens in the reused ZE dialog.
+  hasZeroEnergy: boolean;
+  zeroEnergyMethod: string;
 }
 
 @Component({
   selector: 'app-point-prerequisites-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ZeroEnergyEditorDialogComponent],
   template: `
     <div class="prereq-editor">
       @if (rows().length === 0) {
@@ -32,24 +49,61 @@ interface RowState {
             Empty rows inherit from the install side. Use the per-point overrides only when removal needs to differ.
           </p>
         }
+        @if (side() === 'INSTALL' && selectedIds().size > 0) {
+          <div class="ze-bulk-bar">
+            <span>{{ selectedIds().size }} point{{ selectedIds().size !== 1 ? 's' : '' }} selected</span>
+            <button type="button" class="ze-bulk-btn" (click)="openBulkZeEditor()">Apply Zero Energy to selected</button>
+            <button type="button" class="ze-bulk-clear" (click)="clearSelection()">Clear</button>
+          </div>
+        }
         <table class="prereq-table">
           <thead>
             <tr>
-              <th style="width: 10%">Tag #</th>
-              <th style="width: 18%">Description</th>
+              @if (side() === 'INSTALL') {
+                <th style="width: 3%" title="Select for bulk Zero Energy">
+                  <input type="checkbox"
+                         [checked]="allSelected()"
+                         [indeterminate]="someSelected()"
+                         (change)="toggleSelectAll($any($event.target).checked)">
+                </th>
+              }
+              <th style="width: 9%">Tag #</th>
+              <th style="width: 14%">Description</th>
+              @if (side() === 'INSTALL') {
+                <th style="width: 22%" title="Zero-energy method for this point. Click Edit to set the verification phrase and equipment.">Zero Energy</th>
+              }
               @if (side() === 'REMOVAL') {
                 <th style="width: 6%" title="Removal order — lower numbers come first. Leave blank to follow install order.">Rem. Order</th>
               }
-              <th style="width: 18%">Required predecessors</th>
-              <th style="width: 22%">Safety conditions to acknowledge</th>
-              <th style="width: 22%">{{ side() === 'INSTALL' ? 'Install notes' : 'Removal notes' }}</th>
+              <th style="width: 16%">Required predecessors</th>
+              <th style="width: 20%">Safety conditions to acknowledge</th>
+              <th style="width: 19%">{{ side() === 'INSTALL' ? 'Install notes' : 'Removal notes' }}</th>
             </tr>
           </thead>
           <tbody>
             @for (row of rows(); track row.pointId) {
               <tr [class.inheriting]="row.inheritingFromInstall">
+                @if (side() === 'INSTALL') {
+                  <td class="sel-cell">
+                    <input type="checkbox"
+                           [checked]="selectedIds().has(row.pointId)"
+                           (change)="toggleSelect(row.pointId, $any($event.target).checked)">
+                  </td>
+                }
                 <td>{{ row.tagNumber }}</td>
                 <td>{{ row.description }}</td>
+                @if (side() === 'INSTALL') {
+                  <td class="ze-cell">
+                    @if (row.zeroEnergyMethod) {
+                      <div class="ze-resolved" [title]="row.zeroEnergyMethod">{{ row.zeroEnergyMethod }}</div>
+                    } @else if (row.hasZeroEnergy) {
+                      <span class="ze-set">Phrase set</span>
+                    } @else {
+                      <span class="ze-none">—</span>
+                    }
+                    <button type="button" class="ze-edit-btn" (click)="openZeEditor(row.pointId)">Edit</button>
+                  </td>
+                }
                 @if (side() === 'REMOVAL') {
                   <td>
                     <input type="number" class="order-input"
@@ -148,6 +202,16 @@ interface RowState {
           </div>
         </div>
       }
+
+      @if (zeDialogPoint() !== null) {
+        <app-zero-energy-editor-dialog
+          [point]="zeDialogPoint()!"
+          [targetCount]="zeDialogTargetIds().length"
+          [tagLabel]="zeDialogTagLabel()"
+          (saved)="onZeSaved($event)"
+          (cancelled)="closeZeDialog()">
+        </app-zero-energy-editor-dialog>
+      }
     </div>
   `,
   styles: [`
@@ -181,6 +245,16 @@ interface RowState {
     .pred-tag { font-weight: 600; min-width: 72px; }
     .pred-desc { color: #888; font-size: 12px; }
     .picker-footer { padding: 10px 16px; border-top: 1px solid #2a2a2a; display: flex; justify-content: flex-end; }
+    .ze-cell { vertical-align: top; }
+    .ze-resolved { color: #ccc; font-size: 11px; font-style: italic; margin-bottom: 4px; max-height: 48px; overflow: hidden; }
+    .ze-set { color: #82b1ff; font-size: 11px; display: block; margin-bottom: 4px; }
+    .ze-none { color: #666; display: block; margin-bottom: 4px; }
+    .ze-edit-btn { background: none; border: 1px solid #3a4a60; color: #82b1ff; padding: 2px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .ze-edit-btn:hover { background: #1f2937; border-color: #82b1ff; }
+    .sel-cell { text-align: center; }
+    .ze-bulk-bar { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 8px 12px; background: #1f3047; border-left: 3px solid #82b1ff; border-radius: 4px; color: #ddd; font-size: 13px; }
+    .ze-bulk-btn { background: var(--accent-color, #2196F3); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .ze-bulk-clear { background: none; color: #aaa; border: 1px solid #444; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     .conditions { display: flex; flex-direction: column; gap: 4px; }
     .cond-row { display: flex; gap: 4px; align-items: center; }
     .cond-input { flex: 1; background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; }
@@ -202,9 +276,20 @@ export class PointPrerequisitesEditorComponent {
   removalReversesOrder = input<boolean>(false);
   /** Parent-controlled side. Defaults to INSTALL; can be bound via [side]. */
   side = input<Side>('INSTALL');
+  /** Whether the user may add/edit zero-energy phrase templates from here. */
+  canManageZeroEnergy = input<boolean>(true);
 
   save = output<Record<number, PointPrerequisiteDto>>();
   removalReverseChange = output<boolean>();
+  /**
+   * Emitted when a point's zero-energy phrase changes on the INSTALL side.
+   * Zero energy lives on the LotoPoint (not the prerequisite spec), so the
+   * parent persists this to the point (standard → global point) rather than
+   * folding it into the prerequisites save.
+   */
+  zeroEnergyChange = output<ZeroEnergyChange>();
+
+  private valueService = inject(RfValueService);
 
   private working = signal<Record<number, PointPrerequisiteDto>>({});
   private baseline = signal<Record<number, PointPrerequisiteDto>>({});
@@ -215,6 +300,9 @@ export class PointPrerequisitesEditorComponent {
     const s = this.side();
     return this.points().map(p => {
       const spec = w[p.id!];
+      const ze = (p as any).zeroEnergy ?? null;
+      const hasZe = !!(ze?.zeroEnergyTemplate?.id || (ze?.templateEquipment?.length ?? 0) > 0);
+      const resolved = this.resolvePhrase(p);
       if (s === 'INSTALL') {
         return {
           pointId: p.id!,
@@ -225,6 +313,8 @@ export class PointPrerequisitesEditorComponent {
           notes: spec?.installNotes ?? '',
           removalOrder: null,
           inheritingFromInstall: false,
+          hasZeroEnergy: hasZe,
+          zeroEnergyMethod: resolved,
         };
       }
       const hasRemovalPreds = (spec?.removalRequiredPointIds?.length ?? 0) > 0;
@@ -244,9 +334,45 @@ export class PointPrerequisitesEditorComponent {
         notes: spec?.removalNotes ?? '',
         removalOrder: spec?.removalOrder ?? null,
         inheritingFromInstall: inheriting,
+        // Zero energy is INSTALL-side only; carry values for type-completeness.
+        hasZeroEnergy: hasZe,
+        zeroEnergyMethod: resolved,
       };
     });
   });
+
+  /**
+   * Resolve a point's zero-energy phrase into display text with placeholders
+   * filled in from its template equipment — the same substitution the phrase
+   * builder shows. The template alias (rawText + segments) is looked up via the
+   * cached value service (reactive: re-runs when the category finishes loading).
+   * Falls back to the backend-computed method, then to '' .
+   */
+  private resolvePhrase(point: LotoPointDto): string {
+    const ze: any = (point as any).zeroEnergy ?? null;
+    const templateId: number | null = ze?.zeroEnergyTemplate?.id ?? null;
+    const backendMethod = point.zeroEnergyMethod ?? '';
+    if (!templateId) return backendMethod;
+
+    const tpl = this.valueService.getValuesByCategory('zeroEnergyTemplate').find(v => v.id === templateId);
+    if (!tpl?.alias) return backendMethod; // not loaded yet — show backend method meanwhile
+
+    let parsed: { rawText?: string; segments?: any[] };
+    try { parsed = JSON.parse(tpl.alias); } catch { return backendMethod; }
+
+    const segments = parsed?.segments ?? [];
+    const equipment: any[] = ze?.templateEquipment ?? [];
+    if (!segments.length) return parsed?.rawText || backendMethod;
+
+    return segments.map(s => {
+      if (s.type === 'placeholder' && s.placeholderIndex !== undefined) {
+        const eq = equipment[s.placeholderIndex];
+        if (eq) return eq.lotoPoints?.[0]?.tagNumber || eq.tagNumber || eq.tag || `[tag${s.placeholderIndex + 1}]`;
+        return `[tag${s.placeholderIndex + 1}]`; // placeholder without equipment yet
+      }
+      return s.content;
+    }).join('');
+  }
 
   /** When a removal row inherits, show install predecessors (optionally reversed). */
   private computeInheritedRemovalPreds(pointId: number, spec: PointPrerequisiteDto | undefined): number[] {
@@ -481,6 +607,68 @@ export class PointPrerequisitesEditorComponent {
       next = Number.isFinite(n) ? Math.trunc(n as number) : null;
     }
     this.updateRow(pointId, spec => ({ ...spec, removalOrder: next }));
+  }
+
+  // ── Zero energy (INSTALL side) — reuse the full ZE editor via a dialog ─────
+
+  /** Points checked for a bulk "apply ZE to selected" operation. */
+  selectedIds = signal<Set<number>>(new Set<number>());
+  /** The seed point passed to the dialog (real point for single, blank for bulk). */
+  zeDialogPoint = signal<LotoPointDto | null>(null);
+  /** Point ids the dialog's Save should apply to. */
+  zeDialogTargetIds = signal<number[]>([]);
+  zeDialogTagLabel = signal<string>('');
+
+  allSelected = computed(() => {
+    const pts = this.points();
+    return pts.length > 0 && pts.every(p => this.selectedIds().has(p.id!));
+  });
+  someSelected = computed(() => this.selectedIds().size > 0 && !this.allSelected());
+
+  toggleSelect(pointId: number, checked: boolean): void {
+    const next = new Set(this.selectedIds());
+    checked ? next.add(pointId) : next.delete(pointId);
+    this.selectedIds.set(next);
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    this.selectedIds.set(checked ? new Set(this.points().map(p => p.id!)) : new Set<number>());
+  }
+
+  clearSelection(): void { this.selectedIds.set(new Set<number>()); }
+
+  /** Open the dialog seeded from a single point. */
+  openZeEditor(pointId: number): void {
+    if (this.readonly()) return;
+    const point = this.points().find(p => p.id === pointId);
+    if (!point) return;
+    this.zeDialogPoint.set(point);
+    this.zeDialogTargetIds.set([pointId]);
+    this.zeDialogTagLabel.set(point.tagNumber ?? '');
+  }
+
+  /** Open the dialog blank, to apply one ZE configuration to all selected points. */
+  openBulkZeEditor(): void {
+    if (this.readonly() || this.selectedIds().size === 0) return;
+    this.zeDialogPoint.set(new LotoPointDto());
+    this.zeDialogTargetIds.set([...this.selectedIds()]);
+    this.zeDialogTagLabel.set('');
+  }
+
+  closeZeDialog(): void {
+    this.zeDialogPoint.set(null);
+    this.zeDialogTargetIds.set([]);
+    this.zeDialogTagLabel.set('');
+  }
+
+  /** Dialog saved — hand the ZE group value to the host for every target point. */
+  onZeSaved(zeroEnergy: any): void {
+    const pointIds = this.zeDialogTargetIds();
+    if (pointIds.length) {
+      this.zeroEnergyChange.emit({ pointIds, zeroEnergy });
+    }
+    this.clearSelection();
+    this.closeZeDialog();
   }
 
   onSave(): void {

@@ -91,6 +91,7 @@ public class EntityTableRegistry {
 
         // SDS
         Map.entry("SdsChemical", "sds_chemical"),
+        Map.entry("SdsAuditRecord", "sds_audit_record"),
 
         // Permits - additional
         Map.entry("JobLog", "job_log"),
@@ -170,6 +171,7 @@ public class EntityTableRegistry {
         "InventoryItem",
         "InventoryUsage",
         "SdsChemical",
+        "SdsAuditRecord",
         "PrintableForm",
         "FormContainer",
         "Flow",

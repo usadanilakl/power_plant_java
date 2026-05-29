@@ -9,6 +9,7 @@ import { AdminSyncComponent } from '../pages/admin/tabs/admin-sync.component';
 import { AdminSharepointComponent } from '../pages/admin/tabs/admin-sharepoint.component';
 import { AdminFormsComponent } from '../pages/admin/tabs/admin-forms.component';
 import { AdminMigrationComponent } from '../pages/admin/tabs/admin-migration.component';
+import { AdminSdsComponent } from '../pages/admin/tabs/admin-sds.component';
 import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.component';
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
@@ -40,6 +41,7 @@ export const STANDALONE_ROUTES: Routes = [
       { path: 'sharepoint', component: AdminSharepointComponent },
       { path: 'forms', component: AdminFormsComponent },
       { path: 'migration', component: AdminMigrationComponent },
+      { path: 'sds', component: AdminSdsComponent },
       { path: 'category-values', component: CvManagerPageComponent },
       { path: 'work-category-profiles', component: WorkCategoryProfileAdminComponent }
     ]

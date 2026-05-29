@@ -70,7 +70,7 @@ public class SafeWorkBuildFlow {
      */
     private static final int FORM_SETTLE_MS = 3500;
 
-    /** Wheel ticks per scroll step when bringing a section into view. */
+    /** Wheel ticks per scroll step when bringing a section into view (known-good value). */
     private static final int SCROLL_TICKS = 3;
     /** Max scroll steps before giving up trying to reveal a section. */
     private static final int SCROLL_MAX_STEPS = 25;
@@ -232,6 +232,9 @@ public class SafeWorkBuildFlow {
     /** Ticks every selected PPE checkbox via image matching. */
     public String fillPpe(SafeWorkDto sw) {
         SwPpe ppe = sw.getPpe() != null ? sw.getPpe() : new SwPpe();
+        // Log the data the automation actually received — if a box you ticked in the
+        // app reads false here, the value was lost on save/load, not in the clicking.
+        log.info("[RedTag SW] PPE data received: {}", ppe);
         scrollToSection(RedTagPattern.SW_PPE_HEADER);
         Region sect = sectionRegion(RedTagPattern.SW_PPE_HEADER, RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL);
         log.info("[RedTag SW] ppe section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
@@ -396,18 +399,35 @@ public class SafeWorkBuildFlow {
      */
     private void scrollToSection(RedTagPattern header) {
         driver.hoverCenter();
+        driver.sleep(120); // let the cursor settle at centre so the wheel lands on the form
         int topBand = (int) (driver.screenHeight() * SECTION_TOP_FRACTION);
+        int lastY = Integer.MIN_VALUE;
+        int stuck = 0;
         for (int i = 0; i < SCROLL_MAX_STEPS; i++) {
             Match m = driver.findOpt(header, 0.4);
+            int y = (m == null) ? Integer.MIN_VALUE : m.y;
             if (m != null && m.y <= topBand) {
+                log.info("[RedTag SW] '{}' in view at y={} after {} scroll step(s)", header.name(), m.y, i);
                 return;
             }
+            // Detect a form that isn't actually scrolling (wheel events not landing).
+            if (y == lastY) {
+                if (++stuck == 4) {
+                    log.warn("[RedTag SW] '{}' not moving while scrolling (headerY stuck at {}) — "
+                            + "wheel-scroll may not be reaching the form", header.name(),
+                            y == Integer.MIN_VALUE ? "not-visible" : y);
+                }
+            } else {
+                stuck = 0;
+            }
+            lastY = y;
+            log.info("[RedTag SW] scrolling to '{}' step {} (headerY={})",
+                    header.name(), i, y == Integer.MIN_VALUE ? "not-visible" : y);
             driver.scrollDown(SCROLL_TICKS);
             driver.sleep(150);
         }
-        log.warn("[RedTag SW] could not bring section header '{}' into the top band "
-                + "after {} scroll steps — matching against whatever is visible",
-                header.name(), SCROLL_MAX_STEPS);
+        log.warn("[RedTag SW] could not bring section header '{}' into view after {} scroll steps "
+                + "— its checkboxes will likely be missed", header.name(), SCROLL_MAX_STEPS);
     }
 
     /** Scrolls the form back to the top so the header fields / first section are visible. */

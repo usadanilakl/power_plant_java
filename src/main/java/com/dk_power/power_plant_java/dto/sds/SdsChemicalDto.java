@@ -23,6 +23,9 @@ public class SdsChemicalDto {
     private Integer sectionNumber;
 
     private String notes;
+    private String sourceId;
+    private String manufacturer;
+    private String sourceRevisionDate;
 
     private String processedByName;
     private String processedByEmail;

@@ -140,10 +140,10 @@ export class SdsChemicalDto extends BaseDto implements SdsChemicalModel {
         header: 'Status',
         accessorKey: 'statusName',
         conditionalStyling: (item: any, _col: Column): { [key: string]: string } => {
-          if (item.statusName === 'Incoming') return { 'background-color': 'var(--status-warning)', color: 'white' };
-          if (item.statusName === 'Pending') return { 'background-color': 'var(--status-info)', color: 'white' };
-          if (item.statusName === 'Filed') return { 'background-color': 'var(--status-complete)', color: 'white' };
-          if (item.statusName === 'Removed') return { 'background-color': 'var(--status-neutral)', color: 'white' };
+          if (item.statusName === 'Incoming') return { 'background-color': 'var(--status-incomplete)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Pending') return { 'background-color': 'var(--status-in-progress)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Filed') return { 'background-color': 'var(--status-complete)', color: 'var(--primary-text)' };
+          if (item.statusName === 'Removed') return { 'background-color': 'var(--status-not-processed)', color: 'var(--primary-text)' };
           return {} as { [key: string]: string };
         }
       },

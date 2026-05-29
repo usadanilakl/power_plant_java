@@ -17,8 +17,10 @@ import { RfLotoStandardApiService } from '../services/rf-loto-standard-api.servi
 import { LotoService } from '../../../../services/loto/loto.service';
 import { LotoStandardDto, PointPrerequisiteDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { RfLotoPointApiService } from '../../../loto-points/refactored/services/rf-loto-point-api.service';
+import { ZeroEnergyChange } from '../loto-builder/point-prerequisites-editor/point-prerequisites-editor.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject } from 'rxjs';
+import { Subject, forkJoin } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
@@ -59,6 +61,7 @@ export class RfLotoStandardFormComponent {
   protected mapperService = inject(LotoStandardMapperService);
   private apiService = inject(RfLotoStandardApiService);
   private lotoService = inject(LotoService);
+  private lotoPointApi = inject(RfLotoPointApiService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
@@ -626,6 +629,44 @@ export class RfLotoStandardFormComponent {
         error: (err) => {
           this.prereqSaving.set(false);
           alert(`Failed to save prerequisites: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+        }
+      });
+  }
+
+  /**
+   * Persist a zero-energy change made in the install procedure. Zero energy
+   * lives on the LotoPoint, so this updates the point(s) themselves — a GLOBAL
+   * change for a standard (Option A). The dialog hands us the full zeroEnergy
+   * group value (phrase template id + equipment objects + editShared); we apply
+   * it to every target point, preserving each point's own ZeroEnergy record id
+   * so the backend updates rather than creates. One id = single edit; many =
+   * bulk "apply to selected". The whole point is sent so other fields survive.
+   * (For an APPROVED standard this flows through the pending-review capture.)
+   */
+  savePointZeroEnergy(change: ZeroEnergyChange): void {
+    const targets = (this.entity().lotoPoints ?? []).filter(p => change.pointIds.includes(p.id!));
+    if (!targets.length) return;
+    const updates = targets.map(point => {
+      const ze = { ...(change.zeroEnergy ?? {}), id: point.zeroEnergy?.id ?? null };
+      const updated = new LotoPointDto({ ...point, zeroEnergy: ze });
+      return this.lotoPointApi.updateLotoPoint(updated);
+    });
+    forkJoin(updates)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (responses) => {
+          // Reflect the resolved points (with new zeroEnergyMethod) in local state.
+          const savedById = new Map<number, LotoPointDto>();
+          responses.forEach(r => {
+            const saved = LotoPointDto.fromJson(r.responseData);
+            if (saved.id != null) savedById.set(saved.id, saved);
+          });
+          const current = this.entity();
+          const points = (current.lotoPoints ?? []).map(p => savedById.get(p.id!) ?? p);
+          this.stateService.setSelectedItem(new LotoStandardDto({ ...current, lotoPoints: points }));
+        },
+        error: (err) => {
+          alert(`Failed to save zero energy: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
         }
       });
   }

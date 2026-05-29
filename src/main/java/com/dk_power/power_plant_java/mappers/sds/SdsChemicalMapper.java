@@ -55,6 +55,9 @@ public class SdsChemicalMapper {
         dto.setBookNumber(entity.getBookNumber());
         dto.setSectionNumber(entity.getSectionNumber());
         dto.setNotes(entity.getNotes());
+        dto.setSourceId(entity.getSourceId());
+        dto.setManufacturer(entity.getManufacturer());
+        dto.setSourceRevisionDate(entity.getSourceRevisionDate());
         dto.setProcessedByName(entity.getProcessedByName());
         dto.setProcessedByEmail(entity.getProcessedByEmail());
         dto.setProcessedAt(entity.getProcessedAt());
@@ -84,6 +87,9 @@ public class SdsChemicalMapper {
         entity.setBookNumber(dto.getBookNumber());
         entity.setSectionNumber(dto.getSectionNumber());
         entity.setNotes(dto.getNotes());
+        entity.setSourceId(dto.getSourceId());
+        entity.setManufacturer(dto.getManufacturer());
+        entity.setSourceRevisionDate(dto.getSourceRevisionDate());
         entity.setProcessedByName(dto.getProcessedByName());
         entity.setProcessedByEmail(dto.getProcessedByEmail());
         entity.setProcessedAt(dto.getProcessedAt());

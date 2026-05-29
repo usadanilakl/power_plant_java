@@ -141,7 +141,51 @@ public enum RedTagPattern {
     SW_ASSOCIATE_ISSUED_LOTOS_TAB("safe-work/associate-issued-lotos-tab.png",
             "The 'Issued LOTOs' tab at the bottom of the associate dialog"),
     SW_ASSOCIATE_ISSUED_PERMITS_TAB("safe-work/associate-issued-permits-tab.png",
-            "The 'Issued Permits' tab at the bottom of the associate dialog");
+            "The 'Issued Permits' tab at the bottom of the associate dialog"),
+
+    // ---- Hot Work permit ----------------------------------------------------
+    // NEW PERMIT / Issue-with-NO-Template / Save / permit-# column are shared
+    // toolbar/list elements — reuse the SW_* patterns. Only these are HW-specific.
+    HW_TAB("hot-work/tab.png", "The 'Hot Work' tab in the top bar", 0.70, true),
+    HW_SECTION_HEADER("hot-work/section-header.png",
+            "The 'HOT WORK PERMIT CHECKLIST AND APPROVAL SECTION' header (scroll/region anchor)"),
+    HW_LOCATION_LABEL("hot-work/location-label.png", "The 'Location of Hot Work:' label"),
+    HW_DATE_LABEL("hot-work/date-label.png", "The 'Date' label in the Hot Work header"),
+    HW_FOREMAN_LABEL("hot-work/foreman-label.png", "The '(Person Performing Work):' label"),
+    HW_FIRE_WATCH_NAME_LABEL("hot-work/fire-watch-name-label.png", "The 'Name of Fire Watch:' label"),
+    HW_METER_MODEL_LABEL("hot-work/meter-model-label.png", "The 'Test Equipment Model #:' label"),
+    HW_SERIAL_LABEL("hot-work/serial-label.png", "The 'Serial #:' label"),
+    HW_CAL_DATE_LABEL("hot-work/cal-date-label.png", "The 'Cal Date:' label"),
+    HW_FIRE_WATCH_REQUIRED("hot-work/fire-watch-required.png",
+            "The 'Fire Watch Required' row with its Y/N checkboxes"),
+    HW_SPECIAL_INSTRUCTIONS_LABEL("hot-work/special-instructions-label.png",
+            "The 'Special Instructions:' label on the Hot Work form"),
+
+    // ---- Confined Space permit ---------------------------------------------
+    // Two tab variants (one per ConfinedSpaceType). NEW PERMIT / Issue-with-NO-
+    // Template / Save / permit-# column are shared with SW.
+    CS_TAB_PERMIT_REQUIRED("confined-space/tab-permit-required.png",
+            "The 'Confined Space - Permit Required' tab in the top bar", 0.70, true),
+    CS_TAB_RECLASSIFIED("confined-space/tab-reclassified.png",
+            "The 'Confined Space - Reclassified' tab in the top bar", 0.70, true),
+    CS_SECTION_HEADER_GENERAL("confined-space/section-header-general.png",
+            "The '1. GENERAL INFORMATION' section header"),
+    CS_SECTION_HEADER_HAZARDS("confined-space/section-header-hazards.png",
+            "The '2. HAZARDS' section header"),
+    CS_SECTION_HEADER_PRECAUTIONS("confined-space/section-header-precautions.png",
+            "The '3. REQUIRED PRECAUTIONS' section header"),
+    CS_SECTION_HEADER_PPE("confined-space/section-header-ppe.png",
+            "The '4. REQUIRED PPE AND EQUIP.' section header"),
+    CS_SPACE_LABEL("confined-space/space-label.png", "The 'Space to be Entered:' label"),
+    CS_DATE_LABEL("confined-space/date-label.png", "The 'Date of Entry:' label"),
+    CS_PURPOSE_LABEL("confined-space/purpose-label.png", "The 'Purpose for Entry:' label"),
+    CS_START_TIME_LABEL("confined-space/start-time-label.png", "The 'Start Time:' label"),
+    CS_ISSUED_TO_LABEL("confined-space/issued-to-label.png", "The 'Issued to:' label"),
+    CS_DURATION_LABEL("confined-space/duration-label.png", "The 'Authorized Duration:' label"),
+    CS_PREC_LOCKOUT_TAGOUT_LABEL("confined-space/prec-lockout-tagout-label.png",
+            "The 'Lockout/Tagout (#' precautions label + number field"),
+    CS_PREC_HOT_WORK_PERMIT_LABEL("confined-space/prec-hot-work-permit-label.png",
+            "The 'Hot Work Permit (#' precautions label + number field");
 
     private final String relativePath;
     private final String description;

@@ -42,7 +42,7 @@
     (loadMoreItems)="onLoadMore($event)"
     (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
     (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
-    (selectedItemsEvent)="selectedItemsEvent.emit($event)"
+    (selectedItemsEvent)="onTableSelected($event)"
     (itemsReordered)="itemsReorderedEvent.emit($event)"
     (rowHoveredEvent)="rowHoveredEvent.emit($event)"
     (rowDoubleClicked)="rowDoubleClickedEvent.emit($event)"
@@ -53,5 +53,6 @@
 
 <!-- Bulk Edit Form -->
 <app-loto-point-bulk-edit-form
+  [selectedItems]="currentSelection()"
   (bulkEditApplied)="onBulkEditApplied($event)"
 ></app-loto-point-bulk-edit-form>

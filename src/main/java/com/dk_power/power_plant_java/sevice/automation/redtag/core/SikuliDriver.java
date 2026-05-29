@@ -52,12 +52,12 @@ public class SikuliDriver {
         if (screen == null) {
             Settings.TypeDelay = 0;
             Settings.MoveMouseDelay = 0;
-            // Scan ~once/sec instead of the default 3/sec. The form is static, so a
-            // present pattern is still matched on the first (immediate) scan; this
-            // just cuts how often SikuliX grabs the screen, which on Windows can make
-            // the Red Tag form repaint/flicker while we wait for it to render.
-            Settings.WaitScanRate = 1f;
-            Settings.ObserveScanRate = 1f;
+            // NOTE: leave WaitScanRate/ObserveScanRate at their defaults (3/sec).
+            // Lowering them to 1/sec was tried to reduce form flicker, but the scroll
+            // loop relies on the same scan rate to re-detect a section header after
+            // each scroll — at 1/sec it scrolled past sections. The flicker is instead
+            // handled by sleeping (no scanning) through the form's initial paint in
+            // SafeWorkBuildFlow.openSafeWorkForm.
             screen = new Screen();
             screen.setAutoWaitTimeout(properties.getAutoWaitTimeoutSeconds());
             log.info("[RedTag] SikuliX screen initialised ({}x{})", screen.w, screen.h);
@@ -113,8 +113,13 @@ public class SikuliDriver {
      * 60-checkbox section — the caller logs and continues.
      */
     public Match findLabelOpt(String labelKey, Region region, double seconds) {
-        if (!catalog.labelExists(labelKey)) return null;
-        return region.exists(catalog.resolveLabel(labelKey), seconds);
+        return findLabelOpt("safe-work", labelKey, region, seconds);
+    }
+
+    /** Same as {@link #findLabelOpt(String, Region, double)} but for a specific permit folder (e.g. "hot-work"). */
+    public Match findLabelOpt(String permitFolder, String labelKey, Region region, double seconds) {
+        if (!catalog.labelExists(permitFolder, labelKey)) return null;
+        return region.exists(catalog.resolveLabel(permitFolder, labelKey), seconds);
     }
 
     // --- Clicking ------------------------------------------------------------

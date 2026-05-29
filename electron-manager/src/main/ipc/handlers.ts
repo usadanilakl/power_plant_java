@@ -14,6 +14,7 @@ import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
 import { WebViewAmsManager } from '../managers/webview-ams.manager';
+import { WebViewSdsManager } from '../managers/webview-sds.manager';
 import { WeatherManager } from '../managers/weather.manager';
 import { PerryWeatherManager } from '../managers/perry-weather.manager';
 import { PjmManager } from '../managers/pjm.manager';
@@ -26,7 +27,7 @@ import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig, SdsScraperConfig } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -36,6 +37,7 @@ export class IpcHandlers {
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
   private webViewAmsManager: WebViewAmsManager;
+  private webViewSdsManager: WebViewSdsManager;
   private weatherManager: WeatherManager;
   private perryWeatherManager: PerryWeatherManager;
   private pjmManager: PjmManager;
@@ -61,6 +63,7 @@ export class IpcHandlers {
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
     this.webViewAmsManager = new WebViewAmsManager();
+    this.webViewSdsManager = new WebViewSdsManager();
     this.daEmailManager = new DaEmailManager();
     this.voskManager = new VoskManager(
       (result: VoskResult) => {
@@ -194,6 +197,7 @@ export class IpcHandlers {
     this.registerMaximoHandlers();
     this.registerGateLogHandlers();
     this.registerWebViewAmsHandlers();
+    this.registerSdsScrapeHandlers();
     this.registerWeatherHandlers();
     this.registerPerryWeatherHandlers();
     this.registerPjmHandlers();
@@ -970,6 +974,51 @@ export class IpcHandlers {
       try {
         await this.gateLogManager.print();
         return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  private registerSdsScrapeHandlers(): void {
+    ipcMain.handle(events.IPC_SDS_SCRAPE_RUN, async () => {
+      try {
+        const status = await this.webViewSdsManager.scrape();
+        return { success: !status.error, data: status, error: status.error };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_GAP_REPORT, async () => {
+      try {
+        const report = await this.webViewSdsManager.getGapReport();
+        return { success: true, data: report };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_SCRAPE_GET_STATUS, async () => {
+      try {
+        return { success: true, data: this.webViewSdsManager.getStatus() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_SCRAPE_GET_CONFIG, async () => {
+      try {
+        return { success: true, data: this.webViewSdsManager.getConfig() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_SCRAPE_SAVE_CONFIG, async (_event, config: SdsScraperConfig) => {
+      try {
+        this.webViewSdsManager.saveConfig(config);
+        return { success: true, data: this.webViewSdsManager.getConfig() };
       } catch (error: any) {
         return { success: false, error: error.message };
       }

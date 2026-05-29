@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, forwardRef, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -45,7 +45,9 @@ import { GuideDirective } from '../../../guide/guide.directive';
     FormGroupInputComponent,
     EquipmentBrowserInputComponent,
     EquipmentShapeDrawerInputComponent,
-    EquipmentListManagerComponent,
+    // forwardRef on equipment-list-manager breaks the bulk-edit import cycle
+    // (see loto-point-bulk-edit-form for the full ring).
+    forwardRef(() => EquipmentListManagerComponent),
     RfValueSelectComponent,
     RfMultiValueSelectComponent,
     FileInputComponent,

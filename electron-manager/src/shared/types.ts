@@ -270,6 +270,48 @@ export interface WebViewAmsWiredValue extends WebViewAmsWiredItem {
   fields: { name: string; value: string }[]; // row mode: the row's columns
 }
 
+// SDS eBinder scraper (chemmanagement.ehs.com — anonymous token link).
+// Scrapes the chemical list + SDS PDFs and feeds them to Spring Boot for import + source-audit.
+export interface SdsScraperConfig {
+  url: string;             // eBinder token URL (…/ebinder/?nas=True)
+  locationName: string;    // "Jackson Generation"
+  showScrapeWindow: boolean;
+}
+
+// Reconcile report returned by the backend after a scrape import (mirrors SdsImportReportDto).
+export interface SdsScrapeReport {
+  scrapedAt: string;       // ISO timestamp of the scrape
+  sourceCount: number;     // items found in the eBinder
+  created: number;         // new chemicals created (Incoming)
+  updated: number;         // existing chemicals refreshed
+  pdfsAttached: number;
+  newChemicals: string[];      // in eBinder, not previously in our DB
+  revisedChemicals: string[];  // Revision Date changed (newer SDS exists)
+  missingFromSource: string[]; // active in our DB but gone from the eBinder
+}
+
+export interface SdsScrapeStatus {
+  lastRun: string | null;
+  isScraping: boolean;
+  lastItemCount: number;
+  lastReport: SdsScrapeReport | null;
+  error?: string;
+}
+
+// Gaps remaining after the admin seed (mirrors SdsGapReportDto) — shown before the "Close gaps" scrape.
+export interface SdsGap {
+  sourceId: string | null;
+  name: string;
+  bookNumber: number | null;
+  sectionNumber: number | null;
+}
+export interface SdsGapReport {
+  catalogCount: number;       // chemicals in the eBinder catalog (the website)
+  activeCount: number;        // active chemicals in our DB
+  missingFromDb: SdsGap[];    // in the eBinder but not yet in our DB
+  missingPdf: SdsGap[];       // active DB chemicals with no SDS PDF
+}
+
 // IPC Result wrapper
 export interface IpcResult<T = void> {
   success: boolean;

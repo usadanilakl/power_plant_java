@@ -57,6 +57,13 @@ export const IPC_WEBVIEW_AMS_HISTORY_GET = 'webview-ams:history-get';
 // WebView AMS broadcasts (send/on)
 export const IPC_WEBVIEW_AMS_UPDATED = 'webview-ams:updated';
 
+// SDS eBinder scraper (invoke/handle)
+export const IPC_SDS_SCRAPE_RUN = 'sds-scrape:run';
+export const IPC_SDS_GAP_REPORT = 'sds-scrape:gap-report';
+export const IPC_SDS_SCRAPE_GET_STATUS = 'sds-scrape:get-status';
+export const IPC_SDS_SCRAPE_GET_CONFIG = 'sds-scrape:get-config';
+export const IPC_SDS_SCRAPE_SAVE_CONFIG = 'sds-scrape:save-config';
+
 // Weather (invoke/handle + send/on)
 export const IPC_WEATHER_GET_STATUS = 'weather:get-status';
 export const IPC_WEATHER_REFRESH = 'weather:refresh';

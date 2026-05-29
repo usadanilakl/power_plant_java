@@ -64,6 +64,14 @@ public class SdsChemicalSharePointAdapter {
                 "changeStatus SdsChemical");
     }
 
+    /** Hard-delete the SharePoint list item (used when a chemical is deleted as a mistake). */
+    public void delete(String sharepointId) {
+        spService.executeWithFallback(
+                () -> { certAccess.deleteListItem(LIST_TITLE, sharepointId); return null; },
+                () -> { paDelete(sharepointId); return null; },
+                "delete SdsChemical");
+    }
+
     public List<PaAttachmentDto> getAttachments(String sharepointId) {
         return spService.executeWithFallback(
                 () -> certGetAttachments(sharepointId),
@@ -78,6 +86,7 @@ public class SdsChemicalSharePointAdapter {
                 () -> {
                     PaRequestDto req = new PaRequestDto();
                     req.setActionType("addAttachment");
+                    req.setEntity("chemical");
                     req.setId(sharepointId);
                     req.setData(Map.of());
                     req.setAttachments(List.of(attachment));
@@ -133,6 +142,7 @@ public class SdsChemicalSharePointAdapter {
     private List<SdsChemicalDto> paGetAll() {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("getAll");
+        req.setEntity("chemical");
         req.setData(Map.of());
 
         PaResponseDto resp = v2Client.sds(req);
@@ -145,6 +155,7 @@ public class SdsChemicalSharePointAdapter {
     private String paCreate(SdsChemicalDto dto) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("create");
+        req.setEntity("chemical");
         req.setData(toMap(dto));
         PaResponseDto resp = v2Client.sds(req);
         if (!resp.isSuccess()) throw new RuntimeException("PA-V2 create SDS failed: " + resp.getMessage());
@@ -154,6 +165,7 @@ public class SdsChemicalSharePointAdapter {
     private void paUpdate(String sharepointId, SdsChemicalDto dto) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("update");
+        req.setEntity("chemical");
         req.setId(sharepointId);
         req.setData(toMap(dto));
         PaResponseDto resp = v2Client.sds(req);
@@ -163,15 +175,26 @@ public class SdsChemicalSharePointAdapter {
     private void paChangeStatus(String sharepointId, String status) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("update");
+        req.setEntity("chemical");
         req.setId(sharepointId);
         req.setData(Map.of("Status", status));
         PaResponseDto resp = v2Client.sds(req);
         if (!resp.isSuccess()) throw new RuntimeException("PA-V2 changeStatus SDS failed: " + resp.getMessage());
     }
 
+    private void paDelete(String sharepointId) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("delete");
+        req.setEntity("chemical");
+        req.setId(sharepointId);
+        PaResponseDto resp = v2Client.sds(req);
+        if (!resp.isSuccess()) throw new RuntimeException("PA-V2 delete SDS failed: " + resp.getMessage());
+    }
+
     private List<PaAttachmentDto> paGetAttachments(String sharepointId) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("getAttachments");
+        req.setEntity("chemical");
         req.setId(sharepointId);
         PaResponseDto resp = v2Client.sds(req);
         if (!resp.isSuccess() || resp.getData() == null) {

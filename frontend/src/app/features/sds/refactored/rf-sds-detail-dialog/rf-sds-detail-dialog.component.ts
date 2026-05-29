@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { RfSdsApiService } from '../services/rf-sds-api.service';
 import { RfSdsStateService } from '../services/rf-sds-state.service';
+import { RfSdsPrintService } from '../services/rf-sds-print.service';
 import { SdsChemicalDto } from '../../../../models/sds/sds-chemical.model';
 
 interface Attachment {
@@ -25,7 +26,11 @@ interface Attachment {
           <div class="detail-type-badge">SDS</div>
           <div class="detail-status" [attr.data-status]="item().statusName">{{ item().statusName }}</div>
           <div class="detail-actions">
+            @if (item().statusName === 'Incoming' || item().statusName === 'Pending') {
+              <button class="action-btn btn-process" (click)="onProcess()">Process</button>
+            }
             <button class="action-btn btn-edit" (click)="edit.emit(item())">Edit</button>
+            <button class="action-btn btn-print" (click)="onPrintTitleSheet()">Print Title Sheet</button>
             <button class="action-btn btn-delete" (click)="onDelete()">Delete</button>
             <button class="action-btn" (click)="close.emit()">&times;</button>
           </div>
@@ -153,15 +158,17 @@ interface Attachment {
       padding: 4px 10px; border-radius: 4px; background: var(--accent-color); color: var(--header-text); }
     .detail-status { font-size: 12px; padding: 4px 10px; border-radius: 10px;
       background: var(--secondary-background); color: var(--secondary-text); }
-    .detail-status[data-status="Incoming"] { background: #fff3e0; color: #e65100; }
-    .detail-status[data-status="Pending"] { background: #e3f2fd; color: #1565c0; }
-    .detail-status[data-status="Filed"] { background: #e8f5e9; color: #2e7d32; }
-    .detail-status[data-status="Removed"] { background: #eceff1; color: #546e7a; }
+    .detail-status[data-status="Incoming"] { background: var(--status-incomplete); color: var(--primary-text); }
+    .detail-status[data-status="Pending"] { background: var(--status-in-progress); color: var(--primary-text); }
+    .detail-status[data-status="Filed"] { background: var(--status-complete); color: var(--primary-text); }
+    .detail-status[data-status="Removed"] { background: var(--status-not-processed); color: var(--primary-text); }
     .detail-actions { margin-left: auto; display: flex; gap: 6px; }
     .action-btn { padding: 5px 12px; border: 1px solid var(--border-color); border-radius: 4px;
       background: var(--card-background); color: var(--primary-text); cursor: pointer; font-size: 12px; }
     .action-btn:hover { background: var(--hover-background, rgba(0,0,0,0.04)); }
     .btn-edit { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+    .btn-process { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; font-weight: 600; }
+    .btn-print { background: #fff8e1; color: #f57f17; border-color: #ffe082; }
     .btn-delete { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
     .btn-upload { display: inline-flex; align-items: center; }
 
@@ -228,6 +235,7 @@ export class RfSdsDetailDialogComponent implements OnInit {
 
   private apiService = inject(RfSdsApiService);
   private stateService = inject(RfSdsStateService);
+  private printService = inject(RfSdsPrintService);
 
   attachments = signal<Attachment[]>([]);
   loadingAttachments = signal(false);
@@ -247,6 +255,15 @@ export class RfSdsDetailDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadAttachments();
+  }
+
+  onPrintTitleSheet(): void {
+    this.printService.printTitleSheet(this.item());
+  }
+
+  onProcess(): void {
+    this.stateService.openWizard(this.item());
+    this.close.emit();
   }
 
   private loadAttachments(): void {

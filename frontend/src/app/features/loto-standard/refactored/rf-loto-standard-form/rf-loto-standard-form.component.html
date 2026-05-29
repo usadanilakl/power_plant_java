@@ -193,7 +193,8 @@
               [side]="proseSide()"
               [removalReversesOrder]="entity().removalReversesInstallOrder"
               [saving]="prereqSaving()"
-              (save)="savePrereqs($event)">
+              (save)="savePrereqs($event)"
+              (zeroEnergyChange)="savePointZeroEnergy($event)">
             </app-point-prerequisites-editor>
           } @else {
             <div class="empty-state">

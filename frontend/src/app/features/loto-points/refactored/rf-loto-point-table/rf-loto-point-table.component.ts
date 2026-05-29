@@ -11,6 +11,7 @@ import {
   computed,
   viewChild,
   TemplateRef,
+  forwardRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
@@ -36,7 +37,8 @@ import { CommentCellComponent } from '../../../../shared/comments-dialog/comment
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, LotoPointBulkEditFormComponent, CommentCellComponent],
+  // forwardRef on the bulk-edit form breaks the import cycle (see loto-point-bulk-edit-form).
+  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent],
   // providers: [
   //   { provide: TableClickService, useClass: RfLotoPointClickService }
   // ],
@@ -82,6 +84,13 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     initialValue: [],
   });
   columnInFocus = signal<string | null>(null);
+
+  /**
+   * This table instance's current row selection. Fed to the bulk-edit form so
+   * each table edits its OWN selection — the root state service is shared across
+   * tables (e.g. double-table source + destination) and can't disambiguate.
+   */
+  currentSelection = signal<LotoPointDto[]>([]);
 
   columns = signal<Column[]>([]);
   isLoading = signal<boolean>(false);
@@ -437,6 +446,16 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  /**
+   * Capture this table's row selection (for the bulk-edit form) and re-emit
+   * it to the parent. Keeping a local copy lets the bulk-edit form operate on
+   * THIS table's selection rather than the shared root signal.
+   */
+  onTableSelected(items: LotoPointDto[]): void {
+    this.currentSelection.set(items);
+    this.selectedItemsEvent.emit(items);
   }
 
   /**

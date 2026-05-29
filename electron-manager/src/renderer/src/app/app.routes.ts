@@ -11,6 +11,7 @@ import { SpringBootUiComponent } from './pages/spring-boot-ui/spring-boot-ui.com
 import { PersonnelComponent } from './pages/personnel/personnel.component';
 import { ToiComponent } from './pages/toi/toi.component';
 import { WebViewAmsComponent } from './pages/web-view-ams/web-view-ams.component';
+import { SdsImportComponent } from './pages/sds-import/sds-import.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -18,6 +19,7 @@ export const routes: Routes = [
   { path: 'fire-impairment', component: FireImpairmentComponent },
   { path: 'gate-log', component: GateLogComponent },
   { path: 'web-view-ams', component: WebViewAmsComponent },
+  { path: 'sds-import', component: SdsImportComponent },
   { path: 'weather', component: WeatherComponent },
   { path: 'pjm', component: PjmComponent },
   { path: 'logs', component: LogsComponent },

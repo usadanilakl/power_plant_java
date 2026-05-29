@@ -178,6 +178,44 @@ export interface WebViewAmsWiredValue extends WebViewAmsWiredItem {
   fields: { name: string; value: string }[];
 }
 
+export interface SdsScraperConfig {
+  url: string;
+  locationName: string;
+  showScrapeWindow: boolean;
+}
+
+export interface SdsScrapeReport {
+  scrapedAt: string;
+  sourceCount: number;
+  created: number;
+  updated: number;
+  pdfsAttached: number;
+  newChemicals: string[];
+  revisedChemicals: string[];
+  missingFromSource: string[];
+}
+
+export interface SdsScrapeStatus {
+  lastRun: string | null;
+  isScraping: boolean;
+  lastItemCount: number;
+  lastReport: SdsScrapeReport | null;
+  error?: string;
+}
+
+export interface SdsGap {
+  sourceId: string | null;
+  name: string;
+  bookNumber: number | null;
+  sectionNumber: number | null;
+}
+export interface SdsGapReport {
+  catalogCount: number;
+  activeCount: number;
+  missingFromDb: SdsGap[];
+  missingPdf: SdsGap[];
+}
+
 export interface GateLogConfig {
   onLocationApiKey: string;
   onLocationBaseUrl: string;
@@ -458,6 +496,13 @@ interface ElectronAPI {
   webViewAmsHistoryList: () => Promise<IpcResult<any[]>>;
   webViewAmsHistoryGet: (id: number) => Promise<IpcResult<any>>;
   onWebViewAmsUpdated: (callback: () => void) => () => void;
+
+  // SDS eBinder scraper
+  sdsScrapeRun: () => Promise<IpcResult<SdsScrapeStatus>>;
+  sdsGapReport: () => Promise<IpcResult<SdsGapReport>>;
+  sdsScrapeGetStatus: () => Promise<IpcResult<SdsScrapeStatus>>;
+  sdsScrapeGetConfig: () => Promise<IpcResult<SdsScraperConfig>>;
+  sdsScrapeSaveConfig: (config: SdsScraperConfig) => Promise<IpcResult<SdsScraperConfig>>;
 
   // Cold Resync
   coldResync: () => Promise<IpcResult>;
@@ -933,6 +978,33 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.onWebViewAmsUpdated(() => {
       this.ngZone.run(() => callback());
     });
+  }
+
+  // SDS eBinder scraper
+
+  async sdsScrapeRun(): Promise<IpcResult<SdsScrapeStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsScrapeRun();
+  }
+
+  async sdsGapReport(): Promise<IpcResult<SdsGapReport>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsGapReport();
+  }
+
+  async sdsScrapeGetStatus(): Promise<IpcResult<SdsScrapeStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsScrapeGetStatus();
+  }
+
+  async sdsScrapeGetConfig(): Promise<IpcResult<SdsScraperConfig>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsScrapeGetConfig();
+  }
+
+  async sdsScrapeSaveConfig(config: SdsScraperConfig): Promise<IpcResult<SdsScraperConfig>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsScrapeSaveConfig(config);
   }
 
   // Cold Resync

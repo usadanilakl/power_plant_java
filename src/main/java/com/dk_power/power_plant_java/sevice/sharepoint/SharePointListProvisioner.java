@@ -214,7 +214,12 @@ public class SharePointListProvisioner {
                         text("PwaId"), note("Names"), note("Locations"), text("Status"),
                         text("BookNumber"), text("Section"), note("Notes"),
                         text("ProcessedByName"), text("ProcessedByEmail"),
-                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"))
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone")),
+
+                list("SDS Audit",
+                        text("PwaId"), text("ChemicalSpId"), text("ChemicalLocalUuid"), text("ChemicalName"),
+                        text("Action"), note("OldSnapshot"), text("AuditedByName"), text("AuditedByEmail"),
+                        text("AuditedAt"), note("Comments"), text("Campaign"))
         );
     }
 

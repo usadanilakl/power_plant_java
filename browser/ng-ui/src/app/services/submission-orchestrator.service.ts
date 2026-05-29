@@ -886,6 +886,7 @@ export class SubmissionOrchestratorService {
 
     const paRequest = {
       actionType: payload.actionType || 'create',
+      entity: 'chemical',
       id: payload.sharepointId,
       data: paData,
       attachments: (payload.attachments || []).map((a: any) => ({
@@ -915,6 +916,79 @@ export class SubmissionOrchestratorService {
           method: 'email' as const,
           localUuid,
           message: 'Both server and Power Automate unavailable. Item saved locally.',
+          requiresEmail: true
+        });
+      })
+    );
+  }
+
+  submitSdsAudit(payload: any): Observable<SubmissionResult> {
+    const localUuid = payload.localUuid || crypto.randomUUID();
+    payload.localUuid = localUuid;
+
+    return this.serverApi.submitSdsAudit(payload).pipe(
+      map(response => ({
+        success: !!response.success,
+        method: (response.method === 'local' ? 'local' : 'server') as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || localUuid,
+        message: response.method === 'local'
+          ? 'Audit saved on server. Will sync to SharePoint when available.'
+          : 'Audit recorded via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for SDS audit, trying Power Automate:', serverError.message);
+        return this.tryPowerAutomateSdsAudit(payload, localUuid);
+      })
+    );
+  }
+
+  private tryPowerAutomateSdsAudit(payload: any, localUuid: string): Observable<SubmissionResult> {
+    if (!this.powerAutomate.isV2Configured('sds')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'Server unavailable and Power Automate not configured. Audit saved locally.',
+        requiresEmail: true
+      });
+    }
+
+    const paData: Record<string, any> = {
+      Title: payload.chemicalName || '',
+      PwaId: localUuid,
+      ChemicalSpId: payload.chemicalSharepointId || '',
+      ChemicalLocalUuid: payload.chemicalLocalUuid || '',
+      ChemicalName: payload.chemicalName || '',
+      Action: payload.action || '',
+      OldSnapshot: payload.oldSnapshot || '',
+      AuditedByName: payload.auditedByName || '',
+      AuditedByEmail: payload.auditedByEmail || '',
+      Comments: payload.comments || '',
+      Campaign: payload.campaign || '',
+      AuditedAt: new Date().toISOString()
+    };
+
+    return this.powerAutomate.submitV2('sds', { actionType: 'create', entity: 'audit', data: paData, attachments: [] }).pipe(
+      map(response => {
+        const isSuccess = response.success === true || String(response.success).toLowerCase() === 'true';
+        return {
+          success: isSuccess,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: isSuccess
+            ? 'Audit recorded directly to SharePoint via Power Automate.'
+            : (response.message || 'Power Automate submission failed.')
+        };
+      }),
+      catchError(paError => {
+        console.error('[Orchestrator] PA also failed for SDS audit:', paError.message);
+        return of({
+          success: false,
+          method: 'email' as const,
+          localUuid,
+          message: 'Both server and Power Automate unavailable. Audit saved locally.',
           requiresEmail: true
         });
       })

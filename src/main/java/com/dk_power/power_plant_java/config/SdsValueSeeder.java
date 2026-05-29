@@ -25,6 +25,8 @@ public class SdsValueSeeder implements ApplicationRunner {
             valueService.createValue("SdsStatus", "Pending");
             valueService.createValue("SdsStatus", "Filed");
             valueService.createValue("SdsStatus", "Removed");
+            // Default audit campaign label (admins can add more via the Values UI)
+            valueService.createValue("SdsAuditCampaign", "Initial Audit");
             log.info("[SdsValueSeeder] SDS categories seeded successfully");
         } catch (Exception e) {
             log.warn("[SdsValueSeeder] Failed to seed SDS values: {}", e.getMessage());

@@ -174,6 +174,12 @@ export class HomePageComponent {
       description: 'Record Safety Data Sheet chemicals',
       icon: '🧪',
       route: '/sds'
+    },
+    {
+      title: 'SDS Audit',
+      description: 'Audit chemicals by location or alphabetically',
+      icon: '✅',
+      route: '/sds-audit'
     }
   ];
 

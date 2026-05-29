@@ -14,6 +14,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/field-lists', label: 'Field Lists' },
     { route: '/inventory', label: 'Inventory' },
     { route: '/sds', label: 'SDS Chemicals' },
+    { route: '/sds-audit', label: 'SDS Audit' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

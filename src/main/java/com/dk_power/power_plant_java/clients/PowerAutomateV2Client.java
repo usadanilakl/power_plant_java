@@ -225,7 +225,10 @@ public class PowerAutomateV2Client {
         return inventoryFlowUrl != null && !inventoryFlowUrl.isBlank();
     }
 
-    /** Single SDS flow — serves the "SDS" SharePoint list. */
+    /**
+     * Single SDS flow — serves BOTH the "SDS" and "SDS Audit" SharePoint lists. The request's
+     * {@code entity} discriminator ("chemical" | "audit") tells the flow which list to act on.
+     */
     public PaResponseDto sds(PaRequestDto request) {
         return sendRequest(sdsFlowUrl, request);
     }

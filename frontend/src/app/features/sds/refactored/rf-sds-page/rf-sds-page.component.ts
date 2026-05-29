@@ -3,9 +3,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs';
 import { RfSdsStateService } from '../services/rf-sds-state.service';
+import { RfSdsApiService } from '../services/rf-sds-api.service';
+import { RfSdsPrintService } from '../services/rf-sds-print.service';
 import { RfSdsTableComponent } from '../rf-sds-table/rf-sds-table.component';
 import { RfSdsFormComponent } from '../rf-sds-form/rf-sds-form.component';
 import { RfSdsDetailDialogComponent } from '../rf-sds-detail-dialog/rf-sds-detail-dialog.component';
+import { RfSdsWizardComponent } from '../rf-sds-wizard/rf-sds-wizard.component';
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { SpSyncToolbarComponent } from '../../../../shared/sp-sync-toolbar/sp-sync-toolbar.component';
 import { MainLayoutComponent } from '../../../../layout/refactored/main-layout.component';
@@ -21,6 +24,7 @@ import { SdsChemicalDto } from '../../../../models/sds/sds-chemical.model';
     RfSdsTableComponent,
     RfSdsFormComponent,
     RfSdsDetailDialogComponent,
+    RfSdsWizardComponent,
     RfPopupProjectionComponent,
     SpSyncToolbarComponent,
   ],
@@ -45,6 +49,8 @@ import { SdsChemicalDto } from '../../../../models/sds/sds-chemical.model';
                       (click)="onStatusChange('Removed')">Removed</button>
             </div>
             <div class="actions">
+              <button class="btn-action btn-new" (click)="onGuidedNew()">Guided intake</button>
+              <button class="btn-action" (click)="onPrintIndex()">Print Index</button>
               <label class="btn-action btn-dump">
                 @if (dumping()) { Uploading... } @else { Dump PDFs }
                 <input type="file" hidden multiple accept="application/pdf,.pdf" (change)="onDumpPdfs($event)">
@@ -77,6 +83,14 @@ import { SdsChemicalDto } from '../../../../models/sds/sds-chemical.model';
               (deleted)="stateService.closeDetail()">
             </app-rf-sds-detail-dialog>
           }
+
+          @if (stateService.isWizardOpen()) {
+            <app-rf-sds-wizard
+              [item]="stateService.wizardItem()"
+              (close)="stateService.closeWizard()"
+              (filed)="stateService.closeWizard()">
+            </app-rf-sds-wizard>
+          }
         </div>
       </ng-container>
     </app-main-layout>
@@ -104,6 +118,8 @@ import { SdsChemicalDto } from '../../../../models/sds/sds-chemical.model';
 })
 export class RfSdsPageComponent implements OnInit {
   stateService = inject(RfSdsStateService);
+  private api = inject(RfSdsApiService);
+  private printService = inject(RfSdsPrintService);
   private route = inject(ActivatedRoute);
 
   private selectedItems: SdsChemicalDto[] = [];
@@ -126,6 +142,17 @@ export class RfSdsPageComponent implements OnInit {
   }
 
   onStatusChange(status: string | null): void { this.stateService.loadByStatus(status); }
+
+  /** Fetch all chemicals (regardless of the active tab) and print the master alphabetical index. */
+  onPrintIndex(): void {
+    this.api.getAll().subscribe({
+      next: res => {
+        const items = (res.responseData || []).map((i: any) => SdsChemicalDto.fromJson(i));
+        this.printService.printMasterIndex(items);
+      },
+      error: err => console.warn('[SDS] Failed to load chemicals for index:', err.message)
+    });
+  }
 
   onSelectedItems(items: SdsChemicalDto[]): void {
     this.selectedItems = items;
@@ -157,6 +184,8 @@ export class RfSdsPageComponent implements OnInit {
   }
 
   onNew(): void { this.stateService.openNewForm(); }
+
+  onGuidedNew(): void { this.stateService.openWizard(null); }
 
   onEditFromDetail(item: SdsChemicalDto): void {
     this.stateService.closeDetail();

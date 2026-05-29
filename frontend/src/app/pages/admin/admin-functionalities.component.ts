@@ -65,6 +65,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              [active]="rla5.isActive">
             Migration
           </a>
+          <a mat-tab-link
+             routerLink="sds"
+             routerLinkActive
+             #rla6="routerLinkActive"
+             [active]="rla6.isActive">
+            SDS
+          </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>
           <router-outlet></router-outlet>
