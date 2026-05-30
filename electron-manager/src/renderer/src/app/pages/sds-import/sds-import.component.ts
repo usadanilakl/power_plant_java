@@ -1,11 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/electron.service';
+import { FormsModule } from '@angular/forms';
+import { SdsUnmatchedBookEntry } from '../../services/electron.service';
+import { SdsImportStateService } from '../../services/sds-import-state.service';
 
 @Component({
   selector: 'app-sds-import',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page">
       <div class="page-header">
@@ -18,14 +20,39 @@ import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/e
         and close the gaps by scraping the eBinder for the missing entries and the SDS PDFs.
       </p>
 
+      <!-- Scrape options -->
+      <div class="card opts">
+        <label class="opt">
+          <input type="checkbox" [(ngModel)]="filterLocation">
+          <span>Filter to Jackson Generation</span>
+          <small>Uncheck to scrape <em>all sites</em> (~5000 chemicals across the company).</small>
+        </label>
+        <label class="opt">
+          <input type="checkbox" [(ngModel)]="showWindow">
+          <span>Show browser window (debug)</span>
+          <small>Opens the headless eBinder window so you can watch the scrape — useful when the
+            location filter or PDF capture misbehaves.</small>
+        </label>
+      </div>
+
+      <!-- Live progress banner — visible whenever a scrape/upload is running. -->
+      @if (progressText) {
+        <div class="info-banner progress-banner">{{ progressText }}</div>
+      }
+
       <!-- Step 1: report -->
       <div class="card">
         <div class="card-title">1 · Run report</div>
         <p class="muted">Scrapes the eBinder list fresh (names + IDs, no PDFs) and compares it against the
           database. Opens a headless browser — takes up to a minute. Does not change anything.</p>
-        <button class="btn btn-primary" [disabled]="loadingReport" (click)="runReport()">
-          {{ loadingReport ? 'Scraping list…' : 'Run report' }}
-        </button>
+        <div class="actions">
+          <button class="btn btn-primary" [disabled]="loadingReport" (click)="runReport()">
+            {{ loadingReport ? 'Scraping list…' : 'Run report' }}
+          </button>
+          @if (loadingReport) {
+            <button class="btn btn-stop" (click)="stop()">Stop</button>
+          }
+        </div>
         @if (reportError) { <div class="error-banner">{{ reportError }}</div> }
 
         @if (gap) {
@@ -33,7 +60,48 @@ import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/e
             <span class="stat ok">{{ gap.activeCount }} in database</span>
             <span class="stat warn">{{ gap.missingFromDb.length }} on website, missing from DB</span>
             <span class="stat new">{{ gap.missingPdf.length }} in DB, missing PDF</span>
+            @if (gap.unmatchedBookEntries.length) {
+              <span class="stat unmatched">{{ gap.unmatchedBookEntries.length }} unmatched book entries</span>
+            }
           </div>
+
+          @if (gap.unmatchedBookEntries.length) {
+            <details class="list" open>
+              <summary>Not matched in book — needs manual match ({{ gap.unmatchedBookEntries.length }})</summary>
+              <p class="hint">These book entries (paints, solvents, legacy items) had no row in the
+                eBinder export at seed time. Pick a candidate from the "missing from DB" eBinder list
+                below, then click <strong>Match</strong>. Close gaps will then download its PDF.</p>
+              <table class="match-table">
+                <thead>
+                  <tr><th>Book entry</th><th>Address</th><th>eBinder candidate</th><th></th></tr>
+                </thead>
+                <tbody>
+                  @for (u of gap.unmatchedBookEntries; track $index) {
+                    <tr>
+                      <td>{{ u.name }}</td>
+                      <td class="mono">B{{ u.bookNumber }}/S{{ u.sectionNumber }}</td>
+                      <td>
+                        <select [(ngModel)]="matchPick[u.name + '|' + u.bookNumber + '|' + u.sectionNumber]" class="match-select">
+                          <option [ngValue]="''">— choose eBinder item —</option>
+                          @for (c of gap.missingFromDb; track c.sourceId) {
+                            <option [ngValue]="c.sourceId">{{ c.name || '(unnamed)' }} · #{{ c.sourceId }}</option>
+                          }
+                        </select>
+                      </td>
+                      <td>
+                        <button class="btn btn-primary btn-small"
+                                [disabled]="!matchPick[u.name + '|' + u.bookNumber + '|' + u.sectionNumber] || matching"
+                                (click)="match(u)">
+                          Match
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              @if (matchError) { <div class="error-banner">{{ matchError }}</div> }
+            </details>
+          }
 
           <div class="cols">
             <details class="list">
@@ -64,10 +132,19 @@ import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/e
             entries and downloads &amp; attaches SDS PDFs (existing PDFs are skipped). This opens a headless
             browser and can take a few minutes.
           </p>
-          <button class="btn btn-primary" [disabled]="scraping" (click)="closeGaps()">
-            {{ scraping ? 'Scraping eBinder…' : 'Close gaps (scrape eBinder)' }}
-          </button>
+          <div class="actions">
+            <button class="btn btn-primary" [disabled]="scraping" (click)="closeGaps()">
+              {{ scraping ? 'Scraping eBinder…' : 'Close gaps (scrape eBinder)' }}
+            </button>
+            <button class="btn btn-warn" [disabled]="scraping" (click)="reloadAllPdfs()" title="Delete all local SDS PDFs and re-download them from the eBinder. Useful after a capture bug or to refresh stale files. SharePoint attachments are not removed.">
+              {{ scraping ? '…' : 'Reload all PDFs' }}
+            </button>
+            @if (scraping) {
+              <button class="btn btn-stop" (click)="stop()">Stop</button>
+            }
+          </div>
           @if (scrapeError) { <div class="error-banner">{{ scrapeError }}</div> }
+          @if (reloadInfo) { <div class="info-banner">{{ reloadInfo }}</div> }
 
           @if (scrapeReport) {
             <div class="final">
@@ -85,6 +162,12 @@ import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/e
   `,
   styles: [`
     .intro { color: var(--text-secondary, #aaa); max-width: 800px; margin: 0 0 16px; line-height: 1.5; }
+    .opts { display: flex; gap: 24px; flex-wrap: wrap; padding: 12px 16px; }
+    .opt { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; max-width: 360px; }
+    .opt input { margin-top: 3px; accent-color: #3b82f6; }
+    .opt span { font-weight: 600; }
+    .opt small { display: block; color: var(--text-secondary, #888); font-size: 12px; margin-top: 2px; }
+    .opt > div { display: flex; flex-direction: column; }
     .card { background: var(--surface, #1f2230); border: 1px solid var(--border, #333); border-radius: 10px;
       padding: 16px; margin-bottom: 16px; }
     .card-title { font-weight: 700; margin-bottom: 8px; }
@@ -94,6 +177,13 @@ import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/e
     .stat.ok { background: rgba(34,197,94,.15); color: #4ade80; }
     .stat.new { background: rgba(59,130,246,.15); color: #60a5fa; }
     .stat.warn { background: rgba(245,158,11,.15); color: #fbbf24; }
+    .stat.unmatched { background: rgba(168,85,247,.18); color: #c084fc; }
+    .hint { color: var(--text-secondary, #888); font-size: 12px; margin: 6px 0 10px; }
+    .match-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .match-table th, .match-table td { padding: 6px 8px; border-bottom: 1px solid var(--border, #2a2a2a); text-align: left; vertical-align: middle; }
+    .match-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary, #888); }
+    .match-select { width: 100%; min-width: 260px; padding: 4px 6px; background: var(--surface-2, #2a2d3a); color: inherit; border: 1px solid var(--border, #333); border-radius: 4px; }
+    .btn-small { padding: 4px 12px; font-size: 12px; }
     .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
     .list { font-size: 13px; border: 1px solid var(--border, #333); border-radius: 6px; padding: 8px 10px; }
@@ -108,49 +198,56 @@ import { ElectronService, SdsGapReport, SdsScrapeReport } from '../../services/e
     .btn { padding: 8px 18px; border-radius: 6px; border: 1px solid var(--border, #333); cursor: pointer;
       background: var(--surface-2, #2a2d3a); color: inherit; font-size: 14px; }
     .btn-primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+    .btn-stop { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .btn-stop:hover { background: #b91c1c; border-color: #b91c1c; }
+    .btn-warn { background: #d97706; border-color: #d97706; color: #fff; }
+    .btn-warn:hover:not(:disabled) { background: #b45309; border-color: #b45309; }
+    .info-banner { background: rgba(59,130,246,.12); color: #93c5fd; padding: 8px 12px; border-radius: 6px; margin-top: 10px; font-size: 13px; }
+    .progress-banner { margin: 0 0 12px; font-weight: 600; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .actions { display: flex; gap: 8px; align-items: center; }
   `]
 })
 export class SdsImportComponent {
-  gap: SdsGapReport | null = null;
-  loadingReport = false;
-  reportError = '';
+  // All state lives in SdsImportStateService so it survives router navigation. The component is
+  // a thin shim — getters/setters proxy to the service signals (so the existing template binds
+  // without changes), and action methods just call the service.
+  private state = inject(SdsImportStateService);
 
-  scraping = false;
-  scrapeError = '';
-  scrapeReport: SdsScrapeReport | null = null;
+  get filterLocation() { return this.state.filterLocation(); }
+  set filterLocation(v: boolean) { this.state.filterLocation.set(v); }
+  get showWindow() { return this.state.showWindow(); }
+  set showWindow(v: boolean) { this.state.showWindow.set(v); }
 
-  constructor(private electron: ElectronService) {}
+  get gap() { return this.state.gap(); }
+  get loadingReport() { return this.state.loadingReport(); }
+  get reportError() { return this.state.reportError(); }
+  get scraping() { return this.state.scraping(); }
+  get scrapeError() { return this.state.scrapeError(); }
+  get scrapeReport() { return this.state.scrapeReport(); }
+  get reloadInfo() { return this.state.reloadInfo(); }
+  get matching() { return this.state.matching(); }
+  get matchError() { return this.state.matchError(); }
+  get progressText() { return this.state.progressText(); }
 
-  async runReport(): Promise<void> {
-    this.loadingReport = true;
-    this.reportError = '';
-    this.scrapeReport = null;
-    this.scrapeError = '';
-    try {
-      const res = await this.electron.sdsGapReport();
-      if (!res.success || !res.data) throw new Error(res.error || 'Gap report failed');
-      this.gap = res.data;
-    } catch (err: any) {
-      this.reportError = err.message || 'Gap report failed';
-    } finally {
-      this.loadingReport = false;
-    }
+  // matchPick is ephemeral UI state for the per-row dropdowns — the service holds it as a signal
+  // but we expose the underlying Record for direct ngModel two-way binding via index access. Any
+  // mutation will be picked up on the next read because we re-set the signal in the proxy setter.
+  get matchPick(): Record<string, string> {
+    // Return a proxy so writes like `matchPick[k] = v` re-set the signal so change detection runs.
+    const current = this.state.matchPick();
+    return new Proxy(current, {
+      set: (_target, prop, value) => {
+        const next = { ...this.state.matchPick(), [prop as string]: value };
+        this.state.matchPick.set(next);
+        return true;
+      }
+    });
   }
 
-  async closeGaps(): Promise<void> {
-    this.scraping = true;
-    this.scrapeError = '';
-    this.scrapeReport = null;
-    try {
-      const res = await this.electron.sdsScrapeRun();
-      if (!res.success) throw new Error(res.error || 'Scrape failed');
-      this.scrapeReport = res.data?.lastReport ?? null;
-      if (!this.scrapeReport && res.data?.error) this.scrapeError = res.data.error;
-    } catch (err: any) {
-      this.scrapeError = err.message || 'Scrape failed';
-    } finally {
-      this.scraping = false;
-    }
-  }
+  runReport() { return this.state.runReport(); }
+  closeGaps() { return this.state.closeGaps(); }
+  reloadAllPdfs() { return this.state.reloadAllPdfs(); }
+  stop() { return this.state.stop(); }
+  match(u: SdsUnmatchedBookEntry) { return this.state.match(u); }
 }

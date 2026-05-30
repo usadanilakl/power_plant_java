@@ -326,6 +326,32 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    /**
+     * Delete a single attachment from a list item by file name. Returns true if the file was deleted,
+     * false if it didn't exist (404 / 4xx); throws on other errors. Use before re-adding an
+     * attachment with the same file name (SharePoint's add-attachment endpoint refuses duplicates).
+     */
+    public boolean deleteListItemAttachment(String listTitle, String itemId, String fileName) {
+        String endpoint = String.format(
+                "/_api/web/lists/getbytitle('%s')/items(%s)/AttachmentFiles/getByFileName('%s')",
+                listTitle, itemId, fileName);
+        try {
+            sendDeleteRequest(endpoint);
+            log.debug("[SharePoint] Deleted attachment '{}' from item {} in '{}'", fileName, itemId, listTitle);
+            return true;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 404) {
+                log.debug("[SharePoint] Attachment '{}' on item {} not found (already absent)", fileName, itemId);
+                return false;
+            }
+            throw new RuntimeException("Failed to delete attachment '" + fileName + "' on item " + itemId
+                    + " in '" + listTitle + "': " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete attachment '" + fileName + "' on item " + itemId
+                    + " in '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
     public void addListItemAttachment(String listTitle, String itemId, String fileName, byte[] content) {
         String endpoint = String.format(
                 "/_api/web/lists/getbytitle('%s')/items(%s)/AttachmentFiles/add(FileName='%s')",

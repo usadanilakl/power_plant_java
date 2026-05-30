@@ -96,6 +96,17 @@ public class NgSdsChemicalController {
         }
     }
 
+    /** Admin/test: drop every local PDF attachment so the next scrape re-downloads them fresh. */
+    @PostMapping("/clear-pdfs")
+    public ResponseEntity<NgApiResponse<Integer>> clearPdfs() {
+        try {
+            int n = service.clearAllPdfs();
+            return ResponseEntity.ok(new NgApiResponse<>(n, n + " PDF attachments deleted (local only)"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Clear PDFs failed: " + e.getMessage()));
+        }
+    }
+
     /** Admin bulk dump: one Incoming chemical per uploaded PDF (no metadata yet). */
     @PostMapping("/dump")
     public ResponseEntity<NgApiResponse<Integer>> dumpIncoming(@RequestBody List<Map<String, String>> files) {

@@ -111,44 +111,96 @@ Hide `OldSnapshot` from the default view (Library Settings → Modify View).
 
 ## Step 3: Initialize Variables
 
-After the trigger:
-- `responseSuccess` (Boolean = true)
-- `responseId` (String = "")
-- `responseMessage` (String = "")
-- `responseData` (Array = [])
+Add **four Initialize variable** actions immediately after the trigger, one per variable
+(Power Automate requires every variable to be initialized at the top of the flow, before
+any conditional/scoped use):
+
+| Name | Type | Initial Value |
+|---|---|---|
+| `responseSuccess` | Boolean | `true` |
+| `responseId` | String | (empty) |
+| `responseMessage` | String | (empty) |
+| `responseData` | Array | `[]` |
+
+If you implement the `getAttachments` action (Step 5f) you'll add one more here:
+
+| Name | Type | Initial Value |
+|---|---|---|
+| `tempAttachments` | Array | `[]` |
 
 ---
 
 ## Step 4: Top-Level Switch on `entity`
 
-1. Add a **Switch** action, name it `Switch entity`
-2. On: `triggerBody()?['entity']`
-3. Two cases: `chemical`, `audit`
+1. Add a **Control > Switch** action *after* the Initialize-variable actions from Step 3.
+   - Rename it `Switch entity` (right-click → Rename).
+   - **On** = (expression) `triggerBody()?['entity']`
 
-Inside **each** case you'll add a **nested Switch** on `actionType`.
+2. Inside the Switch action, two **Case** branches will already be present (`Case` and `Default`).
+   - Set the first case's **Equals** value to `chemical`.
+   - Click **+ Add an action → Switch case** (the small `+` next to the existing case) to add a
+     second case, and set its **Equals** to `audit`.
+
+3. Leave the **Default** branch empty (or add a Set variable that puts `"unknown entity"`
+   into `responseMessage` — the Scope in Step 7 will catch it anyway).
+
+Inside **each** case (`chemical`, `audit`) you'll add a **nested Switch** on `actionType`
+in Steps 5 and 6 below.
 
 ---
 
 ## Step 5: Case `chemical` — Nested Switch on actionType
 
-Inside the `chemical` case, add **Switch** on `triggerBody()?['actionType']` with cases
-`create`, `getAll`, `update`, `delete`, `addAttachment`, `getAttachments`.
+**Inside the `chemical` branch** of the top-level Switch:
+
+1. Add a **Control > Switch** action.
+   - Rename it `Switch chemical actionType`.
+   - **On** = (expression) `triggerBody()?['actionType']`
+
+2. Add six **Case** branches with Equals values: `create`, `getAll`, `update`, `delete`,
+   `addAttachment`, `getAttachments`. (Use the `+` between cases to add more.)
+
+Each sub-section below (5a–5f) describes what goes inside one of those cases.
 
 ### 5a. `create`
-1. **SharePoint > Create item** on list **SDS**
-2. Map each column from `triggerBody()?['data']?['<Field>']`:
-   `Title`, `PwaId`, `Names`, `Locations`, `Status`, `BookNumber`, `Section`,
-   `Notes`, `ProcessedByName`, `ProcessedByEmail`,
-   `SubmitterName`, `SubmitterEmail`, `SubmitterPhone`
-3. **Set variable** `responseId` = `string(body('Create_item')?['ID'])`
-4. **Condition** `length(triggerBody()?['attachments'])` > `0`:
-   - Yes → **Apply to each** `triggerBody()?['attachments']` → **Add attachment**
-     (Id = `body('Create_item')?['ID']`, File Content = `base64ToBinary(items('Apply_to_each')?['base64Content'])`)
+
+1. Add **SharePoint > Create item**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - For each column, set its value from `triggerBody()?['data']?['<Field>']`:
+     `Title`, `PwaId`, `Names`, `Locations`, `Status`, `BookNumber`, `Section`,
+     `Notes`, `ProcessedByName`, `ProcessedByEmail`,
+     `SubmitterName`, `SubmitterEmail`, `SubmitterPhone`
+
+2. Add **Set variable**.
+   - Name = `responseId`
+   - Value = `string(body('Create_item')?['ID'])`
+
+3. Add **Condition** to attach files only if any were sent.
+   - Left = `length(triggerBody()?['attachments'])`
+   - Operator = is greater than
+   - Right = `0`
+
+4. **In the "If yes" branch of the Condition**, add **Apply to each**.
+   - Select an output from previous steps = `triggerBody()?['attachments']`
+
+5. **Inside the Apply to each**, add **SharePoint > Add attachment**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Id = `body('Create_item')?['ID']`
+   - File Name = `items('Apply_to_each')?['fileName']`
+   - File Content = `base64ToBinary(items('Apply_to_each')?['base64Content'])`
 
 ### 5b. `getAll`
-1. **SharePoint > Get items** on **SDS**, Top Count 5000
-2. **Select** — map all columns:
 
+1. Add **SharePoint > Get items**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Advanced options → **Top Count** = `5000` (default is 100 — easy to miss)
+
+2. Add **Data Operation > Select**.
+   - From = `body('Get_items')?['value']`
+   - Map = switch to **Text mode** (the `T` icon top-right) and paste:
 ```json
 {
   "ID": "@{item()?['ID']}",
@@ -169,48 +221,132 @@ Inside the `chemical` case, add **Switch** on `triggerBody()?['actionType']` wit
 }
 ```
 
-3. **Set variable** `responseData` = `body('Select')`
+3. Add **Set variable**.
+   - Name = `responseData`
+   - Value = `body('Select')`
 
 ### 5c. `update`
-1. **SharePoint > Update item** on **SDS**, Id = `triggerBody()?['id']`
-2. Map the same columns as `create`
-3. **Set variable** `responseId` = `triggerBody()?['id']`
+
+1. Add **SharePoint > Update item**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Id = `triggerBody()?['id']`
+   - Map the **same column set as `create`** (Step 5a) — all values from `triggerBody()?['data']?['<Field>']`.
+
+2. Add **Set variable**.
+   - Name = `responseId`
+   - Value = `triggerBody()?['id']`
 
 ### 5d. `delete`
-1. **SharePoint > Delete item** on **SDS**, Id = `triggerBody()?['id']`
-2. **Set variable** `responseId` = `triggerBody()?['id']`
+
+1. Add **SharePoint > Delete item**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Id = `triggerBody()?['id']`
+
+2. Add **Set variable**.
+   - Name = `responseId`
+   - Value = `triggerBody()?['id']`
 
 ### 5e. `addAttachment`
-1. **Apply to each** `triggerBody()?['attachments']` → **Add attachment** on **SDS**
-   (Id = `triggerBody()?['id']`, File Content = `base64ToBinary(items('Apply_to_each')?['base64Content'])`)
-2. **Set variable** `responseId` = `triggerBody()?['id']`
+
+1. Add **Apply to each**.
+   - Select an output from previous steps = `triggerBody()?['attachments']`
+
+2. **Inside the Apply to each**, add **SharePoint > Add attachment**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Id = `triggerBody()?['id']`
+   - File Name = `items('Apply_to_each')?['fileName']`
+   - File Content = `base64ToBinary(items('Apply_to_each')?['base64Content'])`
+
+3. **After the Apply to each**, add **Set variable**.
+   - Name = `responseId`
+   - Value = `triggerBody()?['id']`
 
 ### 5f. `getAttachments`
-1. **SharePoint > Get attachments** on **SDS**, Id = `triggerBody()?['id']`
-2. **Apply to each** → **Get attachment content** → append
-   `{ "fileName": @{items('Apply_to_each')?['DisplayName']}, "contentType": "application/pdf",
-   "base64Content": @{base64(body('Get_attachment_content'))} }` to a temp array
-3. **Set variable** `responseData` = the temp array
+
+1. Add **Initialize variable** *before the Switch* (top of the flow, alongside the other
+   Initialize variable actions in Step 3).
+   - Name = `tempAttachments`
+   - Type = Array
+   - Value = `[]`
+
+2. Add **SharePoint > Get attachments**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Id = `triggerBody()?['id']`
+
+3. Add **Apply to each**.
+   - Select an output from previous steps = `body('Get_attachments')`
+   - (This iterates over the metadata for each attachment — DisplayName, AbsoluteUri, etc.
+     Each item does **not** include the bytes yet.)
+
+4. **Inside the Apply to each**, add **SharePoint > Get attachment content**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS**
+   - Id = `triggerBody()?['id']`
+   - File Identifier = `items('Apply_to_each')?['Id']`
+
+5. **Inside the Apply to each, after Get attachment content**, add **Append to array variable**.
+   - Name = `tempAttachments`
+   - Value (paste in code view):
+```json
+{
+  "fileName": "@{items('Apply_to_each')?['DisplayName']}",
+  "contentType": "application/pdf",
+  "base64Content": "@{base64(body('Get_attachment_content'))}"
+}
+```
+
+6. **After the Apply to each**, add **Set variable**.
+   - Name = `responseData`
+   - Value = `variables('tempAttachments')`
+
+> The two SharePoint actions are both needed: "Get attachments" returns metadata only;
+> "Get attachment content" returns the binary bytes for a single attachment, which we
+> base64-encode and pack into the shape the backend's `PaAttachmentDto` expects.
 
 ---
 
 ## Step 6: Case `audit` — Nested Switch on actionType
 
-Inside the `audit` case, add **Switch** on `triggerBody()?['actionType']` with cases
-`create`, `getAll`. (No update/delete — audit records are append-only; no attachments either.)
+**Inside the `audit` branch** of the top-level Switch:
+
+1. Add a **Control > Switch** action.
+   - Rename it `Switch audit actionType`.
+   - **On** = (expression) `triggerBody()?['actionType']`
+
+2. Add two **Case** branches with Equals values: `create`, `getAll`.
+   *(No `update`/`delete` cases — audit records are append-only.
+   No attachment cases — audit records don't carry files.)*
 
 ### 6a. `create`
-1. **SharePoint > Create item** on list **SDS Audit**
-2. Map columns from `triggerBody()?['data']?['<Field>']`:
-   `Title`, `PwaId`, `ChemicalSpId`, `ChemicalLocalUuid`, `ChemicalName`,
-   `Action`, `OldSnapshot`, `AuditedByName`, `AuditedByEmail`, `AuditedAt`,
-   `Comments`, `Campaign`
-3. **Set variable** `responseId` = `string(body('Create_item_Audit')?['ID'])`
+
+1. Add **SharePoint > Create item**. **Rename this action to `Create_item_Audit`**
+   *(right-click → Rename — important; otherwise Power Automate auto-names it `Create_item_2`
+   and the body expression below won't match)*.
+   - Site Address = your SharePoint site
+   - List Name = **SDS Audit**
+   - For each column, set its value from `triggerBody()?['data']?['<Field>']`:
+     `Title`, `PwaId`, `ChemicalSpId`, `ChemicalLocalUuid`, `ChemicalName`,
+     `Action`, `OldSnapshot`, `AuditedByName`, `AuditedByEmail`, `AuditedAt`,
+     `Comments`, `Campaign`
+
+2. Add **Set variable**.
+   - Name = `responseId`
+   - Value = `string(body('Create_item_Audit')?['ID'])`
 
 ### 6b. `getAll`
-1. **SharePoint > Get items** on **SDS Audit**, Top Count 5000
-2. **Select** — map all columns:
 
+1. Add **SharePoint > Get items**. **Rename this action to `Get_items_Audit`**.
+   - Site Address = your SharePoint site
+   - List Name = **SDS Audit**
+   - Advanced options → **Top Count** = `5000`
+
+2. Add **Data Operation > Select**. **Rename this action to `Select_Audit`**.
+   - From = `body('Get_items_Audit')?['value']`
+   - Map = switch to **Text mode** (`T` icon) and paste:
 ```json
 {
   "ID": "@{item()?['ID']}",
@@ -230,19 +366,31 @@ Inside the `audit` case, add **Switch** on `triggerBody()?['actionType']` with c
 }
 ```
 
-3. **Set variable** `responseData` = `body('Select_Audit')`
+3. Add **Set variable**.
+   - Name = `responseData`
+   - Value = `body('Select_Audit')`
 
-> **Tip:** Power Automate auto-suffixes duplicate action names. The two
-> "Create item" actions will be `Create_item` and `Create_item_2` (or rename
-> the audit one to `Create_item_Audit` for clarity). Verify names in expressions.
+> **About action names.** Power Automate auto-suffixes duplicate action names
+> (`Create_item`, `Create_item_2`, `Get_items_2`, `Select_2`, …). All `body('…')` /
+> `outputs('…')` expressions in the rest of this guide assume the renames in 6a/6b.
+> If you skipped the renames, replace those names with whatever PA actually generated
+> (click each action → see its name at the top of the panel).
 
 ---
 
 ## Step 7: Scope + Error Handling
 
-1. Add a **Scope** action; move the top-level `Switch entity` inside it.
-2. After the Switch (inside the Scope): **Response — Success**
-   - Status `200`, Header `Content-Type: application/json`, Body:
+The goal: any failure inside the Switch is caught and returns a structured `success:false`
+JSON response (instead of a raw 500 from Power Automate, which the backend can't parse).
+
+1. Add a **Scope** action and rename it `Try`.
+2. **Move the `Switch entity` action inside the `Try` Scope** (drag it in, or cut-and-paste
+   inside the Scope's body).
+3. Add a **Response** action **inside the `Try` Scope, after the Switch**. Rename it
+   `Response Success`.
+   - Status Code = `200`
+   - Headers: `Content-Type` = `application/json`
+   - Body (code view):
 ```json
 {
   "success": @{variables('responseSuccess')},
@@ -251,10 +399,32 @@ Inside the `audit` case, add **Switch** on `triggerBody()?['actionType']` with c
   "message": "@{variables('responseMessage')}"
 }
 ```
-3. Parallel branch after the Scope, **Configure run after → only "has failed"**:
-   - Set `responseSuccess` = false
-   - Set `responseMessage` = `result('Scope')?[0]?['error']?['message']`
-   - **Response — Failed** (200, same JSON body)
+
+4. **After the `Try` Scope** (at the same level, not inside it), add a second **Scope** action
+   and rename it `Catch`.
+
+5. Open `Catch`'s **Settings → Configure run after** and tick **only** "has failed"
+   (uncheck "is successful"). This makes the Catch run only when something inside `Try` errored.
+
+6. **Inside the `Catch` Scope**, add three actions in order:
+
+   a. **Set variable**
+      - Name = `responseSuccess`
+      - Value = `false`
+
+   b. **Set variable**
+      - Name = `responseMessage`
+      - Value (expression) = `coalesce(result('Try')?[0]?['error']?['message'], 'Unknown flow error')`
+
+   c. **Response** — rename it `Response Failed`.
+      - Status Code = `200` (must be 200, not 500 — the backend reads `success` from the body)
+      - Headers: `Content-Type` = `application/json`
+      - Body: **same JSON as Response Success** (copy-paste)
+
+> Why 200 on failure? Power Automate flows return 202/500 on uncaught errors, which the
+> backend `PowerAutomateV2Client` treats as a transport failure. Returning a 200 with
+> `success:false` lets the backend read `responseMessage` and decide what to do
+> (log, fall back to email, etc.) instead of throwing.
 
 ---
 

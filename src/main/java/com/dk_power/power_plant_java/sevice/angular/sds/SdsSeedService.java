@@ -143,6 +143,28 @@ public class SdsSeedService {
                 report.getMissingFromDb().add(new SdsGapReportDto.Gap(e.getKey(), e.getValue(), null, null));
             }
         }
+
+        // Unmatched book entries: from the curated bundle, minus any slot whose Book/Section already
+        // holds a DB record (i.e., the user has manually matched it).
+        java.util.Set<String> filledAddresses = new java.util.HashSet<>();
+        for (SdsChemical c : active) {
+            if (c.getBookNumber() != null && c.getSectionNumber() != null) {
+                filledAddresses.add(c.getBookNumber() + "/" + c.getSectionNumber());
+            }
+        }
+        try {
+            JsonNode bookMap = loadBookMap();
+            for (JsonNode u : bookMap.path("unmatched")) {
+                Integer book = u.path("book").isMissingNode() ? null : u.path("book").asInt();
+                Integer section = u.path("section").isMissingNode() ? null : u.path("section").asInt();
+                if (book != null && section != null && filledAddresses.contains(book + "/" + section)) continue;
+                report.getUnmatchedBookEntries().add(new SdsGapReportDto.UnmatchedBookEntry(
+                        u.path("name").asText(), book, section));
+            }
+        } catch (Exception ex) {
+            log.warn("[SDS] gap report: failed to load unmatched book entries: {}", ex.getMessage());
+        }
+
         return report;
     }
 

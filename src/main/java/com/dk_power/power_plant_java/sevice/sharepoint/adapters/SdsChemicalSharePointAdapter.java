@@ -96,6 +96,31 @@ public class SdsChemicalSharePointAdapter {
                 "addAttachment SdsChemical");
     }
 
+    /**
+     * Remove every attachment on the SharePoint list item. Used by clearAllPdfs so a fresh scrape
+     * can re-upload clean copies instead of accumulating duplicates next to a stale broken file.
+     * Best-effort: per-file delete failures are logged and don't stop the loop.
+     */
+    public int deleteAllAttachments(String sharepointId) {
+        try {
+            List<JsonNode> existing = certAccess.getListItemAttachments(LIST_TITLE, sharepointId);
+            int deleted = 0;
+            for (JsonNode att : existing) {
+                String fileName = att.path("FileName").asText(att.path("d").path("FileName").asText(null));
+                if (fileName == null || fileName.isBlank()) continue;
+                try {
+                    if (certAccess.deleteListItemAttachment(LIST_TITLE, sharepointId, fileName)) deleted++;
+                } catch (Exception inner) {
+                    log.warn("[SDS-Adapter] failed to delete SP attachment '{}' on item {}: {}", fileName, sharepointId, inner.getMessage());
+                }
+            }
+            return deleted;
+        } catch (Exception e) {
+            log.warn("[SDS-Adapter] deleteAllAttachments failed for item {}: {}", sharepointId, e.getMessage());
+            return 0;
+        }
+    }
+
     // ====================== Certificate path ======================
 
     private List<PaAttachmentDto> certGetAttachments(String sharepointId) {

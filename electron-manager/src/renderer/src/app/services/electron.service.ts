@@ -201,10 +201,22 @@ export interface SdsScrapeStatus {
   lastItemCount: number;
   lastReport: SdsScrapeReport | null;
   error?: string;
+  progressRow?: number;
+  progressTotal?: number;
+  progressPhase?: 'list' | 'pdfs' | 'upload' | 'idle';
 }
 
+export interface SdsScrapeOptions {
+  filterLocation?: boolean;
+  showWindow?: boolean;
+}
 export interface SdsGap {
   sourceId: string | null;
+  name: string;
+  bookNumber: number | null;
+  sectionNumber: number | null;
+}
+export interface SdsUnmatchedBookEntry {
   name: string;
   bookNumber: number | null;
   sectionNumber: number | null;
@@ -214,6 +226,13 @@ export interface SdsGapReport {
   activeCount: number;
   missingFromDb: SdsGap[];
   missingPdf: SdsGap[];
+  unmatchedBookEntries: SdsUnmatchedBookEntry[];
+}
+export interface SdsMatchItem {
+  sourceItemId: string;
+  names: string;
+  bookNumber: number;
+  sectionNumber: number;
 }
 
 export interface GateLogConfig {
@@ -498,8 +517,11 @@ interface ElectronAPI {
   onWebViewAmsUpdated: (callback: () => void) => () => void;
 
   // SDS eBinder scraper
-  sdsScrapeRun: () => Promise<IpcResult<SdsScrapeStatus>>;
-  sdsGapReport: () => Promise<IpcResult<SdsGapReport>>;
+  sdsScrapeRun: (opts?: SdsScrapeOptions) => Promise<IpcResult<SdsScrapeStatus>>;
+  sdsGapReport: (opts?: SdsScrapeOptions) => Promise<IpcResult<SdsGapReport>>;
+  sdsScrapeAbort: () => Promise<IpcResult>;
+  sdsMatchUnmatched: (item: SdsMatchItem) => Promise<IpcResult>;
+  sdsClearPdfs: () => Promise<IpcResult<number>>;
   sdsScrapeGetStatus: () => Promise<IpcResult<SdsScrapeStatus>>;
   sdsScrapeGetConfig: () => Promise<IpcResult<SdsScraperConfig>>;
   sdsScrapeSaveConfig: (config: SdsScraperConfig) => Promise<IpcResult<SdsScraperConfig>>;
@@ -982,14 +1004,29 @@ export class ElectronService implements OnDestroy {
 
   // SDS eBinder scraper
 
-  async sdsScrapeRun(): Promise<IpcResult<SdsScrapeStatus>> {
+  async sdsScrapeRun(opts?: SdsScrapeOptions): Promise<IpcResult<SdsScrapeStatus>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.sdsScrapeRun();
+    return window.electronAPI!.sdsScrapeRun(opts);
   }
 
-  async sdsGapReport(): Promise<IpcResult<SdsGapReport>> {
+  async sdsGapReport(opts?: SdsScrapeOptions): Promise<IpcResult<SdsGapReport>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.sdsGapReport();
+    return window.electronAPI!.sdsGapReport(opts);
+  }
+
+  async sdsScrapeAbort(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsScrapeAbort();
+  }
+
+  async sdsMatchUnmatched(item: SdsMatchItem): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsMatchUnmatched(item);
+  }
+
+  async sdsClearPdfs(): Promise<IpcResult<number>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsClearPdfs();
   }
 
   async sdsScrapeGetStatus(): Promise<IpcResult<SdsScrapeStatus>> {

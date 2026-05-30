@@ -43,8 +43,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(events.IPC_WEBVIEW_OPEN, target, url),
 
   // SDS eBinder scraper (chemmanagement.ehs.com → Spring Boot import + source-audit)
-  sdsScrapeRun: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_RUN),
-  sdsGapReport: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_GAP_REPORT),
+  sdsScrapeRun: (opts?: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_RUN, opts),
+  sdsGapReport: (opts?: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_GAP_REPORT, opts),
+  sdsScrapeAbort: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_ABORT),
+  sdsMatchUnmatched: (item: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_MATCH_UNMATCHED, item),
+  sdsClearPdfs: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_CLEAR_PDFS),
   sdsScrapeGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_STATUS),
   sdsScrapeGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_CONFIG),
   sdsScrapeSaveConfig: (config: any): Promise<IpcResult> =>

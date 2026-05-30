@@ -310,6 +310,31 @@ public class NgSdsChemicalService {
         attachmentRepo.deleteById(attachmentId);
     }
 
+    /**
+     * Admin/test affordance: drop every PDF (PermitAttachment) for every SDS chemical AND remove
+     * matching SharePoint attachments, so the next scrape can re-download clean copies without
+     * SharePoint's "duplicate filename" check blocking the new upload (which previously left only
+     * the stale broken file on SP).
+     */
+    public int clearAllPdfs() {
+        int localTotal = 0;
+        int spTotal = 0;
+        for (SdsChemical c : repo.findAll()) {
+            List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
+                    SdsChemicalMapper.ENTITY_TYPE, c.getId());
+            if (!atts.isEmpty()) {
+                attachmentRepo.deleteAll(atts);
+                localTotal += atts.size();
+            }
+            if (c.getSharepointId() != null && !c.getSharepointId().isBlank()) {
+                try { spTotal += spAdapter.deleteAllAttachments(c.getSharepointId()); }
+                catch (Exception e) { log.warn("[SDS] SP cleanup failed for spId={}: {}", c.getSharepointId(), e.getMessage()); }
+            }
+        }
+        log.info("[SDS] cleared {} local PDF attachments and {} SharePoint attachments", localTotal, spTotal);
+        return localTotal;
+    }
+
     public void softDelete(Long id) {
         repo.findById(id).ifPresent(entity -> {
             entity.setDeleted(true);

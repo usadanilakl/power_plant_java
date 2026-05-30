@@ -114,14 +114,19 @@ interface Attachment {
                   @if (isImage(att)) {
                     <img [src]="getImageSrc(att)" [alt]="att.fileName" class="attachment-img" (click)="openLightbox(att)">
                   } @else {
-                    <div class="attachment-file">
+                    <div class="attachment-file" (click)="viewAttachment(att)" [title]="'Click to view ' + att.fileName">
                       <span class="file-icon">{{ getFileIcon(att) }}</span>
                       <span class="file-name">{{ att.fileName }}</span>
                     </div>
                   }
                   <div class="attachment-footer">
                     <span class="attachment-name">{{ att.fileName }}</span>
-                    <button class="att-delete" (click)="onDeleteAttachment(att)" title="Remove">&times;</button>
+                    <div class="att-actions">
+                      @if (!isImage(att)) {
+                        <button class="att-btn" (click)="viewAttachment(att)" title="Open in new window">View</button>
+                      }
+                      <button class="att-delete" (click)="onDeleteAttachment(att)" title="Remove">&times;</button>
+                    </div>
                   </div>
                 </div>
               }
@@ -206,11 +211,17 @@ interface Attachment {
     .file-name { font-size: 11px; color: var(--secondary-text); text-align: center; padding: 0 8px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
     .attachment-footer { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px;
-      border-top: 1px solid var(--border-color); }
+      border-top: 1px solid var(--border-color); gap: 6px; }
     .attachment-name { font-size: 11px; color: var(--secondary-text);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .att-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .att-btn { background: none; border: 1px solid var(--border-color); color: var(--primary-text);
+      cursor: pointer; font-size: 11px; padding: 2px 8px; border-radius: 3px; line-height: 1.4; }
+    .att-btn:hover { background: var(--secondary-background); }
     .att-delete { background: none; border: none; color: #c62828; cursor: pointer; font-size: 16px;
       padding: 0 4px; line-height: 1; }
+    .attachment-file { cursor: pointer; }
+    .attachment-file:hover { background: var(--secondary-background); }
 
     .confirm-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5);
       display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px; }
@@ -356,4 +367,26 @@ export class RfSdsDetailDialogComponent implements OnInit {
 
   openLightbox(att: Attachment): void { this.lightboxImage.set(this.getImageSrc(att)); }
   closeLightbox(): void { this.lightboxImage.set(null); }
+
+  /**
+   * Open the attachment in a new window. Builds a Blob URL from the base64 content so the file
+   * is served with the right MIME type (the browser's built-in PDF viewer renders it inline for
+   * application/pdf). Used as a "View" affordance on non-image attachments.
+   */
+  viewAttachment(att: Attachment): void {
+    if (!att.base64Content) return;
+    try {
+      const bytes = atob(att.base64Content);
+      const buf = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+      const blob = new Blob([buf], { type: att.contentType || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank', 'noopener,noreferrer');
+      // Revoke the blob URL after a delay so the new window has time to load it.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (!w) console.warn('[SDS] window.open blocked; falling back to in-place navigation');
+    } catch (err) {
+      console.error('[SDS] viewAttachment failed:', err);
+    }
+  }
 }

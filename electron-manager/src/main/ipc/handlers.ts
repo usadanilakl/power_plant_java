@@ -981,19 +981,46 @@ export class IpcHandlers {
   }
 
   private registerSdsScrapeHandlers(): void {
-    ipcMain.handle(events.IPC_SDS_SCRAPE_RUN, async () => {
+    ipcMain.handle(events.IPC_SDS_SCRAPE_RUN, async (_event, opts?: any) => {
       try {
-        const status = await this.webViewSdsManager.scrape();
+        const status = await this.webViewSdsManager.scrape(opts);
         return { success: !status.error, data: status, error: status.error };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
     });
 
-    ipcMain.handle(events.IPC_SDS_GAP_REPORT, async () => {
+    ipcMain.handle(events.IPC_SDS_GAP_REPORT, async (_event, opts?: any) => {
       try {
-        const report = await this.webViewSdsManager.getGapReport();
+        const report = await this.webViewSdsManager.getGapReport(opts);
         return { success: true, data: report };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_SCRAPE_ABORT, async () => {
+      try {
+        this.webViewSdsManager.requestAbort();
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_MATCH_UNMATCHED, async (_event, item: any) => {
+      try {
+        const data = await this.webViewSdsManager.matchUnmatched(item);
+        return { success: true, data };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_SDS_CLEAR_PDFS, async () => {
+      try {
+        const count = await this.webViewSdsManager.clearAllPdfs();
+        return { success: true, data: count };
       } catch (error: any) {
         return { success: false, error: error.message };
       }

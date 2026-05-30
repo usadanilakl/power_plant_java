@@ -296,6 +296,18 @@ export interface SdsScrapeStatus {
   lastItemCount: number;
   lastReport: SdsScrapeReport | null;
   error?: string;
+  // Live progress while a scrape is in flight — both reset to 0 when not scraping.
+  progressRow?: number;
+  progressTotal?: number;
+  progressPhase?: 'list' | 'pdfs' | 'upload' | 'idle';
+}
+
+// Per-run scrape options the renderer can override (location filter, debug visibility).
+// The eBinder defaults to "All Locations" which spans every site (~5000 chemicals); without a
+// filter the scrape pulls everything. Setting filterLocation=true narrows to config.locationName.
+export interface SdsScrapeOptions {
+  filterLocation?: boolean;
+  showWindow?: boolean;
 }
 
 // Gaps remaining after the admin seed (mirrors SdsGapReportDto) — shown before the "Close gaps" scrape.

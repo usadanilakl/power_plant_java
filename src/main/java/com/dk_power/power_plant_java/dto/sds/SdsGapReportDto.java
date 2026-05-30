@@ -20,6 +20,27 @@ public class SdsGapReportDto {
     /** Active DB chemicals with no SDS PDF attached (the seeded book items). */
     private List<Gap> missingPdf = new ArrayList<>();
 
+    /**
+     * Book entries from the curated map that had no row in the eBinder export at seed time, and
+     * still have no DB record at their Book/Section. The renderer lets the user manually pick an
+     * eBinder candidate for each, then upserts via /import — close-gaps attaches the PDF after.
+     */
+    private List<UnmatchedBookEntry> unmatchedBookEntries = new ArrayList<>();
+
+    @Data
+    public static class UnmatchedBookEntry {
+        private String name;
+        private Integer bookNumber;
+        private Integer sectionNumber;
+
+        public UnmatchedBookEntry() {}
+        public UnmatchedBookEntry(String name, Integer bookNumber, Integer sectionNumber) {
+            this.name = name;
+            this.bookNumber = bookNumber;
+            this.sectionNumber = sectionNumber;
+        }
+    }
+
     @Data
     public static class Gap {
         private String sourceId;
