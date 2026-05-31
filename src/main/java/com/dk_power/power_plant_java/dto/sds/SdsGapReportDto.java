@@ -6,54 +6,46 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * What's still missing after the initial seed, computed against the bundled eBinder catalog:
- * website chemicals not yet in our DB, and DB chemicals that have no SDS PDF attached.
- * The Electron "Close gaps" scrape closes both (creates missing entries + downloads PDFs).
+ * Three symmetric gap categories after seeding, computed against the live eBinder catalog
+ * (or the bundled snapshot when no live catalog is supplied):
+ * <ul>
+ *   <li><b>missingFromDb</b> — chemicals in the eBinder but not in our DB (need create + PDF).</li>
+ *   <li><b>missingPdf</b> — chemicals in our DB without an SDS PDF (close-gaps attaches it).</li>
+ *   <li><b>missingFromEbinder</b> — chemicals in our DB whose sourceId isn't in the eBinder
+ *       catalog: either book-only seed entries with synthetic {@code BOOK-{book}-{section}} ids,
+ *       or eBinder chemicals that were removed from the website. Operators manually map each to
+ *       a current eBinder candidate via {@code POST /ng/sds-chemicals/{id}/match}.</li>
+ * </ul>
  */
 @Data
 public class SdsGapReportDto {
-    private int catalogCount;          // chemicals in the eBinder catalog (the website)
-    private int activeCount;           // active chemicals in our DB
+    private int catalogCount;
+    private int activeCount;
 
-    /** In the eBinder catalog but not yet in our DB (need a full entry + PDF). */
     private List<Gap> missingFromDb = new ArrayList<>();
-    /** Active DB chemicals with no SDS PDF attached (the seeded book items). */
     private List<Gap> missingPdf = new ArrayList<>();
-
-    /**
-     * Book entries from the curated map that had no row in the eBinder export at seed time, and
-     * still have no DB record at their Book/Section. The renderer lets the user manually pick an
-     * eBinder candidate for each, then upserts via /import — close-gaps attaches the PDF after.
-     */
-    private List<UnmatchedBookEntry> unmatchedBookEntries = new ArrayList<>();
-
-    @Data
-    public static class UnmatchedBookEntry {
-        private String name;
-        private Integer bookNumber;
-        private Integer sectionNumber;
-
-        public UnmatchedBookEntry() {}
-        public UnmatchedBookEntry(String name, Integer bookNumber, Integer sectionNumber) {
-            this.name = name;
-            this.bookNumber = bookNumber;
-            this.sectionNumber = sectionNumber;
-        }
-    }
+    private List<Gap> missingFromEbinder = new ArrayList<>();
 
     @Data
     public static class Gap {
+        /** DB row id — set for missingPdf / missingFromEbinder; null for missingFromDb. */
+        private Long id;
         private String sourceId;
         private String name;
         private Integer bookNumber;
         private Integer sectionNumber;
 
         public Gap() {}
-        public Gap(String sourceId, String name, Integer bookNumber, Integer sectionNumber) {
+        public Gap(Long id, String sourceId, String name, Integer bookNumber, Integer sectionNumber) {
+            this.id = id;
             this.sourceId = sourceId;
             this.name = name;
             this.bookNumber = bookNumber;
             this.sectionNumber = sectionNumber;
+        }
+        /** Convenience for missingFromDb where there's no DB id. */
+        public Gap(String sourceId, String name, Integer bookNumber, Integer sectionNumber) {
+            this(null, sourceId, name, bookNumber, sectionNumber);
         }
     }
 }

@@ -26,7 +26,11 @@ public class UserDto extends BaseDto {
     private LocalDateTime lastLoginDate;
     private String windowsUsername;
     private String permissionLevel;
+    private String onLocationMemberId;
     private String phone;
+    private String secondaryPhone;
+    private String title;
+    private String emergencyContactJson;
     private String company;
     private String signaturePath;
 

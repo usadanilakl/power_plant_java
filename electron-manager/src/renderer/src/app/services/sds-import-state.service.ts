@@ -1,10 +1,10 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import {
   ElectronService,
+  SdsGap,
   SdsGapReport,
   SdsScrapeReport,
-  SdsUnmatchedBookEntry,
-  SdsMatchItem
+  SdsMatchChemical
 } from './electron.service';
 
 /**
@@ -45,7 +45,7 @@ export class SdsImportStateService {
   });
   private pollHandle: any = null;
 
-  // Manual-match state (per-row dropdown picks, keyed by name|book|section)
+  // Manual-match state for "missing on eBinder" rows. Keyed by chemical DB id (one pick per row).
   matchPick = signal<Record<string, string>>({});
   matching = signal(false);
   matchError = signal('');
@@ -143,35 +143,51 @@ export class SdsImportStateService {
 
   async stop(): Promise<void> { await this.electron.sdsScrapeAbort(); }
 
-  async match(u: SdsUnmatchedBookEntry): Promise<void> {
-    const key = `${u.name}|${u.bookNumber}|${u.sectionNumber}`;
-    const sourceId = this.matchPick()[key];
+  /**
+   * Bind an existing DB chemical (one in missingFromEbinder) to a real eBinder Document ID. The
+   * picker dropdown value is the chosen candidate's sourceId; this calls the backend's match
+   * endpoint, then optimistically updates the gap report in place.
+   */
+  async match(row: SdsGap): Promise<void> {
+    if (row.id == null) return;
+    const key = String(row.id);
+    const newSourceId = this.matchPick()[key];
     const gap = this.gap();
-    if (!sourceId || !gap || u.bookNumber == null || u.sectionNumber == null) return;
-    const candidate = gap.missingFromDb.find(c => c.sourceId === sourceId);
+    if (!newSourceId || !gap) return;
+    const candidate = gap.missingFromDb.find(c => c.sourceId === newSourceId);
     if (!candidate) { this.matchError.set('Candidate not found in current report'); return; }
 
     this.matching.set(true);
     this.matchError.set('');
     try {
-      const combinedNames = [u.name, candidate.name].filter(Boolean).join('\n');
-      const item: SdsMatchItem = {
-        sourceItemId: sourceId,
-        names: combinedNames,
-        bookNumber: u.bookNumber,
-        sectionNumber: u.sectionNumber
+      const combinedNames = [row.name, candidate.name].filter(Boolean).join('\n');
+      const payload: SdsMatchChemical = {
+        chemicalId: row.id,
+        sourceItemId: newSourceId,
+        names: combinedNames
       };
-      const res = await this.electron.sdsMatchUnmatched(item);
+      const res = await this.electron.sdsMatchChemical(payload);
       if (!res.success) throw new Error(res.error || 'Match failed');
 
-      // Optimistically update local gap state.
+      // Optimistic update:
+      //  - row leaves missingFromEbinder (now bound to a real eBinder id)
+      //  - candidate leaves missingFromDb (the DB now has a chemical with that sourceId)
+      //  - row gains missingPdf entry (it still has no PDF; close-gaps will fetch it)
+      const updatedMissingPdf = [...gap.missingPdf];
+      if (!updatedMissingPdf.some(p => p.id === row.id)) {
+        updatedMissingPdf.push({
+          id: row.id,
+          sourceId: newSourceId,
+          name: row.name,
+          bookNumber: row.bookNumber,
+          sectionNumber: row.sectionNumber
+        });
+      }
       this.gap.set({
         ...gap,
-        unmatchedBookEntries: gap.unmatchedBookEntries.filter(
-          e => `${e.name}|${e.bookNumber}|${e.sectionNumber}` !== key
-        ),
-        missingFromDb: gap.missingFromDb.filter(c => c.sourceId !== sourceId),
-        activeCount: gap.activeCount + 1
+        missingFromEbinder: gap.missingFromEbinder.filter(e => e.id !== row.id),
+        missingFromDb: gap.missingFromDb.filter(c => c.sourceId !== newSourceId),
+        missingPdf: updatedMissingPdf
       });
       const picks = { ...this.matchPick() };
       delete picks[key];

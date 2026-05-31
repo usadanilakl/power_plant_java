@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SdsUnmatchedBookEntry } from '../../services/electron.service';
+import { SdsGap } from '../../services/electron.service';
 import { SdsImportStateService } from '../../services/sds-import-state.service';
 
 @Component({
@@ -60,28 +60,31 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
             <span class="stat ok">{{ gap.activeCount }} in database</span>
             <span class="stat warn">{{ gap.missingFromDb.length }} on website, missing from DB</span>
             <span class="stat new">{{ gap.missingPdf.length }} in DB, missing PDF</span>
-            @if (gap.unmatchedBookEntries.length) {
-              <span class="stat unmatched">{{ gap.unmatchedBookEntries.length }} unmatched book entries</span>
+            @if (gap.missingFromEbinder.length) {
+              <span class="stat unmatched">{{ gap.missingFromEbinder.length }} missing from eBinder</span>
             }
           </div>
 
-          @if (gap.unmatchedBookEntries.length) {
+          @if (gap.missingFromEbinder.length) {
             <details class="list" open>
-              <summary>Not matched in book — needs manual match ({{ gap.unmatchedBookEntries.length }})</summary>
-              <p class="hint">These book entries (paints, solvents, legacy items) had no row in the
-                eBinder export at seed time. Pick a candidate from the "missing from DB" eBinder list
-                below, then click <strong>Match</strong>. Close gaps will then download its PDF.</p>
+              <summary>Missing on eBinder, present in app ({{ gap.missingFromEbinder.length }})</summary>
+              <p class="hint">Chemicals in the database whose source id isn't in the live eBinder —
+                either book-only seed entries (synthetic <code>BOOK-{{ '{book}-{section}' }}</code> ids)
+                or chemicals removed from the eBinder. Pick an eBinder candidate from the
+                "missing from DB" list, then click <strong>Match</strong>. Close gaps will then
+                download its PDF.</p>
               <table class="match-table">
                 <thead>
-                  <tr><th>Book entry</th><th>Address</th><th>eBinder candidate</th><th></th></tr>
+                  <tr><th>App chemical</th><th>Address</th><th>Current source id</th><th>eBinder candidate</th><th></th></tr>
                 </thead>
                 <tbody>
-                  @for (u of gap.unmatchedBookEntries; track $index) {
+                  @for (row of gap.missingFromEbinder; track row.id) {
                     <tr>
-                      <td>{{ u.name }}</td>
-                      <td class="mono">B{{ u.bookNumber }}/S{{ u.sectionNumber }}</td>
+                      <td>{{ row.name }}</td>
+                      <td class="mono">B{{ row.bookNumber }}/S{{ row.sectionNumber }}</td>
+                      <td class="mono">{{ row.sourceId }}</td>
                       <td>
-                        <select [(ngModel)]="matchPick[u.name + '|' + u.bookNumber + '|' + u.sectionNumber]" class="match-select">
+                        <select [(ngModel)]="matchPick[row.id!]" class="match-select">
                           <option [ngValue]="''">— choose eBinder item —</option>
                           @for (c of gap.missingFromDb; track c.sourceId) {
                             <option [ngValue]="c.sourceId">{{ c.name || '(unnamed)' }} · #{{ c.sourceId }}</option>
@@ -90,8 +93,8 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
                       </td>
                       <td>
                         <button class="btn btn-primary btn-small"
-                                [disabled]="!matchPick[u.name + '|' + u.bookNumber + '|' + u.sectionNumber] || matching"
-                                (click)="match(u)">
+                                [disabled]="!matchPick[row.id!] || matching"
+                                (click)="match(row)">
                           Match
                         </button>
                       </td>
@@ -249,5 +252,5 @@ export class SdsImportComponent {
   closeGaps() { return this.state.closeGaps(); }
   reloadAllPdfs() { return this.state.reloadAllPdfs(); }
   stop() { return this.state.stop(); }
-  match(u: SdsUnmatchedBookEntry) { return this.state.match(u); }
+  match(row: SdsGap) { return this.state.match(row); }
 }

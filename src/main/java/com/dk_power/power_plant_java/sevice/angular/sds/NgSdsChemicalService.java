@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
 import com.dk_power.power_plant_java.dto.sds.SdsChemicalDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportItemDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportReportDto;
+import com.dk_power.power_plant_java.dto.sds.SdsSyncReportDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.sds.SdsChemical;
 import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
@@ -112,6 +113,29 @@ public class NgSdsChemicalService {
                 spAdapter.update(entity.getSharepointId(), mapper.convertToDto(entity));
             } catch (Exception e) {
                 log.warn("[SDS] SP update failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
+            }
+        }
+        return mapper.convertToDto(entity);
+    }
+
+    /**
+     * Bind a book-only chemical (synthetic {@code BOOK-{book}-{section}} sourceId, or any chemical
+     * whose sourceId is no longer in the eBinder) to a real eBinder Document ID. Updates in place
+     * — preserves the row id, audit history, sync events, and Book/Section. After this call, a
+     * subsequent close-gaps scrape will attach the PDF for the new sourceId.
+     */
+    public SdsChemicalDto matchToSource(Long id, String newSourceId, String mergedNames) {
+        SdsChemical entity = repo.findById(id).orElseThrow(() ->
+                new RuntimeException("SdsChemical not found: " + id));
+        entity.setSourceId(newSourceId);
+        if (mergedNames != null && !mergedNames.isBlank()) entity.setNames(mergedNames);
+        entity = repo.save(entity);
+
+        if (entity.getSharepointId() != null) {
+            try {
+                spAdapter.update(entity.getSharepointId(), mapper.convertToDto(entity));
+            } catch (Exception e) {
+                log.warn("[SDS] SP update after match failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
             }
         }
         return mapper.convertToDto(entity);
@@ -308,6 +332,197 @@ public class NgSdsChemicalService {
 
     public void deleteAttachment(Long entityId, Long attachmentId) {
         attachmentRepo.deleteById(attachmentId);
+    }
+
+    /**
+     * Admin helper: push every local SDS chemical to SharePoint — create rows that don't yet
+     * exist (capturing the new SP id) and update those that do, then replace each item's SP
+     * attachments with the local ones (delete-all-then-re-add to avoid duplicate-filename 409s).
+     * Per-row errors are logged and added to the report so one bad row doesn't abort the rest.
+     */
+    public SdsSyncReportDto pushAllToSharePoint() {
+        SdsSyncReportDto rep = new SdsSyncReportDto();
+        for (SdsChemical c : repo.findAll()) {
+            try {
+                SdsChemicalDto dto = mapper.convertToDto(c);
+                if (c.getSharepointId() == null || c.getSharepointId().isBlank()) {
+                    String newSpId = spAdapter.create(dto);
+                    c.setSharepointId(newSpId);
+                    c = repo.save(c);
+                    rep.setChemicalsCreated(rep.getChemicalsCreated() + 1);
+                } else {
+                    spAdapter.update(c.getSharepointId(), dto);
+                    rep.setChemicalsUpdated(rep.getChemicalsUpdated() + 1);
+                }
+                // Replace attachments: delete-all-then-re-push to avoid SP's duplicate filename refusal.
+                List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
+                        SdsChemicalMapper.ENTITY_TYPE, c.getId());
+                if (c.getSharepointId() != null) {
+                    int removed = spAdapter.deleteAllAttachments(c.getSharepointId());
+                    rep.setAttachmentsRemoved(rep.getAttachmentsRemoved() + removed);
+                    for (PermitAttachment a : atts) {
+                        if (a.getBase64Content() == null || a.getBase64Content().isBlank()) continue;
+                        PaAttachmentDto paAtt = new PaAttachmentDto();
+                        paAtt.setFileName(a.getFileName());
+                        paAtt.setContentType(a.getContentType());
+                        paAtt.setBase64Content(a.getBase64Content());
+                        try {
+                            spAdapter.addAttachment(c.getSharepointId(), paAtt);
+                            rep.setAttachmentsAdded(rep.getAttachmentsAdded() + 1);
+                        } catch (Exception ax) {
+                            rep.getErrors().add("attach '" + a.getFileName() + "' to " + c.getId() + ": " + ax.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                String label = c.getId() + " (" + SdsChemicalMapper.primaryName(c.getNames()) + ")";
+                rep.getErrors().add("push " + label + ": " + e.getMessage());
+                log.warn("[SDS] push to SP failed for chemical {}: {}", label, e.getMessage());
+            }
+        }
+        log.info("[SDS] pushAllToSharePoint: +{} created, ~{} updated, +{} attachments (after removing {})",
+                rep.getChemicalsCreated(), rep.getChemicalsUpdated(),
+                rep.getAttachmentsAdded(), rep.getAttachmentsRemoved());
+        return rep;
+    }
+
+    /**
+     * Admin helper: pull every SDS row from SharePoint and reconcile local. Upserts chemicals by
+     * SharePoint id (creates missing locals, updates existing ones with SP's values), then for
+     * each chemical fetches its SP attachments and replaces the local attachment set so the local
+     * mirror matches SP exactly.
+     * <p>
+     * Goes through {@code repo.save()} so every change fires field-level sync events — the hub
+     * picks them up and broadcasts to other clients (just like seeding). Attachments are saved
+     * with {@code syncedToServer=false} so the AttachmentSyncHandler pushes them up to the hub
+     * and other clients can download them. No SharePoint re-push happens (SP IS the source here).
+     */
+    public SdsSyncReportDto pullAllFromSharePoint() {
+        SdsSyncReportDto rep = new SdsSyncReportDto();
+        List<SdsChemicalDto> remote;
+        try { remote = spAdapter.getAll(); }
+        catch (Exception e) {
+            rep.getErrors().add("getAll from SP failed: " + e.getMessage());
+            log.warn("[SDS] pullAllFromSharePoint: SP getAll failed: {}", e.getMessage());
+            return rep;
+        }
+        for (SdsChemicalDto dto : remote) {
+            try {
+                if (dto.getSharepointId() == null || dto.getSharepointId().isBlank()) continue;
+                SdsChemical entity = repo.findFirstBySharepointIdOrderByIdAsc(dto.getSharepointId()).orElse(null);
+                boolean isNew = entity == null;
+                if (isNew) {
+                    entity = new SdsChemical();
+                    entity.setSharepointId(dto.getSharepointId());
+                    if (dto.getLocalUuid() != null && !dto.getLocalUuid().isBlank()) {
+                        entity.setLocalUuid(dto.getLocalUuid());
+                    } else {
+                        entity.setLocalUuid(UUID.randomUUID().toString());
+                    }
+                }
+                entity.setNames(dto.getNames());
+                entity.setLocations(dto.getLocations());
+                entity.setBookNumber(dto.getBookNumber());
+                entity.setSectionNumber(dto.getSectionNumber());
+                entity.setNotes(dto.getNotes());
+                entity.setSourceId(dto.getSourceId());
+                entity.setManufacturer(dto.getManufacturer());
+                entity.setSourceRevisionDate(dto.getSourceRevisionDate());
+                entity.setProcessedByName(dto.getProcessedByName());
+                entity.setProcessedByEmail(dto.getProcessedByEmail());
+                entity.setSubmitterName(dto.getSubmitterName());
+                entity.setSubmitterEmail(dto.getSubmitterEmail());
+                entity.setSubmitterPhone(dto.getSubmitterPhone());
+                if (dto.getStatusName() != null && !dto.getStatusName().isBlank()) {
+                    entity.setStatus(valueService.createValue(STATUS_CATEGORY, dto.getStatusName()));
+                } else if (entity.getStatus() == null) {
+                    entity.setStatus(valueService.createValue(STATUS_CATEGORY, STATUS_FILED));
+                }
+                entity = repo.saveAndFlush(entity);
+                if (isNew) rep.setChemicalsCreated(rep.getChemicalsCreated() + 1);
+                else rep.setChemicalsUpdated(rep.getChemicalsUpdated() + 1);
+
+                // Replace local attachments with SP's set.
+                List<PermitAttachment> existing = attachmentRepo.findByEntityTypeAndEntityId(
+                        SdsChemicalMapper.ENTITY_TYPE, entity.getId());
+                if (!existing.isEmpty()) {
+                    attachmentRepo.deleteAll(existing);
+                    rep.setAttachmentsRemoved(rep.getAttachmentsRemoved() + existing.size());
+                }
+                List<PaAttachmentDto> spAtts;
+                try { spAtts = spAdapter.getAttachments(dto.getSharepointId()); }
+                catch (Exception ax) {
+                    rep.getErrors().add("getAttachments " + dto.getSharepointId() + ": " + ax.getMessage());
+                    continue;
+                }
+                for (PaAttachmentDto a : spAtts) {
+                    if (a.getBase64Content() == null || a.getBase64Content().isBlank()) continue;
+                    uploadAttachmentFromSp(entity.getId(), a.getFileName(), a.getContentType(), a.getBase64Content());
+                    rep.setAttachmentsAdded(rep.getAttachmentsAdded() + 1);
+                }
+            } catch (Exception e) {
+                rep.getErrors().add("pull SP id " + dto.getSharepointId() + ": " + e.getMessage());
+                log.warn("[SDS] pullAllFromSharePoint: row {} failed: {}", dto.getSharepointId(), e.getMessage());
+            }
+        }
+        log.info("[SDS] pullAllFromSharePoint: +{} created, ~{} updated, +{} attachments (replaced {})",
+                rep.getChemicalsCreated(), rep.getChemicalsUpdated(),
+                rep.getAttachmentsAdded(), rep.getAttachmentsRemoved());
+        return rep;
+    }
+
+    /**
+     * Admin helper: soft-delete every local SDS chemical so the wipe propagates everywhere.
+     * <p>
+     * Each chemical is saved with {@code deleted=true} via {@code repo.save()} — the
+     * {@code FieldChangeEntityListener} fires a field-level sync event for {@code deleted}, the
+     * hub broadcasts it to every other client (they soft-delete too), and the hub's
+     * {@link com.dk_power.power_plant_java.sevice.sharepoint.SdsOutboundSharePointSync#pushDeletes}
+     * sweep hard-deletes the SP rows within a minute. Local attachment rows are hard-deleted
+     * (PermitAttachment isn't field-synced — clients will drop them when they soft-delete the
+     * parent chemical, and the hub's outbound SP delete strips SP attachments along with the row).
+     */
+    public SdsSyncReportDto clearAll() {
+        SdsSyncReportDto rep = new SdsSyncReportDto();
+        for (SdsChemical c : repo.findAll()) {
+            try {
+                List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
+                        SdsChemicalMapper.ENTITY_TYPE, c.getId());
+                if (!atts.isEmpty()) {
+                    attachmentRepo.deleteAll(atts);
+                    rep.setAttachmentsRemoved(rep.getAttachmentsRemoved() + atts.size());
+                }
+                c.setDeleted(true);
+                repo.save(c);   // fires sync events → hub broadcasts + queues SP delete
+                rep.setChemicalsDeleted(rep.getChemicalsDeleted() + 1);
+            } catch (Exception e) {
+                rep.getErrors().add("delete " + c.getId() + ": " + e.getMessage());
+                log.warn("[SDS] clearAll: row {} failed: {}", c.getId(), e.getMessage());
+            }
+        }
+        log.info("[SDS] clearAll: soft-deleted {} chemical(s), removed {} attachment(s); hub will propagate to clients + SP",
+                rep.getChemicalsDeleted(), rep.getAttachmentsRemoved());
+        return rep;
+    }
+
+    /**
+     * Save an attachment that came from SharePoint: don't re-push to SP (it's the source), but DO
+     * leave {@code syncedToServer=false} so {@code AttachmentSyncHandler} carries it up to the hub
+     * and out to the other clients.
+     */
+    private void uploadAttachmentFromSp(Long entityId, String fileName, String contentType, String base64Content) {
+        String hash = computeContentHash(base64Content);
+        PermitAttachment att = new PermitAttachment();
+        att.setEntityType(SdsChemicalMapper.ENTITY_TYPE);
+        att.setEntityId(entityId);
+        att.setFileName(fileName);
+        att.setContentType(contentType);
+        att.setAttachmentType(contentType != null && contentType.startsWith("image/") ? "photo" : "document");
+        att.setBase64Content(base64Content);
+        att.setContentHash(hash);
+        att.setOriginMachineId(syncConfig.getMachineId());
+        att.setSyncedToServer(false);   // let AttachmentSyncHandler ship it to hub → other clients
+        attachmentRepo.save(att);
     }
 
     /**

@@ -23,6 +23,7 @@ import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { WindowLayoutManager } from '../managers/window-layout.manager';
 import { DaEmailManager } from '../managers/da-email.manager';
 import { VoskManager } from '../managers/vosk.manager';
+import { backendGet, backendPost } from '../clients/backend-client';
 import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
@@ -207,6 +208,7 @@ export class IpcHandlers {
     this.registerLayoutHandlers();
     this.registerVoskHandlers();
     this.registerPersonnelHandlers();
+    this.registerContractorHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -978,6 +980,14 @@ export class IpcHandlers {
         return { success: false, error: error.message };
       }
     });
+
+    ipcMain.handle(events.IPC_GATE_LOG_GET_CONTRACTOR_DIRECTORY, async () => {
+      try {
+        return { success: true, data: await this.gateLogManager.getContractorDirectory() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   private registerSdsScrapeHandlers(): void {
@@ -1008,9 +1018,9 @@ export class IpcHandlers {
       }
     });
 
-    ipcMain.handle(events.IPC_SDS_MATCH_UNMATCHED, async (_event, item: any) => {
+    ipcMain.handle(events.IPC_SDS_MATCH_CHEMICAL, async (_event, payload: any) => {
       try {
-        const data = await this.webViewSdsManager.matchUnmatched(item);
+        const data = await this.webViewSdsManager.matchChemical(payload);
         return { success: true, data };
       } catch (error: any) {
         return { success: false, error: error.message };
@@ -1794,6 +1804,62 @@ export class IpcHandlers {
         );
         console.log(`[TOI] Loaded ${enriched.length} files with metadata`);
         return { success: true, data: enriched };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+  }
+
+  private registerContractorHandlers(): void {
+    ipcMain.handle(events.IPC_CONTRACTORS_GET_LIVE, async () => {
+      try {
+        return { success: true, data: await this.gateLogManager.getContractorDirectory() };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CONTRACTORS_PUSH_TO_BACKEND, async () => {
+      try {
+        const contractors = await this.gateLogManager.getContractorDirectory();
+        const resp = await backendPost('/ng/contractors/sync', {
+          source: 'electron-onlocation',
+          contractors
+        });
+        return { success: true, data: resp };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CONTRACTORS_SCAN, async () => {
+      try {
+        return { success: true, data: await backendPost('/ng/contractors/scan', {}) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CONTRACTORS_LIST_REPORTS, async (_evt, status?: string) => {
+      try {
+        const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+        return { success: true, data: await backendGet('/ng/contractors/reports' + qs) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CONTRACTORS_ACCEPT_REPORT, async (_evt, id: number) => {
+      try {
+        return { success: true, data: await backendPost(`/ng/contractors/reports/${id}/accept`, {}) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CONTRACTORS_REJECT_REPORT, async (_evt, id: number) => {
+      try {
+        return { success: true, data: await backendPost(`/ng/contractors/reports/${id}/reject`, {}) };
       } catch (err: any) {
         return { success: false, error: err.message };
       }

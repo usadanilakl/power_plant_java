@@ -211,12 +211,8 @@ export interface SdsScrapeOptions {
   showWindow?: boolean;
 }
 export interface SdsGap {
+  id: number | null;          // DB row id; null when the gap describes a catalog row not yet in the DB
   sourceId: string | null;
-  name: string;
-  bookNumber: number | null;
-  sectionNumber: number | null;
-}
-export interface SdsUnmatchedBookEntry {
   name: string;
   bookNumber: number | null;
   sectionNumber: number | null;
@@ -224,15 +220,14 @@ export interface SdsUnmatchedBookEntry {
 export interface SdsGapReport {
   catalogCount: number;
   activeCount: number;
-  missingFromDb: SdsGap[];
-  missingPdf: SdsGap[];
-  unmatchedBookEntries: SdsUnmatchedBookEntry[];
+  missingFromDb: SdsGap[];           // in eBinder, not in our DB
+  missingPdf: SdsGap[];              // in DB, no SDS PDF attached
+  missingFromEbinder: SdsGap[];      // in DB, sourceId not in live eBinder (book-only or removed)
 }
-export interface SdsMatchItem {
+export interface SdsMatchChemical {
+  chemicalId: number;
   sourceItemId: string;
-  names: string;
-  bookNumber: number;
-  sectionNumber: number;
+  names?: string;
 }
 
 export interface GateLogConfig {
@@ -418,6 +413,34 @@ export interface PersonnelContact {
   emergencyRelation?: string;
 }
 
+export interface ContractorEntry {
+  onLocationMemberId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  /** OnLocation training/certification start date — ISO yyyy-MM-dd. */
+  validFrom?: string;
+  /** OnLocation training/certification expiry date — ISO yyyy-MM-dd. */
+  validTo?: string;
+  /** OnLocation member status — "active" / "inactive". */
+  status?: string;
+}
+
+export interface ContractorReport {
+  id: number;
+  runAt: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  source?: string;
+  summary?: string;
+  acceptedAt?: string;
+  acceptedBy?: string;
+  added?: ContractorEntry[];
+  removed?: ContractorEntry[];
+  changed?: Array<{ onLocationMemberId: string; before: ContractorEntry; after: ContractorEntry }>;
+}
+
 export interface ToiFile {
   name: string;
   serverRelativeUrl: string;
@@ -500,7 +523,16 @@ interface ElectronAPI {
   gateLogGetConfig: () => Promise<IpcResult<GateLogConfig>>;
   gateLogSaveConfig: (config: GateLogConfig) => Promise<IpcResult>;
   gateLogPrint: () => Promise<IpcResult>;
+  gateLogGetContractorDirectory: () => Promise<IpcResult<ContractorEntry[]>>;
   onGateLogPeopleUpdated: (callback: () => void) => () => void;
+
+  // Contractors
+  contractorsGetLive: () => Promise<IpcResult<ContractorEntry[]>>;
+  contractorsPushToBackend: () => Promise<IpcResult<{ responseData: { created: number; linked: number; updated: number; unchanged: number }; message: string }>>;
+  contractorsScan: () => Promise<IpcResult<{ responseData: ContractorReport; message: string }>>;
+  contractorsListReports: (status?: string) => Promise<IpcResult<{ responseData: ContractorReport[]; message: string }>>;
+  contractorsAcceptReport: (id: number) => Promise<IpcResult<{ responseData: ContractorReport; message: string }>>;
+  contractorsRejectReport: (id: number) => Promise<IpcResult<{ responseData: ContractorReport; message: string }>>;
 
   // WebView AMS — Rounds report scraper
   webViewAmsGetReports: () => Promise<IpcResult<WebViewAmsReport[]>>;
@@ -520,7 +552,7 @@ interface ElectronAPI {
   sdsScrapeRun: (opts?: SdsScrapeOptions) => Promise<IpcResult<SdsScrapeStatus>>;
   sdsGapReport: (opts?: SdsScrapeOptions) => Promise<IpcResult<SdsGapReport>>;
   sdsScrapeAbort: () => Promise<IpcResult>;
-  sdsMatchUnmatched: (item: SdsMatchItem) => Promise<IpcResult>;
+  sdsMatchChemical: (payload: SdsMatchChemical) => Promise<IpcResult>;
   sdsClearPdfs: () => Promise<IpcResult<number>>;
   sdsScrapeGetStatus: () => Promise<IpcResult<SdsScrapeStatus>>;
   sdsScrapeGetConfig: () => Promise<IpcResult<SdsScraperConfig>>;
@@ -938,6 +970,43 @@ export class ElectronService implements OnDestroy {
     });
   }
 
+  async gateLogGetContractorDirectory(): Promise<IpcResult<ContractorEntry[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.gateLogGetContractorDirectory();
+  }
+
+  // Contractors
+
+  async contractorsGetLive(): Promise<IpcResult<ContractorEntry[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.contractorsGetLive();
+  }
+
+  async contractorsPushToBackend(): Promise<IpcResult<any>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.contractorsPushToBackend();
+  }
+
+  async contractorsScan(): Promise<IpcResult<{ responseData: ContractorReport; message: string }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.contractorsScan();
+  }
+
+  async contractorsListReports(status?: string): Promise<IpcResult<{ responseData: ContractorReport[]; message: string }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.contractorsListReports(status);
+  }
+
+  async contractorsAcceptReport(id: number): Promise<IpcResult<{ responseData: ContractorReport; message: string }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.contractorsAcceptReport(id);
+  }
+
+  async contractorsRejectReport(id: number): Promise<IpcResult<{ responseData: ContractorReport; message: string }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.contractorsRejectReport(id);
+  }
+
   // WebView AMS — Rounds report scraper
 
   async webViewAmsGetReports(): Promise<IpcResult<WebViewAmsReport[]>> {
@@ -1019,9 +1088,9 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.sdsScrapeAbort();
   }
 
-  async sdsMatchUnmatched(item: SdsMatchItem): Promise<IpcResult> {
+  async sdsMatchChemical(payload: SdsMatchChemical): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.sdsMatchUnmatched(item);
+    return window.electronAPI!.sdsMatchChemical(payload);
   }
 
   async sdsClearPdfs(): Promise<IpcResult<number>> {

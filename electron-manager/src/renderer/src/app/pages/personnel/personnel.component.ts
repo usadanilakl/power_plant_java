@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact } from '../../services/electron.service';
+import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport } from '../../services/electron.service';
 
 const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BC2B8028F-8473-49EC-8B24-1FEBBB8D1584%7D&file=OPS%20Schedule%202026.xlsx&action=default&mobileredirect=true';
 const CONTACTS_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BE445C5F4-C235-45F7-8D29-F0613E875FA0%7D&file=EMERGENCY%20CONTACT%20LIST%20-%20EDITED%2011_2024.xlsx&action=default&mobileredirect=true';
@@ -34,6 +34,9 @@ const SHIFT_LABELS: Record<string, string> = {
         </button>
         <button class="tab" [class.active]="activeTab === 'contacts'" (click)="activeTab = 'contacts'; loadContacts()">
           <span class="material-icons tab-icon">contacts</span> Contacts
+        </button>
+        <button class="tab" [class.active]="activeTab === 'contractors'" (click)="activeTab = 'contractors'; loadContractors()">
+          <span class="material-icons tab-icon">engineering</span> Contractors
         </button>
       </div>
 
@@ -211,6 +214,108 @@ const SHIFT_LABELS: Record<string, string> = {
           <button class="btn btn-primary" (click)="loadContacts()">Load Contacts</button>
         </div>
       </div>
+
+      <!-- Contractors Tab -->
+      <div class="tab-content" *ngIf="activeTab === 'contractors'">
+        <div class="section">
+          <div class="contacts-header">
+            <h2 class="section-title">
+              <span class="material-icons section-icon">engineering</span>
+              Contractor Directory ({{ contractors.length }})
+              <span *ngIf="contractorExpiringCount() > 0" class="expiry-badge expiry-soon" style="margin-left: 8px;">
+                {{ contractorExpiringCount() }} expiring/expired
+              </span>
+            </h2>
+            <div class="header-actions">
+              <button class="btn btn-icon" (click)="loadContractors(true)" title="Refresh from OnLocation" [disabled]="contractorsLoading">
+                <span class="material-icons" [class.spin]="contractorsLoading">refresh</span>
+              </button>
+              <button class="btn btn-primary" (click)="pushContractorsToBackend()" [disabled]="contractorPushing || contractors.length === 0">
+                {{ contractorPushing ? 'Pushing...' : 'Push to backend' }}
+              </button>
+              <button class="btn btn-primary" (click)="scanContractors()" [disabled]="contractorScanning">
+                {{ contractorScanning ? 'Scanning...' : 'Scan for changes' }}
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="contractorActionMessage" class="action-message">{{ contractorActionMessage }}</div>
+
+          <div class="empty-state" *ngIf="contractorsLoading && contractors.length === 0">
+            <span class="material-icons spin">sync</span>
+            <span>Loading contractors from OnLocation...</span>
+          </div>
+
+          <div class="empty-state" *ngIf="!contractorsLoading && contractors.length === 0 && contractorsError">
+            <span class="material-icons">error_outline</span>
+            <span>{{ contractorsError }}</span>
+            <button class="btn btn-primary" (click)="loadContractors(true)">Retry</button>
+          </div>
+
+          <div class="contacts-table-wrap" *ngIf="contractors.length > 0">
+            <table class="contacts-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Company</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Expires</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of contractors" [class.row-expired]="expiryClass(c) === 'expired'">
+                  <td class="td-contact-name">{{ c.name }}</td>
+                  <td class="td-contact-title">{{ c.company }}</td>
+                  <td class="td-contact-phone">{{ c.email }}</td>
+                  <td class="td-contact-phone">{{ c.phone }}</td>
+                  <td><span class="expiry-badge" [class]="'expiry-' + expiryClass(c)">{{ c.validTo || '—' }}</span></td>
+                  <td>
+                    <span *ngIf="c.status" class="status-pill" [class]="'status-' + c.status.toLowerCase()">
+                      {{ c.status }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section" *ngIf="contractorReports.length > 0">
+          <h2 class="section-title">
+            <span class="material-icons section-icon">history</span>
+            Pending changes
+          </h2>
+          <div *ngFor="let r of contractorReports" class="report-card">
+            <div class="report-head">
+              <div>
+                <span class="report-status" [class]="'status-' + r.status.toLowerCase()">{{ r.status }}</span>
+                <span class="report-when">{{ r.runAt | date:'medium' }}</span>
+                <span class="report-summary">{{ r.summary }}</span>
+              </div>
+              <div *ngIf="r.status === 'PENDING'">
+                <button class="btn btn-primary" (click)="acceptReport(r.id)">Accept</button>
+                <button class="btn btn-icon" (click)="rejectReport(r.id)">Reject</button>
+              </div>
+            </div>
+            <div class="report-body" *ngIf="(r.added && r.added.length) || (r.removed && r.removed.length) || (r.changed && r.changed.length)">
+              <div *ngIf="r.added && r.added.length > 0">
+                <strong>Added ({{ r.added.length }}):</strong>
+                <span *ngFor="let a of r.added">{{ a.name }} &middot; {{ a.company }}; </span>
+              </div>
+              <div *ngIf="r.removed && r.removed.length > 0">
+                <strong>Removed ({{ r.removed.length }}):</strong>
+                <span *ngFor="let a of r.removed">{{ a.name }} &middot; {{ a.company }}; </span>
+              </div>
+              <div *ngIf="r.changed && r.changed.length > 0">
+                <strong>Changed ({{ r.changed.length }}):</strong>
+                <span *ngFor="let ch of r.changed">{{ ch.after.name }}; </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -357,6 +462,30 @@ const SHIFT_LABELS: Record<string, string> = {
     .empty-state.error .material-icons { color: var(--accent-error); opacity: 0.6; }
     .spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .action-message { padding: 8px 12px; background: var(--surface-2, rgba(255,255,255,0.04));
+      border-left: 3px solid var(--accent-primary); margin: 8px 0; font-size: 13px; color: var(--text-muted); }
+    .report-card { border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;
+      margin-bottom: 8px; background: var(--surface-1, rgba(255,255,255,0.02)); }
+    .report-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .report-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+      font-weight: 600; margin-right: 8px; }
+    .status-pending { background: rgba(255, 191, 0, 0.18); color: #d4a017; }
+    .status-accepted { background: rgba(63, 184, 117, 0.18); color: #3fb875; }
+    .status-rejected { background: rgba(184, 63, 63, 0.18); color: #c95252; }
+    .report-when { font-size: 12px; color: var(--text-muted); margin-right: 8px; }
+    .report-summary { font-size: 12px; color: var(--text-primary); }
+    .report-body { font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.6; }
+    .report-body strong { color: var(--text-primary); margin-right: 6px; }
+    .expiry-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+      font-weight: 600; font-family: 'Roboto Mono', monospace; }
+    .expiry-ok { background: rgba(63, 184, 117, 0.12); color: #3fb875; }
+    .expiry-soon { background: rgba(255, 191, 0, 0.18); color: #d4a017; }
+    .expiry-expired { background: rgba(184, 63, 63, 0.18); color: #c95252; }
+    .row-expired { opacity: 0.75; }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px;
+      font-weight: 500; text-transform: capitalize; }
+    .status-active { background: rgba(63, 184, 117, 0.12); color: #3fb875; }
+    .status-inactive { background: rgba(184, 63, 63, 0.12); color: #c95252; }
   `]
 })
 export class PersonnelComponent implements OnInit {
@@ -365,7 +494,17 @@ export class PersonnelComponent implements OnInit {
   loading = false;
   contactsLoading = false;
   contactsError = '';
-  activeTab: 'schedule' | 'contacts' = 'schedule';
+  activeTab: 'schedule' | 'contacts' | 'contractors' = 'schedule';
+
+  // Contractors state
+  contractors: ContractorEntry[] = [];
+  contractorsLoading = false;
+  contractorsError = '';
+  contractorReports: ContractorReport[] = [];
+  contractorReportsLoading = false;
+  contractorScanning = false;
+  contractorPushing = false;
+  contractorActionMessage = '';
 
   selectedMonth: number = new Date().getMonth();
   monthOptions: { idx: number; label: string }[] = [];
@@ -540,5 +679,113 @@ export class PersonnelComponent implements OnInit {
 
   openContacts(): void {
     this.electronService.openExternal(CONTACTS_URL);
+  }
+
+  async loadContractors(forceRefresh = false): Promise<void> {
+    if (!forceRefresh && (this.contractors.length > 0 || this.contractorsLoading)) {
+      this.loadContractorReports();
+      return;
+    }
+    this.contractorsLoading = true;
+    this.contractorsError = '';
+    try {
+      const result = await this.electronService.contractorsGetLive();
+      if (result.success && result.data) {
+        this.contractors = result.data.sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        this.contractorsError = result.error || 'Failed to load contractors';
+      }
+    } catch (err: any) {
+      this.contractorsError = err.message;
+    } finally {
+      this.contractorsLoading = false;
+    }
+    this.loadContractorReports();
+  }
+
+  async loadContractorReports(): Promise<void> {
+    this.contractorReportsLoading = true;
+    try {
+      const result = await this.electronService.contractorsListReports('PENDING');
+      // Backend wraps in NgApiResponse { responseData, message }
+      const payload: any = result.data;
+      this.contractorReports = payload?.responseData || [];
+    } catch {
+      this.contractorReports = [];
+    } finally {
+      this.contractorReportsLoading = false;
+    }
+  }
+
+  async pushContractorsToBackend(): Promise<void> {
+    this.contractorPushing = true;
+    this.contractorActionMessage = '';
+    try {
+      const result = await this.electronService.contractorsPushToBackend();
+      if (result.success) {
+        const summary: any = (result.data as any)?.responseData;
+        this.contractorActionMessage = summary
+          ? `Pushed: created=${summary.created}, linked=${summary.linked}, updated=${summary.updated}, unchanged=${summary.unchanged}`
+          : 'Push complete';
+      } else {
+        this.contractorActionMessage = `Push failed: ${result.error}`;
+      }
+    } catch (err: any) {
+      this.contractorActionMessage = `Push failed: ${err.message}`;
+    } finally {
+      this.contractorPushing = false;
+    }
+  }
+
+  async scanContractors(): Promise<void> {
+    this.contractorScanning = true;
+    this.contractorActionMessage = '';
+    try {
+      const result = await this.electronService.contractorsScan();
+      if (result.success) {
+        const report: any = (result.data as any)?.responseData;
+        this.contractorActionMessage = report?.summary
+          ? `Scan complete — ${report.summary}`
+          : 'Scan complete';
+        await this.loadContractorReports();
+      } else {
+        this.contractorActionMessage = `Scan failed: ${result.error}`;
+      }
+    } catch (err: any) {
+      this.contractorActionMessage = `Scan failed: ${err.message}`;
+    } finally {
+      this.contractorScanning = false;
+    }
+  }
+
+  async acceptReport(id: number): Promise<void> {
+    const result = await this.electronService.contractorsAcceptReport(id);
+    this.contractorActionMessage = result.success ? 'Report accepted' : `Accept failed: ${result.error}`;
+    await this.loadContractorReports();
+  }
+
+  async rejectReport(id: number): Promise<void> {
+    const result = await this.electronService.contractorsRejectReport(id);
+    this.contractorActionMessage = result.success ? 'Report rejected' : `Reject failed: ${result.error}`;
+    await this.loadContractorReports();
+  }
+
+  /**
+   * 'expired'   → validTo is before today
+   * 'soon'      → expires within 30 days
+   * 'ok'        → expires later, or no date provided
+   */
+  expiryClass(c: ContractorEntry): 'expired' | 'soon' | 'ok' {
+    if (!c.validTo) return 'ok';
+    const expiry = new Date(c.validTo + 'T00:00:00').getTime();
+    const now = Date.now();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (expiry < now) return 'expired';
+    if (expiry - now < thirtyDays) return 'soon';
+    return 'ok';
+  }
+
+  contractorExpiringCount(): number {
+    return this.contractors.filter(c => this.expiryClass(c) !== 'ok').length;
   }
 }

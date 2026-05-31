@@ -59,11 +59,24 @@ public class User extends BaseAuditEntity {
     @Column(name = "phone")
     private String phone;
 
+    @Column(name = "secondary_phone")
+    private String secondaryPhone;
+
+    @Column(name = "title")
+    private String title;
+
+    @Column(name = "emergency_contact_json", columnDefinition = "TEXT")
+    private String emergencyContactJson;
+
     @Column(name = "company")
     private String company;
 
     @Column(name = "pwa_user_uuid", unique = true)
     private String pwaUserUuid;
+
+    /** OnLocation member id (sp/member.id) — stable key used to upsert contractor rows. */
+    @Column(name = "on_location_member_id", unique = true)
+    private String onLocationMemberId;
 
     @Column(name = "permission_level")
     private String permissionLevel;

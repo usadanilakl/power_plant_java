@@ -96,6 +96,52 @@ export class GateLogManager {
     return [...this.cachedPeople];
   }
 
+  /**
+   * Full contractor directory from OnLocation (not just the people on site).
+   * Fetches /sp/member + /sp/org via the same caching path as the gate-log refresh,
+   * then flattens into ContractorEntry shape that mirrors the backend's ContractorDto.
+   */
+  public async getContractorDirectory(): Promise<Array<{
+    onLocationMemberId: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    title?: string;
+    validFrom?: string;
+    validTo?: string;
+    status?: string;
+  }>> {
+    await this.ensureContractorDirectories();
+
+    const out: Array<{
+      onLocationMemberId: string; name: string; email?: string; phone?: string; company?: string;
+      title?: string; validFrom?: string; validTo?: string; status?: string;
+    }> = [];
+    for (const [id, member] of this.contractorMemberMap.entries()) {
+      const name = member.name
+        || [member.first_name, member.last_name].filter(Boolean).join(' ')
+        || 'Unknown';
+      const spOrg = Array.isArray(member.sp_orgs) && member.sp_orgs.length > 0 ? member.sp_orgs[0] : null;
+      const company = spOrg?.name
+        || (spOrg?.id != null ? this.contractorOrgCache.get(spOrg.id) : undefined)
+        || member.company
+        || 'Contractor';
+      out.push({
+        onLocationMemberId: String(id),
+        name,
+        email: member.email || member.altemail || undefined,
+        phone: member.mobile || member.phone || undefined,
+        company,
+        title: member.title || undefined,
+        validFrom: member.valid_from || undefined,
+        validTo: member.valid_to || undefined,
+        status: member.status || undefined
+      });
+    }
+    return out;
+  }
+
   // ─── Refresh (combines both sources) ──────────────────────────────────
 
   public async refresh(): Promise<GateLogEntry[]> {

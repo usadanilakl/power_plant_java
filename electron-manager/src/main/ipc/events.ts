@@ -39,8 +39,17 @@ export const IPC_GATE_LOG_SET_AUTO_REFRESH = 'gate-log:set-auto-refresh';
 export const IPC_GATE_LOG_GET_CONFIG = 'gate-log:get-config';
 export const IPC_GATE_LOG_SAVE_CONFIG = 'gate-log:save-config';
 export const IPC_GATE_LOG_PRINT = 'gate-log:print';
+export const IPC_GATE_LOG_GET_CONTRACTOR_DIRECTORY = 'gate-log:get-contractor-directory';
 // Gate Log broadcasts (send/on)
 export const IPC_GATE_LOG_PEOPLE_UPDATED = 'gate-log:people-updated';
+
+// Contractors (invoke/handle)
+export const IPC_CONTRACTORS_GET_LIVE = 'contractors:get-live';
+export const IPC_CONTRACTORS_PUSH_TO_BACKEND = 'contractors:push-to-backend';
+export const IPC_CONTRACTORS_SCAN = 'contractors:scan';
+export const IPC_CONTRACTORS_LIST_REPORTS = 'contractors:list-reports';
+export const IPC_CONTRACTORS_ACCEPT_REPORT = 'contractors:accept-report';
+export const IPC_CONTRACTORS_REJECT_REPORT = 'contractors:reject-report';
 
 // WebView AMS — Excel report scraper (invoke/handle)
 export const IPC_WEBVIEW_AMS_GET_REPORTS = 'webview-ams:get-reports';
@@ -61,7 +70,7 @@ export const IPC_WEBVIEW_AMS_UPDATED = 'webview-ams:updated';
 export const IPC_SDS_SCRAPE_RUN = 'sds-scrape:run';
 export const IPC_SDS_GAP_REPORT = 'sds-scrape:gap-report';
 export const IPC_SDS_SCRAPE_ABORT = 'sds-scrape:abort';
-export const IPC_SDS_MATCH_UNMATCHED = 'sds-scrape:match-unmatched';
+export const IPC_SDS_MATCH_CHEMICAL = 'sds-scrape:match-chemical';
 export const IPC_SDS_CLEAR_PDFS = 'sds-scrape:clear-pdfs';
 export const IPC_SDS_SCRAPE_GET_STATUS = 'sds-scrape:get-status';
 export const IPC_SDS_SCRAPE_GET_CONFIG = 'sds-scrape:get-config';

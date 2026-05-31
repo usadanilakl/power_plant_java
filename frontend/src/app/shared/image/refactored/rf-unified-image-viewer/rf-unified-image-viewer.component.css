@@ -1,3 +1,14 @@
+:host {
+  /* Without this the host is inline by default and sizes itself to its
+     content's intrinsic width, defeating the inner overflow clamps. */
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* Container */
 .unified-viewer-container {
   display: flex;
@@ -124,7 +135,11 @@
 
 /* Image Section */
 .image-section {
-  flex: 1;
+  flex: 1 1 0;
+  /* Without min-width: 0 a flex item refuses to shrink below its content's
+     intrinsic width, so a wide image carousel inside this column pushes the
+     whole section past the viewport (next-arrow off-screen, etc.). */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -136,6 +151,11 @@
   padding: 1rem;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   background: var(--surface-color, #f9f9f9);
+  /* Containing block for the carousel — clip anything that still tries to
+     exceed it so the prev/next arrows always stay reachable. */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* Single Image Header */

@@ -61,16 +61,21 @@ public class SharePointListProvisioner {
                 spAccess.createList(def.title);
             }
 
-            List<String> addedFields = ensureFields(def);
+            EnsureFieldsResult fields = ensureFields(def);
             List<String> indexedFields = ensureIndexes(def);
 
-            log.info("[SP-Provision] {} list '{}' with {} new fields, {} new indexes",
-                    alreadyExisted ? "Updated" : "Created", def.title, addedFields.size(), indexedFields.size());
+            log.info("[SP-Provision] {} list '{}' with {} new fields ({} failed), {} new indexes",
+                    alreadyExisted ? "Updated" : "Created", def.title,
+                    fields.added().size(), fields.failed().size(), indexedFields.size());
             result.put("success", true);
             result.put("alreadyExisted", alreadyExisted);
-            result.put("fieldsAdded", addedFields);
+            result.put("fieldsAdded", fields.added());
+            result.put("fieldsFailed", fields.failed());
             result.put("fieldsIndexed", indexedFields);
-            result.put("message", (alreadyExisted ? "Updated" : "Created") + " with " + addedFields.size() + " new fields, " + indexedFields.size() + " new indexes");
+            String fieldsMsg = fields.added().size() + " new fields"
+                    + (fields.failed().isEmpty() ? "" : " (" + fields.failed().size() + " failed)");
+            result.put("message", (alreadyExisted ? "Updated" : "Created")
+                    + " with " + fieldsMsg + ", " + indexedFields.size() + " new indexes");
         } catch (Exception e) {
             log.error("[SP-Provision] Failed to provision '{}': {}", def.title, e.getMessage());
             result.put("success", false);
@@ -86,19 +91,24 @@ public class SharePointListProvisioner {
         List<String> updated = new ArrayList<>();
         Map<String, String> errors = new LinkedHashMap<>();
 
+        Map<String, Map<String, String>> fieldFailures = new LinkedHashMap<>();
         for (ListDefinition def : getAllListDefinitions()) {
             try {
                 if (spAccess.listExists(def.title)) {
-                    List<String> addedFields = ensureFields(def);
+                    EnsureFieldsResult fields = ensureFields(def);
                     List<String> indexedFields = ensureIndexes(def);
-                    log.info("[SP-Provision] Updated list '{}' with {} new fields, {} new indexes", def.title, addedFields.size(), indexedFields.size());
+                    log.info("[SP-Provision] Updated list '{}' with {} new fields ({} failed), {} new indexes",
+                            def.title, fields.added().size(), fields.failed().size(), indexedFields.size());
                     updated.add(def.title);
+                    if (!fields.failed().isEmpty()) fieldFailures.put(def.title, fields.failed());
                 } else {
                     spAccess.createList(def.title);
-                    ensureFields(def);
+                    EnsureFieldsResult fields = ensureFields(def);
                     ensureIndexes(def);
-                    log.info("[SP-Provision] Created list '{}' with {} fields", def.title, def.fields.size());
+                    log.info("[SP-Provision] Created list '{}' with {} fields ({} failed)",
+                            def.title, fields.added().size(), fields.failed().size());
                     created.add(def.title);
+                    if (!fields.failed().isEmpty()) fieldFailures.put(def.title, fields.failed());
                 }
             } catch (Exception e) {
                 log.error("[SP-Provision] Failed to provision '{}': {}", def.title, e.getMessage());
@@ -110,9 +120,11 @@ public class SharePointListProvisioner {
         summary.put("created", created);
         summary.put("updated", updated);
         summary.put("errors", errors);
+        summary.put("fieldFailures", fieldFailures);
         summary.put("totalCreated", created.size());
         summary.put("totalUpdated", updated.size());
         summary.put("totalErrors", errors.size());
+        summary.put("totalFieldFailures", fieldFailures.values().stream().mapToInt(Map::size).sum());
         return summary;
     }
 
@@ -213,6 +225,8 @@ public class SharePointListProvisioner {
                 list("SDS",
                         text("PwaId"), note("Names"), note("Locations"), text("Status"),
                         text("BookNumber"), text("Section"), note("Notes"),
+                        // eBinder identity — must round-trip so push→pull preserves the match key.
+                        text("SourceId"), text("Manufacturer"), text("SourceRevisionDate"),
                         text("ProcessedByName"), text("ProcessedByEmail"),
                         text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone")),
 
@@ -316,17 +330,27 @@ public class SharePointListProvisioner {
         }
     }
 
-    private List<String> ensureFields(ListDefinition def) {
-        List<String> addedFields = new ArrayList<>();
+    /** Result of a per-list ensureFields pass — split into successes and per-field failures so a
+     *  single bad field can't hide the rest. {@code failed} is keyed by field name → error message. */
+    private record EnsureFieldsResult(List<String> added, Map<String, String> failed) {}
+
+    private EnsureFieldsResult ensureFields(ListDefinition def) {
+        List<String> added = new ArrayList<>();
+        Map<String, String> failed = new LinkedHashMap<>();
         for (FieldDef field : def.fields) {
-            if (spAccess.fieldExists(def.title, field.name)) {
-                continue;
+            try {
+                if (spAccess.fieldExists(def.title, field.name)) continue;
+                addField(def.title, field);
+                spAccess.addFieldToDefaultView(def.title, field.name);
+                added.add(field.name);
+                log.info("[SP-Provision] Added field '{}' to '{}'", field.name, def.title);
+            } catch (Exception e) {
+                String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                failed.put(field.name, msg);
+                log.warn("[SP-Provision] Failed to add field '{}' to '{}': {}", field.name, def.title, msg);
             }
-            addField(def.title, field);
-            spAccess.addFieldToDefaultView(def.title, field.name);
-            addedFields.add(field.name);
         }
-        return addedFields;
+        return new EnsureFieldsResult(added, failed);
     }
 
     private static ListDefinition list(String title, FieldDef... fields) {

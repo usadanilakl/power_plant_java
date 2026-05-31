@@ -246,6 +246,11 @@ public class SdsChemicalSharePointAdapter {
         dto.setBookNumber(parseInteger(item.path("BookNumber").asText(null)));
         dto.setSectionNumber(parseInteger(item.path("Section").asText(null)));
         dto.setNotes(item.path("Notes").asText(null));
+        // Source identity — without these, push→pull loses the eBinder identity and re-seeding
+        // creates duplicates because the upsert key (sourceId) comes back null.
+        dto.setSourceId(item.path("SourceId").asText(null));
+        dto.setManufacturer(item.path("Manufacturer").asText(null));
+        dto.setSourceRevisionDate(item.path("SourceRevisionDate").asText(null));
         dto.setProcessedByName(item.path("ProcessedByName").asText(null));
         dto.setProcessedByEmail(item.path("ProcessedByEmail").asText(null));
         dto.setSubmitterName(item.path("SubmitterName").asText(null));
@@ -265,6 +270,9 @@ public class SdsChemicalSharePointAdapter {
         dto.setBookNumber(parseInteger(str(map, "BookNumber")));
         dto.setSectionNumber(parseInteger(str(map, "Section")));
         dto.setNotes(str(map, "Notes"));
+        dto.setSourceId(str(map, "SourceId"));
+        dto.setManufacturer(str(map, "Manufacturer"));
+        dto.setSourceRevisionDate(str(map, "SourceRevisionDate"));
         dto.setProcessedByName(str(map, "ProcessedByName"));
         dto.setProcessedByEmail(str(map, "ProcessedByEmail"));
         dto.setSubmitterName(str(map, "SubmitterName"));
@@ -283,6 +291,11 @@ public class SdsChemicalSharePointAdapter {
         map.put("BookNumber", dto.getBookNumber() != null ? dto.getBookNumber().toString() : "");
         map.put("Section", dto.getSectionNumber() != null ? dto.getSectionNumber().toString() : "");
         map.put("Notes", orEmpty(dto.getNotes()));
+        // Source identity must round-trip through SP — without these, pulling back from SP loses
+        // the eBinder match key (sourceId) and re-seeding can't dedup → creates duplicate rows.
+        map.put("SourceId", orEmpty(dto.getSourceId()));
+        map.put("Manufacturer", orEmpty(dto.getManufacturer()));
+        map.put("SourceRevisionDate", orEmpty(dto.getSourceRevisionDate()));
         map.put("ProcessedByName", orEmpty(dto.getProcessedByName()));
         map.put("ProcessedByEmail", orEmpty(dto.getProcessedByEmail()));
         map.put("SubmitterName", orEmpty(dto.getSubmitterName()));

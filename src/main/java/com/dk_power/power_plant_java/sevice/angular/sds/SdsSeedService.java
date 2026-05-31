@@ -48,10 +48,19 @@ public class SdsSeedService {
     /** One eBinder catalog row (the website's record for a chemical). */
     public record CatalogRow(String sourceId, String name, String manufacturer, String revisionDate) {}
 
+    /** Synthetic sourceId for book entries that had no eBinder match at seed time. Stable per slot
+     *  so re-seeding is idempotent; numeric eBinder Document IDs can never collide with these. When
+     *  an operator manually maps such a chemical to an eBinder candidate, this is swapped for the
+     *  real Document ID via {@code POST /ng/sds-chemicals/{id}/match}. */
+    public static String bookOnlySourceId(int book, int section) {
+        return "BOOK-" + book + "-" + section;
+    }
+
     /**
-     * Seed the inventory from the curated match map: every matched book slot becomes a Filed
-     * chemical (eBinder names/manufacturer/revision + Book/Section), no PDF. Idempotent — re-running
-     * upserts by sourceId. Records reach SharePoint via the hub outbound sweep.
+     * Seed the inventory from the curated match map. Every book slot becomes a Filed chemical, no
+     * PDF — matched slots get eBinder metadata + the real Document ID; unmatched slots get a synthetic
+     * {@code BOOK-{book}-{section}} sourceId and surface later in the gap report's "missing from
+     * eBinder" category for manual matching. Idempotent.
      */
     public SdsSeedReportDto seed() {
         Map<String, CatalogRow> catalog = loadCatalog();
@@ -83,16 +92,25 @@ public class SdsSeedService {
         }
 
         for (JsonNode u : root.path("unmatched")) {
-            report.getUnmatchedBookEntries().add(String.format("%s (Book %d / Section %d)",
-                    u.path("name").asText(), u.path("book").asInt(), u.path("section").asInt()));
+            Integer book = u.path("book").isMissingNode() ? null : u.path("book").asInt();
+            Integer section = u.path("section").isMissingNode() ? null : u.path("section").asInt();
+            if (book == null || section == null) continue;
+            SdsImportItemDto item = new SdsImportItemDto();
+            item.setSourceItemId(bookOnlySourceId(book, section));
+            item.setNames(u.path("name").asText());
+            item.setBookNumber(book);
+            item.setSectionNumber(section);
+            // no manufacturer / revisionDate / PDF — the user will set these by matching to eBinder
+            items.add(item);
+            report.setBookOnlyCount(report.getBookOnlyCount() + 1);
         }
-        report.setUnmatchedCount(report.getUnmatchedBookEntries().size());
 
         SdsImportReportDto imported = chemicalService.importFromSource(items);
         report.setCreated(imported.getCreated());
         report.setUpdated(imported.getUpdated());
-        log.info("[SDS] Seed complete: {} matched slots → {} created, {} updated; {} unmatched book entries",
-                report.getMatchedSlots(), report.getCreated(), report.getUpdated(), report.getUnmatchedCount());
+        log.info("[SDS] Seed complete: {} matched + {} book-only slots → {} created, {} updated",
+                report.getMatchedSlots(), report.getBookOnlyCount(),
+                report.getCreated(), report.getUpdated());
         return report;
     }
 
@@ -127,14 +145,24 @@ public class SdsSeedService {
 
         java.util.Set<String> dbSourceIds = new java.util.HashSet<>();
         for (SdsChemical c : active) {
-            if (c.getSourceId() != null && !c.getSourceId().isBlank()) dbSourceIds.add(c.getSourceId());
+            String sid = c.getSourceId();
+            if (sid != null && !sid.isBlank()) dbSourceIds.add(sid);
+
+            String name = SdsChemicalMapper.primaryName(c.getNames());
 
             boolean hasPdf = !attachmentRepo
                     .findByEntityTypeAndEntityId(SdsChemicalMapper.ENTITY_TYPE, c.getId()).isEmpty();
             if (!hasPdf) {
                 report.getMissingPdf().add(new SdsGapReportDto.Gap(
-                        c.getSourceId(), SdsChemicalMapper.primaryName(c.getNames()),
-                        c.getBookNumber(), c.getSectionNumber()));
+                        c.getId(), sid, name, c.getBookNumber(), c.getSectionNumber()));
+            }
+
+            // Missing from eBinder: a DB record whose sourceId isn't in the live catalog.
+            // Naturally catches book-only seed records (BOOK-x-y synthetic ids) AND chemicals that
+            // were removed from the eBinder since the last scrape.
+            if (sid != null && !sid.isBlank() && !catalog.containsKey(sid)) {
+                report.getMissingFromEbinder().add(new SdsGapReportDto.Gap(
+                        c.getId(), sid, name, c.getBookNumber(), c.getSectionNumber()));
             }
         }
 
@@ -142,27 +170,6 @@ public class SdsSeedService {
             if (!dbSourceIds.contains(e.getKey())) {
                 report.getMissingFromDb().add(new SdsGapReportDto.Gap(e.getKey(), e.getValue(), null, null));
             }
-        }
-
-        // Unmatched book entries: from the curated bundle, minus any slot whose Book/Section already
-        // holds a DB record (i.e., the user has manually matched it).
-        java.util.Set<String> filledAddresses = new java.util.HashSet<>();
-        for (SdsChemical c : active) {
-            if (c.getBookNumber() != null && c.getSectionNumber() != null) {
-                filledAddresses.add(c.getBookNumber() + "/" + c.getSectionNumber());
-            }
-        }
-        try {
-            JsonNode bookMap = loadBookMap();
-            for (JsonNode u : bookMap.path("unmatched")) {
-                Integer book = u.path("book").isMissingNode() ? null : u.path("book").asInt();
-                Integer section = u.path("section").isMissingNode() ? null : u.path("section").asInt();
-                if (book != null && section != null && filledAddresses.contains(book + "/" + section)) continue;
-                report.getUnmatchedBookEntries().add(new SdsGapReportDto.UnmatchedBookEntry(
-                        u.path("name").asText(), book, section));
-            }
-        } catch (Exception ex) {
-            log.warn("[SDS] gap report: failed to load unmatched book entries: {}", ex.getMessage());
         }
 
         return report;

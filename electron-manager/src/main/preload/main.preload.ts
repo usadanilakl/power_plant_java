@@ -46,7 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sdsScrapeRun: (opts?: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_RUN, opts),
   sdsGapReport: (opts?: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_GAP_REPORT, opts),
   sdsScrapeAbort: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_ABORT),
-  sdsMatchUnmatched: (item: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_MATCH_UNMATCHED, item),
+  sdsMatchChemical: (payload: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_MATCH_CHEMICAL, payload),
   sdsClearPdfs: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_CLEAR_PDFS),
   sdsScrapeGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_STATUS),
   sdsScrapeGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_CONFIG),
@@ -187,11 +187,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gateLogSaveConfig: (config: any): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_GATE_LOG_SAVE_CONFIG, config),
   gateLogPrint: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_GATE_LOG_PRINT),
+  gateLogGetContractorDirectory: (): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_GATE_LOG_GET_CONTRACTOR_DIRECTORY),
   onGateLogPeopleUpdated: (callback: () => void) => {
     const sub = () => callback();
     ipcRenderer.on(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub);
     return () => { ipcRenderer.removeListener(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub); };
   },
+
+  // Contractors
+  contractorsGetLive: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_GET_LIVE),
+  contractorsPushToBackend: (): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_CONTRACTORS_PUSH_TO_BACKEND),
+  contractorsScan: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_SCAN),
+  contractorsListReports: (status?: string): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_CONTRACTORS_LIST_REPORTS, status),
+  contractorsAcceptReport: (id: number): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_CONTRACTORS_ACCEPT_REPORT, id),
+  contractorsRejectReport: (id: number): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_CONTRACTORS_REJECT_REPORT, id),
 
   // WebView AMS — Excel report scraper
   webViewAmsGetReports: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_REPORTS),

@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.sds.SdsGapReportDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportItemDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportReportDto;
 import com.dk_power.power_plant_java.dto.sds.SdsSeedReportDto;
+import com.dk_power.power_plant_java.dto.sds.SdsSyncReportDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
@@ -72,8 +73,8 @@ public class NgSdsChemicalController {
         try {
             SdsSeedReportDto report = seedService.seed();
             return ResponseEntity.ok(new NgApiResponse<>(report,
-                    report.getCreated() + " created, " + report.getUpdated() + " updated, "
-                    + report.getUnmatchedCount() + " unmatched book entries"));
+                    report.getCreated() + " created, " + report.getUpdated() + " updated ("
+                    + report.getMatchedSlots() + " matched + " + report.getBookOnlyCount() + " book-only)"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Seed failed: " + e.getMessage()));
         }
@@ -93,6 +94,56 @@ public class NgSdsChemicalController {
                     + report.getMissingPdf().size() + " missing PDFs"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Gap report failed: " + e.getMessage()));
+        }
+    }
+
+    /** Admin: push every local chemical + its attachments to SharePoint (create-or-update). */
+    @PostMapping("/push-all-to-sp")
+    public ResponseEntity<NgApiResponse<SdsSyncReportDto>> pushAllToSharePoint() {
+        try {
+            SdsSyncReportDto r = service.pushAllToSharePoint();
+            return ResponseEntity.ok(new NgApiResponse<>(r,
+                    r.getChemicalsCreated() + " created, " + r.getChemicalsUpdated() + " updated, "
+                    + r.getAttachmentsAdded() + " attachments pushed (" + r.getErrors().size() + " errors)"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Push failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin: pull every chemical (and its attachments) from SharePoint and replace local state.
+     * Goes through {@code repo.save()} so field-level sync events fire — the hub propagates the
+     * upsert to every other client (just like seeding). Attachments are saved unsynced so the
+     * AttachmentSyncHandler relays them through the hub to other clients.
+     */
+    @PostMapping("/pull-all-from-sp")
+    public ResponseEntity<NgApiResponse<SdsSyncReportDto>> pullAllFromSharePoint() {
+        try {
+            SdsSyncReportDto r = service.pullAllFromSharePoint();
+            return ResponseEntity.ok(new NgApiResponse<>(r,
+                    r.getChemicalsCreated() + " created, " + r.getChemicalsUpdated() + " updated, "
+                    + r.getAttachmentsAdded() + " attachments pulled — hub will propagate to other clients ("
+                    + r.getErrors().size() + " errors)"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Pull failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin: soft-delete every local SDS chemical. The save fires field-level sync events for
+     * each row — the hub broadcasts the delete to every other client and queues SharePoint
+     * cleanup via {@code SdsOutboundSharePointSync}. Mirrors how seeding propagates, just
+     * in reverse.
+     */
+    @PostMapping("/clear-all")
+    public ResponseEntity<NgApiResponse<SdsSyncReportDto>> clearAll() {
+        try {
+            SdsSyncReportDto r = service.clearAll();
+            return ResponseEntity.ok(new NgApiResponse<>(r,
+                    r.getChemicalsDeleted() + " chemicals soft-deleted + " + r.getAttachmentsRemoved()
+                    + " attachments removed — hub will propagate to other clients + SharePoint"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Clear failed: " + e.getMessage()));
         }
     }
 
@@ -181,6 +232,27 @@ public class NgSdsChemicalController {
             return ResponseEntity.ok(new NgApiResponse<>(service.save(dto), "SDS chemical updated"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Bind a book-only chemical (synthetic BOOK-N-S sourceId) to a real eBinder Document ID, OR
+     * move a removed-from-eBinder chemical to a new Document ID. Updates the row in place — same
+     * DB id, same Book/Section, names optionally merged. The next close-gaps scrape attaches the
+     * PDF for the new sourceId.
+     */
+    @PostMapping("/{id}/match")
+    public ResponseEntity<NgApiResponse<SdsChemicalDto>> matchToSource(
+            @PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            String newSourceId = body.get("sourceItemId");
+            if (newSourceId == null || newSourceId.isBlank()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "sourceItemId is required"));
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    service.matchToSource(id, newSourceId, body.get("names")), "Matched"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Match failed: " + e.getMessage()));
         }
     }
 

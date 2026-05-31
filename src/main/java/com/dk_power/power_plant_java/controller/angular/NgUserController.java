@@ -80,6 +80,9 @@ public class NgUserController {
                 .isActive(true)
                 .windowsUsername(request.windowsUsername())
                 .phone(request.phone())
+                .secondaryPhone(request.secondaryPhone())
+                .title(request.title())
+                .emergencyContactJson(request.emergencyContactJson())
                 .company(request.company())
                 .signaturePath(request.signaturePath())
                 .build();
@@ -115,6 +118,9 @@ public class NgUserController {
                 }
                 if (request.permissionLevel() != null) user.setPermissionLevel(request.permissionLevel());
                 if (request.phone() != null) user.setPhone(request.phone());
+                if (request.secondaryPhone() != null) user.setSecondaryPhone(request.secondaryPhone());
+                if (request.title() != null) user.setTitle(request.title());
+                if (request.emergencyContactJson() != null) user.setEmergencyContactJson(request.emergencyContactJson());
                 if (request.company() != null) user.setCompany(request.company());
                 if (request.signaturePath() != null) user.setSignaturePath(request.signaturePath());
 
@@ -235,12 +241,14 @@ public class NgUserController {
     public record CreateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, String windowsUsername,
-        String phone, String company, String signaturePath
+        String phone, String secondaryPhone, String title, String emergencyContactJson,
+        String company, String signaturePath
     ) {}
 
     public record UpdateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, Boolean isActive, String windowsUsername,
-        String permissionLevel, String phone, String company, String signaturePath
+        String permissionLevel, String phone, String secondaryPhone, String title,
+        String emergencyContactJson, String company, String signaturePath
     ) {}
 }

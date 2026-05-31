@@ -79,19 +79,22 @@ export class WebViewSdsManager {
   }
 
   /**
-   * Manually match an unmatched book entry to an eBinder source item: posts ONE
-   * SdsImportItemDto to /import (which upserts by sourceId, sets Filed since Book/Section is set,
-   * no PDF). Close-gaps later attaches the PDF for this sourceId.
+   * Manually match an existing DB chemical (book-only synthetic sourceId, or one removed from the
+   * live eBinder) to a real eBinder Document ID — updates the row in place via
+   * {@code POST /ng/sds-chemicals/{id}/match}. The next close-gaps scrape attaches the PDF.
    */
-  public async matchUnmatched(item: {
+  public async matchChemical(payload: {
+    chemicalId: number;
     sourceItemId: string;
-    names: string;
-    bookNumber: number;
-    sectionNumber: number;
+    names?: string;
   }): Promise<any> {
     const port = DEFAULT_SPRING_BOOT_CONFIG.port;
     if (!(await this.springHealthy(port))) throw new Error('Spring Boot unavailable');
-    const res = await this.postJson(port, '/ng/sds-chemicals/import', [item]);
+    const res = await this.postJson(
+      port,
+      `/ng/sds-chemicals/${payload.chemicalId}/match`,
+      { sourceItemId: payload.sourceItemId, names: payload.names ?? '' }
+    );
     return res?.responseData ?? null;
   }
 

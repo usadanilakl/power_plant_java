@@ -53,6 +53,8 @@ public class EntityTableRegistry {
         // Users
         Map.entry("User", "users"),                // @Table(name = "users")
         Map.entry("Role", "roles"),                // @Table(name = "roles")
+        Map.entry("ShiftDay", "shift_days"),       // @Table(name = "shift_days")
+        Map.entry("ContractorChangeReport", "contractor_change_reports"),
 
         // ESP
         Map.entry("EspDevice", "esp_devices"),     // @Table(name = "esp_devices")
@@ -125,6 +127,8 @@ public class EntityTableRegistry {
         "Category",
         "Value",
         "User",
+        "ShiftDay",
+        "ContractorChangeReport",
         "FileObject",
         "EngraverTemplate",
         // Tier 2: Equipment & spatial (depend on Value/Category)
