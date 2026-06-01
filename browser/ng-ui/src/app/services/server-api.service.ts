@@ -730,7 +730,9 @@ export class ServerApiService {
 
   // ====================== SDS Audit ======================
 
-  /** Active SDS chemicals (Incoming + Pending + Filed) for the audit list. */
+  /** Active SDS chemicals (Incoming + Pending + Filed) for the audit list.
+   *  Swallows errors → empty array. For the duplicate-check panel use
+   *  {@link getActiveSdsChemicalsOrThrow} so the GitHub Pages fallback can fire. */
   getActiveSdsChemicals(): Observable<any[]> {
     return this.http.get<{ responseData: any[] }>(
       `${this.baseUrl}/api/pwa/sds-chemical/active`
@@ -738,6 +740,17 @@ export class ServerApiService {
       timeout(15000),
       map(response => response.responseData || []),
       catchError(() => of([]))
+    );
+  }
+
+  /** Same as {@link getActiveSdsChemicals} but lets HTTP errors propagate, so callers can
+   *  fall back to the GitHub Pages snapshot (data/sds-chemicals.json) + localStorage cache. */
+  getActiveSdsChemicalsOrThrow(): Observable<any[]> {
+    return this.http.get<{ responseData: any[] }>(
+      `${this.baseUrl}/api/pwa/sds-chemical/active`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || [])
     );
   }
 

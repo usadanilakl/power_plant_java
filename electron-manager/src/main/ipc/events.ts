@@ -71,6 +71,7 @@ export const IPC_SDS_SCRAPE_RUN = 'sds-scrape:run';
 export const IPC_SDS_GAP_REPORT = 'sds-scrape:gap-report';
 export const IPC_SDS_SCRAPE_ABORT = 'sds-scrape:abort';
 export const IPC_SDS_MATCH_CHEMICAL = 'sds-scrape:match-chemical';
+export const IPC_SDS_EMAIL_GAP_REPORT = 'sds-scrape:email-gap-report';
 export const IPC_SDS_CLEAR_PDFS = 'sds-scrape:clear-pdfs';
 export const IPC_SDS_SCRAPE_GET_STATUS = 'sds-scrape:get-status';
 export const IPC_SDS_SCRAPE_GET_CONFIG = 'sds-scrape:get-config';

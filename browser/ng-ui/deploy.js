@@ -102,7 +102,8 @@ async function fetchLiveData() {
     'loto-points.json',
     'locations.json',
     'field-list-types.json',
-    'default-instruments.json'
+    'default-instruments.json',
+    'sds-chemicals.json'
   ];
 
   for (const file of ALL_DATA_FILES) {

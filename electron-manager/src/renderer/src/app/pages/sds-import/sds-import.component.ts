@@ -65,6 +65,13 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
             }
           </div>
 
+          <div class="actions" style="margin-top: 8px;">
+            <button class="btn" (click)="openEmailDialog()"
+                    title="Email this report to someone. PDFs for every 'Missing on eBinder' chemical are attached so the recipient can upload them to the eBinder.">
+              Email Report
+            </button>
+          </div>
+
           @if (gap.missingFromEbinder.length) {
             <details class="list" open>
               <summary>Missing on eBinder, present in app ({{ gap.missingFromEbinder.length }})</summary>
@@ -125,6 +132,45 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
           </div>
         }
       </div>
+
+      <!-- Email Report dialog -->
+      @if (emailDialogOpen) {
+        <div class="modal-backdrop" (click)="closeEmailDialog()"></div>
+        <div class="modal-card">
+          <div class="modal-title">Email gap report</div>
+          <p class="muted">
+            Sends the report HTML. Every "missing on eBinder" chemical's local PDFs are attached
+            so the recipient can upload them to the eBinder. Last recipient is remembered for next time.
+          </p>
+          <label class="modal-label">To</label>
+          <input class="modal-input" type="email"
+                 [ngModel]="emailTo" (ngModelChange)="emailTo = $event"
+                 placeholder="recipient@plant.com"
+                 [disabled]="emailSending" />
+          <label class="modal-label">CC (optional)</label>
+          <input class="modal-input" type="text"
+                 [ngModel]="emailCc" (ngModelChange)="emailCc = $event"
+                 placeholder="comma-separated"
+                 [disabled]="emailSending" />
+          @if (emailError) { <div class="error-banner">{{ emailError }}</div> }
+          @if (emailResult && emailResult.sent) {
+            <div class="info-banner">
+              {{ emailResult.message }}
+              @if (emailResult.attachmentsSkipped > 0) {
+                <div class="hint">{{ emailResult.attachmentsSkipped }} attachment(s) skipped (size cap).</div>
+              }
+            </div>
+          }
+          <div class="modal-actions">
+            <button class="btn" (click)="closeEmailDialog()" [disabled]="emailSending">
+              {{ emailResult?.sent ? 'Close' : 'Cancel' }}
+            </button>
+            <button class="btn btn-primary" (click)="sendEmail()" [disabled]="emailSending || !emailTo.trim()">
+              {{ emailSending ? 'Sending…' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      }
 
       <!-- Step 2: close gaps -->
       @if (gap) {
@@ -209,6 +255,16 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
     .progress-banner { margin: 0 0 12px; font-weight: 600; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
     .actions { display: flex; gap: 8px; align-items: center; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 99; }
+    .modal-card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: var(--surface, #1f2230); border: 1px solid var(--border, #333); border-radius: 10px;
+      padding: 20px; width: min(480px, 92vw); z-index: 100; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+    .modal-title { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+    .modal-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--text-secondary, #aaa); margin: 10px 0 4px; }
+    .modal-input { width: 100%; padding: 8px 10px; background: var(--surface-2, #2a2d3a); color: inherit;
+      border: 1px solid var(--border, #333); border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   `]
 })
 export class SdsImportComponent {
@@ -232,6 +288,19 @@ export class SdsImportComponent {
   get matching() { return this.state.matching(); }
   get matchError() { return this.state.matchError(); }
   get progressText() { return this.state.progressText(); }
+
+  get emailDialogOpen() { return this.state.emailDialogOpen(); }
+  get emailTo() { return this.state.emailTo(); }
+  set emailTo(v: string) { this.state.emailTo.set(v); }
+  get emailCc() { return this.state.emailCc(); }
+  set emailCc(v: string) { this.state.emailCc.set(v); }
+  get emailSending() { return this.state.emailSending(); }
+  get emailError() { return this.state.emailError(); }
+  get emailResult() { return this.state.emailResult(); }
+
+  openEmailDialog() { return this.state.openEmailDialog(); }
+  closeEmailDialog() { return this.state.closeEmailDialog(); }
+  sendEmail() { return this.state.sendEmail(); }
 
   // matchPick is ephemeral UI state for the per-row dropdowns — the service holds it as a signal
   // but we expose the underlying Record for direct ngModel two-way binding via index access. Any

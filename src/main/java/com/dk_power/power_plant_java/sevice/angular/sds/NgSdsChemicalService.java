@@ -12,9 +12,11 @@ import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.sds.SdsChemicalRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.SdsChemicalSharePointAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,13 @@ public class NgSdsChemicalService {
     private final PermitAttachmentRepo attachmentRepo;
     private final SdsChemicalSharePointAdapter spAdapter;
     private final SyncConfig syncConfig;
+    private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
+
+    /** Refresh the GitHub Pages snapshot the PWA falls back to when the hub is offline. */
+    private void publishToPwaSnapshot() {
+        WorkAreaGitHubPublisher publisher = gitHubPublisherProvider.getIfAvailable();
+        if (publisher != null) publisher.publishSdsChemicals();
+    }
 
     public List<SdsChemicalDto> getAll() {
         return mapper.convertToDtos(repo.findAll());
@@ -115,6 +124,7 @@ public class NgSdsChemicalService {
                 log.warn("[SDS] SP update failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
             }
         }
+        publishToPwaSnapshot();
         return mapper.convertToDto(entity);
     }
 
@@ -138,6 +148,7 @@ public class NgSdsChemicalService {
                 log.warn("[SDS] SP update after match failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
             }
         }
+        publishToPwaSnapshot();
         return mapper.convertToDto(entity);
     }
 
@@ -154,6 +165,7 @@ public class NgSdsChemicalService {
                 log.warn("[SDS] SP status change failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
             }
         }
+        publishToPwaSnapshot();
         return mapper.convertToDto(entity);
     }
 
@@ -179,6 +191,7 @@ public class NgSdsChemicalService {
             uploadAttachment(entity.getId(), fileName, contentType, base64);
             created++;
         }
+        if (created > 0) publishToPwaSnapshot();
         return created;
     }
 
@@ -263,6 +276,7 @@ public class NgSdsChemicalService {
                 report.getMissingFromSource().add(SdsChemicalMapper.primaryName(c.getNames()));
             }
         }
+        if (report.getCreated() > 0 || report.getUpdated() > 0) publishToPwaSnapshot();
         return report;
     }
 
@@ -338,7 +352,13 @@ public class NgSdsChemicalService {
      * Admin helper: push every local SDS chemical to SharePoint — create rows that don't yet
      * exist (capturing the new SP id) and update those that do, then replace each item's SP
      * attachments with the local ones (delete-all-then-re-add to avoid duplicate-filename 409s).
-     * Per-row errors are logged and added to the report so one bad row doesn't abort the rest.
+     * <p>
+     * <b>Stale-id recovery:</b> if a local chemical has a {@code sharepointId} but the matching SP
+     * row no longer exists (e.g. someone deleted the list and recreated it), the update will fail
+     * — we catch that, clear the dead id, create a fresh SP row, and rebind. So this helper works
+     * as a one-shot "make SharePoint match local" even when the SP list is empty or out of sync.
+     * Per-row errors after that fallback are logged and added to the report so one bad row doesn't
+     * abort the rest.
      */
     public SdsSyncReportDto pushAllToSharePoint() {
         SdsSyncReportDto rep = new SdsSyncReportDto();
@@ -351,8 +371,23 @@ public class NgSdsChemicalService {
                     c = repo.save(c);
                     rep.setChemicalsCreated(rep.getChemicalsCreated() + 1);
                 } else {
-                    spAdapter.update(c.getSharepointId(), dto);
-                    rep.setChemicalsUpdated(rep.getChemicalsUpdated() + 1);
+                    try {
+                        spAdapter.update(c.getSharepointId(), dto);
+                        rep.setChemicalsUpdated(rep.getChemicalsUpdated() + 1);
+                    } catch (Exception updateEx) {
+                        // SP row is gone (list reset, manual delete, etc.) — rebind by creating a fresh one.
+                        log.info("[SDS] push: update failed for spId={} ({}), recreating", c.getSharepointId(), updateEx.getMessage());
+                        String staleId = c.getSharepointId();
+                        c.setSharepointId(null);
+                        dto.setSharepointId(null);
+                        String newSpId = spAdapter.create(dto);
+                        if (newSpId == null || newSpId.isBlank()) {
+                            throw new RuntimeException("recreate after stale id " + staleId + " returned no SP id", updateEx);
+                        }
+                        c.setSharepointId(newSpId);
+                        c = repo.save(c);
+                        rep.setChemicalsCreated(rep.getChemicalsCreated() + 1);
+                    }
                 }
                 // Replace attachments: delete-all-then-re-push to avoid SP's duplicate filename refusal.
                 List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
@@ -468,6 +503,7 @@ public class NgSdsChemicalService {
         log.info("[SDS] pullAllFromSharePoint: +{} created, ~{} updated, +{} attachments (replaced {})",
                 rep.getChemicalsCreated(), rep.getChemicalsUpdated(),
                 rep.getAttachmentsAdded(), rep.getAttachmentsRemoved());
+        if (rep.getChemicalsCreated() > 0 || rep.getChemicalsUpdated() > 0) publishToPwaSnapshot();
         return rep;
     }
 
@@ -502,6 +538,7 @@ public class NgSdsChemicalService {
         }
         log.info("[SDS] clearAll: soft-deleted {} chemical(s), removed {} attachment(s); hub will propagate to clients + SP",
                 rep.getChemicalsDeleted(), rep.getAttachmentsRemoved());
+        if (rep.getChemicalsDeleted() > 0) publishToPwaSnapshot();
         return rep;
     }
 
@@ -554,6 +591,7 @@ public class NgSdsChemicalService {
         repo.findById(id).ifPresent(entity -> {
             entity.setDeleted(true);
             repo.save(entity);
+            publishToPwaSnapshot();
         });
     }
 

@@ -1,14 +1,19 @@
 package com.dk_power.power_plant_java.controller.angular;
 
+import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.users.UserDto;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgUserService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +35,8 @@ public class NgUserController {
     private final UserRepo userRepo;
     private final UniversalMapper mapper;
     private final PasswordEncoder passwordEncoder;
+    private final NgUserService ngUserService;
+    private final EntityManager entityManager;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<UserDto>>> getPaginated(
@@ -180,6 +187,68 @@ public class NgUserController {
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
             }
         ));
+    }
+
+    /**
+     * Shared-table-compatible search endpoint. Mirrors {@code NgLotoPointController.searchFiles}
+     * — same {@link SearchCriteria} wire shape so the frontend can reuse {@code app-table}.
+     */
+    @PostMapping("/search")
+    public ResponseEntity<NgApiResponse<Page<UserDto>>> search(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "name";
+            String sortDirection = criteria.getSortDirection() != null
+                    ? criteria.getSortDirection().toLowerCase()
+                    : "asc";
+
+            // Column-filter mode uses AND across columns; global mode uses OR-of-fields by default.
+            boolean andLogic = criteria.getType() == SearchCriteria.SearchType.COLUMN;
+
+            Page<UserDto> results = ngUserService.complexSearch(
+                    criteria, page - 1, pageSize, sortColumn, sortDirection, andLogic);
+
+            Page<UserDto> withRoles = results.map(this::injectRoles);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(withRoles, "Users search completed"));
+        } catch (Exception e) {
+            log.error("[Users] search failed", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/unique-values/{column}/filtered")
+    public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValuesOfColumn(
+            @PathVariable String column,
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize,
+            @RequestParam(defaultValue = "true") boolean andLogicEnabled) {
+        try {
+            Pageable pageable = PageRequest.of(page - 1, pageSize);
+            Page<String> values = ngUserService.getFilteredUniqueValuesOfColumn(
+                    entityManager, userRepo, User.class, column, criteria, pageable, andLogicEnabled);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(values, "Filtered unique values retrieved"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Users] unique values failed", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Echo the parsed CSV {@code role} into the {@code roles} field so the wire shape stays consistent. */
+    private UserDto injectRoles(UserDto dto) {
+        if (dto != null && dto.getRole() != null && dto.getRoles() == null) {
+            dto.setRoles(java.util.Arrays.stream(dto.getRole().split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).toList());
+        }
+        return dto;
     }
 
     @PostMapping("/seed-plant-users")

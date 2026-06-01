@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sdsGapReport: (opts?: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_GAP_REPORT, opts),
   sdsScrapeAbort: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_ABORT),
   sdsMatchChemical: (payload: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_MATCH_CHEMICAL, payload),
+  sdsEmailGapReport: (payload: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_EMAIL_GAP_REPORT, payload),
   sdsClearPdfs: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_CLEAR_PDFS),
   sdsScrapeGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_STATUS),
   sdsScrapeGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_SDS_SCRAPE_GET_CONFIG),

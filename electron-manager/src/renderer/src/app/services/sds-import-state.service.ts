@@ -4,7 +4,8 @@ import {
   SdsGap,
   SdsGapReport,
   SdsScrapeReport,
-  SdsMatchChemical
+  SdsMatchChemical,
+  SdsEmailGapReportResult
 } from './electron.service';
 
 /**
@@ -49,6 +50,56 @@ export class SdsImportStateService {
   matchPick = signal<Record<string, string>>({});
   matching = signal(false);
   matchError = signal('');
+
+  // Email Report — dialog state lives here so it survives navigation.
+  private static readonly EMAIL_RECIPIENT_KEY = 'sds_gap_report_email';
+  private static readonly EMAIL_CC_KEY = 'sds_gap_report_email_cc';
+  emailDialogOpen = signal(false);
+  emailTo = signal('');
+  emailCc = signal('');
+  emailSending = signal(false);
+  emailError = signal('');
+  emailResult = signal<SdsEmailGapReportResult | null>(null);
+
+  openEmailDialog(): void {
+    try {
+      this.emailTo.set(localStorage.getItem(SdsImportStateService.EMAIL_RECIPIENT_KEY) ?? '');
+      this.emailCc.set(localStorage.getItem(SdsImportStateService.EMAIL_CC_KEY) ?? '');
+    } catch { /* ignore */ }
+    this.emailError.set('');
+    this.emailResult.set(null);
+    this.emailDialogOpen.set(true);
+  }
+
+  closeEmailDialog(): void { this.emailDialogOpen.set(false); }
+
+  async sendEmail(): Promise<void> {
+    const to = this.emailTo().trim();
+    if (!to) { this.emailError.set('Recipient is required'); return; }
+    const cc = this.emailCc().trim();
+
+    this.emailSending.set(true);
+    this.emailError.set('');
+    this.emailResult.set(null);
+    try {
+      const res = await this.electron.sdsEmailGapReport({ to, cc: cc || undefined });
+      if (!res.success || !res.data) throw new Error(res.error || 'Email failed');
+      this.emailResult.set(res.data);
+      if (res.data.sent) {
+        try {
+          localStorage.setItem(SdsImportStateService.EMAIL_RECIPIENT_KEY, to);
+          if (cc) localStorage.setItem(SdsImportStateService.EMAIL_CC_KEY, cc);
+          else localStorage.removeItem(SdsImportStateService.EMAIL_CC_KEY);
+        } catch { /* ignore */ }
+      } else {
+        this.emailError.set(res.data.message || 'Email not sent');
+      }
+    } catch (err: any) {
+      this.emailError.set(err.message || 'Email failed');
+    } finally {
+      this.emailSending.set(false);
+    }
+  }
 
   private opts() {
     return { filterLocation: this.filterLocation(), showWindow: this.showWindow() };

@@ -37,6 +37,7 @@ import {
           <button (click)="syncPwaData('inventorytypes')" [disabled]="loading.pwaSync">Sync Inventory Types</button>
           <button (click)="syncPwaData('locations')" [disabled]="loading.pwaSync">Sync Locations</button>
           <button (click)="syncPwaData('lotopoints')" [disabled]="loading.pwaSync">Sync LOTO Points</button>
+          <button (click)="syncPwaData('sdschemicals')" [disabled]="loading.pwaSync">Sync SDS Chemicals</button>
         </div>
 
         <div class="error" *ngIf="errors.pwaSync">{{ errors.pwaSync }}</div>
@@ -660,7 +661,7 @@ export class AdminSyncComponent implements OnInit {
 
   // ==================== PWA Sync ====================
 
-  syncPwaData(target: 'all' | 'areas' | 'map' | 'categories' | 'fieldlisttypes' | 'inventorytypes' | 'locations' | 'lotopoints') {
+  syncPwaData(target: 'all' | 'areas' | 'map' | 'categories' | 'fieldlisttypes' | 'inventorytypes' | 'locations' | 'lotopoints' | 'sdschemicals') {
     const labels: Record<typeof target, string> = {
       all: 'all PWA work-request data',
       areas: 'PWA work areas and shape links',
@@ -669,7 +670,8 @@ export class AdminSyncComponent implements OnInit {
       fieldlisttypes: 'PWA field list types',
       inventorytypes: 'PWA inventory types',
       locations: 'PWA locations',
-      lotopoints: 'PWA LOTO points'
+      lotopoints: 'PWA LOTO points',
+      sdschemicals: 'PWA SDS chemicals'
     };
 
     if (!confirm(`Queue a publish for ${labels[target]}?`)) return;

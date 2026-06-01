@@ -28,6 +28,9 @@ Both lists are auto-provisioned via Admin > SharePoint tab. Verify columns.
 | BookNumber | Book Number | Single line of text |
 | Section | Section | Single line of text |
 | Notes | Notes | Multiple lines of text |
+| SourceId | Source ID | Single line of text |
+| Manufacturer | Manufacturer | Single line of text |
+| SourceRevisionDate | Source Revision Date | Single line of text |
 | ProcessedByName | Processed By Name | Single line of text |
 | ProcessedByEmail | Processed By Email | Single line of text |
 | SubmitterName | Submitter Name | Single line of text |
@@ -36,6 +39,10 @@ Both lists are auto-provisioned via Admin > SharePoint tab. Verify columns.
 
 `Title` (built-in) = the chemical's primary name (first line of `Names`).
 Attachments hold the SDS PDF.
+
+> **SourceId is the eBinder identity** (Document ID) and is essential for round-tripping
+> through SP without creating duplicates on re-seed. Manufacturer + SourceRevisionDate are
+> read-only metadata from the eBinder catalog.
 
 ### List "SDS Audit"
 
@@ -80,6 +87,9 @@ Hide `OldSnapshot` from the default view (Library Settings → Modify View).
     "BookNumber": "1",
     "Section": "4",
     "Notes": "",
+    "SourceId": "5005010",
+    "Manufacturer": "Acme Chemical Co.",
+    "SourceRevisionDate": "2024-08-15",
     "ProcessedByName": "John Smith",
     "ProcessedByEmail": "john@company.com",
     "SubmitterName": "John Smith",
@@ -169,7 +179,8 @@ Each sub-section below (5a–5f) describes what goes inside one of those cases.
    - List Name = **SDS**
    - For each column, set its value from `triggerBody()?['data']?['<Field>']`:
      `Title`, `PwaId`, `Names`, `Locations`, `Status`, `BookNumber`, `Section`,
-     `Notes`, `ProcessedByName`, `ProcessedByEmail`,
+     `Notes`, `SourceId`, `Manufacturer`, `SourceRevisionDate`,
+     `ProcessedByName`, `ProcessedByEmail`,
      `SubmitterName`, `SubmitterEmail`, `SubmitterPhone`
 
 2. Add **Set variable**.
@@ -212,6 +223,9 @@ Each sub-section below (5a–5f) describes what goes inside one of those cases.
   "BookNumber": "@{item()?['BookNumber']}",
   "Section": "@{item()?['Section']}",
   "Notes": "@{item()?['Notes']}",
+  "SourceId": "@{item()?['SourceId']}",
+  "Manufacturer": "@{item()?['Manufacturer']}",
+  "SourceRevisionDate": "@{item()?['SourceRevisionDate']}",
   "ProcessedByName": "@{item()?['ProcessedByName']}",
   "ProcessedByEmail": "@{item()?['ProcessedByEmail']}",
   "SubmitterName": "@{item()?['SubmitterName']}",

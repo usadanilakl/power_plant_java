@@ -2,10 +2,13 @@ package com.dk_power.power_plant_java.sevice.angular.permits;
 
 import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.sds.SdsChemical;
 import com.dk_power.power_plant_java.mappers.permits.WorkAreaMapper;
+import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaMapShapeRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
+import com.dk_power.power_plant_java.repository.sds.SdsChemicalRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +44,7 @@ public class WorkAreaGitHubPublisher {
         INVENTORY_TYPES,
         LOCATIONS,
         LOTO_POINTS,
+        SDS_CHEMICALS,
         ALL
     }
 
@@ -49,6 +53,7 @@ public class WorkAreaGitHubPublisher {
     private final WorkAreaMapper workAreaMapper;
     private final NgValueService valueService;
     private final LotoPointRepo lotoPointRepo;
+    private final SdsChemicalRepo sdsChemicalRepo;
     private final ObjectMapper objectMapper;
     private final GitHub gitHub;
 
@@ -109,6 +114,11 @@ public class WorkAreaGitHubPublisher {
         requestPublish(PublishTarget.LOTO_POINTS);
     }
 
+    @Async
+    public void publishSdsChemicals() {
+        requestPublish(PublishTarget.SDS_CHEMICALS);
+    }
+
     private void requestPublish(PublishTarget target) {
         if (testMode) {
             log.debug("[PWA Publisher] Skipping publish (test mode active)");
@@ -164,6 +174,12 @@ public class WorkAreaGitHubPublisher {
                     String lotoPointsJson = buildLotoPointsJson();
                     writeLotoPointsLocally(dataDir, lotoPointsJson);
                     pushLotoPointsToGitHub(lotoPointsJson);
+                }
+
+                if (shouldPublishSdsChemicals(targetToPublish)) {
+                    String sdsChemicalsJson = buildSdsChemicalsJson();
+                    writeSdsChemicalsLocally(dataDir, sdsChemicalsJson);
+                    pushSdsChemicalsToGitHub(sdsChemicalsJson);
                 }
 
                 if (shouldPublishMap(targetToPublish)) {
@@ -233,6 +249,10 @@ public class WorkAreaGitHubPublisher {
 
     private boolean shouldPublishLotoPoints(PublishTarget target) {
         return target == PublishTarget.ALL || target == PublishTarget.LOTO_POINTS;
+    }
+
+    private boolean shouldPublishSdsChemicals(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.SDS_CHEMICALS;
     }
 
     private String buildAreasJson() throws IOException {
@@ -371,6 +391,35 @@ public class WorkAreaGitHubPublisher {
         Files.writeString(dataDir.resolve("loto-points.json"), json);
     }
 
+    /**
+     * Snapshot of every active SDS chemical (Incoming + Pending + Filed) — the PWA's "Check existing
+     * chemicals" panel reads this when the hub is unreachable. Removed/deleted chemicals are skipped
+     * (the {@code @Where(deleted IS NOT TRUE)} clause filters out soft-deletes; the status filter
+     * keeps the snapshot lean and aligned with what the hub's {@code /active} endpoint returns).
+     */
+    private String buildSdsChemicalsJson() throws IOException {
+        List<SdsChemical> chemicals = sdsChemicalRepo.findByStatus_NameIn(
+                List.of("Incoming", "Pending", "Filed"));
+        List<Map<String, Object>> result = chemicals.stream()
+                .map(c -> {
+                    java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+                    map.put("id", c.getId());
+                    map.put("names", c.getNames() != null ? c.getNames() : "");
+                    map.put("primaryName", SdsChemicalMapper.primaryName(c.getNames()));
+                    map.put("locations", c.getLocations() != null ? c.getLocations() : "");
+                    map.put("bookNumber", c.getBookNumber());
+                    map.put("sectionNumber", c.getSectionNumber());
+                    map.put("statusName", c.getStatus() != null ? c.getStatus().getName() : "");
+                    return (Map<String, Object>) map;
+                })
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+    }
+
+    private void writeSdsChemicalsLocally(Path dataDir, String json) throws IOException {
+        Files.writeString(dataDir.resolve("sds-chemicals.json"), json);
+    }
+
     private void writeMapLocally(Path dataDir, byte[] imageBytes) throws IOException {
         if (imageBytes == null) {
             return;
@@ -437,6 +486,16 @@ public class WorkAreaGitHubPublisher {
             log.info("[PWA Publisher] GitHub repo {} updated for loto points", pwaGitHubRepo);
         } catch (Exception e) {
             log.error("[PWA Publisher] GitHub push failed for loto points (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushSdsChemicalsToGitHub(String json) {
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushTextFile(repo, "data/sds-chemicals.json", json);
+            log.info("[PWA Publisher] GitHub repo {} updated for SDS chemicals", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for SDS chemicals (local files still written): {}", e.getMessage(), e);
         }
     }
 

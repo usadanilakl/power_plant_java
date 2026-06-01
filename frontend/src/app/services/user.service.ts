@@ -93,4 +93,27 @@ export class UserService {
   getAllOptions(): Observable<SpringApiResponse<UserDto[]>> {
     return this.http.get<SpringApiResponse<UserDto[]>>(`${this.apiUrl}/all-options`);
   }
+
+  /**
+   * Paginated list of distinct values for one User column, with the current
+   * column/global filters applied as a base — the filter dropdown in
+   * {@code app-table} expects this shape.
+   */
+  getFilteredUniqueValuesOfColumn(
+    column: string,
+    criteria: SearchCriteria,
+    page: number = 1,
+    pageSize: number = 50,
+    andLogicEnabled: boolean = true,
+  ): Observable<SpringPaginatedResponse<string>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString())
+      .set('andLogicEnabled', andLogicEnabled.toString());
+    return this.http.post<SpringPaginatedResponse<string>>(
+      `${this.apiUrl}/unique-values/${column}/filtered`,
+      criteria,
+      { params },
+    );
+  }
 }

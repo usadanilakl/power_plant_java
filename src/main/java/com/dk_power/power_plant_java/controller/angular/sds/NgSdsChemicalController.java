@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.controller.angular.sds;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.sds.SdsChemicalDto;
 import com.dk_power.power_plant_java.dto.sds.SdsGapReportDto;
+import com.dk_power.power_plant_java.dto.sds.SdsGapReportEmailDto;
+import com.dk_power.power_plant_java.dto.sds.SdsGapReportEmailResultDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportItemDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportReportDto;
 import com.dk_power.power_plant_java.dto.sds.SdsSeedReportDto;
@@ -12,6 +14,7 @@ import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.sds.NgSdsChemicalService;
 import com.dk_power.power_plant_java.sevice.angular.sds.SdsAddressService;
+import com.dk_power.power_plant_java.sevice.angular.sds.SdsGapReportEmailService;
 import com.dk_power.power_plant_java.sevice.angular.sds.SdsSeedService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +33,7 @@ public class NgSdsChemicalController {
     private final NgSdsChemicalService service;
     private final SdsAddressService addressService;
     private final SdsSeedService seedService;
+    private final SdsGapReportEmailService gapReportEmailService;
     private final PermitAttachmentRepo attachmentRepo;
 
     /** Suggested filing address (latest book, next section) for a new chemical; user approves/edits. */
@@ -64,6 +68,23 @@ public class NgSdsChemicalController {
             return ResponseEntity.ok(new NgApiResponse<>(service.reconcileMissing(sourceIds), "Reconcile complete"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Email the gap report to a recipient with PDFs of every missing-from-eBinder chemical
+     * attached, so the recipient can upload them to the eBinder. Uses the scraped catalog from
+     * the request (same data the gap report panel just rendered) so the email matches the UI.
+     */
+    @PostMapping("/email-gap-report")
+    public ResponseEntity<NgApiResponse<SdsGapReportEmailResultDto>> emailGapReport(@RequestBody SdsGapReportEmailDto req) {
+        try {
+            SdsGapReportEmailResultDto result = gapReportEmailService.emailGapReport(
+                    req.getTo(), req.getCc(), req.getScrapedCatalog());
+            return ResponseEntity.ok(new NgApiResponse<>(result,
+                    result.isSent() ? result.getMessage() : "Email not sent: " + result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Email failed: " + e.getMessage()));
         }
     }
 

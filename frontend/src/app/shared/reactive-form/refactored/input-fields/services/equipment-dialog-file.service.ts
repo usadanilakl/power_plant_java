@@ -14,6 +14,10 @@ import { NestedItem } from '../../../../../models/ui/nested-item.model';
  * - File list (as NestedItems for toggle menu)
  * - File selection state
  * - Equipment loading from selected file
+ *
+ * Type selection here is **dialog-local**: changing the picked file type only
+ * rebuilds this service's menu, never the global FileMenuService selection
+ * used by the main file feature.
  */
 @Injectable()
 export class EquipmentDialogFileService {
@@ -25,20 +29,39 @@ export class EquipmentDialogFileService {
   // State
   selectedFile = signal<FileDto | null>(null);
 
-  // Menu items for toggle menu component
-  menuItems = this.menuService.menuItems;
-
   // Files map from CurrentFileService
   filesMap = toSignal(this.currentFileService.fileMapByType$);
 
-  // Loading and error states
+  // All available file-type names (e.g. "P&ID", "Manual", "Electrical Panel
+  // Schedule") — populated dynamically by CurrentFileService from the DB.
+  availableTypes = toSignal(this.currentFileService.fileTypes$, { initialValue: [] as string[] });
+
+  // Dialog-local file-type selection. Empty until resolved to the default
+  // (first P&ID-like type, falling back to the first available type).
+  private explicitType = signal<string>('');
+
+  /**
+   * The effective picked type: explicit user pick if any, else the first
+   * P&ID-like type from the dynamic list, else the first type at all.
+   */
+  selectedType = computed<string>(() => {
+    const explicit = this.explicitType();
+    if (explicit) return explicit;
+    const types = this.availableTypes();
+    return types.find(t => t.toLowerCase().includes('pid')) ?? types[0] ?? '';
+  });
+
+  // Menu items for the dialog's toggle menu — built locally so switching the
+  // type picker here does NOT affect the global file feature's menu.
+  menuItems = computed<NestedItem[]>(() => this.menuService.buildItemsForType(this.selectedType()));
+
+  // Loading and error states — still observed from the singleton because
+  // currentFileService drives both (one-shot bulk load on startup).
   isLoading = this.menuService.isLoading;
   error = this.menuService.error;
 
-  // Computed files list (for simple list view)
-  // fileMapByType is keyed by the actual fileType.name from the DB (whatever
-  // casing/wording is in use, e.g. "PID", "P&ID", "pid"), so we do a
-  // case-insensitive lookup for any P&ID-like key.
+  // Computed files list (for the legacy simple list view) — kept P&ID-only
+  // for backwards compatibility. The toggle menu above is the new path.
   files = computed(() => {
     const map = this.filesMap();
     if (!map) return [];
@@ -49,6 +72,11 @@ export class EquipmentDialogFileService {
     }
     return [];
   });
+
+  /** Pick a different file type. Local to this dialog instance. */
+  selectType(type: string): void {
+    this.explicitType.set(type ?? '');
+  }
 
   // Equipment from selected file
   equipment = computed(() => {
@@ -113,9 +141,12 @@ export class EquipmentDialogFileService {
   }
 
   /**
-   * Reset service state (call on dialog close)
+   * Reset service state (call on dialog close).
+   * Also clears the dialog-local type pick so a re-opened dialog starts on the
+   * default (P&ID) again.
    */
   reset(): void {
     this.selectedFile.set(null);
+    this.explicitType.set('');
   }
 }

@@ -68,10 +68,23 @@ export class FileMenuService{
             return;
         }
         this.selectedType.set(effective);
+        this.menuItems.set(this.buildItemsForType(effective));
+    }
+
+    /**
+     * Build the nested menu items for a given file type **without** mutating
+     * this singleton's selected-type / menu-items state. Consumers that need
+     * an isolated, per-component file menu (e.g. the equipment-unified-dialog
+     * type picker) should call this directly instead of `loadFiles`, which
+     * would clobber the global selection used by the main file feature.
+     *
+     * Returns an empty array when the type is empty or has no files.
+     */
+    buildItemsForType(type: string): NestedItem[] {
+        if (!type) return [];
         // P&ID files group by vendor; other types group by fileType.
-        const criteria = effective.toLowerCase().includes('pid') ? 'vendor' : 'fileType';
-        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(effective), criteria);
-        this.menuItems.set(nestedItems);
+        const criteria: 'vendor' | 'fileType' = type.toLowerCase().includes('pid') ? 'vendor' : 'fileType';
+        return this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
     }
 
     private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {

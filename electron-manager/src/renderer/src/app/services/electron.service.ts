@@ -230,6 +230,25 @@ export interface SdsMatchChemical {
   names?: string;
 }
 
+export interface SdsEmailGapReportPayload {
+  to: string;
+  cc?: string;
+}
+
+export interface SdsEmailGapReportResult {
+  sent: boolean;
+  missingFromDbCount: number;
+  missingPdfCount: number;
+  missingFromEbinderCount: number;
+  attachmentsSent: number;
+  attachmentsSkipped: number;
+  totalAttachmentBytes: number;
+  to: string;
+  cc: string | null;
+  message: string;
+  skippedReasons: string[];
+}
+
 export interface GateLogConfig {
   onLocationApiKey: string;
   onLocationBaseUrl: string;
@@ -553,6 +572,7 @@ interface ElectronAPI {
   sdsGapReport: (opts?: SdsScrapeOptions) => Promise<IpcResult<SdsGapReport>>;
   sdsScrapeAbort: () => Promise<IpcResult>;
   sdsMatchChemical: (payload: SdsMatchChemical) => Promise<IpcResult>;
+  sdsEmailGapReport: (payload: SdsEmailGapReportPayload) => Promise<IpcResult<SdsEmailGapReportResult>>;
   sdsClearPdfs: () => Promise<IpcResult<number>>;
   sdsScrapeGetStatus: () => Promise<IpcResult<SdsScrapeStatus>>;
   sdsScrapeGetConfig: () => Promise<IpcResult<SdsScraperConfig>>;
@@ -1091,6 +1111,11 @@ export class ElectronService implements OnDestroy {
   async sdsMatchChemical(payload: SdsMatchChemical): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.sdsMatchChemical(payload);
+  }
+
+  async sdsEmailGapReport(payload: SdsEmailGapReportPayload): Promise<IpcResult<SdsEmailGapReportResult>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsEmailGapReport(payload);
   }
 
   async sdsClearPdfs(): Promise<IpcResult<number>> {

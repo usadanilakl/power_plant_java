@@ -564,7 +564,7 @@ export class AdminFunctionalitiesService {
     return params;
   }
 
-  publishPwaData(target: 'all' | 'areas' | 'map' | 'categories' | 'fieldlisttypes' | 'inventorytypes' | 'locations' | 'lotopoints'): Observable<SpringApiResponse<PwaSyncActionResult>> {
+  publishPwaData(target: 'all' | 'areas' | 'map' | 'categories' | 'fieldlisttypes' | 'inventorytypes' | 'locations' | 'lotopoints' | 'sdschemicals'): Observable<SpringApiResponse<PwaSyncActionResult>> {
     const params = new HttpParams().set('target', target);
     return this.http.post<SpringApiResponse<PwaSyncActionResult>>(
       `${this.apiUrl}/pwa-sync`,

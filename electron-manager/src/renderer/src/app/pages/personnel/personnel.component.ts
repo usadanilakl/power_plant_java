@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport } from '../../services/electron.service';
 
 const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BC2B8028F-8473-49EC-8B24-1FEBBB8D1584%7D&file=OPS%20Schedule%202026.xlsx&action=default&mobileredirect=true';
@@ -12,12 +13,22 @@ const SHIFT_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-personnel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page">
       <div class="page-header">
         <h1 class="page-title">Personnel</h1>
         <div class="header-actions">
+          <div class="search-wrap">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" class="search-input"
+                   [placeholder]="searchPlaceholder()"
+                   [(ngModel)]="searchQuery"
+                   (ngModelChange)="onSearchChange()" />
+            <button *ngIf="searchQuery" class="search-clear" (click)="clearSearch()" title="Clear">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
           <button class="btn btn-icon" (click)="openSchedule()" title="Open full schedule on SharePoint">
             <span class="material-icons">open_in_new</span>
           </button>
@@ -49,7 +60,7 @@ const SHIFT_LABELS: Record<string, string> = {
             On Shift Now &mdash; {{ status!.currentShiftLabel }}
           </h2>
           <div class="on-shift-chips">
-            <div class="person-chip" *ngFor="let p of status!.onShiftNow">
+            <div class="person-chip" *ngFor="let p of filteredOnShiftNow()">
               <span class="chip-group" [class]="'group-' + p.group.toLowerCase()">{{ p.group }}</span>
               <span class="chip-name">{{ p.name }}</span>
             </div>
@@ -63,7 +74,7 @@ const SHIFT_LABELS: Record<string, string> = {
             On Call Manager
           </h2>
           <div class="on-shift-chips">
-            <div class="person-chip" *ngFor="let p of onCallManagerToday">
+            <div class="person-chip" *ngFor="let p of filteredOnCallManagers()">
               <span class="chip-group group-ocm">OCM</span>
               <span class="chip-name">{{ p.name }}</span>
             </div>
@@ -105,7 +116,7 @@ const SHIFT_LABELS: Record<string, string> = {
                       <span class="group-label" [class]="'group-' + group.toLowerCase()">{{ group }}</span>
                     </td>
                   </tr>
-                  <tr *ngFor="let p of getGroupMembers(group)" class="person-row">
+                  <tr *ngFor="let p of filteredGroupMembers(group)" class="person-row">
                     <td class="td-group">
                       <span class="group-badge" [class]="'group-' + group.toLowerCase()">{{ groupBadge(group) }}</span>
                     </td>
@@ -183,7 +194,7 @@ const SHIFT_LABELS: Record<string, string> = {
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let c of contacts">
+                <tr *ngFor="let c of filteredContacts()">
                   <td class="td-contact-name">{{ c.name }}</td>
                   <td class="td-contact-title">{{ c.title }}</td>
                   <td class="td-contact-phone">{{ c.phone }}</td>
@@ -265,7 +276,7 @@ const SHIFT_LABELS: Record<string, string> = {
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let c of contractors" [class.row-expired]="expiryClass(c) === 'expired'">
+                <tr *ngFor="let c of filteredContractors()" [class.row-expired]="expiryClass(c) === 'expired'">
                   <td class="td-contact-name">{{ c.name }}</td>
                   <td class="td-contact-title">{{ c.company }}</td>
                   <td class="td-contact-phone">{{ c.email }}</td>
@@ -486,6 +497,16 @@ const SHIFT_LABELS: Record<string, string> = {
       font-weight: 500; text-transform: capitalize; }
     .status-active { background: rgba(63, 184, 117, 0.12); color: #3fb875; }
     .status-inactive { background: rgba(184, 63, 63, 0.12); color: #c95252; }
+    .search-wrap { position: relative; display: inline-flex; align-items: center; }
+    .search-icon { position: absolute; left: 8px; font-size: 18px; color: var(--text-muted); pointer-events: none; }
+    .search-input { padding: 6px 28px 6px 30px; font-size: 13px; border: 1px solid var(--border-color);
+      border-radius: 6px; background: var(--surface-1, rgba(255,255,255,0.04)); color: var(--text-primary);
+      width: 240px; outline: none; }
+    .search-input:focus { border-color: var(--accent-primary); }
+    .search-clear { position: absolute; right: 4px; background: transparent; border: none;
+      color: var(--text-muted); cursor: pointer; padding: 2px; display: inline-flex; }
+    .search-clear:hover { color: var(--text-primary); }
+    .search-clear .material-icons { font-size: 16px; }
   `]
 })
 export class PersonnelComponent implements OnInit {
@@ -495,6 +516,11 @@ export class PersonnelComponent implements OnInit {
   contactsLoading = false;
   contactsError = '';
   activeTab: 'schedule' | 'contacts' | 'contractors' = 'schedule';
+
+  // Header search — scoped to whichever tab is active. Lowercased + cached
+  // so the per-row matcher doesn't re-lowercase on every change-detection pass.
+  searchQuery = '';
+  private searchLower = '';
 
   // Contractors state
   contractors: ContractorEntry[] = [];
@@ -787,5 +813,55 @@ export class PersonnelComponent implements OnInit {
 
   contractorExpiringCount(): number {
     return this.contractors.filter(c => this.expiryClass(c) !== 'ok').length;
+  }
+
+  // ─── Header search ────────────────────────────────────────────────────
+
+  searchPlaceholder(): string {
+    switch (this.activeTab) {
+      case 'schedule': return 'Search schedule by name…';
+      case 'contacts': return 'Search contacts…';
+      case 'contractors': return 'Search contractors…';
+    }
+  }
+
+  onSearchChange(): void {
+    this.searchLower = this.searchQuery.trim().toLowerCase();
+  }
+
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.searchLower = '';
+  }
+
+  private matches(...fields: (string | undefined | null)[]): boolean {
+    if (!this.searchLower) return true;
+    return fields.some(f => f != null && f.toLowerCase().includes(this.searchLower));
+  }
+
+  filteredOnShiftNow(): PersonnelEntry[] {
+    if (!this.status?.onShiftNow) return [];
+    return this.status.onShiftNow.filter(p => this.matches(p.name, p.group));
+  }
+
+  filteredOnCallManagers(): PersonnelEntry[] {
+    return this.onCallManagerToday.filter(p => this.matches(p.name));
+  }
+
+  filteredGroupMembers(group: string): PersonnelEntry[] {
+    const all = this.groupMembersMap.get(group) || [];
+    return all.filter(p => this.matches(p.name));
+  }
+
+  filteredContacts(): PersonnelContact[] {
+    return this.contacts.filter(c =>
+      this.matches(c.name, c.title, c.phone, c.secondaryPhone, c.emergencyContact, c.emergencyPhone, c.emergencyRelation)
+    );
+  }
+
+  filteredContractors(): ContractorEntry[] {
+    return this.contractors.filter(c =>
+      this.matches(c.name, c.company, c.email, c.phone, c.title, c.status)
+    );
   }
 }

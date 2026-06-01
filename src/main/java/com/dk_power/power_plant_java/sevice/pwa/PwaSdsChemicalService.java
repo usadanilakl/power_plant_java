@@ -11,10 +11,12 @@ import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.sds.SdsChemicalRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
 import com.dk_power.power_plant_java.sevice.angular.sds.NgSdsChemicalService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.SdsChemicalSharePointAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,12 @@ public class PwaSdsChemicalService {
     private final SdsChemicalMapper mapper;
     private final PermitAttachmentRepo attachmentRepo;
     private final NgValueService valueService;
+    private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
+
+    private void publishToPwaSnapshot() {
+        WorkAreaGitHubPublisher publisher = gitHubPublisherProvider.getIfAvailable();
+        if (publisher != null) publisher.publishSdsChemicals();
+    }
 
     @Transactional
     public PwaSubmissionResult submitSdsChemical(PwaSdsChemicalDto dto) {
@@ -102,6 +110,7 @@ public class PwaSdsChemicalService {
             log.warn("[PWA SDS] SP submission failed, saved locally only: {}", e.getMessage());
         }
 
+        publishToPwaSnapshot();
         return PwaSubmissionResult.success(method, sharepointId, dto.getLocalUuid());
     }
 
@@ -136,6 +145,7 @@ public class PwaSdsChemicalService {
             }
         }
 
+        publishToPwaSnapshot();
         return PwaSubmissionResult.success(
                 entity.getSharepointId() != null ? "sharepoint" : "local",
                 entity.getSharepointId(), dto.getLocalUuid());

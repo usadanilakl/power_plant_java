@@ -109,6 +109,9 @@ export class EquipmentUnifiedDialogComponent {
   selectedFile = this.fileService.selectedFile;
   fileMenuItems = this.fileService.menuItems;
   currentFileLink = this.fileService.currentFileLink;
+  // File-type picker bindings (dialog-local — does not affect the global file menu).
+  selectedFileType = this.fileService.selectedType;
+  availableFileTypes = this.fileService.availableTypes;
 
   // State - mimicking wizard's approach
   selectedEquipment = signal<EquipmentDto | null>(null);  // Currently selected/saved equipment
@@ -333,6 +336,11 @@ export class EquipmentUnifiedDialogComponent {
   onFileSelect(fileItem: NestedItem) {
     this.fileService.selectFileFromNestedItem(fileItem);
     this.clearSelection();
+  }
+
+  /** Switch the left menu to a different file type (P&ID is the default). */
+  onFileTypeChange(type: string): void {
+    this.fileService.selectType(type);
   }
 
   /**

@@ -25,9 +25,20 @@
       @if (searchMode() === 'files') {
         <div class="menu-container"
              appGuide="create-loto-point:file-selector"
-             guideMessage="Expand folders and click on a P&ID file to load it. The file's equipment will be displayed on the right."
+             guideMessage="Pick a file type, then expand folders and click on a file to load it. The file's equipment will be displayed on the right."
              [guideTooltipOnly]="true">
-          <h3>Select P&ID</h3>
+          <div class="file-type-header">
+            <h3>Select File</h3>
+            <select class="file-type-picker"
+                    [value]="selectedFileType()"
+                    (change)="onFileTypeChange($any($event.target).value)"
+                    [disabled]="availableFileTypes().length === 0"
+                    title="Switch between file types (P&ID, manuals, drawings, etc.). Local to this dialog.">
+              @for (t of availableFileTypes(); track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </div>
           <app-rf-toggle-menu
             [menuItems]="fileMenuItems()"
             (itemClick)="onFileSelect($event)"

@@ -157,10 +157,15 @@ public class SdsSeedService {
                         c.getId(), sid, name, c.getBookNumber(), c.getSectionNumber()));
             }
 
-            // Missing from eBinder: a DB record whose sourceId isn't in the live catalog.
-            // Naturally catches book-only seed records (BOOK-x-y synthetic ids) AND chemicals that
-            // were removed from the eBinder since the last scrape.
-            if (sid != null && !sid.isBlank() && !catalog.containsKey(sid)) {
+            // Missing from eBinder: any DB record that doesn't appear in the live catalog.
+            // Three sub-cases all flagged:
+            //   1. No sourceId at all (manually added via the desktop/PWA form — never came from eBinder).
+            //   2. Synthetic BOOK-x-y sourceId from the seed book-only fallback (awaiting manual match).
+            //   3. Real Document ID that the live eBinder no longer returns (chemical removed at source).
+            // For (1) we still emit the gap so the operator sees the entry and can email the SDS out
+            // for upload — sid stays null in the DTO and the UI shows "—".
+            boolean unknownToEbinder = (sid == null || sid.isBlank()) || !catalog.containsKey(sid);
+            if (unknownToEbinder) {
                 report.getMissingFromEbinder().add(new SdsGapReportDto.Gap(
                         c.getId(), sid, name, c.getBookNumber(), c.getSectionNumber()));
             }

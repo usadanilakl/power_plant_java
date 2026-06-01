@@ -98,7 +98,7 @@ export class UserPageComponent implements OnInit {
   stateService = inject(RfUserStateService);
 
   ngOnInit(): void {
-    this.stateService.loadAll();
+    this.stateService.loadInitialPaginated();
   }
 
   onNew(): void {

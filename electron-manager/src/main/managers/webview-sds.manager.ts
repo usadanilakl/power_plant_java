@@ -66,6 +66,9 @@ export class WebViewSdsManager {
   private progressRow = 0;
   private progressTotal = 0;
   private progressPhase: 'list' | 'pdfs' | 'upload' | 'idle' = 'idle';
+  // The most recent eBinder catalog (sourceItemId + names) scraped during getGapReport.
+  // Cached so "Email Report" can reuse it without re-scraping; null until the first report runs.
+  private lastScrapedCatalog: Array<{ sourceItemId: string; names: string }> | null = null;
 
   /**
    * Admin/test: ask Spring Boot to drop every local SDS PDF attachment. Next scrape re-downloads.
@@ -216,10 +219,29 @@ export class WebViewSdsManager {
     const catalog = rows
       .filter(r => r.sourceId)
       .map(r => ({ sourceItemId: r.sourceId, names: r.names }));
+    this.lastScrapedCatalog = catalog;
     const res = await this.postJson(port, '/ng/sds-chemicals/gap-report', catalog);
     const d = res?.responseData;
     if (!d) throw new Error('No gap report returned');
     return d as SdsGapReport;
+  }
+
+  /**
+   * Email the gap report to the given recipient with PDFs of every missing-from-eBinder chemical
+   * attached. Reuses the catalog from the most recent {@link getGapReport} run so the email
+   * matches what the user just saw — if no report has been run yet, falls back to an empty
+   * catalog and the backend uses its bundled CSV.
+   */
+  public async emailGapReport(payload: { to: string; cc?: string }): Promise<any> {
+    const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+    if (!(await this.springHealthy(port))) throw new Error('Spring Boot unavailable');
+    const body = {
+      to: payload.to,
+      cc: payload.cc ?? '',
+      scrapedCatalog: this.lastScrapedCatalog ?? []
+    };
+    const res = await this.postJson(port, '/ng/sds-chemicals/email-gap-report', body);
+    return res?.responseData ?? null;
   }
 
   /**

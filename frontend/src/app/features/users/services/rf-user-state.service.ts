@@ -1,8 +1,10 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { UserService } from '../../../services/user.service';
 import { UserDto } from '../../../models/user.model';
+import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { RfUserOptionService } from './rf-user-option.service';
 
 @Injectable({ providedIn: 'root' })
@@ -19,26 +21,48 @@ export class RfUserStateService {
   isFormOpen = signal(false);
   isLoading = signal(false);
 
+  // ── Paginated table state (mirrors RfLotoPointStateService) ──
+  private pageSize = 50;
+  private currentPage = 1;
+
+  private loadedUsersSubject = new BehaviorSubject<UserDto[]>([]);
+  /** Items shown in {@code <app-table>} — accumulates as the user scrolls/searches. */
+  loadedUsers$ = this.loadedUsersSubject.asObservable();
+
+  private currentSearchCriteriaSubject = new BehaviorSubject<SearchCriteria | null>(null);
+  currentSearchCriteria$ = this.currentSearchCriteriaSubject.asObservable();
+
+  /** Column-filter dropdown values for the currently-focused column. */
+  currentColumnUniqueItems = signal<string[]>([]);
+  loadingUniqueItems = signal<boolean>(false);
+  private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
+
   constructor() {
     this.userService.userUpdated$.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(updated => {
-      const current = this.allUsersSubject.value;
-      const index = current.findIndex(u => u.id === updated.id);
-      if (index >= 0) {
-        current[index] = updated;
-        this.allUsersSubject.next([...current]);
-      } else {
-        this.allUsersSubject.next([updated, ...current]);
-      }
+      this.upsertInSubject(this.allUsersSubject, updated);
+      this.upsertInSubject(this.loadedUsersSubject, updated);
     });
 
     this.userService.userDeleted$.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(id => {
-      const current = this.allUsersSubject.value;
-      this.allUsersSubject.next(current.filter(u => u.id !== id));
+      this.allUsersSubject.next(this.allUsersSubject.value.filter(u => u.id !== id));
+      this.loadedUsersSubject.next(this.loadedUsersSubject.value.filter(u => u.id !== id));
     });
+  }
+
+  private upsertInSubject(subj: BehaviorSubject<UserDto[]>, item: UserDto): void {
+    const current = subj.value;
+    const i = current.findIndex(u => u.id === item.id);
+    if (i >= 0) {
+      const next = [...current];
+      next[i] = item;
+      subj.next(next);
+    } else {
+      subj.next([item, ...current]);
+    }
   }
 
   loadAll(): void {
@@ -189,10 +213,143 @@ export class RfUserStateService {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
-        this.loadAll();
+        this.loadedUsersSubject.next([]);
+        this.currentPage = 1;
+        this.loadInitialPaginated();
         this.userOptionService.refreshUsers();
       },
       error: err => console.error('[Users] Seed failed:', err)
     });
+  }
+
+  // ─── Paginated table API (matches RfLotoPointStateService contract) ─────────
+
+  /** Initial fetch — page 1, no filters. */
+  loadInitialPaginated(): void {
+    this.isLoading.set(true);
+    this.userService.getUsers(1, this.pageSize).pipe(
+      tap(res => {
+        const users = ((res.responseData?.content as any[]) ?? []).map(u => UserDto.fromJson(u));
+        this.loadedUsersSubject.next(users);
+        this.currentPage = 2;
+        this.isLoading.set(false);
+      }),
+      catchError(err => {
+        console.error('[Users] paginated load failed:', err);
+        this.isLoading.set(false);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
+  }
+
+  addLoadedUsers(items: UserDto[]): void {
+    const current = this.loadedUsersSubject.value;
+    this.loadedUsersSubject.next([...current, ...items]);
+  }
+
+  clearLoaded(): void {
+    this.loadedUsersSubject.next([]);
+    this.currentPage = 1;
+  }
+
+  getCurrentPage(): number { return this.currentPage; }
+  incrementPage(): void { this.currentPage++; }
+  resetPage(): void { this.currentPage = 1; }
+  getPageSize(): number { return this.pageSize; }
+
+  setSearchCriteria(criteria: SearchCriteria | null): void {
+    this.currentSearchCriteriaSubject.next(criteria);
+  }
+
+  getCurrentSearchCriteria(): SearchCriteria | null {
+    return this.currentSearchCriteriaSubject.value;
+  }
+
+  /**
+   * Load distinct values for one column, refining as the user types. The current
+   * column filters are sent as the base so the dropdown respects other active filters.
+   */
+  loadUniqueItems(columnKey: string, searchString: string): void {
+    const cacheKey = `${columnKey}:${searchString}`;
+    this.loadingUniqueItems.set(true);
+
+    const criteria = this.buildFiltersForUniqueValues(columnKey, searchString);
+
+    this.userService
+      .getFilteredUniqueValuesOfColumn(columnKey, criteria, 1, this.pageSize)
+      .pipe(
+        tap(res => {
+          const values = res.responseData?.content ?? [];
+          this.currentColumnUniqueItems.set(values);
+          this.uniqueValuesCache.set(cacheKey, {
+            values,
+            page: 1,
+            hasMore: !res.responseData?.last,
+          });
+          this.loadingUniqueItems.set(false);
+        }),
+        catchError(err => {
+          console.error(`[Users] unique items load for ${columnKey} failed:`, err);
+          this.loadingUniqueItems.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe();
+  }
+
+  loadMoreUniqueItems(columnKey: string, searchString: string): void {
+    const cacheKey = `${columnKey}:${searchString}`;
+    const cached = this.uniqueValuesCache.get(cacheKey);
+    if (!cached || !cached.hasMore) return;
+
+    this.loadingUniqueItems.set(true);
+    const nextPage = cached.page + 1;
+    const criteria = this.buildFiltersForUniqueValues(columnKey, searchString);
+
+    this.userService
+      .getFilteredUniqueValuesOfColumn(columnKey, criteria, nextPage, this.pageSize)
+      .pipe(
+        tap(res => {
+          const newValues = res.responseData?.content ?? [];
+          if (newValues.length === 0) {
+            this.uniqueValuesCache.set(cacheKey, { ...cached, hasMore: false });
+            this.loadingUniqueItems.set(false);
+            return;
+          }
+          const merged = [...cached.values, ...newValues];
+          this.currentColumnUniqueItems.set(merged);
+          this.uniqueValuesCache.set(cacheKey, {
+            values: merged,
+            page: nextPage,
+            hasMore: !res.responseData?.last,
+          });
+          this.loadingUniqueItems.set(false);
+        }),
+        catchError(err => {
+          console.error(`[Users] load-more unique items for ${columnKey} failed:`, err);
+          this.loadingUniqueItems.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe();
+  }
+
+  clearUniqueValuesCache(): void {
+    this.uniqueValuesCache.clear();
+    this.currentColumnUniqueItems.set([]);
+  }
+
+  private buildFiltersForUniqueValues(columnKey: string, searchString: string): SearchCriteria {
+    const current = this.getCurrentSearchCriteria();
+    const baseFilters = current?.filters ? { ...current.filters } : {};
+    if (searchString && searchString.trim() !== '') {
+      baseFilters[columnKey] = searchString;
+    }
+    return {
+      ...(current ?? ({} as SearchCriteria)),
+      type: current?.type ?? ('column' as any),
+      filters: baseFilters,
+    };
   }
 }
