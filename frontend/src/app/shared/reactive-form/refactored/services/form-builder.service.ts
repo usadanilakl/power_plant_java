@@ -50,11 +50,21 @@ export class FormBuilderService {
   }
 
   /**
-   * Creates a regular FormControl
+   * Creates a regular FormControl.
+   *
+   * Prefer the explicit {@code field.initialValue} (when set) over the raw
+   * entity value. The mapper layer already pre-extracts IDs from nested DTOs
+   * (e.g. `fileType: file.fileType?.id`) into initialValue, so using it here
+   * matches what value-select / multi-value-select / phrase-builder fields
+   * expect — a primitive ID, not the full ValueDto object. Without this,
+   * dropdowns rendered empty for existing items because the form control held
+   * `{id, name, ...}` while the select looked up its label by ID.
    */
   private addFormControl(group: { [key: string]: any }, field: RfFormField, entity: any): void {
-    let value = this.getNestedValue(entity, field.name);
-    
+    let value = field.initialValue !== undefined
+      ? field.initialValue
+      : this.getNestedValue(entity, field.name);
+
     // Handle special field types
     value = this.normalizeValueByType(field.type, value);
 
@@ -73,12 +83,37 @@ export class FormBuilderService {
       return null;
     }
 
-    if (type === 'checkbox-group' || type === 'multi-select' || type === 'multi-input') {
+    if (type === 'checkbox-group' || type === 'multi-input') {
       return value || [];
     }
 
-    if (type === 'select' && typeof value === 'object' && value !== null) {
+    // Extract `.id` from full Value/Equipment/etc. DTOs for any single-select
+    // family (select, value-select, work-area-select, loto-standard-select,
+    // user-select with strict mode). Without this, a mapper that hands the
+    // raw entity object would leave the form control holding `{id, name, ...}`,
+    // which the searchable-select can't match against its options (it compares
+    // option.value == control.value, never matches an object).
+    if (
+      (type === 'select' ||
+        type === 'value-select' ||
+        type === 'work-area-select' ||
+        type === 'loto-standard-select' ||
+        type === 'user-select') &&
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      value.id != null
+    ) {
       return value.id;
+    }
+
+    // Multi-selects: ensure array shape + extract `.id` from each element that
+    // happens to be an object.
+    if (type === 'multi-select' || type === 'multi-value-select') {
+      if (!Array.isArray(value)) return [];
+      return value.map((v: any) =>
+        v && typeof v === 'object' && v.id != null ? v.id : v
+      );
     }
 
     if (type === 'date' && !value) {

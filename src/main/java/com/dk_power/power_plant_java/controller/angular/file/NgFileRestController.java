@@ -349,7 +349,12 @@ public class NgFileRestController {
     @GetMapping("/by-type/{fileType}")
     public ResponseEntity<NgApiResponse<List<FileDto>>> getByFileType(@PathVariable String fileType) {
         try {
-            List<FileDto> files = ngFileService.getByFileType(fileType, FileObject.lightDto);
+            // Use the full-DTO overload (NOT the projection-based lightDto path).
+            // The projection version can't safely include relation fields like
+            // `system` or text columns like `relatedSystems`, but the file menu
+            // needs both to group by system and to fan out a file across each
+            // system it belongs to.
+            List<FileDto> files = ngFileService.getByFileType(fileType);
             return ResponseEntity.ok(new NgApiResponse<>(files, "Files retrieved successfully"));
         } catch (Exception e) {
             e.printStackTrace();

@@ -53,4 +53,73 @@
       </div>
     </div>
   }
+
+  <!-- Manage values dialog: list + add + safe delete -->
+  @if (showManageDialog()) {
+    <div class="dialog-overlay" (click)="closeManageDialog()">
+      <div class="dialog-content manage-dialog" (click)="$event.stopPropagation()">
+        <h3>Manage {{ label() }} values</h3>
+
+        <div class="manage-actions">
+          <button class="add-btn" (click)="onAddNew()">+ Add new</button>
+        </div>
+
+        @if (options().length === 0) {
+          <p class="empty">No values yet — click "+ Add new" to create one.</p>
+        } @else {
+          <ul class="manage-list">
+            @for (opt of options(); track opt.value) {
+              <li class="manage-row">
+                <span class="manage-name">{{ opt.label }}</span>
+                <button class="delete-btn"
+                        title="Delete this value (with optional transfer of existing references)"
+                        (click)="openDeleteConfirm(opt)">🗑</button>
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="dialog-actions">
+          <button (click)="closeManageDialog()" class="cancel-btn">Close</button>
+        </div>
+
+        <!-- Delete confirm sub-dialog -->
+        @if (showDeleteConfirm()) {
+          <div class="dialog-overlay nested" (click)="closeDeleteConfirm()">
+            <div class="dialog-content confirm-dialog" (click)="$event.stopPropagation()">
+              <h3>Delete "{{ deleteTargetName() }}"?</h3>
+              <p class="confirm-text">
+                Existing references to this value will be re-pointed at the value you
+                pick below. Leave the dropdown on "(detach references)" to clear them
+                instead.
+              </p>
+
+              <div class="form-group">
+                <label>Transfer references to:</label>
+                <select [(ngModel)]="transferToValueId" class="input-field">
+                  <option [ngValue]="null">(detach references)</option>
+                  @for (opt of transferOptions(); track opt.value) {
+                    <option [ngValue]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+
+              @if (errorMessage()) {
+                <div class="error-message">{{ errorMessage() }}</div>
+              }
+
+              <div class="dialog-actions">
+                <button (click)="confirmDelete()" [disabled]="isDeleting()" class="delete-confirm-btn">
+                  {{ isDeleting() ? 'Deleting…' : 'Delete' }}
+                </button>
+                <button (click)="closeDeleteConfirm()" [disabled]="isDeleting()" class="cancel-btn">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>

@@ -40,4 +40,14 @@ public interface SyncableService<E extends BaseIdEntity> {
     default List<E> refactorValues(Value oldValue, Value newValue) {
         return new ArrayList<>();
     }
+
+    /**
+     * Find entities that reference the given Value (in any Value ManyToOne or
+     * Collection&lt;Value&gt; field). Empty default so callers can iterate
+     * SyncableService&lt;?&gt; without casting; the real reflective implementation
+     * is in NgCrudService.
+     */
+    default List<E> findByValue(Value value) {
+        return new ArrayList<>();
+    }
 }

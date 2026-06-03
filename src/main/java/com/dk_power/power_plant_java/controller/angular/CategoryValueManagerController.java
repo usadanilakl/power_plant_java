@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.dto.categories.*;
 import com.dk_power.power_plant_java.sevice.angular.CategoryValueManagerService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/ng/cv-manager")
 @RequiredArgsConstructor
+@Slf4j
 public class CategoryValueManagerController {
 
     private final CategoryValueManagerService managerService;
@@ -29,6 +31,7 @@ public class CategoryValueManagerController {
             List<CategoryWithCountDto> categories = managerService.getAllCategoriesWithCounts();
             return ResponseEntity.ok(new NgApiResponse<>(categories, "Success"));
         } catch (Exception e) {
+            log.error("getAllCategories failed", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Error retrieving categories: " + e.getMessage(), e);
         }
@@ -164,6 +167,7 @@ public class CategoryValueManagerController {
             List<ValueDto> values = managerService.getAllValues(categoryId);
             return ResponseEntity.ok(new NgApiResponse<>(values, "Success"));
         } catch (Exception e) {
+            log.error("getAllValues failed for categoryId={}", categoryId, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Error retrieving values: " + e.getMessage(), e);
         }
@@ -297,6 +301,92 @@ public class CategoryValueManagerController {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Error merging values: " + e.getMessage(), e);
+        }
+    }
+
+    // ==================== ORPHAN DEDUP ENDPOINTS ====================
+
+    /**
+     * Find Values that share a name with a canonical Value in the given Category
+     * but live outside it (no category or a different one). Pure discovery — no
+     * mutation. Result is sorted by reference count, largest first.
+     *
+     * <p>Example: {@code GET /ng/cv-manager/values/orphans?categoryAlias=fileType}
+     */
+    @GetMapping("/values/orphans")
+    public ResponseEntity<NgApiResponse<List<OrphanValueDto>>> findOrphanValues(
+            @RequestParam String categoryAlias) {
+        try {
+            List<OrphanValueDto> orphans = managerService.findOrphanValues(categoryAlias);
+            String msg = orphans.isEmpty()
+                    ? "No orphans found for category " + categoryAlias
+                    : "Found " + orphans.size() + " orphan(s) for category " + categoryAlias;
+            return ResponseEntity.ok(new NgApiResponse<>(orphans, msg));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error finding orphans: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * For each orphan→canonical pair discovered by {@link #findOrphanValues}, run
+     * the existing {@code mergeValues} primitive — re-points every entity FK and
+     * soft-deletes the orphan.
+     *
+     * <p>{@code dryRun=true} (default) returns the plan only. Call again with
+     * {@code dryRun=false} to apply.
+     *
+     * <p>Example dry run: {@code POST /ng/cv-manager/values/dedup-orphans?categoryAlias=fileType}
+     * <br>Example apply: {@code POST /ng/cv-manager/values/dedup-orphans?categoryAlias=fileType&dryRun=false}
+     */
+    @PostMapping("/values/dedup-orphans")
+    public ResponseEntity<NgApiResponse<DedupOrphansResultDto>> dedupOrphans(
+            @RequestParam String categoryAlias,
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            DedupOrphansResultDto result = managerService.dedupOrphans(categoryAlias, dryRun);
+            String msg = dryRun
+                    ? "Dry run: " + result.getOrphanCount() + " orphan(s), "
+                        + result.getTotalReferencesAffected() + " references would be re-pointed"
+                    : "Merged " + result.getOrphanCount() + " orphan(s); "
+                        + result.getTotalReferencesAffected() + " references re-pointed";
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("dedupOrphans failed for categoryAlias={} dryRun={}", categoryAlias, dryRun, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error during dedup: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * RECOVERY — Resurrect any Value rows that are still referenced by an entity FK
+     * (e.g. file.vendor_id, loto_point.location_id) but were soft-deleted by a prior
+     * unsafe merge. These are the "dangling FKs" that make value-select dropdowns
+     * display empty because Hibernate's {@code @Where(deleted IS NOT TRUE)} filter
+     * hides the row from the join.
+     *
+     * <p>Idempotent. Safe to run multiple times. Reports counts so you can see how
+     * many soft-deleted rows were referenced and resurrected.
+     *
+     * <p>{@code POST /ng/cv-manager/values/recover-dangling}
+     */
+    @PostMapping("/values/recover-dangling")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> recoverDanglingReferences() {
+        try {
+            Map<String, Object> result = managerService.recoverDanglingReferences();
+            int resurrected = ((Number) result.getOrDefault("resurrected", 0)).intValue();
+            String msg = resurrected == 0
+                    ? "Nothing to recover — all referenced Values are already active."
+                    : "Recovered " + resurrected + " soft-deleted Value(s) still referenced by entities.";
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            log.error("recoverDanglingReferences failed", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Recovery failed: " + e.getMessage(), e);
         }
     }
 

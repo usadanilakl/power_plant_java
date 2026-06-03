@@ -13,6 +13,21 @@
     </div>
   }
 
+  <!-- Recovery Result -->
+  @if (recoveryResult(); as r) {
+    <div class="alert alert-recovery" [class.alert-success]="r.resurrected > 0" [class.alert-info]="r.resurrected === 0">
+      <span>
+        @if (r.resurrected > 0) {
+          Recovered <strong>{{ r.resurrected }}</strong> Value(s).
+        } @else {
+          No dangling references found — nothing to recover.
+        }
+        Scanned {{ r.scannedTables }} table(s), found {{ r.referencedIds }} referenced Value id(s).
+      </span>
+      <button class="close-btn" (click)="recoveryResult.set(null)">&times;</button>
+    </div>
+  }
+
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="tabs">
@@ -32,6 +47,14 @@
     <div class="actions">
       <button class="btn btn-secondary" (click)="findDuplicates()" [disabled]="isLoading()">
         Find Duplicates
+      </button>
+      <button class="btn btn-secondary" (click)="openOrphanDialog()" [disabled]="isLoading()"
+              title="Find Values whose name matches a canonical in a category but live outside it (causes empty dropdowns).">
+        Find Orphans
+      </button>
+      <button class="btn btn-warning" (click)="runRecovery()" [disabled]="isLoading() || isRecovering()"
+              title="Resurrect soft-deleted Values still referenced by entity FKs. Use after an unsafe dedup left dropdowns empty.">
+        {{ isRecovering() ? 'Recovering…' : 'Recover Dangling Refs' }}
       </button>
       @if (activeTab() === 'categories') {
         <button class="btn btn-primary" (click)="openCreateCategoryDialog()">
@@ -372,6 +395,129 @@
 
     <div class="form-actions">
       <button class="btn btn-secondary" (click)="closeDuplicateDialog()">Close</button>
+    </div>
+  </div>
+</app-rf-popup-projection>
+
+<!-- Cross-Category Orphans dialog -->
+<app-rf-popup-projection
+  [isOpen]="isOrphanDialogOpen()"
+  [title]="'Cross-Category Orphans'"
+  (close)="closeOrphanDialog()">
+  <div class="orphan-resolver">
+    <p class="orphan-help">
+      Find Values whose <strong>name</strong> matches a canonical Value in the target Category
+      but live <strong>outside</strong> it (uncategorized or in a different Category). Entities
+      still point at the orphan via FKs, which is why value-select dropdowns appear empty —
+      the loader only returns Values <em>inside</em> the matched Category.
+    </p>
+
+    <div class="orphan-picker">
+      <label>Target category:</label>
+      <select
+        [ngModel]="orphanCategoryAlias()"
+        (ngModelChange)="orphanCategoryAlias.set($event); orphanScanCompleted.set(false); orphans.set([]); dedupResult.set(null)">
+        <option value="">— Pick a category —</option>
+        @for (cat of categories(); track cat.id) {
+          <option [value]="cat.alias">{{ cat.name }} (alias: {{ cat.alias }}, {{ cat.valueCount }} value(s))</option>
+        }
+      </select>
+      <button class="btn btn-secondary" (click)="findOrphans()"
+              [disabled]="!orphanCategoryAlias() || isOrphanLoading()">
+        {{ isOrphanLoading() ? 'Scanning…' : 'Find Orphans' }}
+      </button>
+    </div>
+
+    @if (orphanError()) {
+      <div class="error-banner">{{ orphanError() }}</div>
+    }
+
+    @if (orphanScanCompleted() && !isOrphanLoading()) {
+      @if (orphans().length === 0) {
+        <p class="no-duplicates">No orphans found for "{{ orphanCategoryAlias() }}". Dropdowns for this category should already be working.</p>
+      } @else {
+        <div class="orphan-summary">
+          <strong>{{ orphans().length }}</strong> orphan(s) referenced by <strong>{{ totalOrphanReferences() }}</strong> entity row(s).
+        </div>
+
+        <table class="orphan-table">
+          <thead>
+            <tr>
+              <th>Orphan</th>
+              <th>Current category</th>
+              <th>→ Canonical</th>
+              <th class="num">Refs</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of orphans(); track o.orphan.id) {
+              <tr [class.high-impact]="o.referenceCount > 0">
+                <td>
+                  <span class="o-name">{{ o.orphan.name }}</span>
+                  <span class="o-id">#{{ o.orphan.id }}</span>
+                </td>
+                <td>
+                  @if (o.orphan.category) {
+                    {{ o.orphan.category.name }}
+                  } @else {
+                    <em class="o-none">(no category)</em>
+                  }
+                </td>
+                <td>
+                  <span class="o-name">{{ o.canonical.name }}</span>
+                  <span class="o-id">#{{ o.canonical.id }}</span>
+                </td>
+                <td class="num">{{ o.referenceCount }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="orphan-actions">
+          <button class="btn btn-secondary" (click)="runOrphanDedup(true)" [disabled]="isOrphanLoading()">
+            {{ isOrphanLoading() ? 'Running…' : 'Dry-run Dedup' }}
+          </button>
+          <button class="btn btn-primary" (click)="runOrphanDedup(false)" [disabled]="isOrphanLoading()">
+            Apply Dedup
+          </button>
+        </div>
+      }
+    }
+
+    @if (dedupResult(); as result) {
+      <section class="dedup-result" [class.is-dry-run]="result.dryRun">
+        <h3>
+          {{ result.dryRun ? 'Dry run' : 'Applied' }}: {{ result.orphanCount }} orphan(s),
+          {{ result.totalReferencesAffected }} reference(s)
+          {{ result.dryRun ? 'would be re-pointed' : 're-pointed' }}
+        </h3>
+        @if (result.operations.length) {
+          <table class="orphan-table">
+            <thead>
+              <tr>
+                <th>Orphan</th>
+                <th>→ Canonical</th>
+                <th class="num">Refs</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (op of result.operations; track op.orphanId) {
+                <tr [class.row-error]="op.status.startsWith('error')">
+                  <td>{{ op.orphanName }} <span class="o-id">#{{ op.orphanId }}</span></td>
+                  <td>{{ op.canonicalName }} <span class="o-id">#{{ op.canonicalId }}</span></td>
+                  <td class="num">{{ op.referenceCount }}</td>
+                  <td>{{ op.status }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
+    }
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" (click)="closeOrphanDialog()">Close</button>
     </div>
   </div>
 </app-rf-popup-projection>

@@ -150,6 +150,32 @@
   cursor: not-allowed;
 }
 
+.file-group-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-group-picker {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  background-color: var(--secondary-background);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.file-group-picker:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Loading State */
 .loading-state {
   display: flex;

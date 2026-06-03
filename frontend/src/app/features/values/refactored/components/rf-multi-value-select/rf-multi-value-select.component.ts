@@ -45,6 +45,22 @@ export class RfMultiValueSelectComponent implements ControlValueAccessor, AfterV
   dialogValueAlias = '';
   errorMessage = signal<string>('');
 
+  // ── Manage values dialog (lists existing values with delete buttons) ───────
+  showManageDialog = signal<boolean>(false);
+  // Delete-confirm sub-dialog inside the manage panel.
+  showDeleteConfirm = signal<boolean>(false);
+  /** Signal (not plain field) so {@link transferOptions} re-computes when it changes. */
+  deleteTargetId = signal<number | null>(null);
+  deleteTargetName = signal<string>('');
+  /** Optional transfer-to-another value-id so existing references aren't orphaned. */
+  transferToValueId: number | null = null;
+  /** Eligible transfer targets = all values in the category except the one being deleted. */
+  transferOptions = computed(() => {
+    const id = this.deleteTargetId();
+    return this.options().filter((o: any) => o.value !== id);
+  });
+  isDeleting = signal<boolean>(false);
+
   // ControlValueAccessor
   private onChange = (value: any) => {};
   private onTouched = () => {};
@@ -99,7 +115,17 @@ export class RfMultiValueSelectComponent implements ControlValueAccessor, AfterV
 
   // ==================== Searchable Multi-Select Event Handlers ====================
 
+  /** True iff the add dialog was launched from inside the manage panel. */
+  private addLaunchedFromManage = false;
+
   onAddNew(): void {
+    // If add was triggered from within manage, hide manage so the add overlay
+    // isn't obscured by it (both default to z-index 1000). We re-open manage
+    // when the add dialog closes/saves so the user lands back on the list.
+    if (this.showManageDialog()) {
+      this.addLaunchedFromManage = true;
+      this.showManageDialog.set(false);
+    }
     this.dialogMode.set('add');
     this.dialogValueName = '';
     this.dialogValueAlias = '';
@@ -108,9 +134,78 @@ export class RfMultiValueSelectComponent implements ControlValueAccessor, AfterV
   }
 
   onEdit(): void {
-    // For multi-select, edit just opens the add dialog
-    // User can add new values to the category
-    this.onAddNew();
+    // For multi-select, the "edit" affordance opens the manage panel where the
+    // user can both add new values and delete existing ones safely (with an
+    // optional transfer to keep existing references from being orphaned).
+    this.openManageDialog();
+  }
+
+  // ==================== Manage / Delete ====================
+
+  openManageDialog(): void {
+    this.showManageDialog.set(true);
+  }
+
+  closeManageDialog(): void {
+    this.showManageDialog.set(false);
+    this.closeDeleteConfirm();
+  }
+
+  openDeleteConfirm(option: any): void {
+    this.deleteTargetId.set(option?.value ?? null);
+    this.deleteTargetName.set(option?.label ?? '');
+    this.transferToValueId = null;
+    this.errorMessage.set('');
+    this.showDeleteConfirm.set(true);
+  }
+
+  closeDeleteConfirm(): void {
+    this.showDeleteConfirm.set(false);
+    this.deleteTargetId.set(null);
+    this.deleteTargetName.set('');
+    this.transferToValueId = null;
+    this.isDeleting.set(false);
+    this.errorMessage.set('');
+  }
+
+  /**
+   * Delete the selected value. If `transferToValueId` is set the backend
+   * re-points existing references at that target; otherwise the references
+   * are simply detached. The backend (`valueService.deleteValue`) is the
+   * single source of truth on the safety policy.
+   */
+  confirmDelete(): void {
+    const id = this.deleteTargetId();
+    if (id == null) return;
+    const alias = this.categoryAlias();
+    const transferId = this.transferToValueId;
+
+    this.isDeleting.set(true);
+    this.errorMessage.set('');
+
+    this.valueService.deleteValue(id, alias, transferId || undefined).subscribe({
+      next: () => {
+        this.isDeleting.set(false);
+        // Drop the deleted id from the current selection; if a transfer target
+        // was chosen and isn't already selected, add it.
+        this.values.update(current => {
+          const filtered = current.filter(v => v !== id);
+          if (transferId && !filtered.includes(transferId)) filtered.push(transferId);
+          return filtered;
+        });
+        this.onChange(this.values());
+        if (this.multiSelectInput) {
+          this.multiSelectInput.writeValue(this.values());
+        }
+        // Refresh the category so the menu list updates.
+        this.valueService.refreshCategory(alias);
+        this.closeDeleteConfirm();
+      },
+      error: (error) => {
+        this.isDeleting.set(false);
+        this.errorMessage.set(error.error?.message || 'Error deleting value');
+      }
+    });
   }
 
   // ==================== Add Dialog ====================
@@ -120,6 +215,11 @@ export class RfMultiValueSelectComponent implements ControlValueAccessor, AfterV
     this.dialogValueName = '';
     this.dialogValueAlias = '';
     this.errorMessage.set('');
+    // Restore the manage panel if add was launched from inside it.
+    if (this.addLaunchedFromManage) {
+      this.addLaunchedFromManage = false;
+      this.showManageDialog.set(true);
+    }
   }
 
   saveValue(): void {

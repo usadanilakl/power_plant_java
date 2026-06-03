@@ -176,8 +176,8 @@
   white-space: nowrap;
 }
 
-.file-type-picker {
-  flex: 1;
+.file-type-picker,
+.file-group-picker {
   min-width: 0;
   padding: 0.25rem 0.5rem;
   border: 1px solid #ccc;
@@ -187,7 +187,16 @@
   cursor: pointer;
 }
 
-.file-type-picker:disabled {
+.file-type-picker {
+  flex: 2 1 0;
+}
+
+.file-group-picker {
+  flex: 1 1 0;
+}
+
+.file-type-picker:disabled,
+.file-group-picker:disabled {
   background: #f5f5f5;
   cursor: not-allowed;
   opacity: 0.6;

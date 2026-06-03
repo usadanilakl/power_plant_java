@@ -38,6 +38,14 @@
                 <option [value]="t">{{ t }}</option>
               }
             </select>
+            <select class="file-group-picker"
+                    [value]="selectedGroupBy()"
+                    (change)="onGroupByChange($any($event.target).value)"
+                    title="How the file list is grouped. Defaults follow the file type (P&ID→vendor, electrical/iso/heat-trace→system, else type).">
+              @for (g of availableGroupKeys; track g) {
+                <option [value]="g">{{ g === 'fileType' ? 'Type' : (g.charAt(0).toUpperCase() + g.slice(1)) }}</option>
+              }
+            </select>
           </div>
           <app-rf-toggle-menu
             [menuItems]="fileMenuItems()"

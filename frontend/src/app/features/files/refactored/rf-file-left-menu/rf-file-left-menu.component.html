@@ -28,6 +28,19 @@
     </div>
   </div>
 
+  <div class="file-group-controls">
+    <label class="controls-label">Group by:</label>
+    <select class="file-group-picker"
+            [value]="effectiveGroupBy()"
+            (change)="onGroupByChange($any($event.target).value)"
+            [disabled]="isLoading() || !selectedType()"
+            title="How the file list is grouped. Default follows the file type (P&ID→vendor, electrical/iso/heat-trace→system, else Type). Resets on file-type change.">
+      @for (g of availableGroupKeys; track g) {
+        <option [value]="g">{{ g === 'fileType' ? 'Type' : (g.charAt(0).toUpperCase() + g.slice(1)) }}</option>
+      }
+    </select>
+  </div>
+
   @if (isLoading()) {
     <div class="loading-state">
       <div class="spinner"></div>

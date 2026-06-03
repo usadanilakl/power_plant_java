@@ -14,7 +14,9 @@ import {
   CategoryUpdateRequest,
   ValueCreateRequest,
   ValueUpdateRequest,
-  ValueMoveRequest
+  ValueMoveRequest,
+  OrphanValueDto,
+  DedupOrphansResultDto
 } from '../models/cv-manager.model';
 
 @Injectable({
@@ -129,5 +131,41 @@ export class CvManagerApiService {
       `${this.baseUrl}/values/move`,
       request
     ).pipe(map(response => response.responseData));
+  }
+
+  // ==================== ORPHAN DEDUP ENDPOINTS ====================
+
+  /**
+   * Discovery only — find Values that share a name with a canonical Value in
+   * the given Category but live outside it. No DB mutation; sorted by
+   * referenceCount desc.
+   */
+  findOrphanValues(categoryAlias: string): Observable<OrphanValueDto[]> {
+    return this.http.get<SpringApiResponse<OrphanValueDto[]>>(
+      `${this.baseUrl}/values/orphans?categoryAlias=${encodeURIComponent(categoryAlias)}`
+    ).pipe(map(r => r.responseData));
+  }
+
+  /**
+   * Run the dedup. `dryRun=true` returns the plan without mutating; `dryRun=false`
+   * invokes `mergeValues` for each orphan→canonical pair (re-points FKs across
+   * every registered entity type, soft-deletes the orphan).
+   */
+  dedupOrphans(categoryAlias: string, dryRun: boolean): Observable<DedupOrphansResultDto> {
+    return this.http.post<SpringApiResponse<DedupOrphansResultDto>>(
+      `${this.baseUrl}/values/dedup-orphans?categoryAlias=${encodeURIComponent(categoryAlias)}&dryRun=${dryRun}`,
+      {}
+    ).pipe(map(r => r.responseData));
+  }
+
+  /**
+   * RECOVERY: resurrect (set deleted=false) any Value still referenced by an
+   * entity FK. Use this to undo damage from a previous unsafe merge that
+   * soft-deleted values without re-pointing the entities first.
+   */
+  recoverDanglingReferences(): Observable<{ referencedIds: number; resurrected: number; scannedTables: number }> {
+    return this.http.post<SpringApiResponse<{ referencedIds: number; resurrected: number; scannedTables: number }>>(
+      `${this.baseUrl}/values/recover-dangling`, {}
+    ).pipe(map(r => r.responseData));
   }
 }

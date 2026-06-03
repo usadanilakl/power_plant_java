@@ -1,13 +1,15 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Validators } from '@angular/forms';
 import { FileDto } from '../../../../models/file/file.model';
 import { Column } from '../../../../models/column.model';
 import { RfFormField } from '../../../../models/ui/form-field.model';
+import { RfValueService } from '../../../values/refactored/services/rf-value.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FileMapperService {
+  private valueService = inject(RfValueService);
   /**
    * Maps FileDto fields to table columns
    * @param fields - Array of field names to include in columns
@@ -190,11 +192,12 @@ export class FileMapperService {
    */
   toFormFields(
     file: FileDto,
-    fields: (keyof FileDto | 'file' | 'overrideFile')[] = [
+    fields: (keyof FileDto | 'file' | 'overrideFile' | 'systems')[] = [
       'name',
       'fileType',
       'fileNumber',
       'vendor',
+      'systems',
       'file',
       'overrideFile',
       'isVerified',
@@ -234,6 +237,19 @@ export class FileMapperService {
         canManageValues: true,
         validators: [Validators.required],
         initialValue: file.system?.id || null,
+      },
+      // Combined "Systems" field: file.system (primary, an ID) plus
+      // file.relatedSystems (names resolved to IDs via the value cache). On
+      // save the form value is split back into system (first) + relatedSystems
+      // (rest, as names) — see rf-file-form.component.ts onSubmit.
+      systems: {
+        name: 'systems',
+        label: 'Systems',
+        type: 'multi-value-select',
+        categoryAlias: 'system',
+        canManageValues: true,
+        validators: [Validators.required],
+        initialValue: this.resolveSystemIds(file),
       },
       relatedSystems: {
         name: 'relatedSystems',
@@ -386,5 +402,63 @@ export class FileMapperService {
       return 'None';
     }
     return points.map((point) => point.name).join(', ');
+  }
+
+  /**
+   * Resolve the file's primary system + relatedSystems (names) into an array of
+   * value-IDs for the multi-value-select form field. Reads {@link RfValueService}'s
+   * signal cache, so consumers wrapping `toFormFields` in a `computed` will
+   * automatically re-resolve once the "system" category finishes loading.
+   * Returns IDs in order: primary first, then related (in original CSV order).
+   * Unmatched names are dropped silently (they'd be impossible to display).
+   */
+  resolveSystemIds(file: FileDto): number[] {
+    const primary = file.system?.id;
+    const related = file.relatedSystems ?? [];
+    if (!primary && related.length === 0) return [];
+
+    const allValues = this.valueService.getValuesByCategory('system');
+    const nameToId = new Map<string, number>();
+    for (const v of allValues) {
+      if (v?.name) nameToId.set(v.name.toLowerCase().trim(), v.id);
+    }
+
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    if (primary && primary > 0) {
+      ids.push(primary);
+      seen.add(primary);
+    }
+    for (const raw of related) {
+      if (!raw) continue;
+      const id = nameToId.get(raw.toLowerCase().trim());
+      if (id != null && !seen.has(id)) {
+        ids.push(id);
+        seen.add(id);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Inverse of {@link resolveSystemIds}: split an array of value-IDs (from the
+   * form's multi-value-select) into a primary system ID and a list of related
+   * system NAMES. Returns names for related so the backend's existing String
+   * `relatedSystems` column (CSV) round-trips without schema change.
+   */
+  splitSystemIds(systemIds: number[]): { primaryId: number | null; relatedNames: string[] } {
+    if (!Array.isArray(systemIds) || systemIds.length === 0) {
+      return { primaryId: null, relatedNames: [] };
+    }
+    const allValues = this.valueService.getValuesByCategory('system');
+    const idToName = new Map<number, string>();
+    for (const v of allValues) {
+      if (v?.id != null && v.name) idToName.set(v.id, v.name);
+    }
+    const [primaryId, ...rest] = systemIds;
+    const relatedNames = rest
+      .map(id => idToName.get(id))
+      .filter((n): n is string => !!n);
+    return { primaryId: primaryId ?? null, relatedNames };
   }
 }

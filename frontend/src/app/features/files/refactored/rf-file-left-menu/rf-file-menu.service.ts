@@ -6,6 +6,28 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FileService } from "../../../../services/file.service";
 import { tap } from "rxjs";
 
+/** Keys a FileDto can be grouped by in the toggle menu. */
+export type FileMenuGroupKey = 'vendor' | 'system' | 'fileType';
+
+/**
+ * Per-type default grouping. The renderer used to hard-code "P&ID → vendor,
+ * everything else → fileType"; this table extends that to physical-layout types
+ * (electrical / isometric / heat-trace / one-line) that group more usefully by
+ * the file's `system` (which in this domain is effectively the physical area).
+ *
+ * Matching is `lowercase().includes(needle)` so naming variants like "Heat
+ * Trace", "heat-trace", "PID", "P&ID" all resolve to the same default.
+ */
+const TYPE_GROUP_DEFAULTS: Array<[string, FileMenuGroupKey]> = [
+  ['pid',         'vendor'],
+  ['electrical',  'system'],
+  ['isometric',   'system'],
+  ['heat trace',  'system'],
+  ['heat-trace',  'system'],
+  ['one-line',    'system'],
+  ['one line',    'system'],
+];
+
 @Injectable({
     providedIn: 'root'
 })
@@ -78,32 +100,58 @@ export class FileMenuService{
      * type picker) should call this directly instead of `loadFiles`, which
      * would clobber the global selection used by the main file feature.
      *
+     * If `overrideGroupBy` is given it wins; otherwise the per-type default
+     * from {@link TYPE_GROUP_DEFAULTS} is used.
+     *
      * Returns an empty array when the type is empty or has no files.
      */
-    buildItemsForType(type: string): NestedItem[] {
+    buildItemsForType(type: string, overrideGroupBy?: FileMenuGroupKey): NestedItem[] {
         if (!type) return [];
-        // P&ID files group by vendor; other types group by fileType.
-        const criteria: 'vendor' | 'fileType' = type.toLowerCase().includes('pid') ? 'vendor' : 'fileType';
+        const criteria = overrideGroupBy ?? this.defaultGroupForType(type);
         return this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
     }
 
-    private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {
-    const groupFiles = (files: FileDto[], key: 'vendor' | 'system' | 'fileType'): Record<string, FileDto[]> => {
-    
-        return files.reduce((acc, file, index) => {
-        
-        const groupValue = file[key];
-    
-        if (groupValue && typeof groupValue === 'object' && 'name' in groupValue) {
-            const groupName = groupValue.name;    
-            if (!acc[groupName]) {
-            acc[groupName] = [];
-            }
-            acc[groupName].push(file);
-        } else {
-            console.warn(`File ${index} has invalid or missing ${key}:`, groupValue);
+    /** Recommended grouping for a given file type (P&ID→vendor, electrical/iso/heat-trace→system, else fileType). */
+    defaultGroupForType(type: string): FileMenuGroupKey {
+        const lower = (type || '').toLowerCase();
+        for (const [needle, key] of TYPE_GROUP_DEFAULTS) {
+            if (lower.includes(needle)) return key;
         }
-    
+        return 'fileType';
+    }
+
+    private createListOfNestedItems(data: FileDto[], groupBy: FileMenuGroupKey): NestedItem[] {
+    const groupFiles = (files: FileDto[], key: FileMenuGroupKey): Record<string, FileDto[]> => {
+        // Files lacking the group key (e.g. an electrical file with no system
+        // tagged) land in this bucket so they're still reachable from the menu
+        // instead of silently dropped.
+        const missingLabel = `(No ${key})`;
+        return files.reduce((acc, file) => {
+        // When grouping by system, fan out across every system the file
+        // belongs to (primary + relatedSystems) so the same file appears
+        // under each.
+        if (key === 'system') {
+            const groupNames = this.systemGroupNames(file);
+            if (groupNames.length === 0) {
+                if (!acc[missingLabel]) acc[missingLabel] = [];
+                acc[missingLabel].push(file);
+            } else {
+                for (const groupName of groupNames) {
+                    if (!acc[groupName]) acc[groupName] = [];
+                    acc[groupName].push(file);
+                }
+            }
+            return acc;
+        }
+        const groupValue = file[key];
+        let groupName: string;
+        if (groupValue && typeof groupValue === 'object' && 'name' in groupValue && groupValue.name) {
+            groupName = groupValue.name;
+        } else {
+            groupName = missingLabel;
+        }
+        if (!acc[groupName]) acc[groupName] = [];
+        acc[groupName].push(file);
         return acc;
         }, {} as Record<string, FileDto[]>);
     };
@@ -164,6 +212,36 @@ export class FileMenuService{
           console.error('Error getting file for edit:', error);
         }
       });
+    }
+
+    /**
+     * Every system bucket name a file belongs to: primary `system.name` plus
+     * every entry in `relatedSystems` (deduped, trimmed, non-empty). Returns
+     * an empty array when the file has no system info at all — callers route
+     * such files to the "(No system)" bucket.
+     */
+    private systemGroupNames(file: FileDto): string[] {
+        const out: string[] = [];
+        const seen = new Set<string>();
+        const push = (raw: any) => {
+            if (typeof raw !== 'string') return;
+            const v = raw.trim();
+            if (!v) return;
+            const key = v.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push(v);
+        };
+        push(file.system?.name);
+        // `relatedSystems` is wire-typed as string[] but legacy payloads may
+        // still arrive as a CSV string — handle both defensively.
+        const related: any = (file as any).relatedSystems;
+        if (Array.isArray(related)) {
+            for (const r of related) push(r);
+        } else if (typeof related === 'string') {
+            for (const r of related.split(',')) push(r);
+        }
+        return out;
     }
 
 }

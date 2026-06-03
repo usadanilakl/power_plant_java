@@ -224,16 +224,26 @@ export class RfFileFormComponent {
     return this.mapperService.toFormFields(entity);
   });
 
-  onAnyValueChange(item: FileDto) {
+  onAnyValueChange(item: any) {
+    // Normalize the form's `systems: number[]` into entity-shape system +
+    // relatedSystems before draft-saving / diffing, so drafts round-trip
+    // correctly through fromJson on reload.
+    if (Array.isArray((item as any).systems)) {
+      const { primaryId, relatedNames } = this.mapperService.splitSystemIds((item as any).systems);
+      (item as any).system = primaryId ? { id: primaryId } : { id: 0, name: '' };
+      (item as any).relatedSystems = relatedNames;
+      delete (item as any).systems;
+    }
+
     const originalVersion = this.originalServerVersion();
 
     // Only save draft if there are real differences from the original server version
-    if (originalVersion && this.hasRealDifferences(originalVersion, item)) {
+    if (originalVersion && this.hasRealDifferences(originalVersion, item as FileDto)) {
       console.log('Saving draft - changes detected');
-      this.stateService.saveDraft(item);
+      this.stateService.saveDraft(item as FileDto);
     } else {
       // No real changes - clear any existing draft
-      const fileId = item.id || null;
+      const fileId = (item as FileDto).id || null;
       if (this.stateService.hasDraftForItem(fileId)) {
         console.log('Clearing draft - no real changes detected');
         this.stateService.clearDraftForItem(fileId);
@@ -245,6 +255,16 @@ export class RfFileFormComponent {
     // Extract file and overrideFile from form data (they're not part of FileDto)
     const file: File | null = formData.file instanceof File ? formData.file : null;
     const overrideFile: string = formData.overrideFile ?? 'false';
+
+    // The "Systems" multi-select returns number[] of value-IDs. Split back into
+    // the entity shape: system FK (primary = first id) + relatedSystems (rest,
+    // as names, because the backend column is a CSV of names).
+    if (Array.isArray(formData.systems)) {
+      const { primaryId, relatedNames } = this.mapperService.splitSystemIds(formData.systems);
+      formData.system = primaryId ? { id: primaryId } : { id: 0, name: '' };
+      formData.relatedSystems = relatedNames;
+      delete formData.systems;
+    }
 
     // Remove file upload fields from the data before creating FileDto
     const { file: _, overrideFile: __, ...fileDtoData } = formData;

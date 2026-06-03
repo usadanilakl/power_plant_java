@@ -7,7 +7,9 @@ import {
   CategoryWithCountDto,
   DuplicateCategoryDto,
   DuplicateValueDto,
-  ValueWithDependenciesDto
+  ValueWithDependenciesDto,
+  OrphanValueDto,
+  DedupOrphansResultDto
 } from '../../models/cv-manager.model';
 import { TableComponent } from '../../../../../shared/table/table.component';
 import { Column } from '../../../../../models/column.model';
@@ -68,6 +70,18 @@ export class CvManagerPageComponent implements OnInit {
   categoryDuplicates = signal<DuplicateCategoryDto[]>([]);
   valueDuplicates = signal<DuplicateValueDto[]>([]);
   selectedKeepIds = signal<Map<string, number>>(new Map());
+
+  // ── Cross-category orphan dedup state ────────────────────────────────────
+  // Discovers and merges Values whose name matches a canonical in a target
+  // Category but live outside it (the cause of empty value-select dropdowns
+  // when entity FKs point at the wrong-category Value).
+  isOrphanDialogOpen = signal(false);
+  orphanCategoryAlias = signal<string>('');
+  orphans = signal<OrphanValueDto[]>([]);
+  orphanScanCompleted = signal(false); // true once a scan has been run for the current alias
+  dedupResult = signal<DedupOrphansResultDto | null>(null);
+  isOrphanLoading = signal(false);
+  orphanError = signal<string>('');
 
   // Computed filtered values
   filteredValues = computed(() => {
@@ -481,5 +495,134 @@ export class CvManagerPageComponent implements OnInit {
       }
       return this.values().filter(v => v.id !== this.deleteItemId());
     }
+  }
+
+  // ==================== ORPHAN DEDUP ====================
+
+  openOrphanDialog() {
+    this.orphanCategoryAlias.set('');
+    this.orphans.set([]);
+    this.dedupResult.set(null);
+    this.orphanScanCompleted.set(false);
+    this.orphanError.set('');
+    this.isOrphanDialogOpen.set(true);
+  }
+
+  closeOrphanDialog() {
+    this.isOrphanDialogOpen.set(false);
+    this.orphans.set([]);
+    this.dedupResult.set(null);
+    this.orphanCategoryAlias.set('');
+    this.orphanScanCompleted.set(false);
+    this.orphanError.set('');
+  }
+
+  /** Read-only scan. Populates {@link orphans} sorted by referenceCount desc (backend already sorts). */
+  findOrphans() {
+    const alias = this.orphanCategoryAlias().trim();
+    if (!alias) {
+      this.orphanError.set('Pick a category first');
+      return;
+    }
+    this.orphanError.set('');
+    this.dedupResult.set(null);
+    this.isOrphanLoading.set(true);
+    this.apiService.findOrphanValues(alias).subscribe({
+      next: (data) => {
+        this.orphans.set(data ?? []);
+        this.orphanScanCompleted.set(true);
+        this.isOrphanLoading.set(false);
+      },
+      error: (err) => {
+        this.orphans.set([]);
+        this.orphanScanCompleted.set(true);
+        this.orphanError.set(err?.error?.message ?? err?.message ?? 'Failed to find orphans');
+        this.isOrphanLoading.set(false);
+      }
+    });
+  }
+
+  /**
+   * Run the dedup. `dryRun=true` returns a preview without mutating; the apply
+   * path also re-loads the page's Categories/Values lists so the rest of the UI
+   * reflects the post-merge state.
+   */
+  runOrphanDedup(dryRun: boolean) {
+    const alias = this.orphanCategoryAlias().trim();
+    if (!alias) {
+      this.orphanError.set('Pick a category first');
+      return;
+    }
+    if (!dryRun) {
+      const refs = this.orphans().reduce((sum, o) => sum + (o.referenceCount || 0), 0);
+      const ok = confirm(
+        `Apply dedup for "${alias}"?\n\n` +
+        `${this.orphans().length} orphan value(s) will be merged into their canonical.\n` +
+        `${refs} entity reference(s) will be re-pointed.\n\n` +
+        `Continue?`
+      );
+      if (!ok) return;
+    }
+    this.orphanError.set('');
+    this.isOrphanLoading.set(true);
+    this.apiService.dedupOrphans(alias, dryRun).subscribe({
+      next: (result) => {
+        this.dedupResult.set(result);
+        this.isOrphanLoading.set(false);
+        if (!dryRun) {
+          // Refresh page data so the rest of the UI reflects the merged state.
+          this.loadCategories();
+          this.loadValues();
+          // After applying, the orphan list is stale; clear so the operator
+          // can re-scan to confirm zero remaining.
+          this.orphans.set([]);
+          this.orphanScanCompleted.set(false);
+        }
+      },
+      error: (err) => {
+        this.orphanError.set(err?.error?.message ?? err?.message ?? 'Dedup failed');
+        this.isOrphanLoading.set(false);
+      }
+    });
+  }
+
+  /** Sum of references the current orphan list would re-point on apply. */
+  totalOrphanReferences = computed(() =>
+    this.orphans().reduce((sum, o) => sum + (o.referenceCount || 0), 0)
+  );
+
+  // ==================== RECOVERY ====================
+  //
+  // Resurrects Values that are still referenced by an entity FK (file.vendor_id,
+  // loto_point.location_id, ...) but were soft-deleted by a prior unsafe merge.
+  // Use this if value-select dropdowns appear empty across forms after a dedup.
+
+  isRecovering = signal(false);
+  recoveryResult = signal<{ referencedIds: number; resurrected: number; scannedTables: number } | null>(null);
+
+  runRecovery() {
+    const ok = confirm(
+      'Resurrect soft-deleted Values that are still referenced by entity FKs?\n\n' +
+      'This is the recovery action — it flips deleted=false on any Value row that ' +
+      'is referenced by file.vendor_id, loto_point.location_id, etc. but was ' +
+      'soft-deleted (so dropdowns display empty for those entities).\n\n' +
+      'Safe to run multiple times. Continue?'
+    );
+    if (!ok) return;
+    this.isRecovering.set(true);
+    this.recoveryResult.set(null);
+    this.apiService.recoverDanglingReferences().subscribe({
+      next: (result) => {
+        this.recoveryResult.set(result);
+        this.isRecovering.set(false);
+        // Reload the page data so the resurrected values appear.
+        this.loadCategories();
+        this.loadValues();
+      },
+      error: (err) => {
+        this.isRecovering.set(false);
+        this.errorMessage.set(err?.error?.message ?? err?.message ?? 'Recovery failed');
+      }
+    });
   }
 }

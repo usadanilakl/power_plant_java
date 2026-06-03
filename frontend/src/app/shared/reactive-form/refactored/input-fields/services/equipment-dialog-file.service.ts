@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed, DestroyRef } from '@angular/core';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrentFileService } from '../../../../../services/current-file.service';
-import { FileMenuService } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-menu.service';
+import { FileMenuService, FileMenuGroupKey } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-menu.service';
 import { FileService } from '../../../../../services/file.service';
 import { FileDto } from '../../../../../models/file/file.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
@@ -51,9 +51,23 @@ export class EquipmentDialogFileService {
     return types.find(t => t.toLowerCase().includes('pid')) ?? types[0] ?? '';
   });
 
+  // Dialog-local grouping override. `null` means "use the per-type default"
+  // (P&ID→vendor, electrical/iso/heat-trace→system, else fileType).
+  private explicitGroupBy = signal<FileMenuGroupKey | null>(null);
+
+  /** Available grouping options surfaced in the dropdown. */
+  availableGroupKeys: FileMenuGroupKey[] = ['vendor', 'system', 'fileType'];
+
+  /** Effective group key: explicit override if any, else the per-type default. */
+  selectedGroupBy = computed<FileMenuGroupKey>(() =>
+    this.explicitGroupBy() ?? this.menuService.defaultGroupForType(this.selectedType())
+  );
+
   // Menu items for the dialog's toggle menu — built locally so switching the
   // type picker here does NOT affect the global file feature's menu.
-  menuItems = computed<NestedItem[]>(() => this.menuService.buildItemsForType(this.selectedType()));
+  menuItems = computed<NestedItem[]>(() =>
+    this.menuService.buildItemsForType(this.selectedType(), this.selectedGroupBy())
+  );
 
   // Loading and error states — still observed from the singleton because
   // currentFileService drives both (one-shot bulk load on startup).
@@ -73,9 +87,20 @@ export class EquipmentDialogFileService {
     return [];
   });
 
-  /** Pick a different file type. Local to this dialog instance. */
+  /**
+   * Pick a different file type. Local to this dialog instance.
+   * Also clears any manual group-by override — each type has its own sensible
+   * default, so switching types resets the grouping rather than carrying the
+   * previous override (which may not make sense for the new type).
+   */
   selectType(type: string): void {
     this.explicitType.set(type ?? '');
+    this.explicitGroupBy.set(null);
+  }
+
+  /** Override the grouping for the current file type. Local to this dialog. */
+  selectGroupBy(key: FileMenuGroupKey): void {
+    this.explicitGroupBy.set(key);
   }
 
   // Equipment from selected file
@@ -148,5 +173,6 @@ export class EquipmentDialogFileService {
   reset(): void {
     this.selectedFile.set(null);
     this.explicitType.set('');
+    this.explicitGroupBy.set(null);
   }
 }

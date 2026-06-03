@@ -1,5 +1,5 @@
 
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NestedItem, NestedItemImpl } from '../../../../models/ui/nested-item.model';
@@ -13,6 +13,7 @@ import { RfFileStateService } from '../services/rf-file-state.service';
 import { RfFileApiService, RevisionInfo, deriveRevisionKey, buildRevisionFileDto } from '../services/rf-file-api.service';
 import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
 import { QaDirective } from '../../../../shared/qa/qa.directive';
+import { FileMenuService, FileMenuGroupKey } from './rf-file-menu.service';
 import { tap } from 'rxjs';
 
 @Component({
@@ -42,6 +43,15 @@ export class RfFileLeftMenuComponent implements OnInit{
   /** Currently selected tab. Starts empty and is set to the first available type on load. */
   selectedType = signal<string>("");
 
+  /** Manual override of the grouping criteria; `null` means "use this type's default". */
+  private explicitGroupBy = signal<FileMenuGroupKey | null>(null);
+  /** Options surfaced in the Group-by dropdown. */
+  availableGroupKeys: FileMenuGroupKey[] = ['vendor', 'system', 'fileType'];
+  /** Effective group key: explicit override if any, else the per-type default from FileMenuService. */
+  effectiveGroupBy = computed<FileMenuGroupKey>(() =>
+    this.explicitGroupBy() ?? this.fileMenuService.defaultGroupForType(this.selectedType())
+  );
+
   /** Disk-based revisions map (key -> physical revisions); drives expandable revision nodes. */
   revisionsMap = signal<Record<string, RevisionInfo[]>>({});
 
@@ -55,6 +65,7 @@ constructor(
   private destroyRef: DestroyRef,
   private currentFileService: CurrentFileService,
   private fileApi: RfFileApiService,
+  private fileMenuService: FileMenuService,
 ) { }
 
   ngOnInit(): void {
@@ -127,14 +138,25 @@ constructor(
       this.menuItems.set([]);
       return;
     }
+    // If the user is switching to a new type, drop any manual Group-by override
+    // so the new type's default kicks in (e.g. PID→vendor, electrical→system).
+    if (effectiveType !== this.selectedType()) {
+      this.explicitGroupBy.set(null);
+    }
     this.selectedType.set(effectiveType);
-    // PID files are traditionally grouped by vendor; other types group by fileType.
-    const criteria = effectiveType.toLowerCase() === 'pid' ? 'vendor' : 'fileType';
     const nestedItems = this.createListOfNestedItems(
       this.currentFileService.getFilesByType(effectiveType),
-      criteria
+      this.effectiveGroupBy()
     );
     this.menuItems.set(nestedItems);
+  }
+
+  /** User override for grouping criteria (vendor / system / fileType). Resets when the file type changes. */
+  onGroupByChange(key: string): void {
+    if (key === 'vendor' || key === 'system' || key === 'fileType') {
+      this.explicitGroupBy.set(key);
+      this.loadFiles(this.selectedType());
+    }
   }
 
   refresh(): void {
@@ -174,25 +196,39 @@ constructor(
     this.showMultiUpload.set(false);
   }
 
-  private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {
+  private createListOfNestedItems(data: FileDto[], groupBy: FileMenuGroupKey): NestedItem[] {
     // Rebuild the transient-revision lookup from scratch on each (re)build.
     this.revisionFileLookup.clear();
-    const groupFiles = (files: FileDto[], key: 'vendor' | 'system' | 'fileType'): Record<string, FileDto[]> => {
-    
-      return files.reduce((acc, file, index) => {
-        
-        const groupValue = file[key];
-    
-        if (groupValue && typeof groupValue === 'object' && 'name' in groupValue) {
-          const groupName = groupValue.name;    
-          if (!acc[groupName]) {
-            acc[groupName] = [];
+    const groupFiles = (files: FileDto[], key: FileMenuGroupKey): Record<string, FileDto[]> => {
+      // Files lacking the group key (e.g. an electrical file with no system
+      // tagged) land here so they're still reachable instead of silently dropped.
+      const missingLabel = `(No ${key})`;
+      return files.reduce((acc, file) => {
+        // When grouping by system, fan out: a file gets a row under every
+        // system it belongs to (primary `system` + every name in
+        // `relatedSystems`), so users see it from each system's perspective.
+        if (key === 'system') {
+          const groupNames = this.systemGroupNames(file);
+          if (groupNames.length === 0) {
+            if (!acc[missingLabel]) acc[missingLabel] = [];
+            acc[missingLabel].push(file);
+          } else {
+            for (const groupName of groupNames) {
+              if (!acc[groupName]) acc[groupName] = [];
+              acc[groupName].push(file);
+            }
           }
-          acc[groupName].push(file);
-        } else {
-          console.warn(`File ${index} has invalid or missing ${key}:`, groupValue);
+          return acc;
         }
-    
+        const groupValue = file[key];
+        let groupName: string;
+        if (groupValue && typeof groupValue === 'object' && 'name' in groupValue && groupValue.name) {
+          groupName = groupValue.name;
+        } else {
+          groupName = missingLabel;
+        }
+        if (!acc[groupName]) acc[groupName] = [];
+        acc[groupName].push(file);
         return acc;
       }, {} as Record<string, FileDto[]>);
     };
@@ -468,6 +504,35 @@ constructor(
   private handleFileTreeClick(item: NestedItem): void {
     console.log('Handling click for files/tree route', item);
     // Implement tree-specific click logic here
+  }
+
+  /**
+   * Every system bucket name a file belongs to: primary `system.name` plus
+   * every entry in `relatedSystems` (deduped, trimmed, non-empty). Returns []
+   * when the file has no system info at all — caller routes it to "(No system)".
+   */
+  private systemGroupNames(file: FileDto): string[] {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const push = (raw: any) => {
+      if (typeof raw !== 'string') return;
+      const v = raw.trim();
+      if (!v) return;
+      const key = v.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(v);
+    };
+    push(file.system?.name);
+    // `relatedSystems` is wire-typed as string[] but legacy payloads may still
+    // arrive as a CSV string — handle both defensively.
+    const related: any = (file as any).relatedSystems;
+    if (Array.isArray(related)) {
+      for (const r of related) push(r);
+    } else if (typeof related === 'string') {
+      for (const r of related.split(',')) push(r);
+    }
+    return out;
   }
 
   private setFileItemColor(item: FileDto): string{

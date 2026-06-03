@@ -251,13 +251,18 @@ public interface NgCrudService<
     }
 
     default boolean containsValue(E entity, Value value) {
-        if (entity == null || value == null) {
+        if (entity == null || value == null || value.getId() == null) {
             return false;
         }
+        Long targetId = value.getId();
 
         Class<?> entityClass = entity.getClass();
 
-        // Check all fields of the entity
+        // Check all fields of the entity.
+        // Compare by Value.getId() because Value doesn't override equals();
+        // the default Object.equals is reference equality, so two Hibernate-
+        // loaded instances of the same row never matched — leaving findByValue
+        // silently returning empty for every existing reference.
         for (Field field : entityClass.getDeclaredFields()) {
             field.setAccessible(true);
 
@@ -265,7 +270,7 @@ public interface NgCrudService<
                 // Check if the field is of type Value
                 if (field.getType().equals(Value.class)) {
                     Value fieldValue = (Value) field.get(entity);
-                    if (fieldValue != null && fieldValue.equals(value)) {
+                    if (fieldValue != null && targetId.equals(fieldValue.getId())) {
                         return true;
                     }
                 }
@@ -274,7 +279,7 @@ public interface NgCrudService<
                     Collection<?> collection = (Collection<?>) field.get(entity);
                     if (collection != null) {
                         for (Object item : collection) {
-                            if (item instanceof Value && item.equals(value)) {
+                            if (item instanceof Value v && targetId.equals(v.getId())) {
                                 return true;
                             }
                         }
@@ -286,33 +291,29 @@ public interface NgCrudService<
             }
         }
 
-        // Check fields from superclasses
+        // Check fields from superclasses (same id-comparison rule).
         Class<?> superClass = entityClass.getSuperclass();
         while (superClass != null && !superClass.equals(Object.class)) {
             for (Field field : superClass.getDeclaredFields()) {
                 field.setAccessible(true);
 
                 try {
-                    // Check if the field is of type Value
                     if (field.getType().equals(Value.class)) {
                         Value fieldValue = (Value) field.get(entity);
-                        if (fieldValue != null && fieldValue.equals(value)) {
+                        if (fieldValue != null && targetId.equals(fieldValue.getId())) {
                             return true;
                         }
-                    }
-                    // Check if the field is a collection of Values
-                    else if (Collection.class.isAssignableFrom(field.getType())) {
+                    } else if (Collection.class.isAssignableFrom(field.getType())) {
                         Collection<?> collection = (Collection<?>) field.get(entity);
                         if (collection != null) {
                             for (Object item : collection) {
-                                if (item instanceof Value && item.equals(value)) {
+                                if (item instanceof Value v && targetId.equals(v.getId())) {
                                     return true;
                                 }
                             }
                         }
                     }
                 } catch (IllegalAccessException e) {
-                    // Log the exception or handle it as appropriate for your application
                     e.printStackTrace();
                 }
             }

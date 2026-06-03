@@ -112,6 +112,9 @@ export class EquipmentUnifiedDialogComponent {
   // File-type picker bindings (dialog-local — does not affect the global file menu).
   selectedFileType = this.fileService.selectedType;
   availableFileTypes = this.fileService.availableTypes;
+  // Group-by picker bindings (dialog-local).
+  selectedGroupBy = this.fileService.selectedGroupBy;
+  availableGroupKeys = this.fileService.availableGroupKeys;
 
   // State - mimicking wizard's approach
   selectedEquipment = signal<EquipmentDto | null>(null);  // Currently selected/saved equipment
@@ -341,6 +344,13 @@ export class EquipmentUnifiedDialogComponent {
   /** Switch the left menu to a different file type (P&ID is the default). */
   onFileTypeChange(type: string): void {
     this.fileService.selectType(type);
+  }
+
+  /** Override the menu's grouping (e.g. force "system" for an electrical file type). */
+  onGroupByChange(key: string): void {
+    if (key === 'vendor' || key === 'system' || key === 'fileType') {
+      this.fileService.selectGroupBy(key);
+    }
   }
 
   /**
