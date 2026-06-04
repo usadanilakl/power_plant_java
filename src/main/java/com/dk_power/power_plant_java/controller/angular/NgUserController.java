@@ -38,6 +38,34 @@ public class NgUserController {
     private final NgUserService ngUserService;
     private final EntityManager entityManager;
 
+    /**
+     * Lightweight directory of active users with an email address — used by the SDS gap-report
+     * email dialog (and any future "pick a recipient" UX) for a typeahead. Not admin-only since
+     * it discloses nothing beyond what's already visible across the app (people's names + their
+     * work emails); sensitive fields (password hash, PIN, roles, etc.) are deliberately omitted.
+     */
+    @GetMapping("/email-directory")
+    public ResponseEntity<NgApiResponse<List<Map<String, String>>>> getEmailDirectory() {
+        try {
+            List<Map<String, String>> directory = new ArrayList<>();
+            for (User u : userRepo.findByIsActiveTrue()) {
+                String email = u.getEmail();
+                if (email == null || email.isBlank()) continue;
+                String name = u.getName();
+                if (name == null || name.isBlank()) {
+                    String first = u.getFirstName(); String last = u.getLastName();
+                    name = ((first != null ? first : "") + " " + (last != null ? last : "")).trim();
+                }
+                if (name == null || name.isBlank()) name = u.getUsername();
+                directory.add(Map.of("name", name != null ? name : email, "email", email));
+            }
+            directory.sort((a, b) -> a.get("name").compareToIgnoreCase(b.get("name")));
+            return ResponseEntity.ok(new NgApiResponse<>(directory, directory.size() + " contact(s)"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<UserDto>>> getPaginated(
             @RequestParam(defaultValue = "1") int page,

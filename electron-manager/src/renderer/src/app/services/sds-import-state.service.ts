@@ -5,7 +5,8 @@ import {
   SdsGapReport,
   SdsScrapeReport,
   SdsMatchChemical,
-  SdsEmailGapReportResult
+  SdsEmailGapReportResult,
+  SdsEmailRecipient
 } from './electron.service';
 
 /**
@@ -60,6 +61,7 @@ export class SdsImportStateService {
   emailSending = signal(false);
   emailError = signal('');
   emailResult = signal<SdsEmailGapReportResult | null>(null);
+  emailRecipients = signal<SdsEmailRecipient[]>([]);
 
   openEmailDialog(): void {
     try {
@@ -69,13 +71,36 @@ export class SdsImportStateService {
     this.emailError.set('');
     this.emailResult.set(null);
     this.emailDialogOpen.set(true);
+    // Fire-and-forget — typeahead loads in the background, dialog stays usable with free-text.
+    if (this.emailRecipients().length === 0) {
+      this.electron.sdsGetEmailRecipients().then(res => {
+        if (res.success && res.data) this.emailRecipients.set(res.data);
+      }).catch(() => { /* ignore — dialog falls back to free-text only */ });
+    }
+  }
+
+  /**
+   * If the typed string matches a personnel name, swap it for the email address so the form
+   * submits a valid To. Free-text emails pass through unchanged.
+   */
+  resolveRecipientNameToEmail(): void {
+    const typed = this.emailTo().trim();
+    if (!typed || typed.includes('@')) return;
+    const match = this.emailRecipients().find(r =>
+      r.name.toLowerCase() === typed.toLowerCase());
+    if (match) this.emailTo.set(match.email);
   }
 
   closeEmailDialog(): void { this.emailDialogOpen.set(false); }
 
   async sendEmail(): Promise<void> {
+    this.resolveRecipientNameToEmail();
     const to = this.emailTo().trim();
     if (!to) { this.emailError.set('Recipient is required'); return; }
+    if (!to.includes('@')) {
+      this.emailError.set(`"${to}" doesn't match a personnel name and isn't an email address.`);
+      return;
+    }
     const cc = this.emailCc().trim();
 
     this.emailSending.set(true);

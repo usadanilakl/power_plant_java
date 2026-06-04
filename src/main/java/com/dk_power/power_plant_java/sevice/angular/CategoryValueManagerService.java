@@ -13,16 +13,18 @@ import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.sync.EntityTableRegistry;
+import com.dk_power.power_plant_java.sevice.sync.ValueReferenceRepointService;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Table;
-import jakarta.persistence.metamodel.EntityType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import jakarta.annotation.PostConstruct;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -42,9 +44,27 @@ public class CategoryValueManagerService {
     private final NgLotoPointService lotoPointService;
     private final ServiceFacade serviceFacade;
     private final EntityTableRegistry entityTableRegistry;
+    private final ValueReferenceRepointService valueReferenceRepointService;
+    private final PlatformTransactionManager transactionManager;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    /**
+     * Used to wrap each orphan pair's mutation work in its own REQUIRES_NEW
+     * transaction so a failure (count probe blowing up, synthetic FieldChange
+     * emission returning empty, etc.) rolls back that pair's repoint + synthetic
+     * FieldChange rows atomically — without taking down other successfully
+     * processed pairs in the same batch. The dedup endpoint can then return
+     * the per-op statuses it accumulated.
+     */
+    private TransactionTemplate perPairTxTemplate;
+
+    @PostConstruct
+    void initPerPairTxTemplate() {
+        this.perPairTxTemplate = new TransactionTemplate(transactionManager);
+        this.perPairTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     // ==================== CATEGORY OPERATIONS ====================
 
@@ -522,15 +542,15 @@ public class CategoryValueManagerService {
         // findAll() on every SyncableService and any single failure marks the
         // current transaction as rollback-only (even when we swallow the
         // exception), which kills dedup at commit time. Native SQL queries the
-        // FK columns directly, bypasses @Where and lazy-load surprises, and
-        // tells the actual truth (e.g. 429 file rows pointing at the orphan).
-        Map<String, List<String>> fkColumns = discoverValueFkColumns();
+        // FK columns directly (including ManyToMany join tables), bypasses
+        // @Where and lazy-load surprises, and tells the actual truth.
+        ValueReferenceRepointService.Metadata refMeta = valueReferenceRepointService.discover();
         List<OrphanValueDto> result = new ArrayList<>(orphanIdToCanonical.size());
         for (Map.Entry<Long, Value> entry : orphanIdToCanonical.entrySet()) {
             Value orphan = valueRepo.findById(entry.getKey()).orElse(null);
             if (orphan == null) continue;
             Value canonical = entry.getValue();
-            long refCount = countReferencesSql(orphan.getId(), fkColumns);
+            long refCount = valueReferenceRepointService.countReferencesSql(orphan.getId(), refMeta);
             result.add(new OrphanValueDto(
                     ngValueService.valueToDto(orphan),
                     ngValueService.valueToDto(canonical),
@@ -551,9 +571,11 @@ public class CategoryValueManagerService {
      * and can re-invoke with {@code dryRun=false} to apply.
      */
     public DedupOrphansResultDto dedupOrphans(String categoryAlias, boolean dryRun) {
-        // Discover every (table, column) where a managed entity stores a Value FK.
-        // Done once per call rather than per orphan — cheap, JPA metamodel walk.
-        Map<String, List<String>> fkColumns = discoverValueFkColumns();
+        // Discovery walks the JPA metamodel for both scalar @ManyToOne Value
+        // fields and @ManyToMany Set<Value> join tables, and validates the
+        // resulting (table, column) pairs against INFORMATION_SCHEMA so a
+        // wrongly-derived name doesn't poison the transaction.
+        ValueReferenceRepointService.Metadata refMeta = valueReferenceRepointService.discover();
 
         List<OrphanValueDto> orphans = findOrphanValues(categoryAlias);
 
@@ -569,51 +591,86 @@ public class CategoryValueManagerService {
             Long orphanId = pair.getOrphan().getId();
             Long canonicalId = pair.getCanonical().getId();
 
-            // Always pre-count via native SQL — this also bypasses the @Where filter
-            // on Value, so it tells the truth even when the orphan has already been
-            // soft-deleted earlier. It's the SOURCE OF TRUTH for whether anything
-            // references the orphan, not whatever the discovery DTO showed.
-            long preCount = countReferencesSql(orphanId, fkColumns);
-
             DedupOperationDto op = new DedupOperationDto();
             op.setOrphanId(orphanId);
             op.setOrphanName(pair.getOrphan().getName());
             op.setCanonicalId(canonicalId);
             op.setCanonicalName(pair.getCanonical().getName());
-            op.setReferenceCount(preCount);
-            totalRefs += preCount;
-
-            if (dryRun) {
-                op.setStatus("dry-run");
-                ops.add(op);
-                continue;
-            }
 
             try {
-                // Direct UPDATE on every FK column — no Hibernate dirty-tracking,
-                // no proxy, no bytecode enhancement risk. Each affected row is
-                // logged so the operator has an audit trail.
-                long repointed = repointReferencesSql(orphanId, canonicalId, fkColumns);
+                // Each orphan pair runs in its own REQUIRES_NEW transaction.
+                // If anything in the pair throws — count probe, repoint,
+                // synthetic FieldChange emission, soft-delete — the per-pair
+                // tx rolls back atomically (including the synthetic FieldChange
+                // rows that joined this tx via trackEntityUpdateInCurrentTx).
+                // Other pairs in the batch are unaffected, and we still return
+                // a DedupOrphansResultDto with per-op statuses.
+                long[] preAndPost = perPairTxTemplate.execute(status -> {
+                    long preCount = valueReferenceRepointService.countReferencesSql(orphanId, refMeta);
+                    op.setReferenceCount(preCount);
 
-                // Verify *via the same native SQL* that no FK still points at the orphan
-                // before we soft-delete. If anything remains (a table we don't know
-                // about, an unmapped JoinColumn, a constraint that rejected the UPDATE),
-                // bail without deleting so the orphan stays visible/usable.
-                long postCount = countReferencesSql(orphanId, fkColumns);
-                if (postCount > 0) {
-                    op.setStatus("aborted: " + postCount + " reference(s) still point at orphan after re-point; orphan NOT deleted");
-                    log.warn("dedupOrphans: refusing to soft-delete Value #{} — {} reference(s) still dangling",
-                            orphanId, postCount);
-                } else {
-                    // Safe — repoint succeeded everywhere we know about. Soft-delete
-                    // the orphan and persist via the repo so the field-change listener
-                    // captures the deleted-flag for sync.
-                    valueRepo.findById(orphanId).ifPresent(v -> {
-                        v.setDeleted(true);
-                        valueRepo.save(v);
-                    });
-                    op.setStatus("merged (" + repointed + " row(s) re-pointed across " + fkColumns.size() + " table(s))");
-                }
+                    if (dryRun) {
+                        op.setStatus("dry-run");
+                        return new long[]{preCount, preCount};
+                    }
+                    // Load the canonical as a managed entity so JPA mutations on
+                    // owners cleanly point at it.
+                    Value canonical = valueRepo.findById(canonicalId).orElseThrow(
+                            () -> new IllegalStateException("Canonical Value #" + canonicalId + " not found"));
+
+                    // Repoint via JPA — @PostUpdate emits FieldChanges for scalar
+                    // fields automatically. Collection mutations capture pending
+                    // synthetic descriptors; emitPendingFieldChanges below joins
+                    // this same tx so its FieldChange rows commit/roll back
+                    // atomically with the JPA repoint.
+                    ValueReferenceRepointService.RepointOutcome outcome =
+                            valueReferenceRepointService.repointAllReferences(orphanId, canonical, refMeta);
+
+                    // Flush so the native post-count sees the in-memory updates.
+                    entityManager.flush();
+
+                    // Emit synthetic FieldChanges for the collection mutations.
+                    // Joins this pair tx (MANDATORY propagation), so if anything
+                    // later in the pair throws, these rows roll back too.
+                    valueReferenceRepointService.emitPendingFieldChanges(
+                            outcome.pendingCollectionFieldChanges);
+
+                    long postCount = valueReferenceRepointService.countReferencesSql(orphanId, refMeta);
+                    if (postCount > 0) {
+                        Map<String, Long> breakdown = valueReferenceRepointService
+                                .countReferencesByLocationSql(orphanId, refMeta);
+                        op.setStatus("aborted (rolled back): " + postCount + " reference(s) still point at orphan after re-point. Locations: " + breakdown);
+                        log.error("dedupOrphans: pair {}→{} aborted — {} reference(s) still dangling; rolling pair back. Breakdown: {}",
+                                orphanId, canonicalId, postCount, breakdown);
+                        // Roll the pair tx back. Without this, the partial JPA
+                        // repoint AND the synthetic FieldChanges from emit would
+                        // commit, leaving the hub in a half-merged state where
+                        // some references point at canonical and others at the
+                        // still-alive orphan. Rolling back means the operator
+                        // can fix the helper's discovery (missing FK column,
+                        // unmapped reference shape) and re-run cleanly.
+                        status.setRollbackOnly();
+                    } else {
+                        // Safe — every known reference is gone. Soft-delete the
+                        // orphan via repo so the listener emits a DELETE FieldChange.
+                        valueRepo.findById(orphanId).ifPresent(v -> {
+                            v.setDeleted(true);
+                            valueRepo.save(v);
+                        });
+                        // Write the dedup remap so future incoming sync changes
+                        // that reference this admin-deleted orphan ID get
+                        // redirected to canonical. Sync-time merge does this
+                        // too; both paths must stay symmetric or clients can
+                        // ship changes targeting an orphan ID that the hub
+                        // has soft-deleted and filtered out via @Where.
+                        // Fail-loud — if the remap insert throws, the pair tx
+                        // rolls back so we don't soft-delete without redirect.
+                        valueReferenceRepointService.persistDedupRemap("Value", orphanId, canonicalId);
+                        op.setStatus("merged (" + outcome.ownerRowsTouched + " owner row(s) re-pointed via JPA)");
+                    }
+                    return new long[]{preCount, postCount};
+                });
+                totalRefs += preAndPost[0];
             } catch (Exception e) {
                 op.setStatus("error: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
                 log.error("dedupOrphans: merge {}→{} failed",
@@ -629,151 +686,6 @@ public class CategoryValueManagerService {
                 categoryAlias, dryRun, orphans.size(), totalRefs,
                 dryRun ? "would be re-pointed" : "re-pointed");
         return result;
-    }
-
-    // ==================== SAFE NATIVE-SQL DEDUP HELPERS ====================
-
-    /**
-     * Walk every JPA entity in the persistence context, find every {@code @ManyToOne}
-     * field whose type is {@link Value}, and return a {@code table → [columns]} map.
-     * Table comes from {@code @Table.name} (or snake_case of the class), column from
-     * {@code @JoinColumn.name} (or fieldName + "_id"). The discovered map is the only
-     * thing that determines what SQL we run — change an entity, restart, the dedup
-     * automatically covers it. Nothing hardcoded.
-     */
-    private Map<String, List<String>> discoverValueFkColumns() {
-        Map<String, List<String>> discovered = new TreeMap<>();
-        for (EntityType<?> entity : entityManager.getMetamodel().getEntities()) {
-            Class<?> entityClass = entity.getJavaType();
-            if (entityClass == null || entityClass.equals(Value.class)) continue;
-
-            String tableName = resolveTableName(entityClass);
-            if (tableName == null || tableName.isBlank()) continue;
-
-            List<String> valueColumns = new ArrayList<>();
-            for (Class<?> clazz = entityClass; clazz != null && !clazz.equals(Object.class); clazz = clazz.getSuperclass()) {
-                for (Field field : clazz.getDeclaredFields()) {
-                    if (!Value.class.equals(field.getType())) continue;
-                    JoinColumn jc = field.getAnnotation(JoinColumn.class);
-                    String columnName = (jc != null && !jc.name().isEmpty())
-                            ? jc.name()
-                            : camelToSnake(field.getName()) + "_id";
-                    if (!valueColumns.contains(columnName)) valueColumns.add(columnName);
-                }
-            }
-            if (!valueColumns.isEmpty()) discovered.put(tableName, valueColumns);
-        }
-        // Filter to (table, column) pairs that actually exist in the live DB.
-        // Without this, a wrong-cased or wrong-pluralized column derived from
-        // @JoinColumn fallback runs `SELECT ... missing_col FROM table`, which
-        // throws a JPA exception that marks the whole transaction rollback-only.
-        // Even though we catch it, the tx is poisoned and commit fails with
-        // "Transaction silently rolled back because it has been marked as
-        // rollback-only" — killing both findOrphans and dedup.
-        return filterToExistingColumns(discovered);
-    }
-
-    /**
-     * Drop any (table, column) pair from {@code discovered} that doesn't exist in
-     * the running DB. Hibernate naming strategies and custom {@code @JoinColumn}
-     * names can produce identifiers that diverge from a naive {@code camelToSnake}
-     * derivation, so we cross-check {@code INFORMATION_SCHEMA.COLUMNS}.
-     */
-    private Map<String, List<String>> filterToExistingColumns(Map<String, List<String>> discovered) {
-        if (discovered.isEmpty()) return discovered;
-
-        Set<String> existing = new HashSet<>();
-        try {
-            @SuppressWarnings("unchecked")
-            List<Object[]> rows = entityManager.createNativeQuery(
-                    "SELECT UPPER(TABLE_NAME), UPPER(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'PUBLIC'")
-                    .getResultList();
-            for (Object[] row : rows) {
-                existing.add(row[0] + "." + row[1]);
-            }
-        } catch (Exception e) {
-            log.warn("filterToExistingColumns: INFORMATION_SCHEMA probe failed, returning unfiltered: {}", e.getMessage());
-            return discovered;
-        }
-
-        Map<String, List<String>> filtered = new TreeMap<>();
-        int dropped = 0;
-        for (var entry : discovered.entrySet()) {
-            String table = entry.getKey();
-            List<String> validColumns = new ArrayList<>();
-            for (String column : entry.getValue()) {
-                String key = table.toUpperCase() + "." + column.toUpperCase();
-                if (existing.contains(key)) {
-                    validColumns.add(column);
-                } else {
-                    dropped++;
-                    log.debug("filterToExistingColumns: dropping {}.{} (not in DB schema)", table, column);
-                }
-            }
-            if (!validColumns.isEmpty()) filtered.put(table, validColumns);
-        }
-        if (dropped > 0) {
-            log.info("filterToExistingColumns: dropped {} (table, column) pair(s) that don't exist in DB", dropped);
-        }
-        return filtered;
-    }
-
-    private String resolveTableName(Class<?> entityClass) {
-        Table table = entityClass.getAnnotation(Table.class);
-        if (table != null && !table.name().isEmpty()) return table.name();
-        return camelToSnake(entityClass.getSimpleName());
-    }
-
-    private static String camelToSnake(String s) {
-        return s == null ? null : s.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
-    }
-
-    /** Count, via direct SQL, how many entity rows reference {@code valueId}. */
-    long countReferencesSql(Long valueId, Map<String, List<String>> fkColumns) {
-        if (valueId == null) return 0;
-        long total = 0;
-        for (var entry : fkColumns.entrySet()) {
-            String table = entry.getKey();
-            for (String column : entry.getValue()) {
-                try {
-                    Number count = (Number) entityManager.createNativeQuery(
-                            "SELECT COUNT(*) FROM " + table + " WHERE " + column + " = :id")
-                            .setParameter("id", valueId)
-                            .getSingleResult();
-                    if (count != null) total += count.longValue();
-                } catch (Exception e) {
-                    // A table or column we discovered may not exist in this profile
-                    // (e.g. hub-only entities). Skip with debug log.
-                    log.debug("countReferencesSql: skipping {}.{}: {}", table, column, e.getMessage());
-                }
-            }
-        }
-        return total;
-    }
-
-    /** Re-point every entity FK from {@code orphanId} to {@code canonicalId} via direct SQL. */
-    long repointReferencesSql(Long orphanId, Long canonicalId, Map<String, List<String>> fkColumns) {
-        long total = 0;
-        for (var entry : fkColumns.entrySet()) {
-            String table = entry.getKey();
-            for (String column : entry.getValue()) {
-                try {
-                    int affected = entityManager.createNativeQuery(
-                            "UPDATE " + table + " SET " + column + " = :canonical WHERE " + column + " = :orphan")
-                            .setParameter("canonical", canonicalId)
-                            .setParameter("orphan", orphanId)
-                            .executeUpdate();
-                    if (affected > 0) {
-                        log.info("dedup: re-pointed {} row(s) in {}.{} from #{} → #{}",
-                                affected, table, column, orphanId, canonicalId);
-                        total += affected;
-                    }
-                } catch (Exception e) {
-                    log.debug("repointReferencesSql: skipping {}.{}: {}", table, column, e.getMessage());
-                }
-            }
-        }
-        return total;
     }
 
     // ==================== RECOVERY ====================
@@ -796,7 +708,7 @@ public class CategoryValueManagerService {
      * (how many were dangling and got flipped back) so the operator can see the impact.
      */
     public Map<String, Object> recoverDanglingReferences() {
-        Map<String, List<String>> fkColumns = discoverValueFkColumns();
+        Map<String, List<String>> fkColumns = valueReferenceRepointService.discover().fkColumns;
 
         Set<Long> referencedValueIds = new HashSet<>();
         for (var entry : fkColumns.entrySet()) {

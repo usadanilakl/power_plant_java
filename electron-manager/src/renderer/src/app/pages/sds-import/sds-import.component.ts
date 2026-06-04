@@ -140,13 +140,22 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
           <div class="modal-title">Email gap report</div>
           <p class="muted">
             Sends the report HTML. Every "missing on eBinder" chemical's local PDFs are attached
-            so the recipient can upload them to the eBinder. Last recipient is remembered for next time.
+            so the recipient can upload them to the eBinder. Attachments are split across multiple
+            emails if needed to stay under the size cap.
           </p>
           <label class="modal-label">To</label>
-          <input class="modal-input" type="email"
+          <input class="modal-input" type="text" list="sds-email-recipients"
                  [ngModel]="emailTo" (ngModelChange)="emailTo = $event"
-                 placeholder="recipient@plant.com"
+                 placeholder="Type a name or email…"
                  [disabled]="emailSending" />
+          <datalist id="sds-email-recipients">
+            @for (r of emailRecipients; track r.email) {
+              <option [value]="r.name">{{ r.email }}</option>
+            }
+          </datalist>
+          @if (emailRecipients.length > 0) {
+            <div class="hint">Pick from {{ emailRecipients.length }} personnel, or type any email address.</div>
+          }
           <label class="modal-label">CC (optional)</label>
           <input class="modal-input" type="text"
                  [ngModel]="emailCc" (ngModelChange)="emailCc = $event"
@@ -156,8 +165,11 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
           @if (emailResult && emailResult.sent) {
             <div class="info-banner">
               {{ emailResult.message }}
+              @if (emailResult.partsSent > 1) {
+                <div class="hint">Sent in {{ emailResult.partsSent }} parts.</div>
+              }
               @if (emailResult.attachmentsSkipped > 0) {
-                <div class="hint">{{ emailResult.attachmentsSkipped }} attachment(s) skipped (size cap).</div>
+                <div class="hint">{{ emailResult.attachmentsSkipped }} file(s) too large to email — listed in the report body.</div>
               }
             </div>
           }
@@ -297,6 +309,7 @@ export class SdsImportComponent {
   get emailSending() { return this.state.emailSending(); }
   get emailError() { return this.state.emailError(); }
   get emailResult() { return this.state.emailResult(); }
+  get emailRecipients() { return this.state.emailRecipients(); }
 
   openEmailDialog() { return this.state.openEmailDialog(); }
   closeEmailDialog() { return this.state.closeEmailDialog(); }

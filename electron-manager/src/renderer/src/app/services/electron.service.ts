@@ -243,10 +243,16 @@ export interface SdsEmailGapReportResult {
   attachmentsSent: number;
   attachmentsSkipped: number;
   totalAttachmentBytes: number;
+  partsSent: number;
   to: string;
   cc: string | null;
   message: string;
   skippedReasons: string[];
+}
+
+export interface SdsEmailRecipient {
+  name: string;
+  email: string;
 }
 
 export interface GateLogConfig {
@@ -573,6 +579,7 @@ interface ElectronAPI {
   sdsScrapeAbort: () => Promise<IpcResult>;
   sdsMatchChemical: (payload: SdsMatchChemical) => Promise<IpcResult>;
   sdsEmailGapReport: (payload: SdsEmailGapReportPayload) => Promise<IpcResult<SdsEmailGapReportResult>>;
+  sdsGetEmailRecipients: () => Promise<IpcResult<SdsEmailRecipient[]>>;
   sdsClearPdfs: () => Promise<IpcResult<number>>;
   sdsScrapeGetStatus: () => Promise<IpcResult<SdsScrapeStatus>>;
   sdsScrapeGetConfig: () => Promise<IpcResult<SdsScraperConfig>>;
@@ -1116,6 +1123,11 @@ export class ElectronService implements OnDestroy {
   async sdsEmailGapReport(payload: SdsEmailGapReportPayload): Promise<IpcResult<SdsEmailGapReportResult>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.sdsEmailGapReport(payload);
+  }
+
+  async sdsGetEmailRecipients(): Promise<IpcResult<SdsEmailRecipient[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsGetEmailRecipients();
   }
 
   async sdsClearPdfs(): Promise<IpcResult<number>> {

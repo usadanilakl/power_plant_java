@@ -92,7 +92,17 @@ public class FieldChangeEntityListener {
                 Map<String, Object> originalValues = entityStateCapture.getAndClearStateMap(newState.getId());
 
                 if (originalValues != null && !originalValues.isEmpty()) {
-                    fieldChangeTracker.trackEntityUpdate(originalValues, newState);
+                    // Use the MANDATORY-propagation variant so the resulting
+                    // FieldChange rows join the caller's transaction. The old
+                    // REQUIRES_NEW path committed FieldChange rows (and fired
+                    // SSE broadcasts via the publishOnCommit afterCommit hook
+                    // on the inner tx) independently of the outer tx — which,
+                    // for the dedup pair tx, meant a scalar @ManyToOne repoint
+                    // could leak a FieldChange + event even when verify-before-
+                    // delete later rolled the pair back. @PostUpdate is always
+                    // invoked during flush of an active transaction (JPA spec),
+                    // so MANDATORY is safe.
+                    fieldChangeTracker.trackEntityUpdateInCurrentTx(originalValues, newState);
                     log.debug("Tracked update of {} #{}",
                         newState.getClass().getSimpleName(), newState.getId());
                 } else {

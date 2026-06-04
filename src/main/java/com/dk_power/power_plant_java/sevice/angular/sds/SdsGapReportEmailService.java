@@ -22,22 +22,27 @@ import java.util.List;
  * three gap categories; every missing-from-eBinder chemical's local PDFs are attached so the
  * recipient can upload them to the eBinder.
  * <p>
- * Total attachment size is capped at 20 MB (well under typical email provider limits). Files
- * skipped because the cap was hit are listed in the result so the operator can rerun for the
- * remainder. We don't auto-split into multiple emails — it's better that the operator sees the
- * cap and chooses how to handle it.
+ * <b>Chunking:</b> when the combined attachment size exceeds {@link #MAX_PART_BYTES} (≈20 MB
+ * raw — safely under typical mail provider caps of 25 MB after base64 expansion), attachments
+ * are split across multiple emails labelled "(Part X of N)" in the subject. Each part contains
+ * the same full gap-report body so the message is self-contained on its own. A single PDF that's
+ * individually larger than the cap can't be sent at all — those are reported in {@code
+ * skippedReasons}.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class SdsGapReportEmailService {
 
-    /** Total decoded-bytes ceiling for the attachment set. Hard cap; survivors are reported. */
-    private static final long MAX_ATTACHMENT_BYTES = 20L * 1024 * 1024;
+    /** Per-email attachment ceiling (raw decoded bytes). */
+    private static final long MAX_PART_BYTES = 20L * 1024 * 1024;
 
     private final SdsSeedService seedService;
     private final PermitAttachmentRepo attachmentRepo;
     private final EmailFacadeService emailFacadeService;
+
+    /** One PDF attachment paired with the chemical that owns it — used to track per-chunk content for the body. */
+    private record AttachmentWithGap(SdsGapReportDto.Gap gap, EmailAttachment att, long size) {}
 
     public SdsGapReportEmailResultDto emailGapReport(String to, String cc, List<SdsImportItemDto> scrapedCatalog) {
         SdsGapReportEmailResultDto result = new SdsGapReportEmailResultDto();
@@ -55,53 +60,101 @@ public class SdsGapReportEmailService {
         result.setMissingPdfCount(report.getMissingPdf().size());
         result.setMissingFromEbinderCount(report.getMissingFromEbinder().size());
 
-        // Pull attachments for missing-from-eBinder rows up to the size cap.
-        List<EmailAttachment> attachments = new ArrayList<>();
-        long runningBytes = 0;
+        // Collect every PDF up-front so we can plan the chunk boundaries before sending anything.
+        List<AttachmentWithGap> all = new ArrayList<>();
         for (SdsGapReportDto.Gap gap : report.getMissingFromEbinder()) {
-            if (gap.getId() == null) continue;   // shouldn't happen — missing-from-eBinder always has a DB id
+            if (gap.getId() == null) continue;   // missing-from-eBinder always has a DB id
             List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
                     SdsChemicalMapper.ENTITY_TYPE, gap.getId());
             for (PermitAttachment att : atts) {
                 String b64 = att.getBase64Content();
                 if (b64 == null || b64.isBlank()) continue;
                 long size = approximateDecodedSize(b64);
-                if (runningBytes + size > MAX_ATTACHMENT_BYTES) {
+                if (size > MAX_PART_BYTES) {
                     result.setAttachmentsSkipped(result.getAttachmentsSkipped() + 1);
                     result.getSkippedReasons().add(String.format(
-                            "%s — %s (would exceed %d MB cap)",
-                            displayName(gap), att.getFileName(), MAX_ATTACHMENT_BYTES / (1024 * 1024)));
+                            "%s — %s (single file %.1f MB exceeds %d MB cap)",
+                            displayName(gap), att.getFileName(),
+                            size / (1024.0 * 1024.0), MAX_PART_BYTES / (1024 * 1024)));
                     continue;
                 }
-                attachments.add(EmailAttachment.builder()
+                EmailAttachment ea = EmailAttachment.builder()
                         .fileName(safeFileName(gap, att.getFileName()))
                         .contentType(att.getContentType() != null ? att.getContentType() : "application/pdf")
                         .base64Content(b64)
-                        .build());
-                runningBytes += size;
+                        .build();
+                all.add(new AttachmentWithGap(gap, ea, size));
             }
         }
-        result.setAttachmentsSent(attachments.size());
-        result.setTotalAttachmentBytes(runningBytes);
 
-        String subject = "SDS Gap Report — " + LocalDate.now();
-        String body = buildHtmlBody(report, result);
+        // First-fit packing: walk attachments in order; start a new chunk whenever the next one
+        // would push the running total past the cap. Each chunk maps to one outbound email.
+        List<List<AttachmentWithGap>> chunks = new ArrayList<>();
+        List<AttachmentWithGap> current = new ArrayList<>();
+        long currentBytes = 0;
+        for (AttachmentWithGap a : all) {
+            if (currentBytes + a.size() > MAX_PART_BYTES && !current.isEmpty()) {
+                chunks.add(current);
+                current = new ArrayList<>();
+                currentBytes = 0;
+            }
+            current.add(a);
+            currentBytes += a.size();
+        }
+        if (!current.isEmpty()) chunks.add(current);
+        if (chunks.isEmpty()) chunks.add(List.of());   // always send at least one email (report only)
 
-        try {
-            emailFacadeService.sendEmail(EmailRequest.builder()
-                    .to(to)
-                    .cc((cc != null && !cc.isBlank()) ? cc : null)
-                    .subject(subject)
-                    .body(body)
-                    .attachments(attachments)
-                    .build());
+        int totalParts = chunks.size();
+        long totalBytes = 0;
+        int sentAttachments = 0;
+        int sentParts = 0;
+        String baseSubject = "SDS Gap Report — " + LocalDate.now();
+        List<String> failures = new ArrayList<>();
+
+        for (int i = 0; i < totalParts; i++) {
+            int partNum = i + 1;
+            List<AttachmentWithGap> chunk = chunks.get(i);
+            long chunkBytes = chunk.stream().mapToLong(AttachmentWithGap::size).sum();
+
+            String subject = totalParts > 1
+                    ? baseSubject + " (Part " + partNum + " of " + totalParts + ")"
+                    : baseSubject;
+            String body = buildHtmlBody(report, chunk, partNum, totalParts, chunkBytes, result);
+            List<EmailAttachment> emailAtts = chunk.stream().map(AttachmentWithGap::att).toList();
+
+            try {
+                emailFacadeService.sendEmail(EmailRequest.builder()
+                        .to(to)
+                        .cc((cc != null && !cc.isBlank()) ? cc : null)
+                        .subject(subject)
+                        .body(body)
+                        .attachments(emailAtts)
+                        .build());
+                sentParts++;
+                sentAttachments += emailAtts.size();
+                totalBytes += chunkBytes;
+            } catch (Exception e) {
+                failures.add("Part " + partNum + " of " + totalParts + ": " + e.getMessage());
+                log.warn("[SDS] gap report part {}/{} failed: {}", partNum, totalParts, e.getMessage(), e);
+            }
+        }
+
+        result.setAttachmentsSent(sentAttachments);
+        result.setTotalAttachmentBytes(totalBytes);
+        result.setPartsSent(sentParts);
+
+        if (sentParts == totalParts) {
             result.setSent(true);
-            result.setMessage(String.format("Sent to %s — %d missing-from-eBinder PDF(s) attached",
-                    to, attachments.size()));
-        } catch (Exception e) {
+            result.setMessage(totalParts == 1
+                    ? String.format("Sent to %s — %d PDF(s) attached", to, sentAttachments)
+                    : String.format("Sent to %s in %d parts — %d PDF(s) total", to, sentParts, sentAttachments));
+        } else if (sentParts > 0) {
+            result.setSent(true);   // partial success — the recipient got at least one part
+            result.setMessage(String.format("Sent %d of %d parts to %s — %d PDF(s) delivered. Failures: %s",
+                    sentParts, totalParts, to, sentAttachments, String.join("; ", failures)));
+        } else {
             result.setSent(false);
-            result.setMessage("Send failed: " + e.getMessage());
-            log.warn("[SDS] gap report email failed: {}", e.getMessage(), e);
+            result.setMessage("All parts failed: " + String.join("; ", failures));
         }
         return result;
     }
@@ -135,14 +188,27 @@ public class SdsGapReportEmailService {
         return (long) ((len * 0.75) - padding);
     }
 
-    private String buildHtmlBody(SdsGapReportDto report, SdsGapReportEmailResultDto result) {
+    private String buildHtmlBody(SdsGapReportDto report, List<AttachmentWithGap> chunk,
+                                 int partNum, int totalParts, long chunkBytes,
+                                 SdsGapReportEmailResultDto result) {
         StringBuilder sb = new StringBuilder();
         sb.append("<html><body style='font-family:Segoe UI,Arial,sans-serif;color:#222;'>");
-        sb.append("<h2 style='color:#8D6E63;margin:0 0 8px;'>SDS Gap Report</h2>");
+        sb.append("<h2 style='color:#8D6E63;margin:0 0 8px;'>SDS Gap Report");
+        if (totalParts > 1) sb.append(" — Part ").append(partNum).append(" of ").append(totalParts);
+        sb.append("</h2>");
         sb.append("<p style='margin:0 0 16px;color:#555;font-size:13px;'>Generated ")
           .append(LocalDate.now())
           .append(" — eBinder catalog: ").append(report.getCatalogCount())
           .append(" chemicals; local active: ").append(report.getActiveCount()).append(".</p>");
+
+        if (totalParts > 1) {
+            sb.append("<p style='margin:0 0 12px;padding:8px 12px;background:#fff8e1;border-left:4px solid #f9a825;font-size:13px;'>")
+              .append("This is part ").append(partNum).append(" of ").append(totalParts)
+              .append(". Attachments were split across multiple emails to stay under the size cap. ")
+              .append("This part carries ").append(chunk.size()).append(" PDF(s) (")
+              .append(String.format("%.1f", chunkBytes / (1024.0 * 1024.0))).append(" MB).")
+              .append("</p>");
+        }
 
         sb.append("<h3 style='margin:16px 0 4px;'>Missing on eBinder (PDFs attached) — ")
           .append(report.getMissingFromEbinder().size()).append("</h3>");
@@ -150,6 +216,18 @@ public class SdsGapReportEmailService {
           .append("but have no matching record in the live eBinder. The attached PDFs are theirs — please upload each ")
           .append("to the eBinder.</p>");
         appendTable(sb, report.getMissingFromEbinder());
+
+        if (totalParts > 1) {
+            sb.append("<h4 style='margin:12px 0 4px;'>PDFs attached to this part (")
+              .append(chunk.size()).append(")</h4>");
+            sb.append("<ul style='margin:0 0 12px 18px;font-size:13px;color:#444;'>");
+            for (AttachmentWithGap a : chunk) {
+                sb.append("<li>").append(escape(displayName(a.gap())))
+                  .append(" — <span style='font-family:monospace;color:#666;'>").append(escape(a.att().getFileName())).append("</span>")
+                  .append("</li>");
+            }
+            sb.append("</ul>");
+        }
 
         sb.append("<h3 style='margin:16px 0 4px;'>Missing in the App — ").append(report.getMissingFromDb().size()).append("</h3>");
         sb.append("<p style='margin:0 0 8px;color:#555;font-size:13px;'>These chemicals are on the eBinder but not yet in the local app. The 'Close gaps' scrape can pull them.</p>");
@@ -160,11 +238,11 @@ public class SdsGapReportEmailService {
         appendTable(sb, report.getMissingPdf());
 
         sb.append("<hr style='margin:16px 0;border:none;border-top:1px solid #ddd;'>");
-        sb.append("<p style='margin:0;color:#555;font-size:13px;'>Attachments included: ")
-          .append(result.getAttachmentsSent()).append(" — total ")
-          .append(String.format("%.1f", result.getTotalAttachmentBytes() / (1024.0 * 1024.0))).append(" MB.");
+        sb.append("<p style='margin:0;color:#555;font-size:13px;'>Attachments in this email: ")
+          .append(chunk.size()).append(" — ")
+          .append(String.format("%.1f", chunkBytes / (1024.0 * 1024.0))).append(" MB.");
         if (result.getAttachmentsSkipped() > 0) {
-            sb.append(" <b>").append(result.getAttachmentsSkipped()).append(" attachment(s) skipped</b> (size cap):");
+            sb.append(" <b>").append(result.getAttachmentsSkipped()).append(" file(s) too large to send</b>:");
             sb.append("<ul style='margin:4px 0 0 16px;'>");
             for (String reason : result.getSkippedReasons()) sb.append("<li>").append(escape(reason)).append("</li>");
             sb.append("</ul>");

@@ -245,6 +245,23 @@ export class WebViewSdsManager {
   }
 
   /**
+   * Fetch the active-users-with-email directory for the recipient typeahead. Empty list if the
+   * backend is unreachable so the dialog stays usable with free-text input.
+   */
+  public async getEmailRecipients(): Promise<Array<{ name: string; email: string }>> {
+    const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+    if (!(await this.springHealthy(port))) return [];
+    try {
+      const res = await this.getJson(port, '/ng/users/email-directory');
+      const data = res?.responseData;
+      return Array.isArray(data) ? data : [];
+    } catch (e: any) {
+      console.warn('[SDS] getEmailRecipients failed:', e?.message);
+      return [];
+    }
+  }
+
+  /**
    * Open the eBinder, optionally filter to a single location, load the chemical list, and scrape
    * every page. When {@code capturePdfs} is true each row's "View PDF" is fetched too (slow).
    */
@@ -1087,6 +1104,26 @@ export class WebViewSdsManager {
       );
       req.on('error', () => resolve(false));
       req.on('timeout', () => { req.destroy(); resolve(false); });
+      req.end();
+    });
+  }
+
+  private getJson(port: number, apiPath: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        { hostname: '127.0.0.1', port, path: apiPath, method: 'GET',
+          headers: { 'Accept': 'application/json' }, timeout: 15000 },
+        (res) => {
+          let data = '';
+          res.on('data', (c) => { data += c; });
+          res.on('end', () => {
+            if (!res.statusCode || res.statusCode >= 400) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
+            try { resolve(JSON.parse(data)); } catch { reject(new Error('bad JSON')); }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
       req.end();
     });
   }

@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -393,6 +395,27 @@ public class FieldChangeTracker {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends BaseIdEntity> List<FieldChange> trackEntityUpdate(Map<String, Object> originalValues, T newEntity) {
+        return performTrackEntityUpdate(originalValues, newEntity);
+    }
+
+    /**
+     * Same diff/emit logic as {@link #trackEntityUpdate(Map, BaseIdEntity)} but
+     * joins the caller's active transaction instead of opening a new one
+     * ({@link Propagation#MANDATORY}). Used by the dedup pipeline so that
+     * synthetic {@code FieldChange} rows for {@code @ManyToMany} collection
+     * mutations commit or roll back atomically with the underlying JPA repoint —
+     * a {@code REQUIRES_NEW} emission would commit independently and could
+     * survive a later rollback of the outer dedup transaction, leaving clients
+     * with a phantom collection change that never happened on the hub.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public <T extends BaseIdEntity> List<FieldChange> trackEntityUpdateInCurrentTx(
+            Map<String, Object> originalValues, T newEntity) {
+        return performTrackEntityUpdate(originalValues, newEntity);
+    }
+
+    private <T extends BaseIdEntity> List<FieldChange> performTrackEntityUpdate(
+            Map<String, Object> originalValues, T newEntity) {
         List<FieldChange> changes = new ArrayList<>();
 
         if (newEntity == null || newEntity.getId() == null) {
@@ -464,20 +487,64 @@ public class FieldChangeTracker {
                 fieldChangeRepository.saveAll(changes);
                 log.debug("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
-                log.debug("Publishing {} changes for sync broadcast (update)", changes.size());
-                syncEventPublisher.publishChanges(changes);
-
-                // Notify FileObjectSyncHandler for file uploads
-                if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
-                    fileObjectSyncHandler.onLocalFileObjectChanged(
-                        (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
-                }
+                // Defer publication (and FileObjectSyncHandler notification) to
+                // afterCommit of the active transaction. Without this, a
+                // synthetic emission inside a pair tx that later rolls back
+                // would still broadcast an SSE event for a FieldChange row
+                // that never made it to the DB, leaving clients with phantom
+                // updates they cannot reconcile. HubLocalChangeBroadcaster
+                // publishes asynchronously, so even an immediate publish here
+                // races with commit / rollback.
+                publishOnCommit(changes, entityType, newEntity);
             }
         } catch (Exception e) {
             log.error("Error tracking entity update for {} #{}: {}", entityType, entityId, e.getMessage(), e);
         }
 
         return changes;
+    }
+
+    /**
+     * Publish {@code changes} via {@link SyncEventPublisher}, deferring to
+     * {@code afterCommit} of the active transaction so a rollback (REQUIRES_NEW
+     * tx rolling back, or the outer pair tx rolling back when this is reached
+     * via MANDATORY propagation) doesn't leak SSE events for FieldChange rows
+     * that aren't actually in the DB. If no synchronization is active
+     * (e.g. background workers calling outside a Spring tx), publish
+     * immediately — there's no rollback to worry about.
+     */
+    private void publishOnCommit(List<FieldChange> changes, String entityType,
+                                 BaseIdEntity newEntity) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    log.debug("Publishing {} changes for sync broadcast (afterCommit)", changes.size());
+                    try {
+                        syncEventPublisher.publishChanges(changes);
+                    } catch (Exception e) {
+                        log.error("afterCommit: failed to publish {} change(s) for {} #{}",
+                                changes.size(), entityType, newEntity.getId(), e);
+                    }
+                    if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
+                        try {
+                            fileObjectSyncHandler.onLocalFileObjectChanged(
+                                (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
+                        } catch (Exception e) {
+                            log.error("afterCommit: FileObjectSyncHandler failed for #{}",
+                                    newEntity.getId(), e);
+                        }
+                    }
+                }
+            });
+        } else {
+            log.debug("Publishing {} changes for sync broadcast (no active synchronization)", changes.size());
+            syncEventPublisher.publishChanges(changes);
+            if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
+                fileObjectSyncHandler.onLocalFileObjectChanged(
+                    (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
+            }
+        }
     }
 
     /**

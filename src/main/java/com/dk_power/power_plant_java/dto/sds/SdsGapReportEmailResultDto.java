@@ -13,8 +13,11 @@ public class SdsGapReportEmailResultDto {
     private int missingPdfCount;
     private int missingFromEbinderCount;
     private int attachmentsSent;
+    /** PDFs that couldn't be sent at all because a single one exceeds the per-email cap. */
     private int attachmentsSkipped;
     private long totalAttachmentBytes;
+    /** Number of separate emails sent — > 1 when attachments were chunked across parts. */
+    private int partsSent;
     private String to;
     private String cc;
     private String message;

@@ -534,19 +534,7 @@ public class FieldSyncService {
                     // client keeps B → both delete the other's pick).
                     if (syncConfig.isHubMode() && mergeInProgress.compareAndSet(false, true)) {
                         try {
-                            categoryValueMergeService.mergeIfDuplicatesExist();
-                            workRequestMergeService.mergeIfDuplicatesExist();
-                            jhaMergeService.mergeIfDuplicatesExist();
-                            emailCorrespondenceMergeService.mergeIfDuplicatesExist();
-                            userMergeService.mergeIfDuplicatesExist();
-                            instrumentMergeService.mergeIfDuplicatesExist();
-                            instrumentLogMergeService.mergeIfDuplicatesExist();
-                            conversationMergeService.mergeIfDuplicatesExist();
-                            messageMergeService.mergeIfDuplicatesExist();
-                            // Reload remap table — merges may have persisted new remaps
-                            idRemapTable = loadPersistentRemaps();
-                        } catch (Exception e) {
-                            log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
+                            runMergeCascade();
                         } finally {
                             mergeInProgress.set(false);
                         }
@@ -573,19 +561,7 @@ public class FieldSyncService {
             // Merge duplicates — same guard as afterCommit path
             if (mergeInProgress.compareAndSet(false, true)) {
                 try {
-                    categoryValueMergeService.mergeIfDuplicatesExist();
-                    workRequestMergeService.mergeIfDuplicatesExist();
-                    jhaMergeService.mergeIfDuplicatesExist();
-                    emailCorrespondenceMergeService.mergeIfDuplicatesExist();
-                    userMergeService.mergeIfDuplicatesExist();
-                    instrumentMergeService.mergeIfDuplicatesExist();
-                    instrumentLogMergeService.mergeIfDuplicatesExist();
-                    conversationMergeService.mergeIfDuplicatesExist();
-                    messageMergeService.mergeIfDuplicatesExist();
-                    // Reload remap table — merges may have persisted new remaps
-                    idRemapTable = loadPersistentRemaps();
-                } catch (Exception e) {
-                    log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
+                    runMergeCascade();
                 } finally {
                     mergeInProgress.set(false);
                 }
@@ -593,6 +569,53 @@ public class FieldSyncService {
         }
 
         return totalApplied;
+    }
+
+    /**
+     * Run the registered merge services in order. Lock-contention exceptions
+     * (OptimisticLock / PessimisticLock / Hibernate LockAcquisition / Spring
+     * CannotAcquireLock) are logged at debug and swallowed — the next sync cycle
+     * will retry. Every other exception is logged at ERROR with a stack trace
+     * before being rethrown so a real fault (schema drift, repoint failure,
+     * verify-before-delete blocking a delete) surfaces in logs/CI instead of
+     * silently masquerading as "contention" forever.
+     */
+    private void runMergeCascade() {
+        try {
+            categoryValueMergeService.mergeIfDuplicatesExist();
+            workRequestMergeService.mergeIfDuplicatesExist();
+            jhaMergeService.mergeIfDuplicatesExist();
+            emailCorrespondenceMergeService.mergeIfDuplicatesExist();
+            userMergeService.mergeIfDuplicatesExist();
+            instrumentMergeService.mergeIfDuplicatesExist();
+            instrumentLogMergeService.mergeIfDuplicatesExist();
+            conversationMergeService.mergeIfDuplicatesExist();
+            messageMergeService.mergeIfDuplicatesExist();
+            // Reload remap table — merges may have persisted new remaps
+            idRemapTable = loadPersistentRemaps();
+        } catch (RuntimeException e) {
+            if (isLockContention(e)) {
+                log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
+                return;
+            }
+            log.error("Merge cascade failed (non-contention) — surface this fault", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Walk the exception chain looking for any known lock-contention signal.
+     * Anything else is a real fault and must not be silently swallowed.
+     */
+    private boolean isLockContention(Throwable t) {
+        for (Throwable cur = t; cur != null; cur = cur.getCause()) {
+            if (cur instanceof jakarta.persistence.OptimisticLockException) return true;
+            if (cur instanceof jakarta.persistence.PessimisticLockException) return true;
+            if (cur instanceof org.hibernate.exception.LockAcquisitionException) return true;
+            if (cur instanceof org.springframework.dao.CannotAcquireLockException) return true;
+            if (cur instanceof org.springframework.dao.PessimisticLockingFailureException) return true;
+        }
+        return false;
     }
 
     /**
