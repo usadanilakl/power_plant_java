@@ -233,6 +233,8 @@ export interface SdsMatchChemical {
 export interface SdsEmailGapReportPayload {
   to: string;
   cc?: string;
+  /** When false, sends a single report-only email with no PDF attachments. Defaults to true. */
+  includeAttachments?: boolean;
 }
 
 export interface SdsEmailGapReportResult {

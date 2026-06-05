@@ -266,9 +266,9 @@ public class ApiEmailService {
         // Subject
         json.append("\"subject\": \"").append(escapeJson(request.getSubject())).append("\",");
 
-        // Body
+        // Body — HTML if the caller opted in (the SDS gap report uses this), Text otherwise.
         json.append("\"body\": {");
-        json.append("\"contentType\": \"Text\",");
+        json.append("\"contentType\": \"").append(request.isHtml() ? "HTML" : "Text").append("\",");
         json.append("\"content\": \"").append(escapeJson(request.getBody())).append("\"");
         json.append("},");
 

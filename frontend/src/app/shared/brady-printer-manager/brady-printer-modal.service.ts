@@ -5,6 +5,7 @@ export interface PrintLabelData {
   line1: string;
   line2: string;
   withQr?: boolean;
+  qrData?: string;
   sourceLotoPointId?: number;
   sourceLotoPoint?: LotoPointDto;
 }

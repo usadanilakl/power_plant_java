@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ZXingScannerComponent, ZXingScannerModule } from '@zxing/ngx-scanner';
 import { BarcodeFormat } from '@zxing/library';
@@ -21,6 +21,9 @@ export class QrScannerComponent {
 
   allowedFormats = [BarcodeFormat.QR_CODE];
   hasPermission: boolean = false;
+  hasDevices: boolean = false;
+  selectedDevice: MediaDeviceInfo | undefined;
+  availableDevices: MediaDeviceInfo[] = [];
 
   onScanSuccess(resultString: string): void {
     this.qrScannerService.onScanSuccess(resultString);
@@ -29,8 +32,29 @@ export class QrScannerComponent {
   onPermissions(permissions: boolean): void {
     this.hasPermission = permissions;
     if (!permissions) {
-      console.error('Camera permission is required to scan QR codes.');
+      console.error('[QR Scanner] Camera permission was denied.');
     }
+  }
+
+  onCamerasFound(devices: MediaDeviceInfo[]): void {
+    this.availableDevices = devices;
+    this.hasDevices = devices && devices.length > 0;
+    if (!this.hasDevices) {
+      console.warn('[QR Scanner] No cameras detected.');
+      return;
+    }
+    // Prefer back/environment camera on mobile, otherwise first available.
+    const back = devices.find(d => /back|rear|environment/i.test(d.label));
+    this.selectedDevice = back ?? devices[0];
+  }
+
+  onCamerasNotFound(): void {
+    this.hasDevices = false;
+    console.warn('[QR Scanner] No cameras found.');
+  }
+
+  pickDevice(device: MediaDeviceInfo): void {
+    this.selectedDevice = device;
   }
 
   close(): void {

@@ -11,7 +11,8 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
   imports: [CommonModule, RouterModule],
   template: `
     <div class="sb-ui" *ngIf="status.state === 'running'; else notRunning">
-      <iframe #sbIframe [src]="sbUrl" class="sb-iframe"></iframe>
+      <iframe #sbIframe [src]="sbUrl" class="sb-iframe"
+              allow="bluetooth *; usb *; serial *; hid *; camera *; microphone *; geolocation *"></iframe>
       <button class="refresh-btn" (click)="refreshPage()" title="Refresh page"><span class="material-icons">refresh</span></button>
     </div>
 

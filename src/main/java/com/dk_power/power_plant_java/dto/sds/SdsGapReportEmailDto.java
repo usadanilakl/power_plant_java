@@ -15,4 +15,8 @@ public class SdsGapReportEmailDto {
     private String to;
     private String cc;
     private List<SdsImportItemDto> scrapedCatalog;
+    /** When false, the email is just the report body — no PDFs attached, no chunking, one email.
+     *  Useful for a quick "here's what's outstanding" notice without dumping megabytes on the recipient.
+     *  Defaults to true (the original behavior). */
+    private Boolean includeAttachments;
 }

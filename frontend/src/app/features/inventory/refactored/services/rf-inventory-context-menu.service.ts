@@ -43,6 +43,7 @@ export class RfInventoryContextMenuService extends ContextMenuService {
       line1: item.serialNumber || item.title || '',
       line2: [item.manufacturer, item.model].filter(Boolean).join(' '),
       withQr: true,
+      qrData: item.qrToken ? `https://jgportal.jpowerusa.com/qr/inv/${item.qrToken}` : undefined,
     });
   }
 

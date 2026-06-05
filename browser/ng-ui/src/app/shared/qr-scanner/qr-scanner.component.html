@@ -3,15 +3,33 @@
     <div class="scanner-container">
       <button class="close-btn" (click)="close()" title="Close Scanner">&times;</button>
       <h2>QR Code Scanner</h2>
-      <zxing-scanner #scanner
-                     [formats]="allowedFormats"
-                     (scanSuccess)="onScanSuccess($event)"
-                     (permissionResponse)="onPermissions($event)">
-      </zxing-scanner>
+      <div class="scanner-frame">
+        <zxing-scanner #scanner
+                       [formats]="allowedFormats"
+                       [device]="selectedDevice"
+                       (scanSuccess)="onScanSuccess($event)"
+                       (permissionResponse)="onPermissions($event)"
+                       (camerasFound)="onCamerasFound($event)"
+                       (camerasNotFound)="onCamerasNotFound()">
+        </zxing-scanner>
+      </div>
 
       @if (!hasPermission) {
         <div class="permission-denied">
           Camera permission is required. Please grant permission in your browser.
+        </div>
+      } @else if (!hasDevices) {
+        <div class="permission-denied">
+          No cameras detected on this device.
+        </div>
+      } @else if (availableDevices.length > 1) {
+        <div class="device-picker">
+          <label>Camera:</label>
+          <select (change)="pickDevice(availableDevices[$any($event.target).selectedIndex])">
+            @for (d of availableDevices; track d.deviceId) {
+              <option [selected]="d.deviceId === selectedDevice?.deviceId">{{ d.label || 'Camera' }}</option>
+            }
+          </select>
         </div>
       }
     </div>

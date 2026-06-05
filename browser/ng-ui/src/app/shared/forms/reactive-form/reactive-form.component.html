@@ -16,7 +16,8 @@
                   [label]="field.label"
                   [options]="field.options ?? []"
                   [formControl]="getFormControl(field.name)"
-                  [categoryName]="field.name">
+                  [categoryName]="field.name"
+                  [showAddEdit]="showAddEditOption()">
                 </app-searchable-select-input>
               }
               @case ('checkbox-group') {

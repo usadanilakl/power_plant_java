@@ -1,7 +1,9 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, OnInit } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { RfInventoryStateService } from '../services/rf-inventory-state.service';
 import { InventoryItemDto } from '../../../../models/inventory/inventory-item.model';
+import { SharedDataService } from '../../../../services/shared-data.service';
 
 @Component({
   selector: 'app-rf-inventory-form',
@@ -17,14 +19,22 @@ import { InventoryItemDto } from '../../../../models/inventory/inventory-item.mo
   `,
   styles: [`:host { display: block; padding: 16px; }`]
 })
-export class RfInventoryFormComponent {
+export class RfInventoryFormComponent implements OnInit {
   protected stateService = inject(RfInventoryStateService);
+  private sharedData = inject(SharedDataService);
 
   entity = computed(() => this.stateService.selectedItem() ?? new InventoryItemDto());
 
+  private inventoryTypes = toSignal(this.sharedData.inventoryTypes$, { initialValue: [] });
+
+  ngOnInit(): void {
+    this.sharedData.loadInventoryTypes().subscribe();
+  }
+
   fields = computed(() => {
     const entity = this.entity();
-    return InventoryItemDto.toFormFields(entity);
+    const typeOptions = this.inventoryTypes().map(v => ({ value: v.name, label: v.name }));
+    return InventoryItemDto.toFormFields(entity, undefined, { typeOptions });
   });
 
   onSubmit(formValues: any): void {

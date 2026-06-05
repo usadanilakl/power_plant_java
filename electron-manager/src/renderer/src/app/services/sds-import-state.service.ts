@@ -58,6 +58,7 @@ export class SdsImportStateService {
   emailDialogOpen = signal(false);
   emailTo = signal('');
   emailCc = signal('');
+  emailIncludeAttachments = signal(true);
   emailSending = signal(false);
   emailError = signal('');
   emailResult = signal<SdsEmailGapReportResult | null>(null);
@@ -70,6 +71,7 @@ export class SdsImportStateService {
     } catch { /* ignore */ }
     this.emailError.set('');
     this.emailResult.set(null);
+    this.emailIncludeAttachments.set(true);
     this.emailDialogOpen.set(true);
     // Fire-and-forget — typeahead loads in the background, dialog stays usable with free-text.
     if (this.emailRecipients().length === 0) {
@@ -107,7 +109,11 @@ export class SdsImportStateService {
     this.emailError.set('');
     this.emailResult.set(null);
     try {
-      const res = await this.electron.sdsEmailGapReport({ to, cc: cc || undefined });
+      const res = await this.electron.sdsEmailGapReport({
+        to,
+        cc: cc || undefined,
+        includeAttachments: this.emailIncludeAttachments()
+      });
       if (!res.success || !res.data) throw new Error(res.error || 'Email failed');
       this.emailResult.set(res.data);
       if (res.data.sent) {

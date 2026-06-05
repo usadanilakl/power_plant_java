@@ -45,6 +45,7 @@ export class ReactiveFormComponent {
   title = input<string>('');
   submitButtonText = input<string>('Submit');
   deleteButtonText = input<string>('');
+  showAddEditOption = input<boolean>(true);
 
 
   formSubmit = output<any>();

@@ -18,4 +18,7 @@ public class EmailRequest {
     private String subject;
     private String body;
     private List<EmailAttachment> attachments;
+    /** When true, the body is rendered as HTML by the receiving mail client.
+     *  Defaults to false so existing plain-text callers keep their current behavior. */
+    private boolean html;
 }

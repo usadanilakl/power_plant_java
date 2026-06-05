@@ -232,13 +232,14 @@ export class WebViewSdsManager {
    * matches what the user just saw — if no report has been run yet, falls back to an empty
    * catalog and the backend uses its bundled CSV.
    */
-  public async emailGapReport(payload: { to: string; cc?: string }): Promise<any> {
+  public async emailGapReport(payload: { to: string; cc?: string; includeAttachments?: boolean }): Promise<any> {
     const port = DEFAULT_SPRING_BOOT_CONFIG.port;
     if (!(await this.springHealthy(port))) throw new Error('Spring Boot unavailable');
     const body = {
       to: payload.to,
       cc: payload.cc ?? '',
-      scrapedCatalog: this.lastScrapedCatalog ?? []
+      scrapedCatalog: this.lastScrapedCatalog ?? [],
+      includeAttachments: payload.includeAttachments !== false   // default true
     };
     const res = await this.postJson(port, '/ng/sds-chemicals/email-gap-report', body);
     return res?.responseData ?? null;

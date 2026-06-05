@@ -22,6 +22,7 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() options: Option[] | Observable<Option[]> = [];
   @Input() closeOnSelect = true;
+  @Input() showAddEdit = true;
   categoryName = input<string>('');
 
   @Output() valueChange = new EventEmitter<any>();

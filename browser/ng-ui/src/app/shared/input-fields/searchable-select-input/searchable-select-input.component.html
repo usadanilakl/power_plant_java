@@ -14,12 +14,14 @@
             {{ option.label }}
           </div>
         }
-        <div class="add-new-option" (click)="onAddNewOption($event)">
-          <span class="plus-icon">+</span> Add New
-        </div>
-        <div class="add-new-option" (click)="onEditOption($event)">
-          <span class="plus-icon">+</span> Edit
-        </div>
+        @if (showAddEdit) {
+          <div class="add-new-option" (click)="onAddNewOption($event)">
+            <span class="plus-icon">+</span> Add New
+          </div>
+          <div class="add-new-option" (click)="onEditOption($event)">
+            <span class="plus-icon">+</span> Edit
+          </div>
+        }
       </div>
     }
   </div>

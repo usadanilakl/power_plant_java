@@ -379,6 +379,7 @@ export class RfInventoryDetailDialogComponent implements OnInit {
       line1: i.serialNumber || i.title || '',
       line2: [i.manufacturer, i.model].filter(Boolean).join(' '),
       withQr: true,
+      qrData: i.qrToken ? `https://jgportal.jpowerusa.com/qr/inv/${i.qrToken}` : undefined,
     });
   }
 

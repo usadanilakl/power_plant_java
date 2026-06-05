@@ -64,22 +64,81 @@ export default class App {
     // Create menu
     App.createMenu();
 
-    // Load the renderer
-    App.mainWindowManager.load();
-
-    // Enable WebBluetooth for Brady printer SDK
-    App.mainWindow.webContents.on('select-bluetooth-device', (event, devices, callback) => {
-      event.preventDefault();
-      if (devices.length > 0) {
-        callback(devices[0].deviceId);
-      } else {
-        callback('');
+    // Web Bluetooth wiring for Brady printer SDK. MUST be registered before
+    // mainWindowManager.load() — the very first response's Permissions-Policy
+    // is what governs the document, so the header override has to be in place
+    // when that response arrives.
+    console.log('[BLUETOOTH-FIX] Registering Permissions-Policy override on defaultSession');
+    let overrideHitCount = 0;
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      const responseHeaders = { ...(details.responseHeaders || {}) };
+      for (const key of Object.keys(responseHeaders)) {
+        if (key.toLowerCase() === 'permissions-policy' || key.toLowerCase() === 'feature-policy') {
+          delete responseHeaders[key];
+        }
       }
+      responseHeaders['Permissions-Policy'] = ['bluetooth=*, usb=*, serial=*, hid=*'];
+      overrideHitCount++;
+      if (overrideHitCount <= 3 || overrideHitCount % 50 === 0) {
+        console.log(`[BLUETOOTH-FIX] Header override applied to ${details.url} (hit #${overrideHitCount})`);
+      }
+      callback({ responseHeaders });
     });
 
-    // Allow Bluetooth permission requests from the renderer (for Brady printer WebBluetooth)
+    // Brady-aware device picker. Electron emits select-bluetooth-device once per
+    // discovery update during the scan — the first emissions usually arrive with
+    // an empty list while BLE scanning is ramping up, then devices stream in.
+    // Cancelling on the first empty fire is what was killing the connect flow.
+    // Strategy: keep the request alive (don't call callback) until either a
+    // Brady-named device shows up, OR ~12s passes (timeout fallback), OR any
+    // named device shows up after 6s.
+    const BRADY_REGEX = /^(brady|m2[01]\d|bmp\d|m6\d|m7\d|m8\d|hh\d|i\d{3})/i;
+    const SCAN_HARD_TIMEOUT_MS = 12000;
+    const NAMED_FALLBACK_MS = 6000;
+    let scanStart = 0;
+    App.mainWindow.webContents.on('select-bluetooth-device', (event, devices, callback) => {
+      event.preventDefault();
+      if (!scanStart) scanStart = Date.now();
+      const elapsed = Date.now() - scanStart;
+      console.log(`[BLUETOOTH-FIX] select-bluetooth-device fired at +${elapsed}ms, ${devices.length} device(s):`);
+      devices.forEach((d, i) => {
+        console.log(`  [${i}] name="${d.deviceName || '<no name>'}" id=${d.deviceId}`);
+      });
+
+      // Brady match — pick immediately
+      const brady = devices.find(d => d.deviceName && BRADY_REGEX.test(d.deviceName));
+      if (brady) {
+        console.log(`[BLUETOOTH-FIX] Brady match: "${brady.deviceName}" — selecting`);
+        scanStart = 0;
+        callback(brady.deviceId);
+        return;
+      }
+
+      // After NAMED_FALLBACK_MS, take the first device that has a name
+      if (elapsed >= NAMED_FALLBACK_MS) {
+        const named = devices.find(d => d.deviceName);
+        if (named) {
+          console.log(`[BLUETOOTH-FIX] No Brady match after ${elapsed}ms; picking first named: "${named.deviceName}"`);
+          scanStart = 0;
+          callback(named.deviceId);
+          return;
+        }
+      }
+
+      // Hard timeout — cancel
+      if (elapsed >= SCAN_HARD_TIMEOUT_MS) {
+        console.log(`[BLUETOOTH-FIX] ${SCAN_HARD_TIMEOUT_MS}ms timeout; ${devices.length} device(s) in final list, none usable. Cancelling.`);
+        scanStart = 0;
+        callback('');
+        return;
+      }
+
+      // Wait — keep scanning. Don't call callback this emission. Electron will
+      // re-emit the event as discovery finds more devices.
+      console.log(`[BLUETOOTH-FIX] Waiting for more devices (elapsed ${elapsed}ms, hard timeout at ${SCAN_HARD_TIMEOUT_MS}ms)`);
+    });
+
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-      // 'bluetooth' is a valid Chromium permission but not in Electron's type definitions
       if ((permission as string) === 'bluetooth') {
         callback(true);
         return;
@@ -91,6 +150,41 @@ export default class App {
       if ((permission as string) === 'bluetooth') return true;
       return true;
     });
+
+    // Also wire the override on the main window's own session, in case the
+    // window uses a different session than defaultSession for any reason.
+    if (App.mainWindow.webContents.session !== session.defaultSession) {
+      console.log('[BLUETOOTH-FIX] Main window uses a non-default session — wiring override on it too');
+      App.mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+        const responseHeaders = { ...(details.responseHeaders || {}) };
+        for (const key of Object.keys(responseHeaders)) {
+          if (key.toLowerCase() === 'permissions-policy' || key.toLowerCase() === 'feature-policy') {
+            delete responseHeaders[key];
+          }
+        }
+        responseHeaders['Permissions-Policy'] = ['bluetooth=*, usb=*, serial=*, hid=*'];
+        callback({ responseHeaders });
+      });
+    }
+
+    // Inject a Permissions-Policy meta tag at every navigation as a fallback —
+    // if the HTTP header override somehow doesn't reach the document, the meta
+    // tag will (it's evaluated by Chromium during HTML parsing too).
+    App.mainWindow.webContents.on('dom-ready', () => {
+      App.mainWindow?.webContents.executeJavaScript(`
+        (() => {
+          if (document.querySelector('meta[http-equiv="Permissions-Policy"]')) return;
+          const meta = document.createElement('meta');
+          meta.httpEquiv = 'Permissions-Policy';
+          meta.content = 'bluetooth=*, usb=*, serial=*, hid=*';
+          document.head.appendChild(meta);
+          console.log('[BLUETOOTH-FIX] Injected Permissions-Policy meta tag');
+        })();
+      `).catch(err => console.warn('[BLUETOOTH-FIX] meta tag injection failed:', err));
+    });
+
+    // Load the renderer AFTER bluetooth wiring is in place
+    App.mainWindowManager.load();
 
     // Handle window close - single cleanup path
     App.mainWindow.on('close', async (event) => {
@@ -718,6 +812,13 @@ export default class App {
 
   static main(electronApp: Electron.App, browserWindow: typeof BrowserWindow): void {
     electronApp.disableHardwareAcceleration();
+
+    // Enable Web Bluetooth for Brady printer SDK.
+    // Must be called before 'ready' fires, otherwise Chromium's Permissions Policy
+    // blocks navigator.bluetooth.requestDevice() before the select-bluetooth-device
+    // handler in onReady() ever runs.
+    electronApp.commandLine.appendSwitch('enable-experimental-web-platform-features');
+    electronApp.commandLine.appendSwitch('enable-features', 'WebBluetooth');
 
     App.BrowserWindow = browserWindow;
     App.application = electronApp;

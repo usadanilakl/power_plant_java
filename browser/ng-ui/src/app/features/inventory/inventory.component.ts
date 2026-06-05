@@ -89,6 +89,7 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
             [entity]="draftEntity()"
             [layout]="'column'"
             [submitButtonText]="'Save Item'"
+            [showAddEditOption]="false"
             (formValueChange)="onDraftChange($event)"
             (formSubmit)="onSubmit($event)">
           </app-reactive-form>
@@ -124,6 +125,7 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
             [entity]="usageDraft()"
             [layout]="'column'"
             [submitButtonText]="'Submit'"
+            [showAddEditOption]="false"
             (formSubmit)="onUsageSubmit($event)">
           </app-reactive-form>
         }

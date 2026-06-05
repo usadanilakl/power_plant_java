@@ -161,6 +161,14 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
                  [ngModel]="emailCc" (ngModelChange)="emailCc = $event"
                  placeholder="comma-separated"
                  [disabled]="emailSending" />
+
+          <label class="modal-check">
+            <input type="checkbox"
+                   [ngModel]="emailIncludeAttachments" (ngModelChange)="emailIncludeAttachments = $event"
+                   [disabled]="emailSending" />
+            <span>Include PDF attachments</span>
+            <small>Off → one report-only email (no files). On → PDFs for "missing on eBinder" are attached, split across parts if needed.</small>
+          </label>
           @if (emailError) { <div class="error-banner">{{ emailError }}</div> }
           @if (emailResult && emailResult.sent) {
             <div class="info-banner">
@@ -277,6 +285,11 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
     .modal-input { width: 100%; padding: 8px 10px; background: var(--surface-2, #2a2d3a); color: inherit;
       border: 1px solid var(--border, #333); border-radius: 6px; font-size: 14px; box-sizing: border-box; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .modal-check { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 0; cursor: pointer; }
+    .modal-check input { margin-top: 3px; accent-color: #3b82f6; }
+    .modal-check span { font-weight: 600; font-size: 14px; }
+    .modal-check small { display: block; color: var(--text-secondary, #888); font-size: 12px; margin-top: 2px; font-weight: 400; }
+    .modal-check > div { display: flex; flex-direction: column; }
   `]
 })
 export class SdsImportComponent {
@@ -310,6 +323,8 @@ export class SdsImportComponent {
   get emailError() { return this.state.emailError(); }
   get emailResult() { return this.state.emailResult(); }
   get emailRecipients() { return this.state.emailRecipients(); }
+  get emailIncludeAttachments() { return this.state.emailIncludeAttachments(); }
+  set emailIncludeAttachments(v: boolean) { this.state.emailIncludeAttachments.set(v); }
 
   openEmailDialog() { return this.state.openEmailDialog(); }
   closeEmailDialog() { return this.state.closeEmailDialog(); }

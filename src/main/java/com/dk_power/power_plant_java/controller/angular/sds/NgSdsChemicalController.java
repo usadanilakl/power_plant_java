@@ -79,8 +79,9 @@ public class NgSdsChemicalController {
     @PostMapping("/email-gap-report")
     public ResponseEntity<NgApiResponse<SdsGapReportEmailResultDto>> emailGapReport(@RequestBody SdsGapReportEmailDto req) {
         try {
+            boolean includeAttachments = req.getIncludeAttachments() == null || req.getIncludeAttachments();
             SdsGapReportEmailResultDto result = gapReportEmailService.emailGapReport(
-                    req.getTo(), req.getCc(), req.getScrapedCatalog());
+                    req.getTo(), req.getCc(), req.getScrapedCatalog(), includeAttachments);
             return ResponseEntity.ok(new NgApiResponse<>(result,
                     result.isSent() ? result.getMessage() : "Email not sent: " + result.getMessage()));
         } catch (Exception e) {

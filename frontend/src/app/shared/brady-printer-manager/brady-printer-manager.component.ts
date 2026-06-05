@@ -31,6 +31,7 @@ export class BradyPrinterManagerComponent {
 
   line1 = '';
   line2 = '';
+  qrData: string | undefined;
   printStatus = '';
 
   // Save-back state
@@ -77,6 +78,7 @@ export class BradyPrinterManagerComponent {
           if (labelData) {
             this.line1 = labelData.line1;
             this.line2 = labelData.line2;
+            this.qrData = labelData.qrData;
             this.originalLine1 = labelData.line1;
             this.originalLine2 = labelData.line2;
             if (labelData.withQr !== undefined) {
@@ -120,6 +122,7 @@ export class BradyPrinterManagerComponent {
     if (item) {
       this.line1 = item.line1;
       this.line2 = item.line2;
+      this.qrData = item.qrData;
       this.originalLine1 = item.line1;
       this.originalLine2 = item.line2;
       this.withQr.set(item.withQr ?? true);
@@ -132,7 +135,7 @@ export class BradyPrinterManagerComponent {
 
     try {
       const canvas = this.withQr()
-        ? await this.bradySdkService.createImageFromStringsWithQr(this.line1, this.line2)
+        ? await this.bradySdkService.createImageFromStringsWithQr(this.line1, this.line2, this.qrData)
         : this.bradySdkService.createImageFromStringsNoQr(this.line1, this.line2);
 
       canvas.style.width = '100%';
@@ -199,7 +202,7 @@ export class BradyPrinterManagerComponent {
       this.bradyPrinterModalService.updateQueueItemStatus(currentItem.id, 'printing');
     }
 
-    this.bradySdkService.printLabel(this.line1, this.line2, { withQr: this.withQr() }).subscribe({
+    this.bradySdkService.printLabel(this.line1, this.line2, { withQr: this.withQr(), qrData: this.qrData }).subscribe({
       next: (success) => {
         if (currentItem) {
           this.bradyPrinterModalService.updateQueueItemStatus(

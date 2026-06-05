@@ -198,11 +198,21 @@ export class InventoryItemDto extends BaseDto implements InventoryItemModel {
     return allColumns;
   }
 
-  static toFormFields(dto?: InventoryItemDto, fields?: InventoryItemFieldName[]): RfFormField[] {
+  static toFormFields(
+    dto?: InventoryItemDto,
+    fields?: InventoryItemFieldName[],
+    options?: { typeOptions?: { value: any; label: string }[]; statusOptions?: { value: any; label: string }[] }
+  ): RfFormField[] {
     const d = dto || new InventoryItemDto();
+    const typeOptions = options?.typeOptions ?? [];
+    const statusOptions = options?.statusOptions ?? [];
     const allFields: RfFormField[] = [
-      { name: 'itemTypeName', label: 'Type', type: 'text', initialValue: d.itemTypeName },
-      { name: 'statusName', label: 'Status', type: 'text', initialValue: d.statusName },
+      typeOptions.length > 0
+        ? { name: 'itemTypeName', label: 'Type', type: 'select', options: typeOptions, initialValue: d.itemTypeName }
+        : { name: 'itemTypeName', label: 'Type', type: 'text', initialValue: d.itemTypeName },
+      statusOptions.length > 0
+        ? { name: 'statusName', label: 'Status', type: 'select', options: statusOptions, initialValue: d.statusName }
+        : { name: 'statusName', label: 'Status', type: 'text', initialValue: d.statusName },
       { name: 'title', label: 'Name', type: 'text', initialValue: d.title },
       { name: 'description', label: 'Description', type: 'textarea', initialValue: d.description },
       { name: 'serialNumber', label: 'Serial Number', type: 'text', initialValue: d.serialNumber },
