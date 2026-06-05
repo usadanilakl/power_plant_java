@@ -150,7 +150,7 @@ export class RfInventoryPageComponent implements OnInit {
   onPrintSelected(): void {
     if (this.selectedItems.length === 0) return;
     const qrUrl = (token: string | undefined) =>
-      token ? `https://jgportal.jpowerusa.com/qr/inv/${token}` : undefined;
+      token ? `https://jacksongeneration.github.io/permits/inventory/form?scan=${token}` : undefined;
     if (this.selectedItems.length === 1) {
       const i = this.selectedItems[0];
       this.bradyModal.openWithData({

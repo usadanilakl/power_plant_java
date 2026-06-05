@@ -315,7 +315,7 @@ export class RfInventoryDetailDialogComponent implements OnInit {
   readonly statuses = ['Available', 'Checked Out', 'Missing', 'Retired'];
 
   qrUrl(): string {
-    return `https://jgportal.jpowerusa.com/qr/inv/${this.item().qrToken}`;
+    return `https://jacksongeneration.github.io/permits/inventory/form?scan=${this.item().qrToken}`;
   }
 
   ngOnInit(): void {
@@ -379,7 +379,7 @@ export class RfInventoryDetailDialogComponent implements OnInit {
       line1: i.serialNumber || i.title || '',
       line2: [i.manufacturer, i.model].filter(Boolean).join(' '),
       withQr: true,
-      qrData: i.qrToken ? `https://jgportal.jpowerusa.com/qr/inv/${i.qrToken}` : undefined,
+      qrData: i.qrToken ? `https://jacksongeneration.github.io/permits/inventory/form?scan=${i.qrToken}` : undefined,
     });
   }
 
