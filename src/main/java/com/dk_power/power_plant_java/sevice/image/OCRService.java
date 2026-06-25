@@ -20,10 +20,14 @@ public class OCRService {
         try {
             // Load the image
             BufferedImage bufferedImage = ImageIO.read(imageFile);
+            if (bufferedImage == null) {
+                throw new IOException("Unable to read cropped image: "
+                        + (imageFile == null ? "null" : imageFile.getAbsolutePath()));
+            }
 
             // Create Tesseract instance
             Tesseract tesseract = new Tesseract();
-            tesseract.setDatapath("tessdata"); // Path to tessdata directory
+            tesseract.setDatapath(resolveTessdataPath()); // Path to tessdata directory
             tesseract.setLanguage("eng"); // Specify the language
             tesseract.setPageSegMode(6); // Set PSM for vertical text (PSM 5 or 6)
 
@@ -36,5 +40,23 @@ public class OCRService {
         } catch (TesseractException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Resolves the tessdata directory across deployments. The browser/dev run launches from the
+     * project root where tessdata lives at "./tessdata"; the Electron desktop build copies it to
+     * "./lib/tessdata" (relative to the JAR's working dir). Returns the first candidate that
+     * actually contains the language data, falling back to "tessdata".
+     */
+    private String resolveTessdataPath() {
+        String[] candidates = {"tessdata", "lib/tessdata"};
+        for (String candidate : candidates) {
+            File dir = new File(candidate);
+            if (new File(dir, "eng.traineddata").exists()) {
+                return dir.getAbsolutePath();
+            }
+        }
+        LOGGER.warn("tessdata directory not found in {} — falling back to 'tessdata'", java.util.Arrays.toString(candidates));
+        return "tessdata";
     }
 }

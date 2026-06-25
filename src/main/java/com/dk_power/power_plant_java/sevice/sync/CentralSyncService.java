@@ -152,12 +152,52 @@ public class CentralSyncService {
         if (pendingForServer == 0) {
             log.warn("server_sync.changes_detected.no_pending eventChanges={} pendingForServer=0 "
                 + "(published changes did not become SERVER-pending rows)", eventSize);
+            pendingForServer = restoreMissingEventChanges(event.getChanges());
         } else {
             log.info("server_sync.changes_detected eventChanges={} pendingForServer={}",
                 eventSize, pendingForServer);
         }
 
         sendToServer();
+    }
+
+    private long restoreMissingEventChanges(List<FieldChange> eventChanges) {
+        List<FieldChange> restorable = eventChanges.stream()
+            .filter(change -> change.getId() != null)
+            .filter(change -> !change.isSyncedTo("SERVER"))
+            .toList();
+
+        if (restorable.isEmpty()) {
+            return 0;
+        }
+
+        Set<java.util.UUID> persistedIds = new HashSet<>();
+        fieldChangeRepository.findAllById(
+            restorable.stream().map(FieldChange::getId).toList()
+        ).forEach(change -> {
+            persistedIds.add(change.getId());
+            if (!change.isSyncedTo("SERVER")) {
+                log.warn("server_sync.no_pending.persisted_unsent changeId={} entity={}#{} field={}",
+                    change.getId(), change.getEntityType(), change.getEntityId(), change.getFieldName());
+            }
+        });
+
+        List<FieldChange> missing = restorable.stream()
+            .filter(change -> !persistedIds.contains(change.getId()))
+            .toList();
+
+        if (!missing.isEmpty()) {
+            fieldChangeRepository.saveAll(missing);
+            log.warn("server_sync.no_pending.restored_missing count={} ids={}",
+                missing.size(),
+                missing.stream().map(change -> change.getId().toString()).toList());
+        }
+
+        long pendingForServer = fieldChangeRepository.countPendingChangesFor("SERVER");
+        if (pendingForServer > 0) {
+            log.info("server_sync.no_pending.recovered pendingForServer={}", pendingForServer);
+        }
+        return pendingForServer;
     }
 
     /**

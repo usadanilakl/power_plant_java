@@ -30,19 +30,24 @@ public ResponseEntity<String> getText(@RequestBody Map<String,String> data){
     logger.info("Received request to extract text from image. Path: {}, Coordinates: {}", 
                  imagePath, coordinates);
     
+    File croppedFile = null;
     try {
-        imageCropper.crop(imagePath, coordinates);
-        String extractedText = ocrService.extractTextFromImage(new File("cropped_image.jpg"));
-        
-        logger.info("Successfully extracted text from image. Path: {}, Text length: {}", 
+        croppedFile = imageCropper.crop(imagePath, coordinates);
+        String extractedText = ocrService.extractTextFromImage(croppedFile);
+
+        logger.info("Successfully extracted text from image. Path: {}, Text length: {}",
                      imagePath, extractedText.length());
-        
+
         return ResponseEntity.ok(extractedText);
     } catch (Exception e) {
         logger.error("Error processing image. Path: {}, Error: {}",
                       imagePath, e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                              .body("Error processing image: " + e.getMessage());
+    } finally {
+        if (croppedFile != null && croppedFile.exists()) {
+            croppedFile.delete();
+        }
     }
 }
 

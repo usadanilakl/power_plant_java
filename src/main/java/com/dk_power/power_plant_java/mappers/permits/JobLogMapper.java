@@ -63,6 +63,36 @@ public class JobLogMapper implements BaseMapper {
         return dto;
     }
 
+    public JobLogDto convertToListDto(JobLog entity) {
+        if (entity == null) return null;
+
+        JobLogDto dto = new JobLogDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setWorkScope(entity.getWorkScope());
+        dto.setCompany(entity.getCompany());
+        dto.setForeman(entity.getForeman());
+        dto.setLocation(entity.getLocation());
+        dto.setStartDate(entity.getStartDate());
+        dto.setEndDate(entity.getEndDate());
+        dto.setPermitNumber(entity.getPermitNumber());
+
+        if (entity.getJobStatus() != null) {
+            dto.setJobStatus(valueMapper.convertToDto(entity.getJobStatus()));
+        }
+        if (entity.getOriginatingWorkRequest() != null) {
+            dto.setOriginatingWorkRequest(workRequestMapper.convertToNgDto(entity.getOriginatingWorkRequest()));
+        }
+        if (entity.getWorkArea() != null) {
+            dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
+        }
+        if (entity.getWorkCategory() != null) {
+            dto.setWorkCategory(valueMapper.convertToDto(entity.getWorkCategory()));
+        }
+
+        return dto;
+    }
+
     public JobLog convertToEntity(JobLogDto dto) {
         if (dto == null) return null;
 

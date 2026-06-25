@@ -195,12 +195,14 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
                 .orElse(null);
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<JobLogDto> getAllDtos() {
         return jobLogRepo.findAll().stream()
-                .map(jobLogMapper::convertToDto)
+                .map(jobLogMapper::convertToListDto)
                 .collect(Collectors.toList());
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public JobLogDto getDtoById(String id) {
         JobLog entity = getEntityById(id);
         return jobLogMapper.convertToDto(entity);
