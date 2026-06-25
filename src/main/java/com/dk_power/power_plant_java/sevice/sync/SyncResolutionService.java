@@ -71,12 +71,28 @@ public class SyncResolutionService {
      */
     @Transactional(readOnly = true)
     public PushPullPreview previewPush(String entityType, Long entityId) {
+        return buildPreview(entityType, entityId, "push", computePushSet(entityType, entityId));
+    }
+
+    /**
+     * The set of entities an "Accept Local" push will send to the hub:
+     * dependencies are included only when missing on the hub (so we never clobber
+     * unrelated hub data to satisfy FKs), but the TARGET entity is ALWAYS included —
+     * even when the hub already has it — because the user explicitly chose to
+     * overwrite the hub's (stale) copy. The force-overwrite happens via LWW:
+     * {@link #buildCreateChangesFromEntity} stamps changes with now() and a
+     * "-RESOLVE" machine id so the hub accepts them over its existing values.
+     */
+    private List<EntityRef> computePushSet(String entityType, Long entityId) {
         List<EntityRef> graph = collectDependencyGraph(entityType, entityId);
+        List<EntityRef> pushSet = filterMissingOnHub(graph);
 
-        // Filter to only entities missing on hub
-        List<EntityRef> missing = filterMissingOnHub(graph);
-
-        return buildPreview(entityType, entityId, "push", missing);
+        boolean targetIncluded = pushSet.stream().anyMatch(
+            r -> r.entityType.equals(entityType) && Objects.equals(r.entityId, entityId));
+        if (!targetIncluded) {
+            pushSet.add(new EntityRef(entityType, entityId));
+        }
+        return pushSet;
     }
 
     @Transactional(readOnly = true)
@@ -108,22 +124,21 @@ public class SyncResolutionService {
      */
     @Transactional(readOnly = true)
     public PushResult pushWithDependencies(String entityType, Long entityId) {
-        List<EntityRef> graph = collectDependencyGraph(entityType, entityId);
-        List<EntityRef> missing = filterMissingOnHub(graph);
+        List<EntityRef> toPush = computePushSet(entityType, entityId);
 
-        if (missing.isEmpty()) {
-            return new PushResult(0, 0, Map.of(), "All entities already exist on hub");
+        if (toPush.isEmpty()) {
+            return new PushResult(0, 0, Map.of(), "Nothing to push (entity not found locally)");
         }
 
         // Sort by SYNC_ORDER
-        missing.sort(Comparator.comparingInt(ref ->
+        toPush.sort(Comparator.comparingInt(ref ->
             entityTableRegistry.getSyncOrder().indexOf(ref.entityType)));
 
-        // Build FieldChange records for all missing entities
+        // Build FieldChange records for the target (force overwrite) + missing dependencies
         List<FieldChange> allChanges = new ArrayList<>();
         Map<String, Integer> countByType = new LinkedHashMap<>();
 
-        for (EntityRef ref : missing) {
+        for (EntityRef ref : toPush) {
             SyncableService<?> svc = serviceFacade.getService(ref.entityType);
             if (svc == null) continue;
             BaseIdEntity entity = (BaseIdEntity) svc.getEntityById(ref.entityId);
@@ -137,8 +152,8 @@ public class SyncResolutionService {
         // Send all as a single batch to hub
         int sent = sendChangesToHub(allChanges);
 
-        return new PushResult(missing.size(), sent, countByType,
-            "Pushed " + missing.size() + " entities (" + sent + " field changes)");
+        return new PushResult(toPush.size(), sent, countByType,
+            "Pushed " + toPush.size() + " entities (" + sent + " field changes)");
     }
 
     /**

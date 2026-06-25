@@ -33,6 +33,24 @@ public class NgSyncComparisonController {
         return ResponseEntity.ok(new NgApiResponse<>(summaries, "Entity type summaries"));
     }
 
+    /**
+     * Scan ALL synced entity types for drift vs the hub in one pass (on-demand).
+     * Returns a per-type roll-up (missing-on-hub / missing-locally / stale) for types
+     * that diverge — the "dry run" report for the drift-review dashboard. Apply happens
+     * via the existing per-type accept-local / accept-remote / bulk endpoints.
+     */
+    @GetMapping("/scan-all")
+    public ResponseEntity<NgApiResponse<List<EntityDriftSummary>>> scanAll() {
+        try {
+            List<EntityDriftSummary> drift = syncComparisonService.scanAllTypesForDrift();
+            return ResponseEntity.ok(new NgApiResponse<>(drift,
+                "Scanned all entity types: " + drift.size() + " with drift"));
+        } catch (Exception e) {
+            log.error("Drift scan-all failed: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Scan failed: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/{entityType}")
     public ResponseEntity<NgApiResponse<EntityComparisonResult>> compareEntityType(
             @PathVariable String entityType) {

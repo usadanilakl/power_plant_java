@@ -160,8 +160,10 @@ public class SyncHealthChecker {
                 log.info("Sync health check: Possibly out of sync - {}", result.getMessage());
             }
 
-            log.info("sync.health.complete status={} serverReachable={} durationMs={}",
-                result.getSyncStatus(), result.isServerReachable(), System.currentTimeMillis() - start);
+            log.info("sync.health.complete status={} serverReachable={} localPendingForServer={} durationMs={}",
+                result.getSyncStatus(), result.isServerReachable(),
+                fieldChangeRepository.countPendingChangesFor("SERVER"),
+                System.currentTimeMillis() - start);
 
         } catch (Exception e) {
             log.debug("Sync health check failed: {}", e.getMessage());

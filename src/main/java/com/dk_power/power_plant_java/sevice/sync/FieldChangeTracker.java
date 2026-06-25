@@ -485,7 +485,17 @@ public class FieldChangeTracker {
 
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
-                log.debug("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
+                // Diagnostic for "local edits never reach the hub": record that outbound
+                // rows were saved, their initial syncedToMachines (must NOT contain
+                // |SERVER| for a normal local edit, or they'll never be sent), and whether
+                // publication will fire on commit or immediately. Pairs with
+                // CentralSyncService.server_sync.changes_detected.* to localize where rows
+                // are lost between save and send.
+                boolean txActive = TransactionSynchronizationManager.isSynchronizationActive();
+                log.info("field_change.saved entity={}#{} count={} syncedToMachines={} publishMode={}",
+                    entityType, entityId, changes.size(),
+                    changes.get(0).getSyncedToMachines(),
+                    txActive ? "afterCommit" : "immediate");
 
                 // Defer publication (and FileObjectSyncHandler notification) to
                 // afterCommit of the active transaction. Without this, a

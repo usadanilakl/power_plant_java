@@ -134,12 +134,27 @@ public class CentralSyncService {
         if (syncConfig.isHubMode() || !syncConfig.isServerSyncEnabled()) return;
         if (event.getChanges() == null || event.getChanges().isEmpty()) return;
 
-        log.debug("Changes detected ({} changes), sending to server", event.getChanges().size());
+        int eventSize = event.getChanges().size();
+        log.debug("Changes detected ({} changes), sending to server", eventSize);
 
         // Small delay to ensure FieldChange transaction has committed
         try { Thread.sleep(500); } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
+        }
+
+        // Diagnostic: a published change event should leave the rows pending for SERVER.
+        // If the event carried N changes but nothing is pending, the rows were never
+        // persisted as outbound (or were cleared) — this is the exact signature of the
+        // "local edits silently never reach the hub" bug. Log it loudly so it's visible
+        // at INFO without enabling DEBUG sync logging.
+        long pendingForServer = fieldChangeRepository.countPendingChangesFor("SERVER");
+        if (pendingForServer == 0) {
+            log.warn("server_sync.changes_detected.no_pending eventChanges={} pendingForServer=0 "
+                + "(published changes did not become SERVER-pending rows)", eventSize);
+        } else {
+            log.info("server_sync.changes_detected eventChanges={} pendingForServer={}",
+                eventSize, pendingForServer);
         }
 
         sendToServer();
@@ -173,7 +188,11 @@ public class CentralSyncService {
         }
 
         if (!sending.compareAndSet(false, true)) {
-            log.debug("Send already in progress, skipping");
+            // Surfaced at INFO so a wedged send lock (held by a stuck/long-running send)
+            // is visible without DEBUG. If this repeats while pendingForServer>0, the
+            // lock — not the data — is blocking outbound sync.
+            log.info("server_sync.send.skipped reason=sendInProgress pendingForServer={}",
+                fieldChangeRepository.countPendingChangesFor("SERVER"));
             return new SyncResult(false, "Send in progress", 0, 0, 0);
         }
 

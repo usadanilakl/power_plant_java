@@ -8,8 +8,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
-  SyncStatusService, EntityComparisonResult, EntityTypeSummary
+  SyncStatusService, EntityComparisonResult, EntityTypeSummary, EntityDriftSummary
 } from '../../../services/sync-status.service';
 import {
   EntitySyncCheckService, VerificationResult, EntityVerificationStatus
@@ -21,12 +22,67 @@ import { SyncEntityDiffComponent } from '../sync-entity-diff/sync-entity-diff.co
   standalone: true,
   imports: [
     CommonModule, MatButtonModule, MatIconModule, MatTableModule, MatChipsModule,
-    MatExpansionModule, MatProgressSpinnerModule, MatSnackBarModule, SyncEntityDiffComponent
+    MatExpansionModule, MatProgressSpinnerModule, MatSnackBarModule, MatTooltipModule,
+    SyncEntityDiffComponent
   ],
   template: `
     <div class="compare-container">
       <!-- Entity Type List -->
       @if (!selectedType()) {
+        <div class="result-header">
+          <h3>Select Entity Type to Compare</h3>
+          <span class="spacer"></span>
+          <button mat-raised-button color="primary" (click)="scanAll()" [disabled]="scanning()">
+            <mat-icon>radar</mat-icon>
+            {{ scanning() ? 'Scanning all types...' : 'Scan All for Drift' }}
+          </button>
+        </div>
+
+        @if (scanning()) {
+          <mat-spinner diameter="24"></mat-spinner>
+        }
+
+        <!-- Drift scan results: only types that diverge from the hub -->
+        @if (driftSummaries() !== null && !scanning()) {
+          @if (driftSummaries()!.length === 0) {
+            <p class="ok-msg"><mat-icon>check_circle</mat-icon> No drift detected — all types match the hub.</p>
+          } @else {
+            <p class="warn-msg">{{ driftSummaries()!.length }} type(s) differ from the hub. Click Compare to review and apply (Accept Local overwrites the hub; Accept Remote overwrites local).</p>
+            <table mat-table [dataSource]="driftSummaries()!" class="type-table">
+              <ng-container matColumnDef="entityType">
+                <th mat-header-cell *matHeaderCellDef>Entity Type</th>
+                <td mat-cell *matCellDef="let row">{{ row.entityType }}</td>
+              </ng-container>
+              <ng-container matColumnDef="missingOnHub">
+                <th mat-header-cell *matHeaderCellDef>Missing on Hub</th>
+                <td mat-cell *matCellDef="let row">{{ row.missingOnHub }}</td>
+              </ng-container>
+              <ng-container matColumnDef="missingLocally">
+                <th mat-header-cell *matHeaderCellDef>Missing Locally</th>
+                <td mat-cell *matCellDef="let row">{{ row.missingLocally }}</td>
+              </ng-container>
+              <ng-container matColumnDef="stale">
+                <th mat-header-cell *matHeaderCellDef>Differ (stale)</th>
+                <td mat-cell *matCellDef="let row">{{ row.stale }}</td>
+              </ng-container>
+              <ng-container matColumnDef="action">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let row">
+                  @if (row.error) {
+                    <span class="warn-summary">scan error</span>
+                  } @else {
+                    <button mat-raised-button color="primary" (click)="compare(row.entityType)">
+                      <mat-icon>compare_arrows</mat-icon> Compare
+                    </button>
+                  }
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="driftColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: driftColumns;"></tr>
+            </table>
+          }
+        }
+
         <h3>Select Entity Type to Compare</h3>
         @if (loading()) {
           <mat-spinner diameter="30"></mat-spinner>
@@ -109,6 +165,15 @@ import { SyncEntityDiffComponent } from '../sync-entity-diff/sync-entity-diff.co
                       [disabled]="resolving()">
                 <mat-icon>cloud_upload</mat-icon>
                 Push All Local ({{ comparison()!.localOnly.length }})
+              </button>
+            }
+            @if (comparison()!.staleEntities.length > 0) {
+              <button mat-raised-button color="primary"
+                      (click)="bulkPushStale()"
+                      [disabled]="resolving()"
+                      matTooltip="Overwrite the hub's copy with local values for every differing row">
+                <mat-icon>cloud_upload</mat-icon>
+                Push All Stale &rarr; Hub ({{ comparison()!.staleEntities.length }})
               </button>
             }
           </div>
@@ -322,6 +387,9 @@ import { SyncEntityDiffComponent } from '../sync-entity-diff/sync-entity-diff.co
     .verify-summary.ok { background: rgba(76,175,80,0.15); color: #81c784; }
     .verify-summary.warn { background: rgba(255,152,0,0.15); color: #ffb74d; }
     .verify-summary.error { background: rgba(244,67,54,0.15); color: #ef5350; }
+    .ok-msg { display: flex; align-items: center; gap: 6px; color: #81c784; }
+    .warn-msg { color: #ffb74d; }
+    .warn-summary { color: #ef5350; font-size: 12px; font-weight: 600; }
     .bulk-actions { display: flex; gap: 8px; margin: 12px 0; }
     .id-list { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0; }
     .clickable-chip { cursor: pointer; }
@@ -359,7 +427,12 @@ export class SyncCompareComponent implements OnInit {
   verifying = signal(false);
   resolving = signal(false);
 
+  // Drift scan (all types at once). null = not scanned yet.
+  driftSummaries = signal<EntityDriftSummary[] | null>(null);
+  scanning = signal(false);
+
   typeColumns = ['entityType', 'localCount', 'action'];
+  driftColumns = ['entityType', 'missingOnHub', 'missingLocally', 'stale', 'action'];
   staleColumns = ['entityId', 'localNewer', 'action'];
   verifyColumns: string[] = [];
 
@@ -396,6 +469,19 @@ export class SyncCompareComponent implements OnInit {
     this.syncStatusService.getEntityTypeSummaries().subscribe({
       next: types => { this.entityTypes.set(types); this.loading.set(false); },
       error: () => this.loading.set(false)
+    });
+  }
+
+  /** On-demand: scan every synced type for drift vs the hub. */
+  scanAll() {
+    this.scanning.set(true);
+    this.driftSummaries.set(null);
+    this.syncStatusService.scanAllDrift().subscribe({
+      next: drift => { this.driftSummaries.set(drift ?? []); this.scanning.set(false); },
+      error: () => {
+        this.scanning.set(false);
+        this.snackBar.open('Drift scan failed', 'OK', { duration: 3000 });
+      }
     });
   }
 
@@ -477,6 +563,21 @@ export class SyncCompareComponent implements OnInit {
     this.resolving.set(true);
 
     const ids = [...comp.localOnly];
+    this.bulkExecute(ids, 'push', 0, 0);
+  }
+
+  /**
+   * Push every stale (exists-on-both-but-differs) row local -> hub, overwriting the
+   * hub's copy. Choosing "Accept Local" asserts the local DB is authoritative, so this
+   * force-overwrites regardless of which side's timestamp is newer (executePush stamps
+   * changes to win the hub's LWW). Mirrors the per-row Accept Local behaviour.
+   */
+  bulkPushStale() {
+    const comp = this.comparison();
+    if (!comp || !this.selectedType()) return;
+    const ids = comp.staleEntities.map(s => s.entityId);
+    if (ids.length === 0) return;
+    this.resolving.set(true);
     this.bulkExecute(ids, 'push', 0, 0);
   }
 
