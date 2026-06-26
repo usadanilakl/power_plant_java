@@ -379,12 +379,39 @@ public class SyncResolutionService {
         body.put("changes", changes);
 
         try {
-            restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
-            return changes.size();
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
+            return interpretHubExchangeResponse(response, changes.size());
         } catch (Exception e) {
             log.error("Failed to send {} changes to hub: {}", changes.size(), e.getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Interpret the hub's /api/sync/exchange response. The hub returns
+     * {success, changesReceived, ...}; a 2xx HTTP status alone does NOT mean the
+     * changes were accepted (the hub returns success=false in the body on failure,
+     * e.g. migration in progress or batch too large). Returns the hub-reported
+     * changesReceived on success, or 0 on any failure — so callers don't report
+     * "pushed" for changes the hub rejected.
+     */
+    private int interpretHubExchangeResponse(ResponseEntity<Map> response, int sentCount) {
+        if (response == null || !response.getStatusCode().is2xxSuccessful()) {
+            log.warn("Hub exchange returned non-2xx status: {}",
+                response != null ? response.getStatusCode() : "null");
+            return 0;
+        }
+        Map<?, ?> respBody = response.getBody();
+        if (respBody != null && Boolean.FALSE.equals(respBody.get("success"))) {
+            log.warn("Hub rejected exchange: {}", respBody.get("errorMessage"));
+            return 0;
+        }
+        Object received = respBody != null ? respBody.get("changesReceived") : null;
+        if (received instanceof Number n) {
+            return n.intValue();
+        }
+        return sentCount;
     }
 
     // ==================== Reflection Helpers ====================

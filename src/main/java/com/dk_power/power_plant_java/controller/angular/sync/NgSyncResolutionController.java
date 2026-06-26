@@ -491,8 +491,22 @@ public class NgSyncResolutionController {
         body.put("changes", changes);
 
         try {
-            restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
-            return changes.size();
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
+            // A 2xx status alone doesn't mean acceptance — the hub returns
+            // success=false in the body on failure (migration in progress, batch
+            // too large, etc.). Don't report "pushed" for rejected changes.
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("Hub exchange returned non-2xx status: {}", response.getStatusCode());
+                return 0;
+            }
+            Map<?, ?> respBody = response.getBody();
+            if (respBody != null && Boolean.FALSE.equals(respBody.get("success"))) {
+                log.warn("Hub rejected exchange: {}", respBody.get("errorMessage"));
+                return 0;
+            }
+            Object received = respBody != null ? respBody.get("changesReceived") : null;
+            return received instanceof Number n ? n.intValue() : changes.size();
         } catch (Exception e) {
             log.warn("Could not send changes to hub: {}", e.getMessage());
             return 0;
