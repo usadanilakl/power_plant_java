@@ -70,7 +70,7 @@
             <app-rf-loto-point-table
               [tableId]="'loto-builder-select-table'"
               [fieldsToDisplay]="['tagNumber', 'description', 'normPos', 'zeroEnergyMethod']"
-              [initialSearchCriteria]="getInitialSearchCriteria()"
+              [initialSearchCriteria]="initialSearchCriteria()"
               (selectedItemsEvent)="onLotoPointSelected($event)"
               (rowDoubleClickedEvent)="onRowDoubleClicked($event)"
             ></app-rf-loto-point-table>

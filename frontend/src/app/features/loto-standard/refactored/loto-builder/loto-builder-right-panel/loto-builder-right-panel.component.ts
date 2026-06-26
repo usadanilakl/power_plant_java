@@ -591,11 +591,18 @@ export class LotoBuilderRightPanelComponent {
    * Handle new shape drawn (right-click drag)
    */
   onShapeDrawn(shape: RfShape): void {
-    console.log('New shape drawn:', shape);
-
     // Only handle shapes with position and size properties
     if (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol') {
       console.warn('Cannot create equipment from shape type:', shape.type);
+      return;
+    }
+
+    // One-shot "Get Text" mode: skip equipment + LOTO point creation entirely,
+    // just OCR the drawn region and show the result in a copyable dialog. The
+    // mode auto-disables (in openGetTextDialog) so the next draw resumes the
+    // normal flow.
+    if (this.builderState.isGetTextModeEnabled()) {
+      this.runGetTextOnShape(shape);
       return;
     }
 
@@ -696,6 +703,81 @@ export class LotoBuilderRightPanelComponent {
         })
       )
       .subscribe();
+  }
+
+  /**
+   * One-shot Get Text capture. Runs OCR on the drawn region of the current
+   * file and shows the result in a copy-to-clipboard dialog. Does NOT create
+   * equipment or open the LOTO point flow. The Get Text toggle is consumed
+   * (disabled) when the dialog opens, so the next draw resumes the normal
+   * flow even if OCR returned nothing.
+   */
+  private runGetTextOnShape(shape: RfShape): void {
+    const filePath = this.builderState.currentFile()?.fileLink;
+
+    if (!filePath) {
+      console.warn('Get Text: no file path available for OCR');
+      // Disable the mode so the user isn't stuck — open dialog with empty
+      // result so they get explicit feedback rather than a silent no-op.
+      this.builderState.openGetTextDialog('');
+      return;
+    }
+
+    this.builderState.startProcessing('Recognizing text…');
+
+    this.imageService.getTextFromRfShape(filePath, shape)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((text: string) => {
+          this.builderState.stopProcessing();
+          this.builderState.openGetTextDialog((text || '').trim());
+        }),
+        catchError((error) => {
+          console.error('Get Text: OCR failed', error);
+          this.builderState.stopProcessing();
+          this.builderState.openGetTextDialog('');
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Copy the Get Text dialog content to the clipboard. Uses the modern async
+   * Clipboard API with a textarea fallback for older Electron renderers
+   * that ship a stripped-down navigator.clipboard.
+   */
+  copyGetTextToClipboard(): void {
+    const text = this.builderState.getTextDialogContent();
+    if (!text) return;
+    const onSuccess = () => {
+      // Brief visual confirmation via the processing-message channel — it's
+      // already wired into the existing loading overlay's UI.
+      this.builderState.processingMessage.set('Copied to clipboard');
+      this.builderState.isProcessingShape.set(true);
+      setTimeout(() => this.builderState.stopProcessing(), 800);
+    };
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(err => {
+        console.error('Get Text: clipboard write failed', err);
+      });
+      return;
+    }
+    // Fallback for environments without the async Clipboard API.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      onSuccess();
+    } catch (err) {
+      console.error('Get Text: fallback clipboard copy failed', err);
+    } finally {
+      document.body.removeChild(ta);
+    }
   }
 
   /**

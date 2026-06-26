@@ -40,17 +40,41 @@ export class RfFileLeftMenuComponent implements OnInit{
 
   /** Available file types, loaded dynamically from CurrentFileService. */
   fileTypes = signal<string[]>([]);
-  /** Currently selected tab. Starts empty and is set to the first available type on load. */
-  selectedType = signal<string>("");
+  /** Currently selected file types (multi-select). Defaults to PID on first load. */
+  selectedTypes = signal<Set<string>>(new Set<string>());
+  /** Convenience: a single representative type, used for per-type defaults (group key, etc.). */
+  selectedType = computed<string>(() => {
+    const s = this.selectedTypes();
+    return s.size > 0 ? Array.from(s)[0] : '';
+  });
+  /** Dropdown open state for the multi-select file-type picker. */
+  fileTypeDropdownOpen = signal(false);
+
+  /** Label inside the file-type dropdown button: "All", a single type name, or "N selected". */
+  selectedTypesLabel = computed<string>(() => {
+    const s = this.selectedTypes();
+    if (s.size === 0) return 'Select…';
+    if (s.size === 1) return Array.from(s)[0];
+    if (s.size === this.fileTypes().length) return 'All types';
+    return `${s.size} types`;
+  });
 
   /** Manual override of the grouping criteria; `null` means "use this type's default". */
   private explicitGroupBy = signal<FileMenuGroupKey | null>(null);
   /** Options surfaced in the Group-by dropdown. */
   availableGroupKeys: FileMenuGroupKey[] = ['vendor', 'system', 'fileType'];
-  /** Effective group key: explicit override if any, else the per-type default from FileMenuService. */
-  effectiveGroupBy = computed<FileMenuGroupKey>(() =>
-    this.explicitGroupBy() ?? this.fileMenuService.defaultGroupForType(this.selectedType())
-  );
+  /**
+   * Effective group key: explicit override if the user picked one; otherwise
+   *   - only PID selected → vendor (PID's traditional grouping)
+   *   - any other selection (multi-select, or single non-PID) → system
+   */
+  effectiveGroupBy = computed<FileMenuGroupKey>(() => {
+    const override = this.explicitGroupBy();
+    if (override) return override;
+    const s = this.selectedTypes();
+    const isPidOnly = s.size === 1 && Array.from(s)[0].toLowerCase() === 'pid';
+    return isPidOnly ? 'vendor' : 'system';
+  });
 
   /** Disk-based revisions map (key -> physical revisions); drives expandable revision nodes. */
   revisionsMap = signal<Record<string, RevisionInfo[]>>({});
@@ -80,10 +104,10 @@ constructor(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(types => {
       this.fileTypes.set(types);
-      if (!this.selectedType() && types.length > 0) {
+      if (this.selectedTypes().size === 0 && types.length > 0) {
         // Default to PID when present (most-used type), else the first available.
         const pid = types.find(t => t.toLowerCase() === 'pid');
-        this.selectedType.set(pid ?? types[0]);
+        this.selectedTypes.set(new Set([pid ?? types[0]]));
       }
     });
 
@@ -110,7 +134,7 @@ constructor(
     ).subscribe({
       next: () => {
         this.loadRevisionsMap();
-        this.loadFiles(this.selectedType());
+        this.loadFiles();
       },
       error: (error) => {
         console.error('Error fetching current file:', error);
@@ -132,35 +156,75 @@ constructor(
   }
 
 
-  loadFiles(type?: string): void {
-    const effectiveType = type ?? this.selectedType() ?? this.fileTypes()[0];
-    if (!effectiveType) {
+  /**
+   * Build the menu items from the currently-selected file types. Files from all
+   * selected types are merged into one collection and then grouped uniformly by
+   * the effective Group-by (vendor / system / fileType). So selecting PID + Electrical
+   * with Group-by = system shows a single tree where "Feed Water" contains files of
+   * both types together. Empty selection → empty.
+   */
+  loadFiles(): void {
+    const types = Array.from(this.selectedTypes());
+    if (types.length === 0) {
       this.menuItems.set([]);
       return;
     }
-    // If the user is switching to a new type, drop any manual Group-by override
-    // so the new type's default kicks in (e.g. PID→vendor, electrical→system).
-    if (effectiveType !== this.selectedType()) {
-      this.explicitGroupBy.set(null);
+    const combined: FileDto[] = [];
+    for (const type of types) {
+      combined.push(...this.currentFileService.getFilesByType(type));
     }
-    this.selectedType.set(effectiveType);
-    const nestedItems = this.createListOfNestedItems(
-      this.currentFileService.getFilesByType(effectiveType),
-      this.effectiveGroupBy()
-    );
-    this.menuItems.set(nestedItems);
+    const items = this.createListOfNestedItems(combined, this.effectiveGroupBy());
+    this.menuItems.set(items);
+  }
+
+  /** Toggle a file type in the multi-select. Empty selection clears the menu. */
+  toggleFileType(type: string): void {
+    const next = new Set(this.selectedTypes());
+    if (next.has(type)) next.delete(type);
+    else next.add(type);
+    this.selectedTypes.set(next);
+    // Drop manual Group-by override when the type set changes (different types
+    // have different sensible defaults).
+    this.explicitGroupBy.set(null);
+    this.loadFiles();
+  }
+
+  /** Tick all available file types. */
+  selectAllFileTypes(): void {
+    this.selectedTypes.set(new Set(this.fileTypes()));
+    this.explicitGroupBy.set(null);
+    this.loadFiles();
+  }
+
+  /** Clear the file-type selection (menu becomes empty until the user picks types). */
+  clearFileTypes(): void {
+    this.selectedTypes.set(new Set());
+    this.explicitGroupBy.set(null);
+    this.loadFiles();
+  }
+
+  isFileTypeSelected(type: string): boolean {
+    return this.selectedTypes().has(type);
+  }
+
+  toggleFileTypeDropdown(): void {
+    this.fileTypeDropdownOpen.set(!this.fileTypeDropdownOpen());
+  }
+
+  closeFileTypeDropdown(): void {
+    this.fileTypeDropdownOpen.set(false);
   }
 
   /** User override for grouping criteria (vendor / system / fileType). Resets when the file type changes. */
   onGroupByChange(key: string): void {
     if (key === 'vendor' || key === 'system' || key === 'fileType') {
       this.explicitGroupBy.set(key);
-      this.loadFiles(this.selectedType());
+      this.loadFiles();
     }
   }
 
   refresh(): void {
-    this.loadFiles(this.selectedType());
+    this.loadFiles();
   }
 
   private loadRevisionsMap(): void {
@@ -170,7 +234,7 @@ constructor(
       next: res => {
         this.revisionsMap.set(res.responseData ?? {});
         // Rebuild with revision info now available.
-        this.loadFiles(this.selectedType());
+        this.loadFiles();
       },
       error: () => { /* revisions are best-effort */ }
     });

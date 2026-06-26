@@ -195,6 +195,31 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   });
 
   /**
+   * Initial search criteria for the rf-loto-point-table.
+   * <p>
+   * MUST be a computed signal — NOT a method bound in the template like
+   * {@code [initialSearchCriteria]="getInitialSearchCriteria()"}. Method
+   * bindings re-evaluate every change-detection cycle and return a fresh
+   * object each call, which flips the child table's input signal on every
+   * tick and re-fires its load effect. That produced a render loop:
+   * search → results → CD → fresh object → effect → search → ...
+   * <p>
+   * computed() caches by referential identity tied to its signal deps —
+   * the same object reference is returned across CD cycles unless
+   * {@code tableSearchTerm()} actually changes.
+   */
+  initialSearchCriteria = computed<SearchCriteria | null>(() => {
+    const term = this.searchTerm();
+    if (!term) return null;
+    return {
+      type: 'global',
+      query: term,
+      page: 1,
+      pageSize: 50,
+    };
+  });
+
+  /**
    * Get popup title based on current state
    */
   popupTitle = computed(() => {
@@ -624,21 +649,6 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
       // No pending equipment, use normal form submission flow
       this.lotoPointStateService.submitForm(lotoPoint);
     }
-  }
-
-  /**
-   * Get initial search criteria for table (from text recognition)
-   */
-  getInitialSearchCriteria(): SearchCriteria | null {
-    const term = this.searchTerm();
-    if (!term) return null;
-
-    return {
-      type: 'global',
-      query: term,
-      page: 1,
-      pageSize: 50
-    };
   }
 
   /**

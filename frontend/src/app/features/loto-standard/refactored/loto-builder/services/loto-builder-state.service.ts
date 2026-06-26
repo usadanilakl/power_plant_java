@@ -118,6 +118,20 @@ export class LotoBuilderStateService {
   /** Pre-filter search term for loto point table (from text recognition) */
   tableSearchTerm = signal<string | null>(null);
 
+  /**
+   * One-shot "Get Text" mode. When true, the NEXT shape the user draws does
+   * NOT create equipment / open the LOTO point flow — instead it just runs
+   * OCR on the drawn area and shows the result in a copy-to-clipboard dialog.
+   * Auto-disables after one use so the next draw resumes the normal flow.
+   */
+  isGetTextModeEnabled = signal<boolean>(false);
+
+  /**
+   * Text result from a Get Text capture. Non-null means the dialog is open.
+   * Cleared when the dialog closes.
+   */
+  getTextDialogContent = signal<string | null>(null);
+
   // ========== Processing State ==========
 
   /** Whether a shape is being processed (saved/OCR) */
@@ -359,6 +373,27 @@ export class LotoBuilderStateService {
    */
   setTableSearchTerm(term: string | null): void {
     this.tableSearchTerm.set(term);
+  }
+
+  /**
+   * Toggle one-shot Get Text mode. Idempotent; the next draw consumes it.
+   */
+  toggleGetTextMode(): void {
+    this.isGetTextModeEnabled.set(!this.isGetTextModeEnabled());
+  }
+
+  /**
+   * Open the Get Text result dialog. Also disables the one-shot mode so the
+   * next draw runs the normal flow.
+   */
+  openGetTextDialog(text: string): void {
+    this.isGetTextModeEnabled.set(false);
+    this.getTextDialogContent.set(text);
+  }
+
+  /** Close the Get Text result dialog. */
+  closeGetTextDialog(): void {
+    this.getTextDialogContent.set(null);
   }
 
   /**

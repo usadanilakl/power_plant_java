@@ -105,33 +105,114 @@
   letter-spacing: 0.5px;
 }
 
-/* Single horizontally-scrollable row so the type tabs don't eat vertical space
-   that the file list needs. */
-.file-type-buttons {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.35rem;
-  overflow-x: auto;
-  padding-bottom: 2px;
+/* Multi-select file-type dropdown. Compact button with a popover panel of
+   checkboxes — replaces the old pill row to keep the picker on one short line
+   regardless of how many file types exist. */
+.file-type-dropdown {
+  position: relative;
+  flex: 1 1 auto;
   min-width: 0;
 }
-.file-type-buttons::-webkit-scrollbar { height: 6px; }
-.file-type-buttons::-webkit-scrollbar-thumb {
-  background: var(--scroll-bar-color, #888);
-  border-radius: 3px;
-}
 
-.type-button {
-  flex-shrink: 0;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
-  background-color: var(--secondary-background);
+.file-type-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.78rem;
   color: var(--primary-text);
+  background-color: var(--secondary-background);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease;
+}
+.file-type-trigger:hover:not(:disabled) {
+  border-color: var(--accent-color);
+}
+.file-type-trigger.open {
+  border-color: var(--accent-color);
+}
+.file-type-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.file-type-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.file-type-trigger-caret {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--secondary-text);
+}
+
+.file-type-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+.file-type-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--primary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.file-type-panel-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  color: var(--accent-color, #2196F3);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+
+.file-type-options {
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.file-type-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  color: var(--primary-text);
+  cursor: pointer;
+  user-select: none;
+}
+.file-type-option:hover { background-color: var(--hover-color); }
+.file-type-option.active { font-weight: 600; }
+.file-type-option input[type="checkbox"] {
+  /* Override global input{width:100%;padding:10px} so the checkbox renders native. */
+  width: auto;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
 }
 
 .type-button:hover:not(:disabled) {

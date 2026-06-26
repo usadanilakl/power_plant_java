@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 import static org.apache.commons.beanutils.BeanUtils.getNestedProperty;
 
 public interface FlexibleQueryInterface {
+
+    Logger log = LoggerFactory.getLogger(FlexibleQueryInterface.class);
 
     default <T extends BaseIdEntity> Specification<T> buildSpecification(SearchCriteria criteria) {
         return (root, query, criteriaBuilder) -> {
@@ -41,20 +45,11 @@ public interface FlexibleQueryInterface {
     }
 
     default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(JpaSpecificationExecutor<T> repository, SearchCriteria criteria, Pageable pageable, boolean andLogicIsEnabled) {
-
-//    System.out.println("Entering complexSearchWithPagination");
-//    System.out.println("Filters: " + criteria.getFilters());
         Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled);
-//    System.out.println("Specification: " + spec);
-//    System.out.println("Repository: " + repository.getClass().getName());
-//    System.out.println("Pageable: " + pageable);
         try {
-            Page<T> result = repository.findAll(spec, pageable);
-//        System.out.println("Result size: " + (result != null ? result.getContent().size() : "null"));
-            return result;
+            return repository.findAll(spec, pageable);
         } catch (Exception e) {
-            System.err.println("Error in findAll: " + e.getMessage());
-            e.printStackTrace();
+            log.error("complexSearchWithPagination: repository.findAll failed", e);
             throw e;
         }
     }
@@ -179,13 +174,13 @@ public interface FlexibleQueryInterface {
                     }).filter(Objects::nonNull).distinct().sorted()  // Client-side sort since projection ignored ORDER BY
                     .collect(Collectors.toList());
 
-            System.out.println("Filters: " + filters + " on column " + columnName);
-            System.out.println("Result: " + values);
+            log.debug("getFilteredUniqueValuesOfColumn: filters={} column={} resultSize={}",
+                    filters, columnName, values.size());
 
             return new PageImpl<>(values, pageable, entityPage.getTotalElements());
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("getFilteredUniqueValuesOfColumn: invalid column '{}'", columnName, e);
             throw new IllegalArgumentException("Invalid column name: " + columnName, e);
         }
     }
@@ -248,9 +243,8 @@ public interface FlexibleQueryInterface {
             } else {
                 mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));
             }
-            System.out.println("basePredicates count: " + basePredicates.size());
-            System.out.println("predicates count: " + predicates.size());
-            System.out.println("andLogicIsEnabled: " + andLogicIsEnabled);
+            log.debug("buildComplexSpecification: basePredicates={} predicates={} andLogicIsEnabled={}",
+                    basePredicates.size(), predicates.size(), andLogicIsEnabled);
 
             // Combine base predicate with main predicate
             return criteriaBuilder.and(basePredicate, mainPredicate);
@@ -304,7 +298,7 @@ public interface FlexibleQueryInterface {
                         columnPredicates.add(cb.and(allTokensInColumn.toArray(new Predicate[0])));
                     }
                 } catch (IllegalArgumentException e) {
-                    System.out.println("Skipping column for global search: " + columnPath);
+                    log.debug("Skipping column for global search: {}", columnPath);
                 }
             }
 
@@ -334,7 +328,7 @@ public interface FlexibleQueryInterface {
                         Expression<String> fieldExpr = cb.lower(path.as(String.class));
                         tokenInAnyColumn.add(cb.like(fieldExpr, "%" + token + "%"));
                     } catch (IllegalArgumentException e) {
-                        System.out.println("Skipping column for global search: " + columnPath);
+                        log.debug("Skipping column for global search: {}", columnPath);
                     }
                 }
 
@@ -396,14 +390,13 @@ public interface FlexibleQueryInterface {
                     if (Collection.class.isAssignableFrom(nextType) || nextType.isAnnotationPresent(jakarta.persistence.Entity.class)) {
                         from = from.join(part, JoinType.LEFT);
                         path = from;
-                        System.out.println("Joined: " + part + " (type: " + nextType.getSimpleName() + ")");
+                        log.debug("Joined: {} (type: {})", part, nextType.getSimpleName());
                     } else {
                         path = nextPath;
-                        System.out.println("Navigated: " + part + " (type: " + nextType.getSimpleName() + ")");
+                        log.debug("Navigated: {} (type: {})", part, nextType.getSimpleName());
                     }
                 } catch (Exception e) {
-                    System.err.println("Error navigating path part '" + part + "': " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("Error navigating path part '{}'", part, e);
                     return;
                 }
             }
@@ -424,10 +417,8 @@ public interface FlexibleQueryInterface {
                 }
 
                 predicates.add(fieldPredicate);
-//                System.out.println("✓ Filter applied: " + key + " = '" + value + "'");
             } catch (Exception e) {
-                System.err.println("✗ Error applying filter for '" + key + "': " + e.getMessage());
-                e.printStackTrace();
+                log.error("Error applying filter for '{}'", key, e);
             }
         });
 
@@ -742,8 +733,7 @@ public interface FlexibleQueryInterface {
         
             jpql.append(" ORDER BY ").append(orderByClause).append(" ASC");
         
-            System.out.println("JPQL Query: " + jpql.toString());
-            System.out.println("Parameters: " + params);
+            log.debug("JPQL Query: {} | Parameters: {}", jpql, params);
         
             Query query = entityManager.createQuery(jpql.toString());
             for (int i = 0; i < params.size(); i++) {

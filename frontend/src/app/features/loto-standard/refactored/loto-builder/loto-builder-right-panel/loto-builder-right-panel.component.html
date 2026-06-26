@@ -101,6 +101,14 @@
       {{ builderState.isTextRecognitionEnabled() ? 'OCR On' : 'OCR Off' }}
     </button>
     <button
+      class="toolbar-button"
+      [class.active]="builderState.isGetTextModeEnabled()"
+      title="Get Text (one-shot) - Next drawn shape will only run OCR and show the text in a copyable dialog. No equipment / LOTO point is created. Auto-disables after one use."
+      (click)="builderState.toggleGetTextMode()"
+    >
+      {{ builderState.isGetTextModeEnabled() ? 'Get Text…' : 'Get Text' }}
+    </button>
+    <button
       class="toolbar-button danger"
       title="Delete Selected Equipment"
       [disabled]="!selectedShapeId()"
@@ -159,3 +167,43 @@
     </button>
   </div>
 </div>
+
+<!-- Get Text result dialog (one-shot OCR capture) -->
+@if (builderState.getTextDialogContent() !== null) {
+  <div class="get-text-overlay" (click)="builderState.closeGetTextDialog()">
+    <div class="get-text-dialog" (click)="$event.stopPropagation()">
+      <div class="get-text-header">
+        <h3>Recognized Text</h3>
+        <button
+          class="get-text-close"
+          (click)="builderState.closeGetTextDialog()"
+          title="Close"
+        >✕</button>
+      </div>
+      <div class="get-text-body">
+        @if (builderState.getTextDialogContent()) {
+          <textarea
+            class="get-text-textarea"
+            readonly
+            [value]="builderState.getTextDialogContent()"
+            (click)="$any($event.target).select()"
+          ></textarea>
+        } @else {
+          <p class="get-text-empty">No text was recognized in the selected area.</p>
+        }
+      </div>
+      <div class="get-text-actions">
+        <button
+          class="toolbar-button"
+          [disabled]="!builderState.getTextDialogContent()"
+          (click)="copyGetTextToClipboard()"
+        >
+          Copy to Clipboard
+        </button>
+        <button class="toolbar-button" (click)="builderState.closeGetTextDialog()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+}

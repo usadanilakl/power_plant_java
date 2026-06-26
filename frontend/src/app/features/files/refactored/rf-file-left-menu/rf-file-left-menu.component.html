@@ -16,14 +16,41 @@
 
   <div class="file-type-controls">
     <label class="controls-label">File Type:</label>
-    <div class="file-type-buttons">
-      @for (type of fileTypes(); track type) {
-        <button
-          class="type-button"
-          [class.active]="selectedType() === type"
-          (click)="loadFiles(type)"
-          [disabled]="isLoading()"
-        >{{ type }}</button>
+    <div class="file-type-dropdown">
+      <button
+        type="button"
+        class="file-type-trigger"
+        [class.open]="fileTypeDropdownOpen()"
+        (click)="toggleFileTypeDropdown()"
+        [disabled]="isLoading()"
+        [title]="selectedTypesLabel()"
+      >
+        <span class="file-type-trigger-label">{{ selectedTypesLabel() }}</span>
+        <span class="file-type-trigger-caret">▾</span>
+      </button>
+
+      @if (fileTypeDropdownOpen()) {
+        <!-- backdrop closes the panel on outside click -->
+        <div class="file-type-backdrop" (mousedown)="closeFileTypeDropdown()"></div>
+
+        <div class="file-type-panel" (mousedown)="$event.stopPropagation()">
+          <div class="file-type-panel-actions">
+            <button type="button" class="link-btn" (click)="selectAllFileTypes()">All</button>
+            <button type="button" class="link-btn" (click)="clearFileTypes()">None</button>
+          </div>
+          <div class="file-type-options">
+            @for (type of fileTypes(); track type) {
+              <label class="file-type-option" [class.active]="isFileTypeSelected(type)">
+                <input
+                  type="checkbox"
+                  [checked]="isFileTypeSelected(type)"
+                  (change)="toggleFileType(type)"
+                />
+                <span>{{ type }}</span>
+              </label>
+            }
+          </div>
+        </div>
       }
     </div>
   </div>
