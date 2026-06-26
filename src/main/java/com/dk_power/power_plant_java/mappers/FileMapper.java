@@ -55,6 +55,28 @@ public class FileMapper implements BaseMapper {
         if (file.getSystem() != null) fileDto.setSystem(valueService.convertToDto(file.getSystem()));
         if (file.getVendor() != null && file.getVendor().getId()!=null) fileDto.setVendor(valueService.convertToDto(file.getVendor()));
         if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
+        // New @ManyToMany collections — same lazy hazard as convertToDtoLight. Some
+        // callers (e.g. /ng/files/paginated → controller-level .map(toDto)) map
+        // entities outside the query transaction. Guard with Hibernate.isInitialized
+        // so we don't trigger LazyInitializationException for projection-fetched
+        // entities, and leave the DTO field empty (not "loaded and empty") with a
+        // debug log so the caller path is visible.
+        if (file.getSystems() != null && org.hibernate.Hibernate.isInitialized(file.getSystems())) {
+            if (!file.getSystems().isEmpty()) {
+                fileDto.setSystems(file.getSystems().stream().map(valueService::convertToDto).toList());
+            }
+        } else if (file.getSystems() != null) {
+            org.slf4j.LoggerFactory.getLogger(FileMapper.class)
+                    .debug("convertToDto: systems not initialized for FileObject #{}, returning empty (caller should map within tx)", file.getId());
+        }
+        if (file.getTags() != null && org.hibernate.Hibernate.isInitialized(file.getTags())) {
+            if (!file.getTags().isEmpty()) {
+                fileDto.setTags(file.getTags().stream().map(valueService::convertToDto).toList());
+            }
+        } else if (file.getTags() != null) {
+            org.slf4j.LoggerFactory.getLogger(FileMapper.class)
+                    .debug("convertToDto: tags not initialized for FileObject #{}, returning empty (caller should map within tx)", file.getId());
+        }
         if (file.getPoints() != null)
             fileDto.setPoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
@@ -82,6 +104,29 @@ public class FileMapper implements BaseMapper {
         if (file.getSystem() != null) fileDto.setSystem(valueService.convertToDto(file.getSystem()));
         if (file.getVendor() != null) fileDto.setVendor(valueService.convertToDto(file.getVendor()));
         if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
+        // systems/tags are @ManyToMany LAZY collections. The search-table path force-
+        // initializes them inside NgFileService.searchAsLightDto, so they're populated
+        // here. Other callers of convertToDtoLight (e.g. HeatTraceMapper) may pass
+        // detached entities — we check Hibernate.isInitialized rather than catching
+        // LazyInitializationException so an empty DTO field never masquerades as
+        // "loaded and empty" silently; if it's not initialized, log a debug line
+        // so the caller path can be made transactional. See review note about HeatTraceMapper.
+        if (file.getSystems() != null && org.hibernate.Hibernate.isInitialized(file.getSystems())) {
+            if (!file.getSystems().isEmpty()) {
+                fileDto.setSystems(file.getSystems().stream().map(valueService::convertToDto).toList());
+            }
+        } else if (file.getSystems() != null) {
+            org.slf4j.LoggerFactory.getLogger(FileMapper.class)
+                    .debug("convertToDtoLight: systems not initialized for FileObject #{}, returning empty (caller should map within tx)", file.getId());
+        }
+        if (file.getTags() != null && org.hibernate.Hibernate.isInitialized(file.getTags())) {
+            if (!file.getTags().isEmpty()) {
+                fileDto.setTags(file.getTags().stream().map(valueService::convertToDto).toList());
+            }
+        } else if (file.getTags() != null) {
+            org.slf4j.LoggerFactory.getLogger(FileMapper.class)
+                    .debug("convertToDtoLight: tags not initialized for FileObject #{}, returning empty (caller should map within tx)", file.getId());
+        }
         if (file.getBulkEditStep() != null) fileDto.setBulkEditStep(file.getBulkEditStep());
 //        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
@@ -170,6 +215,51 @@ public class FileMapper implements BaseMapper {
             fileObject.setSystem(valueService.findById(dto.getSystem()).orElse(null));
         }
         if (dto.getRelatedSystems() != null) fileObject.setRelatedSystems(dto.getRelatedSystemsAsString());
+        // New @ManyToMany collections (proper systems + tags). Caller posts IDs; we
+        // resolve each to a Value entity and replace the existing set so the form is
+        // the authoritative source on save. Mutating the same Set instance so
+        // Hibernate sees the change (replacing the reference can detach the proxy).
+        // Track whether either @ManyToMany collection was touched so we can bump
+        // `dateModified` below. Hibernate does NOT dirty the parent row for join-
+        // table-only mutations, so without an explicit scalar touch the parent's
+        // UPDATE never fires, @PostUpdate doesn't run, and FieldChangeEntityListener
+        // never broadcasts the systems/tags change to other clients (sync regression).
+        boolean collectionTouched = false;
+        if (dto.getSystems() != null) {
+            var sysSet = fileObject.getSystems();
+            if (sysSet == null) { sysSet = new java.util.HashSet<>(); fileObject.setSystems(sysSet); }
+            sysSet.clear();
+            for (Long valueId : dto.getSystems()) {
+                if (valueId == null || valueId <= 0) continue;
+                valueService.findById(valueId).ifPresent(sysSet::add);
+            }
+            // Keep the legacy primary `system` FK in sync with the new collection:
+            // when the user empties the multi-select, the table column still
+            // sorts/filters/groups by `system.name`, so leaving the old primary
+            // there would surface a system the user just removed. The non-empty
+            // case is already handled by the explicit `system` field set by the
+            // form (mirrors the first selected system).
+            if (sysSet.isEmpty()) {
+                fileObject.setSystem(null);
+            }
+            collectionTouched = true;
+        }
+        if (dto.getTags() != null) {
+            var tagSet = fileObject.getTags();
+            if (tagSet == null) { tagSet = new java.util.HashSet<>(); fileObject.setTags(tagSet); }
+            tagSet.clear();
+            for (Long valueId : dto.getTags()) {
+                if (valueId == null || valueId <= 0) continue;
+                valueService.findById(valueId).ifPresent(tagSet::add);
+            }
+            collectionTouched = true;
+        }
+        if (collectionTouched) {
+            // Force the parent row dirty so @PostUpdate fires → sync emission picks
+            // up the new ManyToMany state. Without this, collection-only edits
+            // (e.g. user changed only tags) never reach other clients.
+            fileObject.setDateModified(java.time.LocalDateTime.now());
+        }
         if (dto.getFileNumber() != null && !dto.getFileNumber().isEmpty()) fileObject.setFileNumber(convertFileNumberArrayToString(dto.getFileNumber()));
         if (dto.getVendor() != null && dto.getVendor() > 0) {
             fileObject.setVendor(valueService.findById(dto.getVendor()).orElse(null));

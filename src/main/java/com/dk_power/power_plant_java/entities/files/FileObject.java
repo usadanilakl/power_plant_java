@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.entities.files;
 
 
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.Referenceable;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
@@ -60,6 +59,35 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
 
     //@Column(length = 2000)
     private String relatedSystems;
+
+    /**
+     * Proper many-to-many systems collection — the structured replacement for the
+     * legacy {@link #system} (primary) + {@link #relatedSystems} (CSV of names) pair.
+     * Tracked by FieldChangeEntityListener for sync (no @JsonIgnore on purpose; the
+     * @JsonIgnore on points/highlights is what makes those invisible to sync).
+     */
+    @BatchSize(size = 50)
+    @ManyToMany
+    @JoinTable(
+        name = "file_systems",
+        joinColumns = @JoinColumn(name = "file_id"),
+        inverseJoinColumns = @JoinColumn(name = "value_id")
+    )
+    private Set<Value> systems = new HashSet<>();
+
+    /**
+     * Free-form Tag values (category=Tag). Same modeling rationale as {@link #systems}.
+     * Populated initially by the relatedSystems → tags migration; afterwards driven
+     * by the file form's Tags multi-select.
+     */
+    @BatchSize(size = 50)
+    @ManyToMany
+    @JoinTable(
+        name = "file_tags",
+        joinColumns = @JoinColumn(name = "file_id"),
+        inverseJoinColumns = @JoinColumn(name = "value_id")
+    )
+    private Set<Value> tags = new HashSet<>();
     private String fileNumber;
     private String extension;
     private String extensions;
@@ -125,9 +153,6 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
 
 
 
-
-    @Transient
-    private List<String> systems;
 
     public String buildFileLink(){
         // Null-safe: files with missing fileType/vendor (data-quality issues) must not

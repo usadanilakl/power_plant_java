@@ -68,7 +68,11 @@ public class ClientDataExportService {
         new String[]{"work_area_loto_standard", "work_area_id", "loto_standard_id"},
         new String[]{"daily_permit_package_lotos", "daily_permit_package_id", "loto_id"},
         new String[]{"permit_equipment", "permit_id", "equipment_id"},
-        new String[]{"task_dependencies", "dependent_task_id", "prerequisite_task_id"}
+        new String[]{"task_dependencies", "dependent_task_id", "prerequisite_task_id"},
+        // FileObject @ManyToMany — new (Round-7 fix). Backup/seed must copy these
+        // join tables or migrated systems/tags assignments are lost on import.
+        new String[]{"file_systems", "file_id", "value_id"},
+        new String[]{"file_tags", "file_id", "value_id"}
     );
 
     /**

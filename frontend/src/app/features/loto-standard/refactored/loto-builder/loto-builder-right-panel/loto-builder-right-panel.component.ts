@@ -713,6 +713,14 @@ export class LotoBuilderRightPanelComponent {
    * flow even if OCR returned nothing.
    */
   private runGetTextOnShape(shape: RfShape): void {
+    // The InteractiveImageComponent added this shape to its local shape
+    // manager inside finishDrawing() BEFORE emitting shapeDrawn — that's how
+    // the normal flow gets the shape on the canvas while the parent finishes
+    // saving equipment. In the Get Text path we never save anything, so the
+    // shape is a UI-only orphan that lingers until the next file reload.
+    // Tell the InteractiveImageComponent to drop it right away.
+    this.interactiveImage?.removeShape(shape.id);
+
     const filePath = this.builderState.currentFile()?.fileLink;
 
     if (!filePath) {

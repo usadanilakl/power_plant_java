@@ -12,6 +12,10 @@ export interface FileModel extends BaseModel {
   folder: string;
   system: ValueDto;
   relatedSystems: string[];
+  /** Proper multi-system collection (new @ManyToMany — replaces system+relatedSystems). */
+  systems: ValueDto[];
+  /** Free-form tag values (new @ManyToMany, Category=Tag). */
+  tags: ValueDto[];
   fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
@@ -30,6 +34,18 @@ export class FileDto extends BaseDto implements FileModel {
   folder: string;
   system: ValueDto;
   relatedSystems: string[];
+  /** Proper multi-system collection (new @ManyToMany — replaces system+relatedSystems). */
+  systems: ValueDto[];
+  /** Free-form tag values (new @ManyToMany, Category=Tag). */
+  tags: ValueDto[];
+  /**
+   * Hidden flags tracking whether the source payload included systems/tags. Used
+   * by toJson/toIdModel to skip the key when omitted, so the backend can tell
+   * "leave alone" (key absent) from "clear the joins" (key present + empty array).
+   * Keeps the public ValueDto[] type non-nullable for all consumers.
+   */
+  private _systemsProvided = false;
+  private _tagsProvided = false;
   fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
@@ -48,6 +64,18 @@ export class FileDto extends BaseDto implements FileModel {
     this.folder = data.folder || '';
     this.system = data.system ? ValueDto.fromJson(data.system) : new ValueDto({ id: 0, name: '' });
     this.relatedSystems = data.relatedSystems || [];
+    // Default the public field to [] (non-nullable type) but track whether the
+    // source ACTUALLY had it. Without this flag, partial-update paths that
+    // construct FileDto with just {id, name, ...} would default systems to []
+    // and toIdModel would serialize systems:[] → backend wipes the joins.
+    this._systemsProvided = data.systems !== undefined;
+    this.systems = this._systemsProvided
+      ? data.systems!.map(v => ValueDto.fromJson(v))
+      : [];
+    this._tagsProvided = data.tags !== undefined;
+    this.tags = this._tagsProvided
+      ? data.tags!.map(v => ValueDto.fromJson(v))
+      : [];
     this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor ? ValueDto.fromJson(data.vendor) : new ValueDto({ id: 0, name: '' });
     this.points = data.points?.map(point => EquipmentDto.fromJson(point)) || [];
@@ -69,6 +97,10 @@ export class FileDto extends BaseDto implements FileModel {
           folder: this.folder,
           system: this.system?.toJson?.() ?? this.system,
           relatedSystems: this.relatedSystems,
+          // Conditional emit so an omitted-then-serialized FileDto doesn't carry
+          // `systems: []` / `tags: []` (which the backend reads as "clear joins").
+          ...(this._systemsProvided ? { systems: this.systems.map(v => v?.toJson?.() ?? v) } : {}),
+          ...(this._tagsProvided ? { tags: this.tags.map(v => v?.toJson?.() ?? v) } : {}),
           fileNumber: this.fileNumber,
           vendor: this.vendor?.toJson?.() ?? this.vendor,
           points: this.points.map(point => point.toJson()),
@@ -89,6 +121,15 @@ export class FileDto extends BaseDto implements FileModel {
           folder: json.folder,
           system: json.system ? ValueDto.fromJson(json.system) : new ValueDto({ id: 0, name: '' }),
           relatedSystems: json.relatedSystems,
+          // Preserve undefined when the JSON omits the field (so round-trip stays
+          // "leave alone" rather than turning into "clear joins"). Empty array in
+          // the JSON IS preserved — that's the explicit-clear intent.
+          systems: json.systems !== undefined
+            ? json.systems.map((v: any) => ValueDto.fromJson(v))
+            : undefined,
+          tags: json.tags !== undefined
+            ? json.tags.map((v: any) => ValueDto.fromJson(v))
+            : undefined,
           fileNumber: json.fileNumber,
           vendor: json.vendor ? ValueDto.fromJson(json.vendor) : new ValueDto({ id: 0, name: '' }),
           points: json.points?.map((point: any) => EquipmentDto.fromJson(point)) ?? [],
@@ -117,6 +158,18 @@ export class FileDto extends BaseDto implements FileModel {
           folder: this.folder,
           system: extractId(this.system),
           relatedSystems: this.relatedSystems,
+          // Only forward systems/tags when they were intentionally set on this
+          // FileDto. Partial-update callers that never touched these fields get
+          // FileIdDto.systems/tags = undefined → FileIdDto.toJson omits the key
+          // → backend leaves existing joins alone. Empty array from the form's
+          // "user removed all" path still flows through because the form ALWAYS
+          // sets these fields (so the flag is true with the empty array).
+          systems: this._systemsProvided
+            ? this.systems.map(extractId).filter(id => id > 0)
+            : undefined,
+          tags: this._tagsProvided
+            ? this.tags.map(extractId).filter(id => id > 0)
+            : undefined,
           fileNumber: this.fileNumber,
           vendor: extractId(this.vendor),
           points: this.points?.map(point => typeof point === 'number' ? point : point.id) || [],

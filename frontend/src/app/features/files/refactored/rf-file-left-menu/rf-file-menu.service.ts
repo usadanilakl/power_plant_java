@@ -7,7 +7,7 @@ import { FileService } from "../../../../services/file.service";
 import { tap } from "rxjs";
 
 /** Keys a FileDto can be grouped by in the toggle menu. */
-export type FileMenuGroupKey = 'vendor' | 'system' | 'fileType';
+export type FileMenuGroupKey = 'vendor' | 'system' | 'fileType' | 'tag';
 
 /**
  * Per-type default grouping. The renderer used to hard-code "P&ID → vendor,
@@ -143,7 +143,23 @@ export class FileMenuService{
             }
             return acc;
         }
-        const groupValue = file[key];
+        // Same fan-out for tags — a file gets a row under each Tag it carries.
+        if (key === 'tag') {
+            const tagNames = (file.tags ?? [])
+                .map(v => v?.name?.trim())
+                .filter((n): n is string => !!n);
+            if (tagNames.length === 0) {
+                if (!acc[missingLabel]) acc[missingLabel] = [];
+                acc[missingLabel].push(file);
+            } else {
+                for (const groupName of tagNames) {
+                    if (!acc[groupName]) acc[groupName] = [];
+                    acc[groupName].push(file);
+                }
+            }
+            return acc;
+        }
+        const groupValue = (file as any)[key];
         let groupName: string;
         if (groupValue && typeof groupValue === 'object' && 'name' in groupValue && groupValue.name) {
             groupName = groupValue.name;

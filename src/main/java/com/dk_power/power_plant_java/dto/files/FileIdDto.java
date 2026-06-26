@@ -26,6 +26,17 @@ public class FileIdDto extends BaseDto {
     private String folder;
     private Long system;
     private List<String> relatedSystems;
+    /**
+     * IDs of System Values to link to the file (new @ManyToMany systems).
+     * Null = field omitted by caller (leave existing joins untouched).
+     * Empty list = caller explicitly wants the collection cleared.
+     * The mapper distinguishes these — DO NOT default this to an empty list.
+     */
+    private List<Long> systems;
+    /**
+     * IDs of Tag Values. Same null-vs-empty contract as {@link #systems}.
+     */
+    private List<Long> tags;
     private List<String> fileNumber;
     private Long vendor;
     private List<Long> points;

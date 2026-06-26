@@ -19,6 +19,8 @@ export class FileClipboardItem implements IFileClipboard {
   folder: string = '';
   system: any = null;
   relatedSystems: string[] = [];
+  systems: any[] = [];
+  tags: any[] = [];
   fileNumber: string[] = [];
   vendor: any = null;
   docNum: string = '';
@@ -31,6 +33,8 @@ export class FileClipboardItem implements IFileClipboard {
     this.folder = data.folder || '';
     this.system = data.system ? { id: data.system.id, name: data.system.name } : null;
     this.relatedSystems = data.relatedSystems || [];
+    this.systems = (data.systems ?? []).map(v => ({ id: v.id, name: v.name }));
+    this.tags = (data.tags ?? []).map(v => ({ id: v.id, name: v.name }));
     this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor ? { id: data.vendor.id, name: data.vendor.name } : null;
     this.docNum = data.docNum || '';

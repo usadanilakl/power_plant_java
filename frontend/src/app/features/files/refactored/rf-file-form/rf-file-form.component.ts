@@ -225,14 +225,25 @@ export class RfFileFormComponent {
   });
 
   onAnyValueChange(item: any) {
-    // Normalize the form's `systems: number[]` into entity-shape system +
-    // relatedSystems before draft-saving / diffing, so drafts round-trip
-    // correctly through fromJson on reload.
+    // The multi-value-select emits plain number[] (Value IDs). Wrap as {id}
+    // objects so the FileDto constructor's ValueDto.fromJson(...) picks them up
+    // as proper ValueDto entries. Guarded against re-wrap: if a subsequent change
+    // re-runs this on an already-wrapped item, we'd otherwise nest to {id:{id:7}}
+    // which breaks draft-diff and toIdModel extraction.
+    const wrapId = (v: any) =>
+      (v != null && typeof v === 'object' && 'id' in v) ? v : { id: v };
     if (Array.isArray((item as any).systems)) {
-      const { primaryId, relatedNames } = this.mapperService.splitSystemIds((item as any).systems);
-      (item as any).system = primaryId ? { id: primaryId } : { id: 0, name: '' };
-      (item as any).relatedSystems = relatedNames;
-      delete (item as any).systems;
+      (item as any).systems = (item as any).systems.map(wrapId);
+      // Keep the legacy primary `system` FK in sync with the multi-select.
+      // The system column still sorts/filters on `system.name`, so new files with
+      // selected systems must have the primary set or they drop out of those views.
+      // First selected system is the primary; rest live only in the @ManyToMany.
+      if ((item as any).systems.length > 0) {
+        (item as any).system = (item as any).systems[0];
+      }
+    }
+    if (Array.isArray((item as any).tags)) {
+      (item as any).tags = (item as any).tags.map(wrapId);
     }
 
     const originalVersion = this.originalServerVersion();
@@ -256,14 +267,23 @@ export class RfFileFormComponent {
     const file: File | null = formData.file instanceof File ? formData.file : null;
     const overrideFile: string = formData.overrideFile ?? 'false';
 
-    // The "Systems" multi-select returns number[] of value-IDs. Split back into
-    // the entity shape: system FK (primary = first id) + relatedSystems (rest,
-    // as names, because the backend column is a CSV of names).
+    // Multi-value-select returns number[] (Value IDs); wrap as {id} objects so
+    // FileDto.fromJson/toIdModel handle them as ValueDto entries on the new
+    // @ManyToMany systems / tags collections. Idempotent: skip wrapping if
+    // entries are already objects (e.g. when onAnyValueChange ran first).
+    const wrapId = (v: any) =>
+      (v != null && typeof v === 'object' && 'id' in v) ? v : { id: v };
     if (Array.isArray(formData.systems)) {
-      const { primaryId, relatedNames } = this.mapperService.splitSystemIds(formData.systems);
-      formData.system = primaryId ? { id: primaryId } : { id: 0, name: '' };
-      formData.relatedSystems = relatedNames;
-      delete formData.systems;
+      formData.systems = formData.systems.map(wrapId);
+      // Mirror onAnyValueChange: keep the legacy primary `system` FK in sync
+      // with the first selected entry so the system.name sort/filter on the
+      // table still includes newly-edited files.
+      if (formData.systems.length > 0) {
+        formData.system = formData.systems[0];
+      }
+    }
+    if (Array.isArray(formData.tags)) {
+      formData.tags = formData.tags.map(wrapId);
     }
 
     // Remove file upload fields from the data before creating FileDto

@@ -5,7 +5,8 @@ import {
   AdminFunctionalitiesService,
   BackfillHashesResult,
   FileIntegrityResult,
-  FixExtensionsResult
+  FixExtensionsResult,
+  SystemsTagsMigrationResult
 } from '../../../services/admin/admin-functionalities.service';
 
 @Component({
@@ -282,6 +283,79 @@ import {
           </div>
         </div>
       </div>
+
+      <!-- 1d. Migrate relatedSystems → tags -->
+      <div class="admin-section">
+        <h3>Migrate <code>relatedSystems</code> → Systems &amp; Tags</h3>
+        <div class="sub-section">
+          <p class="description">
+            Converts the legacy <code>relatedSystems</code> CSV-of-names into the new
+            &#64;ManyToMany collections. For each parsed name: if it matches an existing
+            <strong>System</strong> Value (case-insensitive) it goes to the file's <code>systems</code>;
+            otherwise it goes to <code>tags</code> (Tag category auto-created on first run, Tag
+            Values created if missing). <strong>No new System Values are ever created.</strong>
+            The primary <code>system</code> FK is NOT auto-seeded into the new collection.
+            Brackets stripped, entries trimmed, deduped case-insensitively. <strong>Run
+            <em>Dry Run</em> first</strong> to preview classification; run on the hub so Tag
+            Values are minted there and sync to desktops. Idempotent — safe to re-run.
+          </p>
+          <div class="button-group">
+            <button (click)="migrateSystemsTags(true)" [disabled]="loading.migrate" class="toggle-btn">
+              {{ loading.migrate ? 'Working…' : 'Dry Run' }}
+            </button>
+            <button (click)="migrateSystemsTags(false)" [disabled]="loading.migrate" class="action-btn">
+              {{ loading.migrate ? 'Migrating…' : 'Run Migration' }}
+            </button>
+          </div>
+
+          <div class="error" *ngIf="errors.migrate">{{ errors.migrate }}</div>
+
+          <div class="result" *ngIf="migrateResult">
+            <div class="result-summary">
+              <span class="badge" [class.info]="migrateResult.dryRun" [class.success]="!migrateResult.dryRun">
+                {{ migrateResult.dryRun ? 'Dry run' : 'Applied' }}
+              </span>
+              <span class="badge">Files scanned: {{ migrateResult.filesScanned }}</span>
+              <span class="badge success" *ngIf="!migrateResult.dryRun">Files updated: {{ migrateResult.filesUpdated }}</span>
+              <span class="badge">Unique CSV names: {{ migrateResult.uniqueCsvNames }}</span>
+              <span class="badge success" *ngIf="!migrateResult.dryRun">Tag assignments: {{ migrateResult.tagsAssigned }}</span>
+              <span class="badge success" *ngIf="!migrateResult.dryRun">System assignments: {{ migrateResult.systemsAssigned }}</span>
+              <span class="badge warning" *ngIf="migrateResult.errors > 0">Errors: {{ migrateResult.errors }}</span>
+            </div>
+
+            <!-- Per-category name lists (mainly useful for dry-run preview) -->
+            <div class="name-list" *ngIf="migrateResult.systemsReusedNames?.length">
+              <h4>
+                Systems to assign (existing System Values — reused, NOT created):
+                <span class="count">{{ migrateResult.systemsReusedNames.length }}</span>
+              </h4>
+              <ul>
+                <li *ngFor="let n of migrateResult.systemsReusedNames">{{ n }}</li>
+              </ul>
+            </div>
+
+            <div class="name-list" *ngIf="migrateResult.tagsToCreateNames?.length">
+              <h4>
+                Tags to create (no existing Value matches these names):
+                <span class="count">{{ migrateResult.tagsToCreateNames.length }}</span>
+              </h4>
+              <ul>
+                <li *ngFor="let n of migrateResult.tagsToCreateNames">{{ n }}</li>
+              </ul>
+            </div>
+
+            <div class="name-list" *ngIf="migrateResult.tagsExistingNames?.length">
+              <h4>
+                Tags to reuse (matched existing Tag Values):
+                <span class="count">{{ migrateResult.tagsExistingNames.length }}</span>
+              </h4>
+              <ul>
+                <li *ngFor="let n of migrateResult.tagsExistingNames">{{ n }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -305,6 +379,11 @@ import {
     .badge.success { background-color: #d4edda; color: #155724; }
     .badge.warning { background-color: #fff3cd; color: #856404; }
     .badge.info { background-color: #cce5ff; color: #004085; }
+    .name-list { margin-top: 14px; padding: 10px 12px; background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; }
+    .name-list h4 { margin: 0 0 6px 0; font-size: 13px; color: #444; }
+    .name-list h4 .count { margin-left: 6px; padding: 1px 8px; border-radius: 10px; background: #e9ecef; color: #666; font-size: 11px; font-weight: 500; }
+    .name-list ul { margin: 0; padding-left: 18px; max-height: 220px; overflow-y: auto; font-size: 12px; color: #333; font-family: monospace; }
+    .name-list li { padding: 1px 0; }
     .details-section { margin-top: 15px; }
     .details-list { margin-top: 10px; max-height: 400px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -335,14 +414,18 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
   loading = {
     fileIntegrity: false,
     fixExtensions: false,
-    backfillHashes: false
+    backfillHashes: false,
+    migrate: false
   };
 
   errors = {
     fileIntegrity: '',
     fixExtensions: '',
-    backfillHashes: ''
+    backfillHashes: '',
+    migrate: ''
   };
+
+  migrateResult: SystemsTagsMigrationResult | null = null;
 
   fileIntegrityResult: FileIntegrityResult | null = null;
   fixExtensionsResult: FixExtensionsResult | null = null;
@@ -481,6 +564,30 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
       error: (error) => {
         this.errors.fixExtensions = error.error?.message || error.message || 'An error occurred';
         this.loading.fixExtensions = false;
+      }
+    });
+  }
+
+  migrateSystemsTags(dryRun: boolean): void {
+    if (this.loading.migrate) return;
+    if (!dryRun && !confirm(
+        'Apply migration: parse every FileObject\'s relatedSystems CSV. Names matching an ' +
+        'existing System Value are added to the file\'s systems; everything else becomes a Tag ' +
+        '(Tag values created if missing). No new System Values are created. The primary system FK ' +
+        'is not auto-seeded. Run on the HUB so Tag values mint there and sync to desktops. Continue?')) {
+      return;
+    }
+    this.loading.migrate = true;
+    this.errors.migrate = '';
+    this.migrateResult = null;
+    this.adminService.migrateSystemsAndTags(dryRun).subscribe({
+      next: (response) => {
+        this.migrateResult = response.responseData;
+        this.loading.migrate = false;
+      },
+      error: (error) => {
+        this.errors.migrate = error.error?.message || error.message || 'Migration failed';
+        this.loading.migrate = false;
       }
     });
   }

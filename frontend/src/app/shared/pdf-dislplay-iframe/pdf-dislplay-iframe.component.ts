@@ -1,5 +1,5 @@
 
-import { Component, input, OnInit } from '@angular/core';
+import { Component, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
@@ -22,17 +22,25 @@ import { environment } from '../../../environments/environment';
     }
   `]
 })
-export class PdfDisplayIframeComponent implements OnInit {
+export class PdfDisplayIframeComponent {
   pdfSrc = input<string | undefined>('');
   safeUrl: SafeResourceUrl | undefined;
 
-  constructor(private sanitizer: DomSanitizer) {}
-
-  ngOnInit() {
-    if (this.pdfSrc()) {
-      const fullUrl = `${environment.baseApiUrl}/${this.pdfSrc()}`;
-      this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
-    }
+  constructor(private sanitizer: DomSanitizer) {
+    // Reactively re-sanitize whenever the input signal changes. The previous
+    // ngOnInit-only read meant that switching to a different PDF while this
+    // component stayed mounted left the iframe pointing at the original src,
+    // so users had to toggle format to force a remount before the new file
+    // would render.
+    effect(() => {
+      const src = this.pdfSrc();
+      if (src) {
+        const fullUrl = `${environment.baseApiUrl}/${src}`;
+        this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
+      } else {
+        this.safeUrl = undefined;
+      }
+    });
   }
 
   updateUrl(url: string){

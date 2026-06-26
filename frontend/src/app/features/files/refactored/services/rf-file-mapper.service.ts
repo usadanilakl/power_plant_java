@@ -22,6 +22,7 @@ export class FileMapperService {
       'fileType',
       'fileNumber',
       'system',
+      'tags',
       'vendor',
       'extension',
       'folder',
@@ -81,20 +82,40 @@ export class FileMapperService {
         id: 'system',
         header: 'System',
         accessorKey: 'system.name',
-        accessorFn: (item: FileDto) => item.system?.name || 'N/A',
-        width: 150,
+        // Display the new @ManyToMany `systems` collection (post-migration source
+        // of truth) if present; fall back to the primary `system` FK for files
+        // that haven't been migrated. Sort/filter still target the primary FK —
+        // ManyToMany filter/sort would need DISTINCT-aware query support (TODO).
+        accessorFn: (item: FileDto) => {
+          const list = (item.systems ?? []).map(v => v?.name).filter(Boolean) as string[];
+          if (list.length > 0) return list.join(', ');
+          return item.system?.name || 'N/A';
+        },
+        width: 180,
         filterable: true,
         sortable: true,
       },
       relatedSystems: {
         id: 'relatedSystems',
-        header: 'Related Systems',
+        header: 'Related Systems (legacy)',
         accessorKey: 'relatedSystems',
         accessorFn: (item: FileDto) =>
           this.formatRelatedSystems(item.relatedSystems),
         width: 200,
         filterable: true,
         sortable: true,
+      },
+      tags: {
+        id: 'tags',
+        header: 'Tags',
+        // ManyToMany collection — sort/filter on it would need DISTINCT join
+        // support in the criteria builder, so they're off for now. Display works
+        // with the JOIN-fetch path enabled by searchAsLightDto.
+        accessorFn: (item: FileDto) =>
+          (item.tags ?? []).map(v => v?.name).filter(Boolean).join(', ') || '',
+        width: 200,
+        filterable: false,
+        sortable: false,
       },
       vendor: {
         id: 'vendor',
@@ -192,12 +213,13 @@ export class FileMapperService {
    */
   toFormFields(
     file: FileDto,
-    fields: (keyof FileDto | 'file' | 'overrideFile' | 'systems')[] = [
+    fields: (keyof FileDto | 'file' | 'overrideFile' | 'systems' | 'tags')[] = [
       'name',
       'fileType',
       'fileNumber',
       'vendor',
       'systems',
+      'tags',
       'file',
       'overrideFile',
       'isVerified',
@@ -238,22 +260,55 @@ export class FileMapperService {
         validators: [Validators.required],
         initialValue: file.system?.id || null,
       },
-      // Combined "Systems" field: file.system (primary, an ID) plus
-      // file.relatedSystems (names resolved to IDs via the value cache). On
-      // save the form value is split back into system (first) + relatedSystems
-      // (rest, as names) — see rf-file-form.component.ts onSubmit.
+      // Proper Systems field — bound to the new @ManyToMany `systems` collection
+      // of System Values. Replaces the old combined-Systems hack that resolved
+      // names via the value cache.
+      //
+      // Initial value: UNION of the legacy primary FK + the new collection,
+      // deduped, primary FIRST. Critical because:
+      //   - The migration explicitly does NOT auto-seed `systems` from primary,
+      //     so a migrated file can have primary=X plus a multi like [Y, Z]
+      //     where X isn't in the collection.
+      //   - If the form only showed [Y, Z], a save would auto-derive primary=Y
+      //     (first in collection) and silently DROP X. Showing X first preserves
+      //     it as the mirrored primary on save and merges it into the multi the
+      //     next time the user explicitly saves.
       systems: {
         name: 'systems',
         label: 'Systems',
         type: 'multi-value-select',
         categoryAlias: 'system',
         canManageValues: true,
-        validators: [Validators.required],
-        initialValue: this.resolveSystemIds(file),
+        initialValue: (() => {
+          const ids: number[] = [];
+          const seen = new Set<number>();
+          const primaryId = file.system?.id;
+          if (primaryId && primaryId > 0) {
+            ids.push(primaryId);
+            seen.add(primaryId);
+          }
+          for (const v of file.systems ?? []) {
+            const id = v?.id;
+            if (id && id > 0 && !seen.has(id)) {
+              ids.push(id);
+              seen.add(id);
+            }
+          }
+          return ids;
+        })(),
+      },
+      // Tags — bound to the new @ManyToMany `tags` collection (Category=Tag).
+      tags: {
+        name: 'tags',
+        label: 'Tags',
+        type: 'multi-value-select',
+        categoryAlias: 'tag',
+        canManageValues: true,
+        initialValue: (file.tags ?? []).map(v => v?.id).filter((id): id is number => !!id && id > 0),
       },
       relatedSystems: {
         name: 'relatedSystems',
-        label: 'Related Systems',
+        label: 'Related Systems (legacy)',
         type: 'multi-select',
         initialValue: file.relatedSystems || [],
       },
@@ -330,14 +385,16 @@ export class FileMapperService {
       },
       overrideFile: {
         name: 'overrideFile',
-        label: 'If file already exists: (required — pick one)',
+        label: 'If file already exists:',
         type: 'radio-group',
         options: [
           { value: 'false', label: 'Revise (create new revision)' },
           { value: 'true', label: 'Override (replace existing)' },
         ],
-        // No default — force a conscious choice every time a file is attached.
-        initialValue: null,
+        // Default to Override — the common case is replacing the same file with
+        // updated content. Users can switch to Revise when they want to keep
+        // the prior version on disk under a -revN suffix.
+        initialValue: 'true',
         validators: [Validators.required],
       },
       isVerified: {

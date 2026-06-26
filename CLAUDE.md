@@ -40,6 +40,33 @@ PWA frontend is a **separate Angular project** (`ng-ui`), not part of this repo.
 - **Electron**: `cd electron-manager && npm run dev` (must run `npm run build:main` after TS changes)
 - **Tests**: Skipped by default (`mvn test -DskipTests=false` to enable)
 
+## Codex Review Loop
+- When asked to "review with Codex" / "loop with Codex until clean", run `./codex-review.sh`
+  (reviews branch vs master; `--uncommitted` for working-tree changes). It invokes the
+  Codex CLI bundled in the VS Code openai.chatgpt extension — already authenticated, no install.
+- Workflow: implement → run script → judge each finding (reject nits with a reason, fix real
+  ones) → re-run → repeat until output is `REVIEW CLEAN — no blocking issues.`. Claude is the
+  arbiter of relevance.
+- Iteration cap: if 5 rounds pass without reaching `REVIEW CLEAN`, STOP — give the user an
+  outline of what's happening (the unresolved findings, what was tried, where Codex and Claude
+  disagree) and ask whether to continue iterating before running any further rounds.
+- **Codex CLI quirk**: `codex exec review --uncommitted` rejects a positional `[PROMPT]` arg
+  with `cannot be used with [PROMPT]`. The script handles this — `--uncommitted` mode drops
+  the tuned prompt and relies on Codex's built-in review prompt. The named-convention exclusions
+  (sevice/ typo etc.) only apply when reviewing vs a base branch; if Codex flags those in
+  uncommitted mode, judge as nits and reject.
+- **`ng build` on Git Bash**: the `--base-href=/angular/browser/` arg is path-mangled by MSYS
+  into `C:/Program Files/Git/angular/browser/`, producing a checked-in `index.html` whose
+  `<base href>` is a local Windows path → broken bundle. Always invoke with the env-var guard:
+  `MSYS_NO_PATHCONV=1 npx ng build --configuration production --base-href=/angular/browser/`.
+  Verify post-build with `grep 'base href' src/main/resources/static/angular/browser/index.html`
+  (expected: `base href="/angular/browser/"`).
+- **Codex usage limit**: review-mode burns tokens fast (~10 rounds can hit a free-tier daily
+  cap). When limit hits, the error message includes the reset time. Either wait for reset or
+  switch to a self-review pass (audit DTO entry points, sync-emission paths, null/empty/undefined
+  contracts at JSON wire boundaries — the cascading-contract failures are the highest-yield
+  classes Codex finds).
+
 ## Critical Conventions
 - **Package typo**: Service package is `sevice/` (NOT `service/`) — do NOT rename
 - **Response wrapper**: All Angular endpoints return `ResponseEntity<NgApiResponse<T>>`

@@ -74,7 +74,8 @@
       "Bash(mvn test:*)",
       "Bash(awk 'NR==270,NR==320' \"C:/Users/usada/.claude/projects/c--Users-usada-my-projects-power-plant-java/7ab7b226-a177-4ca6-87d6-d108e147ff30/tool-results/b64zym3my.txt\")",
       "Bash(tee /tmp/full-test.log)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash('C:\\\\Users\\\\usada/.vscode/extensions/openai.chatgpt-26.623.31921-win32-x64/bin/windows-x86_64/codex.exe' exec *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java",

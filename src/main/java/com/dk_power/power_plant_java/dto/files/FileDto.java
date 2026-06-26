@@ -37,6 +37,19 @@ public class FileDto extends BaseDto {
 //    @JsonProperty("systems")
 //    @JsonIgnore
     private List<String> relatedSystems;
+    /**
+     * Proper systems collection (replaces system+relatedSystems for the new UI).
+     * <p>Null = "field not set" (mapper didn't initialize because the @ManyToMany
+     * lazy collection wasn't loaded). The @JsonInclude(NON_NULL) below skips the
+     * key entirely so the wire and frontend can distinguish "absent" (preserve
+     * existing joins) from `[]` (explicit clear). Don't default this to an empty
+     * list or partial-load paths silently wipe saved systems.
+     */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private List<ValueDto> systems;
+    /** Tag values (free-form labels). Same null-vs-empty contract as {@link #systems}. */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private List<ValueDto> tags;
     private List<String> fileNumber;
     private ValueDto vendor;
     private List<EquipmentDto> points;

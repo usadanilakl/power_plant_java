@@ -245,6 +245,26 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     /**
+     * Search + map to light DTOs inside one @Transactional so the new @ManyToMany
+     * `systems` and `tags` collections can be initialized lazily without throwing.
+     * The controller's prior pattern — query in service, .map(toDtoLight) in controller
+     * — runs the map outside the query's transaction, which breaks lazy access.
+     *
+     * Forces collection initialization (one batched query per collection per page,
+     * thanks to @BatchSize=50) so the subsequent convertToDtoLight access is a no-op
+     * read instead of a session-less proxy load.
+     */
+    @Transactional(readOnly = true)
+    public Page<FileDto> searchAsLightDto(SearchCriteria criteria, Pageable pageable, boolean andLogicEnabled) {
+        Page<FileObject> page = complexSearchWithPagination(fileRepo, criteria, pageable, andLogicEnabled);
+        for (FileObject f : page.getContent()) {
+            if (f.getSystems() != null) f.getSystems().size();
+            if (f.getTags() != null) f.getTags().size();
+        }
+        return page.map(this::toDtoLight);
+    }
+
+    /**
      * Get files by search criteria for export.
      * Uses the complex search without pagination to get all matching results.
      */
@@ -263,6 +283,24 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileRepo.findAllById(ids);
     }
 
+    /**
+     * Paginated load for the initial file table. Uses {@code fileRepo.findAll}
+     * (full managed entities) rather than the projection-based path so the new
+     * @ManyToMany {@code systems} / {@code tags} collections actually have lazy
+     * proxies that can be initialized — projection-built FileObjects come from
+     * tuple constructors and only carry default empty HashSets, so a .size()
+     * touch would not trigger any load. Mapping runs inside this @Transactional
+     * method so the lazy access succeeds.
+     */
+    public Page<FileDto> findAllPaginatedAsDto(Pageable pageable) {
+        Page<FileObject> entities = fileRepo.findAll(pageable);
+        for (FileObject f : entities.getContent()) {
+            if (f.getSystems() != null) f.getSystems().size();
+            if (f.getTags() != null) f.getTags().size();
+        }
+        return entities.map(this::toDto);
+    }
+
     public Page<FileDto> complexSearch(String searchString, int page, int size) {
         Map<String, String> searchCriteria = new HashMap<>();
         searchCriteria.put("fileNumber", searchString);
@@ -275,11 +313,27 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         Sort.Direction direction = Sort.Direction.fromString("asc");
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "fileNumber"));
         Page<FileObject> itemsPage = complexSearchWithPagination(getRepo(), sc, pageable, false);
+        // Pre-init the new @ManyToMany collections so toDtoLight emits them.
+        // The class-level @Transactional keeps the session open during mapping;
+        // without these touches the mapper's isInitialized guard skips them and
+        // global search results lose Systems/Tags in the table.
+        for (FileObject f : itemsPage.getContent()) {
+            if (f.getSystems() != null) f.getSystems().size();
+            if (f.getTags() != null) f.getTags().size();
+        }
         return itemsPage.map(this::toDtoLight);
     }
 
     public Optional<FileDto> findDtoById(Long id) {
         Optional<FileObject> byId = fileRepo.findById(id);
+        // Force-init the new @ManyToMany collections within the open session.
+        // The mapper's Hibernate.isInitialized guard would otherwise skip them
+        // (returning null in the DTO, which the frontend treats as "leave alone")
+        // and the form would never display the saved systems/tags.
+        byId.ifPresent(f -> {
+            if (f.getSystems() != null) f.getSystems().size();
+            if (f.getTags() != null) f.getTags().size();
+        });
         return byId.map(this::toDto);
     }
 
@@ -655,7 +709,16 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
 
     public List<FileDto> getByFileType(String fileType) {
-        return fileRepo.findByFileType_Name(fileType).stream().map(this::toDto).toList();
+        List<FileObject> entities = fileRepo.findByFileType_Name(fileType);
+        // Pre-init the new @ManyToMany collections inside the @Transactional method
+        // so the mapper's isInitialized guard passes — without this the tree-menu
+        // grouping by tag and the multi-system column would show empty for
+        // existing files (and a save would wipe joins).
+        for (FileObject f : entities) {
+            if (f.getSystems() != null) f.getSystems().size();
+            if (f.getTags() != null) f.getTags().size();
+        }
+        return entities.stream().map(this::toDto).toList();
     }
 
     /** Distinct fileType names actually used by FileObjects in the database. */
@@ -1592,6 +1655,246 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             }
                 categoryRepo.delete(category);
         }
+    }
+
+    // ===== relatedSystems → systems/tags migration =====
+    // One-shot conversion of the legacy CSV-of-names `relatedSystems`. Per parsed
+    // name: matches an existing Value with Category=System → added to the file's
+    // new @ManyToMany `systems` collection; otherwise → added to `tags` (Tag
+    // category and Tag values auto-created on demand). NO new System Values are
+    // ever created. The primary `system` FK is NOT auto-seeded.
+    // Idempotent: HashSet.add returns false for entries already present, so
+    // re-running won't double-add or re-emit sync events.
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.transaction.PlatformTransactionManager migrationTxManager;
+
+    /** Mutable result of a migrate-relatedSystems-to-tags run. */
+    public static class MigrationResult {
+        public boolean dryRun;
+        public int filesScanned;
+        public int filesUpdated;
+        /** Total distinct names found across all relatedSystems CSVs. */
+        public int uniqueCsvNames;
+        /** Names that match an existing Tag value (will be REUSED, not recreated). */
+        public java.util.List<String> tagsExistingNames = new java.util.ArrayList<>();
+        /** Names that DON'T match any existing Value (System or Tag) — will be CREATED as Tag values. */
+        public java.util.List<String> tagsToCreateNames = new java.util.ArrayList<>();
+        /** Names that match an existing System value — will be assigned to `systems` (no new System created). */
+        public java.util.List<String> systemsReusedNames = new java.util.ArrayList<>();
+        /** Real-run counts. */
+        public int tagsAssigned;
+        public int systemsAssigned;
+        public int errors;
+        public long startedAt;
+        public long finishedAt;
+    }
+
+    /**
+     * Migrate legacy {@code relatedSystems} CSV into the new collections.
+     *
+     * For each distinct name in the CSV:
+     *   - if it matches an existing Value with Category=System (case-insensitive) →
+     *     assigned to the file's `systems` collection. NO new System values are
+     *     ever created by this migration.
+     *   - otherwise → assigned to the file's `tags` collection, creating the Tag
+     *     value (under Category="Tag") if it doesn't exist yet.
+     *
+     * The primary `system` FK is NOT auto-seeded into the new `systems` collection;
+     * the new collection is populated solely from CSV→System matches.
+     *
+     * Marked {@code NOT_SUPPORTED} so the HTTP thread does NOT open a long-running
+     * transaction (the class is @Transactional). Each file save runs in its own
+     * short transaction via TransactionTemplate.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public MigrationResult migrateRelatedSystemsToTags(boolean dryRun) {
+        MigrationResult result = new MigrationResult();
+        result.dryRun = dryRun;
+        result.startedAt = System.currentTimeMillis();
+
+        org.springframework.transaction.support.TransactionTemplate tx =
+                new org.springframework.transaction.support.TransactionTemplate(migrationTxManager);
+
+        try {
+            // Step 1: load all files + collect unique CSV names + per-file parsed names.
+            List<Long> allIds = tx.execute(status -> fileRepo.findAllIds());
+            if (allIds == null) allIds = List.of();
+            result.filesScanned = allIds.size();
+
+            // Aggregate cross-file with CASE-INSENSITIVE dedupe: lowercased key,
+            // first-seen spelling preserved for display. Without this, "Pump" from
+            // one file and "pump" from another both end up in the preview lists
+            // and trigger two createValue calls (which are idempotent at the DB
+            // level via Category.getValueByName but bloat the preview).
+            Map<String, String> allByLower = new LinkedHashMap<>();
+            Map<Long, Set<String>> namesByFileId = new HashMap<>();
+
+            for (Long id : allIds) {
+                tx.execute(status -> {
+                    FileObject f = fileRepo.findById(id).orElse(null);
+                    if (f == null) return null;
+                    Set<String> names = parseTagNamesFromCsv(f.getRelatedSystems());
+                    if (!names.isEmpty()) {
+                        namesByFileId.put(id, names);
+                        for (String n : names) {
+                            allByLower.putIfAbsent(n.toLowerCase().trim(), n);
+                        }
+                    }
+                    return null;
+                });
+            }
+            Collection<String> allCsvNames = allByLower.values();
+            result.uniqueCsvNames = allByLower.size();
+
+            // Step 2: build lookup maps for existing System and Tag values (case-insensitive).
+            Map<String, com.dk_power.power_plant_java.entities.categories.Value> systemByLower = tx.execute(status -> {
+                Category cat = valueService.getCategoryByAliasSafe("system");
+                if (cat == null) cat = valueService.getCategoryByNameSafe("System");
+                Map<String, com.dk_power.power_plant_java.entities.categories.Value> m = new HashMap<>();
+                if (cat != null) {
+                    for (com.dk_power.power_plant_java.entities.categories.Value v : cat.getValues()) {
+                        if (v.getName() != null && !v.getName().isBlank()) {
+                            m.put(v.getName().toLowerCase().trim(), v);
+                        }
+                    }
+                }
+                return m;
+            });
+            if (systemByLower == null) systemByLower = new HashMap<>();
+
+            Map<String, com.dk_power.power_plant_java.entities.categories.Value> tagByLower = tx.execute(status -> {
+                Category cat = valueService.getCategoryByNameSafe("Tag");
+                Map<String, com.dk_power.power_plant_java.entities.categories.Value> m = new HashMap<>();
+                if (cat != null) {
+                    for (com.dk_power.power_plant_java.entities.categories.Value v : cat.getValues()) {
+                        if (v.getName() != null && !v.getName().isBlank()) {
+                            m.put(v.getName().toLowerCase().trim(), v);
+                        }
+                    }
+                }
+                return m;
+            });
+            if (tagByLower == null) tagByLower = new HashMap<>();
+
+            // Step 3: classify each unique CSV name → systems-reuse, tags-existing, or tags-to-create.
+            for (String name : allCsvNames) {
+                String lower = name.toLowerCase().trim();
+                if (systemByLower.containsKey(lower)) {
+                    result.systemsReusedNames.add(name);
+                } else if (tagByLower.containsKey(lower)) {
+                    result.tagsExistingNames.add(name);
+                } else {
+                    result.tagsToCreateNames.add(name);
+                }
+            }
+            java.util.Collections.sort(result.systemsReusedNames, String.CASE_INSENSITIVE_ORDER);
+            java.util.Collections.sort(result.tagsExistingNames, String.CASE_INSENSITIVE_ORDER);
+            java.util.Collections.sort(result.tagsToCreateNames, String.CASE_INSENSITIVE_ORDER);
+
+            if (dryRun) {
+                result.finishedAt = System.currentTimeMillis();
+                return result;
+            }
+
+            // Step 4 (real run): find-or-create the Tag values we identified.
+            final Map<String, com.dk_power.power_plant_java.entities.categories.Value> tagCache = new HashMap<>(tagByLower);
+            for (String name : result.tagsToCreateNames) {
+                final String n = name;
+                try {
+                    com.dk_power.power_plant_java.entities.categories.Value tag = tx.execute(status ->
+                            valueService.createValue("Tag", n));
+                    if (tag != null) tagCache.put(n.toLowerCase().trim(), tag);
+                } catch (Exception e) {
+                    logger.warn("Migration: failed to create Tag value '{}': {}", n, e.getMessage());
+                    result.errors++;
+                }
+            }
+
+            // Step 5 (real run): per-file mutation in its own short transaction.
+            final Map<String, com.dk_power.power_plant_java.entities.categories.Value> finalSystemByLower = systemByLower;
+            for (Long id : allIds) {
+                try {
+                    Boolean changed = tx.execute(status -> {
+                        FileObject f = fileRepo.findById(id).orElse(null);
+                        if (f == null) return false;
+                        boolean mutated = false;
+                        Set<String> names = namesByFileId.get(id);
+                        if (names != null) {
+                            // Values cached across iterations are detached; the file's collection
+                            // holds session-managed instances. HashSet uses Object identity, so
+                            // .add() on an "already present" value with the same id would still
+                            // return true and risk a duplicate row on the next flush. Compare by id.
+                            java.util.Set<Long> existingSystemIds = f.getSystems().stream()
+                                    .map(com.dk_power.power_plant_java.entities.categories.Value::getId)
+                                    .collect(java.util.stream.Collectors.toSet());
+                            java.util.Set<Long> existingTagIds = f.getTags().stream()
+                                    .map(com.dk_power.power_plant_java.entities.categories.Value::getId)
+                                    .collect(java.util.stream.Collectors.toSet());
+                            for (String name : names) {
+                                String lower = name.toLowerCase().trim();
+                                com.dk_power.power_plant_java.entities.categories.Value sysVal = finalSystemByLower.get(lower);
+                                if (sysVal != null) {
+                                    if (!existingSystemIds.contains(sysVal.getId())) {
+                                        f.getSystems().add(sysVal);
+                                        existingSystemIds.add(sysVal.getId());
+                                        result.systemsAssigned++;
+                                        mutated = true;
+                                    }
+                                    continue;
+                                }
+                                com.dk_power.power_plant_java.entities.categories.Value tagVal = tagCache.get(lower);
+                                if (tagVal != null && !existingTagIds.contains(tagVal.getId())) {
+                                    f.getTags().add(tagVal);
+                                    existingTagIds.add(tagVal.getId());
+                                    result.tagsAssigned++;
+                                    mutated = true;
+                                }
+                            }
+                        }
+                        if (mutated) {
+                            // Force a scalar-field touch so Hibernate dirty-checks the
+                            // parent row and @PostUpdate fires → FieldChangeEntityListener
+                            // emits the new systems/tags assignments to other clients.
+                            // Without this, the migration only writes join-table rows and
+                            // sync silently misses them.
+                            f.setDateModified(java.time.LocalDateTime.now());
+                            fileRepo.save(f);
+                        }
+                        return mutated;
+                    });
+                    if (Boolean.TRUE.equals(changed)) result.filesUpdated++;
+                } catch (Exception e) {
+                    logger.warn("Migration: failed to update FileObject #{}: {}", id, e.getMessage());
+                    result.errors++;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Migration: aborted with error", e);
+            result.errors++;
+        } finally {
+            result.finishedAt = System.currentTimeMillis();
+        }
+        return result;
+    }
+
+    /**
+     * Parse a {@code relatedSystems} CSV into a CASE-INSENSITIVE deduped set of
+     * trimmed names, preserving the first-seen spelling for display. Strips literal
+     * square brackets (legacy payloads sometimes saved as {@code [a, b, c]}), splits
+     * on comma, trims, drops blanks. So {@code "Pump, pump, PUMP"} → {@code {"Pump"}}.
+     */
+    private Set<String> parseTagNamesFromCsv(String csv) {
+        if (csv == null || csv.isBlank()) return Set.of();
+        String cleaned = csv.replace("[", "").replace("]", "");
+        // LinkedHashMap keyed by lowercase, value = first-seen spelling.
+        Map<String, String> byLower = new LinkedHashMap<>();
+        for (String part : cleaned.split(",")) {
+            String t = part.trim();
+            if (t.isEmpty()) continue;
+            byLower.putIfAbsent(t.toLowerCase(), t);
+        }
+        return new LinkedHashSet<>(byLower.values());
     }
 
 }

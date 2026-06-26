@@ -42,10 +42,13 @@ public class NgFileRestController {
             @RequestParam(defaultValue = "50") int pageSize) {
 
         try {
-//            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
-            Page<FileDto> paginatedFiles = ngFileService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id", "fileNumber", "name", "relatedSystems", "fileLink", "fileType.id", "fileType.name", "vendor.name", "vendor.id")),
-                    PageRequest.of(page - 1, pageSize)).map(ngFileService::toDto);
+            // Service-side wrapper loads full managed entities (NOT projection)
+            // so the new @ManyToMany systems/tags collections are real lazy proxies
+            // and can be initialized inside the transaction. Projection paths
+            // produce tuple-built FileObjects whose collections are stub defaults
+            // (.size() = 0, no proxy to load), which broke the Tags column display.
+            Page<FileDto> paginatedFiles = ngFileService.findAllPaginatedAsDto(
+                    PageRequest.of(page - 1, pageSize));
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
 //            return ResponseEntity.ok(response);
@@ -119,10 +122,12 @@ public class NgFileRestController {
                 String sortBy = criteria.getSortColumn() != null ? criteria.getSortColumn() : "fileNumber";
                 String sortDir = criteria.getSortDirection() != null ? criteria.getSortDirection() : "ASC";
                 Sort.Direction direction = Sort.Direction.fromString(sortDir);
-                Page<FileObject> entityPage = ngFileService.complexSearchWithPagination(
-                        ngFileService.getRepo(), criteria,
-                        PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)), true);
-                searchResults = entityPage.map(ngFileService::toDtoLight);
+                // Use the service-side transactional overload so the new @ManyToMany
+                // `systems` and `tags` collections initialize lazily without NPE.
+                searchResults = ngFileService.searchAsLightDto(
+                        criteria,
+                        PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)),
+                        true);
             }
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -334,6 +339,28 @@ public class NgFileRestController {
         try {
             return ResponseEntity.ok(new NgApiResponse<>(ngFileService.getRevisionsMap(),
                     "Revisions map retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * One-shot migration of legacy {@code relatedSystems} CSV. For each parsed name,
+     * if it matches an existing Value with Category=System (case-insensitive) it is
+     * added to the file's new {@code systems} collection; otherwise a Tag Value (under
+     * Category="Tag") is created if needed and added to the file's {@code tags} collection.
+     * <p>NO new System Values are created. The primary {@code system} FK is NOT auto-seeded
+     * into the new {@code systems} collection — that collection is populated solely by
+     * CSV→System matches.
+     * <p>Use {@code dryRun=true} first to preview classification; flip to {@code false} to apply.
+     */
+    @PostMapping("/migrate-systems-tags")
+    public ResponseEntity<NgApiResponse<NgFileService.MigrationResult>> migrateSystemsAndTags(
+            @RequestParam(value = "dryRun", defaultValue = "true") boolean dryRun) {
+        try {
+            NgFileService.MigrationResult result = ngFileService.migrateRelatedSystemsToTags(dryRun);
+            return ResponseEntity.ok(new NgApiResponse<>(result,
+                    dryRun ? "Dry-run complete" : "Migration complete"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }

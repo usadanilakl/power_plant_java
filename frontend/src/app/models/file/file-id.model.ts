@@ -7,6 +7,14 @@ export class FileIdDto extends BaseDto {
   folder: string;
   system: number;
   relatedSystems: string[];
+  /**
+   * IDs of System Values for the new @ManyToMany systems collection.
+   * `undefined` ⇒ omitted by caller ⇒ backend leaves existing joins untouched.
+   * `[]` ⇒ explicit clear (the form intent when the user deselects everything).
+   */
+  systems: number[] | undefined;
+  /** Same null-vs-empty contract as {@link systems}. */
+  tags: number[] | undefined;
   fileNumber: string[];
   vendor: number;
   points: number[];
@@ -23,6 +31,10 @@ export class FileIdDto extends BaseDto {
     this.folder = data.folder || '';
     this.system = data.system || 0;
     this.relatedSystems = data.relatedSystems || [];
+    // Preserve undefined when the source doesn't include it — toJson skips the
+    // key so the backend leaves the existing @ManyToMany joins alone.
+    this.systems = data.systems !== undefined ? data.systems : undefined;
+    this.tags = data.tags !== undefined ? data.tags : undefined;
     this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor || 0;
     this.points = data.points || [];
@@ -42,6 +54,9 @@ export class FileIdDto extends BaseDto {
       folder: this.folder,
       system: this.system,
       relatedSystems: this.relatedSystems,
+      // Conditional emit: undefined ⇒ key omitted ⇒ backend leaves joins alone.
+      ...(this.systems !== undefined ? { systems: this.systems } : {}),
+      ...(this.tags !== undefined ? { tags: this.tags } : {}),
       fileNumber: this.fileNumber,
       vendor: this.vendor,
       points: this.points,
@@ -66,6 +81,10 @@ export class FileIdDto extends BaseDto {
       folder: json.folder,
       system: json.system,
       relatedSystems: json.relatedSystems,
+      // Round-trip the omitted-vs-empty distinction so a re-serialized FileIdDto
+      // doesn't materialize systems/tags into [] when they weren't on the wire.
+      systems: json.systems !== undefined ? json.systems : undefined,
+      tags: json.tags !== undefined ? json.tags : undefined,
       fileNumber: json.fileNumber,
       vendor: json.vendor,
       points: json.points || [],

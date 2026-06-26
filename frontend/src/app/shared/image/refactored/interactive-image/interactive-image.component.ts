@@ -118,6 +118,18 @@ export class InteractiveImageComponent {
   selectedShapeIds = this.shapeManager.selectedShapeIds;
   singleSelectedShapeId = this.shapeManager.singleSelectedShapeId;
 
+  /**
+   * Public escape hatch for removing a shape from the local shape manager
+   * without going through the normal selection/delete flow. Used by callers
+   * (e.g. the loto-builder "Get Text" one-shot mode) that triggered
+   * {@link shapeDrawn} for processing only and want the temporary shape
+   * removed from the canvas immediately rather than waiting for the next
+   * {@link shapesInput} re-sync to evict it.
+   */
+  removeShape(shapeId: number): void {
+    this.shapeManager.deleteShape(shapeId);
+  }
+
   private _zoomElement!: HTMLDivElement;
   private _zoomOuter!: HTMLDivElement;
   private _img!: HTMLImageElement;

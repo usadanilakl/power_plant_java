@@ -55,6 +55,25 @@ export interface AssignAttributesResult {
   error?: string;
 }
 
+export interface SystemsTagsMigrationResult {
+  dryRun: boolean;
+  filesScanned: number;
+  filesUpdated: number;
+  uniqueCsvNames: number;
+  /** Names that match an existing Tag value — will be reused. */
+  tagsExistingNames: string[];
+  /** Names that don't match any existing Value — will be created as Tag values. */
+  tagsToCreateNames: string[];
+  /** Names that match an existing System value — will be assigned to `systems`. */
+  systemsReusedNames: string[];
+  /** Real-run counts. */
+  tagsAssigned: number;
+  systemsAssigned: number;
+  errors: number;
+  startedAt: number;
+  finishedAt: number;
+}
+
 export interface BackfillHashesResult {
   running: boolean;
   total: number;
@@ -359,6 +378,21 @@ export class AdminFunctionalitiesService {
   getBackfillHashesStatus(): Observable<SpringApiResponse<BackfillHashesResult>> {
     return this.http.get<SpringApiResponse<BackfillHashesResult>>(
       `${environment.apiUrl}/files/backfill-hashes/status`
+    );
+  }
+
+  /**
+   * Migrate legacy `relatedSystems` CSV. Names matching an existing System Value
+   * go to the file's `systems` @ManyToMany collection; everything else goes to
+   * `tags` (Tag values created if missing). No new System Values are ever created;
+   * the primary `system` FK is NOT auto-seeded. Pass `dryRun=true` to preview; `false` to apply.
+   */
+  migrateSystemsAndTags(dryRun: boolean): Observable<SpringApiResponse<SystemsTagsMigrationResult>> {
+    const params = new HttpParams().set('dryRun', String(dryRun));
+    return this.http.post<SpringApiResponse<SystemsTagsMigrationResult>>(
+      `${environment.apiUrl}/files/migrate-systems-tags`,
+      {},
+      { params }
     );
   }
 

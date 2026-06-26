@@ -62,7 +62,7 @@ export class RfFileLeftMenuComponent implements OnInit{
   /** Manual override of the grouping criteria; `null` means "use this type's default". */
   private explicitGroupBy = signal<FileMenuGroupKey | null>(null);
   /** Options surfaced in the Group-by dropdown. */
-  availableGroupKeys: FileMenuGroupKey[] = ['vendor', 'system', 'fileType'];
+  availableGroupKeys: FileMenuGroupKey[] = ['vendor', 'system', 'fileType', 'tag'];
   /**
    * Effective group key: explicit override if the user picked one; otherwise
    *   - only PID selected → vendor (PID's traditional grouping)
@@ -215,9 +215,9 @@ constructor(
     this.fileTypeDropdownOpen.set(false);
   }
 
-  /** User override for grouping criteria (vendor / system / fileType). Resets when the file type changes. */
+  /** User override for grouping criteria (vendor / system / fileType / tag). Resets when the file type changes. */
   onGroupByChange(key: string): void {
-    if (key === 'vendor' || key === 'system' || key === 'fileType') {
+    if (key === 'vendor' || key === 'system' || key === 'fileType' || key === 'tag') {
       this.explicitGroupBy.set(key);
       this.loadFiles();
     }
@@ -284,7 +284,23 @@ constructor(
           }
           return acc;
         }
-        const groupValue = file[key];
+        // Tags fan out the same way — a file appears under every Tag it carries.
+        if (key === 'tag') {
+          const tagNames = (file.tags ?? [])
+            .map(v => v?.name?.trim())
+            .filter((n): n is string => !!n);
+          if (tagNames.length === 0) {
+            if (!acc[missingLabel]) acc[missingLabel] = [];
+            acc[missingLabel].push(file);
+          } else {
+            for (const groupName of tagNames) {
+              if (!acc[groupName]) acc[groupName] = [];
+              acc[groupName].push(file);
+            }
+          }
+          return acc;
+        }
+        const groupValue = (file as any)[key];
         let groupName: string;
         if (groupValue && typeof groupValue === 'object' && 'name' in groupValue && groupValue.name) {
           groupName = groupValue.name;
@@ -587,14 +603,24 @@ constructor(
       seen.add(key);
       out.push(v);
     };
+    // Always include the legacy primary `system` FK — it stays populated for
+    // migrated files (the migration does NOT auto-seed it into the new collection)
+    // and the user expects the file to appear under its primary system bucket
+    // regardless of what's in the new @ManyToMany.
     push(file.system?.name);
-    // `relatedSystems` is wire-typed as string[] but legacy payloads may still
-    // arrive as a CSV string — handle both defensively.
-    const related: any = (file as any).relatedSystems;
-    if (Array.isArray(related)) {
-      for (const r of related) push(r);
-    } else if (typeof related === 'string') {
-      for (const r of related.split(',')) push(r);
+    if (Array.isArray(file.systems) && file.systems.length > 0) {
+      // Post-migration: new collection is the source of truth for "related" systems.
+      // Dedupes against the primary added above.
+      for (const v of file.systems) push(v?.name);
+    } else {
+      // Pre-migration fallback: parse the legacy `relatedSystems` CSV. (Wire type
+      // is string[] but historical payloads can arrive as a comma-joined string.)
+      const related: any = (file as any).relatedSystems;
+      if (Array.isArray(related)) {
+        for (const r of related) push(r);
+      } else if (typeof related === 'string') {
+        for (const r of related.split(',')) push(r);
+      }
     }
     return out;
   }
