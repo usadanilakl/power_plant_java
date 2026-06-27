@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -765,6 +766,14 @@ public class NgFileCloneService {
             else if (dist == 2) { score += 25; reasons.add(0, "2-letter difference"); }
         }
 
+        // Name token overlap — catches counterparts whose file numbers diverge
+        // but whose names share most words. Example pair the file-number
+        // scoring misses: "HP Steam Header (HRSG)" ↔ "HP Steam Header (ST)".
+        int nameOverlap = nameTokenOverlap(src.getName(), other.getName());
+        if (nameOverlap >= 3) { score += 40; reasons.add("similar name"); }
+        else if (nameOverlap == 2) { score += 20; reasons.add("similar name"); }
+        else if (nameOverlap == 1) { score += 5; /* weak signal — no reason badge */ }
+
         return new CounterpartCandidateDto(
             other.getId(),
             otherNum,
@@ -774,6 +783,28 @@ public class NgFileCloneService {
             score,
             reasons.isEmpty() ? "Same file type" : String.join(", ", reasons)
         );
+    }
+
+    /**
+     * Count how many ≥3-character word tokens two names share (case-insensitive,
+     * non-word chars treated as separators). 3+ chars filters out filler like
+     * "of"/"the" so they don't inflate the overlap. Returns 0 when either name
+     * is null/blank.
+     */
+    private int nameTokenOverlap(String a, String b) {
+        if (a == null || b == null) return 0;
+        Set<String> tokensA = tokenize(a);
+        if (tokensA.isEmpty()) return 0;
+        Set<String> tokensB = tokenize(b);
+        int overlap = 0;
+        for (String t : tokensA) if (tokensB.contains(t)) overlap++;
+        return overlap;
+    }
+
+    private Set<String> tokenize(String s) {
+        return Arrays.stream(s.toLowerCase().split("[\\s\\W_]+"))
+            .filter(t -> t.length() >= 3)
+            .collect(java.util.stream.Collectors.toSet());
     }
 
     private boolean sameValueId(com.dk_power.power_plant_java.entities.categories.Value a,

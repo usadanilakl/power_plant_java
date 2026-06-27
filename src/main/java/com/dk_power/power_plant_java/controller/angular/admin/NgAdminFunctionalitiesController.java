@@ -200,6 +200,25 @@ public class NgAdminFunctionalitiesController {
         }
     }
 
+    @PostMapping("/sync-queue/backfill-user-create-history")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> backfillUserCreateHistory(
+            @RequestParam(defaultValue = "true") boolean dryRun,
+            @RequestParam(defaultValue = "false") boolean includeLocalBootstrapUsers) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.backfillUserCreateHistory(
+                dryRun, includeLocalBootstrapUsers);
+            String message = dryRun
+                ? "User create-history backfill preview completed"
+                : "User create-history backfill completed";
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/pwa-sync")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> publishPwaData(
             @RequestParam(defaultValue = "all") String target) {

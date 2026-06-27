@@ -1,19 +1,53 @@
 #!/usr/bin/env bash
 #
-# codex-review.sh — run OpenAI Codex as a code reviewer over the current branch.
+# codex-review.sh — Codex CLI wrapper with three usage modes ordered cheapest
+# first. Pick the cheapest mode that answers your question.
 #
 # Uses the codex.exe bundled inside the VS Code "openai.chatgpt" extension
 # (no separate CLI install needed; reuses the extension's ~/.codex auth).
-# The newest installed extension version is resolved dynamically so this keeps
-# working after the extension auto-updates.
 #
-# Usage:
-#   ./codex-review.sh                 # review branch vs master (committed changes)
-#   ./codex-review.sh --uncommitted   # review working-tree changes (staged+unstaged+untracked)
-#   ./codex-review.sh --base <branch> # review vs a different base branch
+# ============================================================================
+# MODES (token cost ascending)
+# ============================================================================
 #
-# Exit: prints Codex's findings to stdout. Claude reads these, judges each one,
-# fixes the valid ones, and re-runs until the review is clean.
+#   ./codex-review.sh --ask "<prompt>"
+#       Targeted single question — NO repo scan. Codex reads only what your
+#       prompt points it at. Use when you know the file/function/concern.
+#       Roughly 10-20x cheaper than --review for the same question.
+#       Example:
+#         ./codex-review.sh --ask "Open NgFileCloneService.java lines 100-145. \
+#            Does saveAndFlush correctly persist the bidirectional counterpartId, \
+#            and can any later step roll it back? Reply OK or specific issue."
+#
+#   ./codex-review.sh --resume "<follow-up prompt>"
+#       Resume the MOST RECENT codex session in this repo and send a follow-up.
+#       Codex keeps everything it already learned (file reads, grep results,
+#       prior findings), so you pay only for the delta. Roughly 5-10x cheaper
+#       than running another full review.
+#       Use AFTER an initial review for "I fixed X — re-check just that".
+#       Example:
+#         ./codex-review.sh --resume "Fixed the tx rollback issue at line 214. \
+#            Re-check just that hunk; ignore everything you already flagged."
+#
+#   ./codex-review.sh [args]   (DEFAULT — full review)
+#       Initial broad review. Use ONLY for the first scan when you don't yet
+#       know what to look for. Full repo exploration cost.
+#       Args: defaults to '--base master' (branch vs master).
+#       Pass '--uncommitted' to review working-tree changes instead, or
+#       '--base <branch>' to compare against a different branch.
+#
+# ============================================================================
+# WORKFLOW
+# ============================================================================
+#
+#   First review:    ./codex-review.sh                            # or --uncommitted
+#   Follow-ups:      ./codex-review.sh --resume "fixed X; recheck"
+#   Targeted check:  ./codex-review.sh --ask "audit lines 100-145 for Y"
+#
+# Do NOT loop with the default mode — each call re-explores from scratch.
+# Use --resume for round 2+.
+#
+# ============================================================================
 
 set -euo pipefail
 
@@ -28,17 +62,44 @@ if [[ -z "${CODEX:-}" || ! -x "$CODEX" ]]; then
   exit 1
 fi
 
-# --- default review target -----------------------------------------------
-# Default: review the branch against master. Pass-through any args the caller
-# gives (e.g. --uncommitted, or --base <branch>).
+# --- mode: --ask (cheapest, no repo scan) --------------------------------
+if [[ "${1:-}" == "--ask" ]]; then
+  shift
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: codex-review.sh --ask \"<targeted prompt>\"" >&2
+    echo "       Example: codex-review.sh --ask \"Check File.java:100-145 for X\"" >&2
+    exit 1
+  fi
+  PROMPT="$*"
+  echo "Using codex: $CODEX" >&2
+  echo "Mode: --ask (no repo scan, single targeted prompt)" >&2
+  echo "---------------------------------------------------------------" >&2
+  exec "$CODEX" exec "$PROMPT"
+fi
+
+# --- mode: --resume (pays only for the delta) ----------------------------
+if [[ "${1:-}" == "--resume" ]]; then
+  shift
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: codex-review.sh --resume \"<follow-up prompt>\"" >&2
+    echo "       (requires an earlier codex session in this repo to resume from)" >&2
+    exit 1
+  fi
+  PROMPT="$*"
+  echo "Using codex: $CODEX" >&2
+  echo "Mode: --resume --last (resumes most recent session, pays only for the delta)" >&2
+  echo "---------------------------------------------------------------" >&2
+  exec "$CODEX" exec resume --last "$PROMPT"
+fi
+
+# --- mode: default — full initial review ---------------------------------
 ARGS=("--base" "master")
 if [[ $# -gt 0 ]]; then
   ARGS=("$@")
 fi
 
-# --- tuned reviewer prompt ------------------------------------------------
-# Focus Codex on real defects and silence false positives caused by this
-# repo's intentional conventions.
+# Tuned reviewer prompt — focus on real defects, silence false positives caused
+# by intentional project conventions.
 read -r -d '' REVIEW_PROMPT <<'EOF' || true
 Review this change for REAL defects only: correctness bugs, broken logic,
 security issues, data-loss/sync-correctness problems, and clear performance
@@ -52,12 +113,19 @@ Do NOT report the following — they are intentional project conventions:
   - Constructor injection via Lombok @RequiredArgsConstructor.
   - Angular endpoints returning ResponseEntity<NgApiResponse<T>>.
   - 1-indexed pagination in controllers.
+  - The tracked Angular bundle under src/main/resources/static/angular is
+    gitignored now; "tracked files deleted without replacement" is a stale
+    workflow concern, not a code defect.
 Skip pure style/formatting nits. If there are no real issues, say exactly:
 REVIEW CLEAN — no blocking issues.
 EOF
 
 echo "Using codex: $CODEX" >&2
+echo "Mode: full initial review (expensive — pays for full repo exploration)" >&2
 echo "Review args: ${ARGS[*]}" >&2
+echo "TIP: for follow-up rounds use './codex-review.sh --resume \"prompt\"'" >&2
+echo "     for targeted checks use './codex-review.sh --ask \"prompt\"'" >&2
+echo "     both are 5-20x cheaper than re-running this default mode." >&2
 echo "---------------------------------------------------------------" >&2
 
 # Codex CLI quirk: `codex exec review --uncommitted` rejects a positional

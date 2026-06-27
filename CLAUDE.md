@@ -41,31 +41,62 @@ PWA frontend is a **separate Angular project** (`ng-ui`), not part of this repo.
 - **Tests**: Skipped by default (`mvn test -DskipTests=false` to enable)
 
 ## Codex Review Loop
-- When asked to "review with Codex" / "loop with Codex until clean", run `./codex-review.sh`
-  (reviews branch vs master; `--uncommitted` for working-tree changes). It invokes the
-  Codex CLI bundled in the VS Code openai.chatgpt extension — already authenticated, no install.
-- Workflow: implement → run script → judge each finding (reject nits with a reason, fix real
-  ones) → re-run → repeat until output is `REVIEW CLEAN — no blocking issues.`. Claude is the
-  arbiter of relevance.
-- Iteration cap: if 5 rounds pass without reaching `REVIEW CLEAN`, STOP — give the user an
-  outline of what's happening (the unresolved findings, what was tried, where Codex and Claude
-  disagree) and ask whether to continue iterating before running any further rounds.
-- **Codex CLI quirk**: `codex exec review --uncommitted` rejects a positional `[PROMPT]` arg
-  with `cannot be used with [PROMPT]`. The script handles this — `--uncommitted` mode drops
-  the tuned prompt and relies on Codex's built-in review prompt. The named-convention exclusions
-  (sevice/ typo etc.) only apply when reviewing vs a base branch; if Codex flags those in
+The `./codex-review.sh` wrapper has **three modes ordered cheapest first**. Pick the cheapest one
+that answers the question — they stack 5–20× cost differences.
+
+```
+./codex-review.sh --ask "<prompt>"      # No repo scan, single targeted question (~10-20x cheaper)
+./codex-review.sh --resume "<prompt>"   # Resume last session, pays only for delta (~5-10x cheaper)
+./codex-review.sh                       # Full initial review — branch vs master
+./codex-review.sh --uncommitted         # Full initial review — working-tree changes
+```
+
+### Workflow
+
+1. **First review**: `./codex-review.sh` (or `--uncommitted`). Pays for full repo exploration. Do this
+   ONCE per change set.
+2. **Follow-up rounds**: `./codex-review.sh --resume "fixed X; re-check just that hunk"`. Codex
+   keeps everything it learned from step 1 — file reads, grep results, prior findings — so you pay
+   only for the delta. **Use this instead of re-running step 1**; running the full review again
+   forces codex to re-explore from scratch (the biggest token leak).
+3. **Targeted checks**: `./codex-review.sh --ask "<specific prompt with file:line refs>"` when you
+   already know the file/concern. Codex reads only what you point it at; no repo-wide exploration.
+
+### Judging findings
+- Reject pure style nits + intentional conventions (the script's prompt lists project-specific
+  exclusions).
+- Fix real code-level findings.
+- **Reject workflow-level findings** (e.g. "if you commit just the deletes without the new files
+  the bundle is broken") — these are process notes, not bugs to fix in code. Don't iterate trying
+  to make codex happy about them.
+
+### Iteration cap
+- Cap at **1–2 follow-up rounds via `--resume`** per change set. If round 2 surfaces nothing
+  actionable, stop — further rounds typically surface noise.
+- Never loop by re-running the default full-review mode; that's what burns the budget.
+- If you hit a wall (codex insists on a finding you've rejected with reason), STOP, summarize
+  the disagreement for the user, and ask whether to continue.
+
+### CLI quirks
+- **`codex exec review --uncommitted` rejects a positional `[PROMPT]` arg** with
+  `cannot be used with [PROMPT]`. The script handles this — `--uncommitted` mode drops the tuned
+  prompt and relies on Codex's built-in review prompt. The named-convention exclusions
+  (`sevice/` typo etc.) only apply when reviewing vs a base branch; if Codex flags those in
   uncommitted mode, judge as nits and reject.
+- **`exec resume --last`** requires a prior session in this repo's cwd. If there's no recent
+  session, it'll error out — run a full review (or `--ask`) first.
 - **`ng build` on Git Bash**: the `--base-href=/angular/browser/` arg is path-mangled by MSYS
   into `C:/Program Files/Git/angular/browser/`, producing a checked-in `index.html` whose
   `<base href>` is a local Windows path → broken bundle. Always invoke with the env-var guard:
   `MSYS_NO_PATHCONV=1 npx ng build --configuration production --base-href=/angular/browser/`.
   Verify post-build with `grep 'base href' src/main/resources/static/angular/browser/index.html`
   (expected: `base href="/angular/browser/"`).
-- **Codex usage limit**: review-mode burns tokens fast (~10 rounds can hit a free-tier daily
-  cap). When limit hits, the error message includes the reset time. Either wait for reset or
-  switch to a self-review pass (audit DTO entry points, sync-emission paths, null/empty/undefined
-  contracts at JSON wire boundaries — the cascading-contract failures are the highest-yield
-  classes Codex finds).
+
+### Usage-limit fallback
+Review-mode burns tokens fast (~10 rounds in the default mode can hit a free-tier daily cap).
+When limit hits, the error message includes the reset time. Either wait for reset or switch to a
+self-review pass (audit DTO entry points, sync-emission paths, null/empty/undefined contracts at
+JSON wire boundaries — the cascading-contract failures are the highest-yield classes Codex finds).
 
 ## Critical Conventions
 - **Package typo**: Service package is `sevice/` (NOT `service/`) — do NOT rename

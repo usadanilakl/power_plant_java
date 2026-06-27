@@ -17,8 +17,12 @@ import { ClipboardService } from '../../../../shared/clipboard/clipboard.service
 import { FileMapperService } from '../services/rf-file-mapper.service';
 import { FileDraftComparisonDialogComponent } from '../file-draft-comparison-dialog/file-draft-comparison-dialog.component';
 import { CommonModule } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { DuplicateReport, RfFileApiService } from '../services/rf-file-api.service';
+import { MatDialog } from '@angular/material/dialog';
+import { CurrentFileService } from '../../../../services/current-file.service';
+import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
+import { SetCounterpartDialogComponent } from '../set-counterpart-dialog/set-counterpart-dialog.component';
 
 type FileFieldName = keyof FileDto;
 
@@ -33,6 +37,9 @@ export class RfFileFormComponent {
   protected mapperService = inject(FileMapperService);
   protected clipboardService = inject(ClipboardService);
   private fileApi = inject(RfFileApiService);
+  private dialog = inject(MatDialog);
+  private currentFileService = inject(CurrentFileService);
+  private messageService = inject(GlobalMessageService);
 
   // Pre-upload duplicate check state
   protected duplicateReport = signal<DuplicateReport | null>(null);
@@ -78,6 +85,124 @@ export class RfFileFormComponent {
   entity = computed(
     () => this.entityInput() ?? this.entityFromState() ?? new FileDto()
   );
+
+  // ==================== COUNTERPART SECTION ====================
+  // Surfaces link/unlink/open controls in the form so the user doesn't have
+  // to hunt them down in the row context menu. Mirrors the context menu's
+  // behavior: Open uses CurrentFileService.setCurrentFile so the viewer
+  // renders the counterpart image/PDF too (not just the form).
+  counterpartFile = signal<FileDto | null>(null);
+  counterpartLoading = signal<boolean>(false);
+
+  hasCounterpart = computed(() => !!this.entity().counterpartId);
+  counterpartLabel = computed(() => {
+    const cp = this.counterpartFile();
+    if (!cp) return '';
+    if (cp.name) return cp.name;
+    if (Array.isArray(cp.fileNumber) && cp.fileNumber.length > 0) return cp.fileNumber.join(' / ');
+    return `File #${cp.id}`;
+  });
+
+  /**
+   * Whenever the form's entity (currently-edited file) changes, fetch the
+   * linked counterpart so we can display its label and enable the Open button.
+   * Skips the fetch when the cached counterpart already matches the pointer.
+   */
+  private syncCounterpart = effect(() => {
+    const cpId = this.entity().counterpartId;
+    if (!cpId) {
+      this.counterpartFile.set(null);
+      this.counterpartLoading.set(false);
+      return;
+    }
+    const cached = this.counterpartFile();
+    if (cached && cached.id === cpId) return;
+    this.counterpartLoading.set(true);
+    this.fileApi.getFileById(String(cpId)).pipe(
+      map(r => FileDto.fromJson(r.responseData))
+    ).subscribe({
+      next: (dto) => { this.counterpartFile.set(dto); this.counterpartLoading.set(false); },
+      error: () => { this.counterpartFile.set(null); this.counterpartLoading.set(false); },
+    });
+  });
+
+  /** Opens the picker — same dialog the row context menu uses. */
+  openSetCounterpartDialog(): void {
+    const file = this.entity();
+    if (!file?.id) {
+      this.messageService.showWarning('Save the file first before linking a counterpart.');
+      return;
+    }
+    const ref = this.dialog.open(SetCounterpartDialogComponent, {
+      data: { file },
+      width: '720px',
+      maxWidth: '90vw',
+      autoFocus: false,
+      restoreFocus: false,
+    });
+    ref.afterClosed().subscribe((result: { linked: boolean } | undefined) => {
+      if (!result?.linked || !file.id) return;
+      // Refresh the currently-edited entity so the new counterpartId reflects
+      // in this form's controls immediately (the effect above re-fetches the
+      // counterpart label automatically once entity().counterpartId updates).
+      this.fileApi.getFileById(String(file.id)).pipe(
+        map(r => FileDto.fromJson(r.responseData))
+      ).subscribe({
+        next: (fresh) => {
+          this.stateService.setSelectedItem(fresh);
+          this.stateService.updateOrAddFile(fresh);
+        },
+      });
+    });
+  }
+
+  /**
+   * Open the linked counterpart — render its image/PDF in the viewer AND
+   * switch the form to it (so editing controls now apply to the counterpart).
+   * Mirrors the row context menu's "Open Counterpart File" behavior.
+   */
+  openCounterpart(): void {
+    const cp = this.counterpartFile();
+    if (!cp) {
+      this.messageService.showWarning('Counterpart not loaded yet.');
+      return;
+    }
+    this.currentFileService.setCurrentFile(cp);
+    this.stateService.setSelectedItem(cp);
+  }
+
+  /** Bidirectional unlink — confirms first since this also clears the other side. */
+  unlinkCounterpart(): void {
+    const file = this.entity();
+    if (!file?.id || !file.counterpartId) return;
+    if (!window.confirm('Unlink counterpart file? Both sides will lose the pointer.')) return;
+    const counterpartId = file.counterpartId;
+    this.fileApi.unlinkCounterpart(file.id).subscribe({
+      next: () => {
+        this.messageService.showSuccess('Counterpart unlinked');
+        // Refresh this file
+        if (file.id) {
+          this.fileApi.getFileById(String(file.id)).pipe(
+            map(r => FileDto.fromJson(r.responseData))
+          ).subscribe(dto => {
+            this.stateService.setSelectedItem(dto);
+            this.stateService.updateOrAddFile(dto);
+          });
+        }
+        // Refresh the other side too so its counterpartId clears in the list
+        this.fileApi.getFileById(String(counterpartId)).pipe(
+          map(r => FileDto.fromJson(r.responseData))
+        ).subscribe({
+          next: (dto) => this.stateService.updateOrAddFile(dto),
+          error: () => {/* OK if other side fetch fails — we cleared it server-side */},
+        });
+      },
+      error: (err: any) => {
+        console.error('Unlink failed:', err);
+        this.messageService.showError('Unlink failed: ' + (err?.error?.message ?? err?.message ?? 'unknown'));
+      },
+    });
+  }
 
   // Check for drafts when entity changes
   private checkForDrafts = effect(() => {

@@ -6,6 +6,7 @@ import { ContextMenuAction } from "../../../../shared/menu/context-menu/context-
 import { FileDto } from "../../../../models/file/file.model";
 import { FileClipboardItem } from "../../../../models/file/file-clipboard.model";
 import { GlobalMessageService } from "../../../../shared/global-message/global-message.service";
+import { CurrentFileService } from "../../../../services/current-file.service";
 import { RfFileStateService } from "./rf-file-state.service";
 import { RfFileApiService } from "./rf-file-api.service";
 import { CloneToUnitDialogComponent } from "../clone-to-unit-dialog/clone-to-unit-dialog.component";
@@ -22,6 +23,7 @@ export class FileContextMenuService extends ContextMenuService {
   private apiService = inject(RfFileApiService);
   private dialog = inject(MatDialog);
   private messageService = inject(GlobalMessageService);
+  private currentFileService = inject(CurrentFileService);
 
   customMenuActions: ContextMenuAction[] = [
       {
@@ -347,6 +349,11 @@ export class FileContextMenuService extends ContextMenuService {
           map(r => FileDto.fromJson(r.responseData))
         ).subscribe({
           next: (cpFile: FileDto) => {
+            // Render the counterpart's image/PDF in the viewer (mirrors what a
+            // normal click on a file row does), AND open the edit form so the
+            // user can act on it immediately. Without setCurrentFile, the
+            // viewer keeps showing the previous file while the form switches.
+            this.currentFileService.setCurrentFile(cpFile);
             this.stateService.setSelectedItem(cpFile);
             this.stateService.openForm();
           },

@@ -1,4 +1,33 @@
 <div class="file-form-wrapper">
+  <!-- Counterpart Section — surfaces link/open/unlink in the form so the user
+       doesn't have to dig through the row context menu. -->
+  <div class="counterpart-section">
+    @if (hasCounterpart()) {
+      @if (counterpartLoading()) {
+        <span class="cp-label">Counterpart:</span>
+        <span class="cp-value cp-muted">Loading…</span>
+      } @else if (counterpartFile()) {
+        <span class="cp-label">Counterpart:</span>
+        <span class="cp-value" [title]="counterpartLabel()">{{ counterpartLabel() }}</span>
+        <button type="button" class="cp-btn cp-btn-primary" (click)="openCounterpart()" title="Open counterpart in viewer + form">
+          Open
+        </button>
+        <button type="button" class="cp-btn cp-btn-secondary" (click)="openSetCounterpartDialog()" title="Pick a different counterpart">
+          Change…
+        </button>
+        <button type="button" class="cp-btn cp-btn-danger" (click)="unlinkCounterpart()" title="Clear the counterpart link on both sides">
+          Unlink
+        </button>
+      }
+    } @else {
+      <span class="cp-label">Counterpart:</span>
+      <span class="cp-value cp-muted">Not linked</span>
+      <button type="button" class="cp-btn cp-btn-primary" (click)="openSetCounterpartDialog()">
+        Set Counterpart File…
+      </button>
+    }
+  </div>
+
   <!-- File Auto-Fill Toggles -->
   <div class="file-autofill-section">
     <div class="toggle-row">

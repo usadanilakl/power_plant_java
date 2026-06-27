@@ -366,3 +366,69 @@
   color: #ccc;
 }
 .dup-btn-secondary:hover { background: #2a2a2a; }
+
+/* ==================== Counterpart Section ==================== */
+/* Surfaces link/open/unlink controls above the form. Uses the project's
+   theme tokens so it adapts to light/dark via body.dark-theme. */
+.counterpart-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--secondary-background, #f0f2f5);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+.counterpart-section .cp-label {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--primary-text, #212529);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.counterpart-section .cp-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9em;
+  color: var(--primary-text, #212529);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.counterpart-section .cp-muted {
+  color: var(--secondary-text, #6c757d);
+  font-style: italic;
+  font-weight: 400;
+}
+.counterpart-section .cp-btn {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  background: var(--card-background, #ffffff);
+  color: var(--primary-text, #212529);
+}
+.counterpart-section .cp-btn:hover {
+  background: var(--hover-color, rgba(65, 65, 133, 0.15));
+}
+.counterpart-section .cp-btn-primary {
+  background: var(--accent-color, #007bff);
+  color: #ffffff;
+  border-color: var(--accent-color, #007bff);
+}
+.counterpart-section .cp-btn-primary:hover {
+  background: var(--accent-color-hover, #0056b3);
+  border-color: var(--accent-color-hover, #0056b3);
+}
+.counterpart-section .cp-btn-danger {
+  color: #c62828;
+  border-color: #c62828;
+}
+.counterpart-section .cp-btn-danger:hover {
+  background: rgba(198, 40, 40, 0.08);
+}

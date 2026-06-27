@@ -4,12 +4,16 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.sync.FieldChange;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
+import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.angular.refactor_equipment.EquipmentRefactorService;
 import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
 import com.dk_power.power_plant_java.sevice.sync.SyncContext;
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -35,9 +39,11 @@ public class AdminFunctionalitiesService {
 
     private final FileRepo fileRepo;
     private final LotoPointRepo lotoPointRepo;
+    private final UserRepo userRepo;
     private final EquipmentRefactorService equipmentRefactorService;
     private final SyncContext syncContext;
     private final FieldChangeRepository fieldChangeRepository;
+    private final FieldChangeTracker fieldChangeTracker;
     private final SyncConfig syncConfig;
     private final WorkAreaGitHubPublisher workAreaGitHubPublisher;
 
@@ -613,6 +619,94 @@ public class AdminFunctionalitiesService {
             result.put("error", e.getMessage());
         }
         return result;
+    }
+
+    /**
+     * Regenerate missing CREATE history for existing User rows.
+     * Local bootstrap admin users are machine-specific and intentionally unsynced, so
+     * they are skipped unless explicitly requested.
+     */
+    public Map<String, Object> backfillUserCreateHistory(boolean dryRun, boolean includeLocalBootstrapUsers) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> candidates = new ArrayList<>();
+        List<Map<String, Object>> repaired = new ArrayList<>();
+        int usersScanned = 0;
+        int skippedLocalBootstrap = 0;
+        int alreadyHadCreateHistory = 0;
+        int missingCreateHistory = 0;
+        int usersBackfilled = 0;
+        int fieldChangesCreated = 0;
+
+        try {
+            for (User user : userRepo.findAll()) {
+                usersScanned++;
+
+                if (!includeLocalBootstrapUsers && isLocalBootstrapUser(user)) {
+                    skippedLocalBootstrap++;
+                    continue;
+                }
+
+                boolean hasCreateMarker = fieldChangeRepository.existsByEntityTypeAndEntityIdAndChangeTypeAndFieldName(
+                    "User", user.getId(), FieldChange.ChangeType.CREATE, "_entity_");
+                if (hasCreateMarker) {
+                    alreadyHadCreateHistory++;
+                    continue;
+                }
+
+                missingCreateHistory++;
+                addUserSummary(candidates, user, 50);
+
+                if (!dryRun) {
+                    List<FieldChange> changes = fieldChangeTracker.ensureCreateHistoryIfMissing(user);
+                    if (!changes.isEmpty()) {
+                        usersBackfilled++;
+                        fieldChangesCreated += changes.size();
+                        addUserSummary(repaired, user, 50);
+                    }
+                }
+            }
+
+            result.put("success", true);
+            result.put("dryRun", dryRun);
+            result.put("includeLocalBootstrapUsers", includeLocalBootstrapUsers);
+            result.put("usersScanned", usersScanned);
+            result.put("skippedLocalBootstrap", skippedLocalBootstrap);
+            result.put("alreadyHadCreateHistory", alreadyHadCreateHistory);
+            result.put("missingCreateHistory", missingCreateHistory);
+            result.put("usersBackfilled", usersBackfilled);
+            result.put("fieldChangesCreated", fieldChangesCreated);
+            result.put("candidateSample", candidates);
+            result.put("repairedSample", repaired);
+            result.put("message", dryRun
+                ? missingCreateHistory + " User row(s) are missing CREATE history"
+                : "Backfilled " + usersBackfilled + " User row(s) with " + fieldChangesCreated + " FieldChange row(s)");
+            logger.info("Admin: User create-history backfill dryRun={} scanned={} missing={} backfilled={} changesCreated={} skippedLocalBootstrap={}",
+                dryRun, usersScanned, missingCreateHistory, usersBackfilled, fieldChangesCreated, skippedLocalBootstrap);
+        } catch (Exception e) {
+            logger.error("Error backfilling User create history", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+
+        return result;
+    }
+
+    private boolean isLocalBootstrapUser(User user) {
+        String email = user.getEmail();
+        return email != null && email.trim().toLowerCase(Locale.ROOT).endsWith("@localhost");
+    }
+
+    private void addUserSummary(List<Map<String, Object>> list, User user, int maxItems) {
+        if (list.size() >= maxItems) {
+            return;
+        }
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", user.getId());
+        item.put("username", user.getUsername());
+        item.put("email", user.getEmail());
+        item.put("windowsUsername", user.getWindowsUsername());
+        item.put("name", user.getName());
+        list.add(item);
     }
 
     // ============================================================
