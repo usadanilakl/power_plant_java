@@ -16,6 +16,7 @@ import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.base.FuzzySearchService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker;
 import org.springframework.beans.factory.ObjectProvider;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final TagNumberDetector tagNumberDetector;
     private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
     private final LotoStandardPendingChangeCaptureService pendingChangeCaptureService;
+    private final FieldChangeTracker fieldChangeTracker;
 
 
     @Override
@@ -222,9 +224,12 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         // pending-review capture service can compute a field-level diff
         // against the post-save entity (see loto-procedure.md §3.3).
         java.util.Map<String, String> beforeFields = null;
+        boolean dtoHasAssignedId = lotoPointDto != null && lotoPointDto.getId() != null && lotoPointDto.getId() != 0;
+        boolean existingPointFound = false;
         if (lotoPointDto != null && lotoPointDto.getId() != null && lotoPointDto.getId() != 0) {
             LotoPoint existing = lotoPointRepo.findById(lotoPointDto.getId()).orElse(null);
             if (existing != null) {
+                existingPointFound = true;
                 beforeFields = pendingChangeCaptureService.snapshotPointFields(existing);
                 // Detach so the snapshot survives the merge below — otherwise
                 // Hibernate returns the same managed instance with new values
@@ -235,6 +240,9 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
         LotoPoint entity = convertIdDtoToEntity(lotoPointDto);
         entity = lotoPointRepo.save(entity);
+        if (dtoHasAssignedId && !existingPointFound) {
+            fieldChangeTracker.ensureCreateHistoryIfMissing(entity);
+        }
         Long savedLpId = entity.getId();
 
         // Get the new equipment IDs from the DTO

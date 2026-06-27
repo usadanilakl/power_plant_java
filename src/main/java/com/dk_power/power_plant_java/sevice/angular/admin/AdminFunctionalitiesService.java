@@ -691,6 +691,82 @@ public class AdminFunctionalitiesService {
         return result;
     }
 
+    /**
+     * Regenerate missing CREATE history for existing LotoPoint rows.
+     * This is intended for targeted incident repair after client-assigned ids
+     * were saved locally without the outbound CREATE marker and scalar fields.
+     */
+    public Map<String, Object> backfillLotoPointCreateHistory(boolean dryRun, String ids, Long minId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> candidates = new ArrayList<>();
+        List<Map<String, Object>> repaired = new ArrayList<>();
+        List<Long> requestedIds = parseIdCsv(ids);
+        int pointsScanned = 0;
+        int skippedBelowMinId = 0;
+        int alreadyHadCreateHistory = 0;
+        int missingCreateHistory = 0;
+        int pointsBackfilled = 0;
+        int fieldChangesCreated = 0;
+
+        try {
+            List<LotoPoint> points = requestedIds.isEmpty()
+                ? lotoPointRepo.findAll()
+                : lotoPointRepo.findAllById(requestedIds);
+
+            for (LotoPoint point : points) {
+                pointsScanned++;
+
+                if (minId != null && (point.getId() == null || point.getId() < minId)) {
+                    skippedBelowMinId++;
+                    continue;
+                }
+
+                boolean hasCreateMarker = fieldChangeRepository.existsByEntityTypeAndEntityIdAndChangeTypeAndFieldName(
+                    "LotoPoint", point.getId(), FieldChange.ChangeType.CREATE, "_entity_");
+                if (hasCreateMarker) {
+                    alreadyHadCreateHistory++;
+                    continue;
+                }
+
+                missingCreateHistory++;
+                addLotoPointSummary(candidates, point, 50);
+
+                if (!dryRun) {
+                    List<FieldChange> changes = fieldChangeTracker.ensureCreateHistoryIfMissing(point);
+                    if (!changes.isEmpty()) {
+                        pointsBackfilled++;
+                        fieldChangesCreated += changes.size();
+                        addLotoPointSummary(repaired, point, 50);
+                    }
+                }
+            }
+
+            result.put("success", true);
+            result.put("dryRun", dryRun);
+            result.put("requestedIds", requestedIds);
+            result.put("minId", minId);
+            result.put("pointsScanned", pointsScanned);
+            result.put("skippedBelowMinId", skippedBelowMinId);
+            result.put("alreadyHadCreateHistory", alreadyHadCreateHistory);
+            result.put("missingCreateHistory", missingCreateHistory);
+            result.put("pointsBackfilled", pointsBackfilled);
+            result.put("fieldChangesCreated", fieldChangesCreated);
+            result.put("candidateSample", candidates);
+            result.put("repairedSample", repaired);
+            result.put("message", dryRun
+                ? missingCreateHistory + " LotoPoint row(s) are missing CREATE history"
+                : "Backfilled " + pointsBackfilled + " LotoPoint row(s) with " + fieldChangesCreated + " FieldChange row(s)");
+            logger.info("Admin: LotoPoint create-history backfill dryRun={} requestedIds={} minId={} scanned={} missing={} backfilled={} changesCreated={}",
+                dryRun, requestedIds.size(), minId, pointsScanned, missingCreateHistory, pointsBackfilled, fieldChangesCreated);
+        } catch (Exception e) {
+            logger.error("Error backfilling LotoPoint create history", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+
+        return result;
+    }
+
     private boolean isLocalBootstrapUser(User user) {
         String email = user.getEmail();
         return email != null && email.trim().toLowerCase(Locale.ROOT).endsWith("@localhost");
@@ -706,6 +782,33 @@ public class AdminFunctionalitiesService {
         item.put("email", user.getEmail());
         item.put("windowsUsername", user.getWindowsUsername());
         item.put("name", user.getName());
+        list.add(item);
+    }
+
+    private List<Long> parseIdCsv(String ids) {
+        if (ids == null || ids.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.stream(ids.split(","))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .map(Long::parseLong)
+            .distinct()
+            .collect(Collectors.toList());
+    }
+
+    private void addLotoPointSummary(List<Map<String, Object>> list, LotoPoint point, int maxItems) {
+        if (list.size() >= maxItems) {
+            return;
+        }
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", point.getId());
+        item.put("tagNumber", point.getTagNumber());
+        item.put("description", point.getDescription());
+        item.put("specificLocation", point.getSpecificLocation());
+        item.put("normalPosition", point.getNormalPosition());
+        item.put("isolatedPosition", point.getIsolatedPosition());
         list.add(item);
     }
 

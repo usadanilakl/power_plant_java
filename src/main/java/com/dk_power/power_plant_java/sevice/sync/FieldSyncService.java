@@ -1200,12 +1200,6 @@ public class FieldSyncService {
                 }
             }
 
-            // Delete existing entries for this entity
-            entityManager.createNativeQuery(
-                "DELETE FROM " + tableName + " WHERE " + ownerColumn + " = :ownerId")
-                .setParameter("ownerId", ownerId)
-                .executeUpdate();
-
             // Filter newIds to only include entities that actually exist in the target table.
             // This prevents FK constraint violations when referenced entities haven't been
             // received yet (e.g., they're in the next SSE batch).
@@ -1215,7 +1209,18 @@ public class FieldSyncService {
                 log.warn("ManyToMany {}.{}: {} of {} referenced entities not found yet, skipping those",
                     entity.getClass().getSimpleName(), change.getFieldName(),
                     newIds.size() - existingIds.size(), newIds.size());
+                log.debug("ManyToMany {}.{}: incomplete apply ({}/{} entities), leaving join table unchanged so retry can apply atomically",
+                    entity.getClass().getSimpleName(), change.getFieldName(), existingIds.size(), newIds.size());
+                return false;
             }
+
+            // Delete existing entries only after every requested reference is known to
+            // exist. Otherwise a split sync batch can destructively replace a valid
+            // relationship with a partial subset before the missing child arrives.
+            entityManager.createNativeQuery(
+                "DELETE FROM " + tableName + " WHERE " + ownerColumn + " = :ownerId")
+                .setParameter("ownerId", ownerId)
+                .executeUpdate();
 
             // Insert only entries that reference existing entities
             for (Long relatedId : existingIds) {
@@ -1230,17 +1235,6 @@ public class FieldSyncService {
                 entity.getClass().getSimpleName(), change.getFieldName(),
                 existingIds.size(), tableName, newIds.size());
 
-            // Only return true (which triggers saveIncomingChange) if ALL referenced entities
-            // were found. If some were filtered out, return false so this change is NOT recorded
-            // in the local FieldChange log. This allows the periodic sync to retry and apply
-            // the complete ManyToMany relationship once all entities exist.
-            // Without this, saveIncomingChange creates a local record that causes shouldApplyChange()
-            // to skip the incoming change during periodic sync ("local change is newer or equal").
-            if (existingIds.size() < newIds.size()) {
-                log.debug("ManyToMany {}.{}: incomplete apply ({}/{} entities), NOT saving change record - periodic sync will retry",
-                    entity.getClass().getSimpleName(), change.getFieldName(), existingIds.size(), newIds.size());
-                return false;
-            }
             return true;
 
         } catch (Exception e) {

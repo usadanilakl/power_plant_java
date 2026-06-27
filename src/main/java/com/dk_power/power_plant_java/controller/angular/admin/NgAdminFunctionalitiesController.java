@@ -219,6 +219,26 @@ public class NgAdminFunctionalitiesController {
         }
     }
 
+    @PostMapping("/sync-queue/backfill-loto-point-create-history")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> backfillLotoPointCreateHistory(
+            @RequestParam(defaultValue = "true") boolean dryRun,
+            @RequestParam(required = false) String ids,
+            @RequestParam(required = false) Long minId) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.backfillLotoPointCreateHistory(
+                dryRun, ids, minId);
+            String message = dryRun
+                ? "LotoPoint create-history backfill preview completed"
+                : "LotoPoint create-history backfill completed";
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/pwa-sync")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> publishPwaData(
             @RequestParam(defaultValue = "all") String target) {
