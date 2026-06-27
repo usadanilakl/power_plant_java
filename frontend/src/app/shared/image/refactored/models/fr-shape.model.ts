@@ -73,10 +73,37 @@ export interface SVGSymbolShape extends RfBaseShape {
   rotation?: number;
 }
 
+/**
+ * Off-page reference / continuation arrow on a P&ID that points at another file.
+ * Distinct type from svg-symbol so click handlers can route a connector to
+ * "navigate to target file" instead of "open equipment dialog" without an
+ * id-namespace trick. The shape id is the FileConnector entity id directly —
+ * collision-safe because handlers check {@code type === 'file-connector'} first.
+ */
+export interface FileConnectorShape extends RfBaseShape {
+  type: 'file-connector';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  /** symbolId from PIDSymbolsService (e.g. 'off-page-connector'). */
+  symbolId: string;
+  /** Cached SVG path so render doesn't have to re-resolve the symbol catalog. */
+  svgPath: string;
+  /** Target file id — click navigates here. */
+  targetFileId: number;
+  /** Display label (derived from targetFileNumber if entity.label is null). */
+  label: string;
+  /** Optional reciprocal connector — used to highlight back-pointer on arrival. */
+  counterpartConnectorId: number | null;
+}
+
 export type RfShape =
   | RfRectangleShape
   | RfCircleShape
   | RfLineShape
   | RfTextShape
   | RfImageShape
-  | SVGSymbolShape;
+  | SVGSymbolShape
+  | FileConnectorShape;

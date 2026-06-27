@@ -75,6 +75,11 @@ export class CanvasRenderService {
       case 'text':
         this.drawText(ctx, scaledShape as RfTextShape, scale);
         break;
+      // FileConnectorShape is structurally identical to SVGSymbolShape for
+      // rendering purposes (same x/y/width/height/symbolId/svgPath/rotation)
+      // — fall through to the SVG symbol path. Adds connectors to the canvas
+      // without duplicating draw logic.
+      case 'file-connector':
       case 'svg-symbol':
         this.drawSVGSymbol(ctx, scaledShape as SVGSymbolShape, scale);
         break;
@@ -466,6 +471,8 @@ export class CanvasRenderService {
           x: shape.x * normX * scale,
           y: shape.y * normY * scale,
         };
+      // file-connector shares svg-symbol's geometry — scale identically.
+      case 'file-connector':
       case 'svg-symbol':
         const svgShape = shape as SVGSymbolShape;
         return {
@@ -616,6 +623,7 @@ export class CanvasRenderService {
           [line.startX, line.startY],
           [line.endX, line.endY],
         ];
+      case 'file-connector':
       case 'svg-symbol':
         const symbol = shape as SVGSymbolShape;
         return [
@@ -633,6 +641,7 @@ export class CanvasRenderService {
     switch (shape.type) {
       case 'rectangle':
       case 'image':
+      case 'file-connector':
       case 'svg-symbol':
         const s = shape as RfRectangleShape | RfImageShape | SVGSymbolShape;
         const midX = s.x + s.width / 2;

@@ -88,4 +88,14 @@ List<EquipmentDtoLight> getAllLight();
 
     @Query("SELECT e FROM Equipment e WHERE e.mainFile.id = :mainFileId AND (e.deleted IS NULL OR e.deleted = false)")
     List<Equipment> findByMainFile_Id(@Param("mainFileId") Long mainFileId);
+
+    /**
+     * Case-insensitive lookup of equipment by eqType.name. Used by the
+     * connector migration to find all "connector"-type equipment regardless
+     * of whether the Value was saved as "connector", "Connector", etc.
+     */
+    @Query("SELECT e FROM Equipment e " +
+           "WHERE LOWER(e.eqType.name) = LOWER(:typeName) " +
+           "AND (e.deleted IS NULL OR e.deleted = false)")
+    List<Equipment> findByEqTypeNameIgnoreCase(@Param("typeName") String typeName);
 }

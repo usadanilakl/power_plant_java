@@ -4,7 +4,7 @@ import { Injectable } from '@angular/core';
 export interface PIDSymbol {
   id: string;
   name: string;
-  category: 'valve' | 'pump' | 'instrument' | 'vessel' | 'electrical' | 'rotating-equipment';
+  category: 'valve' | 'pump' | 'instrument' | 'vessel' | 'electrical' | 'rotating-equipment' | 'connector';
   svgPath: string;
   width: number;
   height: number;
@@ -12,12 +12,34 @@ export interface PIDSymbol {
   originalHeight: number;
 }
 
+/**
+ * Sentinel symbol id — when the user draws a shape with this symbol selected,
+ * the draw handler creates a {@code FileConnector} (off-page reference)
+ * instead of an Equipment. Single source of truth so the drawing flow and the
+ * mapper agree on the same string.
+ */
+export const OFF_PAGE_CONNECTOR_SYMBOL_ID = 'off-page-connector';
+
 @Injectable({
   providedIn: 'root'
 })
 export class PIDSymbolsService {
   
   private symbols: PIDSymbol[] = [
+    {
+      // Off-page reference / continuation arrow. Picking this symbol from the
+      // palette and drawing a shape creates a FileConnector instead of an
+      // Equipment row. SVG is a simple pentagon-style arrow pointing right —
+      // the standard P&ID off-page reference glyph.
+      id: OFF_PAGE_CONNECTOR_SYMBOL_ID,
+      name: 'Off-page Connector',
+      category: 'connector',
+      svgPath: 'M 0,0 L 24,0 L 36,12 L 24,24 L 0,24 Z',
+      width: 36,
+      height: 24,
+      originalWidth: 36,
+      originalHeight: 24
+    },
     {
       id: 'manual-valve',
       name: 'Manual Valve',

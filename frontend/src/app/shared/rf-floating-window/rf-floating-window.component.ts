@@ -150,21 +150,23 @@ export class RfFloatingWindowComponent implements OnInit, OnDestroy {
     let newX = this.windowStartPos.x + deltaX;
     let newY = this.windowStartPos.y + deltaY;
 
-    // Constrain so header (with close button) stays accessible
-    // Keep at least 100px of header visible horizontally and top within viewport
+    // Let the dialog overflow generously off any edge so the user can peek at
+    // the content behind it — only keep a small grab strip on screen so the
+    // window never fully disappears and stays recoverable.
     const windowWidth = this.size().width;
-    const headerHeight = 50; // Approximate header height
-    const minVisibleWidth = 100; // Minimum visible header width for close button
-
-    // Prevent header from going above viewport
-    newY = Math.max(0, newY);
-
-    // Prevent window from going too far left (keep close button area visible)
-    newX = Math.max(-(windowWidth - minVisibleWidth), newX);
-
-    // Prevent window from going too far right
+    const headerHeight = 40; // Approximate header height (the only drag handle)
+    const edgeMargin = 60; // Min px of the window that must stay on screen
     const viewportWidth = window.innerWidth;
-    newX = Math.min(viewportWidth - minVisibleWidth, newX);
+    const viewportHeight = window.innerHeight;
+
+    // Horizontal: allow most of the window to slide off either side,
+    // keeping at least `edgeMargin` px visible.
+    newX = Math.max(-(windowWidth - edgeMargin), Math.min(viewportWidth - edgeMargin, newX));
+
+    // Vertical: the header is the only drag handle, so keep it fully on screen
+    // (between the top edge and the bottom of the viewport). The body can still
+    // overflow far below the fold.
+    newY = Math.max(0, Math.min(viewportHeight - headerHeight, newY));
 
     const newPosition = { x: newX, y: newY };
     this.position.set(newPosition);

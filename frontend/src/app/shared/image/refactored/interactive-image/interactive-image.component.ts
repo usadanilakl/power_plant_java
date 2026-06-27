@@ -879,7 +879,7 @@ export class InteractiveImageComponent {
     const shapes = this.shapes();
     for (let i = shapes.length - 1; i >= 0; i--) {
       const shape = shapes[i];
-      if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+      if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol' || shape.type === 'file-connector') {
         const bounds = this.getNormalizedShapeBounds(shape);
         if (x >= bounds.x && x <= bounds.x + bounds.width &&
             y >= bounds.y && y <= bounds.y + bounds.height) {
@@ -1723,7 +1723,7 @@ export class InteractiveImageComponent {
       }
     }
 
-    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol' || shape.type === 'file-connector') {
       return {
         x: shape.x * normX,
         y: shape.y * normY,
@@ -1756,7 +1756,8 @@ export class InteractiveImageComponent {
       if (
         shape.type === 'rectangle' ||
         shape.type === 'image' ||
-        shape.type === 'svg-symbol'
+        shape.type === 'svg-symbol' ||
+        shape.type === 'file-connector'
       ) {
         // Use normalized bounds for hit detection
         const bounds = this.getNormalizedShapeBounds(shape);

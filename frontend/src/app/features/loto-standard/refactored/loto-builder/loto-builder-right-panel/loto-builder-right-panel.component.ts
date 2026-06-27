@@ -22,6 +22,13 @@ import { PIDSymbol, PIDSymbolsService } from '../../../../../shared/image/refact
 import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
 import { FileDto } from '../../../../../models/file/file.model';
 import { RfFileApiService } from '../../../../files/refactored/services/rf-file-api.service';
+import { RfFileConnectorApiService } from '../../../../files/refactored/services/rf-file-connector-api.service';
+import { FileConnectorMapperService } from '../../../../files/refactored/services/file-connector-mapper.service';
+import { FileConnectorDto, FileConnectorIdDto } from '../../../../../models/file/file-connector.model';
+import { FileConnectorShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
+import { OFF_PAGE_CONNECTOR_SYMBOL_ID } from '../../../../../shared/image/refactored/services/pid-symbols.service';
+import { ConnectorTargetPickerDialogComponent } from '../../../../files/refactored/connector-target-picker-dialog/connector-target-picker-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
 import { map } from 'rxjs/operators';
 
 @Component({
@@ -50,8 +57,23 @@ export class LotoBuilderRightPanelComponent {
   private pidSymbolsService = inject(PIDSymbolsService);
   private syncUpdateService = inject(SyncUpdateService);
   private fileApi = inject(RfFileApiService);
+  private connectorApi = inject(RfFileConnectorApiService);
+  private connectorMapper = inject(FileConnectorMapperService);
+  private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
+
+  // ==================== FILE CONNECTORS (off-page references) ====================
+  // FileConnectors are first-class entities (NOT Equipment with eqType='connector'
+  // anymore — that legacy is migrated via /ng/file-connectors/migrate-from-equipment).
+  // The viewer renders connector shapes alongside equipment shapes; click on a
+  // connector navigates to its target file instead of opening the equipment dialog.
+  currentConnectors = signal<FileConnectorDto[]>([]);
+  /** Monotonic token guarding against stale connector-load responses. Bumped
+   *  on every file change; in-flight responses with an older token are dropped
+   *  so a rapid file-switch doesn't overwrite the new file's connectors with
+   *  the previous file's late response (codex stale-response race fix). */
+  private connectorLoadToken = 0;
 
   // Output event for close button
   closeRequested = output<void>();
@@ -156,14 +178,17 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Get current shapes from equipment
+   * Get current shapes from equipment + connectors. Connector shapes are
+   * appended last so they render on top — small UX win, the off-page-reference
+   * glyph should be visible above any equipment that shares its region.
    */
   currentShapes = computed(() => {
     const equipment = this.builderState.currentEquipment();
-    if (!equipment || equipment.length === 0) return [];
-
-    const shapes = this.equipmentMapper.mapAllToRfShapes(equipment);
-    return shapes;
+    const equipmentShapes = equipment && equipment.length > 0
+      ? this.equipmentMapper.mapAllToRfShapes(equipment)
+      : [];
+    const connectorShapes = this.connectorMapper.mapAllToRfShapes(this.currentConnectors());
+    return [...equipmentShapes, ...connectorShapes];
   });
 
   /**
@@ -201,6 +226,31 @@ export class LotoBuilderRightPanelComponent {
       const cached = this.counterpartFile();
       if (cached && cached.id === cpId) return;
       this.loadCounterpart(cpId);
+    });
+
+    // Fetch connectors whenever the current file changes. Empty array if the
+    // file has no connectors — viewer just shows equipment shapes alone.
+    // Uses a monotonic token to drop stale responses (rapid file switches
+    // would otherwise let an older bySourceFile response overwrite the new
+    // file's connectors).
+    effect(() => {
+      const fileId = this.builderState.currentFile()?.id;
+      const myToken = ++this.connectorLoadToken;
+      if (!fileId) {
+        this.currentConnectors.set([]);
+        return;
+      }
+      this.connectorApi.bySourceFile(fileId).subscribe({
+        next: (resp) => {
+          if (myToken !== this.connectorLoadToken) return; // newer request superseded us
+          this.currentConnectors.set((resp.responseData ?? []).map(c => new FileConnectorDto(c)));
+        },
+        error: (err) => {
+          if (myToken !== this.connectorLoadToken) return;
+          console.error('[LOTO Builder] failed to load connectors for file', fileId, err);
+          this.currentConnectors.set([]);
+        },
+      });
     });
 
     // Subscribe to current file changes to update builder state
@@ -353,7 +403,10 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shape hover
+   * Handle shape hover. For connector shapes, set the hovered id but skip
+   * the equipment lookup — a connector id could theoretically collide with
+   * an equipment id (separate id-spaces), and we don't want hover to show a
+   * LOTO-point tooltip for an unrelated equipment row.
    */
   onShapeHovered(shape: RfShape | null): void {
     if (!shape) {
@@ -363,6 +416,11 @@ export class LotoBuilderRightPanelComponent {
     }
 
     this.builderState.hoveredShapeId.set(shape.id);
+
+    if (shape.type === 'file-connector') {
+      this.builderState.hoveredLotoPoint.set(null);
+      return;
+    }
 
     // Find the equipment and get its first LOTO point
     const equipment = this.builderState.currentEquipment();
@@ -376,11 +434,18 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shape click - show info window and set selection
+   * Handle shape click — branches by shape type so connectors navigate
+   * instead of routing through the equipment lookup. The type check MUST
+   * come first because equipment.id and FileConnector.id are independent
+   * id-spaces; a coincidental id match would otherwise open the wrong info.
    */
   onShapeClicked(shape: RfShape): void {
-    // Set the selected shape for toolbar delete button
     this.builderState.selectedShapeId.set(shape.id);
+
+    if (shape.type === 'file-connector') {
+      this.navigateToConnectorTarget(shape as FileConnectorShape);
+      return;
+    }
 
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
@@ -389,6 +454,25 @@ export class LotoBuilderRightPanelComponent {
       const lotoPoint = matchingEquipment.lotoPoints[0];
       this.builderState.showLotoPointInfoWindow(lotoPoint);
     }
+  }
+
+  /**
+   * Fetch the connector's target file and route the viewer there.
+   * CurrentFileService.setCurrentFile is the canonical "switch file" signal —
+   * loto-builder, file-editor, and the left-menu all observe it.
+   */
+  private navigateToConnectorTarget(shape: FileConnectorShape): void {
+    if (!shape.targetFileId) {
+      console.warn('[LOTO Builder] connector shape has no targetFileId', shape);
+      return;
+    }
+    this.fileApi.getFileById(String(shape.targetFileId)).pipe(
+      map(r => FileDto.fromJson(r.responseData)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (target) => this.currentFileService.setCurrentFile(target),
+      error: (err) => console.error('[LOTO Builder] failed to load connector target', shape.targetFileId, err),
+    });
   }
 
   /**
@@ -413,38 +497,115 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shapes deleted from interactive-image (via toolbar, keyboard, or context menu)
+   * Handle shapes deleted from interactive-image (via toolbar, keyboard, or context menu).
+   * Branches by id: if the id matches a current connector, delete via the
+   * FileConnector endpoint (which also clears the surviving counterpart's
+   * pointer); otherwise delete the matching Equipment as before.
    */
   onShapesDeleted(shapeIds: number[]): void {
     console.log('[LOTO Builder] Shapes deleted from interactive-image:', shapeIds);
+    const connectors = this.currentConnectors();
 
-    // Delete each equipment via API
     shapeIds.forEach(shapeId => {
+      const matchingConnector = connectors.find(c => c.id === shapeId);
+      if (matchingConnector) {
+        this.connectorApi.delete(matchingConnector.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              console.log('[LOTO Builder] FileConnector deleted via API:', matchingConnector.id);
+              this.currentConnectors.update(cs => cs.filter(c => c.id !== matchingConnector.id));
+            },
+            error: (error: any) => console.error('Error deleting connector:', error),
+          });
+        return;
+      }
+
+      // Fall through: treat as equipment delete (legacy default).
       const equipment = this.builderState.currentEquipment();
       const matchingEquipment = equipment.find(eq => eq.id === shapeId);
-
       if (matchingEquipment) {
         this.equipmentService.deleteEquipment(matchingEquipment.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
-            next: () => {
-              console.log('[LOTO Builder] Equipment deleted via API:', matchingEquipment.id);
-            },
-            error: (error: any) => {
-              console.error('Error deleting equipment:', error);
-            }
+            next: () => console.log('[LOTO Builder] Equipment deleted via API:', matchingEquipment.id),
+            error: (error: any) => console.error('Error deleting equipment:', error),
           });
       }
     });
 
-    // Clear selection
     this.builderState.selectedShapeId.set(null);
   }
 
   /**
-   * Handle Edit action from context menu
+   * Handler for the off-page-connector draw branch. Opens the target-file
+   * picker; on selection, persists a FileConnector with the drawn shape's
+   * coordinates and refreshes the connector list (so the shape immediately
+   * re-renders as a proper connector with its label). If the user cancels
+   * the picker, the orphan canvas shape is removed via the InteractiveImage's
+   * removeShape — same trick the Get Text branch uses.
+   */
+  private handleConnectorDrawn(shape: SVGSymbolShape): void {
+    const sourceFile = this.builderState.currentFile();
+    if (!sourceFile) {
+      this.interactiveImage?.removeShape(shape.id);
+      return;
+    }
+    const ref = this.dialog.open(ConnectorTargetPickerDialogComponent, {
+      data: { sourceFile },
+      width: '720px',
+      maxWidth: '90vw',
+      autoFocus: false,
+      restoreFocus: false,
+    });
+    ref.afterClosed().subscribe((target: FileDto | undefined) => {
+      if (!target?.id) {
+        // User cancelled — drop the orphan shape so the canvas doesn't keep
+        // a connector-symbol drawing that has no backing entity.
+        this.interactiveImage?.removeShape(shape.id);
+        return;
+      }
+      const payload: FileConnectorIdDto = {
+        sourceFileId: sourceFile.id ?? null,
+        targetFileId: target.id,
+        coordinates: JSON.stringify({
+          startX: shape.x, startY: shape.y,
+          endX: shape.x + shape.width, endY: shape.y + shape.height,
+          width: shape.width, height: shape.height,
+          rotation: shape.rotation || 0,
+        }).replace(/^"|"$/g, '').replace(/\\/g, '').replace(/"(\w+)":/g, '$1:'),
+        originalPictureSize: `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`,
+        rotation: shape.rotation ?? 0,
+        symbolId: shape.symbolId,
+        svgPath: shape.svgPath,
+        counterpartConnectorId: null,
+        label: null,
+      };
+      this.connectorApi.save(payload).subscribe({
+        next: (resp) => {
+          const created = new FileConnectorDto(resp.responseData);
+          // Drop the transient canvas shape — the new FileConnector will
+          // re-render via the connectors-list refresh below as a proper
+          // FileConnectorShape (with the connector's id, target label, etc).
+          this.interactiveImage?.removeShape(shape.id);
+          this.currentConnectors.update(cs => [...cs, created]);
+        },
+        error: (err) => {
+          console.error('[LOTO Builder] failed to save connector', err);
+          this.interactiveImage?.removeShape(shape.id);
+        },
+      });
+    });
+  }
+
+  /**
+   * Handle Edit action from context menu. Connectors don't have a LOTO-point
+   * association so this action is a no-op for them — the right-click context
+   * menu shows the action regardless of shape type (single shared menu), and
+   * we don't want it silently misbehaving on connectors.
    */
   private handleEditAction(shape: RfShape): void {
+    if (shape.type === 'file-connector') return; // connectors edit via dialog, not equipment dialog
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
@@ -513,9 +674,11 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle Add to LOTO action from context menu
+   * Handle Add to LOTO action from context menu. No-op for connector shapes
+   * — connectors don't carry a LOTO-point association by design.
    */
   private handleAddToLotoAction(shape: RfShape): void {
+    if (shape.type === 'file-connector') return;
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
@@ -539,9 +702,24 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle Delete action from context menu
+   * Handle Delete action from context menu. Branches by shape type — connector
+   * delete uses the FileConnector endpoint (which also clears the surviving
+   * counterpart's pointer); equipment delete uses the existing path.
    */
   private handleDeleteAction(shape: RfShape): void {
+    if (shape.type === 'file-connector') {
+      const cp = this.currentConnectors().find(c => c.id === shape.id);
+      if (!cp) return;
+      if (!confirm('Delete this connector? The link to the target file will be removed.')) return;
+      this.connectorApi.delete(cp.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => this.currentConnectors.update(cs => cs.filter(c => c.id !== cp.id)),
+          error: (err) => console.error('Error deleting connector:', err),
+        });
+      return;
+    }
+
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
@@ -661,6 +839,17 @@ export class LotoBuilderRightPanelComponent {
     // Only handle shapes with position and size properties
     if (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol') {
       console.warn('Cannot create equipment from shape type:', shape.type);
+      return;
+    }
+
+    // Off-page connector branch — if the user picked the connector symbol
+    // before drawing, route to FileConnector creation (target-file picker
+    // dialog → save FileConnector) instead of the Equipment save path.
+    // This MUST come before the Get Text and equipment branches so the user
+    // can't accidentally create an equipment row from a connector symbol.
+    if (shape.type === 'svg-symbol'
+        && (shape as SVGSymbolShape).symbolId === OFF_PAGE_CONNECTOR_SYMBOL_ID) {
+      this.handleConnectorDrawn(shape as SVGSymbolShape);
       return;
     }
 
