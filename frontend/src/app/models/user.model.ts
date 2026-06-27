@@ -15,6 +15,8 @@ export interface UserModel extends BaseModel {
   roles: string[];
   isActive: boolean;
   windowsUsername: string;
+  /** Explicit Maximo personid override; blank = derived from windowsUsername. */
+  maximoPersonidOverride: string;
   permissionLevel: string;
   phone: string;
   company: string;
@@ -38,6 +40,7 @@ export class UserDto extends BaseDto implements UserModel {
   roles: string[];
   isActive: boolean;
   windowsUsername: string;
+  maximoPersonidOverride: string;
   permissionLevel: string;
   phone: string;
   company: string;
@@ -60,6 +63,7 @@ export class UserDto extends BaseDto implements UserModel {
     this.roles = data.roles ?? [];
     this.isActive = data.isActive ?? true;
     this.windowsUsername = data.windowsUsername ?? '';
+    this.maximoPersonidOverride = data.maximoPersonidOverride ?? '';
     this.permissionLevel = data.permissionLevel ?? '';
     this.phone = data.phone ?? '';
     this.company = data.company ?? '';
@@ -83,6 +87,7 @@ export class UserDto extends BaseDto implements UserModel {
       roles: this.roles,
       isActive: this.isActive,
       windowsUsername: this.windowsUsername,
+      maximoPersonidOverride: this.maximoPersonidOverride,
       permissionLevel: this.permissionLevel,
       phone: this.phone,
       company: this.company,
@@ -103,6 +108,7 @@ export class UserDto extends BaseDto implements UserModel {
       roles: json.roles ?? [],
       isActive: json.isActive ?? true,
       windowsUsername: json.windowsUsername ?? '',
+      maximoPersonidOverride: json.maximoPersonidOverride ?? '',
       permissionLevel: json.permissionLevel ?? '',
       phone: json.phone ?? '',
       company: json.company ?? '',
@@ -150,6 +156,7 @@ export class UserDto extends BaseDto implements UserModel {
             : { 'background-color': '#FFCCCB' },
       },
       windowsUsername: { id: 'windowsUsername', header: 'Windows User', accessorKey: 'windowsUsername', filterable: true },
+      maximoPersonidOverride: { id: 'maximoPersonidOverride', header: 'Maximo ID', accessorKey: 'maximoPersonidOverride', filterable: true },
       firstName: { id: 'firstName', header: 'First Name', accessorKey: 'firstName', filterable: true },
       lastName: { id: 'lastName', header: 'Last Name', accessorKey: 'lastName', filterable: true },
       phone: { id: 'phone', header: 'Phone', accessorKey: 'phone', filterable: true },
@@ -245,6 +252,12 @@ export class UserDto extends BaseDto implements UserModel {
         label: 'Windows Username',
         type: 'text',
         initialValue: dto.windowsUsername,
+      },
+      {
+        name: 'maximoPersonidOverride',
+        label: 'Maximo ID (leave blank = same as Windows username)',
+        type: 'text',
+        initialValue: dto.maximoPersonidOverride,
       },
       {
         name: 'phone',

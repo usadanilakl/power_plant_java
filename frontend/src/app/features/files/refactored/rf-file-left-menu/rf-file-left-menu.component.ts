@@ -587,40 +587,35 @@ constructor(
   }
 
   /**
-   * Every system bucket name a file belongs to: primary `system.name` plus
-   * every entry in `relatedSystems` (deduped, trimmed, non-empty). Returns []
-   * when the file has no system info at all — caller routes it to "(No system)".
+   * System bucket names a file belongs to — sourced ONLY from the new
+   * @ManyToMany {@link FileDto.systems} collection. Returns [] when the
+   * collection is empty, which routes the file to the "(No system)" bucket.
+   *
+   * <p>Intentionally does NOT fall back to the legacy primary {@link FileDto.system}
+   * FK or the {@code relatedSystems} CSV. Reasons:
+   * <ul>
+   *   <li>The legacy primary FK and the CSV are preserved server-side but no
+   *       longer drive grouping — duplicating them here showed the same file
+   *       under multiple buckets and made the unmigrated/migrated distinction
+   *       visually noisy.</li>
+   *   <li>Tag grouping (separate `tag` group-by mode) already covers the
+   *       legacy free-form CSV's role after migration.</li>
+   *   <li>Files whose {@code systems} collection is genuinely empty SHOULD
+   *       appear under "(No system)" so the user can spot them and assign
+   *       proper Values via the form.</li>
+   * </ul>
    */
   private systemGroupNames(file: FileDto): string[] {
+    if (!Array.isArray(file.systems) || file.systems.length === 0) return [];
     const out: string[] = [];
     const seen = new Set<string>();
-    const push = (raw: any) => {
-      if (typeof raw !== 'string') return;
-      const v = raw.trim();
-      if (!v) return;
-      const key = v.toLowerCase();
-      if (seen.has(key)) return;
+    for (const v of file.systems) {
+      const name = typeof v?.name === 'string' ? v.name.trim() : '';
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
       seen.add(key);
-      out.push(v);
-    };
-    // Always include the legacy primary `system` FK — it stays populated for
-    // migrated files (the migration does NOT auto-seed it into the new collection)
-    // and the user expects the file to appear under its primary system bucket
-    // regardless of what's in the new @ManyToMany.
-    push(file.system?.name);
-    if (Array.isArray(file.systems) && file.systems.length > 0) {
-      // Post-migration: new collection is the source of truth for "related" systems.
-      // Dedupes against the primary added above.
-      for (const v of file.systems) push(v?.name);
-    } else {
-      // Pre-migration fallback: parse the legacy `relatedSystems` CSV. (Wire type
-      // is string[] but historical payloads can arrive as a comma-joined string.)
-      const related: any = (file as any).relatedSystems;
-      if (Array.isArray(related)) {
-        for (const r of related) push(r);
-      } else if (typeof related === 'string') {
-        for (const r of related.split(',')) push(r);
-      }
+      out.push(name);
     }
     return out;
   }

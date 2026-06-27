@@ -54,38 +54,76 @@
 
   <!-- Image Viewer Area -->
   <div class="image-area"
+       [class.with-counterpart]="showCounterpart() && hasCounterpart()"
        appGuide="create-loto-point-bulk:image-viewer"
        guideMessage="Right-click and drag on the P&ID image to draw a rectangle around equipment. This will create a new LOTO point."
        [guideTooltipOnly]="true"
        appReactiveGuide="loto-builder-full:image-viewer"
        reactiveGuideMessage="Right-click and drag to draw a rectangle around equipment"
        [reactiveGuideTooltipOnly]="true">
-    @if (currentImageUrl()) {
-      <app-interactive-image
-        [imageUrl]="currentImageUrl()"
-        [shapesInput]="currentShapes()"
-        [hoveredShapeId]="hoveredShapeId()"
-        [selectedShapeIdInput]="selectedShapeId()"
-        [config]="imageConfig()"
-        [customContextMenuActions]="customContextMenuActions()"
-        (shapeHovered)="onShapeHovered($event)"
-        (shapeClicked)="onShapeClicked($event)"
-        (shapeDoubleClicked)="onShapeDoubleClicked($event)"
-        (shapeRightClicked)="onShapeRightClicked($event)"
-        (shapeUpdated)="onShapeUpdated($event)"
-        (shapeDrawn)="onShapeDrawn($event)"
-        (shapeDeleted)="onShapesDeleted($event)"
-      ></app-interactive-image>
+    <!-- Primary pane -->
+    <div class="viewer-pane primary-pane">
+      @if (showCounterpart() && hasCounterpart()) {
+        <div class="pane-header">
+          <span class="pane-label">Primary</span>
+          <span class="pane-name" [title]="builderState.currentFile()?.name || ''">
+            {{ builderState.currentFile()?.name || '—' }}
+          </span>
+        </div>
+      }
+      @if (currentImageUrl()) {
+        <app-interactive-image
+          [imageUrl]="currentImageUrl()"
+          [shapesInput]="currentShapes()"
+          [hoveredShapeId]="hoveredShapeId()"
+          [selectedShapeIdInput]="selectedShapeId()"
+          [config]="imageConfig()"
+          [customContextMenuActions]="customContextMenuActions()"
+          (shapeHovered)="onShapeHovered($event)"
+          (shapeClicked)="onShapeClicked($event)"
+          (shapeDoubleClicked)="onShapeDoubleClicked($event)"
+          (shapeRightClicked)="onShapeRightClicked($event)"
+          (shapeUpdated)="onShapeUpdated($event)"
+          (shapeDrawn)="onShapeDrawn($event)"
+          (shapeDeleted)="onShapesDeleted($event)"
+        ></app-interactive-image>
 
-      <!-- Info Window (positioned in upper right) -->
-      <app-loto-builder-info-window></app-loto-builder-info-window>
-    } @else {
-      <div class="empty-state">
-        <div class="empty-icon">🖼️</div>
-        <p class="empty-title">No File Selected</p>
-        <p class="empty-message">
-          Select a file from the left panel to start building LOTO points
-        </p>
+        <!-- Info Window (positioned in upper right) -->
+        <app-loto-builder-info-window></app-loto-builder-info-window>
+      } @else {
+        <div class="empty-state">
+          <div class="empty-icon">🖼️</div>
+          <p class="empty-title">No File Selected</p>
+          <p class="empty-message">
+            Select a file from the left panel to start building LOTO points
+          </p>
+        </div>
+      }
+    </div>
+
+    <!-- Counterpart pane (read-only image alongside primary) -->
+    @if (showCounterpart() && hasCounterpart()) {
+      <div class="viewer-pane counterpart-pane">
+        <div class="pane-header">
+          <span class="pane-label">Counterpart</span>
+          <span class="pane-name" [title]="counterpartFile()?.name || ''">
+            {{ counterpartFile()?.name || (counterpartLoading() ? 'Loading…' : '—') }}
+          </span>
+          <button class="pane-close" type="button" (click)="toggleCounterpart()" title="Hide counterpart">×</button>
+        </div>
+        @if (counterpartLoading()) {
+          <div class="pane-state">Loading counterpart…</div>
+        } @else if (counterpartError()) {
+          <div class="pane-state pane-error">{{ counterpartError() }}</div>
+        } @else if (counterpartImageUrl()) {
+          <app-interactive-image
+            [imageUrl]="counterpartImageUrl()"
+            [shapesInput]="counterpartShapes()"
+            [config]="imageConfig()"
+          ></app-interactive-image>
+        } @else {
+          <div class="pane-state">Counterpart file has no viewable image.</div>
+        }
       </div>
     }
   </div>
@@ -158,6 +196,16 @@
     >
       Save
     </button>
+    @if (hasCounterpart()) {
+      <button
+        class="toolbar-button"
+        [class.active]="showCounterpart()"
+        title="Show the counterpart file side-by-side (read-only view)"
+        (click)="toggleCounterpart()"
+      >
+        {{ showCounterpart() ? 'Hide Counterpart' : 'Show Counterpart' }}
+      </button>
+    }
     <button
       class="toolbar-button"
       title="Close Builder"

@@ -86,6 +86,12 @@ public class FileMapper implements BaseMapper {
         if (file.getDocNum() != null) fileDto.setDocNum(file.getDocNum());
         if (file.getIsVerified() != null) fileDto.setIsVerified(file.getIsVerified());
         if(file.getExtensions()!=null && !file.getExtensions().isEmpty()) fileDto.setExtensions(file.getExtensionsArray());
+        // Read-only on this DTO: clonedFromId and counterpartId are set by the
+        // clone-to-unit service and never edited via the form path, so we surface
+        // them for the UI ("Open Counterpart" nav, "cloned from file #N" badge)
+        // but do NOT round-trip them through convertToEntity below.
+        if (file.getClonedFromId() != null) fileDto.setClonedFromId(file.getClonedFromId());
+        if (file.getCounterpartId() != null) fileDto.setCounterpartId(file.getCounterpartId());
         return fileDto;
     }
 
@@ -136,6 +142,15 @@ public class FileMapper implements BaseMapper {
         // rows anyway — the full convertToDto leaves it out too. Keep it out of light.
         if (file.getDocNum() != null) fileDto.setDocNum(file.getDocNum());
         if (file.getIsVerified() != null) fileDto.setIsVerified(file.getIsVerified());
+        if (file.getClonedFromId() != null) fileDto.setClonedFromId(file.getClonedFromId());
+        if (file.getCounterpartId() != null) fileDto.setCounterpartId(file.getCounterpartId());
+        // The extensions ARRAY (not just the single `extension`) is required by
+        // the frontend viewer + context menu to decide whether a PDF variant
+        // exists ("Open in New Tab" / table click → JPG normalization). Adding
+        // it here keeps the light path full-featured for list/table use cases.
+        if (file.getExtensions() != null && !file.getExtensions().isEmpty()) {
+            fileDto.setExtensions(file.getExtensionsArray());
+        }
         return fileDto;
     }
 

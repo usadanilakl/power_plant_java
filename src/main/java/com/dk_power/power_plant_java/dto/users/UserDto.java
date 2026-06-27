@@ -25,6 +25,8 @@ public class UserDto extends BaseDto {
     private Boolean isActive;
     private LocalDateTime lastLoginDate;
     private String windowsUsername;
+    /** Explicit Maximo personid override; blank = derived from windowsUsername. */
+    private String maximoPersonidOverride;
     private String permissionLevel;
     private String onLocationMemberId;
     private String phone;

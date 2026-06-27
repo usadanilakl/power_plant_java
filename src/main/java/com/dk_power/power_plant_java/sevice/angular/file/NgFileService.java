@@ -291,6 +291,11 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      * tuple constructors and only carry default empty HashSets, so a .size()
      * touch would not trigger any load. Mapping runs inside this @Transactional
      * method so the lazy access succeeds.
+     *
+     * <p>Uses {@code toDtoLight} (not {@code toDto}) so the response omits the
+     * heavy {@code points} (EquipmentDto[]) / {@code highlights} / {@code heatTraceList}
+     * arrays. List/table views don't need them; the form fetches the full DTO
+     * via {@code /ng/files/{id}} on edit. Roughly 5–10× smaller payload per row.
      */
     public Page<FileDto> findAllPaginatedAsDto(Pageable pageable) {
         Page<FileObject> entities = fileRepo.findAll(pageable);
@@ -298,7 +303,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             if (f.getSystems() != null) f.getSystems().size();
             if (f.getTags() != null) f.getTags().size();
         }
-        return entities.map(this::toDto);
+        return entities.map(this::toDtoLight);
     }
 
     public Page<FileDto> complexSearch(String searchString, int page, int size) {
@@ -708,6 +713,13 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
 
+    /**
+     * Per-type bulk load for {@code CurrentFileService.loadAllFilesByType} (left
+     * menu + file map cache). Uses {@code toDtoLight} so the per-type payload
+     * doesn't carry every file's {@code points: EquipmentDto[]} — for a PID
+     * file with 50 equipment, the heavy DTO is ~10× the light one. The form
+     * still gets the full DTO on edit via {@code /ng/files/{id}}.
+     */
     public List<FileDto> getByFileType(String fileType) {
         List<FileObject> entities = fileRepo.findByFileType_Name(fileType);
         // Pre-init the new @ManyToMany collections inside the @Transactional method
@@ -718,7 +730,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             if (f.getSystems() != null) f.getSystems().size();
             if (f.getTags() != null) f.getTags().size();
         }
-        return entities.stream().map(this::toDto).toList();
+        return entities.stream().map(this::toDtoLight).toList();
     }
 
     /** Distinct fileType names actually used by FileObjects in the database. */

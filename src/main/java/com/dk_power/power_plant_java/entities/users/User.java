@@ -56,6 +56,15 @@ public class User extends BaseAuditEntity {
     @Column(name = "windows_username")
     private String windowsUsername;
 
+    /**
+     * Explicit Maximo personid override. Null/blank = derive from {@link #windowsUsername}
+     * (plant convention: Maximo personid is the uppercased Windows account). Set this only
+     * for the few users whose Maximo identity diverges from their Windows login. Read the
+     * effective value via {@link #getMaximoPersonid()} — never this field directly.
+     */
+    @Column(name = "maximo_personid")
+    private String maximoPersonidOverride;
+
     @Column(name = "phone")
     private String phone;
 
@@ -174,12 +183,21 @@ public class User extends BaseAuditEntity {
 
     /**
      * This user's identity in Maximo (e.g. value of `spi:lead` on a work order).
-     * Today: uppercased `windowsUsername` — plant convention is that Maximo personids
-     * are domain usernames in uppercase. If a user ever has a Maximo personid that
-     * diverges from their Windows account, add an explicit override field and prefer it here.
+     * Prefers the explicit {@link #maximoPersonidOverride} when set; otherwise falls back
+     * to the uppercased {@link #windowsUsername} — plant convention is that Maximo personids
+     * are domain usernames in uppercase. Always returned uppercase so callers can compare
+     * against Maximo without re-normalizing.
+     *
+     * <p>The raw stored override is {@code maximoPersonidOverride} (Lombok accessors
+     * {@code getMaximoPersonidOverride()}/{@code setMaximoPersonidOverride()}); this resolver
+     * has a deliberately distinct name so it is never confused for that field's accessor by
+     * the mapper.
      */
     @Transient
     public String getMaximoPersonid() {
+        if (maximoPersonidOverride != null && !maximoPersonidOverride.isBlank()) {
+            return maximoPersonidOverride.trim().toUpperCase();
+        }
         return windowsUsername == null ? null : windowsUsername.trim().toUpperCase();
     }
 }

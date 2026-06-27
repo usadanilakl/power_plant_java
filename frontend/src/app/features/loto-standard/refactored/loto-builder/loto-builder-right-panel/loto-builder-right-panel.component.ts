@@ -20,6 +20,9 @@ import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
 import { PIDSymbol, PIDSymbolsService } from '../../../../../shared/image/refactored/services/pid-symbols.service';
 import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
+import { FileDto } from '../../../../../models/file/file.model';
+import { RfFileApiService } from '../../../../files/refactored/services/rf-file-api.service';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-loto-builder-right-panel',
@@ -46,6 +49,7 @@ export class LotoBuilderRightPanelComponent {
   private imageService = inject(ImageService);
   private pidSymbolsService = inject(PIDSymbolsService);
   private syncUpdateService = inject(SyncUpdateService);
+  private fileApi = inject(RfFileApiService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
 
@@ -104,6 +108,53 @@ export class LotoBuilderRightPanelComponent {
     return file?.fileLink || '';
   });
 
+  // ==================== COUNTERPART SIDE-BY-SIDE ====================
+  // Optional split-view that renders the linked counterpart file alongside
+  // the working P&ID. Read-only — no shape editing in the counterpart pane
+  // (avoids polluting shared shape state). User can switch the loto-builder's
+  // current file to the counterpart for full editing.
+  showCounterpart = signal<boolean>(false);
+  counterpartFile = signal<FileDto | null>(null);
+  counterpartLoading = signal<boolean>(false);
+  counterpartError = signal<string | null>(null);
+
+  counterpartImageUrl = computed(() => this.counterpartFile()?.fileLink || '');
+  hasCounterpart = computed(() => !!this.builderState.currentFile()?.counterpartId);
+
+  /**
+   * Equipment shapes for the counterpart pane — same mapper the primary uses,
+   * but sourced from the counterpart's full FileDto (points field). Read-only
+   * on this pane (no click handlers wired) — just visual overlay so the user
+   * can compare equipment positions side-by-side.
+   */
+  counterpartShapes = computed(() => {
+    const cp = this.counterpartFile();
+    if (!cp || !cp.points || cp.points.length === 0) return [];
+    return this.equipmentMapper.mapAllToRfShapes(cp.points);
+  });
+
+  toggleCounterpart(): void {
+    // Simple toggle — the effect below handles loading/refreshing based on
+    // the current file. No duplicate fetch logic.
+    this.showCounterpart.set(!this.showCounterpart());
+  }
+
+  private loadCounterpart(id: number): void {
+    this.counterpartLoading.set(true);
+    this.counterpartError.set(null);
+    this.fileApi.getFileById(String(id)).pipe(
+      map(r => FileDto.fromJson(r.responseData)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (dto) => { this.counterpartFile.set(dto); this.counterpartLoading.set(false); },
+      error: (err) => {
+        console.error('Failed to load counterpart:', err);
+        this.counterpartError.set('Failed to load counterpart file');
+        this.counterpartLoading.set(false);
+      },
+    });
+  }
+
   /**
    * Get current shapes from equipment
    */
@@ -134,6 +185,22 @@ export class LotoBuilderRightPanelComponent {
     effect(() => {
       const shapes = this.currentShapes();
       this.builderState.currentShapes.set(shapes);
+    });
+
+    // Keep the counterpart pane in sync when the user switches to a different
+    // primary file. Without this, an open counterpart pane keeps showing the
+    // OLD file's counterpart even after the user navigates to a new file.
+    effect(() => {
+      if (!this.showCounterpart()) return;
+      const cpId = this.builderState.currentFile()?.counterpartId;
+      if (!cpId) {
+        this.counterpartFile.set(null);
+        this.counterpartError.set('Current file has no counterpart linked.');
+        return;
+      }
+      const cached = this.counterpartFile();
+      if (cached && cached.id === cpId) return;
+      this.loadCounterpart(cpId);
     });
 
     // Subscribe to current file changes to update builder state

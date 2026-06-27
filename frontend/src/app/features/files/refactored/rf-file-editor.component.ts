@@ -1,17 +1,21 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, DestroyRef, inject, signal } from "@angular/core";
+import { Component, computed, DestroyRef, effect, inject, signal } from "@angular/core";
 import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
 import { CurrentFileService } from "../../../services/current-file.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { toSignal } from "@angular/core/rxjs-interop";
+import { map } from "rxjs/operators";
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { LotoPointDto } from "../../../models/loto/loto-point.model";
 import { ShapeManagerService } from "../../../shared/image/refactored/services/shape-manager.service";
 import { RfShape } from "../../../shared/image/refactored/models/fr-shape.model";
 import { LotoPointDisplayTableComponent } from "../../loto-points/refactored/loto-point-display-table/loto-point-display-table.component";
-import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
+import { RfLotoPointFormComponent } from "../../loto-points/refactored/rf-loto-point-form/rf-loto-point-form.component";
+import { LotoPointDualFormComponent } from "../../loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component";
 import { EquipmentService } from "../../../services/equipment.service";
 import { EquipmentDto } from "../../../models/equipment/equipment.model";
+import { FileDto } from "../../../models/file/file.model";
+import { RfFileApiService } from "./services/rf-file-api.service";
 import {
   RfUnifiedImageViewerComponent,
   ViewerDataSource,
@@ -35,7 +39,8 @@ import {
     RfUnifiedImageViewerComponent,
     PopupProjectionComponent,
     LotoPointDisplayTableComponent,
-    LotoPointDetailFormComponent
+    RfLotoPointFormComponent,
+    LotoPointDualFormComponent,
   ],
   templateUrl: './rf-file-editor.component.html',
   styleUrl: './rf-file-editor.component.css',
@@ -46,6 +51,7 @@ export class RfFileEditroComponent {
   private currentFileService = inject(CurrentFileService);
   private equipmentService = inject(EquipmentService);
   private shapeManager = inject(ShapeManagerService);
+  private fileApi = inject(RfFileApiService);
   private destroyRef = inject(DestroyRef);
 
   // File and equipment from service
@@ -77,9 +83,90 @@ export class RfFileEditroComponent {
   isLotoPointFormOpen = signal<boolean>(false);
   selectedLotoPoint = signal<LotoPointDto | null>(null);
 
+  /**
+   * Unit-specific points (tag starts with 01/02) render the side-by-side
+   * counterpart editor — same heuristic the loto-builder form-popup uses.
+   * Non-unit points get the single rf-loto-point-form. This unifies the
+   * file-editor with the loto-builder so users see the same form everywhere.
+   */
+  showDualForm = computed(() => {
+    const tag = this.selectedLotoPoint()?.tagNumber;
+    return !!(tag && (tag.startsWith('01') || tag.startsWith('02')));
+  });
+
   // Hover state for synchronized highlighting
   hoveredEquipmentId = signal<number | null>(null);
   hoveredLotoPoint = signal<LotoPointDto | null>(null);
+
+  // ==================== COUNTERPART SIDE-BY-SIDE ====================
+  // Toggle + fetched counterpart file for the optional split-view that
+  // renders the linked counterpart file's image/PDF next to the primary.
+  // Counterpart pane is image/PDF-only (no shape-editing) — the user can
+  // still right-click the row in the file table and "Open Counterpart File"
+  // for full editing.
+  showCounterpart = signal<boolean>(false);
+  counterpartFile = signal<FileDto | null>(null);
+  counterpartLoading = signal<boolean>(false);
+  counterpartError = signal<string | null>(null);
+
+  counterpartFileLink = computed(() => this.counterpartFile()?.fileLink ?? '');
+  counterpartIsPdf = computed(() => this.counterpartFileLink().endsWith('.pdf'));
+  counterpartIsImage = computed(() => {
+    const l = this.counterpartFileLink();
+    return l.endsWith('.jpg') || l.endsWith('.jpeg') || l.endsWith('.png');
+  });
+  /**
+   * Render the counterpart's equipment as shape overlays — read-only on this
+   * pane (no edit events wired) but the user can SEE which equipment is on
+   * the counterpart for visual comparison. Equipment comes from the
+   * counterpart's full FileDto (points field), which getFileById returns.
+   */
+  counterpartDataSource = computed<ViewerDataSource>(() => ({
+    type: 'file',
+    file: this.counterpartFile(),
+    equipmentList: this.counterpartFile()?.points ?? null,
+  }));
+
+  /** True when the primary file has a counterpartId pointer (button enabled). */
+  hasCounterpart = computed(() => !!this.currentFile()?.counterpartId);
+
+  constructor() {
+    // Keep the counterpart pane in sync when the user navigates to a different
+    // primary file. Without this, an open counterpart pane keeps showing the
+    // OLD file's counterpart even after the user opens a new file.
+    effect(() => {
+      if (!this.showCounterpart()) return;
+      const current = this.currentFile();
+      const cpId = current?.counterpartId;
+      if (!cpId) {
+        this.counterpartFile.set(null);
+        this.counterpartError.set('Current file has no counterpart linked.');
+        return;
+      }
+      const cached = this.counterpartFile();
+      if (cached && cached.id === cpId) return;
+      this.loadCounterpart(cpId);
+    });
+  }
+
+  private loadCounterpart(id: number): void {
+    this.counterpartLoading.set(true);
+    this.counterpartError.set(null);
+    this.fileApi.getFileById(String(id)).pipe(
+      map(r => FileDto.fromJson(r.responseData)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (dto) => {
+        this.counterpartFile.set(dto);
+        this.counterpartLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load counterpart:', err);
+        this.counterpartError.set('Failed to load counterpart file');
+        this.counterpartLoading.set(false);
+      },
+    });
+  }
 
   // Compute all LOTO points from current file's equipment
   allLotoPoints = computed(() => {
@@ -121,6 +208,18 @@ export class RfFileEditroComponent {
     legend: false,
     emptyStateMessage: 'No equipment on this file',
   };
+
+  /**
+   * Toggle the counterpart side-by-side pane. First click fetches the linked
+   * counterpart file (we may not have its full DTO in memory — context-menu
+   * navigation works off the primary file's row data). Subsequent toggles
+   * just flip the show flag; the counterpart stays cached.
+   */
+  toggleCounterpart(): void {
+    // Simple toggle. The effect() in the constructor handles loading the right
+    // counterpart based on the current file, so we don't duplicate fetch logic here.
+    this.showCounterpart.set(!this.showCounterpart());
+  }
 
   // ==================== FILE FORMAT TOGGLE ====================
 

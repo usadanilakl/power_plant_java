@@ -144,6 +144,32 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
      */
     private String perceptualHash;
 
+    /**
+     * Soft FK to the source FileObject this one was cloned FROM via the
+     * clone-to-unit feature (U1 → U2 or reverse). Plain Long, not a JPA
+     * relationship — avoids cascade entanglement and keeps the wire payload
+     * small. Sync picks it up automatically via FieldChangeEntityListener.
+     *
+     * <p>Null for originally-uploaded files. Used to:
+     * <ul>
+     *   <li>Detect duplicate clones (warn user on re-click)</li>
+     *   <li>Trace a clone back to its source for debugging / reverse lookups</li>
+     * </ul>
+     */
+    private Long clonedFromId;
+
+    /**
+     * Bidirectional pointer to the same drawing's other-unit counterpart
+     * (the "active" U1↔U2 pair). Mirrors {@code LotoPoint.counterpartId}.
+     * Set by {@code NgFileCloneService} on both files when a clone succeeds,
+     * and consumed by the "Open Counterpart File" navigation in the file
+     * context menu. Plain Long — same rationale as {@link #clonedFromId}.
+     *
+     * <p>Re-clone (force=true) overwrites the source's pointer to the newest
+     * clone; the older clone's pointer back to source still works.
+     */
+    private Long counterpartId;
+
 
 
     public static final List<String> lightDto = List.of(

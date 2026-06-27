@@ -5,7 +5,13 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
+import com.dk_power.power_plant_java.dto.files.clone.AcceptSuggestionsRequestDto;
+import com.dk_power.power_plant_java.dto.files.clone.AcceptSuggestionsResultDto;
+import com.dk_power.power_plant_java.dto.files.clone.CloneFileResultDto;
+import com.dk_power.power_plant_java.dto.files.clone.CounterpartCandidateDto;
+import com.dk_power.power_plant_java.dto.files.clone.ImportFromCounterpartResultDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileCloneService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategyRegistry;
 import com.dk_power.power_plant_java.sevice.file.TrashService;
@@ -32,6 +38,7 @@ public class NgFileRestController {
     private final NgFileService ngFileService;
     private final TrashService trashService;
     private final UploadStrategyRegistry uploadStrategyRegistry;
+    private final NgFileCloneService ngFileCloneService;
     private final Logger log = LoggerFactory.getLogger(NgFileRestController.class);
     @Value("${files.root.path}")
     private String rootPath;
@@ -536,6 +543,153 @@ public class NgFileRestController {
             log.error("Error emptying trash: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false, "message", "Error emptying trash: " + e.getMessage()));
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Clone to other unit (U1 ↔ U2)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Clone a fully-processed FileObject to the other unit. Copies the disk
+     * file with a swapped name, clones the FileObject row + every Equipment
+     * "highlight" on it, and either auto-links each LOTO point's counterpart
+     * (when a real DB row exists) or surfaces it as a suggestion for explicit
+     * user review.
+     *
+     * <p>{@code force=false} (default) returns {@code status="exists"} when a
+     * prior clone of this source is found, so the UI can confirm before
+     * creating another. {@code force=true} proceeds anyway (with auto-suffix
+     * disambiguation on fileNumber).
+     */
+    @PostMapping("/{id}/clone-to-unit")
+    public ResponseEntity<NgApiResponse<CloneFileResultDto>> cloneToUnit(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean force) {
+        try {
+            CloneFileResultDto result = ngFileCloneService.cloneToUnit(id, force);
+            String message = switch (result.status()) {
+                case "created" -> "Clone created";
+                case "exists" -> "Existing clone found";
+                case "error" -> result.error() != null ? result.error() : "Clone failed";
+                default -> "Clone result: " + result.status();
+            };
+            return ResponseEntity.ok(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            log.error("clone-to-unit failed for file {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Accept user-reviewed clone suggestions. Each item saves a new LotoPoint,
+     * attaches it to the named newly-cloned Equipment, and sets the bidirectional
+     * counterpartId link between the new point and its source. Partial
+     * acceptance is supported — per-item failures are reported in the result.
+     */
+    @PostMapping("/clone-suggestions/accept")
+    public ResponseEntity<NgApiResponse<AcceptSuggestionsResultDto>> acceptCloneSuggestions(
+            @RequestBody AcceptSuggestionsRequestDto request) {
+        try {
+            AcceptSuggestionsResultDto result = ngFileCloneService.acceptSuggestions(request);
+            return ResponseEntity.ok(new NgApiResponse<>(result,
+                    "Accepted " + result.created() + " suggestions (" + result.errors().size() + " errors)"));
+        } catch (Exception e) {
+            log.error("accept clone-suggestions failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * One-shot repair for clones made before the {@code counterpartId} field
+     * existed: walks every FileObject with {@code clonedFromId} set and fills
+     * in the bidirectional pointer where missing. Idempotent — safe to re-run.
+     * Returns counts of what changed.
+     */
+    @PostMapping("/clone-counterparts/backfill")
+    public ResponseEntity<NgApiResponse<NgFileCloneService.BackfillCounterpartResult>> backfillCloneCounterparts() {
+        try {
+            var result = ngFileCloneService.backfillCounterparts();
+            return ResponseEntity.ok(new NgApiResponse<>(result,
+                    "Backfilled " + result.clonesFixed() + " clone(s) and " + result.parentsFixed() + " parent(s)"));
+        } catch (Exception e) {
+            log.error("clone-counterparts backfill failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Expanded counterpart functionality (set / unlink / import / suggest)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Manually link two existing files as counterparts (bidirectional). For the
+     * case where both files already exist and the user wants to pair them
+     * without going through the clone flow.
+     */
+    @PostMapping("/{id}/link-counterpart/{otherId}")
+    public ResponseEntity<NgApiResponse<Void>> linkCounterpart(
+            @PathVariable Long id, @PathVariable Long otherId) {
+        try {
+            ngFileCloneService.linkCounterparts(id, otherId);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Counterpart linked"));
+        } catch (Exception e) {
+            log.error("link-counterpart failed for files {}/{}: {}", id, otherId, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Bidirectional unlink — clears the pointer on both sides. */
+    @PostMapping("/{id}/unlink-counterpart")
+    public ResponseEntity<NgApiResponse<Void>> unlinkCounterpart(@PathVariable Long id) {
+        try {
+            ngFileCloneService.unlinkCounterpart(id);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Counterpart unlinked"));
+        } catch (Exception e) {
+            log.error("unlink-counterpart failed for file {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Ranked candidate files for the "Set Counterpart File…" picker.
+     * Combines tag-swap (U1↔U2 / 01↔02) detection with Levenshtein-1/2 fuzzy
+     * matching to catch the "U1 has A, U2 has B" and "one side has extra
+     * letter" naming patterns.
+     */
+    @GetMapping("/{id}/counterpart-candidates")
+    public ResponseEntity<NgApiResponse<java.util.List<CounterpartCandidateDto>>> counterpartCandidates(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "10") int limit) {
+        try {
+            var result = ngFileCloneService.findCounterpartCandidates(id, limit);
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.size() + " candidate(s)"));
+        } catch (Exception e) {
+            log.error("counterpart-candidates failed for file {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Copy equipment + LOTO from this file's already-linked counterpart into
+     * this file. When {@code keepExisting=false}, soft-deletes the target's
+     * existing equipment first (clean replace). Otherwise additive merge.
+     */
+    @PostMapping("/{id}/import-from-counterpart")
+    public ResponseEntity<NgApiResponse<ImportFromCounterpartResultDto>> importFromCounterpart(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "true") boolean keepExisting) {
+        try {
+            var result = ngFileCloneService.importFromCounterpart(id, keepExisting);
+            String message = switch (result.status()) {
+                case "created" -> "Imported " + result.summary().equipmentCount() + " equipment from counterpart";
+                case "error" -> result.error() != null ? result.error() : "Import failed";
+                default -> "Import result: " + result.status();
+            };
+            return ResponseEntity.ok(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            log.error("import-from-counterpart failed for file {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
 }

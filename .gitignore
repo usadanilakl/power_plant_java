@@ -143,6 +143,11 @@ ehthumbs.db
 Thumbs.db
 /h2-backups/
 /src/main/resources/static/brady/**
+# Angular dist bundle — built locally via `cd frontend && ng build`, packaged into
+# the JAR by mvn process-resources. Tracking it caused git to show 50+ deletes per
+# build (chunk hash rotation) and confused code-review tooling. Anyone building
+# the JAR runs ng build first.
+/src/main/resources/static/angular/**
 /uploads/**
 token.properties
 machine-id.properties

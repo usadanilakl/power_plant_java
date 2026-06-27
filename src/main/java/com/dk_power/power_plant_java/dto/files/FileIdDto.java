@@ -46,6 +46,10 @@ public class FileIdDto extends BaseDto {
     private String bulkEditStep;
     private String docNum;
     private Boolean isVerified = false;
+    /** Soft FK to the source file when this row was created via clone-to-unit. */
+    private Long clonedFromId;
+    /** Bidirectional pointer to the same drawing's other-unit counterpart file. */
+    private Long counterpartId;
 
     @JsonIgnore
     public void setRelatedSystemsAsString(String systems) {

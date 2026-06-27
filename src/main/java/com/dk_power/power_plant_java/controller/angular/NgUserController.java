@@ -114,6 +114,7 @@ public class NgUserController {
                 .password(passwordEncoder.encode(request.password()))
                 .isActive(true)
                 .windowsUsername(request.windowsUsername())
+                .maximoPersonidOverride(request.maximoPersonidOverride())
                 .phone(request.phone())
                 .secondaryPhone(request.secondaryPhone())
                 .title(request.title())
@@ -148,6 +149,9 @@ public class NgUserController {
                 if (request.roles() != null) user.setRoles(request.roles());
                 if (request.isActive() != null) user.setIsActive(request.isActive());
                 if (request.windowsUsername() != null) user.setWindowsUsername(request.windowsUsername());
+                // Empty string is a valid value here: it clears the override so the personid
+                // falls back to the derived windowsUsername (see User.getMaximoPersonid()).
+                if (request.maximoPersonidOverride() != null) user.setMaximoPersonidOverride(request.maximoPersonidOverride());
                 if (request.password() != null && !request.password().isBlank()) {
                     user.setPassword(passwordEncoder.encode(request.password()));
                 }
@@ -338,14 +342,14 @@ public class NgUserController {
     public record CreateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, String windowsUsername,
-        String phone, String secondaryPhone, String title, String emergencyContactJson,
-        String company, String signaturePath
+        String maximoPersonidOverride, String phone, String secondaryPhone, String title,
+        String emergencyContactJson, String company, String signaturePath
     ) {}
 
     public record UpdateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, Boolean isActive, String windowsUsername,
-        String permissionLevel, String phone, String secondaryPhone, String title,
-        String emergencyContactJson, String company, String signaturePath
+        String maximoPersonidOverride, String permissionLevel, String phone, String secondaryPhone,
+        String title, String emergencyContactJson, String company, String signaturePath
     ) {}
 }

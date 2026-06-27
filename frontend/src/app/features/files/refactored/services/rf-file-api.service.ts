@@ -8,6 +8,13 @@ import { FileDto } from '../../../../models/file/file.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import {
+  AcceptSuggestionsRequestDto,
+  AcceptSuggestionsResultDto,
+  CloneFileResultDto,
+  CounterpartCandidateDto,
+  ImportFromCounterpartResultDto,
+} from '../../../../models/file/clone.model';
 
 @Injectable({
   providedIn: 'root',
@@ -231,6 +238,75 @@ export class RfFileApiService {
     return this.http.post<SpringApiResponse<{ fileLink: string }>>(
       `${this.apiUrl}/${fileId}/ensure-jpg`,
       {}
+    );
+  }
+
+  /**
+   * Clone a processed FileObject to the other unit (U1 ↔ U2). When force=false
+   * and a prior clone exists, backend returns status="exists" with the existing
+   * clone IDs — the caller should confirm and re-POST with force=true to
+   * create another.
+   */
+  cloneToUnit(fileId: number, force: boolean = false): Observable<SpringApiResponse<CloneFileResultDto>> {
+    const params = new HttpParams().set('force', String(force));
+    return this.http.post<SpringApiResponse<CloneFileResultDto>>(
+      `${this.apiUrl}/${fileId}/clone-to-unit`,
+      {},
+      { params }
+    );
+  }
+
+  /** Save user-accepted clone-time LOTO point suggestions. */
+  acceptCloneSuggestions(request: AcceptSuggestionsRequestDto): Observable<SpringApiResponse<AcceptSuggestionsResultDto>> {
+    return this.http.post<SpringApiResponse<AcceptSuggestionsResultDto>>(
+      `${this.apiUrl}/clone-suggestions/accept`,
+      request
+    );
+  }
+
+  /** Backfill bidirectional counterpartId for clones made before the field existed. */
+  backfillCloneCounterparts(): Observable<SpringApiResponse<{ clonesFixed: number; parentsFixed: number; skipped: number }>> {
+    return this.http.post<SpringApiResponse<{ clonesFixed: number; parentsFixed: number; skipped: number }>>(
+      `${this.apiUrl}/clone-counterparts/backfill`,
+      {}
+    );
+  }
+
+  /** Manually link two existing files as counterparts (bidirectional). */
+  linkCounterpart(fileId: number, otherId: number): Observable<SpringApiResponse<void>> {
+    return this.http.post<SpringApiResponse<void>>(
+      `${this.apiUrl}/${fileId}/link-counterpart/${otherId}`,
+      {}
+    );
+  }
+
+  /** Clear the counterpart pointer on this file and (if it points back) the other side. */
+  unlinkCounterpart(fileId: number): Observable<SpringApiResponse<void>> {
+    return this.http.post<SpringApiResponse<void>>(
+      `${this.apiUrl}/${fileId}/unlink-counterpart`,
+      {}
+    );
+  }
+
+  /** Ranked candidate files for the "Set Counterpart File…" picker. */
+  counterpartCandidates(fileId: number, limit: number = 10): Observable<SpringApiResponse<CounterpartCandidateDto[]>> {
+    const params = new HttpParams().set('limit', String(limit));
+    return this.http.get<SpringApiResponse<CounterpartCandidateDto[]>>(
+      `${this.apiUrl}/${fileId}/counterpart-candidates`,
+      { params }
+    );
+  }
+
+  /**
+   * Import equipment + LOTO from this file's already-linked counterpart.
+   * When keepExisting=false, target's existing equipment is soft-deleted first.
+   */
+  importFromCounterpart(fileId: number, keepExisting: boolean = true): Observable<SpringApiResponse<ImportFromCounterpartResultDto>> {
+    const params = new HttpParams().set('keepExisting', String(keepExisting));
+    return this.http.post<SpringApiResponse<ImportFromCounterpartResultDto>>(
+      `${this.apiUrl}/${fileId}/import-from-counterpart`,
+      {},
+      { params }
     );
   }
 }

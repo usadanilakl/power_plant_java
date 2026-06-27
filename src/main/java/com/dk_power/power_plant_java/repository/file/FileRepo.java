@@ -87,5 +87,12 @@ public interface FileRepo extends BaseRepository<FileObject> {
 
     List<FileObject> findByRelatedTagsIsNotNull();
 
+    /** Existing clones of a given source file — for clone-to-unit duplicate detection. */
+    List<FileObject> findByClonedFromId(Long clonedFromId);
+
+    /** All clones (clonedFromId NOT NULL) — used by the counterpart-backfill job. */
+    @Query("SELECT f FROM FileObject f WHERE f.clonedFromId IS NOT NULL")
+    List<FileObject> findAllClones();
+
 }
 

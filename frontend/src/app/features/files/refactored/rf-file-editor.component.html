@@ -1,27 +1,62 @@
 <div class="split-view-container" [class.table-open]="isLotoPointTableOpen()">
   <!-- Image/PDF Section -->
   <div class="image-section">
-    <div class="image-container">
-      @if (currentFile()) {
-        <!-- PDF Display -->
-        @if (isPdf()) {
-          <app-pdf-display-iframe [pdfSrc]="fileLink()"></app-pdf-display-iframe>
+    <div class="image-container" [class.with-counterpart]="showCounterpart() && hasCounterpart()">
+      <!-- Primary pane -->
+      <div class="viewer-pane primary-pane">
+        @if (showCounterpart() && hasCounterpart()) {
+          <div class="pane-header">
+            <span class="pane-label">Primary</span>
+            <span class="pane-name" [title]="currentFile()?.name || ''">{{ currentFile()?.name || '—' }}</span>
+          </div>
         }
-        <!-- Image Display (using unified viewer) -->
-        @else if (isImage()) {
-          <app-rf-unified-image-viewer
-            [mode]="'FILE_EDITOR'"
-            [dataSource]="dataSource()"
-            [config]="viewerConfig"
-            [externalHoveredShapeId]="hoveredEquipmentId()"
-            (shapeHovered)="onShapeHovered($event)"
-            (shapeRightClicked)="onShapeRightClicked($event)"
-            (shapeUpdated)="onShapeUpdated($event)"
-          />
+        @if (currentFile()) {
+          @if (isPdf()) {
+            <app-pdf-display-iframe [pdfSrc]="fileLink()"></app-pdf-display-iframe>
+          } @else if (isImage()) {
+            <app-rf-unified-image-viewer
+              [mode]="'FILE_EDITOR'"
+              [dataSource]="dataSource()"
+              [config]="viewerConfig"
+              [externalHoveredShapeId]="hoveredEquipmentId()"
+              (shapeHovered)="onShapeHovered($event)"
+              (shapeRightClicked)="onShapeRightClicked($event)"
+              (shapeUpdated)="onShapeUpdated($event)"
+            />
+          }
+        } @else {
+          <div class="no-file-selected">
+            <p>No file selected. Please select a file to view and edit.</p>
+          </div>
         }
-      } @else {
-        <div class="no-file-selected">
-          <p>No file selected. Please select a file to view and edit.</p>
+      </div>
+
+      <!-- Counterpart pane (image/PDF only — read-only view alongside primary) -->
+      @if (showCounterpart() && hasCounterpart()) {
+        <div class="viewer-pane counterpart-pane">
+          <div class="pane-header">
+            <span class="pane-label">Counterpart</span>
+            <span class="pane-name" [title]="counterpartFile()?.name || ''">
+              {{ counterpartFile()?.name || (counterpartLoading() ? 'Loading…' : '—') }}
+            </span>
+          </div>
+          @if (counterpartLoading()) {
+            <div class="pane-spinner">Loading counterpart…</div>
+          } @else if (counterpartError()) {
+            <div class="pane-error">{{ counterpartError() }}</div>
+          } @else if (counterpartFile()) {
+            @if (counterpartIsPdf()) {
+              <app-pdf-display-iframe [pdfSrc]="counterpartFileLink()"></app-pdf-display-iframe>
+            } @else if (counterpartIsImage()) {
+              <app-rf-unified-image-viewer
+                [mode]="'FILE_EDITOR'"
+                [dataSource]="counterpartDataSource()"
+                [config]="viewerConfig"
+              />
+            } @else {
+              <div class="no-file-selected"><p>Counterpart file has no viewable image/PDF.</p></div>
+            }
+          }
         </div>
       }
 
@@ -34,6 +69,11 @@
           <button (click)="toggleFileFormat()" class="control-button">
             Toggle PDF/JPG
           </button>
+          @if (hasCounterpart()) {
+            <button (click)="toggleCounterpart()" class="control-button">
+              {{ showCounterpart() ? 'Hide' : 'Show' }} Counterpart
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -62,14 +102,28 @@
 </div>
 
 <!-- LOTO Point Edit Form Popup -->
+<!-- Unified with the loto-builder: unit-specific points (01/02) get the
+     dual side-by-side editor; others get the single rf-loto-point-form. The
+     forms persist on their own (externalSaveMode=false), so we only need to
+     close the popup when they signal save/close. -->
 <app-popup-projection
   [isOpen]="isLotoPointFormOpen()"
-  [title]="'Edit LOTO Point'"
+  [title]="showDualForm() ? 'Edit LOTO Point — Counterpart View' : 'Edit LOTO Point'"
   [size]="'large'"
   (close)="onLotoPointFormClose()">
-  <app-loto-point-detail-form
-    [values]="selectedLotoPoint()"
-    (formSubmit)="onLotoPointFormSubmit($event)"
-    (formDelete)="onLotoPointFormDelete()">
-  </app-loto-point-detail-form>
+  @if (isLotoPointFormOpen() && selectedLotoPoint()) {
+    @if (showDualForm()) {
+      <app-loto-point-dual-form
+        [primaryLotoPoint]="selectedLotoPoint()!"
+        [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy', 'characteristicsJson', 'equipmentList', 'isLabeled', 'isLockable', 'processingStatus']"
+        (bothSaved)="onLotoPointFormClose()"
+        (formClosed)="onLotoPointFormClose()">
+      </app-loto-point-dual-form>
+    } @else {
+      <app-rf-loto-point-form
+        [entityInput]="selectedLotoPoint() || undefined"
+        (formSubmit)="onLotoPointFormSubmit($event)">
+      </app-rf-loto-point-form>
+    }
+  }
 </app-popup-projection>

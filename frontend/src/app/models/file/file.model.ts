@@ -25,6 +25,10 @@ export interface FileModel extends BaseModel {
   bulkEditStep: string;
   docNum: string;
   isVerified: boolean;
+  /** Soft FK to the source file when this row was created via clone-to-unit. */
+  clonedFromId?: number | null;
+  /** Bidirectional pointer to the same drawing's other-unit counterpart file. */
+  counterpartId?: number | null;
 }
 
 export class FileDto extends BaseDto implements FileModel {
@@ -53,6 +57,10 @@ export class FileDto extends BaseDto implements FileModel {
   extensions: string[];
   bulkEditStep: string;
   docNum: string;
+  /** Read-only on the wire — set server-side by clone-to-unit; never edited via the form. */
+  clonedFromId: number | null = null;
+  /** Read-only on the wire — bidirectional pointer to the other-unit twin. */
+  counterpartId: number | null = null;
 
   constructor(data: Partial<FileModel> = {}) {
     super(data);
@@ -85,6 +93,8 @@ export class FileDto extends BaseDto implements FileModel {
     this.bulkEditStep = data.bulkEditStep || '';
     this.docNum = data.docNum || '';
     this.isVerified = data.isVerified || false;
+    this.clonedFromId = data.clonedFromId ?? null;
+    this.counterpartId = data.counterpartId ?? null;
   }
 
     // Serialization method
@@ -108,6 +118,8 @@ export class FileDto extends BaseDto implements FileModel {
           extensions: this.extensions,
           bulkEditStep: this.bulkEditStep,
           docNum: this.docNum,
+          clonedFromId: this.clonedFromId,
+          counterpartId: this.counterpartId,
         };
       }
     
@@ -137,6 +149,8 @@ export class FileDto extends BaseDto implements FileModel {
           extensions: json.extensions,
           bulkEditStep: json.bulkEditStep,
           docNum: json.docNum,
+          clonedFromId: json.clonedFromId ?? null,
+          counterpartId: json.counterpartId ?? null,
         });
       }
 

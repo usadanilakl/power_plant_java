@@ -1,0 +1,55 @@
+<!--
+  WinSW service definition for the Power Plant Java HUB.
+
+  Setup (run once, in an elevated PowerShell, from this folder):
+    1. Download WinSW:  https://github.com/winsw/winsw/releases  (WinSW-x64.exe)
+    2. Place it next to this file and rename it to match the XML id:
+         power-plant-hub.exe   (WinSW finds power-plant-hub.xml automatically)
+    3. Edit <workingdirectory> below to the folder that holds power_plant_java-1.jar,
+       data\ and logs\  (e.g. C:\apps\power-plant-hub).
+    4. Install + start:
+         .\power-plant-hub.exe install
+         .\power-plant-hub.exe start
+    5. Verify:  Get-Service PowerPlantHub   (Status should be Running, StartType Automatic)
+
+  This service starts at boot WITHOUT a login and restarts the app if it crashes.
+-->
+<service>
+  <id>PowerPlantHub</id>
+  <name>Power Plant Hub</name>
+  <description>Power Plant Java hub sync server (Spring Boot, profiles prod,hub,server).</description>
+
+  <!-- Full path to java.exe: a service runs as LOCAL SYSTEM and does NOT inherit your user PATH.
+       Using java.exe (console), NOT javaw.exe, so WinSW can deliver Ctrl+C for graceful shutdown.
+       Profiles (prod,hub,server) are baked into the jar's application.properties, so no -D needed
+       — this matches the working start-hub.bat exactly. -->
+  <!-- Bundled JDK under the app folder. VERIFY this folder name matches what you unzipped
+       (Adoptium unzips as jdk-21.0.11+10 — adjust if yours differs). -->
+  <executable>C:\forms\power_plant\jdk-21.0.11+10\bin\java.exe</executable>
+  <arguments>-jar power_plant_java-1.jar</arguments>
+
+  <!-- Folder containing power_plant_java-1.jar, data\ and logs\. -->
+  <workingdirectory>C:\forms\power_plant</workingdirectory>
+
+  <!-- Restart on crash with escalating backoff; forget failures after an hour of uptime. -->
+  <onfailure action="restart" delay="5 sec"/>
+  <onfailure action="restart" delay="20 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <!-- Start automatically at boot; delayed so network/disk are ready first. -->
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+
+  <!-- Graceful shutdown: WinSW sends Ctrl+C, JVM shutdown hook closes H2 cleanly.
+       Requires server.shutdown=graceful in the app (see README). 35s matches restart-app.bat. -->
+  <stoptimeout>35 sec</stoptimeout>
+  <stopparentprocessfirst>true</stopparentprocessfirst>
+
+  <!-- Capture stdout + stderr to power-plant-hub.out.log / .err.log next to the exe,
+       rolling at ~10MB, keeping 8 files. This is the crash-time console output. -->
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+</service>
