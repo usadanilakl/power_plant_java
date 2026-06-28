@@ -123,7 +123,7 @@ export class MaximoPartsCheckoutPageComponent {
       href: rec.href, wonum: rec.wonum, description: rec.description, longDescription: '',
       status: rec.status, worktype: '', assetnum: '', location: rec.location, siteid: '',
       reportdate: '', targetStart: '', schedstart: '', schedfinish: '', leadCraft: '',
-      supervisor: '', priority: ''
+      supervisor: '', priority: '', pmnum: ''
     };
   }
 

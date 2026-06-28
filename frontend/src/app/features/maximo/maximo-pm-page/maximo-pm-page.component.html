@@ -1,0 +1,123 @@
+<app-main-layout header="Maximo — PM Scheduling">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <nav class="tabs">
+        <button [class.active]="tab() === 'assignments'" (click)="setTab('assignments')">
+          Assignments <span class="muted" *ngIf="pendingLoaded()">({{ pending().length }})</span>
+        </button>
+        <button [class.active]="tab() === 'catalog'" (click)="setTab('catalog')">
+          Recurring PMs <span class="muted" *ngIf="catalogLoaded()">({{ catalog().length }})</span>
+        </button>
+        <button [class.active]="tab() === 'schedule'" (click)="setTab('schedule')">Schedule</button>
+      </nav>
+
+      <div class="bar">
+        <span *ngIf="loading()" class="muted">Loading…</span>
+        <span *ngIf="info()" class="info">{{ info() }}</span>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+      </div>
+
+      <!-- Assignments -->
+      <section *ngIf="tab() === 'assignments'">
+        <div class="actions">
+          <button class="primary" (click)="approveAll()" [disabled]="approving() || pending().length === 0">
+            {{ approving() ? 'Approving…' : 'Approve All' }}
+          </button>
+          <button (click)="loadPending()" [disabled]="loading()">Refresh</button>
+          <span class="muted">WAPPR recurring-PM work orders, assigned by shift schedule.</span>
+        </div>
+        <table *ngIf="pending().length; else noPending">
+          <thead>
+            <tr><th>WO #</th><th>PM</th><th>Description</th><th>Shift</th><th>Date</th><th>Assignee</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of pending()">
+              <td>{{ r.wonum }}</td>
+              <td>{{ r.pmnum }}</td>
+              <td class="desc">{{ r.description }}</td>
+              <td>{{ r.shift }}</td>
+              <td>{{ r.targetDate }}</td>
+              <td>
+                <select [(ngModel)]="assignee[r.href]" *ngIf="r.candidates.length; else noCand">
+                  <option value="">— unassigned —</option>
+                  <option *ngFor="let c of r.candidates" [value]="c.personid">{{ c.name }} ({{ c.personid }})</option>
+                </select>
+                <ng-template #noCand><span class="muted">{{ r.note || 'no candidates' }}</span></ng-template>
+              </td>
+              <td><button class="link" (click)="approve(r)" [disabled]="approving()">Approve</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #noPending>
+          <p class="muted" *ngIf="pendingLoaded()">No WAPPR recurring-PM work orders. (They must be in the catalog —
+            build it under “Recurring PMs”.)</p>
+        </ng-template>
+      </section>
+
+      <!-- Catalog -->
+      <section *ngIf="tab() === 'catalog'">
+        <div class="actions">
+          <button class="primary" (click)="refreshCatalog()" [disabled]="loading()">Refresh catalog from Maximo</button>
+          <span class="muted">Dedupes ~1 year of PM work orders by pmnum; set each PM’s shift.</span>
+        </div>
+        <table *ngIf="catalog().length; else noCatalog">
+          <thead>
+            <tr><th>PM</th><th>Description</th><th class="num">Occ/yr</th><th>Cadence</th><th>Shift</th><th>Last WO</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pm of catalog()">
+              <td>{{ pm.pmnum }}</td>
+              <td class="desc">{{ pm.pmDescription }}</td>
+              <td class="num">{{ pm.occurrenceCount }}</td>
+              <td>
+                <select [ngModel]="pm.cadence" (ngModelChange)="onCadenceChange(pm, $event)">
+                  <option *ngFor="let c of cadenceOptions" [value]="c">{{ c }}</option>
+                </select>
+                <span class="muted" *ngIf="pm.intervalDays">~{{ pm.intervalDays }}d</span>
+              </td>
+              <td>
+                <select [ngModel]="pm.shift" (ngModelChange)="onShiftChange(pm, $event)">
+                  <option *ngFor="let s of shiftOptions" [value]="s">{{ s }}</option>
+                </select>
+              </td>
+              <td>{{ pm.lastWonum }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #noCatalog>
+          <p class="muted" *ngIf="catalogLoaded()">Catalog is empty — click “Refresh catalog from Maximo”.</p>
+        </ng-template>
+      </section>
+
+      <!-- Schedule -->
+      <section *ngIf="tab() === 'schedule'">
+        <div class="actions">
+          <label>From <input type="date" [(ngModel)]="schedFrom" /></label>
+          <label>To <input type="date" [(ngModel)]="schedTo" /></label>
+          <button (click)="loadSchedule()" [disabled]="loading()">Load</button>
+        </div>
+        <table *ngIf="schedule().length; else noSched">
+          <thead><tr><th>Date</th><th>Day shift</th><th>Night shift</th><th>PTO</th><th>Training</th><th>On-call mgr</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let d of schedule()">
+              <td>{{ d.date }}</td>
+              <td class="desc">{{ names(d.dayShift) }}</td>
+              <td class="desc">{{ names(d.nightShift) }}</td>
+              <td class="muted">{{ names(d.pto) }}</td>
+              <td class="muted">{{ names(d.training) }}</td>
+              <td>{{ d.onCallManagerName || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #noSched>
+          <p class="muted">No schedule rows for this range. The Ops Schedule must be imported first
+            (hub-side SharePoint import).</p>
+        </ng-template>
+      </section>
+    </div>
+  </ng-container>
+</app-main-layout>

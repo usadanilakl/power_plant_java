@@ -55,6 +55,7 @@ public class EntityTableRegistry {
         Map.entry("User", "users"),                // @Table(name = "users")
         Map.entry("Role", "roles"),                // @Table(name = "roles")
         Map.entry("ShiftDay", "shift_days"),       // @Table(name = "shift_days")
+        Map.entry("RecurringPm", "recurring_pm"),  // @Table(name = "recurring_pm")
         Map.entry("ContractorChangeReport", "contractor_change_reports"),
 
         // ESP
@@ -129,6 +130,7 @@ public class EntityTableRegistry {
         "Value",
         "User",
         "ShiftDay",
+        "RecurringPm",
         "ContractorChangeReport",
         "FileObject",
         "FileConnector",

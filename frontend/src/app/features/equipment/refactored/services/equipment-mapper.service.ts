@@ -264,24 +264,57 @@ export class EquipmentMapperService{
         }
     }
 
+    /**
+     * Equipment shapes are tinted by the energy state implied by their first LOTO
+     * point's NORMAL position (normPos). Matching is by the Value's NAME — aliases
+     * differ across the Norm/Iso Pos categories (Norm Pos uses NO/NC, Iso Pos uses
+     * OPEN/CLOSED), so name is the only consistent key.
+     *
+     * Buckets — add new position names to the relevant group:
+     *   green  = closed / isolated        red  = open & other active states
+     *   yellow = automatic control        blue = unknown / unmapped / junk
+     */
     private getShapeColor(equipment: EquipmentModel): string {
-        // Determine color based on LOTO position or other equipment properties
-        if (equipment.lotoPoints && equipment.lotoPoints.length > 0) {
-            const firstLotoPoint = equipment.lotoPoints[0];
-            if (firstLotoPoint?.normPos?.name) {
-                switch (firstLotoPoint.normPos.name.toLowerCase().trim()) {
-                    case 'open':
-                        return '#FF0000'; // Red
-                    case 'closed':
-                        return '#00FF00'; // Green
-                    case 'auto':
-                        return '#FFFF00'; // Yellow
-                    default:
-                        return '#0000FF'; // Blue as default
-                }
-            }
+        const positionName = equipment.lotoPoints?.[0]?.normPos?.name;
+        if (!positionName) return '#0000FF'; // Blue — no position set
+
+        // Lowercase, then collapse any run of non-alphanumeric chars (stray
+        // replacement chars / periods / double spaces in dirty data such as
+        // "CLOSED�" or "�THROTTLED") to a single space, and trim — so
+        // those garbled-but-recognisable names still match the right bucket.
+        const name = positionName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+        switch (name) {
+            // Closed / isolated
+            case 'closed':
+                return '#00FF00'; // Green
+
+            // Automatic control
+            case 'auto':
+                return '#FFFF00'; // Yellow
+
+            // Open and other active / non-closed states — all treated alike.
+            // (off / racked out / pulled / disabled / bypass live on the Isolated
+            //  Position category rather than normPos, but are listed here so the
+            //  same mapping works if the colour source is ever switched to isoPos.)
+            case 'open':
+            case 'throttled':
+            case 'on':
+            case 'enabled':
+            case 'inserted':
+            case 'installed':
+            case 'racked in':
+            case 'removed':
+            case 'off':
+            case 'racked out':
+            case 'pulled':
+            case 'disabled':
+            case 'bypass':
+                return '#FF0000'; // Red
+
+            default:
+                return '#0000FF'; // Blue — unknown / unmapped (e.g. "no data")
         }
-        return '#0000FF'; // Blue as default
     }
 
     /**

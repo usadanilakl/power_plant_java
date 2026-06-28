@@ -9,9 +9,16 @@ import com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto;
 import com.dk_power.power_plant_java.dto.maximo.ReturnMaterialRequest;
 import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest;
 import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutResult;
+import com.dk_power.power_plant_java.dto.maximo.PmAssignRequest;
+import com.dk_power.power_plant_java.dto.maximo.PmPendingAssignmentDto;
+import com.dk_power.power_plant_java.dto.maximo.RecurringPmDto;
+import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
+import com.dk_power.power_plant_java.entities.maximo.ShiftPreference;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
+import com.dk_power.power_plant_java.sevice.maximo.PmAssignmentService;
+import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import com.dk_power.power_plant_java.dto.maximo.MaximoAssetDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoDoclinkDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
@@ -32,6 +39,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -70,6 +78,8 @@ public class NgMaximoController {
     private final MaximoLocationAdapter locations;
     private final MaximoInventoryAdapter inventory;
     private final MaximoPartsCheckoutService partsCheckout;
+    private final RecurringPmService recurringPms;
+    private final PmAssignmentService pmAssignments;
     private final com.dk_power.power_plant_java.repository.users.UserRepo userRepo;
 
     /** Work-type options. The MXDOMAIN OS isn't API-authorized, so these mirror the values in use at JG. */
@@ -330,6 +340,56 @@ public class NgMaximoController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    // ---- PM auto-assignment (recurring-PM catalog + WAPPR approval) ------
+
+    /** The recurring-PM catalog (deduped by pmnum). */
+    @GetMapping("/pm/catalog")
+    public ResponseEntity<NgApiResponse<List<RecurringPmDto>>> pmCatalog() {
+        return ResponseEntity.ok(new NgApiResponse<>(recurringPms.getCatalog(), "ok"));
+    }
+
+    /** Rebuild the catalog from ~1 year of PM work orders led by lead operators. */
+    @PostMapping("/pm/catalog/refresh")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> pmCatalogRefresh() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(recurringPms.refreshCatalog(), "catalog refreshed"));
+        } catch (Exception e) {
+            log.warn("[Maximo] PM catalog refresh failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Set a PM's shift and/or cadence (locks it against catalog-refresh overwrite). */
+    @PutMapping("/pm/catalog/{pmnum}")
+    public ResponseEntity<NgApiResponse<RecurringPmDto>> pmClassify(
+            @PathVariable String pmnum, @RequestBody ClassifyRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    recurringPms.updateClassification(pmnum, req.shift(), req.cadence()), "updated"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** WAPPR recurring-PM WOs with a proposed shift-based assignee. */
+    @GetMapping("/pm/pending-assignments")
+    public ResponseEntity<NgApiResponse<List<PmPendingAssignmentDto>>> pmPending() {
+        return ResponseEntity.ok(new NgApiResponse<>(pmAssignments.pendingAssignments(), "ok"));
+    }
+
+    /** Approve + assign a batch: set each WO's lead and move it to APPR. */
+    @PostMapping("/pm/assign")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> pmAssign(@RequestBody PmAssignRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(pmAssignments.assign(req), "assigned"));
+        } catch (Exception e) {
+            log.warn("[Maximo] PM assign failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    public record ClassifyRequest(ShiftPreference shift, RecurrenceCadence cadence) {}
 
     /** Maximo personid of the signed-in desktop user, or null if not resolvable. */
     private String currentUserPersonid() {

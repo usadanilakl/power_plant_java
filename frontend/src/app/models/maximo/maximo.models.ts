@@ -44,6 +44,8 @@ export interface MaximoWorkOrder {
   leadCraft: string;
   supervisor: string;
   priority: string;
+  /** PM-master id (e.g. "JG-1183") on PM-generated WOs; null/empty on one-off WOs. */
+  pmnum: string;
 }
 
 export interface MaximoDoclink {

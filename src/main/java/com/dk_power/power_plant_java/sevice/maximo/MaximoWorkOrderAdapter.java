@@ -26,7 +26,7 @@ public class MaximoWorkOrderAdapter {
     private static final String SELECT_FIELDS =
             "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
-            + "spi:targstartdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority";
+            + "spi:targstartdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum";
 
     private final MaximoAccessService access;
 
@@ -42,7 +42,35 @@ public class MaximoWorkOrderAdapter {
      * Returns empty list if no criteria provided (don't blast the whole site).
      */
     public List<MaximoWorkOrderDto> listByCriteria(MaximoWorkOrderCriteria c, int pageSize) {
-        if (c == null) return List.of();
+        String where = buildWhere(c);
+        if (where == null) return List.of();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
+        params.put("oslc.where", where);
+        params.put("oslc.orderBy", "-spi:reportdate");
+        Map<String, Object> body = access.getMap(access.osUrl(OS), params);
+        return mapAll(members(body));
+    }
+
+    /**
+     * Like {@link #listByCriteria} but pages through the whole result set (merges every
+     * {@code pageno}). Use for catalog-style queries (e.g. a year of PM WOs across all leads) where
+     * the single-page {@link #listByCriteria} would silently truncate. Returns empty if no criteria.
+     */
+    public List<MaximoWorkOrderDto> listAllByCriteria(MaximoWorkOrderCriteria c, int pageSizePerPage, int maxPages) {
+        String where = buildWhere(c);
+        if (where == null) return List.of();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.where", where);
+        params.put("oslc.orderBy", "-spi:reportdate"); // stable sort key across page fetches
+        return mapAll(access.getAllMembers(access.osUrl(OS), params, pageSizePerPage, maxPages));
+    }
+
+    /** Build the AND-joined `oslc.where` (incl. siteid). Returns null when no real criteria were given. */
+    private String buildWhere(MaximoWorkOrderCriteria c) {
+        if (c == null) return null;
         List<String> conds = new ArrayList<>();
         addStr(conds, "status", c.getStatus());
         addStr(conds, "worktype", c.getWorktype());
@@ -59,19 +87,21 @@ public class MaximoWorkOrderAdapter {
         addLike(conds, "description", c.getDescriptionContains());
         addLike(conds, "description_longdescription", c.getLongDescriptionContains());
         addLike(conds, "wonum", c.getWonumContains());
-        if (conds.isEmpty()) return List.of();
+        if (conds.isEmpty()) return null;
 
         String siteid = (c.getSiteid() != null && !c.getSiteid().isBlank())
                 ? c.getSiteid() : access.defaultSite();
         addStr(conds, "siteid", siteid);
+        return String.join(" and ", conds);
+    }
 
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("oslc.select", SELECT_FIELDS);
-        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
-        params.put("oslc.where", String.join(" and ", conds));
-        params.put("oslc.orderBy", "-spi:reportdate");
-        Map<String, Object> body = access.getMap(access.osUrl(OS), params);
-        return mapAll(members(body));
+    /** Set a WO's lead (assignee personid) via a MERGE field update at the WO root. */
+    public void setLead(String href, String personid) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (personid == null || personid.isBlank()) throw new IllegalArgumentException("personid is required");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spi:lead", personid.trim().toUpperCase());
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
     }
 
     private static void addStr(List<String> conds, String field, String value) {
@@ -292,6 +322,7 @@ public class MaximoWorkOrderAdapter {
         d.setLeadCraft(str(row, "lead"));
         d.setSupervisor(str(row, "supervisor"));
         d.setPriority(str(row, "wopriority"));
+        d.setPmnum(str(row, "pmnum"));
         return d;
     }
 

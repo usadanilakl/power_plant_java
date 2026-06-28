@@ -15,6 +15,9 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -72,6 +75,37 @@ public class MaximoAccessService {
             log.warn("[Maximo] GET {} failed: {} {}", uri, e.getStatusCode(), e.getResponseBodyAsString());
             throw e;
         }
+    }
+
+    /**
+     * GET every page of an OSLC collection by looping {@code pageno=1,2,…} and merging
+     * {@code rdfs:member} across pages, stopping when a page returns fewer than {@code pageSize}
+     * members (the last page) or {@code maxPages} is hit (safety valve).
+     *
+     * Needed because {@link #getMap} returns only the first page — a large query (e.g. a year of PM
+     * work orders across all leads) would otherwise be SILENTLY truncated. Pass a stable
+     * {@code -spi:field} orderBy in {@code params} so rows don't shuffle between page fetches.
+     */
+    public List<Map<String, Object>> getAllMembers(String url, Map<String, String> params,
+                                                   int pageSize, int maxPages) {
+        int ps = Math.max(1, pageSize);
+        int cap = Math.max(1, maxPages);
+        List<Map<String, Object>> all = new ArrayList<>();
+        for (int page = 1; page <= cap; page++) {
+            Map<String, String> p = new LinkedHashMap<>();
+            if (params != null) p.putAll(params);
+            p.put("oslc.pageSize", Integer.toString(ps));
+            p.put("pageno", Integer.toString(page));
+            List<Map<String, Object>> members =
+                    com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.members(getMap(url, p));
+            all.addAll(members);
+            if (members.size() < ps) break; // short/empty page => done
+            if (page == cap) {
+                log.warn("[Maximo] getAllMembers hit maxPages={} for {} (pageSize={}) — result may be truncated",
+                        cap, url, ps);
+            }
+        }
+        return all;
     }
 
     /** POST a JSON body, return body as Map. Sends "Properties: *" so Maximo returns the created/updated record. */
