@@ -72,6 +72,30 @@ public final class MaximoOslcMapper {
         }
     }
 
+    /** Split a free-text query into non-blank words (for AND/OR word-bucket search). */
+    public static List<String> words(String query) {
+        if (query == null || query.isBlank()) return Collections.emptyList();
+        List<String> out = new java.util.ArrayList<>();
+        for (String w : query.trim().split("\\s+")) {
+            if (!w.isBlank()) out.add(w);
+        }
+        return out;
+    }
+
+    /**
+     * Build an AND-chained LIKE clause for a word bucket on one field, e.g.
+     * {@code  and spi:location="%02%" and spi:location="%acc%"}. Returns "" for no words.
+     * Each word is wrapped in %...% and quote-escaped. Maximo LIKE is case-insensitive.
+     */
+    public static String andLike(String field, List<String> words) {
+        StringBuilder sb = new StringBuilder();
+        for (String w : words) {
+            sb.append(" and spi:").append(field).append("=\"%")
+              .append(w.replace("\"", "\\\"")).append("%\"");
+        }
+        return sb.toString();
+    }
+
     public static Boolean boolVal(Map<String, Object> record, String key) {
         Object v = record == null ? null : record.get("spi:" + key);
         if (v == null) v = record == null ? null : record.get(key);

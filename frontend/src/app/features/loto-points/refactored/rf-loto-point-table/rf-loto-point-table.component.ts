@@ -118,6 +118,15 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
 
   private _initialized = false;
 
+  /**
+   * Monotonic token for "replace" loads (initial / search / sort). Each such
+   * load captures the current value; its response is only applied if no newer
+   * load has started since. This drops stale in-flight responses that would
+   * otherwise be appended AFTER a clearLotoPoints() — the cause of previous /
+   * non-matching results lingering when the search term changes rapidly.
+   */
+  private loadSeq = 0;
+
   constructor() {
     // Initialize columns whenever fieldsToDisplay changes
     effect(() => {
@@ -159,12 +168,13 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    // Check if we have initial search criteria - if so, load with that criteria
-    // Otherwise, load initial data without filters
+    // Only the no-criteria case loads here. Criteria-driven loads are owned by
+    // the initialSearchCriteria effect (which runs once after init and on every
+    // change) — loading them here too would fire a duplicate concurrent fetch
+    // and render every row twice.
     const initialCriteria = this.initialSearchCriteria();
-    if (initialCriteria && (initialCriteria.query || (initialCriteria.filters && Object.keys(initialCriteria.filters).length > 0))) {
-      this.loadInitialDataWithCriteria(initialCriteria);
-    } else {
+    const hasCriteria = !!(initialCriteria && (initialCriteria.query || (initialCriteria.filters && Object.keys(initialCriteria.filters).length > 0)));
+    if (!hasCriteria) {
       this.loadInitialData();
     }
     this._initialized = true;
@@ -176,6 +186,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   private loadInitialDataWithCriteria(criteria: SearchCriteria): void {
     if (this.inputItems()) return;
 
+    const seq = ++this.loadSeq;
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
@@ -191,6 +202,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       .searchLotoPoints(searchCriteria, 50)
       .pipe(
         tap((response) => {
+          if (seq !== this.loadSeq) return; // a newer load superseded this one
           if (response.responseData?.content) {
             this.stateService.addLotoPoints(response.responseData.content);
             this.stateService.incrementPage();
@@ -214,6 +226,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   private loadInitialData(): void {
     if (this.inputItems()) return; // If items are provided, no need to load initial data.
 
+    const seq = ++this.loadSeq;
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
@@ -221,6 +234,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       .getLotoPoints(this.stateService.getCurrentPage(), 50)
       .pipe(
         tap((response) => {
+          if (seq !== this.loadSeq) return; // a newer load superseded this one
           if (
             response.responseData?.content &&
             response.responseData.content.length > 0
@@ -315,6 +329,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
 
   private searchInDatabase(criteria: SearchCriteria): void {
+    const seq = ++this.loadSeq;
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
@@ -337,6 +352,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       .searchLotoPoints(mergedCriteria, 50)
       .pipe(
         tap((response) => {
+          if (seq !== this.loadSeq) return; // a newer load superseded this one
           if (response.responseData?.content) {
             // Replace current items with search results
             this.stateService.addLotoPoints(response.responseData.content);
@@ -378,6 +394,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     this.stateService.resetPage();
     this.stateService.setSearchCriteria(searchCriteria);
 
+    const seq = ++this.loadSeq;
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
@@ -385,6 +402,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       .searchLotoPoints(searchCriteria, 50)
       .pipe(
         tap((response) => {
+          if (seq !== this.loadSeq) return; // a newer load superseded this one
           if (
             response.responseData?.content &&
             response.responseData.content.length > 0
@@ -409,6 +427,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     if (!this.loadMoreEnabled()) return;
     if (this.isLoading()) return;
 
+    const seq = ++this.loadSeq;
     this.isLoading.set(true);
 
     // Combine incoming criteria with existing state, preserving sort
@@ -429,6 +448,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       .searchLotoPoints(loadMoreCriteria, 50)
       .pipe(
         tap((response) => {
+          if (seq !== this.loadSeq) return; // a newer load (e.g. fresh search) superseded this page
           if (
             response.responseData?.content &&
             response.responseData.content.length > 0

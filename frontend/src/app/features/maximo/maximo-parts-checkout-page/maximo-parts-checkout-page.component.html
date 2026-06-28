@@ -1,0 +1,138 @@
+<app-main-layout header="Maximo — Parts Checkout">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <!-- Result banner -->
+      <div *ngIf="result() as r" class="result-banner">
+        ✓ Checked out on <strong>{{ r.wonum }}</strong> — status <strong>{{ r.status }}</strong>
+        <span *ngIf="r.actmatcost != null"> · material cost ${{ r.actmatcost | number:'1.2-2' }}</span>
+        <button class="link" (click)="startAnother()">Start another</button>
+      </div>
+
+      <p class="error" *ngIf="error()">{{ error() }}</p>
+
+      <div class="grid">
+        <!-- Left: WO details -->
+        <section class="card">
+          <h3>1 · Work order</h3>
+
+          <!-- Not a <label>: it contains the result list, and clicking a list item inside a label
+               forwards the click to the input instead of selecting. -->
+          <div class="fld">
+            <span class="fld-label">Location *</span>
+            <div class="selected" *ngIf="selectedLocation() as l; else locPicker">
+              <span><strong>{{ l.location }}</strong> — {{ l.description }}</span>
+              <button class="link" (click)="clearLocation()">change</button>
+            </div>
+            <ng-template #locPicker>
+              <div class="search-row">
+                <input [(ngModel)]="locQuery" (ngModelChange)="onLocQueryChange()" (keyup.enter)="searchLocations()"
+                       placeholder="type to search — words narrow (e.g. “02 acc”)" />
+                <span class="srch-status muted" *ngIf="locSearching()">…</span>
+              </div>
+              <ul class="pick-list" *ngIf="locResults().length">
+                <li *ngFor="let l of locResults()" (mousedown)="pickLocation(l)">
+                  <strong>{{ l.location }}</strong> — {{ l.description }}
+                </li>
+              </ul>
+              <div class="muted hint" *ngIf="locQuery.trim().length >= 2 && !locSearching() && locResults().length === 0">
+                No locations match “{{ locQuery }}”.
+              </div>
+            </ng-template>
+          </div>
+
+          <label class="fld">Description
+            <input [(ngModel)]="description" placeholder="what was done / why parts pulled" />
+          </label>
+
+          <label class="fld">Work type
+            <select [(ngModel)]="worktype">
+              <option *ngFor="let t of workTypes()" [value]="t.value">{{ t.label }}</option>
+            </select>
+          </label>
+        </section>
+
+        <!-- Right: parts -->
+        <section class="card">
+          <h3>2 · Parts</h3>
+          <div class="search-row">
+            <input [(ngModel)]="itemQuery" (ngModelChange)="onItemQueryChange()" (keyup.enter)="searchItems()"
+                   placeholder="type to search — words narrow (e.g. “gel desiccant”)" />
+            <span class="srch-status muted" *ngIf="itemSearching()">…</span>
+          </div>
+          <div class="muted hint" *ngIf="itemQuery.trim().length >= 2 && !itemSearching() && itemResults().length === 0">
+            No items match “{{ itemQuery }}”.
+          </div>
+
+          <table class="results" *ngIf="itemResults().length">
+            <thead><tr><th>Item</th><th>Description</th><th>Bal</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let it of itemResults()">
+                <td>{{ it.itemnum }}</td>
+                <td class="desc">{{ it.description }}</td>
+                <td class="num">{{ it.curbal ?? '—' }} {{ it.issueunit }}</td>
+                <td><button class="link" (click)="addLine(it)">add</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <!-- Chosen lines -->
+      <section class="card lines-card">
+        <h3>3 · Checkout lines <span class="muted" *ngIf="lines().length">({{ lines().length }})</span></h3>
+        <div *ngIf="!lines().length" class="muted">No parts added yet — search and click “add”.</div>
+        <table class="lines" *ngIf="lines().length">
+          <thead><tr><th>Item</th><th>Description</th><th>In stock</th><th>Qty</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let l of lines()" [class.warn]="overStock(l)">
+              <td>{{ l.itemnum }}</td>
+              <td class="desc">{{ l.description }}</td>
+              <td class="num">{{ l.curbal ?? '—' }} {{ l.issueunit }}</td>
+              <td class="num">
+                <input type="number" min="0.01" step="1" [(ngModel)]="l.quantity" />
+                <span class="warn-txt" *ngIf="overStock(l)">over stock</span>
+              </td>
+              <td><button class="link danger" (click)="removeLine(l.itemnum)">remove</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="actions">
+          <button class="primary" (click)="checkout()" [disabled]="!canSubmit">
+            {{ submitting() ? 'Checking out…' : 'Check Out Parts' }}
+          </button>
+          <span class="muted" *ngIf="!selectedLocation()">Pick a location to enable.</span>
+        </div>
+      </section>
+
+      <!-- Recent checkouts — open to return/issue parts (corrections) -->
+      <section class="card" *ngIf="recentCheckouts().length">
+        <h3>Recent checkouts <span class="muted">(this device — click to return / add parts)</span></h3>
+        <table class="recent">
+          <thead><tr><th>WO #</th><th>Status</th><th class="num">Matl $</th><th>Location</th><th>Description</th><th>When</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of recentCheckouts()" (click)="openRecent(r)" class="recent-row">
+              <td><strong>{{ r.wonum }}</strong></td>
+              <td>{{ r.status }}</td>
+              <td class="num">{{ r.actmatcost != null ? (r.actmatcost | number:'1.2-2') : '—' }}</td>
+              <td>{{ r.location }}</td>
+              <td class="desc">{{ r.description || '—' }}</td>
+              <td class="muted">{{ r.at | date:'MMM d, h:mm a' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <app-maximo-detail-dialog
+        *ngIf="selectedWo()"
+        [parent]="'wo'"
+        [wo]="selectedWo()"
+        (closed)="closeWoDialog()">
+      </app-maximo-detail-dialog>
+    </div>
+  </ng-container>
+</app-main-layout>

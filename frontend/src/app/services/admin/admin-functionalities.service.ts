@@ -3,6 +3,21 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
+import {
+  ConnectorMigrationReportDto,
+  ConnectorMigrationItemDto,
+} from '../../features/files/refactored/services/rf-file-connector-api.service';
+
+// Re-export so admin-files.component can import these from the same place
+// as its other migration types — keeps admin's import surface contained.
+export type { ConnectorMigrationReportDto, ConnectorMigrationItemDto };
+
+/** Result of {@link AdminFunctionalitiesService.resyncConnectorsToClients}. */
+export interface ConnectorResyncResultDto {
+  totalScanned: number;
+  emitted: number;
+  failed: number;
+}
 
 export interface FileIntegrityResult {
   filesScanned: number;
@@ -393,6 +408,41 @@ export class AdminFunctionalitiesService {
       `${environment.apiUrl}/files/migrate-systems-tags`,
       {},
       { params }
+    );
+  }
+
+  /**
+   * Convert legacy Equipment rows with `eqType.name='connector'` to the new
+   * {@code FileConnector} entity, then auto-pair connectors that point at
+   * each other (1:1 only). Idempotent — safe to re-run; soft-deleted Equipment
+   * is excluded automatically. See backend NgFileConnectorService for the 5
+   * safety gates (tag-length floor, no attached data, source-file required,
+   * candidate file lookup, already-migrated dedupe).
+   */
+  migrateConnectorsFromEquipment(
+    dryRun: boolean,
+    minTagLength: number = 5
+  ): Observable<SpringApiResponse<ConnectorMigrationReportDto>> {
+    const params = new HttpParams()
+      .set('dryRun', String(dryRun))
+      .set('minTagLength', String(minTagLength));
+    return this.http.post<SpringApiResponse<ConnectorMigrationReportDto>>(
+      `${environment.apiUrl}/file-connectors/migrate-from-equipment`,
+      {},
+      { params }
+    );
+  }
+
+  /**
+   * Re-emit creation events for every FileConnector so clients that missed
+   * the original migration broadcast (because the sync registry wasn't aware
+   * of FileConnector at the time) pick them up on next pull. Recovery
+   * action — safe to re-run; apply path is upsert-by-id.
+   */
+  resyncConnectorsToClients(): Observable<SpringApiResponse<ConnectorResyncResultDto>> {
+    return this.http.post<SpringApiResponse<ConnectorResyncResultDto>>(
+      `${environment.apiUrl}/file-connectors/resync-to-clients`,
+      {}
     );
   }
 

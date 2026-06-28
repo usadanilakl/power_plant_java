@@ -16,6 +16,12 @@
       <button [class.active]="tab() === 'attachments'" (click)="setTab('attachments')">
         Attachments <span class="muted" *ngIf="attachmentsLoaded()">({{ attachments().length }})</span>
       </button>
+      <button *ngIf="isWo" [class.active]="tab() === 'materials'" (click)="setTab('materials')">
+        Materials <span class="muted" *ngIf="materialsLoaded()">({{ materials().length }})</span>
+      </button>
+      <button *ngIf="canComplete" [class.active]="tab() === 'complete'" (click)="setTab('complete')">
+        Complete
+      </button>
     </nav>
 
     <div class="body">
@@ -81,6 +87,104 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Materials tab (WO only) — issues + returns, with a Return action to correct issues -->
+      <div *ngIf="tab() === 'materials' && !loading()">
+        <div *ngIf="materials().length === 0" class="muted">No material transactions on this work order.</div>
+        <table *ngIf="materials().length" class="mat-table">
+          <thead>
+            <tr><th>Item</th><th>Type</th><th class="num">Qty</th><th class="num">Line cost</th><th>Return</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of materials()" [class.is-return]="m.issuetype === 'RETURN'">
+              <td>{{ m.itemnum }}<span class="muted" *ngIf="m.description"> — {{ m.description }}</span></td>
+              <td>{{ m.issuetype }}</td>
+              <td class="num">{{ m.quantity }} {{ m.issueunit }}</td>
+              <td class="num">{{ m.linecost != null ? (m.linecost | number:'1.2-2') : '—' }}</td>
+              <td>
+                <ng-container *ngIf="m.issuetype === 'ISSUE'">
+                  <input type="number" min="0.01" step="1" [(ngModel)]="returnQty[m.matusetransid]" />
+                  <button class="link" (click)="returnLine(m)" [disabled]="returningId() != null">
+                    {{ returningId() === m.matusetransid ? '…' : 'Return' }}
+                  </button>
+                </ng-container>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="muted hint">
+          Returning adds a RETURN transaction (credits the line cost and restores stock). Issues can’t
+          be deleted, so a return is the correct way to fix an over- or wrong-issue.
+        </p>
+
+        <!-- Add a part (issue) — for a forgotten part or a swap -->
+        <div class="issue-add">
+          <h4>Add a part (issue)</h4>
+          <div class="search-row">
+            <input [(ngModel)]="mItemQuery" (ngModelChange)="onMItemQueryChange()"
+                   placeholder="type to search item # or description — words narrow" />
+            <span class="muted" *ngIf="mItemSearching()">…</span>
+          </div>
+          <table *ngIf="mItemResults().length" class="mat-table">
+            <thead><tr><th>Item</th><th>Description</th><th class="num">Bal</th><th>Issue</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let it of mItemResults()">
+                <td>{{ it.itemnum }}</td>
+                <td>{{ it.description }}</td>
+                <td class="num">{{ it.curbal ?? '—' }} {{ it.issueunit }}</td>
+                <td>
+                  <input #qty type="number" min="0.01" step="1" value="1" />
+                  <button class="link" (click)="issueItem(it, qty.valueAsNumber)" [disabled]="issuingItem() != null">
+                    {{ issuingItem() === it.itemnum ? '…' : 'Issue' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="muted hint" *ngIf="mItemQuery.trim().length >= 2 && !mItemSearching() && mItemResults().length === 0">
+            No items match “{{ mItemQuery }}”.
+          </div>
+        </div>
+      </div>
+
+      <!-- Complete tab (WO only) -->
+      <div *ngIf="tab() === 'complete'">
+        <div *ngIf="completeDone()" class="complete-done">
+          ✓ Work order completed. Status is now <strong>{{ wo?.status }}</strong>.
+        </div>
+
+        <ng-container *ngIf="!completeDone()">
+          <p class="muted">
+            Records actual labor and a log note, then completes the work order.
+          </p>
+          <fieldset class="complete-form" [disabled]="completing()">
+            <div class="row">
+              <label>Labor (who did the work)
+                <select [(ngModel)]="cLaborcode">
+                  <option value="">— select person —</option>
+                  <option *ngFor="let p of laborPeople()" [value]="p.personid">
+                    {{ p.name }} ({{ p.personid }})
+                  </option>
+                </select>
+              </label>
+              <label>Regular hours
+                <input type="number" min="0" step="0.25" [(ngModel)]="cHours" />
+              </label>
+            </div>
+            <label>Log summary
+              <input type="text" [(ngModel)]="cSummary" placeholder="e.g. C Crew Areas are clean." />
+            </label>
+            <label>Log details (optional)
+              <textarea rows="3" [(ngModel)]="cDetails"></textarea>
+            </label>
+            <div class="actions">
+              <button class="primary" (click)="submitComplete()" [disabled]="completing()">
+                {{ completing() ? 'Completing…' : 'Complete Work Order' }}
+              </button>
+            </div>
+          </fieldset>
+        </ng-container>
       </div>
     </div>
   </div>

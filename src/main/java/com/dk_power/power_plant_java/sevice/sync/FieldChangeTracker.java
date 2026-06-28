@@ -414,6 +414,50 @@ public class FieldChangeTracker {
         return performTrackEntityUpdate(originalValues, newEntity);
     }
 
+    /**
+     * Emit a single synthetic relationship FieldChange inside the caller's transaction.
+     * Use this when application code mutates a join table explicitly and Hibernate's
+     * entity listener is not a reliable source of a durable collection diff.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public <T extends BaseIdEntity> Optional<FieldChange> trackRelationshipUpdateInCurrentTx(
+            T entity,
+            String fieldName,
+            Object oldValue,
+            Object newValue,
+            String relationshipType) {
+        if (entity == null || entity.getId() == null) {
+            log.warn("Cannot track relationship update: entity or ID is null");
+            return Optional.empty();
+        }
+
+        if (syncContext.isSyncing()) {
+            log.debug("Skipping relationship update tracking - in sync context for {} #{} field {}",
+                entity.getClass().getSimpleName(), entity.getId(), fieldName);
+            return Optional.empty();
+        }
+
+        if (areValuesEqual(oldValue, newValue)) {
+            return Optional.empty();
+        }
+
+        String entityType = entity.getClass().getSimpleName();
+        FieldChange change = createFieldChange(
+            entityType,
+            entity.getId(),
+            fieldName,
+            oldValue,
+            newValue,
+            FieldChange.ChangeType.UPDATE,
+            relationshipType
+        );
+        FieldChange saved = fieldChangeRepository.save(change);
+        log.info("field_change.relationship_saved entity={}#{} field={} old={} new={} publishMode=afterCommit",
+            entityType, entity.getId(), fieldName, truncateValue(saved.getOldValue()), truncateValue(saved.getNewValue()));
+        publishOnCommit(List.of(saved), entityType, entity);
+        return Optional.of(saved);
+    }
+
     private <T extends BaseIdEntity> List<FieldChange> performTrackEntityUpdate(
             Map<String, Object> originalValues, T newEntity) {
         List<FieldChange> changes = new ArrayList<>();

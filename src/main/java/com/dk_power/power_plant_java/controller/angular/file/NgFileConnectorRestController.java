@@ -1,9 +1,11 @@
 package com.dk_power.power_plant_java.controller.angular.file;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.files.ConnectorMigrationItemDto;
 import com.dk_power.power_plant_java.dto.files.ConnectorMigrationReportDto;
 import com.dk_power.power_plant_java.dto.files.FileConnectorDto;
 import com.dk_power.power_plant_java.dto.files.FileConnectorIdDto;
+import com.dk_power.power_plant_java.dto.files.LegacyConnectorContextDto;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileConnectorService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -80,7 +82,7 @@ public class NgFileConnectorRestController {
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable Long id) {
         try {
-            connectorService.softDelete(id);
+            connectorService.removeConnector(id);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Connector deleted"));
         } catch (Exception e) {
             log.error("delete connector {} failed: {}", id, e.getMessage());
@@ -101,6 +103,23 @@ public class NgFileConnectorRestController {
             return ResponseEntity.ok(new NgApiResponse<>(null, "Connector counterpart linked"));
         } catch (Exception e) {
             log.error("link-counterpart {}/{} failed: {}", id, otherId, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Unpaired reciprocals for this connector — used by the info-window
+     * "Link counterpart" button. Returns connectors on the target file
+     * pointing back at the source that aren't already paired with someone.
+     * 0 → no candidate (button hidden), 1 → one-click link, N → user picks.
+     */
+    @GetMapping("/{id}/counterpart-candidates")
+    public ResponseEntity<NgApiResponse<List<FileConnectorDto>>> counterpartCandidates(@PathVariable Long id) {
+        try {
+            var list = connectorService.findCounterpartCandidates(id);
+            return ResponseEntity.ok(new NgApiResponse<>(list, list.size() + " candidate(s)"));
+        } catch (Exception e) {
+            log.error("counterpart-candidates for {} failed: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
@@ -151,6 +170,68 @@ public class NgFileConnectorRestController {
             return ResponseEntity.ok(new NgApiResponse<>(report, message));
         } catch (Exception e) {
             log.error("connector migration failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Context lookup for the inline edit-to-migrate dialog. Caller passes
+     * the legacy Equipment id (eqType='connector'); we return the equipment's
+     * tag, source file info, and the candidate target files. Frontend uses
+     * this to render quick-pick options inside the connector-edit dialog
+     * when the user opens Edit on a non-migrated legacy row.
+     */
+    @GetMapping("/legacy-context/{equipmentId}")
+    public ResponseEntity<NgApiResponse<LegacyConnectorContextDto>> legacyContext(@PathVariable Long equipmentId) {
+        try {
+            var ctx = connectorService.getLegacyConnectorContext(equipmentId);
+            return ResponseEntity.ok(new NgApiResponse<>(ctx,
+                ctx.candidates().size() + " candidate file(s) for equipment #" + equipmentId));
+        } catch (Exception e) {
+            log.error("legacy-context for {} failed: {}", equipmentId, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Inline migrate one legacy connector with a user-picked target. Used by
+     * the loto-builder Edit dialog when the user opens a legacy connector row.
+     * Returns the same audit-item shape the bulk migration uses so the
+     * frontend handles MIGRATED / SKIP_HAS_DATA / SKIP_ALREADY_MIGRATED /
+     * FAILED uniformly.
+     */
+    @PostMapping("/migrate-one/{equipmentId}")
+    public ResponseEntity<NgApiResponse<ConnectorMigrationItemDto>> migrateOne(
+            @PathVariable Long equipmentId,
+            @RequestParam Long targetFileId) {
+        try {
+            ConnectorMigrationItemDto item = connectorService.migrateOneWithTarget(equipmentId, targetFileId);
+            String msg = "MIGRATED".equals(item.action())
+                ? "Migrated to FileConnector #" + item.newConnectorId()
+                : item.action() + ": " + item.note();
+            return ResponseEntity.ok(new NgApiResponse<>(item, msg));
+        } catch (Exception e) {
+            log.error("migrate-one for eq={} target={} failed: {}", equipmentId, targetFileId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Recovery action: re-emit creation events for every existing
+     * FileConnector so clients that missed the original migration's sync
+     * events (because the sync registry didn't know about FileConnector at
+     * the time) pick them up on next pull. Safe to re-run — apply path is
+     * upsert-by-id, so duplicates are deduped client-side.
+     */
+    @PostMapping("/resync-to-clients")
+    public ResponseEntity<NgApiResponse<NgFileConnectorService.ResyncResultDto>> resyncToClients() {
+        try {
+            var result = connectorService.resyncAllToClients();
+            return ResponseEntity.ok(new NgApiResponse<>(result,
+                "Re-emitted " + result.emitted() + " of " + result.totalScanned() + " connector(s)"
+                    + (result.failed() > 0 ? " (" + result.failed() + " failed)" : "")));
+        } catch (Exception e) {
+            log.error("resync-to-clients failed: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }

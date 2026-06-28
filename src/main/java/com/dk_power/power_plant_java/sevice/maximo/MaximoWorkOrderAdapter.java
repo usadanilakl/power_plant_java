@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
+import com.dk_power.power_plant_java.dto.maximo.CompleteWorkOrderRequest;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,156 @@ public class MaximoWorkOrderAdapter {
                 .collect(java.util.stream.Collectors.joining(","));
         if (joined.isEmpty()) return;
         conds.add("spi:" + field + " in [" + joined + "]");
+    }
+
+    /**
+     * Record actual labor and/or a worklog note on a WO in a single AddChange call.
+     * Labor rows need only laborcode + regularhrs — Maximo derives craft, transtype, rate, dates.
+     * No-op if there's nothing to add. See memory reference_maximo_write_api for the wire contract.
+     */
+    public void reportActuals(String href, List<CompleteWorkOrderRequest.LaborEntry> labor,
+                              String summary, String details, String logtype) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        List<Map<String, Object>> labtrans = new ArrayList<>();
+        if (labor != null) {
+            for (CompleteWorkOrderRequest.LaborEntry e : labor) {
+                if (e == null || e.getLaborcode() == null || e.getLaborcode().isBlank()) continue;
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("spi:laborcode", e.getLaborcode().trim().toUpperCase());
+                if (e.getRegularhrs() != null) row.put("spi:regularhrs", e.getRegularhrs());
+                labtrans.add(row);
+            }
+        }
+        if (!labtrans.isEmpty()) payload.put("spi:labtrans", labtrans);
+
+        boolean hasSummary = summary != null && !summary.isBlank();
+        boolean hasDetails = details != null && !details.isBlank();
+        if (hasSummary || hasDetails) {
+            Map<String, Object> log = new LinkedHashMap<>();
+            // Summary is required for a meaningful worklog row; fall back to a stub if only details given.
+            log.put("spi:description", hasSummary ? summary.trim() : "Note");
+            if (hasDetails) log.put("spi:description_longdescription", details.trim());
+            log.put("spi:logtype", (logtype != null && !logtype.isBlank()) ? logtype.trim() : "CLIENTNOTE");
+            payload.put("spi:worklog", List.of(log));
+        }
+
+        if (payload.isEmpty()) return;
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /**
+     * Create a new work order. Like SR-create, every field must carry the {@code spi:} prefix or it
+     * is silently dropped. New WOs come back at status WAPPR. Returns the created WO (with href + wonum).
+     */
+    public MaximoWorkOrderDto create(String description, String location, String worktype, String siteid) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (description != null && !description.isBlank()) payload.put("spi:description", description.trim());
+        if (location != null && !location.isBlank()) payload.put("spi:location", location.trim());
+        if (worktype != null && !worktype.isBlank()) payload.put("spi:worktype", worktype.trim());
+        payload.put("spi:siteid", (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite());
+        Map<String, Object> created = access.postJson(access.osUrl(OS), null, payload);
+        log.info("[Maximo] Created WO wonum={}", str(created, "wonum"));
+        return map(created);
+    }
+
+    /**
+     * Issue material lines against a WO (matusetrans actuals). One additive MERGE call; positive
+     * quantity = issue. {@code storeroom} defaults to WAREHOUSE1 when blank. No-op if no lines.
+     */
+    public void addMaterials(String href, List<com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest.Line> lines,
+                             String storeroom) {
+        postMaterial(href, lines, storeroom, "ISSUE");
+    }
+
+    /**
+     * Return material to inventory (reverses an issue). Same matusetrans add as an issue but with
+     * {@code spi:issuetype="RETURN"}: a positive quantity is stored positive and the line cost is
+     * credited back. Verified against a real RETURN row on this instance. Works on a COMP WO.
+     */
+    public void returnMaterials(String href, List<com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest.Line> lines,
+                                String storeroom) {
+        postMaterial(href, lines, storeroom, "RETURN");
+    }
+
+    /**
+     * Add matusetrans rows of a given issue type. {@code storeroom} defaults to WAREHOUSE1 when blank;
+     * quantity is the positive absolute amount (Maximo applies the sign from issuetype). No-op if no lines.
+     */
+    private void postMaterial(String href, List<com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest.Line> lines,
+                              String storeroom, String issuetype) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (lines == null || lines.isEmpty()) return;
+        String store = (storeroom != null && !storeroom.isBlank())
+                ? storeroom : MaximoInventoryAdapter.DEFAULT_STOREROOM;
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (var line : lines) {
+            if (line == null || line.getItemnum() == null || line.getItemnum().isBlank()) continue;
+            double qty = line.getQuantity() == null ? 0 : line.getQuantity();
+            if (qty <= 0) continue;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("spi:itemnum", line.getItemnum().trim());
+            row.put("spi:quantity", qty);
+            row.put("spi:storeloc", store);
+            row.put("spi:issuetype", issuetype);
+            rows.add(row);
+        }
+        if (rows.isEmpty()) return;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spi:matusetrans", rows);
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /** Actual material rows (matusetrans) on a WO — issues and returns. */
+    public List<com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto> listMaterials(String href) {
+        if (href == null || href.isBlank()) return List.of();
+        Map<String, Object> body = access.getMap(
+                access.osUrl(OS) + "/" + href + "/uxshowactualmaterial", Map.of("oslc.select", "*"));
+        List<com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto> out = new ArrayList<>();
+        for (Map<String, Object> row : members(body)) {
+            var d = new com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto();
+            d.setMatusetransid(MaximoOslcMapper.longVal(row, "matusetransid"));
+            d.setItemnum(str(row, "itemnum"));
+            d.setDescription(str(row, "description"));
+            d.setIssuetype(str(row, "issuetype"));
+            d.setStoreloc(str(row, "storeloc"));
+            d.setIssueunit(str(row, "issueunit"));
+            String q = str(row, "quantity");
+            d.setQuantity(q == null ? null : safeDouble(q));
+            String lc = str(row, "linecost");
+            d.setLinecost(lc == null ? null : safeDouble(lc));
+            out.add(d);
+        }
+        return out;
+    }
+
+    private static Double safeDouble(String s) {
+        try { return Double.parseDouble(s); } catch (NumberFormatException e) { return null; }
+    }
+
+    /** Change WO status via the changeStatus action method (e.g. COMP). */
+    public void changeStatus(String href, String status, String memo) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (status == null || status.isBlank()) throw new IllegalArgumentException("status is required");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", status.trim().toUpperCase());
+        if (memo != null && !memo.isBlank()) body.put("memo", memo.trim());
+        access.invokeAction(access.osUrl(OS) + "/" + href, "wsmethod:changeStatus", body);
+    }
+
+    /**
+     * The full "complete work order" flow: record actuals (labor + worklog), then optionally
+     * change status (default COMP). Returns the refreshed WO. Labor codes must already be resolved.
+     */
+    public Optional<MaximoWorkOrderDto> completeWorkOrder(String href, CompleteWorkOrderRequest req) {
+        reportActuals(href, req.getLabor(), req.getSummary(), req.getDetails(), req.getLogtype());
+        boolean doComplete = req.getComplete() == null || req.getComplete();
+        if (doComplete) {
+            String status = (req.getStatus() != null && !req.getStatus().isBlank()) ? req.getStatus() : "COMP";
+            changeStatus(href, status, req.getMemo());
+        }
+        return findByHref(href);
     }
 
     public Optional<MaximoWorkOrderDto> findByHref(String href) {

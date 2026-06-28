@@ -2,7 +2,7 @@
 import { DestroyRef, inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { SynchronizationState } from '../models/table.types';
 import { TableDataService } from './table-data.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
 import { TableUtilService } from './table-util.service';
 import { isPlatformBrowser } from '@angular/common';
 
@@ -14,6 +14,14 @@ export class TableSyncService {
   private platformId = inject(PLATFORM_ID);
 
   private resizeObserver?: ResizeObserver;
+
+  // Tracked so horizontal-scroll-sync setup can be torn down and re-run cleanly
+  // when the table is re-mounted on a long-lived service instance.
+  private scrolledIndexSub?: Subscription;
+  private viewportScrollEl?: HTMLElement;
+  private viewportScrollHandler?: () => void;
+  private headerScrollEl?: HTMLElement;
+  private headerScrollHandler?: () => void;
 
   private syncState: SynchronizationState = {
     headerTable: null,
@@ -27,10 +35,14 @@ export class TableSyncService {
   setupHorizontalScrollSync(): void {
     if (!this.dataService.viewport()) return;
 
-    this.dataService
+    // Idempotent: a re-mounted table calls this again on the same instance.
+    // Clear the previous subscription/listeners before wiring new ones so they
+    // don't accumulate (and keep firing against detached DOM) on every reopen.
+    this.teardownScrollSync();
+
+    this.scrolledIndexSub = this.dataService
       .viewport()!
-      .scrolledIndexChange.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
+      .scrolledIndexChange.subscribe(() => {
         this.syncHeaderScroll();
         this.checkForLoadMore();
       });
@@ -40,9 +52,8 @@ export class TableSyncService {
       this.dataService.viewport()!.elementRef.nativeElement;
     const scrollHandler = () => this.syncHeaderScroll();
     viewportElement.addEventListener('scroll', scrollHandler);
-    this.destroyRef.onDestroy(() => {
-      viewportElement.removeEventListener('scroll', scrollHandler);
-    });
+    this.viewportScrollEl = viewportElement;
+    this.viewportScrollHandler = scrollHandler;
 
     // Header is the visible horizontal scrollbar (the body's is hidden), so the
     // user can scroll columns even when there are no rows. Sync header → body.
@@ -57,10 +68,26 @@ export class TableSyncService {
         this.isSyncingScroll = false;
       };
       headerElement.addEventListener('scroll', headerScrollHandler);
-      this.destroyRef.onDestroy(() => {
-        headerElement.removeEventListener('scroll', headerScrollHandler);
-      });
+      this.headerScrollEl = headerElement;
+      this.headerScrollHandler = headerScrollHandler;
     }
+
+    this.destroyRef.onDestroy(() => this.teardownScrollSync());
+  }
+
+  private teardownScrollSync(): void {
+    this.scrolledIndexSub?.unsubscribe();
+    this.scrolledIndexSub = undefined;
+    if (this.viewportScrollEl && this.viewportScrollHandler) {
+      this.viewportScrollEl.removeEventListener('scroll', this.viewportScrollHandler);
+    }
+    this.viewportScrollEl = undefined;
+    this.viewportScrollHandler = undefined;
+    if (this.headerScrollEl && this.headerScrollHandler) {
+      this.headerScrollEl.removeEventListener('scroll', this.headerScrollHandler);
+    }
+    this.headerScrollEl = undefined;
+    this.headerScrollHandler = undefined;
   }
 
   private syncHeaderScroll(): void {
@@ -201,6 +228,9 @@ export class TableSyncService {
   }
   setupResizeObserver(): void {
     if (!isPlatformBrowser(this.platformId)) return;
+    // Idempotent: drop any observer from a previous table mount on this (possibly
+    // longer-lived) service instance, so reopens don't stack ResizeObservers.
+    this.resizeObserver?.disconnect();
     this.resizeObserver = new ResizeObserver(() => {
       if (this.dataService.viewport()) {
         this.dataService.viewport()!.checkViewportSize();

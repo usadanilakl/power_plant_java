@@ -1,0 +1,83 @@
+@if (isVisible()) {
+  <div class="connector-info-window">
+    <div class="info-header">
+      <h3 class="info-title">Off-page Connector</h3>
+      <button class="close-button" type="button" (click)="close()" title="Close">×</button>
+    </div>
+
+    <div class="info-content">
+      <div class="info-row full-width">
+        <span class="info-label">Target</span>
+        <span class="info-value">{{ displayLabel() }}</span>
+      </div>
+
+      @if (targetFileNumber()) {
+        <div class="info-row">
+          <span class="info-label">File #</span>
+          <span class="info-value">{{ targetFileNumber() }}</span>
+        </div>
+      }
+
+      @if (targetFileName() && targetFileName() !== displayLabel()) {
+        <div class="info-row full-width">
+          <span class="info-label">Name</span>
+          <span class="info-value">{{ targetFileName() }}</span>
+        </div>
+      }
+
+      @if (hasCounterpart()) {
+        <div class="info-row">
+          <span class="info-label">Linked</span>
+          <span class="info-value paired">Bidirectional pair</span>
+        </div>
+      } @else {
+        <div class="info-row">
+          <span class="info-label">Linked</span>
+          <span class="info-value unpaired">One-way only</span>
+        </div>
+        @if (canLink()) {
+          <div class="link-row">
+            <button class="link-button" type="button"
+                    [disabled]="linking()"
+                    (click)="onLink()"
+                    [title]="'Link to reciprocal connector #' + candidateCounterparts()[0].id">
+              {{ linking() ? 'Linking…' : 'Link counterpart (' + candidateCounterparts().length + ' found)' }}
+            </button>
+            @if (linkError()) {
+              <span class="link-error">{{ linkError() }}</span>
+            }
+          </div>
+        }
+      }
+
+      <!-- Lazy preview block — only fetched when the user expands it. -->
+      <div class="preview-block">
+        <button
+          class="preview-toggle"
+          type="button"
+          (click)="togglePreview()"
+          [attr.aria-expanded]="previewExpanded()">
+          {{ previewExpanded() ? 'Hide Preview' : 'Show Preview' }}
+        </button>
+        @if (previewExpanded()) {
+          @if (previewLoading()) {
+            <div class="preview-state">Loading preview…</div>
+          } @else if (previewError()) {
+            <div class="preview-state preview-error">{{ previewError() }}</div>
+          } @else if (previewSrc()) {
+            <div class="preview-thumb">
+              <img [src]="previewSrc()" [alt]="targetFileName() || ''" />
+            </div>
+          } @else {
+            <div class="preview-state">No previewable image on this file.</div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="info-footer">
+      <button class="action-button" type="button" (click)="onEdit()">Edit</button>
+      <button class="action-button primary" type="button" (click)="onNavigate()">Navigate →</button>
+    </div>
+  </div>
+}

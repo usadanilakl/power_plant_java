@@ -350,24 +350,33 @@ export class DrawingService {
     );
 
     const symbol = this.symbolState.symbol;
-    const aspectRatio = symbol.originalHeight / symbol.originalWidth;
 
-    // Calculate the drag distance (use the larger of x or y movement to determine size)
+    // Calculate the drag distance
     const dragX = Math.abs(currentX - this.symbolState.startPos.x);
     const dragY = Math.abs(currentY - this.symbolState.startPos.y);
 
-    // Use the larger dimension to determine width, then calculate height from aspect ratio
     let width: number;
     let height: number;
 
-    if (dragX / aspectRatio > dragY) {
-      // Width-dominant drag
+    if (symbol.allowFreeAspect) {
+      // Free-form: width and height follow the cursor independently. SVG
+      // is stretched to fit. Used by symbols where the user sizes the box
+      // to fit a label area (off-page connector), not to convey geometry.
       width = dragX;
-      height = width * aspectRatio;
-    } else {
-      // Height-dominant drag
       height = dragY;
-      width = height / aspectRatio;
+    } else {
+      // Aspect-locked: use the larger dimension to determine width, then
+      // calculate height from the symbol's native aspect ratio.
+      const aspectRatio = symbol.originalHeight / symbol.originalWidth;
+      if (dragX / aspectRatio > dragY) {
+        // Width-dominant drag
+        width = dragX;
+        height = width * aspectRatio;
+      } else {
+        // Height-dominant drag
+        height = dragY;
+        width = height / aspectRatio;
+      }
     }
 
     this.symbolState.currentWidth = width;
@@ -405,21 +414,27 @@ export class DrawingService {
     );
 
     const symbol = this.symbolState.symbol;
-    const aspectRatio = symbol.originalHeight / symbol.originalWidth;
 
-    // Calculate final dimensions
+    // Calculate final dimensions — same free-aspect / locked-aspect branch
+    // as updateDrawingSymbol so the committed shape matches the preview.
     const dragX = Math.abs(currentX - this.symbolState.startPos.x);
     const dragY = Math.abs(currentY - this.symbolState.startPos.y);
 
     let width: number;
     let height: number;
 
-    if (dragX / aspectRatio > dragY) {
+    if (symbol.allowFreeAspect) {
       width = dragX;
-      height = width * aspectRatio;
-    } else {
       height = dragY;
-      width = height / aspectRatio;
+    } else {
+      const aspectRatio = symbol.originalHeight / symbol.originalWidth;
+      if (dragX / aspectRatio > dragY) {
+        width = dragX;
+        height = width * aspectRatio;
+      } else {
+        height = dragY;
+        width = height / aspectRatio;
+      }
     }
 
     const x = this.symbolState.startPos.x;

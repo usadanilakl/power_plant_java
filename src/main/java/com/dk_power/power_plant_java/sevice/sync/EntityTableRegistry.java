@@ -27,6 +27,7 @@ public class EntityTableRegistry {
 
         // Files
         Map.entry("FileObject", "file_object"),
+        Map.entry("FileConnector", "file_connector"),
         Map.entry("EngraverTemplate", "engraver_template"),
 
         // Equipment
@@ -130,6 +131,7 @@ public class EntityTableRegistry {
         "ShiftDay",
         "ContractorChangeReport",
         "FileObject",
+        "FileConnector",
         "EngraverTemplate",
         // Tier 2: Equipment & spatial (depend on Value/Category)
         "Equipment",

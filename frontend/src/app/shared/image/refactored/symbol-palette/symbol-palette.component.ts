@@ -22,7 +22,11 @@ export class SymbolPaletteComponent {
     { id: 'pump', label: 'Pumps' },
     { id: 'vessel', label: 'Vessels' },
     { id: 'instrument', label: 'Instruments' },
-    { id: 'electrical', label: 'Electrical' }
+    { id: 'electrical', label: 'Electrical' },
+    // 'connector' is the off-page-reference category — picking the symbol
+    // routes the drawn shape into the FileConnector save flow instead of
+    // creating an Equipment row.
+    { id: 'connector', label: 'Connectors' }
   ];
 
   getSymbolsByCategory(category: string): PIDSymbol[] {

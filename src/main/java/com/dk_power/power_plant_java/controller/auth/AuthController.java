@@ -217,6 +217,7 @@ public class AuthController {
         profile.put("isActive", user.getIsActive());
         profile.put("lastLoginDate", user.getLastLoginDate() != null ? user.getLastLoginDate().toString() : null);
         profile.put("windowsUsername", user.getWindowsUsername());
+        profile.put("maximoPersonid", user.getMaximoPersonid());
         // PIN / signing fields — surfaced so the profile UI can render the
         // signing-PIN management section without a second round-trip.
         profile.put("signingInitials", user.getSigningInitials());

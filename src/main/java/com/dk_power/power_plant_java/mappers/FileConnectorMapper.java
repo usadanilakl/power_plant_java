@@ -66,6 +66,7 @@ public class FileConnectorMapper implements BaseMapper {
         dto.setSvgPath(entity.getSvgPath());
         dto.setCounterpartConnectorId(entity.getCounterpartConnectorId());
         dto.setLabel(entity.getLabel());
+        dto.setShowLabel(entity.getShowLabel());
         return dto;
     }
 
@@ -105,6 +106,9 @@ public class FileConnectorMapper implements BaseMapper {
         if (dto.getSymbolId() != null) entity.setSymbolId(dto.getSymbolId());
         if (dto.getSvgPath() != null) entity.setSvgPath(dto.getSvgPath());
         if (dto.getLabel() != null) entity.setLabel(dto.getLabel());
+        // showLabel uses null-as-skip too — boolean wrapper means callers can
+        // send true OR false to toggle, and omit (null) to leave unchanged.
+        if (dto.getShowLabel() != null) entity.setShowLabel(dto.getShowLabel());
 
         // counterpartConnectorId: intentionally NOT patched here. Use the
         // link/unlink endpoints — they enforce the bidirectional invariants

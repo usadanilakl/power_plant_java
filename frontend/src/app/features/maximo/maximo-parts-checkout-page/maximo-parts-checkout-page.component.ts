@@ -1,0 +1,257 @@
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
+import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import {
+  MaximoInventoryItem,
+  MaximoLocation,
+  MaximoWorkOrder,
+  MaximoWorkType,
+  PartsCheckoutResult
+} from '../../../models/maximo/maximo.models';
+
+/** A checkout the user submitted on this device — kept in localStorage so it survives reloads. */
+interface RecentCheckout {
+  wonum: string;
+  href: string;
+  status: string;
+  actmatcost: number | null;
+  location: string;
+  description: string;
+  at: string; // ISO timestamp
+}
+
+interface CheckoutLine {
+  itemnum: string;
+  description: string;
+  issueunit: string;
+  curbal: number | null;
+  quantity: number;
+}
+
+/**
+ * Standalone "Parts Checkout" page. Drives the Maximo flow end-to-end:
+ *   create WO → set location/description/worktype → approve → issue material lines → complete.
+ * One server call (POST /ng/maximo/parts-checkout) does the whole flow.
+ */
+@Component({
+  selector: 'app-maximo-parts-checkout-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
+  templateUrl: './maximo-parts-checkout-page.component.html',
+  styleUrl: './maximo-parts-checkout-page.component.css'
+})
+export class MaximoPartsCheckoutPageComponent {
+  private api = inject(MaximoApiService);
+
+  // form state
+  description = '';
+  worktype = 'CM';
+  workTypes = signal<MaximoWorkType[]>([]);
+
+  // location picker
+  locQuery = '';
+  locResults = signal<MaximoLocation[]>([]);
+  locSearching = signal(false);
+  selectedLocation = signal<MaximoLocation | null>(null);
+
+  // inventory picker
+  itemQuery = '';
+  itemResults = signal<MaximoInventoryItem[]>([]);
+  itemSearching = signal(false);
+
+  // chosen lines
+  lines = signal<CheckoutLine[]>([]);
+
+  // submit
+  submitting = signal(false);
+  error = signal<string | null>(null);
+  result = signal<PartsCheckoutResult | null>(null);
+
+  // recent checkouts (this device) + the WO dialog opened from them
+  recentCheckouts = signal<RecentCheckout[]>([]);
+  selectedWo = signal<MaximoWorkOrder | null>(null);
+  private static readonly RECENT_KEY = 'maximo.recentCheckouts';
+  private static readonly RECENT_MAX = 15;
+
+  // debounce timers for search-as-you-type
+  private locTimer: ReturnType<typeof setTimeout> | null = null;
+  private itemTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly DEBOUNCE_MS = 300;
+  private static readonly MIN_CHARS = 2;
+
+  constructor() {
+    this.loadWorkTypes();
+    this.loadRecent();
+  }
+
+  // ── Recent checkouts (localStorage) ────────────────────────────────────────
+  private loadRecent() {
+    try {
+      const raw = localStorage.getItem(MaximoPartsCheckoutPageComponent.RECENT_KEY);
+      if (raw) this.recentCheckouts.set(JSON.parse(raw));
+    } catch { /* ignore corrupt/blocked storage */ }
+  }
+
+  private pushRecent(rec: RecentCheckout) {
+    const list = [rec, ...this.recentCheckouts().filter(r => r.href !== rec.href)]
+      .slice(0, MaximoPartsCheckoutPageComponent.RECENT_MAX);
+    this.recentCheckouts.set(list);
+    try {
+      localStorage.setItem(MaximoPartsCheckoutPageComponent.RECENT_KEY, JSON.stringify(list));
+    } catch { /* ignore */ }
+  }
+
+  /** Open a recent WO in the detail dialog (Materials tab supports return + issue). */
+  async openRecent(rec: RecentCheckout) {
+    try {
+      const wo = await firstValueFrom(this.api.getWorkOrder(rec.href));
+      this.selectedWo.set(wo ?? this.minimalWo(rec));
+    } catch {
+      this.selectedWo.set(this.minimalWo(rec));
+    }
+  }
+
+  closeWoDialog() { this.selectedWo.set(null); }
+
+  private minimalWo(rec: RecentCheckout): MaximoWorkOrder {
+    return {
+      href: rec.href, wonum: rec.wonum, description: rec.description, longDescription: '',
+      status: rec.status, worktype: '', assetnum: '', location: rec.location, siteid: '',
+      reportdate: '', targetStart: '', schedstart: '', schedfinish: '', leadCraft: '',
+      supervisor: '', priority: ''
+    };
+  }
+
+  /** Debounced location search — fires as the user types (≥2 chars). */
+  onLocQueryChange() {
+    if (this.locTimer) clearTimeout(this.locTimer);
+    const q = this.locQuery.trim();
+    if (q.length < MaximoPartsCheckoutPageComponent.MIN_CHARS) { this.locResults.set([]); return; }
+    this.locTimer = setTimeout(() => this.searchLocations(),
+      MaximoPartsCheckoutPageComponent.DEBOUNCE_MS);
+  }
+
+  /** Debounced inventory search — fires as the user types (≥2 chars). */
+  onItemQueryChange() {
+    if (this.itemTimer) clearTimeout(this.itemTimer);
+    const q = this.itemQuery.trim();
+    if (q.length < MaximoPartsCheckoutPageComponent.MIN_CHARS) { this.itemResults.set([]); return; }
+    this.itemTimer = setTimeout(() => this.searchItems(),
+      MaximoPartsCheckoutPageComponent.DEBOUNCE_MS);
+  }
+
+  private async loadWorkTypes() {
+    try {
+      const types = await firstValueFrom(this.api.getWorkTypes());
+      this.workTypes.set(types);
+      if (types.length && !types.some(t => t.value === this.worktype)) this.worktype = types[0].value;
+    } catch {
+      // non-fatal — the select just stays with the default CM
+    }
+  }
+
+  // ── Location ──────────────────────────────────────────────────────────────
+  async searchLocations() {
+    this.locSearching.set(true);
+    this.error.set(null);
+    try {
+      this.locResults.set(await firstValueFrom(this.api.searchLocations(this.locQuery.trim())));
+    } catch (e: any) {
+      this.error.set(this.msg(e));
+    } finally {
+      this.locSearching.set(false);
+    }
+  }
+
+  pickLocation(l: MaximoLocation) {
+    if (this.locTimer) { clearTimeout(this.locTimer); this.locTimer = null; }
+    this.selectedLocation.set(l);
+    this.locResults.set([]);
+    this.locQuery = '';
+  }
+
+  clearLocation() { this.selectedLocation.set(null); }
+
+  // ── Inventory ─────────────────────────────────────────────────────────────
+  async searchItems() {
+    this.itemSearching.set(true);
+    this.error.set(null);
+    try {
+      this.itemResults.set(await firstValueFrom(this.api.searchInventory(this.itemQuery.trim())));
+    } catch (e: any) {
+      this.error.set(this.msg(e));
+    } finally {
+      this.itemSearching.set(false);
+    }
+  }
+
+  addLine(item: MaximoInventoryItem) {
+    if (this.lines().some(l => l.itemnum === item.itemnum)) return; // already added
+    this.lines.update(ls => [...ls, {
+      itemnum: item.itemnum,
+      description: item.description,
+      issueunit: item.issueunit,
+      curbal: item.curbal,
+      quantity: 1
+    }]);
+  }
+
+  removeLine(itemnum: string) {
+    this.lines.update(ls => ls.filter(l => l.itemnum !== itemnum));
+  }
+
+  /** True when a line asks for more than is in stock (warn but don't block — Maximo is the authority). */
+  overStock(l: CheckoutLine): boolean {
+    return l.curbal != null && l.quantity > l.curbal;
+  }
+
+  get canSubmit(): boolean {
+    return !!this.selectedLocation()
+      && this.lines().length > 0
+      && this.lines().every(l => l.quantity > 0)
+      && !this.submitting();
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  async checkout() {
+    const loc = this.selectedLocation();
+    if (!loc || !this.canSubmit) return;
+    this.submitting.set(true);
+    this.error.set(null);
+    this.result.set(null);
+    try {
+      const res = await firstValueFrom(this.api.checkoutParts({
+        description: this.description.trim() || undefined,
+        location: loc.location,
+        worktype: this.worktype || undefined,
+        lines: this.lines().map(l => ({ itemnum: l.itemnum, quantity: l.quantity }))
+      }));
+      this.result.set(res);
+      if (res) {
+        this.pushRecent({
+          wonum: res.wonum, href: res.href, status: res.status, actmatcost: res.actmatcost,
+          location: loc.location, description: this.description.trim(), at: new Date().toISOString()
+        });
+        // reset the form for the next checkout, keep the result banner
+        this.lines.set([]);
+        this.description = '';
+        this.selectedLocation.set(null);
+      }
+    } catch (e: any) {
+      this.error.set(this.msg(e));
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  startAnother() { this.result.set(null); }
+
+  private msg(e: any): string {
+    return e?.error?.message ?? e?.message ?? String(e);
+  }
+}

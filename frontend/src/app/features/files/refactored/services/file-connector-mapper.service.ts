@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { FileConnectorShape, RfShape } from '../../../../shared/image/refactored/models/fr-shape.model';
 import { PIDSymbolsService, OFF_PAGE_CONNECTOR_SYMBOL_ID } from '../../../../shared/image/refactored/services/pid-symbols.service';
 import { FileConnectorDto } from '../../../../models/file/file-connector.model';
+import { ConnectorNavigationService } from './connector-navigation.service';
 
 /**
  * Maps {@link FileConnectorDto} server payloads to {@link FileConnectorShape}
@@ -17,12 +18,31 @@ import { FileConnectorDto } from '../../../../models/file/file-connector.model';
 @Injectable({ providedIn: 'root' })
 export class FileConnectorMapperService {
   private pidSymbolsService = inject(PIDSymbolsService);
+  private navigationService = inject(ConnectorNavigationService);
 
-  /** Map an array of connectors to canvas shapes, filtering out unparseable rows. */
+  /**
+   * Map an array of connectors to canvas shapes, filtering out unparseable rows.
+   * Marks {@code isSelected=true} on the shape whose id matches the navigation
+   * service's pending highlight (set by the click handler before navigating).
+   *
+   * <p>Reads the signal (creates a reactive dependency so the parent
+   * {@code computed} re-runs when a new highlight is armed). Does NOT clear
+   * the signal here — Angular forbids signal WRITES inside {@code computed}
+   * and the previous version's clear-on-match leaked into a runtime error
+   * that made the canvas non-interactive. The signal auto-clears via a
+   * timeout scheduled by the click handler that armed it.
+   */
   mapAllToRfShapes(connectors: FileConnectorDto[]): RfShape[] {
-    return connectors
+    const shapes = connectors
       .map(c => this.mapToRfShape(c))
       .filter((s): s is FileConnectorShape => s !== null);
+    const pendingId = this.navigationService.pendingHighlightConnectorId();
+    if (pendingId != null) {
+      for (const s of shapes) {
+        if (s.id === pendingId) s.isSelected = true;
+      }
+    }
+    return shapes;
   }
 
   mapToRfShape(connector: FileConnectorDto): FileConnectorShape | null {
@@ -79,6 +99,9 @@ export class FileConnectorMapperService {
       targetFileId: connector.targetFileId ?? 0,
       label,
       counterpartConnectorId: connector.counterpartConnectorId,
+      // Coerce nullable backend Boolean to a primitive for the renderer —
+      // null/undefined means "legacy or never opted in" → don't draw label.
+      showLabel: connector.showLabel === true,
     };
     return shape;
   }

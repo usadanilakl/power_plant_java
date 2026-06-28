@@ -6,22 +6,32 @@
     <div class="mx-page">
 
       <section class="bar">
+        <label class="status-pick">Status
+          <select [(ngModel)]="status" (ngModelChange)="loaded() && load()">
+            <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
+          </select>
+        </label>
         <button (click)="load()" [disabled]="loading()">
           {{ loading() ? 'Loading…' : (loaded() ? 'Refresh' : 'Load') }}
         </button>
         <span class="muted">
-          All Maximo work orders assigned to any local user with the
+          Maximo work orders led by any local user with the
           <code>LEAD_OPERATOR</code> role.
         </span>
         <span class="muted" *ngIf="lastLoaded() as t">· last loaded {{ t.toLocaleTimeString() }}</span>
         <span *ngIf="error()" class="error">{{ error() }}</span>
       </section>
 
+      <div *ngIf="truncated()" class="trunc-warn">
+        ⚠ Showing the first {{ list().length }} — results were capped and some work orders are hidden.
+        Narrow by status to see everything.
+      </div>
+
       <div class="results-header">
         <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>
       </div>
 
-      <div *ngIf="!loaded()" class="muted empty-msg">Click Load to fetch.</div>
+      <div *ngIf="!loaded()" class="muted empty-msg">{{ loading() ? 'Loading…' : 'Loading work orders…' }}</div>
 
       <app-maximo-table *ngIf="loaded()"
         [columns]="columns"
@@ -34,6 +44,7 @@
         *ngIf="selectedWo()"
         [parent]="'wo'"
         [wo]="selectedWo()"
+        (completed)="load()"
         (closed)="closeDetail()">
       </app-maximo-detail-dialog>
     </div>

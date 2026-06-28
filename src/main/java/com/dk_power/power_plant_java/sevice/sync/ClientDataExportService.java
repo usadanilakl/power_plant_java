@@ -42,7 +42,7 @@ public class ClientDataExportService {
      * Order matters for foreign key dependencies.
      */
     private static final List<String> ENTITY_TYPES = List.of(
-        "Category", "Value", "Comment", "User", "FileObject", "EngraverTemplate",
+        "Category", "Value", "Comment", "User", "FileObject", "FileConnector", "EngraverTemplate",
         "Equipment", "LotoPoint", "Loto", "LotoStandard", "LotoSnapshot",
         "LotoBox", "Lock", "ZeroEnergy", "HeatTrace", "Highlight",
         "ElectricalPanel", "EqBreaker", "HtPanel", "HtBreaker",
@@ -586,6 +586,7 @@ public class ClientDataExportService {
             case "Category" -> "category";
             case "Value" -> "val_table";
             case "FileObject" -> "file_object";
+            case "FileConnector" -> "file_connector";
             case "EngraverTemplate" -> "engraver_template";
             case "Equipment" -> "equipment";
             case "LotoPoint" -> "loto_point";

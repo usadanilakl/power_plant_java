@@ -36,4 +36,8 @@ public class FileConnectorDto extends BaseDto {
 
     /** Optional user override. Frontend computes a default from targetFileNumber when null. */
     private String label;
+
+    /** Whether the viewer should draw the label inside the connector shape.
+     *  Nullable Boolean — null treated as false (default for legacy rows). */
+    private Boolean showLabel;
 }

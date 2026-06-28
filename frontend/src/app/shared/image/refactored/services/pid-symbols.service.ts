@@ -10,6 +10,15 @@ export interface PIDSymbol {
   height: number;
   originalWidth: number;
   originalHeight: number;
+  /**
+   * When true, drag-to-draw is free-form (width and height follow the cursor
+   * independently) and the symbol's SVG is stretched to fit. Default behavior
+   * (omitted/false) locks the draw to the symbol's native aspect ratio, which
+   * is correct for valves/pumps/instruments where shape conveys meaning. The
+   * off-page connector overrides this because the user typically sizes it to
+   * fit a label area on the diagram, not to convey symbolic geometry.
+   */
+  allowFreeAspect?: boolean;
 }
 
 /**
@@ -38,7 +47,11 @@ export class PIDSymbolsService {
       width: 36,
       height: 24,
       originalWidth: 36,
-      originalHeight: 24
+      originalHeight: 24,
+      // Connectors mark off-page references — the user sizes the box to fit
+      // a label area on the P&ID, so the SVG stretches rather than locking
+      // to the source pentagon's proportions.
+      allowFreeAspect: true
     },
     {
       id: 'manual-valve',

@@ -283,9 +283,16 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         for (Long equipmentId : toRemove) {
             Equipment equipment = equipmentService.getEntityById(equipmentId);
             if (equipment != null) {
+                Set<Long> beforeLotoPointIds = lotoPointIds(equipment);
                 // Equipment is the owning side, so remove from its collection
                 equipment.getLotoPoints().remove(lotoPoint);
                 equipmentService.save(equipment);
+                fieldChangeTracker.trackRelationshipUpdateInCurrentTx(
+                        equipment,
+                        "lotoPoints",
+                        beforeLotoPointIds,
+                        lotoPointIds(equipment),
+                        "ManyToMany");
                 System.out.println("Removed LotoPoint from Equipment ID: " + equipmentId);
             }
         }
@@ -294,10 +301,17 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         for (Long equipmentId : toAdd) {
             Equipment equipment = equipmentService.getEntityById(equipmentId);
             if (equipment != null) {
+                Set<Long> beforeLotoPointIds = lotoPointIds(equipment);
                 // Equipment is the owning side with @JoinTable
                 // Only need to update this side for persistence
                 equipment.addLotoPoint(lotoPoint);
                 equipmentService.save(equipment);
+                fieldChangeTracker.trackRelationshipUpdateInCurrentTx(
+                        equipment,
+                        "lotoPoints",
+                        beforeLotoPointIds,
+                        lotoPointIds(equipment),
+                        "ManyToMany");
                 System.out.println("Added LotoPoint to Equipment ID: " + equipmentId);
             }
         }
@@ -324,6 +338,17 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         }
 
         return result;
+    }
+
+    private Set<Long> lotoPointIds(Equipment equipment) {
+        if (equipment == null || equipment.getLotoPoints() == null) {
+            return new LinkedHashSet<>();
+        }
+        return equipment.getLotoPoints().stream()
+                .filter(Objects::nonNull)
+                .map(LotoPoint::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     public LotoPoint copyPointFromOtherUnit(Long id) {

@@ -83,6 +83,7 @@ public class ServiceFacade {
             @Lazy ValueService valueService,
             // Files
             @Lazy FileService fileService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.file.NgFileConnectorService ngFileConnectorService,
             @Lazy NgEngraverTemplateService ngEngraverTemplateService,
             // Equipment
             @Lazy EquipmentService equipmentService,
@@ -156,6 +157,7 @@ public class ServiceFacade {
         serviceMap.put(Value.class.getSimpleName(), valueService);
         // Files
         serviceMap.put(FileObject.class.getSimpleName(), fileService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.files.FileConnector.class.getSimpleName(), ngFileConnectorService);
         serviceMap.put(EngraverTemplate.class.getSimpleName(), ngEngraverTemplateService);
         // Equipment
         serviceMap.put(Equipment.class.getSimpleName(), equipmentService);

@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import {
   AdminFunctionalitiesService,
   BackfillHashesResult,
+  ConnectorMigrationReportDto,
+  ConnectorResyncResultDto,
   FileIntegrityResult,
   FixExtensionsResult,
   SystemsTagsMigrationResult
@@ -356,6 +358,165 @@ import {
           </div>
         </div>
       </div>
+
+      <!-- 1e. Migrate connector Equipment → FileConnector entity -->
+      <div class="admin-section">
+        <h3>Migrate Connector Equipment → <code>FileConnector</code></h3>
+        <div class="sub-section">
+          <p class="description">
+            Walks every <strong>Equipment</strong> with <code>eqType.name='connector'</code>
+            (off-page references — those arrows pointing to other P&amp;ID files) and converts
+            each to the new <code>FileConnector</code> entity. Five safety gates:
+            (1) tagNumber length ≥ <em>min tag length</em>, (2) no attached lotoPoints/files,
+            (3) source file present, (4) exactly one FileObject matches the tag as a substring of
+            its fileNumber, (5) not already migrated. Skipped rows stay as Equipment and are
+            listed in the report for manual review. A second pass auto-pairs connectors that
+            point at each other ONLY when exactly 1:1 — N↔M cases are reported as
+            "unpaired (multiple candidates)" for manual pairing via the link-counterpart endpoint.
+            <strong>Idempotent</strong> — safe to re-run. <strong>Run <em>Dry Run</em> first</strong>
+            to preview impact (counts include would-be pairings).
+          </p>
+
+          <div class="param-row">
+            <label>
+              Min tag length:
+              <input
+                type="number"
+                min="3"
+                max="20"
+                [(ngModel)]="connectorMinTagLength"
+                [disabled]="loading.migrateConnectors"
+                class="param-input"
+                title="Tag-length floor for the substring-match gate. Below this length the match is too generic (e.g. 'PD-03' could match many files) so rows are skipped to manual review. Clamped to ≥3."/>
+            </label>
+          </div>
+
+          <div class="button-group">
+            <button
+              (click)="migrateConnectorsFromEquipment(true)"
+              [disabled]="loading.migrateConnectors"
+              class="toggle-btn">
+              {{ loading.migrateConnectors ? 'Working…' : 'Dry Run' }}
+            </button>
+            <button
+              (click)="migrateConnectorsFromEquipment(false)"
+              [disabled]="loading.migrateConnectors"
+              class="action-btn">
+              {{ loading.migrateConnectors ? 'Migrating…' : 'Run Migration' }}
+            </button>
+          </div>
+
+          <div class="error" *ngIf="errors.migrateConnectors">{{ errors.migrateConnectors }}</div>
+
+          <div class="result" *ngIf="migrateConnectorsResult">
+            <div class="result-summary">
+              <span class="badge"
+                    [class.info]="migrateConnectorsResult.dryRun"
+                    [class.success]="!migrateConnectorsResult.dryRun">
+                {{ migrateConnectorsResult.dryRun ? 'Dry run' : 'Applied' }}
+              </span>
+              <span class="badge">Connector Equipment scanned: {{ migrateConnectorsResult.totalConnectorEquipment }}</span>
+              <span class="badge success">
+                {{ migrateConnectorsResult.dryRun ? 'Would migrate' : 'Migrated' }}:
+                {{ migrateConnectorsResult.migrated }}
+              </span>
+              <span class="badge success">
+                {{ migrateConnectorsResult.dryRun ? 'Would pair' : 'Paired' }}:
+                {{ migrateConnectorsResult.paired }}
+              </span>
+              <span class="badge warning" *ngIf="migrateConnectorsResult.unpairedMultipleCandidates > 0">
+                Unpaired (ambiguous pairs): {{ migrateConnectorsResult.unpairedMultipleCandidates }}
+              </span>
+            </div>
+
+            <!-- Skip breakdown — each bucket links back to the gate that fired. -->
+            <h4 *ngIf="migrateConnectorsResult.skippedShortTag
+                      + migrateConnectorsResult.skippedHasData
+                      + migrateConnectorsResult.skippedNoSourceFile
+                      + migrateConnectorsResult.skippedNoMatch
+                      + migrateConnectorsResult.skippedAmbiguous
+                      + migrateConnectorsResult.skippedAlreadyMigrated > 0">
+              Skipped breakdown
+            </h4>
+            <div class="result-summary">
+              <span class="badge warning" *ngIf="migrateConnectorsResult.skippedShortTag > 0">
+                Short tag: {{ migrateConnectorsResult.skippedShortTag }}
+              </span>
+              <span class="badge warning" *ngIf="migrateConnectorsResult.skippedHasData > 0">
+                Has attached data: {{ migrateConnectorsResult.skippedHasData }}
+              </span>
+              <span class="badge warning" *ngIf="migrateConnectorsResult.skippedNoSourceFile > 0">
+                No source file: {{ migrateConnectorsResult.skippedNoSourceFile }}
+              </span>
+              <span class="badge warning" *ngIf="migrateConnectorsResult.skippedNoMatch > 0">
+                No file match: {{ migrateConnectorsResult.skippedNoMatch }}
+              </span>
+              <span class="badge warning" *ngIf="migrateConnectorsResult.skippedAmbiguous > 0">
+                Ambiguous (multiple file matches): {{ migrateConnectorsResult.skippedAmbiguous }}
+              </span>
+              <span class="badge" *ngIf="migrateConnectorsResult.skippedAlreadyMigrated > 0">
+                Already migrated: {{ migrateConnectorsResult.skippedAlreadyMigrated }}
+              </span>
+            </div>
+
+            <!-- Per-item audit — collapsed by default since it can be long. -->
+            <div class="name-list" *ngIf="migrateConnectorsResult.items?.length">
+              <h4>
+                <button class="toggle-btn" (click)="migrateConnectorsShowItems = !migrateConnectorsShowItems">
+                  {{ migrateConnectorsShowItems ? 'Hide' : 'Show' }} per-item audit log
+                </button>
+                <span class="count">{{ migrateConnectorsResult.items.length }}</span>
+              </h4>
+              <ul *ngIf="migrateConnectorsShowItems" class="audit-list">
+                <li *ngFor="let item of migrateConnectorsResult.items">
+                  <span class="badge"
+                        [class.success]="item.action === 'MIGRATED' || item.action === 'DRY_RUN'"
+                        [class.warning]="item.action !== 'MIGRATED' && item.action !== 'DRY_RUN' && item.action !== 'SKIP_ALREADY_MIGRATED'">
+                    {{ item.action }}
+                  </span>
+                  <code>Eq #{{ item.equipmentId }}</code>
+                  <span *ngIf="item.tagNumber">tag=<code>{{ item.tagNumber }}</code></span>
+                  <span *ngIf="item.newConnectorId">→ Connector #{{ item.newConnectorId }}</span>
+                  <span class="note">{{ item.note }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Recovery action: re-emit creation events for existing connectors.
+               Separate from the migration buttons because it doesn't read/write
+               Equipment; it walks FileConnectors and re-fires the sync listener
+               for each one. Use when client state diverged from hub state. -->
+          <div class="sub-action">
+            <h4>Re-sync connectors to clients</h4>
+            <p class="description">
+              Re-emits creation events for every existing <code>FileConnector</code> so clients
+              that missed the original migration broadcast (e.g. because their sync token had
+              advanced past those events while the sync registry didn't yet know the entity type)
+              pick them up on next pull. <strong>Safe to re-run</strong> — apply path is
+              upsert-by-id so duplicates are deduped client-side.
+            </p>
+            <div class="button-group">
+              <button
+                (click)="resyncConnectorsToClients()"
+                [disabled]="loading.resyncConnectors"
+                class="action-btn">
+                {{ loading.resyncConnectors ? 'Re-emitting…' : 'Re-sync to Clients' }}
+              </button>
+            </div>
+            <div class="error" *ngIf="errors.resyncConnectors">{{ errors.resyncConnectors }}</div>
+            <div class="result" *ngIf="resyncConnectorsResult">
+              <div class="result-summary">
+                <span class="badge success">Re-emitted: {{ resyncConnectorsResult.emitted }}</span>
+                <span class="badge">Scanned: {{ resyncConnectorsResult.totalScanned }}</span>
+                <span class="badge warning" *ngIf="resyncConnectorsResult.failed > 0">
+                  Failed: {{ resyncConnectorsResult.failed }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -384,6 +545,22 @@ import {
     .name-list h4 .count { margin-left: 6px; padding: 1px 8px; border-radius: 10px; background: #e9ecef; color: #666; font-size: 11px; font-weight: 500; }
     .name-list ul { margin: 0; padding-left: 18px; max-height: 220px; overflow-y: auto; font-size: 12px; color: #333; font-family: monospace; }
     .name-list li { padding: 1px 0; }
+    /* Sub-action block inside an admin section — used for the connector
+       re-sync recovery action so it visually sits as a follow-up to the main
+       migration controls without being a whole new section. */
+    .sub-action { margin-top: 18px; padding-top: 14px; border-top: 1px dashed #d0d0d0; }
+    .sub-action h4 { margin: 0 0 8px 0; font-size: 14px; color: #333; }
+    /* Connector migration: numeric input for the min-tag-length parameter. */
+    .param-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 13px; color: #555; }
+    .param-row label { display: inline-flex; align-items: center; gap: 8px; }
+    .param-input { width: 64px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; text-align: right; }
+    /* Per-item audit log — denser layout than the default name-list since
+       each row has multiple inline elements (badge + id + tag + note). */
+    .audit-list { list-style: none; padding-left: 0; max-height: 360px; font-family: inherit; font-size: 12px; }
+    .audit-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #f0f0f0; }
+    .audit-list li:last-child { border-bottom: 0; }
+    .audit-list li .note { color: #666; font-size: 11px; flex: 1 1 100%; padding-left: 4px; }
+    .audit-list code { background: #f4f4f4; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
     .details-section { margin-top: 15px; }
     .details-list { margin-top: 10px; max-height: 400px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -415,17 +592,27 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
     fileIntegrity: false,
     fixExtensions: false,
     backfillHashes: false,
-    migrate: false
+    migrate: false,
+    migrateConnectors: false,
+    resyncConnectors: false
   };
 
   errors = {
     fileIntegrity: '',
     fixExtensions: '',
     backfillHashes: '',
-    migrate: ''
+    migrate: '',
+    migrateConnectors: '',
+    resyncConnectors: ''
   };
 
   migrateResult: SystemsTagsMigrationResult | null = null;
+  migrateConnectorsResult: ConnectorMigrationReportDto | null = null;
+  resyncConnectorsResult: ConnectorResyncResultDto | null = null;
+  /** Per-Equipment audit log expanded/collapsed in the result panel. */
+  migrateConnectorsShowItems = false;
+  /** Configurable tag-length floor for the connector migration's auto-match gate. */
+  connectorMinTagLength = 5;
 
   fileIntegrityResult: FileIntegrityResult | null = null;
   fixExtensionsResult: FixExtensionsResult | null = null;
@@ -588,6 +775,71 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
       error: (error) => {
         this.errors.migrate = error.error?.message || error.message || 'Migration failed';
         this.loading.migrate = false;
+      }
+    });
+  }
+
+  /**
+   * Convert legacy Equipment rows with eqType.name='connector' to first-class
+   * FileConnector entities, then auto-pair connectors that point at each other
+   * (1:1 only). Idempotent — safe to re-run. Equipment rows that fail one of
+   * the safety gates (tag too short, attached data, no source file, no/many
+   * candidate files) are left as Equipment and listed in the per-item audit
+   * log for manual review.
+   */
+  /**
+   * Recovery action: re-emits creation events for every existing FileConnector
+   * so clients that missed the original migration's sync events pick them up.
+   * Use after fixing the sync registry or any time client-side state diverged
+   * from hub-side state for connectors. Safe to re-run.
+   */
+  resyncConnectorsToClients(): void {
+    if (this.loading.resyncConnectors) return;
+    if (!confirm(
+        'Re-emit creation events for every FileConnector on the hub. Clients with a sync ' +
+        'token past the original migration timestamp will receive these as fresh creation ' +
+        'events on their next pull and apply them through the now-registered FileConnector ' +
+        'service. Safe to re-run — apply path is upsert-by-id. Continue?')) {
+      return;
+    }
+    this.loading.resyncConnectors = true;
+    this.errors.resyncConnectors = '';
+    this.resyncConnectorsResult = null;
+    this.adminService.resyncConnectorsToClients().subscribe({
+      next: (response) => {
+        this.resyncConnectorsResult = response.responseData;
+        this.loading.resyncConnectors = false;
+      },
+      error: (error) => {
+        this.errors.resyncConnectors = error.error?.message || error.message || 'Re-sync failed';
+        this.loading.resyncConnectors = false;
+      }
+    });
+  }
+
+  migrateConnectorsFromEquipment(dryRun: boolean): void {
+    if (this.loading.migrateConnectors) return;
+    if (!dryRun && !confirm(
+        'Apply connector migration: walks every Equipment with eqType.name=\'connector\' and ' +
+        'converts each to a FileConnector when 5 safety gates pass (tag-length floor, no ' +
+        'attached lotoPoints/files, source file present, exactly one matching target file, ' +
+        'not already migrated). Skipped rows stay as Equipment and show in the report. ' +
+        'A second pass pairs connectors that point at each other ONLY when exactly 1:1 ' +
+        '(multi-on-either-side cases need manual pairing). Continue?')) {
+      return;
+    }
+    this.loading.migrateConnectors = true;
+    this.errors.migrateConnectors = '';
+    this.migrateConnectorsResult = null;
+    const minTag = Math.max(3, Number(this.connectorMinTagLength) || 5);
+    this.adminService.migrateConnectorsFromEquipment(dryRun, minTag).subscribe({
+      next: (response) => {
+        this.migrateConnectorsResult = response.responseData;
+        this.loading.migrateConnectors = false;
+      },
+      error: (error) => {
+        this.errors.migrateConnectors = error.error?.message || error.message || 'Connector migration failed';
+        this.loading.migrateConnectors = false;
       }
     });
   }

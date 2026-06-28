@@ -97,6 +97,9 @@ export interface FileConnectorShape extends RfBaseShape {
   label: string;
   /** Optional reciprocal connector — used to highlight back-pointer on arrival. */
   counterpartConnectorId: number | null;
+  /** Whether the canvas should draw the {@link label} inside the shape.
+   *  Defaults to false on the renderer — opt-in via the connector edit dialog. */
+  showLabel: boolean;
 }
 
 export type RfShape =

@@ -727,6 +727,16 @@ export class InteractiveImageComponent {
     if (config.canSelectShapes) {
       this.handleShapeSelection(event);
     }
+
+    // Emit the shape-double-click event for parent component to handle.
+    // Mirrors onLeftClick's emission pattern — required by features that
+    // distinguish single-click (e.g. select-only) from double-click (e.g.
+    // navigate to a connector's target file).
+    const clickedShapeId = this.isOverShape(event);
+    if (clickedShapeId !== null) {
+      const shape = this.shapeManager.getShapeById(clickedShapeId);
+      if (shape) this.shapeDoubleClicked.emit(shape);
+    }
   }
 
   // ==================================================Panning Methods==================================================
@@ -1491,7 +1501,8 @@ export class InteractiveImageComponent {
       if (
         shape.type === 'rectangle' ||
         shape.type === 'image' ||
-        shape.type === 'svg-symbol'
+        shape.type === 'svg-symbol' ||
+        shape.type === 'file-connector'
       ) {
         // Use normalized bounds for hover detection
         const bounds = this.getNormalizedShapeBounds(shape);
@@ -1869,7 +1880,7 @@ export class InteractiveImageComponent {
 
     let newShape: RfShape;
 
-    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol' || shape.type === 'file-connector') {
       newShape = {
         ...shape,
         id: this.shapeManager.getNextShapeId(),
@@ -1918,7 +1929,7 @@ export class InteractiveImageComponent {
     this.clipboard.forEach((clipboardShape) => {
       let newShape: RfShape;
 
-      if (clipboardShape.type === 'rectangle' || clipboardShape.type === 'image' || clipboardShape.type === 'svg-symbol') {
+      if (clipboardShape.type === 'rectangle' || clipboardShape.type === 'image' || clipboardShape.type === 'svg-symbol' || clipboardShape.type === 'file-connector') {
         newShape = {
           ...clipboardShape,
           id: this.shapeManager.getNextShapeId(),
@@ -1979,7 +1990,8 @@ export class InteractiveImageComponent {
         shape &&
         (shape.type === 'rectangle' ||
           shape.type === 'image' ||
-          shape.type === 'svg-symbol')
+          shape.type === 'svg-symbol' ||
+          shape.type === 'file-connector')
       ) {
         this.initialShapePositions.set(shapeId, { x: shape.x, y: shape.y });
       }
@@ -2009,7 +2021,7 @@ export class InteractiveImageComponent {
       const initialPos = this.initialShapePositions.get(shapeId);
       const shape = this.shapeManager.getShapeById(shapeId);
 
-      if (initialPos && shape && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
+      if (initialPos && shape && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol' || shape.type === 'file-connector')) {
         let newX = initialPos.x + deltaX;
         let newY = initialPos.y + deltaY;
 
@@ -2053,7 +2065,8 @@ export class InteractiveImageComponent {
       !shape ||
       (shape.type !== 'rectangle' &&
         shape.type !== 'image' &&
-        shape.type !== 'svg-symbol')
+        shape.type !== 'svg-symbol' &&
+        shape.type !== 'file-connector')
     ) {
       return;
     }
@@ -2228,7 +2241,8 @@ export class InteractiveImageComponent {
       !shape ||
       (shape.type !== 'rectangle' &&
         shape.type !== 'image' &&
-        shape.type !== 'svg-symbol')
+        shape.type !== 'svg-symbol' &&
+        shape.type !== 'file-connector')
     ) {
       return null;
     }
@@ -2356,7 +2370,8 @@ export class InteractiveImageComponent {
       !shape ||
       (shape.type !== 'rectangle' &&
         shape.type !== 'image' &&
-        shape.type !== 'svg-symbol')
+        shape.type !== 'svg-symbol' &&
+        shape.type !== 'file-connector')
     ) {
       return false;
     }
@@ -2422,7 +2437,8 @@ export class InteractiveImageComponent {
       !shape ||
       (shape.type !== 'rectangle' &&
         shape.type !== 'image' &&
-        shape.type !== 'svg-symbol')
+        shape.type !== 'svg-symbol' &&
+        shape.type !== 'file-connector')
     ) {
       return;
     }

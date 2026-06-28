@@ -4,12 +4,19 @@ import com.dk_power.power_plant_java.dto.files.ConnectorMigrationItemDto;
 import com.dk_power.power_plant_java.dto.files.ConnectorMigrationReportDto;
 import com.dk_power.power_plant_java.dto.files.FileConnectorDto;
 import com.dk_power.power_plant_java.dto.files.FileConnectorIdDto;
+import com.dk_power.power_plant_java.dto.files.LegacyConnectorContextDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileConnector;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileConnectorMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.file.FileConnectorRepo;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
+import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -46,13 +53,32 @@ import java.util.Set;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class NgFileConnectorService {
+public class NgFileConnectorService
+        implements NgCrudService<FileConnector, FileConnectorDto, FileConnectorRepo, FileConnectorMapper> {
     private static final Logger log = LoggerFactory.getLogger(NgFileConnectorService.class);
 
     private final FileConnectorRepo connectorRepo;
     private final FileConnectorMapper connectorMapper;
     private final EquipmentRepo equipmentRepo;
+    private final FileRepo fileRepo;
     private final ConnectorMigrationItemRunner itemRunner;
+    private final SessionFactory sessionFactory;
+    private final EntityManager entityManager;
+    private final FieldChangeTracker fieldChangeTracker;
+
+    // ------------------------------------------------------------------------
+    // NgCrudService accessor overrides — wires this service into the sync
+    // infrastructure (ServiceFacade.getService("FileConnector") and friends).
+    // Without these, outbound FileChangeListener emissions would have no
+    // service to apply incoming changes on the receiving side.
+    // ------------------------------------------------------------------------
+    @Override public FileConnectorRepo getRepo() { return connectorRepo; }
+    @Override public FileConnectorMapper getMapper() { return connectorMapper; }
+    @Override public SessionFactory getSessionFactory() { return sessionFactory; }
+    @Override public FileConnectorDto getDto() { return new FileConnectorDto(); }
+    @Override public FileConnector getEntity() { return new FileConnector(); }
+    @Override public EntityManager getEntityManager() { return entityManager; }
+    @Override public Class<FileConnector> getEntityClass() { return FileConnector.class; }
 
     /**
      * Minimum tagNumber length to consider a substring match "specific enough"
@@ -81,6 +107,12 @@ public class NgFileConnectorService {
      * Persist a new or updated connector. Validates that BOTH source and
      * target files are resolved (the mapper sets null when caller's id is
      * unknown — we refuse to save an orphan connector).
+     *
+     * <p>After the save, attempts to auto-pair: if this connector is unpaired
+     * AND exactly ONE unpaired connector on the target file points back at
+     * the source file, links them as bidirectional counterparts. Same 1:1
+     * rule the bulk migration uses — multi-on-either-side is left for
+     * manual pairing via the Link button in the info window.
      */
     public FileConnectorDto save(FileConnectorIdDto dto) {
         FileConnector entity = connectorMapper.convertIdDtoToEntity(dto);
@@ -88,14 +120,79 @@ public class NgFileConnectorService {
             throw new RuntimeException("FileConnector requires both sourceFile and targetFile to resolve");
         }
         FileConnector saved = connectorRepo.save(entity);
-        return connectorMapper.convertToDto(saved);
+        tryAutoPair(saved);
+        // Re-read after the (possible) pair update so the returned DTO carries
+        // the now-set counterpartConnectorId for the caller's local state.
+        FileConnector refreshed = connectorRepo.findById(saved.getId()).orElse(saved);
+        return connectorMapper.convertToDto(refreshed);
+    }
+
+    /**
+     * Link this connector to its 1:1 reciprocal on the target file if one
+     * exists and neither side is already paired. Quiet: any other shape
+     * (no reciprocal, multiple reciprocals, this side already paired) leaves
+     * the row untouched — manual pairing via {@link #linkCounterparts} is
+     * still available for those cases. Failure here doesn't throw (caller
+     * already committed the save) — auto-pair is best-effort UX, not contract.
+     */
+    private void tryAutoPair(FileConnector saved) {
+        try {
+            if (saved.getCounterpartConnectorId() != null) return; // already paired
+            if (saved.getSourceFile() == null || saved.getTargetFile() == null) return;
+            Long srcId = saved.getSourceFile().getId();
+            Long tgtId = saved.getTargetFile().getId();
+
+            // Reciprocals: connectors on the target file pointing back at the
+            // source file. Filter out deleted + already-paired (paired ones
+            // have a known counterpart — don't poach them).
+            List<FileConnector> reciprocals = connectorRepo.findBySourceAndTarget(tgtId, srcId).stream()
+                .filter(c -> !c.getId().equals(saved.getId()))
+                .filter(c -> c.getCounterpartConnectorId() == null)
+                .toList();
+
+            if (reciprocals.size() != 1) {
+                // 0 — no peer yet; 2+ — ambiguous, user must pick manually.
+                return;
+            }
+            FileConnector peer = reciprocals.get(0);
+            saved.setCounterpartConnectorId(peer.getId());
+            peer.setCounterpartConnectorId(saved.getId());
+            connectorRepo.saveAndFlush(saved);
+            connectorRepo.saveAndFlush(peer);
+            log.info("auto-paired FileConnectors #{} ↔ #{} on save", saved.getId(), peer.getId());
+        } catch (RuntimeException ex) {
+            log.warn("auto-pair on save failed for FileConnector #{}: {}", saved.getId(), ex.getMessage());
+        }
+    }
+
+    /**
+     * Find the unpaired reciprocals for a given connector — used by the info
+     * window's "Link counterpart" button. Returns connectors on the target
+     * file pointing back at the source, filtered to those without a current
+     * pairing. Empty list when no candidate exists; size>1 means the user
+     * needs to disambiguate (frontend shows a picker).
+     */
+    @Transactional(readOnly = true)
+    public List<FileConnectorDto> findCounterpartCandidates(Long connectorId) {
+        FileConnector c = connectorRepo.findById(connectorId).orElseThrow(
+            () -> new RuntimeException("FileConnector not found: " + connectorId));
+        if (c.getSourceFile() == null || c.getTargetFile() == null) return List.of();
+        return connectorRepo.findBySourceAndTarget(c.getTargetFile().getId(), c.getSourceFile().getId()).stream()
+            .filter(other -> !other.getId().equals(connectorId))
+            .filter(other -> other.getCounterpartConnectorId() == null)
+            .map(connectorMapper::convertToDto)
+            .toList();
     }
 
     /**
      * Soft-delete by id. ALSO clears the surviving counterpart's
      * counterpartConnectorId so it doesn't reference a deleted row.
+     * Named distinctly from the inherited {@code NgCrudService.softDelete} so
+     * the interface contract (which returns the soft-deleted entity) stays
+     * honored — connector deletion needs side effects (clear peer's pointer)
+     * that the generic implementation can't know about.
      */
-    public void softDelete(Long id) {
+    public void removeConnector(Long id) {
         FileConnector connector = connectorRepo.findById(id).orElse(null);
         if (connector == null) return;
 
@@ -360,5 +457,140 @@ public class NgFileConnectorService {
         }
 
         return new int[]{ paired, ambiguousPairKeys.size() };
+    }
+
+    // ========================================================================
+    // Re-sync existing FileConnectors to clients
+    // ========================================================================
+    //
+    // Recovery for the "migration ran before sync infrastructure was aware of
+    // FileConnector" gap: original creation events fired through
+    // FieldChangeEntityListener, but clients couldn't apply them — at the
+    // time, ServiceFacade.getService("FileConnector") returned null. The
+    // events were silently dropped on the receiving side; the client's sync
+    // token then advanced past those FieldChange records so a normal delta
+    // sync won't replay them.
+    //
+    // This method calls FieldChangeTracker.trackEntityCreation directly for
+    // each connector, generating FRESH FieldChange records with current
+    // timestamps. Clients see them as new creation events on next pull and
+    // apply them through the now-registered FileConnector service.
+
+    /**
+     * Re-emit creation events for every active FileConnector so clients with
+     * a sync token past the original migration timestamp pick them up. Safe
+     * to re-run — the apply path on clients is upsert-by-id so duplicates
+     * are de-duped automatically.
+     */
+    public ResyncResultDto resyncAllToClients() {
+        List<FileConnector> all = connectorRepo.findAll().stream()
+            .filter(c -> c.getDeleted() == null || !c.getDeleted())
+            .toList();
+        int emitted = 0;
+        int failed = 0;
+        for (FileConnector c : all) {
+            try {
+                fieldChangeTracker.trackEntityCreation(c);
+                emitted++;
+            } catch (RuntimeException ex) {
+                log.warn("resync-to-clients: failed for FileConnector #{}: {}", c.getId(), ex.getMessage());
+                failed++;
+            }
+        }
+        log.info("resync-to-clients: re-emitted {} FileConnector creation events ({} failed of {} total)",
+            emitted, failed, all.size());
+        return new ResyncResultDto(all.size(), emitted, failed);
+    }
+
+    public record ResyncResultDto(int totalScanned, int emitted, int failed) {}
+
+    // ========================================================================
+    // Inline edit-to-migrate for legacy connectors
+    // ========================================================================
+    //
+    // The bulk migration handles the easy cases (1 candidate, tag long enough,
+    // no data attached). The leftovers are SKIP_AMBIGUOUS, SKIP_NO_MATCH, and
+    // SKIP_SHORT_TAG rows — they can't be auto-migrated, but the user knows
+    // exactly where each one points. These two methods support the loto-builder
+    // edit dialog: load the row's context + candidate files, then commit a
+    // migration with the user's chosen target. Bypasses the matching heuristic.
+
+    /**
+     * Load context for the dialog. Returns the equipment's tag, source-file
+     * info, and the list of files whose fileNumber contains the tag (the
+     * SAME candidates the auto-migration would consider). Frontend renders
+     * these as quick-pick options; if none fit, the user can pick from the
+     * full file list via the standard picker.
+     *
+     * <p>Read-only — no transaction needs to commit anything.
+     */
+    @Transactional(readOnly = true)
+    public LegacyConnectorContextDto getLegacyConnectorContext(Long equipmentId) {
+        Equipment eq = equipmentRepo.findById(equipmentId)
+            .orElseThrow(() -> new RuntimeException("Equipment not found: " + equipmentId));
+
+        String tag = eq.getTagNumber() == null ? "" : eq.getTagNumber().trim();
+        FileObject source = eq.getMainFile();
+        Long srcId = source != null ? source.getId() : null;
+        String srcNumber = source != null ? source.getFileNumber() : null;
+        String srcName = source != null ? source.getName() : null;
+
+        // Reason hint — surface why auto-migration skipped (so the dialog
+        // can say "tag too short" up-front instead of just showing 0 candidates).
+        String skipReason = null;
+        if (tag.length() < DEFAULT_MIN_TAG_LENGTH) {
+            skipReason = "tag length " + tag.length() + " is below the auto-match floor ("
+                       + DEFAULT_MIN_TAG_LENGTH + ") — pick the target manually";
+        }
+
+        List<LegacyConnectorContextDto.CandidateFile> candidates = tag.isEmpty()
+            ? List.of()
+            : fileRepo.findByFileNumberContaining(tag).stream()
+                // Don't suggest the source file as its own target.
+                .filter(f -> srcId == null || !srcId.equals(f.getId()))
+                .map(f -> new LegacyConnectorContextDto.CandidateFile(
+                    f.getId(), f.getFileNumber(), f.getName(), f.getFileLink()))
+                .toList();
+
+        return new LegacyConnectorContextDto(
+            equipmentId, tag, srcId, srcNumber, srcName, candidates, skipReason);
+    }
+
+    /**
+     * Commit the inline migration with the user-picked target. Delegates to
+     * {@link ConnectorMigrationItemRunner#processOneWithTarget} — same audit
+     * shape as the bulk migration so the frontend handles success/skip/fail
+     * uniformly. After a successful migration, re-emits the creation event
+     * so any other connected client picks up the new FileConnector on its
+     * next sync pull.
+     *
+     * <p>{@code NOT_SUPPORTED} suspends this service's ambient tx so the
+     * runner's {@code REQUIRES_NEW} is the only commit boundary — same
+     * pattern as the bulk migration.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public ConnectorMigrationItemDto migrateOneWithTarget(Long equipmentId, Long targetFileId) {
+        ConnectorMigrationItemDto entry;
+        try {
+            entry = itemRunner.processOneWithTarget(equipmentId, targetFileId);
+        } catch (RuntimeException ex) {
+            log.warn("inline-migrate: Equipment #{} → File #{} failed: {}", equipmentId, targetFileId, ex.getMessage());
+            return new ConnectorMigrationItemDto(equipmentId, null, null, "FAILED",
+                null, targetFileId != null ? List.of(targetFileId) : null, ex.getMessage());
+        }
+        // Re-emit so peers pick up the new connector without waiting for a
+        // bulk re-sync. trackEntityCreation is the same path the
+        // FieldChangeEntityListener uses on save — failures here don't
+        // poison the report; the user's local edit already committed.
+        if ("MIGRATED".equals(entry.action()) && entry.newConnectorId() != null) {
+            connectorRepo.findById(entry.newConnectorId()).ifPresent(c -> {
+                try { fieldChangeTracker.trackEntityCreation(c); }
+                catch (RuntimeException ex) {
+                    log.warn("inline-migrate: re-emit failed for FileConnector #{}: {}",
+                        c.getId(), ex.getMessage());
+                }
+            });
+        }
+        return entry;
     }
 }

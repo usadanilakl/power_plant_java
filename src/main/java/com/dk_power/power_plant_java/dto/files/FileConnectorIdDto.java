@@ -33,4 +33,7 @@ public class FileConnectorIdDto extends BaseDto {
 
     private Long counterpartConnectorId;
     private String label;
+    /** Persisted per-connector toggle for label display on canvas.
+     *  Null treated as false by the viewer. */
+    private Boolean showLabel;
 }

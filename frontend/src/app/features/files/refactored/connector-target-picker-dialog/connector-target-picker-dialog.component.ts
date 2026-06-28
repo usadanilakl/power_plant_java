@@ -15,6 +15,12 @@ import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 export interface ConnectorTargetPickerData {
   /** The file the connector is being drawn ON (used to exclude self + run name-similarity suggestions). */
   sourceFile: FileDto;
+  /**
+   * Optional initial filter — pre-fills the search input and runs the search
+   * immediately. Used by the draw flow to pass OCR-extracted text from the
+   * drawn connector shape (typically a file number like "PD-031A").
+   */
+  initialQuery?: string;
 }
 
 /**
@@ -240,6 +246,15 @@ export class ConnectorTargetPickerDialogComponent {
     private api: RfFileApiService,
   ) {
     this.loadSuggestions();
+
+    // If the caller passed OCR-extracted text from a drawn connector shape,
+    // pre-populate the filter and kick off the server search immediately so
+    // the user lands on results without typing.
+    const initial = (data.initialQuery ?? '').trim();
+    if (initial) {
+      this.filterText.set(initial);
+      this.searchTrigger$.next(initial);
+    }
 
     // Debounced server-side search — switchMap cancels stale requests.
     this.searchTrigger$.pipe(

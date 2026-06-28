@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { RfCircleShape, RfImageShape, RfLineShape, RfRectangleShape, RfShape, RfTextShape, SVGSymbolShape } from '../models/fr-shape.model';
+import { FileConnectorShape, RfCircleShape, RfImageShape, RfLineShape, RfRectangleShape, RfShape, RfTextShape, SVGSymbolShape } from '../models/fr-shape.model';
 
 @Injectable({
   providedIn: 'root',
@@ -82,8 +82,72 @@ export class CanvasRenderService {
       case 'file-connector':
       case 'svg-symbol':
         this.drawSVGSymbol(ctx, scaledShape as SVGSymbolShape, scale);
+        if (scaledShape.type === 'file-connector') {
+          // Connector-specific overlay: only when the user has explicitly
+          // enabled label rendering for this connector (via the edit dialog).
+          // Default is off — the symbol alone is the cue, label adds clutter
+          // on dense P&IDs where every shape would compete for space.
+          const fc = scaledShape as FileConnectorShape;
+          if (fc.showLabel) this.drawConnectorLabel(ctx, fc);
+        }
         break;
     }
+  }
+
+  /**
+   * Render the connector's label centered inside the shape's bounding box.
+   * Two protections against overflow:
+   *  1. Auto-shrink: start at ~40% of shape height, drop the font size until
+   *     {@code measureText} fits within the padded width or the floor (6px).
+   *  2. Hard clip: install a clip rect at the shape bounds before drawing.
+   *     Even if auto-shrink can't get small enough (vanishingly narrow box),
+   *     text gets visually truncated at the shape edge instead of bleeding
+   *     onto neighboring equipment.
+   *
+   * <p>Skipped silently when label is empty. Does NOT apply the shape's
+   * rotation — keeps text horizontal for readability even on rotated
+   * connectors (matches how P&ID labels behave in CAD tools).
+   */
+  private drawConnectorLabel(ctx: CanvasRenderingContext2D, shape: FileConnectorShape): void {
+    const text = (shape.label || '').trim();
+    if (!text) return;
+
+    ctx.save();
+
+    // Hard clip to the shape bounds — final safety net so the text can never
+    // visually escape the shape rectangle regardless of auto-shrink result.
+    ctx.beginPath();
+    ctx.rect(shape.x, shape.y, shape.width, shape.height);
+    ctx.clip();
+
+    // Auto-fit font size against the inner padded width AND height. Pick
+    // the tighter of the two constraints so a wide-but-short shape doesn't
+    // get oversized text that clips vertically.
+    const hPad = 4;
+    const vPad = 2;
+    const maxWidth = Math.max(6, shape.width - hPad * 2);
+    const maxHeight = Math.max(6, shape.height - vPad * 2);
+    let fontSize = Math.min(maxHeight, Math.max(6, Math.min(18, shape.height * 0.4)));
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    while (ctx.measureText(text).width > maxWidth && fontSize > 6) {
+      fontSize -= 1;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+    }
+
+    const centerX = shape.x + shape.width / 2;
+    const centerY = shape.y + shape.height / 2;
+
+    // Halo behind text for legibility on busy P&ID backgrounds — drawn as
+    // a slightly thicker stroke in the canvas background color, then the
+    // fill on top. Cheap and works on any base image.
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(2, fontSize * 0.18);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.strokeText(text, centerX, centerY);
+    ctx.fillStyle = shape.color || '#000000';
+    ctx.fillText(text, centerX, centerY);
+    ctx.restore();
   }
 
   private drawSVGSymbol(

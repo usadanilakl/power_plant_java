@@ -90,6 +90,18 @@
 
         <!-- Info Window (positioned in upper right) -->
         <app-loto-builder-info-window></app-loto-builder-info-window>
+
+        <!-- Connector info window (positioned in upper left) — visible when
+             the user single-clicks a file-connector shape. Mutually exclusive
+             with the LOTO point info window by position, not by visibility:
+             both can show simultaneously since they cover different selections. -->
+        <app-loto-builder-connector-info-window
+          [connector]="selectedConnector()"
+          (navigate)="onConnectorInfoNavigate($event)"
+          (edit)="onConnectorInfoEdit($event)"
+          (linked)="onConnectorInfoLinked($event)"
+          (closed)="selectedConnector.set(null)"
+        ></app-loto-builder-connector-info-window>
       } @else {
         <div class="empty-state">
           <div class="empty-icon">🖼️</div>

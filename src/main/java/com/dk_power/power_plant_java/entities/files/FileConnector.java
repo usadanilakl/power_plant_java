@@ -107,4 +107,18 @@ public class FileConnector extends BaseAuditEntity {
      * connector pointing at it without a backfill.
      */
     private String label;
+
+    /**
+     * Whether the canvas should draw the {@link #label} text inside the
+     * connector shape. {@code null} treated as {@code false} on the viewer —
+     * connectors created before this column existed stay clean by default
+     * and the user opts in per-connector via the edit dialog's checkbox.
+     *
+     * <p>Stored as a nullable Boolean (not primitive) for the same reason —
+     * Hibernate's {@code ddl-auto=update} adds the column to existing rows
+     * as NULL; switching to a primitive would force every legacy row to
+     * appear as {@code true} or trip a NOT NULL violation on read. Treat
+     * null as false at the boundary instead.
+     */
+    private Boolean showLabel;
 }

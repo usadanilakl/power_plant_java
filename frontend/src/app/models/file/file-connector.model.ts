@@ -28,6 +28,9 @@ export interface FileConnectorModel extends BaseModel {
 
   /** Optional user override. Empty → frontend derives from targetFileNumber. */
   label: string | null;
+
+  /** Persisted per-connector toggle for canvas label rendering. Null/false → no label drawn. */
+  showLabel: boolean | null;
 }
 
 export class FileConnectorDto extends BaseDto implements FileConnectorModel {
@@ -45,6 +48,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
 
   counterpartConnectorId: number | null = null;
   label: string | null = null;
+  showLabel: boolean | null = null;
 
   constructor(data: Partial<FileConnectorModel> = {}) {
     super(data);
@@ -61,6 +65,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
     this.svgPath = data.svgPath ?? null;
     this.counterpartConnectorId = data.counterpartConnectorId ?? null;
     this.label = data.label ?? null;
+    this.showLabel = data.showLabel ?? null;
   }
 
   /** Display text for the connector. Falls back to targetFileNumber when label is unset. */
@@ -86,6 +91,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
       svgPath: this.svgPath,
       counterpartConnectorId: this.counterpartConnectorId,
       label: this.label,
+      showLabel: this.showLabel,
     };
   }
 
@@ -104,6 +110,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
       svgPath: json.svgPath ?? null,
       counterpartConnectorId: json.counterpartConnectorId ?? null,
       label: json.label ?? null,
+      showLabel: json.showLabel ?? null,
     });
   }
 
@@ -123,6 +130,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
       svgPath: this.svgPath,
       counterpartConnectorId: this.counterpartConnectorId,
       label: this.label,
+      showLabel: this.showLabel,
     };
   }
 }
@@ -143,4 +151,8 @@ export interface FileConnectorIdDto {
   svgPath: string | null;
   counterpartConnectorId: number | null;
   label: string | null;
+  /** Optional toggle for canvas label rendering. Send true/false to update,
+   *  omit (undefined/null) to preserve the existing value (backend uses
+   *  null-as-skip in the mapper). */
+  showLabel: boolean | null;
 }

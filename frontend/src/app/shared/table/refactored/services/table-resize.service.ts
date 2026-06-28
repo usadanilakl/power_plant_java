@@ -66,20 +66,32 @@ export class TableResizeService {
   // ============ Resize Methods ============//
 
   setupResizeListeners(): void {
+    // Idempotent: when this service instance outlives the table component (e.g.
+    // it's provided by an always-mounted dialog and the table is re-created on
+    // every open), ngAfterViewInit calls this again on the SAME instance. Remove
+    // the previous document listeners first so they don't pile up — otherwise
+    // every reopen adds another global mousemove handler and the page eventually
+    // janks to the point inputs feel frozen.
+    this.teardownResizeListeners();
+
     this.resizeMouseMoveListener = (e: MouseEvent) => this.onResizeMouseMove(e);
     this.resizeMouseUpListener = () => this.onResizeMouseUp();
 
     document.addEventListener('mousemove', this.resizeMouseMoveListener);
     document.addEventListener('mouseup', this.resizeMouseUpListener);
 
-    this.destroyRef.onDestroy(() => {
-      if (this.resizeMouseMoveListener) {
-        document.removeEventListener('mousemove', this.resizeMouseMoveListener);
-      }
-      if (this.resizeMouseUpListener) {
-        document.removeEventListener('mouseup', this.resizeMouseUpListener);
-      }
-    });
+    this.destroyRef.onDestroy(() => this.teardownResizeListeners());
+  }
+
+  private teardownResizeListeners(): void {
+    if (this.resizeMouseMoveListener) {
+      document.removeEventListener('mousemove', this.resizeMouseMoveListener);
+      this.resizeMouseMoveListener = null;
+    }
+    if (this.resizeMouseUpListener) {
+      document.removeEventListener('mouseup', this.resizeMouseUpListener);
+      this.resizeMouseUpListener = null;
+    }
   }
 
   onResizeStart(

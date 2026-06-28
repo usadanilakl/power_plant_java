@@ -52,3 +52,34 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 
 .muted { color: #777; }
 .error { color: #ff7b72; padding: 6px 0; }
+
+/* Complete-WO tab */
+.complete-form { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.complete-form .row { display: flex; gap: 16px; flex-wrap: wrap; }
+.complete-form label { display: flex; flex-direction: column; gap: 4px; color: #aaa; font-size: 13px; flex: 1 1 160px; }
+.complete-form input, .complete-form textarea, .complete-form select {
+  margin-left: 0; background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
+  border-radius: 3px; padding: 6px 8px; font: inherit; width: 100%; box-sizing: border-box; }
+.complete-form .actions { margin-top: 4px; }
+.complete-form button.primary, button.primary {
+  background: #0e639c; color: #fff; border: 0; border-radius: 3px;
+  padding: 8px 16px; cursor: pointer; font: inherit; }
+.complete-form button.primary:hover:not([disabled]) { background: #1177bb; }
+.complete-form button.primary[disabled] { opacity: 0.6; cursor: default; }
+.complete-done { color: #7ee787; padding: 10px 0; font-size: 15px; }
+
+/* Materials tab */
+.mat-table td.num, .mat-table th.num { text-align: right; white-space: nowrap; }
+.mat-table tr.is-return td { color: #9fe0b0; }
+.mat-table input[type="number"] { width: 64px; text-align: right; margin-right: 6px;
+  background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 3px 5px; font: inherit; }
+.hint { margin-top: 10px; font-size: 12px; }
+
+/* Add-part (issue) sub-form in Materials tab */
+.issue-add { margin-top: 16px; border-top: 1px solid #333; padding-top: 12px; }
+.issue-add h4 { margin: 0 0 8px; color: #7cc6ff; font-size: 14px; }
+.issue-add .search-row { display: flex; gap: 8px; align-items: center; }
+.issue-add .search-row input { flex: 1; background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
+  border-radius: 3px; padding: 6px 8px; font: inherit; }
+.issue-add input[type="number"] { width: 64px; text-align: right; margin-right: 6px;
+  background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 3px 5px; font: inherit; }

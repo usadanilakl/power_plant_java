@@ -4,16 +4,25 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import {
+  CompleteWorkOrderRequest,
   CreateMaximoServiceRequest,
   MaximoAsset,
   MaximoAttachmentParent,
   MaximoDoclink,
+  MaximoInventoryItem,
+  MaximoLocation,
+  MaximoMaterialTxn,
   MaximoServiceRequest,
   MaximoServiceRequestCriteria,
   MaximoTicketParent,
   MaximoWorkOrder,
   MaximoWorkOrderCriteria,
-  MaximoWorklog
+  MaximoWorkType,
+  MaximoWorklog,
+  IssueMaterialRequest,
+  PartsCheckoutRequest,
+  PartsCheckoutResult,
+  ReturnMaterialRequest
 } from '../../models/maximo/maximo.models';
 
 @Injectable({ providedIn: 'root' })
@@ -80,9 +89,14 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData));
   }
 
-  /** WOs Maximo has assigned to any local Lead Operator (`spi:lead in [...]`). */
-  listLeadOperatorWorkOrders(pageSize = 100): Observable<MaximoWorkOrder[]> {
-    const p = new HttpParams().set('pageSize', String(pageSize));
+  /**
+   * WOs Maximo has assigned to any local Lead Operator (`spi:lead in [...]`).
+   * Pass a `status` (e.g. APPR) to narrow — without it the bundle returns ALL statuses, which is
+   * dominated by historical CLOSE WOs and truncates badly at the page cap.
+   */
+  listLeadOperatorWorkOrders(pageSize = 100, status?: string): Observable<MaximoWorkOrder[]> {
+    let p = new HttpParams().set('pageSize', String(pageSize));
+    if (status) p = p.set('status', status);
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/bundle/lead-operators/work-orders`, { params: p })
       .pipe(map(r => r.responseData ?? []));
@@ -121,6 +135,76 @@ export class MaximoApiService {
   getWorkOrder(href: string): Observable<MaximoWorkOrder | null> {
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder>>(`${this.base}/work-orders/${encodeURIComponent(href)}`)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  /** Report labor + worklog and (by default) change status to COMP. Returns the refreshed WO. */
+  completeWorkOrder(href: string, body: CompleteWorkOrderRequest): Observable<MaximoWorkOrder | null> {
+    return this.http
+      .post<SpringApiResponse<MaximoWorkOrder>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/complete`, body)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  /** Actual material rows (issues + returns) on a WO. */
+  listWoMaterials(href: string): Observable<MaximoMaterialTxn[]> {
+    return this.http
+      .get<SpringApiResponse<MaximoMaterialTxn[]>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/materials`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Return material to inventory (issuetype RETURN). Returns the refreshed material rows. */
+  returnMaterial(href: string, body: ReturnMaterialRequest): Observable<MaximoMaterialTxn[]> {
+    return this.http
+      .post<SpringApiResponse<MaximoMaterialTxn[]>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/return-material`, body)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Issue additional material on an existing WO (issuetype ISSUE). Returns the refreshed material rows. */
+  issueMaterial(href: string, body: IssueMaterialRequest): Observable<MaximoMaterialTxn[]> {
+    return this.http
+      .post<SpringApiResponse<MaximoMaterialTxn[]>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/issue-material`, body)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  // ── Parts checkout ────────────────────────────────────────────────────────
+
+  searchLocations(q: string, pageSize = 25): Observable<MaximoLocation[]> {
+    let p = new HttpParams().set('pageSize', String(pageSize));
+    if (q) p = p.set('q', q);
+    return this.http
+      .get<SpringApiResponse<MaximoLocation[]>>(`${this.base}/locations`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  getWorkTypes(): Observable<MaximoWorkType[]> {
+    return this.http
+      .get<SpringApiResponse<MaximoWorkType[]>>(`${this.base}/work-types`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Active plant people with a Maximo personid — for the labor dropdown. */
+  getLaborPeople(): Observable<{ name: string; personid: string }[]> {
+    return this.http
+      .get<SpringApiResponse<{ name: string; personid: string }[]>>(`${this.base}/labor-people`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  searchInventory(q: string, pageSize = 25): Observable<MaximoInventoryItem[]> {
+    let p = new HttpParams().set('pageSize', String(pageSize));
+    if (q) p = p.set('q', q);
+    return this.http
+      .get<SpringApiResponse<MaximoInventoryItem[]>>(`${this.base}/inventory`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Create WO → approve → issue materials → complete, in one server call. */
+  checkoutParts(body: PartsCheckoutRequest): Observable<PartsCheckoutResult | null> {
+    return this.http
+      .post<SpringApiResponse<PartsCheckoutResult>>(`${this.base}/parts-checkout`, body)
       .pipe(map(r => r.responseData ?? null));
   }
 

@@ -83,6 +83,7 @@
         *ngIf="selectedWo()"
         [parent]="'wo'"
         [wo]="selectedWo()"
+        (completed)="apply()"
         (closed)="closeDetail()">
       </app-maximo-detail-dialog>
     </div>

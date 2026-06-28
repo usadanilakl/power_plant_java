@@ -116,7 +116,12 @@ export class RfLotoPointStateService {
 
   addLotoPoints(items: LotoPointDto[]): void {
     const current = this.allLoadedLotoPointsSubject.value;
-    this.allLoadedLotoPointsSubject.next([...current, ...items]);
+    // Dedup by id so the same point can never render twice (e.g. when an
+    // in-flight load overlaps a fresh one, or pagination re-fetches a row).
+    const seen = new Set(current.map(lp => lp.id));
+    const newItems = items.filter(lp => lp.id == null || !seen.has(lp.id));
+    if (newItems.length === 0) return;
+    this.allLoadedLotoPointsSubject.next([...current, ...newItems]);
   }
 
   clearLotoPoints(): void {

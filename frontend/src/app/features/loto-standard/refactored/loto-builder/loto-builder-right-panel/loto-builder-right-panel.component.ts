@@ -5,6 +5,7 @@ import { catchError, of, tap } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { InteractiveImageComponent } from '../../../../../shared/image/refactored/interactive-image/interactive-image.component';
 import { LotoBuilderInfoWindowComponent } from '../loto-builder-info-window/loto-builder-info-window.component';
+import { LotoBuilderConnectorInfoWindowComponent } from '../loto-builder-connector-info-window/loto-builder-connector-info-window.component';
 import { ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
 import { getPreset, InteractiveImageConfig } from '../../../../../shared/image/refactored/models/interactive-image-config.model';
 import { CurrentFileService } from '../../../../../services/current-file.service';
@@ -24,10 +25,13 @@ import { FileDto } from '../../../../../models/file/file.model';
 import { RfFileApiService } from '../../../../files/refactored/services/rf-file-api.service';
 import { RfFileConnectorApiService } from '../../../../files/refactored/services/rf-file-connector-api.service';
 import { FileConnectorMapperService } from '../../../../files/refactored/services/file-connector-mapper.service';
+import { ConnectorNavigationService } from '../../../../files/refactored/services/connector-navigation.service';
 import { FileConnectorDto, FileConnectorIdDto } from '../../../../../models/file/file-connector.model';
 import { FileConnectorShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { OFF_PAGE_CONNECTOR_SYMBOL_ID } from '../../../../../shared/image/refactored/services/pid-symbols.service';
 import { ConnectorTargetPickerDialogComponent } from '../../../../files/refactored/connector-target-picker-dialog/connector-target-picker-dialog.component';
+import { ConnectorEditDialogComponent } from '../../../../files/refactored/connector-edit-dialog/connector-edit-dialog.component';
+import { LegacyConnectorMigrateDialogComponent, LegacyConnectorMigrateResult } from '../../../../files/refactored/legacy-connector-migrate-dialog/legacy-connector-migrate-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { map } from 'rxjs/operators';
 
@@ -38,6 +42,7 @@ import { map } from 'rxjs/operators';
     CommonModule,
     InteractiveImageComponent,
     LotoBuilderInfoWindowComponent,
+    LotoBuilderConnectorInfoWindowComponent,
     GuideDirective,
     ReactiveGuideDirective,
   ],
@@ -59,6 +64,7 @@ export class LotoBuilderRightPanelComponent {
   private fileApi = inject(RfFileApiService);
   private connectorApi = inject(RfFileConnectorApiService);
   private connectorMapper = inject(FileConnectorMapperService);
+  private connectorNav = inject(ConnectorNavigationService);
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
@@ -69,6 +75,11 @@ export class LotoBuilderRightPanelComponent {
   // The viewer renders connector shapes alongside equipment shapes; click on a
   // connector navigates to its target file instead of opening the equipment dialog.
   currentConnectors = signal<FileConnectorDto[]>([]);
+  /** Connector currently shown in the info window — null hides it. Set by
+   *  single-click on a file-connector shape; cleared on file change, on
+   *  empty-space click, on close button, or when the underlying connector
+   *  is deleted. */
+  selectedConnector = signal<FileConnectorDto | null>(null);
   /** Monotonic token guarding against stale connector-load responses. Bumped
    *  on every file change; in-flight responses with an older token are dropped
    *  so a rapid file-switch doesn't overwrite the new file's connectors with
@@ -230,16 +241,21 @@ export class LotoBuilderRightPanelComponent {
 
     // Fetch connectors whenever the current file changes. Empty array if the
     // file has no connectors — viewer just shows equipment shapes alone.
-    // Uses a monotonic token to drop stale responses (rapid file switches
-    // would otherwise let an older bySourceFile response overwrite the new
-    // file's connectors).
+    //
+    // CRITICAL: clear currentConnectors IMMEDIATELY on file change, before the
+    // fetch returns. Without this, the previous file's connectors stay
+    // rendered during the in-flight fetch and — worse — get scaled to the
+    // current file's canvas using the OLD file's originalPictureSize, showing
+    // as misplaced shapes. The token guard handles fast-switch race; the
+    // immediate clear handles the perceived persistence.
     effect(() => {
       const fileId = this.builderState.currentFile()?.id;
       const myToken = ++this.connectorLoadToken;
-      if (!fileId) {
-        this.currentConnectors.set([]);
-        return;
-      }
+      this.currentConnectors.set([]);
+      // Selected-connector signal references an old file's connector if we
+      // leave it set across a file switch — close the info window now.
+      this.selectedConnector.set(null);
+      if (!fileId) return;
       this.connectorApi.bySourceFile(fileId).subscribe({
         next: (resp) => {
           if (myToken !== this.connectorLoadToken) return; // newer request superseded us
@@ -434,18 +450,27 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shape click — branches by shape type so connectors navigate
-   * instead of routing through the equipment lookup. The type check MUST
-   * come first because equipment.id and FileConnector.id are independent
-   * id-spaces; a coincidental id match would otherwise open the wrong info.
+   * Handle shape click. For connectors, single-click ONLY selects the shape
+   * (so the user can resize/move it via the interactive-image's selection
+   * handles). Navigation moves to {@link onShapeDoubleClicked} — see that
+   * handler. Equipment behavior is unchanged.
    */
   onShapeClicked(shape: RfShape): void {
     this.builderState.selectedShapeId.set(shape.id);
 
     if (shape.type === 'file-connector') {
-      this.navigateToConnectorTarget(shape as FileConnectorShape);
+      // Selection only — navigation happens on double-click. This lets the
+      // user reposition the connector shape without accidentally jumping to
+      // the target file every time they click it. Also pop the info window
+      // anchored to the viewer so the user can verify the target / open
+      // edit / navigate without right-clicking.
+      const connector = this.currentConnectors().find(c => c.id === shape.id);
+      this.selectedConnector.set(connector ?? null);
       return;
     }
+    // Equipment click — close any open connector info window so the two
+    // panels don't compete for the user's attention.
+    this.selectedConnector.set(null);
 
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
@@ -457,29 +482,112 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Fetch the connector's target file and route the viewer there.
-   * CurrentFileService.setCurrentFile is the canonical "switch file" signal —
-   * loto-builder, file-editor, and the left-menu all observe it.
+   * Fetch the connector's target file and route the viewer there. Before
+   * navigating, arms the navigation service with the source connector's
+   * counterpartConnectorId — the target file's connector mapper picks it up
+   * on the next render and marks the matching shape as selected, so the user
+   * sees where they came from highlighted on arrival.
    */
   private navigateToConnectorTarget(shape: FileConnectorShape): void {
     if (!shape.targetFileId) {
       console.warn('[LOTO Builder] connector shape has no targetFileId', shape);
       return;
     }
+    // Arm the highlight BEFORE the file switch so the destination's render
+    // sees it. Connector mapper consumes + clears the signal automatically.
+    this.connectorNav.flagPendingHighlight(shape.counterpartConnectorId ?? null);
     this.fileApi.getFileById(String(shape.targetFileId)).pipe(
       map(r => FileDto.fromJson(r.responseData)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (target) => this.currentFileService.setCurrentFile(target),
-      error: (err) => console.error('[LOTO Builder] failed to load connector target', shape.targetFileId, err),
+      error: (err) => {
+        this.connectorNav.clearPendingHighlight(); // navigation failed — un-arm
+        console.error('[LOTO Builder] failed to load connector target', shape.targetFileId, err);
+      },
     });
   }
 
   /**
-   * Handle shape double click - enable editing (already handled by interactive-image)
+   * Info-window Navigate button. Mirrors the double-click navigation path —
+   * arm the highlight, fetch the target file, switch the viewer. Close the
+   * info window after navigation since its data is about to be stale.
+   */
+  onConnectorInfoNavigate(connector: FileConnectorDto): void {
+    if (!connector.targetFileId) {
+      console.warn('[LOTO Builder] info-window navigate: no targetFileId', connector);
+      return;
+    }
+    this.connectorNav.flagPendingHighlight(connector.counterpartConnectorId ?? null);
+    this.selectedConnector.set(null);
+    this.fileApi.getFileById(String(connector.targetFileId)).pipe(
+      map(r => FileDto.fromJson(r.responseData)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (target) => this.currentFileService.setCurrentFile(target),
+      error: (err) => {
+        this.connectorNav.clearPendingHighlight();
+        console.error('[LOTO Builder] info-window: failed to load target', connector.targetFileId, err);
+      },
+    });
+  }
+
+  /**
+   * Info-window Edit button. Reuses the same edit-dialog flow as the
+   * right-click context menu — opens the dialog, replaces the connector
+   * in-place on save, and updates the info window so it shows fresh data.
+   */
+  onConnectorInfoEdit(connector: FileConnectorDto): void {
+    const sourceFile = this.builderState.currentFile();
+    if (!sourceFile) return;
+    const ref = this.dialog.open(ConnectorEditDialogComponent, {
+      data: { connector, sourceFile },
+      width: '560px',
+      maxWidth: '90vw',
+      autoFocus: false,
+      restoreFocus: false,
+    });
+    ref.afterClosed().subscribe((saved: FileConnectorDto | undefined) => {
+      if (!saved) return;
+      const dto = new FileConnectorDto(saved);
+      this.currentConnectors.update(cs => cs.map(c => c.id === dto.id ? dto : c));
+      // Refresh the info window with the saved data so the user sees the
+      // change reflected immediately without re-clicking.
+      this.selectedConnector.set(dto);
+    });
+  }
+
+  /**
+   * Info-window Link button result. The link endpoint updates both sides on
+   * the server; on the client we refetch the local connector so it flips
+   * to paired and the info window reflects that. Don't refetch the peer
+   * — it's on a different file (the target), out of scope for this viewer.
+   */
+  onConnectorInfoLinked(evt: { connectorId: number; counterpartId: number }): void {
+    this.connectorApi.getById(evt.connectorId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (resp) => {
+        const dto = new FileConnectorDto(resp.responseData);
+        this.currentConnectors.update(cs => cs.map(c => c.id === dto.id ? dto : c));
+        if (this.selectedConnector()?.id === dto.id) this.selectedConnector.set(dto);
+      },
+      error: (err) => console.warn('[LOTO Builder] info-window link: refresh failed', err),
+    });
+  }
+
+  /**
+   * Handle shape double click. For connectors, double-click is the explicit
+   * navigation gesture — jumps to the target file and (when paired) highlights
+   * the counterpart connector on arrival. Equipment double-click is unchanged
+   * (the interactive-image handles edit-mode entry on its own).
    */
   onShapeDoubleClicked(shape: RfShape): void {
-    console.log('Shape double clicked - editing enabled by interactive-image', shape);
+    if (shape.type === 'file-connector') {
+      this.navigateToConnectorTarget(shape as FileConnectorShape);
+      return;
+    }
+    // Equipment: edit-mode entry already handled by interactive-image
   }
 
   onBuildDiagram(): void {
@@ -515,6 +623,7 @@ export class LotoBuilderRightPanelComponent {
             next: () => {
               console.log('[LOTO Builder] FileConnector deleted via API:', matchingConnector.id);
               this.currentConnectors.update(cs => cs.filter(c => c.id !== matchingConnector.id));
+              if (this.selectedConnector()?.id === matchingConnector.id) this.selectedConnector.set(null);
             },
             error: (error: any) => console.error('Error deleting connector:', error),
           });
@@ -538,12 +647,44 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handler for the off-page-connector draw branch. Opens the target-file
-   * picker; on selection, persists a FileConnector with the drawn shape's
-   * coordinates and refreshes the connector list (so the shape immediately
-   * re-renders as a proper connector with its label). If the user cancels
-   * the picker, the orphan canvas shape is removed via the InteractiveImage's
-   * removeShape — same trick the Get Text branch uses.
+   * Open the connector edit dialog (change target file, edit label).
+   * Invoked from the right-click context menu's Edit action when the
+   * clicked shape is a file-connector.
+   */
+  private openConnectorEditDialog(shape: FileConnectorShape): void {
+    const connector = this.currentConnectors().find(c => c.id === shape.id);
+    const sourceFile = this.builderState.currentFile();
+    if (!connector || !sourceFile) {
+      console.warn('[LOTO Builder] cannot edit connector: not loaded or no source file', shape.id);
+      return;
+    }
+    const ref = this.dialog.open(ConnectorEditDialogComponent, {
+      data: { connector, sourceFile },
+      width: '560px',
+      maxWidth: '90vw',
+      autoFocus: false,
+      restoreFocus: false,
+    });
+    ref.afterClosed().subscribe((saved: FileConnectorDto | undefined) => {
+      if (!saved) return;
+      // Replace in-place so the canvas re-renders with the new target/label.
+      this.currentConnectors.update(cs =>
+        cs.map(c => c.id === saved.id ? new FileConnectorDto(saved) : c)
+      );
+    });
+  }
+
+  /**
+   * Handler for the off-page-connector draw branch. Two steps:
+   *  1. Run OCR on the drawn shape's image region — if the user circled an
+   *     existing connector label like "PD-031A", the recognized text gets
+   *     pre-filled into the picker's search field so they land directly on
+   *     the matching file. OCR is best-effort; if it fails or returns nothing
+   *     the picker opens empty.
+   *  2. Open the target-file picker. On selection, persists a FileConnector
+   *     with the drawn shape's coordinates and refreshes the connector list.
+   *     On cancel/error, removes the orphan canvas shape (same trick the
+   *     Get Text branch uses).
    */
   private handleConnectorDrawn(shape: SVGSymbolShape): void {
     const sourceFile = this.builderState.currentFile();
@@ -551,8 +692,43 @@ export class LotoBuilderRightPanelComponent {
       this.interactiveImage?.removeShape(shape.id);
       return;
     }
+
+    // OCR-assist: try to read text from the drawn region before opening
+    // the picker. Don't block on this — pass through to the picker with
+    // empty initialQuery if OCR fails or the file path isn't available.
+    const filePath = sourceFile.fileLink;
+    if (!filePath) {
+      this.openConnectorTargetPicker(shape, sourceFile, '');
+      return;
+    }
+    this.builderState.startProcessing('Reading connector label…');
+    this.imageService.getTextFromRfShape(filePath, shape)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (text: string) => {
+          this.builderState.stopProcessing();
+          this.openConnectorTargetPicker(shape, sourceFile, (text || '').trim());
+        },
+        error: (err) => {
+          console.warn('[LOTO Builder] connector OCR failed (continuing without prefill):', err);
+          this.builderState.stopProcessing();
+          this.openConnectorTargetPicker(shape, sourceFile, '');
+        },
+      });
+  }
+
+  /**
+   * Open the picker, then persist the FileConnector with the picked target
+   * (or remove the orphan shape on cancel). Split out so the OCR pre-step
+   * and the direct-open path share one save flow.
+   */
+  private openConnectorTargetPicker(
+    shape: SVGSymbolShape,
+    sourceFile: FileDto,
+    initialQuery: string
+  ): void {
     const ref = this.dialog.open(ConnectorTargetPickerDialogComponent, {
-      data: { sourceFile },
+      data: { sourceFile, initialQuery },
       width: '720px',
       maxWidth: '90vw',
       autoFocus: false,
@@ -580,6 +756,9 @@ export class LotoBuilderRightPanelComponent {
         svgPath: shape.svgPath,
         counterpartConnectorId: null,
         label: null,
+        // New connectors default to label-off — user opts in per-connector
+        // via the edit dialog. Matches the persisted default for legacy rows.
+        showLabel: false,
       };
       this.connectorApi.save(payload).subscribe({
         next: (resp) => {
@@ -599,15 +778,31 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle Edit action from context menu. Connectors don't have a LOTO-point
-   * association so this action is a no-op for them — the right-click context
-   * menu shows the action regardless of shape type (single shared menu), and
-   * we don't want it silently misbehaving on connectors.
+   * Handle Edit action from context menu. Three branches:
+   *  1. FileConnector shape → open the connector edit dialog (change target, label).
+   *  2. Equipment with eqType='connector' (legacy, not yet migrated) → open
+   *     the migrate-to-FileConnector dialog so the user can pick a target
+   *     and convert this Equipment to a proper FileConnector in one step.
+   *     Same UX whether you're fixing 1 row or 100 — the bulk console
+   *     handles the easy cases; this handles the hand-resolution cases.
+   *  3. Regular Equipment → open the LOTO-point form / pending-equipment flow.
    */
   private handleEditAction(shape: RfShape): void {
-    if (shape.type === 'file-connector') return; // connectors edit via dialog, not equipment dialog
+    if (shape.type === 'file-connector') {
+      this.openConnectorEditDialog(shape as FileConnectorShape);
+      return;
+    }
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+
+    // Legacy connector branch — Equipment row that the bulk migration
+    // skipped (short tag / no match / ambiguous match). Open the inline
+    // migrate dialog instead of the LOTO point form, since this row doesn't
+    // represent a piece of equipment to LOTO out.
+    if (matchingEquipment?.eqType?.name?.toLowerCase() === 'connector' && matchingEquipment.id) {
+      this.openLegacyConnectorMigrateDialog(matchingEquipment.id, shape.id);
+      return;
+    }
 
     if (matchingEquipment?.lotoPoints && matchingEquipment.lotoPoints.length > 0) {
       // Open form for existing LOTO point
@@ -620,6 +815,44 @@ export class LotoBuilderRightPanelComponent {
         this.builderState.setPendingEquipment(matchingEquipment);
       }
     }
+  }
+
+  /**
+   * Open the inline migrate-to-FileConnector dialog for a legacy Equipment
+   * row. On success: remove the old Equipment from local state (it's now
+   * soft-deleted on the backend) and add the freshly-created FileConnector
+   * to currentConnectors so the canvas re-renders immediately. No reload
+   * needed — the migration runner returns the new connector id and the
+   * sync listener has already pushed it.
+   */
+  private openLegacyConnectorMigrateDialog(equipmentId: number, shapeId: number): void {
+    const ref = this.dialog.open(LegacyConnectorMigrateDialogComponent, {
+      data: { equipmentId },
+      width: '640px',
+      maxWidth: '95vw',
+      autoFocus: false,
+      restoreFocus: false,
+    });
+    ref.afterClosed().subscribe((result: LegacyConnectorMigrateResult | undefined) => {
+      if (!result) return;
+      const newConnectorId = result.item.newConnectorId;
+      // Remove the old Equipment from local list — server soft-deleted it.
+      this.removeEquipmentFromLocalList(equipmentId);
+      if (this.builderState.selectedShapeId() === shapeId) {
+        this.builderState.selectedShapeId.set(null);
+      }
+      // Fetch the freshly-created connector + append so it shows up immediately
+      // (don't wait for SSE — the user just clicked, they expect instant feedback).
+      if (newConnectorId) {
+        this.connectorApi.getById(newConnectorId).subscribe({
+          next: (resp) => {
+            const dto = new FileConnectorDto(resp.responseData);
+            this.currentConnectors.update(cs => [...cs.filter(c => c.id !== dto.id), dto]);
+          },
+          error: (err) => console.warn('[LOTO Builder] migrate-one: fetch new connector failed', err),
+        });
+      }
+    });
   }
 
   /**
@@ -714,7 +947,12 @@ export class LotoBuilderRightPanelComponent {
       this.connectorApi.delete(cp.id)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: () => this.currentConnectors.update(cs => cs.filter(c => c.id !== cp.id)),
+          next: () => {
+            this.currentConnectors.update(cs => cs.filter(c => c.id !== cp.id));
+            // Info window holds a stale reference if the deleted connector
+            // is the one being shown — close it.
+            if (this.selectedConnector()?.id === cp.id) this.selectedConnector.set(null);
+          },
           error: (err) => console.error('Error deleting connector:', err),
         });
       return;
@@ -762,9 +1000,17 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shape update (after drag/resize)
+   * Handle shape update (after drag/resize). For FileConnector shapes,
+   * persists the new coords back to the connector entity — without this
+   * the interactive-image's local change is the only place the new
+   * position exists, and the next refetch (file switch / page reload)
+   * resurrects the original draw position. Equipment branch is unchanged.
    */
   onShapeUpdated(shape: RfShape): void {
+    if (shape.type === 'file-connector') {
+      this.persistConnectorShape(shape as FileConnectorShape);
+      return;
+    }
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
@@ -819,6 +1065,58 @@ export class LotoBuilderRightPanelComponent {
           }
         });
     }
+  }
+
+  /**
+   * Persist the new shape coordinates back to the FileConnector entity.
+   * Pulls the source connector DTO from currentConnectors so we don't lose
+   * fields the canvas doesn't know about (counterpartConnectorId, label,
+   * existing rotation if shape.rotation is undefined). Writes back into
+   * currentConnectors on success so subsequent renders see the new geometry.
+   */
+  private persistConnectorShape(shape: FileConnectorShape): void {
+    const existing = this.currentConnectors().find(c => c.id === shape.id);
+    if (!existing) {
+      console.warn('[LOTO Builder] persistConnectorShape: connector not in local list', shape.id);
+      return;
+    }
+    // Same encoding the create-flow uses (see openConnectorTargetPicker) —
+    // mirror it exactly so a round-trip (create → resize → save) doesn't
+    // change the coordinate format and trip the migration idempotency hash.
+    const coordinates = JSON.stringify({
+      startX: shape.x, startY: shape.y,
+      endX: shape.x + shape.width, endY: shape.y + shape.height,
+      width: shape.width, height: shape.height,
+      rotation: shape.rotation || 0,
+    }).replace(/^"|"$/g, '').replace(/\\/g, '').replace(/"(\w+)":/g, '$1:');
+
+    const payload: FileConnectorIdDto = {
+      id: existing.id,
+      sourceFileId: existing.sourceFileId,
+      targetFileId: existing.targetFileId,
+      coordinates,
+      originalPictureSize: `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`,
+      rotation: shape.rotation ?? existing.rotation ?? 0,
+      symbolId: shape.symbolId ?? existing.symbolId,
+      svgPath: shape.svgPath ?? existing.svgPath,
+      counterpartConnectorId: existing.counterpartConnectorId,
+      label: existing.label,
+      // Backend mapper uses null-as-skip, so this preserves the persisted
+      // showLabel toggle through a resize/move (don't accidentally turn it
+      // off when the user just drags the shape).
+      showLabel: existing.showLabel,
+    };
+    this.connectorApi.save(payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp) => {
+          const saved = new FileConnectorDto(resp.responseData);
+          this.currentConnectors.update(cs => cs.map(c => c.id === saved.id ? saved : c));
+          // Refresh info window if the moved connector is the one displayed.
+          if (this.selectedConnector()?.id === saved.id) this.selectedConnector.set(saved);
+        },
+        error: (err) => console.error('[LOTO Builder] failed to persist connector resize/move:', err),
+      });
   }
 
   /**

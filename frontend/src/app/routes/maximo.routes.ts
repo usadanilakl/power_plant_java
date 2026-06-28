@@ -4,12 +4,14 @@ import { MaximoServiceRequestsPageComponent } from '../features/maximo/maximo-se
 import { MaximoWorkOrdersPageComponent } from '../features/maximo/maximo-work-orders-page/maximo-work-orders-page.component';
 import { MaximoApiTestPageComponent } from '../features/maximo/maximo-api-test-page/maximo-api-test-page.component';
 import { MaximoLeadOperatorWosPageComponent } from '../features/maximo/maximo-lead-operator-wos-page/maximo-lead-operator-wos-page.component';
+import { MaximoPartsCheckoutPageComponent } from '../features/maximo/maximo-parts-checkout-page/maximo-parts-checkout-page.component';
 
 export const MAXIMO_ROUTES: Routes = [
   { path: 'maximo', redirectTo: 'maximo/assets', pathMatch: 'full' },
   { path: 'maximo/assets', component: MaximoAssetsPageComponent },
   { path: 'maximo/service-requests', component: MaximoServiceRequestsPageComponent },
   { path: 'maximo/work-orders', component: MaximoWorkOrdersPageComponent },
+  { path: 'maximo/parts-checkout', component: MaximoPartsCheckoutPageComponent },
   { path: 'maximo/bundles/lead-operators', component: MaximoLeadOperatorWosPageComponent },
   { path: 'maximo/api-test', component: MaximoApiTestPageComponent }
 ];

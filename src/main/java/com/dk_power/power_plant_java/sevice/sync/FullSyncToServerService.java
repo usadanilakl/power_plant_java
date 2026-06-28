@@ -104,6 +104,7 @@ public class FullSyncToServerService {
     private final CategoryRepo categoryRepo;
     private final ValueRepo valueRepo;
     private final FileRepo fileRepo;
+    private final com.dk_power.power_plant_java.repository.file.FileConnectorRepo fileConnectorRepo;
     private final EngraverTemplateRepo engraverTemplateRepo;
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
@@ -169,6 +170,7 @@ public class FullSyncToServerService {
         new EntitySyncConfig("EmailCorrespondence", EmailCorrespondence.class),
         new EntitySyncConfig("User", User.class),
         new EntitySyncConfig("FileObject", FileObject.class),
+        new EntitySyncConfig("FileConnector", com.dk_power.power_plant_java.entities.files.FileConnector.class),
         new EntitySyncConfig("EngraverTemplate", EngraverTemplate.class),
         new EntitySyncConfig("Equipment", Equipment.class),
         new EntitySyncConfig("LotoPoint", LotoPoint.class),
@@ -575,6 +577,7 @@ public class FullSyncToServerService {
         counts.put("EmailCorrespondence", emailCorrespondenceRepo.count());
         counts.put("User", userRepo.count());
         counts.put("FileObject", fileRepo.count());
+        counts.put("FileConnector", fileConnectorRepo.count());
         counts.put("EngraverTemplate", engraverTemplateRepo.count());
         counts.put("Equipment", equipmentRepo.count());
         counts.put("LotoPoint", lotoPointRepo.count());
@@ -899,6 +902,7 @@ public class FullSyncToServerService {
             case "Value" -> valueRepo;
             case "User" -> userRepo;
             case "FileObject" -> fileRepo;
+            case "FileConnector" -> fileConnectorRepo;
             case "EngraverTemplate" -> engraverTemplateRepo;
             case "Equipment" -> equipmentRepo;
             case "LotoPoint" -> lotoPointRepo;

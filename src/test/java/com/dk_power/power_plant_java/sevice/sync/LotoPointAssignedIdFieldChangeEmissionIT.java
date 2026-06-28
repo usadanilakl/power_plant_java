@@ -1,11 +1,13 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,7 @@ class LotoPointAssignedIdFieldChangeEmissionIT {
 
     @Autowired private NgLotoPointService lotoPointService;
     @Autowired private FieldChangeRepository fieldChangeRepository;
+    @Autowired private EntityManager entityManager;
 
     @MockBean private com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService redTagAutomationService;
     @MockBean private WorkAreaGitHubPublisher workAreaGitHubPublisher;
@@ -61,5 +64,49 @@ class LotoPointAssignedIdFieldChangeEmissionIT {
                         && "SYNC-ASSIGNED-ID-LP".equals(fc.getNewValue().replace("\"", "")))
                 .anyMatch(fc -> "description".equals(fc.getFieldName())
                         && "Assigned ID sync test point".equals(fc.getNewValue().replace("\"", "")));
+    }
+
+    @Test
+    @DisplayName("New LotoPoint linked to equipment emits owning Equipment.lotoPoints relationship change")
+    void assignedIdCreateWithEquipment_emitsEquipmentLotoPointsChange() {
+        long lotoPointId = 1_000_077_002L;
+
+        Equipment equipment = new Equipment();
+        equipment.setName("SYNC-EQ-REL");
+        entityManager.persist(equipment);
+        entityManager.flush();
+        long equipmentId = equipment.getId();
+
+        fieldChangeRepository.deleteAll();
+        entityManager.flush();
+
+        LotoPointIdDto dto = new LotoPointIdDto();
+        dto.setId(lotoPointId);
+        dto.setTagNumber("SYNC-LP-REL");
+        dto.setDescription("Relationship sync test point");
+        dto.setSpecificLocation("Relationship test location");
+        dto.setEquipmentIdList(List.of(equipmentId));
+
+        LotoPoint saved = lotoPointService.processLotoPoint(dto);
+        entityManager.flush();
+
+        assertThat(saved.getId()).isEqualTo(lotoPointId);
+
+        Object joinCount = entityManager.createNativeQuery("""
+                SELECT COUNT(*) FROM eq_loto_point
+                WHERE eq_id = :equipmentId AND loto_point_id = :lotoPointId
+                """)
+                .setParameter("equipmentId", equipmentId)
+                .setParameter("lotoPointId", lotoPointId)
+                .getSingleResult();
+        assertThat(((Number) joinCount).longValue()).isEqualTo(1L);
+
+        assertThat(fieldChangeRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc("Equipment", equipmentId))
+                .as("relationship mutation must be represented by the owning Equipment.lotoPoints row")
+                .anyMatch(fc -> fc.getChangeType() == FieldChange.ChangeType.UPDATE
+                        && "lotoPoints".equals(fc.getFieldName())
+                        && "ManyToMany".equals(fc.getRelationshipType())
+                        && fc.getNewValue().contains(String.valueOf(lotoPointId))
+                        && !fc.isSyncedTo("SERVER"));
     }
 }

@@ -75,6 +75,88 @@ export interface CreateMaximoServiceRequest {
   affectedperson?: string;
 }
 
+export interface MaximoLaborEntry {
+  /** Maximo personid; blank = signed-in user (resolved server-side). */
+  laborcode?: string;
+  regularhrs?: number;
+}
+
+/** Payload for completing a work order: report labor + worklog, then change status. */
+export interface CompleteWorkOrderRequest {
+  labor?: MaximoLaborEntry[];
+  summary?: string;
+  details?: string;
+  logtype?: string;     // defaults to CLIENTNOTE server-side
+  complete?: boolean;   // defaults to true server-side
+  status?: string;      // defaults to COMP server-side
+  memo?: string;
+}
+
+export interface MaximoLocation {
+  href: string;
+  location: string;
+  description: string;
+  type: string;
+  status: string;
+  siteid: string;
+}
+
+export interface MaximoInventoryItem {
+  itemnum: string;
+  description: string;
+  issueunit: string;
+  storeroom: string;
+  curbal: number | null;
+}
+
+export interface MaximoWorkType {
+  value: string;
+  label: string;
+}
+
+export interface PartsCheckoutLine {
+  itemnum: string;
+  quantity: number;
+}
+
+export interface PartsCheckoutRequest {
+  description?: string;
+  location: string;
+  worktype?: string;
+  siteid?: string;
+  storeroom?: string;
+  lines: PartsCheckoutLine[];
+  memo?: string;
+}
+
+export interface PartsCheckoutResult {
+  wonum: string;
+  href: string;
+  status: string;
+  actmatcost: number | null;
+}
+
+export interface MaximoMaterialTxn {
+  matusetransid: number;
+  itemnum: string;
+  description: string | null;
+  issuetype: string;   // ISSUE / RETURN
+  storeloc: string;
+  issueunit: string;
+  quantity: number;    // signed: issue negative, return positive
+  linecost: number | null;
+}
+
+export interface ReturnMaterialRequest {
+  lines: PartsCheckoutLine[];
+  storeroom?: string;
+}
+
+export interface IssueMaterialRequest {
+  lines: PartsCheckoutLine[];
+  storeroom?: string;
+}
+
 export type MaximoAttachmentParent = 'asset' | 'sr' | 'wo';
 export type MaximoTicketParent = 'sr' | 'wo';
 

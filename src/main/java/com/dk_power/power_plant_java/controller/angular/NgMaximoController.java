@@ -1,6 +1,17 @@
 package com.dk_power.power_plant_java.controller.angular;
 
+import com.dk_power.power_plant_java.dto.maximo.CompleteWorkOrderRequest;
 import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryItemDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoLocationDto;
+import com.dk_power.power_plant_java.dto.maximo.IssueMaterialRequest;
+import com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto;
+import com.dk_power.power_plant_java.dto.maximo.ReturnMaterialRequest;
+import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest;
+import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutResult;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
 import com.dk_power.power_plant_java.dto.maximo.MaximoAssetDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoDoclinkDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
@@ -29,7 +40,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Angular-facing endpoints for Maximo integration.
@@ -54,6 +67,17 @@ public class NgMaximoController {
     private final MaximoDoclinksAdapter doclinks;
     private final MaximoWorklogAdapter worklog;
     private final MaximoBundleService bundles;
+    private final MaximoLocationAdapter locations;
+    private final MaximoInventoryAdapter inventory;
+    private final MaximoPartsCheckoutService partsCheckout;
+    private final com.dk_power.power_plant_java.repository.users.UserRepo userRepo;
+
+    /** Work-type options. The MXDOMAIN OS isn't API-authorized, so these mirror the values in use at JG. */
+    private static final List<Map<String, String>> WORK_TYPES = List.of(
+            Map.of("value", "CM", "label", "CM — Corrective Maintenance"),
+            Map.of("value", "PM", "label", "PM — Preventive Maintenance"),
+            Map.of("value", "WAR", "label", "WAR — Warranty"),
+            Map.of("value", "REG", "label", "REG — Regulatory"));
 
     // ---- Assets -----------------------------------------------------------
 
@@ -182,6 +206,140 @@ public class NgMaximoController {
         return workOrders.findByHref(href)
                 .map(wo -> ResponseEntity.ok(new NgApiResponse<>(wo, "ok")))
                 .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "not found")));
+    }
+
+    /**
+     * Complete a work order: record actual labor + a worklog note, then change status (default COMP).
+     * Mirrors the manual Maximo flow (Labor → Log → Complete). A labor row with a blank laborcode
+     * defaults to the signed-in user's Maximo personid (see {@code User.getMaximoPersonid()}).
+     */
+    @PostMapping("/work-orders/{href}/complete")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> completeWorkOrder(
+            @PathVariable String href, @RequestBody CompleteWorkOrderRequest req) {
+        try {
+            if (req.getLabor() != null) {
+                String me = currentUserPersonid();
+                for (CompleteWorkOrderRequest.LaborEntry e : req.getLabor()) {
+                    if (e != null && (e.getLaborcode() == null || e.getLaborcode().isBlank())) {
+                        e.setLaborcode(me);
+                    }
+                }
+            }
+            return workOrders.completeWorkOrder(href, req)
+                    .map(wo -> ResponseEntity.ok(new NgApiResponse<>(wo, "completed")))
+                    .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "completed")));
+        } catch (Exception e) {
+            log.warn("[Maximo] complete WO {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    // ---- Work-order materials (issue list + return/correction) -----------
+
+    @GetMapping("/work-orders/{href}/materials")
+    public ResponseEntity<NgApiResponse<List<MaximoMaterialTxnDto>>> listWoMaterials(@PathVariable String href) {
+        return ResponseEntity.ok(new NgApiResponse<>(workOrders.listMaterials(href), "ok"));
+    }
+
+    /**
+     * Return material to inventory on a WO (issuetype RETURN) — corrects an over- or wrong-issue.
+     * Works even on a completed WO. Returns the refreshed material rows.
+     */
+    @PostMapping("/work-orders/{href}/return-material")
+    public ResponseEntity<NgApiResponse<List<MaximoMaterialTxnDto>>> returnMaterial(
+            @PathVariable String href, @RequestBody ReturnMaterialRequest req) {
+        try {
+            workOrders.returnMaterials(href, req.getLines(), req.getStoreroom());
+            return ResponseEntity.ok(new NgApiResponse<>(workOrders.listMaterials(href), "returned"));
+        } catch (Exception e) {
+            log.warn("[Maximo] return material on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Issue additional material on an existing WO (issuetype ISSUE) — for a forgotten part or a swap.
+     * Works even on a completed WO. Returns the refreshed material rows.
+     */
+    @PostMapping("/work-orders/{href}/issue-material")
+    public ResponseEntity<NgApiResponse<List<MaximoMaterialTxnDto>>> issueMaterial(
+            @PathVariable String href, @RequestBody IssueMaterialRequest req) {
+        try {
+            workOrders.addMaterials(href, req.getLines(), req.getStoreroom());
+            return ResponseEntity.ok(new NgApiResponse<>(workOrders.listMaterials(href), "issued"));
+        } catch (Exception e) {
+            log.warn("[Maximo] issue material on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    // ---- Parts checkout (locations / work-types / inventory / flow) -------
+
+    @GetMapping("/locations")
+    public ResponseEntity<NgApiResponse<List<MaximoLocationDto>>> searchLocations(
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "100") int pageSize) {
+        return ResponseEntity.ok(new NgApiResponse<>(locations.search(q, siteid, pageSize), "ok"));
+    }
+
+    @GetMapping("/work-types")
+    public ResponseEntity<NgApiResponse<List<Map<String, String>>>> getWorkTypes() {
+        return ResponseEntity.ok(new NgApiResponse<>(WORK_TYPES, "ok"));
+    }
+
+    /**
+     * Active people who can be credited with labor — name + Maximo personid. Used by the
+     * Complete-WO labor dropdown. Non-admin (lives under /ng/maximo) and discloses only names +
+     * personids, which are already visible on work orders.
+     */
+    @GetMapping("/labor-people")
+    public ResponseEntity<NgApiResponse<List<Map<String, String>>>> getLaborPeople() {
+        List<Map<String, String>> people = new ArrayList<>();
+        for (com.dk_power.power_plant_java.entities.users.User u : userRepo.findByIsActiveTrue()) {
+            String pid = u.getMaximoPersonid();
+            if (pid == null || pid.isBlank()) continue;
+            String name = (u.getName() != null && !u.getName().isBlank()) ? u.getName() : pid;
+            people.add(Map.of("name", name, "personid", pid));
+        }
+        people.sort((a, b) -> a.get("name").compareToIgnoreCase(b.get("name")));
+        return ResponseEntity.ok(new NgApiResponse<>(people, people.size() + " people"));
+    }
+
+    @GetMapping("/inventory")
+    public ResponseEntity<NgApiResponse<List<MaximoInventoryItemDto>>> searchInventory(
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "storeroom", required = false) String storeroom,
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+        return ResponseEntity.ok(new NgApiResponse<>(
+                inventory.search(q, siteid, storeroom, pageSize), "ok"));
+    }
+
+    /**
+     * Parts checkout: create a WO, approve it, issue the material lines, and complete it.
+     * Returns the created WO number, final status, and actual material cost.
+     */
+    @PostMapping("/parts-checkout")
+    public ResponseEntity<NgApiResponse<PartsCheckoutResult>> checkoutParts(
+            @RequestBody PartsCheckoutRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(partsCheckout.checkout(req), "checked out"));
+        } catch (Exception e) {
+            log.warn("[Maximo] parts checkout failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Maximo personid of the signed-in desktop user, or null if not resolvable. */
+    private String currentUserPersonid() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
+        Object principal = auth.getPrincipal();
+        if (!(principal instanceof com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails cud)) return null;
+        return userRepo.findById(cud.getId())
+                .map(com.dk_power.power_plant_java.entities.users.User::getMaximoPersonid)
+                .orElse(null);
     }
 
     // ---- Bundles (cross-source aggregations) -----------------------------

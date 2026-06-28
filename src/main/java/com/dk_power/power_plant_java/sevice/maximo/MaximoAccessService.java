@@ -91,20 +91,57 @@ public class MaximoAccessService {
         }
     }
 
-    /** OSLC-style update — POST with X-HTTP-Method: PATCH, patchtype=MERGE. */
-    public Map<String, Object> patchJson(String url, Object body) {
+    /**
+     * Add child rows to an existing resource (e.g. labor/worklog/material on a work order).
+     * POST the parent resource URL with {@code x-method-override: PATCH} + {@code patchtype: MERGE}.
+     *
+     * Verified against this Maximo instance (see memory reference_maximo_write_api):
+     *   - {@code x-method-override} is required — the older {@code X-HTTP-Method} header returns
+     *     400 {@code oslc#create_on_updateuri}.
+     *   - {@code patchtype: MERGE} is ADDITIVE: it key-matches child rows by their id, so a new row
+     *     WITHOUT a primary key is appended and existing rows are left untouched. This is what we want.
+     *   - {@code patchtype: AddChange} REPLACES the collection (deletes rows not in the payload) — it
+     *     destroys a pre-existing worklog and 400s ({@code BMXAA1872E}) on a WO with posted material,
+     *     because issue transactions cannot be deleted. Do NOT use it for incremental adds.
+     *   - The child array key AND every field must be {@code spi:}-prefixed; unprefixed keys are silently dropped.
+     * Returns the response body (often null/empty — Maximo answers 204 on success).
+     */
+    public Map<String, Object> addChildren(String resourceUrl, Object body) {
         HttpHeaders h = jsonHeaders();
         h.setContentType(MediaType.APPLICATION_JSON);
-        h.set("X-HTTP-Method", "PATCH");
+        h.set("x-method-override", "PATCH");
         h.set("patchtype", "MERGE");
         h.set("Properties", "*");
         try {
             ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
-                    URI.create(url), HttpMethod.POST, new HttpEntity<>(body, h),
+                    URI.create(resourceUrl), HttpMethod.POST, new HttpEntity<>(body, h),
                     new ParameterizedTypeReference<>() {});
             return resp.getBody();
         } catch (HttpClientErrorException e) {
-            log.warn("[Maximo] PATCH {} failed: {} {}", url, e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("[Maximo] addChildren {} failed: {} {}", resourceUrl, e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
+        }
+    }
+
+    /**
+     * Invoke an MBO action method (e.g. {@code wsmethod:changeStatus}) on an existing resource.
+     * POST {@code <resourceUrl>?action=<action>} with {@code x-method-override: PATCH}. The body
+     * carries the method's parameters by name (e.g. {@code {"status":"COMP","memo":"..."}}) — these
+     * are NOT spi-prefixed because they are method params, not MBO attributes. Maximo answers 204 on success.
+     */
+    public Map<String, Object> invokeAction(String resourceUrl, String action, Object body) {
+        URI uri = UriComponentsBuilder.fromHttpUrl(resourceUrl)
+                .queryParam("action", action).encode().build().toUri();
+        HttpHeaders h = jsonHeaders();
+        h.setContentType(MediaType.APPLICATION_JSON);
+        h.set("x-method-override", "PATCH");
+        try {
+            ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
+                    uri, HttpMethod.POST, new HttpEntity<>(body, h),
+                    new ParameterizedTypeReference<>() {});
+            return resp.getBody();
+        } catch (HttpClientErrorException e) {
+            log.warn("[Maximo] action {} on {} failed: {} {}", action, resourceUrl, e.getStatusCode(), e.getResponseBodyAsString());
             throw e;
         }
     }

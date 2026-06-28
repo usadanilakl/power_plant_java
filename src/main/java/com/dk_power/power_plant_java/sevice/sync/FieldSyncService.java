@@ -763,8 +763,16 @@ public class FieldSyncService {
                 return 0;
             }
 
-            // Get current entity
-            BaseIdEntity entity = (BaseIdEntity) service.getEntityById(entityId);
+            // Get current entity. If this incoming ID was previously deduplicated
+            // to a local canonical row, apply subsequent updates/relationships to
+            // that canonical owner. This is especially important for ManyToMany
+            // rows that can arrive after the owner CREATE was remapped.
+            Long targetEntityId = DedupKeyResolver.resolveRemappedId(entityType, entityId, idRemapTable);
+            BaseIdEntity entity = (BaseIdEntity) service.getEntityById(targetEntityId);
+            if (!Objects.equals(targetEntityId, entityId)) {
+                log.info("Applying {}#{} change(s) to remapped owner #{}",
+                    entityType, entityId, targetEntityId);
+            }
 
             // Check for DELETE changes first
             boolean hasDelete = changes.stream()
@@ -800,7 +808,15 @@ public class FieldSyncService {
                               && "_entity_".equals(c.getFieldName()));
 
                 if (!hasCreate) {
-                    log.debug("Entity {}#{} not found and no CREATE change present, skipping", entityType, entityId);
+                    boolean relationshipOnly = changes.stream()
+                        .anyMatch(c -> c.getRelationshipType() != null);
+                    if (relationshipOnly) {
+                        log.warn("Entity {}#{} not found for relationship change(s) {} and no CREATE present; deferring",
+                            entityType, entityId,
+                            changes.stream().map(FieldChange::getFieldName).toList());
+                    } else {
+                        log.debug("Entity {}#{} not found and no CREATE change present, skipping", entityType, entityId);
+                    }
                     return 0;
                 }
 

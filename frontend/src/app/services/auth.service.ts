@@ -26,6 +26,8 @@ export interface UserProfile {
   isActive: boolean;
   lastLoginDate: string | null;
   windowsUsername: string;
+  /** Effective Maximo personid (override or derived from windowsUsername). */
+  maximoPersonid?: string;
   // PIN / signing — populated when admin has assigned initials and the user
   // has set (or had reset) a PIN at least once. Null until first assignment.
   signingInitials?: string | null;

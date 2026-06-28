@@ -1,9 +1,11 @@
-import { Component, inject, computed, DestroyRef, signal, ElementRef, ViewChild, AfterViewInit, effect } from '@angular/core';
+import { Component, inject, computed, DestroyRef, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
+import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-window/rf-floating-window.component';
+import { WindowPosition, WindowSize } from '../services/draggable-window.service';
 import { RfLotoPointFormComponent } from '../../../../loto-points/refactored/rf-loto-point-form/rf-loto-point-form.component';
 import { RfLotoPointTableComponent } from '../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
 import { LotoPointDualFormComponent } from '../../../../loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component';
@@ -43,6 +45,7 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
   standalone: true,
   imports: [
     CommonModule,
+    RfFloatingWindowComponent,
     RfLotoPointFormComponent,
     RfLotoPointTableComponent,
     LotoPointDualFormComponent,
@@ -70,9 +73,14 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
   templateUrl: './loto-builder-form-popup.component.html',
   styleUrl: './loto-builder-form-popup.component.css',
 })
-export class LotoBuilderFormPopupComponent implements AfterViewInit {
-  @ViewChild('popupElement') popupElement!: ElementRef<HTMLDivElement>;
-  @ViewChild('headerElement') headerElement!: ElementRef<HTMLDivElement>;
+export class LotoBuilderFormPopupComponent {
+  // Floating window configuration (reuses shared RfFloatingWindowComponent —
+  // resizable, draggable partially off-screen, no blocking overlay so the user
+  // can still interact with the diagram behind it).
+  readonly windowId = 'loto-builder-form';
+  readonly initialPosition: WindowPosition = { x: 180, y: 40 };
+  readonly initialSize: WindowSize = { width: 1000, height: 720 };
+  readonly minSize: WindowSize = { width: 420, height: 400 };
 
   protected builderState = inject(LotoBuilderStateService);
   private apiService = inject(RfLotoPointApiService);
@@ -141,16 +149,6 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
       this.builderState.setIsUnitSpecific(isUnitSpecific);
     });
   }
-
-  // Drag state
-  private isDragging = false;
-  private dragStartX = 0;
-  private dragStartY = 0;
-  private popupStartX = 0;
-  private popupStartY = 0;
-
-  // Popup position
-  popupPosition = signal<{ x: number; y: number } | null>(null);
 
   /**
    * Check if form popup should be shown
@@ -385,10 +383,6 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
     return existingLp;
   });
 
-  ngAfterViewInit(): void {
-    // Drag handlers will be set up when the popup becomes visible
-  }
-
   /**
    * Close the form popup
    */
@@ -400,84 +394,6 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
     this.currentFormValues.set(null);
     // Reset manual dual form mode
     this.isManualDualFormMode.set(false);
-    // Reset popup position when closing
-    this.popupPosition.set(null);
-  }
-
-  // ========== Drag Methods ==========
-
-  /**
-   * Start dragging the popup
-   */
-  onHeaderMouseDown(event: MouseEvent): void {
-    // Only handle left mouse button
-    if (event.button !== 0) return;
-
-    // Don't start drag if clicking on buttons
-    if ((event.target as HTMLElement).closest('button')) return;
-
-    this.isDragging = true;
-    this.dragStartX = event.clientX;
-    this.dragStartY = event.clientY;
-
-    const popup = this.popupElement?.nativeElement;
-    if (popup) {
-      const rect = popup.getBoundingClientRect();
-      const currentPos = this.popupPosition();
-      this.popupStartX = currentPos?.x ?? rect.left;
-      this.popupStartY = currentPos?.y ?? rect.top;
-    }
-
-    // Add window-level listeners for drag
-    window.addEventListener('mousemove', this.onWindowMouseMove);
-    window.addEventListener('mouseup', this.onWindowMouseUp);
-
-    event.preventDefault();
-  }
-
-  /**
-   * Handle mouse move during drag (bound to preserve 'this' context)
-   */
-  private onWindowMouseMove = (event: MouseEvent): void => {
-    if (!this.isDragging) return;
-
-    const deltaX = event.clientX - this.dragStartX;
-    const deltaY = event.clientY - this.dragStartY;
-
-    const newX = this.popupStartX + deltaX;
-    const newY = this.popupStartY + deltaY;
-
-    // Constrain to viewport
-    const popup = this.popupElement?.nativeElement;
-    if (popup) {
-      const rect = popup.getBoundingClientRect();
-      const maxX = window.innerWidth - rect.width;
-      const maxY = window.innerHeight - rect.height;
-
-      this.popupPosition.set({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
-    }
-  };
-
-  /**
-   * Handle mouse up to end drag (bound to preserve 'this' context)
-   */
-  private onWindowMouseUp = (): void => {
-    this.isDragging = false;
-    window.removeEventListener('mousemove', this.onWindowMouseMove);
-    window.removeEventListener('mouseup', this.onWindowMouseUp);
-  };
-
-  /**
-   * Handle backdrop click to close
-   */
-  onBackdropClick(event: MouseEvent): void {
-    // Only close if clicking the backdrop itself, not child elements
-    if (event.target === event.currentTarget) {
-      this.close();
-    }
   }
 
   /**
