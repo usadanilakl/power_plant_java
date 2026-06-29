@@ -3,6 +3,7 @@ export type ShiftPreference = 'DAY' | 'NIGHT' | 'EITHER';
 
 export interface RecurringPm {
   id: number;
+  pmKey: string;
   pmnum: string;
   pmDescription: string;
   lead: string;
@@ -10,6 +11,7 @@ export interface RecurringPm {
   intervalDays: number | null;
   classificationLocked: boolean;
   shift: ShiftPreference;
+  preferredDayOfWeek: number | null;   // ISO 1=Mon..7=Sun
   occurrenceCount: number | null;
   lastWonum: string;
   lastTargetDate: string | null;
@@ -27,6 +29,7 @@ export interface PmPendingAssignment {
   pmnum: string;
   description: string;
   status: string;
+  recurring: boolean;
   targetDate: string;
   shift: ShiftPreference;
   cadence: RecurrenceCadence | null;

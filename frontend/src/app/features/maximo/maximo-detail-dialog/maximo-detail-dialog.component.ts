@@ -53,6 +53,11 @@ export class MaximoDetailDialogComponent {
   uploadDoctype = 'Attachments';
   uploading = signal(false);
 
+  // Add-note (worklog) form — WO only; works even on a completed WO.
+  noteSummary = '';
+  noteDetails = '';
+  addingNote = signal(false);
+
   // ── Materials (issues + returns) ────────────────────────────────────────
   materials = signal<MaximoMaterialTxn[]>([]);
   materialsLoaded = signal(false);
@@ -295,6 +300,27 @@ export class MaximoDetailDialogComponent {
       this.error.set(this.errMsg(e));
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async addNote() {
+    if (!this.wo?.href || this.addingNote()) return;
+    if (!this.noteSummary.trim()) { this.error.set('Enter a note summary.'); return; }
+    this.addingNote.set(true);
+    this.error.set(null);
+    try {
+      const rows = await firstValueFrom(this.api.addWoWorklog(this.wo.href, {
+        summary: this.noteSummary.trim(),
+        details: this.noteDetails.trim() || undefined
+      }));
+      this.notes.set(rows);
+      this.notesLoaded.set(true);
+      this.noteSummary = '';
+      this.noteDetails = '';
+    } catch (e: any) {
+      this.error.set(this.errMsg(e));
+    } finally {
+      this.addingNote.set(false);
     }
   }
 

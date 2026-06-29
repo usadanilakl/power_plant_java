@@ -2,14 +2,18 @@ package com.dk_power.power_plant_java.controller.angular.etapro;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.etapro.EtaProLogEntryDto;
 import com.dk_power.power_plant_java.dto.etapro.EtaProPointDto;
 import com.dk_power.power_plant_java.dto.etapro.EtaProReadingDto;
 import com.dk_power.power_plant_java.dto.etapro.EtaProScrapeJobDto;
+import com.dk_power.power_plant_java.entities.etapro.EtaProLogEntry;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.sevice.angular.etapro.NgEtaProPointService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProHistoryJobService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProLiveService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProLogEntryService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProLogPullService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProPointImportService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScraperEngine;
@@ -40,6 +44,8 @@ public class NgEtaProController {
     private final EtaProLiveService liveService;
     private final EtaProScraperEngine engine;
     private final EtaProPointImportService pointImportService;
+    private final EtaProLogPullService logPullService;
+    private final EtaProLogEntryService logEntryService;
 
     // ── Points CRUD ───────────────────────────────────────────
 
@@ -251,6 +257,45 @@ public class NgEtaProController {
         List<EtaProReadingDto> readings = etaProReadingService.getLatestPerPoint()
                 .stream().map(etaProReadingService::convertToDto).toList();
         return ResponseEntity.ok(new NgApiResponse<>(readings, "Latest readings retrieved"));
+    }
+
+    // ── EPLog (Event Log) ─────────────────────────────────────
+
+    public record EpLogPullRequest(LocalDateTime rangeStart, LocalDateTime rangeEnd) {}
+
+    /**
+     * Manual EPLog pull. With a range body, pulls that explicit window (backfill);
+     * with no/empty body, pulls incrementally from the stored watermark.
+     */
+    @PostMapping("/eplog/pull")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> pullEpLog(
+            @RequestBody(required = false) EpLogPullRequest req) {
+        EtaProScraperEngine.BatchResult result = (req != null && req.rangeStart() != null && req.rangeEnd() != null)
+                ? logPullService.pull(req.rangeStart(), req.rangeEnd())
+                : logPullService.pullIncremental();
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", result.success);
+        body.put("scraped", result.scrapedCount);
+        body.put("imported", result.importedCount);
+        body.put("message", result.message);
+        String msg = result.success
+                ? result.importedCount + " new log entries imported"
+                : "EPLog pull failed: " + result.message;
+        return ResponseEntity.ok(new NgApiResponse<>(body, msg));
+    }
+
+    @GetMapping("/eplog")
+    public ResponseEntity<NgApiResponse<Page<EtaProLogEntryDto>>> getEpLog(
+            @RequestParam(required = false) LocalDateTime startTime,
+            @RequestParam(required = false) LocalDateTime endTime,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        Page<EtaProLogEntry> result = (startTime != null && endTime != null)
+                ? logEntryService.getByTimeRangePaginated(startTime, endTime, page, pageSize)
+                : logEntryService.getRecentPaginated(page, pageSize);
+        Page<EtaProLogEntryDto> dtos = result.map(logEntryService::convertToDto);
+        return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.getTotalElements() + " log entries"));
     }
 
     // ── DTO mapping ───────────────────────────────────────────

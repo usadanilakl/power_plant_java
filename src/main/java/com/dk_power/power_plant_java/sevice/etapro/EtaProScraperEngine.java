@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.etapro;
 
+import com.dk_power.power_plant_java.entities.etapro.EtaProLogEntry;
 import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
+import com.dk_power.power_plant_java.repository.etapro.EtaProLogEntryRepo;
 import com.dk_power.power_plant_java.repository.etapro.EtaProReadingRepo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,16 +16,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -69,6 +76,7 @@ public class EtaProScraperEngine {
     public static final int MAX_POINTS_PER_LIVE_BATCH = 100;
 
     private final EtaProReadingRepo etaProReadingRepo;
+    private final EtaProLogEntryRepo etaProLogEntryRepo;
     private final ObjectMapper objectMapper;
 
     @Value("${etapro.live.template.path:${user.dir}/etapro/template-live.xlsx}")
@@ -76,6 +84,9 @@ public class EtaProScraperEngine {
 
     @Value("${etapro.history.template.path:${user.dir}/etapro/template-history.xlsx}")
     private String historyTemplatePath;
+
+    @Value("${etapro.eplog.template.path:${user.dir}/etapro/template-eplog.xlsx}")
+    private String eplogTemplatePath;
 
     @Value("${etapro.output.path:${user.dir}/etapro/output}")
     private String outputPath;
@@ -171,7 +182,8 @@ public class EtaProScraperEngine {
                     "-File", scriptPath,
                     "-liveTemplatePath", liveTemplatePath,
                     "-historyTemplatePath", historyTemplatePath,
-                    "-signalDir", signalPath
+                    "-signalDir", signalPath,
+                    "-eplogTemplatePath", eplogTemplatePath
             );
             pb.redirectErrorStream(true);
             pb.inheritIO();
@@ -268,7 +280,8 @@ public class EtaProScraperEngine {
      */
     public enum Template {
         LIVE("live"),
-        HISTORY("history");
+        HISTORY("history"),
+        EPLOG("eplog");
 
         private final String signalName;
         Template(String signalName) { this.signalName = signalName; }
@@ -309,12 +322,15 @@ public class EtaProScraperEngine {
                                                  LocalDateTime start, LocalDateTime end) {
         String sessionId = UUID.randomUUID().toString();
 
-        if (pointIds == null || pointIds.isEmpty()) {
+        // EPLOG pulls carry no points; live/history require at least one.
+        if (template != Template.EPLOG && (pointIds == null || pointIds.isEmpty())) {
             return BatchResult.failure("No points in batch", sessionId);
         }
-        int cap = (template == Template.LIVE) ? MAX_POINTS_PER_LIVE_BATCH : MAX_POINTS_PER_HISTORY_BATCH;
-        if (pointIds.size() > cap) {
-            return BatchResult.failure("Batch exceeds max " + cap + " points for " + template, sessionId);
+        if (template != Template.EPLOG) {
+            int cap = (template == Template.LIVE) ? MAX_POINTS_PER_LIVE_BATCH : MAX_POINTS_PER_HISTORY_BATCH;
+            if (pointIds.size() > cap) {
+                return BatchResult.failure("Batch exceeds max " + cap + " points for " + template, sessionId);
+            }
         }
 
         try {
@@ -332,7 +348,7 @@ public class EtaProScraperEngine {
             request.put("template", template.signalName());
             request.put("startDate", start.format(fmt));
             request.put("endDate", end.format(fmt));
-            request.put("pointIds", String.join(",", pointIds));
+            request.put("pointIds", pointIds == null ? "" : String.join(",", pointIds));
             Path csvOutput = Paths.get(outputPath, "etapro_data.csv");
             request.put("outputPath", csvOutput.toAbsolutePath().toString());
 
@@ -382,6 +398,11 @@ public class EtaProScraperEngine {
 
             if (!Files.exists(csvOutput)) {
                 return BatchResult.failure("Output CSV not found at " + csvOutput, sessionId);
+            }
+
+            // EPLog (Event Log) has its own text schema + dedup — handle separately.
+            if (template == Template.EPLOG) {
+                return importEpLog(csvOutput, sessionId);
             }
 
             List<EtaProReading> readings = parseCsv(csvOutput, sessionId);
@@ -527,5 +548,119 @@ public class EtaProScraperEngine {
         }
         fields.add(current.toString());
         return fields.toArray(new String[0]);
+    }
+
+    // ── EPLog (Event Log) import ───────────────────────────────
+
+    private BatchResult importEpLog(Path csvOutput, String sessionId) throws IOException {
+        List<EtaProLogEntry> entries = parseEpLogCsv(csvOutput, sessionId);
+
+        Set<String> seen = new HashSet<>();
+        List<EtaProLogEntry> fresh = new ArrayList<>();
+        for (EtaProLogEntry e : entries) {
+            String key = e.getDedupKey();
+            if (key == null) continue;
+            if (!seen.add(key)) continue;                          // duplicate within this batch
+            if (etaProLogEntryRepo.existsByDedupKey(key)) continue; // already stored
+            fresh.add(e);
+        }
+        etaProLogEntryRepo.saveAll(fresh);
+
+        lastScrapeAt.set(LocalDateTime.now());
+        String msg = fresh.size() + "/" + entries.size() + " log entries imported";
+        lastStatus.set(msg);
+        log.debug("[EtaPro] EPLog batch {}: {}", sessionId, msg);
+        return new BatchResult(true, msg, entries.size(), fresh.size(), sessionId);
+    }
+
+    List<EtaProLogEntry> parseEpLogCsv(Path csvPath, String sessionId) throws IOException {
+        List<EtaProLogEntry> out = new ArrayList<>();
+        List<String> lines = Files.readAllLines(csvPath);
+        if (lines.isEmpty()) return out;
+
+        // Strip UTF-8 BOM from first line if present (PowerShell 5.1 issue)
+        String firstLine = lines.get(0);
+        if (!firstLine.isEmpty() && firstLine.charAt(0) == '﻿') {
+            lines.set(0, firstLine.substring(1));
+        }
+
+        // Map column name -> index (robust to column reordering in the template)
+        String[] headers = parseCsvLine(lines.get(0).trim());
+        Map<String, Integer> idx = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            idx.put(headers[i].trim().toLowerCase(), i);
+        }
+
+        for (int i = 1; i < lines.size(); i++) {
+            String line = lines.get(i);
+            if (line == null || line.trim().isEmpty()) continue;
+            String[] cols = parseCsvLine(line);
+            try {
+                EtaProLogEntry e = new EtaProLogEntry();
+                e.setDescription(getField(cols, idx, "description"));
+                e.setArea(getField(cols, idx, "area"));
+                e.setLocation(getField(cols, idx, "location"));
+                e.setCreatedByName(getField(cols, idx, "created by"));
+                e.setCreateTime(parseEpLogDateTime(getField(cols, idx, "create time")));
+                e.setDeactivatedBy(getField(cols, idx, "deactivated by"));
+                e.setDeactivateTime(parseEpLogDateTime(getField(cols, idx, "deactivate time")));
+                e.setCrew(getField(cols, idx, "crew"));
+                e.setScrapeSessionId(sessionId);
+
+                // Skip fully-blank rows
+                if (e.getDescription() == null && e.getCreateTime() == null) continue;
+
+                e.setDedupKey(computeDedupKey(e.getCreateTime(), e.getDescription(), e.getCreatedByName()));
+                out.add(e);
+            } catch (Exception ex) {
+                log.warn("[EtaPro] Skipping EPLog row {}: {}", i + 1, ex.getMessage());
+            }
+        }
+        return out;
+    }
+
+    /** Trimmed value for the named header (case-insensitive), or null if missing/blank. */
+    private String getField(String[] cols, Map<String, Integer> idx, String header) {
+        Integer i = idx.get(header);
+        if (i == null || i >= cols.length) return null;
+        String v = cols[i].trim();
+        return v.isEmpty() ? null : v;
+    }
+
+    /**
+     * EPLog Create/Deactivate times export as Excel serial numbers (e.g. 46202.3035185185).
+     * Convert via the OADate epoch (1899-12-30). Falls back to text date formats if not numeric.
+     */
+    private LocalDateTime parseEpLogDateTime(String s) {
+        if (s == null || s.isEmpty()) return null;
+        try {
+            double serial = Double.parseDouble(s);
+            long wholeDays = (long) Math.floor(serial);
+            long seconds = Math.round((serial - wholeDays) * 86400.0);
+            return LocalDateTime.of(1899, 12, 30, 0, 0, 0).plusDays(wholeDays).plusSeconds(seconds);
+        } catch (NumberFormatException notSerial) {
+            try {
+                return parseTimestamp(s);
+            } catch (DateTimeParseException ignored) {
+                return null;
+            }
+        }
+    }
+
+    /** Composite dedup key (no Event ID available): SHA-256 of createTime|description|createdBy. */
+    private String computeDedupKey(LocalDateTime createTime, String description, String createdBy) {
+        String basis = (createTime == null ? "" : createTime.toString()) + "|"
+                + (description == null ? "" : description) + "|"
+                + (createdBy == null ? "" : createdBy);
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(basis.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) sb.append(String.format("%02x", b & 0xff));
+            return sb.toString();
+        } catch (Exception e) {
+            // SHA-256 is always available; defensive fallback only
+            return Integer.toHexString(basis.hashCode());
+        }
     }
 }

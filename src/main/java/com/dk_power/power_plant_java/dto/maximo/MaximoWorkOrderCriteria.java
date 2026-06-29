@@ -16,6 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 public class MaximoWorkOrderCriteria {
     private String status;          // e.g. WAPPR, APPR, INPRG, COMP, CLOSE, CAN
+    private List<String> statusIn;  // matches any of N statuses (OSLC `in [...]`)
     private String worktype;        // e.g. CM, PM, EM
     private String assetnum;
     private String location;

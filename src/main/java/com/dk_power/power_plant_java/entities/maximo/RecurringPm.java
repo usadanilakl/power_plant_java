@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "recurring_pm",
-       indexes = { @Index(name = "idx_recurring_pm_pmnum", columnList = "pmnum", unique = true) })
+       indexes = { @Index(name = "idx_recurring_pm_key", columnList = "pm_key") })
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
@@ -32,8 +32,15 @@ import java.time.LocalDateTime;
 @Where(clause = "deleted IS NOT TRUE")
 public class RecurringPm extends BaseAuditEntity {
 
-    /** Maximo PM-master id — the stable dedupe key shared by every occurrence (wonum is per-occurrence). */
-    @Column(name = "pmnum", nullable = false)
+    /**
+     * Stable dedupe key for the recurring item: the Maximo {@code pmnum} when the WO carries one,
+     * otherwise {@code "D:" + normalized description} (pmnum is sparse on these WOs). Always set.
+     */
+    @Column(name = "pm_key", nullable = false, length = 1024)
+    private String pmKey;
+
+    /** Maximo PM-master id (e.g. "JG-1183") when present; null for description-keyed recurring items. */
+    @Column(name = "pmnum")
     private String pmnum;
 
     /** Human label — the most-recent occurrence's WO description. */
@@ -63,6 +70,14 @@ public class RecurringPm extends BaseAuditEntity {
     @lombok.Builder.Default
     @Column(name = "shift")
     private ShiftPreference shift = ShiftPreference.EITHER;
+
+    /**
+     * Preferred day of week (ISO: 1=Mon … 7=Sun), operator-set — mainly for WEEKLY PMs. When set,
+     * the assignment is computed for this weekday in the WO's week (the person on the {@link #shift}
+     * that day), rather than the WO's raw target date. Null = use the WO's target date as-is.
+     */
+    @Column(name = "preferred_day_of_week")
+    private Integer preferredDayOfWeek;
 
     /** Number of occurrences seen in the trailing-year catalog window. */
     @Column(name = "occurrence_count")

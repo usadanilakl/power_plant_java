@@ -24,20 +24,23 @@
       <!-- Assignments -->
       <section *ngIf="tab() === 'assignments'">
         <div class="actions">
-          <button class="primary" (click)="approveAll()" [disabled]="approving() || pending().length === 0">
+          <button class="primary" (click)="approveAll()" [disabled]="approving() || visiblePending().length === 0">
             {{ approving() ? 'Approving…' : 'Approve All' }}
           </button>
           <button (click)="loadPending()" [disabled]="loading()">Refresh</button>
-          <span class="muted">WAPPR recurring-PM work orders, assigned by shift schedule.</span>
+          <label><input type="checkbox" [ngModel]="recurringOnly()" (ngModelChange)="recurringOnly.set($event)" />
+            Recurring only</label>
+          <span class="muted">Work orders waiting to be scheduled/approved (WSCH/WAPPR). ★ = matches the recurring catalog (by pmnum or description).</span>
         </div>
-        <table *ngIf="pending().length; else noPending">
+        <table *ngIf="visiblePending().length; else noPending">
           <thead>
-            <tr><th>WO #</th><th>PM</th><th>Description</th><th>Shift</th><th>Date</th><th>Assignee</th><th></th></tr>
+            <tr><th></th><th>WO #</th><th>PM</th><th>Description</th><th>Shift</th><th>Date</th><th>Assignee</th><th></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of pending()">
+            <tr *ngFor="let r of visiblePending()">
+              <td><span *ngIf="r.recurring" class="badge" title="In recurring catalog">★</span></td>
               <td>{{ r.wonum }}</td>
-              <td>{{ r.pmnum }}</td>
+              <td>{{ r.pmnum || '—' }}</td>
               <td class="desc">{{ r.description }}</td>
               <td>{{ r.shift }}</td>
               <td>{{ r.targetDate }}</td>
@@ -53,8 +56,10 @@
           </tbody>
         </table>
         <ng-template #noPending>
-          <p class="muted" *ngIf="pendingLoaded()">No WAPPR recurring-PM work orders. (They must be in the catalog —
-            build it under “Recurring PMs”.)</p>
+          <p class="muted" *ngIf="pendingLoaded()">
+            {{ recurringOnly() ? 'No pending PMs match the recurring catalog. Uncheck “Recurring only” to see all WSCH/WAPPR WOs.'
+                               : 'No WSCH/WAPPR work orders found.' }}
+          </p>
         </ng-template>
       </section>
 
@@ -66,22 +71,28 @@
         </div>
         <table *ngIf="catalog().length; else noCatalog">
           <thead>
-            <tr><th>PM</th><th>Description</th><th class="num">Occ/yr</th><th>Cadence</th><th>Shift</th><th>Last WO</th></tr>
+            <tr><th>PM</th><th>Description</th><th class="num">Occ/yr</th><th>Cadence</th><th>Shift</th><th>Pref. day</th><th>Last WO</th></tr>
           </thead>
           <tbody>
             <tr *ngFor="let pm of catalog()">
-              <td>{{ pm.pmnum }}</td>
+              <td>{{ pm.pmnum || '—' }}</td>
               <td class="desc">{{ pm.pmDescription }}</td>
               <td class="num">{{ pm.occurrenceCount }}</td>
               <td>
-                <select [ngModel]="pm.cadence" (ngModelChange)="onCadenceChange(pm, $event)">
+                <select [(ngModel)]="pm.cadence" (ngModelChange)="saveClassification(pm)">
                   <option *ngFor="let c of cadenceOptions" [value]="c">{{ c }}</option>
                 </select>
                 <span class="muted" *ngIf="pm.intervalDays">~{{ pm.intervalDays }}d</span>
               </td>
               <td>
-                <select [ngModel]="pm.shift" (ngModelChange)="onShiftChange(pm, $event)">
+                <select [(ngModel)]="pm.shift" (ngModelChange)="saveClassification(pm)">
                   <option *ngFor="let s of shiftOptions" [value]="s">{{ s }}</option>
+                </select>
+              </td>
+              <td>
+                <select [(ngModel)]="pm.preferredDayOfWeek" (ngModelChange)="saveClassification(pm)"
+                        [title]="pm.cadence === 'WEEK' ? 'Preferred weekday' : 'Mainly for weekly PMs'">
+                  <option *ngFor="let d of dowOptions" [ngValue]="d.value">{{ d.label }}</option>
                 </select>
               </td>
               <td>{{ pm.lastWonum }}</td>
@@ -99,23 +110,40 @@
           <label>From <input type="date" [(ngModel)]="schedFrom" /></label>
           <label>To <input type="date" [(ngModel)]="schedTo" /></label>
           <button (click)="loadSchedule()" [disabled]="loading()">Load</button>
+          <span class="muted">Imported automatically by the desktop app from the SharePoint Ops Schedule.</span>
         </div>
-        <table *ngIf="schedule().length; else noSched">
-          <thead><tr><th>Date</th><th>Day shift</th><th>Night shift</th><th>PTO</th><th>Training</th><th>On-call mgr</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let d of schedule()">
-              <td>{{ d.date }}</td>
-              <td class="desc">{{ names(d.dayShift) }}</td>
-              <td class="desc">{{ names(d.nightShift) }}</td>
-              <td class="muted">{{ names(d.pto) }}</td>
-              <td class="muted">{{ names(d.training) }}</td>
-              <td>{{ d.onCallManagerName || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div *ngIf="unresolved().length" class="unresolved-panel">
+          <strong>{{ unresolved().length }} roster name(s) not matched to a user.</strong>
+          For PM assignment to target leads, open <em>Admin → Users</em>, edit the lead operator, and set
+          <em>“Schedule name”</em> to the exact name shown here.
+          <div class="chips">
+            <span class="chip" *ngFor="let n of unresolved()">{{ n }}</span>
+          </div>
+        </div>
+        <ng-container *ngIf="schedule().length; else noSched">
+          <p class="muted legend">Grid: <span class="c c-D">D</span> day · <span class="c c-N">N</span> night ·
+            <span class="c c-P">P</span> PTO · <span class="c c-T">T</span> training · <span class="c c-U">U</span> unscheduled</p>
+          <div class="grid-scroll">
+            <table class="sched-grid">
+              <thead>
+                <tr>
+                  <th class="person-col">Person</th>
+                  <th *ngFor="let d of scheduleGrid().dates" class="day-col">{{ dayLabel(d) }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of scheduleGrid().people">
+                  <td class="person-col">{{ p }}</td>
+                  <td *ngFor="let d of scheduleGrid().dates"
+                      class="cell" [class]="'cell c-' + codeFor(p, d)">{{ codeFor(p, d) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
         <ng-template #noSched>
-          <p class="muted">No schedule rows for this range. The Ops Schedule must be imported first
-            (hub-side SharePoint import).</p>
+          <p class="muted">No schedule rows for this range. The schedule is imported by the desktop app
+            (open/refresh the Personnel widget there); once imported it syncs to all devices. Or widen the date range.</p>
         </ng-template>
       </section>
     </div>

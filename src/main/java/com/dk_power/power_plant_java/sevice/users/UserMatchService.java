@@ -69,6 +69,11 @@ public class UserMatchService {
     }
 
     private double score(String sourceNorm, User u) {
+        // Explicit Ops-Schedule alias wins outright when it matches exactly.
+        if (u.getScheduleName() != null && !u.getScheduleName().isBlank()
+                && normalize(u.getScheduleName()).equals(sourceNorm)) {
+            return CONFIDENCE_EXACT;
+        }
         double best = 0.0;
         best = Math.max(best, scoreAgainst(sourceNorm, u.getName()));
         best = Math.max(best, scoreAgainst(sourceNorm, combine(u.getFirstName(), u.getLastName())));

@@ -27,6 +27,8 @@ public class UserDto extends BaseDto {
     private String windowsUsername;
     /** Explicit Maximo personid override; blank = derived from windowsUsername. */
     private String maximoPersonidOverride;
+    /** Exact name as in the Ops Schedule (for PM auto-assignment resolution). */
+    private String scheduleName;
     private String permissionLevel;
     private String onLocationMemberId;
     private String phone;

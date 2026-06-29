@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface RecurringPmRepo extends BaseRepository<RecurringPm> {
 
-    Optional<RecurringPm> findFirstByPmnum(String pmnum);
+    Optional<RecurringPm> findFirstByPmKey(String pmKey);
 
     List<RecurringPm> findAllByOrderByPmnumAsc();
 }

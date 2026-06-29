@@ -244,6 +244,22 @@ public class NgMaximoController {
         }
     }
 
+    /**
+     * Add a worklog note to a work order (no labor, no status change). Handy for adding a log to an
+     * already-completed WO. Returns the refreshed worklog list.
+     */
+    @PostMapping("/work-orders/{href}/worklog")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> addWoWorklog(
+            @PathVariable String href, @RequestBody com.dk_power.power_plant_java.dto.maximo.AddWorklogRequest req) {
+        try {
+            workOrders.reportActuals(href, null, req.getSummary(), req.getDetails(), req.getLogtype());
+            return ResponseEntity.ok(new NgApiResponse<>(worklog.listForWo(href), "added"));
+        } catch (Exception e) {
+            log.warn("[Maximo] add worklog on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     // ---- Work-order materials (issue list + return/correction) -----------
 
     @GetMapping("/work-orders/{href}/materials")
@@ -360,13 +376,13 @@ public class NgMaximoController {
         }
     }
 
-    /** Set a PM's shift and/or cadence (locks it against catalog-refresh overwrite). */
-    @PutMapping("/pm/catalog/{pmnum}")
+    /** Set a PM's shift and/or cadence (locks it against catalog-refresh overwrite). Keyed by row id. */
+    @PutMapping("/pm/catalog/{id}")
     public ResponseEntity<NgApiResponse<RecurringPmDto>> pmClassify(
-            @PathVariable String pmnum, @RequestBody ClassifyRequest req) {
+            @PathVariable Long id, @RequestBody ClassifyRequest req) {
         try {
             return ResponseEntity.ok(new NgApiResponse<>(
-                    recurringPms.updateClassification(pmnum, req.shift(), req.cadence()), "updated"));
+                    recurringPms.updateClassification(id, req.shift(), req.cadence(), req.dayOfWeek()), "updated"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
@@ -389,7 +405,7 @@ public class NgMaximoController {
         }
     }
 
-    public record ClassifyRequest(ShiftPreference shift, RecurrenceCadence cadence) {}
+    public record ClassifyRequest(ShiftPreference shift, RecurrenceCadence cadence, Integer dayOfWeek) {}
 
     /** Maximo personid of the signed-in desktop user, or null if not resolvable. */
     private String currentUserPersonid() {

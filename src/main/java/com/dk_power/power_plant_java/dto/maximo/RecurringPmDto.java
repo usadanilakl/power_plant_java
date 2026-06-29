@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 public class RecurringPmDto {
     private Long id;
+    private String pmKey;
     private String pmnum;
     private String pmDescription;
     private String lead;
@@ -24,6 +25,7 @@ public class RecurringPmDto {
     private Integer intervalDays;
     private Boolean classificationLocked;
     private ShiftPreference shift;
+    private Integer preferredDayOfWeek;   // ISO 1=Mon..7=Sun; null = none
     private Integer occurrenceCount;
     private String lastWonum;
     private LocalDate lastTargetDate;

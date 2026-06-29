@@ -215,6 +215,14 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData ?? []));
   }
 
+  /** Add a worklog note to a WO (works on a completed WO). Returns the refreshed worklog list. */
+  addWoWorklog(href: string, body: { summary: string; details?: string; logtype?: string }): Observable<MaximoWorklog[]> {
+    return this.http
+      .post<SpringApiResponse<MaximoWorklog[]>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/worklog`, body)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   listAttachments(parent: MaximoAttachmentParent, href: string): Observable<MaximoDoclink[]> {
     return this.http
       .get<SpringApiResponse<MaximoDoclink[]>>(

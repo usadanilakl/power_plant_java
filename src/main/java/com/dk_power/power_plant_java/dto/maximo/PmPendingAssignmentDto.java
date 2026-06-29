@@ -22,6 +22,7 @@ public class PmPendingAssignmentDto {
     private String pmnum;
     private String description;
     private String status;
+    private Boolean recurring;            // true if matched to the recurring-PM catalog (by pmnum or description)
     private String targetDate;            // yyyy-MM-dd the assignment was computed for
     private ShiftPreference shift;        // the PM's configured shift
     private RecurrenceCadence cadence;

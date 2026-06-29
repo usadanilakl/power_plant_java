@@ -17,6 +17,8 @@ export interface UserModel extends BaseModel {
   windowsUsername: string;
   /** Explicit Maximo personid override; blank = derived from windowsUsername. */
   maximoPersonidOverride: string;
+  /** Exact name as in the Ops Schedule (for PM auto-assignment resolution). */
+  scheduleName: string;
   permissionLevel: string;
   phone: string;
   company: string;
@@ -41,6 +43,7 @@ export class UserDto extends BaseDto implements UserModel {
   isActive: boolean;
   windowsUsername: string;
   maximoPersonidOverride: string;
+  scheduleName: string;
   permissionLevel: string;
   phone: string;
   company: string;
@@ -64,6 +67,7 @@ export class UserDto extends BaseDto implements UserModel {
     this.isActive = data.isActive ?? true;
     this.windowsUsername = data.windowsUsername ?? '';
     this.maximoPersonidOverride = data.maximoPersonidOverride ?? '';
+    this.scheduleName = data.scheduleName ?? '';
     this.permissionLevel = data.permissionLevel ?? '';
     this.phone = data.phone ?? '';
     this.company = data.company ?? '';
@@ -88,6 +92,7 @@ export class UserDto extends BaseDto implements UserModel {
       isActive: this.isActive,
       windowsUsername: this.windowsUsername,
       maximoPersonidOverride: this.maximoPersonidOverride,
+      scheduleName: this.scheduleName,
       permissionLevel: this.permissionLevel,
       phone: this.phone,
       company: this.company,
@@ -109,6 +114,7 @@ export class UserDto extends BaseDto implements UserModel {
       isActive: json.isActive ?? true,
       windowsUsername: json.windowsUsername ?? '',
       maximoPersonidOverride: json.maximoPersonidOverride ?? '',
+      scheduleName: json.scheduleName ?? '',
       permissionLevel: json.permissionLevel ?? '',
       phone: json.phone ?? '',
       company: json.company ?? '',
@@ -258,6 +264,12 @@ export class UserDto extends BaseDto implements UserModel {
         label: 'Maximo ID (leave blank = same as Windows username)',
         type: 'text',
         initialValue: dto.maximoPersonidOverride,
+      },
+      {
+        name: 'scheduleName',
+        label: 'Schedule name (exact name in Ops Schedule — set for lead operators)',
+        type: 'text',
+        initialValue: dto.scheduleName,
       },
       {
         name: 'phone',

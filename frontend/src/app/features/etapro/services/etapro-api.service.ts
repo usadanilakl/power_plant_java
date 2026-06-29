@@ -8,6 +8,7 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
 import { EtaProReadingDto } from '../../../models/etapro/etapro-reading.model';
 import { EtaProScrapeJobDto } from '../../../models/etapro/etapro-scrape-job.model';
+import { EtaProLogEntryDto } from '../../../models/etapro/etapro-log-entry.model';
 
 export interface LiveStatus {
   active: boolean;
@@ -24,6 +25,13 @@ export interface PointImportResult {
   skipped: number;
   errorCount: number;
   errors: string[];
+}
+
+export interface EpLogPullResult {
+  success: boolean;
+  scraped: number;
+  imported: number;
+  message: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -153,5 +161,20 @@ export class EtaProApiService {
 
   getLatestReadings(): Observable<SpringApiResponse<EtaProReadingDto[]>> {
     return this.http.get<SpringApiResponse<EtaProReadingDto[]>>(`${this.apiUrl}/readings/latest`);
+  }
+
+  // ── EPLog (Operator/Event Log) ─────────────────────────────
+
+  /** Manual pull. With a range, backfills that window; without, pulls incrementally. */
+  pullEpLog(rangeStart?: string, rangeEnd?: string): Observable<SpringApiResponse<EpLogPullResult>> {
+    const body = (rangeStart && rangeEnd) ? { rangeStart, rangeEnd } : {};
+    return this.http.post<SpringApiResponse<EpLogPullResult>>(`${this.apiUrl}/eplog/pull`, body);
+  }
+
+  getEpLog(page = 1, pageSize = 50, startTime?: string, endTime?: string):
+      Observable<SpringPaginatedResponse<EtaProLogEntryDto>> {
+    let url = `${this.apiUrl}/eplog?page=${page}&pageSize=${pageSize}`;
+    if (startTime && endTime) url += `&startTime=${startTime}&endTime=${endTime}`;
+    return this.http.get<SpringPaginatedResponse<EtaProLogEntryDto>>(url);
   }
 }

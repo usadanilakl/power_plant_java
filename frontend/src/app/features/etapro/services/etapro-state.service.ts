@@ -6,6 +6,7 @@ import { EtaProApiService, LiveStatus } from './etapro-api.service';
 import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
 import { EtaProReadingDto } from '../../../models/etapro/etapro-reading.model';
 import { EtaProScrapeJobDto } from '../../../models/etapro/etapro-scrape-job.model';
+import { EtaProLogEntryDto } from '../../../models/etapro/etapro-log-entry.model';
 
 /**
  * Centralized state for the EtaPro feature:
@@ -42,8 +43,17 @@ export class EtaProStateService {
   loadedJobReadings = signal<EtaProReadingDto[]>([]);
   activeJobPollSub: Subscription | null = null;
 
+  // ── EPLog (Operator/Event Log) ────────────────────────────
+  eplogEntries = signal<EtaProLogEntryDto[]>([]);
+  eplogTotal = signal<number>(0);
+  eplogPage = signal<number>(1);
+  eplogPageSize = 50;
+  eplogLoading = signal<boolean>(false);
+  eplogPulling = signal<boolean>(false);
+  eplogLastPullMsg = signal<string>('');
+
   // ── UI ────────────────────────────────────────────────────
-  activeTab = signal<'live' | 'history' | 'points'>('live');
+  activeTab = signal<'live' | 'history' | 'points' | 'eplog'>('live');
 
   // Trend popup (still used in History viewer)
   isTrendOpen = signal(false);
@@ -223,6 +233,48 @@ export class EtaProStateService {
   stopActiveJobPolling(): void {
     this.activeJobPollSub?.unsubscribe();
     this.activeJobPollSub = null;
+  }
+
+  // ── EPLog (Operator/Event Log) ────────────────────────────
+
+  loadEpLog(page: number = 1, startTime?: string, endTime?: string): void {
+    this.eplogLoading.set(true);
+    this.eplogPage.set(page);
+    this.apiService.getEpLog(page, this.eplogPageSize, startTime, endTime).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        const entries = (res.responseData?.content || []).map((e: any) => EtaProLogEntryDto.fromJson(e));
+        this.eplogEntries.set(entries);
+        this.eplogTotal.set(res.responseData?.totalElements ?? entries.length);
+        this.eplogLoading.set(false);
+      },
+      error: err => {
+        this.eplogLoading.set(false);
+        console.warn('[EtaPro] Failed to load EPLog:', err.message);
+      }
+    });
+  }
+
+  /** Manual pull. With a range, backfills it; without, pulls newest since the watermark. */
+  pullEpLog(startTime?: string, endTime?: string): void {
+    if (this.eplogPulling()) return;
+    this.eplogPulling.set(true);
+    this.eplogLastPullMsg.set('Pulling…');
+    this.apiService.pullEpLog(startTime, endTime).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        this.eplogPulling.set(false);
+        this.eplogLastPullMsg.set(res.message || (res.responseData?.message ?? 'Done'));
+        // Refresh the current view to show any newly imported entries
+        this.loadEpLog(1);
+      },
+      error: err => {
+        this.eplogPulling.set(false);
+        this.eplogLastPullMsg.set('Pull failed: ' + (err?.error?.message || err.message));
+      }
+    });
   }
 
   // ── Trend popup ───────────────────────────────────────────

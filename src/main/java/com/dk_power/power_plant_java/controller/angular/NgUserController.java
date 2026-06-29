@@ -115,6 +115,7 @@ public class NgUserController {
                 .isActive(true)
                 .windowsUsername(request.windowsUsername())
                 .maximoPersonidOverride(request.maximoPersonidOverride())
+                .scheduleName(request.scheduleName())
                 .phone(request.phone())
                 .secondaryPhone(request.secondaryPhone())
                 .title(request.title())
@@ -152,6 +153,7 @@ public class NgUserController {
                 // Empty string is a valid value here: it clears the override so the personid
                 // falls back to the derived windowsUsername (see User.getMaximoPersonid()).
                 if (request.maximoPersonidOverride() != null) user.setMaximoPersonidOverride(request.maximoPersonidOverride());
+                if (request.scheduleName() != null) user.setScheduleName(request.scheduleName());
                 if (request.password() != null && !request.password().isBlank()) {
                     user.setPassword(passwordEncoder.encode(request.password()));
                 }
@@ -342,14 +344,14 @@ public class NgUserController {
     public record CreateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, String windowsUsername,
-        String maximoPersonidOverride, String phone, String secondaryPhone, String title,
+        String maximoPersonidOverride, String scheduleName, String phone, String secondaryPhone, String title,
         String emergencyContactJson, String company, String signaturePath
     ) {}
 
     public record UpdateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, Boolean isActive, String windowsUsername,
-        String maximoPersonidOverride, String permissionLevel, String phone, String secondaryPhone,
+        String maximoPersonidOverride, String scheduleName, String permissionLevel, String phone, String secondaryPhone,
         String title, String emergencyContactJson, String company, String signaturePath
     ) {}
 }

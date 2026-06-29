@@ -44,6 +44,15 @@
 
       <!-- Notes tab -->
       <div *ngIf="tab() === 'notes' && !loading()">
+        <!-- Add a note (WO only) — works on completed WOs -->
+        <div class="add-note" *ngIf="isWo">
+          <input type="text" [(ngModel)]="noteSummary" placeholder="Add a note — summary" />
+          <textarea rows="2" [(ngModel)]="noteDetails" placeholder="Details (optional)"></textarea>
+          <button class="primary" (click)="addNote()" [disabled]="addingNote()">
+            {{ addingNote() ? 'Adding…' : 'Add note' }}
+          </button>
+        </div>
+
         <div *ngIf="notes().length === 0" class="muted">No notes / worklog entries.</div>
         <div *ngFor="let n of notes()" class="note">
           <div class="note-head">

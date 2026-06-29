@@ -26,7 +26,7 @@ class EtaProScraperServiceCsvTest {
     @BeforeEach
     void setUp() {
         // Parser doesn't touch the injected services — null is safe.
-        service = new EtaProScraperEngine(null, null);
+        service = new EtaProScraperEngine(null, null, null);
     }
 
     // ── Flat format ─────────────────────────────────────────────────

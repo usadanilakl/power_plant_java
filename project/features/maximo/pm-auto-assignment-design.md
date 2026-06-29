@@ -1,8 +1,11 @@
 # PM Auto-Assignment — Design & Phased Plan
 
-**Status:** BUILT 2026-06-28 (Phases 0-4), compiles + builds clean. Decisions taken: Java imports the
-Excel (durable); standalone `RecurringPm`; assignment = set `spi:lead` + changeStatus APPR; approve
-stops at APPR. **Pending live validation** (needs the app running with the Maximo key + SharePoint
+**Status:** BUILT 2026-06-28..29 (Phases 0-4), compiles + builds clean. Decisions taken: standalone
+`RecurringPm`; assignment = set `spi:lead` + changeStatus APPR; approve stops at APPR. **Schedule
+source REVISED to Path B (2026-06-29):** the initial Java POI parser produced garbage (blind port of
+a brittle layout-sniffer) and was redundant with Electron's working parser — so it was **removed**.
+Electron's `personnel.manager.ts` now pushes its parsed schedule to `POST /ng/schedule/sync` (via the
+existing `backend-client`), which pivots to `ShiftDay` and syncs to all nodes. One parser, battle-tested. **Pending live validation** (needs the app running with the Maximo key + SharePoint
 cert): catalog refresh against real PM volume, and especially the **Excel parser** (faithful POI port
 of the brittle Electron parser — run `POST /ng/schedule/import-from-sharepoint` and check the Schedule
 tab). What's built: `spi:pmnum` + paging (`MaximoAccessService.getAllMembers`); `RecurringPm`
@@ -49,25 +52,23 @@ Operator review ──Approve (per-item / all)──▶ Maximo: set lead + chang
 
 ---
 
-## 1. Schedule source — decision (reuse, don't reinvent)
+## 1. Schedule source — DECISION: Path B (reuse Electron's parser)
 
-The schedule data and its Java store already exist. Two ways to populate `ShiftDay`:
+**Chosen: Electron pushes its already-correct parse to the backend.** We initially built Path A (a
+Java/POI re-port of the parser) but it produced garbage — the Ops Schedule layout is a brittle
+visual grid and a blind re-implementation mis-aligned columns. It was also pure duplication:
+Electron already parses this file correctly for its Personnel widget, and `ShiftDay` is sync-registered
+so one node's import propagates everywhere. **The Java parser was deleted.**
 
-- **Path A — Java imports the Excel (recommended, durable).** Add
-  `SharePointCertificateAccess.downloadFileByServerRelativeUrl(path)` (~15 lines, mirrors Electron's
-  `GetFileByServerRelativeUrl(@a)/$value`), port the `personnel.manager.ts` parse into a Java service
-  using POI, and feed `ShiftDayService.importSchedule()`. Run it **hub-only on a schedule** (the hub
-  already auto-polls SharePoint every 30s for other entity types — same `@Scheduled` + `isHubMode()`
-  pattern). Single source of truth; no dependency on Electron being open; one place to fix the
-  brittle layout parsing.
-- **Path B — wire Electron → `/ng/schedule/sync` (fast bootstrap).** Electron already parses; just
-  add the IPC + `POST /ng/schedule/sync` call. Least new code, unblocks immediately, but keeps the
-  parser in Electron and couples ingestion to the desktop app.
+How it works now: `electron-manager/src/main/managers/personnel.manager.ts` → after parsing, maps its
+`PersonnelEntry[]` (already `{name, group, schedule:[{date,shift}]}`) to the backend's
+`ScheduleImportRequest` and calls `backendPost('/ng/schedule/sync', …)`. `ShiftDayService` pivots it
+into per-day `ShiftDay` rows (resolving names to Users via `UserMatchService`) and the sync system
+replicates it. Triggered on every fresh parse (cache miss / refresh / shift-boundary). One parser,
+battle-tested. The **assignment code only ever reads `ShiftDayService`**, so it's agnostic to the source.
 
-**Recommendation:** Path A for the real feature; Path B is acceptable as a same-day bootstrap if we
-want to validate the assignment logic before porting the parser. Either way the **assignment code
-only ever reads `ShiftDayService`** — so the source choice is swappable and doesn't leak into the
-rest of the feature.
+(Why not Path A "for hub independence": marginal — desktops run Electron and already fetch the
+schedule, and `ShiftDay` syncs to the hub. Not worth a second brittle parser to maintain.)
 
 > No SharePoint **write** conflict either way (the Ops Schedule is read-only, human-maintained).
 > Pick a single `ShiftDay` writer (hub) to avoid CRDT churn — `ShiftDay` is currently *not* in

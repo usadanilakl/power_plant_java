@@ -19,9 +19,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Builds and maintains the recurring-PM catalog: dedupe a trailing year of PM work orders (led by
- * lead operators) on {@code pmnum}, infer each PM's cadence from occurrence spacing, and let the
- * operator set the day/night shift. See project/features/maximo/pm-auto-assignment-design.md.
+ * Builds and maintains the recurring-PM catalog: scan a trailing year of work orders led by lead
+ * operators, dedupe into unique items, and keep those that recur. See
+ * project/features/maximo/pm-auto-assignment-design.md.
+ *
+ * Identity: {@code pmnum} when the WO carries one, else {@code "D:" + normalized description} — because
+ * pmnum is sparsely populated at this plant. An item is "recurring" if it appears ≥2× in the year OR
+ * has a pmnum (PM-master-generated). Cadence is inferred from occurrence spacing; the operator sets
+ * the day/night shift.
  */
 @Slf4j
 @Service
@@ -30,8 +35,8 @@ import java.util.stream.Collectors;
 public class RecurringPmService {
 
     private static final int CATALOG_YEARS = 1;
-    private static final int PAGE_SIZE = 200;
-    private static final int MAX_PAGES = 50; // 200*50 = 10k WO safety ceiling
+    private static final int PAGE_SIZE = 2000;  // big pages — the instance honors them; ~8k+ WOs/yr at JG
+    private static final int MAX_PAGES = 25;     // 2000*25 = 50k WO safety ceiling
 
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoBundleService bundles;
@@ -40,81 +45,114 @@ public class RecurringPmService {
     // ── Catalog build ──────────────────────────────────────────────────────────
 
     /**
-     * Rebuild the catalog from Maximo: fetch ~1 year of PM WOs for all lead operators (paged),
-     * dedupe by pmnum, infer cadence, and upsert {@link RecurringPm} rows. Manually-classified rows
-     * keep their cadence/shift. Returns a summary map.
+     * Rebuild the catalog from Maximo: fetch ~1 year of JG work orders (paged), dedupe by
+     * pmnum-or-description, keep recurring items (≥2 occurrences or has pmnum), infer cadence, and
+     * upsert. Manually-classified rows keep their cadence/shift. Returns a summary map.
+     *
+     * Scope is WOs LED BY LEAD OPERATORS (any worktype): the target is recurring PMs the operators
+     * own. "Recurring" = the deduped item appears ≥2× in the year OR has a pmnum. WAPPR/WSCH WOs are
+     * matched against this catalog by pmnum or description, even though they're currently unassigned.
      */
     public Map<String, Object> refreshCatalog() {
         List<String> personIds = bundles.leadOperators().stream()
                 .map(User::getMaximoPersonid)
-                .filter(Objects::nonNull)
-                .filter(s -> !s.isBlank())
-                .distinct()
+                .filter(Objects::nonNull).filter(s -> !s.isBlank()).distinct()
                 .collect(Collectors.toList());
         if (personIds.isEmpty()) {
             log.warn("[PM] refreshCatalog: no lead operators with a Maximo personid");
-            return Map.of("scanned", 0, "pmCount", 0, "created", 0, "updated", 0);
+            return Map.of("scanned", 0, "candidates", 0, "recurring", 0, "created", 0, "updated", 0);
         }
 
+        backfillKeys(); // migrate any pre-existing rows that predate pm_key
+
         MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
-        c.setWorktype("PM");
         c.setLeadIn(personIds);
         c.setReportdateFrom(LocalDate.now().minusYears(CATALOG_YEARS) + "T00:00:00");
-
         List<MaximoWorkOrderDto> wos = workOrders.listAllByCriteria(c, PAGE_SIZE, MAX_PAGES);
 
-        // Group by pmnum (skip one-off PMs with no pmnum). WOs arrive newest-first (-reportdate).
-        Map<String, List<MaximoWorkOrderDto>> byPm = new LinkedHashMap<>();
+        // Group by stable key (newest-first thanks to -reportdate ordering).
+        Map<String, List<MaximoWorkOrderDto>> byKey = new LinkedHashMap<>();
         for (MaximoWorkOrderDto w : wos) {
-            String pm = w.getPmnum();
-            if (pm == null || pm.isBlank()) continue;
-            byPm.computeIfAbsent(pm.trim(), k -> new ArrayList<>()).add(w);
+            String key = keyFor(w.getPmnum(), w.getDescription());
+            if (key == null) continue;
+            byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(w);
         }
 
         LocalDateTime now = LocalDateTime.now();
-        int created = 0, updated = 0;
-        for (Map.Entry<String, List<MaximoWorkOrderDto>> e : byPm.entrySet()) {
-            String pmnum = e.getKey();
+        int created = 0, updated = 0, recurring = 0;
+        Set<String> seenKeys = new HashSet<>();
+        for (Map.Entry<String, List<MaximoWorkOrderDto>> e : byKey.entrySet()) {
+            String key = e.getKey();
             List<MaximoWorkOrderDto> occ = e.getValue();
-            MaximoWorkOrderDto latest = occ.get(0); // newest (orderBy -reportdate)
+            String realPmnum = occ.stream().map(MaximoWorkOrderDto::getPmnum)
+                    .filter(p -> p != null && !p.isBlank()).findFirst().orElse(null);
 
+            boolean isRecurring = occ.size() >= 2 || realPmnum != null;
+            if (!isRecurring) continue; // single occurrence with no pmnum → one-off, skip
+            recurring++;
+
+            MaximoWorkOrderDto latest = occ.get(0); // newest
             List<LocalDate> dates = occ.stream()
                     .map(w -> parseDate(w.getTargetStart() != null ? w.getTargetStart() : w.getReportdate()))
-                    .filter(Objects::nonNull)
-                    .sorted()
-                    .collect(Collectors.toList());
+                    .filter(Objects::nonNull).sorted().collect(Collectors.toList());
             Integer medianGap = medianGapDays(dates);
-            RecurrenceCadence inferred = cadenceFor(medianGap);
 
-            RecurringPm row = repo.findFirstByPmnum(pmnum).orElse(null);
+            RecurringPm row = repo.findFirstByPmKey(key).orElse(null);
             boolean isNew = row == null;
             if (isNew) {
-                row = RecurringPm.builder().pmnum(pmnum).shift(ShiftPreference.EITHER)
+                row = RecurringPm.builder().pmKey(key).shift(ShiftPreference.EITHER)
                         .classificationLocked(Boolean.FALSE).build();
             }
+            row.setPmnum(realPmnum);
             row.setPmDescription(latest.getDescription());
-            row.setLead(latest.getLeadCraft()); // MaximoWorkOrderDto maps spi:lead -> leadCraft
+            row.setLead(latest.getLeadCraft());
             row.setOccurrenceCount(occ.size());
             row.setLastWonum(latest.getWonum());
             row.setLastTargetDate(dates.isEmpty() ? null : dates.get(dates.size() - 1));
             row.setIntervalDays(medianGap);
-            // Don't clobber an operator's manual cadence/shift on refresh.
             if (!Boolean.TRUE.equals(row.getClassificationLocked())) {
-                row.setCadence(inferred);
+                row.setCadence(cadenceFor(medianGap));
             }
             row.setCatalogRefreshedAt(now);
             repo.save(row);
+            seenKeys.add(key);
             if (isNew) created++; else updated++;
         }
 
-        log.info("[PM] refreshCatalog: scanned {} WOs, {} unique PMs ({} new, {} updated)",
-                wos.size(), byPm.size(), created, updated);
+        // Self-heal: drop catalog rows that no lead operator has performed in the scan window. Guarded so a
+        // transient empty/partial Maximo response can never wipe the catalog — only prune when this scan
+        // actually returned WOs and produced at least one recurring item.
+        int pruned = 0;
+        if (!wos.isEmpty() && recurring > 0) {
+            for (RecurringPm stale : repo.findAllByOrderByPmnumAsc()) {
+                if (stale.getPmKey() != null && !seenKeys.contains(stale.getPmKey())) {
+                    stale.setDeleted(true);
+                    repo.save(stale);
+                    pruned++;
+                }
+            }
+        }
+
+        log.info("[PM] refreshCatalog: scanned {} WOs, {} unique items, {} recurring ({} new, {} updated, {} pruned)",
+                wos.size(), byKey.size(), recurring, created, updated, pruned);
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("scanned", wos.size());
-        summary.put("pmCount", byPm.size());
+        summary.put("candidates", byKey.size());
+        summary.put("recurring", recurring);
         summary.put("created", created);
         summary.put("updated", updated);
+        summary.put("pruned", pruned);
         return summary;
+    }
+
+    /** One-time migration: rows created before pm_key existed have it null — backfill from pmnum/description. */
+    private void backfillKeys() {
+        for (RecurringPm r : repo.findAllByOrderByPmnumAsc()) {
+            if (r.getPmKey() == null || r.getPmKey().isBlank()) {
+                String key = keyFor(r.getPmnum(), r.getPmDescription());
+                if (key != null) { r.setPmKey(key); repo.save(r); }
+            }
+        }
     }
 
     // ── Reads / edits ──────────────────────────────────────────────────────────
@@ -124,27 +162,46 @@ public class RecurringPmService {
         return repo.findAllByOrderByPmnumAsc().stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    /** Set the operator's shift + (optional) cadence override; locks the row against refresh overwrite. */
-    public RecurringPmDto updateClassification(String pmnum, ShiftPreference shift, RecurrenceCadence cadence) {
-        RecurringPm row = repo.findFirstByPmnum(pmnum)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown pmnum: " + pmnum));
+    /**
+     * Set the operator's shift, optional cadence override, and preferred day-of-week; locks the row
+     * against refresh overwrite. {@code shift}/{@code cadence} are applied only when non-null;
+     * {@code preferredDayOfWeek} is applied as given (null clears it — "no preferred day").
+     */
+    public RecurringPmDto updateClassification(Long id, ShiftPreference shift, RecurrenceCadence cadence,
+                                               Integer preferredDayOfWeek) {
+        RecurringPm row = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown recurring-PM id: " + id));
         if (shift != null) row.setShift(shift);
         if (cadence != null) row.setCadence(cadence);
+        row.setPreferredDayOfWeek(
+                (preferredDayOfWeek != null && preferredDayOfWeek >= 1 && preferredDayOfWeek <= 7)
+                        ? preferredDayOfWeek : null);
         row.setClassificationLocked(Boolean.TRUE);
         return toDto(repo.save(row));
     }
 
-    /** pmnum → row, for the assignment filter. */
+    /** All catalog rows (for the assignment matcher to build pmnum + description lookups). */
     @Transactional(readOnly = true)
-    public Map<String, RecurringPm> catalogByPmnum() {
-        Map<String, RecurringPm> m = new HashMap<>();
-        for (RecurringPm r : repo.findAllByOrderByPmnumAsc()) m.put(r.getPmnum(), r);
-        return m;
+    public List<RecurringPm> allCatalog() {
+        return repo.findAllByOrderByPmnumAsc();
     }
 
-    // ── Cadence inference ──────────────────────────────────────────────────────
+    // ── Keys / cadence inference ─────────────────────────────────────────────────
 
-    /** Median gap (days) between sorted occurrence dates, or null if fewer than 2. */
+    /** Stable dedupe key: pmnum when present, else "D:"+normalized description; null if neither. */
+    public static String keyFor(String pmnum, String description) {
+        if (pmnum != null && !pmnum.isBlank()) return pmnum.trim();
+        String d = normDesc(description);
+        return d == null ? null : "D:" + d;
+    }
+
+    /** Normalize a description for matching: lowercase, trimmed, collapsed whitespace. */
+    public static String normDesc(String s) {
+        if (s == null) return null;
+        String t = s.trim().toLowerCase().replaceAll("\\s+", " ");
+        return t.isEmpty() ? null : t;
+    }
+
     static Integer medianGapDays(List<LocalDate> sortedDates) {
         if (sortedDates == null || sortedDates.size() < 2) return null;
         List<Long> gaps = new ArrayList<>();
@@ -154,21 +211,18 @@ public class RecurringPmService {
         }
         if (gaps.isEmpty()) return null;
         Collections.sort(gaps);
-        long median = gaps.get(gaps.size() / 2);
-        return (int) median;
+        return (int) (long) gaps.get(gaps.size() / 2);
     }
 
-    /** Bucket a median gap into a cadence. Null/no-signal → OTHER. */
     static RecurrenceCadence cadenceFor(Integer medianGapDays) {
         if (medianGapDays == null) return RecurrenceCadence.OTHER;
         int d = medianGapDays;
         if (d <= 2) return RecurrenceCadence.DAY;
-        if (d <= 10) return RecurrenceCadence.WEEK;   // weekly ~7
-        if (d <= 45) return RecurrenceCadence.MONTH;  // monthly ~28-31
-        return RecurrenceCadence.OTHER;               // quarterly/annual/irregular
+        if (d <= 10) return RecurrenceCadence.WEEK;
+        if (d <= 45) return RecurrenceCadence.MONTH;
+        return RecurrenceCadence.OTHER;
     }
 
-    /** Parse the leading yyyy-MM-dd of a Maximo ISO datetime (e.g. "2026-06-02T00:00:00-05:00"). */
     static LocalDate parseDate(String iso) {
         if (iso == null || iso.length() < 10) return null;
         try {
@@ -181,6 +235,7 @@ public class RecurringPmService {
     private RecurringPmDto toDto(RecurringPm r) {
         return RecurringPmDto.builder()
                 .id(r.getId())
+                .pmKey(r.getPmKey())
                 .pmnum(r.getPmnum())
                 .pmDescription(r.getPmDescription())
                 .lead(r.getLead())
@@ -188,6 +243,7 @@ public class RecurringPmService {
                 .intervalDays(r.getIntervalDays())
                 .classificationLocked(r.getClassificationLocked())
                 .shift(r.getShift())
+                .preferredDayOfWeek(r.getPreferredDayOfWeek())
                 .occurrenceCount(r.getOccurrenceCount())
                 .lastWonum(r.getLastWonum())
                 .lastTargetDate(r.getLastTargetDate())

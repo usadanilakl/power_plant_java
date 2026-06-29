@@ -73,6 +73,7 @@ public class MaximoWorkOrderAdapter {
         if (c == null) return null;
         List<String> conds = new ArrayList<>();
         addStr(conds, "status", c.getStatus());
+        addStrIn(conds, "status", c.getStatusIn());
         addStr(conds, "worktype", c.getWorktype());
         addStr(conds, "assetnum", c.getAssetnum());
         addStr(conds, "location", c.getLocation());

@@ -29,9 +29,10 @@ export class MaximoPmApiService {
       .pipe(map(r => r.responseData ?? {}));
   }
 
-  classify(pmnum: string, shift: ShiftPreference, cadence?: RecurrenceCadence): Observable<RecurringPm> {
+  classify(id: number, shift: ShiftPreference, cadence: RecurrenceCadence | null,
+           dayOfWeek: number | null): Observable<RecurringPm> {
     return this.http.put<SpringApiResponse<RecurringPm>>(
-      `${this.base}/catalog/${encodeURIComponent(pmnum)}`, { shift, cadence })
+      `${this.base}/catalog/${id}`, { shift, cadence, dayOfWeek })
       .pipe(map(r => r.responseData));
   }
 
@@ -50,6 +51,13 @@ export class MaximoPmApiService {
   getScheduleRange(from: string, to: string): Observable<ShiftDay[]> {
     const p = new HttpParams().set('from', from).set('to', to);
     return this.http.get<SpringApiResponse<ShiftDay[]>>(`${this.scheduleBase}/range`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Roster names in the range that did NOT resolve to a User — candidates for a `scheduleName` alias. */
+  getUnresolved(from: string, to: string): Observable<string[]> {
+    const p = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<SpringApiResponse<string[]>>(`${this.scheduleBase}/unresolved`, { params: p })
       .pipe(map(r => r.responseData ?? []));
   }
 }

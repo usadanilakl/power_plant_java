@@ -17,6 +17,7 @@
 
 import * as XLSX from 'xlsx';
 import { SharePointManager } from './sharepoint.manager';
+import { backendPost } from '../clients/backend-client';
 import type { PersonnelEntry, PersonnelStatus, PersonnelContact, ShiftCode } from '../../shared/types';
 
 function getSchedulePath(): string {
@@ -144,9 +145,32 @@ export class PersonnelManager {
       this.cachedPersonnel = this.parseSchedule(buffer);
       this.cacheTime = Date.now();
       console.log(`[Personnel] Parsed ${this.cachedPersonnel.length} personnel entries`);
+      // Mirror the parsed schedule into the local backend (ShiftDay) so the app + sync can use it.
+      // Fire-and-forget: a backend hiccup must not break the personnel widget.
+      void this.pushToBackend(this.cachedPersonnel);
       return this.cachedPersonnel;
     } finally {
       this.loading = false;
+    }
+  }
+
+  /**
+   * Push the parsed schedule to the Spring backend's POST /ng/schedule/sync, which pivots the
+   * person-rows into per-day ShiftDay rows (resolving names to Users) and replicates via sync.
+   * The PersonnelEntry shape already matches the backend's ScheduleImportRequest.
+   */
+  private async pushToBackend(personnel: PersonnelEntry[]): Promise<void> {
+    try {
+      const year = new Date().getFullYear();
+      const persons = personnel.map(p => ({
+        name: p.name,
+        group: p.group,
+        schedule: (p.schedule || []).map(s => ({ date: s.date, shift: s.shift })),
+      }));
+      await backendPost('/ng/schedule/sync', { year, source: 'electron', persons });
+      console.log(`[Personnel] Pushed ${persons.length} person schedules to backend`);
+    } catch (err: any) {
+      console.warn('[Personnel] Backend schedule push failed:', err?.message ?? err);
     }
   }
 

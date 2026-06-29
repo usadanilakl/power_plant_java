@@ -452,36 +452,6 @@ public class SharePointCertificateAccess implements SharePointAccess {
         throw new RuntimeException("Failed to download file by GUID '" + uniqueId + "': " + response.getStatusCode());
     }
 
-    /**
-     * Download a file by its server-relative path (e.g.
-     * {@code /sites/JG/External/60 - Operations/.../OPS Schedule 2026.xlsx}). Mirrors the Electron
-     * PersonnelManager's {@code GetFileByServerRelativeUrl(@a)/$value} call. The path is URL-encoded
-     * into the OData {@code @a} alias; the URI is passed pre-built so RestTemplate doesn't re-encode.
-     */
-    public byte[] downloadFileByServerRelativeUrl(String serverRelativePath) {
-        String enc = java.net.URLEncoder.encode(serverRelativePath, java.nio.charset.StandardCharsets.UTF_8)
-                .replace("+", "%20");
-        java.net.URI uri = java.net.URI.create(
-                siteUrl + "/_api/web/GetFileByServerRelativeUrl(@a)/$value?@a='" + enc + "'");
-        ResponseEntity<byte[]> response;
-        try {
-            HttpHeaders headers = createHeaders();
-            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
-            response = restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
-        } catch (HttpClientErrorException.Unauthorized e) {
-            log.warn("[SharePoint] 401 on file download by path, refreshing token and retrying");
-            tokenExpirationTime = null;
-            HttpHeaders headers = createHeaders();
-            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
-            response = restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
-        }
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            log.debug("[SharePoint] Downloaded '{}' ({} bytes)", serverRelativePath, response.getBody().length);
-            return response.getBody();
-        }
-        throw new RuntimeException("Failed to download '" + serverRelativePath + "': " + response.getStatusCode());
-    }
-
     public void updateFileByUniqueId(String uniqueId, byte[] content) {
         String endpoint = "/_api/web/GetFileById('" + uniqueId + "')/$value";
         String fullUrl = siteUrl + endpoint;

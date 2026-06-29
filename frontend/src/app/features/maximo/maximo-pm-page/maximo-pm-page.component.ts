@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -38,6 +38,11 @@ export class MaximoPmPageComponent implements OnInit {
 
   readonly shiftOptions: ShiftPreference[] = ['DAY', 'NIGHT', 'EITHER'];
   readonly cadenceOptions: RecurrenceCadence[] = ['DAY', 'WEEK', 'MONTH', 'OTHER'];
+  readonly dowOptions = [
+    { value: null, label: '—' }, { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' },
+    { value: 3, label: 'Wed' }, { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' },
+    { value: 6, label: 'Sat' }, { value: 7, label: 'Sun' }
+  ];
 
   // Catalog
   catalog = signal<RecurringPm[]>([]);
@@ -46,12 +51,17 @@ export class MaximoPmPageComponent implements OnInit {
   // Assignments
   pending = signal<PmPendingAssignment[]>([]);
   pendingLoaded = signal(false);
+  recurringOnly = signal(true);
+  visiblePending = computed(() =>
+    this.recurringOnly() ? this.pending().filter(p => p.recurring) : this.pending());
   /** chosen assignee personid per WO href (defaults to the proposal). */
   assignee: Record<string, string> = {};
   approving = signal(false);
 
   // Schedule
   schedule = signal<ShiftDay[]>([]);
+  /** Roster names in range that didn't resolve to any User — need a scheduleName alias. */
+  unresolved = signal<string[]>([]);
   schedFrom = '';
   schedTo = '';
 
@@ -85,24 +95,21 @@ export class MaximoPmPageComponent implements OnInit {
     this.loading.set(true); this.error.set(null); this.info.set(null);
     try {
       const r = await firstValueFrom(this.api.refreshCatalog());
-      this.info.set(`Scanned ${r['scanned'] ?? 0} WOs → ${r['pmCount'] ?? 0} PMs (${r['created'] ?? 0} new, ${r['updated'] ?? 0} updated)`);
+      const pruned = r['pruned'] ?? 0;
+      this.info.set(`Scanned ${r['scanned'] ?? 0} WOs → ${r['recurring'] ?? 0} recurring PMs `
+        + `(${r['created'] ?? 0} new, ${r['updated'] ?? 0} updated${pruned ? `, ${pruned} pruned` : ''})`);
       this.catalog.set(await firstValueFrom(this.api.getCatalog()));
       this.catalogLoaded.set(true);
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
   }
 
-  async onShiftChange(pm: RecurringPm, shift: ShiftPreference) {
+  /** Persist the row's current shift/cadence/preferred-day; the dropdowns update the pm object first. */
+  async saveClassification(pm: RecurringPm) {
     try {
-      const updated = await firstValueFrom(this.api.classify(pm.pmnum, shift, pm.cadence ?? undefined));
-      this.catalog.update(list => list.map(r => r.pmnum === pm.pmnum ? updated : r));
-    } catch (e: any) { this.error.set(this.msg(e)); }
-  }
-
-  async onCadenceChange(pm: RecurringPm, cadence: RecurrenceCadence) {
-    try {
-      const updated = await firstValueFrom(this.api.classify(pm.pmnum, pm.shift, cadence));
-      this.catalog.update(list => list.map(r => r.pmnum === pm.pmnum ? updated : r));
+      const updated = await firstValueFrom(
+        this.api.classify(pm.id, pm.shift, pm.cadence, pm.preferredDayOfWeek));
+      this.catalog.update(list => list.map(r => r.id === pm.id ? updated : r));
     } catch (e: any) { this.error.set(this.msg(e)); }
   }
 
@@ -123,7 +130,7 @@ export class MaximoPmPageComponent implements OnInit {
   }
 
   async approveAll() {
-    await this.doAssign(this.pending());
+    await this.doAssign(this.visiblePending());
   }
 
   private async doAssign(rows: PmPendingAssignment[]) {
@@ -144,9 +151,48 @@ export class MaximoPmPageComponent implements OnInit {
     if (!this.schedFrom || !this.schedTo) return;
     this.loading.set(true); this.error.set(null);
     try {
-      this.schedule.set(await firstValueFrom(this.api.getScheduleRange(this.schedFrom, this.schedTo)));
+      const [days, unresolved] = await Promise.all([
+        firstValueFrom(this.api.getScheduleRange(this.schedFrom, this.schedTo)),
+        firstValueFrom(this.api.getUnresolved(this.schedFrom, this.schedTo)),
+      ]);
+      this.schedule.set(days);
+      this.unresolved.set([...unresolved].sort());
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
+  }
+
+  /** Reconstruct the spreadsheet-style grid (people rows × date columns, shift code per cell) from ShiftDay. */
+  scheduleGrid = computed(() => {
+    const days = this.schedule();
+    const people = new Set<string>();
+    const cell = new Map<string, Record<string, string>>(); // person -> date -> code
+    const put = (entries: { name: string }[] | null | undefined, date: string, code: string) => {
+      for (const e of (entries ?? [])) {
+        if (!e?.name) continue;
+        people.add(e.name);
+        const row = cell.get(e.name) ?? {};
+        row[date] = code;
+        cell.set(e.name, row);
+      }
+    };
+    for (const d of days) {
+      put(d.dayShift, d.date, 'D');
+      put(d.nightShift, d.date, 'N');
+      put(d.pto, d.date, 'P');
+      put(d.training, d.date, 'T');
+      put(d.unscheduled, d.date, 'U');
+    }
+    return { people: [...people].sort(), dates: days.map(d => d.date), cell };
+  });
+
+  codeFor(person: string, date: string): string {
+    return this.scheduleGrid().cell.get(person)?.[date] ?? '';
+  }
+
+  /** Short header label for a date column, e.g. "Mon 1". */
+  dayLabel(dateStr: string): string {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + d.getDate();
   }
 
   names(entries: { name: string }[] | null | undefined): string {

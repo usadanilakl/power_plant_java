@@ -9,6 +9,7 @@ import { EtaProTrendAdapterService } from '../services/etapro-trend-adapter.serv
 import { EtaProLiveComponent } from '../etapro-live/etapro-live.component';
 import { EtaProHistoryComponent } from '../etapro-history/etapro-history.component';
 import { EtaProPointsComponent } from '../etapro-points/etapro-points.component';
+import { EtaProEpLogComponent } from '../etapro-eplog/etapro-eplog.component';
 
 @Component({
   selector: 'app-etapro-page',
@@ -22,6 +23,7 @@ import { EtaProPointsComponent } from '../etapro-points/etapro-points.component'
     EtaProLiveComponent,
     EtaProHistoryComponent,
     EtaProPointsComponent,
+    EtaProEpLogComponent,
   ],
   template: `
     <app-main-layout>
@@ -35,6 +37,8 @@ import { EtaProPointsComponent } from '../etapro-points/etapro-points.component'
                     (click)="stateService.activeTab.set('live')">Live</button>
             <button [class.active]="stateService.activeTab() === 'history'"
                     (click)="stateService.activeTab.set('history')">History</button>
+            <button [class.active]="stateService.activeTab() === 'eplog'"
+                    (click)="stateService.activeTab.set('eplog')">Operator Log</button>
             <button [class.active]="stateService.activeTab() === 'points'"
                     (click)="stateService.activeTab.set('points')">Points</button>
           </div>
@@ -46,6 +50,9 @@ import { EtaProPointsComponent } from '../etapro-points/etapro-points.component'
               }
               @case ('history') {
                 <app-etapro-history></app-etapro-history>
+              }
+              @case ('eplog') {
+                <app-etapro-eplog></app-etapro-eplog>
               }
               @case ('points') {
                 <app-etapro-points></app-etapro-points>

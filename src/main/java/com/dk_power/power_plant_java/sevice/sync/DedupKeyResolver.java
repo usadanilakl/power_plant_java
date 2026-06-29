@@ -58,6 +58,7 @@ public class DedupKeyResolver {
         Map.entry("ExcavationPermit",    List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
         Map.entry("VentingPermit",       List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
         Map.entry("Instrument",          List.of(new NaturalKeyField("tagNumber", "tag_number", false, false))),
+        Map.entry("RecurringPm",         List.of(new NaturalKeyField("pmKey", "pm_key", false, true))),
         Map.entry("InstrumentLog",       List.of(new NaturalKeyField("localUuid", "local_uuid", false, true))),
         Map.entry("Conversation",        List.of(new NaturalKeyField("entityType", "entity_type", false, true),
                                                   new NaturalKeyField("entityId", "entity_id", false, true),

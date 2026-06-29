@@ -65,6 +65,14 @@ public class User extends BaseAuditEntity {
     @Column(name = "maximo_personid")
     private String maximoPersonidOverride;
 
+    /**
+     * The exact name as it appears in the SharePoint Ops Schedule (e.g. "Danil", "Andy G"). Used to
+     * resolve schedule roster entries to this user — set it for lead operators so PM auto-assignment
+     * targets the right person. Matched case-insensitively; takes priority over fuzzy name matching.
+     */
+    @Column(name = "schedule_name")
+    private String scheduleName;
+
     @Column(name = "phone")
     private String phone;
 

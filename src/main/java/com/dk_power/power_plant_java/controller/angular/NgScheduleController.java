@@ -2,7 +2,6 @@ package com.dk_power.power_plant_java.controller.angular;
 
 import com.dk_power.power_plant_java.dto.users.ScheduleImportRequest;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
-import com.dk_power.power_plant_java.sevice.users.ScheduleExcelImportService;
 import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,24 +21,12 @@ import java.util.Set;
 public class NgScheduleController {
 
     private final ShiftDayService shiftDayService;
-    private final ScheduleExcelImportService excelImportService;
 
     /**
-     * Trigger an import of the SharePoint Ops Schedule Excel directly in Java (the durable path —
-     * no dependency on Electron). Requires certificate access (hub). Returns day rows written.
+     * Receives the parsed Ops Schedule from the Electron desktop app (the single, battle-tested
+     * parser) and pivots person-rows into per-day {@link ShiftDayDto} rows; replicated to other
+     * nodes via the sync system. Wired from electron-manager personnel.manager.ts.
      */
-    @PostMapping("/import-from-sharepoint")
-    public ResponseEntity<NgApiResponse<Map<String, Object>>> importFromSharePoint() {
-        try {
-            int rows = excelImportService.importNow();
-            return ResponseEntity.ok(new NgApiResponse<>(
-                    Map.of("rowsWritten", rows, "source", "sharepoint-cert"), "Schedule imported from SharePoint"));
-        } catch (Exception e) {
-            log.error("[Schedule] SharePoint import failed", e);
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
-    }
-
     @PostMapping("/sync")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> sync(@RequestBody ScheduleImportRequest request) {
         try {
