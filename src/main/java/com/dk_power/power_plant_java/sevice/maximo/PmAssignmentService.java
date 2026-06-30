@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.maximo;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.dto.maximo.PmAssignRequest;
+import com.dk_power.power_plant_java.dto.maximo.PmLeadDto;
 import com.dk_power.power_plant_java.dto.maximo.PmPendingAssignmentDto;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
@@ -147,6 +148,18 @@ public class PmAssignmentService {
         return res;
     }
 
+    /** Lead operators (id + Ops-Schedule alias + personid) so the UI can flag which roster people are leads. */
+    public List<PmLeadDto> leads() {
+        return bundles.leadOperators().stream()
+                .map(u -> PmLeadDto.builder()
+                        .id(u.getId())
+                        .name(u.getName())
+                        .scheduleName(u.getScheduleName())
+                        .personid(u.getMaximoPersonid())
+                        .build())
+                .toList();
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────────
 
     /**
@@ -164,9 +177,16 @@ public class PmAssignmentService {
             case NIGHT -> entries.addAll(nz(day.getNightShift()));
             case EITHER -> { entries.addAll(nz(day.getDayShift())); entries.addAll(nz(day.getNightShift())); }
         }
+        return resolveLeadEntries(entries, leadByScheduleName, leadById);
+    }
+
+    /** Resolve a roster entry list to deduped lead operators (alias first, then fuzzy userId; non-leads dropped). */
+    private List<PmPendingAssignmentDto.PersonOption> resolveLeadEntries(List<ShiftEntry> entries,
+                                                                         Map<String, User> leadByScheduleName,
+                                                                         Map<Long, User> leadById) {
         List<PmPendingAssignmentDto.PersonOption> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        for (ShiftEntry e : entries) {
+        for (ShiftEntry e : nz(entries)) {
             if (e == null) continue;
             User u = e.getName() == null ? null : leadByScheduleName.get(normName(e.getName())); // explicit alias
             if (u == null && e.getUserId() != null) u = leadById.get(e.getUserId());             // fuzzy fallback (lead only)

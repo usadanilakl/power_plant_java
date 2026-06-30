@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.dto.maximo.ReturnMaterialRequest;
 import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest;
 import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutResult;
 import com.dk_power.power_plant_java.dto.maximo.PmAssignRequest;
+import com.dk_power.power_plant_java.dto.maximo.PmLeadDto;
 import com.dk_power.power_plant_java.dto.maximo.PmPendingAssignmentDto;
 import com.dk_power.power_plant_java.dto.maximo.RecurringPmDto;
 import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
@@ -152,6 +153,11 @@ public class NgMaximoController {
     @PostMapping("/service-requests")
     public ResponseEntity<NgApiResponse<MaximoServiceRequestDto>> createSr(
             @RequestBody CreateMaximoServiceRequestDto body) {
+        // Record WHO submitted: default reportedby to the signed-in desktop user (backend-derived,
+        // not trusting the client). A client-supplied value (submitting on someone's behalf) wins.
+        if (body.getReportedby() == null || body.getReportedby().isBlank()) {
+            body.setReportedby(currentUserPersonid());
+        }
         MaximoServiceRequestDto created = serviceRequests.create(body);
         return ResponseEntity.ok(new NgApiResponse<>(created, "created"));
     }
@@ -392,6 +398,12 @@ public class NgMaximoController {
     @GetMapping("/pm/pending-assignments")
     public ResponseEntity<NgApiResponse<List<PmPendingAssignmentDto>>> pmPending() {
         return ResponseEntity.ok(new NgApiResponse<>(pmAssignments.pendingAssignments(), "ok"));
+    }
+
+    /** Lead operators (id, schedule alias, personid) — lets the schedule peek flag which roster people are leads. */
+    @GetMapping("/pm/leads")
+    public ResponseEntity<NgApiResponse<List<PmLeadDto>>> pmLeads() {
+        return ResponseEntity.ok(new NgApiResponse<>(pmAssignments.leads(), "ok"));
     }
 
     /** Approve + assign a batch: set each WO's lead and move it to APPR. */

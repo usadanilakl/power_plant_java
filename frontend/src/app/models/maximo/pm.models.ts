@@ -23,6 +23,14 @@ export interface PmPersonOption {
   name: string;
 }
 
+/** A lead operator's identity, so the schedule peek can flag which roster people are leads. */
+export interface PmLead {
+  id: number;
+  name: string;
+  scheduleName: string | null;
+  personid: string | null;
+}
+
 export interface PmPendingAssignment {
   href: string;
   wonum: string;

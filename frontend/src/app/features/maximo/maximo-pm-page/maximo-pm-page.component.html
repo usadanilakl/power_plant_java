@@ -37,22 +37,74 @@
             <tr><th></th><th>WO #</th><th>PM</th><th>Description</th><th>Shift</th><th>Date</th><th>Assignee</th><th></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of visiblePending()">
-              <td><span *ngIf="r.recurring" class="badge" title="In recurring catalog">★</span></td>
-              <td>{{ r.wonum }}</td>
-              <td>{{ r.pmnum || '—' }}</td>
-              <td class="desc">{{ r.description }}</td>
-              <td>{{ r.shift }}</td>
-              <td>{{ r.targetDate }}</td>
-              <td>
-                <select [(ngModel)]="assignee[r.href]" *ngIf="r.candidates.length; else noCand">
-                  <option value="">— unassigned —</option>
-                  <option *ngFor="let c of r.candidates" [value]="c.personid">{{ c.name }} ({{ c.personid }})</option>
-                </select>
-                <ng-template #noCand><span class="muted">{{ r.note || 'no candidates' }}</span></ng-template>
-              </td>
-              <td><button class="link" (click)="approve(r)" [disabled]="approving()">Approve</button></td>
-            </tr>
+            <ng-container *ngFor="let r of visiblePending()">
+              <tr [class.expanded]="isExpanded(r.href)">
+                <td><span *ngIf="r.recurring" class="badge" title="In recurring catalog">★</span></td>
+                <td>{{ r.wonum }}</td>
+                <td>{{ r.pmnum || '—' }}</td>
+                <td class="desc">{{ r.description }}</td>
+                <td>{{ r.shift }}</td>
+                <td>{{ r.targetDate }}</td>
+                <td>
+                  <select [(ngModel)]="assignee[r.href]" *ngIf="r.candidates.length; else noCand">
+                    <option value="">— unassigned —</option>
+                    <option *ngFor="let c of r.candidates" [value]="c.personid">{{ c.name }} ({{ c.personid }})</option>
+                  </select>
+                  <ng-template #noCand><span class="muted">{{ r.note || 'no candidates' }}</span></ng-template>
+                </td>
+                <td class="row-actions">
+                  <button class="link peek-toggle" [class.on]="isExpanded(r.href)" (click)="togglePeek(r)"
+                          [title]="isExpanded(r.href) ? 'Hide schedule' : 'Show 3-week schedule around ' + r.targetDate">📅</button>
+                  <button class="link" (click)="approve(r)" [disabled]="approving()">Approve</button>
+                </td>
+              </tr>
+
+              <!-- Inline 3-week schedule peek (due week ±1), same grid as the Schedule tab -->
+              <tr class="peek-row" *ngIf="isExpanded(r.href)">
+                <td></td>
+                <td colspan="7">
+                  <div class="peek-note" *ngIf="peekLoading(r)"><span class="muted">Loading schedule…</span></div>
+                  <ng-container *ngIf="!peekLoading(r)">
+                    <ng-container *ngIf="peekGrid(r) as g">
+                      <div *ngIf="g.dates.length && g.people.length; else noPeek">
+                        <p class="muted legend peek-legend">3 weeks around {{ r.targetDate }} ·
+                          <span class="c c-D">D</span> day · <span class="c c-N">N</span> night ·
+                          <span class="c c-P">P</span> PTO · <span class="c c-T">T</span> training ·
+                          <span class="c c-U">U</span> unscheduled · <span class="due-key">▎</span> WO due
+                          <label class="leads-only"><input type="checkbox" [ngModel]="peekLeadsOnly()"
+                                 (ngModelChange)="peekLeadsOnly.set($event)" /> Leads only</label></p>
+                        <div class="grid-scroll peek-scroll" *ngIf="visiblePeople(g).length; else noLeads">
+                          <table class="sched-grid">
+                            <thead>
+                              <tr>
+                                <th class="person-col">Name <span class="crew-h">(crew)</span></th>
+                                <th *ngFor="let d of g.dates" class="day-col" [class.due]="d === g.dueDate">{{ dayLabel(d) }}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr *ngFor="let p of visiblePeople(g)" [class.lead-row]="p.isLead">
+                                <td class="person-col">
+                                  <span *ngIf="p.isLead" class="lead-tag" title="Lead operator">L</span>
+                                  {{ p.name }} <span class="crew">{{ p.crew || '—' }}</span>
+                                </td>
+                                <td *ngFor="let d of g.dates"
+                                    [class]="'cell c-' + peekCode(g, p.name, d) + (d === g.dueDate ? ' due' : '')">{{ peekCode(g, p.name, d) }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <ng-template #noLeads>
+                          <div class="peek-note"><span class="muted">No lead operators scheduled in this window — uncheck “Leads only” to see everyone.</span></div>
+                        </ng-template>
+                      </div>
+                      <ng-template #noPeek>
+                        <div class="peek-note"><span class="muted">No schedule imported around {{ r.targetDate }} — open/refresh the desktop Personnel widget.</span></div>
+                      </ng-template>
+                    </ng-container>
+                  </ng-container>
+                </td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
         <ng-template #noPending>

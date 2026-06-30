@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import {
   PmAssignRequest,
+  PmLead,
   PmPendingAssignment,
   RecurrenceCadence,
   RecurringPm,
@@ -39,6 +40,12 @@ export class MaximoPmApiService {
   // ── Assignments ─────────────────────────────────────────────────────────
   getPending(): Observable<PmPendingAssignment[]> {
     return this.http.get<SpringApiResponse<PmPendingAssignment[]>>(`${this.base}/pending-assignments`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Lead operators (id/scheduleName/personid) — used to flag leads in the schedule peek. */
+  getLeads(): Observable<PmLead[]> {
+    return this.http.get<SpringApiResponse<PmLead[]>>(`${this.base}/leads`)
       .pipe(map(r => r.responseData ?? []));
   }
 
