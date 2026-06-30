@@ -23,8 +23,8 @@
         <div class="row">
           <label>Assetnum <input [(ngModel)]="criteria.assetnum" placeholder="-1-CEM-SS" /></label>
           <label>Location <input [(ngModel)]="criteria.location" placeholder="01-CEMS" /></label>
-          <label>Lead craft <input [(ngModel)]="criteria.leadCraft" placeholder="RGARCIA" /></label>
-          <label>Supervisor <input [(ngModel)]="criteria.supervisor" placeholder="personid" /></label>
+          <label>Lead craft <app-maximo-person-picker [(ngModel)]="criteria.leadCraft" placeholder="RGARCIA"></app-maximo-person-picker></label>
+          <label>Supervisor <app-maximo-person-picker [(ngModel)]="criteria.supervisor" placeholder="personid"></app-maximo-person-picker></label>
           <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>
         </div>
         <div class="row">

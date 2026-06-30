@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest;
 import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutResult;
 import com.dk_power.power_plant_java.dto.maximo.PmAssignRequest;
 import com.dk_power.power_plant_java.dto.maximo.PmLeadDto;
+import com.dk_power.power_plant_java.dto.maximo.PmOccurrenceDto;
 import com.dk_power.power_plant_java.dto.maximo.PmPendingAssignmentDto;
 import com.dk_power.power_plant_java.dto.maximo.RecurringPmDto;
 import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
@@ -40,6 +41,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -168,6 +170,54 @@ public class NgMaximoController {
                 .map(sr -> ResponseEntity.ok(new NgApiResponse<>(sr, "ok")))
                 .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "not found")));
     }
+
+    /** SR statuses where the ticket is still editable (description/notes/attachments). */
+    private static final java.util.Set<String> EDITABLE_SR_STATUSES =
+            java.util.Set.of("NEW", "QUEUED", "INPROG", "PENDING");
+
+    /** Edit an editable SR's description / long description. Rejected (and Maximo's error surfaced) otherwise. */
+    @PatchMapping("/service-requests/{href}")
+    public ResponseEntity<NgApiResponse<MaximoServiceRequestDto>> updateSr(
+            @PathVariable String href, @RequestBody UpdateSrRequest body) {
+        try {
+            MaximoServiceRequestDto current = serviceRequests.findByHref(href).orElse(null);
+            if (current == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "SR not found"));
+            if (!isEditableSr(current.getStatus())) {
+                return ResponseEntity.badRequest().body(
+                        new NgApiResponse<>(null, "SR is not editable in status " + current.getStatus()));
+            }
+            MaximoServiceRequestDto updated = serviceRequests.updateFields(href, body.description(), body.longDescription());
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "updated"));
+        } catch (Exception e) {
+            log.warn("[Maximo] update SR {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Add a note (worklog) to an editable SR. Returns the refreshed note list. */
+    @PostMapping("/service-requests/{href}/worklog")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> addSrWorklog(
+            @PathVariable String href, @RequestBody com.dk_power.power_plant_java.dto.maximo.AddWorklogRequest req) {
+        try {
+            MaximoServiceRequestDto current = serviceRequests.findByHref(href).orElse(null);
+            if (current != null && !isEditableSr(current.getStatus())) {
+                return ResponseEntity.badRequest().body(
+                        new NgApiResponse<>(null, "SR is not editable in status " + current.getStatus()));
+            }
+            serviceRequests.addWorklog(href, req.getSummary(), req.getDetails(), req.getLogtype());
+            return ResponseEntity.ok(new NgApiResponse<>(worklog.listForSr(href), "added"));
+        } catch (Exception e) {
+            log.warn("[Maximo] add SR worklog on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    private static boolean isEditableSr(String status) {
+        return status != null && EDITABLE_SR_STATUSES.contains(status.trim().toUpperCase());
+    }
+
+    /** Body for {@link #updateSr}: only the SR free-text fields are client-editable. */
+    public record UpdateSrRequest(String description, String longDescription) {}
 
     // ---- Work Orders ------------------------------------------------------
 
@@ -390,6 +440,17 @@ public class NgMaximoController {
             return ResponseEntity.ok(new NgApiResponse<>(
                     recurringPms.updateClassification(id, req.shift(), req.cadence(), req.dayOfWeek()), "updated"));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** A catalog PM's real Maximo work orders (history + upcoming), matched by pmnum or description. */
+    @GetMapping("/pm/catalog/{id}/occurrences")
+    public ResponseEntity<NgApiResponse<List<PmOccurrenceDto>>> pmOccurrences(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(recurringPms.occurrences(id), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] PM occurrences {} failed: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }

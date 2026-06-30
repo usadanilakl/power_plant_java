@@ -6,6 +6,7 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import {
@@ -34,7 +35,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
   standalone: true,
   imports: [
     CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent,
-    MaximoTableComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent
+    MaximoTableComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoPersonPickerComponent
   ],
   templateUrl: './maximo-service-requests-page.component.html',
   styleUrl: './maximo-service-requests-page.component.css'

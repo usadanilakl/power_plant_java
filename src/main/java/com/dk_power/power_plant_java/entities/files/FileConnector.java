@@ -121,4 +121,27 @@ public class FileConnector extends BaseAuditEntity {
      * null as false at the boundary instead.
      */
     private Boolean showLabel;
+
+    /**
+     * Pairing identifier for multi-reference drawings — when an electrical
+     * P&ID has multiple connectors pointing at the same target, the user
+     * (or auto-numbering on the create-flow) assigns a key like {@code "1"},
+     * {@code "2"} to disambiguate which connector pairs with which on the
+     * reciprocal side. Match is exact string equality between the two sides.
+     *
+     * <p>Separate from {@link #label} on purpose — labels are display text
+     * that users may want to rename freely; the pair key is structural and
+     * changing it intentionally re-routes the pairing logic. Decoupling them
+     * means rename of one doesn't silently break the other.
+     *
+     * <p>Nullable. {@code null} → "no specific key, fall back to the legacy
+     * 1:1-only auto-pair rule" — keeps single-pair drawings working with no
+     * keys at all. Existing rows migrated in as NULL via {@code ddl-auto=update}.
+     *
+     * <p>The service layer auto-propagates this field to the paired peer on
+     * save (when one exists) so asymmetric keys are impossible — otherwise a
+     * user could set "1" on one side, leave the other NULL, then an
+     * Unlink/Re-Link cycle would silently fail to re-pair.
+     */
+    private String pairKey;
 }

@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -108,19 +109,44 @@ public class NgFileConnectorService
      * target files are resolved (the mapper sets null when caller's id is
      * unknown — we refuse to save an orphan connector).
      *
-     * <p>After the save, attempts to auto-pair: if this connector is unpaired
-     * AND exactly ONE unpaired connector on the target file points back at
-     * the source file, links them as bidirectional counterparts. Same 1:1
-     * rule the bulk migration uses — multi-on-either-side is left for
-     * manual pairing via the Link button in the info window.
+     * <p>Three pieces of post-save behavior wired here (in this order):
+     * <ol>
+     *   <li>{@link #assignAutoPairKey} — for NEW connectors with no pairKey,
+     *       compute the next available numeric key for this src→tgt pair so
+     *       reciprocals can find each other automatically.</li>
+     *   <li>{@link #propagateKeyToPeer} — if this connector is paired AND
+     *       the user changed pairKey, copy the new value to the peer so
+     *       both sides always agree. Stops the silent-break footgun where
+     *       asymmetric keys would prevent re-link after Unlink.</li>
+     *   <li>{@link #tryAutoPair} — link unpaired reciprocals when the rule
+     *       allows (filtered by pairKey when set, falls back to 1:1).</li>
+     * </ol>
      */
     public FileConnectorDto save(FileConnectorIdDto dto) {
+        boolean wasCreate = dto.getId() == null || dto.getId() == 0;
+        // Snapshot the BEFORE-save pairKey so propagateKeyToPeer can decide
+        // whether the user actually changed it (vs. a save that didn't touch
+        // the field). Only relevant for updates — creates have no "before".
+        String previousPairKey = null;
+        if (!wasCreate) {
+            previousPairKey = connectorRepo.findById(dto.getId())
+                .map(FileConnector::getPairKey).orElse(null);
+        }
+
         FileConnector entity = connectorMapper.convertIdDtoToEntity(dto);
         if (entity.getSourceFile() == null || entity.getTargetFile() == null) {
             throw new RuntimeException("FileConnector requires both sourceFile and targetFile to resolve");
         }
         FileConnector saved = connectorRepo.save(entity);
+
+        if (wasCreate && saved.getPairKey() == null) {
+            assignAutoPairKey(saved);
+        }
+        if (!wasCreate && saved.getCounterpartConnectorId() != null) {
+            propagateKeyToPeer(saved, previousPairKey);
+        }
         tryAutoPair(saved);
+
         // Re-read after the (possible) pair update so the returned DTO carries
         // the now-set counterpartConnectorId for the caller's local state.
         FileConnector refreshed = connectorRepo.findById(saved.getId()).orElse(saved);
@@ -128,12 +154,83 @@ public class NgFileConnectorService
     }
 
     /**
-     * Link this connector to its 1:1 reciprocal on the target file if one
-     * exists and neither side is already paired. Quiet: any other shape
-     * (no reciprocal, multiple reciprocals, this side already paired) leaves
-     * the row untouched — manual pairing via {@link #linkCounterparts} is
-     * still available for those cases. Failure here doesn't throw (caller
-     * already committed the save) — auto-pair is best-effort UX, not contract.
+     * Assign the next numeric pairKey for new connectors on this src→tgt
+     * pair. Rule: {@code MAX(numeric existing key) + 1}, where non-numeric
+     * keys are ignored in the MAX (so a user-set key like {@code "main"}
+     * doesn't accidentally bump the numeric sequence to 0).
+     *
+     * <p>Uses MAX rather than COUNT so deleted-then-re-added connectors
+     * don't collide with surviving siblings. If a user manually sets a
+     * non-numeric key, auto-numbering still works for siblings — they just
+     * start fresh at 1.
+     *
+     * <p>Skipped silently when caller already provided a pairKey
+     * (respect explicit user intent over auto-numbering).
+     */
+    private void assignAutoPairKey(FileConnector saved) {
+        try {
+            Long srcId = saved.getSourceFile().getId();
+            Long tgtId = saved.getTargetFile().getId();
+            int nextKey = connectorRepo.findBySourceAndTarget(srcId, tgtId).stream()
+                .filter(c -> !c.getId().equals(saved.getId()))
+                .map(FileConnector::getPairKey)
+                .filter(Objects::nonNull)
+                .mapToInt(k -> {
+                    try { return Integer.parseInt(k.trim()); }
+                    catch (NumberFormatException nfe) { return 0; }
+                })
+                .max()
+                .orElse(0) + 1;
+            saved.setPairKey(String.valueOf(nextKey));
+            connectorRepo.saveAndFlush(saved);
+            log.debug("auto-assigned pairKey={} to FileConnector #{} (src={} tgt={})",
+                nextKey, saved.getId(), srcId, tgtId);
+        } catch (RuntimeException ex) {
+            log.warn("auto-assign pairKey failed for FileConnector #{}: {}", saved.getId(), ex.getMessage());
+        }
+    }
+
+    /**
+     * Mirror this connector's current pairKey to its paired peer when the
+     * value actually changed (skipped when previous equals current).
+     * Prevents the asymmetric-key footgun: user types "1" on one side,
+     * peer stays NULL, Unlink → Re-Link silently can't pair them again.
+     */
+    private void propagateKeyToPeer(FileConnector saved, String previousKey) {
+        String currentKey = saved.getPairKey();
+        if (Objects.equals(previousKey, currentKey)) return;
+        Long peerId = saved.getCounterpartConnectorId();
+        if (peerId == null) return;
+        try {
+            connectorRepo.findById(peerId).ifPresent(peer -> {
+                if (Objects.equals(peer.getPairKey(), currentKey)) return;
+                peer.setPairKey(currentKey);
+                connectorRepo.saveAndFlush(peer);
+                log.info("propagated pairKey '{}' from #{} to peer #{}", currentKey, saved.getId(), peerId);
+            });
+        } catch (RuntimeException ex) {
+            log.warn("propagate pairKey to peer failed for #{} → #{}: {}",
+                saved.getId(), peerId, ex.getMessage());
+        }
+    }
+
+    /**
+     * Link this connector to its reciprocal on the target file when one can
+     * be unambiguously identified. Two rules in order of precedence:
+     * <ol>
+     *   <li><b>Keyed match</b>: if this connector has a non-null pairKey,
+     *       require an unpaired reciprocal with the SAME pairKey. Multi-
+     *       reference drawings disambiguate this way — A(key="1") pairs
+     *       only with B(key="1"), not B(key="2").</li>
+     *   <li><b>Legacy 1:1 fallback</b>: if this connector has no pairKey,
+     *       require EXACTLY one unpaired reciprocal AND that reciprocal
+     *       also has no pairKey. Single-pair drawings work with no keys at
+     *       all — same behavior as the original implementation.</li>
+     * </ol>
+     * Any other shape (no candidate, multiple candidates without keys, this
+     * side already paired) leaves the row untouched — manual pairing via
+     * {@link #linkCounterparts} is still available. Failure here doesn't
+     * throw (caller already committed the save) — auto-pair is best-effort.
      */
     private void tryAutoPair(FileConnector saved) {
         try {
@@ -142,65 +239,105 @@ public class NgFileConnectorService
             Long srcId = saved.getSourceFile().getId();
             Long tgtId = saved.getTargetFile().getId();
 
-            // Reciprocals: connectors on the target file pointing back at the
-            // source file. Filter out deleted + already-paired (paired ones
-            // have a known counterpart — don't poach them).
             List<FileConnector> reciprocals = connectorRepo.findBySourceAndTarget(tgtId, srcId).stream()
                 .filter(c -> !c.getId().equals(saved.getId()))
                 .filter(c -> c.getCounterpartConnectorId() == null)
                 .toList();
 
-            if (reciprocals.size() != 1) {
-                // 0 — no peer yet; 2+ — ambiguous, user must pick manually.
-                return;
+            FileConnector peer = null;
+            String savedKey = saved.getPairKey();
+            if (savedKey != null) {
+                // Keyed match — require exact pairKey equality. Multiple
+                // reciprocals with same key would itself be a data bug
+                // (two B-side connectors both labeled "1"), so still bail.
+                List<FileConnector> sameKey = reciprocals.stream()
+                    .filter(c -> savedKey.equals(c.getPairKey()))
+                    .toList();
+                if (sameKey.size() == 1) peer = sameKey.get(0);
+            } else {
+                // Legacy 1:1 fallback — only when neither side has a key.
+                // If reciprocals include any keyed connector, they're claimed
+                // for keyed-pair matching by other future connectors and
+                // shouldn't be silently absorbed into a 1:1 fallback.
+                List<FileConnector> unkeyed = reciprocals.stream()
+                    .filter(c -> c.getPairKey() == null)
+                    .toList();
+                if (unkeyed.size() == 1) peer = unkeyed.get(0);
             }
-            FileConnector peer = reciprocals.get(0);
+            if (peer == null) return;
+
             saved.setCounterpartConnectorId(peer.getId());
             peer.setCounterpartConnectorId(saved.getId());
             connectorRepo.saveAndFlush(saved);
             connectorRepo.saveAndFlush(peer);
-            log.info("auto-paired FileConnectors #{} ↔ #{} on save", saved.getId(), peer.getId());
+            log.info("auto-paired FileConnectors #{} ↔ #{} on save (key={})",
+                saved.getId(), peer.getId(), savedKey);
         } catch (RuntimeException ex) {
             log.warn("auto-pair on save failed for FileConnector #{}: {}", saved.getId(), ex.getMessage());
         }
     }
 
     /**
-     * Find the unpaired reciprocals for a given connector — used by the info
+     * Find unpaired reciprocals for a given connector — used by the info
      * window's "Link counterpart" button. Returns connectors on the target
      * file pointing back at the source, filtered to those without a current
-     * pairing. Empty list when no candidate exists; size>1 means the user
-     * needs to disambiguate (frontend shows a picker).
+     * pairing.
+     *
+     * <p>When this connector has a non-null pairKey, candidates are
+     * additionally narrowed to reciprocals with the SAME key — so on a
+     * multi-reference drawing the Link button only shows the right peer,
+     * not every same-direction connector.
      */
     @Transactional(readOnly = true)
     public List<FileConnectorDto> findCounterpartCandidates(Long connectorId) {
         FileConnector c = connectorRepo.findById(connectorId).orElseThrow(
             () -> new RuntimeException("FileConnector not found: " + connectorId));
         if (c.getSourceFile() == null || c.getTargetFile() == null) return List.of();
+        String myKey = c.getPairKey();
         return connectorRepo.findBySourceAndTarget(c.getTargetFile().getId(), c.getSourceFile().getId()).stream()
             .filter(other -> !other.getId().equals(connectorId))
             .filter(other -> other.getCounterpartConnectorId() == null)
+            // Keyed-match filter: when caller has a pairKey, only same-key
+            // reciprocals are valid pairing candidates. Caller without a key
+            // sees all unpaired reciprocals (legacy behavior).
+            .filter(other -> myKey == null || myKey.equals(other.getPairKey()))
             .map(connectorMapper::convertToDto)
             .toList();
     }
 
     /**
-     * Soft-delete by id. ALSO clears the surviving counterpart's
-     * counterpartConnectorId so it doesn't reference a deleted row.
-     * Named distinctly from the inherited {@code NgCrudService.softDelete} so
-     * the interface contract (which returns the soft-deleted entity) stays
-     * honored — connector deletion needs side effects (clear peer's pointer)
-     * that the generic implementation can't know about.
+     * Soft-delete by id, with optional cascade to the paired counterpart.
+     *
+     * <p>{@code deleteCounterpart=true} (the UX default) soft-deletes the
+     * peer in the same transaction — for paired connectors the user almost
+     * always wants both gone, since the pair represents a single logical
+     * reference split across two drawings.
+     *
+     * <p>{@code deleteCounterpart=false} keeps the legacy behavior: only
+     * this side is soft-deleted, and the peer's counterpartConnectorId is
+     * cleared so it doesn't reference a deleted row.
+     *
+     * <p>Named distinctly from the inherited {@code NgCrudService.softDelete}
+     * so the interface contract (which returns the soft-deleted entity)
+     * stays honored — connector deletion needs side effects the generic
+     * implementation can't know about.
      */
-    public void removeConnector(Long id) {
+    public void removeConnector(Long id, boolean deleteCounterpart) {
         FileConnector connector = connectorRepo.findById(id).orElse(null);
         if (connector == null) return;
 
-        // Clear opposite side BEFORE deleting this one — same invariant as unlink.
         Long counterpartId = connector.getCounterpartConnectorId();
         if (counterpartId != null) {
             connectorRepo.findById(counterpartId).ifPresent(other -> {
-                if (id.equals(other.getCounterpartConnectorId())) {
+                if (deleteCounterpart) {
+                    // Cascade — peer also goes. Clear its counterpartConnectorId
+                    // first to keep the "deleted row has no pointer" invariant.
+                    other.setCounterpartConnectorId(null);
+                    other.setDeleted(true);
+                    connectorRepo.saveAndFlush(other);
+                    log.info("Cascade soft-deleted peer FileConnector #{}", other.getId());
+                } else if (id.equals(other.getCounterpartConnectorId())) {
+                    // Legacy: clear peer's pointer only, keep peer alive.
                     other.setCounterpartConnectorId(null);
                     connectorRepo.saveAndFlush(other);
                 }
@@ -210,7 +347,17 @@ public class NgFileConnectorService
         connector.setDeleted(true);
         connector.setCounterpartConnectorId(null);
         connectorRepo.saveAndFlush(connector);
-        log.info("Soft-deleted FileConnector #{} (was paired with #{})", id, counterpartId);
+        log.info("Soft-deleted FileConnector #{} (was paired with #{}, cascade={})",
+            id, counterpartId, deleteCounterpart);
+    }
+
+    /**
+     * Back-compat overload — defaults {@code deleteCounterpart=false} so
+     * callers that haven't been updated keep the legacy "delete this side
+     * only" behavior. New callers should use the explicit 2-arg form.
+     */
+    public void removeConnector(Long id) {
+        removeConnector(id, false);
     }
 
     // ------------------------------------------------------------------------

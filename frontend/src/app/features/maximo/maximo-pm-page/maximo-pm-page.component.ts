@@ -5,7 +5,11 @@ import { firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoPmApiService } from '../../../services/maximo/maximo-pm-api.service';
+import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoWorkOrder } from '../../../models/maximo/maximo.models';
 import {
+  PmOccurrence,
   PmPendingAssignment,
   RecurrenceCadence,
   RecurringPm,
@@ -38,12 +42,13 @@ interface PeekGrid {
 @Component({
   selector: 'app-maximo-pm-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
   templateUrl: './maximo-pm-page.component.html',
   styleUrl: './maximo-pm-page.component.css'
 })
 export class MaximoPmPageComponent implements OnInit {
   private api = inject(MaximoPmApiService);
+  private maximoApi = inject(MaximoApiService);
 
   tab = signal<Tab>('assignments');
   loading = signal(false);
@@ -61,6 +66,10 @@ export class MaximoPmPageComponent implements OnInit {
   // Catalog
   catalog = signal<RecurringPm[]>([]);
   catalogLoaded = signal(false);
+  // Per-PM occurrence timeline (history + upcoming), lazily loaded on expand.
+  expandedPmIds = signal<Set<number>>(new Set());
+  occByPm = signal<Record<number, PmOccurrence[]>>({});
+  occLoadingIds = signal<Set<number>>(new Set());
 
   // Assignments
   pending = signal<PmPendingAssignment[]>([]);
@@ -70,6 +79,9 @@ export class MaximoPmPageComponent implements OnInit {
     this.recurringOnly() ? this.pending().filter(p => p.recurring) : this.pending());
   /** chosen assignee personid per WO href (defaults to the proposal). */
   assignee: Record<string, string> = {};
+  /** editable Target Start / Target Finish per WO href (seeded from the computed values). */
+  startDate: Record<string, string> = {};
+  finishDate: Record<string, string> = {};
   approving = signal(false);
 
   // Inline schedule peek: expanded rows + per-DATE 3-week grid cache + in-flight dates.
@@ -138,13 +150,51 @@ export class MaximoPmPageComponent implements OnInit {
     } catch (e: any) { this.error.set(this.msg(e)); }
   }
 
+  // ── Per-PM occurrence timeline (history + upcoming) ───────────────────────
+  isPmExpanded(id: number): boolean { return this.expandedPmIds().has(id); }
+  isOccLoading(id: number): boolean { return this.occLoadingIds().has(id); }
+  occLoaded(id: number): boolean { return this.occByPm()[id] != null; }
+  /** Upcoming/active items (open WOs), soonest first. */
+  occUpcoming(id: number): PmOccurrence[] {
+    return (this.occByPm()[id] ?? []).filter(o => o.open)
+      .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+  }
+  /** History (completed/terminal WOs), newest first (backend order). */
+  occHistory(id: number): PmOccurrence[] {
+    return (this.occByPm()[id] ?? []).filter(o => !o.open);
+  }
+
+  /** Expand/collapse a PM's occurrence timeline; lazily fetch its real Maximo WOs once. */
+  async togglePmHistory(pm: RecurringPm) {
+    const set = new Set(this.expandedPmIds());
+    if (set.has(pm.id)) { set.delete(pm.id); this.expandedPmIds.set(set); return; }
+    set.add(pm.id);
+    this.expandedPmIds.set(set);
+    if (this.occByPm()[pm.id]) return;                       // cached
+    const loading = new Set(this.occLoadingIds()); loading.add(pm.id);
+    this.occLoadingIds.set(loading);
+    try {
+      const occ = await firstValueFrom(this.api.getOccurrences(pm.id));
+      this.occByPm.update(m => ({ ...m, [pm.id]: occ }));
+    } catch (e: any) {
+      this.error.set(this.msg(e));
+    } finally {
+      const l = new Set(this.occLoadingIds()); l.delete(pm.id);
+      this.occLoadingIds.set(l);
+    }
+  }
+
   // ── Assignments ─────────────────────────────────────────────────────────
   async loadPending() {
     this.loading.set(true); this.error.set(null);
     try {
       const rows = await firstValueFrom(this.api.getPending());
       this.pending.set(rows);
-      for (const r of rows) this.assignee[r.href] = r.proposedPersonid ?? '';
+      for (const r of rows) {
+        this.assignee[r.href] = r.proposedPersonid ?? '';
+        this.startDate[r.href] = r.targetDate ?? '';
+        this.finishDate[r.href] = r.targetFinish ?? '';
+      }
       this.pendingLoaded.set(true);
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
@@ -162,13 +212,56 @@ export class MaximoPmPageComponent implements OnInit {
     if (!rows.length || this.approving()) return;
     this.approving.set(true); this.error.set(null); this.info.set(null);
     try {
-      const items = rows.map(r => ({ href: r.href, personid: this.assignee[r.href] || undefined }));
+      // Write the start+finish window only when the date was shifted (preferred day) OR hand-edited;
+      // otherwise leave the WO's existing Maximo dates alone.
+      const items = rows.map(r => {
+        const start = this.startDate[r.href] ?? r.targetDate;
+        const finish = this.finishDate[r.href] ?? r.targetFinish;
+        const write = r.preferredDayOfWeek != null || start !== r.targetDate || finish !== r.targetFinish;
+        return {
+          href: r.href,
+          personid: this.assignee[r.href] || undefined,
+          targetDate: write ? start : undefined,
+          targetFinish: write ? finish : undefined,
+        };
+      });
       const res = await firstValueFrom(this.api.assign({ items, memo: 'PM auto-assignment' }));
       this.info.set(`Approved ${res.approved}${res.errors?.length ? `, ${res.errors.length} failed` : ''}`);
       if (res.errors?.length) this.error.set(res.errors.map(e => e.error).join('; '));
       await this.loadPending();
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.approving.set(false); }
+  }
+
+  // ── WO detail dialog (open the full Maximo WO from an Assignments row) ─────
+  /** The WO whose detail dialog is open (a full MaximoWorkOrder), or null. */
+  selectedWo = signal<MaximoWorkOrder | null>(null);
+
+  /** Hydrate the full WO from its href and open the shared detail dialog (parts-checkout precedent). */
+  async openWo(row: PmPendingAssignment) {
+    await this.openWoHref(row.href, row.wonum);
+  }
+
+  /** Open the WO detail dialog from a bare href (used by the occurrence timeline), hydrating the full WO. */
+  async openWoHref(href: string, wonum = '') {
+    if (!href) return;
+    try {
+      const wo = await firstValueFrom(this.maximoApi.getWorkOrder(href));
+      this.selectedWo.set(wo ?? { ...this.blankWo(), href, wonum });
+    } catch {
+      this.selectedWo.set({ ...this.blankWo(), href, wonum });
+    }
+  }
+
+  closeWo() { this.selectedWo.set(null); }
+
+  /** An all-empty MaximoWorkOrder, for fallback when the header fetch fails. */
+  private blankWo(): MaximoWorkOrder {
+    return {
+      href: '', wonum: '', description: '', longDescription: '', status: '', worktype: '',
+      assetnum: '', location: '', siteid: '', reportdate: '', targetStart: '', schedstart: '',
+      schedfinish: '', leadCraft: '', supervisor: '', priority: '', pmnum: ''
+    };
   }
 
   // ── Inline schedule peek (per WO row) ─────────────────────────────────────

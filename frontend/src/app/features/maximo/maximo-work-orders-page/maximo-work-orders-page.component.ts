@@ -6,6 +6,7 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import { MaximoWorkOrder, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 import { WO_COLUMNS } from '../maximo-table-configs';
@@ -32,7 +33,7 @@ const emptyCriteria = (): MaximoWorkOrderCriteria => ({
 @Component({
   selector: 'app-maximo-work-orders-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoDetailDialogComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoDetailDialogComponent, MaximoPersonPickerComponent],
   templateUrl: './maximo-work-orders-page.component.html',
   styleUrl: './maximo-work-orders-page.component.css'
 })

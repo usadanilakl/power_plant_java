@@ -5,6 +5,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
+import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import {
   CreateMaximoServiceRequest,
   MaximoAsset,
@@ -20,7 +21,7 @@ type Tab = 'sr' | 'wo' | 'att';
 @Component({
   selector: 'app-maximo-assets-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoPersonPickerComponent],
   templateUrl: './maximo-assets-page.component.html',
   styleUrl: './maximo-assets-page.component.css'
 })

@@ -31,7 +31,9 @@ import { FileConnectorShape } from '../../../../../shared/image/refactored/model
 import { OFF_PAGE_CONNECTOR_SYMBOL_ID } from '../../../../../shared/image/refactored/services/pid-symbols.service';
 import { ConnectorTargetPickerDialogComponent } from '../../../../files/refactored/connector-target-picker-dialog/connector-target-picker-dialog.component';
 import { ConnectorEditDialogComponent } from '../../../../files/refactored/connector-edit-dialog/connector-edit-dialog.component';
+import { ConnectorDeleteDialogComponent } from '../../../../files/refactored/connector-delete-dialog/connector-delete-dialog.component';
 import { LegacyConnectorMigrateDialogComponent, LegacyConnectorMigrateResult } from '../../../../files/refactored/legacy-connector-migrate-dialog/legacy-connector-migrate-dialog.component';
+import { SplitViewRegistryService } from '../services/split-view-registry.service';
 import { MatDialog } from '@angular/material/dialog';
 import { map } from 'rxjs/operators';
 
@@ -66,6 +68,7 @@ export class LotoBuilderRightPanelComponent {
   private connectorMapper = inject(FileConnectorMapperService);
   private connectorNav = inject(ConnectorNavigationService);
   private dialog = inject(MatDialog);
+  private splitRegistry = inject(SplitViewRegistryService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
 
@@ -141,49 +144,153 @@ export class LotoBuilderRightPanelComponent {
     return file?.fileLink || '';
   });
 
-  // ==================== COUNTERPART SIDE-BY-SIDE ====================
-  // Optional split-view that renders the linked counterpart file alongside
-  // the working P&ID. Read-only — no shape editing in the counterpart pane
-  // (avoids polluting shared shape state). User can switch the loto-builder's
-  // current file to the counterpart for full editing.
-  showCounterpart = signal<boolean>(false);
-  counterpartFile = signal<FileDto | null>(null);
-  counterpartLoading = signal<boolean>(false);
-  counterpartError = signal<string | null>(null);
+  // ==================== SPLIT VIEW (RIGHT PANE) ====================
+  // Right pane is a single UI shell driven by THREE entry modes:
+  //   - 'file-counterpart' — shows current primary's FileObject.counterpartId
+  //     target (the existing toolbar "Show Counterpart" button).
+  //   - 'connector-target' — shows the selected connector's targetFile
+  //     (info-window "Show target →" button). Peer connector highlighted.
+  //   - 'manual'           — shows a file the user explicitly opened via the
+  //     file-list right-click "Open in split view" context menu.
+  //
+  // Pin freezes the right pane against ALL passive triggers (selection
+  // change, primary file change, mode-switch button clicks) until the user
+  // explicitly unpins. Peer highlight is still updated when pinned —
+  // it's visual feedback, not a file source change.
+  splitMode = signal<'file-counterpart' | 'connector-target' | 'manual' | null>(null);
+  splitOpen = computed(() => this.splitMode() !== null);
+  splitPinned = signal<boolean>(false);
 
-  counterpartImageUrl = computed(() => this.counterpartFile()?.fileLink || '');
-  hasCounterpart = computed(() => !!this.builderState.currentFile()?.counterpartId);
+  rightPaneFile = signal<FileDto | null>(null);
+  rightPaneLoading = signal<boolean>(false);
+  rightPaneError = signal<string | null>(null);
+  rightPaneImageUrl = computed(() => this.rightPaneFile()?.fileLink || '');
+
+  /** Whether the toolbar's "Show Counterpart" button is meaningful for the
+   *  current primary file (only when the file has a FileObject.counterpartId). */
+  hasFileCounterpart = computed(() => !!this.builderState.currentFile()?.counterpartId);
+
+  /** Right-pane connectors — separate from currentConnectors so the two
+   *  panes render independently. Loaded by an effect keyed off rightPaneFile.id. */
+  rightPaneConnectors = signal<FileConnectorDto[]>([]);
+  /** Stale-response race guard mirroring the primary's connectorLoadToken. */
+  private rightPaneConnectorLoadToken = 0;
 
   /**
-   * Equipment shapes for the counterpart pane — same mapper the primary uses,
-   * but sourced from the counterpart's full FileDto (points field). Read-only
-   * on this pane (no click handlers wired) — just visual overlay so the user
-   * can compare equipment positions side-by-side.
+   * Equipment + connector shapes for the right pane. Same mappers the
+   * primary uses; reads from a SEPARATE connectors signal so the right pane
+   * stays decoupled from the left's connector state.
    */
-  counterpartShapes = computed(() => {
-    const cp = this.counterpartFile();
-    if (!cp || !cp.points || cp.points.length === 0) return [];
-    return this.equipmentMapper.mapAllToRfShapes(cp.points);
+  rightPaneShapes = computed(() => {
+    const rp = this.rightPaneFile();
+    const equipmentShapes = rp && rp.points && rp.points.length > 0
+      ? this.equipmentMapper.mapAllToRfShapes(rp.points)
+      : [];
+    const connectorShapes = this.connectorMapper.mapAllToRfShapes(this.rightPaneConnectors());
+    return [...equipmentShapes, ...connectorShapes];
   });
 
-  toggleCounterpart(): void {
-    // Simple toggle — the effect below handles loading/refreshing based on
-    // the current file. No duplicate fetch logic.
-    this.showCounterpart.set(!this.showCounterpart());
+  /** Selection id to push into the right pane's InteractiveImage —
+   *  the peer connector when the left's selected connector is paired AND
+   *  the peer lives on the file currently shown on the right. Null otherwise.
+   *  Highlight survives pin (visual feedback only, not a file change). */
+  rightPaneHighlightId = computed<number | null>(() => {
+    const sel = this.selectedConnector();
+    if (!sel?.counterpartConnectorId) return null;
+    const rpFile = this.rightPaneFile();
+    if (!rpFile) return null;
+    // Peer must actually exist on the file shown — otherwise highlight is
+    // meaningless. We check by looking at the loaded right-pane connectors.
+    const exists = this.rightPaneConnectors().some(c => c.id === sel.counterpartConnectorId);
+    return exists ? sel.counterpartConnectorId : null;
+  });
+
+  /** Header label shown in the right-pane title bar. */
+  rightPaneModeLabel = computed(() => {
+    switch (this.splitMode()) {
+      case 'file-counterpart': return 'Counterpart';
+      case 'connector-target': return 'Connector target';
+      case 'manual':           return 'Open file';
+      default:                 return '';
+    }
+  });
+
+  // ---- Entry-point methods ----------------------------------------------
+  //
+  // Each entry method sets the mode + initial file. Auto-refresh effects
+  // below take over from there (within the chosen mode's update rules).
+  // Pin is cleared on EXPLICIT entry actions — the user clicking an entry
+  // button is direct intent to switch context, which beats a passive pin.
+
+  enterFileCounterpartMode(): void {
+    if (this.splitMode() === 'file-counterpart') {
+      // Toolbar button toggles off only when already in file-counterpart mode
+      // (matches the legacy single-button UX).
+      this.closeSplit();
+      return;
+    }
+    const cpId = this.builderState.currentFile()?.counterpartId;
+    if (!cpId) return;
+    this.splitPinned.set(false);
+    this.splitMode.set('file-counterpart');
+    this.setRightPaneFileById(cpId);
   }
 
-  private loadCounterpart(id: number): void {
-    this.counterpartLoading.set(true);
-    this.counterpartError.set(null);
+  enterConnectorTargetMode(connector: FileConnectorDto): void {
+    if (!connector.targetFileId) return;
+    this.splitPinned.set(false);
+    this.splitMode.set('connector-target');
+    this.setRightPaneFileById(connector.targetFileId);
+  }
+
+  enterManualMode(file: FileDto): void {
+    if (file.id == null) return;
+    this.splitPinned.set(false);
+    this.splitMode.set('manual');
+    // For manual mode we already have the full FileDto from the file list —
+    // skip the extra fetch the id-based path would do.
+    this.rightPaneFile.set(file);
+    this.rightPaneError.set(null);
+  }
+
+  closeSplit(): void {
+    this.splitMode.set(null);
+    this.splitPinned.set(false);
+    this.rightPaneFile.set(null);
+    this.rightPaneError.set(null);
+    this.rightPaneConnectors.set([]);
+  }
+
+  togglePin(): void {
+    this.splitPinned.set(!this.splitPinned());
+  }
+
+  /**
+   * Swap the right pane's file into the primary (left) pane and close split.
+   * Surfaces as the "↔ Make primary" header button — the natural way to
+   * "I was just looking, now I want to edit it" without bouncing through
+   * the left-side file list.
+   */
+  makeRightPanePrimary(): void {
+    const file = this.rightPaneFile();
+    if (!file) return;
+    this.closeSplit();
+    this.currentFileService.setCurrentFile(file);
+  }
+
+  private setRightPaneFileById(id: number): void {
+    if (this.rightPaneFile()?.id === id) return;
+    this.rightPaneLoading.set(true);
+    this.rightPaneError.set(null);
     this.fileApi.getFileById(String(id)).pipe(
       map(r => FileDto.fromJson(r.responseData)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (dto) => { this.counterpartFile.set(dto); this.counterpartLoading.set(false); },
+      next: (dto) => { this.rightPaneFile.set(dto); this.rightPaneLoading.set(false); },
       error: (err) => {
-        console.error('Failed to load counterpart:', err);
-        this.counterpartError.set('Failed to load counterpart file');
-        this.counterpartLoading.set(false);
+        console.error('Failed to load right pane file:', err);
+        this.rightPaneError.set('Failed to load file');
+        this.rightPaneLoading.set(false);
       },
     });
   }
@@ -217,26 +324,96 @@ export class LotoBuilderRightPanelComponent {
   });
 
   constructor() {
+    // Register with the global split-view registry so the file-list context
+    // menu's "Open in split view" action knows how to route to us. Cleared
+    // on destroy — outside the loto-builder, the action becomes a no-op.
+    // Suppressed when pinned (consistent with other entry points).
+    this.splitRegistry.setHandler((file) => {
+      if (this.splitPinned()) return;
+      this.enterManualMode(file);
+    });
+    this.destroyRef.onDestroy(() => this.splitRegistry.setHandler(null));
+
     // Sync currentShapes with builder state whenever equipment changes
     effect(() => {
       const shapes = this.currentShapes();
       this.builderState.currentShapes.set(shapes);
     });
 
-    // Keep the counterpart pane in sync when the user switches to a different
-    // primary file. Without this, an open counterpart pane keeps showing the
-    // OLD file's counterpart even after the user navigates to a new file.
+    // ---- Split-view auto-refresh effects ------------------------------
+    //
+    // Three effects, one per mode, each guarded by mode + pin. Splitting
+    // them by mode (instead of one giant switch) keeps each effect's
+    // dependency set tight — file-counterpart effect doesn't re-run on
+    // selectedConnector changes, etc.
+
+    // file-counterpart mode: follow current primary's counterpartId.
+    // Suppressed when pinned. Closes split if the new primary has no
+    // counterpart designation (mode invalid).
     effect(() => {
-      if (!this.showCounterpart()) return;
+      if (this.splitMode() !== 'file-counterpart') return;
+      if (this.splitPinned()) return;
       const cpId = this.builderState.currentFile()?.counterpartId;
       if (!cpId) {
-        this.counterpartFile.set(null);
-        this.counterpartError.set('Current file has no counterpart linked.');
+        this.closeSplit();
         return;
       }
-      const cached = this.counterpartFile();
-      if (cached && cached.id === cpId) return;
-      this.loadCounterpart(cpId);
+      this.setRightPaneFileById(cpId);
+    });
+
+    // connector-target mode: follow the selected connector's targetFile.
+    // If selection clears (user deselected), keep the last target visible
+    // (sticky deselect) — only close when the PRIMARY FILE changes (handled
+    // by the next effect).
+    effect(() => {
+      if (this.splitMode() !== 'connector-target') return;
+      if (this.splitPinned()) return;
+      const tgt = this.selectedConnector()?.targetFileId;
+      if (!tgt) return; // sticky — keep showing last target
+      this.setRightPaneFileById(tgt);
+    });
+
+    // connector-target mode: when the user navigates the LEFT pane to a
+    // different primary file, the connector that drove the split is no
+    // longer in context. Close the split. Suppressed when pinned.
+    effect(() => {
+      // Subscribe to primary file changes ONLY if we're in connector-target mode.
+      if (this.splitMode() !== 'connector-target') return;
+      const primaryId = this.builderState.currentFile()?.id;
+      if (this.splitPinned()) return;
+      // Untracked snapshot: avoid pulling selectedConnector into the dep set
+      // (different effect already handles that). We only want to react to
+      // primaryId changing.
+      void primaryId;
+      // Defer the close so we don't tear down state during the same effect
+      // tick that the primary file change is being processed elsewhere.
+      queueMicrotask(() => {
+        if (this.splitMode() === 'connector-target' && !this.splitPinned()) {
+          this.closeSplit();
+        }
+      });
+    });
+
+    // Fetch the right-pane file's connectors whenever rightPaneFile changes.
+    // Mirrors the primary connector-load effect (token guard + immediate
+    // clear) so a fast file-switch doesn't show the previous file's
+    // connectors against the new file's canvas with mismatched coordinates.
+    effect(() => {
+      const rpFileId = this.rightPaneFile()?.id;
+      const myToken = ++this.rightPaneConnectorLoadToken;
+      this.rightPaneConnectors.set([]);
+      if (!rpFileId) return;
+      this.connectorApi.bySourceFile(rpFileId).subscribe({
+        next: (resp) => {
+          if (myToken !== this.rightPaneConnectorLoadToken) return; // superseded
+          this.rightPaneConnectors.set((resp.responseData ?? []).map(c => new FileConnectorDto(c)));
+        },
+        error: (err) => {
+          if (myToken !== this.rightPaneConnectorLoadToken) return;
+          console.error('[LOTO Builder] failed to load connectors for right-pane file', rpFileId, err);
+          this.rightPaneConnectors.set([]);
+        },
+      });
     });
 
     // Fetch connectors whenever the current file changes. Empty array if the
@@ -558,6 +735,18 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
+   * Info-window "Show target ↕" handler. Opens (or switches) the split view
+   * into connector-target mode, with the connector's target file on the
+   * right. If the right pane is currently pinned, the suppression is
+   * intentional — user must unpin first (matches the "pin freezes file
+   * source" semantics).
+   */
+  onConnectorInfoShowInSplit(connector: FileConnectorDto): void {
+    if (this.splitPinned()) return;
+    this.enterConnectorTargetMode(connector);
+  }
+
+  /**
    * Info-window Link button result. The link endpoint updates both sides on
    * the server; on the client we refetch the local connector so it flips
    * to paired and the info window reflects that. Don't refetch the peer
@@ -617,16 +806,10 @@ export class LotoBuilderRightPanelComponent {
     shapeIds.forEach(shapeId => {
       const matchingConnector = connectors.find(c => c.id === shapeId);
       if (matchingConnector) {
-        this.connectorApi.delete(matchingConnector.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: () => {
-              console.log('[LOTO Builder] FileConnector deleted via API:', matchingConnector.id);
-              this.currentConnectors.update(cs => cs.filter(c => c.id !== matchingConnector.id));
-              if (this.selectedConnector()?.id === matchingConnector.id) this.selectedConnector.set(null);
-            },
-            error: (error: any) => console.error('Error deleting connector:', error),
-          });
+        // Route through the same prompt-driven path the context menu uses
+        // so paired connectors always get the cascade dialog regardless of
+        // entry point (right-click vs. toolbar/keyboard delete).
+        this.deleteConnectorWithPrompt(matchingConnector);
         return;
       }
 
@@ -652,14 +835,18 @@ export class LotoBuilderRightPanelComponent {
    * clicked shape is a file-connector.
    */
   private openConnectorEditDialog(shape: FileConnectorShape): void {
-    const connector = this.currentConnectors().find(c => c.id === shape.id);
-    const sourceFile = this.builderState.currentFile();
-    if (!connector || !sourceFile) {
-      console.warn('[LOTO Builder] cannot edit connector: not loaded or no source file', shape.id);
+    const found = this.findConnectorAnyPane(shape.id);
+    if (!found) {
+      console.warn('[LOTO Builder] cannot edit connector: not loaded in either pane', shape.id);
+      return;
+    }
+    const sourceFile = this.sourceFileForPane(found.pane);
+    if (!sourceFile) {
+      console.warn('[LOTO Builder] cannot edit connector: no source file for pane', found.pane);
       return;
     }
     const ref = this.dialog.open(ConnectorEditDialogComponent, {
-      data: { connector, sourceFile },
+      data: { connector: found.connector, sourceFile },
       width: '560px',
       maxWidth: '90vw',
       autoFocus: false,
@@ -667,10 +854,14 @@ export class LotoBuilderRightPanelComponent {
     });
     ref.afterClosed().subscribe((saved: FileConnectorDto | undefined) => {
       if (!saved) return;
-      // Replace in-place so the canvas re-renders with the new target/label.
-      this.currentConnectors.update(cs =>
-        cs.map(c => c.id === saved.id ? new FileConnectorDto(saved) : c)
-      );
+      const dto = new FileConnectorDto(saved);
+      // Replace in-place in whichever pane's state holds this connector so
+      // the affected canvas re-renders with the new target/label/pairKey.
+      if (found.pane === 'left') {
+        this.currentConnectors.update(cs => cs.map(c => c.id === dto.id ? dto : c));
+      } else {
+        this.rightPaneConnectors.update(cs => cs.map(c => c.id === dto.id ? dto : c));
+      }
     });
   }
 
@@ -759,6 +950,10 @@ export class LotoBuilderRightPanelComponent {
         // New connectors default to label-off — user opts in per-connector
         // via the edit dialog. Matches the persisted default for legacy rows.
         showLabel: false,
+        // Leave null on create — server assigns the next sequential numeric
+        // key (max+1 across existing connectors for this src→tgt pair) so
+        // reciprocals auto-link by matching keys.
+        pairKey: null,
       };
       this.connectorApi.save(payload).subscribe({
         next: (resp) => {
@@ -777,6 +972,42 @@ export class LotoBuilderRightPanelComponent {
     });
   }
 
+  // ==================== PANE-AWARE LOOKUP HELPERS ====================
+  // Context-menu actions fire with whichever shape the user right-clicked,
+  // regardless of pane. Same handler runs for left AND right pane shapes —
+  // these helpers resolve the shape to its DTO + which pane it came from so
+  // downstream actions can target the right state slice and source file.
+
+  /** Locate a connector by id in either pane's state. Right pane wins on
+   *  collision (shouldn't happen — left/right show different source files,
+   *  so connector ids are disjoint — but order is defensive). */
+  private findConnectorAnyPane(id: number): { connector: FileConnectorDto; pane: 'left' | 'right' } | null {
+    const left = this.currentConnectors().find(c => c.id === id);
+    if (left) return { connector: left, pane: 'left' };
+    const right = this.rightPaneConnectors().find(c => c.id === id);
+    if (right) return { connector: right, pane: 'right' };
+    return null;
+  }
+
+  /** Locate an equipment by id in either pane. Left pane checks the live
+   *  builderState; right pane reads from the counterpart file's points
+   *  (the FileDto loaded for the counterpart pane). */
+  private findEquipmentAnyPane(id: number): { equipment: EquipmentDto; pane: 'left' | 'right' } | null {
+    const left = this.builderState.currentEquipment().find(eq => eq.id === id);
+    if (left) return { equipment: left, pane: 'left' };
+    const rightList = this.rightPaneFile()?.points;
+    const right = rightList?.find(eq => eq.id === id);
+    if (right) return { equipment: right, pane: 'right' };
+    return null;
+  }
+
+  /** Source FileDto for a given pane — used when an action needs the file
+   *  context (e.g. the connector edit dialog's target picker needs the
+   *  source file to drive its suggestion endpoint). */
+  private sourceFileForPane(pane: 'left' | 'right'): FileDto | null {
+    return pane === 'left' ? (this.builderState.currentFile() as FileDto | null) : this.rightPaneFile();
+  }
+
   /**
    * Handle Edit action from context menu. Three branches:
    *  1. FileConnector shape → open the connector edit dialog (change target, label).
@@ -792,8 +1023,8 @@ export class LotoBuilderRightPanelComponent {
       this.openConnectorEditDialog(shape as FileConnectorShape);
       return;
     }
-    const equipment = this.builderState.currentEquipment();
-    const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+    const found = this.findEquipmentAnyPane(shape.id);
+    const matchingEquipment = found?.equipment;
 
     // Legacy connector branch — Equipment row that the bulk migration
     // skipped (short tag / no match / ambiguous match). Open the inline
@@ -865,6 +1096,16 @@ export class LotoBuilderRightPanelComponent {
       console.warn('Cannot change symbol for shape type:', shape.type);
       return;
     }
+    // The Change Symbol flow currently calls this.interactiveImage (the LEFT
+    // pane's ViewChild) to mutate the shape in-place, so a right-pane shape
+    // would silently no-op. Detect and warn — supporting right-pane symbol
+    // changes needs pane-aware ViewChild access, deferred. User can navigate
+    // to that file as primary, then change the symbol there.
+    const onRight = this.rightPaneFile()?.points?.some(eq => eq.id === shape.id);
+    if (onRight) {
+      console.warn('[LOTO Builder] Change Symbol on counterpart pane is not supported — open the file as primary to edit.');
+      return;
+    }
     this.shapeToChangeSymbol.set(shape);
     this.showSymbolPicker.set(true);
   }
@@ -912,8 +1153,8 @@ export class LotoBuilderRightPanelComponent {
    */
   private handleAddToLotoAction(shape: RfShape): void {
     if (shape.type === 'file-connector') return;
-    const equipment = this.builderState.currentEquipment();
-    const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+    const found = this.findEquipmentAnyPane(shape.id);
+    const matchingEquipment = found?.equipment;
 
     if (!matchingEquipment?.lotoPoints || matchingEquipment.lotoPoints.length === 0) {
       console.warn('No LOTO point associated with this equipment');
@@ -941,25 +1182,14 @@ export class LotoBuilderRightPanelComponent {
    */
   private handleDeleteAction(shape: RfShape): void {
     if (shape.type === 'file-connector') {
-      const cp = this.currentConnectors().find(c => c.id === shape.id);
-      if (!cp) return;
-      if (!confirm('Delete this connector? The link to the target file will be removed.')) return;
-      this.connectorApi.delete(cp.id)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: () => {
-            this.currentConnectors.update(cs => cs.filter(c => c.id !== cp.id));
-            // Info window holds a stale reference if the deleted connector
-            // is the one being shown — close it.
-            if (this.selectedConnector()?.id === cp.id) this.selectedConnector.set(null);
-          },
-          error: (err) => console.error('Error deleting connector:', err),
-        });
+      const found = this.findConnectorAnyPane(shape.id);
+      if (!found) return;
+      this.deleteConnectorWithPrompt(found.connector);
       return;
     }
 
-    const equipment = this.builderState.currentEquipment();
-    const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+    const equipmentFound = this.findEquipmentAnyPane(shape.id);
+    const matchingEquipment = equipmentFound?.equipment;
 
     if (!matchingEquipment) {
       console.warn('No equipment found for shape:', shape.id);
@@ -1068,6 +1298,66 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
+   * Drive the connector delete UX from a single place — used by both the
+   * context-menu Delete action and the canvas's toolbar/keyboard delete.
+   *
+   * Branches by pairing state:
+   *   - Unpaired → simple browser confirm (one click for the common case).
+   *   - Paired   → open the {@link ConnectorDeleteDialogComponent} so the
+   *                user can choose delete-both / delete-this-only / cancel.
+   *
+   * Cascade-delete result clears the peer from local state too only if it
+   * happens to live on the SAME source file (rare — paired connectors are
+   * on opposite files by definition). The sync listener will broadcast the
+   * peer's delete to whatever file viewer has the other side open.
+   */
+  private deleteConnectorWithPrompt(cp: FileConnectorDto): void {
+    if (cp.counterpartConnectorId == null) {
+      if (!confirm('Delete this connector? The link to the target file will be removed.')) return;
+      this.runConnectorDelete(cp, false);
+      return;
+    }
+    const counterpartFileLabel = cp.targetFileName
+      || cp.targetFileNumber
+      || `File #${cp.targetFileId}`;
+    const ref = this.dialog.open(ConnectorDeleteDialogComponent, {
+      data: { connector: cp, counterpartFileLabel },
+      width: '480px',
+      maxWidth: '90vw',
+      autoFocus: false,
+      restoreFocus: false,
+    });
+    ref.afterClosed().subscribe((choice: 'both' | 'this' | undefined) => {
+      if (!choice) return;
+      this.runConnectorDelete(cp, choice === 'both');
+    });
+  }
+
+  private runConnectorDelete(cp: FileConnectorDto, deleteCounterpart: boolean): void {
+    this.connectorApi.delete(cp.id, deleteCounterpart)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // Drop from BOTH panes' state — filter is a no-op for the pane
+          // that doesn't hold this id, so this is safe regardless of which
+          // pane the user deleted from. With split view open, the cascade
+          // case naturally cleans up the peer's shape on whichever pane it
+          // happens to be on.
+          this.currentConnectors.update(cs => cs.filter(c => c.id !== cp.id));
+          this.rightPaneConnectors.update(cs => cs.filter(c => c.id !== cp.id));
+          if (this.selectedConnector()?.id === cp.id) this.selectedConnector.set(null);
+          if (deleteCounterpart && cp.counterpartConnectorId != null) {
+            const peerId = cp.counterpartConnectorId;
+            this.currentConnectors.update(cs => cs.filter(c => c.id !== peerId));
+            this.rightPaneConnectors.update(cs => cs.filter(c => c.id !== peerId));
+            if (this.selectedConnector()?.id === peerId) this.selectedConnector.set(null);
+          }
+        },
+        error: (err) => console.error('Error deleting connector:', err),
+      });
+  }
+
+  /**
    * Persist the new shape coordinates back to the FileConnector entity.
    * Pulls the source connector DTO from currentConnectors so we don't lose
    * fields the canvas doesn't know about (counterpartConnectorId, label,
@@ -1105,6 +1395,10 @@ export class LotoBuilderRightPanelComponent {
       // showLabel toggle through a resize/move (don't accidentally turn it
       // off when the user just drags the shape).
       showLabel: existing.showLabel,
+      // Same null-as-skip rule for pairKey — leave it alone on resize/move.
+      // Sending null explicitly is fine because the server-side mapper
+      // treats null as "no change", and the entity's current value persists.
+      pairKey: existing.pairKey,
     };
     this.connectorApi.save(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))

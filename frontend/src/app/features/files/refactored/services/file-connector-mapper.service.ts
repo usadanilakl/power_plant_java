@@ -102,6 +102,7 @@ export class FileConnectorMapperService {
       // Coerce nullable backend Boolean to a primitive for the renderer —
       // null/undefined means "legacy or never opted in" → don't draw label.
       showLabel: connector.showLabel === true,
+      pairKey: connector.pairKey ?? null,
     };
     return shape;
   }

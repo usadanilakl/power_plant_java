@@ -31,6 +31,10 @@ export interface FileConnectorModel extends BaseModel {
 
   /** Persisted per-connector toggle for canvas label rendering. Null/false → no label drawn. */
   showLabel: boolean | null;
+
+  /** Pairing identifier — connectors with the same key on reciprocal sides
+   *  are linked. Null falls back to the 1:1-only auto-pair rule. */
+  pairKey: string | null;
 }
 
 export class FileConnectorDto extends BaseDto implements FileConnectorModel {
@@ -49,6 +53,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
   counterpartConnectorId: number | null = null;
   label: string | null = null;
   showLabel: boolean | null = null;
+  pairKey: string | null = null;
 
   constructor(data: Partial<FileConnectorModel> = {}) {
     super(data);
@@ -66,6 +71,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
     this.counterpartConnectorId = data.counterpartConnectorId ?? null;
     this.label = data.label ?? null;
     this.showLabel = data.showLabel ?? null;
+    this.pairKey = data.pairKey ?? null;
   }
 
   /** Display text for the connector. Falls back to targetFileNumber when label is unset. */
@@ -92,6 +98,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
       counterpartConnectorId: this.counterpartConnectorId,
       label: this.label,
       showLabel: this.showLabel,
+      pairKey: this.pairKey,
     };
   }
 
@@ -111,6 +118,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
       counterpartConnectorId: json.counterpartConnectorId ?? null,
       label: json.label ?? null,
       showLabel: json.showLabel ?? null,
+      pairKey: json.pairKey ?? null,
     });
   }
 
@@ -131,6 +139,7 @@ export class FileConnectorDto extends BaseDto implements FileConnectorModel {
       counterpartConnectorId: this.counterpartConnectorId,
       label: this.label,
       showLabel: this.showLabel,
+      pairKey: this.pairKey,
     };
   }
 }
@@ -155,4 +164,8 @@ export interface FileConnectorIdDto {
    *  omit (undefined/null) to preserve the existing value (backend uses
    *  null-as-skip in the mapper). */
   showLabel: boolean | null;
+
+  /** Pairing identifier. Same null-as-skip semantics as showLabel — send
+   *  a string to update, null to leave unchanged. */
+  pairKey: string | null;
 }

@@ -68,6 +68,31 @@
 .link-button[disabled] { opacity: 0.6; cursor: wait; }
 .link-error { font-size: 11px; color: #b00020; }
 
+/* Pair-key chip — visual marker so the user can see at a glance which
+   "slot" this connector occupies in a multi-reference drawing. */
+.pair-key-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  color: #1565c0;
+  background: #e3f0fc;
+  border: 1px solid #90b8e8;
+  border-radius: 10px;
+}
+
+/* Surfaced when this side has a pairKey but no reciprocal with the same
+   key — guides the user to set the matching key on the other side. */
+.no-match-hint {
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #6a4f00;
+  background: #fff4d6;
+  border-left: 3px solid #f0c040;
+  border-radius: 2px;
+}
+
 /* Preview block — collapsed by default, fetched on demand. */
 .preview-block { margin-top: 4px; }
 .preview-toggle {

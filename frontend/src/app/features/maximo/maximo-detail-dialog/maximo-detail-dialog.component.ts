@@ -20,6 +20,9 @@ type Tab = 'details' | 'notes' | 'attachments' | 'complete' | 'materials';
 /** Statuses from which a WO can still be completed. */
 const COMPLETABLE_WO_STATUSES = ['APPR', 'INPRG', 'WMATL', 'WSCH', 'WPCOND'];
 
+/** SR statuses where the ticket is still editable (description / notes / attachments). */
+const EDITABLE_SR_STATUSES = ['NEW', 'QUEUED', 'INPROG', 'PENDING'];
+
 /**
  * Dialog showing full details, worklog (notes), and attachments for an SR or WO.
  * The parent component passes the record + parent type; this component fetches subcollections.
@@ -53,10 +56,16 @@ export class MaximoDetailDialogComponent {
   uploadDoctype = 'Attachments';
   uploading = signal(false);
 
-  // Add-note (worklog) form — WO only; works even on a completed WO.
+  // Add-note (worklog) form — WO or editable SR; works even on a completed WO.
   noteSummary = '';
   noteDetails = '';
   addingNote = signal(false);
+
+  // Edit an editable SR's description / long description (Details tab).
+  editingSr = signal(false);
+  savingSr = signal(false);
+  editDescription = '';
+  editLongDescription = '';
 
   // ── Materials (issues + returns) ────────────────────────────────────────
   materials = signal<MaximoMaterialTxn[]>([]);
@@ -88,6 +97,12 @@ export class MaximoDetailDialogComponent {
   get canComplete(): boolean {
     return this.parent === 'wo' && !!this.wo
       && COMPLETABLE_WO_STATUSES.includes((this.wo.status ?? '').toUpperCase());
+  }
+
+  /** Only SRs in an open status can be edited (description / notes / attachments). */
+  get canEditSr(): boolean {
+    return this.parent === 'sr' && !!this.sr
+      && EDITABLE_SR_STATUSES.includes((this.sr.status ?? '').toUpperCase());
   }
 
   get title(): string {
@@ -304,15 +319,16 @@ export class MaximoDetailDialogComponent {
   }
 
   async addNote() {
-    if (!this.wo?.href || this.addingNote()) return;
+    // WO (any status) or an editable SR. Branch on parent — the SR href lives on this.sr.
+    const href = this.isWo ? this.wo?.href : this.sr?.href;
+    if (!href || this.addingNote()) return;
     if (!this.noteSummary.trim()) { this.error.set('Enter a note summary.'); return; }
     this.addingNote.set(true);
     this.error.set(null);
     try {
-      const rows = await firstValueFrom(this.api.addWoWorklog(this.wo.href, {
-        summary: this.noteSummary.trim(),
-        details: this.noteDetails.trim() || undefined
-      }));
+      const body = { summary: this.noteSummary.trim(), details: this.noteDetails.trim() || undefined };
+      const rows = await firstValueFrom(
+        this.isWo ? this.api.addWoWorklog(href, body) : this.api.addSrWorklog(href, body));
       this.notes.set(rows);
       this.notesLoaded.set(true);
       this.noteSummary = '';
@@ -321,6 +337,36 @@ export class MaximoDetailDialogComponent {
       this.error.set(this.errMsg(e));
     } finally {
       this.addingNote.set(false);
+    }
+  }
+
+  /** Begin editing the SR's description / long description (seeds the inputs from the current SR). */
+  startEditSr() {
+    if (!this.sr) return;
+    this.editDescription = this.sr.description ?? '';
+    this.editLongDescription = this.sr.longDescription ?? '';
+    this.editingSr.set(true);
+    this.error.set(null);
+  }
+
+  cancelEditSr() { this.editingSr.set(false); }
+
+  /** Save the SR description / long description; on success swap in the refreshed record. */
+  async saveSr() {
+    if (!this.sr?.href || this.savingSr()) return;
+    this.savingSr.set(true);
+    this.error.set(null);
+    try {
+      const updated = await firstValueFrom(this.api.updateServiceRequest(this.sr.href, {
+        description: this.editDescription.trim(),
+        longDescription: this.editLongDescription.trim()
+      }));
+      if (updated) this.sr = updated;
+      this.editingSr.set(false);
+    } catch (e: any) {
+      this.error.set(this.errMsg(e));
+    } finally {
+      this.savingSr.set(false);
     }
   }
 

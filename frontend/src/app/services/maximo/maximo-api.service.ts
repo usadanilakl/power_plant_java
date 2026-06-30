@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import {
@@ -87,6 +87,21 @@ export class MaximoApiService {
     return this.http
       .post<SpringApiResponse<MaximoServiceRequest>>(`${this.base}/service-requests`, body)
       .pipe(map(r => r.responseData));
+  }
+
+  /** Edit an editable SR's description / long description. Returns the refreshed SR. */
+  updateServiceRequest(href: string, body: { description?: string; longDescription?: string }): Observable<MaximoServiceRequest> {
+    return this.http
+      .patch<SpringApiResponse<MaximoServiceRequest>>(`${this.base}/service-requests/${encodeURIComponent(href)}`, body)
+      .pipe(map(r => r.responseData));
+  }
+
+  /** Add a note (worklog) to an editable SR. Returns the refreshed note list. */
+  addSrWorklog(href: string, body: { summary: string; details?: string; logtype?: string }): Observable<MaximoWorklog[]> {
+    return this.http
+      .post<SpringApiResponse<MaximoWorklog[]>>(
+        `${this.base}/service-requests/${encodeURIComponent(href)}/worklog`, body)
+      .pipe(map(r => r.responseData ?? []));
   }
 
   /**
@@ -191,6 +206,13 @@ export class MaximoApiService {
     return this.http
       .get<SpringApiResponse<{ name: string; personid: string }[]>>(`${this.base}/labor-people`)
       .pipe(map(r => r.responseData ?? []));
+  }
+
+  private laborPeople$?: Observable<{ name: string; personid: string }[]>;
+  /** Cached labor-people (shared across all person pickers; one fetch per session). */
+  getLaborPeopleCached(): Observable<{ name: string; personid: string }[]> {
+    if (!this.laborPeople$) this.laborPeople$ = this.getLaborPeople().pipe(shareReplay(1));
+    return this.laborPeople$;
   }
 
   searchInventory(q: string, pageSize = 25): Observable<MaximoInventoryItem[]> {

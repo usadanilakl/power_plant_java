@@ -117,7 +117,7 @@
             <div class="row">
               <label>Site <input [(ngModel)]="newSr.siteid" /></label>
               <label>Priority <input [(ngModel)]="newSr.priority" /></label>
-              <label>Reported by <input [(ngModel)]="newSr.reportedby" placeholder="personid" /></label>
+              <label>Reported by <app-maximo-person-picker [(ngModel)]="newSr.reportedby" placeholder="personid"></app-maximo-person-picker></label>
             </div>
             <div class="row">
               <button (click)="submitSr()" [disabled]="submittingSr()">

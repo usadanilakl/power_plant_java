@@ -100,6 +100,9 @@ export interface FileConnectorShape extends RfBaseShape {
   /** Whether the canvas should draw the {@link label} inside the shape.
    *  Defaults to false on the renderer — opt-in via the connector edit dialog. */
   showLabel: boolean;
+  /** Pairing identifier carried through so the info window can display it
+   *  without a separate fetch. Canvas rendering doesn't use it. */
+  pairKey: string | null;
 }
 
 export type RfShape =

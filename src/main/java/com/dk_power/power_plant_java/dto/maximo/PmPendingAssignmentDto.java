@@ -23,9 +23,11 @@ public class PmPendingAssignmentDto {
     private String description;
     private String status;
     private Boolean recurring;            // true if matched to the recurring-PM catalog (by pmnum or description)
-    private String targetDate;            // yyyy-MM-dd the assignment was computed for
+    private String targetDate;            // yyyy-MM-dd the assignment was computed for (Target Start)
+    private String targetFinish;          // yyyy-MM-dd period-end (Target Finish); >= targetDate
     private ShiftPreference shift;        // the PM's configured shift
     private RecurrenceCadence cadence;
+    private Integer preferredDayOfWeek;   // ISO 1=Mon..7=Sun; non-null = date was snapped to this weekday
     private String currentLead;           // lead currently on the WO
     private String proposedPersonid;      // suggested assignee (null if schedule has no one)
     private String proposedName;

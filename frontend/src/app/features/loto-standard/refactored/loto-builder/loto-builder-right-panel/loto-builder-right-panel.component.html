@@ -54,7 +54,7 @@
 
   <!-- Image Viewer Area -->
   <div class="image-area"
-       [class.with-counterpart]="showCounterpart() && hasCounterpart()"
+       [class.with-counterpart]="splitOpen()"
        appGuide="create-loto-point-bulk:image-viewer"
        guideMessage="Right-click and drag on the P&ID image to draw a rectangle around equipment. This will create a new LOTO point."
        [guideTooltipOnly]="true"
@@ -63,7 +63,7 @@
        [reactiveGuideTooltipOnly]="true">
     <!-- Primary pane -->
     <div class="viewer-pane primary-pane">
-      @if (showCounterpart() && hasCounterpart()) {
+      @if (splitOpen()) {
         <div class="pane-header">
           <span class="pane-label">Primary</span>
           <span class="pane-name" [title]="builderState.currentFile()?.name || ''">
@@ -100,6 +100,7 @@
           (navigate)="onConnectorInfoNavigate($event)"
           (edit)="onConnectorInfoEdit($event)"
           (linked)="onConnectorInfoLinked($event)"
+          (showInSplit)="onConnectorInfoShowInSplit($event)"
           (closed)="selectedConnector.set(null)"
         ></app-loto-builder-connector-info-window>
       } @else {
@@ -113,28 +114,48 @@
       }
     </div>
 
-    <!-- Counterpart pane (read-only image alongside primary) -->
-    @if (showCounterpart() && hasCounterpart()) {
+    <!-- Right pane (split view) — driven by splitMode:
+         'file-counterpart' | 'connector-target' | 'manual'. Single shell, three
+         entry triggers (toolbar Show Counterpart, info-window Show target, file
+         list Open in split view). Pin freezes file source against passive
+         updates; peer-highlight still flows through to the right's InteractiveImage. -->
+    @if (splitOpen()) {
       <div class="viewer-pane counterpart-pane">
         <div class="pane-header">
-          <span class="pane-label">Counterpart</span>
-          <span class="pane-name" [title]="counterpartFile()?.name || ''">
-            {{ counterpartFile()?.name || (counterpartLoading() ? 'Loading…' : '—') }}
+          <span class="pane-label">{{ rightPaneModeLabel() }}</span>
+          <span class="pane-name" [title]="rightPaneFile()?.name || ''">
+            {{ rightPaneFile()?.name || (rightPaneLoading() ? 'Loading…' : '—') }}
           </span>
-          <button class="pane-close" type="button" (click)="toggleCounterpart()" title="Hide counterpart">×</button>
+          <button
+            class="pane-action"
+            type="button"
+            [class.active]="splitPinned()"
+            (click)="togglePin()"
+            [title]="splitPinned() ? 'Unpin — right pane will respond to clicks again' : 'Pin — freeze right pane against clicks'"
+          >📌</button>
+          <button
+            class="pane-action"
+            type="button"
+            [disabled]="!rightPaneFile()"
+            (click)="makeRightPanePrimary()"
+            title="Load this file as primary (closes split)"
+          >↔ Make primary</button>
+          <button class="pane-close" type="button" (click)="closeSplit()" title="Close split view">×</button>
         </div>
-        @if (counterpartLoading()) {
-          <div class="pane-state">Loading counterpart…</div>
-        } @else if (counterpartError()) {
-          <div class="pane-state pane-error">{{ counterpartError() }}</div>
-        } @else if (counterpartImageUrl()) {
+        @if (rightPaneLoading()) {
+          <div class="pane-state">Loading…</div>
+        } @else if (rightPaneError()) {
+          <div class="pane-state pane-error">{{ rightPaneError() }}</div>
+        } @else if (rightPaneImageUrl()) {
           <app-interactive-image
-            [imageUrl]="counterpartImageUrl()"
-            [shapesInput]="counterpartShapes()"
+            [imageUrl]="rightPaneImageUrl()"
+            [shapesInput]="rightPaneShapes()"
             [config]="imageConfig()"
+            [customContextMenuActions]="customContextMenuActions()"
+            [selectedShapeIdInput]="rightPaneHighlightId()"
           ></app-interactive-image>
         } @else {
-          <div class="pane-state">Counterpart file has no viewable image.</div>
+          <div class="pane-state">File has no viewable image.</div>
         }
       </div>
     }
@@ -208,14 +229,15 @@
     >
       Save
     </button>
-    @if (hasCounterpart()) {
+    @if (hasFileCounterpart()) {
       <button
         class="toolbar-button"
-        [class.active]="showCounterpart()"
-        title="Show the counterpart file side-by-side (read-only view)"
-        (click)="toggleCounterpart()"
+        [class.active]="splitMode() === 'file-counterpart'"
+        [title]="splitPinned() ? 'Right pane is pinned — unpin to switch' : 'Show the counterpart file side-by-side'"
+        [disabled]="splitPinned()"
+        (click)="enterFileCounterpartMode()"
       >
-        {{ showCounterpart() ? 'Hide Counterpart' : 'Show Counterpart' }}
+        {{ splitMode() === 'file-counterpart' ? 'Hide Counterpart' : 'Show Counterpart' }}
       </button>
     }
     <button

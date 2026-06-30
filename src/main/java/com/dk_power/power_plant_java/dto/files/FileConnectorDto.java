@@ -40,4 +40,8 @@ public class FileConnectorDto extends BaseDto {
     /** Whether the viewer should draw the label inside the connector shape.
      *  Nullable Boolean — null treated as false (default for legacy rows). */
     private Boolean showLabel;
+
+    /** Pairing identifier for multi-reference drawings. Matching reciprocals
+     *  share the same key. Null falls back to the 1:1-only legacy rule. */
+    private String pairKey;
 }

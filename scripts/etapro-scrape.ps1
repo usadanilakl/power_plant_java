@@ -428,9 +428,18 @@ function ExportEpLogTableToCsv {
     [System.IO.File]::WriteAllText($filePath, $sb.ToString(), $utf8NoBom)
 }
 
-# ── Resolve paths ───────────────────────────────────────────────
-$liveTemplatePath = (Resolve-Path $liveTemplatePath).Path
-$historyTemplatePath = (Resolve-Path $historyTemplatePath).Path
+# ── Resolve paths (tolerant: a desktop may set up only some templates) ──
+# Resolve a template path only if the file exists; otherwise blank it and warn.
+# This lets the scraper run with any subset of templates (e.g. EPLog only) instead
+# of crashing at startup when live/history templates aren't present.
+function ResolveTemplatePath($p) {
+    if ($p -and (Test-Path $p)) { return (Resolve-Path $p).Path }
+    if ($p) { Write-Host "[EtaPro] WARN: template not found, disabling: $p" }
+    return ""
+}
+$liveTemplatePath    = ResolveTemplatePath $liveTemplatePath
+$historyTemplatePath = ResolveTemplatePath $historyTemplatePath
+$eplogTemplatePath   = ResolveTemplatePath $eplogTemplatePath
 if (-not (Test-Path $signalDir)) {
     New-Item -ItemType Directory -Force -Path $signalDir | Out-Null
 }
@@ -441,8 +450,9 @@ $shutdownFile = "$signalDir\shutdown"
 $pidFile      = "$signalDir\scraper.pid"
 
 Write-Host "[EtaPro] Persistent scraper starting..."
-Write-Host "[EtaPro] Live template:    $liveTemplatePath"
-Write-Host "[EtaPro] History template: $historyTemplatePath"
+Write-Host "[EtaPro] Live template:    $(if ($liveTemplatePath) { $liveTemplatePath } else { '(none)' })"
+Write-Host "[EtaPro] History template: $(if ($historyTemplatePath) { $historyTemplatePath } else { '(none)' })"
+Write-Host "[EtaPro] EPLog template:   $(if ($eplogTemplatePath) { $eplogTemplatePath } else { '(none)' })"
 Write-Host "[EtaPro] Signal dir:       $signalDir"
 
 $PID | Out-File -FilePath $pidFile -Encoding ASCII -Force
@@ -457,12 +467,20 @@ $historyWb = $null
 $eplogWb = $null
 
 try {
-    # Launch Excel the INTERACTIVE way — open the live template as if the user
-    # double-clicked it. This ensures all add-ins (including EtaPro XLL) load
-    # in their normal interactive context. COM-created Excel.Application does NOT
-    # load XLL add-ins the same way, causing #NAME? errors on EtaPro functions.
-    Write-Host "[EtaPro] Launching Excel interactively with live template..."
-    Start-Process -FilePath $liveTemplatePath
+    # Launch Excel the INTERACTIVE way — open the first available template as if the
+    # user double-clicked it. This ensures all add-ins (including the EtaPRO add-in)
+    # load in their normal interactive context. COM-created Excel.Application does NOT
+    # load them the same way, causing #NAME? errors on EtaPro functions.
+    # Any subset of templates is supported (e.g. EPLog only).
+    $launchTemplate = ""
+    foreach ($t in @($liveTemplatePath, $historyTemplatePath, $eplogTemplatePath)) {
+        if ($t) { $launchTemplate = $t; break }
+    }
+    if (-not $launchTemplate) {
+        throw "No EtaPro templates configured/found (live, history, eplog all missing)"
+    }
+    Write-Host "[EtaPro] Launching Excel interactively with: $launchTemplate"
+    Start-Process -FilePath $launchTemplate
 
     # Wait for Excel to fully start and the EtaPro add-in to connect to the historian.
     # This is the slow path — only happens once per scraper session.
@@ -493,39 +511,30 @@ try {
     # Suppress UI prompts now that we have a handle
     $excel.DisplayAlerts = $false
 
-    # Find the live workbook (the one we just opened)
-    $liveWb = $null
-    $liveFileName = [System.IO.Path]::GetFileName($liveTemplatePath)
-    foreach ($wb in $excel.Workbooks) {
-        if ($wb.Name -eq $liveFileName) {
-            $liveWb = $wb
-            break
+    # Open any configured templates that aren't already open (the launch one is open).
+    foreach ($t in @($liveTemplatePath, $historyTemplatePath, $eplogTemplatePath)) {
+        if (-not $t) { continue }
+        $name = [System.IO.Path]::GetFileName($t)
+        $isOpen = $false
+        foreach ($wb in $excel.Workbooks) { if ($wb.Name -eq $name) { $isOpen = $true; break } }
+        if (-not $isOpen) {
+            Write-Host "[EtaPro] Opening template: $name"
+            [void]$excel.Workbooks.Open($t)
+            Start-Sleep -Seconds 2
         }
     }
-    if ($null -eq $liveWb) {
-        throw "Could not find live workbook '$liveFileName' in the running Excel instance"
+
+    # Bind workbook handles by file name (only for templates that exist).
+    foreach ($wb in $excel.Workbooks) {
+        $n = $wb.Name
+        if ($liveTemplatePath -and $n -eq [System.IO.Path]::GetFileName($liveTemplatePath)) { $liveWb = $wb }
+        elseif ($historyTemplatePath -and $n -eq [System.IO.Path]::GetFileName($historyTemplatePath)) { $historyWb = $wb }
+        elseif ($eplogTemplatePath -and $n -eq [System.IO.Path]::GetFileName($eplogTemplatePath)) { $eplogWb = $wb }
     }
-    Write-Host "[EtaPro] Live workbook: $($liveWb.Name)"
+    Write-Host "[EtaPro] Workbooks ready: live=$([bool]$liveWb) history=$([bool]$historyWb) eplog=$([bool]$eplogWb)"
 
-    # Now open the history template in the same interactive Excel instance
-    Write-Host "[EtaPro] Opening history template in same Excel..."
-    $historyWb = $excel.Workbooks.Open($historyTemplatePath)
-    Write-Host "[EtaPro] History workbook: $($historyWb.Name)"
-
-    # Give add-in a moment to recognize the new workbook
-    Start-Sleep -Seconds 3
-
-    # Optionally open the EPLog (Event Log) template in the same Excel instance
-    if ($eplogTemplatePath -and (Test-Path $eplogTemplatePath)) {
-        Write-Host "[EtaPro] Opening EPLog template in same Excel..."
-        $eplogWb = $excel.Workbooks.Open((Resolve-Path $eplogTemplatePath).Path)
-        Write-Host "[EtaPro] EPLog workbook: $($eplogWb.Name)"
-        Start-Sleep -Seconds 2
-    } elseif ($eplogTemplatePath) {
-        Write-Host "[EtaPro] WARN: EPLog template not found at '$eplogTemplatePath' - eplog requests will fail"
-    } else {
-        Write-Host "[EtaPro] EPLog template not configured (eplogTemplatePath empty) - eplog disabled"
-    }
+    # Give the add-in a moment to recognize all open workbooks
+    Start-Sleep -Seconds 2
 
     # Minimize — we don't need the window taking up space
     try { $excel.WindowState = -4140 } catch {} # xlMinimized = -4140
@@ -565,11 +574,13 @@ try {
         try {
             $result = $null
             if ($templateName -eq "live") {
+                if ($null -eq $liveWb) { throw "Live template not loaded (template-live.xlsx missing)" }
                 $result = ProcessLiveRequest $liveWb $request
             } elseif ($templateName -eq "history") {
+                if ($null -eq $historyWb) { throw "History template not loaded (template-history.xlsx missing)" }
                 $result = ProcessHistoryRequest $historyWb $request
             } elseif ($templateName -eq "eplog") {
-                if ($null -eq $eplogWb) { throw "EPLog template not loaded (eplogTemplatePath not set or file missing)" }
+                if ($null -eq $eplogWb) { throw "EPLog template not loaded (template-eplog.xlsx missing or eplogTemplatePath not set)" }
                 $result = ProcessEpLogRequest $eplogWb $request
             } else {
                 throw "Unknown template: $templateName (expected 'live', 'history', or 'eplog')"

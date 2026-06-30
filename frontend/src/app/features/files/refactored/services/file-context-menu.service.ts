@@ -13,6 +13,7 @@ import { CloneToUnitDialogComponent } from "../clone-to-unit-dialog/clone-to-uni
 import { SetCounterpartDialogComponent } from "../set-counterpart-dialog/set-counterpart-dialog.component";
 import { ImportFromCounterpartDialogComponent } from "../import-from-counterpart-dialog/import-from-counterpart-dialog.component";
 import { CloneFileResultDto } from "../../../../models/file/clone.model";
+import { SplitViewRegistryService } from "../../../loto-standard/refactored/loto-builder/services/split-view-registry.service";
 import { map } from "rxjs";
 
 @Injectable({
@@ -24,6 +25,7 @@ export class FileContextMenuService extends ContextMenuService {
   private dialog = inject(MatDialog);
   private messageService = inject(GlobalMessageService);
   private currentFileService = inject(CurrentFileService);
+  private splitRegistry = inject(SplitViewRegistryService);
 
   customMenuActions: ContextMenuAction[] = [
       {
@@ -73,6 +75,12 @@ export class FileContextMenuService extends ContextMenuService {
         label: 'Open Counterpart File',
         icon: '↔️',
         action: (item) => this.handleOpenCounterpart(item),
+      },
+      {
+        id: 'open-in-split',
+        label: 'Open in Split View',
+        icon: '🪟',
+        action: (item) => this.handleOpenInSplit(item),
       },
       {
         id: 'import-from-counterpart',
@@ -366,6 +374,30 @@ export class FileContextMenuService extends ContextMenuService {
       error: (err: any) => {
         console.error('Failed to refresh source file:', err);
         this.messageService.showError('Failed to load file #' + item.id);
+      },
+    });
+  }
+
+  /**
+   * Route the file to the loto-builder right pane (split view) via the
+   * registry. Quietly no-ops when the registry has no handler — that
+   * happens outside the loto-builder context where the split view doesn't
+   * exist. Pre-fetches the full DTO since the table row's data is a slim
+   * projection and the right pane wants {@code fileLink} for the image.
+   */
+  private handleOpenInSplit(item: FileDto): void {
+    if (!item?.id) return;
+    if (!this.splitRegistry.isAvailable()) {
+      this.messageService.showInfo('Split view is only available inside the LOTO Builder.');
+      return;
+    }
+    this.apiService.getFileById(String(item.id)).pipe(
+      map(r => FileDto.fromJson(r.responseData))
+    ).subscribe({
+      next: (fresh) => this.splitRegistry.openIfAvailable(fresh),
+      error: (err) => {
+        console.error('Open in split: failed to fetch file', err);
+        this.messageService.showError('Failed to load file for split view');
       },
     });
   }

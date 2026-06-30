@@ -19,6 +19,7 @@ public class MaximoWorkOrderDto {
     private String siteid;
     private String reportdate;
     private String targetStart;     // spi:targstartdate — when the WO is scheduled to be performed
+    private String targetFinish;    // spi:targcompdate — target completion
     private String schedstart;
     private String schedfinish;
     private String leadCraft;

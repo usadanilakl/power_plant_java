@@ -30,13 +30,35 @@
 
       <!-- Details tab -->
       <div *ngIf="tab() === 'details'">
+        <div class="kv-actions" *ngIf="canEditSr && !editingSr()">
+          <button class="link" (click)="startEditSr()">✎ Edit description / notes</button>
+        </div>
         <table class="kv">
           <tr *ngFor="let pair of detailFields">
             <th>{{ pair[0] }}</th>
             <td>{{ pair[1] || '—' }}</td>
           </tr>
         </table>
-        <div class="long-desc" *ngIf="longDescription">
+
+        <!-- Edit form for an editable SR -->
+        <div class="sr-edit" *ngIf="canEditSr && editingSr()">
+          <label>Description
+            <input type="text" [(ngModel)]="editDescription" placeholder="Short description" />
+          </label>
+          <label>Long description
+            <textarea rows="4" [(ngModel)]="editLongDescription" placeholder="Details"></textarea>
+          </label>
+          <div class="sr-edit-actions">
+            <button class="primary" (click)="saveSr()" [disabled]="savingSr()">{{ savingSr() ? 'Saving…' : 'Save' }}</button>
+            <button (click)="cancelEditSr()" [disabled]="savingSr()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="short-desc" *ngIf="parent === 'sr' && description && !editingSr()">
+          <h4>Description</h4>
+          <div>{{ description }}</div>
+        </div>
+        <div class="long-desc" *ngIf="longDescription && !editingSr()">
           <h4>Long description</h4>
           <pre>{{ longDescription }}</pre>
         </div>
@@ -44,8 +66,8 @@
 
       <!-- Notes tab -->
       <div *ngIf="tab() === 'notes' && !loading()">
-        <!-- Add a note (WO only) — works on completed WOs -->
-        <div class="add-note" *ngIf="isWo">
+        <!-- Add a note (WO any status, or an editable SR) -->
+        <div class="add-note" *ngIf="isWo || canEditSr">
           <input type="text" [(ngModel)]="noteSummary" placeholder="Add a note — summary" />
           <textarea rows="2" [(ngModel)]="noteDetails" placeholder="Details (optional)"></textarea>
           <button class="primary" (click)="addNote()" [disabled]="addingNote()">
@@ -69,7 +91,7 @@
 
       <!-- Attachments tab -->
       <div *ngIf="tab() === 'attachments' && !loading()">
-        <div class="upload-row">
+        <div class="upload-row" *ngIf="isWo || canEditSr">
           <label>Doctype <input [(ngModel)]="uploadDoctype" /></label>
           <label class="file-btn">
             Upload file

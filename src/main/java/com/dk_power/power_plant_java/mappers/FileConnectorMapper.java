@@ -67,6 +67,7 @@ public class FileConnectorMapper implements BaseMapper {
         dto.setCounterpartConnectorId(entity.getCounterpartConnectorId());
         dto.setLabel(entity.getLabel());
         dto.setShowLabel(entity.getShowLabel());
+        dto.setPairKey(entity.getPairKey());
         return dto;
     }
 
@@ -109,6 +110,11 @@ public class FileConnectorMapper implements BaseMapper {
         // showLabel uses null-as-skip too — boolean wrapper means callers can
         // send true OR false to toggle, and omit (null) to leave unchanged.
         if (dto.getShowLabel() != null) entity.setShowLabel(dto.getShowLabel());
+        // pairKey also null-as-skip. Peer propagation happens in the service
+        // layer (NgFileConnectorService.save) — keeping it out of the mapper
+        // because it requires loading the peer row and adding a second save,
+        // which doesn't belong in a pure entity-from-dto mapper.
+        if (dto.getPairKey() != null) entity.setPairKey(dto.getPairKey());
 
         // counterpartConnectorId: intentionally NOT patched here. Use the
         // link/unlink endpoints — they enforce the bidirectional invariants

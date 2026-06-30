@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.maximo;
 
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
+import com.dk_power.power_plant_java.dto.maximo.PmOccurrenceDto;
 import com.dk_power.power_plant_java.dto.maximo.RecurringPmDto;
 import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
@@ -37,6 +38,10 @@ public class RecurringPmService {
     private static final int CATALOG_YEARS = 1;
     private static final int PAGE_SIZE = 2000;  // big pages — the instance honors them; ~8k+ WOs/yr at JG
     private static final int MAX_PAGES = 25;     // 2000*25 = 50k WO safety ceiling
+
+    private static final int OCCURRENCE_YEARS = 2;       // per-PM history lookback
+    private static final int OCCURRENCE_MAX_PAGES = 3;   // one PM's WOs fit easily; bound runaway LIKE matches
+    private static final Set<String> OPEN_STATUSES = Set.of("WSCH", "WAPPR", "APPR", "INPRG");
 
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoBundleService bundles;
@@ -184,6 +189,51 @@ public class RecurringPmService {
     @Transactional(readOnly = true)
     public List<RecurringPm> allCatalog() {
         return repo.findAllByOrderByPmnumAsc();
+    }
+
+    /**
+     * Real Maximo work orders for one catalog PM — its occurrence history + upcoming items. Matched by
+     * pmnum when the PM has one, else by description (most PMs here have no pmnum). Newest first; each row
+     * flagged {@code open} (WSCH/WAPPR/APPR/INPRG → upcoming/active) vs history. Live, authoritative — no
+     * forecast (the PM master {@code mxapipm} is not authorized on this instance).
+     */
+    @Transactional(readOnly = true)
+    public List<PmOccurrenceDto> occurrences(Long id) {
+        RecurringPm pm = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown recurring-PM id: " + id));
+
+        MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
+        if (pm.getPmnum() != null && !pm.getPmnum().isBlank()) {
+            c.setPmnum(pm.getPmnum().trim());
+        } else if (pm.getPmDescription() != null && !pm.getPmDescription().isBlank()) {
+            c.setDescriptionContains(pm.getPmDescription().trim());
+        } else {
+            return List.of();
+        }
+        c.setReportdateFrom(LocalDate.now().minusYears(OCCURRENCE_YEARS) + "T00:00:00");
+        List<MaximoWorkOrderDto> wos = workOrders.listAllByCriteria(c, PAGE_SIZE, OCCURRENCE_MAX_PAGES);
+
+        List<PmOccurrenceDto> out = new ArrayList<>();
+        for (MaximoWorkOrderDto w : wos) {
+            LocalDate d = firstDate(w.getTargetStart(), w.getSchedstart(), w.getReportdate());
+            String status = w.getStatus();
+            out.add(PmOccurrenceDto.builder()
+                    .wonum(w.getWonum())
+                    .href(w.getHref())
+                    .status(status)
+                    .date(d == null ? null : d.toString())
+                    .lead(w.getLeadCraft())
+                    .open(status != null && OPEN_STATUSES.contains(status.trim().toUpperCase()))
+                    .build());
+        }
+        // Newest first (null dates last). The UI splits open=upcoming vs history and re-orders upcoming.
+        out.sort(Comparator.comparing((PmOccurrenceDto o) -> o.getDate() == null ? "" : o.getDate()).reversed());
+        return out;
+    }
+
+    private static LocalDate firstDate(String... isos) {
+        for (String s : isos) { LocalDate d = parseDate(s); if (d != null) return d; }
+        return null;
     }
 
     // ── Keys / cadence inference ─────────────────────────────────────────────────

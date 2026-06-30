@@ -23,6 +23,16 @@ export interface PmPersonOption {
   name: string;
 }
 
+/** One real Maximo WO matching a recurring PM, for the catalog's history/upcoming timeline. */
+export interface PmOccurrence {
+  wonum: string;
+  href: string;
+  status: string;
+  date: string | null;   // yyyy-MM-dd (effective date)
+  lead: string;
+  open: boolean;         // true = WSCH/WAPPR/APPR/INPRG (upcoming/active); false = history
+}
+
 /** A lead operator's identity, so the schedule peek can flag which roster people are leads. */
 export interface PmLead {
   id: number;
@@ -38,9 +48,11 @@ export interface PmPendingAssignment {
   description: string;
   status: string;
   recurring: boolean;
-  targetDate: string;
+  targetDate: string;                  // Target Start (yyyy-MM-dd)
+  targetFinish: string;                // Target Finish / period-end (yyyy-MM-dd; >= targetDate)
   shift: ShiftPreference;
   cadence: RecurrenceCadence | null;
+  preferredDayOfWeek: number | null;   // ISO 1=Mon..7=Sun; non-null = date snapped to this weekday
   currentLead: string;
   proposedPersonid: string | null;
   proposedName: string | null;
@@ -51,6 +63,8 @@ export interface PmPendingAssignment {
 export interface PmAssignItem {
   href: string;
   personid?: string;
+  targetDate?: string;    // yyyy-MM-dd; when set, written to the WO's Target Start
+  targetFinish?: string;  // yyyy-MM-dd; written with targetDate as the WO's Target Finish
 }
 
 export interface PmAssignRequest {

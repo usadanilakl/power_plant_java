@@ -96,9 +96,15 @@ export class RfFileConnectorApiService {
     );
   }
 
-  /** Soft-delete by id — also clears the surviving counterpart's pointer. */
-  delete(id: number): Observable<SpringApiResponse<void>> {
-    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
+  /**
+   * Soft-delete by id. When {@code deleteCounterpart=true} (used for the
+   * cascade-delete dialog's "Delete both" choice), the backend also soft-
+   * deletes the paired peer in the same transaction. Default false keeps
+   * legacy behavior — caller (typically the cascade dialog) decides.
+   */
+  delete(id: number, deleteCounterpart: boolean = false): Observable<SpringApiResponse<void>> {
+    const params = new HttpParams().set('deleteCounterpart', String(deleteCounterpart));
+    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`, { params });
   }
 
   /**

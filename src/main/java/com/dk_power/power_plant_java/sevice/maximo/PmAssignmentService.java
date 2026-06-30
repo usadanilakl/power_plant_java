@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.maximo.PmLeadDto;
 import com.dk_power.power_plant_java.dto.maximo.PmPendingAssignmentDto;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
+import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
 import com.dk_power.power_plant_java.entities.maximo.ShiftPreference;
 import com.dk_power.power_plant_java.entities.users.User;
@@ -16,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
 /**
@@ -82,16 +85,12 @@ public class PmAssignmentService {
             if (target == null) target = LocalDate.now();
             ShiftPreference shift = (pm != null && pm.getShift() != null) ? pm.getShift() : ShiftPreference.EITHER;
 
-            // For a PM with a preferred weekday, assign for that weekday ON OR AFTER the WO's target
-            // (0..6 days forward). NOTE: do NOT use target.with(ChronoField.DAY_OF_WEEK, dow) — that
-            // pins to the same ISO week and can jump BACKWARD into the past (Sun target + Mon pref = −6d),
-            // which both misleads the displayed date and misses the forward-looking schedule roster.
+            // Snap to the PM's preferred weekday, constrained by cadence: WEEKLY stays in the WO's own
+            // ISO week, MONTHLY stays in the WO's month (see effectiveTargetDate).
             Integer dow = pm == null ? null : pm.getPreferredDayOfWeek();
-            LocalDate effective = target;
-            if (dow != null && dow >= 1 && dow <= 7) {
-                int delta = ((dow - target.getDayOfWeek().getValue()) % 7 + 7) % 7; // next-or-same weekday
-                effective = target.plusDays(delta);
-            }
+            RecurrenceCadence cadence = pm == null ? null : pm.getCadence();
+            LocalDate effective = effectiveTargetDate(target, dow, cadence);
+            LocalDate effectiveFinish = periodEndDate(effective, cadence);
 
             ShiftDayDto day = shiftDayService.getByDate(effective);
             List<PmPendingAssignmentDto.PersonOption> candidates =
@@ -106,8 +105,10 @@ public class PmAssignmentService {
                     .status(w.getStatus())
                     .recurring(recurring)
                     .targetDate(effective.toString())
+                    .targetFinish(effectiveFinish == null ? null : effectiveFinish.toString())
                     .shift(shift)
-                    .cadence(pm == null ? null : pm.getCadence())
+                    .cadence(cadence)
+                    .preferredDayOfWeek(dow)
                     .currentLead(w.getLeadCraft())
                     .proposedPersonid(proposed == null ? null : proposed.getPersonid())
                     .proposedName(proposed == null ? null : proposed.getName())
@@ -134,6 +135,19 @@ public class PmAssignmentService {
             try {
                 if (it.getPersonid() != null && !it.getPersonid().isBlank()) {
                     workOrders.setLead(it.getHref(), it.getPersonid());
+                }
+                // Push the target start + period-end finish onto the WO in ONE write (best-effort: a failed
+                // write here must NOT block approval — Maximo may not allow the fields in every status).
+                if (it.getTargetDate() != null && !it.getTargetDate().isBlank()) {
+                    try {
+                        LocalDate start = LocalDate.parse(it.getTargetDate().trim());
+                        LocalDate finish = (it.getTargetFinish() != null && !it.getTargetFinish().isBlank())
+                                ? LocalDate.parse(it.getTargetFinish().trim()) : start;
+                        workOrders.setTargetWindow(it.getHref(), start, finish);
+                    } catch (Exception tex) {
+                        log.warn("[PM] setTargetWindow {} -> {}..{} failed: {}",
+                                it.getHref(), it.getTargetDate(), it.getTargetFinish(), tex.getMessage());
+                    }
                 }
                 workOrders.changeStatus(it.getHref(), "APPR", req.getMemo());
                 approved++;
@@ -202,6 +216,42 @@ public class PmAssignmentService {
     /** Normalize a name for alias matching: lowercase, trimmed, collapsed whitespace. */
     private static String normName(String s) {
         return s == null ? "" : s.trim().toLowerCase().replaceAll("\\s+", " ");
+    }
+
+    /**
+     * Snap {@code target} to the preferred weekday {@code dow} (ISO 1=Mon..7=Sun), constrained by cadence:
+     * <ul>
+     *   <li>WEEK → the preferred weekday in the WO's own ISO week (Mon..Sun) — may be before or after target.</li>
+     *   <li>MONTH → the next-or-same preferred weekday, stepped back one week if it spilled into the next month
+     *       (keeps it inside the WO's month).</li>
+     *   <li>DAY / OTHER / null → next-or-same preferred weekday forward (0..6 days).</li>
+     * </ul>
+     * Returns {@code target} unchanged when no preferred weekday is set.
+     */
+    static LocalDate effectiveTargetDate(LocalDate target, Integer dow, RecurrenceCadence cadence) {
+        if (target == null || dow == null || dow < 1 || dow > 7) return target;
+        if (cadence == RecurrenceCadence.WEEK) {
+            return target.with(ChronoField.DAY_OF_WEEK, dow); // same ISO week
+        }
+        int delta = ((dow - target.getDayOfWeek().getValue()) % 7 + 7) % 7; // next-or-same forward
+        LocalDate forward = target.plusDays(delta);
+        if (cadence == RecurrenceCadence.MONTH
+                && (forward.getMonthValue() != target.getMonthValue() || forward.getYear() != target.getYear())) {
+            return forward.minusWeeks(1); // spilled into next month → step back to stay in the WO's month
+        }
+        return forward;
+    }
+
+    /**
+     * The end of {@code effectiveStart}'s period, used as the WO's Target Finish (so finish ≥ start and
+     * Maximo won't clamp the window to start == end): WEEK → Sunday of that ISO week, MONTH → last day of
+     * that month, DAY / OTHER / null → the same day (finish = start). Always ≥ {@code effectiveStart}.
+     */
+    static LocalDate periodEndDate(LocalDate effectiveStart, RecurrenceCadence cadence) {
+        if (effectiveStart == null) return null;
+        if (cadence == RecurrenceCadence.WEEK) return effectiveStart.with(ChronoField.DAY_OF_WEEK, 7); // Sunday
+        if (cadence == RecurrenceCadence.MONTH) return effectiveStart.with(TemporalAdjusters.lastDayOfMonth());
+        return effectiveStart;
     }
 
     private static List<ShiftEntry> nz(List<ShiftEntry> l) { return l == null ? List.of() : l; }

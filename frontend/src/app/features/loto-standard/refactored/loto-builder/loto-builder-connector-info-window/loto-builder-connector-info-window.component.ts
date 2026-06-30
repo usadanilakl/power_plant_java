@@ -37,6 +37,9 @@ export class LotoBuilderConnectorInfoWindowComponent {
   /** Emitted after a successful Link counterpart — parent should refresh
    *  the affected connector so the info window shows it as paired. */
   linked = output<{ connectorId: number; counterpartId: number }>();
+  /** Open the connector's target file in the right pane (split view, in
+   *  connector-target mode). Parent handles the mode switch + file load. */
+  showInSplit = output<FileConnectorDto>();
   closed = output<void>();
 
   private fileApi = inject(RfFileApiService);
@@ -95,6 +98,17 @@ export class LotoBuilderConnectorInfoWindowComponent {
   targetFileNumber = computed(() => this.connector()?.targetFileNumber ?? null);
   targetFileName = computed(() => this.connector()?.targetFileName ?? null);
   hasCounterpart = computed(() => this.connector()?.counterpartConnectorId != null);
+  pairKey = computed(() => this.connector()?.pairKey ?? null);
+  /** Hint that pops up when this side is unpaired AND there are reciprocals
+   *  but they're all hidden by the keyed-match filter. Tells the user
+   *  "set the same pair key on the matching side to make them link". */
+  noMatchHint = computed(() => {
+    const c = this.connector();
+    if (!c || this.hasCounterpart()) return null;
+    if (this.candidateCounterparts().length > 0) return null;
+    if (!c.pairKey) return null;
+    return `No reciprocal connector on the target file has pair key "${c.pairKey}". Open the matching connector and set the same key.`;
+  });
   /** Show Link button when this connector is unpaired AND at least one
    *  unpaired reciprocal exists on the target file. */
   canLink = computed(() => !this.hasCounterpart() && this.candidateCounterparts().length > 0);
@@ -143,6 +157,11 @@ export class LotoBuilderConnectorInfoWindowComponent {
   onNavigate(): void {
     const c = this.connector();
     if (c) this.navigate.emit(c);
+  }
+
+  onShowInSplit(): void {
+    const c = this.connector();
+    if (c?.targetFileId) this.showInSplit.emit(c);
   }
 
   onEdit(): void {

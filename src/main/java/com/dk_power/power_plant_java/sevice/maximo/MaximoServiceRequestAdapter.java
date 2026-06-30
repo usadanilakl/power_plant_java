@@ -136,6 +136,39 @@ public class MaximoServiceRequestAdapter {
         return map(created);
     }
 
+    /**
+     * Update an editable SR's free-text fields (description / long description) via a root MERGE-PATCH,
+     * mirroring {@code MaximoWorkOrderAdapter.setLead/setTargetStart}. The PATCH itself answers 204, so the
+     * refreshed record is re-fetched. {@code spi:} prefix is mandatory (unprefixed keys are silently dropped).
+     */
+    public MaximoServiceRequestDto updateFields(String href, String description, String longDescription) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        putIfPresent(payload, "spi:description", description);
+        putIfPresent(payload, "spi:description_longdescription", longDescription);
+        if (!payload.isEmpty()) access.addChildren(access.osUrl(OS) + "/" + href, payload);
+        return findByHref(href).orElse(null);
+    }
+
+    /**
+     * Add a worklog note to an SR via an additive MERGE of one {@code spi:worklog} row. The SR worklog
+     * READ sub-collection is {@code uxworklog}, but the inline WRITE key is the generic {@code spi:worklog}
+     * (same as WOs) — if rows ever fail to persist on this instance, fall back to {@code spi:uxworklog}.
+     */
+    public void addWorklog(String href, String summary, String details, String logtype) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        boolean hasSummary = summary != null && !summary.isBlank();
+        boolean hasDetails = details != null && !details.isBlank();
+        if (!hasSummary && !hasDetails) return;
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("spi:description", hasSummary ? summary.trim() : "Note");
+        if (hasDetails) row.put("spi:description_longdescription", details.trim());
+        row.put("spi:logtype", (logtype != null && !logtype.isBlank()) ? logtype.trim() : "CLIENTNOTE");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spi:worklog", List.of(row));
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
     private static void putIfPresent(Map<String, Object> payload, String key, String value) {
         if (value != null && !value.isBlank()) payload.put(key, value);
     }

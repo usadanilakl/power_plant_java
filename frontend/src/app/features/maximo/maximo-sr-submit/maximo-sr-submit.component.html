@@ -54,14 +54,26 @@
   </label>
 
   <div class="row">
-    <label>Asset <input [(ngModel)]="sr.assetnum" placeholder="auto-prefilled" /></label>
-    <label>Location <input [(ngModel)]="sr.location" placeholder="auto-prefilled" /></label>
+    <label class="asset-field">Asset
+      <input [ngModel]="sr.assetnum" (ngModelChange)="onAssetQueryChange($event)"
+             placeholder="search tag / description…" autocomplete="off" />
+      <span *ngIf="assetSearching()" class="muted asset-status">searching…</span>
+      <div class="asset-results" *ngIf="assetResults().length">
+        <button type="button" class="asset-opt" *ngFor="let a of assetResults()" (mousedown)="pickAsset(a)">
+          <strong>{{ a.assetnum }}</strong> {{ a.description }}
+          <span class="muted" *ngIf="a.location"> · {{ a.location }}</span>
+        </button>
+      </div>
+    </label>
+    <label>Location <input [(ngModel)]="sr.location" placeholder="auto-filled from asset" /></label>
     <label>Site <input [(ngModel)]="sr.siteid" /></label>
   </div>
 
   <div class="row">
     <label>Priority <input [(ngModel)]="sr.priority" placeholder="1-5" /></label>
-    <label>Reported by <input [(ngModel)]="sr.reportedby" placeholder="defaults to you" /></label>
+    <label>Reported by
+      <app-maximo-person-picker [(ngModel)]="sr.reportedby" placeholder="defaults to you"></app-maximo-person-picker>
+    </label>
   </div>
 
   <!-- Attachments dropzone -->

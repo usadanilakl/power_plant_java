@@ -150,7 +150,9 @@ public class ServiceFacade {
             // Rounds (WebView AMS scraper)
             @Lazy NgRoundsService ngRoundsService,
             // Red Tag standards (digitized LOTO standards from Red Tag)
-            @Lazy NgRedTagStandardService ngRedTagStandardService
+            @Lazy NgRedTagStandardService ngRedTagStandardService,
+            // Maximo recurring-PM catalog (lead year-scan; synced so all desktops share it)
+            @Lazy com.dk_power.power_plant_java.sevice.maximo.RecurringPmSyncService recurringPmSyncService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -224,6 +226,8 @@ public class ServiceFacade {
         serviceMap.put(SdsAuditRecord.class.getSimpleName(), sdsAuditRecordSyncService);
         // Rounds (WebView AMS scraper)
         serviceMap.put(RoundsReport.class.getSimpleName(), ngRoundsService);
+        // Maximo recurring-PM catalog (inbound apply was dropping it — "No service found for RecurringPm")
+        serviceMap.put(com.dk_power.power_plant_java.entities.maximo.RecurringPm.class.getSimpleName(), recurringPmSyncService);
     }
 
     public SyncableService getService(String entityClass) {

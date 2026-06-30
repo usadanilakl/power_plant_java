@@ -6,6 +6,7 @@ import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import {
   PmAssignRequest,
   PmLead,
+  PmOccurrence,
   PmPendingAssignment,
   RecurrenceCadence,
   RecurringPm,
@@ -35,6 +36,12 @@ export class MaximoPmApiService {
     return this.http.put<SpringApiResponse<RecurringPm>>(
       `${this.base}/catalog/${id}`, { shift, cadence, dayOfWeek })
       .pipe(map(r => r.responseData));
+  }
+
+  /** A catalog PM's real Maximo WOs (history + upcoming), matched by pmnum or description. */
+  getOccurrences(id: number): Observable<PmOccurrence[]> {
+    return this.http.get<SpringApiResponse<PmOccurrence[]>>(`${this.base}/catalog/${id}/occurrences`)
+      .pipe(map(r => r.responseData ?? []));
   }
 
   // ── Assignments ─────────────────────────────────────────────────────────

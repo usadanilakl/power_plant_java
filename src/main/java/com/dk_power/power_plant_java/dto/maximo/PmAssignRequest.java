@@ -13,6 +13,8 @@ public class PmAssignRequest {
     @Data
     public static class Item {
         private String href;
-        private String personid;   // assignee; if blank, the WO is approved without changing lead
+        private String personid;     // assignee; if blank, the WO is approved without changing lead
+        private String targetDate;   // yyyy-MM-dd; when present, written to the WO's Target Start
+        private String targetFinish; // yyyy-MM-dd; written with targetDate as the WO's Target Finish (>= start)
     }
 }

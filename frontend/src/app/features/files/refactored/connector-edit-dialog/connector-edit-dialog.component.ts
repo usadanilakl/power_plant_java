@@ -70,6 +70,25 @@ export interface ConnectorEditDialogData {
         </label>
       </div>
 
+      <div class="row">
+        <label for="pair-key-input" class="row-label">Pair key</label>
+        <input
+          id="pair-key-input"
+          type="text"
+          class="row-input"
+          [value]="pairKey()"
+          (input)="pairKey.set($any($event.target).value)"
+          placeholder="e.g. 1, 2, 3 — same on both sides links them"/>
+      </div>
+      <div class="row hint-row">
+        <span class="row-label"></span>
+        <span class="row-hint">
+          Used to pair multi-reference drawings. New connectors get an
+          auto-incremented number per direction; type to override.
+          Saving copies the key to the linked counterpart automatically.
+        </span>
+      </div>
+
       @if (error()) {
         <div class="error-banner">
           <mat-icon>error</mat-icon>
@@ -128,6 +147,14 @@ export interface ConnectorEditDialogData {
       font-size: 0.85em;
       color: var(--secondary-text, #495057);
     }
+    /* Hint paragraph attached to the pair-key input — sits as a borderless
+       row under the field so it reads as inline help, not a separate field. */
+    .hint-row { border-bottom: 0; padding-top: 2px; }
+    .row-hint {
+      flex: 1 1 auto;
+      font-size: 0.8em; line-height: 1.4;
+      color: var(--secondary-text, #495057);
+    }
     .error-banner {
       display: flex; gap: 8px; align-items: center;
       padding: 8px 12px; margin-top: 12px;
@@ -150,6 +177,11 @@ export class ConnectorEditDialogComponent {
    *  from the connector's persisted showLabel (null treated as false), then
    *  toggled via the dialog's checkbox and sent in the save payload. */
   showLabel = signal<boolean>(false);
+  /** Pair key — string the user types to disambiguate multi-reference
+   *  drawings. Same value on both sides creates the link. New connectors
+   *  get an auto-assigned numeric key on the create-flow; this dialog lets
+   *  the user override it. */
+  pairKey = signal<string>('');
   saving = signal<boolean>(false);
   error = signal<string | null>(null);
 
@@ -164,6 +196,7 @@ export class ConnectorEditDialogComponent {
     this.working = new FileConnectorDto(data.connector);
     this.label.set(data.connector.label ?? '');
     this.showLabel.set(data.connector.showLabel === true);
+    this.pairKey.set(data.connector.pairKey ?? '');
   }
 
   sourceLabel(): string {
@@ -211,6 +244,10 @@ export class ConnectorEditDialogComponent {
       counterpartConnectorId: this.working.counterpartConnectorId,
       label: this.label().trim() || null,
       showLabel: this.showLabel(),
+      // Trim then collapse to null when blank — keeps the keyed-match logic
+      // simple (null means "use legacy fallback rule" rather than "empty
+      // string" which would force unkeyed connectors into a different code path).
+      pairKey: this.pairKey().trim() || null,
     };
 
     this.api.save(payload).subscribe({

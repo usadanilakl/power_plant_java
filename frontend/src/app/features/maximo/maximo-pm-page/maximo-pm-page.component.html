@@ -40,11 +40,14 @@
             <ng-container *ngFor="let r of visiblePending()">
               <tr [class.expanded]="isExpanded(r.href)">
                 <td><span *ngIf="r.recurring" class="badge" title="In recurring catalog">★</span></td>
-                <td>{{ r.wonum }}</td>
+                <td><button class="link wo-link" (click)="openWo(r)" title="Open work order">{{ r.wonum }}</button></td>
                 <td>{{ r.pmnum || '—' }}</td>
                 <td class="desc">{{ r.description }}</td>
                 <td>{{ r.shift }}</td>
-                <td>{{ r.targetDate }}</td>
+                <td class="date-cell">
+                  <label>start <input type="date" [(ngModel)]="startDate[r.href]" /></label>
+                  <label>finish <input type="date" [(ngModel)]="finishDate[r.href]" /></label>
+                </td>
                 <td>
                   <select [(ngModel)]="assignee[r.href]" *ngIf="r.candidates.length; else noCand">
                     <option value="">— unassigned —</option>
@@ -126,29 +129,68 @@
             <tr><th>PM</th><th>Description</th><th class="num">Occ/yr</th><th>Cadence</th><th>Shift</th><th>Pref. day</th><th>Last WO</th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let pm of catalog()">
-              <td>{{ pm.pmnum || '—' }}</td>
-              <td class="desc">{{ pm.pmDescription }}</td>
-              <td class="num">{{ pm.occurrenceCount }}</td>
-              <td>
-                <select [(ngModel)]="pm.cadence" (ngModelChange)="saveClassification(pm)">
-                  <option *ngFor="let c of cadenceOptions" [value]="c">{{ c }}</option>
-                </select>
-                <span class="muted" *ngIf="pm.intervalDays">~{{ pm.intervalDays }}d</span>
-              </td>
-              <td>
-                <select [(ngModel)]="pm.shift" (ngModelChange)="saveClassification(pm)">
-                  <option *ngFor="let s of shiftOptions" [value]="s">{{ s }}</option>
-                </select>
-              </td>
-              <td>
-                <select [(ngModel)]="pm.preferredDayOfWeek" (ngModelChange)="saveClassification(pm)"
-                        [title]="pm.cadence === 'WEEK' ? 'Preferred weekday' : 'Mainly for weekly PMs'">
-                  <option *ngFor="let d of dowOptions" [ngValue]="d.value">{{ d.label }}</option>
-                </select>
-              </td>
-              <td>{{ pm.lastWonum }}</td>
-            </tr>
+            <ng-container *ngFor="let pm of catalog()">
+              <tr [class.expanded]="isPmExpanded(pm.id)">
+                <td>{{ pm.pmnum || '—' }}</td>
+                <td class="desc">{{ pm.pmDescription }}</td>
+                <td class="num">{{ pm.occurrenceCount }}</td>
+                <td>
+                  <select [(ngModel)]="pm.cadence" (ngModelChange)="saveClassification(pm)">
+                    <option *ngFor="let c of cadenceOptions" [value]="c">{{ c }}</option>
+                  </select>
+                  <span class="muted" *ngIf="pm.intervalDays">~{{ pm.intervalDays }}d</span>
+                </td>
+                <td>
+                  <select [(ngModel)]="pm.shift" (ngModelChange)="saveClassification(pm)">
+                    <option *ngFor="let s of shiftOptions" [value]="s">{{ s }}</option>
+                  </select>
+                </td>
+                <td>
+                  <select [(ngModel)]="pm.preferredDayOfWeek" (ngModelChange)="saveClassification(pm)"
+                          [title]="pm.cadence === 'WEEK' ? 'Preferred weekday' : 'Mainly for weekly PMs'">
+                    <option *ngFor="let d of dowOptions" [ngValue]="d.value">{{ d.label }}</option>
+                  </select>
+                </td>
+                <td class="row-actions">
+                  <button class="link peek-toggle" [class.on]="isPmExpanded(pm.id)" (click)="togglePmHistory(pm)"
+                          [title]="isPmExpanded(pm.id) ? 'Hide history' : 'Show history + upcoming WOs'">🕑</button>
+                  <span>{{ pm.lastWonum }}</span>
+                </td>
+              </tr>
+
+              <!-- Occurrence timeline: real Maximo WOs (history + upcoming) for this PM -->
+              <tr class="peek-row" *ngIf="isPmExpanded(pm.id)">
+                <td></td>
+                <td colspan="6">
+                  <div class="peek-note" *ngIf="isOccLoading(pm.id)"><span class="muted">Loading work orders…</span></div>
+                  <div class="occ-wrap" *ngIf="!isOccLoading(pm.id) && occLoaded(pm.id)">
+                    <div class="occ-col">
+                      <div class="occ-head">Upcoming / open ({{ occUpcoming(pm.id).length }})</div>
+                      <div class="occ" *ngFor="let o of occUpcoming(pm.id)">
+                        <span class="occ-date">{{ o.date || '—' }}</span>
+                        <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
+                        <span class="occ-st st-open">{{ o.status }}</span>
+                        <span class="muted occ-lead" *ngIf="o.lead">{{ o.lead }}</span>
+                      </div>
+                      <div class="muted" *ngIf="!occUpcoming(pm.id).length">No open work orders.</div>
+                    </div>
+                    <div class="occ-col">
+                      <div class="occ-head">History ({{ occHistory(pm.id).length }})</div>
+                      <div class="occ" *ngFor="let o of occHistory(pm.id)">
+                        <span class="occ-date">{{ o.date || '—' }}</span>
+                        <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
+                        <span class="occ-st st-done">{{ o.status }}</span>
+                        <span class="muted occ-lead" *ngIf="o.lead">{{ o.lead }}</span>
+                      </div>
+                      <div class="muted" *ngIf="!occHistory(pm.id).length">No past occurrences in the last 2 years.</div>
+                    </div>
+                  </div>
+                  <p class="muted occ-foot" *ngIf="!isOccLoading(pm.id) && occLoaded(pm.id)">
+                    Matched by {{ pm.pmnum ? 'PM number ' + pm.pmnum : 'description' }} · live from Maximo · no forecast (PM master not available).
+                  </p>
+                </td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
         <ng-template #noCatalog>
@@ -198,6 +240,10 @@
             (open/refresh the Personnel widget there); once imported it syncs to all devices. Or widen the date range.</p>
         </ng-template>
       </section>
+
+      <!-- WO detail dialog, opened from an Assignments row's WO # -->
+      <app-maximo-detail-dialog *ngIf="selectedWo()" [parent]="'wo'" [wo]="selectedWo()"
+        (completed)="loadPending()" (closed)="closeWo()"></app-maximo-detail-dialog>
     </div>
   </ng-container>
 </app-main-layout>

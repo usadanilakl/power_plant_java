@@ -21,8 +21,8 @@
           <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>
         </div>
         <div class="row">
-          <label>Reported by <input [(ngModel)]="criteria.reportedby" placeholder="personid" /></label>
-          <label>Affected person <input [(ngModel)]="criteria.affectedperson" placeholder="personid" /></label>
+          <label>Reported by <app-maximo-person-picker [(ngModel)]="criteria.reportedby" placeholder="personid"></app-maximo-person-picker></label>
+          <label>Affected person <app-maximo-person-picker [(ngModel)]="criteria.affectedperson" placeholder="personid"></app-maximo-person-picker></label>
         </div>
         <div class="row">
           <label>Report date ≥

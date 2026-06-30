@@ -26,7 +26,7 @@ public class MaximoWorkOrderAdapter {
     private static final String SELECT_FIELDS =
             "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
-            + "spi:targstartdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum";
+            + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum";
 
     private final MaximoAccessService access;
 
@@ -75,6 +75,7 @@ public class MaximoWorkOrderAdapter {
         addStr(conds, "status", c.getStatus());
         addStrIn(conds, "status", c.getStatusIn());
         addStr(conds, "worktype", c.getWorktype());
+        addStr(conds, "pmnum", c.getPmnum());
         addStr(conds, "assetnum", c.getAssetnum());
         addStr(conds, "location", c.getLocation());
         addNum(conds, "wopriority", c.getPriority());
@@ -102,6 +103,43 @@ public class MaximoWorkOrderAdapter {
         if (personid == null || personid.isBlank()) throw new IllegalArgumentException("personid is required");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("spi:lead", personid.trim().toUpperCase());
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /**
+     * Set a WO's Target Start ({@code spi:targstartdate}) via a MERGE field update at the WO root —
+     * mirrors {@link #setLead}. Sends an ISO local datetime at midnight with NO zone offset
+     * ({@code yyyy-MM-dd'T'HH:mm:ss}), matching the date-string convention this codebase uses against
+     * Maximo; Maximo applies the site timezone. Used when a PM is shifted to a preferred weekday.
+     */
+    public void setTargetStart(String href, java.time.LocalDate date) {
+        if (date == null) throw new IllegalArgumentException("date is required");
+        setTargetStart(href, date.atStartOfDay().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    }
+
+    /** Raw-string overload: {@code targstartdate} must be a Maximo-acceptable datetime, e.g. {@code yyyy-MM-dd'T'HH:mm:ss}. */
+    public void setTargetStart(String href, String targstartdate) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (targstartdate == null || targstartdate.isBlank()) throw new IllegalArgumentException("targstartdate is required");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spi:targstartdate", targstartdate.trim());
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /**
+     * Set Target Start AND Target Finish ({@code spi:targstartdate} + {@code spi:targcompdate}) in ONE MERGE,
+     * so Maximo never sees a transient finish &lt; start (which would clamp the WO to start == end). {@code finish}
+     * is clamped to {@code >= start}. Same root-scalar MERGE shape as {@link #setTargetStart}; both values are
+     * ISO local datetime at midnight (no offset). Used when a PM is shifted to a preferred weekday + period end.
+     */
+    public void setTargetWindow(String href, java.time.LocalDate start, java.time.LocalDate finish) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (start == null) throw new IllegalArgumentException("start is required");
+        java.time.LocalDate end = (finish == null || finish.isBefore(start)) ? start : finish;
+        var fmt = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spi:targstartdate", start.atStartOfDay().format(fmt));
+        payload.put("spi:targcompdate", end.atStartOfDay().format(fmt));
         access.addChildren(access.osUrl(OS) + "/" + href, payload);
     }
 
@@ -318,6 +356,7 @@ public class MaximoWorkOrderAdapter {
         d.setSiteid(str(row, "siteid"));
         d.setReportdate(str(row, "reportdate"));
         d.setTargetStart(str(row, "targstartdate"));
+        d.setTargetFinish(str(row, "targcompdate"));
         d.setSchedstart(str(row, "schedstart"));
         d.setSchedfinish(str(row, "schedfinish"));
         d.setLeadCraft(str(row, "lead"));

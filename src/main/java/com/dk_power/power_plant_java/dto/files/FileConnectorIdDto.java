@@ -36,4 +36,8 @@ public class FileConnectorIdDto extends BaseDto {
     /** Persisted per-connector toggle for label display on canvas.
      *  Null treated as false by the viewer. */
     private Boolean showLabel;
+
+    /** Pairing identifier — connectors with the same key on reciprocal
+     *  sides are linked together. Null means "use the legacy 1:1 rule". */
+    private String pairKey;
 }

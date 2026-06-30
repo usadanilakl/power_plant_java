@@ -76,16 +76,23 @@ public class NgFileConnectorRestController {
     }
 
     /**
-     * Soft-delete (sets deleted=true). Also clears the surviving counterpart's
-     * pointer back — handled inside the service so the invariant holds.
+     * Soft-delete (sets deleted=true). Optional {@code deleteCounterpart}
+     * param controls cascade: when true (and the connector is paired), the
+     * peer is also soft-deleted in the same transaction; when false (default),
+     * only this side is removed and the peer's counterpart pointer is cleared.
+     * Frontend uses the cascade dialog to surface the choice when the
+     * connector is paired.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable Long id) {
+    public ResponseEntity<NgApiResponse<Void>> delete(
+            @PathVariable Long id,
+            @RequestParam(name = "deleteCounterpart", defaultValue = "false") boolean deleteCounterpart) {
         try {
-            connectorService.removeConnector(id);
-            return ResponseEntity.ok(new NgApiResponse<>(null, "Connector deleted"));
+            connectorService.removeConnector(id, deleteCounterpart);
+            return ResponseEntity.ok(new NgApiResponse<>(null,
+                deleteCounterpart ? "Connector + counterpart deleted" : "Connector deleted"));
         } catch (Exception e) {
-            log.error("delete connector {} failed: {}", id, e.getMessage());
+            log.error("delete connector {} (cascade={}) failed: {}", id, deleteCounterpart, e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }

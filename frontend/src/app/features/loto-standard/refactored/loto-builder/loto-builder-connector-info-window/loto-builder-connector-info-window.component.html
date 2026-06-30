@@ -25,6 +25,14 @@
         </div>
       }
 
+      @if (pairKey()) {
+        <div class="info-row">
+          <span class="info-label">Pair key</span>
+          <span class="info-value">
+            <span class="pair-key-chip">{{ pairKey() }}</span>
+          </span>
+        </div>
+      }
       @if (hasCounterpart()) {
         <div class="info-row">
           <span class="info-label">Linked</span>
@@ -47,6 +55,9 @@
               <span class="link-error">{{ linkError() }}</span>
             }
           </div>
+        }
+        @if (noMatchHint()) {
+          <div class="no-match-hint">{{ noMatchHint() }}</div>
         }
       }
 
@@ -77,6 +88,13 @@
 
     <div class="info-footer">
       <button class="action-button" type="button" (click)="onEdit()">Edit</button>
+      <button
+        class="action-button"
+        type="button"
+        (click)="onShowInSplit()"
+        [disabled]="!connector()?.targetFileId"
+        title="Open the target file side-by-side without changing the primary view"
+      >Show target ↕</button>
       <button class="action-button primary" type="button" (click)="onNavigate()">Navigate →</button>
     </div>
   </div>
