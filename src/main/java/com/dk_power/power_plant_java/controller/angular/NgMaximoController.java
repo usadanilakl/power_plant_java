@@ -186,7 +186,16 @@ public class NgMaximoController {
                 return ResponseEntity.badRequest().body(
                         new NgApiResponse<>(null, "SR is not editable in status " + current.getStatus()));
             }
-            MaximoServiceRequestDto updated = serviceRequests.updateFields(href, body.description(), body.longDescription());
+            java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
+            fields.put("spi:description", body.description());
+            fields.put("spi:description_longdescription", body.longDescription());
+            fields.put("spi:reportedpriority", body.priority());
+            fields.put("spi:reportedby", body.reportedby());
+            fields.put("spi:assetnum", body.assetnum());
+            fields.put("spi:location", body.location());
+            fields.put("spi:classstructureid", body.classstructureid());
+            fields.put("spi:affectedperson", body.affectedperson());
+            MaximoServiceRequestDto updated = serviceRequests.updateFields(href, fields);
             return ResponseEntity.ok(new NgApiResponse<>(updated, "updated"));
         } catch (Exception e) {
             log.warn("[Maximo] update SR {} failed: {}", href, e.getMessage());
@@ -216,8 +225,9 @@ public class NgMaximoController {
         return status != null && EDITABLE_SR_STATUSES.contains(status.trim().toUpperCase());
     }
 
-    /** Body for {@link #updateSr}: only the SR free-text fields are client-editable. */
-    public record UpdateSrRequest(String description, String longDescription) {}
+    /** Body for {@link #updateSr}: the SR fields a user can edit post-submit (blank = leave unchanged). */
+    public record UpdateSrRequest(String description, String longDescription, String priority,
+            String reportedby, String assetnum, String location, String classstructureid, String affectedperson) {}
 
     // ---- Work Orders ------------------------------------------------------
 

@@ -46,8 +46,33 @@
             <input type="text" [(ngModel)]="editDescription" placeholder="Short description" />
           </label>
           <label>Long description
-            <textarea rows="4" [(ngModel)]="editLongDescription" placeholder="Details"></textarea>
+            <textarea rows="3" [(ngModel)]="editLongDescription" placeholder="Details"></textarea>
           </label>
+          <div class="sr-edit-grid">
+            <label>Priority
+              <select [(ngModel)]="editPriority">
+                <option *ngFor="let p of priorityOptions" [value]="p">{{ p || '—' }}</option>
+              </select>
+            </label>
+            <label>Classification
+              <input type="text" [(ngModel)]="editClassstructureid" placeholder="classstructureid" />
+            </label>
+            <label>Reported by
+              <app-maximo-person-picker [(ngModel)]="editReportedby" placeholder="personid"></app-maximo-person-picker>
+            </label>
+            <label>Affected person
+              <app-maximo-person-picker [(ngModel)]="editAffectedperson" placeholder="personid"></app-maximo-person-picker>
+            </label>
+            <label>Asset
+              <app-maximo-asset-picker [(ngModel)]="editAssetnum" [freeText]="true"
+                                       (picked)="onEditAssetPicked($event)" placeholder="tag / description"></app-maximo-asset-picker>
+            </label>
+            <label>Location
+              <app-maximo-location-picker [(ngModel)]="editLocation" [freeText]="true"
+                                          placeholder="code / description"></app-maximo-location-picker>
+            </label>
+          </div>
+          <p class="muted sr-edit-note">Blank fields are left unchanged. Maximo may reject a field it locks in this status — the error will show above.</p>
           <div class="sr-edit-actions">
             <button class="primary" (click)="saveSr()" [disabled]="savingSr()">{{ savingSr() ? 'Saving…' : 'Save' }}</button>
             <button (click)="cancelEditSr()" [disabled]="savingSr()">Cancel</button>
@@ -104,15 +129,32 @@
             <tr><th>File</th><th>Title</th><th>Type</th><th>Size</th><th>Created</th><th>By</th><th></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let d of attachments()">
-              <td>{{ d.urlname || d.title || d.document }}</td>
-              <td>{{ d.title }}</td>
-              <td>{{ d.mimeType || d.doctype }}</td>
-              <td>{{ fmtSize(d.size) }}</td>
-              <td>{{ d.createdDate }}</td>
-              <td>{{ d.createby }}</td>
-              <td><a [href]="downloadUrl(d)" target="_blank" rel="noopener">open</a></td>
-            </tr>
+            <ng-container *ngFor="let d of attachments()">
+              <tr [class.expanded]="isPreviewOpen(d)">
+                <td>{{ d.urlname || d.title || d.document }}</td>
+                <td>{{ d.title }}</td>
+                <td>{{ d.mimeType || d.doctype }}</td>
+                <td>{{ fmtSize(d.size) }}</td>
+                <td>{{ d.createdDate }}</td>
+                <td>{{ d.createby }}</td>
+                <td class="att-actions">
+                  <button class="link" *ngIf="canPreview(d)" (click)="togglePreview(d)">{{ isPreviewOpen(d) ? 'hide' : 'preview' }}</button>
+                  <a [href]="downloadUrl(d)" target="_blank" rel="noopener">open</a>
+                </td>
+              </tr>
+              <tr class="att-preview-row" *ngIf="isPreviewOpen(d)">
+                <td colspan="7">
+                  <div class="att-preview">
+                    <div *ngIf="previewLoading()" class="muted">Loading preview…</div>
+                    <div *ngIf="previewError()" class="error">{{ previewError() }}</div>
+                    <img *ngIf="attType(d) === 'image'" [src]="downloadUrl(d)" class="att-img" alt="" />
+                    <iframe *ngIf="attType(d) === 'pdf' && pdfUrl()" [src]="pdfUrl()" class="att-frame"></iframe>
+                    <div *ngIf="(attType(d) === 'docx' || attType(d) === 'excel') && officeHtml()"
+                         class="att-office" [innerHTML]="officeHtml()"></div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
             <tr *ngIf="attachments().length === 0">
               <td colspan="7" class="muted">No attachments.</td>
             </tr>

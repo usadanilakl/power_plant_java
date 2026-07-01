@@ -16,8 +16,8 @@
           <label>Page <input type="number" [(ngModel)]="pageSize" min="1" max="200" /></label>
         </div>
         <div class="row">
-          <label>Assetnum <input [(ngModel)]="criteria.assetnum" placeholder="-1-CEM-SS" /></label>
-          <label>Location <input [(ngModel)]="criteria.location" placeholder="01-CEMS" /></label>
+          <label>Assetnum <app-maximo-asset-picker [(ngModel)]="criteria.assetnum" placeholder="tag / description"></app-maximo-asset-picker></label>
+          <label>Location <app-maximo-location-picker [(ngModel)]="criteria.location" placeholder="code / description"></app-maximo-location-picker></label>
           <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>
         </div>
         <div class="row">

@@ -98,6 +98,22 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 .sr-edit label { display: flex; flex-direction: column; gap: 4px; color: #aaa; font-size: 12px; }
 .sr-edit input, .sr-edit textarea { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
   border-radius: 3px; padding: 6px 8px; font: inherit; width: 100%; box-sizing: border-box; }
-.sr-edit-actions { display: flex; gap: 8px; }
+.sr-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.sr-edit-grid label { display: flex; flex-direction: column; gap: 4px; }
+.sr-edit-grid select { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px;
+  padding: 6px 8px; font: inherit; }
+.sr-edit-note { font-size: 11px; margin: 2px 0 0; }
+.sr-edit-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* Attachment inline preview */
+.att-actions { white-space: nowrap; display: flex; gap: 10px; align-items: center; }
+.att-preview-row > td { background: #161616; padding: 10px; }
+.att-preview { max-height: 60vh; overflow: auto; }
+.att-img { max-width: 100%; height: auto; border: 1px solid #333; border-radius: 3px; }
+.att-frame { width: 100%; height: 60vh; border: 1px solid #333; border-radius: 3px; background: #fff; }
+.att-office { background: #fff; color: #111; padding: 12px; border-radius: 3px; font-size: 13px; overflow: auto; }
+.att-office table { border-collapse: collapse; }
+.att-office td, .att-office th { border: 1px solid #ccc; padding: 2px 6px; }
+.att-office .sheet-name { margin: 8px 0 4px; color: #0e639c; }
 .short-desc { margin-top: 14px; }
 .short-desc h4 { margin: 0 0 6px; color: #7cc6ff; }

@@ -89,8 +89,11 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData));
   }
 
-  /** Edit an editable SR's description / long description. Returns the refreshed SR. */
-  updateServiceRequest(href: string, body: { description?: string; longDescription?: string }): Observable<MaximoServiceRequest> {
+  /** Edit an editable SR's fields (blank = leave unchanged). Returns the refreshed SR. */
+  updateServiceRequest(href: string, body: {
+    description?: string; longDescription?: string; priority?: string; reportedby?: string;
+    assetnum?: string; location?: string; classstructureid?: string; affectedperson?: string;
+  }): Observable<MaximoServiceRequest> {
     return this.http
       .patch<SpringApiResponse<MaximoServiceRequest>>(`${this.base}/service-requests/${encodeURIComponent(href)}`, body)
       .pipe(map(r => r.responseData));
@@ -243,6 +246,13 @@ export class MaximoApiService {
       .post<SpringApiResponse<MaximoWorklog[]>>(
         `${this.base}/work-orders/${encodeURIComponent(href)}/worklog`, body)
       .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Raw attachment bytes (cookie-auth via interceptor), for inline preview / client-side conversion. */
+  getAttachmentContent(parent: MaximoAttachmentParent, href: string, doclinkHref: string): Observable<ArrayBuffer> {
+    return this.http.get(
+      `${this.base}/${parent}/${encodeURIComponent(href)}/attachments/${encodeURIComponent(doclinkHref)}/content`,
+      { responseType: 'arraybuffer' });
   }
 
   listAttachments(parent: MaximoAttachmentParent, href: string): Observable<MaximoDoclink[]> {

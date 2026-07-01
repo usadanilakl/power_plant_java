@@ -7,6 +7,8 @@ import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
+import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
+import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
 import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import {
@@ -35,7 +37,8 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
   standalone: true,
   imports: [
     CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent,
-    MaximoTableComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoPersonPickerComponent
+    MaximoTableComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoPersonPickerComponent,
+    MaximoAssetPickerComponent, MaximoLocationPickerComponent
   ],
   templateUrl: './maximo-service-requests-page.component.html',
   styleUrl: './maximo-service-requests-page.component.css'

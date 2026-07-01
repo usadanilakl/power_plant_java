@@ -1,11 +1,16 @@
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { AuthService } from '../../../services/auth.service';
+import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
+import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
+import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
 import {
+  MaximoAsset,
   MaximoDoclink,
   MaximoInventoryItem,
   MaximoMaterialTxn,
@@ -30,13 +35,14 @@ const EDITABLE_SR_STATUSES = ['NEW', 'QUEUED', 'INPROG', 'PENDING'];
 @Component({
   selector: 'app-maximo-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent],
   templateUrl: './maximo-detail-dialog.component.html',
   styleUrl: './maximo-detail-dialog.component.css'
 })
 export class MaximoDetailDialogComponent {
   private api = inject(MaximoApiService);
   private auth = inject(AuthService);
+  private sanitizer = inject(DomSanitizer);
 
   @Input({ required: true }) parent!: MaximoTicketParent;
   @Input() sr: MaximoServiceRequest | null = null;
@@ -61,11 +67,18 @@ export class MaximoDetailDialogComponent {
   noteDetails = '';
   addingNote = signal(false);
 
-  // Edit an editable SR's description / long description (Details tab).
+  // Edit an editable SR's fields (Details tab).
   editingSr = signal(false);
   savingSr = signal(false);
   editDescription = '';
   editLongDescription = '';
+  editPriority = '';
+  editReportedby = '';
+  editAffectedperson = '';
+  editClassstructureid = '';
+  editAssetnum = '';
+  editLocation = '';
+  readonly priorityOptions = ['', '1', '2', '3', '4', '5'];
 
   // ── Materials (issues + returns) ────────────────────────────────────────
   materials = signal<MaximoMaterialTxn[]>([]);
@@ -340,18 +353,29 @@ export class MaximoDetailDialogComponent {
     }
   }
 
-  /** Begin editing the SR's description / long description (seeds the inputs from the current SR). */
+  /** Begin editing the SR (seeds all inputs from the current SR). */
   startEditSr() {
     if (!this.sr) return;
     this.editDescription = this.sr.description ?? '';
     this.editLongDescription = this.sr.longDescription ?? '';
+    this.editPriority = this.sr.priority ?? '';
+    this.editReportedby = this.sr.reportedby ?? '';
+    this.editAffectedperson = this.sr.affectedperson ?? '';
+    this.editClassstructureid = this.sr.classstructureid ?? '';
+    this.editAssetnum = this.sr.assetnum ?? '';
+    this.editLocation = this.sr.location ?? '';
     this.editingSr.set(true);
     this.error.set(null);
   }
 
   cancelEditSr() { this.editingSr.set(false); }
 
-  /** Save the SR description / long description; on success swap in the refreshed record. */
+  /** When an asset is picked in the edit form, auto-fill the location (Maximo derives it from the asset). */
+  onEditAssetPicked(a: MaximoAsset) {
+    if (a?.location) this.editLocation = a.location;
+  }
+
+  /** Save the SR fields (blank = leave unchanged); on success swap in the refreshed record. */
   async saveSr() {
     if (!this.sr?.href || this.savingSr()) return;
     this.savingSr.set(true);
@@ -359,7 +383,13 @@ export class MaximoDetailDialogComponent {
     try {
       const updated = await firstValueFrom(this.api.updateServiceRequest(this.sr.href, {
         description: this.editDescription.trim(),
-        longDescription: this.editLongDescription.trim()
+        longDescription: this.editLongDescription.trim(),
+        priority: this.editPriority.trim(),
+        reportedby: this.editReportedby.trim(),
+        affectedperson: this.editAffectedperson.trim(),
+        classstructureid: this.editClassstructureid.trim(),
+        assetnum: this.editAssetnum.trim(),
+        location: this.editLocation.trim(),
       }));
       if (updated) this.sr = updated;
       this.editingSr.set(false);
@@ -409,6 +439,73 @@ export class MaximoDetailDialogComponent {
   downloadUrl(d: MaximoDoclink): string {
     if (d.urltype === 'WEB' && d.url) return d.url;
     return `${environment.baseApiUrl}/ng/maximo/${this.parent}/${encodeURIComponent(this.href)}/attachments/${encodeURIComponent(d.href)}/content`;
+  }
+
+  // ── Inline attachment preview ─────────────────────────────────────────────
+  previewHref = signal<string | null>(null);
+  previewLoading = signal(false);
+  previewError = signal<string | null>(null);
+  officeHtml = signal<SafeHtml | null>(null);
+  pdfUrl = signal<SafeResourceUrl | null>(null);
+
+  /** File class for preview: image/pdf render natively; docx/excel convert client-side; other = download only. */
+  attType(d: MaximoDoclink): 'image' | 'pdf' | 'docx' | 'excel' | 'other' {
+    if (d.urltype === 'WEB') return 'other';
+    const name = (d.urlname || d.title || d.document || '').toLowerCase();
+    const mime = (d.mimeType || '').toLowerCase();
+    const ext = name.includes('.') ? name.split('.').pop()! : '';
+    if (mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+    if (mime.includes('pdf') || ext === 'pdf') return 'pdf';
+    if (ext === 'docx' || mime.includes('wordprocessingml')) return 'docx';
+    if (['xlsx', 'xls', 'xlsm', 'csv'].includes(ext) || mime.includes('spreadsheetml') || mime.includes('ms-excel')) return 'excel';
+    return 'other';
+  }
+
+  canPreview(d: MaximoDoclink): boolean { return this.attType(d) !== 'other'; }
+  isPreviewOpen(d: MaximoDoclink): boolean { return this.previewHref() === d.href; }
+
+  /** Expand/collapse an inline preview. PDF/image render from the proxy URL; docx/excel are converted client-side. */
+  async togglePreview(d: MaximoDoclink) {
+    if (this.previewHref() === d.href) { this.closePreview(); return; }
+    this.closePreview();
+    this.previewHref.set(d.href);
+    const t = this.attType(d);
+    if (t === 'pdf') { this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.downloadUrl(d))); return; }
+    if (t === 'image') return; // <img [src]> uses the proxy URL directly
+    if (t === 'docx' || t === 'excel') {
+      this.previewLoading.set(true);
+      try {
+        const buf = await firstValueFrom(this.api.getAttachmentContent(this.parent, this.href, d.href));
+        const html = t === 'docx' ? await this.docxToHtml(buf) : await this.excelToHtml(buf);
+        this.officeHtml.set(this.sanitizer.bypassSecurityTrustHtml(html));
+      } catch (e: any) {
+        this.previewError.set('Could not render preview — use Download. ' + this.errMsg(e));
+      } finally {
+        this.previewLoading.set(false);
+      }
+    }
+  }
+
+  closePreview() {
+    this.previewHref.set(null);
+    this.officeHtml.set(null);
+    this.pdfUrl.set(null);
+    this.previewError.set(null);
+  }
+
+  private async docxToHtml(buf: ArrayBuffer): Promise<string> {
+    const mammoth: any = await import('mammoth');
+    const lib = mammoth.convertToHtml ? mammoth : mammoth.default;
+    const r = await lib.convertToHtml({ arrayBuffer: buf });
+    return r.value || '<p class="muted">Empty document.</p>';
+  }
+
+  private async excelToHtml(buf: ArrayBuffer): Promise<string> {
+    const XLSX: any = await import('xlsx');
+    const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+    return wb.SheetNames
+      .map((n: string) => `<h5 class="sheet-name">${n}</h5>` + XLSX.utils.sheet_to_html(wb.Sheets[n]))
+      .join('');
   }
 
   /** Format byte size as KB / MB / GB. */

@@ -137,15 +137,16 @@ public class MaximoServiceRequestAdapter {
     }
 
     /**
-     * Update an editable SR's free-text fields (description / long description) via a root MERGE-PATCH,
-     * mirroring {@code MaximoWorkOrderAdapter.setLead/setTargetStart}. The PATCH itself answers 204, so the
-     * refreshed record is re-fetched. {@code spi:} prefix is mandatory (unprefixed keys are silently dropped).
+     * Update an editable SR's whitelisted fields via a root MERGE-PATCH, mirroring
+     * {@code MaximoWorkOrderAdapter.setLead}. {@code spiFields} maps each {@code spi:}-prefixed column to its
+     * new value; only non-blank values are sent (so a clear is a no-op, and unset fields are untouched).
+     * The PATCH answers 204, so the refreshed record is re-fetched. Sending assetnum + location together in
+     * one MERGE avoids a transient asset/location mismatch (Maximo derives location from asset).
      */
-    public MaximoServiceRequestDto updateFields(String href, String description, String longDescription) {
+    public MaximoServiceRequestDto updateFields(String href, Map<String, String> spiFields) {
         if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
         Map<String, Object> payload = new LinkedHashMap<>();
-        putIfPresent(payload, "spi:description", description);
-        putIfPresent(payload, "spi:description_longdescription", longDescription);
+        if (spiFields != null) spiFields.forEach((k, v) -> putIfPresent(payload, k, v));
         if (!payload.isEmpty()) access.addChildren(access.osUrl(OS) + "/" + href, payload);
         return findByHref(href).orElse(null);
     }

@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoAssetLocatorService } from '../../../services/maximo/maximo-asset-locator.service';
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
+import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
+import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
 import {
   CreateMaximoServiceRequest,
   MaximoAsset,
@@ -49,7 +51,7 @@ type AssetMatchState =
 @Component({
   selector: 'app-maximo-sr-submit',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent],
+  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent],
   templateUrl: './maximo-sr-submit.component.html',
   styleUrl: './maximo-sr-submit.component.css'
 })
@@ -123,38 +125,10 @@ export class MaximoSrSubmitComponent implements OnChanges {
     if (!this.sr.siteid) this.sr.siteid = a.siteid ?? this.defaultSite;
   }
 
-  // ---- inline asset search+select (debounced) --------------------------------
-  assetResults = signal<MaximoAsset[]>([]);
-  assetSearching = signal(false);
-  private assetTimer: ReturnType<typeof setTimeout> | null = null;
-
-  /** Typing the Asset field both sets assetnum (manual entry still works) and debounce-searches Maximo. */
-  onAssetQueryChange(q: string) {
-    this.sr.assetnum = q;
-    if (this.assetTimer) clearTimeout(this.assetTimer);
-    if (!q || q.trim().length < 2) { this.assetResults.set([]); return; }
-    this.assetTimer = setTimeout(() => this.runAssetSearch(q.trim()), 300);
-  }
-
-  private async runAssetSearch(tag: string) {
-    this.assetSearching.set(true);
-    try {
-      const r = await firstValueFrom(this.api.searchAssets({
-        tag, siteid: this.sr.siteid || this.defaultSite, pageSize: 25
-      }));
-      this.assetResults.set(r);
-    } catch {
-      this.assetResults.set([]);
-    } finally {
-      this.assetSearching.set(false);
-    }
-  }
-
-  /** Select a searched asset → fill assetnum + location + site (single source of truth: applyAsset). */
+  /** Asset picked in the shared picker → fill assetnum + location + site (applyAsset is the single source). */
   pickAsset(a: MaximoAsset) {
     this.applyAsset(a);
     this.match.set({ kind: 'exact', asset: a, tier: 'exact' });
-    this.assetResults.set([]);
   }
 
   // ---- attachment dropzone ----------------------------------------------------
