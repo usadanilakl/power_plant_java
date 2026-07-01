@@ -28,6 +28,7 @@ import { MaximoAsset } from '../../../models/maximo/maximo.models';
           <strong>{{ a.assetnum }}</strong> {{ a.description }}
           <span class="mp-loc" *ngIf="a.location"> · {{ a.location }}</span>
         </button>
+        <div class="mp-more" *ngIf="results().length >= limit">Showing first {{ limit }} — add words to narrow.</div>
       </div>
     </div>
   `,
@@ -44,6 +45,7 @@ import { MaximoAsset } from '../../../models/maximo/maximo.models';
     .mp-opt:hover { background: #2d3b4a; }
     .mp-opt strong { color: #7cc6ff; margin-right: 4px; }
     .mp-loc { color: #888; }
+    .mp-more { padding: 5px 8px; color: #888; font-size: 11px; font-style: italic; border-top: 1px solid #333; }
   `],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => MaximoAssetPickerComponent), multi: true }]
 })
@@ -54,6 +56,8 @@ export class MaximoAssetPickerComponent implements ControlValueAccessor {
   @Input() freeText = false;
   @Input() siteid?: string;
   @Output() picked = new EventEmitter<MaximoAsset>();
+
+  readonly limit = 50;
 
   text = '';
   disabled = false;
@@ -77,7 +81,7 @@ export class MaximoAssetPickerComponent implements ControlValueAccessor {
 
   private async run(q: string) {
     this.searching.set(true);
-    try { this.results.set(await firstValueFrom(this.api.searchAssets({ tag: q, siteid: this.siteid, pageSize: 25 }))); }
+    try { this.results.set(await firstValueFrom(this.api.searchAssets({ tag: q, siteid: this.siteid, pageSize: this.limit }))); }
     catch { this.results.set([]); }
     finally { this.searching.set(false); }
   }

@@ -1,27 +1,30 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
-import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
-import {
-  CreateMaximoServiceRequest,
-  MaximoAsset,
-  MaximoDoclink,
-  MaximoServiceRequest,
-  MaximoWorkOrder
-} from '../../../models/maximo/maximo.models';
+import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
+import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
+import { MaximoAsset, MaximoServiceRequest, MaximoWorkOrder } from '../../../models/maximo/maximo.models';
 import { ASSET_COLUMNS } from '../maximo-table-configs';
 import { firstValueFrom } from 'rxjs';
 
 type Tab = 'sr' | 'wo' | 'att';
 
+/**
+ * Asset workbench: search (assetnum/description/location word-bucket) + filters → results table →
+ * select an asset to see its Service Requests / Work Orders (drill into the shared detail dialog) and
+ * Attachments (shared component with inline preview), and raise a new SR via the shared submit form.
+ */
 @Component({
   selector: 'app-maximo-assets-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoPersonPickerComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent,
+    MaximoLocationPickerComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoAttachmentsComponent],
   templateUrl: './maximo-assets-page.component.html',
   styleUrl: './maximo-assets-page.component.css'
 })
@@ -29,57 +32,41 @@ export class MaximoAssetsPageComponent {
   private api = inject(MaximoApiService);
 
   readonly columns = ASSET_COLUMNS;
+  readonly statusOptions = ['', 'OPERATING', 'ACTIVE', 'NOT READY', 'INACTIVE'];
 
-  // search
+  // search + filters
   searchTag = '';
   searchSite = 'JG';
-  searchSize = 25;
+  filterStatus = '';
+  filterLocation = '';
+  searchSize = 50;
   searching = signal(false);
   searchError = signal<string | null>(null);
   results = signal<MaximoAsset[]>([]);
 
-  // selection
+  // selection + per-asset tabs
   selected = signal<MaximoAsset | null>(null);
   activeTab = signal<Tab>('sr');
-
-  // tab data
   srs = signal<MaximoServiceRequest[]>([]);
   wos = signal<MaximoWorkOrder[]>([]);
-  atts = signal<MaximoDoclink[]>([]);
   tabLoading = signal(false);
   tabError = signal<string | null>(null);
 
-  // SR form
+  // create-SR form + drill-in dialogs
   showSrForm = signal(false);
-  newSr: CreateMaximoServiceRequest = { description: '' };
-  submittingSr = signal(false);
-  submitError = signal<string | null>(null);
-
-  // upload
-  uploadDoctype = 'Attachments';
-  uploading = signal(false);
-  uploadError = signal<string | null>(null);
-
-  selectedHasNoData = computed(() => {
-    const t = this.activeTab();
-    if (t === 'sr') return this.srs().length === 0;
-    if (t === 'wo') return this.wos().length === 0;
-    return this.atts().length === 0;
-  });
+  selectedSr = signal<MaximoServiceRequest | null>(null);
+  selectedWo = signal<MaximoWorkOrder | null>(null);
 
   async search() {
-    this.searching.set(true);
-    this.searchError.set(null);
+    this.searching.set(true); this.searchError.set(null);
     try {
-      const res = await firstValueFrom(this.api.searchAssets({
-        tag: this.searchTag,
-        siteid: this.searchSite,
+      this.results.set(await firstValueFrom(this.api.searchAssets({
+        tag: this.searchTag, siteid: this.searchSite,
+        status: this.filterStatus || undefined, location: this.filterLocation || undefined,
         pageSize: this.searchSize
-      }));
-      this.results.set(res);
+      })));
     } catch (e: any) {
-      this.searchError.set(this.errMsg(e));
-      this.results.set([]);
+      this.searchError.set(this.errMsg(e)); this.results.set([]);
     } finally {
       this.searching.set(false);
     }
@@ -87,30 +74,23 @@ export class MaximoAssetsPageComponent {
 
   async select(a: MaximoAsset) {
     this.selected.set(a);
-    this.activeTab.set('sr');
     this.showSrForm.set(false);
-    this.newSr = { description: '', assetnum: a.assetnum, siteid: a.siteid };
+    this.activeTab.set('sr');
     await this.loadTab('sr');
   }
 
   async setTab(t: Tab) {
     this.activeTab.set(t);
-    await this.loadTab(t);
+    if (t !== 'att') await this.loadTab(t);   // attachments component self-loads
   }
 
   async loadTab(t: Tab) {
     const a = this.selected();
     if (!a) return;
-    this.tabLoading.set(true);
-    this.tabError.set(null);
+    this.tabLoading.set(true); this.tabError.set(null);
     try {
-      if (t === 'sr') {
-        this.srs.set(await firstValueFrom(this.api.listServiceRequestsForAsset(a.assetnum)));
-      } else if (t === 'wo') {
-        this.wos.set(await firstValueFrom(this.api.listWorkOrdersForAsset(a.assetnum)));
-      } else {
-        this.atts.set(await firstValueFrom(this.api.listAttachments('asset', a.href)));
-      }
+      if (t === 'sr') this.srs.set(await firstValueFrom(this.api.listServiceRequestsForAsset(a.assetnum)));
+      else if (t === 'wo') this.wos.set(await firstValueFrom(this.api.listWorkOrdersForAsset(a.assetnum)));
     } catch (e: any) {
       this.tabError.set(this.errMsg(e));
     } finally {
@@ -118,61 +98,19 @@ export class MaximoAssetsPageComponent {
     }
   }
 
-  openSrForm() {
-    const a = this.selected();
-    if (!a) return;
-    this.newSr = {
-      description: '',
-      longDescription: '',
-      assetnum: a.assetnum,
-      siteid: a.siteid,
-      priority: '3'
-    };
-    this.submitError.set(null);
-    this.showSrForm.set(true);
+  // ── Create SR (reuses the shared submit form, seeded with the selected asset) ──
+  openSrForm() { if (this.selected()) this.showSrForm.set(true); }
+  onSrCreated(_sr: MaximoServiceRequest) {
+    this.showSrForm.set(false);
+    this.activeTab.set('sr');
+    this.loadTab('sr');
   }
 
-  async submitSr() {
-    if (!this.newSr.description) {
-      this.submitError.set('Description is required.');
-      return;
-    }
-    this.submittingSr.set(true);
-    this.submitError.set(null);
-    try {
-      const created = await firstValueFrom(this.api.createServiceRequest(this.newSr));
-      this.showSrForm.set(false);
-      this.activeTab.set('sr');
-      this.srs.update(list => [created, ...list]);
-    } catch (e: any) {
-      this.submitError.set(this.errMsg(e));
-    } finally {
-      this.submittingSr.set(false);
-    }
-  }
+  // ── Drill into a WO/SR from the history lists → shared detail dialog ──
+  openSr(s: MaximoServiceRequest) { this.selectedSr.set(s); }
+  openWo(w: MaximoWorkOrder) { this.selectedWo.set(w); }
+  closeSr() { this.selectedSr.set(null); this.loadTab('sr'); }
+  closeWo() { this.selectedWo.set(null); this.loadTab('wo'); }
 
-  async onUpload(ev: Event) {
-    const a = this.selected();
-    const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!a || !file) return;
-    this.uploading.set(true);
-    this.uploadError.set(null);
-    try {
-      const created = await firstValueFrom(
-        this.api.uploadAttachment('asset', a.href, file, this.uploadDoctype || undefined));
-      this.atts.update(list => [created, ...list]);
-    } catch (e: any) {
-      this.uploadError.set(this.errMsg(e));
-    } finally {
-      this.uploading.set(false);
-      input.value = '';
-    }
-  }
-
-  private errMsg(e: any): string {
-    if (e?.error?.message) return e.error.message;
-    if (e?.message) return e.message;
-    return String(e);
-  }
+  private errMsg(e: any): string { return e?.error?.message ?? e?.message ?? String(e); }
 }

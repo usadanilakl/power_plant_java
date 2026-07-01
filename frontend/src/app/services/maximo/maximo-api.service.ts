@@ -10,6 +10,8 @@ import {
   MaximoAttachmentParent,
   MaximoDoclink,
   MaximoInventoryItem,
+  MaximoInventoryStock,
+  MaximoInventoryUsage,
   MaximoLocation,
   MaximoMaterialTxn,
   MaximoServiceRequest,
@@ -30,10 +32,12 @@ export class MaximoApiService {
   private http = inject(HttpClient);
   private base = `${environment.baseApiUrl}/ng/maximo`;
 
-  searchAssets(params: { tag?: string; siteid?: string; pageSize?: number }): Observable<MaximoAsset[]> {
+  searchAssets(params: { tag?: string; siteid?: string; status?: string; location?: string; pageSize?: number }): Observable<MaximoAsset[]> {
     let p = new HttpParams();
     if (params.tag) p = p.set('tag', params.tag);
     if (params.siteid) p = p.set('siteid', params.siteid);
+    if (params.status) p = p.set('status', params.status);
+    if (params.location) p = p.set('location', params.location);
     if (params.pageSize != null) p = p.set('pageSize', String(params.pageSize));
     return this.http
       .get<SpringApiResponse<MaximoAsset[]>>(`${this.base}/assets`, { params: p })
@@ -223,6 +227,21 @@ export class MaximoApiService {
     if (q) p = p.set('q', q);
     return this.http
       .get<SpringApiResponse<MaximoInventoryItem[]>>(`${this.base}/inventory`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Full stock detail for one item (on-hand, reserved, reorder levels, cost, usage stats). */
+  getInventoryItem(itemnum: string): Observable<MaximoInventoryStock | null> {
+    return this.http
+      .get<SpringApiResponse<MaximoInventoryStock>>(`${this.base}/inventory/${encodeURIComponent(itemnum)}`)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  /** Material-use history for one item (which WOs consumed it), newest first. */
+  getInventoryUsage(itemnum: string, pageSize = 50): Observable<MaximoInventoryUsage[]> {
+    const p = new HttpParams().set('pageSize', String(pageSize));
+    return this.http
+      .get<SpringApiResponse<MaximoInventoryUsage[]>>(`${this.base}/inventory/${encodeURIComponent(itemnum)}/usage`, { params: p })
       .pipe(map(r => r.responseData ?? []));
   }
 

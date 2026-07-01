@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.dto.maximo.CompleteWorkOrderRequest;
 import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryItemDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryStockDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryUsageDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoLocationDto;
 import com.dk_power.power_plant_java.dto.maximo.IssueMaterialRequest;
 import com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto;
@@ -98,8 +100,10 @@ public class NgMaximoController {
     public ResponseEntity<NgApiResponse<List<MaximoAssetDto>>> searchAssets(
             @RequestParam(value = "tag", required = false) String tag,
             @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "pageSize", defaultValue = "25") int pageSize) {
-        List<MaximoAssetDto> result = assets.search(tag, siteid, pageSize);
+        List<MaximoAssetDto> result = assets.search(tag, siteid, status, location, pageSize);
         return ResponseEntity.ok(new NgApiResponse<>(result, "ok"));
     }
 
@@ -406,6 +410,28 @@ public class NgMaximoController {
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         return ResponseEntity.ok(new NgApiResponse<>(
                 inventory.search(q, siteid, storeroom, pageSize), "ok"));
+    }
+
+    /** Full stock detail for one item (on-hand, reserved, reorder levels, cost, usage stats). */
+    @GetMapping("/inventory/{itemnum}")
+    public ResponseEntity<NgApiResponse<MaximoInventoryStockDto>> getInventoryItem(
+            @PathVariable String itemnum,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "storeroom", required = false) String storeroom) {
+        return inventory.getStock(itemnum, siteid, storeroom)
+                .map(s -> ResponseEntity.ok(new NgApiResponse<>(s, "ok")))
+                .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "not found")));
+    }
+
+    /** Material-use history for one item (which WOs consumed it), newest first. */
+    @GetMapping("/inventory/{itemnum}/usage")
+    public ResponseEntity<NgApiResponse<List<MaximoInventoryUsageDto>>> getInventoryUsage(
+            @PathVariable String itemnum,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "storeroom", required = false) String storeroom,
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+        return ResponseEntity.ok(new NgApiResponse<>(
+                inventory.getUsage(itemnum, siteid, storeroom, pageSize), "ok"));
     }
 
     /**

@@ -28,6 +28,7 @@ import { MaximoLocation } from '../../../models/maximo/maximo.models';
         <button type="button" class="mp-opt" *ngFor="let l of results()" (mousedown)="pick(l)">
           <strong>{{ l.location }}</strong> {{ l.description }}
         </button>
+        <div class="mp-more" *ngIf="results().length >= limit">Showing first {{ limit }} — add words to narrow.</div>
       </div>
     </div>
   `,
@@ -43,6 +44,7 @@ import { MaximoLocation } from '../../../models/maximo/maximo.models';
       padding: 6px 8px; font: inherit; font-size: 12px; cursor: pointer; border-bottom: 1px solid #2a2a2a; }
     .mp-opt:hover { background: #2d3b4a; }
     .mp-opt strong { color: #7cc6ff; margin-right: 4px; }
+    .mp-more { padding: 5px 8px; color: #888; font-size: 11px; font-style: italic; border-top: 1px solid #333; }
   `],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => MaximoLocationPickerComponent), multi: true }]
 })
@@ -52,6 +54,8 @@ export class MaximoLocationPickerComponent implements ControlValueAccessor {
   @Input() placeholder = 'search location…';
   @Input() freeText = false;
   @Output() picked = new EventEmitter<MaximoLocation>();
+
+  readonly limit = 50;
 
   text = '';
   disabled = false;
@@ -75,7 +79,7 @@ export class MaximoLocationPickerComponent implements ControlValueAccessor {
 
   private async run(q: string) {
     this.searching.set(true);
-    try { this.results.set(await firstValueFrom(this.api.searchLocations(q, 25))); }
+    try { this.results.set(await firstValueFrom(this.api.searchLocations(q, this.limit))); }
     catch { this.results.set([]); }
     finally { this.searching.set(false); }
   }

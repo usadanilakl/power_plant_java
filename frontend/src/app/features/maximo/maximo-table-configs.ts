@@ -40,3 +40,10 @@ export const ASSET_COLUMNS: Column[] = [
   { id: 'location',    header: 'Location',    accessorKey: 'location',    width: 130, sortable: true, filterable: true },
   { id: 'status',      header: 'Status',      accessorKey: 'status',      width: 90,  sortable: true, filterable: true },
 ];
+
+export const INVENTORY_COLUMNS: Column[] = [
+  { id: 'itemnum',     header: 'Item',        accessorKey: 'itemnum',     width: 140, sortable: true, filterable: true },
+  { id: 'description', header: 'Description', accessorKey: 'description', width: 320, sortable: true, filterable: true },
+  { id: 'issueunit',   header: 'Unit',        accessorKey: 'issueunit',   width: 70,  sortable: true },
+  { id: 'curbal',      header: 'On hand',     accessorKey: 'curbal',      width: 90,  sortable: true },
+];

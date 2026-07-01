@@ -1,17 +1,15 @@
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../../environments/environment';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
 import {
   MaximoAsset,
-  MaximoDoclink,
   MaximoInventoryItem,
   MaximoMaterialTxn,
   MaximoServiceRequest,
@@ -35,14 +33,13 @@ const EDITABLE_SR_STATUSES = ['NEW', 'QUEUED', 'INPROG', 'PENDING'];
 @Component({
   selector: 'app-maximo-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent],
+  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoAttachmentsComponent],
   templateUrl: './maximo-detail-dialog.component.html',
   styleUrl: './maximo-detail-dialog.component.css'
 })
 export class MaximoDetailDialogComponent {
   private api = inject(MaximoApiService);
   private auth = inject(AuthService);
-  private sanitizer = inject(DomSanitizer);
 
   @Input({ required: true }) parent!: MaximoTicketParent;
   @Input() sr: MaximoServiceRequest | null = null;
@@ -53,14 +50,9 @@ export class MaximoDetailDialogComponent {
 
   tab = signal<Tab>('details');
   notes = signal<MaximoWorklog[]>([]);
-  attachments = signal<MaximoDoclink[]>([]);
   notesLoaded = signal(false);
-  attachmentsLoaded = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
-
-  uploadDoctype = 'Attachments';
-  uploading = signal(false);
 
   // Add-note (worklog) form — WO or editable SR; works even on a completed WO.
   noteSummary = '';
@@ -178,7 +170,6 @@ export class MaximoDetailDialogComponent {
     this.tab.set(t);
     this.error.set(null);
     if (t === 'notes' && !this.notesLoaded()) await this.loadNotes();
-    if (t === 'attachments' && !this.attachmentsLoaded()) await this.loadAttachments();
     if (t === 'complete' && !this.profileLoaded) await this.prefillLaborcode();
     if (t === 'materials' && !this.materialsLoaded()) await this.loadMaterials();
   }
@@ -398,123 +389,6 @@ export class MaximoDetailDialogComponent {
     } finally {
       this.savingSr.set(false);
     }
-  }
-
-  async loadAttachments() {
-    if (!this.href) return;
-    this.loading.set(true);
-    try {
-      this.attachments.set(await firstValueFrom(this.api.listAttachments(this.parent, this.href)));
-      this.attachmentsLoaded.set(true);
-    } catch (e: any) {
-      this.error.set(this.errMsg(e));
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  async onUpload(ev: Event) {
-    const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!this.href || !file) return;
-    this.uploading.set(true);
-    this.error.set(null);
-    try {
-      const created = await firstValueFrom(
-        this.api.uploadAttachment(this.parent, this.href, file, this.uploadDoctype || undefined));
-      this.attachments.update(list => [created, ...list]);
-    } catch (e: any) {
-      this.error.set(this.errMsg(e));
-    } finally {
-      this.uploading.set(false);
-      input.value = '';
-    }
-  }
-
-  /**
-   * Build the download URL for a FILE-type doclink that points to our Spring proxy.
-   * The proxy adds the apikey header and streams Maximo's binary back, so a target=_blank
-   * <a href> works without exposing credentials. WEB-type links keep their direct URL.
-   */
-  downloadUrl(d: MaximoDoclink): string {
-    if (d.urltype === 'WEB' && d.url) return d.url;
-    return `${environment.baseApiUrl}/ng/maximo/${this.parent}/${encodeURIComponent(this.href)}/attachments/${encodeURIComponent(d.href)}/content`;
-  }
-
-  // ── Inline attachment preview ─────────────────────────────────────────────
-  previewHref = signal<string | null>(null);
-  previewLoading = signal(false);
-  previewError = signal<string | null>(null);
-  officeHtml = signal<SafeHtml | null>(null);
-  pdfUrl = signal<SafeResourceUrl | null>(null);
-
-  /** File class for preview: image/pdf render natively; docx/excel convert client-side; other = download only. */
-  attType(d: MaximoDoclink): 'image' | 'pdf' | 'docx' | 'excel' | 'other' {
-    if (d.urltype === 'WEB') return 'other';
-    const name = (d.urlname || d.title || d.document || '').toLowerCase();
-    const mime = (d.mimeType || '').toLowerCase();
-    const ext = name.includes('.') ? name.split('.').pop()! : '';
-    if (mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
-    if (mime.includes('pdf') || ext === 'pdf') return 'pdf';
-    if (ext === 'docx' || mime.includes('wordprocessingml')) return 'docx';
-    if (['xlsx', 'xls', 'xlsm', 'csv'].includes(ext) || mime.includes('spreadsheetml') || mime.includes('ms-excel')) return 'excel';
-    return 'other';
-  }
-
-  canPreview(d: MaximoDoclink): boolean { return this.attType(d) !== 'other'; }
-  isPreviewOpen(d: MaximoDoclink): boolean { return this.previewHref() === d.href; }
-
-  /** Expand/collapse an inline preview. PDF/image render from the proxy URL; docx/excel are converted client-side. */
-  async togglePreview(d: MaximoDoclink) {
-    if (this.previewHref() === d.href) { this.closePreview(); return; }
-    this.closePreview();
-    this.previewHref.set(d.href);
-    const t = this.attType(d);
-    if (t === 'pdf') { this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.downloadUrl(d))); return; }
-    if (t === 'image') return; // <img [src]> uses the proxy URL directly
-    if (t === 'docx' || t === 'excel') {
-      this.previewLoading.set(true);
-      try {
-        const buf = await firstValueFrom(this.api.getAttachmentContent(this.parent, this.href, d.href));
-        const html = t === 'docx' ? await this.docxToHtml(buf) : await this.excelToHtml(buf);
-        this.officeHtml.set(this.sanitizer.bypassSecurityTrustHtml(html));
-      } catch (e: any) {
-        this.previewError.set('Could not render preview — use Download. ' + this.errMsg(e));
-      } finally {
-        this.previewLoading.set(false);
-      }
-    }
-  }
-
-  closePreview() {
-    this.previewHref.set(null);
-    this.officeHtml.set(null);
-    this.pdfUrl.set(null);
-    this.previewError.set(null);
-  }
-
-  private async docxToHtml(buf: ArrayBuffer): Promise<string> {
-    const mammoth: any = await import('mammoth');
-    const lib = mammoth.convertToHtml ? mammoth : mammoth.default;
-    const r = await lib.convertToHtml({ arrayBuffer: buf });
-    return r.value || '<p class="muted">Empty document.</p>';
-  }
-
-  private async excelToHtml(buf: ArrayBuffer): Promise<string> {
-    const XLSX: any = await import('xlsx');
-    const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
-    return wb.SheetNames
-      .map((n: string) => `<h5 class="sheet-name">${n}</h5>` + XLSX.utils.sheet_to_html(wb.Sheets[n]))
-      .join('');
-  }
-
-  /** Format byte size as KB / MB / GB. */
-  fmtSize(bytes: number | null | undefined): string {
-    if (bytes == null) return '';
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
 
   close() { this.closed.emit(); }

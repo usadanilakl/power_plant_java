@@ -192,12 +192,25 @@
 
         <!-- Apply-to-all toggle (edit mode only) -->
         @if (dialogMode() === 'edit') {
-          <div class="edit-shared-toggle">
-            <label class="checkbox-label">
+          <!--
+            Defensive stopPropagation at every level between the checkbox and
+            .dialog-content. The .dialog-content wrapper already catches click,
+            but the label wrapping the input triggers a synthetic input-click
+            AND propagates the label click; combined with the reactive-form
+            valueChanges pipe and the form-group-input's *ngFor without a
+            trackBy, one of those paths can indirectly cause the phrase-builder
+            component to be re-created — which resets showPhraseDialog to false,
+            making the dialog appear to close on checkbox toggle.
+          -->
+          <div class="edit-shared-toggle"
+               (click)="$event.stopPropagation()">
+            <label class="checkbox-label"
+                   (click)="$event.stopPropagation()">
               <input
                 type="checkbox"
                 [checked]="editSharedInDialog()"
-                (change)="onEditSharedToggle($any($event.target).checked)"
+                (click)="$event.stopPropagation()"
+                (change)="onEditSharedToggle($any($event.target).checked); $event.stopPropagation()"
               />
               <span>Apply changes to all LOTO points that share this phrase</span>
             </label>

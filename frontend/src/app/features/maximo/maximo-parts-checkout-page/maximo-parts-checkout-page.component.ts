@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
@@ -84,9 +85,23 @@ export class MaximoPartsCheckoutPageComponent {
   private static readonly DEBOUNCE_MS = 300;
   private static readonly MIN_CHARS = 2;
 
+  private route = inject(ActivatedRoute);
+
   constructor() {
     this.loadWorkTypes();
     this.loadRecent();
+    this.seedFromQuery();
+  }
+
+  /** When arriving from the Inventory page (?item=…), pre-add that item to the checkout lines. */
+  private async seedFromQuery() {
+    const itemnum = this.route.snapshot.queryParamMap.get('item');
+    if (!itemnum) return;
+    try {
+      const items = await firstValueFrom(this.api.searchInventory(itemnum, 10));
+      const match = items.find(i => i.itemnum === itemnum) ?? items[0];
+      if (match) this.addLine(match);
+    } catch { /* ignore — user can search manually */ }
   }
 
   // ── Recent checkouts (localStorage) ────────────────────────────────────────

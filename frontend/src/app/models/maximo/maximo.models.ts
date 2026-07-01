@@ -111,6 +111,33 @@ export interface MaximoInventoryItem {
   curbal: number | null;
 }
 
+export interface MaximoInventoryStock {
+  href: string;
+  itemnum: string;
+  storeroom: string;
+  issueunit: string;
+  status: string;
+  curbal: number | null;
+  reservedqty: number | null;
+  minlevel: number | null;
+  maxlevel: number | null;
+  reorder: number | null;
+  orderqty: number | null;
+  invcost: number | null;
+  issueytd: number | null;
+  issue1yrago: number | null;
+  issue2yrago: number | null;
+  issue3yrago: number | null;
+}
+
+export interface MaximoInventoryUsage {
+  wonum: string;
+  quantity: number | null;
+  transdate: string;
+  issuetype: string;
+  linecost: number | null;
+}
+
 export interface MaximoWorkType {
   value: string;
   label: string;

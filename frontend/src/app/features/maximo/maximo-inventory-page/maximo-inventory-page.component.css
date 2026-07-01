@@ -1,0 +1,34 @@
+.mx-page { padding: 12px; color: #e6e6e6; font: 13px/1.4 ui-monospace, Consolas, monospace; }
+.search-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px;
+  background: #2a2a2a; border-radius: 4px; }
+.search-bar label { color: #aaa; }
+.search-bar input { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px;
+  padding: 4px 6px; margin-left: 4px; font: inherit; }
+.search-bar input[type=number] { width: 70px; }
+button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 12px; cursor: pointer; font: inherit; }
+button:hover:not([disabled]) { background: #1177bb; }
+button[disabled] { opacity: 0.55; cursor: default; }
+button.primary { background: #0e639c; }
+
+.split { display: flex; gap: 16px; margin-top: 12px; align-items: flex-start; }
+.results { flex: 1 1 45%; min-width: 320px; }
+.detail { flex: 1 1 55%; min-width: 340px; background: #1c1c1c; border: 1px solid #333; border-radius: 4px; padding: 12px; }
+.detail.empty { display: flex; align-items: center; justify-content: center; min-height: 120px; }
+.detail header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.detail h3 { margin: 0; color: #7cc6ff; }
+.empty-msg { padding: 20px; }
+.muted { color: #777; } .error { color: #ff7b72; }
+
+.stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.stat { background: #161616; border: 1px solid #2a2a2a; border-radius: 4px; padding: 6px 8px; }
+.stat .lbl { display: block; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.stat .val { font-size: 15px; color: #e6e6e6; }
+.stat .val.zero { color: #ff7b72; }
+.usage-stats { display: flex; flex-wrap: wrap; gap: 12px; color: #aaa; font-size: 12px; margin-bottom: 10px; }
+.usage-stats strong { color: #7ee787; }
+.usage-head { margin: 8px 0 4px; color: #7cc6ff; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #2a2a2a; font-size: 12px; }
+th { color: #7cc6ff; font-weight: 500; }
+td.num, th.num { text-align: right; white-space: nowrap; }

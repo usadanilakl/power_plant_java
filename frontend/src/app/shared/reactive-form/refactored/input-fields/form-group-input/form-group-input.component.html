@@ -3,7 +3,22 @@
     <label class="form-group-label">{{ label() }}</label>
   </div>
   <div class="form-group-fields" [class]="'form-group-layout-' + layout()">
-    <ng-container *ngFor="let field of fields()">
+    <!--
+      @for + `track field.name` is critical here: the parent (rf-reactive-form)
+      recomputes its `fields()` signal on every entity change and hands us a
+      NEW array of NEW field-descriptor objects — same names, new references.
+      With plain `*ngFor` (no trackBy), Angular treats every item as new and
+      DESTROYS + re-creates every child input component on each reference flip.
+      For most inputs that's just wasteful. For the zero-energy-phrase-builder
+      it's a functional bug: destroying the component resets its internal
+      `showPhraseDialog` signal to false, so the edit dialog appears to close
+      whenever any form control on this group's ancestor form updates (e.g. the
+      "Apply changes to all LOTO points…" checkbox toggle, which writes to the
+      `editShared` control and cascades a valueChanges → CD tick → parent
+      fields() re-eval → new [fields] input → *ngFor destroy).
+      Tracking by field.name keeps child components alive across those reflows.
+    -->
+    @for (field of fields(); track field.name) {
       @if (field.type !== 'hidden') {
       <div class="form-field">
         @switch (field.type) {
@@ -86,6 +101,6 @@
         }
       </div>
       }
-    </ng-container>
+    }
   </div>
 </div>

@@ -1,0 +1,85 @@
+<app-main-layout header="Maximo — Inventory">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <section class="search-bar">
+        <label>Search <input [(ngModel)]="searchQuery" placeholder="item # / description"
+                             (keyup.enter)="search()" /></label>
+        <label>Max <input type="number" [(ngModel)]="searchSize" min="1" max="200" /></label>
+        <button (click)="search()" [disabled]="searching()">{{ searching() ? 'Searching…' : 'Search' }}</button>
+        <span class="error" *ngIf="searchError()">{{ searchError() }}</span>
+      </section>
+
+      <div class="split">
+        <section class="results">
+          <h3>Results ({{ results().length }})</h3>
+          <div *ngIf="!searching() && results().length === 0" class="muted empty-msg">
+            No results — search a part number or description above.
+          </div>
+          <app-maximo-table *ngIf="results().length > 0"
+            [columns]="columns"
+            [items]="results()"
+            emptyMessage="No items match."
+            (rowClicked)="select($event)">
+          </app-maximo-table>
+        </section>
+
+        <section class="detail" *ngIf="selected() as it">
+          <header>
+            <div>
+              <h3>{{ it.itemnum }}</h3>
+              <div class="muted">{{ it.description }} — {{ it.storeroom }} · unit {{ it.issueunit || '—' }}</div>
+            </div>
+            <button class="primary" (click)="checkout(it)">Check out part →</button>
+          </header>
+
+          <div class="muted" *ngIf="detailLoading()">Loading…</div>
+          <div class="error" *ngIf="detailError()">{{ detailError() }}</div>
+
+          <ng-container *ngIf="stock() as s">
+            <div class="stock-grid">
+              <div class="stat"><span class="lbl">On hand</span><span class="val" [class.zero]="!s.curbal">{{ s.curbal ?? '—' }}</span></div>
+              <div class="stat"><span class="lbl">Reserved</span><span class="val">{{ s.reservedqty ?? '—' }}</span></div>
+              <div class="stat"><span class="lbl">Reorder pt</span><span class="val">{{ s.reorder ?? '—' }}</span></div>
+              <div class="stat"><span class="lbl">Min / Max</span><span class="val">{{ s.minlevel ?? '—' }} / {{ s.maxlevel ?? '—' }}</span></div>
+              <div class="stat"><span class="lbl">Order qty</span><span class="val">{{ s.orderqty ?? '—' }}</span></div>
+              <div class="stat"><span class="lbl">Unit cost</span><span class="val">{{ s.invcost != null ? ('$' + s.invcost) : '—' }}</span></div>
+              <div class="stat"><span class="lbl">Status</span><span class="val">{{ s.status || '—' }}</span></div>
+            </div>
+            <div class="usage-stats">
+              <span class="lbl">Issued:</span>
+              <span>YTD <strong>{{ s.issueytd ?? 0 }}</strong></span>
+              <span>1 yr ago <strong>{{ s.issue1yrago ?? 0 }}</strong></span>
+              <span>2 yr ago <strong>{{ s.issue2yrago ?? 0 }}</strong></span>
+              <span>3 yr ago <strong>{{ s.issue3yrago ?? 0 }}</strong></span>
+            </div>
+          </ng-container>
+
+          <h4 class="usage-head" *ngIf="!detailLoading()">Usage history ({{ usage().length }})</h4>
+          <table *ngIf="!detailLoading()">
+            <thead>
+              <tr><th>Date</th><th>WO #</th><th class="num">Qty</th><th>Type</th><th class="num">Cost</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let u of usage()">
+                <td>{{ u.transdate ? u.transdate.slice(0, 10) : '—' }}</td>
+                <td>{{ u.wonum }}</td>
+                <td class="num">{{ u.quantity }}</td>
+                <td>{{ u.issuetype }}</td>
+                <td class="num">{{ u.linecost != null ? ('$' + u.linecost) : '' }}</td>
+              </tr>
+              <tr *ngIf="usage().length === 0"><td colspan="5" class="muted">No usage transactions.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="detail empty muted" *ngIf="!selected()">
+          Select an item to see stock levels, usage stats, and history.
+        </section>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>

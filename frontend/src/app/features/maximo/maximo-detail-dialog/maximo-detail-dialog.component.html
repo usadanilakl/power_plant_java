@@ -14,7 +14,7 @@
         Notes <span class="muted" *ngIf="notesLoaded()">({{ notes().length }})</span>
       </button>
       <button [class.active]="tab() === 'attachments'" (click)="setTab('attachments')">
-        Attachments <span class="muted" *ngIf="attachmentsLoaded()">({{ attachments().length }})</span>
+        Attachments
       </button>
       <button *ngIf="isWo" [class.active]="tab() === 'materials'" (click)="setTab('materials')">
         Materials <span class="muted" *ngIf="materialsLoaded()">({{ materials().length }})</span>
@@ -115,51 +115,8 @@
       </div>
 
       <!-- Attachments tab -->
-      <div *ngIf="tab() === 'attachments' && !loading()">
-        <div class="upload-row" *ngIf="isWo || canEditSr">
-          <label>Doctype <input [(ngModel)]="uploadDoctype" /></label>
-          <label class="file-btn">
-            Upload file
-            <input type="file" (change)="onUpload($event)" [disabled]="uploading()" hidden />
-          </label>
-          <span *ngIf="uploading()" class="muted">Uploading…</span>
-        </div>
-        <table>
-          <thead>
-            <tr><th>File</th><th>Title</th><th>Type</th><th>Size</th><th>Created</th><th>By</th><th></th></tr>
-          </thead>
-          <tbody>
-            <ng-container *ngFor="let d of attachments()">
-              <tr [class.expanded]="isPreviewOpen(d)">
-                <td>{{ d.urlname || d.title || d.document }}</td>
-                <td>{{ d.title }}</td>
-                <td>{{ d.mimeType || d.doctype }}</td>
-                <td>{{ fmtSize(d.size) }}</td>
-                <td>{{ d.createdDate }}</td>
-                <td>{{ d.createby }}</td>
-                <td class="att-actions">
-                  <button class="link" *ngIf="canPreview(d)" (click)="togglePreview(d)">{{ isPreviewOpen(d) ? 'hide' : 'preview' }}</button>
-                  <a [href]="downloadUrl(d)" target="_blank" rel="noopener">open</a>
-                </td>
-              </tr>
-              <tr class="att-preview-row" *ngIf="isPreviewOpen(d)">
-                <td colspan="7">
-                  <div class="att-preview">
-                    <div *ngIf="previewLoading()" class="muted">Loading preview…</div>
-                    <div *ngIf="previewError()" class="error">{{ previewError() }}</div>
-                    <img *ngIf="attType(d) === 'image'" [src]="downloadUrl(d)" class="att-img" alt="" />
-                    <iframe *ngIf="attType(d) === 'pdf' && pdfUrl()" [src]="pdfUrl()" class="att-frame"></iframe>
-                    <div *ngIf="(attType(d) === 'docx' || attType(d) === 'excel') && officeHtml()"
-                         class="att-office" [innerHTML]="officeHtml()"></div>
-                  </div>
-                </td>
-              </tr>
-            </ng-container>
-            <tr *ngIf="attachments().length === 0">
-              <td colspan="7" class="muted">No attachments.</td>
-            </tr>
-          </tbody>
-        </table>
+      <div *ngIf="tab() === 'attachments'">
+        <app-maximo-attachments [parent]="parent" [href]="href" [canUpload]="isWo || canEditSr"></app-maximo-attachments>
       </div>
 
       <!-- Materials tab (WO only) — issues + returns, with a Return action to correct issues -->
