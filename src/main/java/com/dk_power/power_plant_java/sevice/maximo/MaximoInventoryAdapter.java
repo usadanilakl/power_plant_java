@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,31 +34,41 @@ public class MaximoInventoryAdapter {
 
     private final MaximoAccessService access;
 
-    // Stocked-item catalog cache (per site+storeroom). Item search filters this in memory.
+    // Site-wide stocked catalog cache (one stock line per item×warehouse). Search filters it in memory.
     private static final long CATALOG_TTL_MS = 10 * 60 * 1000L;
-    private static final int CATALOG_PAGE = 200;
-    private static final int CATALOG_MAX_PAGES = 40;   // 200*40 = 8000 stocked-item ceiling
+    private static final int CATALOG_PAGE = 500;
+    private static final int CATALOG_MAX_PAGES = 20;   // 500*20 = 10000 stock-line ceiling
     private volatile List<MaximoInventoryItemDto> catalogCache;
-    private volatile String catalogKey;
+    private volatile String catalogKey;   // = site
     private volatile long catalogLoadedAt;
 
     /**
-     * Search STOCKED items (word-bucket over itemnum + description), each with on-hand balance. The universe
-     * is only what's stocked at the storeroom (small), cached in memory and filtered in Java. This AVOIDS a
-     * leading-wildcard {@code description LIKE "%x%"} on the org-wide item master (mxapiitem) — that is a
-     * full-table scan that takes 40s+ and times out (the "connect timed out" the inventory search hit).
-     * Blank query returns the first {@code pageSize} items.
+     * Search STOCKED items (word-bucket over itemnum + description); each stock line carries its warehouse
+     * (storeroom), bin, and on-hand balance. The universe is only what's stocked at the site — ALL warehouses
+     * — cached in memory and filtered in Java. AVOIDS a leading-wildcard {@code description LIKE "%x%"} on the
+     * org-wide item master (mxapiitem), which is a 40s+ full-table scan that times out. {@code storeroom}
+     * (optional; blank/ALL = every warehouse) narrows to one warehouse.
      */
     public List<MaximoInventoryItemDto> search(String query, String siteid, String storeroom, int pageSize) {
-        String store = (storeroom != null && !storeroom.isBlank()) ? storeroom : DEFAULT_STOREROOM;
         String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
         int cap = Math.max(1, pageSize);
+        boolean allStores = storeroom == null || storeroom.isBlank() || "ALL".equalsIgnoreCase(storeroom);
         List<String> words = MaximoOslcMapper.words(query);
-        return stockedCatalog(site, store).stream()
+        return siteCatalog(site).stream()
+                .filter(d -> allStores || storeroom.equalsIgnoreCase(d.getStoreroom()))
                 .filter(d -> matchesWords(d, words))
-                .sorted(Comparator.comparing(MaximoInventoryItemDto::getItemnum,
-                        Comparator.nullsLast(String::compareToIgnoreCase)))
+                .sorted(Comparator.comparing(MaximoInventoryItemDto::getItemnum, Comparator.nullsLast(String::compareToIgnoreCase))
+                        .thenComparing(d -> d.getStoreroom() == null ? "" : d.getStoreroom()))
                 .limit(cap).collect(Collectors.toList());
+    }
+
+    /** Distinct warehouses (storerooms) that hold stock at the site — for the warehouse filter. */
+    public List<String> storerooms(String siteid) {
+        String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+        return siteCatalog(site).stream()
+                .map(MaximoInventoryItemDto::getStoreroom)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct().sorted().collect(Collectors.toList());
     }
 
     private static boolean matchesWords(MaximoInventoryItemDto d, List<String> words) {
@@ -69,39 +80,42 @@ public class MaximoInventoryAdapter {
     }
 
     /**
-     * All items stocked at the storeroom (itemnum + on-hand from mxapiinventory, description batched from the
-     * item master by itemnum — indexed, fast). Cached per site+storeroom for {@link #CATALOG_TTL_MS}; the
-     * cost is paid once, not per keystroke. Falls back to a stale cache if a rebuild fails.
+     * All stock lines at the site (item×warehouse) with warehouse + bin + on-hand from mxapiinventory, and
+     * description batched from the item master by itemnum (indexed → fast). Cached per site for
+     * {@link #CATALOG_TTL_MS}; the cost is paid once, not per keystroke. Stale-cache fallback on rebuild failure.
      */
-    private synchronized List<MaximoInventoryItemDto> stockedCatalog(String site, String store) {
-        String key = site + "|" + store;
+    private synchronized List<MaximoInventoryItemDto> siteCatalog(String site) {
         List<MaximoInventoryItemDto> cached = catalogCache;
-        if (cached != null && key.equals(catalogKey)
+        if (cached != null && site.equals(catalogKey)
                 && (System.currentTimeMillis() - catalogLoadedAt) < CATALOG_TTL_MS) {
             return cached;
         }
         try {
             Map<String, String> params = new LinkedHashMap<>();
-            params.put("oslc.select", "spi:itemnum,spi:curbal,spi:issueunit,spi:status");
-            params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\" and spi:location=\"" + escape(store) + "\"");
+            params.put("oslc.select", "spi:itemnum,spi:location,spi:binnum,spi:curbal,spi:issueunit,spi:status");
+            params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\"");
             params.put("oslc.orderBy", "-spi:itemnum"); // stable order across pages (leading '-' survives transport)
             List<Map<String, Object>> rows =
                     access.getAllMembers(access.osUrl("mxapiinventory"), params, CATALOG_PAGE, CATALOG_MAX_PAGES);
-            Map<String, MaximoInventoryItemDto> byItem = new LinkedHashMap<>();
+            Map<String, MaximoInventoryItemDto> byKey = new LinkedHashMap<>();
             for (Map<String, Object> r : rows) {
                 String itemnum = str(r, "itemnum");
-                if (itemnum == null || byItem.containsKey(itemnum)) continue;
+                if (itemnum == null) continue;
+                String loc = str(r, "location");
+                String k = itemnum + "|" + (loc == null ? "" : loc);
+                if (byKey.containsKey(k)) continue;
                 MaximoInventoryItemDto d = new MaximoInventoryItemDto();
                 d.setItemnum(itemnum);
+                d.setStoreroom(loc);
+                d.setBinnum(str(r, "binnum"));
                 d.setIssueunit(str(r, "issueunit"));
-                d.setStoreroom(store);
                 String raw = str(r, "curbal");
                 d.setCurbal(raw == null ? null : safeDouble(raw, null));
-                byItem.put(itemnum, d);
+                byKey.put(k, d);
             }
-            enrichDescriptions(byItem);
-            List<MaximoInventoryItemDto> catalog = new ArrayList<>(byItem.values());
-            catalogCache = catalog; catalogKey = key; catalogLoadedAt = System.currentTimeMillis();
+            List<MaximoInventoryItemDto> catalog = new ArrayList<>(byKey.values());
+            enrichDescriptions(catalog);
+            catalogCache = catalog; catalogKey = site; catalogLoadedAt = System.currentTimeMillis();
             return catalog;
         } catch (RuntimeException e) {
             if (cached != null) {
@@ -113,9 +127,11 @@ public class MaximoInventoryAdapter {
     }
 
     /** Fill descriptions from the item master via {@code itemnum in [...]} chunks (indexed → fast, no wildcard scan). */
-    private void enrichDescriptions(Map<String, MaximoInventoryItemDto> byItem) {
-        List<String> itemnums = new ArrayList<>(byItem.keySet());
-        int chunk = 100;
+    private void enrichDescriptions(List<MaximoInventoryItemDto> catalog) {
+        List<String> itemnums = catalog.stream().map(MaximoInventoryItemDto::getItemnum)
+                .filter(n -> n != null && !n.isBlank()).distinct().collect(Collectors.toList());
+        Map<String, String> descByItem = new HashMap<>();
+        int chunk = 150;
         for (int i = 0; i < itemnums.size(); i += chunk) {
             List<String> slice = itemnums.subList(i, Math.min(i + chunk, itemnums.size()));
             String inList = slice.stream().map(n -> "\"" + escape(n) + "\"").collect(Collectors.joining(","));
@@ -125,10 +141,10 @@ public class MaximoInventoryAdapter {
             params.put("oslc.where", "spi:itemnum in [" + inList + "]");
             for (Map<String, Object> r : members(access.getMap(access.osUrl("mxapiitem"), params))) {
                 String itemnum = str(r, "itemnum");
-                MaximoInventoryItemDto d = itemnum == null ? null : byItem.get(itemnum);
-                if (d != null) d.setDescription(str(r, "description"));
+                if (itemnum != null) descByItem.put(itemnum, str(r, "description"));
             }
         }
+        for (MaximoInventoryItemDto d : catalog) d.setDescription(descByItem.get(d.getItemnum()));
     }
 
     private static Double safeDouble(String raw, Long fallback) {
@@ -145,7 +161,7 @@ public class MaximoInventoryAdapter {
         String store = (storeroom != null && !storeroom.isBlank()) ? storeroom : DEFAULT_STOREROOM;
         String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("oslc.select", "spi:itemnum,spi:issueunit,spi:status,spi:curbal,spi:reservedqty,"
+        params.put("oslc.select", "spi:itemnum,spi:binnum,spi:issueunit,spi:status,spi:curbal,spi:reservedqty,"
                 + "spi:minlevel,spi:maxlevel,spi:reorder,spi:orderqty,spi:invcost,"
                 + "spi:issueytd,spi:issue1yrago,spi:issue2yrago,spi:issue3yrago");
         params.put("oslc.pageSize", "1");
@@ -158,6 +174,7 @@ public class MaximoInventoryAdapter {
         d.setHref(hrefId(r));
         d.setItemnum(str(r, "itemnum"));
         d.setStoreroom(store);
+        d.setBinnum(str(r, "binnum"));
         d.setIssueunit(str(r, "issueunit"));
         d.setStatus(str(r, "status"));
         d.setCurbal(dbl(r, "curbal"));

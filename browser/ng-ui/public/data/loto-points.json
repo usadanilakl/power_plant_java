@@ -83397,8 +83397,36 @@
   "eqType" : "",
   "locationId" : 2000014976
 }, {
+  "id" : 2000074043,
+  "tagNumber" : "02-PMP-LOS001-JG dk-test1",
+  "description" : "LV SWGR 11 BREAKER CONTROL",
+  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
+  "eqType" : "HEATER-DRYER",
+  "locationId" : 6053
+}, {
   "id" : 3000071916,
   "tagNumber" : "01-TV-HPS123TEST",
+  "description" : "HP HEADER DRIPLEG DRAIN AOV",
+  "specificLocation" : "ST BUILDING WEST- LOWER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6053
+}, {
+  "id" : 3000071948,
+  "tagNumber" : "01-TV-HPS123TEST2",
+  "description" : "HP HEADER DRIPLEG DRAIN AOV",
+  "specificLocation" : "ST BUILDING WEST- LOWER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6053
+}, {
+  "id" : 3000071951,
+  "tagNumber" : "01-TV-HPS123TEST3",
+  "description" : "HP HEADER DRIPLEG DRAIN AOV",
+  "specificLocation" : "ST BUILDING WEST- LOWER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6053
+}, {
+  "id" : 3000071980,
+  "tagNumber" : "01-TV-HPS123TEST4",
   "description" : "HP HEADER DRIPLEG DRAIN AOV",
   "specificLocation" : "ST BUILDING WEST- LOWER",
   "eqType" : "Air Operated Valve",

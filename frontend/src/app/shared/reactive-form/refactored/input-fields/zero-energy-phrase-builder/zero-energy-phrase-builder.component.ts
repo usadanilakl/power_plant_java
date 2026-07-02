@@ -446,17 +446,75 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
       const valueId = this.selectedPhraseId();
       if (!valueId) return;
 
-      this.valueService.updateValue(valueId, this.dialogPhraseName, phraseAlias)
-        .subscribe({
-          next: () => {
-            this.closePhraseDialog();
-            // Refresh options
-            this.valueService.refreshCategory(alias);
-          },
-          error: (error) => {
-            this.errorMessage.set(error.error?.message || 'Error updating phrase');
+      // Two edit modes:
+      //   editShared = TRUE  → update the Value entity in-place. Every LOTO
+      //                        point currently pointing at this phrase Value
+      //                        sees the new text/name. Global change.
+      //   editShared = FALSE → FORK. Look for another Value in this category
+      //                        that already has the exact alias JSON we're
+      //                        about to save; if found, switch this LOTO point
+      //                        to that Value (dedup / reuse). If none matches,
+      //                        create a new Value with the edited content.
+      //                        The original phrase Value is left untouched,
+      //                        so other LOTO points using it keep the old text.
+      //
+      // Without the fork branch, unchecked-editShared saves still mutated the
+      // shared Value entity — making the checkbox effectively useless.
+      const editShared = this.editSharedInDialog();
+      if (editShared) {
+        this.valueService.updateValue(valueId, this.dialogPhraseName, phraseAlias)
+          .subscribe({
+            next: () => {
+              this.closePhraseDialog();
+              this.valueService.refreshCategory(alias);
+            },
+            error: (error) => {
+              this.errorMessage.set(error.error?.message || 'Error updating phrase');
+            }
+          });
+      } else {
+        // Search existing Values for an exact-content match. We compare on the
+        // full alias JSON so name changes count as a distinct phrase — matches
+        // the behavior a user expects when they edit a phrase without opting
+        // into the shared update.
+        const existingMatch = this.valueService
+          .getValuesByCategory(alias)
+          .find(v => v.alias === phraseAlias);
+
+        if (existingMatch && existingMatch.id !== valueId) {
+          // Reuse: point this LOTO point at the matching Value. No DB write
+          // for the phrase itself — just a form-control update. The parent
+          // form's save will persist the new zeroEnergyTemplate id.
+          this.closePhraseDialog();
+          this.selectedPhraseId.set(existingMatch.id);
+          this.onChange(existingMatch.id);
+          if (this.selectInput) {
+            this.selectInput.writeValue(existingMatch.id);
           }
-        });
+        } else if (existingMatch && existingMatch.id === valueId) {
+          // Content is identical to the current phrase — nothing to fork.
+          // Just close.
+          this.closePhraseDialog();
+        } else {
+          // No match: create a new Value with the edited content. Same code
+          // path the add-mode branch uses.
+          this.valueService.createValue(alias, this.dialogPhraseName, phraseAlias)
+            .subscribe({
+              next: (newValue) => {
+                this.closePhraseDialog();
+                this.valueService.refreshCategory(alias);
+                this.selectedPhraseId.set(newValue.id);
+                this.onChange(newValue.id);
+                if (this.selectInput) {
+                  this.selectInput.writeValue(newValue.id);
+                }
+              },
+              error: (error) => {
+                this.errorMessage.set(error.error?.message || 'Error creating phrase');
+              }
+            });
+        }
+      }
     }
   }
 

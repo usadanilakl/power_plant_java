@@ -17,6 +17,9 @@ button.primary { background: #0e639c; }
 .detail header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
 .detail h3 { margin: 0; color: #7cc6ff; }
 .empty-msg { padding: 20px; }
+.addr { color: #26A69A; font-size: 12px; margin-top: 2px; }
+.search-bar select { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px;
+  padding: 4px 6px; margin-left: 4px; font: inherit; }
 .muted { color: #777; } .error { color: #ff7b72; }
 
 .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 6px 0 10px; }

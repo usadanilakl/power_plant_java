@@ -1,0 +1,39 @@
+.po-page { padding: 12px; color: #e6e6e6; font: 13px/1.4 ui-monospace, Consolas, monospace; }
+
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px;
+  background: #2a2a2a; border-radius: 4px; }
+.toolbar .count { color: #7cc6ff; }
+.toolbar label { color: #aaa; }
+.toolbar input { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px;
+  padding: 4px 6px; margin-left: 4px; font: inherit; }
+.toolbar .seed-result { color: #7ee787; font-size: 12px; }
+
+button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 12px; cursor: pointer; font: inherit; }
+button:hover:not([disabled]) { background: #1177bb; }
+button[disabled] { opacity: 0.55; cursor: default; }
+
+.split { display: flex; gap: 16px; margin-top: 12px; align-items: flex-start; }
+.tree { flex: 0 0 380px; max-width: 380px; background: #1c1c1c; border: 1px solid #333; border-radius: 4px;
+  padding: 6px; max-height: calc(100vh - 160px); overflow: auto; }
+.detail { flex: 1 1 auto; min-width: 340px; background: #1c1c1c; border: 1px solid #333; border-radius: 4px; padding: 12px; }
+.detail.empty { display: flex; align-items: center; justify-content: center; min-height: 120px; }
+
+.detail header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.detail h3 { margin: 0; color: #7cc6ff; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #333; color: #ddd; text-transform: uppercase; letter-spacing: 0.04em; }
+.chip[data-type=PLANT]     { background: #0d4a52; color: #7fe3f0; }
+.chip[data-type=SECTION]   { background: #15334f; color: #9ccaff; }
+.chip[data-type=SYSTEM]    { background: #1c3a1f; color: #9fe6a4; }
+.chip[data-type=SKID]      { background: #4a3410; color: #ffcf87; }
+.chip[data-type=EQUIPMENT] { background: #3a2450; color: #d5abf0; }
+.chip[data-type=LOCATION]  { background: #3a2c22; color: #d8b79b; }
+
+.rows { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin-bottom: 14px; }
+.rows .row { display: contents; }
+.rows .lbl { color: #888; }
+
+.maximo h4 { margin: 6px 0; color: #7cc6ff; border-top: 1px solid #2a2a2a; padding-top: 8px; }
+.maximo h5 { margin: 12px 0 4px; color: #aaa; font-weight: 500; }
+
+.muted { color: #777; } .muted.empty { padding: 20px; }
+.error { color: #ff7b72; }

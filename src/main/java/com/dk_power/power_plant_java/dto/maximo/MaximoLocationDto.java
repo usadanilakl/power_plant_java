@@ -11,4 +11,5 @@ public class MaximoLocationDto {
     private String type;
     private String status;
     private String siteid;
+    private String parent;   // spi:parent — the parent location code; drives the PhysicalObject tree seed
 }

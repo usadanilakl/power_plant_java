@@ -7,9 +7,11 @@ import { MaximoLeadOperatorWosPageComponent } from '../features/maximo/maximo-le
 import { MaximoPartsCheckoutPageComponent } from '../features/maximo/maximo-parts-checkout-page/maximo-parts-checkout-page.component';
 import { MaximoInventoryPageComponent } from '../features/maximo/maximo-inventory-page/maximo-inventory-page.component';
 import { MaximoPmPageComponent } from '../features/maximo/maximo-pm-page/maximo-pm-page.component';
+import { PhysicalObjectBrowserComponent } from '../features/physical/physical-object-browser/physical-object-browser.component';
 
 export const MAXIMO_ROUTES: Routes = [
   { path: 'maximo', redirectTo: 'maximo/assets', pathMatch: 'full' },
+  { path: 'maximo/hierarchy', component: PhysicalObjectBrowserComponent },
   { path: 'maximo/assets', component: MaximoAssetsPageComponent },
   { path: 'maximo/service-requests', component: MaximoServiceRequestsPageComponent },
   { path: 'maximo/work-orders', component: MaximoWorkOrdersPageComponent },

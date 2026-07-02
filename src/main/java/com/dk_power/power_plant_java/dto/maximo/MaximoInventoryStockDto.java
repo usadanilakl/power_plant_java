@@ -11,7 +11,8 @@ import lombok.Data;
 public class MaximoInventoryStockDto {
     private String href;
     private String itemnum;
-    private String storeroom;   // spi:location
+    private String storeroom;   // warehouse (spi:location)
+    private String binnum;      // bin / physical address within the warehouse
     private String issueunit;
     private String status;
     private Double curbal;       // on hand

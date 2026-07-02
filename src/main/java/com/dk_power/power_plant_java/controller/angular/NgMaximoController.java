@@ -36,6 +36,9 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoBundleService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
+import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
+import com.dk_power.power_plant_java.sevice.physical.PhysicalObjectMaximoSeeder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -86,6 +89,8 @@ public class NgMaximoController {
     private final RecurringPmService recurringPms;
     private final PmAssignmentService pmAssignments;
     private final com.dk_power.power_plant_java.repository.users.UserRepo userRepo;
+    private final PhysicalObjectMaximoSeeder physicalObjectSeeder;
+    private final PhysicalObjectRepo physicalObjects;
 
     /** Work-type options. The MXDOMAIN OS isn't API-authorized, so these mirror the values in use at JG. */
     private static final List<Map<String, String>> WORK_TYPES = List.of(
@@ -412,6 +417,13 @@ public class NgMaximoController {
                 inventory.search(q, siteid, storeroom, pageSize), "ok"));
     }
 
+    /** Warehouses (storerooms) that hold stock at the site — for the inventory warehouse filter. */
+    @GetMapping("/inventory/storerooms")
+    public ResponseEntity<NgApiResponse<List<String>>> inventoryStorerooms(
+            @RequestParam(value = "siteid", required = false) String siteid) {
+        return ResponseEntity.ok(new NgApiResponse<>(inventory.storerooms(siteid), "ok"));
+    }
+
     /** Full stock detail for one item (on-hand, reserved, reorder levels, cost, usage stats). */
     @GetMapping("/inventory/{itemnum}")
     public ResponseEntity<NgApiResponse<MaximoInventoryStockDto>> getInventoryItem(
@@ -526,6 +538,61 @@ public class NgMaximoController {
                 .map(com.dk_power.power_plant_java.entities.users.User::getMaximoPersonid)
                 .orElse(null);
     }
+
+    // ---- Physical hierarchy (Maximo seed + per-node WO/SR tab) -----------
+
+    /**
+     * Seed/refresh the {@link PhysicalObject} tree from Maximo (locations + assets). Idempotent — upserts by
+     * key, never clobbers local edits/nodes. Intended for the hub (propagates via sync); runnable on a desktop
+     * for verification.
+     */
+    @PostMapping("/physical-object/reseed")
+    public ResponseEntity<NgApiResponse<PhysicalObjectMaximoSeeder.SeedResult>> reseedPhysicalObjects(
+            @RequestParam(value = "siteid", required = false) String siteid) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(physicalObjectSeeder.reseed(siteid), "seeded"));
+        } catch (Exception e) {
+            log.warn("[Maximo] physical-object reseed failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * The Maximo tab for a physical-object node: its work orders + service requests, scoped by the node's
+     * {@code maximoAssetnum} (equipment) or exact {@code maximoLocation} (hierarchy node). Subtree roll-up is a
+     * later refinement; inventory isn't object-scoped so it's not included here.
+     */
+    @GetMapping("/physical-object/{id}")
+    public ResponseEntity<NgApiResponse<PhysicalObjectMaximoTab>> physicalObjectMaximo(@PathVariable Long id) {
+        try {
+            PhysicalObject node = physicalObjects.findById(id).orElse(null);
+            if (node == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+            String assetnum = node.getMaximoAssetnum();
+            String location = node.getMaximoLocation();
+            List<MaximoWorkOrderDto> wos = List.of();
+            List<MaximoServiceRequestDto> srs = List.of();
+            if (assetnum != null && !assetnum.isBlank()) {
+                wos = workOrders.listForAsset(assetnum, 50);
+                srs = serviceRequests.listForAsset(assetnum, 50);
+            } else if (location != null && !location.isBlank()) {
+                MaximoWorkOrderCriteria wc = new MaximoWorkOrderCriteria();
+                wc.setLocation(location);
+                wos = workOrders.listByCriteria(wc, 50);
+                MaximoServiceRequestCriteria sc = new MaximoServiceRequestCriteria();
+                sc.setLocation(location);
+                srs = serviceRequests.listByCriteria(sc, 50);
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    new PhysicalObjectMaximoTab(assetnum, location, wos, srs), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] physical-object {} tab failed: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** WOs + SRs for a physical-object node's Maximo link. */
+    public record PhysicalObjectMaximoTab(String assetnum, String location,
+            List<MaximoWorkOrderDto> workOrders, List<MaximoServiceRequestDto> serviceRequests) {}
 
     // ---- Bundles (cross-source aggregations) -----------------------------
 

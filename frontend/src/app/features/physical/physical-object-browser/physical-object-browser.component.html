@@ -1,0 +1,82 @@
+<app-main-layout header="Plant Hierarchy">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="po-page">
+
+      <section class="toolbar">
+        <span class="count">{{ nodeCount() }} nodes</span>
+        <label>Site <input [(ngModel)]="siteId" placeholder="default" size="6" /></label>
+        <button (click)="reseed()" [disabled]="seeding()">
+          {{ seeding() ? 'Seeding…' : 'Reseed from Maximo' }}
+        </button>
+        <span class="seed-result" *ngIf="seedResult() as r">
+          ✓ {{ r.site }}: {{ r.locations }} loc (+{{ r.locationsCreated }}), {{ r.assets }} assets (+{{ r.assetsCreated }})<span *ngIf="r.orphanAssets"> · {{ r.orphanAssets }} orphan</span> · {{ r.totalNodes }} total
+        </span>
+        <button (click)="runProbe()" [disabled]="probing()">{{ probing() ? 'Probing…' : 'Tag↔asset probe' }}</button>
+        <span class="seed-result" *ngIf="probe() as p">
+          🔗 LOTO {{ p.loto.looseMatched }}/{{ p.loto.distinct }} ({{ pct(p.loto.looseMatched, p.loto.distinct) }}%, exact {{ p.loto.exactMatched }}) ·
+          Equip {{ p.equipment.looseMatched }}/{{ p.equipment.distinct }} ({{ pct(p.equipment.looseMatched, p.equipment.distinct) }}%) ·
+          {{ p.equipmentAssetNodes }} asset nodes
+        </span>
+        <span class="error" *ngIf="seedError()">{{ seedError() }}</span>
+        <span class="error" *ngIf="error()">{{ error() }}</span>
+      </section>
+
+      <div class="split">
+        <section class="tree">
+          <div class="muted" *ngIf="loading()">Loading…</div>
+          <div class="muted empty" *ngIf="!loading() && nodeCount() === 0">
+            No nodes yet — click <strong>Reseed from Maximo</strong> to build the tree.
+          </div>
+          <app-rf-toggle-menu *ngIf="nodeCount() > 0"
+            [menuItems]="treeItems()"
+            searchPlaceholder="Search the plant…"
+            (itemClick)="onSelect($event)">
+          </app-rf-toggle-menu>
+        </section>
+
+        <section class="detail" *ngIf="selected() as n; else noSel">
+          <header>
+            <h3>{{ n.name || n.tagNumber || ('#' + n.id) }}</h3>
+            <span class="chip" [attr.data-type]="n.type">{{ n.type || '—' }}</span>
+          </header>
+          <div class="rows">
+            <div class="row" *ngIf="n.tagNumber"><span class="lbl">Tag</span><span>{{ n.tagNumber }}</span></div>
+            <div class="row" *ngIf="n.description"><span class="lbl">Description</span><span>{{ n.description }}</span></div>
+            <div class="row" *ngIf="n.specificLocation"><span class="lbl">Location</span><span>{{ n.specificLocation }}</span></div>
+            <div class="row" *ngIf="n.maximoSiteid"><span class="lbl">Site</span><span>{{ n.maximoSiteid }}</span></div>
+            <div class="row" *ngIf="n.maximoLocation"><span class="lbl">Maximo loc</span><span>{{ n.maximoLocation }}</span></div>
+            <div class="row" *ngIf="n.maximoAssetnum"><span class="lbl">Maximo asset</span><span>{{ n.maximoAssetnum }}</span></div>
+            <div class="row" *ngIf="n.maximoType"><span class="lbl">Maximo type</span><span>{{ n.maximoType }}</span></div>
+          </div>
+
+          <div class="maximo">
+            <h4>Maximo</h4>
+            <div class="muted" *ngIf="!n.maximoAssetnum && !n.maximoLocation">Not linked to a Maximo asset or location.</div>
+            <div class="muted" *ngIf="tabLoading()">Loading work orders &amp; service requests…</div>
+            <div class="error" *ngIf="tabError()">{{ tabError() }}</div>
+
+            <ng-container *ngIf="tab() as t">
+              <h5>Work orders ({{ t.workOrders.length }})</h5>
+              <app-maximo-table *ngIf="t.workOrders.length"
+                [columns]="woColumns" [items]="t.workOrders" emptyMessage="No work orders.">
+              </app-maximo-table>
+              <div class="muted" *ngIf="!t.workOrders.length">No work orders.</div>
+
+              <h5>Service requests ({{ t.serviceRequests.length }})</h5>
+              <app-maximo-table *ngIf="t.serviceRequests.length"
+                [columns]="srColumns" [items]="t.serviceRequests" emptyMessage="No service requests.">
+              </app-maximo-table>
+              <div class="muted" *ngIf="!t.serviceRequests.length">No service requests.</div>
+            </ng-container>
+          </div>
+        </section>
+        <ng-template #noSel>
+          <section class="detail empty muted">Select a node to see its details and Maximo history.</section>
+        </ng-template>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>

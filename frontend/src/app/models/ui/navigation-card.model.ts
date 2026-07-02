@@ -137,6 +137,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     defaultRoute: '/maximo/assets',
     requiresFullAccess: true,
     items: [
+      { title: 'Plant Hierarchy', description: 'Browse the Maximo-seeded plant tree; per-node work orders & service requests', icon: 'account_tree', route: '/maximo/hierarchy', color: '#26C6DA' },
       { title: 'Assets', description: 'Search Maximo assets and view their SR / WO history', icon: 'precision_manufacturing', route: '/maximo/assets', color: '#26C6DA' },
       { title: 'Service Requests', description: 'List and submit service requests for an asset', icon: 'support_agent', route: '/maximo/service-requests', color: '#FFA726' },
       { title: 'Work Orders', description: 'View work orders for an asset', icon: 'assignment', route: '/maximo/work-orders', color: '#66BB6A' },

@@ -8,6 +8,12 @@
       <section class="search-bar">
         <label>Search <input [(ngModel)]="searchQuery" placeholder="item # / description"
                              (keyup.enter)="search()" /></label>
+        <label>Warehouse
+          <select [(ngModel)]="filterStoreroom">
+            <option value="">All warehouses</option>
+            <option *ngFor="let s of storerooms()" [value]="s">{{ s }}</option>
+          </select>
+        </label>
         <label>Max <input type="number" [(ngModel)]="searchSize" min="1" max="200" /></label>
         <button (click)="search()" [disabled]="searching()">{{ searching() ? 'Searching…' : 'Search' }}</button>
         <span class="error" *ngIf="searchError()">{{ searchError() }}</span>
@@ -31,7 +37,8 @@
           <header>
             <div>
               <h3>{{ it.itemnum }}</h3>
-              <div class="muted">{{ it.description }} — {{ it.storeroom }} · unit {{ it.issueunit || '—' }}</div>
+              <div class="muted">{{ it.description }}</div>
+              <div class="addr">📍 {{ it.storeroom }}<span *ngIf="it.binnum"> · bin {{ it.binnum }}</span> · unit {{ it.issueunit || '—' }}</div>
             </div>
             <button class="primary" (click)="checkout(it)">Check out part →</button>
           </header>
@@ -42,6 +49,7 @@
           <ng-container *ngIf="stock() as s">
             <div class="stock-grid">
               <div class="stat"><span class="lbl">On hand</span><span class="val" [class.zero]="!s.curbal">{{ s.curbal ?? '—' }}</span></div>
+              <div class="stat"><span class="lbl">Bin</span><span class="val">{{ s.binnum || '—' }}</span></div>
               <div class="stat"><span class="lbl">Reserved</span><span class="val">{{ s.reservedqty ?? '—' }}</span></div>
               <div class="stat"><span class="lbl">Reorder pt</span><span class="val">{{ s.reorder ?? '—' }}</span></div>
               <div class="stat"><span class="lbl">Min / Max</span><span class="val">{{ s.minlevel ?? '—' }} / {{ s.maxlevel ?? '—' }}</span></div>

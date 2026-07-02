@@ -44,6 +44,19 @@ public class MaximoAssetAdapter {
     }
 
     /**
+     * Page EVERY asset for a site (for {@code PhysicalObjectMaximoSeeder}). Includes location + parent so
+     * each asset can be parented to its operating-location node. Stable {@code -spi:assetnum} orderBy.
+     */
+    public List<MaximoAssetDto> getAllAssets(String siteid) {
+        String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\"");
+        params.put("oslc.orderBy", "-spi:assetnum");
+        return mapAll(access.getAllMembers(access.osUrl(OS), params, 500, 40));
+    }
+
+    /**
      * Search assets with an AND word-bucket, matching across THREE things and unioning the hits:
      *   (1) the asset tag (assetnum), (2) the asset description, and (3) the asset's LOCATION — resolved
      * by finding operating-locations whose code OR description matches the words, then pulling assets in

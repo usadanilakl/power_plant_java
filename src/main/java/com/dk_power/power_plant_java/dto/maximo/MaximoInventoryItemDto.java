@@ -11,6 +11,7 @@ public class MaximoInventoryItemDto {
     private String itemnum;
     private String description;
     private String issueunit;
-    private String storeroom;
+    private String storeroom;   // warehouse (spi:location)
+    private String binnum;      // bin / physical address within the warehouse
     private Double curbal;
 }

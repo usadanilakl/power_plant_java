@@ -107,7 +107,8 @@ export interface MaximoInventoryItem {
   itemnum: string;
   description: string;
   issueunit: string;
-  storeroom: string;
+  storeroom: string;   // warehouse
+  binnum: string;      // bin / physical address within the warehouse
   curbal: number | null;
 }
 
@@ -115,6 +116,7 @@ export interface MaximoInventoryStock {
   href: string;
   itemnum: string;
   storeroom: string;
+  binnum: string;
   issueunit: string;
   status: string;
   curbal: number | null;

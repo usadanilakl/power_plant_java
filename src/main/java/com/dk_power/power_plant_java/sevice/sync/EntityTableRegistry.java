@@ -58,6 +58,9 @@ public class EntityTableRegistry {
         Map.entry("RecurringPm", "recurring_pm"),  // @Table(name = "recurring_pm")
         Map.entry("ContractorChangeReport", "contractor_change_reports"),
 
+        // Physical hierarchy (plant tree; Maximo-seeded, locally owned)
+        Map.entry("PhysicalObject", "physical_object"),
+
         // ESP
         Map.entry("EspDevice", "esp_devices"),     // @Table(name = "esp_devices")
         Map.entry("LedStrip", "led_strips"),       // @Table(name = "led_strips")
@@ -133,6 +136,7 @@ public class EntityTableRegistry {
         "ShiftDay",
         "RecurringPm",
         "ContractorChangeReport",
+        "PhysicalObject",   // self-referential tree; parent FK resolved by the ManyToOne-retry apply pass
         "FileObject",
         "FileConnector",
         "EngraverTemplate",

@@ -152,7 +152,9 @@ public class ServiceFacade {
             // Red Tag standards (digitized LOTO standards from Red Tag)
             @Lazy NgRedTagStandardService ngRedTagStandardService,
             // Maximo recurring-PM catalog (lead year-scan; synced so all desktops share it)
-            @Lazy com.dk_power.power_plant_java.sevice.maximo.RecurringPmSyncService recurringPmSyncService
+            @Lazy com.dk_power.power_plant_java.sevice.maximo.RecurringPmSyncService recurringPmSyncService,
+            // Physical hierarchy (Maximo-seeded plant tree; synced so all desktops share it)
+            @Lazy com.dk_power.power_plant_java.sevice.physical.PhysicalObjectSyncService physicalObjectSyncService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -228,6 +230,8 @@ public class ServiceFacade {
         serviceMap.put(RoundsReport.class.getSimpleName(), ngRoundsService);
         // Maximo recurring-PM catalog (inbound apply was dropping it — "No service found for RecurringPm")
         serviceMap.put(com.dk_power.power_plant_java.entities.maximo.RecurringPm.class.getSimpleName(), recurringPmSyncService);
+        // Physical hierarchy (plant tree)
+        serviceMap.put(com.dk_power.power_plant_java.entities.physical.PhysicalObject.class.getSimpleName(), physicalObjectSyncService);
     }
 
     public SyncableService getService(String entityClass) {

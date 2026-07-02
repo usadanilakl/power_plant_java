@@ -222,24 +222,35 @@ export class MaximoApiService {
     return this.laborPeople$;
   }
 
-  searchInventory(q: string, pageSize = 25): Observable<MaximoInventoryItem[]> {
+  searchInventory(q: string, pageSize = 25, storeroom?: string): Observable<MaximoInventoryItem[]> {
     let p = new HttpParams().set('pageSize', String(pageSize));
     if (q) p = p.set('q', q);
+    if (storeroom) p = p.set('storeroom', storeroom);
     return this.http
       .get<SpringApiResponse<MaximoInventoryItem[]>>(`${this.base}/inventory`, { params: p })
       .pipe(map(r => r.responseData ?? []));
   }
 
-  /** Full stock detail for one item (on-hand, reserved, reorder levels, cost, usage stats). */
-  getInventoryItem(itemnum: string): Observable<MaximoInventoryStock | null> {
+  /** Warehouses (storerooms) that hold stock, for the inventory filter. */
+  getStorerooms(): Observable<string[]> {
     return this.http
-      .get<SpringApiResponse<MaximoInventoryStock>>(`${this.base}/inventory/${encodeURIComponent(itemnum)}`)
+      .get<SpringApiResponse<string[]>>(`${this.base}/inventory/storerooms`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Full stock detail for one item at a warehouse (on-hand, reserved, reorder levels, cost, usage stats). */
+  getInventoryItem(itemnum: string, storeroom?: string): Observable<MaximoInventoryStock | null> {
+    let p = new HttpParams();
+    if (storeroom) p = p.set('storeroom', storeroom);
+    return this.http
+      .get<SpringApiResponse<MaximoInventoryStock>>(`${this.base}/inventory/${encodeURIComponent(itemnum)}`, { params: p })
       .pipe(map(r => r.responseData ?? null));
   }
 
-  /** Material-use history for one item (which WOs consumed it), newest first. */
-  getInventoryUsage(itemnum: string, pageSize = 50): Observable<MaximoInventoryUsage[]> {
-    const p = new HttpParams().set('pageSize', String(pageSize));
+  /** Material-use history for one item at a warehouse (which WOs consumed it), newest first. */
+  getInventoryUsage(itemnum: string, pageSize = 50, storeroom?: string): Observable<MaximoInventoryUsage[]> {
+    let p = new HttpParams().set('pageSize', String(pageSize));
+    if (storeroom) p = p.set('storeroom', storeroom);
     return this.http
       .get<SpringApiResponse<MaximoInventoryUsage[]>>(`${this.base}/inventory/${encodeURIComponent(itemnum)}/usage`, { params: p })
       .pipe(map(r => r.responseData ?? []));

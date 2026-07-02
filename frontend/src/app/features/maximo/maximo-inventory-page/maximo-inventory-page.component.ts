@@ -29,10 +29,16 @@ export class MaximoInventoryPageComponent {
   readonly columns = INVENTORY_COLUMNS;
 
   searchQuery = '';
+  filterStoreroom = '';                       // '' = all warehouses
   searchSize = 50;
+  storerooms = signal<string[]>([]);
   searching = signal(false);
   searchError = signal<string | null>(null);
   results = signal<MaximoInventoryItem[]>([]);
+
+  constructor() {
+    firstValueFrom(this.api.getStorerooms()).then(s => this.storerooms.set(s)).catch(() => {});
+  }
 
   selected = signal<MaximoInventoryItem | null>(null);
   stock = signal<MaximoInventoryStock | null>(null);
@@ -43,7 +49,8 @@ export class MaximoInventoryPageComponent {
   async search() {
     this.searching.set(true); this.searchError.set(null);
     try {
-      this.results.set(await firstValueFrom(this.api.searchInventory(this.searchQuery, this.searchSize)));
+      this.results.set(await firstValueFrom(
+        this.api.searchInventory(this.searchQuery, this.searchSize, this.filterStoreroom || undefined)));
     } catch (e: any) {
       this.searchError.set(this.msg(e)); this.results.set([]);
     } finally {
@@ -56,9 +63,10 @@ export class MaximoInventoryPageComponent {
     this.stock.set(null); this.usage.set([]);
     this.detailLoading.set(true); this.detailError.set(null);
     try {
+      // Scope stock + usage to the item's own warehouse (each row is one item×warehouse line).
       const [stock, usage] = await Promise.all([
-        firstValueFrom(this.api.getInventoryItem(it.itemnum)),
-        firstValueFrom(this.api.getInventoryUsage(it.itemnum)),
+        firstValueFrom(this.api.getInventoryItem(it.itemnum, it.storeroom)),
+        firstValueFrom(this.api.getInventoryUsage(it.itemnum, 50, it.storeroom)),
       ]);
       this.stock.set(stock);
       this.usage.set(usage);
