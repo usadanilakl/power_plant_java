@@ -404,10 +404,27 @@ export class LotoPointMapperService {
         name: 'tagNumber',
         label: 'Tag Number',
         type: 'text',
-        validators: [Validators.required],
+        // Restrict to characters that survive URL encoding in QR labels
+        // without visual noise, and cap length so dense QRs remain scannable
+        // on field devices. The tag ends up percent-encoded on the QR side
+        // (see BradySdkService.createImageFromStringsWithQr) but disallowing
+        // `#`, `/`, `?`, `&`, spaces and non-ASCII up front avoids ugly
+        // %-encoded characters printed on physical labels and prevents
+        // resolver ambiguity when scanners misread punctuation.
+        //
+        // Allowed set matches typical instrument-tag conventions:
+        //   A-Z a-z 0-9 . - _ :
+        // Existing data with other characters still round-trips because the
+        // validator only runs on user edits; historical values load without
+        // being re-validated. Loosen if real data needs `/` or space.
+        validators: [
+          Validators.required,
+          Validators.maxLength(64),
+          Validators.pattern(/^[A-Za-z0-9._:\-]+$/),
+        ],
         initialValue: lotoPoint.tagNumber || '',
         guideId: 'create-loto-point:field-tag-number',
-        guideMessage: 'Enter a unique tag number for this LOTO point',
+        guideMessage: 'Enter a unique tag number (letters, digits, . - _ : ; max 64 chars)',
       },
       description: {
         name: 'description',

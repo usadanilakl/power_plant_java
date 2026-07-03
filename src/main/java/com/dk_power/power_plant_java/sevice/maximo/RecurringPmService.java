@@ -130,7 +130,8 @@ public class RecurringPmService {
         int pruned = 0;
         if (!wos.isEmpty() && recurring > 0) {
             for (RecurringPm stale : repo.findAllByOrderByPmnumAsc()) {
-                if (stale.getPmKey() != null && !seenKeys.contains(stale.getPmKey())) {
+                if (stale.getPmKey() != null && !seenKeys.contains(stale.getPmKey())
+                        && !Boolean.TRUE.equals(stale.getManuallyAdded())) {   // never prune manual conversions
                     stale.setDeleted(true);
                     repo.save(stale);
                     pruned++;
@@ -189,6 +190,40 @@ public class RecurringPmService {
     @Transactional(readOnly = true)
     public List<RecurringPm> allCatalog() {
         return repo.findAllByOrderByPmnumAsc();
+    }
+
+    /**
+     * Manually convert a work order into a recurring-PM catalog entry — for PMs the auto-refresh didn't
+     * classify as recurring (single occurrence, no pmnum, or led by a non-operator). Idempotent by pmKey:
+     * re-adding an existing key just flags it manual + locked. The row is marked {@code manuallyAdded} so
+     * the refresh prune never drops it, and {@code classificationLocked} so refresh won't overwrite the
+     * operator's shift/cadence. Future WOs with the same pmnum/description then match it as recurring.
+     */
+    public RecurringPmDto manualAdd(String pmnum, String description, String lead, String wonum) {
+        String key = keyFor(pmnum, description);
+        if (key == null) {
+            throw new IllegalArgumentException("A PM number or description is required to make a recurring task");
+        }
+        RecurringPm row = repo.findFirstByPmKey(key).orElse(null);
+        if (row == null) {
+            row = RecurringPm.builder().pmKey(key)
+                    .shift(ShiftPreference.EITHER).cadence(RecurrenceCadence.OTHER)
+                    .occurrenceCount(1).build();
+        }
+        row.setManuallyAdded(Boolean.TRUE);
+        row.setClassificationLocked(Boolean.TRUE);
+        if (pmnum != null && !pmnum.isBlank()) row.setPmnum(pmnum.trim());
+        if (description != null && !description.isBlank()
+                && (row.getPmDescription() == null || row.getPmDescription().isBlank())) {
+            row.setPmDescription(description);
+        }
+        if (lead != null && !lead.isBlank() && (row.getLead() == null || row.getLead().isBlank())) row.setLead(lead);
+        if (wonum != null && !wonum.isBlank() && (row.getLastWonum() == null || row.getLastWonum().isBlank())) row.setLastWonum(wonum);
+        if (row.getShift() == null) row.setShift(ShiftPreference.EITHER);
+        if (row.getCadence() == null) row.setCadence(RecurrenceCadence.OTHER);
+        if (row.getOccurrenceCount() == null) row.setOccurrenceCount(1);
+        row.setCatalogRefreshedAt(LocalDateTime.now());
+        return toDto(repo.save(row));
     }
 
     /**
@@ -298,6 +333,7 @@ public class RecurringPmService {
                 .lastWonum(r.getLastWonum())
                 .lastTargetDate(r.getLastTargetDate())
                 .catalogRefreshedAt(r.getCatalogRefreshedAt())
+                .manuallyAdded(r.getManuallyAdded())
                 .build();
     }
 }

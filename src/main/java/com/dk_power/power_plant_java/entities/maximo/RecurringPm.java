@@ -94,4 +94,13 @@ public class RecurringPm extends BaseAuditEntity {
     /** When this row was last (re)built from Maximo. */
     @Column(name = "catalog_refreshed_at")
     private LocalDateTime catalogRefreshedAt;
+
+    /**
+     * True when an operator manually converted a work order into a recurring task (auto-detection didn't
+     * classify it as recurring). Such rows are EXEMPT from the catalog-refresh prune — a manually-added PM
+     * may be a one-off or led by a non-operator and would otherwise be dropped on the next refresh.
+     */
+    @lombok.Builder.Default
+    @Column(name = "manually_added")
+    private Boolean manuallyAdded = Boolean.FALSE;
 }

@@ -175,6 +175,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Maximo bundles
   maximoGetLeadOpSummary: (status?: string): Promise<IpcResult<{ count: number; items: any[] }>> =>
     ipcRenderer.invoke(events.IPC_MAXIMO_LEAD_OP_SUMMARY, status),
+  maximoGetOverview: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_MAXIMO_OVERVIEW),
+  maximoGetOverviewConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_MAXIMO_GET_OVERVIEW_CONFIG),
+  maximoSaveOverviewConfig: (config: any): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_MAXIMO_SAVE_OVERVIEW_CONFIG, config),
+  maximoGetLaborPeople: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_MAXIMO_LABOR_PEOPLE),
 
   // Window Layout
   saveWindowLayout: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_LAYOUT_SAVE),

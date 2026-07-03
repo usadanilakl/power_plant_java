@@ -1,23 +1,40 @@
 package com.dk_power.power_plant_java.controller.angular;
 
 import com.dk_power.power_plant_java.dto.physical.PhysicalObjectDto;
+import com.dk_power.power_plant_java.dto.diagrams.DiagramDto;
 import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.entities.physical.PhysicalObjectType;
 import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
+import com.dk_power.power_plant_java.repository.categories.ValueRepo;
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramService;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +50,9 @@ public class NgPhysicalObjectController {
     private final PhysicalObjectRepo repo;
     private final LotoPointRepo lotoPointRepo;
     private final EquipmentRepo equipmentRepo;
+    private final NgDiagramService ngDiagramService;
+    private final FileRepo fileRepo;
+    private final ValueRepo valueRepo;
 
     /** Whole hierarchy as a flat list of nodes (id + parentId + hasChildren); the frontend assembles the tree. */
     @GetMapping("/tree")
@@ -61,11 +81,253 @@ public class NgPhysicalObjectController {
     @GetMapping("/{id}/children")
     public ResponseEntity<NgApiResponse<List<PhysicalObjectDto>>> children(@PathVariable Long id) {
         List<PhysicalObject> kids = repo.findByParentId(id);
+        Set<Long> withChildren = hasChildrenSet(kids);
         List<PhysicalObjectDto> dtos = kids.stream()
-                .map(p -> PhysicalObjectDto.from(p, !repo.findByParentId(p.getId()).isEmpty()))
+                .map(p -> PhysicalObjectDto.from(p, withChildren.contains(p.getId())))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.size() + " children"));
     }
+
+    /** One-query hasChildren set for a sibling list (avoids an N+1 per child). */
+    private Set<Long> hasChildrenSet(List<PhysicalObject> nodes) {
+        if (nodes.isEmpty()) return Set.of();
+        List<Long> ids = nodes.stream().map(PhysicalObject::getId).collect(Collectors.toList());
+        return new HashSet<>(repo.findParentIdsHavingChildren(ids));
+    }
+
+    // ---- Builder writes (local-owned nodes) ----------------------------------------------------
+
+    /** Create a new local-owned node under a parent (the builder's "create new object"). */
+    @PostMapping
+    public ResponseEntity<NgApiResponse<PhysicalObjectDto>> create(@RequestBody CreateNodeRequest req) {
+        PhysicalObject n = new PhysicalObject();
+        n.setName(req.name());
+        n.setType(parseType(req.type()));
+        n.setTagNumber(req.tagNumber());
+        n.setDescription(req.description());
+        n.setSpecificLocation(req.specificLocation());
+        n.setFloorIndex(req.floorIndex());
+        if (req.parentId() != null) {
+            PhysicalObject parent = repo.findById(req.parentId()).orElse(null);
+            if (parent == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "parent not found"));
+            n.setParent(parent);
+        }
+        n.setLocalUuid(UUID.randomUUID().toString()); // local node → maximoKey computes as LOCAL:{uuid}
+        PhysicalObject saved = repo.save(n);
+        return ResponseEntity.ok(new NgApiResponse<>(PhysicalObjectDto.from(saved, false), "created"));
+    }
+
+    /** Patch a node (blank/absent fields are left unchanged). */
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<PhysicalObjectDto>> update(@PathVariable Long id, @RequestBody UpdateNodeRequest req) {
+        PhysicalObject n = repo.findById(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        if (req.name() != null) n.setName(req.name());
+        if (req.type() != null) n.setType(parseType(req.type()));
+        if (req.tagNumber() != null) n.setTagNumber(req.tagNumber());
+        if (req.description() != null) n.setDescription(req.description());
+        if (req.specificLocation() != null) n.setSpecificLocation(req.specificLocation());
+        if (req.floorIndex() != null) n.setFloorIndex(req.floorIndex());
+        if (req.parentId() != null) {
+            PhysicalObject parent = repo.findById(req.parentId()).orElse(null);
+            if (parent == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "parent not found"));
+            n.setParent(parent);
+        }
+        PhysicalObject saved = repo.save(n);
+        return ResponseEntity.ok(new NgApiResponse<>(
+                PhysicalObjectDto.from(saved, !repo.findByParentId(id).isEmpty()), "updated"));
+    }
+
+    /**
+     * Soft-delete a leaf node. Blocked when the node still has children (so a subtree can't be orphaned —
+     * unreachable under the tree's {@code @Where(deleted)}). Its schematic Diagram (if any) is left in place
+     * (cheap, recoverable); the node's shape on its parent's canvas simply stops resolving on next open.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable Long id) {
+        PhysicalObject n = repo.findById(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        if (!repo.findByParentId(id).isEmpty()) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "cannot delete: node has children — delete or move them first"));
+        }
+        n.setDeleted(true);
+        repo.save(n);
+        return ResponseEntity.ok(new NgApiResponse<>(null, "deleted"));
+    }
+
+    // ---- Navigation + schematic canvas (for the plant map) ------------------------------------
+
+    /** Ancestor chain root→node, for the navigator breadcrumb. */
+    @GetMapping("/{id}/breadcrumb")
+    public ResponseEntity<NgApiResponse<List<PhysicalObjectDto>>> breadcrumb(@PathVariable Long id) {
+        List<PhysicalObjectDto> chain = new ArrayList<>();
+        PhysicalObject node = repo.findById(id).orElse(null);
+        int guard = 0;
+        while (node != null && guard++ < 200) {
+            chain.add(0, PhysicalObjectDto.from(node, true));
+            Long parentId = node.getParent() != null ? node.getParent().getId() : null; // getId() on lazy proxy — no init
+            node = parentId != null ? repo.findById(parentId).orElse(null) : null;
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(chain, chain.size() + " levels"));
+    }
+
+    /** Children ordered by floorIndex (nulls last) — the level/floor selector. */
+    @GetMapping("/{id}/levels")
+    public ResponseEntity<NgApiResponse<List<PhysicalObjectDto>>> levels(@PathVariable Long id) {
+        List<PhysicalObject> kids = repo.findByParentId(id);
+        Set<Long> withChildren = hasChildrenSet(kids);
+        List<PhysicalObjectDto> dtos = kids.stream()
+                .sorted(Comparator.comparing(PhysicalObject::getFloorIndex,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(p -> PhysicalObjectDto.from(p, withChildren.contains(p.getId())))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.size() + " levels"));
+    }
+
+    /**
+     * Get-or-create the node's blank schematic {@code Diagram} (the surface its children are drawn on). Returns the
+     * existing Diagram when {@code diagramId} is set and still exists, else creates a blank one, links it, and returns
+     * it. {@code @Transactional} + a pessimistic write lock on the node ({@code findByIdForUpdate}) serialize concurrent
+     * calls for the same node, so two rapid requests can't each create a diagram and orphan one.
+     */
+    @GetMapping("/{id}/diagram")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<NgApiResponse<DiagramDto>> getOrCreateDiagram(@PathVariable Long id) {
+        PhysicalObject n = repo.findByIdForUpdate(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        if (n.getDiagramId() != null) {
+            try {
+                DiagramDto existing = ngDiagramService.getDiagramById(String.valueOf(n.getDiagramId()));
+                if (existing != null) return ResponseEntity.ok(new NgApiResponse<>(existing, "ok"));
+            } catch (Exception ignored) { /* diagram was deleted — fall through and create a fresh one */ }
+        }
+        DiagramDto blank = new DiagramDto();
+        blank.setName((n.getName() != null ? n.getName() : ("#" + n.getId())) + " — Map");
+        blank.setCanvasWidth(1920);
+        blank.setCanvasHeight(1080);
+        blank.setGridSize(20);
+        DiagramDto created = ngDiagramService.createDiagram(blank);
+        n.setDiagramId(created.getId());
+        repo.save(n); // fires sync; diagramId is device-prefixed → same Diagram on every desktop
+        return ResponseEntity.ok(new NgApiResponse<>(created, "created"));
+    }
+
+    // ---- Binder: linked files / documents (attach files & P&IDs to a node) ------------------
+
+    /** Files bound to this node — its "Documents". */
+    @GetMapping("/{id}/files")
+    public ResponseEntity<NgApiResponse<List<LinkedFileDto>>> files(@PathVariable Long id) {
+        List<LinkedFileDto> dtos = fileRepo.findByPhysicalObjectId(id).stream()
+                .map(LinkedFileDto::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.size() + " files"));
+    }
+
+    /** Bind a file to this node. */
+    @PostMapping("/{id}/files/{fileId}")
+    public ResponseEntity<NgApiResponse<Void>> linkFile(@PathVariable Long id, @PathVariable Long fileId) {
+        if (repo.findById(id).isEmpty()) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "node not found"));
+        FileObject f = fileRepo.findById(fileId).orElse(null);
+        if (f == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "file not found"));
+        f.setPhysicalObjectId(id);
+        fileRepo.save(f);
+        return ResponseEntity.ok(new NgApiResponse<>(null, "linked"));
+    }
+
+    /** Unbind a file from this node (only if it's currently bound to it). */
+    @DeleteMapping("/{id}/files/{fileId}")
+    public ResponseEntity<NgApiResponse<Void>> unlinkFile(@PathVariable Long id, @PathVariable Long fileId) {
+        FileObject f = fileRepo.findById(fileId).orElse(null);
+        if (f != null && id.equals(f.getPhysicalObjectId())) {
+            f.setPhysicalObjectId(null);
+            fileRepo.save(f);
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(null, "unlinked"));
+    }
+
+    // ---- System membership (the cross-cutting functional axis / map layers) -------------------
+
+    /** The System values this object belongs to (the functional axis, orthogonal to the spatial tree). */
+    @GetMapping("/{id}/systems")
+    @Transactional(readOnly = true)
+    public ResponseEntity<NgApiResponse<List<SystemRef>>> systems(@PathVariable Long id) {
+        PhysicalObject n = repo.findById(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        List<SystemRef> refs = toSystemRefs(n.getSystems());
+        return ResponseEntity.ok(new NgApiResponse<>(refs, refs.size() + " systems"));
+    }
+
+    /**
+     * Set this object's System membership (full replace by Value ids). Mutates the collection in place then touches
+     * {@code dateModified} so {@code @PostUpdate} fires — a collection-only change does NOT dirty the parent, so
+     * without this the change would never broadcast to other desktops (the known M2M-sync hazard).
+     */
+    @PutMapping("/{id}/systems")
+    @Transactional
+    public ResponseEntity<NgApiResponse<List<SystemRef>>> setSystems(@PathVariable Long id, @RequestBody SetSystemsRequest req) {
+        PhysicalObject n = repo.findById(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        Set<Value> set = n.getSystems();
+        if (set == null) { set = new HashSet<>(); n.setSystems(set); }
+        set.clear();
+        if (req.systemIds() != null) {
+            for (Long vid : req.systemIds()) {
+                if (vid == null || vid <= 0) continue;
+                valueRepo.findById(vid).ifPresent(set::add);
+            }
+        }
+        n.setDateModified(LocalDateTime.now()); // force @PostUpdate → sync emission for the M2M change
+        PhysicalObject saved = repo.save(n);
+        return ResponseEntity.ok(new NgApiResponse<>(toSystemRefs(saved.getSystems()), "updated"));
+    }
+
+    /**
+     * System-membership map for a node's direct children: {@code childId → [systemValueId,…]}. Backs the map
+     * layer overlay (highlight the children that belong to the picked system) in one query, no lazy N+1.
+     */
+    @GetMapping("/{id}/child-systems")
+    @Transactional(readOnly = true)
+    public ResponseEntity<NgApiResponse<Map<Long, List<Long>>>> childSystems(@PathVariable Long id) {
+        Map<Long, List<Long>> map = new HashMap<>();
+        for (Object[] row : repo.findChildSystemLinks(id)) {
+            Long childId = ((Number) row[0]).longValue();
+            Long valueId = ((Number) row[1]).longValue();
+            map.computeIfAbsent(childId, k -> new ArrayList<>()).add(valueId);
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(map, map.size() + " children with systems"));
+    }
+
+    private static List<SystemRef> toSystemRefs(Set<Value> systems) {
+        if (systems == null) return List.of();
+        return systems.stream()
+                .map(v -> new SystemRef(v.getId(), v.getName()))
+                .sorted(Comparator.comparing(SystemRef::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .collect(Collectors.toList());
+    }
+
+    public record SystemRef(Long id, String name) {}
+    public record SetSystemsRequest(List<Long> systemIds) {}
+
+    /** Slim view of a bound file — enough to list and open it. */
+    public record LinkedFileDto(Long id, String name, String fileNumber, String fileLink, String extension) {
+        static LinkedFileDto from(FileObject f) {
+            String link = f.getFileLink();
+            if (link == null || link.isBlank()) link = f.getStoredFileLink();
+            return new LinkedFileDto(f.getId(), f.getName(), f.getFileNumber(), link, f.getExtension());
+        }
+    }
+
+    private static PhysicalObjectType parseType(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return PhysicalObjectType.valueOf(s.trim().toUpperCase()); }
+        catch (IllegalArgumentException e) { return null; }
+    }
+
+    public record CreateNodeRequest(String name, String type, Long parentId, String tagNumber,
+            String description, String specificLocation, Integer floorIndex) {}
+    public record UpdateNodeRequest(String name, String type, Long parentId, String tagNumber,
+            String description, String specificLocation, Integer floorIndex) {}
 
     // ---- Slice-1 verification: how well do local tags line up with seeded Maximo assets? ----
 

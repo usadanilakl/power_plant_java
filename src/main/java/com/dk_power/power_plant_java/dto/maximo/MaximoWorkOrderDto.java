@@ -28,4 +28,7 @@ public class MaximoWorkOrderDto {
     /** spi:pmnum — the PM-master id (e.g. "JG-1183") on PM-generated WOs; null on one-off WOs.
      *  Stable identity shared by every recurrence of a PM — the dedupe key for the recurring-PM catalog. */
     private String pmnum;
+    /** spi:statusdate — when the WO's status last changed; for a COMP WO this is effectively the
+     *  completion time. Used to bucket "completed this week" in the overview. */
+    private String statusDate;
 }

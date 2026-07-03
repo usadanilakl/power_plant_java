@@ -180,7 +180,15 @@ export class EquipmentFormComponent implements OnInit {
         type: 'text',
         options: [],
         initialValue: currentPresetData.tagNumber || null,
-        validators: [Validators.required]
+        // Same pattern + length cap as LotoPoint.tagNumber — Equipment tag is
+        // what QR scans resolve against (see NgQrController), so the same
+        // URL-safety rules apply here. See the comment on the LotoPoint mapper
+        // for the reasoning behind the allowed character set.
+        validators: [
+          Validators.required,
+          Validators.maxLength(64),
+          Validators.pattern(/^[A-Za-z0-9._:\-]+$/),
+        ]
       },
       {
         name: 'specificLocation',

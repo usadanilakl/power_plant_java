@@ -23,6 +23,8 @@ public class PmPendingAssignmentDto {
     private String description;
     private String status;
     private Boolean recurring;            // true if matched to the recurring-PM catalog (by pmnum or description)
+    private Long recurringPmId;           // the matched RecurringPm catalog row id (null if not recurring) — lets the
+                                          // Assignments tab edit that PM's shift/preferred-day inline
     private String targetDate;            // yyyy-MM-dd the assignment was computed for (Target Start)
     private String targetFinish;          // yyyy-MM-dd period-end (Target Finish); >= targetDate
     private ShiftPreference shift;        // the PM's configured shift

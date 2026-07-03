@@ -110,3 +110,18 @@ td.date-cell input[type="date"] { font-size: 11px; padding: 2px 4px; }
 
 .badge { color: #ffcf4d; font-size: 14px; }
 .actions label { color: #aaa; font-size: 13px; display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+
+/* ── Catalog search + sortable headers ──────────────────────────────────────── */
+.actions .search { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px;
+  padding: 4px 8px; font: inherit; min-width: 240px; }
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable:hover { color: #a9d8ff; }
+
+/* ── Assignments tab: inline shift/day edit + assign-anyone ──────────────────── */
+td.shift-cell select { margin-right: 4px; padding: 2px 4px; font-size: 12px; }
+td.assignee-cell app-maximo-person-picker { display: block; min-width: 180px; margin-bottom: 4px; }
+.anyone-toggle { font-size: 11px; opacity: 0.75; white-space: nowrap; }
+.anyone-toggle:hover { opacity: 1; }
+.make-rec { font-size: 11px; color: #ffcf4d; white-space: nowrap; }
+.make-rec:hover:not([disabled]) { text-decoration: underline; }
+.manual-tag { color: #ffcf4d; font-size: 12px; margin-left: 2px; }

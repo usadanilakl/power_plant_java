@@ -6,37 +6,66 @@
     <div class="mx-page">
 
       <section class="bar">
-        <label class="status-pick">Status
-          <select [(ngModel)]="status" (ngModelChange)="loaded() && load()">
-            <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
+        <label class="status-pick">People
+          <select [ngModel]="mode()" (ngModelChange)="onModeChange($event)">
+            <option value="leads">Lead operators</option>
+            <option value="people">Custom people</option>
           </select>
         </label>
-        <button (click)="load()" [disabled]="loading()">
-          {{ loading() ? 'Loading…' : (loaded() ? 'Refresh' : 'Load') }}
+        <button *ngIf="mode() === 'people'" class="ghost" (click)="showPeople.set(!showPeople())">
+          {{ selectedIds().size }} selected ▾
         </button>
-        <span class="muted">
-          Maximo work orders led by any local user with the
-          <code>LEAD_OPERATOR</code> role.
+        <button (click)="load()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Refresh' }}</button>
+        <span class="muted" *ngIf="mode() === 'leads'">
+          Work orders for any local user with the <code>LEAD_OPERATOR</code> role.
         </span>
-        <span class="muted" *ngIf="lastLoaded() as t">· last loaded {{ t.toLocaleTimeString() }}</span>
+        <span class="muted" *ngIf="mode() === 'people' && !selectedIds().size">Pick one or more people to track.</span>
+        <span class="muted" *ngIf="lastLoaded() as t">· loaded {{ t.toLocaleTimeString() }}</span>
         <span *ngIf="error()" class="error">{{ error() }}</span>
       </section>
 
-      <div *ngIf="truncated()" class="trunc-warn">
-        ⚠ Showing the first {{ list().length }} — results were capped and some work orders are hidden.
-        Narrow by status to see everything.
+      <!-- Custom people picker -->
+      <section class="people-panel" *ngIf="mode() === 'people' && showPeople()">
+        <input class="people-search" [ngModel]="peopleFilter()" (ngModelChange)="peopleFilter.set($event)"
+               placeholder="filter people…" />
+        <div class="people-list">
+          <label class="person" *ngFor="let p of filteredPeople()">
+            <input type="checkbox" [checked]="isSelected(p.personid)" (change)="togglePerson(p.personid)" />
+            {{ p.name }} <span class="muted">({{ p.personid }})</span>
+          </label>
+          <div class="muted people-empty" *ngIf="!people().length">Loading people…</div>
+        </div>
+        <div class="people-actions">
+          <button (click)="applyPeople()">Apply</button>
+          <button class="ghost" (click)="showPeople.set(false)">Close</button>
+        </div>
+      </section>
+
+      <!-- Tabs: All (status-filtered) + due-status buckets -->
+      <nav class="wo-tabs">
+        <button *ngFor="let t of tabs" [class.active]="activeTab() === t.key" (click)="activeTab.set(t.key)">
+          {{ t.label }} <span class="tab-count">{{ count(t.key) }}</span>
+        </button>
+      </nav>
+
+      <!-- "All" tab: status filter (defaults to APPR, clearable to all statuses) -->
+      <div class="all-bar" *ngIf="activeTab() === 'appr'">
+        <label class="status-pick">Status
+          <select [ngModel]="apprStatus()" (ngModelChange)="changeApprStatus($event)">
+            <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
+          </select>
+        </label>
+        <span class="trunc-warn" *ngIf="allTruncated()">
+          ⚠ Showing the first {{ allList().length }} — narrow by status to see everything.
+        </span>
       </div>
 
-      <div class="results-header">
-        <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>
-      </div>
+      <div *ngIf="loading() && !ready()" class="muted empty-msg">Loading work orders…</div>
 
-      <div *ngIf="!loaded()" class="muted empty-msg">{{ loading() ? 'Loading…' : 'Loading work orders…' }}</div>
-
-      <app-maximo-table *ngIf="loaded()"
+      <app-maximo-table *ngIf="ready()"
         [columns]="columns"
         [items]="list()"
-        emptyMessage="No work orders are assigned to any Lead Operator right now."
+        emptyMessage="No work orders in this tab."
         (rowDoubleClicked)="openDetail($event)">
       </app-maximo-table>
 

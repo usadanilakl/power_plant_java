@@ -7,6 +7,7 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import { MaximoPmApiService } from '../../../services/maximo/maximo-pm-api.service';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoWorkOrder } from '../../../models/maximo/maximo.models';
 import {
   PmOccurrence,
@@ -19,6 +20,9 @@ import {
 } from '../../../models/maximo/pm.models';
 
 type Tab = 'catalog' | 'assignments' | 'schedule';
+
+/** Sortable columns of the Recurring PMs (catalog) table. */
+type CatalogSortCol = 'pmnum' | 'pmDescription' | 'occurrenceCount' | 'cadence' | 'shift' | 'preferredDayOfWeek' | 'lastWonum';
 
 /** Crew-letter display order for the schedule grid (then "other", then blank). */
 const CREW_ORDER = ['A', 'B', 'C', 'D', 'Rel', 'OCM'];
@@ -42,7 +46,7 @@ interface PeekGrid {
 @Component({
   selector: 'app-maximo-pm-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent, MaximoPersonPickerComponent],
   templateUrl: './maximo-pm-page.component.html',
   styleUrl: './maximo-pm-page.component.css'
 })
@@ -66,6 +70,24 @@ export class MaximoPmPageComponent implements OnInit {
   // Catalog
   catalog = signal<RecurringPm[]>([]);
   catalogLoaded = signal(false);
+  // Search + column sort for the Recurring PMs table.
+  catalogSearch = signal('');
+  catalogSort = signal<{ col: CatalogSortCol; dir: 1 | -1 }>({ col: 'pmnum', dir: 1 });
+  /** Filtered (by search over pmnum/description/shift/cadence/last-WO) + sorted view of the catalog. */
+  visibleCatalog = computed(() => {
+    const q = this.catalogSearch().trim().toLowerCase();
+    const { col, dir } = this.catalogSort();
+    let list = this.catalog();
+    if (q) {
+      list = list.filter(pm =>
+        (pm.pmnum ?? '').toLowerCase().includes(q) ||
+        (pm.pmDescription ?? '').toLowerCase().includes(q) ||
+        (pm.shift ?? '').toLowerCase().includes(q) ||
+        (pm.cadence ?? '').toLowerCase().includes(q) ||
+        (pm.lastWonum ?? '').toLowerCase().includes(q));
+    }
+    return [...list].sort((a, b) => dir * this.catalogCompare(a, b, col));
+  });
   // Per-PM occurrence timeline (history + upcoming), lazily loaded on expand.
   expandedPmIds = signal<Set<number>>(new Set());
   occByPm = signal<Record<number, PmOccurrence[]>>({});
@@ -82,7 +104,10 @@ export class MaximoPmPageComponent implements OnInit {
   /** editable Target Start / Target Finish per WO href (seeded from the computed values). */
   startDate: Record<string, string> = {};
   finishDate: Record<string, string> = {};
+  /** per WO href: when true the assignee cell shows the free "any person" picker instead of the on-shift dropdown. */
+  assignAnyone: Record<string, boolean> = {};
   approving = signal(false);
+  savingPref = signal(false);
 
   // Inline schedule peek: expanded rows + per-DATE 3-week grid cache + in-flight dates.
   expandedHrefs = signal<Set<string>>(new Set());
@@ -141,6 +166,23 @@ export class MaximoPmPageComponent implements OnInit {
     finally { this.loading.set(false); }
   }
 
+  /** Toggle the sort column (or flip direction if already sorting by it). */
+  sortCatalog(col: CatalogSortCol) {
+    this.catalogSort.update(s => s.col === col ? { col, dir: (s.dir === 1 ? -1 : 1) } : { col, dir: 1 });
+  }
+  /** Header arrow for the active sort column. */
+  sortIndicator(col: CatalogSortCol): string {
+    const s = this.catalogSort();
+    return s.col === col ? (s.dir === 1 ? ' ▲' : ' ▼') : '';
+  }
+  private catalogCompare(a: RecurringPm, b: RecurringPm, col: CatalogSortCol): number {
+    if (col === 'occurrenceCount') return (a.occurrenceCount ?? 0) - (b.occurrenceCount ?? 0);
+    if (col === 'preferredDayOfWeek') return (a.preferredDayOfWeek ?? 99) - (b.preferredDayOfWeek ?? 99);
+    const av = String((a as any)[col] ?? '').toLowerCase();
+    const bv = String((b as any)[col] ?? '').toLowerCase();
+    return av.localeCompare(bv);
+  }
+
   /** Persist the row's current shift/cadence/preferred-day; the dropdowns update the pm object first. */
   async saveClassification(pm: RecurringPm) {
     try {
@@ -185,16 +227,34 @@ export class MaximoPmPageComponent implements OnInit {
   }
 
   // ── Assignments ─────────────────────────────────────────────────────────
-  async loadPending() {
+  /**
+   * Reload the pending list. By default (re)seeds each row's assignee/date maps from the server proposal.
+   * With `opts.preserve`, existing in-progress edits are kept — only brand-new rows and the optional
+   * `refreshHref` (the row whose shift/day just changed) are re-seeded — so editing one row's preference
+   * doesn't wipe the hand-edits the operator made on other rows before approving. Always prunes UI-state
+   * (assignee/date/assignAnyone) for rows no longer pending so stale keys don't linger across reloads.
+   */
+  async loadPending(opts?: { preserve?: boolean; refreshHref?: string }) {
     this.loading.set(true); this.error.set(null);
     try {
       const rows = await firstValueFrom(this.api.getPending());
-      this.pending.set(rows);
+      const preserve = opts?.preserve === true;
       for (const r of rows) {
-        this.assignee[r.href] = r.proposedPersonid ?? '';
-        this.startDate[r.href] = r.targetDate ?? '';
-        this.finishDate[r.href] = r.targetFinish ?? '';
+        if (!preserve || r.href === opts?.refreshHref || !(r.href in this.assignee)) {
+          this.assignee[r.href] = r.proposedPersonid ?? '';
+          this.startDate[r.href] = r.targetDate ?? '';
+          this.finishDate[r.href] = r.targetFinish ?? '';
+        }
       }
+      // Drop per-href UI state for WOs that are no longer pending (e.g. just approved).
+      const live = new Set(rows.map(r => r.href));
+      for (const href of Object.keys(this.assignee)) {
+        if (!live.has(href)) {
+          delete this.assignee[href]; delete this.startDate[href];
+          delete this.finishDate[href]; delete this.assignAnyone[href];
+        }
+      }
+      this.pending.set(rows);
       this.pendingLoaded.set(true);
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
@@ -202,6 +262,47 @@ export class MaximoPmPageComponent implements OnInit {
 
   async approve(row: PmPendingAssignment) {
     await this.doAssign([row]);
+  }
+
+  /** Swap the assignee cell between the on-shift suggestions dropdown and the free "any person" picker. */
+  toggleAssignAnyone(href: string) {
+    this.assignAnyone[href] = !this.assignAnyone[href];
+  }
+
+  /**
+   * Manually convert a non-recurring WO into a recurring task (auto-detection missed it). Creates a catalog
+   * entry from the WO's pmnum/description, then reloads — the row then matches the catalog and becomes
+   * recurring (its shift/day editable inline). Also refreshes the catalog list if it was already loaded.
+   */
+  async makeRecurring(row: PmPendingAssignment) {
+    if (row.recurringPmId != null || this.savingPref()) return;
+    this.savingPref.set(true); this.error.set(null); this.info.set(null);
+    try {
+      await firstValueFrom(this.api.makeRecurring({
+        pmnum: row.pmnum || undefined, description: row.description,
+        lead: row.currentLead || undefined, wonum: row.wonum || undefined,
+      }));
+      this.info.set(`“${row.description}” is now a recurring task.`);
+      this.catalogLoaded.set(false);   // force a fresh catalog fetch next time the tab opens
+      await this.loadPending({ preserve: true });   // keep other rows' edits; this row picks up recurringPmId
+    } catch (e: any) { this.error.set(this.msg(e)); }
+    finally { this.savingPref.set(false); }
+  }
+
+  /**
+   * Persist a recurring PM's shift/preferred-day edited inline on the Assignments tab (reuses the catalog
+   * classify endpoint), then reload — the change moves the effective date and thus the on-shift candidates,
+   * so the proposal has to recompute. No-op for non-recurring rows (no catalog row to edit).
+   */
+  async saveAssignmentPref(row: PmPendingAssignment) {
+    if (row.recurringPmId == null || this.savingPref()) return;
+    this.savingPref.set(true); this.error.set(null);
+    try {
+      await firstValueFrom(this.api.classify(row.recurringPmId, row.shift, row.cadence, row.preferredDayOfWeek));
+      // Re-seed only THIS row's proposal (its shift/day changed) — keep other rows' in-progress edits.
+      await this.loadPending({ preserve: true, refreshHref: row.href });
+    } catch (e: any) { this.error.set(this.msg(e)); }
+    finally { this.savingPref.set(false); }
   }
 
   async approveAll() {

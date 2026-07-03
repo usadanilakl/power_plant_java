@@ -44,6 +44,12 @@ export class MaximoPmApiService {
       .pipe(map(r => r.responseData ?? []));
   }
 
+  /** Manually convert a work order into a recurring-PM catalog entry (auto-detection missed it). */
+  makeRecurring(req: { pmnum?: string; description: string; lead?: string; wonum?: string }): Observable<RecurringPm> {
+    return this.http.post<SpringApiResponse<RecurringPm>>(`${this.base}/catalog/from-wo`, req)
+      .pipe(map(r => r.responseData));
+  }
+
   // ── Assignments ─────────────────────────────────────────────────────────
   getPending(): Observable<PmPendingAssignment[]> {
     return this.http.get<SpringApiResponse<PmPendingAssignment[]>>(`${this.base}/pending-assignments`)

@@ -13,6 +13,7 @@ import { UpdateManager } from '../managers/update.manager';
 import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
+import { MaximoOverviewManager } from '../managers/maximo-overview.manager';
 import { WebViewAmsManager } from '../managers/webview-ams.manager';
 import { WebViewSdsManager } from '../managers/webview-sds.manager';
 import { WeatherManager } from '../managers/weather.manager';
@@ -28,7 +29,7 @@ import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig, SdsScraperConfig } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, MaximoOverviewConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig, SdsScraperConfig } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -37,6 +38,7 @@ export class IpcHandlers {
   private syncStatusManager: SyncStatusManager;
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
+  private maximoOverviewManager: MaximoOverviewManager;
   private webViewAmsManager: WebViewAmsManager;
   private webViewSdsManager: WebViewSdsManager;
   private weatherManager: WeatherManager;
@@ -63,6 +65,7 @@ export class IpcHandlers {
     this.resourcePackManager = new ResourcePackManager();
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
+    this.maximoOverviewManager = new MaximoOverviewManager();
     this.webViewAmsManager = new WebViewAmsManager();
     this.webViewSdsManager = new WebViewSdsManager();
     this.daEmailManager = new DaEmailManager();
@@ -908,6 +911,52 @@ export class IpcHandlers {
         });
 
         return { success: true, data: { count: items.length, items } };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Overview: the tracked people (per this device's maximo-overview-config) bucketed by due status.
+    // Spring Boot does the bucketing; here we just resolve the config into query params and return it.
+    ipcMain.handle(events.IPC_MAXIMO_OVERVIEW, async () => {
+      try {
+        const cfg = this.maximoOverviewManager.getConfig();
+        const mode = cfg.mode === 'people' ? 'people' : 'leads';
+        const ids = mode === 'people' ? (cfg.personids ?? []).join(',') : '';
+        const url = '/ng/maximo/bundle/overview'
+          + '?mode=' + encodeURIComponent(mode)
+          + '&pageSize=200'
+          + (ids ? '&personids=' + encodeURIComponent(ids) : '');
+        const envelope = await this.springBootApiGet(url);
+        return { success: true, data: envelope?.responseData ?? null };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_MAXIMO_GET_OVERVIEW_CONFIG, async () => {
+      try {
+        return { success: true, data: this.maximoOverviewManager.getConfig() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_MAXIMO_SAVE_OVERVIEW_CONFIG, async (_event, config: MaximoOverviewConfig) => {
+      try {
+        this.maximoOverviewManager.saveConfig(config);
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // The people pool for the overview config picker: active users with a resolved Maximo personid.
+    ipcMain.handle(events.IPC_MAXIMO_LABOR_PEOPLE, async () => {
+      try {
+        const envelope = await this.springBootApiGet('/ng/maximo/labor-people');
+        const people = Array.isArray(envelope?.responseData) ? envelope.responseData : [];
+        return { success: true, data: people };
       } catch (error: any) {
         return { success: false, error: error.message };
       }

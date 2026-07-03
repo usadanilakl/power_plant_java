@@ -76,7 +76,8 @@
       "Bash(tee /tmp/full-test.log)",
       "Read(//tmp/**)",
       "Bash('C:\\\\Users\\\\usada/.vscode/extensions/openai.chatgpt-26.623.31921-win32-x64/bin/windows-x86_64/codex.exe' exec *)",
-      "Bash(/c/Users/usada/my_projects/power_plant_java/codex-review.sh --uncommitted)"
+      "Bash(/c/Users/usada/my_projects/power_plant_java/codex-review.sh --uncommitted)",
+      "Bash(mvn -o compile -DskipTests)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java",

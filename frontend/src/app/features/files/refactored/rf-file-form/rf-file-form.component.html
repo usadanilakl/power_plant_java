@@ -158,13 +158,17 @@
         </div>
         <div class="dup-action-note">
           <strong>None of these are the right target?</strong> Use <em>Override</em> to replace one,
-          or <em>Revise</em> to add a new revision to one (both keep a single entry). If this is a
-          genuinely different document, cancel and give it a distinct file number.
+          <em>Revise</em> to add a new revision to one (both keep a single entry), or
+          <em>Save as new file</em> if this is a genuinely different document that the
+          similarity check flagged by mistake.
         </div>
       </div>
       <div class="dup-footer">
         <button type="button" class="dup-btn dup-btn-cancel" (click)="onDuplicateCancel()">
           Cancel upload
+        </button>
+        <button type="button" class="dup-btn dup-btn-new" (click)="onSaveAsNew()">
+          Save as new file
         </button>
       </div>
     </div>

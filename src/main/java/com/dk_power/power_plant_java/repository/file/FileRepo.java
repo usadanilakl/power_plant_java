@@ -94,5 +94,8 @@ public interface FileRepo extends BaseRepository<FileObject> {
     @Query("SELECT f FROM FileObject f WHERE f.clonedFromId IS NOT NULL")
     List<FileObject> findAllClones();
 
+    /** Files bound to a PhysicalObject (the binder's "Documents" list). */
+    List<FileObject> findByPhysicalObjectId(Long physicalObjectId);
+
 }
 

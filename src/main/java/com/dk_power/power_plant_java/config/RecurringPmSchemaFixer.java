@@ -38,6 +38,7 @@ public class RecurringPmSchemaFixer {
         String[] statements = {
             "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS pm_key VARCHAR(1024)",
             "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS preferred_day_of_week INTEGER",
+            "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS manually_added BOOLEAN DEFAULT FALSE",
             // Stale UNIQUE index on pmnum — pmnum is now nullable (description-keyed rows). Drop it.
             "DROP INDEX IF EXISTS idx_recurring_pm_pmnum",
         };

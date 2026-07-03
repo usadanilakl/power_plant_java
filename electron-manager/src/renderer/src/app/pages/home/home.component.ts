@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GridsterModule, GridsterConfig, GridsterItem, GridType, CompactType, DisplayGrid } from 'angular-gridster2';
-import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, MaximoLeadOpSummary, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, MaximoOverview, APP_DISPLAY_NAME } from '../../services/electron.service';
 import { DashboardLayoutService, WidgetPlacement, WidgetId, WIDGET_REGISTRY, LayoutPreset } from '../../services/dashboard-layout.service';
 import { FireImpairmentWidgetComponent } from './widgets/fire-impairment-widget.component';
 import { GateLogWidgetComponent } from './widgets/gate-log-widget.component';
@@ -139,7 +139,7 @@ interface DashboardGridsterItem extends GridsterItem {
               [newWorkRequestCount]="newWorkRequestCount"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
             <app-maximo-widget *ngSwitchCase="'maximo-lead-op'"
-              [status]="status" [summary]="maximoLeadOpSummary"
+              [status]="status" [overview]="maximoOverview" (changed)="loadMaximoOverview()"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
             <app-external-links-widget *ngSwitchCase="'external-links'"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
@@ -291,7 +291,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   activeImpairmentCount: number | null = null;
   newWorkRequestCount: number | null = null;
   activeWorkRequestCount: number | null = null;
-  maximoLeadOpSummary: MaximoLeadOpSummary | null = null;
+  maximoOverview: MaximoOverview | null = null;
   weatherStatus: WeatherStatus | null = null;
   weatherForecast: WeatherForecast | null = null;
   perryStatus: PerryWeatherStatus | null = null;
@@ -480,7 +480,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (!wasRunning && s.state === 'running') {
         this.loadFireImpCount();
         this.loadWorkRequestCount();
-        this.loadMaximoLeadOpSummary();
+        this.loadMaximoOverview();
       }
     });
 
@@ -596,10 +596,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  private async loadMaximoLeadOpSummary(): Promise<void> {
+  async loadMaximoOverview(): Promise<void> {
     try {
-      const result = await this.electronService.maximoGetLeadOpSummary('APPR');
-      if (result.success && result.data) this.maximoLeadOpSummary = result.data;
+      const result = await this.electronService.maximoGetOverview();
+      if (result.success && result.data) this.maximoOverview = result.data;
     } catch {}
   }
 

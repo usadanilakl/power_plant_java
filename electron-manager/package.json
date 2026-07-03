@@ -15,9 +15,10 @@
     "dev:renderer": "cd src/renderer && npm start",
     "electron": "electron .",
     "download-jre": "node scripts/download-jre.js",
-    "prepackage": "npm run download-jre && node scripts/sync-etapro-defaults.js",
+    "sync-defaults": "node scripts/sync-etapro-defaults.js",
+    "prepackage": "npm run download-jre && npm run sync-defaults",
     "package": "npm run build && electron-builder",
-    "package:dir": "npm run build && electron-builder --dir",
+    "package:dir": "npm run sync-defaults && npm run build && electron-builder --dir",
     "package:zip": "npm run package:dir && node scripts/create-update-zip.js"
   },
   "dependencies": {

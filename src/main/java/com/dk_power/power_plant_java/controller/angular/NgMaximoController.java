@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryItemDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryStockDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryUsageDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoLocationDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoOverviewDto;
 import com.dk_power.power_plant_java.dto.maximo.IssueMaterialRequest;
 import com.dk_power.power_plant_java.dto.maximo.MaximoMaterialTxnDto;
 import com.dk_power.power_plant_java.dto.maximo.ReturnMaterialRequest;
@@ -57,6 +58,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -492,6 +494,18 @@ public class NgMaximoController {
         }
     }
 
+    /** Manually convert a work order into a recurring-PM catalog entry (auto-detection missed it). */
+    @PostMapping("/pm/catalog/from-wo")
+    public ResponseEntity<NgApiResponse<RecurringPmDto>> pmMakeRecurring(@RequestBody MakeRecurringRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    recurringPms.manualAdd(req.pmnum(), req.description(), req.lead(), req.wonum()), "created"));
+        } catch (Exception e) {
+            log.warn("[Maximo] PM make-recurring failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     /** A catalog PM's real Maximo work orders (history + upcoming), matched by pmnum or description. */
     @GetMapping("/pm/catalog/{id}/occurrences")
     public ResponseEntity<NgApiResponse<List<PmOccurrenceDto>>> pmOccurrences(@PathVariable Long id) {
@@ -527,6 +541,9 @@ public class NgMaximoController {
     }
 
     public record ClassifyRequest(ShiftPreference shift, RecurrenceCadence cadence, Integer dayOfWeek) {}
+
+    /** Body for manually converting a WO to a recurring task — the fields we already have on the pending row. */
+    public record MakeRecurringRequest(String pmnum, String description, String lead, String wonum) {}
 
     /** Maximo personid of the signed-in desktop user, or null if not resolvable. */
     private String currentUserPersonid() {
@@ -606,6 +623,38 @@ public class NgMaximoController {
             @RequestParam(value = "status", required = false) String status) {
         return ResponseEntity.ok(new NgApiResponse<>(
                 bundles.leadOperatorWorkOrders(pageSize, status), "ok"));
+    }
+
+    /**
+     * Overview for the Electron widget: a tracked people set's WOs bucketed by due status this ISO
+     * week (overdue / due this week / completed this week / upcoming). {@code mode=leads} (default)
+     * tracks the local Lead Operators; {@code mode=people} tracks the comma-separated {@code personids}.
+     */
+    @GetMapping("/bundle/overview")
+    public ResponseEntity<NgApiResponse<MaximoOverviewDto>> maximoOverview(
+            @RequestParam(value = "mode", defaultValue = "leads") String mode,
+            @RequestParam(value = "personids", required = false) String personids,
+            @RequestParam(value = "pageSize", defaultValue = "200") int pageSize) {
+        List<String> ids = (personids == null || personids.isBlank())
+                ? List.of()
+                : Arrays.stream(personids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+        return ResponseEntity.ok(new NgApiResponse<>(bundles.overview(mode, ids, pageSize), "ok"));
+    }
+
+    /**
+     * Work orders for a tracked people set (leads or custom personids), optionally filtered to one status
+     * (blank = all statuses). Backs the "All" tab, whose status filter defaults to APPR but is changeable/clearable.
+     */
+    @GetMapping("/bundle/people-work-orders")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> peopleWorkOrders(
+            @RequestParam(value = "mode", defaultValue = "leads") String mode,
+            @RequestParam(value = "personids", required = false) String personids,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "pageSize", defaultValue = "500") int pageSize) {
+        List<String> ids = (personids == null || personids.isBlank())
+                ? List.of()
+                : Arrays.stream(personids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+        return ResponseEntity.ok(new NgApiResponse<>(bundles.peopleWorkOrders(mode, ids, status, pageSize), "ok"));
     }
 
     // ---- Worklog (notes / comments) --------------------------------------

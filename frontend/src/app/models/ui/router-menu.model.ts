@@ -122,13 +122,23 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         ]
     },
     {
+        label: 'Plant',
+        icon: 'hub',
+        color: '#26A69A',
+        defaultRoute: '/plant/map',
+        requiresFullAccess: true,
+        items: [
+            { route: '/plant/map', label: 'Plant Map', icon: 'map', iconColor: '#26A69A' },
+            { route: '/plant/hierarchy', label: 'Hierarchy', icon: 'account_tree', iconColor: '#42A5F5' }
+        ]
+    },
+    {
         label: 'Maximo',
         icon: 'engineering',
         color: '#26C6DA',
         defaultRoute: '/maximo/assets',
         requiresFullAccess: true,
         items: [
-            { route: '/maximo/hierarchy', label: 'Plant Hierarchy', icon: 'account_tree', iconColor: '#26C6DA' },
             { route: '/maximo/assets', label: 'Assets', icon: 'precision_manufacturing', iconColor: '#26C6DA' },
             { route: '/maximo/service-requests', label: 'Service Requests', icon: 'support_agent', iconColor: '#FFA726' },
             { route: '/maximo/work-orders', label: 'Work Orders', icon: 'assignment', iconColor: '#66BB6A' },

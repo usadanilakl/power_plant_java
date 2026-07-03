@@ -52,6 +52,43 @@
             <div class="row" *ngIf="n.maximoType"><span class="lbl">Maximo type</span><span>{{ n.maximoType }}</span></div>
           </div>
 
+          <!-- Edit -->
+          <div class="edit">
+            <h4>Edit</h4>
+            <div class="frow"><span class="lbl">Name</span><input [(ngModel)]="editName" /></div>
+            <div class="frow"><span class="lbl">Type</span>
+              <select [(ngModel)]="editType">
+                <option value="">—</option>
+                <option *ngFor="let t of typeOptions" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="frow"><span class="lbl">Tag</span><input [(ngModel)]="editTag" /></div>
+            <div class="frow"><span class="lbl">Description</span><input [(ngModel)]="editDesc" /></div>
+            <div class="frow"><span class="lbl">Location</span><input [(ngModel)]="editLoc" /></div>
+            <button (click)="saveEdit()" [disabled]="savingEdit()">{{ savingEdit() ? 'Saving…' : 'Save changes' }}</button>
+          </div>
+
+          <!-- Documents (linked files / P&IDs) -->
+          <div class="docs">
+            <h4>Documents ({{ files().length }})</h4>
+            <div class="muted" *ngIf="filesLoading()">Loading…</div>
+            <ul class="doc-list" *ngIf="files().length">
+              <li *ngFor="let f of files()">
+                <a class="doc-open" (click)="openFile(f)">{{ f.name || f.fileNumber || ('#'+f.id) }}<span class="ext" *ngIf="f.extension"> · {{ f.extension }}</span></a>
+                <button class="x" (click)="unlinkFile(f)" title="Unlink">✕</button>
+              </li>
+            </ul>
+            <div class="muted" *ngIf="!filesLoading() && !files().length">No documents linked.</div>
+
+            <div class="doc-search">
+              <input [(ngModel)]="fileQuery" placeholder="search files to link…" (keyup.enter)="searchFiles()" />
+              <button (click)="searchFiles()" [disabled]="fileSearching()">Find</button>
+            </div>
+            <ul class="results" *ngIf="fileResults().length">
+              <li *ngFor="let f of fileResults()" (click)="linkFile(f)">{{ fileLabel(f) }}</li>
+            </ul>
+          </div>
+
           <div class="maximo">
             <h4>Maximo</h4>
             <div class="muted" *ngIf="!n.maximoAssetnum && !n.maximoLocation">Not linked to a Maximo asset or location.</div>

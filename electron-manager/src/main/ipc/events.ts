@@ -156,6 +156,10 @@ export const IPC_PERMITS_OPEN_MONITOR = 'permits:open-monitor';
 
 // Maximo bundles (invoke/handle)
 export const IPC_MAXIMO_LEAD_OP_SUMMARY = 'maximo:lead-op-summary';
+export const IPC_MAXIMO_OVERVIEW = 'maximo:overview';
+export const IPC_MAXIMO_GET_OVERVIEW_CONFIG = 'maximo:get-overview-config';
+export const IPC_MAXIMO_SAVE_OVERVIEW_CONFIG = 'maximo:save-overview-config';
+export const IPC_MAXIMO_LABOR_PEOPLE = 'maximo:labor-people';
 
 // Window Layout (invoke/handle)
 export const IPC_LAYOUT_SAVE = 'layout:save';

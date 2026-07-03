@@ -29,6 +29,8 @@ public class MaximoWorkOrderCriteria {
     private String schedfinishTo;        // ISO 8601, applied as spi:schedfinish <= value
     private String reportdateFrom;       // ISO 8601, applied as spi:reportdate >= value
     private String reportdateTo;         // ISO 8601, applied as spi:reportdate <= value
+    private String statusdateFrom;       // ISO 8601, applied as spi:statusdate >= value (e.g. completed-since)
+    private String statusdateTo;         // ISO 8601, applied as spi:statusdate <= value
     private String descriptionContains;       // LIKE %...% on spi:description (title only)
     private String longDescriptionContains;   // LIKE %...% on spi:description_longdescription
     private String wonumContains;              // LIKE %...% on spi:wonum

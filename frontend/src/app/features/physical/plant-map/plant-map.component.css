@@ -1,0 +1,153 @@
+.pm { display: flex; gap: 0; height: calc(100vh - 96px); color: #e6e6e6; font: 13px/1.4 ui-monospace, Consolas, monospace; }
+
+/* ── Left rail ── */
+.rail { flex: 0 0 250px; max-width: 250px; overflow: auto; background: #1c1c1c; border-right: 1px solid #333;
+  padding: 10px; display: flex; flex-direction: column; gap: 12px; }
+.rail .lbl { display: block; color: #7cc6ff; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.rail ul { list-style: none; margin: 0; padding: 0; }
+.rail li { padding: 4px 6px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.rail li:hover { background: #2a2a2a; }
+.rail li.muted { cursor: default; color: #777; }
+.rail li.muted:hover { background: transparent; }
+
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 12px; }
+.crumb { color: #9ccaff; cursor: pointer; }
+.crumb:hover { text-decoration: underline; }
+.crumb.here { color: #e6e6e6; font-weight: 600; cursor: default; }
+.sep { color: #666; margin: 0 2px; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #78909c; flex: 0 0 auto; }
+.hint { color: #888; font-size: 11px; margin: 2px 0 6px; }
+
+.create { border-top: 1px solid #2a2a2a; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.create input, .create select { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 4px 6px; font: inherit; width: 100%; }
+.create .row { display: flex; gap: 6px; }
+.create .row select { flex: 1; } .create .row input { flex: 1; min-width: 0; }
+.rail button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer; font: inherit; }
+.rail button:hover:not([disabled]) { background: #1177bb; }
+.rail button[disabled] { opacity: 0.5; cursor: default; }
+
+/* ── Stage ── */
+.stage { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #2a2a2a; border-bottom: 1px solid #333; }
+.bar strong { color: #7cc6ff; }
+.chip { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #10161c; font-weight: 600; text-transform: uppercase; }
+.muted { color: #777; } .muted.save { color: #7ee787; }
+.error { color: #ff7b72; }
+.hint2 { margin-left: auto; color: #777; font-size: 11px; }
+
+.scroll { flex: 1 1 auto; overflow: auto; background:
+  linear-gradient(#242424 1px, transparent 1px) 0 0 / 100% 28px,
+  linear-gradient(90deg, #242424 1px, transparent 1px) 0 0 / 28px 100%,
+  #191919; min-height: 0; }
+.content { position: relative; }
+
+/* The svg is hittable, but only painted strokes are targets (visiblePainted default): empty areas pass
+   through to the canvas for draw/deselect, `.wire-hit` opts in, the visible `.wire` opts out. */
+.wires { position: absolute; inset: 0; overflow: visible; }
+/* per-pipe stroke/width come from [attr] bindings — keep them OUT of CSS so they aren't overridden. */
+.wire { fill: none; pointer-events: none; }
+.wire.temp { stroke: #AB47BC; stroke-width: 2; stroke-dasharray: 5 4; }
+.wire.sel { filter: drop-shadow(0 0 3px #7cc6ff); }
+.wire-hit { stroke: transparent; stroke-width: 14; fill: none; pointer-events: stroke; cursor: pointer; }
+
+.box { position: absolute; box-sizing: border-box; background: #23272e; border: 2px solid #567; border-radius: 6px;
+  padding: 8px 10px; cursor: grab; user-select: none; touch-action: none; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.box:active { cursor: grabbing; }
+.box.sel { box-shadow: 0 0 0 2px #7cc6ff, 0 2px 8px rgba(0,0,0,0.45); }
+.box .swatch { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+
+/* glyphed boxes: the symbol fills the interior; the label becomes a caption pinned at the bottom. */
+.box.glyphed { justify-content: flex-end; padding: 5px 6px; }
+.box .glyph { position: absolute; left: 8px; right: 8px; top: 6px; bottom: 20px; pointer-events: none; }
+.box .mini { position: absolute; left: 5px; right: 5px; top: 5px; bottom: 19px; pointer-events: none; opacity: 0.95; }
+.box .mini rect { stroke: rgba(0,0,0,0.28); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.box .pipe-cap { position: absolute; left: 8px; right: 8px; top: 50%; transform: translateY(-50%);
+  height: 40%; min-height: 8px; border-radius: 999px; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
+.box.glyphed .lbl { position: relative; z-index: 1; margin-left: 4px; }
+.box.glyphed .name { font-size: 11px; background: rgba(20,22,26,0.7); padding: 0 4px; border-radius: 3px; align-self: flex-start; max-width: 100%; }
+.box.glyphed .ty { display: none; }
+
+.box .lbl { display: flex; flex-direction: column; gap: 1px; margin-left: 4px; min-width: 0; }
+.box .name { color: #eaeaea; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.box .ty { color: #8aa; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.box .chev { position: absolute; top: 4px; right: 6px; color: #7ee787; font-size: 15px; line-height: 1; }
+.box .port { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px;
+  border-radius: 50%; background: #AB47BC; border: 2px solid #1c1c1c; cursor: crosshair; touch-action: none; }
+.box .port:hover { background: #c86be6; }
+.box .resize { position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, #567 50%); border-bottom-right-radius: 5px; }
+
+.rubber { position: absolute; border: 1px dashed #7cc6ff; background: rgba(124,198,255,0.10); pointer-events: none; }
+
+.empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; gap: 8px; text-align: center; padding: 30px; }
+.empty .roots { list-style: none; padding: 0; }
+.empty .roots li { color: #9ccaff; cursor: pointer; padding: 4px; }
+.empty .roots li:hover { text-decoration: underline; }
+
+/* ── Inspector ── */
+.inspector { flex: 0 0 300px; max-width: 300px; overflow: auto; background: #1c1c1c; border-left: 1px solid #333; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.inspector header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.inspector h3 { margin: 0; color: #7cc6ff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inspector h4 { margin: 0 0 6px; color: #7cc6ff; font-size: 12px; border-top: 1px solid #2a2a2a; padding-top: 8px; }
+
+.edit { display: flex; flex-direction: column; gap: 6px; }
+.frow { display: grid; grid-template-columns: 62px 1fr; gap: 8px; align-items: center; }
+.frow.top { align-items: start; }
+.frow .lbl { color: #888; }
+.edit input, .edit select, .edit textarea, .docs input { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 4px 6px; font: inherit; width: 100%; box-sizing: border-box; }
+.edit textarea { resize: vertical; }
+.edit > button { align-self: flex-start; background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 12px; cursor: pointer; font: inherit; }
+.edit > button:hover:not([disabled]) { background: #1177bb; }
+.edit > button[disabled] { opacity: 0.55; cursor: default; }
+
+.actions { display: flex; flex-direction: column; gap: 6px; }
+.actions button { border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer; font: inherit; text-align: left; }
+.actions .drill { background: #1c4a2a; color: #9fe6a4; }
+.actions .drill:hover { background: #245c34; }
+.actions .ghost { background: #2a2a2a; color: #ccc; border: 1px solid #444; }
+.actions .ghost:hover { background: #333; }
+.actions .danger { background: transparent; color: #ff7b72; border: 1px solid #5a2a28; }
+.actions .danger:hover { background: #3a1f1e; }
+
+.conn, .doc-list, .results { list-style: none; margin: 0; padding: 0; }
+.conn li, .doc-list li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.conn .arrow { color: #7c94b0; }
+.conn .muted, .doc-list .muted { color: #777; }
+.x { margin-left: auto; background: transparent; color: #ff7b72; border: 0; cursor: pointer; padding: 0 4px; font: inherit; }
+
+.docs { display: flex; flex-direction: column; gap: 4px; }
+.doc-open { color: #9ccaff; cursor: pointer; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-open:hover { text-decoration: underline; }
+.doc-open .ext { color: #777; }
+.doc-search { display: flex; gap: 6px; margin-top: 4px; }
+.doc-search input { flex: 1; min-width: 0; }
+.docs button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 4px 10px; cursor: pointer; font: inherit; }
+.docs button:hover:not([disabled]) { background: #1177bb; }
+.results { border: 1px solid #333; border-radius: 3px; max-height: 160px; overflow: auto; margin-top: 4px; }
+.results li { padding: 5px 8px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #262626; }
+.results li:hover { background: #2a2a2a; }
+
+/* ── Appearance (glyph + color) / Pipe ── */
+.appearance { display: flex; flex-direction: column; gap: 8px; }
+.appearance .frow { display: flex; align-items: center; gap: 8px; }
+.appearance .frow .lbl { width: 62px; flex: 0 0 auto; color: #888; }
+.appearance .frow input[type=range] { flex: 1; min-width: 0; }
+.wval { color: #aaa; font-size: 12px; }
+.glyph-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.glyph-grid button { background: #22262c; border: 1px solid #3a3f47; border-radius: 4px; padding: 4px; cursor: pointer;
+  height: 34px; display: flex; align-items: center; justify-content: center; }
+.glyph-grid button:hover { background: #2c313a; }
+.glyph-grid button.on { border-color: #7cc6ff; background: #15334f; }
+.glyph-grid button svg { width: 100%; height: 100%; }
+.glyph-grid .mini-pipe { width: 72%; height: 6px; border-radius: 999px; background: #8aa; }
+.glyph-grid .mini-box { width: 70%; height: 62%; border: 1px solid #8aa; border-radius: 2px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.swatches .sw { width: 20px; height: 20px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatches .sw.on { border-color: #fff; }
+.swatches .pick { width: 28px; height: 24px; padding: 0; border: 1px solid #444; background: #1e1e1e; border-radius: 4px; cursor: pointer; }
+.pipe-chip { color: #10161c; }
+.toggle { display: flex; align-items: center; gap: 6px; color: #ccc; font-size: 12px; cursor: pointer; }
+.toggle.dim { color: #666; cursor: default; }
+.toggle input { cursor: inherit; margin: 0; }

@@ -20,6 +20,8 @@ public class PhysicalObjectDto {
     private String maximoAssetnum;
     private String maximoType;
     private Long parentId;
+    private Integer floorIndex;
+    private Long diagramId;
     private boolean hasChildren;
 
     public static PhysicalObjectDto from(PhysicalObject e, boolean hasChildren) {
@@ -35,6 +37,8 @@ public class PhysicalObjectDto {
         d.setMaximoAssetnum(e.getMaximoAssetnum());
         d.setMaximoType(e.getMaximoType());
         d.setParentId(e.getParent() != null ? e.getParent().getId() : null); // getId() on a lazy proxy — no init
+        d.setFloorIndex(e.getFloorIndex());
+        d.setDiagramId(e.getDiagramId());
         d.setHasChildren(hasChildren);
         return d;
     }

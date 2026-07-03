@@ -31,6 +31,7 @@ import { SDS_ROUTES } from './routes/sds.routes';
 import { ETAPRO_ROUTES } from './routes/etapro.routes';
 import { ETAPRO_REPORTS_ROUTES } from './routes/etapro-reports.routes';
 import { MAXIMO_ROUTES } from './routes/maximo.routes';
+import { PLANT_ROUTES } from './routes/plant.routes';
 
 export const routes: Routes = [
   // Public routes
@@ -69,5 +70,6 @@ export const routes: Routes = [
   ...SDS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...ETAPRO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...ETAPRO_REPORTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...MAXIMO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
+  ...MAXIMO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...PLANT_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
 ];

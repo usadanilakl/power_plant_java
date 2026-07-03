@@ -1,13 +1,18 @@
 package com.dk_power.power_plant_java.entities.physical;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * The canonical record for a physical thing in the plant, forming the tree
@@ -93,27 +98,40 @@ public class PhysicalObject extends BaseAuditEntity {
     @Column(name = "local_uuid")
     private String localUuid;
 
-    // ── Representation refs (Phase 5 — the node's own backdrop/model; markers are a separate entity) ──
+    // ── Representation (the node's canvas is a Diagram — see diagramId below; 3D deferred) ──
 
-    /** FileObject id of this node's site-plan backdrop. */
-    @Column(name = "site_plan_file_id")
-    private Long sitePlanFileId;
-
-    /** FileObject id of this node's floor-plan backdrop. */
-    @Column(name = "floor_plan_file_id")
-    private Long floorPlanFileId;
-
-    /** FileObject id of this node's P&amp;ID backdrop. */
-    @Column(name = "pid_file_id")
-    private Long pidFileId;
-
-    /** Reference into an external 3D model (element/GUID); spatial relationships live inside the model. */
+    /** Reference into an external 3D model (element/GUID); spatial relationships live inside the model. Deferred. */
     @Column(name = "model3d_ref")
     private String model3dRef;
 
     /** Ordering for the level selector among sibling floors/levels. */
     @Column(name = "floor_index")
     private Integer floorIndex;
+
+    /**
+     * Cross-cutting plant-system membership — the functional axis orthogonal to the spatial tree (a system
+     * spans many locations; a location holds many systems). Reuses the shared {@code System} {@link Value}s
+     * (same pattern as {@code FileObject.systems}); unidirectional {@code @ManyToMany}, no cascade. Tracked by
+     * {@code FieldChangeEntityListener} for sync (serialized as a Value-id array, join rebuilt on the receiver).
+     * NOTE: any write that changes this collection MUST touch a scalar (e.g. dateModified) so {@code @PostUpdate}
+     * fires — a collection-only change does not dirty the parent, so sync would otherwise never emit it.
+     */
+    @BatchSize(size = 50)
+    @ManyToMany
+    @JoinTable(
+        name = "physical_object_systems",
+        joinColumns = @JoinColumn(name = "physical_object_id"),
+        inverseJoinColumns = @JoinColumn(name = "value_id")
+    )
+    private Set<Value> systems = new HashSet<>();
+
+    /**
+     * The node's own blank schematic canvas — a {@code Diagram} id (plain FK, NOT @ManyToOne). Its children are
+     * drawn on it as {@code DiagramPlacement}s linked via {@code sourceEntityType="PhysicalObject"}. Lazily
+     * get-or-created; device-prefixed so it's the same synced Diagram on every desktop.
+     */
+    @Column(name = "diagram_id")
+    private Long diagramId;
 
     /**
      * Compute the stable link/dedup key. Priority: asset → location → local uuid. Kept in sync on save so callers

@@ -170,6 +170,15 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
      */
     private Long counterpartId;
 
+    /**
+     * Soft FK to the {@link com.dk_power.power_plant_java.entities.physical.PhysicalObject} this file is bound to —
+     * the informational binder: "attach this document / P&ID to a plant object". Plain Long (same convention as
+     * {@link #clonedFromId}/{@link #counterpartId}: no cascade, small wire payload), sync-tracked automatically by
+     * FieldChangeEntityListener. Inbound dedup-remapped in {@code FieldSyncService} (PhysicalObject is a dedup
+     * candidate on maximoKey), so a linked file follows its object across a dedup.
+     */
+    private Long physicalObjectId;
+
 
 
     public static final List<String> lightDto = List.of(

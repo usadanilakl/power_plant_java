@@ -108,12 +108,40 @@ export interface MaximoWoBrief {
   status: string;
   priority: string;
   targetStart: string;
+  statusDate?: string;   // present on overview rows (completion time for COMP WOs)
 }
 
 export interface MaximoLeadOpSummary {
   count: number;
   /** All matching WOs, pre-sorted oldest target-start first. */
   items: MaximoWoBrief[];
+}
+
+/** Per-device config for the overview widget: which people this client tracks. */
+export interface MaximoOverviewConfig {
+  mode: 'leads' | 'people';
+  personids: string[];
+  label?: string;
+}
+
+/** A selectable person for the overview config picker (active user with a Maximo personid). */
+export interface MaximoLaborPerson {
+  name: string;
+  personid: string;
+}
+
+/** The overview payload: tracked people's WOs bucketed by due status for the current ISO week. */
+export interface MaximoOverview {
+  mode: string;
+  asOf: string;
+  weekStart: string;
+  weekEnd: string;
+  personCount: number;
+  overdue: MaximoWoBrief[];
+  dueThisWeek: MaximoWoBrief[];
+  completedThisWeek: MaximoWoBrief[];
+  completedLastWeek?: MaximoWoBrief[]; // used by the web page, not the widget
+  upcoming: MaximoWoBrief[];
 }
 
 export interface GateLogStatus {
@@ -513,6 +541,10 @@ interface ElectronAPI {
 
   // Maximo bundles
   maximoGetLeadOpSummary: (status?: string) => Promise<IpcResult<MaximoLeadOpSummary>>;
+  maximoGetOverview: () => Promise<IpcResult<MaximoOverview>>;
+  maximoGetOverviewConfig: () => Promise<IpcResult<MaximoOverviewConfig>>;
+  maximoSaveOverviewConfig: (config: MaximoOverviewConfig) => Promise<IpcResult>;
+  maximoGetLaborPeople: () => Promise<IpcResult<MaximoLaborPerson[]>>;
 
   // Window Layout
   saveWindowLayout: () => Promise<IpcResult>;
@@ -845,6 +877,26 @@ export class ElectronService implements OnDestroy {
   async maximoGetLeadOpSummary(status?: string): Promise<IpcResult<MaximoLeadOpSummary>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.maximoGetLeadOpSummary(status);
+  }
+
+  async maximoGetOverview(): Promise<IpcResult<MaximoOverview>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoGetOverview();
+  }
+
+  async maximoGetOverviewConfig(): Promise<IpcResult<MaximoOverviewConfig>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoGetOverviewConfig();
+  }
+
+  async maximoSaveOverviewConfig(config: MaximoOverviewConfig): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoSaveOverviewConfig(config);
+  }
+
+  async maximoGetLaborPeople(): Promise<IpcResult<MaximoLaborPerson[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoGetLaborPeople();
   }
 
   // Window Layout

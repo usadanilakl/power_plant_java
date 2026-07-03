@@ -43,21 +43,43 @@
                 <td><button class="link wo-link" (click)="openWo(r)" title="Open work order">{{ r.wonum }}</button></td>
                 <td>{{ r.pmnum || '—' }}</td>
                 <td class="desc">{{ r.description }}</td>
-                <td>{{ r.shift }}</td>
+                <td class="shift-cell">
+                  <ng-container *ngIf="r.recurringPmId != null; else roShift">
+                    <select [(ngModel)]="r.shift" (ngModelChange)="saveAssignmentPref(r)" [disabled]="savingPref()"
+                            title="PM shift preference (saved to the recurring catalog)">
+                      <option *ngFor="let s of shiftOptions" [value]="s">{{ s }}</option>
+                    </select>
+                    <select [(ngModel)]="r.preferredDayOfWeek" (ngModelChange)="saveAssignmentPref(r)" [disabled]="savingPref()"
+                            title="Preferred day of week (saved to the recurring catalog)">
+                      <option *ngFor="let d of dowOptions" [ngValue]="d.value">{{ d.label }}</option>
+                    </select>
+                  </ng-container>
+                  <ng-template #roShift>{{ r.shift }}</ng-template>
+                </td>
                 <td class="date-cell">
                   <label>start <input type="date" [(ngModel)]="startDate[r.href]" /></label>
                   <label>finish <input type="date" [(ngModel)]="finishDate[r.href]" /></label>
                 </td>
-                <td>
-                  <select [(ngModel)]="assignee[r.href]" *ngIf="r.candidates.length; else noCand">
-                    <option value="">— unassigned —</option>
-                    <option *ngFor="let c of r.candidates" [value]="c.personid">{{ c.name }} ({{ c.personid }})</option>
-                  </select>
-                  <ng-template #noCand><span class="muted">{{ r.note || 'no candidates' }}</span></ng-template>
+                <td class="assignee-cell">
+                  <ng-container *ngIf="!assignAnyone[r.href]">
+                    <select [(ngModel)]="assignee[r.href]" *ngIf="r.candidates.length; else noCand">
+                      <option value="">— unassigned —</option>
+                      <option *ngFor="let c of r.candidates" [value]="c.personid">{{ c.name }} ({{ c.personid }})</option>
+                    </select>
+                    <ng-template #noCand><span class="muted">{{ r.note || 'no candidates' }}</span></ng-template>
+                  </ng-container>
+                  <app-maximo-person-picker *ngIf="assignAnyone[r.href]" [(ngModel)]="assignee[r.href]"
+                    placeholder="any person…"></app-maximo-person-picker>
+                  <button class="link anyone-toggle" (click)="toggleAssignAnyone(r.href)"
+                          [title]="assignAnyone[r.href] ? 'Back to on-shift suggestions' : 'Assign to any Maximo person'">
+                    {{ assignAnyone[r.href] ? '↩ shift' : '＋ anyone' }}
+                  </button>
                 </td>
                 <td class="row-actions">
                   <button class="link peek-toggle" [class.on]="isExpanded(r.href)" (click)="togglePeek(r)"
                           [title]="isExpanded(r.href) ? 'Hide schedule' : 'Show 3-week schedule around ' + r.targetDate">📅</button>
+                  <button class="link make-rec" *ngIf="r.recurringPmId == null" (click)="makeRecurring(r)" [disabled]="savingPref()"
+                          title="Convert this work order into a recurring task">↻ recurring</button>
                   <button class="link" (click)="approve(r)" [disabled]="approving()">Approve</button>
                 </td>
               </tr>
@@ -122,16 +144,27 @@
       <section *ngIf="tab() === 'catalog'">
         <div class="actions">
           <button class="primary" (click)="refreshCatalog()" [disabled]="loading()">Refresh catalog from Maximo</button>
-          <span class="muted">Dedupes ~1 year of PM work orders by pmnum; set each PM’s shift.</span>
+          <input class="search" type="search" [ngModel]="catalogSearch()" (ngModelChange)="catalogSearch.set($event)"
+                 placeholder="Search PM, description, shift…" />
+          <span class="muted" *ngIf="catalogSearch()">{{ visibleCatalog().length }} / {{ catalog().length }}</span>
+          <span class="muted">Dedupes ~1 year of PM work orders by pmnum; set each PM’s shift. Click a column to sort.</span>
         </div>
-        <table *ngIf="catalog().length; else noCatalog">
+        <table *ngIf="visibleCatalog().length; else noCatalog">
           <thead>
-            <tr><th>PM</th><th>Description</th><th class="num">Occ/yr</th><th>Cadence</th><th>Shift</th><th>Pref. day</th><th>Last WO</th></tr>
+            <tr>
+              <th class="sortable" (click)="sortCatalog('pmnum')">PM{{ sortIndicator('pmnum') }}</th>
+              <th class="sortable" (click)="sortCatalog('pmDescription')">Description{{ sortIndicator('pmDescription') }}</th>
+              <th class="num sortable" (click)="sortCatalog('occurrenceCount')">Occ/yr{{ sortIndicator('occurrenceCount') }}</th>
+              <th class="sortable" (click)="sortCatalog('cadence')">Cadence{{ sortIndicator('cadence') }}</th>
+              <th class="sortable" (click)="sortCatalog('shift')">Shift{{ sortIndicator('shift') }}</th>
+              <th class="sortable" (click)="sortCatalog('preferredDayOfWeek')">Pref. day{{ sortIndicator('preferredDayOfWeek') }}</th>
+              <th class="sortable" (click)="sortCatalog('lastWonum')">Last WO{{ sortIndicator('lastWonum') }}</th>
+            </tr>
           </thead>
           <tbody>
-            <ng-container *ngFor="let pm of catalog()">
+            <ng-container *ngFor="let pm of visibleCatalog()">
               <tr [class.expanded]="isPmExpanded(pm.id)">
-                <td>{{ pm.pmnum || '—' }}</td>
+                <td>{{ pm.pmnum || '—' }} <span *ngIf="pm.manuallyAdded" class="manual-tag" title="Manually converted to recurring">✎</span></td>
                 <td class="desc">{{ pm.pmDescription }}</td>
                 <td class="num">{{ pm.occurrenceCount }}</td>
                 <td>
@@ -194,7 +227,8 @@
           </tbody>
         </table>
         <ng-template #noCatalog>
-          <p class="muted" *ngIf="catalogLoaded()">Catalog is empty — click “Refresh catalog from Maximo”.</p>
+          <p class="muted" *ngIf="catalogLoaded() && !catalog().length">Catalog is empty — click “Refresh catalog from Maximo”.</p>
+          <p class="muted" *ngIf="catalog().length && !visibleCatalog().length">No PMs match “{{ catalogSearch() }}”.</p>
         </ng-template>
       </section>
 

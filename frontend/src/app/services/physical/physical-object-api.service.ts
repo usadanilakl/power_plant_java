@@ -4,11 +4,14 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import {
+  LinkedFile,
+  NodeWriteRequest,
   PhysicalObjectMaximoTab,
   PhysicalObjectNode,
   PhysicalObjectSeedResult,
   TagMatchProbe,
 } from '../../models/physical/physical-object.models';
+import { DiagramDto } from '../../features/diagram-builder/models/diagram.model';
 
 /**
  * Read/seed API for the PhysicalObject hierarchy. Tree/node browsing hits the ungated
@@ -38,6 +41,65 @@ export class PhysicalObjectApiService {
     return this.http
       .get<SpringApiResponse<PhysicalObjectNode[]>>(`${this.base}/${id}/children`)
       .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Ancestor chain root→node for the breadcrumb. */
+  getBreadcrumb(id: number): Observable<PhysicalObjectNode[]> {
+    return this.http
+      .get<SpringApiResponse<PhysicalObjectNode[]>>(`${this.base}/${id}/breadcrumb`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Children ordered by floorIndex — the level/floor selector. */
+  getLevels(id: number): Observable<PhysicalObjectNode[]> {
+    return this.http
+      .get<SpringApiResponse<PhysicalObjectNode[]>>(`${this.base}/${id}/levels`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Get-or-create the node's blank schematic Diagram (its canvas). Idempotent. */
+  getOrCreateDiagram(id: number): Observable<DiagramDto | null> {
+    return this.http
+      .get<SpringApiResponse<DiagramDto>>(`${this.base}/${id}/diagram`)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  // ── builder writes (local-owned nodes) ──
+  createNode(body: NodeWriteRequest): Observable<PhysicalObjectNode | null> {
+    return this.http
+      .post<SpringApiResponse<PhysicalObjectNode>>(`${this.base}`, body)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  updateNode(id: number, body: NodeWriteRequest): Observable<PhysicalObjectNode | null> {
+    return this.http
+      .put<SpringApiResponse<PhysicalObjectNode>>(`${this.base}/${id}`, body)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  deleteNode(id: number): Observable<void> {
+    return this.http
+      .delete<SpringApiResponse<void>>(`${this.base}/${id}`)
+      .pipe(map(() => undefined));
+  }
+
+  // ── binder: linked files (Documents) ──
+  getNodeFiles(id: number): Observable<LinkedFile[]> {
+    return this.http
+      .get<SpringApiResponse<LinkedFile[]>>(`${this.base}/${id}/files`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  linkFile(id: number, fileId: number): Observable<void> {
+    return this.http
+      .post<SpringApiResponse<void>>(`${this.base}/${id}/files/${fileId}`, null)
+      .pipe(map(() => undefined));
+  }
+
+  unlinkFile(id: number, fileId: number): Observable<void> {
+    return this.http
+      .delete<SpringApiResponse<void>>(`${this.base}/${id}/files/${fileId}`)
+      .pipe(map(() => undefined));
   }
 
   /** The node's Maximo tab: work orders + service requests for its asset/location link. */

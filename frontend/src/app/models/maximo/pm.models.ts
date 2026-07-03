@@ -16,6 +16,7 @@ export interface RecurringPm {
   lastWonum: string;
   lastTargetDate: string | null;
   catalogRefreshedAt: string | null;
+  manuallyAdded?: boolean;              // operator manually converted a WO to a recurring task
 }
 
 export interface PmPersonOption {
@@ -48,6 +49,7 @@ export interface PmPendingAssignment {
   description: string;
   status: string;
   recurring: boolean;
+  recurringPmId: number | null;        // matched RecurringPm catalog row id (null if not recurring) — enables inline shift/day edit
   targetDate: string;                  // Target Start (yyyy-MM-dd)
   targetFinish: string;                // Target Finish / period-end (yyyy-MM-dd; >= targetDate)
   shift: ShiftPreference;

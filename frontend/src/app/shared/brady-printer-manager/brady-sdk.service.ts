@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, catchError, from, map, Observable, of, switchMap } from 'rxjs';
 
 import { QrCodeService } from '../qr-code/qr-code.service';
+import { environment } from '../../../environments/environment';
 
 
 export interface BradyPrinterState {
@@ -13,8 +14,12 @@ export interface BradyPrinterState {
   error: string | null;
 }
 
-const QR_BASE_URL = 'https://jgportal.jpowerusa.com/qr/';
-// const QR_BASE_URL = 'http://localhost:8085/qr/';
+// Sourced from environment config (was a hardcoded const with a commented-out
+// localhost fallback — one bad rebase and a batch of production labels could
+// have been printed pointing at http://localhost:8085/qr/...). Now flipping
+// between hub and dev URLs is a matter of picking the right env file at build
+// time, not editing a comment.
+const QR_BASE_URL = environment.qrBaseUrl;
 
 const INITIAL_STATE: BradyPrinterState = {
   isConnected: false,
@@ -370,8 +375,14 @@ export class BradySdkService {
     return canvas;
   }
 
-async createImageFromStringsWithQr(string1: string, string2: string, qrCodeData = `${QR_BASE_URL}${string1}`): Promise<HTMLCanvasElement> {
-  const qrData = qrCodeData || `${QR_BASE_URL}${string1}`;
+async createImageFromStringsWithQr(string1: string, string2: string, qrCodeData?: string): Promise<HTMLCanvasElement> {
+  // Encode the tag portion. Real-world LOTO/Equipment tag numbers can contain
+  // `#`, `/`, `?`, `&`, spaces, `+`, non-ASCII — any of which either breaks
+  // the URL entirely (e.g. `#` truncates to a fragment that never reaches the
+  // server) or routes to the wrong equipment. `encodeURIComponent` on just
+  // the path-segment keeps the base URL structural characters intact while
+  // percent-encoding whatever the user typed as the tag.
+  const qrData = qrCodeData || `${QR_BASE_URL}${encodeURIComponent(string1)}`;
 
   // Create a canvas element
   const canvas = document.createElement('canvas');

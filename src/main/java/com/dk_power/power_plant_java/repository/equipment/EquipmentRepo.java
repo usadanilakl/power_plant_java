@@ -30,6 +30,16 @@ public interface EquipmentRepo extends BaseRepository<Equipment> {
 List<EquipmentDtoLight> getAllLight();
     @Query("SELECT e FROM Equipment e WHERE UPPER(e.tagNumber) = UPPER(:tagNumber) AND (e.deleted IS NULL OR e.deleted = false)")
     Optional<Equipment> findFirstActiveByTagNumberIgnoreCase(@Param("tagNumber") String tagNumber);
+
+    /**
+     * List variant used by the QR resolver so the caller can detect duplicate
+     * active tags (there's no uniqueness constraint on Equipment.tagNumber).
+     * Ordered by id ascending so the "first" match is deterministic across
+     * calls. When more than one row comes back the controller logs an ERROR
+     * with all matching ids and surfaces a warning to the scanning client.
+     */
+    @Query("SELECT e FROM Equipment e WHERE UPPER(e.tagNumber) = UPPER(:tagNumber) AND (e.deleted IS NULL OR e.deleted = false) ORDER BY e.id ASC")
+    List<Equipment> findAllActiveByTagNumberIgnoreCase(@Param("tagNumber") String tagNumber);
     List<Equipment> findByTagNumber(String lable);
     List<Equipment> findByTagNumberContaining(String lable);
 

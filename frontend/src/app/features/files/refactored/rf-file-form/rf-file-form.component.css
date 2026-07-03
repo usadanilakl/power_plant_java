@@ -317,6 +317,16 @@
 }
 .dup-btn-primary:hover { background: #1565c0; }
 .dup-btn-cancel { color: #ccc; }
+/* "Save as new file" — treated as the affirmative primary action from the
+   modal, since it's the "yes, I really do want to upload" path. Green cast
+   so it reads as constructive next to the destructive-adjacent Override /
+   Revise buttons in the table. */
+.dup-btn-new {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+}
+.dup-btn-new:hover { background: #256729; }
 
 .dup-action-note {
   margin: 12px 0;

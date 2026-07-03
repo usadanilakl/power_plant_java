@@ -42,10 +42,11 @@ linkage" into one move.
    (`PhysicalObjectAggregateService`). No `@OneToMany` god-collections; no single polymorphic attachment table.
    Cross-cutting entities already keyed by `entityType + entityId` (Comment, EmailCorrespondence, FireImpairment)
    attach with `entityType="PhysicalObject"`. (See *Data binding model*.)
-4. **Rendering reuses the existing Pixi canvas.** A map surface = a backdrop image (site plan / floor plan /
-   P&ID) + child markers at coordinates, rendered by the `diagram-builder` canvas machinery; the map is
-   recursive (drill node → node). It "looks like the plant" because backdrops are **real images**, not
-   hand-drawn. (See *Rendering model*.)
+4. **Rendering reuses the existing Canvas2D `InteractiveImageComponent`** (the production LOTO/equipment marker
+   surface — *not* `DiagramCanvasComponent`, which is coupled to the Diagram + simulation model and uses absolute
+   pixels; the doc's earlier "Pixi canvas" wording was stale). A map surface = a backdrop image + child markers
+   at **image-relative** coordinates; the map is recursive (drill node → node). It "looks like the plant"
+   because backdrops are **real images**, not hand-drawn. (See *Rendering model* + *Renderer build*.)
 5. **Placement & connections are separate entities, not fields on PhysicalObject.** Placement = `ObjectMarker`
    (the renamed `Equipment`: one row per object × backdrop × coordinates). The node's own backdrop = FK
    *reference* fields on PhysicalObject. Object-to-object **edges** (flow/adjacency) = a deferred
@@ -166,9 +167,14 @@ Aggregate badges (plan Phase 5) include Maximo counts (open WOs in a subtree) vi
 
 ## Rendering model (2D / 3D)
 
-The map engine already exists: `diagram-builder`'s Pixi canvas (`DiagramCanvasComponent`) renders a **backdrop
-image + markers at coordinates**, and `InteractiveImageComponent` does image + shape drawing/selection. A floor
-plan is just a new backdrop *type* for the same machinery.
+The map engine already exists as the **Canvas2D `InteractiveImageComponent`**
+(`shared/image/refactored/interactive-image/`): it renders a backdrop image + `RfShape` overlays at
+**image-relative** coordinates (viewport-independent — the coordinate math `DrawingService.clientToImageCoords`
+is exactly what backdrops need) with pan / zoom / draw / drag / resize / rotate / select, gated by a preset
+capability matrix (`VIEW_ONLY` for the navigator, a `FILE_EDITOR`-style preset for the builder). This is the
+same surface the LOTO builder uses for P&ID markup and equipment placement. (`diagram-builder`'s
+`DiagramCanvasComponent` is **not** reused — it is bound to the `Diagram` entity + absolute pixels + a
+simulation payload.) A floor plan is just a new backdrop for the same `InteractiveImageComponent`.
 
 - **A surface** = one PhysicalObject's backdrop image with its **children rendered as markers** at coordinates.
 - **Recursive drill-down:** open PLANT (its site plan) → SECTION regions are clickable markers → SYSTEM/SKID
@@ -258,11 +264,92 @@ location/asset adapters (+ `parent` on `MaximoLocationDto`); reseed + per-node M
 8. `PhysicalObjectAggregateService` + an **Overview tab** on the node panel (files/LOTO/permits/logs counts +
    lists) — the fan-out query, computed.
 
-### Slice 3+ — Object Dialog + 2D map (plan Phase 5).
-9. `ObjectMarker` (rename/extend `Equipment`) placement model + representation FK wiring.
-10. Recursive **map renderer** (reuse the Pixi canvas) + build mode (upload backdrop, place markers) +
-    navigation UX; aggregate badges (incl. Maximo open-WO counts per subtree).
-11. *(Later)* `PhysicalObjectConnection` edges (flow/schematic); 3D model binding.
+### Slice 3 — Renderer: navigator + builder (2D map). *Decided from the code mapping 2026-07-02.*
+
+> **⚠ PIVOT 2026-07-02 (user correction).** The map is NOT a backdrop image + markers. The user's vision is a
+> **blank, from-scratch interactive schematic** (like a DCS/simulator plant-layout screen): shapes drawn on an
+> empty canvas, each shape *is* a child PhysicalObject (carrying its data), drillable level→level, with
+> **connections** between shapes. Images are only optional icons, never the background. → **Reuse the
+> diagram-builder**, not `InteractiveImageComponent`: each PhysicalObject node owns a blank **`Diagram`**; its
+> children are **`DiagramPlacement`s** linked via `sourceEntityType="PhysicalObject"`, `sourceEntityId=childId`;
+> double-click a shape drills into that child's Diagram; edges are **`DiagramConnection`s**; icons are symbols.
+> **KEEP** the PhysicalObject model + hierarchy + CRUD/nav endpoints + tree browser (Slice 1) + the left-rail
+> build workflow (breadcrumb/levels/create-child/palette). **DROP** the `ObjectMarker` entity + its 4-place sync
+> reg + `NgObjectMarker*` + `object-marker-*` frontend + the `InteractiveImageComponent` wiring + the
+> backdrop/representation endpoints. The image-canvas subsections below are SUPERSEDED — retained for history; the
+> concrete pivot plan lives in the `map-diagram-builder-reuse` workflow output + is folded in on build.
+
+**BUILT 2026-07-02 (both layers compile clean; adversarial-reviewed + fixes applied — not yet runtime-tested).**
+Review fixes: guarded `DiagramStateService.saveNow` so a stale parent-diagram save can't clobber `currentDiagram`
+after a drill (was a data-corruption path); pessimistic-lock `findByIdForUpdate` in get-or-create (no orphan
+Diagram under concurrent calls); reset `lastPlacementsSig` on diagram switch; removed the now-dead backdrop
+FK fields. The 4 shared-canvas hooks were confirmed regression-free for the LOTO overlay + standalone builder.
+Backend: `PhysicalObject.diagramId`
+(plain Long) + `GET /ng/physical-object/{id}/diagram` (get-or-create a blank `Diagram` via `NgDiagramService`,
+idempotent, `@Transactional`); the whole ObjectMarker layer + its 4-place sync reg + representation endpoints removed.
+`DiagramCanvasComponent` gained 4 additive hooks (no-ops for the LOTO overlay / standalone builder):
+`armedSourceEntity` input (stamps the next drawn shape's `sourceEntity`), `placementDoubleClicked` output (drill),
+`placementsChanged` output (placed/unplaced palette, deduped), `flushSave()` (persist before drill). Frontend
+`features/physical/plant-map/` rewritten to embed `<app-diagram-canvas [backgroundImageUrl]="null"
+[embeddedMode]="editMode?'builder':'renderer'" [embeddedDiagramId]="currentDiagramId" [armedSourceEntity]="armed()">`;
+left rail = mode toggle + breadcrumb + level selector + child palette (arm-to-place) + create-child. The canvas
+auto-saves placements/connections itself.
+
+**Top-level section (2026-07-02, user):** Plant Map + Hierarchy are NOT under Maximo — PhysicalObject is the global
+binder that Maximo ties *into*. Routes moved to `/plant/map`, `/plant/map/:nodeId`, `/plant/hierarchy` (own "Plant"
+nav group). Bootstrap: creating a top-level node opens it (a root has no parent canvas). Usable builder: arming a
+child auto-activates the rectangle tool and labels/colors the drawn box with the child — "arm → drag" just works.
+
+**[SUPERSEDED — image-canvas approach] Reuse verdict — adapt-by-extraction** (not reuse `DiagramCanvasComponent` directly, not a parallel stack):
+- **Canvas = `InteractiveImageComponent`** (Canvas2D, image-relative), + its `ShapeManager`/`CanvasRender`/
+  `Drawing`/`ZoomPan` services transitively. `VIEW_ONLY` preset = navigator; a new `PHYSICAL_OBJECT_BUILDER`
+  preset (draw+drag+resize+rotate) = builder.
+- **Placement = new additive `ObjectMarker` entity** — `{physicalObjectId, fileId, coordinates,
+  originalPictureSize, rotation, symbolId, svgPath, label, markerKey}`, mirroring `Equipment`'s coordinate
+  storage but composite-keyed on **(physicalObjectId, fileId)** so ONE object appears on N backdrops (site plan,
+  each floor, each P&ID) — the gap neither `Equipment` (single `mainFile`) nor `DiagramPlacement` (single
+  `Diagram` FK) can express. **Do NOT rename `Equipment` now** (that's the plan's flagged Phase-2 migration; it
+  touches LOTO ManyToMany + Value FKs + SharePoint adapters).
+- **Coordinates = image-relative** (Equipment-style `coordinates` string + `originalPictureSize`), so
+  `EquipmentMapperService`'s parse/format is reused line-for-line; **not** DiagramPlacement absolute pixels.
+- **Representation = keep the inline FK fields** (`sitePlanFileId`/`floorPlanFileId`/`pidFileId` + `floorIndex`);
+  add a read endpoint (FK→`FileDto` + kind flags) + a write endpoint (assign backdrop). Multiple floors =
+  LOCATION child nodes each with their own `floorPlanFileId`, ordered by `floorIndex` — not multiple backdrops
+  on one node. Promote to a `Representation` table only if a node ever needs several backdrops of one kind.
+- **Shell/state = fork the LOTO-builder** container + `LotoBuilderStateService` into `features/plant-map/` with a
+  `PlantMapStateService` (signals: `currentNode`, `currentBackdrop`, `backdropKind`, `childMarkers`,
+  `breadcrumb`, `levels`, `selectedLevelIndex`, `editMode`; `drillDown/drillUp/selectLevel/switchBackdrop`).
+- **Upsert = copy `NgDiagramPlacementService.bulkSave`** (index-by-key, update/insert/soft-delete-omitted),
+  keyed on `markerKey`.
+
+**Builder UX (per user — guided, top-down, manual; no auto-layout).** The layout is built by hand, one node at
+a time, drilling down: place the sections (U1/U2/BOP) on the plant backdrop → drill into a section → place *its*
+children on *its* backdrop → drill again. For the node being built, the **palette = that node's direct children**,
+split **placed** (already have an `ObjectMarker` on this backdrop) vs **unplaced**; the user drags an unplaced
+child onto the backdrop to create its marker (this is "connect existing" — the children are the Maximo-seeded
+structure, i.e. the "correct assets/locations proposed from Maximo" for the current parent). The builder also
+**creates new child nodes** inline (name/type/tag → new local-owned `PhysicalObject` under the current parent,
+`localUuid` set) — needed for non-Maximo nodes (floors/levels/skids) and to bootstrap the top of the tree before
+a Maximo seed exists. So `NgPhysicalObjectController` gains write endpoints: `POST` (create child), `PUT /{id}`
+(rename/type/specificLocation/floorIndex/parent), `DELETE /{id}` (soft). No cross-object edges in this slice.
+
+**Build order:** (1) `ObjectMarker` entity + repo → (2) **sync reg — the 4 places** (Tier after PhysicalObject
++ FileObject; `DedupKeyResolver` on a synthesized `markerKey = "PO:{poId}|F:{fileId}"` set in `@PrePersist`,
+same trick as `maximoKey`) → (3) `NgObjectMarkerService.bulkSave` + `NgObjectMarkerController` → (4) representation
++ navigation endpoints on `NgPhysicalObjectController` (`/{id}/representation`, `/{id}/children-as-markers/{fileId}`,
+`/{id}/breadcrumb`, `/{id}/levels`, `PUT /{id}/representation`) → (5) FE api + models → (6) `PlantMapStateService`
+→ (7) `ObjectMarkerMapperService` (fork `EquipmentMapperService`) → (8) `PlantMapContainerComponent` + left rail
+(breadcrumb + level selector + child list) + right pane → (9) navigator wiring (dblclick→drill, breadcrumb,
+levels, "show on" backdrop toggle) → (10) builder wiring (assign backdrop via `RfMultiUploadComponent`,
+draw→child-picker→marker, drag/resize→persist) → (11) route `/plant-map` + nav. Verify with an adversarial review
+of the sync reg + coordinate round-trip.
+
+### Deferred (do NOT build in Slice 3)
+- **`PhysicalObjectConnection`** object-to-object edges (flow/adjacency) — mirror `FileConnector` (incl. its
+  `pairKey` bidirectional pairing) when flow/schematic lines are needed. Schema pre-designed.
+- **Unified Object Dialog** + aggregate badges (Maximo open-WO subtree counts) — the renderer emits an
+  `openObjectDialog(nodeId)` event and stops there.
+- **3D** — bind `model3dRef` into the existing `/3d-models` feature later.
 
 ## Fit with the 6-phase plan
 

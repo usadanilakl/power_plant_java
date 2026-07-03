@@ -46,6 +46,25 @@ export interface MaximoWorkOrder {
   priority: string;
   /** PM-master id (e.g. "JG-1183") on PM-generated WOs; null/empty on one-off WOs. */
   pmnum: string;
+  /** When the WO's status last changed (completion time for COMP WOs); present on overview rows. */
+  statusDate?: string;
+}
+
+/**
+ * A tracked people set's work orders bucketed by due status against the current ISO week (Mon–Sun).
+ * The "All" tab is served separately (getPeopleWorkOrders) so it can be status-filtered.
+ */
+export interface MaximoOverview {
+  mode: string;
+  asOf: string;
+  weekStart: string;
+  weekEnd: string;
+  personCount: number;
+  overdue: MaximoWorkOrder[];
+  dueThisWeek: MaximoWorkOrder[];
+  completedThisWeek: MaximoWorkOrder[];
+  completedLastWeek: MaximoWorkOrder[];
+  upcoming: MaximoWorkOrder[];
 }
 
 export interface MaximoDoclink {

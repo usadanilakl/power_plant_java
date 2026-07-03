@@ -6,6 +6,7 @@
 
 // Re-export shared types
 export type { AppState, AppStatus, AppSettings, IpcResult } from '../shared/types';
+import type { MaximoOverviewConfig } from '../shared/types';
 
 // User-facing display name for the Spring Boot backend (change here to rename everywhere)
 export const APP_DISPLAY_NAME = 'JG Portal';
@@ -75,6 +76,13 @@ export const DEFAULT_GATE_LOG_CONFIG = {
   onLocationPassword: '',
   autoRefresh: false,
   intervalMinutes: 60
+};
+
+// Maximo overview widget defaults (loaded from maximo-overview-config.json at runtime).
+// Default tracks the local Lead Operators, matching the previous hard-coded behavior.
+export const DEFAULT_MAXIMO_OVERVIEW_CONFIG: MaximoOverviewConfig = {
+  mode: 'leads',
+  personids: []
 };
 
 // WebView AMS defaults (credentials loaded from webview-ams-config.json at runtime)

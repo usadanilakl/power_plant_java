@@ -6,8 +6,9 @@
  *   <project>/scripts/etapro-scrape.ps1
  *   <project>/etapro/template-live.xlsx
  *   <project>/etapro/template-history.xlsx
+ *   <project>/etapro/template-eplog.xlsx   (optional — Operator/Event Log)
  *
- * Run automatically via the "prepackage" npm script.
+ * Run automatically via the "sync-defaults" npm script (wired into every package target).
  */
 
 const fs = require('fs');
@@ -25,6 +26,7 @@ const files = [
   { src: path.join(projectRoot, 'scripts', 'etapro-scrape.ps1'), dst: path.join(targetDir, 'etapro-scrape.ps1') },
   { src: path.join(projectRoot, 'etapro', 'template-live.xlsx'), dst: path.join(targetDir, 'template-live.xlsx') },
   { src: path.join(projectRoot, 'etapro', 'template-history.xlsx'), dst: path.join(targetDir, 'template-history.xlsx') },
+  { src: path.join(projectRoot, 'etapro', 'template-eplog.xlsx'), dst: path.join(targetDir, 'template-eplog.xlsx') },
 ];
 
 let copied = 0;

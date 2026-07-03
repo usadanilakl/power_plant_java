@@ -16,6 +16,7 @@ import {
   MaximoMaterialTxn,
   MaximoServiceRequest,
   MaximoServiceRequestCriteria,
+  MaximoOverview,
   MaximoTicketParent,
   MaximoWorkOrder,
   MaximoWorkOrderCriteria,
@@ -121,6 +122,32 @@ export class MaximoApiService {
     if (status) p = p.set('status', status);
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/bundle/lead-operators/work-orders`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /**
+   * Overview for a tracked people set — WOs bucketed by due status this ISO week (overdue / due this week /
+   * completed this + last week / upcoming). {@code mode='leads'} tracks the Lead Operators; {@code mode='people'}
+   * tracks the given personids. The status-filterable "All" list is served separately by {@link getPeopleWorkOrders}.
+   */
+  getOverview(mode: 'leads' | 'people' = 'leads', personids: string[] = []): Observable<MaximoOverview> {
+    let p = new HttpParams().set('mode', mode).set('pageSize', '500');
+    if (mode === 'people' && personids.length) p = p.set('personids', personids.join(','));
+    return this.http
+      .get<SpringApiResponse<MaximoOverview>>(`${this.base}/bundle/overview`, { params: p })
+      .pipe(map(r => r.responseData));
+  }
+
+  /**
+   * WOs for a tracked people set, optionally filtered to one status (blank = all statuses). Backs the
+   * "All" tab, whose status filter defaults to APPR but can be changed or cleared.
+   */
+  getPeopleWorkOrders(mode: 'leads' | 'people' = 'leads', personids: string[] = [], status?: string): Observable<MaximoWorkOrder[]> {
+    let p = new HttpParams().set('mode', mode).set('pageSize', '500');
+    if (mode === 'people' && personids.length) p = p.set('personids', personids.join(','));
+    if (status) p = p.set('status', status);
+    return this.http
+      .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/bundle/people-work-orders`, { params: p })
       .pipe(map(r => r.responseData ?? []));
   }
 

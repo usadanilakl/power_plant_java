@@ -506,6 +506,28 @@ export class RfFileFormComponent {
   }
 
   /**
+   * User chose to save the upload as a genuinely new file — none of the
+   * name matches are the same document, even though the Levenshtein-based
+   * similarity check flagged them. Proceeds with the ORIGINAL pending
+   * submit data (no matched-file identity, no id → backend creates a fresh
+   * FileObject with the user's own fileNumber/fileType/vendor).
+   *
+   * <p>Rationale for having this option at all: the name-match threshold
+   * ({@code nameDistanceThreshold=5} on the backend) is deliberately loose
+   * so short, structured file numbers still get flagged, but it also
+   * false-positives on genuinely different documents that happen to share
+   * a prefix or suffix. Without this button the user's only escape was
+   * "Cancel upload" — no way to actually save what they picked.
+   */
+  protected onSaveAsNew(): void {
+    if (!this.pendingSubmit) return;
+    const { fileDtoData, file, overrideFile } = this.pendingSubmit;
+    this.duplicateReport.set(null);
+    this.pendingSubmit = null;
+    this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
+  }
+
+  /**
    * Build a clickable URL for an existing file. The backend SHOULD store fileLink
    * with its baseLink prefix (e.g. "uploads-prod/pdf/PID/..."), but some legacy
    * entries were saved with empty baseLink, producing "/pdf/PID/..." which

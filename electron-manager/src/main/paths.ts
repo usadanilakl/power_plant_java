@@ -199,8 +199,9 @@ function copyDirRecursive(src: string, dest: string): void {
 // ── EtaPro defaults ────────────────────────────────────────────────
 //
 // EtaPro is a desktop-only feature (hub has no Excel/COM). We ship a
-// PowerShell scraper script and two Excel templates via extraResources,
-// then provision them into the working directory on first launch.
+// PowerShell scraper script and up to three Excel templates (live, history,
+// eplog) via extraResources, then provision them into the working directory
+// on first launch.
 //
 // The Java backend reads the script from <workingDir>/scripts/ and the
 // templates from <workingDir>/etapro/ — paths are relative to the cwd
@@ -223,6 +224,7 @@ function getEtaProDefaultsPath(): string {
  * - `template-live.xlsx` → `<workingDir>/etapro/template-live.xlsx` (copy only if missing,
  *   to preserve any customizations the user made)
  * - `template-history.xlsx` → `<workingDir>/etapro/template-history.xlsx` (same)
+ * - `template-eplog.xlsx` → `<workingDir>/etapro/template-eplog.xlsx` (same; Operator Log)
  * - Creates empty `<workingDir>/etapro/output/` and `<workingDir>/etapro/signal/` dirs
  *
  * If the source directory is missing entirely, or if templates are missing from the bundle,
@@ -264,7 +266,7 @@ export function provisionEtaProDefaults(): void {
   }
 
   // 2. Templates — copy only if missing (preserve user edits)
-  for (const name of ['template-live.xlsx', 'template-history.xlsx']) {
+  for (const name of ['template-live.xlsx', 'template-history.xlsx', 'template-eplog.xlsx']) {
     const src = path.join(sourceDir, name);
     const dst = path.join(etaproDir, name);
     if (!fs.existsSync(src)) {

@@ -1,5 +1,19 @@
 import { MaximoServiceRequest, MaximoWorkOrder } from '../maximo/maximo.models';
 
+/** The PhysicalObject type ladder (a label = color + rough level; not structurally enforced). */
+export const PO_TYPE_OPTIONS = ['PLANT', 'SECTION', 'SYSTEM', 'SKID', 'EQUIPMENT', 'LOCATION'] as const;
+
+/** One color per type — used for hierarchy dots AND plant-map box fills. Single source of truth. */
+export const PO_TYPE_COLORS: Record<string, string> = {
+  PLANT: '#26C6DA', SECTION: '#42A5F5', SYSTEM: '#66BB6A',
+  SKID: '#FFA726', EQUIPMENT: '#AB47BC', LOCATION: '#8D6E63',
+};
+
+/** Resolve a node type to its color, with a neutral fallback. */
+export function poColor(type: string | null | undefined): string {
+  return PO_TYPE_COLORS[type ?? ''] ?? '#78909C';
+}
+
 /** One node of the plant hierarchy (mirrors backend PhysicalObjectDto — flat, with parentId). */
 export interface PhysicalObjectNode {
   id: number;
@@ -13,6 +27,8 @@ export interface PhysicalObjectNode {
   maximoAssetnum: string | null;
   maximoType: string | null;
   parentId: number | null;
+  floorIndex: number | null;
+  diagramId: number | null;   // the node's blank schematic canvas (get-or-created)
   hasChildren: boolean;
 }
 
@@ -37,6 +53,26 @@ export interface TagMatchProbe {
   equipmentAssetNodes: number;
   loto: TagGroupStats;
   equipment: TagGroupStats;
+}
+
+/** A file bound to a node — the binder's "Documents" (backend LinkedFileDto). */
+export interface LinkedFile {
+  id: number;
+  name: string | null;
+  fileNumber: string | null;
+  fileLink: string | null;
+  extension: string | null;
+}
+
+/** Create/patch payload for a local-owned node (builder). */
+export interface NodeWriteRequest {
+  name?: string;
+  type?: string;
+  parentId?: number | null;
+  tagNumber?: string;
+  description?: string;
+  specificLocation?: string;
+  floorIndex?: number | null;
 }
 
 /** Summary returned by the reseed endpoint. */

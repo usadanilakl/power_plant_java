@@ -30,4 +30,5 @@ public class RecurringPmDto {
     private String lastWonum;
     private LocalDate lastTargetDate;
     private LocalDateTime catalogRefreshedAt;
+    private Boolean manuallyAdded;        // true = operator manually converted a WO to a recurring task
 }

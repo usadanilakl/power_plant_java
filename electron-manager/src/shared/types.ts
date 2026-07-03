@@ -86,6 +86,15 @@ export interface GateLogConfig {
   intervalMinutes: number;
 }
 
+// Per-device config for the Maximo overview widget — which people this client tracks.
+// mode 'leads' = the local Lead Operators (resolved server-side); 'people' = the hand-picked
+// personids below (even a single person).
+export interface MaximoOverviewConfig {
+  mode: 'leads' | 'people';
+  personids: string[];   // used only when mode === 'people'
+  label?: string;        // optional display label, e.g. "Control Room crew"
+}
+
 // Weather
 export interface WeatherStatus {
   lightningDistance?: string;

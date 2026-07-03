@@ -158,20 +158,22 @@ export class DiagramStateService {
       connections: this.connectionApi.bulkSave(diagramId, connectionDtos),
     }).subscribe({
       next: ({ diagram: diagRes }) => {
-        if (diagRes.responseData) {
-          this.currentDiagram.set(diagRes.responseData);
+        // Only adopt the saved DTO / clear dirty if we're STILL on this diagram — a stale save of a diagram we've
+        // since switched away from (e.g. plant-map drill: save parent, then load child) must not clobber currentDiagram.
+        if (this.currentDiagram()?.id === diagramId) {
+          if (diagRes.responseData) this.currentDiagram.set(diagRes.responseData);
+          this.isDirty.set(false);
         }
-        this.isDirty.set(false);
         this.isSaving.set(false);
       },
       error: () => {
         // If entity save fails, fall back to JSON-only save
         this.api.update(diagramId, updatedDiagram).subscribe({
           next: (res) => {
-            if (res.responseData) {
-              this.currentDiagram.set(res.responseData);
+            if (this.currentDiagram()?.id === diagramId) {
+              if (res.responseData) this.currentDiagram.set(res.responseData);
+              this.isDirty.set(false);
             }
-            this.isDirty.set(false);
             this.isSaving.set(false);
           },
           error: () => this.isSaving.set(false),

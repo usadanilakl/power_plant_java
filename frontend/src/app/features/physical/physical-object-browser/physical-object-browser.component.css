@@ -32,8 +32,32 @@ button[disabled] { opacity: 0.55; cursor: default; }
 .rows .row { display: contents; }
 .rows .lbl { color: #888; }
 
-.maximo h4 { margin: 6px 0; color: #7cc6ff; border-top: 1px solid #2a2a2a; padding-top: 8px; }
+.maximo h4, .edit h4, .docs h4 { margin: 6px 0; color: #7cc6ff; border-top: 1px solid #2a2a2a; padding-top: 8px; }
 .maximo h5 { margin: 12px 0 4px; color: #aaa; font-weight: 500; }
+
+/* Edit form */
+.edit { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.frow { display: grid; grid-template-columns: 84px 1fr; gap: 8px; align-items: center; }
+.frow .lbl { color: #888; }
+.edit input, .edit select, .docs input { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 4px 6px; font: inherit; width: 100%; }
+.edit button, .docs button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer; font: inherit; }
+.edit button:hover:not([disabled]), .docs button:hover:not([disabled]) { background: #1177bb; }
+.edit button[disabled], .docs button[disabled] { opacity: 0.55; cursor: default; }
+.edit > button { align-self: flex-start; margin-top: 4px; }
+
+/* Documents */
+.docs { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.doc-list { list-style: none; margin: 0; padding: 0; }
+.doc-list li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.doc-open { color: #9ccaff; cursor: pointer; flex: 1; }
+.doc-open:hover { text-decoration: underline; }
+.doc-open .ext { color: #777; }
+.docs .x { background: transparent; color: #ff7b72; border: 0; cursor: pointer; padding: 0 4px; }
+.doc-search { display: flex; gap: 6px; margin-top: 4px; }
+.doc-search input { flex: 1; }
+.docs .results { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid #333; border-radius: 3px; max-height: 160px; overflow: auto; }
+.docs .results li { padding: 5px 8px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #262626; }
+.docs .results li:hover { background: #2a2a2a; }
 
 .muted { color: #777; } .muted.empty { padding: 20px; }
 .error { color: #ff7b72; }

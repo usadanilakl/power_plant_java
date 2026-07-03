@@ -26,7 +26,7 @@ public class MaximoWorkOrderAdapter {
     private static final String SELECT_FIELDS =
             "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
-            + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum";
+            + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum,spi:statusdate";
 
     private final MaximoAccessService access;
 
@@ -86,6 +86,8 @@ public class MaximoWorkOrderAdapter {
         addStrOp(conds, "schedfinish", "<=", c.getSchedfinishTo());
         addStrOp(conds, "reportdate", ">=", c.getReportdateFrom());
         addStrOp(conds, "reportdate", "<=", c.getReportdateTo());
+        addStrOp(conds, "statusdate", ">=", c.getStatusdateFrom());
+        addStrOp(conds, "statusdate", "<=", c.getStatusdateTo());
         addLike(conds, "description", c.getDescriptionContains());
         addLike(conds, "description_longdescription", c.getLongDescriptionContains());
         addLike(conds, "wonum", c.getWonumContains());
@@ -363,6 +365,7 @@ public class MaximoWorkOrderAdapter {
         d.setSupervisor(str(row, "supervisor"));
         d.setPriority(str(row, "wopriority"));
         d.setPmnum(str(row, "pmnum"));
+        d.setStatusDate(str(row, "statusdate"));
         return d;
     }
 

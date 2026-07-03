@@ -179,6 +179,16 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   simulationRunningChange = output<boolean>();
   selectedNodeStateChange = output<SimNodeState | null>();
 
+  // Plant-map hooks (additive; no-op for the LOTO overlay / standalone builder which never set or consume them).
+  /** When set, the next drawn shape is stamped with this source entity (+ label/color) — the "place a child" flow. */
+  armedSourceEntity = input<{ type: string; id: number; label?: string; color?: string } | null>(null);
+  /** Double-click a shape linked to a source entity → drill into it (navigation, fires in builder + renderer). */
+  placementDoubleClicked = output<{ sourceEntityType: string | null; sourceEntityId: number | null }>();
+  /** Emitted (deduped) when the set of source-linked shapes changes — lets a shell track placed/unplaced children. */
+  placementsChanged = output<{ sourceEntityType: string | null; sourceEntityId: number | null }[]>();
+  private lastPlacementsSig = '';
+  private lastArmedId: number | null = null;
+
   @ViewChild('canvasContainer') canvasContainerRef!: ElementRef<HTMLDivElement>;
   @ViewChild('gridCanvas') gridCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('shapeCanvas') shapeCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -274,7 +284,30 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         return;
       }
       this.lastEmbeddedDiagramId = embeddedId;
+      this.lastPlacementsSig = ''; // force a fresh placementsChanged emit for the newly-loaded diagram
       this.stateService.loadDiagram(embeddedId);
+    });
+
+    // Emit the set of source-linked shapes when it changes (add/delete/relink), deduped so a drag doesn't spam.
+    effect(() => {
+      const links = this.shapeManager.shapes()
+        .filter(s => s.sourceEntityType != null && s.sourceEntityId != null)
+        .map(s => ({ sourceEntityType: s.sourceEntityType ?? null, sourceEntityId: s.sourceEntityId ?? null }));
+      const sig = links.map(l => `${l.sourceEntityType}:${l.sourceEntityId}`).sort().join('|');
+      if (sig === this.lastPlacementsSig) return;
+      this.lastPlacementsSig = sig;
+      this.placementsChanged.emit(links);
+    });
+
+    // Plant-map: arming a child auto-activates the rectangle tool so you just drag to place it; un-arming → select.
+    // Deduped on the armed id so it only fires on a real arm/disarm — never for the LOTO overlay / standalone builder.
+    effect(() => {
+      const id = this.armedSourceEntity()?.id ?? null;
+      if (id === this.lastArmedId) return;
+      const wasArmed = this.lastArmedId != null;
+      this.lastArmedId = id;
+      if (id != null) this.drawingService.setTool('draw-rectangle');
+      else if (wasArmed) this.drawingService.setTool('select');
     });
 
     effect(() => {
@@ -934,6 +967,16 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       const shape = this.drawingService.finishDrawing();
       if (shape) {
         const added = this.shapeManager.addShape(shape);
+        const armed = this.armedSourceEntity();
+        if (armed) {
+          // Stamp the source-entity link + name/color so the new box *is* that child object (place-a-child flow).
+          this.shapeManager.updateShape(added.id, {
+            sourceEntityType: armed.type,
+            sourceEntityId: armed.id,
+            label: armed.label ?? added.label,
+            color: armed.color ?? added.color,
+          });
+        }
         this.shapeManager.selectShape(added.id);
         this.stateService.markDirty();
       }
@@ -978,10 +1021,15 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     this.requestRender();
   }
 
+  /** Flush any pending debounced save immediately — an embedding shell calls this before switching diagrams. */
+  flushSave(): void {
+    this.stateService.saveNow();
+  }
+
   onDoubleClick(event: MouseEvent): void {
     const coords = this.getCanvasCoords(event);
 
-    // Waypoint removal: double-click on a waypoint to delete it (editor mode only)
+    // Editor / renderer mode (not simulating): waypoint removal, else plant-map drill.
     if (!this.simState.isSimulating()) {
       const selectedConn = this.shapeManager.singleSelectedConnection?.();
       if (selectedConn?.waypoints?.length) {
@@ -994,7 +1042,16 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
           this.shapeManager.updateConnection(selectedConn.id, { waypoints: wps.length ? wps : undefined });
           this.stateService.markDirty();
           this.requestRender();
+          return;
         }
+      }
+      // Plant-map drill: double-click a shape linked to a source entity → emit for the shell to navigate.
+      const drillHit = this.renderService.hitTestShape(this.shapeManager.shapes(), coords.x, coords.y);
+      if (drillHit && drillHit.sourceEntityType) {
+        this.placementDoubleClicked.emit({
+          sourceEntityType: drillHit.sourceEntityType ?? null,
+          sourceEntityId: drillHit.sourceEntityId ?? null,
+        });
       }
       return;
     }

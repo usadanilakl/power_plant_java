@@ -1140,6 +1140,19 @@ public class FieldSyncService {
                 }
             }
 
+            // Remap the informational-binder FKs into PhysicalObject (plain-Long soft FKs, not @ManyToOne, matching
+            // the FileObject soft-FK convention). PhysicalObject IS a dedup candidate (maximoKey), so a dedup on the
+            // referenced node must be honored here or the link dangles. Extend as more bindings are added.
+            if (value instanceof Long rawFk
+                    && "physicalObjectId".equals(change.getFieldName())
+                    && "FileObject".equals(entity.getClass().getSimpleName())) {
+                Long remapped = DedupKeyResolver.resolveRemappedId("PhysicalObject", rawFk, idRemapTable);
+                if (!remapped.equals(rawFk)) {
+                    log.debug("Remapped FileObject.physicalObjectId {} -> {}", rawFk, remapped);
+                    value = remapped;
+                }
+            }
+
             // Only set if deserialization succeeded (null is valid for clearing)
             if (change.getNewValue() == null || value != null || "null".equals(change.getNewValue())) {
                 field.set(entity, value);

@@ -104,6 +104,7 @@ public class PmAssignmentService {
                     .description(w.getDescription())
                     .status(w.getStatus())
                     .recurring(recurring)
+                    .recurringPmId(pm == null ? null : pm.getId())
                     .targetDate(effective.toString())
                     .targetFinish(effectiveFinish == null ? null : effectiveFinish.toString())
                     .shift(shift)

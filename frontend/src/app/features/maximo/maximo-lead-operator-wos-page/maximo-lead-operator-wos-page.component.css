@@ -36,3 +36,31 @@ code { background: #1f1f1f; padding: 1px 4px; border-radius: 2px; }
   border-radius: 3px; padding: 4px 6px; font: inherit; }
 .trunc-warn { background: #3a2a14; border: 1px solid #7a5a2a;
   color: #ffb454; border-radius: 4px; padding: 8px 12px; margin: 8px 0; font-size: 13px; }
+
+button.ghost { background: #333; color: #e6e6e6; border: 1px solid #555; }
+button.ghost:hover:not(:disabled) { background: #3d3d3d; }
+
+/* Custom-people picker */
+.people-panel { background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 10px;
+  margin-bottom: 12px; flex-shrink: 0; }
+.people-search { width: 260px; max-width: 100%; background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
+  border-radius: 3px; padding: 5px 8px; font: inherit; margin-bottom: 8px; }
+.people-list { max-height: 220px; overflow-y: auto; display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 12px; }
+.person { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #e6e6e6; cursor: pointer; padding: 1px 0; }
+.people-empty { padding: 6px; }
+.people-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* Due-status tabs */
+.wo-tabs { display: flex; gap: 2px; flex-wrap: wrap; border-bottom: 1px solid #333;
+  margin-bottom: 10px; flex-shrink: 0; }
+.wo-tabs button { background: transparent; color: #aaa; border: 0; border-bottom: 2px solid transparent;
+  padding: 7px 12px; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.wo-tabs button:hover { color: #e6e6e6; }
+.wo-tabs button.active { color: #7cc6ff; border-bottom-color: #7cc6ff; }
+.tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px;
+  padding: 0 5px; border-radius: 8px; font-size: 11px; font-weight: 700; color: #fff; background: #3a3a3a; }
+.wo-tabs button.active .tab-count { background: #0e639c; }
+
+.all-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; flex-shrink: 0; }
+.all-bar .trunc-warn { margin: 0; }
