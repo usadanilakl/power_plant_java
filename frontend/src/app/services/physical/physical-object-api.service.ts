@@ -9,7 +9,10 @@ import {
   PhysicalObjectMaximoTab,
   PhysicalObjectNode,
   PhysicalObjectSeedResult,
+  SystemRef,
   TagMatchProbe,
+  WorkAreaOption,
+  WorkAreaRef,
 } from '../../models/physical/physical-object.models';
 import { DiagramDto } from '../../features/diagram-builder/models/diagram.model';
 
@@ -100,6 +103,56 @@ export class PhysicalObjectApiService {
     return this.http
       .delete<SpringApiResponse<void>>(`${this.base}/${id}/files/${fileId}`)
       .pipe(map(() => undefined));
+  }
+
+  // ── binder: system membership (the map's cross-cutting layers) ──
+  /** System-membership map for a node's children: childId → [systemValueId,…] (for the layer overlay).
+   *  JSON object keys are strings — the state service Number()-coerces them into a Map<number,…>. */
+  getChildSystems(id: number): Observable<Record<string, number[]>> {
+    return this.http
+      .get<SpringApiResponse<Record<string, number[]>>>(`${this.base}/${id}/child-systems`)
+      .pipe(map(r => r.responseData ?? {}));
+  }
+
+  /** Replace an object's System membership (by Value id). Returns the resulting systems. */
+  setObjectSystems(id: number, systemIds: number[]): Observable<SystemRef[]> {
+    return this.http
+      .put<SpringApiResponse<SystemRef[]>>(`${this.base}/${id}/systems`, { systemIds })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  // ── binder: work areas (permit safety profiles anchored to a node) ──
+  /** Work areas bound to this node (safety-profile summaries). */
+  getNodeWorkAreas(id: number): Observable<WorkAreaRef[]> {
+    return this.http
+      .get<SpringApiResponse<WorkAreaRef[]>>(`${this.base}/${id}/work-areas`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** childId → work-area count for a node's children (the map's safety badge). */
+  getChildWorkAreas(id: number): Observable<Record<string, number>> {
+    return this.http
+      .get<SpringApiResponse<Record<string, number>>>(`${this.base}/${id}/child-work-areas`)
+      .pipe(map(r => r.responseData ?? {}));
+  }
+
+  linkWorkArea(id: number, workAreaId: number): Observable<void> {
+    return this.http
+      .post<SpringApiResponse<void>>(`${this.base}/${id}/work-areas/${workAreaId}`, null)
+      .pipe(map(() => undefined));
+  }
+
+  unlinkWorkArea(id: number, workAreaId: number): Observable<void> {
+    return this.http
+      .delete<SpringApiResponse<void>>(`${this.base}/${id}/work-areas/${workAreaId}`)
+      .pipe(map(() => undefined));
+  }
+
+  /** All work areas (for the link picker). */
+  getAllWorkAreas(): Observable<WorkAreaOption[]> {
+    return this.http
+      .get<SpringApiResponse<WorkAreaOption[]>>(`${environment.baseApiUrl}/ng/work-areas/get-all`)
+      .pipe(map(r => r.responseData ?? []));
   }
 
   /** The node's Maximo tab: work orders + service requests for its asset/location link. */

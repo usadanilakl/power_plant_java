@@ -14,6 +14,17 @@
           </ng-container>
         </nav>
 
+        <div class="levels" *ngIf="st.floorSwitcher().floors.length">
+          <span class="lbl">Levels</span>
+          <ul class="floors">
+            <li *ngFor="let f of floorsTopDown()" [class.here]="f.id === st.floorSwitcher().currentId"
+                (click)="navigate(f.id)">
+              <span class="fidx">{{ f.floorIndex }}</span>
+              {{ f.name || f.tagNumber || ('#'+f.id) }}
+            </li>
+          </ul>
+        </div>
+
         <div class="palette" *ngIf="st.currentNode()">
           <span class="lbl">To place ({{ st.unplacedChildren().length }})</span>
           <p class="hint">Click to drop it on the canvas — or drag an empty area to draw a new one.</p>
@@ -39,6 +50,13 @@
             {{ st.currentNode() ? 'Add + place' : 'Create + open' }}
           </button>
         </div>
+
+        <div class="tip">
+          <strong>Places vs items</strong>
+          A box becomes a <em>place</em> once it has children — double-click it to drill inside.
+          Add a level only when it holds several things; if one item fills the space, just place one box
+          (no wrapper). The type is only its color.
+        </div>
       </aside>
 
       <!-- ── Stage ── -->
@@ -49,7 +67,14 @@
           <span class="muted" *ngIf="st.loading()">loading…</span>
           <span class="muted save" *ngIf="st.saving()">saving…</span>
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
-          <span class="hint2">Drag to move · corner to resize · side dot to connect · double-click to drill in</span>
+          <span class="layer" *ngIf="st.currentDiagramId() && systems().length">
+            <span class="lbl2">Layer</span>
+            <select [ngModel]="st.activeSystemId()" (ngModelChange)="setActiveSystem($event)">
+              <option [ngValue]="null">— none —</option>
+              <option *ngFor="let s of systems()" [ngValue]="s.id">{{ s.name }}</option>
+            </select>
+          </span>
+          <span class="hint2">Drag · corner=resize · side dot=connect · dbl-click=drill</span>
         </div>
 
         <ng-container *ngIf="st.currentDiagramId(); else entry">
@@ -71,10 +96,13 @@
 
               <div class="box" *ngFor="let b of st.boxes()" [class.sel]="isSelected(b)"
                    [class.glyphed]="miniMaps().has(b.localId) || boxGlyph(b)?.kind !== 'box'"
+                   [class.hot]="layerActive() && boxInActiveSystem(b)"
+                   [class.cold]="layerActive() && !boxInActiveSystem(b)"
                    [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.width" [style.height.px]="b.height"
                    [style.borderColor]="boxColor(b)"
                    (pointerdown)="onBoxDown($event, b)" (dblclick)="onBoxDblClick(b)">
                 <span class="swatch" [style.background]="boxColor(b)"></span>
+                <span class="wa-badge" *ngIf="boxHasWorkArea(b)" title="has a work area / safety profile">⚠</span>
 
                 <!-- mini-map preview of the child's interior (takes precedence over the glyph) -->
                 <svg *ngIf="miniMaps().get(b.localId) as mm" class="mini" [attr.viewBox]="mm.vb" preserveAspectRatio="xMidYMid meet">
@@ -141,6 +169,7 @@
           </div>
           <div class="frow"><span class="lbl">Tag</span><input [(ngModel)]="editTag" /></div>
           <div class="frow"><span class="lbl">Location</span><input [(ngModel)]="editLoc" /></div>
+          <div class="frow"><span class="lbl">Floor #</span><input type="number" [(ngModel)]="editFloor" placeholder="(none — makes it a level)" /></div>
           <div class="frow top"><span class="lbl">Notes</span><textarea rows="2" [(ngModel)]="editDesc"></textarea></div>
           <button (click)="saveEdit()" [disabled]="savingEdit()">{{ savingEdit() ? 'Saving…' : 'Save' }}</button>
         </div>
@@ -187,6 +216,42 @@
               <button class="x" (click)="st.disconnect(l.edgeLocalId)" title="disconnect">×</button>
             </li>
             <li class="muted" *ngIf="!selectedConnections().length">Drag the side dot to another box to link.</li>
+          </ul>
+        </div>
+
+        <div class="systems">
+          <h4>Systems ({{ st.childSystems().get(c.id)?.size || 0 }})</h4>
+          <div class="chips">
+            <button *ngFor="let s of systems()" type="button" class="chipbtn"
+                    [class.on]="selectedObjectInSystem(s.id)" (click)="toggleSelectedObjectSystem(s.id)">{{ s.name }}</button>
+            <span class="muted" *ngIf="!systems().length">No systems defined yet.</span>
+          </div>
+        </div>
+
+        <div class="safety">
+          <h4>Safety / Work Areas ({{ workAreas().length }})</h4>
+          <span class="muted" *ngIf="waLoading()">loading…</span>
+          <ul class="wa-list">
+            <li *ngFor="let w of workAreas()">
+              <div class="wa-main">
+                <span class="wa-name">{{ w.name || ('#'+w.id) }}</span>
+                <span class="wa-sub">
+                  <span *ngIf="w.areaType">{{ w.areaType }}</span>
+                  <span *ngIf="w.lotoCount"> · {{ w.lotoCount }} LOTO</span>
+                </span>
+              </div>
+              <button class="wa-permit" (click)="startPermit(w)"
+                      title="Start a permit here — opens a work request pre-filled with this work area (hazards/PPE prefill)">permit ↗</button>
+              <button class="x" (click)="unlinkWorkArea(w)" title="unbind">×</button>
+            </li>
+            <li class="muted" *ngIf="!workAreas().length && !waLoading()">No work area bound.</li>
+          </ul>
+          <button class="add-wa" (click)="waPickerOpen.set(!waPickerOpen())">
+            {{ waPickerOpen() ? 'Cancel' : '+ Bind work area' }}
+          </button>
+          <ul class="results" *ngIf="waPickerOpen()">
+            <li *ngFor="let w of availableWorkAreas()" (click)="linkWorkArea(w)">{{ w.name }}</li>
+            <li class="muted" *ngIf="!availableWorkAreas().length">No more work areas to bind.</li>
           </ul>
         </div>
 

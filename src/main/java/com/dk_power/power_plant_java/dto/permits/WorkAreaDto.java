@@ -23,4 +23,6 @@ public class WorkAreaDto extends BaseDto {
     private List<Long> constantLotoIds;
     private List<Long> locationIds;
     private Long shapeId;
+    /** Plant tree anchor — the PhysicalObject node this work area is bound to (nullable). */
+    private Long physicalObjectId;
 }

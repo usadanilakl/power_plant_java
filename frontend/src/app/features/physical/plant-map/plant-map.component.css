@@ -19,6 +19,14 @@
 .dot { width: 9px; height: 9px; border-radius: 50%; background: #78909c; flex: 0 0 auto; }
 .hint { color: #888; font-size: 11px; margin: 2px 0 6px; }
 
+/* Levels / floor switcher (top elevation first) */
+.levels .floors { display: flex; flex-direction: column; gap: 3px; }
+.floors li { border: 1px solid #333; border-radius: 4px; background: #202020; padding: 5px 8px; }
+.floors li.here { border-color: #7cc6ff; background: #15334f; cursor: default; }
+.fidx { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  background: #333; border-radius: 3px; font-size: 10px; color: #aaa; flex: 0 0 auto; }
+.floors li.here .fidx { background: #0e639c; color: #fff; }
+
 .create { border-top: 1px solid #2a2a2a; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .create input, .create select { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 4px 6px; font: inherit; width: 100%; }
 .create .row { display: flex; gap: 6px; }
@@ -26,6 +34,10 @@
 .rail button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer; font: inherit; }
 .rail button:hover:not([disabled]) { background: #1177bb; }
 .rail button[disabled] { opacity: 0.5; cursor: default; }
+
+.tip { margin-top: auto; border-top: 1px solid #2a2a2a; padding-top: 10px; color: #8a93a0; font-size: 11px; line-height: 1.5; }
+.tip strong { display: block; color: #7cc6ff; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.tip em { color: #9fe6a4; font-style: normal; }
 
 /* ── Stage ── */
 .stage { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
@@ -73,6 +85,7 @@
 .box .name { color: #eaeaea; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .box .ty { color: #8aa; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
 .box .chev { position: absolute; top: 4px; right: 6px; color: #7ee787; font-size: 15px; line-height: 1; }
+.box .wa-badge { position: absolute; top: 3px; left: 9px; font-size: 11px; line-height: 1; color: #ffca28; text-shadow: 0 0 2px #000; }
 .box .port { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px;
   border-radius: 50%; background: #AB47BC; border: 2px solid #1c1c1c; cursor: crosshair; touch-action: none; }
 .box .port:hover { background: #c86be6; }
@@ -151,3 +164,28 @@
 .toggle { display: flex; align-items: center; gap: 6px; color: #ccc; font-size: 12px; cursor: pointer; }
 .toggle.dim { color: #666; cursor: default; }
 .toggle input { cursor: inherit; margin: 0; }
+
+/* ── System layers (feature #3) ── */
+.layer { display: flex; align-items: center; gap: 5px; }
+.layer .lbl2 { color: #7cc6ff; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.layer select { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 3px 6px; font: inherit; }
+.box.cold { opacity: 0.26; filter: grayscale(0.55); }
+.box.hot { opacity: 1; box-shadow: 0 0 0 2px #ffd54f, 0 0 14px rgba(255,213,79,0.55); z-index: 2; }
+.systems { display: flex; flex-direction: column; gap: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chipbtn { background: #22262c; border: 1px solid #3a3f47; color: #ccc; border-radius: 12px; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+.chipbtn:hover { background: #2c313a; }
+.chipbtn.on { background: #15334f; border-color: #7cc6ff; color: #cfe6ff; }
+
+/* ── Safety / Work Areas ── */
+.safety { display: flex; flex-direction: column; gap: 6px; }
+.wa-list { list-style: none; margin: 0; padding: 0; }
+.wa-list li { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+.wa-list .muted { color: #777; }
+.wa-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.wa-name { color: #e6e6e6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-sub { color: #8a93a0; font-size: 11px; }
+.add-wa { align-self: flex-start; background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 5px 10px; cursor: pointer; font: inherit; }
+.add-wa:hover { background: #333; }
+.wa-permit { flex: 0 0 auto; background: #1c4a2a; color: #9fe6a4; border: 0; border-radius: 3px; padding: 3px 8px; cursor: pointer; font: inherit; font-size: 11px; white-space: nowrap; }
+.wa-permit:hover { background: #245c34; }

@@ -51,6 +51,11 @@ export class EtaProStateService {
   eplogLoading = signal<boolean>(false);
   eplogPulling = signal<boolean>(false);
   eplogLastPullMsg = signal<string>('');
+  // Date range currently applied to the server-side list (undefined = unfiltered). Kept in the
+  // singleton so pagination stays consistent and the view survives tab switches.
+  eplogAppliedStart = signal<string | undefined>(undefined);
+  eplogAppliedEnd = signal<string | undefined>(undefined);
+  private eplogPollSub: Subscription | null = null;
 
   // ── UI ────────────────────────────────────────────────────
   activeTab = signal<'live' | 'history' | 'points' | 'eplog'>('live');
@@ -240,6 +245,8 @@ export class EtaProStateService {
   loadEpLog(page: number = 1, startTime?: string, endTime?: string): void {
     this.eplogLoading.set(true);
     this.eplogPage.set(page);
+    this.eplogAppliedStart.set(startTime);
+    this.eplogAppliedEnd.set(endTime);
     this.apiService.getEpLog(page, this.eplogPageSize, startTime, endTime).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
@@ -256,25 +263,60 @@ export class EtaProStateService {
     });
   }
 
-  /** Manual pull. With a range, backfills it; without, pulls newest since the watermark. */
+  /**
+   * Manual pull. With a range, backfills it; without, pulls newest since the watermark.
+   * The pull is async on the server (worker thread): we queue it, then poll status until it
+   * finishes, then reload the view honoring the range that was pulled.
+   */
   pullEpLog(startTime?: string, endTime?: string): void {
     if (this.eplogPulling()) return;
     this.eplogPulling.set(true);
-    this.eplogLastPullMsg.set('Pulling…');
+    this.eplogLastPullMsg.set('Queued…');
     this.apiService.pullEpLog(startTime, endTime).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: res => {
-        this.eplogPulling.set(false);
-        this.eplogLastPullMsg.set(res.message || (res.responseData?.message ?? 'Done'));
-        // Refresh the current view to show any newly imported entries
-        this.loadEpLog(1);
+        const st = res.responseData;
+        if (!st) { this.finishEpLogPull('Pull failed: no status returned', startTime, endTime, false); return; }
+        this.pollEpLogPull(st.requestId, startTime, endTime);
       },
-      error: err => {
-        this.eplogPulling.set(false);
-        this.eplogLastPullMsg.set('Pull failed: ' + (err?.error?.message || err.message));
-      }
+      error: err => this.finishEpLogPull('Pull failed: ' + (err?.error?.message || err.message), startTime, endTime, false)
     });
+  }
+
+  private pollEpLogPull(requestId: number, startTime?: string, endTime?: string): void {
+    this.stopEpLogPolling();
+    this.eplogPollSub = interval(1500).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap(() => this.apiService.getEpLogPullStatus())
+    ).subscribe({
+      next: res => {
+        const st = res.responseData;
+        if (!st || st.requestId !== requestId) return;   // ignore stale / other requests
+        if (st.state === 'QUEUED' || st.state === 'RUNNING') {
+          this.eplogLastPullMsg.set(st.state === 'RUNNING' ? 'Pulling…' : 'Queued…');
+          return;
+        }
+        const msg = st.state === 'DONE'
+          ? `${st.imported ?? 0} new log entries imported`
+          : (st.message || 'Pull failed');
+        this.finishEpLogPull(msg, startTime, endTime, st.state === 'DONE');
+      },
+      error: () => { /* transient poll error — keep polling */ }
+    });
+  }
+
+  private finishEpLogPull(msg: string, startTime: string | undefined, endTime: string | undefined, reload: boolean): void {
+    this.stopEpLogPolling();
+    this.eplogPulling.set(false);
+    this.eplogLastPullMsg.set(msg);
+    // Reload page 1 honoring the pulled range (backfill shows that window; incremental = unfiltered).
+    if (reload) this.loadEpLog(1, startTime, endTime);
+  }
+
+  private stopEpLogPolling(): void {
+    this.eplogPollSub?.unsubscribe();
+    this.eplogPollSub = null;
   }
 
   // ── Trend popup ───────────────────────────────────────────

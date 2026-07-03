@@ -146,6 +146,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/maximo/inventory', label: 'Inventory', icon: 'warehouse', iconColor: '#26A69A' },
             { route: '/maximo/pm-scheduling', label: 'PM Scheduling', icon: 'event_repeat', iconColor: '#42A5F5' },
             { route: '/maximo/bundles/lead-operators', label: 'Lead Operator WOs', icon: 'groups', iconColor: '#FFA726', separator: true },
+            { route: '/maximo/ticket-search', label: 'Find WO/SR by Tag', icon: 'manage_search', iconColor: '#7E57C2' },
             { route: '/maximo/api-test', label: 'API Test', icon: 'api', iconColor: '#EF5350', separator: true }
         ]
     },

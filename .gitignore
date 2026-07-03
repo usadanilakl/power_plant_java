@@ -5,6 +5,10 @@
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# EtaPro runtime dirs (signal files + CSV staging are per-run; templates under etapro/ stay tracked)
+/etapro/signal/
+/etapro/output/
+
 # STS (Spring Tool Suite)
 .apt_generated
 .classpath

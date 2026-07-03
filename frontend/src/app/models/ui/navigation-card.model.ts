@@ -154,6 +154,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Work Orders', description: 'View work orders for an asset', icon: 'assignment', route: '/maximo/work-orders', color: '#66BB6A' },
       { title: 'Inventory', description: 'Stock lookup: on-hand qty, reorder levels, usage history', icon: 'warehouse', route: '/maximo/inventory', color: '#26A69A' },
       { title: 'Lead Operator WOs', description: 'All WOs assigned to any local Lead Operator', icon: 'groups', route: '/maximo/bundles/lead-operators', color: '#FFA726' },
+      { title: 'Find WO/SR by Tag', description: 'Search work orders & service requests by equipment tag number', icon: 'manage_search', route: '/maximo/ticket-search', color: '#7E57C2' },
       { title: 'API Test', description: 'Diagnostic panel for the Maximo integration endpoints', icon: 'api', route: '/maximo/api-test', color: '#EF5350' }
     ]
   },

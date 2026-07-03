@@ -21,4 +21,5 @@ public class MaximoServiceRequestDto {
     private String classstructureid;
     private String priority;
     private String affectedperson;
+    private String statusDate;     // spi:statusdate — when the SR's status last changed (for incremental refresh)
 }

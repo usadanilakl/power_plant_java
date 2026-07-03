@@ -26,7 +26,7 @@ public class MaximoServiceRequestAdapter {
     private static final String SELECT_FIELDS =
             "spi:ticketid,spi:description,spi:description_longdescription,spi:status,"
             + "spi:assetnum,spi:location,spi:siteid,spi:reportedby,spi:reportdate,"
-            + "spi:classstructureid,spi:reportedpriority,spi:affectedperson";
+            + "spi:classstructureid,spi:reportedpriority,spi:affectedperson,spi:statusdate";
 
     private final MaximoAccessService access;
 
@@ -51,7 +51,35 @@ public class MaximoServiceRequestAdapter {
      * Returns empty list if no criteria provided (don't blast the whole site).
      */
     public List<MaximoServiceRequestDto> listByCriteria(MaximoServiceRequestCriteria c, int pageSize) {
-        if (c == null) return List.of();
+        String where = buildWhere(c);
+        if (where == null) return List.of();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
+        params.put("oslc.where", where);
+        params.put("oslc.orderBy", "-spi:reportdate");
+        Map<String, Object> body = access.getMap(access.osUrl(OS), params);
+        return mapAll(members(body));
+    }
+
+    /**
+     * Like {@link #listByCriteria} but pages through the WHOLE result set (merges every {@code pageno}) —
+     * for backfill-style scans (e.g. all SRs in the last N years). Mirrors
+     * {@code MaximoWorkOrderAdapter.listAllByCriteria}. Returns empty when no criteria were given.
+     */
+    public List<MaximoServiceRequestDto> listAllByCriteria(MaximoServiceRequestCriteria c, int pageSizePerPage, int maxPages) {
+        String where = buildWhere(c);
+        if (where == null) return List.of();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.where", where);
+        params.put("oslc.orderBy", "-spi:reportdate"); // stable sort key across page fetches
+        return mapAll(access.getAllMembers(access.osUrl(OS), params, pageSizePerPage, maxPages));
+    }
+
+    /** Build the AND-joined {@code oslc.where} (incl. siteid). Returns null when no real criteria were given. */
+    private String buildWhere(MaximoServiceRequestCriteria c) {
+        if (c == null) return null;
         List<String> conds = new ArrayList<>();
         addStr(conds, "status", c.getStatus());
         addStr(conds, "assetnum", c.getAssetnum());
@@ -62,21 +90,16 @@ public class MaximoServiceRequestAdapter {
         addStr(conds, "classstructureid", c.getClassstructureid());
         addStrOp(conds, "reportdate", ">=", c.getReportdateFrom());
         addStrOp(conds, "reportdate", "<=", c.getReportdateTo());
+        addStrOp(conds, "statusdate", ">=", c.getStatusdateFrom());
+        addStrOp(conds, "statusdate", "<=", c.getStatusdateTo());
         addLike(conds, "description", c.getDescriptionContains());
         addLike(conds, "description_longdescription", c.getLongDescriptionContains());
-        if (conds.isEmpty()) return List.of();
+        if (conds.isEmpty()) return null;
 
         String siteid = (c.getSiteid() != null && !c.getSiteid().isBlank())
                 ? c.getSiteid() : access.defaultSite();
         addStr(conds, "siteid", siteid);
-
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("oslc.select", SELECT_FIELDS);
-        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
-        params.put("oslc.where", String.join(" and ", conds));
-        params.put("oslc.orderBy", "-spi:reportdate");
-        Map<String, Object> body = access.getMap(access.osUrl(OS), params);
-        return mapAll(members(body));
+        return String.join(" and ", conds);
     }
 
     private static void addStr(List<String> conds, String field, String value) {
@@ -195,6 +218,7 @@ public class MaximoServiceRequestAdapter {
         d.setClassstructureid(str(row, "classstructureid"));
         d.setPriority(str(row, "reportedpriority"));
         d.setAffectedperson(str(row, "affectedperson"));
+        d.setStatusDate(str(row, "statusdate"));
         return d;
     }
 

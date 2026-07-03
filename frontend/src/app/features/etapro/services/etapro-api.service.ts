@@ -27,11 +27,16 @@ export interface PointImportResult {
   errors: string[];
 }
 
-export interface EpLogPullResult {
-  success: boolean;
-  scraped: number;
-  imported: number;
-  message: string;
+export interface EpLogPullStatus {
+  requestId: number;
+  state: 'IDLE' | 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED';
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+  requestedAt?: string | null;
+  completedAt?: string | null;
+  imported?: number | null;
+  scraped?: number | null;
+  message?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -165,10 +170,15 @@ export class EtaProApiService {
 
   // ── EPLog (Operator/Event Log) ─────────────────────────────
 
-  /** Manual pull. With a range, backfills that window; without, pulls incrementally. */
-  pullEpLog(rangeStart?: string, rangeEnd?: string): Observable<SpringApiResponse<EpLogPullResult>> {
+  /** Queue a manual pull (async). With a range, backfills that window; without, pulls incrementally. */
+  pullEpLog(rangeStart?: string, rangeEnd?: string): Observable<SpringApiResponse<EpLogPullStatus>> {
     const body = (rangeStart && rangeEnd) ? { rangeStart, rangeEnd } : {};
-    return this.http.post<SpringApiResponse<EpLogPullResult>>(`${this.apiUrl}/eplog/pull`, body);
+    return this.http.post<SpringApiResponse<EpLogPullStatus>>(`${this.apiUrl}/eplog/pull`, body);
+  }
+
+  /** Poll the async pull status. */
+  getEpLogPullStatus(): Observable<SpringApiResponse<EpLogPullStatus>> {
+    return this.http.get<SpringApiResponse<EpLogPullStatus>>(`${this.apiUrl}/eplog/pull/status`);
   }
 
   getEpLog(page = 1, pageSize = 50, startTime?: string, endTime?: string):

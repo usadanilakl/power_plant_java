@@ -46,7 +46,11 @@ import { EtaProStateService } from '../services/etapro-state.service';
         @if (stateService.eplogLoading()) {
           <div class="empty">Loading…</div>
         } @else if (filteredEntries().length === 0) {
-          <div class="empty">No log entries. Click "Refresh (latest)" to pull from EtaPRO.</div>
+          @if (searchText()) {
+            <div class="empty">No matches on this page — clear the filter or change page.</div>
+          } @else {
+            <div class="empty">No log entries. Click "Refresh (latest)" to pull from EtaPRO.</div>
+          }
         } @else {
           <table class="data-table">
             <thead>
@@ -142,10 +146,6 @@ export class EtaProEpLogComponent implements OnInit {
   rangeEnd = '';
   searchText = signal<string>('');
 
-  // The range currently applied to the (server-side) list, for pagination continuity.
-  private appliedStart?: string;
-  private appliedEnd?: string;
-
   filteredEntries = computed(() => {
     const q = this.searchText().trim().toLowerCase();
     const entries = this.stateService.eplogEntries();
@@ -163,28 +163,28 @@ export class EtaProEpLogComponent implements OnInit {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     this.rangeEnd = this.toLocalDateTimeString(now);
     this.rangeStart = this.toLocalDateTimeString(weekAgo);
-    this.stateService.loadEpLog(1);
+    // Only load on first entry; preserve the page/filter when returning to the tab (singleton state).
+    if (this.stateService.eplogEntries().length === 0 && this.stateService.eplogPage() === 1) {
+      this.stateService.loadEpLog(1);
+    }
   }
 
   hasRange(): boolean {
-    return !!this.rangeStart && !!this.rangeEnd;
+    // Same fixed 'YYYY-MM-DDTHH:mm' format on both, so a string compare is chronological order.
+    return !!this.rangeStart && !!this.rangeEnd && this.rangeStart <= this.rangeEnd;
   }
 
   onRefreshLatest(): void {
-    this.appliedStart = undefined;
-    this.appliedEnd = undefined;
+    this.searchText.set('');
     this.stateService.pullEpLog();
   }
 
   onApplyFilter(): void {
     if (this.hasRange()) {
-      this.appliedStart = this.toIso(this.rangeStart);
-      this.appliedEnd = this.toIso(this.rangeEnd);
+      this.stateService.loadEpLog(1, this.toIso(this.rangeStart), this.toIso(this.rangeEnd));
     } else {
-      this.appliedStart = undefined;
-      this.appliedEnd = undefined;
+      this.stateService.loadEpLog(1);
     }
-    this.stateService.loadEpLog(1, this.appliedStart, this.appliedEnd);
   }
 
   onBackfill(): void {
@@ -193,20 +193,18 @@ export class EtaProEpLogComponent implements OnInit {
   }
 
   onClearFilter(): void {
-    this.appliedStart = undefined;
-    this.appliedEnd = undefined;
     this.searchText.set('');
     this.stateService.loadEpLog(1);
   }
 
   onPrev(): void {
     const p = this.stateService.eplogPage();
-    if (p > 1) this.stateService.loadEpLog(p - 1, this.appliedStart, this.appliedEnd);
+    if (p > 1) this.stateService.loadEpLog(p - 1, this.stateService.eplogAppliedStart(), this.stateService.eplogAppliedEnd());
   }
 
   onNext(): void {
     const p = this.stateService.eplogPage();
-    if (p < this.totalPages()) this.stateService.loadEpLog(p + 1, this.appliedStart, this.appliedEnd);
+    if (p < this.totalPages()) this.stateService.loadEpLog(p + 1, this.stateService.eplogAppliedStart(), this.stateService.eplogAppliedEnd());
   }
 
   formatTime(s: string | null): string {

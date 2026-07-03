@@ -1,0 +1,86 @@
+<app-main-layout header="Maximo — Find WO/SR by Tag">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <section class="bar">
+        <input class="tag-input" type="search" [(ngModel)]="tag" (keyup.enter)="search()"
+               placeholder="Equipment tag — e.g. 01-ACC-HEX-01B, ACC-HEX, or 01ACCHEX01B" />
+        <button class="primary" (click)="search()" [disabled]="loading() || !tag.trim()">
+          {{ loading() ? 'Searching…' : 'Search' }}
+        </button>
+        <button class="link" (click)="showManage.set(!showManage())">
+          {{ showManage() ? 'Hide manage' : 'Manage index' }}
+        </button>
+        <span class="muted">Searches the SR/WO tag index. Matches the identified asset, suggestions, and tags pulled from the text.</span>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+        <span *ngIf="info()" class="info">{{ info() }}</span>
+      </section>
+
+      <!-- Manage index (hub operations) -->
+      <section class="manage" *ngIf="showManage()">
+        <div class="manage-row">
+          <label>Backfill last <input type="number" min="1" max="20" [(ngModel)]="backfillYears" class="years" /> years</label>
+          <button (click)="runBackfill(true)" [disabled]="running()">Dry run</button>
+          <button class="primary" (click)="runBackfill(false)" [disabled]="running()">Run backfill</button>
+          <span class="sep">·</span>
+          <button (click)="runIncremental(false)" [disabled]="running()">Run incremental now</button>
+          <span *ngIf="running()" class="muted">Working… (this hits Maximo on the hub and may take a while)</span>
+        </div>
+        <p class="muted note">Backfill scans every SR + WO in the window and (re)builds the index; it runs on the hub and syncs to all desktops. Try a dry run first to see match rates.</p>
+        <div class="summary" *ngIf="summaryEntries().length">
+          <span class="summary-item" *ngFor="let e of summaryEntries()"><b>{{ e[0] }}</b>: {{ e[1] }}</span>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <div *ngIf="loading()" class="muted empty-msg">Searching…</div>
+
+      <table *ngIf="searched() && !loading() && results().length; else noResults">
+        <thead>
+          <tr>
+            <th>Type</th><th>Ticket #</th><th>Description</th><th>Status</th>
+            <th>Identified asset</th><th>Confidence</th><th>Suggestions</th><th>Reported</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of results()">
+            <td><span class="type type-{{ r.ticketType.toLowerCase() }}">{{ r.ticketType }}</span></td>
+            <td><button class="link wo-link" (click)="open(r)" title="Open the record">{{ r.ticketId }}</button></td>
+            <td class="desc">{{ r.title }}</td>
+            <td>{{ r.status }}</td>
+            <td class="asset">
+              <span *ngIf="r.identifiedAssetnum; else noAsset">{{ r.identifiedAssetnum }}</span>
+              <ng-template #noAsset><span class="muted">—</span></ng-template>
+            </td>
+            <td><span [class]="confidenceClass(r.confidence)" [title]="r.matchSource">{{ r.confidence }}</span></td>
+            <td class="sugg">
+              <span class="chip" *ngFor="let s of r.suggestedAssets">{{ s }}</span>
+              <span class="muted" *ngIf="!r.suggestedAssets.length && !r.identifiedAssetnum">
+                {{ r.extractedTags.length ? 'tags: ' + r.extractedTags.join(', ') : '—' }}
+              </span>
+            </td>
+            <td class="date">{{ r.reportDate ? (r.reportDate | slice:0:10) : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ng-template #noResults>
+        <p class="muted empty-msg" *ngIf="searched() && !loading() && !error()">
+          No tickets matched “{{ tag }}”. Try a shorter fragment, or build the index from the Manage panel.
+        </p>
+        <p class="muted empty-msg" *ngIf="!searched() && !loading()">
+          Enter an equipment tag (full or partial) to find its work orders and service requests.
+        </p>
+      </ng-template>
+
+      <!-- WO / SR detail dialogs -->
+      <app-maximo-detail-dialog *ngIf="selectedWo()" [parent]="'wo'" [wo]="selectedWo()"
+        (closed)="closeDialogs()"></app-maximo-detail-dialog>
+      <app-maximo-detail-dialog *ngIf="selectedSr()" [parent]="'sr'" [sr]="selectedSr()"
+        (closed)="closeDialogs()"></app-maximo-detail-dialog>
+    </div>
+  </ng-container>
+</app-main-layout>

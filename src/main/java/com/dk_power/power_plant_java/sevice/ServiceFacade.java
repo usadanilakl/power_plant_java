@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.diagrams.DiagramConnection;
 import com.dk_power.power_plant_java.entities.diagrams.DiagramPlacement;
 import com.dk_power.power_plant_java.entities.equipment.*;
+import com.dk_power.power_plant_java.entities.etapro.EtaProLogEntry;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
 import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
@@ -58,6 +59,7 @@ import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
 import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentLogSyncService;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentSyncService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProLogEntryService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProPointService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScrapeJobService;
@@ -137,6 +139,7 @@ public class ServiceFacade {
             @Lazy EtaProPointService etaProPointService,
             @Lazy EtaProReadingService etaProReadingService,
             @Lazy EtaProScrapeJobService etaProScrapeJobService,
+            @Lazy EtaProLogEntryService etaProLogEntryService,
             // Fire Impairment
             @Lazy FireImpairmentService fireImpairmentService,
             // Field Lists
@@ -153,6 +156,8 @@ public class ServiceFacade {
             @Lazy NgRedTagStandardService ngRedTagStandardService,
             // Maximo recurring-PM catalog (lead year-scan; synced so all desktops share it)
             @Lazy com.dk_power.power_plant_java.sevice.maximo.RecurringPmSyncService recurringPmSyncService,
+            // Maximo ticket→asset index (hub-built SR/WO tag index; synced so all desktops can search it)
+            @Lazy com.dk_power.power_plant_java.sevice.maximo.MaximoTicketAssetSyncService maximoTicketAssetSyncService,
             // Physical hierarchy (Maximo-seeded plant tree; synced so all desktops share it)
             @Lazy com.dk_power.power_plant_java.sevice.physical.PhysicalObjectSyncService physicalObjectSyncService
     ) {
@@ -216,6 +221,7 @@ public class ServiceFacade {
         serviceMap.put(EtaProPoint.class.getSimpleName(), etaProPointService);
         serviceMap.put(EtaProReading.class.getSimpleName(), etaProReadingService);
         serviceMap.put(EtaProScrapeJob.class.getSimpleName(), etaProScrapeJobService);
+        serviceMap.put(EtaProLogEntry.class.getSimpleName(), etaProLogEntryService);
         // Fire Impairment
         serviceMap.put(FireImpairment.class.getSimpleName(), fireImpairmentService);
         // Field Lists
@@ -230,6 +236,8 @@ public class ServiceFacade {
         serviceMap.put(RoundsReport.class.getSimpleName(), ngRoundsService);
         // Maximo recurring-PM catalog (inbound apply was dropping it — "No service found for RecurringPm")
         serviceMap.put(com.dk_power.power_plant_java.entities.maximo.RecurringPm.class.getSimpleName(), recurringPmSyncService);
+        // Maximo ticket→asset index
+        serviceMap.put(com.dk_power.power_plant_java.entities.maximo.MaximoTicketAsset.class.getSimpleName(), maximoTicketAssetSyncService);
         // Physical hierarchy (plant tree)
         serviceMap.put(com.dk_power.power_plant_java.entities.physical.PhysicalObject.class.getSimpleName(), physicalObjectSyncService);
     }

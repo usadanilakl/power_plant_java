@@ -54,6 +54,20 @@ export class PlantMapStateService {
   selectedLocalId = signal<number | null>(null);      // selected box
   selectedEdgeLocalId = signal<number | null>(null);  // selected pipe/connection
 
+  // ── system layers (cross-cutting overlay) ──
+  /** childId → set of System value ids it belongs to (current node's children). */
+  childSystems = signal<Map<number, Set<number>>>(new Map());
+  /** The System value currently used as the highlight layer (null = no layer). */
+  activeSystemId = signal<number | null>(null);
+
+  // ── levels / floors (vertical navigation) ──
+  /** When the current node IS a floor, its sibling floors (parent's floor-children); fetched on open. */
+  siblingFloors = signal<PhysicalObjectNode[]>([]);
+
+  // ── work areas (permit safety binder) ──
+  /** childId → count of work areas bound to it (drives the map's safety badge). */
+  childWorkAreas = signal<Map<number, number>>(new Map());
+
   loading = signal(false);
   saving = signal(false);
   error = signal<string | null>(null);
@@ -72,6 +86,19 @@ export class PlantMapStateService {
   unplacedChildren = computed(() => {
     const placed = new Set(this.boxes().map(b => b.childId));
     return this.childNodes().filter(c => !placed.has(c.id));
+  });
+
+  /** The current node's floor-children (reactive to edits). */
+  childFloors = computed(() => this.childNodes().filter(n => n.floorIndex != null));
+
+  /**
+   * Floors to show in the switcher + which is "here". On a floor node → its siblings (jump between floors);
+   * otherwise → its own floor-children (jump into a floor). Empty when there are no floors.
+   */
+  floorSwitcher = computed<{ floors: PhysicalObjectNode[]; currentId: number | null }>(() => {
+    const cur = this.currentNode();
+    if (cur?.floorIndex != null) return { floors: this.siblingFloors(), currentId: cur.id };
+    return { floors: this.childFloors(), currentId: null };
   });
 
   /** The currently-selected box's child node (drives the inspector). */
@@ -115,15 +142,24 @@ export class PlantMapStateService {
     this.loading.set(true); this.error.set(null);
     this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null);
     this.boxes.set([]); this.edges.set([]);
+    this.childSystems.set(new Map());
+    this.activeSystemId.set(null); // each node starts with no active layer (avoids a stale highlight on drill)
+    this.siblingFloors.set([]);
+    this.childWorkAreas.set(new Map());
     try {
-      const [node, breadcrumb, children] = await Promise.all([
+      const [node, breadcrumb, children, childSystems, childWorkAreas] = await Promise.all([
         firstValueFrom(this.api.getNode(id)),
         firstValueFrom(this.api.getBreadcrumb(id)),
         firstValueFrom(this.api.getChildren(id)),
+        firstValueFrom(this.api.getChildSystems(id)),
+        firstValueFrom(this.api.getChildWorkAreas(id)),
       ]);
       this.currentNode.set(node);
       this.breadcrumb.set(breadcrumb);
       this.childNodes.set(children);
+      this.childSystems.set(this.toChildSystemsMap(childSystems));
+      this.childWorkAreas.set(this.toCountMap(childWorkAreas));
+      await this.refreshSiblingFloors(node);
 
       const diagram = await firstValueFrom(this.api.getOrCreateDiagram(id));
       const did = diagram?.id ?? null;
@@ -174,6 +210,18 @@ export class PlantMapStateService {
     this.dirty = false;
   }
 
+  /** If `node` is a floor, load its sibling floors (parent's floor-children) for the switcher; else clear. */
+  private async refreshSiblingFloors(node: PhysicalObjectNode | null) {
+    if (node?.floorIndex != null && node.parentId != null) {
+      try {
+        const sibs = await firstValueFrom(this.api.getLevels(node.parentId));
+        this.siblingFloors.set(sibs.filter(n => n.floorIndex != null));
+      } catch { this.siblingFloors.set([]); }
+    } else {
+      this.siblingFloors.set([]);
+    }
+  }
+
   /** Persist any pending changes for the current node, then move to another node (drill in or breadcrumb up). */
   async navigate(id: number) {
     await this.flushSave();
@@ -200,7 +248,10 @@ export class PlantMapStateService {
       const updated = await firstValueFrom(this.api.updateNode(id, req));
       if (updated) {
         this.childNodes.update(list => list.map(n => (n.id === id ? updated : n)));
-        if (this.currentNode()?.id === id) this.currentNode.set(updated);
+        if (this.currentNode()?.id === id) {
+          this.currentNode.set(updated);
+          await this.refreshSiblingFloors(updated); // its own floor may have changed → refresh the switcher
+        }
         this.scheduleSave(); // persist the new label/color onto the placement
       }
       return updated;
@@ -217,6 +268,48 @@ export class PlantMapStateService {
       if (box) this.removeBox(box.localId);
       return true;
     } catch (e: any) { this.error.set(this.msg(e)); return false; }
+  }
+
+  // ── system layers ─────────────────────────────────────────────────────────
+
+  private toChildSystemsMap(rec: Record<string, number[]>): Map<number, Set<number>> {
+    const map = new Map<number, Set<number>>();
+    for (const [k, v] of Object.entries(rec ?? {})) map.set(Number(k), new Set(v ?? []));
+    return map;
+  }
+
+  private toCountMap(rec: Record<string, number>): Map<number, number> {
+    const map = new Map<number, number>();
+    for (const [k, v] of Object.entries(rec ?? {})) map.set(Number(k), v);
+    return map;
+  }
+
+  /** Re-fetch the safety-badge counts for the current node's children (after a work-area link/unlink). */
+  async reloadChildWorkAreas() {
+    const id = this.currentNode()?.id;
+    if (id == null) return;
+    try { this.childWorkAreas.set(this.toCountMap(await firstValueFrom(this.api.getChildWorkAreas(id)))); }
+    catch { /* keep prior counts */ }
+  }
+
+  /** True when object `childId` belongs to System value `systemId`. */
+  childInSystem(childId: number, systemId: number): boolean {
+    return this.childSystems().get(childId)?.has(systemId) ?? false;
+  }
+
+  /** Replace an object's System membership and refresh the local map (for highlight + inspector). */
+  async setObjectSystems(childId: number, systemIds: number[]) {
+    this.error.set(null);
+    try {
+      // Use the server's returned systems as source of truth (it silently drops any unknown Value id).
+      const result = await firstValueFrom(this.api.setObjectSystems(childId, systemIds));
+      const ids = new Set(result.map(r => r.id));
+      this.childSystems.update(m => {
+        const next = new Map(m);
+        next.set(childId, ids);
+        return next;
+      });
+    } catch (e: any) { this.error.set(this.msg(e)); }
   }
 
   // ── canvas mutations ──────────────────────────────────────────────────────

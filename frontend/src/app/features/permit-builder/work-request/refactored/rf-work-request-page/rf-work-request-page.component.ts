@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs';
+import { WorkAreaApiService } from '../../../work-area/services/work-area-api.service';
 import { RfPopupProjectionComponent } from '../../../../../shared/popup-projection/rf-popup-projection.component';
 import { RfWorkRequestFormComponent } from '../rf-work-request-form/rf-work-request-form.component';
 import { RfWorkRequestTableComponent } from '../rf-work-request-table/rf-work-request-table.component';
@@ -31,6 +33,8 @@ export class RfWorkRequestPageComponent implements OnInit {
   stateService = inject(RfWorkRequestStateService);
   private apiService = inject(RfWorkRequestApiService);
   private messageService = inject(GlobalMessageService);
+  private route = inject(ActivatedRoute);
+  private workAreaApi = inject(WorkAreaApiService);
 
   healRunning = signal(false);
   healResult = signal<WorkRequestHealResult | null>(null);
@@ -44,6 +48,14 @@ export class RfWorkRequestPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.stateService.reloadData();
+    // Started from a plant-map node ("Start permit here"): pre-open a new WR seeded with that work area.
+    const workAreaId = this.route.snapshot.queryParamMap.get('workAreaId');
+    if (workAreaId) {
+      this.workAreaApi.getById(+workAreaId).subscribe(wa => {
+        this.stateService.openNewWorkRequestForm(wa ?? undefined);
+        this.stateService.openForm();
+      });
+    }
   }
 
   onRowDoubleClicked(item: WorkRequestDto): void {

@@ -16,7 +16,9 @@ import com.dk_power.power_plant_java.dto.maximo.PmAssignRequest;
 import com.dk_power.power_plant_java.dto.maximo.PmLeadDto;
 import com.dk_power.power_plant_java.dto.maximo.PmOccurrenceDto;
 import com.dk_power.power_plant_java.dto.maximo.PmPendingAssignmentDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoTicketAssetDto;
 import com.dk_power.power_plant_java.dto.maximo.RecurringPmDto;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoTicketIndexService;
 import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
 import com.dk_power.power_plant_java.entities.maximo.ShiftPreference;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryAdapter;
@@ -90,6 +92,7 @@ public class NgMaximoController {
     private final MaximoPartsCheckoutService partsCheckout;
     private final RecurringPmService recurringPms;
     private final PmAssignmentService pmAssignments;
+    private final MaximoTicketIndexService ticketIndex;
     private final com.dk_power.power_plant_java.repository.users.UserRepo userRepo;
     private final PhysicalObjectMaximoSeeder physicalObjectSeeder;
     private final PhysicalObjectRepo physicalObjects;
@@ -655,6 +658,44 @@ public class NgMaximoController {
                 ? List.of()
                 : Arrays.stream(personids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
         return ResponseEntity.ok(new NgApiResponse<>(bundles.peopleWorkOrders(mode, ids, status, pageSize), "ok"));
+    }
+
+    // ── Ticket→asset index (search WOs/SRs by equipment tag) ──────────────────────
+
+    /**
+     * One-time backfill: index every SR + WO from the last {@code years} years, matching each to an asset by
+     * tag. Meant to run on the hub (it hits Maximo + syncs the result). {@code dryRun=true} counts without saving.
+     */
+    @PostMapping("/ticket-index/backfill")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> ticketIndexBackfill(
+            @RequestParam(value = "years", defaultValue = "5") int years,
+            @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ticketIndex.backfill(years, dryRun), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] ticket-index backfill failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Run the incremental update now (tickets changed since the last run). Normally runs on a hub timer. */
+    @PostMapping("/ticket-index/incremental")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> ticketIndexIncremental(
+            @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ticketIndex.incremental(dryRun), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] ticket-index incremental failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Search the ticket index by (partial) equipment tag number. */
+    @GetMapping("/ticket-index/search")
+    public ResponseEntity<NgApiResponse<List<MaximoTicketAssetDto>>> ticketIndexSearch(
+            @RequestParam("tag") String tag,
+            @RequestParam(value = "limit", defaultValue = "50") int limit) {
+        return ResponseEntity.ok(new NgApiResponse<>(ticketIndex.searchByTag(tag, limit), "ok"));
     }
 
     // ---- Worklog (notes / comments) --------------------------------------

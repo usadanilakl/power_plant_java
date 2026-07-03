@@ -26,12 +26,17 @@ import java.util.List;
  *     lastLiveTickStart = now
  *     continue (re-check live)
  *
+ *   else if a manual EPLog pull is queued:
+ *     run it (preempts the next history batch; one-shot, user-initiated)
+ *     continue
+ *
  *   else if a PENDING history job exists OR a RUNNING history job has remaining batches:
  *     run one history batch
  *     continue
  *
  *   else:
- *     sleep 200ms
+ *     if a deferred process-stop was requested (and no live subscription): tear down Excel
+ *     else sleep 200ms
  * </pre>
  *
  * <p>Concurrency model: single worker thread. No parallelism because the underlying
@@ -46,6 +51,7 @@ public class EtaProScrapeWorker {
     private final EtaProScraperEngine engine;
     private final EtaProLiveService liveService;
     private final EtaProHistoryJobService historyJobService;
+    private final EtaProLogPullService logPullService;
 
     @Value("${etapro.live.interval.ms:3000}")
     private long liveIntervalMs;
@@ -106,13 +112,28 @@ public class EtaProScrapeWorker {
                     }
                 }
 
-                // 2. Otherwise, advance history
+                // 2. A queued manual EPLog pull preempts the next history batch — it's a one-shot,
+                //    user-initiated action the UI is waiting on. Live still has priority above it.
+                if (!didWork && logPullService.runPendingIfAny()) {
+                    didWork = true;
+                }
+
+                // 3. Otherwise, advance history
                 if (!didWork && advanceHistory()) {
                     didWork = true;
                 }
 
                 if (!didWork) {
-                    Thread.sleep(idleSleepMs);
+                    // Idle: honor a deferred process teardown (requested by live/stop off the request
+                    // thread) before sleeping, but only when no live subscription is active.
+                    if (!liveService.isActive() && engine.consumeStopRequest()) {
+                        // Re-check: live may have (re)started between the guard and the claim.
+                        if (!liveService.isActive()) {
+                            engine.stopProcess();
+                        }
+                    } else {
+                        Thread.sleep(idleSleepMs);
+                    }
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

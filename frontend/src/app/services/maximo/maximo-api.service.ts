@@ -17,6 +17,7 @@ import {
   MaximoServiceRequest,
   MaximoServiceRequestCriteria,
   MaximoOverview,
+  MaximoTicketAsset,
   MaximoTicketParent,
   MaximoWorkOrder,
   MaximoWorkOrderCriteria,
@@ -185,6 +186,31 @@ export class MaximoApiService {
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder>>(`${this.base}/work-orders/${encodeURIComponent(href)}`)
       .pipe(map(r => r.responseData ?? null));
+  }
+
+  // ── Ticket→asset index (find WOs/SRs by equipment tag) ─────────────────────
+  /** Search the SR/WO index by (partial) equipment tag number. */
+  searchTicketIndex(tag: string, limit = 50): Observable<MaximoTicketAsset[]> {
+    const p = new HttpParams().set('tag', tag).set('limit', String(limit));
+    return this.http
+      .get<SpringApiResponse<MaximoTicketAsset[]>>(`${this.base}/ticket-index/search`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** One-time backfill of the index (hub-only; hits Maximo + syncs). Returns a summary map. */
+  backfillTicketIndex(years = 5, dryRun = false): Observable<Record<string, any>> {
+    const p = new HttpParams().set('years', String(years)).set('dryRun', String(dryRun));
+    return this.http
+      .post<SpringApiResponse<Record<string, any>>>(`${this.base}/ticket-index/backfill`, {}, { params: p })
+      .pipe(map(r => r.responseData ?? {}));
+  }
+
+  /** Run the incremental index update now (tickets changed since the last run). */
+  incrementalTicketIndex(dryRun = false): Observable<Record<string, any>> {
+    const p = new HttpParams().set('dryRun', String(dryRun));
+    return this.http
+      .post<SpringApiResponse<Record<string, any>>>(`${this.base}/ticket-index/incremental`, {}, { params: p })
+      .pipe(map(r => r.responseData ?? {}));
   }
 
   /** Report labor + worklog and (by default) change status to COMP. Returns the refreshed WO. */

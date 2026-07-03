@@ -22,6 +22,8 @@ public class MaximoServiceRequestCriteria {
     private String classstructureid;
     private String reportdateFrom;       // ISO 8601, applied as spi:reportdate >= value
     private String reportdateTo;         // ISO 8601, applied as spi:reportdate <= value
+    private String statusdateFrom;       // ISO 8601, applied as spi:statusdate >= value (catch status changes)
+    private String statusdateTo;         // ISO 8601, applied as spi:statusdate <= value
     private String descriptionContains;       // LIKE %...% on spi:description (title only)
     private String longDescriptionContains;   // LIKE %...% on spi:description_longdescription
     private String siteid;               // override default site

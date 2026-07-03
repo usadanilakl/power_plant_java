@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -104,8 +103,28 @@ public class EtaProScraperEngine {
     private final AtomicBoolean processRunning = new AtomicBoolean(false);
     private final AtomicReference<String> lastStatus = new AtomicReference<>("idle");
     private final AtomicReference<LocalDateTime> lastScrapeAt = new AtomicReference<>(null);
+    // Deferred teardown flag: request threads (e.g. live/stop) set this instead of calling the
+    // synchronized stopProcess() directly, so they never block behind an in-flight scrape. The
+    // worker thread consumes it when idle (see EtaProScrapeWorker).
+    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
     // ── Accessors ─────────────────────────────────────────────
+
+    /** Non-blocking: ask the worker thread to tear down the Excel/PowerShell process when idle. */
+    public void requestStop() {
+        stopRequested.set(true);
+    }
+
+    /** Worker-only: atomically claim a pending stop request. */
+    public boolean consumeStopRequest() {
+        return stopRequested.compareAndSet(true, false);
+    }
+
+    /** Cancel a pending stop request (e.g. live restarted before the worker tore down). */
+    public void cancelStopRequest() {
+        stopRequested.set(false);
+    }
+
 
     public String getLastStatus() {
         return lastStatus.get();
@@ -147,6 +166,13 @@ public class EtaProScraperEngine {
             ok = false;
         }
 
+        // EPLog (Operator Log) is optional \u2014 warn but don't fail prerequisites for it.
+        boolean eplogPresent = Files.exists(Paths.get(eplogTemplatePath));
+        if (!eplogPresent) {
+            log.warn("[EtaPro] \u26a0 EPLog template NOT FOUND at: {} (Operator Log disabled until provided)",
+                    Paths.get(eplogTemplatePath).toAbsolutePath());
+        }
+
         Path script = Paths.get(scriptPath);
         if (!Files.exists(script)) {
             log.warn("[EtaPro] \u26a0 PowerShell script NOT FOUND at: {}", script.toAbsolutePath());
@@ -161,7 +187,8 @@ public class EtaProScraperEngine {
         }
 
         if (ok) {
-            log.info("[EtaPro] Prerequisites OK. Live: {}, History: {}", liveTemplatePath, historyTemplatePath);
+            log.info("[EtaPro] Prerequisites OK. Live: {}, History: {}, EPLog: {}",
+                    liveTemplatePath, historyTemplatePath, eplogPresent ? eplogTemplatePath : "(not provided)");
         } else {
             log.warn("[EtaPro] \u26a0 EtaPro is ENABLED but prerequisites are missing. Scrapes will fail until fixed.");
         }
@@ -317,7 +344,10 @@ public class EtaProScraperEngine {
      * @param start    inclusive window start
      * @param end      inclusive window end
      */
-    @Transactional
+    // NOTE: intentionally NOT @Transactional. This method blocks on the external PowerShell/Excel
+    // process for up to timeoutSeconds; holding a JDBC connection + open transaction across that wait
+    // would pin a Hikari connection (and an H2 write lock) for minutes. The only DB work is the dedup
+    // existence checks + saveAll at the end, and repository saveAll is transactional on its own.
     public synchronized BatchResult executeBatch(Template template, List<String> pointIds,
                                                  LocalDateTime start, LocalDateTime end) {
         String sessionId = UUID.randomUUID().toString();
@@ -589,6 +619,14 @@ public class EtaProScraperEngine {
         Map<String, Integer> idx = new HashMap<>();
         for (int i = 0; i < headers.length; i++) {
             idx.put(headers[i].trim().toLowerCase(), i);
+        }
+
+        // Guard against template/export drift: if the key columns didn't resolve, EVERY row would
+        // hit the blank-row skip below and the batch would falsely report success with 0 imported
+        // (and the watermark would never advance, re-dropping the window forever). Fail loudly instead.
+        if (!idx.containsKey("description") || !idx.containsKey("create time")) {
+            throw new IOException("EPLog CSV missing expected headers (need 'Description' and 'Create Time'); got: "
+                    + String.join(", ", headers));
         }
 
         for (int i = 1; i < lines.size(); i++) {

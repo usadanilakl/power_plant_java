@@ -55,6 +55,28 @@ export interface TagMatchProbe {
   equipment: TagGroupStats;
 }
 
+/** A System value a node belongs to (backend SystemRef) — the cross-cutting functional axis. */
+export interface SystemRef {
+  id: number;
+  name: string;
+}
+
+/** A work area bound to a node — its safety-profile summary (backend WorkAreaRef). */
+export interface WorkAreaRef {
+  id: number;
+  name: string | null;
+  description: string | null;
+  areaType: string | null;
+  lotoCount: number;
+}
+
+/** A work area option for the link picker (from /ng/work-areas/get-all). */
+export interface WorkAreaOption {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
 /** A file bound to a node — the binder's "Documents" (backend LinkedFileDto). */
 export interface LinkedFile {
   id: number;

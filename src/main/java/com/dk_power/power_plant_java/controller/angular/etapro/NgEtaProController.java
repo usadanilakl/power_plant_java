@@ -205,6 +205,9 @@ public class NgEtaProController {
     public ResponseEntity<NgApiResponse<Map<String, Object>>> startLive(@RequestBody LiveStartRequest req) {
         try {
             liveService.start(req.pointIds());
+            // Cancel any deferred teardown from a just-prior live/stop so the worker doesn't
+            // kill the process we're about to use.
+            engine.cancelStopRequest();
             return ResponseEntity.ok(new NgApiResponse<>(liveStatusMap(), "Live subscription started"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
@@ -214,8 +217,9 @@ public class NgEtaProController {
     @PostMapping("/live/stop")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> stopLive() {
         liveService.stop();
-        // Kill the Excel/PowerShell process — no point keeping it alive with no subscription
-        engine.stopProcess();
+        // Ask the worker thread to tear down Excel when idle. Non-blocking: unlike a direct
+        // stopProcess() call, this never waits behind an in-flight scrape on the request thread.
+        engine.requestStop();
         return ResponseEntity.ok(new NgApiResponse<>(liveStatusMap(), "Live subscription stopped"));
     }
 
@@ -267,22 +271,41 @@ public class NgEtaProController {
      * Manual EPLog pull. With a range body, pulls that explicit window (backfill);
      * with no/empty body, pulls incrementally from the stored watermark.
      */
+    /**
+     * Queue a manual EPLog pull (async — runs on the worker thread, not this request thread).
+     * Returns immediately with the queued status; the client polls {@code /eplog/pull/status}.
+     */
     @PostMapping("/eplog/pull")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> pullEpLog(
             @RequestBody(required = false) EpLogPullRequest req) {
-        EtaProScraperEngine.BatchResult result = (req != null && req.rangeStart() != null && req.rangeEnd() != null)
-                ? logPullService.pull(req.rangeStart(), req.rangeEnd())
-                : logPullService.pullIncremental();
+        try {
+            LocalDateTime start = req != null ? req.rangeStart() : null;
+            LocalDateTime end = req != null ? req.rangeEnd() : null;
+            EtaProLogPullService.PullStatus st = logPullService.requestPull(start, end);
+            return ResponseEntity.ok(new NgApiResponse<>(pullStatusMap(st),
+                    "EPLog pull " + st.state().name().toLowerCase()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", result.success);
-        body.put("scraped", result.scrapedCount);
-        body.put("imported", result.importedCount);
-        body.put("message", result.message);
-        String msg = result.success
-                ? result.importedCount + " new log entries imported"
-                : "EPLog pull failed: " + result.message;
-        return ResponseEntity.ok(new NgApiResponse<>(body, msg));
+    @GetMapping("/eplog/pull/status")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> getEpLogPullStatus() {
+        return ResponseEntity.ok(new NgApiResponse<>(pullStatusMap(logPullService.status()), "EPLog pull status"));
+    }
+
+    private Map<String, Object> pullStatusMap(EtaProLogPullService.PullStatus st) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("requestId", st.requestId());
+        m.put("state", st.state().name());
+        m.put("rangeStart", st.rangeStart());
+        m.put("rangeEnd", st.rangeEnd());
+        m.put("requestedAt", st.requestedAt());
+        m.put("completedAt", st.completedAt());
+        m.put("imported", st.imported());
+        m.put("scraped", st.scraped());
+        m.put("message", st.message());
+        return m;
     }
 
     @GetMapping("/eplog")

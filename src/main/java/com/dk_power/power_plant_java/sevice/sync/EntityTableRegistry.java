@@ -56,6 +56,7 @@ public class EntityTableRegistry {
         Map.entry("Role", "roles"),                // @Table(name = "roles")
         Map.entry("ShiftDay", "shift_days"),       // @Table(name = "shift_days")
         Map.entry("RecurringPm", "recurring_pm"),  // @Table(name = "recurring_pm")
+        Map.entry("MaximoTicketAsset", "maximo_ticket_asset"), // Maximo SR/WO → asset index
         Map.entry("ContractorChangeReport", "contractor_change_reports"),
 
         // Physical hierarchy (plant tree; Maximo-seeded, locally owned)
@@ -135,6 +136,7 @@ public class EntityTableRegistry {
         "User",
         "ShiftDay",
         "RecurringPm",
+        "MaximoTicketAsset",
         "ContractorChangeReport",
         "PhysicalObject",   // self-referential tree; parent FK resolved by the ManyToOne-retry apply pass
         "FileObject",

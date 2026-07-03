@@ -1,5 +1,6 @@
 import { Injectable, inject, DestroyRef, signal, NgZone } from '@angular/core';
 import { WorkRequestDto, WorkRequestFieldName } from '../../../../../models/permits/work-request.model';
+import { WorkAreaDto } from '../../../../../models/permits/work-area.model';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { SearchCriteria } from '../../../../../models/api/search-criteria.model';
 import { RfWorkRequestApiService } from './rf-work-request-api.service';
@@ -262,8 +263,11 @@ export class RfWorkRequestStateService {
       .subscribe();
   }
 
-  openNewWorkRequestForm(): void {
-    this.setSelectedItem(new WorkRequestDto());
+  /** Open a blank new work request, optionally pre-seeded with a work area (e.g. started from a plant node). */
+  openNewWorkRequestForm(workArea?: WorkAreaDto): void {
+    const wr = new WorkRequestDto();
+    if (workArea) wr.workArea = workArea;
+    this.setSelectedItem(wr);
   }
 
   setSortState(sortColumn: string, sortDirection: 'ASC' | 'DESC'): void {

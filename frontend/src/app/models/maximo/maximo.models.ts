@@ -50,6 +50,27 @@ export interface MaximoWorkOrder {
   statusDate?: string;
 }
 
+/** One Maximo ticket (SR or WO) with the asset the tag matcher identified/suggested for it. */
+export interface MaximoTicketAsset {
+  id: number;
+  ticketKey: string;
+  ticketType: 'SR' | 'WO';
+  ticketId: string;
+  href: string;
+  title: string;
+  status: string;
+  siteid: string;
+  reportDate: string;
+  maximoAssetnum: string;
+  maximoLocation: string;
+  identifiedAssetnum: string | null;
+  confidence: 'EXACT' | 'STRONG' | 'PARTIAL' | 'NONE';
+  matchSource: string;
+  suggestedAssets: string[];
+  extractedTags: string[];
+  processedAt: string | null;
+}
+
 /**
  * A tracked people set's work orders bucketed by due status against the current ISO week (Mon–Sun).
  * The "All" tab is served separately (getPeopleWorkOrders) so it can be status-filtered.

@@ -122,6 +122,17 @@ class EtaProEpLogCsvTest {
         assertThat(service.parseEpLogCsv(writeCsv(""), "sess-7")).isEmpty();
     }
 
+    @Test
+    void missingRequiredHeadersFailsLoudlyInsteadOfDroppingAllRows() throws Exception {
+        // 'Create Time' renamed to 'Created' — without validation every row would be silently
+        // skipped and the batch would falsely report success. Must throw instead.
+        Path csv = writeCsv("Description,Area,Location,Created By,Created,Deactivated By,Deactivate Time,Crew\n"
+                + "Some entry,A,L,bob,46202.5,,,C Crew\n");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.parseEpLogCsv(csv, "sess-8"))
+                .isInstanceOf(java.io.IOException.class)
+                .hasMessageContaining("missing expected headers");
+    }
+
     private Path writeCsv(String content) throws Exception {
         Path file = tempDir.resolve("eplog.csv");
         Files.writeString(file, content);

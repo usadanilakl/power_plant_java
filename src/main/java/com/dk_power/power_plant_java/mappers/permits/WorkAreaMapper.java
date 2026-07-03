@@ -83,6 +83,8 @@ public class WorkAreaMapper implements BaseMapper {
             dto.setShapeId(entity.getShape().getId());
         }
 
+        dto.setPhysicalObjectId(entity.getPhysicalObjectId());
+
         return dto;
     }
 
@@ -125,6 +127,12 @@ public class WorkAreaMapper implements BaseMapper {
 
         if (dto.getShapeId() != null) {
             shapeRepo.findById(dto.getShapeId()).ifPresent(entity::setShape);
+        }
+
+        // Nullable plant-tree anchor: set only when the DTO carries it, so an edit that omits it can't wipe the
+        // binding. Unbinding goes through the node's DELETE /{id}/work-areas/{workAreaId} endpoint.
+        if (dto.getPhysicalObjectId() != null) {
+            entity.setPhysicalObjectId(dto.getPhysicalObjectId());
         }
 
         return entity;

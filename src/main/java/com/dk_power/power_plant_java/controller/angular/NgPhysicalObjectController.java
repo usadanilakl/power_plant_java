@@ -9,8 +9,10 @@ import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,7 @@ public class NgPhysicalObjectController {
     private final NgDiagramService ngDiagramService;
     private final FileRepo fileRepo;
     private final ValueRepo valueRepo;
+    private final WorkAreaRepo workAreaRepo;
 
     /** Whole hierarchy as a flat list of nodes (id + parentId + hasChildren); the frontend assembles the tree. */
     @GetMapping("/tree")
@@ -308,6 +311,64 @@ public class NgPhysicalObjectController {
 
     public record SystemRef(Long id, String name) {}
     public record SetSystemsRequest(List<Long> systemIds) {}
+
+    // ---- Binder: work areas (permit safety profiles anchored to this node) --------------------
+
+    /** Work areas bound to this node — their safety profile summary (the binder's "Safety" surface). */
+    @GetMapping("/{id}/work-areas")
+    @Transactional(readOnly = true)
+    public ResponseEntity<NgApiResponse<List<WorkAreaRef>>> workAreas(@PathVariable Long id) {
+        List<WorkAreaRef> refs = workAreaRepo.findByPhysicalObjectId(id).stream()
+                .map(WorkAreaRef::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new NgApiResponse<>(refs, refs.size() + " work areas"));
+    }
+
+    /** How many work areas each of a node's children has: childId → count (backs the map's safety badge). */
+    @GetMapping("/{id}/child-work-areas")
+    public ResponseEntity<NgApiResponse<Map<Long, Long>>> childWorkAreas(@PathVariable Long id) {
+        List<Long> childIds = repo.findByParentId(id).stream().map(PhysicalObject::getId).collect(Collectors.toList());
+        Map<Long, Long> map = new HashMap<>();
+        if (!childIds.isEmpty()) {
+            for (Object[] row : workAreaRepo.countByPhysicalObjectIdIn(childIds)) {
+                if (row[0] != null) map.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+            }
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(map, map.size() + " children with work areas"));
+    }
+
+    /** Anchor a work area to this node (scalar FK → syncs normally). */
+    @PostMapping("/{id}/work-areas/{workAreaId}")
+    public ResponseEntity<NgApiResponse<Void>> linkWorkArea(@PathVariable Long id, @PathVariable Long workAreaId) {
+        if (repo.findById(id).isEmpty()) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "node not found"));
+        WorkArea wa = workAreaRepo.findById(workAreaId).orElse(null);
+        if (wa == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "work area not found"));
+        // Scalar FK change dirties the row → @PreUpdate sets dateModified → @PostUpdate fires → sync emits.
+        // (No manual dateModified touch needed here, unlike setSystems' collection-only change.)
+        wa.setPhysicalObjectId(id);
+        workAreaRepo.save(wa);
+        return ResponseEntity.ok(new NgApiResponse<>(null, "linked"));
+    }
+
+    /** Unbind a work area from this node (only if it's currently bound to it). */
+    @DeleteMapping("/{id}/work-areas/{workAreaId}")
+    public ResponseEntity<NgApiResponse<Void>> unlinkWorkArea(@PathVariable Long id, @PathVariable Long workAreaId) {
+        WorkArea wa = workAreaRepo.findById(workAreaId).orElse(null);
+        if (wa != null && id.equals(wa.getPhysicalObjectId())) {
+            wa.setPhysicalObjectId(null);
+            workAreaRepo.save(wa);
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(null, "unlinked"));
+    }
+
+    /** Slim safety-profile summary of a bound work area (full detail lives in the permit builder). */
+    public record WorkAreaRef(Long id, String name, String description, String areaType, int lotoCount) {
+        static WorkAreaRef from(WorkArea wa) {
+            String type = wa.getAreaType() != null ? wa.getAreaType().getName() : null;
+            int lotos = wa.getConstantLotos() != null ? wa.getConstantLotos().size() : 0;
+            return new WorkAreaRef(wa.getId(), wa.getName(), wa.getDescription(), type, lotos);
+        }
+    }
 
     /** Slim view of a bound file — enough to list and open it. */
     public record LinkedFileDto(Long id, String name, String fileNumber, String fileLink, String extension) {

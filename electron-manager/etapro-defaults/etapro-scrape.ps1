@@ -68,6 +68,10 @@ $EPLOG_SELECT_CELL = "B21"     # a cell inside the log (refresh context)
 $EPLOG_POLL_MS    = 400
 $EPLOG_STABLE_READS = 4
 $EPLOG_SETTLE_TIMEOUT_SEC = 90
+# Minimum wall-clock (seconds) before a stable-but-unchanged table is accepted as settled.
+# Must exceed the "old data still showing" pre-clear window (~1.3s observed) so we never
+# return the stale pre-refresh table on a no-change re-pull.
+$EPLOG_MIN_GRACE_SEC = 4
 
 # Load UI Automation (used only by the EPLog branch to click "Refresh EPLog").
 try {
@@ -186,24 +190,33 @@ function Get-EpLogState {
     }
 }
 
-# A refresh is a clear-then-repopulate cycle: for ~1.3s the OLD data still shows, then
-# the output region is wiped, then refilled. So we wait for a CHANGE from the baseline,
-# then for the table to hold stable for N reads. Returns final state.
+# A refresh is a clear-then-repopulate cycle: for ~1.3s the OLD data still shows, then the
+# output region is wiped (last data row drops below the header), then refilled. We settle once
+# the table is stable for N reads AND either the refresh visibly took effect (fingerprint changed,
+# or the data region was seen wiped/empty, or COM was busy) OR enough wall-clock has passed that
+# any refresh would have completed. Gating only on "changed" hangs the full timeout when a no-change
+# re-pull returns data identical to the baseline (common on quiet shifts / overlap windows), which,
+# because executeBatch is serialized, also blocks live scraping for the whole timeout.
 function Wait-EpLogSettle {
     param([object]$worksheet, [string]$baselineFp)
     $deadline = (Get-Date).AddSeconds($EPLOG_SETTLE_TIMEOUT_SEC)
-    $changed = $false
+    $start = Get-Date
+    $sawActivity = $false
     $stable = 0
     $lastFp = ""
     while ((Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds $EPLOG_POLL_MS
         $s = Get-EpLogState $worksheet
-        if ($s.busy) { $stable = 0; continue }
-        if ($s.fp -ne $baselineFp) { $changed = $true }
+        $elapsed = ((Get-Date) - $start).TotalSeconds
+        if ($s.busy) { $sawActivity = $true; $stable = 0; continue }
+        # Proof the refresh ran: fingerprint differs from baseline, or the data region is wiped/empty.
+        if ($s.fp -ne $baselineFp -or $s.lastRow -lt ($EPLOG_HEADER_ROW + 1)) { $sawActivity = $true }
         if ($s.fp -eq $lastFp) { $stable++ } else { $stable = 0; $lastFp = $s.fp }
-        if ($changed -and $stable -ge $EPLOG_STABLE_READS) { return $s }
+        if ($stable -ge $EPLOG_STABLE_READS -and ($sawActivity -or $elapsed -ge $EPLOG_MIN_GRACE_SEC)) {
+            return $s
+        }
     }
-    Write-Host "[EtaPro] WARN: EPLog settle timed out after ${EPLOG_SETTLE_TIMEOUT_SEC}s (changed=$changed)"
+    Write-Host "[EtaPro] WARN: EPLog settle timed out after ${EPLOG_SETTLE_TIMEOUT_SEC}s (sawActivity=$sawActivity)"
     return (Get-EpLogState $worksheet)
 }
 
@@ -362,9 +375,11 @@ function ProcessEpLogRequest {
 
     $ws = $workbook.Sheets(1)   # single-sheet EPLog template
 
-    # 1. Bring the EPLog window forward + restore (UI Automation needs it not minimized)
+    # 1. Restore the EPLog workbook's OWN window (SDI: one window per workbook) so UI Automation
+    #    can see the ribbon. Use the Window object, not Application.WindowState, so live/history
+    #    windows stay minimized and we don't un-minimize/steal focus for the whole Excel instance.
     [void]$workbook.Activate()
-    try { $workbook.Application.WindowState = $xlNormal } catch {}
+    try { $workbook.Windows(1).WindowState = $xlNormal } catch { try { $workbook.Application.WindowState = $xlNormal } catch {} }
     Start-Sleep -Milliseconds 200
 
     # 2. Write the Event-Time window as Excel serial date-times (avoids locale parsing)
@@ -391,8 +406,8 @@ function ProcessEpLogRequest {
     # 6. Export the log table to CSV (embedded newlines flattened)
     ExportEpLogTableToCsv $ws $request.outputPath
 
-    # 7. Re-minimize so the window is out of the way again
-    try { $workbook.Application.WindowState = $xlMinimized } catch {}
+    # 7. Re-minimize just the EPLog window so it's out of the way again
+    try { $workbook.Windows(1).WindowState = $xlMinimized } catch { try { $workbook.Application.WindowState = $xlMinimized } catch {} }
 
     if (-not (Test-Path $request.outputPath)) {
         throw "EPLog output file not created at: $($request.outputPath)"
@@ -505,11 +520,13 @@ try {
     }
 
     if ($null -eq $excel) {
-        throw "Failed to attach to Excel after ${waitMax}s. Is Excel installed?"
+        throw "Failed to attach to Excel after ${waitMax}s. Excel may be blocked on a modal dialog (Protected View / Document Recovery / Update Links) or not installed."
     }
 
-    # Suppress UI prompts now that we have a handle
+    # Suppress UI prompts now that we have a handle. AutomationSecurity=Low stops macro/content
+    # trust prompts on the subsequent Workbooks.Open calls (msoAutomationSecurityLow = 1).
     $excel.DisplayAlerts = $false
+    try { $excel.AutomationSecurity = 1 } catch {}
 
     # Open any configured templates that aren't already open (the launch one is open).
     foreach ($t in @($liveTemplatePath, $historyTemplatePath, $eplogTemplatePath)) {

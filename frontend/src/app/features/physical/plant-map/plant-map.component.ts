@@ -4,17 +4,19 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { PhysicalObjectApiService } from '../../../services/physical/physical-object-api.service';
 import {
-  LinkedFile, PhysicalObjectNode, PO_TYPE_OPTIONS, poColor,
+  LinkedFile, PhysicalObjectNode, PO_TYPE_OPTIONS, poColor, WorkAreaOption, WorkAreaRef,
 } from '../../../models/physical/physical-object.models';
 import { environment } from '../../../../environments/environment';
 import { RfFileApiService } from '../../files/refactored/services/rf-file-api.service';
 import { FileDto } from '../../../models/file/file.model';
+import { SharedDataService } from '../../../services/shared-data.service';
+import { ValueDto } from '../../../models/value.model';
 import { MapBox, PlantMapStateService } from './services/plant-map-state.service';
 import { PLANT_GLYPHS, PLANT_GLYPH_BY_KEY, SERVICE_COLORS, PlantGlyph } from './plant-glyphs';
 import { DiagramPlacementApiService } from '../../diagram-builder/services/diagram-placement-api.service';
@@ -58,7 +60,17 @@ export class PlantMapComponent implements OnDestroy {
   private nodesApi = inject(PhysicalObjectApiService);
   private filesApi = inject(RfFileApiService);
   private placementApi = inject(DiagramPlacementApiService);
+  private shared = inject(SharedDataService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
+  // ── system layers (feature #3) ──
+  systems = signal<ValueDto[]>([]);
+  layerActive = computed(() => this.st.activeSystemId() != null);
+
+  // ── levels / floors ──
+  /** Floors for the switcher, top elevation first (descending floorIndex). */
+  floorsTopDown = computed(() => [...this.st.floorSwitcher().floors].sort((a, b) => (b.floorIndex ?? 0) - (a.floorIndex ?? 0)));
 
   // ── mini-map previews (feature #1) ──
   private previewCache = new Map<number, MiniShape[]>();  // childId → its interior placement rects
@@ -91,7 +103,7 @@ export class PlantMapComponent implements OnDestroy {
   rubber = signal<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // ── inspector: edit fields + documents ──
-  editName = ''; editType = ''; editTag = ''; editDesc = ''; editLoc = '';
+  editName = ''; editType = ''; editTag = ''; editDesc = ''; editLoc = ''; editFloor = '';
   savingEdit = signal(false);
   files = signal<LinkedFile[]>([]);
   filesLoading = signal(false);
@@ -99,6 +111,16 @@ export class PlantMapComponent implements OnDestroy {
   fileResults = signal<FileDto[]>([]);
   fileSearching = signal(false);
   private lastSelectedNodeId: number | null = null;
+
+  // work areas (safety binder)
+  workAreas = signal<WorkAreaRef[]>([]);
+  waLoading = signal(false);
+  allWorkAreas = signal<WorkAreaOption[]>([]);
+  waPickerOpen = signal(false);
+  availableWorkAreas = computed(() => {
+    const bound = new Set(this.workAreas().map(w => w.id));
+    return this.allWorkAreas().filter(w => !bound.has(w.id));
+  });
 
   private boxById = computed(() => new Map(this.st.boxes().map(b => [b.localId, b])));
 
@@ -167,6 +189,9 @@ export class PlantMapComponent implements OnDestroy {
     if (nodeId) this.st.openNode(Number(nodeId));
     else this.loadRoots();
 
+    this.shared.loadSystems().subscribe(s => this.systems.set(s ?? []));
+    this.nodesApi.getAllWorkAreas().subscribe(w => this.allWorkAreas.set(w ?? []));
+
     // Repopulate the inspector only when the selected object actually changes (not on every drag).
     effect(() => {
       const child = this.st.selectedChild();
@@ -217,6 +242,28 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   setShowChildren(show: boolean) { const id = this.st.selectedLocalId(); if (id != null) this.st.patchBox(id, { showChildren: show }); }
+
+  // ── inspector / overlay: system membership (feature #3) ──
+  setActiveSystem(id: number | null) { this.st.activeSystemId.set(id); }
+
+  /** Is this box's object in the active layer system? (drives hot/cold highlight) */
+  boxInActiveSystem(b: MapBox): boolean {
+    const sys = this.st.activeSystemId();
+    return sys != null && this.st.childInSystem(b.childId, sys);
+  }
+
+  selectedObjectInSystem(systemId: number): boolean {
+    const c = this.st.selectedChild();
+    return c != null && this.st.childInSystem(c.id, systemId);
+  }
+
+  toggleSelectedObjectSystem(systemId: number) {
+    const c = this.st.selectedChild();
+    if (!c) return;
+    const ids = new Set(this.st.childSystems().get(c.id) ?? []);
+    if (ids.has(systemId)) ids.delete(systemId); else ids.add(systemId);
+    void this.st.setObjectSystems(c.id, [...ids]);
+  }
 
   private async loadRoots() {
     const all = await firstValueFrom(this.nodesApi.getTree());
@@ -365,8 +412,9 @@ export class PlantMapComponent implements OnDestroy {
     if (id === this.lastSelectedNodeId) return;
     this.lastSelectedNodeId = id;
     if (!child) {
-      this.editName = this.editType = this.editTag = this.editDesc = this.editLoc = '';
+      this.editName = this.editType = this.editTag = this.editDesc = this.editLoc = this.editFloor = '';
       this.files.set([]); this.fileResults.set([]); this.fileQuery = '';
+      this.workAreas.set([]); this.waPickerOpen.set(false);
       return;
     }
     this.editName = child.name ?? '';
@@ -374,8 +422,44 @@ export class PlantMapComponent implements OnDestroy {
     this.editTag = child.tagNumber ?? '';
     this.editDesc = child.description ?? '';
     this.editLoc = child.specificLocation ?? '';
+    this.editFloor = child.floorIndex != null ? String(child.floorIndex) : '';
     this.fileResults.set([]); this.fileQuery = '';
+    this.waPickerOpen.set(false);
     void this.loadFiles(child.id);
+    void this.loadWorkAreas(child.id);
+  }
+
+  // ── inspector: work areas (safety) ──
+  private async loadWorkAreas(nodeId: number) {
+    this.waLoading.set(true);
+    try { this.workAreas.set(await firstValueFrom(this.nodesApi.getNodeWorkAreas(nodeId))); }
+    catch { this.workAreas.set([]); }
+    finally { this.waLoading.set(false); }
+  }
+
+  async linkWorkArea(wa: WorkAreaOption) {
+    const c = this.st.selectedChild();
+    if (!c) return;
+    await firstValueFrom(this.nodesApi.linkWorkArea(c.id, wa.id));
+    this.waPickerOpen.set(false);
+    await this.loadWorkAreas(c.id);
+    await this.st.reloadChildWorkAreas();
+  }
+
+  async unlinkWorkArea(wa: WorkAreaRef) {
+    const c = this.st.selectedChild();
+    if (!c) return;
+    await firstValueFrom(this.nodesApi.unlinkWorkArea(c.id, wa.id));
+    await this.loadWorkAreas(c.id);
+    await this.st.reloadChildWorkAreas();
+  }
+
+  /** Does this box's object have a bound work area? (drives the safety badge) */
+  boxHasWorkArea(b: MapBox): boolean { return (this.st.childWorkAreas().get(b.childId) ?? 0) > 0; }
+
+  /** Start a permit from this node: open the WR form pre-seeded with this work area (existing prefill applies). */
+  startPermit(wa: WorkAreaRef) {
+    this.router.navigate(['/permit-builder/work-requests'], { queryParams: { workAreaId: wa.id } });
   }
 
   async saveEdit() {
@@ -383,12 +467,14 @@ export class PlantMapComponent implements OnDestroy {
     if (!child) return;
     this.savingEdit.set(true);
     // blank = leave unchanged (PATCH contract) — never silently wipe a field.
+    const floor = this.editFloor.trim();
     await this.st.updateNodeData(child.id, {
       name: this.editName.trim() || undefined,
       type: this.editType || undefined,
       tagNumber: this.editTag.trim() || undefined,
       description: this.editDesc.trim() || undefined,
       specificLocation: this.editLoc.trim() || undefined,
+      floorIndex: floor === '' ? undefined : (Number.isFinite(Number(floor)) ? Number(floor) : undefined),
     });
     this.savingEdit.set(false);
   }

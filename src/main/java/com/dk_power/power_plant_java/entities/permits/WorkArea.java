@@ -63,6 +63,15 @@ public class WorkArea extends BaseAuditEntity {
     )
     private Set<Value> locations = new HashSet<>();
 
+    /**
+     * Soft link to the plant tree — the {@code PhysicalObject} node this work area is anchored to (plain Long FK,
+     * NOT @ManyToOne — mirrors {@code FileObject.physicalObjectId}). Lets the plant map + node binder surface work
+     * areas and their safety profile on the canonical place. Nullable; sync-tracked (remapped in FieldSyncService
+     * when the target PhysicalObject is deduplicated).
+     */
+    @Column(name = "physical_object_id")
+    private Long physicalObjectId;
+
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public SwHazards getConstantHazards() {
