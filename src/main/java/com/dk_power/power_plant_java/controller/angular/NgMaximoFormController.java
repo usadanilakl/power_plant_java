@@ -1,0 +1,108 @@
+package com.dk_power.power_plant_java.controller.angular;
+
+import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoFormTemplateDto;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+/**
+ * Electronic Maximo task forms: author data-driven templates and save filled submissions. The completion
+ * bridge (PDF + doclink attach + worklog/status + write-back) is added in phase 3.
+ */
+@Slf4j
+@RestController
+@RequestMapping("/ng/maximo/forms")
+@RequiredArgsConstructor
+public class NgMaximoFormController {
+
+    private final MaximoFormService forms;
+    private final MaximoFormCompletionService completion;
+
+    // ── Templates ─────────────────────────────────────────────────────────────
+
+    @GetMapping("/templates")
+    public ResponseEntity<NgApiResponse<List<MaximoFormTemplateDto>>> listTemplates() {
+        return ResponseEntity.ok(new NgApiResponse<>(forms.getTemplates(), "ok"));
+    }
+
+    @GetMapping("/templates/{id}")
+    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> getTemplate(@PathVariable Long id) {
+        return ResponseEntity.ok(new NgApiResponse<>(forms.getTemplate(id), "ok"));
+    }
+
+    @PostMapping("/templates")
+    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> saveTemplate(@RequestBody MaximoFormTemplateDto dto) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(forms.saveTemplate(dto), "saved"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] saveTemplate failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/templates/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteTemplate(@PathVariable Long id) {
+        forms.deleteTemplate(id);
+        return ResponseEntity.ok(new NgApiResponse<>(null, "deleted"));
+    }
+
+    /** Templates whose match rule fits a WO (by pmnum and/or description). */
+    @GetMapping("/templates/for-wo")
+    public ResponseEntity<NgApiResponse<List<MaximoFormTemplateDto>>> templatesForWo(
+            @RequestParam(value = "pmnum", required = false) String pmnum,
+            @RequestParam(value = "description", required = false) String description) {
+        return ResponseEntity.ok(new NgApiResponse<>(forms.templatesForWorkOrder(pmnum, description), "ok"));
+    }
+
+    // ── Submissions ────────────────────────────────────────────────────────────
+
+    @GetMapping("/submissions/{id}")
+    public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> getSubmission(@PathVariable Long id) {
+        return ResponseEntity.ok(new NgApiResponse<>(forms.getSubmission(id), "ok"));
+    }
+
+    /** Existing submissions for a work order (newest first). */
+    @GetMapping("/submissions/for-wo")
+    public ResponseEntity<NgApiResponse<List<MaximoFormSubmissionDto>>> submissionsForWo(
+            @RequestParam("wonum") String wonum) {
+        return ResponseEntity.ok(new NgApiResponse<>(forms.getSubmissionsForWo(wonum), "ok"));
+    }
+
+    /** Save a submission draft (does not push to Maximo — use /complete to submit). */
+    @PostMapping("/submissions")
+    public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> saveDraft(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(forms.saveDraft(dto), "saved"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] saveDraft failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Complete a submission: save it, render a PDF, attach it to the WO, add a worklog + per-field write-back,
+     * and advance the WO status if the template asks. A failed PDF/attach aborts (submission stays a draft).
+     */
+    @PostMapping("/submissions/complete")
+    public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> complete(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(completion.completeFromDto(dto), "completed"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] complete failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+}

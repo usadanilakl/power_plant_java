@@ -158,6 +158,9 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.maximo.RecurringPmSyncService recurringPmSyncService,
             // Maximo ticket→asset index (hub-built SR/WO tag index; synced so all desktops can search it)
             @Lazy com.dk_power.power_plant_java.sevice.maximo.MaximoTicketAssetSyncService maximoTicketAssetSyncService,
+            // Maximo electronic task forms (data-driven templates + filled submissions; synced)
+            @Lazy com.dk_power.power_plant_java.sevice.maximo.MaximoFormTemplateSyncService maximoFormTemplateSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.maximo.MaximoFormSubmissionSyncService maximoFormSubmissionSyncService,
             // Physical hierarchy (Maximo-seeded plant tree; synced so all desktops share it)
             @Lazy com.dk_power.power_plant_java.sevice.physical.PhysicalObjectSyncService physicalObjectSyncService
     ) {
@@ -238,6 +241,9 @@ public class ServiceFacade {
         serviceMap.put(com.dk_power.power_plant_java.entities.maximo.RecurringPm.class.getSimpleName(), recurringPmSyncService);
         // Maximo ticket→asset index
         serviceMap.put(com.dk_power.power_plant_java.entities.maximo.MaximoTicketAsset.class.getSimpleName(), maximoTicketAssetSyncService);
+        // Maximo electronic task forms
+        serviceMap.put(com.dk_power.power_plant_java.entities.maximo.MaximoFormTemplate.class.getSimpleName(), maximoFormTemplateSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.maximo.MaximoFormSubmission.class.getSimpleName(), maximoFormSubmissionSyncService);
         // Physical hierarchy (plant tree)
         serviceMap.put(com.dk_power.power_plant_java.entities.physical.PhysicalObject.class.getSimpleName(), physicalObjectSyncService);
     }

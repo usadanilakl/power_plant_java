@@ -60,6 +60,8 @@ public class DedupKeyResolver {
         Map.entry("Instrument",          List.of(new NaturalKeyField("tagNumber", "tag_number", false, false))),
         Map.entry("RecurringPm",         List.of(new NaturalKeyField("pmKey", "pm_key", false, true))),
         Map.entry("MaximoTicketAsset",   List.of(new NaturalKeyField("ticketKey", "ticket_key", false, true))),
+        Map.entry("MaximoFormTemplate",  List.of(new NaturalKeyField("formKey", "form_key", false, true))),
+        Map.entry("MaximoFormSubmission",List.of(new NaturalKeyField("submissionKey", "submission_key", false, true))),
         Map.entry("PhysicalObject",      List.of(new NaturalKeyField("maximoKey", "maximo_key", false, true))),
         Map.entry("InstrumentLog",       List.of(new NaturalKeyField("localUuid", "local_uuid", false, true))),
         // EtaPro operator-log entries are scraped independently on each desktop over overlapping

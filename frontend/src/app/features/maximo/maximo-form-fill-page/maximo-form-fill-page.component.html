@@ -1,0 +1,54 @@
+<app-main-layout header="Maximo — Fill Task Form">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <div class="bar">
+        <label class="wo">Work order <input [(ngModel)]="wonum" placeholder="e.g. J26-41492" /></label>
+        <label class="pick">Form
+          <select [ngModel]="selectedTemplate()?.formKey ?? ''" (ngModelChange)="onPickTemplate($event)">
+            <option value="">— choose a form —</option>
+            <option *ngFor="let t of templates()" [value]="t.formKey">{{ t.formName || t.formKey }}</option>
+          </select>
+        </label>
+        <span class="muted" *ngIf="loading()">Loading…</span>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+        <span *ngIf="info()" class="info">{{ info() }}</span>
+      </div>
+
+      <div class="status-line" *ngIf="selectedTemplate() as t">
+        <span class="muted">{{ t.description }}</span>
+        <span class="badge" *ngIf="existing() as s">
+          {{ s.status === 'COMPLETED' ? 'Completed' : 'Draft' }}<span *ngIf="s.submittedAt"> · {{ s.submittedAt | slice:0:10 }}</span>
+        </span>
+      </div>
+
+      <div class="form-wrap" *ngIf="selectedTemplate() && smartFields().length; else noForm">
+        <app-smart-form
+          [fields]="smartFields()"
+          [values]="valuesSig"
+          [title]="selectedTemplate()?.formName ?? ''"
+          [submitButtonText]="saving() ? 'Saving…' : 'Save draft'"
+          (formValueChange)="currentValues.set($event)"
+          (formSubmit)="onSubmit($event)">
+        </app-smart-form>
+
+        <div class="complete-row">
+          <button class="primary" (click)="complete()"
+                  [disabled]="completing() || saving() || existing()?.status === 'COMPLETED'">
+            {{ completing() ? 'Submitting to Maximo…' : (existing()?.status === 'COMPLETED' ? 'Completed ✓' : 'Complete & submit to Maximo') }}
+          </button>
+          <span class="muted" *ngIf="existing()?.status !== 'COMPLETED'">Renders a PDF, attaches it to the work order, adds a worklog + any mapped write-backs, and advances the WO status.</span>
+          <span class="muted" *ngIf="existing()?.status === 'COMPLETED'">Already submitted to Maximo{{ existing()?.pdfDoclinkId ? ' · PDF #' + existing()?.pdfDoclinkId : '' }}.</span>
+        </div>
+      </div>
+
+      <ng-template #noForm>
+        <p class="muted empty" *ngIf="selectedTemplate() && !smartFields().length">This form has no fields yet — add some in the Form Builder.</p>
+        <p class="muted empty" *ngIf="!selectedTemplate()">Enter a work order and choose a form to begin.</p>
+      </ng-template>
+    </div>
+  </ng-container>
+</app-main-layout>

@@ -1,0 +1,25 @@
+.mx-page { padding: 12px 16px; color: #e6e6e6; }
+
+.bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 10px;
+       background: #2a2a2a; border-radius: 4px; margin-bottom: 10px; }
+.bar label { display: inline-flex; align-items: center; gap: 6px; color: #aaa; font-size: 13px; }
+.bar input, .bar select { background: #1f1f1f; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 5px 7px; font: inherit; }
+.bar .wo input { width: 160px; }
+
+.muted { color: #777; }
+.error { color: #ff7b72; }
+.info { color: #7ee787; }
+.empty { padding: 16px; background: #1f1f1f; border: 1px solid #333; border-radius: 4px; }
+
+.status-line { display: flex; align-items: center; gap: 10px; margin: 4px 2px 10px; }
+.badge { font-size: 11px; font-weight: 700; border-radius: 3px; padding: 1px 8px; background: #3a2a14; color: #ffb454; }
+
+.form-wrap { background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 14px; max-width: 820px; }
+
+.complete-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px;
+  padding-top: 12px; border-top: 1px solid #333; }
+.complete-row button { background: #333; color: #e6e6e6; border: 1px solid #555; border-radius: 3px; padding: 7px 14px; font: inherit; cursor: pointer; }
+.complete-row button:hover:not(:disabled) { background: #3d3d3d; }
+.complete-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+.complete-row button.primary { background: #1c7c3a; border-color: #1c7c3a; color: #fff; }
+.complete-row button.primary:hover:not(:disabled) { background: #23913f; }

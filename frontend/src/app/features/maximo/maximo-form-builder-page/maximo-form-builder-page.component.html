@@ -1,0 +1,94 @@
+<app-main-layout header="Maximo — Task Form Builder">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <div class="bar">
+        <button class="primary" (click)="newTemplate()">+ New form</button>
+        <button (click)="load()" [disabled]="loading()">Refresh</button>
+        <span class="muted">Author electronic task forms. Fields are data-driven — no code or deploy needed.</span>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+        <span *ngIf="info()" class="info">{{ info() }}</span>
+      </div>
+
+      <div class="split">
+        <!-- Template list -->
+        <aside class="list">
+          <div class="list-head">Forms <span class="muted">({{ templates().length }})</span></div>
+          <button class="tpl" *ngFor="let t of templates()" [class.active]="editing?.id === t.id" (click)="edit(t)">
+            <span class="tpl-name">{{ t.formName || t.formKey }}</span>
+            <span class="tpl-key">{{ t.formKey }}<span *ngIf="t.active === false" class="tpl-off"> · inactive</span></span>
+          </button>
+          <div class="muted empty" *ngIf="!templates().length && !loading()">No forms yet — click “New form”.</div>
+        </aside>
+
+        <!-- Editor -->
+        <section class="editor" *ngIf="editing as e; else pickHint">
+          <div class="meta">
+            <label>Form key
+              <input [(ngModel)]="e.formKey" [disabled]="!isNew" placeholder="MONTHLY_PUMP_INSP" />
+            </label>
+            <label>Name <input [(ngModel)]="e.formName" placeholder="Monthly Pump Inspection" /></label>
+            <label class="wide">Description <input [(ngModel)]="e.description" placeholder="Optional" /></label>
+            <label>Match pmnum <input [(ngModel)]="e.matchPmnum" placeholder="e.g. JG-1183" /></label>
+            <label>Match desc contains <input [(ngModel)]="e.matchDescriptionContains" placeholder="e.g. fuel tank" /></label>
+            <label>Complete → WO status <input [(ngModel)]="e.completeWoStatus" placeholder="e.g. COMP (optional)" /></label>
+            <label class="cb"><input type="checkbox" [(ngModel)]="e.active" /> Active</label>
+          </div>
+
+          <div class="fields-head">
+            <h3>Fields <span class="muted">({{ e.fields.length }})</span></h3>
+            <button (click)="addField()">+ Add field</button>
+          </div>
+
+          <table class="fields" *ngIf="e.fields.length; else noFields">
+            <thead>
+              <tr><th></th><th>Name</th><th>Label</th><th>Type</th><th>Req</th><th>Options / unit</th><th>Section</th><th>Maximo</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of e.fields; let i = index">
+                <td class="ord">
+                  <button class="link" (click)="moveField(i, -1)" [disabled]="i === 0" title="Move up">▲</button>
+                  <button class="link" (click)="moveField(i, 1)" [disabled]="i === e.fields.length - 1" title="Move down">▼</button>
+                </td>
+                <td><input class="f-name" [(ngModel)]="f.name" placeholder="oilLevel" /></td>
+                <td><input class="f-label" [(ngModel)]="f.label" placeholder="Oil level OK?" /></td>
+                <td>
+                  <select [(ngModel)]="f.type">
+                    <option *ngFor="let ft of fieldTypes" [value]="ft">{{ ft }}</option>
+                  </select>
+                </td>
+                <td class="req"><input type="checkbox" [(ngModel)]="f.required" /></td>
+                <td>
+                  <input *ngIf="needsOptions(f.type)" class="f-opts" [ngModel]="optionsText(f)"
+                         (ngModelChange)="setOptions(f, $event)" placeholder="Pass, Fail, N/A" />
+                  <input *ngIf="f.type === 'number'" class="f-unit" [(ngModel)]="f.unit" placeholder="unit e.g. psi" />
+                </td>
+                <td><input class="f-sec" [(ngModel)]="f.section" placeholder="Checks" /></td>
+                <td>
+                  <select [(ngModel)]="f.maximoTarget" title="Where this value is written back to Maximo on completion">
+                    <option *ngFor="let w of writeTargets" [ngValue]="w.value">{{ w.label }}</option>
+                  </select>
+                </td>
+                <td><button class="link del" (click)="removeField(i)" title="Remove field">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #noFields><p class="muted">No fields yet — click “Add field”.</p></ng-template>
+
+          <div class="actions">
+            <button class="primary" (click)="save()" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save form' }}</button>
+            <button (click)="cancel()">Close</button>
+            <button class="danger" *ngIf="!isNew && editing?.id != null" (click)="removeEditing()">Delete</button>
+          </div>
+        </section>
+
+        <ng-template #pickHint>
+          <section class="editor hint"><p class="muted">Select a form to edit, or click “New form”.</p></section>
+        </ng-template>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>

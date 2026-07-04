@@ -39,6 +39,31 @@ export interface GhostBox {
 const DEFAULT_W = 150;
 const DEFAULT_H = 72;
 
+/** A fitting on a pipe (valve/instrument/drain/vent/spray) — anchored to a point along the path. Each fitting is
+ *  its OWN PhysicalObject (nodeId, a child of the pipe node); its on-pipe geometry rides the parent pipe's placement. */
+export interface PipeFitting {
+  id: string; type: string; at: { x: number; y: number };
+  name?: string; tag?: string; desc?: string; double?: boolean; tag2?: string;
+  nodeId?: number; // the fitting's PhysicalObject id (child of the pipe node)
+}
+/** A pipe = a guided, elbowed route (a polyline) with fittings on it. Each pipe is a real PhysicalObject (nodeId,
+ *  child of its parent canvas node); it persists as ONE placement (sourceEntityType='Pipe', geometry+fittings in svgPath). */
+export interface PipeGeo {
+  id: string; parentId: number; points: { x: number; y: number }[];
+  color?: string; width?: number; name?: string; fittings?: PipeFitting[];
+  aEnd?: number; bEnd?: number;   // PhysicalObject ids the two ends anchor to (cross-area follow)
+  nodeId?: number;                // the pipe's PhysicalObject id
+  localId?: number;               // its DiagramPlacement localId on the parent's diagram (stable across saves)
+}
+
+/** sourceEntityType for a real pipe's placement (a pipe is drawn as a routed line, not a box). Distinct from
+ *  'PhysicalObject' so pipes are auto-excluded everywhere boxes are read (loadCanvas boxes, ghosts, boundary,
+ *  nested box-filter all key on 'PhysicalObject'). */
+export const PIPE_SRC = 'Pipe';
+/** LEGACY: the pre-entity blob placement that carried ALL of a node's pipes as one JSON string. Read only by the
+ *  one-time migration that promotes it to real pipe/fitting PhysicalObjects, then dropped. */
+export const PIPE_META = '__pipes__';
+
 /**
  * Signal-based state + persistence for the purpose-built plant map. Each PhysicalObject node owns a blank
  * canvas (a get-or-created Diagram); its children are drawn as labeled boxes and joined by connections. Boxes
@@ -92,6 +117,25 @@ export class PlantMapStateService {
   backgroundUrl = signal<string | null>(null);
   backgroundOpacity = signal(0.55);
 
+  // ── pipes — each pipe is a real PhysicalObject drawn as a routed line, persisted as a 'Pipe' placement on its
+  //    parent's diagram (geometry + fittings JSON in svgPath). This signal holds the CANVAS node's pipes; the
+  //    component owns rendering/editing (a global pipeGeos) and pushes the current node's slice here to persist.
+  pipes = signal<PipeGeo[]>([]);
+  /** Bumped once per canvas load (after pipes + identity are settled) so the component applies them to its global
+   *  pipeGeos exactly once per load — never mid-load with a mismatched node, never on its own save round-trips. */
+  pipesLoadSeq = signal(0);
+  /** The node id the just-loaded pipes/blob belong to. The component applies pipes to THIS node (not the current
+   *  canvasNode) so overlapping navigations can't cross-contaminate one node's pipes onto another. */
+  pipesLoadNodeId = signal<number | null>(null);
+  /** A legacy blob (PIPE_META) found on the just-loaded canvas that still needs promoting to real entities — the
+   *  component's migration reads this; null when there's nothing to migrate. Re-emitted verbatim by doSave (so the
+   *  complete-set soft-delete can't drop it) until clearLegacyBlob() is called after a successful migration save. */
+  pipesLegacyBlob = signal<string | null>(null);
+  private legacyBlobLocalId: number | null = null;
+  /** Node ids that are pipes/fittings (routed lines, not placeable boxes) — kept in sync by the component from its
+   *  global pipeGeos; excluded from the "to place" palette so they never appear as droppable boxes. */
+  hiddenChildIds = signal<Set<number>>(new Set());
+
   loading = signal(false);
   saving = signal(false);
   error = signal<string | null>(null);
@@ -106,11 +150,12 @@ export class PlantMapStateService {
   /** child id → node, for deriving box labels/colors from live data. */
   childById = computed(() => new Map(this.childNodes().map(n => [n.id, n])));
 
-  /** Children that don't yet have a box on the canvas (the "to place" palette). Floors are excluded — they
-   *  live in the elevation switcher, not as 2D boxes on the parent canvas. */
+  /** Children that don't yet have a box on the canvas (the "to place" palette). Floors are excluded — they live in
+   *  the elevation switcher; pipe/fitting nodes are excluded — they're routed lines, not droppable boxes. */
   unplacedChildren = computed(() => {
     const placed = new Set(this.boxes().map(b => b.childId));
-    return this.childNodes().filter(c => !placed.has(c.id) && c.floorIndex == null);
+    const hidden = this.hiddenChildIds();
+    return this.childNodes().filter(c => !placed.has(c.id) && c.floorIndex == null && !hidden.has(c.id));
   });
 
   /**
@@ -241,6 +286,10 @@ export class PlantMapStateService {
     const did = diagram?.id ?? null;
     this.currentDiagramId.set(did);
     if (did != null) { this.loadBackground(did); await this.loadCanvas(did); }
+    else { // no diagram → no pipes
+      this.pipes.set([]); this.pipesLegacyBlob.set(null); this.legacyBlobLocalId = null; this.hiddenChildIds.set(new Set());
+      this.pipesLoadNodeId.set(cn.id); this.pipesLoadSeq.update(n => n + 1);
+    }
     await this.loadGhosts(cn.id); // the OTHER floors, dimmed, so all levels are visible together
   }
 
@@ -327,11 +376,44 @@ export class PlantMapStateService {
         };
       });
 
+    // Real pipe placements (sourceEntityType='Pipe'): each carries its own geometry + fittings JSON in svgPath.
+    const pipes: PipeGeo[] = placements
+      .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
+      .map(p => {
+        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number } = {};
+        try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
+        return {
+          id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
+          nodeId: p.sourceEntityId!, localId: p.localId!,
+          points: Array.isArray(geo.points) ? geo.points : [],
+          fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
+          aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined,
+          color: p.color || undefined, width: p.lineWidth || undefined,
+          name: p.label || p.name || 'Pipe',
+        } as PipeGeo;
+      });
+
+    // Legacy pre-entity blob (PIPE_META): kept + re-emitted verbatim by doSave (so the complete-set soft-delete
+    // can't drop it) until the component's migration promotes it to real entities and calls clearLegacyBlob().
+    const legacy = placements.find(p => p.sourceEntityType === PIPE_META && p.localId != null);
+    this.legacyBlobLocalId = legacy?.localId ?? null;
+
     this.boxes.set(boxes);
     this.edges.set(edges);
-    this.nextPlacementLocalId = boxes.reduce((m, b) => Math.max(m, b.localId), 0) + 1;
+    this.pipes.set(pipes);
+    this.pipesLegacyBlob.set(legacy?.svgPath ?? null);
+    // Seed the hidden-child set synchronously so the just-loaded pipe/fitting nodes never flash in the palette.
+    const hidden = new Set<number>();
+    for (const p of pipes) { if (p.nodeId != null) hidden.add(p.nodeId); for (const f of (p.fittings ?? [])) if (f.nodeId != null) hidden.add(f.nodeId); }
+    this.hiddenChildIds.set(hidden);
+    this.nextPlacementLocalId = Math.max(
+      boxes.reduce((m, b) => Math.max(m, b.localId), 0),
+      pipes.reduce((m, p) => Math.max(m, p.localId ?? 0), 0),
+      legacy?.localId ?? 0) + 1;
     this.nextConnectionLocalId = edges.reduce((m, e) => Math.max(m, e.localId), 0) + 1;
     this.dirty = false;
+    this.pipesLoadNodeId.set(this.canvasNode()?.id ?? null);
+    this.pipesLoadSeq.update(n => n + 1); // pipes + identity now settled → let the component apply them once
   }
 
   /**
@@ -637,6 +719,18 @@ export class PlantMapStateService {
 
   // ── persistence ───────────────────────────────────────────────────────────
 
+  /** Stop preserving the legacy blob — the migration has produced real 'Pipe' placements, so the next save drops
+   *  the blob (it's no longer re-emitted) in the same write that persists the replacements. */
+  clearLegacyBlob() { this.pipesLegacyBlob.set(null); this.legacyBlobLocalId = null; }
+
+  /** Replace the CANVAS node's pipes and persist them (component owns the pipe UI; this is the sink). Assigns a
+   *  stable placement localId to any new pipe so each pipe updates one row rather than churning. */
+  setPipes(pipes: PipeGeo[]) {
+    for (const p of pipes) if (p.localId == null) p.localId = this.nextPlacementLocalId++;
+    this.pipes.set(pipes);
+    this.scheduleSave();
+  }
+
   private scheduleSave() {
     this.dirty = true;
     if (this.saveTimer) clearTimeout(this.saveTimer);
@@ -666,6 +760,7 @@ export class PlantMapStateService {
     if (did == null) { this.dirty = false; return; }
     const boxes = this.boxes();
     const edges = this.edges();
+    const pipes = this.pipes();
     const childById = this.childById();
     this.dirty = false;
     this.saving.set(true);
@@ -684,6 +779,36 @@ export class PlantMapStateService {
           locked: b.showChildren,
         };
       });
+      // Each pipe = one real placement (sourceEntityType='Pipe', sourceEntityId = the pipe's PhysicalObject),
+      // geometry+fittings in svgPath. Part of the complete set → the backend's soft-delete-missing drops pipes the
+      // user removed. A legacy PIPE_META blob (if any) is intentionally NOT re-emitted → it's cleaned up once its
+      // pipes have migrated to real entities.
+      for (const p of pipes) {
+        if (p.nodeId == null) continue; // not yet a real entity (createNode pending/failed) — skip until it is
+        const localId = p.localId ?? this.nextPlacementLocalId++;
+        const xs = p.points.map(pt => pt.x), ys = p.points.map(pt => pt.y);
+        const minX = xs.length ? Math.min(...xs) : 0, minY = ys.length ? Math.min(...ys) : 0;
+        placementDtos.push({
+          diagramId: did, localId,
+          sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd }),
+          color: p.color, lineWidth: p.width,
+          name: p.name || 'Pipe', label: p.name || 'Pipe',
+          x: minX, y: minY,
+          width: xs.length ? Math.max(...xs) - minX : 0, height: ys.length ? Math.max(...ys) - minY : 0,
+        });
+      }
+      // Preserve any un-migrated legacy blob: re-emit it verbatim so the complete-set soft-delete never drops it
+      // before its pipes are promoted. clearLegacyBlob() (after a successful migration save) stops this → it's then
+      // cleaned up in the same save that writes the real 'Pipe' placements.
+      const blob = this.pipesLegacyBlob();
+      if (blob != null && this.legacyBlobLocalId != null) {
+        placementDtos.push({
+          diagramId: did, localId: this.legacyBlobLocalId,
+          sourceEntityType: PIPE_META, type: 'pipedata', name: PIPE_META, svgPath: blob,
+          x: 0, y: 0, width: 0, height: 0,
+        });
+      }
       const connectionDtos: DiagramConnectionDto[] = edges.map(e => ({
         diagramId: did, localId: e.localId,
         sourcePlacementLocalId: e.sourceLocalId, targetPlacementLocalId: e.targetLocalId,
