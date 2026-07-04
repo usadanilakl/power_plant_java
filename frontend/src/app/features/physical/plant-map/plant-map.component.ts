@@ -36,6 +36,10 @@ interface NestChild {
 /** A nested descendant to render, mapped into content coords, at a given depth. */
 interface NestItem { x: number; y: number; w: number; h: number; childId: number; name: string; color: string; shape: FootprintShape; depth: number; }
 
+/** A pipe = a guided, elbowed route (a polyline). Phase 1: geometry stored locally per canvas node; later it
+ *  promotes to a synced PhysicalObject + placement, gains fittings (child objects on the path) and branches. */
+interface PipeGeo { id: string; parentId: number; points: { x: number; y: number }[]; color?: string; width?: number; name?: string; }
+
 /** In-progress pointer gesture on the canvas. */
 type Drag =
   | { kind: 'move' | 'resize'; localId: number; startClientX: number; startClientY: number; origX: number; origY: number; origW: number; origH: number }
@@ -92,9 +96,11 @@ export class PlantMapComponent implements OnDestroy {
   private nestFetched = new Set<number>();              // containers fetched (or in-flight)
   private nestParent: number | null = null;             // the canvas diagram the cache belongs to
   private nestVersion = signal(0);                       // bumped when a fetch lands → re-render + fetch deeper
-  /** On-screen width (px, after zoom) at which a container reveals its children. */
-  private readonly NEST_REVEAL = 200;
-  private readonly NEST_MAX_DEPTH = 5;
+  /** On-screen width (px, after zoom) at which a container reveals its children — tunable "detail" control
+   *  (lower = reveal more, deeper detail). */
+  nestReveal = signal(140);
+  setNestReveal(px: number) { this.nestReveal.set(Math.max(60, Math.min(300, px))); }
+  private readonly NEST_MAX_DEPTH = 6;
 
   @ViewChild('viewport') viewportRef?: ElementRef<HTMLElement>;
 
@@ -200,6 +206,7 @@ export class PlantMapComponent implements OnDestroy {
   nestedItems = computed<NestItem[]>(() => {
     this.nestVersion();
     const z = this.zoom();
+    const reveal = this.nestReveal();
     const out: NestItem[] = [];
     const walk = (rect: { x: number; y: number; w: number; h: number }, containerId: number, depth: number) => {
       if (depth > this.NEST_MAX_DEPTH) return;
@@ -209,11 +216,11 @@ export class PlantMapComponent implements OnDestroy {
       for (const s of shapes) {
         const r = this.mapInto(rect, bb, s);
         out.push({ x: r.x, y: r.y, w: r.w, h: r.h, childId: s.childId, name: s.name, color: s.color, shape: s.shape, depth });
-        if (s.hasChildren && r.w * z >= this.NEST_REVEAL && r.h * z >= 60) walk(r, s.childId, depth + 1);
+        if (s.hasChildren && r.w * z >= reveal && r.h * z >= 34) walk(r, s.childId, depth + 1);
       }
     };
     for (const b of this.st.boxes()) {
-      if (b.width * z >= this.NEST_REVEAL && b.height * z >= 60) walk({ x: b.x, y: b.y, w: b.width, h: b.height }, b.childId, 1);
+      if (b.width * z >= reveal && b.height * z >= 34) walk({ x: b.x, y: b.y, w: b.width, h: b.height }, b.childId, 1);
     }
     return out;
   });
@@ -222,9 +229,10 @@ export class PlantMapComponent implements OnDestroy {
   revealingBoxes = computed(() => {
     this.nestVersion();
     const z = this.zoom();
+    const reveal = this.nestReveal();
     const set = new Set<number>();
     for (const b of this.st.boxes()) {
-      if (b.width * z >= this.NEST_REVEAL && b.height * z >= 60 && (this.nestCache.get(b.childId)?.length ?? 0) > 0) set.add(b.localId);
+      if (b.width * z >= reveal && b.height * z >= 34 && (this.nestCache.get(b.childId)?.length ?? 0) > 0) set.add(b.localId);
     }
     return set;
   });
@@ -269,11 +277,19 @@ export class PlantMapComponent implements OnDestroy {
 
     this.shared.loadSystems().subscribe(s => this.systems.set(s ?? []));
     this.nodesApi.getAllWorkAreas().subscribe(w => this.allWorkAreas.set(w ?? []));
+    void this.loadTree(); // the "jump anywhere" hierarchy navigator
+    this.loadPipes();     // object-to-object connections (local for now)
 
     // Repopulate the inspector only when the selected object actually changes (not on every drag).
     effect(() => {
       const child = this.st.selectedChild();
       untracked(() => this.onSelectionChanged(child));
+    });
+
+    // Keep the tree navigator expanded down to the current node as you navigate.
+    effect(() => {
+      this.st.currentNode();
+      untracked(() => this.expandToCurrent());
     });
 
     // Reset pan/zoom whenever the open canvas changes (fresh view per node).
@@ -289,7 +305,8 @@ export class PlantMapComponent implements OnDestroy {
       const boxes = this.st.boxes();
       const childById = this.st.childById();
       const z = this.zoom();
-      this.nestVersion(); // re-run when a fetch lands, to fetch the next level down
+      const fetchAt = this.nestReveal() * 0.6; // pre-fetch a container's children BEFORE it crosses the reveal
+      this.nestVersion(); // re-run when a fetch lands, to fetch the next level down          // threshold, so it never renders empty
       untracked(() => {
         if (did !== this.nestParent) { this.nestParent = did; this.nestCache.clear(); this.nestFetched.clear(); }
         const walkFetch = (rect: { x: number; y: number; w: number; h: number }, containerId: number, containerDid: number | null, depth: number) => {
@@ -300,13 +317,13 @@ export class PlantMapComponent implements OnDestroy {
           const bb = this.bboxOf(shapes);
           for (const s of shapes) {
             const r = this.mapInto(rect, bb, s);
-            if (s.hasChildren && s.diagramId != null && r.w * z >= this.NEST_REVEAL && r.h * z >= 60) {
+            if (s.hasChildren && s.diagramId != null && r.w * z >= fetchAt && r.h * z >= 28) {
               walkFetch(r, s.childId, s.diagramId, depth + 1);
             }
           }
         };
         for (const b of boxes) {
-          if (b.width * z >= this.NEST_REVEAL && b.height * z >= 60) {
+          if (b.width * z >= fetchAt && b.height * z >= 28) {
             walkFetch({ x: b.x, y: b.y, w: b.width, h: b.height }, b.childId, childById.get(b.childId)?.diagramId ?? null, 1);
           }
         }
@@ -383,6 +400,142 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   navigate(id: number) { void this.st.navigate(id); }
+
+  /** Single-click a zoom-nested descendant → show its info in the inspector (double-click jumps to it). */
+  async onNestClick(n: NestItem) {
+    const node = await firstValueFrom(this.nodesApi.getNode(n.childId));
+    if (node) this.st.selectNested(node);
+  }
+
+  // ── tree navigator (jump anywhere in the hierarchy) ──
+  treeAllNodes = signal<PhysicalObjectNode[]>([]);
+  expandedTree = signal<Set<number>>(new Set<number>());
+  private treeChildrenMap = computed(() => {
+    const m = new Map<number | null, PhysicalObjectNode[]>();
+    for (const n of this.treeAllNodes()) {
+      const p = n.parentId ?? null;
+      const arr = m.get(p); if (arr) arr.push(n); else m.set(p, [n]);
+    }
+    return m;
+  });
+  /** Flattened, indented tree rows honoring expand/collapse (roots + expanded branches). */
+  treeRows = computed<{ node: PhysicalObjectNode; depth: number; hasKids: boolean; open: boolean }[]>(() => {
+    const byParent = this.treeChildrenMap();
+    const expanded = this.expandedTree();
+    const rows: { node: PhysicalObjectNode; depth: number; hasKids: boolean; open: boolean }[] = [];
+    const walk = (parentId: number | null, depth: number) => {
+      const kids = (byParent.get(parentId) ?? []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      for (const n of kids) {
+        const nKids = byParent.get(n.id) ?? [];
+        const open = expanded.has(n.id);
+        rows.push({ node: n, depth, hasKids: nKids.length > 0, open });
+        if (open && nKids.length) walk(n.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+    return rows;
+  });
+  toggleTreeExpand(id: number, ev?: Event) {
+    ev?.stopPropagation();
+    this.expandedTree.update(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  isCurrentTreeNode(id: number): boolean { return this.st.currentNode()?.id === id; }
+  private async loadTree() {
+    const all = await firstValueFrom(this.nodesApi.getTree());
+    this.treeAllNodes.set((all ?? []).filter(n => n.local !== false));
+    this.expandToCurrent();
+  }
+  /** Expand the tree branches down to the current node so it's visible + highlighted. */
+  private expandToCurrent() {
+    const cur = this.st.currentNode(); if (!cur) return;
+    const byId = new Map(this.treeAllNodes().map(n => [n.id, n]));
+    const open = new Set(this.expandedTree());
+    let p: number | null = cur.parentId ?? null;
+    while (p != null) { open.add(p); p = byId.get(p)?.parentId ?? null; }
+    open.add(cur.id); // expand the current node too, to show where you are
+    this.expandedTree.set(open);
+  }
+
+  // ── pipes: guided, elbowed routes drawn point-by-point (Phase 1: geometry stored locally per canvas node) ──
+  pipeGeos = signal<PipeGeo[]>([]);                    // all pipe geometry (local for now)
+  pipeMode = signal(false);                            // pipe-draw tool active
+  pipeSnap = signal(true);                             // 90° elbow snap while drawing
+  pipeDraft = signal<{ x: number; y: number }[]>([]);  // vertices being laid
+  pipeCursor = signal<{ x: number; y: number } | null>(null); // cursor → live guide segment
+  selectedPipeId = signal<string | null>(null);
+  pipeEditName = '';
+
+  togglePipeMode() { this.pipeMode.update(v => !v); this.cancelPipe(); }
+
+  private loadPipes() {
+    try { this.pipeGeos.set(JSON.parse(localStorage.getItem('pm-pipe-geo') || '[]')); } catch { this.pipeGeos.set([]); }
+  }
+  private savePipes() {
+    try { localStorage.setItem('pm-pipe-geo', JSON.stringify(this.pipeGeos())); } catch { /* ignore */ }
+  }
+
+  /** Snap a point to horizontal/vertical from the previous vertex (clean elbows). */
+  private snapPipePoint(p: { x: number; y: number }, from?: { x: number; y: number }): { x: number; y: number } {
+    if (!this.pipeSnap() || !from) return p;
+    return Math.abs(p.x - from.x) >= Math.abs(p.y - from.y) ? { x: p.x, y: from.y } : { x: from.x, y: p.y };
+  }
+  /** Add a vertex at the pointer (canvas / box / nested click while in pipe mode). */
+  addPipePoint(ev: PointerEvent) {
+    const p = this.contentPoint(ev);
+    const pts = this.pipeDraft();
+    this.pipeDraft.set([...pts, pts.length ? this.snapPipePoint(p, pts[pts.length - 1]) : p]);
+  }
+  cancelPipe() { this.pipeDraft.set([]); this.pipeCursor.set(null); }
+  /** Finish the in-progress pipe → a new pipe on the current canvas. */
+  finishPipe() {
+    let pts = this.pipeDraft();
+    pts = pts.filter((p, i) => i === 0 || p.x !== pts[i - 1].x || p.y !== pts[i - 1].y); // drop dbl-click dup
+    this.pipeDraft.set([]); this.pipeCursor.set(null);
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    if (pts.length < 2 || parent == null) return;
+    const id = 'pipe-' + parent + '-' + Date.now();
+    this.pipeGeos.update(list => [...list, { id, parentId: parent, points: pts, name: 'Pipe' }]);
+    this.savePipes();
+    this.selectPipe(id);
+  }
+
+  /** Pipes to render on the current canvas (their parent node is the one being shown). */
+  viewPipes = computed(() => {
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    if (parent == null) return [];
+    return this.pipeGeos().filter(p => p.parentId === parent && p.points.length >= 2).map(p => ({
+      id: p.id, points: p.points.map(pt => `${pt.x},${pt.y}`).join(' '),
+      color: p.color || '#5b9bd5', width: p.width || 8, name: p.name || 'Pipe',
+      mid: p.points[Math.floor(p.points.length / 2)], sel: p.id === this.selectedPipeId(),
+    }));
+  });
+  /** The in-progress draft polyline + the live guide segment to the cursor. */
+  pipeDraftPoints = computed(() => this.pipeDraft().map(p => `${p.x},${p.y}`).join(' '));
+  pipeGuideSeg = computed(() => {
+    const pts = this.pipeDraft(); const cur = this.pipeCursor();
+    if (!pts.length || !cur) return null;
+    const last = pts[pts.length - 1];
+    const s = this.snapPipePoint(cur, last);
+    return { x1: last.x, y1: last.y, x2: s.x, y2: s.y };
+  });
+
+  selectedPipe = computed(() => this.pipeGeos().find(p => p.id === this.selectedPipeId()) ?? null);
+  selectPipe(id: string | null) {
+    this.selectedPipeId.set(id);
+    if (id != null) { this.st.selectBox(null); this.st.selectedNestedNode.set(null); }
+    this.pipeEditName = this.pipeGeos().find(x => x.id === id)?.name || '';
+  }
+  savePipeName() {
+    const id = this.selectedPipeId(); if (id == null) return;
+    const name = this.pipeEditName.trim() || 'Pipe';
+    this.pipeGeos.update(l => l.map(p => (p.id === id ? { ...p, name } : p))); this.savePipes();
+  }
+  setPipeColor(color: string) { const id = this.selectedPipeId(); if (id != null) { this.pipeGeos.update(l => l.map(p => (p.id === id ? { ...p, color } : p))); this.savePipes(); } }
+  setPipeWidth(width: number) { const id = this.selectedPipeId(); if (id != null) { this.pipeGeos.update(l => l.map(p => (p.id === id ? { ...p, width } : p))); this.savePipes(); } }
+  deletePipe(id: string) {
+    this.pipeGeos.update(l => l.filter(p => p.id !== id)); this.savePipes();
+    if (this.selectedPipeId() === id) this.selectedPipeId.set(null);
+  }
 
   // ── box rendering helpers ──
   boxLabel(b: MapBox): string {
@@ -479,8 +632,15 @@ export class PlantMapComponent implements OnDestroy {
 
   /** Empty-canvas press: LEFT drag pans the map; RIGHT drag draws a new object. Either way, deselect. */
   onCanvasDown(ev: PointerEvent) {
+    // Pipe tool: left-click lays a vertex, right-click finishes. (Boxes/nested are click-through in pipe mode.)
+    if (this.pipeMode()) {
+      if (ev.button === 2) this.finishPipe(); else this.addPipePoint(ev);
+      return;
+    }
     this.st.selectedLocalId.set(null);
     this.st.selectedEdgeLocalId.set(null);
+    this.st.selectedNestedNode.set(null);
+    this.selectedPipeId.set(null);
     if (ev.button === 2) {
       const p = this.contentPoint(ev);
       this.drag = { kind: 'draw', startX: p.x, startY: p.y };
@@ -557,8 +717,14 @@ export class PlantMapComponent implements OnDestroy {
     if (childId) void this.st.navigate(childId);
   }
 
+  @HostListener('window:keydown.escape')
+  onEscapeKey() { if (this.pipeMode() && this.pipeDraft().length) this.cancelPipe(); }
+  @HostListener('window:keydown.enter')
+  onEnterKey() { if (this.pipeMode() && this.pipeDraft().length) this.finishPipe(); }
+
   @HostListener('window:pointermove', ['$event'])
   onPointerMove(ev: PointerEvent) {
+    if (this.pipeMode() && this.pipeDraft().length) this.pipeCursor.set(this.contentPoint(ev)); // live guide segment
     const d = this.drag;
     if (!d) return;
     const z = this.zoom();
@@ -780,9 +946,9 @@ export class PlantMapComponent implements OnDestroy {
   clearBackground() { this.st.clearBackgroundImage(); }
   setBgOpacity(v: number) { this.st.setBackgroundOpacity(v); }
 
-  // ── inspector: pipe (connection style) ──
-  setPipeColor(color: string) { const id = this.st.selectedEdgeLocalId(); if (id != null) this.st.patchEdge(id, { color }); }
-  setPipeWidth(width: number) { const id = this.st.selectedEdgeLocalId(); if (id != null) this.st.patchEdge(id, { width }); }
+  // ── inspector: legacy box-to-box connection (edge) style ──
+  setEdgeColor(color: string) { const id = this.st.selectedEdgeLocalId(); if (id != null) this.st.patchEdge(id, { color }); }
+  setEdgeWidth(width: number) { const id = this.st.selectedEdgeLocalId(); if (id != null) this.st.patchEdge(id, { width }); }
   async deleteSelectedObject() {
     const c = this.st.selectedChild();
     if (!c) return;

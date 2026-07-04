@@ -64,6 +64,7 @@ export class PlantMapStateService {
   ghostBoxes = signal<GhostBox[]>([]); // the OTHER floors — read-only, dimmed context (so all levels are visible)
   selectedLocalId = signal<number | null>(null);      // selected box
   selectedEdgeLocalId = signal<number | null>(null);  // selected pipe/connection
+  selectedNestedNode = signal<PhysicalObjectNode | null>(null); // a clicked zoom-nested descendant (info-only)
 
   // ── system layers (cross-cutting overlay) ──
   /** childId → set of System value ids it belongs to (current node's children). */
@@ -119,12 +120,14 @@ export class PlantMapStateService {
   floorSwitcher = computed<{ floors: PhysicalObjectNode[]; currentId: number | null }>(() =>
     ({ floors: this.nodeFloors(), currentId: this.viewedLevelId() }));
 
-  /** The currently-selected box's child node (drives the inspector). */
+  /** The currently-selected object's node (drives the inspector) — a box's child, or a clicked nested descendant. */
   selectedChild = computed<PhysicalObjectNode | null>(() => {
     const sel = this.selectedLocalId();
-    if (sel == null) return null;
-    const box = this.boxes().find(b => b.localId === sel);
-    return box ? this.childById().get(box.childId) ?? null : null;
+    if (sel != null) {
+      const box = this.boxes().find(b => b.localId === sel);
+      return box ? this.childById().get(box.childId) ?? null : null;
+    }
+    return this.selectedNestedNode(); // a clicked zoom-nested descendant — info only, no box on this canvas
   });
 
   /** The currently-selected box (for appearance edits). */
@@ -139,16 +142,22 @@ export class PlantMapStateService {
     return sel == null ? null : this.edges().find(e => e.localId === sel) ?? null;
   });
 
-  /** Select a box (clears any pipe selection). */
+  /** Select a box (clears pipe + nested selection). */
   selectBox(localId: number | null) {
     this.selectedLocalId.set(localId);
-    if (localId != null) this.selectedEdgeLocalId.set(null);
+    if (localId != null) { this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null); }
   }
 
-  /** Select a pipe/connection (clears any box selection). */
+  /** Select a pipe/connection (clears box + nested selection). */
   selectEdge(localId: number | null) {
     this.selectedEdgeLocalId.set(localId);
-    if (localId != null) this.selectedLocalId.set(null);
+    if (localId != null) { this.selectedLocalId.set(null); this.selectedNestedNode.set(null); }
+  }
+
+  /** Select a zoom-nested descendant to show its info (it has no box on this canvas). */
+  selectNested(node: PhysicalObjectNode | null) {
+    this.selectedNestedNode.set(node);
+    if (node != null) { this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null); }
   }
 
   private msg(e: any): string { return e?.error?.message ?? e?.message ?? String(e); }
@@ -159,7 +168,7 @@ export class PlantMapStateService {
    *  (view-from-top), otherwise its own Base canvas. Peel down to lower levels / Base via the peeler. */
   async openNode(id: number) {
     this.loading.set(true); this.error.set(null);
-    this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null);
+    this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null);
     this.boxes.set([]); this.edges.set([]); this.ghostBoxes.set([]);
     this.childSystems.set(new Map());
     this.activeSystemId.set(null); // each node starts with no active layer (avoids a stale highlight on drill)
@@ -213,7 +222,7 @@ export class PlantMapStateService {
    */
   private async loadCanvasNode(cn: PhysicalObjectNode, preChildren?: PhysicalObjectNode[]) {
     this.canvasNode.set(cn);
-    this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null);
+    this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null);
     // Null the diagram id the instant we clear the boxes: during the async load gap the canvas has no valid
     // save target, so a mutation made mid-load can't bulk-save one box to the OLD diagram (which would
     // soft-delete everything on it). doSave early-returns when currentDiagramId is null.

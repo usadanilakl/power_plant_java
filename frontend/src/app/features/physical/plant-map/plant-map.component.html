@@ -14,6 +14,18 @@
           </ng-container>
         </nav>
 
+        <div class="tree-nav" *ngIf="treeRows().length">
+          <span class="lbl">Jump to — the whole tree</span>
+          <ul class="tree">
+            <li *ngFor="let r of treeRows()" [class.here]="isCurrentTreeNode(r.node.id)"
+                [style.paddingLeft.px]="4 + r.depth * 12" (click)="navigate(r.node.id)"
+                [title]="r.node.name || ('#'+r.node.id)">
+              <span class="twist" [class.leaf]="!r.hasKids" (click)="toggleTreeExpand(r.node.id, $event)">{{ r.hasKids ? (r.open ? '▾' : '▸') : '·' }}</span>
+              <span class="tname">{{ r.node.name || r.node.tagNumber || ('#'+r.node.id) }}</span>
+            </li>
+          </ul>
+        </div>
+
         <div class="levels" *ngIf="st.floorSwitcher().floors.length">
           <span class="lbl">Levels — active is editable, others show dimmed. Click to switch.</span>
           <ul class="floors">
@@ -108,6 +120,12 @@
           <span class="muted" *ngIf="st.loading()">loading…</span>
           <span class="muted save" *ngIf="st.saving()">saving…</span>
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
+          <span class="pipe-banner" *ngIf="pipeMode()">
+            🔧 Pipe: click to lay the route<span *ngIf="pipeDraft().length >= 2"> · right-click / Enter to finish</span> · Esc cancels
+            <label class="psnap"><input type="checkbox" [checked]="pipeSnap()" (change)="pipeSnap.set($any($event.target).checked)" /> 90°</label>
+            <button *ngIf="pipeDraft().length >= 2" (click)="finishPipe()">finish</button>
+            <button (click)="togglePipeMode()" title="exit pipe tool">✕</button>
+          </span>
           <span class="layer" *ngIf="st.currentDiagramId() && systems().length">
             <span class="lbl2">Layer</span>
             <select [ngModel]="st.activeSystemId()" (ngModelChange)="setActiveSystem($event)">
@@ -122,12 +140,20 @@
               <span class="shp" [ngClass]="'shp-' + s.key"></span>
             </button>
           </span>
+          <button class="pipe-tool" type="button" *ngIf="st.currentDiagramId()" [class.on]="pipeMode()"
+                  (click)="togglePipeMode()" title="Pipe tool — draw a guided, elbowed pipe route">🔧 Pipe</button>
+          <span class="detail-ctrl" *ngIf="st.currentDiagramId()"
+                title="How readily items reveal their contents as you zoom (+ = more, sooner)">
+            <span class="lbl2">Detail</span>
+            <button type="button" (click)="setNestReveal(nestReveal() + 40)" title="less / later detail">−</button>
+            <button type="button" (click)="setNestReveal(nestReveal() - 40)" title="more / earlier detail">+</button>
+          </span>
           <button class="zoom-btn" *ngIf="st.currentDiagramId()" (click)="resetView()" title="reset view (fit)">{{ (zoom() * 100) | number:'1.0-0' }}%</button>
           <span class="hint2">left-drag = pan · wheel = zoom · right-drag = draw footprint · dbl-click = drill</span>
         </div>
 
         <ng-container *ngIf="st.currentDiagramId(); else entry">
-          <div class="scroll" #viewport
+          <div class="scroll" #viewport [class.pipe-mode]="pipeMode()"
                (pointerdown)="onCanvasDown($event)" (wheel)="onWheel($event)" (contextmenu)="$event.preventDefault()">
             <div class="content" #content
                  [style.width.px]="canvasSize().w" [style.height.px]="canvasSize().h"
@@ -163,6 +189,20 @@
                 </g>
                 <line *ngIf="tempWire() as t" [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2"
                       class="wire temp" />
+                <!-- pipes: a tube (colored line + bright centre sheen, rounded elbows) — a routed PhysicalObject -->
+                <g *ngFor="let p of viewPipes()">
+                  <polyline class="opipe-hit" [attr.points]="p.points" (pointerdown)="$event.stopPropagation(); selectPipe(p.id)" />
+                  <polyline class="opipe" [class.sel]="p.sel" [attr.points]="p.points"
+                            [attr.stroke]="p.color" [attr.stroke-width]="p.sel ? p.width + 3 : p.width" />
+                  <polyline class="opipe-hl" [attr.points]="p.points" [attr.stroke-width]="p.width * 0.34 + 0.5" />
+                </g>
+                <!-- in-progress route: the laid points + a live guide segment to the cursor -->
+                <ng-container *ngIf="pipeMode() && pipeDraft().length">
+                  <polyline class="opipe-draft" [attr.points]="pipeDraftPoints()" />
+                  <line *ngIf="pipeGuideSeg() as g" class="opipe-guide"
+                        [attr.x1]="g.x1" [attr.y1]="g.y1" [attr.x2]="g.x2" [attr.y2]="g.y2" />
+                  <circle *ngFor="let v of pipeDraft()" class="opipe-vtx" [attr.cx]="v.x" [attr.cy]="v.y" r="3.5" />
+                </ng-container>
               </svg>
 
               <div class="box" *ngFor="let b of st.boxes()"
@@ -200,13 +240,18 @@
                 <span class="resize" (pointerdown)="onResizeDown($event, b)"></span>
               </div>
 
-              <!-- recursive zoom-nesting: real, labeled descendant items that appear as you zoom in. Purely
-                   visual (double-click a top-level box to drill in and edit that level). -->
+              <!-- recursive zoom-nesting: real, labeled descendant items that appear as you zoom in. Single-click
+                   shows its info; double-click jumps straight to it (any depth); drag empty space to pan. -->
               <div class="nest" *ngFor="let n of nestedItems()" [ngClass]="'shape-' + n.shape"
                    [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.w" [style.height.px]="n.h"
-                   [style.borderColor]="n.color" [style.background]="nestFill(n)" [style.zIndex]="4 + n.depth">
+                   [style.borderColor]="n.color" [style.background]="nestFill(n)" [style.zIndex]="4 + n.depth"
+                   (click)="onNestClick(n)" (dblclick)="navigate(n.childId)" [title]="n.name || ('#' + n.childId)">
                 <span class="nlabel" *ngIf="n.name">{{ n.name }}</span>
               </div>
+
+              <!-- pipe labels at the route midpoint -->
+              <div class="opipe-lbl" *ngFor="let p of viewPipes()" [class.sel]="p.sel"
+                   [style.left.px]="p.mid.x" [style.top.px]="p.mid.y" (click)="selectPipe(p.id)">{{ p.name }}</div>
 
               <div class="rubber" *ngIf="rubber() as r"
                    [style.left.px]="r.x" [style.top.px]="r.y" [style.width.px]="r.w" [style.height.px]="r.h"></div>
@@ -233,7 +278,7 @@
       </section>
 
       <!-- ── Inspector ── -->
-      <aside class="inspector" *ngIf="st.selectedChild() || st.selectedEdge()">
+      <aside class="inspector" *ngIf="st.selectedChild() || st.selectedEdge() || selectedPipe()">
        <ng-container *ngIf="st.selectedChild() as c">
         <header>
           <h3>{{ c.name || ('#'+c.id) }}</h3>
@@ -290,13 +335,13 @@
 
         <div class="actions">
           <button class="drill" (click)="drillSelected()">
-            {{ c.hasChildren ? 'Drill in ↳' : 'Open / build inside ↳' }}
+            {{ st.selectedBox() ? (c.hasChildren ? 'Drill in ↳' : 'Open / build inside ↳') : 'Go to ↳' }}
           </button>
-          <button class="ghost" (click)="removeSelectedBox()" title="Take off the map (keeps the object)">Remove from map</button>
+          <button class="ghost" *ngIf="st.selectedBox()" (click)="removeSelectedBox()" title="Take off the map (keeps the object)">Remove from map</button>
           <button class="danger" (click)="deleteSelectedObject()">Delete object</button>
         </div>
 
-        <div class="links">
+        <div class="links" *ngIf="st.selectedBox()">
           <h4>Connections ({{ selectedConnections().length }})</h4>
           <ul class="conn">
             <li *ngFor="let l of selectedConnections()">
@@ -391,19 +436,50 @@
           <h4>Service color</h4>
           <div class="swatches">
             <button *ngFor="let sc of serviceColors" type="button" class="sw"
-                    [style.background]="sc" [class.on]="e.color === sc" (click)="setPipeColor(sc)"></button>
+                    [style.background]="sc" [class.on]="e.color === sc" (click)="setEdgeColor(sc)"></button>
             <input class="pick" type="color" [value]="e.color || '#7c94b0'"
-                   (input)="setPipeColor($any($event.target).value)" title="custom color" />
+                   (input)="setEdgeColor($any($event.target).value)" title="custom color" />
           </div>
           <div class="frow"><span class="lbl">Width</span>
             <input type="range" min="1" max="12" [value]="e.width || 2"
-                   (input)="setPipeWidth(+$any($event.target).value)" />
+                   (input)="setEdgeWidth(+$any($event.target).value)" />
             <span class="wval">{{ e.width || 2 }}px</span>
           </div>
         </div>
         <div class="actions">
           <button class="danger" (click)="st.disconnect(e.localId)">Remove pipe</button>
         </div>
+       </ng-container>
+
+       <!-- Pipe (routed) inspector -->
+       <ng-container *ngIf="selectedPipe() as pipe">
+        <header>
+          <h3>{{ pipe.name || 'Pipe' }}</h3>
+          <span class="chip pipe-chip" [style.background]="pipe.color || '#5b9bd5'">pipe</span>
+        </header>
+        <div class="edit">
+          <div class="frow"><span class="lbl">Name</span>
+            <input [(ngModel)]="pipeEditName" (blur)="savePipeName()" (keyup.enter)="savePipeName()" />
+          </div>
+        </div>
+        <div class="appearance">
+          <h4>Service color</h4>
+          <div class="swatches">
+            <button *ngFor="let sc of serviceColors" type="button" class="sw"
+                    [style.background]="sc" [class.on]="pipe.color === sc" (click)="setPipeColor(sc)"></button>
+            <input class="pick" type="color" [value]="pipe.color || '#5b9bd5'"
+                   (input)="setPipeColor($any($event.target).value)" title="custom color" />
+          </div>
+          <div class="frow"><span class="lbl">Width</span>
+            <input type="range" min="3" max="24" [value]="pipe.width || 8"
+                   (input)="setPipeWidth(+$any($event.target).value)" />
+            <span class="wval">{{ pipe.width || 8 }}px</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="danger" (click)="deletePipe(pipe.id)">Delete pipe</button>
+        </div>
+        <p class="tip">Fittings (drains, vents, valves, instruments) come next — Phase 2.</p>
        </ng-container>
       </aside>
 
