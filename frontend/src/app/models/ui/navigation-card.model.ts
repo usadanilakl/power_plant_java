@@ -131,14 +131,13 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
   },
   {
     label: 'Plant',
-    description: 'The plant binder — a live map + hierarchy of every physical object (equipment, areas, levels)',
+    description: 'Build your own spatial plant layout — a from-scratch map of areas, levels, and equipment',
     icon: 'hub',
     color: '#26A69A',
     defaultRoute: '/plant/map',
     requiresFullAccess: true,
     items: [
-      { title: 'Plant Map', description: 'Build & navigate a from-scratch schematic of the plant; drill level→level, connect objects', icon: 'map', route: '/plant/map', color: '#26A69A' },
-      { title: 'Hierarchy', description: 'Browse the plant tree; per-node work orders & service requests from Maximo', icon: 'account_tree', route: '/plant/hierarchy', color: '#42A5F5' }
+      { title: 'Plant Map', description: 'Build & navigate a from-scratch schematic of the plant; drill level→level, connect objects', icon: 'map', route: '/plant/map', color: '#26A69A' }
     ]
   },
   {
@@ -150,6 +149,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     requiresFullAccess: true,
     items: [
       { title: 'Assets', description: 'Search Maximo assets and view their SR / WO history', icon: 'precision_manufacturing', route: '/maximo/assets', color: '#26C6DA' },
+      { title: 'Plant Locations', description: 'Browse the Maximo-seeded location hierarchy; per-node work orders & service requests', icon: 'account_tree', route: '/plant/hierarchy', color: '#42A5F5' },
       { title: 'Service Requests', description: 'List and submit service requests for an asset', icon: 'support_agent', route: '/maximo/service-requests', color: '#FFA726' },
       { title: 'Work Orders', description: 'View work orders for an asset', icon: 'assignment', route: '/maximo/work-orders', color: '#66BB6A' },
       { title: 'Inventory', description: 'Stock lookup: on-hand qty, reorder levels, usage history', icon: 'warehouse', route: '/maximo/inventory', color: '#26A69A' },

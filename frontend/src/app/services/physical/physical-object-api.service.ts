@@ -155,6 +155,19 @@ export class PhysicalObjectApiService {
       .pipe(map(r => r.responseData ?? []));
   }
 
+  // ── Maximo link (tie a local node into a Maximo asset/location) ──
+  linkMaximo(id: number, req: { assetnum?: string; location?: string; siteid?: string; maximoType?: string }): Observable<PhysicalObjectNode | null> {
+    return this.http
+      .put<SpringApiResponse<PhysicalObjectNode>>(`${this.base}/${id}/maximo-link`, req)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  unlinkMaximo(id: number): Observable<PhysicalObjectNode | null> {
+    return this.http
+      .delete<SpringApiResponse<PhysicalObjectNode>>(`${this.base}/${id}/maximo-link`)
+      .pipe(map(r => r.responseData ?? null));
+  }
+
   /** The node's Maximo tab: work orders + service requests for its asset/location link. */
   getMaximoTab(id: number): Observable<PhysicalObjectMaximoTab | null> {
     return this.http

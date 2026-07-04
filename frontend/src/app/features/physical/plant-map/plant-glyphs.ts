@@ -14,8 +14,7 @@ export interface PlantGlyph {
 }
 
 export const PLANT_GLYPHS: PlantGlyph[] = [
-  { key: 'none', label: 'Box', kind: 'box' },
-  { key: 'pipe', label: 'Pipe', kind: 'pipe' },
+  { key: 'none', label: 'None', kind: 'box' },
   { key: 'valve', label: 'Valve', kind: 'path', viewW: 40, viewH: 20,
     path: 'M 0,10 L 12,2 L 20,10 L 12,18 Z M 40,10 L 28,2 L 20,10 L 28,18 Z M 20,10 m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0' },
   { key: 'pump', label: 'Pump', kind: 'path', viewW: 40, viewH: 40,
@@ -34,6 +33,14 @@ export const PLANT_GLYPHS: PlantGlyph[] = [
     path: 'M 4,20 L 18,8 L 18,32 Z M 18,8 L 34,8 L 40,20 L 34,32 L 18,32' },
   { key: 'instrument', label: 'Instrument', kind: 'path', viewW: 40, viewH: 40,
     path: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0' },
+  { key: 'flange', label: 'Flange', kind: 'path', viewW: 40, viewH: 40,
+    path: 'M 4,20 L 16,20 M 24,20 L 36,20 M 16,8 L 16,32 M 24,8 L 24,32' },
+  { key: 'tee', label: 'Tee', kind: 'path', viewW: 40, viewH: 40,
+    path: 'M 4,16 L 36,16 M 20,16 L 20,36' },
+  { key: 'elbow', label: 'Elbow', kind: 'path', viewW: 40, viewH: 40,
+    path: 'M 20,4 L 20,20 L 36,20' },
+  { key: 'reducer', label: 'Reducer', kind: 'path', viewW: 40, viewH: 40,
+    path: 'M 4,10 L 4,30 L 36,17 L 36,23 Z' },
 ];
 
 export const PLANT_GLYPH_BY_KEY = new Map(PLANT_GLYPHS.map(g => [g.key, g]));
@@ -42,3 +49,31 @@ export const PLANT_GLYPH_BY_KEY = new Map(PLANT_GLYPHS.map(g => [g.key, g]));
 export const SERVICE_COLORS = [
   '#42A5F5', '#26C6DA', '#ECEFF1', '#FFA726', '#EF5350', '#AB47BC', '#66BB6A', '#8D6E63', '#FFEE58',
 ];
+
+/**
+ * A footprint is the plan-view SHAPE of an object (where it sits + how big it is) — the primitive of a
+ * layout tool, orthogonal to the equipment badge (what it is). `run` is a pipe rack / pipe / cable-tray:
+ * a capsule you draw along where it physically runs, thick or thin, horizontal or vertical.
+ */
+export type FootprintShape = 'rect' | 'round' | 'circle' | 'run';
+
+export const FOOTPRINT_SHAPES: { key: FootprintShape; label: string }[] = [
+  { key: 'rect', label: 'Rectangle — skids, rooms, buildings' },
+  { key: 'round', label: 'Rounded — platforms, pads' },
+  { key: 'circle', label: 'Round — tanks, vessels, silos' },
+  { key: 'run', label: 'Pipe run — racks, pipes, trays' },
+];
+
+/** DiagramPlacement.type is overloaded to carry the footprint shape; older rows stored 'rectangle'. */
+export function normFootprint(type?: string | null): FootprintShape {
+  return type === 'round' || type === 'circle' || type === 'run' ? type : 'rect';
+}
+
+/** Translucent fill from a hex color (so a footprint reads by system/type color without hiding the map). */
+export function hexToRgba(hex: string, alpha: number): string {
+  let h = (hex || '').trim().replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length !== 6 || /[^0-9a-fA-F]/.test(h)) return `rgba(120,144,156,${alpha})`;
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}

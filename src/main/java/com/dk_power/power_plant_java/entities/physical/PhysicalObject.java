@@ -134,15 +134,20 @@ public class PhysicalObject extends BaseAuditEntity {
     private Long diagramId;
 
     /**
-     * Compute the stable link/dedup key. Priority: asset → location → local uuid. Kept in sync on save so callers
-     * (seeder, editors) never have to remember to set it; the sync listener emits it in {@code @PostPersist} which
-     * runs after this, so inbound dedup always sees the value.
+     * Compute the stable link/dedup key. Priority: <b>localUuid</b> → asset → location. Kept in sync on save so
+     * callers (seeder, editors) never have to remember to set it; the sync listener emits it in
+     * {@code @PostPersist} which runs after this, so inbound dedup always sees the value.
+     *
+     * <p><b>Binder mode:</b> a hand-built node's identity is its {@code localUuid} and must NEVER change — even
+     * after the node is <em>linked</em> to a Maximo asset/location (the link is metadata, not identity). If the
+     * key flipped {@code LOCAL:}→{@code AST:} mid-life, inbound sync couldn't find the existing row by its new
+     * key and would create a duplicate. Pure Maximo-seeded nodes (no {@code localUuid}) still key by asset → location.
      */
     public static String keyFor(String siteid, String location, String assetnum, String localUuid) {
+        if (localUuid != null && !localUuid.isBlank()) return "LOCAL:" + localUuid.trim();
         String site = (siteid == null || siteid.isBlank()) ? "?" : siteid.trim();
         if (assetnum != null && !assetnum.isBlank()) return site + "|AST:" + assetnum.trim();
         if (location != null && !location.isBlank()) return site + "|LOC:" + location.trim();
-        if (localUuid != null && !localUuid.isBlank()) return "LOCAL:" + localUuid.trim();
         return null;
     }
 

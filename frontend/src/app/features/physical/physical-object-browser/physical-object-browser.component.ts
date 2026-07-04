@@ -102,7 +102,9 @@ export class PhysicalObjectBrowserComponent {
   async loadTree() {
     this.loading.set(true); this.error.set(null);
     try {
-      const nodes = await firstValueFrom(this.api.getTree());
+      // Binder mode: this browser is the Maximo-seeded location hierarchy only; hand-built (local) nodes live
+      // on the plant map. `!== true` is transition-safe (an old backend without `local` shows everything).
+      const nodes = (await firstValueFrom(this.api.getTree())).filter(n => n.local !== true);
       this.byId = new Map(nodes.map(n => [n.id, n]));
       this.nodeCount.set(nodes.length);
       this.treeItems.set(this.buildTree(nodes));

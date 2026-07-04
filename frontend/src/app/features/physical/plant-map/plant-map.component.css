@@ -21,16 +21,33 @@
 
 /* Levels / floor switcher (top elevation first) */
 .levels .floors { display: flex; flex-direction: column; gap: 3px; }
-.floors li { border: 1px solid #333; border-radius: 4px; background: #202020; padding: 5px 8px; }
-.floors li.here { border-color: #7cc6ff; background: #15334f; cursor: default; }
+.floors li { border: 1px solid #333; border-radius: 4px; background: #202020; padding: 4px 6px; cursor: default; gap: 5px; }
+.floors li:hover { background: #262626; }
+.floors li.here { border-color: #7cc6ff; background: #15334f; }
+.floors li.here:hover { background: #184066; }
 .fidx { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
   background: #333; border-radius: 3px; font-size: 10px; color: #aaa; flex: 0 0 auto; }
 .floors li.here .fidx { background: #0e639c; color: #fff; }
+.fname { flex: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fname:hover { color: #9ccaff; }
+.factions { display: flex; gap: 1px; flex: 0 0 auto; opacity: 0; }
+.floors li:hover .factions, .floors li.here .factions { opacity: 1; }
+.factions button { background: transparent; border: 0; color: #8a93a0; cursor: pointer; font-size: 10px; padding: 1px 3px; line-height: 1; }
+.factions button:hover { color: #fff; }
+.factions .del:hover { color: #ff7b72; }
+.fedit { flex: 1; min-width: 0; background: #1e1e1e; color: #e6e6e6; border: 1px solid #7cc6ff; border-radius: 3px; padding: 2px 5px; font: inherit; }
+.floors li .fedit + button { background: transparent; border: 0; color: #7ee787; cursor: pointer; }
+.floors li.base { cursor: pointer; border-style: dashed; }
+.floors li.base .fidx { background: #2a2a2a; }
+.floors li.base .fname:hover { color: #9ccaff; }
 
 .create { border-top: 1px solid #2a2a2a; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .create input, .create select { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 4px 6px; font: inherit; width: 100%; }
 .create .row { display: flex; gap: 6px; }
 .create .row select { flex: 1; } .create .row input { flex: 1; min-width: 0; }
+.create .row button { flex: 1 1 auto; }
+.rail button.level-btn { flex: 0 0 auto; background: #2a2a2a; color: #ccc; border: 1px solid #444; white-space: nowrap; }
+.rail button.level-btn:hover:not([disabled]) { background: #333; }
 .rail button { background: #0e639c; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer; font: inherit; }
 .rail button:hover:not([disabled]) { background: #1177bb; }
 .rail button[disabled] { opacity: 0.5; cursor: default; }
@@ -46,53 +63,113 @@
 .chip { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #10161c; font-weight: 600; text-transform: uppercase; }
 .muted { color: #777; } .muted.save { color: #7ee787; }
 .error { color: #ff7b72; }
-.hint2 { margin-left: auto; color: #777; font-size: 11px; }
+.hint2 { color: #777; font-size: 11px; margin-left: 8px; }
+.zoom-btn { margin-left: auto; background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 12px; }
+.zoom-btn:hover { background: #333; }
 
-.scroll { flex: 1 1 auto; overflow: auto; background:
+.scroll { flex: 1 1 auto; overflow: hidden; background: #191919; min-height: 0; cursor: grab; touch-action: none; }
+.scroll:active { cursor: grabbing; }
+.content { position: relative; transform-origin: 0 0; background:
   linear-gradient(#242424 1px, transparent 1px) 0 0 / 100% 28px,
   linear-gradient(90deg, #242424 1px, transparent 1px) 0 0 / 28px 100%,
-  #191919; min-height: 0; }
-.content { position: relative; }
+  #191919; }
 
 /* The svg is hittable, but only painted strokes are targets (visiblePainted default): empty areas pass
    through to the canvas for draw/deselect, `.wire-hit` opts in, the visible `.wire` opts out. */
 .wires { position: absolute; inset: 0; overflow: visible; }
 /* per-pipe stroke/width come from [attr] bindings — keep them OUT of CSS so they aren't overridden. */
-.wire { fill: none; pointer-events: none; }
+.wire { fill: none; pointer-events: none; stroke-linecap: round; stroke-linejoin: round; }
 .wire.temp { stroke: #AB47BC; stroke-width: 2; stroke-dasharray: 5 4; }
 .wire.sel { filter: drop-shadow(0 0 3px #7cc6ff); }
-.wire-hit { stroke: transparent; stroke-width: 14; fill: none; pointer-events: stroke; cursor: pointer; }
+/* thin bright centre-line → gives the pipe a rounded, tube-like sheen. */
+.wire-hl { stroke: rgba(255,255,255,0.5); fill: none; pointer-events: none; stroke-linecap: round; stroke-linejoin: round; }
+.wire-hit { stroke: transparent; stroke-width: 14; fill: none; pointer-events: stroke; cursor: pointer; stroke-linejoin: round; }
+/* route edit handles (visible only when the pipe is selected) */
+.wp { fill: #fff; stroke: #7cc6ff; stroke-width: 2; cursor: grab; }
+.wp-add { fill: rgba(124,198,255,0.55); stroke: #7cc6ff; stroke-width: 1; cursor: crosshair; opacity: 0.55; }
+.wp-add:hover { opacity: 1; }
 
-.box { position: absolute; box-sizing: border-box; background: #23272e; border: 2px solid #567; border-radius: 6px;
-  padding: 8px 10px; cursor: grab; user-select: none; touch-action: none; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+/* ── Footprints (plan-view shapes) ── the fill + border color read by system/type, the shape reads the
+   physical form, the label reads identity. No overflow:hidden so handles show on every shape. */
+.box { position: absolute; box-sizing: border-box; border: 2px solid #567;
+  cursor: grab; user-select: none; touch-action: none;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
 .box:active { cursor: grabbing; }
-.box.sel { box-shadow: 0 0 0 2px #7cc6ff, 0 2px 8px rgba(0,0,0,0.45); }
-.box .swatch { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+.box.sel { box-shadow: 0 0 0 2px #7cc6ff, 0 2px 8px rgba(0,0,0,0.45); z-index: 3; }
 
-/* glyphed boxes: the symbol fills the interior; the label becomes a caption pinned at the bottom. */
-.box.glyphed { justify-content: flex-end; padding: 5px 6px; }
-.box .glyph { position: absolute; left: 8px; right: 8px; top: 6px; bottom: 20px; pointer-events: none; }
-.box .mini { position: absolute; left: 5px; right: 5px; top: 5px; bottom: 19px; pointer-events: none; opacity: 0.95; }
-.box .mini rect { stroke: rgba(0,0,0,0.28); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.box .pipe-cap { position: absolute; left: 8px; right: 8px; top: 50%; transform: translateY(-50%);
-  height: 40%; min-height: 8px; border-radius: 999px; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
-.box.glyphed .lbl { position: relative; z-index: 1; margin-left: 4px; }
-.box.glyphed .name { font-size: 11px; background: rgba(20,22,26,0.7); padding: 0 4px; border-radius: 3px; align-self: flex-start; max-width: 100%; }
-.box.glyphed .ty { display: none; }
+/* shape variants (fill comes from the inline background; border-radius clips it to the footprint) */
+.box.shape-rect { border-radius: 3px; }
+.box.shape-round { border-radius: 12px; }
+.box.shape-circle { border-radius: 50%; }
+.box.shape-run { border-radius: 999px; }
+/* run sheen: light→dark tube shading across the short axis, so a run reads as a pipe, not a flat bar */
+.box.shape-run::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.30), rgba(255,255,255,0) 42%, rgba(0,0,0,0.30)); }
+.box.shape-run.run-v::after { background: linear-gradient(to right, rgba(255,255,255,0.30), rgba(255,255,255,0) 42%, rgba(0,0,0,0.30)); }
 
-.box .lbl { display: flex; flex-direction: column; gap: 1px; margin-left: 4px; min-width: 0; }
-.box .name { color: #eaeaea; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.box .ty { color: #8aa; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
-.box .chev { position: absolute; top: 4px; right: 6px; color: #7ee787; font-size: 15px; line-height: 1; }
-.box .wa-badge { position: absolute; top: 3px; left: 9px; font-size: 11px; line-height: 1; color: #ffca28; text-shadow: 0 0 2px #000; }
+/* Ghosts: read-only footprints from OTHER levels — dimmed, non-interactive (switch the active level to edit). */
+.ghost { position: absolute; box-sizing: border-box; border: 1px dashed; opacity: 0.5; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; z-index: 0; }
+.ghost.shape-rect { border-radius: 3px; }
+.ghost.shape-round { border-radius: 12px; }
+.ghost.shape-circle { border-radius: 50%; }
+.ghost.shape-run { border-radius: 999px; }
+.ghost .glabel { font-size: 10px; color: rgba(230,230,230,0.55); background: rgba(18,20,24,0.40);
+  padding: 0 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92%; }
+
+/* equipment badge (small corner icon) */
+.box .badge { position: absolute; left: 4px; top: 4px; width: 18px; height: 18px; pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); z-index: 2; }
+
+/* label — centered, on a legible plate so it reads over the reference image + fill */
+.box .lbl { display: flex; min-width: 0; max-width: 92%; position: relative; z-index: 1; }
+.box .name { color: #f0f0f0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(18,20,24,0.60); padding: 1px 6px; border-radius: 4px; max-width: 100%; }
+/* revealing its nested children → pin the label to the top-left corner so it doesn't sit over the nested items */
+.box.revealing { align-items: flex-start; justify-content: flex-start; }
+.box.revealing .lbl { margin: 3px 0 0 3px; }
+.box.revealing .name { font-size: 11px; }
+/* thin runs get a compact plate; too-small footprints drop the plate (shape + color still identify them) */
+.box.shape-run .name { font-size: 11px; padding: 0 5px; }
+.box.tiny .lbl { display: none; }
+
+/* inline name-in-place editor (focused right after you draw a footprint) */
+.box .box-rename { z-index: 4; width: 86%; max-width: 220px; background: #12151a; color: #f0f0f0;
+  border: 1px solid #7cc6ff; border-radius: 4px; padding: 2px 6px; font: inherit; text-align: center; }
+
+/* recursive zoom-nesting: real, labeled descendant footprints that appear inside their container as you zoom in.
+   Visual + double-click-to-enter; the container box handles select/drag, so ghosts of interaction stay simple. */
+.nest { position: absolute; box-sizing: border-box; border: 1px solid; border-radius: 3px;
+  display: flex; align-items: flex-start; justify-content: flex-start; overflow: hidden;
+  pointer-events: none; }
+.nest.shape-round { border-radius: 8px; }
+.nest.shape-circle { border-radius: 50%; }
+.nest.shape-run { border-radius: 999px; }
+.nest .nlabel { font-size: 11px; color: #eaeaea; background: rgba(18,20,24,0.55); padding: 0 4px; margin: 2px;
+  border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 6px); }
+
+.box .chev { position: absolute; top: 3px; right: 6px; color: #7ee787; font-size: 15px; line-height: 1; z-index: 2; }
+.box .rename-h { position: absolute; top: 4px; right: 22px; color: #7cc6ff; font-size: 12px; line-height: 1;
+  cursor: pointer; z-index: 3; }
+.box .rename-h:hover { color: #cfe6ff; }
+.box .wa-badge { position: absolute; bottom: 3px; left: 6px; font-size: 11px; line-height: 1; color: #ffca28; text-shadow: 0 0 2px #000; z-index: 2; }
 .box .port { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px;
-  border-radius: 50%; background: #AB47BC; border: 2px solid #1c1c1c; cursor: crosshair; touch-action: none; }
+  border-radius: 50%; background: #AB47BC; border: 2px solid #1c1c1c; cursor: crosshair; touch-action: none; z-index: 3; }
 .box .port:hover { background: #c86be6; }
-.box .resize { position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; touch-action: none;
-  background: linear-gradient(135deg, transparent 50%, #567 50%); border-bottom-right-radius: 5px; }
+.box .resize { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, #567 50%); border-bottom-right-radius: 5px; z-index: 3; }
+/* selected → make the resize grip obvious so it's clear the footprint is draggable-to-size */
+.box.sel .resize { width: 20px; height: 20px; background: linear-gradient(135deg, transparent 42%, #7cc6ff 42%); }
+/* round/capsule shapes: nudge the resize grip inward so it lands on the outline, not the empty corner */
+.box.shape-circle .resize, .box.shape-run .resize { right: 3px; bottom: 3px; }
 
 .rubber { position: absolute; border: 1px dashed #7cc6ff; background: rgba(124,198,255,0.10); pointer-events: none; }
+
+/* Parent-footprint boundary: where this node's space ends (scaled from its box one level up). */
+.boundary { position: absolute; border: 2px dashed #46505f; border-radius: 8px; background: rgba(124,198,255,0.025); pointer-events: none; }
+.boundary-lbl { position: absolute; top: -9px; left: 12px; background: #191919; padding: 0 6px; color: #6b7684;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
 
 .empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; gap: 8px; text-align: center; padding: 30px; }
 .empty .roots { list-style: none; padding: 0; }
@@ -187,5 +264,47 @@
 .wa-sub { color: #8a93a0; font-size: 11px; }
 .add-wa { align-self: flex-start; background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 5px 10px; cursor: pointer; font: inherit; }
 .add-wa:hover { background: #333; }
+
+/* ── Maximo link ── */
+.maximo { display: flex; flex-direction: column; gap: 6px; }
+.mx-current { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mx-tag { background: #15334f; color: #9ccaff; border-radius: 3px; padding: 2px 8px; font-size: 12px; }
+.mx-btn { align-self: flex-start; background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 5px 10px; cursor: pointer; font: inherit; }
+.mx-btn:hover { background: #333; }
+.mx-picker { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.mx-lbl { color: #888; font-size: 11px; margin-top: 4px; }
 .wa-permit { flex: 0 0 auto; background: #1c4a2a; color: #9fe6a4; border: 0; border-radius: 3px; padding: 3px 8px; cursor: pointer; font: inherit; font-size: 11px; white-space: nowrap; }
 .wa-permit:hover { background: #245c34; }
+
+/* ── Reference image underlay (satellite / plot plan traced beneath the footprints) ── */
+.bg-image { position: absolute; left: 0; top: 0; pointer-events: none; user-select: none; max-width: none; }
+
+/* ── Draw-shape toolbar (in the bar) + shape previews ── */
+.draw-tools { display: flex; align-items: center; gap: 3px; }
+.shape-btn { background: #22262c; border: 1px solid #3a3f47; border-radius: 4px; width: 26px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.shape-btn:hover { background: #2c313a; }
+.shape-btn.on { border-color: #7cc6ff; background: #15334f; }
+.shp { display: inline-block; background: #9fb3c8; }
+.shp-rect { width: 16px; height: 11px; border-radius: 1px; }
+.shp-round { width: 16px; height: 11px; border-radius: 4px; }
+.shp-circle { width: 13px; height: 13px; border-radius: 50%; }
+.shp-run { width: 17px; height: 6px; border-radius: 999px; }
+
+/* ── Reference-image panel (left rail) ── */
+.bg-panel { border-top: 1px solid #2a2a2a; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.bg-panel .row { display: flex; gap: 6px; }
+.bg-add { display: inline-block; background: #0e639c; color: #fff; border-radius: 3px; padding: 6px 10px;
+  cursor: pointer; text-align: center; }
+.bg-add:hover { background: #1177bb; }
+.bg-add.small { flex: 1; padding: 5px 8px; font-size: 12px; }
+.bg-ctrls { display: flex; flex-direction: column; gap: 6px; }
+.bg-op { display: flex; flex-direction: column; gap: 2px; color: #8a93a0; font-size: 11px; }
+.bg-op input[type=range] { width: 100%; }
+.ghost-btn { background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 5px 10px; cursor: pointer; font: inherit; }
+.ghost-btn:hover { background: #333; }
+
+/* ── Appearance: footprint shape picker ── */
+.appearance .sub { color: #8a93a0; font-size: 11px; }
+.shape-row { display: flex; gap: 5px; }
+.appearance .shape-btn { width: 34px; height: 30px; }

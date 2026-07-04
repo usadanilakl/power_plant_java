@@ -17,18 +17,32 @@ import { RfFileApiService } from '../../files/refactored/services/rf-file-api.se
 import { FileDto } from '../../../models/file/file.model';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { ValueDto } from '../../../models/value.model';
-import { MapBox, PlantMapStateService } from './services/plant-map-state.service';
-import { PLANT_GLYPHS, PLANT_GLYPH_BY_KEY, SERVICE_COLORS, PlantGlyph } from './plant-glyphs';
+import { MaximoAssetPickerComponent } from '../../maximo/maximo-asset-picker/maximo-asset-picker.component';
+import { MaximoLocationPickerComponent } from '../../maximo/maximo-location-picker/maximo-location-picker.component';
+import { MaximoAsset, MaximoLocation } from '../../../models/maximo/maximo.models';
+import { GhostBox, MapBox, PlantMapStateService } from './services/plant-map-state.service';
+import {
+  PLANT_GLYPHS, PLANT_GLYPH_BY_KEY, SERVICE_COLORS, PlantGlyph,
+  FootprintShape, FOOTPRINT_SHAPES, hexToRgba, normFootprint,
+} from './plant-glyphs';
 import { DiagramPlacementApiService } from '../../diagram-builder/services/diagram-placement-api.service';
 
-/** One scaled child-placement rect for a box's mini-map preview. */
-interface MiniShape { x: number; y: number; w: number; h: number; color: string; }
+/** One child of a nested container (in the container's OWN diagram coords) — for recursive zoom-nesting. */
+interface NestChild {
+  childId: number; name: string; color: string; shape: FootprintShape;
+  x: number; y: number; w: number; h: number;
+  hasChildren: boolean; diagramId: number | null;  // to recurse into it as you keep zooming
+}
+/** A nested descendant to render, mapped into content coords, at a given depth. */
+interface NestItem { x: number; y: number; w: number; h: number; childId: number; name: string; color: string; shape: FootprintShape; depth: number; }
 
 /** In-progress pointer gesture on the canvas. */
 type Drag =
   | { kind: 'move' | 'resize'; localId: number; startClientX: number; startClientY: number; origX: number; origY: number; origW: number; origH: number }
   | { kind: 'connect'; localId: number }
-  | { kind: 'draw'; startX: number; startY: number };
+  | { kind: 'draw'; startX: number; startY: number }
+  | { kind: 'pan'; startClientX: number; startClientY: number; startPanX: number; startPanY: number; moved: boolean }
+  | { kind: 'waypoint'; edgeId: number; index: number };
 
 /** Point on a box's border along the ray toward (tx,ty) — so wires touch edges, not centers. */
 function borderPoint(b: MapBox, tx: number, ty: number): { x: number; y: number } {
@@ -50,7 +64,8 @@ function borderPoint(b: MapBox, tx: number, ty: number): { x: number; y: number 
 @Component({
   selector: 'app-plant-map',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent,
+    MaximoAssetPickerComponent, MaximoLocationPickerComponent],
   templateUrl: './plant-map.component.html',
   styleUrl: './plant-map.component.css',
   providers: [PlantMapStateService],
@@ -72,21 +87,38 @@ export class PlantMapComponent implements OnDestroy {
   /** Floors for the switcher, top elevation first (descending floorIndex). */
   floorsTopDown = computed(() => [...this.st.floorSwitcher().floors].sort((a, b) => (b.floorIndex ?? 0) - (a.floorIndex ?? 0)));
 
-  // ── mini-map previews (feature #1) ──
-  private previewCache = new Map<number, MiniShape[]>();  // childId → its interior placement rects
-  private previewFetched = new Set<number>();             // childIds already fetched (or in-flight)
-  private previewParent: number | null = null;            // parent diagram the cache belongs to
-  private previewsVersion = signal(0);                    // bumped when a fetch lands, to re-render minis
-  private readonly MINI_MIN_W = 110;
-  private readonly MINI_MIN_H = 78;
+  // ── recursive zoom-nesting: a container reveals its children as real items when big enough on screen ──
+  private nestCache = new Map<number, NestChild[]>();   // container node id → its children (render info)
+  private nestFetched = new Set<number>();              // containers fetched (or in-flight)
+  private nestParent: number | null = null;             // the canvas diagram the cache belongs to
+  private nestVersion = signal(0);                       // bumped when a fetch lands → re-render + fetch deeper
+  /** On-screen width (px, after zoom) at which a container reveals its children. */
+  private readonly NEST_REVEAL = 200;
+  private readonly NEST_MAX_DEPTH = 5;
 
-  @ViewChild('content') contentRef?: ElementRef<HTMLElement>;
+  @ViewChild('viewport') viewportRef?: ElementRef<HTMLElement>;
+
+  // ── pan / zoom (map navigation) ──
+  zoom = signal(1);
+  panX = signal(0);
+  panY = signal(0);
+  contentTransform = computed(() => `translate(${this.panX()}px, ${this.panY()}px) scale(${this.zoom()})`);
 
   readonly typeOptions = PO_TYPE_OPTIONS;
   readonly apiBase = environment.baseApiUrl;
   readonly color = poColor;
   readonly glyphs = PLANT_GLYPHS;
   readonly serviceColors = SERVICE_COLORS;
+  readonly footprintShapes = FOOTPRINT_SHAPES;
+
+  // which footprint the next right-drag draws
+  drawShape = signal<FootprintShape>('rect');
+  setDrawShape(s: FootprintShape) { this.drawShape.set(s); }
+
+  // inline box rename (name-in-place, so a new footprint is named as you draw it)
+  editingBoxLocalId = signal<number | null>(null);
+  boxEditName = '';
+  @ViewChild('boxRename') boxRenameRef?: ElementRef<HTMLInputElement>;
 
   // entry state (no node yet)
   roots = signal<PhysicalObjectNode[]>([]);
@@ -124,49 +156,95 @@ export class PlantMapComponent implements OnDestroy {
 
   private boxById = computed(() => new Map(this.st.boxes().map(b => [b.localId, b])));
 
-  /** How big the scrollable content is — grows to contain every box. */
+  /** Natural size of the loaded reference image (so the grid working area can grow to contain it). */
+  bgSize = signal<{ w: number; h: number } | null>(null);
+  onBgLoad(ev: Event) { const img = ev.target as HTMLImageElement; this.bgSize.set({ w: img.naturalWidth, h: img.naturalHeight }); }
+
+  /** How big the scrollable content is — grows to contain every box, the boundary, and the reference image. */
   canvasSize = computed(() => {
     let w = 1600, h = 1000;
     for (const b of this.st.boxes()) { w = Math.max(w, b.x + b.width + 240); h = Math.max(h, b.y + b.height + 240); }
+    const bd = this.st.boundary();
+    if (bd) { w = Math.max(w, bd.x + bd.w + 80); h = Math.max(h, bd.y + bd.h + 80); }
+    const bg = this.bgSize();
+    if (bg && this.st.backgroundUrl()) { w = Math.max(w, bg.w + 40); h = Math.max(h, bg.h + 40); } // keep image fixed at origin; just extend the grid to cover it
     return { w, h };
   });
 
-  /** Rendered pipe segments (border-to-border), color-coded, with per-edge width + selection flag. */
+  /** Rendered pipe ROUTES (border → waypoints → border) as polylines, with edit handles when selected. */
   wires = computed(() => {
     const byId = this.boxById();
     const sel = this.st.selectedEdgeLocalId();
     return this.st.edges().map(e => {
       const a = byId.get(e.sourceLocalId), b = byId.get(e.targetLocalId);
       if (!a || !b) return null;
-      const p1 = borderPoint(a, b.x + b.width / 2, b.y + b.height / 2);
-      const p2 = borderPoint(b, a.x + a.width / 2, a.y + a.height / 2);
-      return {
-        id: e.localId, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
-        color: e.color || '#7c94b0', width: e.width || 2, sel: e.localId === sel,
-      };
-    }).filter((w): w is { id: number; x1: number; y1: number; x2: number; y2: number; color: string; width: number; sel: boolean } => w != null);
+      const wps = e.waypoints ?? [];
+      const acx = a.x + a.width / 2, acy = a.y + a.height / 2, bcx = b.x + b.width / 2, bcy = b.y + b.height / 2;
+      const ft = wps.length ? wps[0] : { x: bcx, y: bcy };
+      const lt = wps.length ? wps[wps.length - 1] : { x: acx, y: acy };
+      const p1 = borderPoint(a, ft.x, ft.y);
+      const p2 = borderPoint(b, lt.x, lt.y);
+      const pts = [p1, ...wps, p2];
+      const points = pts.map(p => `${p.x},${p.y}`).join(' ');
+      const isSel = e.localId === sel;
+      const segMids = isSel ? pts.slice(0, -1).map((p, i) => ({ x: (p.x + pts[i + 1].x) / 2, y: (p.y + pts[i + 1].y) / 2, index: i })) : [];
+      const wpHandles = isSel ? wps.map((p, i) => ({ x: p.x, y: p.y, index: i })) : [];
+      return { id: e.localId, points, color: e.color || '#7c94b0', width: e.width || 2, sel: isSel, segMids, wpHandles };
+    }).filter((w): w is { id: number; points: string; color: string; width: number; sel: boolean;
+      segMids: { x: number; y: number; index: number }[]; wpHandles: { x: number; y: number; index: number }[] } => w != null);
   });
 
-  /** Per-box mini-map: the child's interior placements, scaled to fit inside a big enough showChildren box. */
-  miniMaps = computed(() => {
-    this.previewsVersion();                 // re-run when a preview fetch lands
-    const childById = this.st.childById();
-    const out = new Map<number, { vb: string; shapes: MiniShape[] }>();
-    for (const b of this.st.boxes()) {
-      if (!b.showChildren || b.width < this.MINI_MIN_W || b.height < this.MINI_MIN_H) continue;
-      if (!childById.get(b.childId)?.diagramId) continue;
-      const shapes = this.previewCache.get(b.childId);
-      if (!shapes || !shapes.length) continue;
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  /** All nested descendant items to render (recursive zoom-nesting), flat, in content coords. A container box
+   *  reveals its children when it's big enough on screen; each revealed child that's itself big enough reveals
+   *  ITS children, and so on — so zooming in continuously surfaces deeper items with no drilling. */
+  nestedItems = computed<NestItem[]>(() => {
+    this.nestVersion();
+    const z = this.zoom();
+    const out: NestItem[] = [];
+    const walk = (rect: { x: number; y: number; w: number; h: number }, containerId: number, depth: number) => {
+      if (depth > this.NEST_MAX_DEPTH) return;
+      const shapes = this.nestCache.get(containerId);
+      if (!shapes || !shapes.length) return;
+      const bb = this.bboxOf(shapes);
       for (const s of shapes) {
-        minX = Math.min(minX, s.x); minY = Math.min(minY, s.y);
-        maxX = Math.max(maxX, s.x + s.w); maxY = Math.max(maxY, s.y + s.h);
+        const r = this.mapInto(rect, bb, s);
+        out.push({ x: r.x, y: r.y, w: r.w, h: r.h, childId: s.childId, name: s.name, color: s.color, shape: s.shape, depth });
+        if (s.hasChildren && r.w * z >= this.NEST_REVEAL && r.h * z >= 60) walk(r, s.childId, depth + 1);
       }
-      const pad = 10;
-      out.set(b.localId, { vb: `${minX - pad} ${minY - pad} ${(maxX - minX) + 2 * pad} ${(maxY - minY) + 2 * pad}`, shapes });
+    };
+    for (const b of this.st.boxes()) {
+      if (b.width * z >= this.NEST_REVEAL && b.height * z >= 60) walk({ x: b.x, y: b.y, w: b.width, h: b.height }, b.childId, 1);
     }
     return out;
   });
+
+  /** Direct boxes currently revealing nested children (→ lighter fill + label pinned to a corner). */
+  revealingBoxes = computed(() => {
+    this.nestVersion();
+    const z = this.zoom();
+    const set = new Set<number>();
+    for (const b of this.st.boxes()) {
+      if (b.width * z >= this.NEST_REVEAL && b.height * z >= 60 && (this.nestCache.get(b.childId)?.length ?? 0) > 0) set.add(b.localId);
+    }
+    return set;
+  });
+  isRevealing(b: MapBox): boolean { return this.revealingBoxes().has(b.localId); }
+
+  private bboxOf(shapes: NestChild[]) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of shapes) { minX = Math.min(minX, s.x); minY = Math.min(minY, s.y); maxX = Math.max(maxX, s.x + s.w); maxY = Math.max(maxY, s.y + s.h); }
+    return { minX, minY, maxX, maxY };
+  }
+  /** Map a child (in its container's diagram coords) into the container's content-coord footprint (5% inset). */
+  private mapInto(rect: { x: number; y: number; w: number; h: number },
+                  bb: { minX: number; minY: number; maxX: number; maxY: number },
+                  s: { x: number; y: number; w: number; h: number }) {
+    const spanX = Math.max(1, bb.maxX - bb.minX), spanY = Math.max(1, bb.maxY - bb.minY);
+    const padX = rect.w * 0.05, padY = rect.h * 0.05;
+    const iw = rect.w - 2 * padX, ih = rect.h - 2 * padY;
+    return { x: rect.x + padX + (s.x - bb.minX) / spanX * iw, y: rect.y + padY + (s.y - bb.minY) / spanY * ih,
+             w: (s.w / spanX) * iw, h: (s.h / spanY) * ih };
+  }
 
   /** Connections touching the selected box, named by the other end (for the inspector). */
   selectedConnections = computed(() => {
@@ -198,21 +276,39 @@ export class PlantMapComponent implements OnDestroy {
       untracked(() => this.onSelectionChanged(child));
     });
 
-    // Fetch child interiors for showChildren boxes; reset the cache when the parent canvas changes.
+    // Reset pan/zoom whenever the open canvas changes (fresh view per node).
+    effect(() => {
+      this.st.currentDiagramId();
+      untracked(() => this.resetView());
+    });
+
+    // Recursive zoom-nesting: walk the revealed containers (direct boxes + nested, as data lands) and fetch
+    // each one's children so it can render them. Reset the cache when the canvas changes.
     effect(() => {
       const did = this.st.currentDiagramId();
       const boxes = this.st.boxes();
       const childById = this.st.childById();
+      const z = this.zoom();
+      this.nestVersion(); // re-run when a fetch lands, to fetch the next level down
       untracked(() => {
-        if (did !== this.previewParent) {
-          this.previewParent = did;
-          this.previewCache.clear();
-          this.previewFetched.clear();
-        }
+        if (did !== this.nestParent) { this.nestParent = did; this.nestCache.clear(); this.nestFetched.clear(); }
+        const walkFetch = (rect: { x: number; y: number; w: number; h: number }, containerId: number, containerDid: number | null, depth: number) => {
+          if (depth > this.NEST_MAX_DEPTH || containerDid == null) return;
+          if (!this.nestFetched.has(containerId)) { void this.fetchNest(containerId, containerDid, did); return; }
+          const shapes = this.nestCache.get(containerId);
+          if (!shapes || !shapes.length) return;
+          const bb = this.bboxOf(shapes);
+          for (const s of shapes) {
+            const r = this.mapInto(rect, bb, s);
+            if (s.hasChildren && s.diagramId != null && r.w * z >= this.NEST_REVEAL && r.h * z >= 60) {
+              walkFetch(r, s.childId, s.diagramId, depth + 1);
+            }
+          }
+        };
         for (const b of boxes) {
-          if (!b.showChildren || this.previewFetched.has(b.childId)) continue;
-          const diagramId = childById.get(b.childId)?.diagramId;
-          if (diagramId != null) void this.fetchPreview(b.childId, diagramId, did);
+          if (b.width * z >= this.NEST_REVEAL && b.height * z >= 60) {
+            walkFetch({ x: b.x, y: b.y, w: b.width, h: b.height }, b.childId, childById.get(b.childId)?.diagramId ?? null, 1);
+          }
         }
       });
     });
@@ -221,23 +317,35 @@ export class PlantMapComponent implements OnDestroy {
   ngOnDestroy() { void this.st.flushSave(); }
 
   /**
-   * Load a child's interior placement rects (x/y/w/h/color) for its mini-map preview. Cached per childId.
-   * Guards on `parentDiagramId` so a fetch that lands after the user navigated away is dropped (its cache was
-   * already cleared) rather than repopulating a stale entry / triggering a spurious re-render.
+   * Load a container's children (their footprints + names + whether THEY have children) for nested rendering.
+   * Reads the container's OWN diagram for positions and getChildren for identity/recursion metadata. Guards on
+   * `parentDid` so a fetch that lands after the canvas changed is dropped.
    */
-  private async fetchPreview(childId: number, diagramId: number, parentDiagramId: number | null) {
-    this.previewFetched.add(childId);
+  private async fetchNest(containerId: number, containerDid: number, parentDid: number | null) {
+    this.nestFetched.add(containerId);
     try {
-      const res = await firstValueFrom(this.placementApi.getByDiagram(diagramId));
-      if (this.previewParent !== parentDiagramId) return;
-      const shapes: MiniShape[] = (res?.responseData ?? [])
-        .filter(p => (p.width ?? 0) > 0 && (p.height ?? 0) > 0)
-        .map(p => ({ x: p.x ?? 0, y: p.y ?? 0, w: p.width ?? 0, h: p.height ?? 0, color: p.color || '#8aa0b6' }));
-      this.previewCache.set(childId, shapes);
+      const [kids, pRes] = await Promise.all([
+        firstValueFrom(this.nodesApi.getChildren(containerId)).catch(() => [] as PhysicalObjectNode[]),
+        firstValueFrom(this.placementApi.getByDiagram(containerDid)),
+      ]);
+      if (this.nestParent !== parentDid) return;
+      const kidById = new Map((kids ?? []).map(k => [k.id, k]));
+      const shapes: NestChild[] = (pRes?.responseData ?? [])
+        .filter(p => p.sourceEntityType === 'PhysicalObject' && p.sourceEntityId != null && (p.width ?? 0) > 0 && (p.height ?? 0) > 0)
+        .map(p => {
+          const k = kidById.get(p.sourceEntityId!);
+          return {
+            childId: p.sourceEntityId!, name: p.label || k?.name || '', color: p.color || poColor(k?.type),
+            shape: normFootprint(p.type),
+            x: p.x ?? 0, y: p.y ?? 0, w: p.width ?? 0, h: p.height ?? 0,
+            hasChildren: k?.hasChildren ?? false, diagramId: k?.diagramId ?? null,
+          };
+        });
+      this.nestCache.set(containerId, shapes);
     } catch {
-      if (this.previewParent === parentDiagramId) this.previewCache.set(childId, []);
+      if (this.nestParent === parentDid) this.nestCache.set(containerId, []);
     } finally {
-      if (this.previewParent === parentDiagramId) this.previewsVersion.update(v => v + 1);
+      if (this.nestParent === parentDid) this.nestVersion.update(v => v + 1);
     }
   }
 
@@ -267,9 +375,10 @@ export class PlantMapComponent implements OnDestroy {
 
   private async loadRoots() {
     const all = await firstValueFrom(this.nodesApi.getTree());
-    const roots = all.filter(n => n.parentId == null);
+    // Binder mode: only hand-built (local) roots belong on the plant map (`!== false` is transition-safe).
+    const roots = all.filter(n => n.parentId == null && n.local !== false);
     this.roots.set(roots);
-    this.noNodes.set(all.length === 0);
+    this.noNodes.set(roots.length === 0);
     if (roots.length === 1) this.st.openNode(roots[0].id);
   }
 
@@ -282,7 +391,20 @@ export class PlantMapComponent implements OnDestroy {
   }
   boxType(b: MapBox): string | null { return this.st.childById().get(b.childId)?.type ?? null; }
   boxColor(b: MapBox): string { return b.color || poColor(this.boxType(b)); }
-  boxGlyph(b: MapBox): PlantGlyph | undefined { return PLANT_GLYPH_BY_KEY.get(b.glyph || 'none'); }
+  boxShape(b: MapBox): FootprintShape { return b.shape || 'rect'; }
+  /** Translucent footprint fill (runs read a touch more solid, like a pipe). */
+  boxFill(b: MapBox): string { return hexToRgba(this.boxColor(b), this.isRevealing(b) ? 0.05 : (b.shape === 'run' ? 0.4 : 0.16)); }
+  /** Very faint fill for a ghost (an item on another floor, shown for context). */
+  ghostFill(g: GhostBox): string { return hexToRgba(g.color || '#8aa0b6', 0.08); }
+  /** Translucent fill for a nested item, fading with depth so deeper items don't overwhelm. */
+  nestFill(n: NestItem): string { return hexToRgba(n.color || '#8aa0b6', Math.max(0.06, 0.2 - n.depth * 0.03)); }
+  /** A run taller than it is wide is a vertical run → its sheen runs across the short axis. */
+  runVertical(b: MapBox): boolean { return b.height > b.width; }
+  /** The equipment badge (small corner icon) — only for path glyphs, not 'none'. */
+  badgeOf(b: MapBox): PlantGlyph | undefined {
+    const g = PLANT_GLYPH_BY_KEY.get(b.glyph || 'none');
+    return g && g.kind === 'path' ? g : undefined;
+  }
   boxHasChildren(b: MapBox): boolean { return this.st.childById().get(b.childId)?.hasChildren ?? false; }
   isSelected(b: MapBox): boolean { return this.st.selectedLocalId() === b.localId; }
 
@@ -300,12 +422,50 @@ export class PlantMapComponent implements OnDestroy {
 
   placeFromPalette(childId: number) { this.st.placeChild(childId); }
 
+  /** Add a floor/level to the current node — it appears in the Levels switcher, NOT as a box on the canvas. */
+  async addLevel() {
+    const name = this.newName.trim();
+    await this.st.createFloor(name);
+    this.newName = '';
+  }
+
+  // ── level management (rename / reorder / delete in the Levels switcher) ──
+  editingFloorId = signal<number | null>(null);
+  floorEditName = '';
+
+  startRenameFloor(f: PhysicalObjectNode) { this.editingFloorId.set(f.id); this.floorEditName = f.name ?? ''; }
+  cancelRenameFloor() { this.editingFloorId.set(null); }
+  async saveRenameFloor(f: PhysicalObjectNode) {
+    const name = this.floorEditName.trim();
+    if (name) await this.st.updateNodeData(f.id, { name });
+    this.editingFloorId.set(null);
+  }
+
+  async deleteFloor(f: PhysicalObjectNode) {
+    if (!confirm(`Delete level "${f.name}"? (only works if it's empty)`)) return;
+    await this.st.deleteObject(f.id);
+  }
+
+  /** Move a level up/down the stack by swapping its floorIndex with the neighbour. */
+  async moveFloor(f: PhysicalObjectNode, dir: 'up' | 'down') {
+    const floors = this.floorsTopDown();          // sorted top → bottom (descending floorIndex)
+    const i = floors.findIndex(x => x.id === f.id);
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= floors.length) return;
+    const other = floors[j];
+    const fi = f.floorIndex ?? 0, oi = other.floorIndex ?? 0;
+    await this.st.updateNodeData(f.id, { floorIndex: oi });
+    await this.st.updateNodeData(other.id, { floorIndex: fi });
+  }
+
   // ── pointer interaction ──
+  /** Screen point → content coords, undoing the viewport offset + pan + zoom. */
   private contentPoint(ev: PointerEvent): { x: number; y: number } {
-    const el = this.contentRef?.nativeElement;
+    const el = this.viewportRef?.nativeElement;
     if (!el) return { x: 0, y: 0 };
     const r = el.getBoundingClientRect();
-    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+    const z = this.zoom();
+    return { x: (ev.clientX - r.left - this.panX()) / z, y: (ev.clientY - r.top - this.panY()) / z };
   }
 
   private boxAt(x: number, y: number): MapBox | null {
@@ -317,14 +477,36 @@ export class PlantMapComponent implements OnDestroy {
     return null;
   }
 
-  /** Empty-canvas press: deselect (box + pipe) and start a draw-to-create rubber band. */
+  /** Empty-canvas press: LEFT drag pans the map; RIGHT drag draws a new object. Either way, deselect. */
   onCanvasDown(ev: PointerEvent) {
-    const p = this.contentPoint(ev);
     this.st.selectedLocalId.set(null);
     this.st.selectedEdgeLocalId.set(null);
-    this.drag = { kind: 'draw', startX: p.x, startY: p.y };
-    this.rubber.set({ x: p.x, y: p.y, w: 0, h: 0 });
+    if (ev.button === 2) {
+      const p = this.contentPoint(ev);
+      this.drag = { kind: 'draw', startX: p.x, startY: p.y };
+      this.rubber.set({ x: p.x, y: p.y, w: 0, h: 0 });
+    } else {
+      this.drag = { kind: 'pan', startClientX: ev.clientX, startClientY: ev.clientY, startPanX: this.panX(), startPanY: this.panY(), moved: false };
+    }
   }
+
+  /** Wheel = zoom toward the cursor (keeps the point under the pointer fixed). */
+  onWheel(ev: WheelEvent) {
+    ev.preventDefault();
+    const el = this.viewportRef?.nativeElement;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    const old = this.zoom();
+    const next = Math.min(4, Math.max(0.15, old * (ev.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    const cx = (mx - this.panX()) / old, cy = (my - this.panY()) / old;
+    this.panX.set(mx - cx * next);
+    this.panY.set(my - cy * next);
+    this.zoom.set(next);
+  }
+
+  /** Reset the view (zoom 100%, no pan). */
+  resetView() { this.zoom.set(1); this.panX.set(0); this.panY.set(0); }
 
   onBoxDown(ev: PointerEvent, b: MapBox) {
     ev.stopPropagation();
@@ -351,20 +533,51 @@ export class PlantMapComponent implements OnDestroy {
     this.st.selectEdge(edgeLocalId);
   }
 
+  /** Drag an existing route bend. */
+  onWpDown(ev: PointerEvent, edgeId: number, index: number) {
+    ev.stopPropagation();
+    this.drag = { kind: 'waypoint', edgeId, index };
+  }
+
+  /** Press a segment midpoint → insert a bend there, then drag it. */
+  onWpAddDown(ev: PointerEvent, edgeId: number, insertIndex: number) {
+    ev.stopPropagation();
+    const c = this.contentPoint(ev);
+    this.st.insertWaypoint(edgeId, insertIndex, c.x, c.y);
+    this.drag = { kind: 'waypoint', edgeId, index: insertIndex };
+  }
+
+  removeWaypoint(edgeId: number, index: number) { this.st.removeWaypoint(edgeId, index); }
+
   onBoxDblClick(b: MapBox) { void this.st.navigate(b.childId); }
+
+  /** Click a rendered interior item (in a box's LOD mini-map) → drill straight into that item's level. */
+  drillToDescendant(childId: number, ev: Event) {
+    ev.stopPropagation();
+    if (childId) void this.st.navigate(childId);
+  }
 
   @HostListener('window:pointermove', ['$event'])
   onPointerMove(ev: PointerEvent) {
     const d = this.drag;
     if (!d) return;
-    if (d.kind === 'move') {
-      const nx = Math.max(0, d.origX + (ev.clientX - d.startClientX));
-      const ny = Math.max(0, d.origY + (ev.clientY - d.startClientY));
+    const z = this.zoom();
+    if (d.kind === 'pan') {
+      d.moved = true;
+      this.panX.set(d.startPanX + (ev.clientX - d.startClientX));
+      this.panY.set(d.startPanY + (ev.clientY - d.startClientY));
+    } else if (d.kind === 'move') {
+      const nx = Math.max(0, d.origX + (ev.clientX - d.startClientX) / z);
+      const ny = Math.max(0, d.origY + (ev.clientY - d.startClientY) / z);
       this.st.setBoxRect(d.localId, nx, ny, d.origW, d.origH);
     } else if (d.kind === 'resize') {
-      const nw = Math.max(90, d.origW + (ev.clientX - d.startClientX));
-      const nh = Math.max(52, d.origH + (ev.clientY - d.startClientY));
+      const min = this.minSize(this.boxById().get(d.localId)?.shape ?? 'rect');
+      const nw = Math.max(min.w, d.origW + (ev.clientX - d.startClientX) / z);
+      const nh = Math.max(min.h, d.origH + (ev.clientY - d.startClientY) / z);
       this.st.setBoxRect(d.localId, d.origX, d.origY, nw, nh);
+    } else if (d.kind === 'waypoint') {
+      const c = this.contentPoint(ev);
+      this.st.moveWaypoint(d.edgeId, d.index, c.x, c.y);
     } else if (d.kind === 'connect') {
       const c = this.contentPoint(ev);
       const src = this.boxById().get(d.localId);
@@ -391,18 +604,57 @@ export class PlantMapComponent implements OnDestroy {
     } else if (d.kind === 'draw') {
       const r = this.rubber();
       this.rubber.set(null);
-      if (r && r.w >= 24 && r.h >= 24) void this.createDrawnObject(r);
+      // long-enough drag; min-side allows thin pipe runs, long-side rejects accidental taps
+      if (r && Math.max(r.w, r.h) >= 24 && Math.min(r.w, r.h) >= 6) void this.createDrawnObject(r);
     }
     // move / resize were persisted live via setBoxRect's debounced save
   }
 
-  /** Draw-to-create: a rubber-banded rectangle becomes a brand-new child object at that size/position. */
+  /** Draw-to-create: a rubber-banded footprint becomes a brand-new child object at that size/position,
+   *  then jumps straight into inline naming so you type its name in one motion (no "New object"). */
   private async createDrawnObject(r: { x: number; y: number; w: number; h: number }) {
-    const created = await this.st.createChild({ name: 'New object', type: this.newType });
+    const shape = this.drawShape();
+    const created = await this.st.createChild({ name: this.defaultDrawName(shape), type: this.newType });
     if (!created) return;
-    const localId = this.st.placeChild(created.id, r.x, r.y);
-    if (localId != null) this.st.setBoxRect(localId, r.x, r.y, Math.max(90, r.w), Math.max(52, r.h));
+    const localId = this.st.placeChild(created.id, r.x, r.y, shape);
+    if (localId == null) return;
+    const min = this.minSize(shape);
+    this.st.setBoxRect(localId, r.x, r.y, Math.max(min.w, r.w), Math.max(min.h, r.h));
+    const box = this.st.boxes().find(b => b.localId === localId);
+    if (box) this.startRenameBox(box);
   }
+
+  /** Per-shape minimum footprint size — a pipe run may be thin in either axis; other shapes need room for a label. */
+  private minSize(shape: FootprintShape): { w: number; h: number } {
+    return shape === 'run' ? { w: 8, h: 8 } : { w: 28, h: 16 };
+  }
+
+  /** Too small to fit a readable name plate — hide the label (shape + color still identify it). */
+  isTiny(b: MapBox): boolean { return Math.min(b.width, b.height) < 24; }
+
+  private defaultDrawName(shape: FootprintShape): string {
+    return shape === 'run' ? 'Pipe run' : shape === 'circle' ? 'Tank' : 'Area';
+  }
+
+  // ── inline rename (name-in-place on the footprint) ──
+  isEditingBox(b: MapBox): boolean { return this.editingBoxLocalId() === b.localId; }
+
+  startRenameBox(b: MapBox, ev?: Event) {
+    ev?.stopPropagation();
+    this.st.selectBox(b.localId);
+    this.boxEditName = this.boxLabel(b);
+    this.editingBoxLocalId.set(b.localId);
+    setTimeout(() => { const el = this.boxRenameRef?.nativeElement; if (el) { el.focus(); el.select(); } }, 0);
+  }
+
+  async commitRenameBox(b: MapBox) {
+    if (this.editingBoxLocalId() !== b.localId) return; // already committed (blur after enter)
+    const name = this.boxEditName.trim();
+    this.editingBoxLocalId.set(null);
+    if (name && name !== this.boxLabel(b)) await this.st.updateNodeData(b.childId, { name });
+  }
+
+  cancelRenameBox() { this.editingBoxLocalId.set(null); }
 
   // ── inspector: edit ──
   private onSelectionChanged(child: PhysicalObjectNode | null) {
@@ -411,6 +663,7 @@ export class PlantMapComponent implements OnDestroy {
     // same object (e.g. after a save refreshes the child list), so in-progress typing is never clobbered.
     if (id === this.lastSelectedNodeId) return;
     this.lastSelectedNodeId = id;
+    this.mxPickerOpen.set(false);
     if (!child) {
       this.editName = this.editType = this.editTag = this.editDesc = this.editLoc = this.editFloor = '';
       this.files.set([]); this.fileResults.set([]); this.fileQuery = '';
@@ -457,6 +710,29 @@ export class PlantMapComponent implements OnDestroy {
   /** Does this box's object have a bound work area? (drives the safety badge) */
   boxHasWorkArea(b: MapBox): boolean { return (this.st.childWorkAreas().get(b.childId) ?? 0) > 0; }
 
+  // ── inspector: Maximo link ──
+  mxPickerOpen = signal(false);
+
+  async onAssetPicked(a: MaximoAsset) {
+    const c = this.st.selectedChild();
+    if (!c) return;
+    await this.st.linkMaximo(c.id, { assetnum: a.assetnum, location: a.location, siteid: a.siteid, maximoType: a.assettype });
+    this.mxPickerOpen.set(false);
+  }
+
+  async onLocationPicked(l: MaximoLocation) {
+    const c = this.st.selectedChild();
+    if (!c) return;
+    await this.st.linkMaximo(c.id, { location: l.location, siteid: l.siteid, maximoType: (l as any).type });
+    this.mxPickerOpen.set(false);
+  }
+
+  async unlinkMaximo() {
+    const c = this.st.selectedChild();
+    if (!c) return;
+    await this.st.unlinkMaximo(c.id);
+  }
+
   /** Start a permit from this node: open the WR form pre-seeded with this work area (existing prefill applies). */
   startPermit(wa: WorkAreaRef) {
     this.router.navigate(['/permit-builder/work-requests'], { queryParams: { workAreaId: wa.id } });
@@ -482,9 +758,27 @@ export class PlantMapComponent implements OnDestroy {
   drillSelected() { const c = this.st.selectedChild(); if (c) void this.st.navigate(c.id); }
   removeSelectedBox() { const id = this.st.selectedLocalId(); if (id != null) this.st.removeBox(id); }
 
-  // ── inspector: appearance (box glyph + color) ──
+  // ── inspector: appearance (footprint shape + equipment badge + color) ──
+  setShape(shape: FootprintShape) { const id = this.st.selectedLocalId(); if (id != null) this.st.patchBox(id, { shape }); }
   setGlyph(key: string) { const id = this.st.selectedLocalId(); if (id != null) this.st.patchBox(id, { glyph: key }); }
   setColor(color: string) { const id = this.st.selectedLocalId(); if (id != null) this.st.patchBox(id, { color }); }
+
+  // ── reference underlay (satellite / plot plan) ──
+  onPickBackground(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // allow re-picking the same file
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { this.st.error.set('The reference must be an image file.'); return; }
+    if (file.size > 3 * 1024 * 1024) { this.st.error.set('Image too large (max 3 MB) — crop or screenshot a smaller area.'); return; }
+    const did = this.st.currentDiagramId(); // snapshot: drop the write if the user drills away before the read lands
+    const reader = new FileReader();
+    reader.onload = () => { this.st.error.set(null); this.st.setBackgroundImage(String(reader.result), did); };
+    reader.onerror = () => this.st.error.set('Could not read that image.');
+    reader.readAsDataURL(file);
+  }
+  clearBackground() { this.st.clearBackgroundImage(); }
+  setBgOpacity(v: number) { this.st.setBackgroundOpacity(v); }
 
   // ── inspector: pipe (connection style) ──
   setPipeColor(color: string) { const id = this.st.selectedEdgeLocalId(); if (id != null) this.st.patchEdge(id, { color }); }

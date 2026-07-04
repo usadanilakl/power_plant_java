@@ -23,6 +23,11 @@ public class PhysicalObjectDto {
     private Integer floorIndex;
     private Long diagramId;
     private boolean hasChildren;
+    /** True for hand-built (local) nodes; false for pure Maximo-seeded hierarchy nodes. Partitions the plant
+     *  map (local only) from the Maximo-location browser (Maximo only). */
+    private boolean local;
+    /** True when linked to a Maximo asset/location (its WO/SR + PM data is available). */
+    private boolean maximoLinked;
 
     public static PhysicalObjectDto from(PhysicalObject e, boolean hasChildren) {
         PhysicalObjectDto d = new PhysicalObjectDto();
@@ -40,6 +45,9 @@ public class PhysicalObjectDto {
         d.setFloorIndex(e.getFloorIndex());
         d.setDiagramId(e.getDiagramId());
         d.setHasChildren(hasChildren);
+        d.setLocal(e.getLocalUuid() != null && !e.getLocalUuid().isBlank());
+        d.setMaximoLinked((e.getMaximoAssetnum() != null && !e.getMaximoAssetnum().isBlank())
+                || (e.getMaximoLocation() != null && !e.getMaximoLocation().isBlank()));
         return d;
     }
 }

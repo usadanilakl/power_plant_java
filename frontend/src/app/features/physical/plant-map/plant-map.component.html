@@ -15,12 +15,29 @@
         </nav>
 
         <div class="levels" *ngIf="st.floorSwitcher().floors.length">
-          <span class="lbl">Levels</span>
+          <span class="lbl">Levels — active is editable, others show dimmed. Click to switch.</span>
           <ul class="floors">
-            <li *ngFor="let f of floorsTopDown()" [class.here]="f.id === st.floorSwitcher().currentId"
-                (click)="navigate(f.id)">
-              <span class="fidx">{{ f.floorIndex }}</span>
-              {{ f.name || f.tagNumber || ('#'+f.id) }}
+            <li *ngFor="let f of floorsTopDown()" [class.here]="f.id === st.viewedLevelId()">
+              <ng-container *ngIf="editingFloorId() !== f.id; else renameF">
+                <span class="fidx">{{ f.floorIndex }}</span>
+                <span class="fname" (click)="st.peelToLevel(f.id)">{{ f.name || f.tagNumber || ('#'+f.id) }}</span>
+                <span class="factions">
+                  <button (click)="moveFloor(f, 'up')" title="move up">▲</button>
+                  <button (click)="moveFloor(f, 'down')" title="move down">▼</button>
+                  <button (click)="startRenameFloor(f)" title="rename">✎</button>
+                  <button class="del" (click)="deleteFloor(f)" title="delete level">×</button>
+                </span>
+              </ng-container>
+              <ng-template #renameF>
+                <input class="fedit" [(ngModel)]="floorEditName" (keyup.enter)="saveRenameFloor(f)"
+                       (keyup.escape)="cancelRenameFloor()" />
+                <button (click)="saveRenameFloor(f)" title="save">✓</button>
+              </ng-template>
+            </li>
+            <li class="base" [class.here]="st.viewedLevelId() == null" (click)="st.peelToBase()"
+                title="This node's own base layout (its direct content, under the levels)">
+              <span class="fidx">▦</span>
+              <span class="fname">Base — {{ st.currentNode()?.name || 'this node' }}</span>
             </li>
           </ul>
         </div>
@@ -46,16 +63,40 @@
             </select>
             <input [(ngModel)]="newTag" placeholder="tag (opt)" />
           </div>
-          <button (click)="addObject()" [disabled]="!newName.trim()">
-            {{ st.currentNode() ? 'Add + place' : 'Create + open' }}
-          </button>
+          <div class="row">
+            <button (click)="addObject()" [disabled]="!newName.trim()">
+              {{ st.currentNode() ? 'Add + place' : 'Create + open' }}
+            </button>
+            <button class="level-btn" *ngIf="st.currentNode()" (click)="addLevel()"
+                    title="Add a floor/level — appears in the Levels switcher, not as a box">+ Level</button>
+          </div>
+        </div>
+
+        <div class="bg-panel" *ngIf="st.currentNode()">
+          <span class="lbl">Reference image</span>
+          <p class="hint">Trace a satellite / plot photo. Held on this device for this level.</p>
+          <label class="bg-add" *ngIf="!st.backgroundUrl()">
+            + Add image
+            <input type="file" accept="image/*" (change)="onPickBackground($event)" hidden />
+          </label>
+          <div class="bg-ctrls" *ngIf="st.backgroundUrl()">
+            <label class="bg-op">Opacity
+              <input type="range" min="0.1" max="1" step="0.05" [value]="st.backgroundOpacity()"
+                     (input)="setBgOpacity(+$any($event.target).value)" />
+            </label>
+            <div class="row">
+              <label class="bg-add small">Replace
+                <input type="file" accept="image/*" (change)="onPickBackground($event)" hidden />
+              </label>
+              <button class="ghost-btn" (click)="clearBackground()">Clear</button>
+            </div>
+          </div>
         </div>
 
         <div class="tip">
-          <strong>Places vs items</strong>
-          A box becomes a <em>place</em> once it has children — double-click it to drill inside.
-          Add a level only when it holds several things; if one item fills the space, just place one box
-          (no wrapper). The type is only its color.
+          <strong>Tips</strong>
+          Double-click a box to drill inside. A node with <em>levels</em> opens on its top level — peel down
+          with the Levels list. Select a box and drag its corner to resize.
         </div>
       </aside>
 
@@ -74,58 +115,97 @@
               <option *ngFor="let s of systems()" [ngValue]="s.id">{{ s.name }}</option>
             </select>
           </span>
-          <span class="hint2">Drag · corner=resize · side dot=connect · dbl-click=drill</span>
+          <span class="draw-tools" *ngIf="st.currentDiagramId()">
+            <span class="lbl2">Draw</span>
+            <button *ngFor="let s of footprintShapes" type="button" class="shape-btn"
+                    [class.on]="drawShape() === s.key" (click)="setDrawShape(s.key)" [title]="s.label">
+              <span class="shp" [ngClass]="'shp-' + s.key"></span>
+            </button>
+          </span>
+          <button class="zoom-btn" *ngIf="st.currentDiagramId()" (click)="resetView()" title="reset view (fit)">{{ (zoom() * 100) | number:'1.0-0' }}%</button>
+          <span class="hint2">left-drag = pan · wheel = zoom · right-drag = draw footprint · dbl-click = drill</span>
         </div>
 
         <ng-container *ngIf="st.currentDiagramId(); else entry">
-          <div class="scroll">
+          <div class="scroll" #viewport
+               (pointerdown)="onCanvasDown($event)" (wheel)="onWheel($event)" (contextmenu)="$event.preventDefault()">
             <div class="content" #content
                  [style.width.px]="canvasSize().w" [style.height.px]="canvasSize().h"
-                 (pointerdown)="onCanvasDown($event)">
+                 [style.transform]="contentTransform()">
+
+              <img *ngIf="st.backgroundUrl() as bg" class="bg-image" [src]="bg" (load)="onBgLoad($event)"
+                   [style.opacity]="st.backgroundOpacity()" draggable="false" alt="" />
+
+              <div class="boundary" *ngIf="st.boundary() as bd"
+                   [style.left.px]="bd.x" [style.top.px]="bd.y" [style.width.px]="bd.w" [style.height.px]="bd.h">
+                <span class="boundary-lbl">{{ st.currentNode()?.name }} — bounds</span>
+              </div>
+
+              <!-- ghosts: items on OTHER levels, dimmed for context — switch the active level to edit them -->
+              <div class="ghost" *ngFor="let g of st.ghostBoxes()" [ngClass]="'shape-' + g.shape"
+                   [style.left.px]="g.x" [style.top.px]="g.y" [style.width.px]="g.width" [style.height.px]="g.height"
+                   [style.borderColor]="g.color" [style.background]="ghostFill(g)">
+                <span class="glabel" *ngIf="g.name">{{ g.name }}</span>
+              </div>
 
               <svg class="wires" [attr.width]="canvasSize().w" [attr.height]="canvasSize().h">
                 <g *ngFor="let w of wires()">
-                  <line class="wire-hit" [attr.x1]="w.x1" [attr.y1]="w.y1" [attr.x2]="w.x2" [attr.y2]="w.y2"
-                        (pointerdown)="onWireDown($event, w.id)" />
-                  <line class="wire" [class.sel]="w.sel" [attr.x1]="w.x1" [attr.y1]="w.y1" [attr.x2]="w.x2" [attr.y2]="w.y2"
-                        [attr.stroke]="w.color" [attr.stroke-width]="w.sel ? w.width + 3 : w.width" />
+                  <polyline class="wire-hit" [attr.points]="w.points" (pointerdown)="onWireDown($event, w.id)" />
+                  <polyline class="wire" [class.sel]="w.sel" [attr.points]="w.points"
+                            [attr.stroke]="w.color" [attr.stroke-width]="w.sel ? w.width + 3 : w.width" />
+                  <polyline class="wire-hl" [attr.points]="w.points" [attr.stroke-width]="w.width * 0.32 + 0.5" />
+                  <ng-container *ngIf="w.sel">
+                    <circle *ngFor="let m of w.segMids" class="wp-add" [attr.cx]="m.x" [attr.cy]="m.y" r="4.5"
+                            (pointerdown)="onWpAddDown($event, w.id, m.index)" />
+                    <circle *ngFor="let h of w.wpHandles" class="wp" [attr.cx]="h.x" [attr.cy]="h.y" r="5.5"
+                            (pointerdown)="onWpDown($event, w.id, h.index)" (dblclick)="removeWaypoint(w.id, h.index)" />
+                  </ng-container>
                 </g>
                 <line *ngIf="tempWire() as t" [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2"
                       class="wire temp" />
               </svg>
 
-              <div class="box" *ngFor="let b of st.boxes()" [class.sel]="isSelected(b)"
-                   [class.glyphed]="miniMaps().has(b.localId) || boxGlyph(b)?.kind !== 'box'"
-                   [class.hot]="layerActive() && boxInActiveSystem(b)"
-                   [class.cold]="layerActive() && !boxInActiveSystem(b)"
+              <div class="box" *ngFor="let b of st.boxes()"
+                   [ngClass]="['shape-' + boxShape(b),
+                               isSelected(b) ? 'sel' : '',
+                               isRevealing(b) ? 'revealing' : '',
+                               isTiny(b) && !isEditingBox(b) ? 'tiny' : '',
+                               boxShape(b) === 'run' && runVertical(b) ? 'run-v' : '',
+                               layerActive() && boxInActiveSystem(b) ? 'hot' : '',
+                               layerActive() && !boxInActiveSystem(b) ? 'cold' : '']"
                    [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.width" [style.height.px]="b.height"
-                   [style.borderColor]="boxColor(b)"
+                   [style.borderColor]="boxColor(b)" [style.background]="boxFill(b)"
                    (pointerdown)="onBoxDown($event, b)" (dblclick)="onBoxDblClick(b)">
-                <span class="swatch" [style.background]="boxColor(b)"></span>
+
+                <!-- equipment badge (small corner icon; the footprint shape + color carry the rest) -->
+                <svg *ngIf="badgeOf(b) as g" class="badge" [attr.viewBox]="'0 0 ' + g.viewW + ' ' + g.viewH"
+                     preserveAspectRatio="xMidYMid meet">
+                  <path [attr.d]="g.path" [attr.stroke]="boxColor(b)" fill="none" stroke-width="2.4"
+                        vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" />
+                </svg>
                 <span class="wa-badge" *ngIf="boxHasWorkArea(b)" title="has a work area / safety profile">⚠</span>
 
-                <!-- mini-map preview of the child's interior (takes precedence over the glyph) -->
-                <svg *ngIf="miniMaps().get(b.localId) as mm" class="mini" [attr.viewBox]="mm.vb" preserveAspectRatio="xMidYMid meet">
-                  <rect *ngFor="let s of mm.shapes" [attr.x]="s.x" [attr.y]="s.y" [attr.width]="s.w" [attr.height]="s.h"
-                        [attr.fill]="s.color" rx="2" ry="2" />
-                </svg>
-
-                <ng-container *ngIf="!miniMaps().has(b.localId) && boxGlyph(b) as g">
-                  <svg *ngIf="g.kind === 'path'" class="glyph" [attr.viewBox]="'0 0 ' + g.viewW + ' ' + g.viewH"
-                       preserveAspectRatio="xMidYMid meet">
-                    <path [attr.d]="g.path" [attr.stroke]="boxColor(b)" fill="none" stroke-width="2"
-                          vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" />
-                  </svg>
-                  <span *ngIf="g.kind === 'pipe'" class="pipe-cap" [style.background]="boxColor(b)"></span>
-                </ng-container>
-
-                <div class="lbl">
+                <input *ngIf="isEditingBox(b)" #boxRename class="box-rename" [(ngModel)]="boxEditName"
+                       (keyup.enter)="commitRenameBox(b)" (keyup.escape)="cancelRenameBox()" (blur)="commitRenameBox(b)"
+                       (pointerdown)="$event.stopPropagation()" (dblclick)="$event.stopPropagation()"
+                       placeholder="name…" />
+                <div class="lbl" *ngIf="!isEditingBox(b)">
                   <span class="name">{{ boxLabel(b) }}</span>
-                  <span class="ty" *ngIf="boxType(b) as t">{{ t }}</span>
                 </div>
+
                 <span class="chev" *ngIf="boxHasChildren(b)" title="double-click to drill in">›</span>
+                <span class="rename-h" *ngIf="isSelected(b) && !isEditingBox(b)"
+                      (pointerdown)="startRenameBox(b, $event)" title="rename">✎</span>
                 <span class="port" (pointerdown)="onPortDown($event, b)" title="drag to another box to connect"></span>
                 <span class="resize" (pointerdown)="onResizeDown($event, b)"></span>
+              </div>
+
+              <!-- recursive zoom-nesting: real, labeled descendant items that appear as you zoom in. Purely
+                   visual (double-click a top-level box to drill in and edit that level). -->
+              <div class="nest" *ngFor="let n of nestedItems()" [ngClass]="'shape-' + n.shape"
+                   [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.w" [style.height.px]="n.h"
+                   [style.borderColor]="n.color" [style.background]="nestFill(n)" [style.zIndex]="4 + n.depth">
+                <span class="nlabel" *ngIf="n.name">{{ n.name }}</span>
               </div>
 
               <div class="rubber" *ngIf="rubber() as r"
@@ -176,6 +256,14 @@
 
         <div class="appearance" *ngIf="st.selectedBox() as bx">
           <h4>Appearance</h4>
+          <span class="sub">Footprint</span>
+          <div class="shape-row">
+            <button *ngFor="let s of footprintShapes" type="button" class="shape-btn"
+                    [class.on]="(bx.shape || 'rect') === s.key" (click)="setShape(s.key)" [title]="s.label">
+              <span class="shp" [ngClass]="'shp-' + s.key"></span>
+            </button>
+          </div>
+          <span class="sub">Equipment badge</span>
           <div class="glyph-grid">
             <button *ngFor="let g of glyphs" type="button" [class.on]="(bx.glyph || 'none') === g.key"
                     (click)="setGlyph(g.key)" [title]="g.label">
@@ -253,6 +341,25 @@
             <li *ngFor="let w of availableWorkAreas()" (click)="linkWorkArea(w)">{{ w.name }}</li>
             <li class="muted" *ngIf="!availableWorkAreas().length">No more work areas to bind.</li>
           </ul>
+        </div>
+
+        <div class="maximo">
+          <h4>Maximo</h4>
+          <div class="mx-current" *ngIf="c.maximoAssetnum || c.maximoLocation">
+            <span class="mx-tag" *ngIf="c.maximoAssetnum" title="Maximo asset">⚙ {{ c.maximoAssetnum }}</span>
+            <span class="mx-tag" *ngIf="c.maximoLocation" title="Maximo location">◍ {{ c.maximoLocation }}</span>
+            <button class="x" (click)="unlinkMaximo()" title="unlink Maximo">×</button>
+          </div>
+          <span class="muted" *ngIf="!c.maximoAssetnum && !c.maximoLocation">Not linked to Maximo.</span>
+          <button class="mx-btn" (click)="mxPickerOpen.set(!mxPickerOpen())">
+            {{ mxPickerOpen() ? 'Cancel' : ((c.maximoAssetnum || c.maximoLocation) ? 'Change link' : '+ Link Maximo asset / location') }}
+          </button>
+          <div class="mx-picker" *ngIf="mxPickerOpen()">
+            <label class="mx-lbl">Asset</label>
+            <app-maximo-asset-picker (picked)="onAssetPicked($event)"></app-maximo-asset-picker>
+            <label class="mx-lbl">Location</label>
+            <app-maximo-location-picker (picked)="onLocationPicked($event)"></app-maximo-location-picker>
+          </div>
         </div>
 
         <div class="docs">

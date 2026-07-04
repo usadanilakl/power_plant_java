@@ -370,6 +370,40 @@ public class NgPhysicalObjectController {
         }
     }
 
+    // ---- Maximo link (a local node ties INTO a Maximo asset/location for its WO/SR + PM data) --
+
+    /**
+     * Link this node to a Maximo asset and/or location — sets the maximo* fields; the WO/SR tab
+     * ({@code /ng/maximo/physical-object/{id}}) then reads them. maximoKey stays {@code LOCAL:{uuid}} for
+     * hand-built nodes (see {@link PhysicalObject#keyFor}), so the link is metadata, never identity.
+     */
+    @PutMapping("/{id}/maximo-link")
+    public ResponseEntity<NgApiResponse<PhysicalObjectDto>> linkMaximo(@PathVariable Long id, @RequestBody MaximoLinkRequest req) {
+        PhysicalObject n = repo.findById(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        if (req.assetnum() != null) n.setMaximoAssetnum(req.assetnum().isBlank() ? null : req.assetnum().trim());
+        if (req.location() != null) n.setMaximoLocation(req.location().isBlank() ? null : req.location().trim());
+        if (req.siteid() != null && !req.siteid().isBlank()) n.setMaximoSiteid(req.siteid().trim());
+        if (req.maximoType() != null) n.setMaximoType(req.maximoType());
+        PhysicalObject saved = repo.save(n); // @PreUpdate recomputes maximoKey (stays LOCAL for hand nodes)
+        return ResponseEntity.ok(new NgApiResponse<>(
+                PhysicalObjectDto.from(saved, !repo.findByParentId(id).isEmpty()), "linked"));
+    }
+
+    /** Remove this node's Maximo link (clears the asset/location; identity stays LOCAL). */
+    @DeleteMapping("/{id}/maximo-link")
+    public ResponseEntity<NgApiResponse<PhysicalObjectDto>> unlinkMaximo(@PathVariable Long id) {
+        PhysicalObject n = repo.findById(id).orElse(null);
+        if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        n.setMaximoAssetnum(null);
+        n.setMaximoLocation(null);
+        PhysicalObject saved = repo.save(n);
+        return ResponseEntity.ok(new NgApiResponse<>(
+                PhysicalObjectDto.from(saved, !repo.findByParentId(id).isEmpty()), "unlinked"));
+    }
+
+    public record MaximoLinkRequest(String assetnum, String location, String siteid, String maximoType) {}
+
     /** Slim view of a bound file — enough to list and open it. */
     public record LinkedFileDto(Long id, String name, String fileNumber, String fileLink, String extension) {
         static LinkedFileDto from(FileObject f) {

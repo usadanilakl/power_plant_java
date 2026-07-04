@@ -30,6 +30,8 @@ export interface PhysicalObjectNode {
   floorIndex: number | null;
   diagramId: number | null;   // the node's blank schematic canvas (get-or-created)
   hasChildren: boolean;
+  local: boolean;             // hand-built node (shown on the plant map) vs Maximo-seeded hierarchy node
+  maximoLinked: boolean;      // linked to a Maximo asset/location (WO/SR + PM data available)
 }
 
 /** WOs + SRs for a node's Maximo link (backend NgMaximoController.PhysicalObjectMaximoTab). */
