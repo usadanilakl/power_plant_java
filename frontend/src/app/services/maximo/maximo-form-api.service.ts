@@ -31,6 +31,12 @@ export class MaximoFormApiService {
     return this.http.delete<SpringApiResponse<void>>(`${this.base}/templates/${id}`).pipe(map(() => void 0));
   }
 
+  /** Seed the curated procedure-form templates (idempotent). Returns the seeded templates. */
+  seedTemplates(): Observable<MaximoFormTemplate[]> {
+    return this.http.post<SpringApiResponse<MaximoFormTemplate[]>>(`${this.base}/templates/seed`, {})
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   /** Templates whose match rule fits a WO (by pmnum and/or description). */
   templatesForWo(pmnum?: string, description?: string): Observable<MaximoFormTemplate[]> {
     let p = new HttpParams();

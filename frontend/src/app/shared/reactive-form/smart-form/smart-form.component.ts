@@ -97,6 +97,8 @@ export class SmartFormComponent {
     const formFields = this.fields();
 
     formFields.forEach(field => {
+      // Display-only reference image — no form control, no value.
+      if (field && field.type === 'image') return;
       if (field && field.name) {
         let value = this.getNestedValue(this.values(), field.name);
 

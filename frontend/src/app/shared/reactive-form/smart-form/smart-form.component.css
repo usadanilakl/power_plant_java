@@ -4,6 +4,14 @@
   max-width: 100%;
 }
 
+/* Read-only reference image (type 'image') */
+.form-image { margin: 4px 0 10px; }
+.form-image img {
+  display: block; max-width: 100%; width: auto; max-height: 300px;
+  border: 1px solid var(--border-color, #444); border-radius: 6px; background: #111;
+}
+.form-image figcaption { margin-top: 4px; font-size: 0.82rem; color: var(--text-secondary, #9aa); line-height: 1.35; }
+
 .form-header {
   margin: 0 0 16px;
   font-size: 1.55rem;

@@ -34,7 +34,7 @@ interface EditModel {
 export class MaximoFormBuilderPageComponent implements OnInit {
   private api = inject(MaximoFormApiService);
 
-  readonly fieldTypes: MaximoFieldType[] = ['text', 'textarea', 'number', 'date', 'checkbox', 'select', 'radio-group', 'checkbox-group'];
+  readonly fieldTypes: MaximoFieldType[] = ['text', 'textarea', 'number', 'date', 'checkbox', 'select', 'radio-group', 'checkbox-group', 'image'];
   readonly writeTargets: { value: MaximoWriteTarget; label: string }[] = [
     { value: '', label: 'PDF only' },
     { value: 'worklog', label: 'Worklog line' },
@@ -56,6 +56,19 @@ export class MaximoFormBuilderPageComponent implements OnInit {
     this.loading.set(true); this.error.set(null);
     try { this.templates.set(await firstValueFrom(this.api.listTemplates())); }
     catch (e: any) { this.error.set(this.msg(e)); }
+    finally { this.loading.set(false); }
+  }
+
+  /** Seed the curated procedure forms (idempotent), then open the first one. */
+  async seed() {
+    if (this.loading()) return;
+    this.loading.set(true); this.error.set(null); this.info.set(null);
+    try {
+      const seeded = await firstValueFrom(this.api.seedTemplates());
+      await this.load();
+      this.info.set(`Seeded ${seeded.length} procedure form(s).`);
+      if (seeded[0]) this.edit(seeded[0]);
+    } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
   }
 

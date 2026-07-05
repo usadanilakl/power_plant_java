@@ -321,6 +321,8 @@
 .pipe-banner { background: #143a2a; color: #b7f0cf; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .pipe-banner .psnap { display: inline-flex; align-items: center; gap: 3px; }
 .pipe-banner button { background: #1c4a2a; border: 0; color: #9fe6a4; cursor: pointer; font: inherit; border-radius: 3px; padding: 1px 6px; }
+.pipe-banner.continuing { background: #143050; color: #bcd8f5; }
+.pipe-banner.continuing button { background: #1c3a5a; color: #9fc8ee; }
 .pipe-tool { background: #22262c; border: 1px solid #3a3f47; border-radius: 4px; color: #cfd8e0; cursor: pointer; font: inherit; padding: 3px 8px; }
 .pipe-tool:hover { background: #2c313a; }
 .pipe-tool.on { background: #1c4a2a; border-color: #2e7d4a; color: #b7f0cf; }
@@ -330,8 +332,19 @@
 .pipe-mode .box, .pipe-mode .nest, .pipe-mode .ghost, .pipe-mode .opipe-lbl,
 .pipe-mode .opipe-hit, .pipe-mode .wire-hit, .pipe-mode .fitting { pointer-events: none; }
 
+/* ── Top interaction layer: fittings + nested pipe/fitting hit targets sit above nested container boxes ── */
+.top-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 12; }
+.top-layer .fitting, .top-layer .wp, .top-layer .wp-add { pointer-events: auto; } /* opipe-hit keeps its own pointer-events: stroke */
+.pipe-mode .top-layer .fitting, .pipe-mode .top-layer .opipe-hit,
+.pipe-mode .top-layer .wp, .pipe-mode .top-layer .wp-add { pointer-events: none; } /* draw-through in pipe mode */
+.pipe-vtx-h { cursor: move; }
+.route-edit-btn { width: 100%; margin-top: 6px; padding: 5px 8px; font-size: 12px; background: #1c2230; color: #cfe6ff;
+  border: 1px solid #2c3547; border-radius: 5px; cursor: pointer; }
+.route-edit-btn.on { background: #15334f; border-color: #7cc6ff; color: #fff; }
+
 /* ── Fittings on pipes ── */
 .fitting { cursor: grab; }
+.fitting.nested { cursor: pointer; }             /* nested = info/drill only, not draggable */
 .fitting:active { cursor: grabbing; }
 .fitting .fit-bg { fill: #12151a; stroke-width: 1.5; }
 .fitting:hover .fit-bg { fill: #1c2230; }

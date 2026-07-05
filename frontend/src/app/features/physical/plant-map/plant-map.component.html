@@ -120,11 +120,14 @@
           <span class="muted" *ngIf="st.loading()">loading…</span>
           <span class="muted save" *ngIf="st.saving()">saving…</span>
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
-          <span class="pipe-banner" *ngIf="pipeMode()">
-            🔧 Pipe: click to lay the route<span *ngIf="pipeDraft().length >= 2"> · right-click / Enter to finish</span> · Esc cancels
+          <span class="pipe-banner" *ngIf="pipeMode()" [class.continuing]="continuing()">
+            <ng-container *ngIf="continuing() as cont">⇢ Continuing <b>{{ cont.name }}</b> — drill into the next area &amp; draw its route</ng-container>
+            <ng-container *ngIf="!continuing()">🔧 Pipe: click to lay the route</ng-container>
+            <span *ngIf="pipeDraft().length >= 2"> · right-click / Enter to finish</span> · Esc clears
             <label class="psnap"><input type="checkbox" [checked]="pipeSnap()" (change)="pipeSnap.set($any($event.target).checked)" /> 90°</label>
             <button *ngIf="pipeDraft().length >= 2" (click)="finishPipe()">finish</button>
-            <button (click)="togglePipeMode()" title="exit pipe tool">✕</button>
+            <button *ngIf="continuing()" (click)="cancelContinue()" title="finish the whole run">done</button>
+            <button *ngIf="!continuing()" (click)="togglePipeMode()" title="exit pipe tool">✕</button>
           </span>
           <span class="layer" *ngIf="st.currentDiagramId() && systems().length">
             <span class="lbl2">Layer</span>
@@ -208,28 +211,8 @@
                         [attr.x1]="g.x1" [attr.y1]="g.y1" [attr.x2]="g.x2" [attr.y2]="g.y2" />
                   <circle *ngFor="let v of pipeDraft()" class="opipe-vtx" [attr.cx]="v.x" [attr.cy]="v.y" r="3.5" />
                 </ng-container>
-                <!-- fittings on pipes: valves / instruments / drains / vents / sprays (click = info, drag = move along pipe) -->
-                <g *ngFor="let f of viewFittings()" class="fitting" [class.sel]="f.sel"
-                   [attr.transform]="'translate(' + f.x + ',' + f.y + ')'"
-                   (pointerdown)="onFittingDown($event, f.id, f.pipeId)">
-                  <circle r="12" class="fit-bg" [attr.stroke]="f.color" />
-                  <g *ngIf="f.path" transform="translate(-11,-8)">
-                    <path [attr.d]="f.path" [attr.stroke]="f.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-                  </g>
-                  <text *ngIf="f.code" class="fit-code" x="0" y="0" [attr.fill]="f.color">{{ f.code }}</text>
-                  <text *ngIf="f.actuator" class="fit-act" x="0" y="-10" [attr.fill]="f.color">{{ f.actuator }}</text>
-                  <text *ngIf="f.tag || f.double" class="fit-tag" x="0" y="21">{{ f.double ? ((f.tag||'?') + '/' + (f.tag2||'?')) : f.tag }}</text>
-                  <line *ngIf="f.double" class="fit-dbl" x1="4" y1="-12" x2="4" y2="12" [attr.stroke]="f.color" />
-                </g>
-                <!-- nested fittings (from a descendant pipe), scaled down by the nesting -->
-                <g *ngFor="let nf of nestedItems().fittings"
-                   [attr.transform]="'translate(' + nf.x + ',' + nf.y + ') scale(' + nf.size + ')'">
-                  <circle r="12" class="fit-bg" [attr.stroke]="nf.color" />
-                  <g *ngIf="nf.path" transform="translate(-11,-8)">
-                    <path [attr.d]="nf.path" [attr.stroke]="nf.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-                  </g>
-                  <text *ngIf="nf.code" class="fit-code" x="0" y="0" [attr.fill]="nf.color">{{ nf.code }}</text>
-                </g>
+                <!-- fittings (current + nested) render in the TOP interaction layer below so they sit above nested
+                     container boxes and stay clickable — see svg.top-layer after the nest divs. -->
               </svg>
 
               <div class="box" *ngFor="let b of st.boxes()"
@@ -275,6 +258,45 @@
                    (click)="onNestClick(n)" (dblclick)="navigate(n.childId)" [title]="n.name || ('#' + n.childId)">
                 <span class="nlabel" *ngIf="n.name">{{ n.name }}</span>
               </div>
+
+              <!-- top interaction layer: fittings + nested pipe/fitting hit targets, ABOVE the nested container
+                   boxes so they stay clickable (a fitting overlapped by a container no longer gets swallowed). -->
+              <svg class="top-layer" [attr.width]="canvasSize().w" [attr.height]="canvasSize().h">
+                <!-- nested pipes: transparent hit target — single-click = info, double-click = drill to the object -->
+                <polyline *ngFor="let np of nestedItems().pipes" class="opipe-hit" [attr.points]="np.points"
+                          (pointerdown)="$event.stopPropagation(); onNestPipeClick(np)" (dblclick)="np.nodeId && navigate(np.nodeId)" />
+                <!-- current-canvas fittings (click = select, drag = slide along the pipe) -->
+                <g *ngFor="let f of viewFittings()" class="fitting" [class.sel]="f.sel"
+                   [attr.transform]="'translate(' + f.x + ',' + f.y + ')'"
+                   (pointerdown)="onFittingDown($event, f.id, f.pipeId)">
+                  <circle r="12" class="fit-bg" [attr.stroke]="f.color" />
+                  <g *ngIf="f.path" transform="translate(-11,-8)">
+                    <path [attr.d]="f.path" [attr.stroke]="f.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                  </g>
+                  <text *ngIf="f.code" class="fit-code" x="0" y="0" [attr.fill]="f.color">{{ f.code }}</text>
+                  <text *ngIf="f.actuator" class="fit-act" x="0" y="-10" [attr.fill]="f.color">{{ f.actuator }}</text>
+                  <text *ngIf="f.tag || f.double" class="fit-tag" x="0" y="21">{{ f.double ? ((f.tag||'?') + '/' + (f.tag2||'?')) : f.tag }}</text>
+                  <line *ngIf="f.double" class="fit-dbl" x1="4" y1="-12" x2="4" y2="12" [attr.stroke]="f.color" />
+                </g>
+                <!-- nested fittings (from a descendant pipe), scaled down — single-click = info, double = drill -->
+                <g *ngFor="let nf of nestedItems().fittings" class="fitting nested"
+                   [attr.transform]="'translate(' + nf.x + ',' + nf.y + ') scale(' + nf.size + ')'"
+                   (pointerdown)="onNestFittingClick(nf, $event)" (dblclick)="nf.nodeId && navigate(nf.nodeId)">
+                  <circle r="12" class="fit-bg" [attr.stroke]="nf.color" />
+                  <g *ngIf="nf.path" transform="translate(-11,-8)">
+                    <path [attr.d]="nf.path" [attr.stroke]="nf.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                  </g>
+                  <text *ngIf="nf.code" class="fit-code" x="0" y="0" [attr.fill]="nf.color">{{ nf.code }}</text>
+                </g>
+                <!-- route-edit handles for the selected pipe: drag a vertex to move it, double-click to remove a
+                     bend; drag a small midpoint dot to add a bend. -->
+                <ng-container *ngIf="pipeEdit()">
+                  <circle *ngFor="let m of pipeEditHandles().mids" class="wp-add" [attr.cx]="m.x" [attr.cy]="m.y" r="5"
+                          (pointerdown)="onPipeVtxAddDown($event, m.i)" />
+                  <circle *ngFor="let v of pipeEditHandles().verts" class="wp pipe-vtx-h" [attr.cx]="v.x" [attr.cy]="v.y" r="6"
+                          (pointerdown)="onPipeVtxDown($event, v.i)" (dblclick)="removePipeVtx(v.i, $event)" />
+                </ng-container>
+              </svg>
 
               <!-- pipe labels at the route midpoint -->
               <div class="opipe-lbl" *ngFor="let p of viewPipes()" [class.sel]="p.sel"
@@ -386,8 +408,126 @@
           </ul>
         </div>
 
+        <ng-container *ngTemplateOutlet="objectLinks"></ng-container>
+       </ng-container>
+
+       <!-- Pipe (connection) inspector -->
+       <ng-container *ngIf="st.selectedEdge() as e">
+        <header><h3>Pipe</h3><span class="chip pipe-chip" [style.background]="e.color || '#7c94b0'">pipe</span></header>
+        <div class="appearance">
+          <h4>Service color</h4>
+          <div class="swatches">
+            <button *ngFor="let sc of serviceColors" type="button" class="sw"
+                    [style.background]="sc" [class.on]="e.color === sc" (click)="setEdgeColor(sc)"></button>
+            <input class="pick" type="color" [value]="e.color || '#7c94b0'"
+                   (input)="setEdgeColor($any($event.target).value)" title="custom color" />
+          </div>
+          <div class="frow"><span class="lbl">Width</span>
+            <input type="range" min="1" max="12" [value]="e.width || 2"
+                   (input)="setEdgeWidth(+$any($event.target).value)" />
+            <span class="wval">{{ e.width || 2 }}px</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="danger" (click)="st.disconnect(e.localId)">Remove pipe</button>
+        </div>
+       </ng-container>
+
+       <!-- Pipe (routed) inspector -->
+       <ng-container *ngIf="selectedPipe() as pipe">
+        <header>
+          <h3>{{ pipe.name || 'Pipe' }}</h3>
+          <span class="chip pipe-chip" [style.background]="pipe.color || '#5b9bd5'">pipe</span>
+        </header>
+        <p class="tip" *ngIf="!selectedPipeOnCanvas()">This pipe lives in another area — <b>Open object ↳</b> to edit its route here.</p>
+        <ng-container *ngIf="selectedPipeOnCanvas()">
+        <div class="edit">
+          <div class="frow"><span class="lbl">Name</span>
+            <input [(ngModel)]="pipeEditName" (blur)="savePipeName()" (keyup.enter)="savePipeName()" />
+          </div>
+        </div>
+        <div class="appearance">
+          <h4>Service color</h4>
+          <div class="swatches">
+            <button *ngFor="let sc of serviceColors" type="button" class="sw"
+                    [style.background]="sc" [class.on]="pipe.color === sc" (click)="setPipeColor(sc)"></button>
+            <input class="pick" type="color" [value]="pipe.color || '#5b9bd5'"
+                   (input)="setPipeColor($any($event.target).value)" title="custom color" />
+          </div>
+          <div class="frow"><span class="lbl">Width</span>
+            <input type="range" min="3" max="24" [value]="pipe.width || 8"
+                   (input)="setPipeWidth(+$any($event.target).value)" />
+            <span class="wval">{{ pipe.width || 8 }}px</span>
+          </div>
+          <button class="route-edit-btn" [class.on]="pipeEdit()" (click)="togglePipeEdit()"
+                  title="Drag a dot to reshape the run; drag a small midpoint dot to add a bend; double-click a dot to remove it">
+            {{ pipeEdit() ? '✓ Editing route — drag the dots' : '✎ Edit route' }}
+          </button>
+        </div>
+        <div class="fittings-pal">
+          <h4>Add fitting</h4>
+          <div class="fit-row">
+            <button *ngFor="let ft of fittingTypes" type="button" class="fit-btn" [class.on]="fittingType() === ft.key"
+                    (click)="pickFitting(ft.key)" [title]="ft.label" [style.borderColor]="fittingType() === ft.key ? ft.color : ''">
+              <svg viewBox="0 0 22 16">
+                <path *ngIf="ft.cat === 'valve'" [attr.d]="BOWTIE" [attr.stroke]="ft.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                <path *ngIf="ft.cat === 'line'" [attr.d]="ft.path" [attr.stroke]="ft.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                <text *ngIf="ft.cat === 'valve' && ft.code" x="11" y="4" text-anchor="middle" font-size="6" [attr.fill]="ft.color">{{ ft.code }}</text>
+                <text *ngIf="ft.cat === 'instrument'" x="11" y="11" text-anchor="middle" font-size="7" [attr.fill]="ft.color">{{ ft.code }}</text>
+              </svg>
+            </button>
+          </div>
+          <p class="hint">{{ fittingType() ? 'Click a point on the pipe to drop it.' : 'Pick a fitting, then click on the pipe to place it.' }}</p>
+        </div>
+        </ng-container>
+        <div class="actions">
+          <button *ngIf="pipe.nodeId" (click)="navigate(pipe.nodeId)" title="Open this pipe as an object (files, properties, Maximo, its fittings)">Open object ↳</button>
+          <button *ngIf="selectedPipeOnCanvas()" (click)="continuePipe()"
+                  title="Run this pipe into a neighbouring area — then drill into that section and keep drawing the same run">Continue in another area ⇢</button>
+          <button class="danger" *ngIf="selectedPipeOnCanvas()" (click)="deletePipe(pipe.id)">Delete pipe</button>
+        </div>
+        <!-- the pipe IS a PhysicalObject: same Systems / Safety / Maximo / Documents sections as any object -->
+        <ng-container *ngTemplateOutlet="objectLinks"></ng-container>
+       </ng-container>
+
+       <!-- Fitting inspector -->
+       <ng-container *ngIf="selectedFitting() as sf">
+        <header>
+          <h3>{{ sf.fitting.name || sf.typeLabel }}</h3>
+          <span class="chip" style="background:#8aa0b6">{{ sf.typeLabel }}</span>
+        </header>
+        <p class="tip" *ngIf="!selectedFittingOnCanvas()">This fitting lives in another area — <b>Open object ↳</b> to edit it here.</p>
+        <ng-container *ngIf="selectedFittingOnCanvas()">
+        <div class="edit">
+          <div class="frow"><span class="lbl">Name</span>
+            <input [(ngModel)]="fittingEditName" (blur)="saveFitting()" (keyup.enter)="saveFitting()" [placeholder]="sf.typeLabel" /></div>
+          <div class="frow"><span class="lbl">{{ sf.fitting.double ? 'Tag 1' : 'Tag #' }}</span>
+            <input [(ngModel)]="fittingEditTag" (blur)="saveFitting()" (keyup.enter)="saveFitting()" placeholder="e.g. FW-V-101" /></div>
+          <div class="frow" *ngIf="sf.fitting.double"><span class="lbl">Tag 2</span>
+            <input [(ngModel)]="fittingEditTag2" (blur)="saveFitting()" (keyup.enter)="saveFitting()" placeholder="second valve" /></div>
+          <div class="frow top"><span class="lbl">Notes</span>
+            <textarea rows="2" [(ngModel)]="fittingEditDesc" (blur)="saveFitting()"></textarea></div>
+          <label class="toggle" *ngIf="isValveFitting()">
+            <input type="checkbox" [checked]="sf.fitting.double" (change)="toggleFittingDouble($any($event.target).checked)" />
+            Double block (two valves in series, each tagged)
+          </label>
+        </div>
+        </ng-container>
+        <div class="actions">
+          <button *ngIf="sf.fitting.nodeId" (click)="navigate(sf.fitting.nodeId)" title="Open this fitting as an object (files, properties, Maximo)">Open object ↳</button>
+          <button class="danger" *ngIf="selectedFittingOnCanvas()" (click)="deleteFitting(sf.fitting.id)">Delete fitting</button>
+        </div>
+        <p class="tip">Drag a fitting to slide it along the pipe. It's a full child object of the pipe.</p>
+        <!-- the fitting IS a PhysicalObject: same Systems / Safety / Maximo / Documents sections as any object -->
+        <ng-container *ngTemplateOutlet="objectLinks"></ng-container>
+       </ng-container>
+
+      <!-- shared object-links sections (Systems / Safety / Maximo / Documents), driven by the currently-inspected
+           object — a box's child OR a selected pipe/fitting — so pipes and fittings are first-class objects. -->
+      <ng-template #objectLinks>
+       <ng-container *ngIf="objNode() as o">
         <div class="systems">
-          <h4>Systems ({{ st.childSystems().get(c.id)?.size || 0 }})</h4>
+          <h4>Systems ({{ st.childSystems().get(o.id)?.size || 0 }})</h4>
           <div class="chips">
             <button *ngFor="let s of systems()" type="button" class="chipbtn"
                     [class.on]="selectedObjectInSystem(s.id)" (click)="toggleSelectedObjectSystem(s.id)">{{ s.name }}</button>
@@ -424,14 +564,14 @@
 
         <div class="maximo">
           <h4>Maximo</h4>
-          <div class="mx-current" *ngIf="c.maximoAssetnum || c.maximoLocation">
-            <span class="mx-tag" *ngIf="c.maximoAssetnum" title="Maximo asset">⚙ {{ c.maximoAssetnum }}</span>
-            <span class="mx-tag" *ngIf="c.maximoLocation" title="Maximo location">◍ {{ c.maximoLocation }}</span>
+          <div class="mx-current" *ngIf="o.maximoAssetnum || o.maximoLocation">
+            <span class="mx-tag" *ngIf="o.maximoAssetnum" title="Maximo asset">⚙ {{ o.maximoAssetnum }}</span>
+            <span class="mx-tag" *ngIf="o.maximoLocation" title="Maximo location">◍ {{ o.maximoLocation }}</span>
             <button class="x" (click)="unlinkMaximo()" title="unlink Maximo">×</button>
           </div>
-          <span class="muted" *ngIf="!c.maximoAssetnum && !c.maximoLocation">Not linked to Maximo.</span>
+          <span class="muted" *ngIf="!o.maximoAssetnum && !o.maximoLocation">Not linked to Maximo.</span>
           <button class="mx-btn" (click)="mxPickerOpen.set(!mxPickerOpen())">
-            {{ mxPickerOpen() ? 'Cancel' : ((c.maximoAssetnum || c.maximoLocation) ? 'Change link' : '+ Link Maximo asset / location') }}
+            {{ mxPickerOpen() ? 'Cancel' : ((o.maximoAssetnum || o.maximoLocation) ? 'Change link' : '+ Link Maximo asset / location') }}
           </button>
           <div class="mx-picker" *ngIf="mxPickerOpen()">
             <label class="mx-lbl">Asset</label>
@@ -462,101 +602,7 @@
           </ul>
         </div>
        </ng-container>
-
-       <!-- Pipe (connection) inspector -->
-       <ng-container *ngIf="st.selectedEdge() as e">
-        <header><h3>Pipe</h3><span class="chip pipe-chip" [style.background]="e.color || '#7c94b0'">pipe</span></header>
-        <div class="appearance">
-          <h4>Service color</h4>
-          <div class="swatches">
-            <button *ngFor="let sc of serviceColors" type="button" class="sw"
-                    [style.background]="sc" [class.on]="e.color === sc" (click)="setEdgeColor(sc)"></button>
-            <input class="pick" type="color" [value]="e.color || '#7c94b0'"
-                   (input)="setEdgeColor($any($event.target).value)" title="custom color" />
-          </div>
-          <div class="frow"><span class="lbl">Width</span>
-            <input type="range" min="1" max="12" [value]="e.width || 2"
-                   (input)="setEdgeWidth(+$any($event.target).value)" />
-            <span class="wval">{{ e.width || 2 }}px</span>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="danger" (click)="st.disconnect(e.localId)">Remove pipe</button>
-        </div>
-       </ng-container>
-
-       <!-- Pipe (routed) inspector -->
-       <ng-container *ngIf="selectedPipe() as pipe">
-        <header>
-          <h3>{{ pipe.name || 'Pipe' }}</h3>
-          <span class="chip pipe-chip" [style.background]="pipe.color || '#5b9bd5'">pipe</span>
-        </header>
-        <div class="edit">
-          <div class="frow"><span class="lbl">Name</span>
-            <input [(ngModel)]="pipeEditName" (blur)="savePipeName()" (keyup.enter)="savePipeName()" />
-          </div>
-        </div>
-        <div class="appearance">
-          <h4>Service color</h4>
-          <div class="swatches">
-            <button *ngFor="let sc of serviceColors" type="button" class="sw"
-                    [style.background]="sc" [class.on]="pipe.color === sc" (click)="setPipeColor(sc)"></button>
-            <input class="pick" type="color" [value]="pipe.color || '#5b9bd5'"
-                   (input)="setPipeColor($any($event.target).value)" title="custom color" />
-          </div>
-          <div class="frow"><span class="lbl">Width</span>
-            <input type="range" min="3" max="24" [value]="pipe.width || 8"
-                   (input)="setPipeWidth(+$any($event.target).value)" />
-            <span class="wval">{{ pipe.width || 8 }}px</span>
-          </div>
-        </div>
-        <div class="fittings-pal">
-          <h4>Add fitting</h4>
-          <div class="fit-row">
-            <button *ngFor="let ft of fittingTypes" type="button" class="fit-btn" [class.on]="fittingType() === ft.key"
-                    (click)="pickFitting(ft.key)" [title]="ft.label" [style.borderColor]="fittingType() === ft.key ? ft.color : ''">
-              <svg viewBox="0 0 22 16">
-                <path *ngIf="ft.cat === 'valve'" [attr.d]="BOWTIE" [attr.stroke]="ft.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-                <path *ngIf="ft.cat === 'line'" [attr.d]="ft.path" [attr.stroke]="ft.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-                <text *ngIf="ft.cat === 'valve' && ft.code" x="11" y="4" text-anchor="middle" font-size="6" [attr.fill]="ft.color">{{ ft.code }}</text>
-                <text *ngIf="ft.cat === 'instrument'" x="11" y="11" text-anchor="middle" font-size="7" [attr.fill]="ft.color">{{ ft.code }}</text>
-              </svg>
-            </button>
-          </div>
-          <p class="hint">{{ fittingType() ? 'Click a point on the pipe to drop it.' : 'Pick a fitting, then click on the pipe to place it.' }}</p>
-        </div>
-        <div class="actions">
-          <button *ngIf="pipe.nodeId" (click)="navigate(pipe.nodeId)" title="Open this pipe as an object (files, properties, Maximo, its fittings)">Open object ↳</button>
-          <button class="danger" (click)="deletePipe(pipe.id)">Delete pipe</button>
-        </div>
-       </ng-container>
-
-       <!-- Fitting inspector -->
-       <ng-container *ngIf="selectedFitting() as sf">
-        <header>
-          <h3>{{ sf.fitting.name || sf.typeLabel }}</h3>
-          <span class="chip" style="background:#8aa0b6">{{ sf.typeLabel }}</span>
-        </header>
-        <div class="edit">
-          <div class="frow"><span class="lbl">Name</span>
-            <input [(ngModel)]="fittingEditName" (blur)="saveFitting()" (keyup.enter)="saveFitting()" [placeholder]="sf.typeLabel" /></div>
-          <div class="frow"><span class="lbl">{{ sf.fitting.double ? 'Tag 1' : 'Tag #' }}</span>
-            <input [(ngModel)]="fittingEditTag" (blur)="saveFitting()" (keyup.enter)="saveFitting()" placeholder="e.g. FW-V-101" /></div>
-          <div class="frow" *ngIf="sf.fitting.double"><span class="lbl">Tag 2</span>
-            <input [(ngModel)]="fittingEditTag2" (blur)="saveFitting()" (keyup.enter)="saveFitting()" placeholder="second valve" /></div>
-          <div class="frow top"><span class="lbl">Notes</span>
-            <textarea rows="2" [(ngModel)]="fittingEditDesc" (blur)="saveFitting()"></textarea></div>
-          <label class="toggle" *ngIf="isValveFitting()">
-            <input type="checkbox" [checked]="sf.fitting.double" (change)="toggleFittingDouble($any($event.target).checked)" />
-            Double block (two valves in series, each tagged)
-          </label>
-        </div>
-        <div class="actions">
-          <button *ngIf="sf.fitting.nodeId" (click)="navigate(sf.fitting.nodeId)" title="Open this fitting as an object (files, properties, Maximo)">Open object ↳</button>
-          <button class="danger" (click)="deleteFitting(sf.fitting.id)">Delete fitting</button>
-        </div>
-        <p class="tip">Drag a fitting to slide it along the pipe. It's a full child object of the pipe — open it for files, properties, and Maximo.</p>
-       </ng-container>
+      </ng-template>
       </aside>
 
     </div>

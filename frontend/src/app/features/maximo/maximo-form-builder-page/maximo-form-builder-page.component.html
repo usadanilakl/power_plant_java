@@ -7,6 +7,7 @@
 
       <div class="bar">
         <button class="primary" (click)="newTemplate()">+ New form</button>
+        <button (click)="seed()" [disabled]="loading()" title="Create/refresh the curated forms built from the plant procedures">Seed procedure forms</button>
         <button (click)="load()" [disabled]="loading()">Refresh</button>
         <span class="muted">Author electronic task forms. Fields are data-driven — no code or deploy needed.</span>
         <span *ngIf="error()" class="error">{{ error() }}</span>

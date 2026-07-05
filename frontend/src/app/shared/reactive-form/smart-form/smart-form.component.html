@@ -67,6 +67,12 @@
                   [formControl]="getFormControl(field.name)"
                 ></app-multi-input>
               }
+              @case('image'){
+                <figure class="form-image">
+                  <img [src]="field.imageSrc" [alt]="field.label" loading="lazy" />
+                  @if (field.label) { <figcaption>{{ field.label }}</figcaption> }
+                </figure>
+              }
               @case('work-area-select'){
                 <app-work-area-select
                   [label]="field.label"

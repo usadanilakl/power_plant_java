@@ -55,6 +55,7 @@ public class MaximoFormPdfService {
                         c.gap(6);
                         c.line(section, PDType1Font.HELVETICA_BOLD, HEAD_SIZE);
                     }
+                    if ("image".equalsIgnoreCase(str(f, "type"))) continue;   // reference photos aren't data
                     String label = nz(str(f, "label"), str(f, "name"));
                     String unit = str(f, "unit");
                     Object v = values == null ? null : values.get(str(f, "name"));

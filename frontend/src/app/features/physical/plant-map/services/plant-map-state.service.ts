@@ -54,6 +54,7 @@ export interface PipeGeo {
   aEnd?: number; bEnd?: number;   // PhysicalObject ids the two ends anchor to (cross-area follow)
   nodeId?: number;                // the pipe's PhysicalObject id
   localId?: number;               // its DiagramPlacement localId on the parent's diagram (stable across saves)
+  groupId?: string;               // shared across the segments of ONE logical pipe that runs through several sections
 }
 
 /** sourceEntityType for a real pipe's placement (a pipe is drawn as a routed line, not a box). Distinct from
@@ -144,6 +145,7 @@ export class PlantMapStateService {
   private nextConnectionLocalId = 1;
   private saveTimer: any = null;
   private dirty = false;
+  private saveRetries = 0; // bounded self-retry so a transient save failure doesn't strand a write (e.g. migration's blob-drop)
   /** Tail of the serialized save chain — awaited by flushSave so in-flight writes aren't dropped. */
   private savePromise: Promise<void> | null = null;
 
@@ -380,14 +382,14 @@ export class PlantMapStateService {
     const pipes: PipeGeo[] = placements
       .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
       .map(p => {
-        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number } = {};
+        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string } = {};
         try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
         return {
           id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
           nodeId: p.sourceEntityId!, localId: p.localId!,
           points: Array.isArray(geo.points) ? geo.points : [],
           fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
-          aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined,
+          aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
           color: p.color || undefined, width: p.lineWidth || undefined,
           name: p.label || p.name || 'Pipe',
         } as PipeGeo;
@@ -719,9 +721,17 @@ export class PlantMapStateService {
 
   // ── persistence ───────────────────────────────────────────────────────────
 
-  /** Stop preserving the legacy blob — the migration has produced real 'Pipe' placements, so the next save drops
-   *  the blob (it's no longer re-emitted) in the same write that persists the replacements. */
-  clearLegacyBlob() { this.pipesLegacyBlob.set(null); this.legacyBlobLocalId = null; }
+  /** Stop preserving the legacy blob — its pipes have been migrated (or already exist as real placements), so the
+   *  next save drops the blob (no longer re-emitted). Schedules that save so the blob is actually cleaned even on
+   *  the dedup path (no other mutation follows there); on the migration path the following savePipes() coalesces. */
+  clearLegacyBlob() {
+    if (this.pipesLegacyBlob() == null && this.legacyBlobLocalId == null) return; // already clear → no needless save
+    this.pipesLegacyBlob.set(null); this.legacyBlobLocalId = null; this.scheduleSave();
+  }
+
+  /** Drop a node from the in-memory child list (e.g. a just-deleted pipe) so its now soft-deleted entity can't
+   *  linger as a droppable box in the "to place" palette. */
+  forgetChildNode(id: number) { this.childNodes.update(l => l.filter(n => n.id !== id)); }
 
   /** Replace the CANVAS node's pipes and persist them (component owns the pipe UI; this is the sink). Assigns a
    *  stable placement localId to any new pipe so each pipe updates one row rather than churning. */
@@ -791,7 +801,7 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
-          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd }),
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId }),
           color: p.color, lineWidth: p.width,
           name: p.name || 'Pipe', label: p.name || 'Pipe',
           x: minX, y: minY,
@@ -818,9 +828,13 @@ export class PlantMapStateService {
       }));
       await firstValueFrom(this.placementApi.bulkSave(did, placementDtos));
       await firstValueFrom(this.connectionApi.bulkSave(did, connectionDtos));
+      this.saveRetries = 0; // success → reset the retry budget
     } catch (e: any) {
       this.error.set(this.msg(e));
-      this.dirty = true; // let the next mutation retry
+      this.dirty = true;
+      // Self-retry a transient failure (bounded) so the write isn't stranded until the next mutation — important
+      // for the migration's atomic blob-drop, which otherwise could re-migrate + duplicate on a later session.
+      if (this.saveRetries < 5) { this.saveRetries++; this.scheduleSave(); }
     } finally {
       this.saving.set(false);
     }

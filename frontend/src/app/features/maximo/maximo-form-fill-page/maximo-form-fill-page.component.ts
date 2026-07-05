@@ -143,6 +143,7 @@ export class MaximoFormFillPageComponent implements OnInit {
         case 'radio-group': return { ...base, type: 'radio-group', options: opts };
         case 'checkbox-group': return { ...base, type: 'checkbox-group', options: opts };
         case 'checkbox': return { ...base, type: 'checkbox' };
+        case 'image': return { ...base, type: 'image', imageSrc: d.imageSrc };   // read-only reference photo
         default: return { ...base, type: d.type };   // text / textarea / number / date → app-form-input
       }
     });

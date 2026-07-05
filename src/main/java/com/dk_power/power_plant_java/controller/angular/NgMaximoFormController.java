@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormTemplateDto;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFormSeeder;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class NgMaximoFormController {
 
     private final MaximoFormService forms;
     private final MaximoFormCompletionService completion;
+    private final MaximoFormSeeder seeder;
 
     // ── Templates ─────────────────────────────────────────────────────────────
 
@@ -57,6 +59,17 @@ public class NgMaximoFormController {
     public ResponseEntity<NgApiResponse<Void>> deleteTemplate(@PathVariable Long id) {
         forms.deleteTemplate(id);
         return ResponseEntity.ok(new NgApiResponse<>(null, "deleted"));
+    }
+
+    /** Seed the curated procedure-form templates (idempotent upsert by formKey). */
+    @PostMapping("/templates/seed")
+    public ResponseEntity<NgApiResponse<List<MaximoFormTemplateDto>>> seed() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(seeder.seedProcedureForms(), "seeded"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] seed failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
     }
 
     /** Templates whose match rule fits a WO (by pmnum and/or description). */

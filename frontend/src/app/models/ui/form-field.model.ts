@@ -22,6 +22,7 @@ export interface FormField {
     | 'radio-group'
     | 'form-array'
     | 'group'
+    | 'image'
     | 'equipment-browser'
     | 'equipment-shape-drawer'
     | 'equipment-list-manager'
@@ -31,6 +32,7 @@ export interface FormField {
     | 'work-area-select'
     | 'zero-energy-phrase-builder'
     | 'user-select';
+  imageSrc?: string; // for type 'image' — a URL or base64 data URL of a read-only reference image
   validators?: ValidatorFn[];
   options?: Option[];
   categoryAlias?: string; // For value-select and multi-value-select types

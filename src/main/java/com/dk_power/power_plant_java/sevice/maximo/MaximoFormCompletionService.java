@@ -110,6 +110,7 @@ public class MaximoFormCompletionService {
         StringBuilder details = new StringBuilder();
         double laborHours = 0;
         for (Map<String, Object> f : fields) {
+            if ("image".equalsIgnoreCase(str(f, "type"))) continue;   // reference photos have no value
             String target = str(f, "maximoTarget");
             Object v = values.get(str(f, "name"));
             String vs = format(v);

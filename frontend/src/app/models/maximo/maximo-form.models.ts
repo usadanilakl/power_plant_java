@@ -10,7 +10,8 @@ export type MaximoFieldType =
   | 'checkbox'        // single boolean (e.g. a checklist item)
   | 'select'          // one-of dropdown (needs options)
   | 'radio-group'     // one-of radios — use for pass/fail (options)
-  | 'checkbox-group'; // many-of (options)
+  | 'checkbox-group'  // many-of (options)
+  | 'image';          // read-only reference photo (no input); imageSrc holds a URL/base64 data URL
 
 /** Where a field's value is written back to Maximo on completion (beyond the PDF). */
 export type MaximoWriteTarget = '' | 'worklog' | 'laborhours' | 'reading';
@@ -26,6 +27,7 @@ export interface MaximoFormFieldDef {
   section?: string;    // groups fields under a heading
   placeholder?: string;
   maximoTarget?: MaximoWriteTarget;  // '' = PDF only; else worklog line / labor hours / reading line
+  imageSrc?: string;   // for type 'image' — a URL or base64 data URL of a reference photo
 }
 
 export interface MaximoFormTemplate {

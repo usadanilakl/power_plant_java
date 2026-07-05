@@ -35,10 +35,11 @@ interface NestChild {
 }
 /** A nested descendant to render, mapped into content coords, at a given depth. */
 interface NestItem { x: number; y: number; w: number; h: number; childId: number; name: string; color: string; shape: FootprintShape; depth: number; }
-/** A nested pipe (a descendant container's pipe), mapped into content coords. */
-interface NestPipe { points: string; color: string; width: number; depth: number; }
+/** A nested pipe (a descendant container's pipe), mapped into content coords. Carries its id/nodeId so it's
+ *  clickable from the parent view (single-click = info, double-click = drill to the object). */
+interface NestPipe { id: string; nodeId?: number; points: string; color: string; width: number; depth: number; }
 /** A nested fitting (a descendant pipe's fitting), mapped into content coords + scaled down by the nesting. */
-interface NestFitting { x: number; y: number; cat: string; path: string; actuator: string; code: string; color: string; size: number; depth: number; }
+interface NestFitting { id: string; nodeId?: number; x: number; y: number; cat: string; path: string; actuator: string; code: string; color: string; size: number; depth: number; }
 
 // PipeGeo + PipeFitting are the entity-backed view-models — imported from the state service (each pipe/fitting is
 // a real PhysicalObject: pipe = a 'Pipe' placement, fitting = a child node whose geometry rides the pipe's JSON).
@@ -50,7 +51,8 @@ type Drag =
   | { kind: 'draw'; startX: number; startY: number }
   | { kind: 'pan'; startClientX: number; startClientY: number; startPanX: number; startPanY: number; moved: boolean }
   | { kind: 'waypoint'; edgeId: number; index: number }
-  | { kind: 'fitting'; fittingId: string; pipeId: string };
+  | { kind: 'fitting'; fittingId: string; pipeId: string }
+  | { kind: 'pipeVtx'; pipeId: string; index: number };
 
 /** Point on a box's border along the ray toward (tx,ty) — so wires touch edges, not centers. */
 function borderPoint(b: MapBox, tx: number, ty: number): { x: number; y: number } {
@@ -90,6 +92,12 @@ export class PlantMapComponent implements OnDestroy {
   // ── system layers (feature #3) ──
   systems = signal<ValueDto[]>([]);
   layerActive = computed(() => this.st.activeSystemId() != null);
+
+  /** A selected pipe/fitting's full PhysicalObject (fetched on select) so it gets the SAME Systems/Maximo/Files
+   *  inspector sections as a normal object. */
+  pipeFittingNode = signal<PhysicalObjectNode | null>(null);
+  /** The object currently inspected — a box's child OR a selected pipe/fitting — driving the shared links panel. */
+  objNode = computed(() => this.st.selectedChild() ?? this.pipeFittingNode());
 
   // ── levels / floors ──
   /** Floors for the switcher, top elevation first (descending floorIndex). */
@@ -228,6 +236,7 @@ export class PlantMapComponent implements OnDestroy {
       }
       for (const cp of cpipes) {
         pipes.push({
+          id: cp.id, nodeId: cp.nodeId,
           points: cp.points.map(pt => { const m = this.mapPointInto(rect, bb, pt); return `${m.x},${m.y}`; }).join(' '),
           color: cp.color || '#5b9bd5', width: Math.max(1.5, (cp.width || 8) / scale), depth,
         });
@@ -236,7 +245,7 @@ export class PlantMapComponent implements OnDestroy {
         if (24 * fsz * z >= 10) for (const f of (cp.fittings ?? [])) {
           const m = this.mapPointInto(rect, bb, f.at);
           const rf = this.fittingRender(f, m.x, m.y);
-          fittings.push({ x: m.x, y: m.y, cat: rf.cat, path: rf.path, actuator: rf.actuator, code: rf.code, color: rf.color, size: fsz, depth });
+          fittings.push({ id: f.id, nodeId: f.nodeId, x: m.x, y: m.y, cat: rf.cat, path: rf.path, actuator: rf.actuator, code: rf.code, color: rf.color, size: fsz, depth });
         }
       }
     };
@@ -311,10 +320,18 @@ export class PlantMapComponent implements OnDestroy {
     this.nodesApi.getAllWorkAreas().subscribe(w => this.allWorkAreas.set(w ?? []));
     void this.loadTree(); // the "jump anywhere" hierarchy navigator
 
-    // Repopulate the inspector only when the selected object actually changes (not on every drag).
+    // Repopulate the inspector (form + files + work areas) when the inspected object changes — a box's child OR a
+    // selected pipe/fitting. Not on every drag.
     effect(() => {
-      const child = this.st.selectedChild();
-      untracked(() => this.onSelectionChanged(child));
+      const node = this.objNode();
+      untracked(() => this.onSelectionChanged(node));
+    });
+
+    // Selections are mutually exclusive: selecting a box or a nested node clears any pipe/fitting selection (and
+    // vice-versa in selectPipe/selectFitting), so the inspector never resurrects a stale pipe when a box deselects.
+    effect(() => {
+      const boxSel = this.st.selectedLocalId(); const nested = this.st.selectedNestedNode();
+      untracked(() => { if (boxSel != null || nested) { this.selectedPipeId.set(null); this.selectedFittingId.set(null); this.pipeFittingNode.set(null); } });
     });
 
     // Keep the tree navigator expanded down to the current node as you navigate.
@@ -323,10 +340,15 @@ export class PlantMapComponent implements OnDestroy {
       untracked(() => this.expandToCurrent());
     });
 
-    // Reset pan/zoom whenever the open canvas changes (fresh view per node).
+    // Reset pan/zoom whenever the open canvas changes (fresh view per node); drop any half-laid pipe draft so it
+    // never carries into another section (a continuation resumes drawing fresh in the new area).
     effect(() => {
       this.st.currentDiagramId();
-      untracked(() => this.resetView());
+      untracked(() => {
+        this.resetView(); this.pipeDraft.set([]); this.pipeCursor.set(null);
+        // Drop any pipe/fitting selection so its inspector doesn't linger, stale, over an unrelated node's canvas.
+        this.selectedPipeId.set(null); this.selectedFittingId.set(null); this.pipeFittingNode.set(null);
+      });
     });
 
     // Apply the canvas node's loaded pipes into the global pipeGeos — exactly once per canvas load (driven by
@@ -421,12 +443,12 @@ export class PlantMapComponent implements OnDestroy {
       const cpipes: PipeGeo[] = (pRes?.responseData ?? [])
         .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null)
         .map(p => {
-          let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number } = {};
+          let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string } = {};
           try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
           return {
             id: 'pipe-' + p.sourceEntityId!, parentId: containerId, nodeId: p.sourceEntityId!, localId: p.localId ?? undefined,
             points: Array.isArray(geo.points) ? geo.points : [], fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
-            aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined,
+            aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
             color: p.color || undefined, width: p.lineWidth || undefined, name: p.label || p.name || 'Pipe',
           } as PipeGeo;
         });
@@ -451,12 +473,12 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   selectedObjectInSystem(systemId: number): boolean {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     return c != null && this.st.childInSystem(c.id, systemId);
   }
 
   toggleSelectedObjectSystem(systemId: number) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     const ids = new Set(this.st.childSystems().get(c.id) ?? []);
     if (ids.has(systemId)) ids.delete(systemId); else ids.add(systemId);
@@ -539,6 +561,9 @@ export class PlantMapComponent implements OnDestroy {
   pipeCursor = signal<{ x: number; y: number } | null>(null); // cursor → live guide segment
   selectedPipeId = signal<string | null>(null);
   pipeEditName = '';
+  /** Active cross-section continuation — the logical pipe (group) being run into another area. Survives navigation
+   *  so you drill into the next section and keep drawing the SAME run (segments share groupId + name + color). */
+  continuing = signal<{ groupId: string; name: string; color?: string; width?: number } | null>(null);
   private pipeDraftEndA: number | null = null;         // object under the first vertex (endpoint anchor)
   private pipeDraftEndB: number | null = null;         // object under the last vertex (endpoint anchor)
 
@@ -575,13 +600,14 @@ export class PlantMapComponent implements OnDestroy {
     try {
       for (const lp of legacy) {
         const pipeNode = await firstValueFrom(this.nodesApi.createNode({ name: lp.name || 'Pipe', type: 'EQUIPMENT', parentId: nodeId }));
-        if (!pipeNode) continue;
+        if (!pipeNode) throw new Error('pipe create returned null'); // → rollback path (blob is preserved, never cleared)
         created.push(pipeNode.id);
         const fittings: PipeFitting[] = [];
         for (const lf of (lp.fittings ?? [])) {
           const fNode = await firstValueFrom(this.nodesApi.createNode({ name: lf.name || lf.tag || 'Fitting', type: 'EQUIPMENT', parentId: pipeNode.id }));
-          if (fNode) created.push(fNode.id);
-          fittings.push({ ...lf, nodeId: fNode?.id ?? undefined });
+          if (!fNode) throw new Error('fitting create returned null');
+          created.push(fNode.id);
+          fittings.push({ ...lf, nodeId: fNode.id });
         }
         migrated.push({ ...lp, id: 'pipe-' + pipeNode.id, parentId: nodeId, nodeId: pipeNode.id, localId: undefined, fittings });
       }
@@ -635,17 +661,36 @@ export class PlantMapComponent implements OnDestroy {
     const a = this.pipeDraftEndA, b = this.pipeDraftEndB; this.pipeDraftEndA = null; this.pipeDraftEndB = null;
     const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
     if (pts.length < 2 || parent == null) return;
-    const node = await firstValueFrom(this.nodesApi.createNode({ name: 'Pipe', type: 'EQUIPMENT', parentId: parent }));
+    const cont = this.continuing();                                // cross-section continuation → same run's identity
+    const pipeName = cont?.name ?? 'Pipe';
+    const node = await firstValueFrom(this.nodesApi.createNode({ name: pipeName, type: 'EQUIPMENT', parentId: parent }));
     if (!node) return;                                              // creation failed → no phantom pipe
     if ((this.st.canvasNode()?.id ?? null) !== parent) {            // navigated away mid-create → undo the orphan node
       await firstValueFrom(this.nodesApi.deleteNode(node.id)); return;
     }
-    const geo: PipeGeo = { id: 'pipe-' + node.id, parentId: parent, nodeId: node.id, points: pts, name: 'Pipe',
+    const geo: PipeGeo = { id: 'pipe-' + node.id, parentId: parent, nodeId: node.id, points: pts, name: pipeName,
+                           color: cont?.color, width: cont?.width, groupId: cont?.groupId,
                            aEnd: a ?? undefined, bEnd: b ?? undefined, fittings: [] };
     this.pipeGeos.update(list => [...list, geo]);
     this.savePipes();
-    this.selectPipe(geo.id);
+    this.selectPipe(geo.id); // continuing stays armed → drill to the next area and keep drawing the same run
   }
+
+  /** Run the selected pipe into ANOTHER area: assign/reuse its group id, arm continuation, and enter draw mode.
+   *  Drill into the neighboring section and keep drawing — the new segment joins the same logical pipe. */
+  continuePipe() {
+    const p = this.selectedPipe(); if (!p || !this.selectedPipeOnCanvas()) return;
+    let gid = p.groupId;
+    if (!gid) {
+      gid = 'grp-' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+      this.pipeGeos.update(l => l.map(x => (x.id === p.id ? { ...x, groupId: gid } : x)));
+      this.savePipes();
+    }
+    this.continuing.set({ groupId: gid, name: p.name || 'Pipe', color: p.color, width: p.width });
+    this.selectPipe(null);      // show the continuation banner, not the pipe inspector
+    this.pipeMode.set(true);
+  }
+  cancelContinue() { this.continuing.set(null); this.pipeMode.set(false); this.cancelPipe(); }
 
   /** Follow-stubs: when you're viewing a node that a pipe (on its PARENT canvas) connects to, offer a jump to the
    *  pipe's other end — "seamlessly follow the pipe to the connecting area when drilled in". */
@@ -685,8 +730,25 @@ export class PlantMapComponent implements OnDestroy {
   selectedPipe = computed(() => this.pipeGeos().find(p => p.id === this.selectedPipeId()) ?? null);
   selectPipe(id: string | null) {
     this.selectedPipeId.set(id);
-    if (id != null) { this.st.selectBox(null); this.st.selectedNestedNode.set(null); }
-    this.pipeEditName = this.pipeGeos().find(x => x.id === id)?.name || '';
+    this.pipeEdit.set(false); // start each selection in view mode; user toggles Edit route
+    if (id != null) { this.selectedFittingId.set(null); this.st.selectBox(null); this.st.selectedNestedNode.set(null); }
+    const pipe = this.pipeGeos().find(x => x.id === id);
+    this.pipeEditName = pipe?.name || '';
+    void this.loadObjNode(id != null ? pipe?.nodeId : undefined); // its object → Systems/Maximo/Files sections
+  }
+
+  /** Fetch a selected pipe/fitting's full PhysicalObject so its shared links sections (Systems/Maximo/Files) show.
+   *  Clears immediately, then applies only if the same pipe/fitting is still selected (drop a stale fetch). */
+  private async loadObjNode(nodeId?: number) {
+    this.pipeFittingNode.set(null);
+    if (nodeId == null) return;
+    try {
+      const node = await firstValueFrom(this.nodesApi.getNode(nodeId));
+      if (node && this.currentSelectedNodeId() === nodeId) this.pipeFittingNode.set(node);
+    } catch { /* leave cleared */ }
+  }
+  private currentSelectedNodeId(): number | undefined {
+    return this.selectedPipe()?.nodeId ?? this.selectedFitting()?.fitting.nodeId ?? undefined;
   }
   savePipeName() {
     const id = this.selectedPipeId(); if (id == null) return;
@@ -698,6 +760,9 @@ export class PlantMapComponent implements OnDestroy {
   async deletePipe(id: string) {
     const pipe = this.pipeGeos().find(p => p.id === id);
     if (!pipe) return;
+    // Only delete from the pipe's OWN canvas — savePipes writes the current canvas, so deleting a nested pipe would
+    // orphan its placement on the real parent diagram. (The UI already hides Delete for nested; this is defense.)
+    if (pipe.parentId !== (this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null)) return;
     // Delete the entities FIRST (fittings before the pipe — the backend refuses to delete a node with children).
     // Only drop the pipe from the model once the deletes succeed; on failure keep it (stays hidden + retriable).
     try {
@@ -705,7 +770,53 @@ export class PlantMapComponent implements OnDestroy {
       if (pipe.nodeId != null) await firstValueFrom(this.nodesApi.deleteNode(pipe.nodeId));
     } catch { this.st.error.set('Could not delete the pipe — retry.'); return; }
     this.pipeGeos.update(l => l.filter(p => p.id !== id)); this.savePipes(); // now drop its 'Pipe' placement
+    if (pipe.nodeId != null) this.st.forgetChildNode(pipe.nodeId); // don't let the soft-deleted node reappear in the palette
     if (this.selectedPipeId() === id) this.selectedPipeId.set(null);
+  }
+
+  // ── edit a pipe's route: drag vertices, add a bend at a segment midpoint, double-click a vertex to remove it ──
+  pipeEdit = signal(false);
+  togglePipeEdit() { this.pipeEdit.update(v => !v); }
+
+  /** Handles for the selected on-canvas pipe's route: a dot per vertex + a small dot at each segment midpoint. */
+  pipeEditHandles = computed(() => {
+    const empty = { verts: [] as { x: number; y: number; i: number }[], mids: [] as { x: number; y: number; i: number }[] };
+    if (!this.pipeEdit() || !this.selectedPipeOnCanvas()) return empty;
+    const p = this.selectedPipe(); if (!p) return empty;
+    const verts = p.points.map((pt, i) => ({ x: pt.x, y: pt.y, i }));
+    const mids: { x: number; y: number; i: number }[] = [];
+    for (let i = 0; i < p.points.length - 1; i++)
+      mids.push({ x: (p.points[i].x + p.points[i + 1].x) / 2, y: (p.points[i].y + p.points[i + 1].y) / 2, i });
+    return { verts, mids };
+  });
+
+  onPipeVtxDown(ev: PointerEvent, index: number) {
+    ev.stopPropagation();
+    const p = this.selectedPipe(); if (!p) return;
+    this.drag = { kind: 'pipeVtx', pipeId: p.id, index };
+  }
+  private movePipeVtx(pipeId: string, index: number, pt: { x: number; y: number }) {
+    this.pipeGeos.update(l => l.map(p => p.id === pipeId
+      ? { ...p, points: p.points.map((q, i) => (i === index ? pt : q)) } : p));
+  }
+  /** Double-click a vertex to remove that bend (keeps at least a two-point segment). */
+  removePipeVtx(index: number, ev?: Event) {
+    ev?.stopPropagation();
+    const p = this.selectedPipe();
+    if (!p || p.points.length <= 2) return;
+    this.pipeGeos.update(l => l.map(pp => pp.id === p.id
+      ? { ...pp, points: pp.points.filter((_, i) => i !== index) } : pp));
+    this.savePipes();
+  }
+  /** Insert a bend at a segment midpoint and immediately drag it. */
+  onPipeVtxAddDown(ev: PointerEvent, segIndex: number) {
+    ev.stopPropagation();
+    const p = this.selectedPipe(); if (!p) return;
+    const at = this.contentPoint(ev);
+    const insertAt = segIndex + 1;
+    this.pipeGeos.update(l => l.map(pp => pp.id === p.id
+      ? { ...pp, points: [...pp.points.slice(0, insertAt), at, ...pp.points.slice(insertAt)] } : pp));
+    this.drag = { kind: 'pipeVtx', pipeId: p.id, index: insertAt };
   }
 
   /** Snap a would-be pipe START onto a nearby existing pipe (so branches/tees connect). */
@@ -827,7 +938,26 @@ export class PlantMapComponent implements OnDestroy {
     if (id != null) { this.selectedPipeId.set(null); this.st.selectBox(null); this.st.selectedNestedNode.set(null); }
     const f = this.selectedFitting()?.fitting;
     this.fittingEditName = f?.name ?? ''; this.fittingEditTag = f?.tag ?? ''; this.fittingEditTag2 = f?.tag2 ?? ''; this.fittingEditDesc = f?.desc ?? '';
+    void this.loadObjNode(id != null ? f?.nodeId : undefined); // its object → Systems/Maximo/Files sections
   }
+  /** A nested pipe/fitting (a descendant's, shown via zoom) is clickable from the parent view: single-click selects
+   *  it (info + Open-object), double-click drills to its object to edit. Mirrors nested boxes. */
+  onNestPipeClick(np: NestPipe) { this.selectPipe(np.id); }
+  onNestFittingClick(nf: NestFitting, ev?: Event) { this.selectFitting(nf.id, ev); }
+
+  /** The selected pipe/fitting lives on the CURRENT canvas (so its edits persist here). A nested-selected one is
+   *  info-only until you Open it — the inspector hides its edit controls and offers "Open object" instead. */
+  selectedPipeOnCanvas = computed(() => {
+    const p = this.selectedPipe(); const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    return !!p && p.parentId === parent;
+  });
+  selectedFittingOnCanvas = computed(() => {
+    const sf = this.selectedFitting(); if (!sf) return false;
+    const p = this.pipeGeos().find(x => x.id === sf.pipeId);
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    return !!p && p.parentId === parent;
+  });
+
   private patchFitting(patch: Partial<PipeFitting>) {
     const sel = this.selectedFitting(); if (!sel) return;
     this.pipeGeos.update(l => l.map(p => p.id === sel.pipeId
@@ -837,8 +967,10 @@ export class PlantMapComponent implements OnDestroy {
   saveFitting() { this.patchFitting({ name: this.fittingEditName.trim(), tag: this.fittingEditTag.trim(), tag2: this.fittingEditTag2.trim(), desc: this.fittingEditDesc.trim() }); }
   toggleFittingDouble(on: boolean) { this.patchFitting({ double: on }); }
   async deleteFitting(id: string) {
-    let nodeId: number | undefined;
-    for (const p of this.pipeGeos()) { const f = (p.fittings ?? []).find(x => x.id === id); if (f) { nodeId = f.nodeId; break; } }
+    let nodeId: number | undefined; let owner: PipeGeo | undefined;
+    for (const p of this.pipeGeos()) { const f = (p.fittings ?? []).find(x => x.id === id); if (f) { nodeId = f.nodeId; owner = p; break; } }
+    // Only delete from the owning pipe's OWN canvas (else savePipes can't drop it from the right diagram → orphan).
+    if (owner && owner.parentId !== (this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null)) return;
     // Soft-delete the fitting entity FIRST; only drop it from the model on success (else keep it, retriable).
     if (nodeId != null) { try { await firstValueFrom(this.nodesApi.deleteNode(nodeId)); } catch { this.st.error.set('Could not delete the fitting — retry.'); return; } }
     this.pipeGeos.update(l => l.map(p => ({ ...p, fittings: (p.fittings ?? []).filter(f => f.id !== id) })));
@@ -1075,6 +1207,8 @@ export class PlantMapComponent implements OnDestroy {
     } else if (d.kind === 'fitting') {
       const pipe = this.pipeGeos().find(p => p.id === d.pipeId);
       if (pipe) { const at = this.nearestOnPipe(pipe.points, this.contentPoint(ev)); if (at) this.moveFitting(d.fittingId, at); } // keep it on the path
+    } else if (d.kind === 'pipeVtx') {
+      this.movePipeVtx(d.pipeId, d.index, this.contentPoint(ev));
     }
   }
 
@@ -1084,6 +1218,7 @@ export class PlantMapComponent implements OnDestroy {
     this.drag = null;
     if (!d) return;
     if (d.kind === 'fitting') { this.savePipes(); return; } // persist the moved fitting
+    if (d.kind === 'pipeVtx') { this.savePipes(); return; }  // persist the rerouted vertex
     if (d.kind === 'connect') {
       const c = this.contentPoint(ev);
       const target = this.boxAt(c.x, c.y);
@@ -1182,7 +1317,7 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   async linkWorkArea(wa: WorkAreaOption) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await firstValueFrom(this.nodesApi.linkWorkArea(c.id, wa.id));
     this.waPickerOpen.set(false);
@@ -1191,7 +1326,7 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   async unlinkWorkArea(wa: WorkAreaRef) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await firstValueFrom(this.nodesApi.unlinkWorkArea(c.id, wa.id));
     await this.loadWorkAreas(c.id);
@@ -1205,21 +1340,21 @@ export class PlantMapComponent implements OnDestroy {
   mxPickerOpen = signal(false);
 
   async onAssetPicked(a: MaximoAsset) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await this.st.linkMaximo(c.id, { assetnum: a.assetnum, location: a.location, siteid: a.siteid, maximoType: a.assettype });
     this.mxPickerOpen.set(false);
   }
 
   async onLocationPicked(l: MaximoLocation) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await this.st.linkMaximo(c.id, { location: l.location, siteid: l.siteid, maximoType: (l as any).type });
     this.mxPickerOpen.set(false);
   }
 
   async unlinkMaximo() {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await this.st.unlinkMaximo(c.id);
   }
@@ -1301,7 +1436,7 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   async linkFile(f: FileDto) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await firstValueFrom(this.nodesApi.linkFile(c.id, f.id));
     this.fileResults.set([]); this.fileQuery = '';
@@ -1309,7 +1444,7 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   async unlinkFile(file: LinkedFile) {
-    const c = this.st.selectedChild();
+    const c = this.objNode();
     if (!c) return;
     await firstValueFrom(this.nodesApi.unlinkFile(c.id, file.id));
     await this.loadFiles(c.id);
