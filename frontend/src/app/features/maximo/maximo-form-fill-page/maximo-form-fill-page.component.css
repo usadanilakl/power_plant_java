@@ -14,7 +14,45 @@
 .status-line { display: flex; align-items: center; gap: 10px; margin: 4px 2px 10px; }
 .badge { font-size: 11px; font-weight: 700; border-radius: 3px; padding: 1px 8px; background: #3a2a14; color: #ffb454; }
 
-.form-wrap { background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 14px; max-width: 820px; }
+.form-wrap { background: #171717; border: 1px solid #2c2c2c; border-radius: 6px; padding: 14px; max-width: 880px; }
+
+/* ── Scoped SmartForm styling for task forms (does NOT affect permit forms) ─────────────── */
+/* Flatten SmartForm's own card so the per-section cards carry the visual structure. */
+.form-wrap ::ng-deep form {
+  background: transparent; border: 0; box-shadow: none; padding: 0; gap: 20px;
+}
+.form-wrap ::ng-deep .form-header {
+  color: #e6e6e6; font-size: 1.3rem; margin: 0 0 4px;
+}
+
+/* Each section becomes a distinct card with a clear header + a coloured left edge.
+   (Background fill + left accent instead of a full border — avoids the <legend> border notch.) */
+.form-wrap ::ng-deep .form-group {
+  background: #242424; border: 0; border-left: 3px solid #0e639c;
+  border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.form-wrap ::ng-deep .group-title {
+  grid-column: 1 / -1; width: 100%;
+  font-size: 1rem; font-weight: 700; color: #7cc6ff; letter-spacing: 0.01em;
+  margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #3a3a3a;
+}
+
+/* Readability: reference images, radio choices, checkbox groups and long text take a full row;
+   short fields (checkbox / number / text) stay in the space-saving grid cells. */
+.form-wrap ::ng-deep [class*="form-field-layout"]:has(.form-image),
+.form-wrap ::ng-deep [class*="form-field-layout"]:has(app-radio-group),
+.form-wrap ::ng-deep [class*="form-field-layout"]:has(app-checkbox-group),
+.form-wrap ::ng-deep [class*="form-field-layout"]:has(app-multi-select-searchable-dropdown),
+.form-wrap ::ng-deep [class*="form-field-layout"]:has(textarea) {
+  grid-column: 1 / -1; flex-basis: 100%; width: 100%;
+}
+
+/* Reference photo sizing inside a section card. */
+.form-wrap ::ng-deep .form-image { margin: 2px 0 8px; }
+.form-wrap ::ng-deep .form-image img {
+  max-height: 260px; border: 1px solid #4a4a4a; border-radius: 6px;
+}
+.form-wrap ::ng-deep .form-image figcaption { color: #9fb0c0; font-size: 0.82rem; }
 
 .complete-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px;
   padding-top: 12px; border-top: 1px solid #333; }

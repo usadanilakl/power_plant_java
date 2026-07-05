@@ -46,6 +46,11 @@ export interface PipeFitting {
   name?: string; tag?: string; desc?: string; double?: boolean; tag2?: string;
   nodeId?: number; // the fitting's PhysicalObject id (child of the pipe node)
 }
+/** A cross-section connection point on a pipe (like a P&ID off-page connector). `at` = which endpoint carries it
+ *  (source = the pipe's END, destination = its START). `linkId` is SHARED by the two ports of one continuation so
+ *  they know each other (jump + highlight). `section` = the counterpart's section id when known (dest stores it). */
+export interface PipePort { linkId: string; at: 'start' | 'end'; section?: number; }
+
 /** A pipe = a guided, elbowed route (a polyline) with fittings on it. Each pipe is a real PhysicalObject (nodeId,
  *  child of its parent canvas node); it persists as ONE placement (sourceEntityType='Pipe', geometry+fittings in svgPath). */
 export interface PipeGeo {
@@ -55,6 +60,8 @@ export interface PipeGeo {
   nodeId?: number;                // the pipe's PhysicalObject id
   localId?: number;               // its DiagramPlacement localId on the parent's diagram (stable across saves)
   groupId?: string;               // shared across the segments of ONE logical pipe that runs through several sections
+  continuesFrom?: number;         // the SECTION node this segment was continued from (backward "jump to origin")
+  ports?: PipePort[];             // cross-section connectors (source end ↔ destination start), matched by linkId
 }
 
 /** sourceEntityType for a real pipe's placement (a pipe is drawn as a routed line, not a box). Distinct from
@@ -382,7 +389,7 @@ export class PlantMapStateService {
     const pipes: PipeGeo[] = placements
       .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
       .map(p => {
-        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string } = {};
+        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any } = {};
         try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
         return {
           id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
@@ -390,6 +397,7 @@ export class PlantMapStateService {
           points: Array.isArray(geo.points) ? geo.points : [],
           fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
           aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
+          continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
           color: p.color || undefined, width: p.lineWidth || undefined,
           name: p.label || p.name || 'Pipe',
         } as PipeGeo;
@@ -565,6 +573,12 @@ export class PlantMapStateService {
   /** True when object `childId` belongs to System value `systemId`. */
   childInSystem(childId: number, systemId: number): boolean {
     return this.childSystems().get(childId)?.has(systemId) ?? false;
+  }
+
+  /** Seed one object's System membership into the map (for a selected pipe/fitting not covered by the canvas
+   *  node's child-systems load) so a subsequent toggle computes from the REAL set, never an empty base. */
+  primeChildSystems(id: number, systemIds: number[]) {
+    this.childSystems.update(m => { const n = new Map(m); n.set(id, new Set(systemIds)); return n; });
   }
 
   /** Replace an object's System membership and refresh the local map (for highlight + inspector). */
@@ -801,7 +815,7 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
-          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId }),
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId, continuesFrom: p.continuesFrom, ports: p.ports }),
           color: p.color, lineWidth: p.width,
           name: p.name || 'Pipe', label: p.name || 'Pipe',
           x: minX, y: minY,

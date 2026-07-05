@@ -121,7 +121,7 @@
           <span class="muted save" *ngIf="st.saving()">saving…</span>
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
           <span class="pipe-banner" *ngIf="pipeMode()" [class.continuing]="continuing()">
-            <ng-container *ngIf="continuing() as cont">⇢ Continuing <b>{{ cont.name }}</b> — drill into the next area &amp; draw its route</ng-container>
+            <ng-container *ngIf="continuing() as cont">⇢ Continuing <b>{{ cont.name }}</b> — drill into the next area, then <b>start drawing at the connection point</b></ng-container>
             <ng-container *ngIf="!continuing()">🔧 Pipe: click to lay the route</ng-container>
             <span *ngIf="pipeDraft().length >= 2"> · right-click / Enter to finish</span> · Esc clears
             <label class="psnap"><input type="checkbox" [checked]="pipeSnap()" (change)="pipeSnap.set($any($event.target).checked)" /> 90°</label>
@@ -145,6 +145,8 @@
           </span>
           <button class="pipe-tool" type="button" *ngIf="st.currentDiagramId()" [class.on]="pipeMode()"
                   (click)="togglePipeMode()" title="Pipe tool — draw a guided, elbowed pipe route">🔧 Pipe</button>
+          <button class="pipe-tool" type="button" *ngIf="st.currentDiagramId()" [class.on]="snapGrid()"
+                  (click)="toggleSnapGrid()" title="Snap to grid — pipe vertices and box move/resize snap to the 28px grid">⊞ Grid</button>
           <span class="detail-ctrl" *ngIf="st.currentDiagramId()"
                 title="How readily items reveal their contents as you zoom (+ = more, sooner)">
             <span class="lbl2">Detail</span>
@@ -158,7 +160,7 @@
         <ng-container *ngIf="st.currentDiagramId(); else entry">
           <div class="scroll" #viewport [class.pipe-mode]="pipeMode() || !!fittingType()"
                (pointerdown)="onCanvasDown($event)" (wheel)="onWheel($event)" (contextmenu)="$event.preventDefault()">
-            <div class="content" #content
+            <div class="content" #content [class.snap-on]="snapGrid()"
                  [style.width.px]="canvasSize().w" [style.height.px]="canvasSize().h"
                  [style.transform]="contentTransform()">
 
@@ -252,7 +254,7 @@
 
               <!-- recursive zoom-nesting: real, labeled descendant items that appear as you zoom in. Single-click
                    shows its info; double-click jumps straight to it (any depth); drag empty space to pan. -->
-              <div class="nest" *ngFor="let n of nestedItems().items" [ngClass]="'shape-' + n.shape"
+              <div class="nest" *ngFor="let n of nestedItems().items" [ngClass]="'shape-' + n.shape" [class.dim]="n.dim"
                    [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.w" [style.height.px]="n.h"
                    [style.borderColor]="n.color" [style.background]="nestFill(n)" [style.zIndex]="4 + n.depth"
                    (click)="onNestClick(n)" (dblclick)="navigate(n.childId)" [title]="n.name || ('#' + n.childId)">
@@ -287,6 +289,15 @@
                     <path [attr.d]="nf.path" [attr.stroke]="nf.color" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
                   </g>
                   <text *ngIf="nf.code" class="fit-code" x="0" y="0" [attr.fill]="nf.color">{{ nf.code }}</text>
+                </g>
+                <!-- cross-section connectors (off-page-style): a circle + arrow at an end where the run continues to
+                     / came from another section. Double-click jumps to the counterpart; single-click selects the pipe. -->
+                <g *ngFor="let c of pipeConnectors()" class="pipe-conn" [class.in]="c.dir === 'in'" [class.hl]="c.linkId === highlightedLink()"
+                   [attr.transform]="'translate(' + c.x + ',' + c.y + ')'"
+                   (pointerdown)="$event.stopPropagation(); selectPipe(c.pipeId)" (dblclick)="jumpConnector(c)">
+                  <title>{{ (c.dir === 'in' ? 'Came from ' : 'Continues in ') + (c.label || '(other area)') + (c.target != null ? ' — double-click to jump' : '') }}</title>
+                  <circle r="11" class="pipe-conn-bg" />
+                  <path class="pipe-conn-arrow" d="M-3.5,-4.5 L4.5,0 L-3.5,4.5 Z" [attr.transform]="'rotate(' + c.angle + ')'" />
                 </g>
                 <!-- route-edit handles for the selected pipe: drag a vertex to move it, double-click to remove a
                      bend; drag a small midpoint dot to add a bend. -->
@@ -439,6 +450,13 @@
           <h3>{{ pipe.name || 'Pipe' }}</h3>
           <span class="chip pipe-chip" [style.background]="pipe.color || '#5b9bd5'">pipe</span>
         </header>
+        <div class="run-jumps" *ngIf="pipeRunJumps().length">
+          <span class="run-lbl">Same run, other areas:</span>
+          <button *ngFor="let j of pipeRunJumps()" class="run-chip" (click)="navigate(j.target)"
+                  [title]="(j.dir === 'from' ? 'came from ' : 'continues in ') + j.label">
+            {{ j.dir === 'from' ? '⇠' : '⇢' }} {{ j.label }}
+          </button>
+        </div>
         <p class="tip" *ngIf="!selectedPipeOnCanvas()">This pipe lives in another area — <b>Open object ↳</b> to edit its route here.</p>
         <ng-container *ngIf="selectedPipeOnCanvas()">
         <div class="edit">

@@ -87,6 +87,11 @@
   linear-gradient(#242424 1px, transparent 1px) 0 0 / 100% 28px,
   linear-gradient(90deg, #242424 1px, transparent 1px) 0 0 / 28px 100%,
   #191919; }
+/* snap-to-grid active → brighten the grid lines so the snap target is visible */
+.content.snap-on { background:
+  linear-gradient(#3a4048 1px, transparent 1px) 0 0 / 100% 28px,
+  linear-gradient(90deg, #3a4048 1px, transparent 1px) 0 0 / 28px 100%,
+  #191919; }
 
 /* The svg is hittable, but only painted strokes are targets (visiblePainted default): empty areas pass
    through to the canvas for draw/deselect, `.wire-hit` opts in, the visible `.wire` opts out. */
@@ -158,6 +163,10 @@
   display: flex; align-items: flex-start; justify-content: flex-start; overflow: hidden;
   pointer-events: auto; cursor: pointer; }
 .nest:hover { box-shadow: inset 0 0 0 1px #7cc6ff, 0 0 8px rgba(124,198,255,0.35); filter: brightness(1.25); }
+/* lower decks of a leveled node, composited beneath the top deck (view-from-top): faint context, no label clutter */
+.nest.dim { opacity: 0.4; border-style: dashed; }
+.nest.dim .nlabel { display: none; }
+.nest.dim:hover { opacity: 0.75; }
 .nest.shape-round { border-radius: 8px; }
 .nest.shape-circle { border-radius: 50%; }
 .nest.shape-run { border-radius: 999px; }
@@ -334,13 +343,30 @@
 
 /* ── Top interaction layer: fittings + nested pipe/fitting hit targets sit above nested container boxes ── */
 .top-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 12; }
-.top-layer .fitting, .top-layer .wp, .top-layer .wp-add { pointer-events: auto; } /* opipe-hit keeps its own pointer-events: stroke */
+.top-layer .fitting, .top-layer .wp, .top-layer .wp-add, .top-layer .pipe-conn { pointer-events: auto; } /* opipe-hit keeps its own pointer-events: stroke */
 .pipe-mode .top-layer .fitting, .pipe-mode .top-layer .opipe-hit,
-.pipe-mode .top-layer .wp, .pipe-mode .top-layer .wp-add { pointer-events: none; } /* draw-through in pipe mode */
+.pipe-mode .top-layer .wp, .pipe-mode .top-layer .wp-add, .pipe-mode .top-layer .pipe-conn { pointer-events: none; } /* draw-through in pipe mode */
+/* cross-section pipe connectors (off-page-style circle + arrow at an endpoint that continues in another section) */
+.pipe-conn { cursor: pointer; }
+.pipe-conn-bg { fill: #143050; stroke: #7cc6ff; stroke-width: 2; }
+.pipe-conn.in .pipe-conn-bg { fill: #143a2a; stroke: #3fbf7f; }
+.pipe-conn-arrow { fill: #bcd8f5; }
+.pipe-conn.in .pipe-conn-arrow { fill: #baf0d0; }
+.pipe-conn:hover .pipe-conn-bg { filter: brightness(1.35); }
+/* the counterpart connector pulses after you jump through a link, so you can see where the run continues */
+.pipe-conn.hl .pipe-conn-bg { animation: connpulse 0.9s ease-in-out 4; }
+@keyframes connpulse {
+  0%, 100% { stroke-width: 2; filter: none; }
+  50% { stroke-width: 5; filter: drop-shadow(0 0 6px #ffd54f) brightness(1.6); }
+}
 .pipe-vtx-h { cursor: move; }
 .route-edit-btn { width: 100%; margin-top: 6px; padding: 5px 8px; font-size: 12px; background: #1c2230; color: #cfe6ff;
   border: 1px solid #2c3547; border-radius: 5px; cursor: pointer; }
 .route-edit-btn.on { background: #15334f; border-color: #7cc6ff; color: #fff; }
+.run-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 6px; }
+.run-jumps .run-lbl { font-size: 11px; color: #8aa0b6; width: 100%; }
+.run-chip { background: #143050; color: #bcd8f5; border: 1px solid #2c4a6a; border-radius: 10px; padding: 2px 9px; font-size: 12px; cursor: pointer; }
+.run-chip:hover { background: #1c3a5a; }
 
 /* ── Fittings on pipes ── */
 .fitting { cursor: grab; }

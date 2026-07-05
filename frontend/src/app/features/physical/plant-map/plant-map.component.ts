@@ -20,21 +20,24 @@ import { ValueDto } from '../../../models/value.model';
 import { MaximoAssetPickerComponent } from '../../maximo/maximo-asset-picker/maximo-asset-picker.component';
 import { MaximoLocationPickerComponent } from '../../maximo/maximo-location-picker/maximo-location-picker.component';
 import { MaximoAsset, MaximoLocation } from '../../../models/maximo/maximo.models';
-import { GhostBox, MapBox, PIPE_SRC, PipeGeo, PipeFitting, PlantMapStateService } from './services/plant-map-state.service';
+import { GhostBox, MapBox, PIPE_SRC, PipeGeo, PipeFitting, PipePort, PlantMapStateService } from './services/plant-map-state.service';
 import {
   PLANT_GLYPHS, PLANT_GLYPH_BY_KEY, SERVICE_COLORS, PlantGlyph,
   FootprintShape, FOOTPRINT_SHAPES, hexToRgba, normFootprint,
 } from './plant-glyphs';
 import { DiagramPlacementApiService } from '../../diagram-builder/services/diagram-placement-api.service';
 
-/** One child of a nested container (in the container's OWN diagram coords) — for recursive zoom-nesting. */
+/** One child of a nested container (in the container's OWN diagram coords) — for recursive zoom-nesting.
+ *  For a LEVELED container, children from ALL levels are composited (view-from-top): `floor` = its level index,
+ *  `dim` = it's beneath the top level (shown faint so the top deck reads on top and lower decks peek out). */
 interface NestChild {
   childId: number; name: string; color: string; shape: FootprintShape;
   x: number; y: number; w: number; h: number;
   hasChildren: boolean; diagramId: number | null;  // to recurse into it as you keep zooming
+  floor?: number; dim?: boolean;
 }
 /** A nested descendant to render, mapped into content coords, at a given depth. */
-interface NestItem { x: number; y: number; w: number; h: number; childId: number; name: string; color: string; shape: FootprintShape; depth: number; }
+interface NestItem { x: number; y: number; w: number; h: number; childId: number; name: string; color: string; shape: FootprintShape; depth: number; dim?: boolean; }
 /** A nested pipe (a descendant container's pipe), mapped into content coords. Carries its id/nodeId so it's
  *  clickable from the parent view (single-click = info, double-click = drill to the object). */
 interface NestPipe { id: string; nodeId?: number; points: string; color: string; width: number; depth: number; }
@@ -231,7 +234,7 @@ export class PlantMapComponent implements OnDestroy {
       const scale = Math.max(1, (bb.maxX - bb.minX) / Math.max(1, rect.w));
       for (const s of shapes) {
         const r = this.mapInto(rect, bb, s);
-        items.push({ x: r.x, y: r.y, w: r.w, h: r.h, childId: s.childId, name: s.name, color: s.color, shape: s.shape, depth });
+        items.push({ x: r.x, y: r.y, w: r.w, h: r.h, childId: s.childId, name: s.name, color: s.color, shape: s.shape, depth, dim: s.dim });
         if (s.hasChildren && r.w * z >= reveal && r.h * z >= 34) walk(r, s.childId, depth + 1);
       }
       for (const cp of cpipes) {
@@ -390,20 +393,20 @@ export class PlantMapComponent implements OnDestroy {
       untracked(() => {
         if (did !== this.nestParent) { this.nestParent = did; this.nestCache.clear(); this.nestFetched.clear(); }
         const walkFetch = (rect: { x: number; y: number; w: number; h: number }, containerId: number, containerDid: number | null, depth: number) => {
-          if (depth > this.NEST_MAX_DEPTH || containerDid == null) return;
-          if (!this.nestFetched.has(containerId)) { void this.fetchNest(containerId, containerDid, did); return; }
+          if (depth > this.NEST_MAX_DEPTH) return; // NOT gated on containerDid: a leveled node's OWN diagram is null;
+          if (!this.nestFetched.has(containerId)) { void this.fetchNest(containerId, containerDid, did); return; } // fetchNest resolves its top level
           const shapes = this.nestCache.get(containerId);
           if (!shapes || !shapes.length) return;
           const bb = this.bboxOf(shapes);
           for (const s of shapes) {
             const r = this.mapInto(rect, bb, s);
-            if (s.hasChildren && s.diagramId != null && r.w * z >= fetchAt && r.h * z >= 28) {
+            if (s.hasChildren && r.w * z >= fetchAt && r.h * z >= 28) { // recurse on hasChildren (diagram resolved in fetchNest)
               walkFetch(r, s.childId, s.diagramId, depth + 1);
             }
           }
         };
         for (const b of boxes) {
-          if (b.width * z >= fetchAt && b.height * z >= 28) {
+          if (b.width * z >= fetchAt && b.height * z >= 28 && childById.get(b.childId)?.hasChildren) {
             walkFetch({ x: b.x, y: b.y, w: b.width, h: b.height }, b.childId, childById.get(b.childId)?.diagramId ?? null, 1);
           }
         }
@@ -418,42 +421,68 @@ export class PlantMapComponent implements OnDestroy {
    * Reads the container's OWN diagram for positions and getChildren for identity/recursion metadata. Guards on
    * `parentDid` so a fetch that lands after the canvas changed is dropped.
    */
-  private async fetchNest(containerId: number, containerDid: number, parentDid: number | null) {
+  private async fetchNest(containerId: number, containerDid: number | null, parentDid: number | null) {
     this.nestFetched.add(containerId);
     try {
-      const [kids, pRes] = await Promise.all([
-        firstValueFrom(this.nodesApi.getChildren(containerId)).catch(() => [] as PhysicalObjectNode[]),
-        firstValueFrom(this.placementApi.getByDiagram(containerDid)),
-      ]);
+      const kids = await firstValueFrom(this.nodesApi.getChildren(containerId)).catch(() => [] as PhysicalObjectNode[]);
       if (this.nestParent !== parentDid) return;
-      const kidById = new Map((kids ?? []).map(k => [k.id, k]));
-      const shapes: NestChild[] = (pRes?.responseData ?? [])
-        .filter(p => p.sourceEntityType === 'PhysicalObject' && p.sourceEntityId != null && (p.width ?? 0) > 0 && (p.height ?? 0) > 0)
-        .map(p => {
-          const k = kidById.get(p.sourceEntityId!);
-          return {
-            childId: p.sourceEntityId!, name: p.label || k?.name || '', color: p.color || poColor(k?.type),
-            shape: normFootprint(p.type),
-            x: p.x ?? 0, y: p.y ?? 0, w: p.width ?? 0, h: p.height ?? 0,
-            hasChildren: k?.hasChildren ?? false, diagramId: k?.diagramId ?? null,
-          };
-        });
-      // Nested pipes: the container's 'Pipe' placements carry each pipe's geometry — merge so descendant pipes
-      // render (and stay interactive) from the parent view via zoom, replacing any prior entries for this container.
-      const cpipes: PipeGeo[] = (pRes?.responseData ?? [])
-        .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null)
-        .map(p => {
-          let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string } = {};
-          try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
-          return {
-            id: 'pipe-' + p.sourceEntityId!, parentId: containerId, nodeId: p.sourceEntityId!, localId: p.localId ?? undefined,
-            points: Array.isArray(geo.points) ? geo.points : [], fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
-            aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
-            color: p.color || undefined, width: p.lineWidth || undefined, name: p.label || p.name || 'Pipe',
-          } as PipeGeo;
-        });
+      // Leveled node: composite ALL its levels as a view-from-top (its own diagram is usually null/empty; content
+      // lives on the level diagrams). Levels are assumed spatially registered (shared coords — like the drill-in
+      // ghosts). Ground→top: the top deck paints last/on top; lower decks are dimmed and peek out where they
+      // extend beyond it. Non-leveled: just the container's own diagram.
+      const floors = (kids ?? []).filter(k => k.local !== false && k.floorIndex != null)
+        .sort((a, b) => (a.floorIndex ?? 0) - (b.floorIndex ?? 0)); // ground → top
+      let sources: { kids: PhysicalObjectNode[]; did: number | null; floor: number }[];
+      if (floors.length) {
+        const floorKids = await Promise.all(floors.map(f =>
+          firstValueFrom(this.nodesApi.getChildren(f.id)).catch(() => [] as PhysicalObjectNode[])));
+        if (this.nestParent !== parentDid) return;
+        sources = floors.map((f, i) => ({ kids: floorKids[i], did: f.diagramId ?? null, floor: f.floorIndex ?? 0 }));
+      } else {
+        sources = [{ kids, did: containerDid, floor: 0 }];
+      }
+      const placementLists = await Promise.all(sources.map(s =>
+        s.did != null ? firstValueFrom(this.placementApi.getByDiagram(s.did)).then(r => r?.responseData ?? []).catch(() => [] as any[])
+                      : Promise.resolve([] as any[])));
+      if (this.nestParent !== parentDid) return;
+      const topFloor = sources.reduce((m, s) => Math.max(m, s.floor), sources[0]?.floor ?? 0);
+
+      const shapes: NestChild[] = [];
+      const cpipes: PipeGeo[] = [];
+      sources.forEach((s, i) => {
+        const kidById = new Map(s.kids.map(k => [k.id, k]));
+        for (const p of placementLists[i]) {
+          if (p.sourceEntityType === 'PhysicalObject' && p.sourceEntityId != null && (p.width ?? 0) > 0 && (p.height ?? 0) > 0) {
+            const k = kidById.get(p.sourceEntityId);
+            shapes.push({
+              childId: p.sourceEntityId, name: p.label || k?.name || '', color: p.color || poColor(k?.type),
+              shape: normFootprint(p.type), x: p.x ?? 0, y: p.y ?? 0, w: p.width ?? 0, h: p.height ?? 0,
+              hasChildren: k?.hasChildren ?? false, diagramId: k?.diagramId ?? null,
+              floor: s.floor, dim: s.floor < topFloor, // lower decks shown faint, beneath the top
+            });
+          } else if (p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null) {
+            let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any } = {};
+            try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
+            cpipes.push({
+              id: 'pipe-' + p.sourceEntityId, parentId: containerId, nodeId: p.sourceEntityId, localId: p.localId ?? undefined,
+              points: Array.isArray(geo.points) ? geo.points : [], fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
+              aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
+              continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
+              color: p.color || undefined, width: p.lineWidth || undefined, name: p.label || p.name || 'Pipe',
+            } as PipeGeo);
+          }
+        }
+      });
       this.pipeGeos.update(l => [...l.filter(p => p.parentId !== containerId), ...cpipes]);
-      this.nestCache.set(containerId, shapes);
+      // View-from-top occlusion: drop a lower-deck item whose CENTRE sits under a top-deck item, so the top deck
+      // reads as solid and only true overhangs peek out (less clutter than seeing every lower box through the top).
+      const tops = shapes.filter(s => !s.dim);
+      const visible = tops.length ? shapes.filter(s => {
+        if (!s.dim) return true;
+        const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+        return !tops.some(t => cx >= t.x && cx <= t.x + t.w && cy >= t.y && cy <= t.y + t.h);
+      }) : shapes;
+      this.nestCache.set(containerId, visible);
     } catch {
       if (this.nestParent === parentDid) this.nestCache.set(containerId, []);
     } finally {
@@ -557,13 +586,18 @@ export class PlantMapComponent implements OnDestroy {
   pipeGeos = signal<PipeGeo[]>([]);
   pipeMode = signal(false);                            // pipe-draw tool active
   pipeSnap = signal(true);                             // 90° elbow snap while drawing
+  snapGrid = signal(false);                            // snap pipe vertices + box move/resize to the 28px grid
   pipeDraft = signal<{ x: number; y: number }[]>([]);  // vertices being laid
   pipeCursor = signal<{ x: number; y: number } | null>(null); // cursor → live guide segment
   selectedPipeId = signal<string | null>(null);
   pipeEditName = '';
   /** Active cross-section continuation — the logical pipe (group) being run into another area. Survives navigation
-   *  so you drill into the next section and keep drawing the SAME run (segments share groupId + name + color). */
-  continuing = signal<{ groupId: string; name: string; color?: string; width?: number } | null>(null);
+   *  so you drill into the next section and keep drawing the SAME run (segments share groupId + name + color).
+   *  `fromSection` = the section the NEXT segment continues from (so it can jump back to its origin). */
+  continuing = signal<{ groupId: string; linkId: string; name: string; color?: string; width?: number; fromSection?: number } | null>(null);
+  /** linkId whose connectors should pulse (set when you jump through a connector, so the counterpart is obvious). */
+  highlightedLink = signal<string | null>(null);
+  private highlightTimer: any = null;
   private pipeDraftEndA: number | null = null;         // object under the first vertex (endpoint anchor)
   private pipeDraftEndB: number | null = null;         // object under the last vertex (endpoint anchor)
 
@@ -636,6 +670,21 @@ export class PlantMapComponent implements OnDestroy {
     this.st.setPipes(this.pipeGeos().filter(p => p.parentId === parent));
   }
 
+  /** The grid cell (content coords) — matches the canvas background grid so snapping lands on drawn lines. */
+  private readonly GRID = 28;
+  toggleSnapGrid() { this.snapGrid.update(v => !v); }
+  /** Snap a point to the grid when snap-to-grid is on (else unchanged). */
+  private snapPt(pt: { x: number; y: number }): { x: number; y: number } {
+    if (!this.snapGrid()) return pt;
+    const g = this.GRID;
+    return { x: Math.round(pt.x / g) * g, y: Math.round(pt.y / g) * g };
+  }
+  /** Snap a length to the grid when snap is on (min-clamped). */
+  private snapLen(v: number, min: number): number {
+    if (!this.snapGrid()) return v;
+    return Math.max(min, Math.round(v / this.GRID) * this.GRID);
+  }
+
   /** Snap a point to horizontal/vertical from the previous vertex (clean elbows). */
   private snapPipePoint(p: { x: number; y: number }, from?: { x: number; y: number }): { x: number; y: number } {
     if (!this.pipeSnap() || !from) return p;
@@ -649,7 +698,9 @@ export class PlantMapComponent implements OnDestroy {
     const onBox = this.boxAt(p.x, p.y)?.childId ?? null; // anchor endpoints to equipment for cross-area follow
     if (!pts.length) this.pipeDraftEndA = onBox;
     this.pipeDraftEndB = onBox;
-    const np = pts.length ? this.snapPipePoint(p, pts[pts.length - 1]) : (this.snapToExistingPipe(p) ?? p);
+    let np: { x: number; y: number };
+    if (pts.length) np = this.snapPt(this.snapPipePoint(p, pts[pts.length - 1]));
+    else np = this.snapToExistingPipe(p) ?? this.snapPt(p); // branch-snap onto an existing pipe wins over grid-snap
     this.pipeDraft.set([...pts, np]);
   }
   cancelPipe() { this.pipeDraft.set([]); this.pipeCursor.set(null); this.pipeDraftEndA = null; this.pipeDraftEndB = null; }
@@ -670,23 +721,30 @@ export class PlantMapComponent implements OnDestroy {
     }
     const geo: PipeGeo = { id: 'pipe-' + node.id, parentId: parent, nodeId: node.id, points: pts, name: pipeName,
                            color: cont?.color, width: cont?.width, groupId: cont?.groupId,
+                           continuesFrom: cont?.fromSection, // remembers the section it was continued FROM (jump-back)
+                           // DESTINATION port at THIS segment's START — the entry from the source. Matched to the
+                           // source's end port by linkId; stores the origin section so it can jump back even unloaded.
+                           ports: cont?.linkId ? [{ linkId: cont.linkId, at: 'start', section: cont.fromSection } as PipePort] : undefined,
                            aEnd: a ?? undefined, bEnd: b ?? undefined, fittings: [] };
     this.pipeGeos.update(list => [...list, geo]);
     this.savePipes();
-    this.selectPipe(geo.id); // continuing stays armed → drill to the next area and keep drawing the same run
+    if (cont) { this.continuing.set(null); this.pipeMode.set(false); } // hop done — exit draw; re-Continue to run further/branch
+    this.selectPipe(geo.id);
   }
 
   /** Run the selected pipe into ANOTHER area: assign/reuse its group id, arm continuation, and enter draw mode.
    *  Drill into the neighboring section and keep drawing — the new segment joins the same logical pipe. */
   continuePipe() {
     const p = this.selectedPipe(); if (!p || !this.selectedPipeOnCanvas()) return;
-    let gid = p.groupId;
-    if (!gid) {
-      gid = 'grp-' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
-      this.pipeGeos.update(l => l.map(x => (x.id === p.id ? { ...x, groupId: gid } : x)));
-      this.savePipes();
-    }
-    this.continuing.set({ groupId: gid, name: p.name || 'Pipe', color: p.color, width: p.width });
+    const gid = p.groupId ?? ('grp-' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36));
+    const linkId = 'lnk-' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+    const from = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? undefined; // this segment's section = jump-back origin
+    // Add a SOURCE port at THIS pipe's END (the onward direction) + adopt the group id. Each Continue = one link =
+    // one branch, so a pipe can source several links (branch to multiple sections).
+    this.pipeGeos.update(l => l.map(x => (x.id === p.id
+      ? { ...x, groupId: gid, ports: [...(x.ports ?? []), { linkId, at: 'end' } as PipePort] } : x)));
+    this.savePipes();
+    this.continuing.set({ groupId: gid, linkId, name: p.name || 'Pipe', color: p.color, width: p.width, fromSection: from });
     this.selectPipe(null);      // show the continuation banner, not the pipe inspector
     this.pipeMode.set(true);
   }
@@ -723,11 +781,64 @@ export class PlantMapComponent implements OnDestroy {
     const pts = this.pipeDraft(); const cur = this.pipeCursor();
     if (!pts.length || !cur) return null;
     const last = pts[pts.length - 1];
-    const s = this.snapPipePoint(cur, last);
+    const s = this.snapPt(this.snapPipePoint(cur, last));
     return { x1: last.x, y1: last.y, x2: s.x, y2: s.y };
   });
 
   selectedPipe = computed(() => this.pipeGeos().find(p => p.id === this.selectedPipeId()) ?? null);
+
+  /** Jumps to the OTHER sections of the selected pipe's cross-section run (same groupId): the section it was
+   *  continued FROM (⇠, always available — stored on the segment) + any other loaded segments' sections (⇢). */
+  pipeRunJumps = computed<{ target: number; label: string; dir: 'from' | 'to' }[]>(() => {
+    const p = this.selectedPipe(); if (!p || !p.groupId) return [];
+    const out: { target: number; label: string; dir: 'from' | 'to' }[] = [];
+    const seen = new Set<number>([p.parentId]);
+    if (p.continuesFrom != null && !seen.has(p.continuesFrom)) { seen.add(p.continuesFrom); out.push({ target: p.continuesFrom, label: this.nameOf(p.continuesFrom), dir: 'from' }); }
+    for (const q of this.pipeGeos()) {
+      if (q.groupId === p.groupId && !seen.has(q.parentId)) { seen.add(q.parentId); out.push({ target: q.parentId, label: this.nameOf(q.parentId), dir: 'to' }); }
+    }
+    return out;
+  });
+
+  /** Off-page-style CONNECTORS drawn at a cross-section pipe's endpoints (like a P&ID off-page connector): a
+   *  circle + arrow at the end where the run continues into / came from another section. Double-click a connector
+   *  to jump to the counterpart section. Start = "came from" (continuesFrom); end = "continues to" (a loaded
+   *  same-group segment in another section). Arrow points OUTWARD along the last segment (the flow direction). */
+  pipeConnectors = computed<{ pipeId: string; linkId: string; x: number; y: number; target: number | null; label: string; dir: 'in' | 'out'; angle: number }[]>(() => {
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    if (parent == null) return [];
+    const deg = (dx: number, dy: number) => Math.atan2(dy, dx) * 180 / Math.PI;
+    const all = this.pipeGeos();
+    const out: { pipeId: string; linkId: string; x: number; y: number; target: number | null; label: string; dir: 'in' | 'out'; angle: number }[] = [];
+    for (const p of all) {
+      if (p.parentId !== parent || p.points.length < 2 || !p.ports?.length) continue;
+      for (const port of p.ports) {
+        // deterministic end: SOURCE port = the pipe's END, DESTINATION port = its START (no draw-direction guess)
+        const end = port.at === 'start' ? p.points[0] : p.points[p.points.length - 1];
+        const prev = port.at === 'start' ? p.points[1] : p.points[p.points.length - 2];
+        // counterpart = the OTHER pipe carrying the same linkId (its section is the jump target)
+        const cp = all.find(q => q.id !== p.id && (q.ports ?? []).some(pp => pp.linkId === port.linkId));
+        const target = port.section ?? cp?.parentId ?? null;
+        out.push({
+          pipeId: p.id, linkId: port.linkId, x: end.x, y: end.y, target,
+          label: target != null ? this.nameOf(target) : '',
+          dir: port.at === 'start' ? 'in' : 'out',
+          angle: deg(end.x - prev.x, end.y - prev.y),
+        });
+      }
+    }
+    return out;
+  });
+
+  /** Jump through a cross-section connector to its counterpart section, pulsing the matching connector there so
+   *  you can see where the run continues (like a P&ID off-page connector tag). */
+  jumpConnector(c: { linkId: string; target: number | null }) {
+    if (c.target == null) return;
+    this.highlightedLink.set(c.linkId);
+    if (this.highlightTimer) clearTimeout(this.highlightTimer);
+    this.highlightTimer = setTimeout(() => this.highlightedLink.set(null), 4500);
+    this.navigate(c.target);
+  }
   selectPipe(id: string | null) {
     this.selectedPipeId.set(id);
     this.pipeEdit.set(false); // start each selection in view mode; user toggles Edit route
@@ -744,7 +855,13 @@ export class PlantMapComponent implements OnDestroy {
     if (nodeId == null) return;
     try {
       const node = await firstValueFrom(this.nodesApi.getNode(nodeId));
-      if (node && this.currentSelectedNodeId() === nodeId) this.pipeFittingNode.set(node);
+      if (node && this.currentSelectedNodeId() === nodeId) {
+        this.pipeFittingNode.set(node);
+        // Prime this object's OWN system membership so toggling a System computes from the real set, never an empty
+        // base — fittings are grandchildren, absent from the canvas node's child-systems map (else a toggle wipes it).
+        const sys = await firstValueFrom(this.nodesApi.getObjectSystems(nodeId));
+        if (this.currentSelectedNodeId() === nodeId) this.st.primeChildSystems(nodeId, sys.map(s => s.id));
+      }
     } catch { /* leave cleared */ }
   }
   private currentSelectedNodeId(): number | undefined {
@@ -796,8 +913,9 @@ export class PlantMapComponent implements OnDestroy {
     this.drag = { kind: 'pipeVtx', pipeId: p.id, index };
   }
   private movePipeVtx(pipeId: string, index: number, pt: { x: number; y: number }) {
+    const q0 = this.snapPt(pt);
     this.pipeGeos.update(l => l.map(p => p.id === pipeId
-      ? { ...p, points: p.points.map((q, i) => (i === index ? pt : q)) } : p));
+      ? { ...p, points: p.points.map((q, i) => (i === index ? q0 : q)) } : p));
   }
   /** Double-click a vertex to remove that bend (keeps at least a two-point segment). */
   removePipeVtx(index: number, ev?: Event) {
@@ -812,7 +930,7 @@ export class PlantMapComponent implements OnDestroy {
   onPipeVtxAddDown(ev: PointerEvent, segIndex: number) {
     ev.stopPropagation();
     const p = this.selectedPipe(); if (!p) return;
-    const at = this.contentPoint(ev);
+    const at = this.snapPt(this.contentPoint(ev));
     const insertAt = segIndex + 1;
     this.pipeGeos.update(l => l.map(pp => pp.id === p.id
       ? { ...pp, points: [...pp.points.slice(0, insertAt), at, ...pp.points.slice(insertAt)] } : pp));
@@ -1188,11 +1306,12 @@ export class PlantMapComponent implements OnDestroy {
     } else if (d.kind === 'move') {
       const nx = Math.max(0, d.origX + (ev.clientX - d.startClientX) / z);
       const ny = Math.max(0, d.origY + (ev.clientY - d.startClientY) / z);
-      this.st.setBoxRect(d.localId, nx, ny, d.origW, d.origH);
+      const s = this.snapPt({ x: nx, y: ny });
+      this.st.setBoxRect(d.localId, Math.max(0, s.x), Math.max(0, s.y), d.origW, d.origH);
     } else if (d.kind === 'resize') {
       const min = this.minSize(this.boxById().get(d.localId)?.shape ?? 'rect');
-      const nw = Math.max(min.w, d.origW + (ev.clientX - d.startClientX) / z);
-      const nh = Math.max(min.h, d.origH + (ev.clientY - d.startClientY) / z);
+      const nw = this.snapLen(Math.max(min.w, d.origW + (ev.clientX - d.startClientX) / z), min.w);
+      const nh = this.snapLen(Math.max(min.h, d.origH + (ev.clientY - d.startClientY) / z), min.h);
       this.st.setBoxRect(d.localId, d.origX, d.origY, nw, nh);
     } else if (d.kind === 'waypoint') {
       const c = this.contentPoint(ev);

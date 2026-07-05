@@ -114,6 +114,14 @@ export class PhysicalObjectApiService {
       .pipe(map(r => r.responseData ?? {}));
   }
 
+  /** One object's OWN System membership (Value ids) — seeds the toggle base for pipes/fittings, which as
+   *  grandchildren aren't covered by the canvas node's child-systems map. */
+  getObjectSystems(id: number): Observable<SystemRef[]> {
+    return this.http
+      .get<SpringApiResponse<SystemRef[]>>(`${this.base}/${id}/systems`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   /** Replace an object's System membership (by Value id). Returns the resulting systems. */
   setObjectSystems(id: number, systemIds: number[]): Observable<SystemRef[]> {
     return this.http

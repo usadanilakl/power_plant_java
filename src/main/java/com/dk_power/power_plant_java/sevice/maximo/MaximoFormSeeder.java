@@ -31,6 +31,7 @@ public class MaximoFormSeeder {
     public List<MaximoFormTemplateDto> seedProcedureForms() {
         List<MaximoFormTemplateDto> out = new ArrayList<>();
         out.add(formService.saveTemplate(roSandFilterBackflush()));
+        out.add(formService.saveTemplate(emergencyEyewashSafetyShower()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -94,6 +95,58 @@ public class MaximoFormSeeder {
                 .build();
     }
 
+    /** From procedures/pm/safety shower.pdf — SMP-06 "Emergency Eyewash & Safety Shower Inspection" (Appendix C). */
+    private MaximoFormTemplateDto emergencyEyewashSafetyShower() {
+        Fields f = new Fields();
+
+        f.section("Procedure checks (weekly, steps 1-9)")
+                .radio("s1_clear", "1. Area around unit clear of obstructions / sharp objects", true, "OK", "Not OK")
+                .radio("s2_lit", "2. Area is well lighted", true, "OK", "Not OK")
+                .radio("s3_sign", "3. Emergency eyewash/shower sign present & visible", true, "OK", "Not OK")
+                .radio("s4_flush", "4. Flushed plumbed unit; valve opens in 1 sec & stays open", true, "OK", "Not OK")
+                .radio("s5_eyewash", "5. Both eyewash nozzles operate; both eyes flush; pressure will not damage eyes", true, "OK", "Not OK")
+                .radio("s6_caps", "6. Eyewash nozzles protected from airborne contaminants (caps in place)", true, "OK", "Not OK")
+                .radio("s7_portable", "7. Portable units full, additive per mfr (6mo); pressurized units at proper pressure", true, "OK", "Not OK", "N/A")
+                .radio("s8_discrepancies", "8. Discrepancies documented & communicated to shift supervisor (WOs generated)", true, "OK", "None")
+                .radio("s9_alarm", "9. Flow-switch alarm comes into control room", true, "OK", "Not OK");
+
+        f.section("Annual measurements (step 10) - ANSI Z358.1")
+                .number("shower_pattern_in", "Shower flushing-pattern diameter (min 20)", "in", "reading")
+                .number("shower_gpm", "Shower delivery (min 20 gpm / 75.7 L/min)", "gpm", "reading")
+                .number("eyewash_gpm", "Eyewash flow (min 0.4 gpm / 1.5 L/min)", "gpm", "reading");
+
+        String[] locations = {
+                "Water Treatment Building", "Unit 2 Outside TCP", "Unit 2 SCR Skid", "Unit 2 Chemical Shack",
+                "Unit 2 Sample Panel", "Aqueous Ammonia Storage Tank Area East", "Aqueous Ammonia Storage Tank Area West",
+                "Aux Boiler Building", "Unit 2 Calcite Filter Platform", "Medium Voltage Enclosure South",
+                "Medium Voltage Enclosure North", "Unit 1 Outside TCP", "Unit 1 SCR Skid", "Unit 1 Chemical Shack",
+                "Unit 1 Sample Panel", "Unit 1 Calcite Filter Platform", "Switch Yard Enclosure"
+        };
+        f.section("Units - inspect each (17 locations)");
+        for (int i = 0; i < locations.length; i++) {
+            int n = i + 1;
+            f.radio("unit" + n + "_ok", n + ". " + locations[i], false, "OK", "Not OK", "N/A")
+                    .text("unit" + n + "_comments", n + ". Comments");
+        }
+
+        f.section("Sign-off")
+                .textarea("discrepancies", "Discrepancies & corrective action taken", "worklog")
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("EMERGENCY_EYEWASH_SAFETY_SHOWER")
+                .formName("Emergency Eyewash & Safety Shower Inspection (SMP-06)")
+                .description("Weekly (steps 1-9) / Annual (steps 1-10) inspection per ANSI Z358.1-1998. Verify each of the "
+                        + "17 units. Shower: flushing-pattern dia >= 20 in and delivery >= 20 gpm (75.7 L/min). "
+                        + "Eyewash: flow >= 0.4 gpm (1.5 L/min). Document discrepancies and notify the shift supervisor "
+                        + "to generate work orders for needed corrections.")
+                .matchDescriptionContains("safety shower")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
     /** Load a seed reference photo from the classpath and return it as a base64 data URL (null if missing). */
     private String img(String fileName) {
         try (InputStream in = new ClassPathResource("procedures/sand-filter/" + fileName).getInputStream()) {
@@ -121,6 +174,7 @@ public class MaximoFormSeeder {
         Fields section(String s) { this.section = s; return this; }
 
         Fields checkbox(String name, String label, boolean required) { return add(name, label, "checkbox", null, null, required); }
+        Fields text(String name, String label) { return add(name, label, "text", null, null, false); }
         Fields textarea(String name, String label, String target) { return add(name, label, "textarea", null, target, false); }
         Fields number(String name, String label, String unit, String target) { return add(name, label, "number", unit, target, false); }
 
