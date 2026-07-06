@@ -125,3 +125,10 @@ td.assignee-cell app-maximo-person-picker { display: block; min-width: 180px; ma
 .make-rec { font-size: 11px; color: #ffcf4d; white-space: nowrap; }
 .make-rec:hover:not([disabled]) { text-decoration: underline; }
 .manual-tag { color: #ffcf4d; font-size: 12px; margin-left: 2px; }
+
+/* Manual "add recurring PM" inline form (catalog tab) */
+.add-pm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px; }
+.add-pm .add-num { width: 180px; }
+.add-pm .add-desc { flex: 1 1 260px; min-width: 200px; }
+.add-pm input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 5px 7px; font: inherit; }

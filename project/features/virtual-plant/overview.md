@@ -1,3 +1,6 @@
+> **Vision doc.** For the *built* implementation (2D Plant Map, 3D Viewer, 3D Builder — routes, files,
+> features, GLB upload, anchor points, data model), see **[README.md](README.md)**.
+
 ## Idea
 Power plant is a complex entity that consists of smaller and simplier components and categories:
 

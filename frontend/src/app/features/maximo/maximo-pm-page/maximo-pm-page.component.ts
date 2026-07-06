@@ -70,6 +70,11 @@ export class MaximoPmPageComponent implements OnInit {
   // Catalog
   catalog = signal<RecurringPm[]>([]);
   catalogLoaded = signal(false);
+  // Manually add a recurring PM the auto-scan missed (no WO needed).
+  showAddPm = signal(false);
+  addingPm = signal(false);
+  newPmNumber = '';
+  newPmDescription = '';
   // Search + column sort for the Recurring PMs table.
   catalogSearch = signal('');
   catalogSort = signal<{ col: CatalogSortCol; dir: 1 | -1 }>({ col: 'pmnum', dir: 1 });
@@ -164,6 +169,29 @@ export class MaximoPmPageComponent implements OnInit {
       this.catalogLoaded.set(true);
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
+  }
+
+  /**
+   * Manually add a recurring PM the auto-scan missed — no WO required. Creates a catalog entry keyed by the
+   * PM number (or, if blank, its description) that's kept through refreshes; shift/cadence/day are edited
+   * inline on the new row after.
+   */
+  async addRecurringManual() {
+    const desc = this.newPmDescription.trim();
+    if (!desc) { this.error.set('A description is required.'); return; }
+    if (this.addingPm()) return;
+    this.addingPm.set(true); this.error.set(null); this.info.set(null);
+    try {
+      const created = await firstValueFrom(this.api.makeRecurring({
+        pmnum: this.newPmNumber.trim() || undefined,
+        description: desc,
+      }));
+      this.info.set(`Added recurring PM “${created.pmnum || created.pmDescription}”. Set its shift/cadence/day below.`);
+      this.newPmNumber = ''; this.newPmDescription = '';
+      this.showAddPm.set(false);
+      await this.loadCatalog();
+    } catch (e: any) { this.error.set(this.msg(e)); }
+    finally { this.addingPm.set(false); }
   }
 
   /** Toggle the sort column (or flip direction if already sorting by it). */

@@ -122,7 +122,7 @@
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
           <span class="pipe-banner" *ngIf="pipeMode()" [class.continuing]="continuing()">
             <ng-container *ngIf="continuing() as cont">⇢ Continuing <b>{{ cont.name }}</b> — drill into the next area, then <b>start drawing at the connection point</b></ng-container>
-            <ng-container *ngIf="!continuing()">🔧 Pipe: click to lay the route</ng-container>
+            <ng-container *ngIf="!continuing()">🔧 Pipe: click to lay the route · <b>click on a pipe to tee / connect</b></ng-container>
             <span *ngIf="pipeDraft().length >= 2"> · right-click / Enter to finish</span> · Esc clears
             <label class="psnap"><input type="checkbox" [checked]="pipeSnap()" (change)="pipeSnap.set($any($event.target).checked)" /> 90°</label>
             <button *ngIf="pipeDraft().length >= 2" (click)="finishPipe()">finish</button>
@@ -147,6 +147,8 @@
                   (click)="togglePipeMode()" title="Pipe tool — draw a guided, elbowed pipe route">🔧 Pipe</button>
           <button class="pipe-tool" type="button" *ngIf="st.currentDiagramId()" [class.on]="snapGrid()"
                   (click)="toggleSnapGrid()" title="Snap to grid — pipe vertices and box move/resize snap to the 28px grid">⊞ Grid</button>
+          <button class="pipe-tool" type="button" *ngIf="st.currentDiagramId()" [class.on]="flowMode()"
+                  (click)="toggleFlowMode()" title="Flow (visual) — click a pipe to trace flow from it; click a valve to open/close it and watch what it controls">▶ Flow</button>
           <span class="detail-ctrl" *ngIf="st.currentDiagramId()"
                 title="How readily items reveal their contents as you zoom (+ = more, sooner)">
             <span class="lbl2">Detail</span>
@@ -195,16 +197,21 @@
                 <line *ngIf="tempWire() as t" [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2"
                       class="wire temp" />
                 <!-- pipes: a tube (colored line + bright centre sheen, rounded elbows) — a routed PhysicalObject -->
-                <g *ngFor="let p of viewPipes()">
-                  <polyline class="opipe-hit" [attr.points]="p.points" (pointerdown)="$event.stopPropagation(); selectPipe(p.id)" />
-                  <polyline class="opipe" [class.sel]="p.sel" [attr.points]="p.points"
-                            [attr.stroke]="p.color" [attr.stroke-width]="p.sel ? p.width + 3 : p.width" />
+                <g *ngFor="let p of viewPipes()" [class.flow-src]="flowMode() && flowSource() === p.id">
+                  <polyline class="opipe-hit" [attr.points]="p.points" (pointerdown)="onPipeDown($event, p.id)" />
+                  <polyline class="opipe" [class.sel]="p.sel"
+                            [class.flow-off]="flowMode() && !flowOf(p.id)"
+                            [attr.points]="p.points" [attr.stroke]="p.color" [attr.stroke-width]="p.sel ? p.width + 3 : p.width" />
                   <polyline class="opipe-hl" [attr.points]="p.points" [attr.stroke-width]="p.width * 0.34 + 0.5" />
+                  <ng-container *ngIf="flowMode() && flowOf(p.id) as fl">
+                    <polyline *ngFor="let s of fl.segsStr" class="opipe-flow" [attr.points]="s" [attr.stroke-width]="p.width * 0.55 + 1" />
+                  </ng-container>
                 </g>
                 <!-- nested pipes: a descendant container's pipes, mapped into its footprint as you zoom in -->
                 <g *ngFor="let np of nestedItems().pipes">
-                  <polyline class="opipe" [attr.points]="np.points" [attr.stroke]="np.color" [attr.stroke-width]="np.width" />
+                  <polyline class="opipe" [class.flow-off]="flowMode() && !np.flowSegs?.length" [attr.points]="np.points" [attr.stroke]="np.color" [attr.stroke-width]="np.width" />
                   <polyline class="opipe-hl" [attr.points]="np.points" [attr.stroke-width]="np.width * 0.34 + 0.4" />
+                  <polyline *ngFor="let s of np.flowSegs" class="opipe-flow" [attr.points]="s" [attr.stroke-width]="np.width * 0.6 + 0.5" />
                 </g>
                 <!-- in-progress route: the laid points + a live guide segment to the cursor -->
                 <ng-container *ngIf="pipeMode() && pipeDraft().length">
@@ -268,7 +275,7 @@
                 <polyline *ngFor="let np of nestedItems().pipes" class="opipe-hit" [attr.points]="np.points"
                           (pointerdown)="$event.stopPropagation(); onNestPipeClick(np)" (dblclick)="np.nodeId && navigate(np.nodeId)" />
                 <!-- current-canvas fittings (click = select, drag = slide along the pipe) -->
-                <g *ngFor="let f of viewFittings()" class="fitting" [class.sel]="f.sel"
+                <g *ngFor="let f of viewFittings()" class="fitting" [class.sel]="f.sel" [class.closed]="f.closed" [class.valve]="f.isValve"
                    [attr.transform]="'translate(' + f.x + ',' + f.y + ')'"
                    (pointerdown)="onFittingDown($event, f.id, f.pipeId)">
                   <circle r="12" class="fit-bg" [attr.stroke]="f.color" />
@@ -281,7 +288,7 @@
                   <line *ngIf="f.double" class="fit-dbl" x1="4" y1="-12" x2="4" y2="12" [attr.stroke]="f.color" />
                 </g>
                 <!-- nested fittings (from a descendant pipe), scaled down — single-click = info, double = drill -->
-                <g *ngFor="let nf of nestedItems().fittings" class="fitting nested"
+                <g *ngFor="let nf of nestedItems().fittings" class="fitting nested" [class.valve]="nf.isValve" [class.closed]="nf.closed"
                    [attr.transform]="'translate(' + nf.x + ',' + nf.y + ') scale(' + nf.size + ')'"
                    (pointerdown)="onNestFittingClick(nf, $event)" (dblclick)="nf.nodeId && navigate(nf.nodeId)">
                   <circle r="12" class="fit-bg" [attr.stroke]="nf.color" />
@@ -299,6 +306,8 @@
                   <circle r="11" class="pipe-conn-bg" />
                   <path class="pipe-conn-arrow" d="M-3.5,-4.5 L4.5,0 L-3.5,4.5 Z" [attr.transform]="'rotate(' + c.angle + ')'" />
                 </g>
+                <!-- junction dots where a pipe tees onto / connects into another -->
+                <circle *ngFor="let j of pipeJunctions()" class="pipe-junction" [attr.cx]="j.x" [attr.cy]="j.y" r="3.5" />
                 <!-- route-edit handles for the selected pipe: drag a vertex to move it, double-click to remove a
                      bend; drag a small midpoint dot to add a bend. -->
                 <ng-container *ngIf="pipeEdit()">
@@ -500,6 +509,8 @@
         </ng-container>
         <div class="actions">
           <button *ngIf="pipe.nodeId" (click)="navigate(pipe.nodeId)" title="Open this pipe as an object (files, properties, Maximo, its fittings)">Open object ↳</button>
+          <button *ngIf="selectedPipeOnCanvas()" (click)="pipeMode.set(true)"
+                  title="Branch or connect — turns on the pipe tool; then click ON this pipe to tee a branch off it, or draw a new pipe and end it on a pipe to connect">Branch / connect ⑂</button>
           <button *ngIf="selectedPipeOnCanvas()" (click)="continuePipe()"
                   title="Run this pipe into a neighbouring area — then drill into that section and keep drawing the same run">Continue in another area ⇢</button>
           <button class="danger" *ngIf="selectedPipeOnCanvas()" (click)="deletePipe(pipe.id)">Delete pipe</button>
@@ -528,6 +539,10 @@
           <label class="toggle" *ngIf="isValveFitting()">
             <input type="checkbox" [checked]="sf.fitting.double" (change)="toggleFittingDouble($any($event.target).checked)" />
             Double block (two valves in series, each tagged)
+          </label>
+          <label class="toggle" *ngIf="isValveFitting()">
+            <input type="checkbox" [checked]="sf.fitting.closed" (change)="toggleValveClosed(sf.fitting.id)" />
+            Closed (blocks flow in the ▶ Flow view)
           </label>
         </div>
         </ng-container>

@@ -137,7 +137,9 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     defaultRoute: '/plant/map',
     requiresFullAccess: true,
     items: [
-      { title: 'Plant Map', description: 'Build & navigate a from-scratch schematic of the plant; drill level→level, connect objects', icon: 'map', route: '/plant/map', color: '#26A69A' }
+      { title: 'Plant Map', description: 'Build & navigate a from-scratch schematic of the plant; drill level→level, connect objects', icon: 'map', route: '/plant/map', color: '#26A69A' },
+      { title: 'Plant 3D', description: 'Lightweight 3D plant view — connection-based layout, tap equipment for details (sample data)', icon: 'view_in_ar', route: '/plant/3d', color: '#26A69A' },
+      { title: 'Plant 3D Builder', description: 'Build the 3D plant: place real equipment, move/rotate/scale, assign reusable shapes', icon: 'construction', route: '/plant/3d/build', color: '#26A69A' }
     ]
   },
   {

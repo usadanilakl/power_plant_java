@@ -164,9 +164,9 @@
   pointer-events: auto; cursor: pointer; }
 .nest:hover { box-shadow: inset 0 0 0 1px #7cc6ff, 0 0 8px rgba(124,198,255,0.35); filter: brightness(1.25); }
 /* lower decks of a leveled node, composited beneath the top deck (view-from-top): faint context, no label clutter */
-.nest.dim { opacity: 0.4; border-style: dashed; }
+.nest.dim { opacity: 0.55; background: transparent !important; border-style: dashed; } /* outline-only → overhangs read as faint outlines, not filled clutter */
 .nest.dim .nlabel { display: none; }
-.nest.dim:hover { opacity: 0.75; }
+.nest.dim:hover { opacity: 0.9; }
 .nest.shape-round { border-radius: 8px; }
 .nest.shape-circle { border-radius: 50%; }
 .nest.shape-run { border-radius: 999px; }
@@ -320,6 +320,19 @@
 .opipe.sel { filter: drop-shadow(0 0 4px #7cc6ff); }
 .opipe-hl { fill: none; pointer-events: none; stroke: rgba(255,255,255,0.5); stroke-linecap: round; stroke-linejoin: round; } /* tube sheen */
 .opipe-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; stroke-linejoin: round; }
+/* ── visual flow sim: animated dashes on flowing pipes; blocked/unreached greyed; source glows ── */
+.opipe-flow { fill: none; pointer-events: none; stroke: #eaf6ff; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 6 16; animation: flowdash 0.7s linear infinite; opacity: 0.95; }
+.opipe-flow.reversed { animation-direction: reverse; }
+@keyframes flowdash { to { stroke-dashoffset: -22; } }
+.opipe.flow-off { opacity: 0.25; }                                            /* not reached from the source */
+.opipe.flow-blocked { stroke: #ef5350 !important; opacity: 0.6; stroke-dasharray: 4 6; } /* a closed valve blocks it */
+.flow-src .opipe { filter: drop-shadow(0 0 5px #7cc6ff); }                    /* the chosen source pipe */
+/* valve state colour (as requested): OPEN = red, CLOSED = green */
+.fitting.valve .fit-bg { stroke: #ef5350 !important; }
+.fitting.valve path { stroke: #ef5350 !important; }
+.fitting.valve.closed .fit-bg { stroke: #4caf50 !important; fill: #12331a; }
+.fitting.valve.closed path { stroke: #4caf50 !important; }
 .opipe-draft { fill: none; pointer-events: none; stroke: #5b9bd5; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; }
 .opipe-guide { fill: none; pointer-events: none; stroke: #7cc6ff; stroke-width: 3; stroke-dasharray: 7 5; opacity: 0.85; }
 .opipe-vtx { fill: #fff; stroke: #7cc6ff; stroke-width: 1.5; pointer-events: none; }
@@ -351,6 +364,7 @@
 .pipe-conn-bg { fill: #143050; stroke: #7cc6ff; stroke-width: 2; }
 .pipe-conn.in .pipe-conn-bg { fill: #143a2a; stroke: #3fbf7f; }
 .pipe-conn-arrow { fill: #bcd8f5; }
+.pipe-junction { fill: #cfe6ff; stroke: #12151a; stroke-width: 1; pointer-events: none; } /* tee/connection node */
 .pipe-conn.in .pipe-conn-arrow { fill: #baf0d0; }
 .pipe-conn:hover .pipe-conn-bg { filter: brightness(1.35); }
 /* the counterpart connector pulses after you jump through a link, so you can see where the run continues */

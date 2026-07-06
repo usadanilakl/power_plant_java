@@ -1,0 +1,184 @@
+<div class="builder">
+  <!-- LEFT RAIL: add equipment + shape library -->
+  <aside class="rail left">
+    <section>
+      <h4>Add equipment</h4>
+      <input class="search" type="text" placeholder="Search plant objects…" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <div class="list">
+        @for (r of treeRows(); track r.node.id) {
+          <div class="trow" [style.paddingLeft.px]="4 + r.depth * 14">
+            @if (r.hasChildren) {
+              <button class="chev" (click)="toggleExpand(r.node.id, $event)" [title]="r.expanded ? 'Collapse' : 'Expand'">{{ r.expanded ? '▾' : '▸' }}</button>
+            } @else { <span class="chev sp"></span> }
+            <button class="nmbtn" [class.placed]="r.placed" (click)="addFromTree(r.node)" [title]="r.placed ? 'Already in scene — select it' : 'Add to scene'">
+              <span class="nm">{{ r.node.name }}</span>
+              <span class="ty" *ngIf="r.node.type">{{ r.node.type }}</span>
+              <span class="add">{{ r.placed ? '✓' : '＋' }}</span>
+            </button>
+          </div>
+        }
+        @if (!treeRows().length) { <p class="muted">No matches.</p> }
+      </div>
+      <div class="quick">
+        <div class="qc-title">Quick-create new</div>
+        <input type="text" placeholder="Name…" [ngModel]="newName()" (ngModelChange)="newName.set($event)" />
+        <select [ngModel]="newParentId()" (ngModelChange)="newParentId.set($event)" title="Where it goes in the hierarchy">
+          <option [ngValue]="null">under: — root —</option>
+          @for (p of allParentOptions(); track p.id) { <option [ngValue]="p.id">under: {{ p.label }}</option> }
+        </select>
+        <div class="qc-row">
+          <select [ngModel]="newType()" (ngModelChange)="newType.set($event)">
+            @for (t of typeOptions; track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+          <button class="btn" (click)="quickCreate()">Create + place</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h4>Shape library</h4><button class="mini" (click)="newShape()">＋ New</button></div>
+      <p class="muted sm">Reusable shapes. Assign one to a piece of equipment on the right. Objects with no shape use a simple primitive by type.</p>
+      <div class="shapes">
+        @for (s of shapes(); track s.localId) {
+          <div class="shape">
+            <span class="sw" [style.background]="s.color || '#8a97a6'"></span>
+            <span class="snm">{{ s.name }}</span>
+            <span class="skind">{{ s.kind === 'primitive' ? s.prim : 'model' }}</span>
+            <button class="mini" (click)="editShape(s)">Edit</button>
+            <button class="mini danger" (click)="deleteShape(s)">✕</button>
+          </div>
+        }
+      </div>
+
+      @if (editingShape(); as es) {
+        <div class="shape-editor">
+          <div class="se-title">{{ es.name }}</div>
+          <label>Name <input type="text" [ngModel]="es.name" (ngModelChange)="patchEditingShape({ name: $event })" /></label>
+
+          <div class="kind-toggle">
+            <button [class.on]="es.kind === 'primitive'" (click)="setShapeKind('primitive')">Primitive</button>
+            <button [class.on]="es.kind === 'model'" (click)="setShapeKind('model')">3D model</button>
+          </div>
+
+          @if (es.kind === 'primitive') {
+            <label>Primitive
+              <select [ngModel]="es.prim" (ngModelChange)="patchEditingShape({ prim: $event })">
+                @for (k of primKinds; track k) { <option [value]="k">{{ k }}</option> }
+              </select>
+            </label>
+            <label class="clr">Color <input type="color" [ngModel]="es.color" (ngModelChange)="patchEditingShape({ color: $event })" /></label>
+            <label>Metalness <input type="range" min="0" max="1" step="0.05" [ngModel]="es.metalness" (ngModelChange)="patchEditingShape({ metalness: +$event })" /></label>
+            <label>Roughness <input type="range" min="0" max="1" step="0.05" [ngModel]="es.roughness" (ngModelChange)="patchEditingShape({ roughness: +$event })" /></label>
+          } @else {
+            <div class="model-cur">{{ es.modelUrl ? '✓ model attached' : 'no model yet — shows a primitive until one is set' }}</div>
+            @if (glbEnabled() === false) {
+              <p class="warn">To upload, add <code>glb,gltf</code> to <code>files.allowed-extensions</code> and restart the app. Already-uploaded models can still be picked below.</p>
+            }
+            @if (existingModels().length) {
+              <label>Use existing
+                <select [ngModel]="es.modelFileId" (ngModelChange)="pickExistingModel($event)">
+                  <option [ngValue]="null">— choose —</option>
+                  @for (m of existingModels(); track m.id) { <option [ngValue]="m.id">{{ m.name }}</option> }
+                </select>
+              </label>
+            }
+            <div class="upload">
+              <div class="up-row">
+                <select [ngModel]="modelFileTypeId()" (ngModelChange)="modelFileTypeId.set($event)" title="File type to file this model under">
+                  @for (ft of fileTypeOpts(); track ft.id) { <option [ngValue]="ft.id">{{ ft.name }}</option> }
+                </select>
+                <select [ngModel]="modelVendorId()" (ngModelChange)="modelVendorId.set($event)" title="Vendor">
+                  @for (v of vendorOpts(); track v.id) { <option [ngValue]="v.id">{{ v.name }}</option> }
+                </select>
+              </div>
+              <input type="file" accept=".glb,.gltf" (change)="onModelFile($event)" [disabled]="uploading()" />
+              @if (modelMsg()) { <div class="up-msg">{{ modelMsg() }}</div> }
+            </div>
+          }
+
+          <div class="se-actions"><button class="btn" (click)="saveShape()">Save shape</button><button class="mini" (click)="cancelShape()">Cancel</button></div>
+        </div>
+      }
+    </section>
+  </aside>
+
+  <!-- CENTER: toolbar + canvas -->
+  <main class="stage">
+    <div class="toolbar">
+      <a class="tb back" routerLink="/plant/3d" title="Open the read-only viewer">‹ Viewer</a>
+      <span class="tb-sep"></span>
+      <div class="modes">
+        <button class="tb" [class.on]="gizmoMode()==='translate'" (click)="setMode('translate')" title="Move (W)">Move</button>
+        <button class="tb" [class.on]="gizmoMode()==='rotate'" (click)="setMode('rotate')" title="Rotate (E)">Rotate</button>
+        <button class="tb" [class.on]="gizmoMode()==='scale'" (click)="setMode('scale')" title="Scale (R)">Scale</button>
+      </div>
+      <button class="tb" [class.on]="snap()" (click)="toggleSnap()" title="Snap move/rotate/scale to a grid">⊞ Snap</button>
+      <span class="tb-sep"></span>
+      <button class="tb save" (click)="save()" [disabled]="saving() || !dirty()">{{ saving() ? 'Saving…' : (dirty() ? 'Save' : 'Saved ✓') }}</button>
+      <span class="status">{{ status() }}</span>
+      @if (loading()) { <span class="status">Loading…</span> }
+    </div>
+    <div class="host" #host></div>
+    <div class="hint">Click an item to select · drag the gizmo to {{ gizmoMode() }} · drag empty space to orbit</div>
+  </main>
+
+  <!-- RIGHT: inspector -->
+  @if (selected(); as o) {
+    <aside class="rail right">
+      <div class="insp-head">
+        <h4>{{ o.name }}</h4>
+        <button class="x" (click)="select(null)">×</button>
+      </div>
+      <div class="row2"><span>Type</span><b>{{ o.type || '—' }}</b></div>
+      <div class="row2"><span>Object #</span><b>{{ o.physicalObjectId }}</b></div>
+      <button class="btn wide" (click)="openObject()">Open in plant map ↗</button>
+
+      <h5>Shape</h5>
+      <select class="wide" [ngModel]="o.shapeLocalId" (ngModelChange)="assignShape($event)">
+        <option [ngValue]="null">— none (auto primitive by type) —</option>
+        @for (s of shapes(); track s.localId) { <option [ngValue]="s.localId">{{ s.name }}</option> }
+      </select>
+      <label class="clr wide">Color <input type="color" [ngModel]="o.color || selectedShape()?.color || '#8a97a6'" (ngModelChange)="setColor($event)" /></label>
+      <label class="fld chk"><span>See-through shell</span><input type="checkbox" [checked]="!!o.shell" (change)="setShell($any($event.target).checked)" /></label>
+
+      <h5>Size (m)</h5>
+      <div class="xyz">
+        <label>W<input type="number" step="0.1" [ngModel]="o.size.w" (ngModelChange)="setSize('w', $event)" /></label>
+        <label>H<input type="number" step="0.1" [ngModel]="o.size.h" (ngModelChange)="setSize('h', $event)" /></label>
+        <label>D<input type="number" step="0.1" [ngModel]="o.size.d" (ngModelChange)="setSize('d', $event)" /></label>
+      </div>
+      <h5>Position (m)</h5>
+      <div class="xyz">
+        <label>X<input type="number" step="0.5" [ngModel]="o.pos.x" (ngModelChange)="setPos('x', $event)" /></label>
+        <label>Y<input type="number" step="0.5" [ngModel]="o.pos.y" (ngModelChange)="setPos('y', $event)" /></label>
+        <label>Z<input type="number" step="0.5" [ngModel]="o.pos.z" (ngModelChange)="setPos('z', $event)" /></label>
+      </div>
+      <h5>Rotation (°)</h5>
+      <div class="xyz">
+        <label>X<input type="number" step="15" [ngModel]="rotDeg('x')" (ngModelChange)="setRotDeg('x', $event)" /></label>
+        <label>Y<input type="number" step="15" [ngModel]="rotDeg('y')" (ngModelChange)="setRotDeg('y', $event)" /></label>
+        <label>Z<input type="number" step="15" [ngModel]="rotDeg('z')" (ngModelChange)="setRotDeg('z', $event)" /></label>
+      </div>
+
+      <h5>Hierarchy · shared</h5>
+      <label class="fld">Name<input type="text" [value]="o.name" (change)="setName($any($event.target).value)" /></label>
+      <label class="fld">Type
+        <select [ngModel]="o.type" (ngModelChange)="setType($event)">
+          @for (t of typeOptions; track t) { <option [value]="t">{{ t }}</option> }
+        </select>
+      </label>
+      <div class="row2"><span>Parent</span><b>{{ parentName() }}</b></div>
+      <label class="fld">Move under
+        <select [ngModel]="null" (ngModelChange)="moveUnder($event)">
+          <option [ngValue]="null">choose…</option>
+          @for (p of parentOptions(); track p.id) { <option [ngValue]="p.id">{{ p.label }}</option> }
+        </select>
+      </label>
+      <label class="fld">Level<input type="number" step="1" [value]="objectLevel()" (change)="setLevel($any($event.target).value)" title="floorIndex — logical level order; physical height is Position Y" /></label>
+      <p class="muted sm">Edits the PhysicalObject everywhere (tree · 2D map), not just this scene. Physical elevation = Position Y.</p>
+
+      <button class="btn danger wide" (click)="removeSelected()">Remove from scene</button>
+      <p class="muted sm">Removing takes it out of the 3D scene only — the PhysicalObject itself is untouched.</p>
+    </aside>
+  }
+</div>

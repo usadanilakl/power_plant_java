@@ -26,6 +26,7 @@
     "@angular/ssr": "^19.2.6",
     "@bradycorporation/brady-web-sdk": "^3.1.2",
     "@types/qrcode": "^1.5.6",
+    "@types/three": "^0.181.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "@zxing/ngx-scanner": "^20.0.0",
@@ -42,6 +43,7 @@
     "pixi.js": "^8.17.1",
     "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
+    "three": "^0.181.2",
     "tslib": "^2.3.0",
     "xlsx": "^0.18.5",
     "zone.js": "~0.15.0"

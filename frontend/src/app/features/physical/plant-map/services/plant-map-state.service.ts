@@ -45,6 +45,7 @@ export interface PipeFitting {
   id: string; type: string; at: { x: number; y: number };
   name?: string; tag?: string; desc?: string; double?: boolean; tag2?: string;
   nodeId?: number; // the fitting's PhysicalObject id (child of the pipe node)
+  closed?: boolean; // valve state for the visual flow sim (a closed valve blocks flow through its pipe)
 }
 /** A cross-section connection point on a pipe (like a P&ID off-page connector). `at` = which endpoint carries it
  *  (source = the pipe's END, destination = its START). `linkId` is SHARED by the two ports of one continuation so

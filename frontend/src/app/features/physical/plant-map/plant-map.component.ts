@@ -40,9 +40,9 @@ interface NestChild {
 interface NestItem { x: number; y: number; w: number; h: number; childId: number; name: string; color: string; shape: FootprintShape; depth: number; dim?: boolean; }
 /** A nested pipe (a descendant container's pipe), mapped into content coords. Carries its id/nodeId so it's
  *  clickable from the parent view (single-click = info, double-click = drill to the object). */
-interface NestPipe { id: string; nodeId?: number; points: string; color: string; width: number; depth: number; }
+interface NestPipe { id: string; nodeId?: number; points: string; color: string; width: number; depth: number; flowSegs?: string[]; }
 /** A nested fitting (a descendant pipe's fitting), mapped into content coords + scaled down by the nesting. */
-interface NestFitting { id: string; nodeId?: number; x: number; y: number; cat: string; path: string; actuator: string; code: string; color: string; size: number; depth: number; }
+interface NestFitting { id: string; nodeId?: number; x: number; y: number; cat: string; path: string; actuator: string; code: string; color: string; size: number; depth: number; isValve?: boolean; closed?: boolean; }
 
 // PipeGeo + PipeFitting are the entity-backed view-models — imported from the state service (each pipe/fitting is
 // a real PhysicalObject: pipe = a 'Pipe' placement, fitting = a child node whose geometry rides the pipe's JSON).
@@ -238,17 +238,25 @@ export class PlantMapComponent implements OnDestroy {
         if (s.hasChildren && r.w * z >= reveal && r.h * z >= 34) walk(r, s.childId, depth + 1);
       }
       for (const cp of cpipes) {
+        const fl = this.flowMode() ? this.flowResult().get(cp.id) : null; // map each flowing sub-segment into the footprint
         pipes.push({
           id: cp.id, nodeId: cp.nodeId,
           points: cp.points.map(pt => { const m = this.mapPointInto(rect, bb, pt); return `${m.x},${m.y}`; }).join(' '),
+          flowSegs: fl ? fl.segsPath.map(seg => seg.map(pt => { const m = this.mapPointInto(rect, bb, pt); return `${m.x},${m.y}`; }).join(' ')) : undefined,
           color: cp.color || '#5b9bd5', width: Math.max(1.5, (cp.width || 8) / scale), depth,
         });
-        // fittings, scaled down by the nesting; only when they'd be big enough on screen to read
+        // fittings, scaled down by the nesting; shown when big enough to read — BUT in flow mode always show VALVES
+        // (at a clickable min size) so the whole system is operable from the parent/zoomed-out view.
         const fsz = Math.min(1, 1 / scale);
-        if (24 * fsz * z >= 10) for (const f of (cp.fittings ?? [])) {
+        const readable = 24 * fsz * z >= 10;
+        const flow = this.flowMode();
+        for (const f of (cp.fittings ?? [])) {
           const m = this.mapPointInto(rect, bb, f.at);
           const rf = this.fittingRender(f, m.x, m.y);
-          fittings.push({ id: f.id, nodeId: f.nodeId, x: m.x, y: m.y, cat: rf.cat, path: rf.path, actuator: rf.actuator, code: rf.code, color: rf.color, size: fsz, depth });
+          const showForFlow = flow && rf.isValve;
+          if (!readable && !showForFlow) continue;
+          const size = showForFlow ? Math.max(fsz, 0.6 / z) : fsz; // ~14px clickable valve regardless of zoom
+          fittings.push({ id: f.id, nodeId: f.nodeId, x: m.x, y: m.y, cat: rf.cat, path: rf.path, actuator: rf.actuator, code: rf.code, color: rf.color, size, depth, isValve: rf.isValve, closed: rf.closed });
         }
       }
     };
@@ -474,14 +482,12 @@ export class PlantMapComponent implements OnDestroy {
         }
       });
       this.pipeGeos.update(l => [...l.filter(p => p.parentId !== containerId), ...cpipes]);
-      // View-from-top occlusion: drop a lower-deck item whose CENTRE sits under a top-deck item, so the top deck
-      // reads as solid and only true overhangs peek out (less clutter than seeing every lower box through the top).
+      // View-from-top occlusion: hide ONLY a lower-deck item that is FULLY under a top-deck item (pure clutter —
+      // never visible as an overhang). A partially-covered item STAYS so its overhang peeks out beyond the top.
       const tops = shapes.filter(s => !s.dim);
-      const visible = tops.length ? shapes.filter(s => {
-        if (!s.dim) return true;
-        const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-        return !tops.some(t => cx >= t.x && cx <= t.x + t.w && cy >= t.y && cy <= t.y + t.h);
-      }) : shapes;
+      const visible = tops.length ? shapes.filter(s =>
+        !s.dim || !tops.some(t => s.x >= t.x && s.y >= t.y && s.x + s.w <= t.x + t.w && s.y + s.h <= t.y + t.h)
+      ) : shapes;
       this.nestCache.set(containerId, visible);
     } catch {
       if (this.nestParent === parentDid) this.nestCache.set(containerId, []);
@@ -587,6 +593,11 @@ export class PlantMapComponent implements OnDestroy {
   pipeMode = signal(false);                            // pipe-draw tool active
   pipeSnap = signal(true);                             // 90° elbow snap while drawing
   snapGrid = signal(false);                            // snap pipe vertices + box move/resize to the 28px grid
+  // ── visual flow sim (no physics): click a source pipe → flow propagates through touching pipes, blocked by
+  //    closed valves; flowing pipes animate directionally. For learning how a system is connected/controlled. ──
+  flowMode = signal(false);
+  flowSource = signal<string | null>(null);
+  toggleFlowMode() { this.flowMode.update(v => !v); if (!this.flowMode()) this.flowSource.set(null); }
   pipeDraft = signal<{ x: number; y: number }[]>([]);  // vertices being laid
   pipeCursor = signal<{ x: number; y: number } | null>(null); // cursor → live guide segment
   selectedPipeId = signal<string | null>(null);
@@ -698,9 +709,13 @@ export class PlantMapComponent implements OnDestroy {
     const onBox = this.boxAt(p.x, p.y)?.childId ?? null; // anchor endpoints to equipment for cross-area follow
     if (!pts.length) this.pipeDraftEndA = onBox;
     this.pipeDraftEndB = onBox;
+    // Snap onto a nearby EXISTING pipe at ANY vertex → START on one = branch/tee; END on one = connect/join. This
+    // takes priority over the 90°/grid snap so tees land exactly on the target pipe.
+    const onPipe = this.snapToExistingPipe(p);
     let np: { x: number; y: number };
-    if (pts.length) np = this.snapPt(this.snapPipePoint(p, pts[pts.length - 1]));
-    else np = this.snapToExistingPipe(p) ?? this.snapPt(p); // branch-snap onto an existing pipe wins over grid-snap
+    if (onPipe) np = onPipe;
+    else if (pts.length) np = this.snapPt(this.snapPipePoint(p, pts[pts.length - 1]));
+    else np = this.snapPt(p);
     this.pipeDraft.set([...pts, np]);
   }
   cancelPipe() { this.pipeDraft.set([]); this.pipeCursor.set(null); this.pipeDraftEndA = null; this.pipeDraftEndB = null; }
@@ -829,6 +844,137 @@ export class PlantMapComponent implements OnDestroy {
     }
     return out;
   });
+
+  /** Junction dots where a pipe's endpoint sits ON another pipe (a tee/branch or a connection) — a small filled
+   *  node so the connection reads clearly, like a P&ID tee. */
+  pipeJunctions = computed<{ x: number; y: number }[]>(() => {
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    if (parent == null) return [];
+    const pipes = this.pipeGeos().filter(p => p.parentId === parent && p.points.length >= 2);
+    const out: { x: number; y: number }[] = [];
+    for (const p of pipes) {
+      for (const ep of [p.points[0], p.points[p.points.length - 1]]) {
+        for (const q of pipes) {
+          if (q.id === p.id) continue;
+          const near = this.nearestOnPipe(q.points, ep);
+          if (near && Math.hypot(near.x - ep.x, near.y - ep.y) <= 3.5) { out.push({ x: ep.x, y: ep.y }); break; }
+        }
+      }
+    }
+    return out;
+  });
+
+  // ── flow-graph geometry helpers ──
+  private pathAlong(points: { x: number; y: number }[]): number[] {
+    const a = [0];
+    for (let i = 1; i < points.length; i++) a.push(a[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+    return a;
+  }
+  private projAlong(points: { x: number; y: number }[], cum: number[], pos: { x: number; y: number }): number {
+    let best = Infinity, along = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const pr = this.projectOnSeg(pos, points[i], points[i + 1]);
+      const d = (pr.x - pos.x) ** 2 + (pr.y - pos.y) ** 2;
+      if (d < best) { best = d; along = cum[i] + Math.hypot(pr.x - points[i].x, pr.y - points[i].y); }
+    }
+    return along;
+  }
+  private pointAt(points: { x: number; y: number }[], cum: number[], along: number): { x: number; y: number } {
+    for (let i = 0; i < points.length - 1; i++) {
+      if (along <= cum[i + 1] || i === points.length - 2) {
+        const t = (along - cum[i]) / Math.max(1e-6, cum[i + 1] - cum[i]);
+        return { x: points[i].x + t * (points[i + 1].x - points[i].x), y: points[i].y + t * (points[i + 1].y - points[i].y) };
+      }
+    }
+    return points[points.length - 1];
+  }
+  private slicePath(points: { x: number; y: number }[], cum: number[], a1: number, a2: number): { x: number; y: number }[] {
+    const out = [this.pointAt(points, cum, a1)];
+    for (let i = 0; i < points.length; i++) if (cum[i] > a1 + 0.5 && cum[i] < a2 - 0.5) out.push(points[i]);
+    out.push(this.pointAt(points, cum, a2));
+    return out;
+  }
+
+  /** Visual-flow result: pipeId → the pipe's FLOWING sub-segments (a pipe can have several — e.g. a bypass leaves
+   *  one segment dry). Built as a NODE-EDGE graph: each pipe is split at its endpoints, valves and junctions;
+   *  edges are the sub-segments; nodes merge by position within a section and by linkId across sections. BFS from
+   *  the source spreads through junctions and OPEN valves; a CLOSED valve is a barrier → flow routes around via a
+   *  bypass. Each edge is oriented toward a blocking valve, else lower-depth→higher-depth (downhill from source). */
+  flowResult = computed<Map<string, { segsStr: string[]; segsPath: { x: number; y: number }[][] }>>(() => {
+    const out = new Map<string, { segsStr: string[]; segsPath: { x: number; y: number }[][] }>();
+    if (!this.flowMode()) return out;
+    const all = this.pipeGeos().filter(p => p.points.length >= 2);
+    const srcPipe = all.find(p => p.id === this.flowSource());
+    if (!srcPipe) return out;
+    const isValve = (f: PipeFitting) => this.fittingByKey.get(f.type)?.cat === 'valve';
+    const posKey = (parentId: number, p: { x: number; y: number }) => `${parentId}:${Math.round(p.x / 3)}_${Math.round(p.y / 3)}`;
+    const endNode = (pipe: PipeGeo, atStart: boolean) => {
+      const port = (pipe.ports ?? []).find(pp => pp.at === (atStart ? 'start' : 'end'));
+      return port ? 'port-' + port.linkId : posKey(pipe.parentId, atStart ? pipe.points[0] : pipe.points[pipe.points.length - 1]);
+    };
+    type Edge = { id: string; pipeId: string; a: string; b: string; path: { x: number; y: number }[] };
+    const edges: Edge[] = [];
+    const barrier = new Set<string>(); // closed-valve node ids
+    let eid = 0;
+    for (const p of all) {
+      const cum = this.pathAlong(p.points);
+      const pois: { along: number; node: string }[] = [
+        { along: 0, node: endNode(p, true) }, { along: cum[cum.length - 1], node: endNode(p, false) },
+      ];
+      for (const f of (p.fittings ?? [])) {
+        if (!isValve(f)) continue;
+        const node = `${p.id}:v:${f.id}`;
+        pois.push({ along: this.projAlong(p.points, cum, f.at), node });
+        if (f.closed) barrier.add(node);
+      }
+      for (const q of all) { // same-section junctions: another pipe's endpoint landing on this pipe
+        if (q.id === p.id || q.parentId !== p.parentId) continue;
+        for (const eq of [q.points[0], q.points[q.points.length - 1]]) {
+          const n = this.nearestOnPipe(p.points, eq);
+          if (n && Math.hypot(n.x - eq.x, n.y - eq.y) <= 4) pois.push({ along: this.projAlong(p.points, cum, eq), node: posKey(p.parentId, eq) });
+        }
+      }
+      pois.sort((x, y) => x.along - y.along);
+      const dd: { along: number; node: string }[] = [];
+      for (const poi of pois) if (!dd.length || poi.along - dd[dd.length - 1].along > 1) dd.push(poi);
+      for (let i = 0; i < dd.length - 1; i++)
+        edges.push({ id: 'e' + eid++, pipeId: p.id, a: dd[i].node, b: dd[i + 1].node, path: this.slicePath(p.points, cum, dd[i].along, dd[i + 1].along) });
+    }
+    const nodeEdges = new Map<string, Edge[]>();
+    const push = (node: string, e: Edge) => { const arr = nodeEdges.get(node); if (arr) arr.push(e); else nodeEdges.set(node, [e]); };
+    for (const e of edges) { push(e.a, e); push(e.b, e); }
+    // BFS from the source pipe's start node
+    const depth = new Map<string, number>([[endNode(srcPipe, true), 0]]);
+    const reached = new Set<string>();
+    const queue = [endNode(srcPipe, true)];
+    while (queue.length) {
+      const N = queue.shift()!;
+      if (barrier.has(N)) continue;         // a closed valve is a barrier — reached, but flow can't pass through it
+      const d = depth.get(N)!;
+      for (const e of (nodeEdges.get(N) ?? [])) {
+        reached.add(e.id);
+        const M = e.a === N ? e.b : e.a;
+        if (!depth.has(M)) { depth.set(M, d + 1); queue.push(M); }
+      }
+    }
+    for (const e of edges) {
+      if (!reached.has(e.id)) continue;
+      const aBar = barrier.has(e.a), bBar = barrier.has(e.b);
+      const forward = aBar !== bBar ? bBar : (depth.get(e.a) ?? Infinity) <= (depth.get(e.b) ?? Infinity); // toward a blocking valve, else downhill
+      const path = forward ? e.path : [...e.path].reverse();
+      const entry = out.get(e.pipeId) ?? { segsStr: [], segsPath: [] };
+      entry.segsPath.push(path);
+      entry.segsStr.push(path.map(pt => `${pt.x},${pt.y}`).join(' '));
+      out.set(e.pipeId, entry);
+    }
+    return out;
+  });
+  flowOf(id: string) { return this.flowResult().get(id) ?? null; }
+  /** Toggle a valve fitting open/closed (visual flow sim), persisting it. */
+  toggleValveClosed(fittingId: string) {
+    this.pipeGeos.update(l => l.map(p => ({ ...p, fittings: (p.fittings ?? []).map(f => (f.id === fittingId ? { ...f, closed: !f.closed } : f)) })));
+    this.savePipes();
+  }
 
   /** Jump through a cross-section connector to its counterpart section, pulsing the matching connector there so
    *  you can see where the run continues (like a P&ID off-page connector tag). */
@@ -1028,6 +1174,7 @@ export class PlantMapComponent implements OnDestroy {
       actuator: g?.cat === 'valve' ? (g?.code ?? '') : '', code: g?.cat === 'instrument' ? (g?.code ?? '') : '',
       color: g?.color ?? '#ccc', tag: f.tag ?? '', tag2: f.tag2 ?? '', double: !!f.double,
       sel: f.id === this.selectedFittingId(),
+      isValve: g?.cat === 'valve', closed: !!f.closed, // valve state for the flow sim
     };
   }
   /** Fittings to render on the current canvas (of pipes whose parent is the shown node). */
@@ -1060,8 +1207,12 @@ export class PlantMapComponent implements OnDestroy {
   }
   /** A nested pipe/fitting (a descendant's, shown via zoom) is clickable from the parent view: single-click selects
    *  it (info + Open-object), double-click drills to its object to edit. Mirrors nested boxes. */
-  onNestPipeClick(np: NestPipe) { this.selectPipe(np.id); }
-  onNestFittingClick(nf: NestFitting, ev?: Event) { this.selectFitting(nf.id, ev); }
+  onNestPipeClick(np: NestPipe) { if (this.flowMode()) { this.flowSource.set(np.id); return; } this.selectPipe(np.id); }
+  onNestFittingClick(nf: NestFitting, ev?: Event) {
+    ev?.stopPropagation();
+    if (this.flowMode()) { if (nf.cat === 'valve') this.toggleValveClosed(nf.id); return; }
+    this.selectFitting(nf.id);
+  }
 
   /** The selected pipe/fitting lives on the CURRENT canvas (so its edits persist here). A nested-selected one is
    *  info-only until you Open it — the inspector hides its edit controls and offers "Open object" instead. */
@@ -1099,8 +1250,19 @@ export class PlantMapComponent implements OnDestroy {
   // ── drag a fitting ALONG its pipe ──
   onFittingDown(ev: PointerEvent, id: string, pipeId: string) {
     ev.stopPropagation();
+    if (this.flowMode()) { // in flow mode a click toggles a valve open/closed (no drag/select)
+      const f = this.pipeGeos().flatMap(p => p.fittings ?? []).find(x => x.id === id);
+      if (f && this.fittingByKey.get(f.type)?.cat === 'valve') this.toggleValveClosed(id);
+      return;
+    }
     this.selectFitting(id);
     this.drag = { kind: 'fitting', fittingId: id, pipeId };
+  }
+  /** Pipe hit-line pointer-down: in flow mode → set it as the flow source; else select it. */
+  onPipeDown(ev: Event, id: string) {
+    ev.stopPropagation();
+    if (this.flowMode()) { this.flowSource.set(id); return; }
+    this.selectPipe(id);
   }
   private moveFitting(id: string, at: { x: number; y: number }) {
     this.pipeGeos.update(l => l.map(p => ({ ...p, fittings: (p.fittings ?? []).map(f => f.id === id ? { ...f, at } : f) })));

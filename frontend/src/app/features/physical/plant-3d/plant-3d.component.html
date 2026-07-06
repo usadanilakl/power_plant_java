@@ -1,0 +1,31 @@
+<div class="wrap">
+  <div class="host" #host></div>
+
+  <div class="hud">
+    <div class="title">Plant 3D <span class="sub">sample · {{ count() }} items</span> <a class="build-link" routerLink="/plant/3d/build">Build ›</a></div>
+    <div class="hint">drag to orbit · scroll / pinch to zoom · tap an item</div>
+    <div class="legend">
+      <span><i class="dot on"></i>online</span>
+      <span><i class="dot mx"></i>maintenance</span>
+      <span><i class="dot fa"></i>fault</span>
+      <span><i class="line pf"></i>process</span>
+      <span><i class="line el"></i>electrical</span>
+      <span><i class="line sh"></i>shaft</span>
+    </div>
+  </div>
+
+  <aside class="info" *ngIf="selected() as s">
+    <button class="x" (click)="selected.set(null)">×</button>
+    <h3>{{ s.name }}</h3>
+    <div class="row"><span>Type</span><b>{{ s.type }}</b></div>
+    <div class="row" *ngIf="s.metadata?.assetTag"><span>Tag</span><b>{{ s.metadata?.assetTag }}</b></div>
+    <div class="row"><span>Status</span><b class="st-{{ s.status }}">{{ s.status }}</b></div>
+    <div class="row"><span>Size w×h×d</span><b>{{ s.size.width }}×{{ s.size.height }}×{{ s.size.depth }}</b></div>
+    <div class="row"><span>Position</span><b>{{ s.position?.x | number:'1.0-1' }}, {{ s.position?.y | number:'1.0-1' }}, {{ s.position?.z | number:'1.0-1' }}</b></div>
+    <div class="row" *ngIf="s.placement">
+      <span>Placed by</span>
+      <b>{{ s.placement.ownConnectionPoint }} → {{ s.placement.fromEquipmentId }}.{{ s.placement.externalConnectionPoint }}</b>
+    </div>
+    <p class="note" *ngIf="s.placement">No stored position — the layout engine computed it from the connection.</p>
+  </aside>
+</div>

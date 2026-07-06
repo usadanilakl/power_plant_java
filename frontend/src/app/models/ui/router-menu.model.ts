@@ -128,7 +128,9 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/plant/map',
         requiresFullAccess: true,
         items: [
-            { route: '/plant/map', label: 'Plant Map', icon: 'map', iconColor: '#26A69A' }
+            { route: '/plant/map', label: 'Plant Map', icon: 'map', iconColor: '#26A69A' },
+            { route: '/plant/3d', label: 'Plant 3D', icon: 'view_in_ar', iconColor: '#26A69A' },
+            { route: '/plant/3d/build', label: 'Plant 3D Builder', icon: 'construction', iconColor: '#26A69A' }
         ]
     },
     {

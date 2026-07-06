@@ -144,10 +144,23 @@
       <section *ngIf="tab() === 'catalog'">
         <div class="actions">
           <button class="primary" (click)="refreshCatalog()" [disabled]="loading()">Refresh catalog from Maximo</button>
+          <button (click)="showAddPm.set(!showAddPm())">＋ Add recurring PM</button>
           <input class="search" type="search" [ngModel]="catalogSearch()" (ngModelChange)="catalogSearch.set($event)"
                  placeholder="Search PM, description, shift…" />
           <span class="muted" *ngIf="catalogSearch()">{{ visibleCatalog().length }} / {{ catalog().length }}</span>
           <span class="muted">Dedupes ~1 year of PM work orders by pmnum; set each PM’s shift. Click a column to sort.</span>
+        </div>
+
+        <!-- Manual add: for a recurring PM the auto-scan missed (no WO needed) -->
+        <div class="add-pm" *ngIf="showAddPm()">
+          <input [(ngModel)]="newPmNumber" class="add-num" placeholder="PM # (optional, e.g. JG-1183)" />
+          <input [(ngModel)]="newPmDescription" class="add-desc" placeholder="Description (required)"
+                 (keyup.enter)="addRecurringManual()" />
+          <button class="primary" (click)="addRecurringManual()" [disabled]="addingPm() || !newPmDescription.trim()">
+            {{ addingPm() ? 'Adding…' : 'Add' }}
+          </button>
+          <button (click)="showAddPm.set(false)">Cancel</button>
+          <span class="muted">Manual entry — kept through refreshes (marked ✎). Matches WOs by PM # or description; set shift/cadence/day on the row after.</span>
         </div>
         <table *ngIf="visibleCatalog().length; else noCatalog">
           <thead>
