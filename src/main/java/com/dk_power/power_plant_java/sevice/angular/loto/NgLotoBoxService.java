@@ -165,26 +165,38 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     }
 
     /**
-     * Update ESP device with box LED color using EspLedService
+     * Enqueue a full-array refresh for the ESP that owns this box.
+     * <p>
+     * All ESP writes go through the queue → leader → EspLedService.syncFullLedArray
+     * path. Never a direct synchronous HTTP write from here — that path used to
+     * exist but it (a) bypassed retries so a momentarily-offline ESP silently
+     * lost the update, and (b) caused multi-writer races when several desktops
+     * had the same box up on-screen.
+     * <p>
+     * The queue dedupes per ESP, so calling this in a tight loop (e.g. from
+     * {@link #syncAllBoxesToEsp}) enqueues at most one refresh per ESP.
      */
     private void updateEspDevice(LotoBox box) {
-        try {
-            if (box.getLedStrip() != null && box.getLedStrip().getEspDevice() != null) {
-                espLedService.updateLedRange(
-                    box.getLedStrip().getEspDevice(),
-                    null,  // stripNumber not used in standard WLED API
-                    box.getRangeStart(),
-                    box.getRangeEnd(),
-                    box.getR(),
-                    box.getG(),
-                    box.getB(),
-                    box.getBrightness()
-                );
-            }
-        } catch (Exception e) {
-            // Log error but don't fail the database save
-            System.err.println("Failed to update ESP device for box " + box.getNumber() + ": " + e.getMessage());
+        if (box == null || box.getLedStrip() == null || box.getLedStrip().getEspDevice() == null) return;
+        wledCommandQueueService.enqueueEspRefresh(box.getLedStrip().getEspDevice().getId());
+    }
+
+    /**
+     * Set or clear the manual-override flag for a box by box number.
+     * <p>
+     * When true, {@link #updateBoxColorForStatus} is a no-op for this box — LOTO
+     * lifecycle events won't repaint the LED. The current color is preserved,
+     * so no ESP write is triggered here either; call {@link #updateBoxLedColorByNumber}
+     * separately if the operator also wants to change the color.
+     */
+    public LotoBoxDto setManualOverrideByNumber(Integer boxNumber, boolean manualOverride) {
+        LotoBox box = lotoBoxRepo.findByNumber(boxNumber);
+        if (box == null) {
+            throw new RuntimeException("LotoBox not found with number: " + boxNumber);
         }
+        box.setManualOverride(manualOverride);
+        lotoBoxRepo.save(box);
+        return lotoBoxMapper.convertToDto(box);
     }
 
     /**
@@ -257,6 +269,12 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     }
 
     public void updateBoxColorForStatus(LotoBox box, String statusName) {
+        // Manual override wins over LOTO-driven color changes. Operator has
+        // explicitly claimed the box's color; permit lifecycle events don't
+        // clobber it until the operator clears the override.
+        if (Boolean.TRUE.equals(box.getManualOverride())) {
+            return;
+        }
         LotoStatusColorMapping.RgbColor color = LotoStatusColorMapping.getColorForStatus(statusName);
         box.setR(color.r());
         box.setG(color.g());
@@ -264,18 +282,9 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         box.setBrightness(color.brightness());
         lotoBoxRepo.save(box);
 
-        if (box.getLedStrip() != null && box.getLedStrip().getEspDevice() != null) {
-            Map<String, Object> segment = new HashMap<>();
-            segment.put("id", box.getNumber());
-            segment.put("col", List.of(List.of(color.r(), color.g(), color.b())));
-
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("seg", segment);
-            payload.put("bri", color.brightness());
-
-            wledCommandQueueService.enqueueCommand(
-                    box.getLedStrip().getEspDevice(), payload, box.getNumber());
-        }
+        // Queue a full-array refresh for the owning ESP. Dedups against any
+        // pending refresh so a burst of status changes coalesces to one POST.
+        updateEspDevice(box);
     }
 
     /**

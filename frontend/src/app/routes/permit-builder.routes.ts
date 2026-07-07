@@ -22,8 +22,7 @@ import { LotoPermitComponent } from '../features/permit-builder/loto/loto-permit
 import { LotoPermitSideMenuComponent } from '../features/permit-builder/loto/loto-side-menu/loto-permit-side-menu.component';
 import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
 import { RfJhaSideMenuComponent } from '../features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component';
-import { LotoBoardComponent } from '../features/permit-builder/loto-board/loto-board.component';
-import { LotoUsageMonitorComponent } from '../features/permit-builder/loto-usage-monitor/loto-usage-monitor.component';
+// LotoBoard / LotoUsageMonitor moved to LOTO_ROUTES (Plant-gated, web-accessible) — see loto.routes.ts
 
 export const PERMIT_BUILDER_ROUTES: Routes = [
   {
@@ -92,8 +91,6 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         component: LotoPermitComponent,
         data: { leftMenu: LotoPermitSideMenuComponent }
       },
-      { path: 'loto-board', component: LotoBoardComponent },
-      { path: 'loto-usage', component: LotoUsageMonitorComponent },
     ]
   }
 ];

@@ -36,4 +36,7 @@ public class RoundsReportDto {
 
     /** Table body — one inner list per response row, aligned to {@code columns}. */
     private List<List<String>> rows;
+
+    /** Shift-aggregated reports: "YYYY-MM-DD|Day"/"…|Night" per row for trend extraction. */
+    private List<String> shiftKeys;
 }

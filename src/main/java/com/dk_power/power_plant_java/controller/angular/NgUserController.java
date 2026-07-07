@@ -187,6 +187,7 @@ public class NgUserController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: user-picker options (read; SecurityConfig keeps rest of /ng/users ADMIN-only)
     @GetMapping("/all-options")
     public ResponseEntity<NgApiResponse<List<UserDto>>> getAllOptions() {
         try {

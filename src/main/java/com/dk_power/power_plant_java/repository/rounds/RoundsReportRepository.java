@@ -20,4 +20,7 @@ public interface RoundsReportRepository extends BaseRepository<RoundsReport> {
 
     /** Up to 50 most recent reports, newest first. */
     List<RoundsReport> findTop50ByOrderByIdDesc();
+
+    /** All stored reports, oldest scrape first — for rebuilding the trend projection. */
+    List<RoundsReport> findAllByOrderByScrapedAtAsc();
 }

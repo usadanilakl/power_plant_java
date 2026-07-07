@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagStepExecutionService;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import jakarta.persistence.EntityNotFoundException;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/ng/red-tag")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgRedTagController {
     private final NgLotoPointService lotoPointService;
     private final NgLotoService lotoService;

@@ -36,10 +36,17 @@
   </header>
 
   @if (!isLoggedIn() && serverStatus.isOnline()) {
-    <div class="login-banner">
-      <span>Sign in to access permits, messages, and more.</span>
-      <button class="banner-login-btn" (click)="login()">Sign In</button>
-    </div>
+    @if (needsRegistrationCompletion()) {
+      <div class="login-banner">
+        <span>Finish signing up to unlock permits, messages, and more.</span>
+        <button class="banner-login-btn" (click)="finishSignup()">Finish signing up</button>
+      </div>
+    } @else {
+      <div class="login-banner">
+        <span>Sign in to access permits, messages, and more.</span>
+        <button class="banner-login-btn" (click)="login()">Sign In</button>
+      </div>
+    }
   }
 
   <div class="content-wrapper">

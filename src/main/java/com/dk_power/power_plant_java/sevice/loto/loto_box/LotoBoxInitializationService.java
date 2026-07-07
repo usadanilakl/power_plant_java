@@ -113,15 +113,16 @@ public class LotoBoxInitializationService {
     }
 
     /**
-     * Full initialization: seed DB + push WLED settings to ESP controllers.
-     * Only call when ESP controllers are reachable (manual trigger or hub startup).
+     * Full initialization: seed DB + push current state to every ESP as one
+     * full LED-array write per device. Only call when ESP controllers are
+     * reachable (manual trigger or hub startup).
      */
     @Transactional
     public void initializeLotoBoxesWithEspDevices() {
         seedLotoBoxData();
 
-        System.out.println("Initializing WLED settings on ESP devices...");
-        espLedService.initializeAllEspDevices();
+        System.out.println("Pushing initial LED array to ESP devices...");
+        espLedService.syncAllEspDevices();
     }
     
     /**

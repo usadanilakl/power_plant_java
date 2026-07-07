@@ -56,8 +56,9 @@ export const routes: Routes = [
   // Full-access feature routes (restricted users redirected to /home)
   { path: 'permits-monitor', component: PermitsMonitorComponent, canActivate: [authGuard, fullAccessGuard] },
   ...FILE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...LOTO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...LOTO_POINTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  // LOTO (incl. LOTO Standards) — Plant staff reach it by role, like Maximo (no FULL grant needed).
+  ...LOTO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, plantAccessGuard] })),
+  ...LOTO_POINTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, plantAccessGuard] })),
   ...PERMIT_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...SCHEDULER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...FORM_DESIGNER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),

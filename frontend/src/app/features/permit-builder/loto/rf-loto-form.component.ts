@@ -1612,6 +1612,6 @@ export class RfLotoFormComponent {
   proposeChangesToStandard(): void {
     const stdId = this.entity().sourceStandardId;
     if (!stdId) { alert('This LOTO has no source standard.'); return; }
-    this.router.navigate(['/loto/loto-standards'], { queryParams: { standardId: stdId } });
+    this.router.navigate(['/loto-standard'], { queryParams: { standardId: stdId } });
   }
 }

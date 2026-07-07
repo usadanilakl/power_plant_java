@@ -66,14 +66,15 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     color: '#e74c3c',
     defaultRoute: '/loto',
     requiresFullAccess: true,
+    requiresPlant: true, // Plant staff see LOTO off-LAN by role (like Maximo), without a FULL grant
     items: [
       { title: 'LOTO', description: 'Manage LOTO procedures', icon: 'lock', route: '/loto', color: '#e74c3c' },
       { title: 'Loto Points', description: 'Manage isolation points', icon: 'location_on', route: '/loto-points', color: '#9b59b6' },
       { title: 'LOTO Standards', description: 'View standard procedures', icon: 'description', route: '/loto-standard', color: '#e67e22' },
       { title: 'Loto Builder', description: 'Build LOTO procedures', icon: 'build', route: '/loto-builder', color: '#1abc9c' },
       { title: 'Loto Conflicts', description: 'Find and resolve LOTO point conflicts', icon: 'warning', route: '/loto-conflicts', color: '#FF7043' },
-      { title: 'LOTO Board', description: 'Active LOTO permits and box status', icon: 'dashboard', route: '/permit-builder/loto-board', color: '#EC407A' },
-      { title: 'LOTO Usage', description: 'Monitor LOTO usage, jobs, and foremen', icon: 'monitor_heart', route: '/permit-builder/loto-usage', color: '#26C6DA' },
+      { title: 'LOTO Board', description: 'Active LOTO permits and box status', icon: 'dashboard', route: '/loto-board', color: '#EC407A' },
+      { title: 'LOTO Usage', description: 'Monitor LOTO usage, jobs, and foremen', icon: 'monitor_heart', route: '/loto-usage', color: '#26C6DA' },
       { title: '3D Models', description: 'Manage 3D-printable LOTO device models', icon: 'view_in_ar', route: '/3d-models', color: '#00ACC1' }
     ]
   },
@@ -95,8 +96,8 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Energized Work', description: 'Energized electrical work permits', icon: 'bolt', route: '/permit-builder/energized-work-permits', color: '#f1c40f' },
       { title: 'Excavation', description: 'Excavation work permits', icon: 'construction', route: '/permit-builder/excavation-permits', color: '#795548' },
       { title: 'Venting/Purging', description: 'Venting and purging permits', icon: 'air', route: '/permit-builder/venting-permits', color: '#00bcd4' },
-      { title: 'LOTO Board', description: 'Active LOTOs and box grid', icon: 'dashboard', route: '/permit-builder/loto-board', color: '#EC407A' },
-      { title: 'LOTO Usage', description: 'Monitor LOTO usage and foremen', icon: 'monitor_heart', route: '/permit-builder/loto-usage', color: '#26C6DA' },
+      { title: 'LOTO Board', description: 'Active LOTOs and box grid', icon: 'dashboard', route: '/loto-board', color: '#EC407A' },
+      { title: 'LOTO Usage', description: 'Monitor LOTO usage and foremen', icon: 'monitor_heart', route: '/loto-usage', color: '#26C6DA' },
       { title: 'Scheduler', description: 'Schedule tasks', icon: 'schedule', route: '/scheduler', color: '#2ecc71' }
     ]
   },

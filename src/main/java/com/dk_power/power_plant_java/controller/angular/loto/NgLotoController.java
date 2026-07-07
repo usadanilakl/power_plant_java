@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
 import com.dk_power.power_plant_java.sevice.angular.loto.LotoImportService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
@@ -25,6 +26,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/ng/lotos")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgLotoController {
     private final NgLotoService ngLotoService;
     private final LotoImportService lotoImportService;

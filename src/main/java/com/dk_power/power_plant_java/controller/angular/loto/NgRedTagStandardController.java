@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.RedTagStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.RedTagStandardMatchDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgRedTagStandardService;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/ng/red-tag-standards")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgRedTagStandardController {
 
     private final NgRedTagStandardService service;

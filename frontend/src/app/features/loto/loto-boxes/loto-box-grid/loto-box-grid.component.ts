@@ -221,7 +221,7 @@ export class LotoBoxGridComponent implements OnInit {
   }
 
   openLoto(lotoId: number) {
-    this.router.navigate(['/permit-builder/lotos'], { queryParams: { lotoId } });
+    this.router.navigate(['/loto/loto'], { queryParams: { lotoId } });
     this.closeSidePanel();
   }
 

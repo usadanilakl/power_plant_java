@@ -24,6 +24,7 @@ public class NgDailyPermitPackageController {
     private final NgDailyPermitPackageService ngDailyPermitPackageService;
     private final RedTagStepExecutionService redTagStepExecutionService;
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: loto-board data ONLY (rest of this controller stays closed)
     @GetMapping("/loto-board")
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getLotoBoard() {
         try {

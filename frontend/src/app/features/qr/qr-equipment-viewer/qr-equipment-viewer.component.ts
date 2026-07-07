@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, inject, signal, computed, effect, OnInit, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -10,7 +10,10 @@ import {
 } from '../../../shared/image/refactored/rf-unified-image-viewer/rf-unified-image-viewer.component';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
-import { RfShape } from '../../../shared/image/refactored/models/fr-shape.model';
+import { FileConnectorDto } from '../../../models/file/file-connector.model';
+import { RfShape, FileConnectorShape } from '../../../shared/image/refactored/models/fr-shape.model';
+import { RfFileConnectorApiService } from '../../files/refactored/services/rf-file-connector-api.service';
+import { FileConnectorMapperService } from '../../files/refactored/services/file-connector-mapper.service';
 
 /**
  * QR match returned by the backend resolver. One tag can match multiple
@@ -32,7 +35,13 @@ import { RfShape } from '../../../shared/image/refactored/models/fr-shape.model'
  *    of a broken empty canvas.
  */
 interface QrMatch {
-  type: 'lotoPoint' | 'equipment';
+  /**
+   * Where the match came from:
+   *  - {@code lotoPoint} / {@code equipment}: tag lookup hit.
+   *  - {@code file}: browse-mode result (connector click), no highlighted
+   *    entity — user is just navigating drawings via off-page references.
+   */
+  type: 'lotoPoint' | 'equipment' | 'file';
   id: number;
   tagNumber: string;
   description: string;
@@ -64,6 +73,8 @@ export class QrEquipmentViewerComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private http = inject(HttpClient);
+  private connectorApi = inject(RfFileConnectorApiService);
+  private connectorMapper = inject(FileConnectorMapperService);
 
   tagNumber = signal<string>('');
   loading = signal(true);
@@ -105,6 +116,28 @@ export class QrEquipmentViewerComponent implements OnInit {
   });
 
   /**
+   * Connectors drawn on the currently visible P&ID. Loaded whenever the
+   * drawing file changes (see effect in constructor). Stored raw (DTOs)
+   * so click handlers can read {@code targetFileId} without a re-fetch.
+   */
+  connectors = signal<FileConnectorDto[]>([]);
+
+  /**
+   * File-connector shapes mapped for the canvas. Passed to the shared viewer
+   * via {@code additionalShapes} so it overlays them on top of the equipment
+   * shapes it computes internally.
+   */
+  connectorShapes = computed<RfShape[]>(() => {
+    return this.connectorMapper.mapAllToRfShapes(this.connectors());
+  });
+
+  /** File id of the currently visible drawing, or null when no drawing is loaded. */
+  private currentDrawingFileId = computed<number | null>(() => {
+    const eq = this.activeEquipmentList().find(e => e.mainFileObject?.id != null);
+    return eq?.mainFileObject?.id ?? null;
+  });
+
+  /**
    * Data source for the shared image viewer. Only wired when the active
    * match has a drawing — otherwise the viewer is hidden and we render a
    * "no drawing available" details-only card instead.
@@ -140,8 +173,14 @@ export class QrEquipmentViewerComponent implements OnInit {
   preferJpgRaster = computed<boolean>(() => {
     const m = this.activeMatch();
     if (!m || !m.hasDrawing) return false;
-    const highlightEquipment = this.activeEquipmentList().find(eq => eq.id === m.targetEquipmentId);
-    const exts = highlightEquipment?.mainFileObject?.extensions;
+    // Pick the FIRST equipment with a resolvable mainFileObject rather than
+    // the highlighted one — in browse-mode (type=='file', reached via a
+    // connector click) targetEquipmentId is null but the drawing still needs
+    // to know whether a JPG derivative exists. Every equipment on the P&ID
+    // shares the same mainFile, so any of them can answer the extensions
+    // question.
+    const anyEquipmentOnPid = this.activeEquipmentList().find(eq => eq.mainFileObject != null);
+    const exts = anyEquipmentOnPid?.mainFileObject?.extensions;
     return Array.isArray(exts) && exts.some(e => e?.toLowerCase() === 'jpg');
   });
 
@@ -155,9 +194,13 @@ export class QrEquipmentViewerComponent implements OnInit {
     emptyStateMessage: 'No P&ID found for this equipment.',
   };
 
-  /** Display helper: capitalized "LOTO Point" / "Equipment" for the picker. */
+  /** Display helper: capitalized "LOTO Point" / "Equipment" / "P&ID" for the picker. */
   matchTypeLabel(m: QrMatch): string {
-    return m.type === 'lotoPoint' ? 'LOTO Point' : 'Equipment';
+    switch (m.type) {
+      case 'lotoPoint': return 'LOTO Point';
+      case 'equipment': return 'Equipment';
+      case 'file':      return 'P&ID';
+    }
   }
 
   /** Display helper: user-facing message for a match that can't render its drawing. */
@@ -179,6 +222,29 @@ export class QrEquipmentViewerComponent implements OnInit {
   }
   asEquipment(target: any): EquipmentDto | null {
     return target ? (target as EquipmentDto) : null;
+  }
+
+  constructor() {
+    // Whenever the visible drawing changes (initial load, picker pick, or a
+    // connector click that swaps the active file), refresh the connector
+    // overlays. Skipped when there's no drawing to load them for.
+    effect(() => {
+      const fileId = this.currentDrawingFileId();
+      if (fileId == null) {
+        this.connectors.set([]);
+        return;
+      }
+      this.connectorApi.bySourceFile(fileId).subscribe({
+        next: (resp) => {
+          const raw = resp?.responseData ?? [];
+          this.connectors.set(raw.map(c => new FileConnectorDto(c)));
+        },
+        error: (err) => {
+          console.warn('[QR] Failed to load connectors for file', fileId, err);
+          this.connectors.set([]);
+        },
+      });
+    });
   }
 
   ngOnInit(): void {
@@ -234,8 +300,66 @@ export class QrEquipmentViewerComponent implements OnInit {
   }
 
   onShapeClicked(shape: RfShape): void {
+    // Connector click → swap the active drawing to the target file (browse
+    // mode). Everything else (equipment shapes) opens the detail panel.
+    if (shape.type === 'file-connector') {
+      this.navigateToConnectorTarget(shape as FileConnectorShape);
+      return;
+    }
     const equipment = this.activeEquipmentList().find(eq => eq.id === shape.id) ?? null;
     this.selectedEquipment.set(equipment);
+  }
+
+  /**
+   * Load the connector's target file as a browse-mode match and drop the
+   * result straight into {@code activeMatch}. Reuses the same signal so
+   * every downstream computed (equipment list, connectors, JPG preference)
+   * re-derives automatically — no separate "current file" state to keep
+   * in sync.
+   * <p>
+   * URL is intentionally left unchanged: the initial tag is still what the
+   * QR encodes, and browser back returns to it. Connector-hopping is
+   * treated as in-view navigation, not history.
+   */
+  private navigateToConnectorTarget(shape: FileConnectorShape): void {
+    if (!shape.targetFileId) {
+      console.warn('[QR] Connector clicked but has no targetFileId', shape);
+      return;
+    }
+    this.navigateToFileId(shape.targetFileId);
+  }
+
+  /** Chip-tap entry point mirroring the shape-click flow. */
+  jumpToConnector(connector: FileConnectorDto): void {
+    if (!connector.targetFileId) return;
+    this.navigateToFileId(connector.targetFileId);
+  }
+
+  private navigateToFileId(fileId: number): void {
+    this.selectedEquipment.set(null);
+    this.loading.set(true);
+    this.http.get<QrLookupResponse>(
+      `${environment.apiUrl}/qr/file/${fileId}`
+    ).subscribe({
+      next: (response) => {
+        const data = response.responseData as unknown as QrMatch;
+        if (!data) {
+          this.error.set(`Target drawing #${fileId} not found.`);
+          this.loading.set(false);
+          return;
+        }
+        // Single-drawing browse: only match, no picker. Replace matches so
+        // the "Back to picker" affordance disappears while browsing files.
+        this.matches.set([data]);
+        this.activeMatch.set(data);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('[QR] Failed to load target file', fileId, err);
+        this.error.set('Failed to open referenced drawing.');
+        this.loading.set(false);
+      },
+    });
   }
 
   closeDetail(): void {

@@ -6,6 +6,8 @@ export interface RouterMenuItem{
 export type RouterMenuItems = RouterMenuItem[];
 
 // Main menu items
+// No-login "Quick Submit" tier — always available with just basic info.
+// (SDS Audit, Messages, My Permits require sign-in and live on the Home grid.)
 export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/home', label: 'Home' },
     { route: '/work-request', label: 'Work Request' },
@@ -14,7 +16,6 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/field-lists', label: 'Field Lists' },
     { route: '/inventory', label: 'Inventory' },
     { route: '/sds', label: 'SDS Chemicals' },
-    { route: '/sds-audit', label: 'SDS Audit' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

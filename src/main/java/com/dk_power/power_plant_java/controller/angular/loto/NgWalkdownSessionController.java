@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.WalkdownSessionDto;
 import com.dk_power.power_plant_java.mappers.permits.WalkdownSessionMapper;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgWalkdownSessionService;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/ng/loto/walkdown-sessions")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgWalkdownSessionController {
     private final NgWalkdownSessionService service;
     private final WalkdownSessionMapper mapper;

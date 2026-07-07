@@ -55,6 +55,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         color: '#FFA726',
         defaultRoute: '/loto',
         requiresFullAccess: true,
+        requiresPlant: true, // Plant staff see LOTO off-LAN by role (like Maximo)
         items: [
             { route: '/loto', label: 'LOTO', icon: 'lock', iconColor: '#FFA726' },
             { route: '/loto-points', label: 'Loto Points', icon: 'place', iconColor: '#EF5350', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
@@ -62,8 +63,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/red-tag-standards', label: 'Red Tag Standards', icon: 'sell', iconColor: '#EF5350' },
             { route: '/loto-builder', label: 'Loto Builder', icon: 'construction', iconColor: '#42A5F5' },
             { route: '/loto-conflicts', label: 'Loto Conflicts', icon: 'warning', iconColor: '#FF7043' },
-            { route: '/permit-builder/loto-board', label: 'LOTO Board', icon: 'dashboard', iconColor: '#EC407A' },
-            { route: '/permit-builder/loto-usage', label: 'LOTO Usage', icon: 'monitor_heart', iconColor: '#26C6DA' },
+            { route: '/loto-board', label: 'LOTO Board', icon: 'dashboard', iconColor: '#EC407A' },
+            { route: '/loto-usage', label: 'LOTO Usage', icon: 'monitor_heart', iconColor: '#26C6DA' },
             { route: '/3d-models', label: '3D Models', icon: 'view_in_ar', iconColor: '#00ACC1' }
         ]
     },
@@ -227,8 +228,8 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Excavation', route: './excavation-permits' },
     { label: 'Venting/Purging', route: './venting-permits' },
     { label: 'LOTO', route: './lotos' },
-    { label: 'LOTO Board', route: './loto-board' },
-    { label: 'LOTO Usage', route: './loto-usage' },
+    { label: 'LOTO Board', route: '/loto-board' },
+    { label: 'LOTO Usage', route: '/loto-usage' },
     { label: 'Scheduler', route: '/scheduler' },
 ]
 

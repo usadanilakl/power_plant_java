@@ -113,6 +113,20 @@ export class RfUnifiedImageViewerComponent {
    */
   forceRasterImage = input<boolean>(false);
 
+  /**
+   * Extra shapes to overlay on top of whatever the viewer computes from
+   * {@link dataSource}. Consumers that need to draw shapes the viewer's own
+   * data source can't produce (currently only file-connectors) supply them
+   * here already mapped to {@link RfShape}. Default empty — existing
+   * consumers are unaffected.
+   * <p>
+   * These are appended after the equipment/loto shapes so they render on top
+   * (last-drawn wins on the canvas). Nothing filters by {@code fileId} here;
+   * callers are responsible for supplying only shapes that belong on the
+   * currently visible drawing.
+   */
+  additionalShapes = input<RfShape[]>([]);
+
   // ==================== OUTPUTS ====================
 
   imageSelected = output<CarouselImage>();
@@ -358,6 +372,12 @@ export class RfUnifiedImageViewerComponent {
         }
         break;
     }
+
+    // Append caller-supplied overlays (currently file-connectors — the viewer's
+    // data source can't produce them because they're a separate entity, so the
+    // consumer fetches + maps and hands them in ready-to-render).
+    const extra = this.additionalShapes();
+    if (extra.length > 0) shapes.push(...extra);
 
     return shapes;
   });

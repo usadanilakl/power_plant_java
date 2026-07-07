@@ -5,6 +5,7 @@ import { AuthService } from '../../auth/auth.service';
 import { UserIconComponent } from "../../auth/user/user-icon/user-icon.component";
 import { ServerStatusComponent } from "../../shared/server-status/server-status.component";
 import { ServerStatusService } from "../../services/server-status.service";
+import { UserSetupService } from "../../services/user-setup.service";
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -23,6 +24,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
 
   authService = inject(AuthService);
   serverStatus = inject(ServerStatusService);
+  private userSetup = inject(UserSetupService);
   private router = inject(Router);
   private renderer = inject(Renderer2);
 
@@ -296,6 +298,15 @@ onOverlayClick = (event: MouseEvent) => {
   }
   login(): void {
     this.router.navigate(['/login']);
+  }
+  /** A user who set up basic info (e.g. offline) but hasn't completed server registration yet. */
+  needsRegistrationCompletion(): boolean {
+    if (this.authService.isLoggedIn()) return false;
+    const data = this.userSetup.getUserData();
+    return !!data && this.userSetup.isValid() && !data.registeredOnServer;
+  }
+  finishSignup(): void {
+    this.router.navigate(['/login'], { queryParams: { complete: '1' } });
   }
   goToMessages(): void {
     this.router.navigate(['/messages']);

@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
@@ -44,6 +45,7 @@ public class NgQrController {
 
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
+    private final FileRepo fileRepo;
     private final NgEquipmentService ngEquipmentService;
     private final NgLotoPointService ngLotoPointService;
 
@@ -163,6 +165,58 @@ public class NgQrController {
             match.put("hasDrawing", true);
         }
         return match;
+    }
+
+    /**
+     * Browse a P&ID directly by file id — no tag lookup, no highlight.
+     * <p>
+     * Entry point for connector-driven navigation: when the QR viewer renders
+     * a file-connector shape and the user taps it, the frontend calls this
+     * endpoint with {@code targetFileId} to swap the active drawing to the
+     * referenced file. Response mirrors the {@link #buildEquipmentMatch}
+     * shape so the frontend can drop the result into its {@code activeMatch}
+     * signal without a second code path — {@code type} is set to
+     * {@code "file"} to distinguish it from a tag hit.
+     * <p>
+     * {@code targetEquipmentId} is intentionally null: the user arrived via
+     * a connector, not a specific equipment, so nothing on the drawing gets
+     * a highlight ring. All equipment on the file are still returned so the
+     * viewer renders their click-through shapes.
+     */
+    @Transactional(readOnly = true)
+    @GetMapping("/file/{fileId}")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> browseFile(
+            @PathVariable Long fileId) {
+        try {
+            FileObject file = fileRepo.findById(fileId).orElse(null);
+            if (file == null) {
+                log.info("[QR] File browse: fileId={}, not found", fileId);
+                return ResponseEntity.notFound().build();
+            }
+
+            List<EquipmentDto> onPid = equipmentRepo.findByMainFile_Id(fileId).stream()
+                    .map(ngEquipmentService::toDto)
+                    .toList();
+
+            Map<String, Object> match = new LinkedHashMap<>();
+            match.put("type", "file");
+            match.put("id", file.getId());
+            match.put("tagNumber", file.getFileNumber() != null ? file.getFileNumber() : file.getName());
+            match.put("description", file.getName());
+            // No entity target — frontend renders "browse" mode when type=='file'.
+            match.put("target", null);
+            match.put("equipmentOnPid", onPid);
+            match.put("targetEquipmentId", null);
+            match.put("hasDrawing", true);
+            match.put("incompleteReason", null);
+
+            log.info("[QR] File browse: fileId={}, equipment={}", fileId, onPid.size());
+            return ResponseEntity.ok(new NgApiResponse<>(match, "File loaded"));
+        } catch (Exception e) {
+            log.error("[QR] File browse failed: fileId={}, error={}", fileId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Browse failed: " + e.getMessage()));
+        }
     }
 
     /**

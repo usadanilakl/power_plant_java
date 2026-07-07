@@ -167,7 +167,7 @@ export class LotoUsageMonitorComponent implements OnInit, OnDestroy {
   }
 
   navigateToLoto(id: number): void {
-    this.router.navigate(['/permit-builder/lotos'], { queryParams: { id } });
+    this.router.navigate(['/loto/loto'], { queryParams: { id } });
   }
 
   getStatusColor(status: string): string {

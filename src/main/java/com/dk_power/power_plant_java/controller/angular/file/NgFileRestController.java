@@ -94,6 +94,7 @@ public class NgFileRestController {
 //        }
 //    }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: read an attached file
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<FileDto>> getFileById(@PathVariable Long id) {
 //        log.info("Received request for file with id: {}", id);
@@ -177,6 +178,7 @@ public class NgFileRestController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: attach/replace file (WRITE — shared Files endpoint)
     @PutMapping
     public ResponseEntity<NgApiResponse<Object>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                             @RequestPart(value = "file", required = false) MultipartFile file,
@@ -435,6 +437,7 @@ public class NgFileRestController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: equipment shapes on a drawing (read)
     @PostMapping("/eq-by-file")
     public ResponseEntity<NgApiResponse<List<EquipmentDto>>> getEquipmentByFile(@RequestBody Map<String, String> fileId) {
         try {
@@ -447,6 +450,7 @@ public class NgFileRestController {
     }
 
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: fetch file by link (read)
     @PostMapping("/file-by-link")
     public ResponseEntity<NgApiResponse<FileDto>> getEquipmentByFileLink(@RequestBody Map<String, String> body) {
         try {

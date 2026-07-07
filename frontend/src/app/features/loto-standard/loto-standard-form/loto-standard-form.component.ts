@@ -107,7 +107,7 @@ export class LotoStandardFormComponent {
       next: (response) => {
         const newPermitId = response?.responseData?.id;
         if (newPermitId) {
-          this.router.navigate(['/permit-builder/lotos'], { queryParams: { lotoId: newPermitId } });
+          this.router.navigate(['/loto/loto'], { queryParams: { lotoId: newPermitId } });
         } else {
           alert('LOTO permit was not created — backend returned no id.');
         }

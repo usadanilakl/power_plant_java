@@ -160,7 +160,14 @@ public class NgEspDeviceController {
     }
 
     /**
-     * Initialize ESP device (configure pins and strips)
+     * Push the current DB state for this ESP as one full LED-array write.
+     * <p>
+     * Under the old segment-based approach this "initialized" the ESP by
+     * creating one WLED segment per box. With the LED-array approach there's
+     * nothing to initialize — every write covers every LED — so this endpoint
+     * just triggers a fresh sync. Useful as a manual kick after firmware
+     * updates or ESP power cycles where you want to force a resync outside
+     * the queue's normal cadence.
      */
     @PostMapping("/{id}/initialize")
     public ResponseEntity<NgApiResponse<String>> initializeEspDevice(@PathVariable Long id) {
@@ -169,8 +176,8 @@ public class NgEspDeviceController {
             if (device == null) {
                 return ResponseEntity.notFound().build();
             }
-            espLedService.initializeEspDevice(device);
-            NgApiResponse<String> response = new NgApiResponse<>("OK", "ESP device initialized successfully");
+            espLedService.syncFullLedArray(device);
+            NgApiResponse<String> response = new NgApiResponse<>("OK", "ESP LED array synced from DB state");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -198,13 +205,15 @@ public class NgEspDeviceController {
     }
 
     /**
-     * Initialize all active ESP devices
+     * Push the current DB state to every active ESP as full LED-array writes.
+     * Same "manual kick" semantics as {@link #initializeEspDevice} but across
+     * all devices.
      */
     @PostMapping("/initialize-all")
     public ResponseEntity<NgApiResponse<String>> initializeAllEspDevices() {
         try {
-            espLedService.initializeAllEspDevices();
-            NgApiResponse<String> response = new NgApiResponse<>("OK", "All ESP devices initialized successfully");
+            espLedService.syncAllEspDevices();
+            NgApiResponse<String> response = new NgApiResponse<>("OK", "All ESP LED arrays synced from DB state");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -213,7 +222,11 @@ public class NgEspDeviceController {
     }
 
     /**
-     * Get WLED hardware configuration instructions for manual setup
+     * Get WLED hardware configuration instructions for manual setup.
+     * <p>
+     * With the LED-array approach we don't need to configure WLED segments,
+     * so the only thing this used to output is now stale. Returns a short
+     * note pointing at the WLED web UI instead of generating a wall of text.
      */
     @GetMapping("/{id}/config-instructions")
     public ResponseEntity<NgApiResponse<String>> getConfigInstructions(@PathVariable Long id) {
@@ -222,8 +235,13 @@ public class NgEspDeviceController {
             if (device == null) {
                 return ResponseEntity.notFound().build();
             }
-            String instructions = espLedService.generateWledConfigInstructions(device);
-            NgApiResponse<String> response = new NgApiResponse<>(instructions, "Configuration instructions generated");
+            String instructions =
+                    "This app uses WLED's individual-LED API (seg.i) and no longer relies on\n" +
+                    "pre-configured segments. Configure the device's LED count, GPIO pins,\n" +
+                    "and color order in the WLED web UI at http://" + device.getIpAddress() + "/settings\n" +
+                    "then trigger a sync from the LOTO board — the app will drive every LED\n" +
+                    "in one POST from the current DB state.";
+            NgApiResponse<String> response = new NgApiResponse<>(instructions, "Configuration instructions");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

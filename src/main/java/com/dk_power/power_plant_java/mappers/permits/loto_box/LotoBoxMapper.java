@@ -89,6 +89,7 @@ public class LotoBoxMapper implements BaseMapper {
         dto.setSetSize(entity.getSetSize() != null ? entity.getSetSize() : 0);
         dto.setActive(entity.getActive() != null ? entity.getActive() : Boolean.TRUE);
         dto.setPortable(entity.getPortable() != null ? entity.getPortable() : Boolean.FALSE);
+        dto.setManualOverride(entity.getManualOverride() != null ? entity.getManualOverride() : Boolean.FALSE);
 
         if (entity.getNumber() != null) {
             dto.setHomeLocks(
@@ -192,6 +193,9 @@ public class LotoBoxMapper implements BaseMapper {
         }
         if (source.getPortable() != null) {
             entity.setPortable(source.getPortable());
+        }
+        if (source.getManualOverride() != null) {
+            entity.setManualOverride(source.getManualOverride());
         }
 
         // Map LED color state

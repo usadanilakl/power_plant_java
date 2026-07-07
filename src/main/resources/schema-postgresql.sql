@@ -48,3 +48,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_sharepoint_id ON instrument(shar
 CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_local_uuid ON instrument(local_uuid);
 CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_log_sharepoint_id ON instrument_log(sharepoint_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_log_local_uuid ON instrument_log(local_uuid);
+
+-- SDS Sync PDFs tombstone-propagation columns on permit_attachment.
+-- `deleted` carries the tombstone flag through the attachment sync channel so a delete on one
+-- machine propagates to every peer. `origin` marks scraper-owned rows ('ebinder') so the Sync
+-- PDFs tool can distinguish them from manual uploads (which stay null).
+-- Hibernate ddl-auto=update silently skips NOT NULL columns added to existing tables — hence
+-- this explicit ALTER with a DB-level default so existing rows backfill to deleted=false.
+ALTER TABLE IF EXISTS permit_attachment ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS permit_attachment ADD COLUMN IF NOT EXISTS origin VARCHAR(32);
+CREATE INDEX IF NOT EXISTS idx_permit_attachment_deleted ON permit_attachment(deleted);

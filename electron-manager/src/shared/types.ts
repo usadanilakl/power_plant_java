@@ -243,6 +243,7 @@ export interface WebViewAmsReport {
   resultCount: number;  // "Results: N" count
   columns: string[];    // header row
   rows: string[][];     // each row: cell strings aligned to columns
+  shiftKeys?: string[]; // shift-aggregated reports only: "YYYY-MM-DD|Day"/"…|Night" per row ("" = pass-through), for trend extraction
   scrapedAt: string;    // ISO timestamp of the scrape
   contentHash: string;  // sha256 of columns+rows — used to dedup unchanged reports
 }

@@ -697,10 +697,12 @@ export class WebViewAmsManager {
     // Trend-Table exports carry one row per round (many per shift). Collapse
     // them to a single merged row per Day/Night shift so the table reads as
     // two rows per day instead of a confusing wall of timestamps.
+    let shiftKeys: string[] | undefined;
     if (def.aggregateByShift) {
       const agg = this.aggregateRowsByShift(columns, rows);
       columns = agg.columns;
       rows = agg.rows;
+      shiftKeys = agg.shiftKeys;
     }
 
     const contentHash = crypto
@@ -714,6 +716,7 @@ export class WebViewAmsManager {
       wireMode: def.wireMode,
       title, facility, generatedAt, filterLine, resultCount,
       columns, rows,
+      ...(shiftKeys ? { shiftKeys } : {}),
       scrapedAt: new Date().toISOString(),
       contentHash
     };
@@ -729,9 +732,15 @@ export class WebViewAmsManager {
    *
    * Rows are ordered newest-shift-first; getWiredItems() relies on that to
    * surface the most recent non-empty reading.
+   *
+   * Returns `shiftKeys` aligned to `rows`: a machine `"YYYY-MM-DD|Day|Night"`
+   * key per shift row (empty for pass-through rows) so downstream trend
+   * extraction gets the exact date without re-parsing the display label.
    */
-  private aggregateRowsByShift(columns: string[], rows: string[][]): { columns: string[]; rows: string[][] } {
-    if (rows.length === 0) return { columns, rows };
+  private aggregateRowsByShift(
+    columns: string[], rows: string[][]
+  ): { columns: string[]; rows: string[][]; shiftKeys: string[] } {
+    if (rows.length === 0) return { columns, rows, shiftKeys: [] };
 
     interface Bucket { dateKey: string; shift: string; latest: number; entries: { t: number; row: string[] }[]; }
     const buckets = new Map<string, Bucket>();
@@ -749,6 +758,7 @@ export class WebViewAmsManager {
     }
 
     const merged: string[][] = [];
+    const shiftKeys: string[] = [];
     const ordered = Array.from(buckets.values()).sort((a, b) => b.latest - a.latest); // newest shift first
     for (const b of ordered) {
       b.entries.sort((x, y) => x.t - y.t); // oldest → newest so the latest non-empty reading wins
@@ -760,13 +770,14 @@ export class WebViewAmsManager {
       }
       out[0] = this.shiftLabel(b.dateKey, b.shift);
       merged.push(out);
+      shiftKeys.push(`${b.dateKey}|${b.shift}`);
     }
     // Keep any unparseable rows visible below the shift rows rather than dropping them.
-    for (const row of passthrough) merged.push(row);
+    for (const row of passthrough) { merged.push(row); shiftKeys.push(''); }
 
     const cols = columns.slice();
     cols[0] = 'Shift'; // was "Response Date" — now a per-shift bucket label
-    return { columns: cols, rows: merged };
+    return { columns: cols, rows: merged, shiftKeys };
   }
 
   /** Human date label for a shift bucket, e.g. "Wed, May 20 · Night". */

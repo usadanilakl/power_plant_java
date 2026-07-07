@@ -75,7 +75,7 @@ export interface PwaRegistrationStatus {
 export interface PwaLoginResponse {
   token: string;
   expiresIn: number;
-  user: { id: number; name: string; email: string; role: string; permissionLevel: string };
+  user: { id: number; name: string; email: string; role?: string; roles?: string[]; permissionLevel: string };
 }
 
 export interface PwaServerProfile {

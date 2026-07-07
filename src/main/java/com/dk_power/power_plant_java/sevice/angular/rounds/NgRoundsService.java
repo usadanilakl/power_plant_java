@@ -33,6 +33,7 @@ public class NgRoundsService
     private final RoundsReportMapper roundsReportMapper;
     private final SessionFactory sessionFactory;
     private final ObjectMapper objectMapper;
+    private final RoundsReadingService roundsReadingService;
 
     // ── CrudService contract (used by the sync infrastructure) ───────────
 
@@ -52,9 +53,33 @@ public class NgRoundsService
     public RoundsReportDto saveSnapshot(RoundsReportDto dto) {
         if (dto.getContentHash() != null && !dto.getContentHash().isBlank()
                 && repo.existsByContentHash(dto.getContentHash())) {
+            // Identical snapshot already stored — readings were extracted then too.
             return repo.findTopByOrderByIdDesc().map(this::toFullDto).orElse(dto);
         }
-        return toFullDto(repo.save(toRoundsEntity(dto)));
+        RoundsReportDto saved = toFullDto(repo.save(toRoundsEntity(dto)));
+        // Project this snapshot's numeric cells into the trend reading store (best-effort).
+        try {
+            roundsReadingService.extractFrom(dto);
+        } catch (Exception ex) {
+            ex.printStackTrace(); // trend extraction must never break snapshot ingest
+        }
+        return saved;
+    }
+
+    /**
+     * Rebuild the trend reading projection from every stored snapshot (oldest
+     * scrape first, so newer values win). Picks up snapshots that arrived via
+     * sync (which don't pass through {@link #saveSnapshot}) and backfills.
+     *
+     * @return number of readings written
+     */
+    public int rebuildTrendReadings() {
+        roundsReadingService.clearAll();
+        int total = 0;
+        for (RoundsReport e : repo.findAllByOrderByScrapedAtAsc()) {
+            total += roundsReadingService.extractFrom(toFullDto(e));
+        }
+        return total;
     }
 
     /** Most recent stored report, including the full parsed table. */
@@ -93,6 +118,9 @@ public class NgRoundsService
         e.setRowCount(rows.size());
         e.setColumnsJson(writeJson(columns));
         e.setRowsJson(writeJson(rows));
+        if (dto.getShiftKeys() != null) {
+            e.setShiftKeysJson(writeJson(dto.getShiftKeys()));
+        }
         return e;
     }
 
@@ -118,6 +146,7 @@ public class NgRoundsService
         RoundsReportDto dto = toMetaDto(e);
         dto.setColumns(readStringList(e.getColumnsJson()));
         dto.setRows(readRows(e.getRowsJson()));
+        dto.setShiftKeys(readStringList(e.getShiftKeysJson()));
         return dto;
     }
 

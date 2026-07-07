@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
 import com.dk_power.power_plant_java.sevice.esp.WledCommandQueueService;
 import com.dk_power.power_plant_java.sevice.loto.loto_box.LotoBoxInitializationService;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ import java.util.Arrays;
 @RestController
 @RequestMapping("/ng/loto-boxes")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgLotoBoxController {
     private final NgLotoBoxService ngLotoBoxService;
     private final WledCommandQueueService wledCommandQueueService;
@@ -131,6 +133,27 @@ public class NgLotoBoxController {
         try {
             LotoBoxDto updated = ngLotoBoxService.updateBoxLedColorByNumber(boxNumber, r, g, b, brightness);
             NgApiResponse<LotoBoxDto> response = new NgApiResponse<>(updated, "Box LED color updated successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Set or clear the manual-override flag for a box by number.
+     * <p>
+     * With {@code manualOverride=true} the operator claims the LED color for
+     * this box — subsequent LOTO status transitions won't repaint it. Sending
+     * false hands control back to the LOTO lifecycle.
+     */
+    @PutMapping("/number/{boxNumber}/manual-override")
+    public ResponseEntity<NgApiResponse<LotoBoxDto>> setManualOverrideByNumber(
+            @PathVariable Integer boxNumber,
+            @RequestParam Boolean manualOverride) {
+        try {
+            LotoBoxDto updated = ngLotoBoxService.setManualOverrideByNumber(boxNumber, Boolean.TRUE.equals(manualOverride));
+            NgApiResponse<LotoBoxDto> response = new NgApiResponse<>(updated, "Manual override updated successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

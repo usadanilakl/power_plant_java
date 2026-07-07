@@ -73,9 +73,17 @@ export class AuthComponent implements OnInit {
       email: [localData?.email ?? '', [Validators.required, Validators.email]],
       phone: [localData?.phone ?? '', [Validators.required, Validators.pattern(/^[\d\s\-\+\(\)]+$/)]],
       company: [localData?.company ?? '', [Validators.required, Validators.minLength(2)]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      // Password is required only when submitting online (see canSubmitSignup / onSignUp).
+      // Offline signup captures basic info only; the password is set later when finishing online.
+      password: ['', [Validators.minLength(8)]],
       signature: [localData?.signature ?? null]
     });
+
+    // "Finish signing up" entry: a user who set up basic info offline (registeredOnServer=false)
+    // lands straight on the register step (pre-filled) to set a password and complete registration.
+    if (this.route.snapshot.queryParams['complete'] === '1' && localData && !localData.registeredOnServer) {
+      this.step = 'register';
+    }
   }
 
   onLookup(): void {
@@ -142,8 +150,21 @@ export class AuthComponent implements OnInit {
     });
   }
 
+  /** Offline: basic info is enough (password is set later, online). Online: password required. */
+  get canSubmitSignup(): boolean {
+    const f = this.signupForm;
+    const basicValid = !!f.get('name')?.valid && !!f.get('email')?.valid
+      && !!f.get('phone')?.valid && !!f.get('company')?.valid;
+    if (!basicValid) return false;
+    if (this.serverStatus.isOnline()) {
+      const pw = f.get('password')?.value;
+      return !!pw && pw.length >= 8;
+    }
+    return true;
+  }
+
   onSignUp(): void {
-    if (this.signupForm.invalid) return;
+    if (!this.canSubmitSignup) { this.signupForm.markAllAsTouched(); return; }
 
     this.isLoading = true;
     this.errorMessage = null;
@@ -154,9 +175,10 @@ export class AuthComponent implements OnInit {
     this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: false });
 
     if (!this.serverStatus.isOnline()) {
-      this.serverStatus.setPendingPassword(password);
+      // Offline: keep basic info on the device; the user finishes signing up (sets a password)
+      // when the server is back. Survives app restarts — nothing sensitive is stored locally.
       this.isLoading = false;
-      this.successMessage = 'Info saved locally. Server registration will complete automatically when online.';
+      this.successMessage = 'Saved. You can use the app now — finish signing up to set a password when you\'re back online.';
       setTimeout(() => this.router.navigate([this.returnUrl]), 1500);
       return;
     }

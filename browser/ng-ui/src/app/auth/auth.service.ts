@@ -8,7 +8,8 @@ export interface PwaAuthUser {
   id: number;
   name: string;
   email: string;
-  role: string;
+  role?: string;
+  roles?: string[];
   permissionLevel: string;
 }
 
@@ -103,6 +104,18 @@ export class AuthService {
     if (requiredLevel === 'BASIC') return level === 'BASIC' || level === 'OPERATOR';
     if (requiredLevel === 'OPERATOR') return level === 'OPERATOR';
     return false;
+  }
+
+  /**
+   * True if the signed-in user has the Plant (or Admin) role. The hub returns a `roles`
+   * array (e.g. ["ROLE_PLANT"]); we match on substring so it works regardless of the
+   * ROLE_ prefix. Used to reveal Plant-only tools (Maximo, LOTO) that open the full web app.
+   */
+  isPlant(): boolean {
+    const user = this.getAuthData()?.user;
+    if (!user) return false;
+    const roles = (user.roles ?? []).map(r => (r ?? '').toUpperCase());
+    return roles.some(r => r.includes('PLANT') || r.includes('ADMIN'));
   }
 
   /**

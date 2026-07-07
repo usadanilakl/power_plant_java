@@ -33,6 +33,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(roSandFilterBackflush()));
         out.add(formService.saveTemplate(emergencyEyewashSafetyShower()));
         out.add(formService.saveTemplate(monthlyAedCheck()));
+        out.add(formService.saveTemplate(gtInletInspection()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -199,6 +200,57 @@ public class MaximoFormSeeder {
                         + "Eyewash: flow >= 0.4 gpm (1.5 L/min). Document discrepancies and notify the shift supervisor "
                         + "to generate work orders for needed corrections.")
                 .matchDescriptionContains("safety shower")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * From procedures/pm/gt-inlet.pdf — Camfil GT inlet air filter-house maintenance (M501JAC /
+     * OM-CA15354). A single inspection checklist covering the manual's intervals: log the filter
+     * differential pressures, then run the monthly visual inspection (required). Six-month and annual
+     * checks are on the same form but optional — mark them N/A on a run where they aren't due.
+     */
+    private MaximoFormTemplateDto gtInletInspection() {
+        Fields f = new Fields();
+
+        f.section("Filter differential pressure (log current readings)")
+                .number("dp_pulse", "Pulse (pre-)filter DP — max 4.0\" WG / 1000 Pa", "in WG", "reading")
+                .number("dp_hepa", "HEPA / fine-filter DP — max 2.4\" WG / 600 Pa", "in WG", "reading");
+
+        f.section("Monthly inspection")
+                .radio("m_media", "Filter media — no damage / loose fixtures; correct position & gasket seal; "
+                        + "filters similar color & appearance", true, "OK", "Not OK", "N/A")
+                .radio("m_gutters", "Rain gutters & drains — no blockage or water accumulation", true, "OK", "Not OK", "N/A")
+                .radio("m_doors", "Filter house doors — proper sealing & operation", true, "OK", "Not OK", "N/A")
+                .radio("m_birdscreen", "Bird screen at filter-house inlet — no blockage", true, "OK", "Not OK", "N/A")
+                .radio("m_flanges", "All flange connections — no damage; tight", true, "OK", "Not OK", "N/A")
+                .radio("m_cladding", "External insulation & cladding — no damage", true, "OK", "Not OK", "N/A");
+
+        f.section("Six-month inspection (mark N/A on a monthly run)")
+                .radio("s_plenum", "Clean-air plenum — no degradation or moisture build-up", false, "OK", "Not OK", "N/A")
+                .radio("s_joints", "Internal gasketed joints — no air/moisture ingress or gasket displacement", false, "OK", "Not OK", "N/A");
+
+        f.section("Annual inspection (mark N/A if not due)")
+                .radio("y_corrosion", "All surfaces checked for corrosion; repaired if needed", false, "OK", "Not OK", "N/A");
+
+        f.section("Sign-off")
+                .checkbox("filters_replaced", "Filters replaced this visit (3-yr interval, or earlier if needed). "
+                        + "Filters are disposable — replace, never clean.", false)
+                .textarea("findings", "Findings / corrective action (describe any 'Not OK')", "worklog")
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("GT_INLET_INSPECTION")
+                .formName("GT Inlet Filter House Inspection")
+                .description("Camfil GT inlet air filter-house PM (M501JAC / OM-CA15354). Log filter differential "
+                        + "pressure (pulse max 4.0\" WG / 1000 Pa; HEPA max 2.4\" WG / 600 Pa) and complete the monthly "
+                        + "inspection: filter media/gaskets, rain gutters & drains, filter-house doors, bird screen, "
+                        + "flange connections, and external insulation/cladding. Six-month (clean-air plenum, internal "
+                        + "gasketed joints) and annual (corrosion) checks are on the same form — mark N/A when not due. "
+                        + "Filters are disposable and cannot be cleaned.")
+                .matchDescriptionContains("inlet")
                 .active(true)
                 .fieldsJson(toJson(f.build()))
                 .build();

@@ -148,6 +148,15 @@ public class SecurityConfigSpring {
                 // (e.g. off-LAN via the hub), while non-Plant users are denied.
                 .requestMatchers("/ng/maximo/**").hasAnyRole("PLANT", "ADMIN")
 
+                // LOTO (standards, boxes, locks, walkdown, red-tag) — reachable off-LAN via @RestrictedAllowed
+                // on the LOTO controllers. Kept at authenticated() (NOT hasAnyRole) so it behaves exactly like
+                // /ng/loto-points, which works off-LAN: an off-network session may be authenticated without
+                // carrying ROLE_PLANT as a backend authority, and hasAnyRole would wrongly reject it. Plant-only
+                // is enforced on the UI (plantAccessGuard route guard + requiresPlant nav).
+                .requestMatchers("/ng/lotos/**", "/ng/loto-standards/**", "/ng/loto-boxes/**",
+                        "/ng/locks/**", "/ng/loto/walkdown-sessions/**", "/ng/red-tag/**",
+                        "/ng/red-tag-standards/**", "/ng/red-tag-automation/**").authenticated()
+
                 // Auth endpoints (must be logged in)
                 .requestMatchers("/api/auth/**").authenticated()
 

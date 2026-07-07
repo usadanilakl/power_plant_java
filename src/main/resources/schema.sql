@@ -65,6 +65,16 @@ CREATE INDEX IF NOT EXISTS idx_users_signing_initials ON users(signing_initials)
 -- Existing rows default to PERMIT_REQUIRED (the original form).
 ALTER TABLE IF EXISTS confined_space ADD COLUMN IF NOT EXISTS cs_type VARCHAR(32) DEFAULT 'PERMIT_REQUIRED';
 
+-- SDS Sync PDFs tombstone-propagation columns on permit_attachment.
+-- `deleted` carries the tombstone flag through the attachment sync channel so a delete on one
+-- machine propagates to every peer. `origin` marks scraper-owned rows ('ebinder') so the Sync
+-- PDFs tool can distinguish them from manual uploads (which stay null).
+-- Hibernate ddl-auto=update silently skips NOT NULL columns added to existing tables — hence
+-- this explicit ALTER with a DB-level default so existing rows backfill to deleted=false.
+ALTER TABLE IF EXISTS permit_attachment ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT FALSE NOT NULL;
+ALTER TABLE IF EXISTS permit_attachment ADD COLUMN IF NOT EXISTS origin VARCHAR(32);
+CREATE INDEX IF NOT EXISTS idx_permit_attachment_deleted ON permit_attachment(deleted);
+
 -- LotoStandard pending-review (see project/features/loto-standard/loto-procedure.md §3.3).
 -- pending_review_since is set on first edit to an APPROVED standard and
 -- cleared when a CA/Manager closes the review. The standard's

@@ -43,6 +43,7 @@ public class NgEquipmentRestController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: equipment detail (read)
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<EquipmentDto>> getEquipmentById(@PathVariable Long id) {
         try {

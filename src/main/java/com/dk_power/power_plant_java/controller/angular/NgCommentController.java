@@ -34,6 +34,7 @@ public class NgCommentController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: read comments
     @GetMapping("/{entityType}/{entityId}")
     public ResponseEntity<NgApiResponse<List<CommentDto>>> getCommentsForEntity(
             @PathVariable String entityType,
@@ -48,6 +49,7 @@ public class NgCommentController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: add comment (WRITE — shared Comments endpoint)
     @PostMapping
     public ResponseEntity<NgApiResponse<CommentDto>> createComment(@RequestBody CommentDto commentDto) {
         try {
@@ -61,6 +63,7 @@ public class NgCommentController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: edit comment (WRITE — shared)
     @PutMapping("/{id}")
     public ResponseEntity<NgApiResponse<CommentDto>> updateComment(
             @PathVariable Long id,
@@ -158,6 +161,7 @@ public class NgCommentController {
         }
     }
 
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: delete comment (WRITE/DELETE — shared)
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<CommentDto>> deleteComment(@PathVariable Long id) {
         try {

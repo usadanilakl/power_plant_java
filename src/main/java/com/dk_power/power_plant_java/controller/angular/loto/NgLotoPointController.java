@@ -23,6 +23,9 @@ import java.util.*;
 @RestController
 @RequestMapping("/ng/loto-points")
 @RequiredArgsConstructor
+// off-LAN: LOTO editor/standards need loto-points. Class-level (not Plant-restricted) because /ng/loto-points
+// is also used on-LAN by equipment-editor / tag-number / 3d-model / file-editor — a Plant-role rule would break those.
+@com.dk_power.power_plant_java.config.security.RestrictedAllowed
 public class NgLotoPointController {
     private final NgLotoPointService ngLotoPointService;
     private final NgZeroEnergyService ngZeroEnergyService;

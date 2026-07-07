@@ -55,4 +55,12 @@ public class RoundsReport extends BaseAuditEntity {
     /** Table body — JSON array of row arrays. */
     @Column(columnDefinition = "TEXT")
     private String rowsJson;
+
+    /**
+     * Shift-aggregated reports only: machine "YYYY-MM-DD|Day"/"…|Night" key per
+     * row ("" for pass-through rows), aligned to {@code rowsJson}. Lets trend
+     * extraction recover the exact shift date without parsing the display label.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String shiftKeysJson;
 }

@@ -53,10 +53,120 @@
   text-overflow: ellipsis;
 }
 
+/* Drawing region fills the viewport space below the header — same
+   pattern as the file editor. Made position:relative so the info-panel
+   below can overlay at the container's bottom edge. */
 .viewer-wrapper {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
+  position: relative;
+}
+
+/* Overlay-style info panel — mirrors the file editor's .control-section
+   pattern (position:absolute; bottom:0). Sits inside the drawing area
+   rather than below it, so the drawing container stays big and the
+   panel obscures the bottom slice of the empty background instead of
+   claiming a separate row. Semi-transparent dark navy over the drawing
+   so users can still see any pixels underneath. */
+.drawing-info-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  max-height: 45%;
+  overflow-y: auto;
+  padding: 10px 14px 14px;
+  background: rgba(26, 26, 46, 0.92);
+  color: var(--text-primary, #eee);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drawing-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawing-info-desc {
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--text-primary, #eee);
+}
+
+.drawing-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+}
+
+.drawing-info-row:last-child {
+  border-bottom: none;
+}
+
+.connector-list-header {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #999);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+}
+
+.connector-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Chip-style tap target sized generously for a thumb (min-height 40px is
+   the Material touch-target floor). Distinct blue accent so the chips
+   read as actionable navigation, not decoration. */
+.connector-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 12px;
+  background: rgba(21, 101, 192, 0.15);
+  border: 1px solid rgba(21, 101, 192, 0.55);
+  border-radius: 999px;
+  color: #93c5fd;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.connector-chip:hover,
+.connector-chip:focus-visible {
+  background: rgba(21, 101, 192, 0.28);
+  border-color: rgba(21, 101, 192, 0.85);
+  outline: none;
+}
+
+.connector-chip:active {
+  transform: scale(0.98);
+}
+
+.chip-arrow {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chip-label {
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Only remove the max-height cap — don't touch inner element heights.
@@ -72,6 +182,27 @@
 /* Remove single-image-header to save space on mobile */
 .qr-viewer-container .single-image-header {
   display: none;
+}
+
+/* Shared viewer wraps the drawing in .image-section (white) and
+   .large-image-container (light gray). On a portrait phone the wrapper
+   is given far more vertical space than a landscape P&ID needs at
+   width:100%, so the extra height renders as a big pale block below the
+   drawing. We can't stretch the image without breaking shape-canvas
+   alignment (the canvas is sized to the img element, not to the actual
+   drawn content). Instead: paint those background layers with the QR
+   page's own dark navy so the empty region is invisible, and center
+   the image vertically inside its container so any residual gap gets
+   split top/bottom instead of dumped entirely below the drawing. */
+.qr-viewer-container .image-section {
+  background: var(--background-primary, #1a1a2e) !important;
+}
+
+.qr-viewer-container .large-image-container {
+  background: var(--background-primary, #1a1a2e) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .state-container {
@@ -221,6 +352,10 @@
 
 .type-badge.type-equipment {
   background: #2563eb;
+}
+
+.type-badge.type-file {
+  background: #059669;
 }
 
 /* Header adjustments to fit the badge + description on one line without

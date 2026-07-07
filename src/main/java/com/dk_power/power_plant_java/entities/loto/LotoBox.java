@@ -48,4 +48,12 @@ public class LotoBox extends BaseAuditEntity {
     private Integer b = 32; // Blue value (0-255), default to dark blue (closed)
 
     private Integer brightness = 255; // Brightness (0-255)
+
+    /**
+     * When true, operator has manually set this box's color and does not want
+     * LOTO status transitions to overwrite it. LOTO-driven color updates
+     * ({@code updateBoxColorForStatus}) are skipped while this flag is set.
+     * Set/cleared explicitly via the manual-override endpoint on the box grid.
+     */
+    private Boolean manualOverride = false;
 }

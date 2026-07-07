@@ -17,6 +17,7 @@ import com.dk_power.power_plant_java.sevice.automation.redtag.progress.RedTagPro
 import com.dk_power.power_plant_java.sevice.automation.redtag.session.AutomationSession;
 import com.dk_power.power_plant_java.sevice.automation.redtag.tools.SwLabelPatternGenerator;
 import jakarta.persistence.EntityNotFoundException;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -42,6 +43,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Slf4j
+@RestrictedAllowed
 public class RedTagLotoAutomationController {
 
     private final RedTagLotoAutomationService automationService;

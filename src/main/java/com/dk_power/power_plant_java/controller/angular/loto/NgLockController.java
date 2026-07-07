@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.repository.loto.LockRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLockService;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/ng/locks")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgLockController {
     private final NgLockService lockService;
     private final LockRepo lockRepo;

@@ -110,7 +110,7 @@ export const routes: Routes = [
     {
       path: 'sds-audit',
       component: SdsAuditPageComponent,
-      canActivate: [standaloneGuard, userSetupGuard],
+      canActivate: [standaloneGuard, userSetupGuard, authGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: SdsAuditComponent }

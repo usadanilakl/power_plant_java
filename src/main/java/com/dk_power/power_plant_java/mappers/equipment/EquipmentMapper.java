@@ -95,6 +95,13 @@ public class EquipmentMapper implements BaseMapper {
             fileDto.setId(entity.getMainFile().getId());
             fileDto.setFileLink(entity.getMainFile().getFileLink());
             fileDto.setName(entity.getMainFile().getName());
+            // Populate the extensions list so the QR viewer (and any other
+            // consumer that inspects available derivatives) can tell whether
+            // a JPG rendering of the P&ID is present alongside the PDF.
+            // FileObject.getFileLink() already picks PDF over JPG when both
+            // exist, so without the extensions list the frontend has no way
+            // to know a JPG derivative is even available.
+            fileDto.setExtensions(entity.getMainFile().getExtensionsArray());
             dto.setMainFileObject(fileDto);
         }
         if (entity.getLocation() != null) {

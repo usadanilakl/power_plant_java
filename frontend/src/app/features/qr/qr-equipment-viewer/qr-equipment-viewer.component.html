@@ -5,7 +5,7 @@
     <div class="header-info">
       <span class="tag-number">{{ tagNumber() }}</span>
       @if (activeMatch(); as m) {
-        <span class="type-badge" [class.type-loto]="m.type === 'lotoPoint'" [class.type-equipment]="m.type === 'equipment'">
+        <span class="type-badge" [class.type-loto]="m.type === 'lotoPoint'" [class.type-equipment]="m.type === 'equipment'" [class.type-file]="m.type === 'file'">
           {{ matchTypeLabel(m) }}
         </span>
         @if (m.description) {
@@ -47,7 +47,7 @@
         @for (m of matches(); track m.type + ':' + m.id) {
           <li class="match-card" (click)="selectMatch(m)">
             <div class="match-card-header">
-              <span class="type-badge" [class.type-loto]="m.type === 'lotoPoint'" [class.type-equipment]="m.type === 'equipment'">
+              <span class="type-badge" [class.type-loto]="m.type === 'lotoPoint'" [class.type-equipment]="m.type === 'equipment'" [class.type-file]="m.type === 'file'">
                 {{ matchTypeLabel(m) }}
               </span>
               <span class="match-tag">{{ m.tagNumber }}</span>
@@ -78,9 +78,76 @@
           [config]="viewerConfig"
           [highlightedShapeIds]="highlightedIds()"
           [forceRasterImage]="preferJpgRaster()"
+          [additionalShapes]="connectorShapes()"
           mode="EQUIPMENT_BROWSER"
           (shapeClicked)="onShapeClicked($event)">
         </app-rf-unified-image-viewer>
+
+      <!-- Overlay info panel — anchored to the bottom of the drawing
+           container (same pattern as file editor's control-section).
+           Shows a compact summary of the match (skipped in browse-mode
+           when the target is a bare file) and — when present — chips
+           for the connectors drawn on the current drawing so the user
+           can tap through to referenced P&IDs without hunting them on
+           the canvas. Placed as a sibling of the viewer so the drawing
+           itself keeps the full container height. -->
+      <div class="drawing-info-panel">
+        @if (m.type !== 'file') {
+          <div class="drawing-info-section">
+            @if (m.description) {
+              <div class="drawing-info-desc">{{ m.description }}</div>
+            }
+            @if (m.type === 'lotoPoint' && asLotoPoint(m.target); as lp) {
+              @if (lp.isoPos?.name) {
+                <div class="drawing-info-row">
+                  <span class="detail-label">Isolated</span>
+                  <span class="detail-value">{{ lp.isoPos?.name }}</span>
+                </div>
+              }
+              @if (lp.normPos?.name) {
+                <div class="drawing-info-row">
+                  <span class="detail-label">Normal</span>
+                  <span class="detail-value">{{ lp.normPos?.name }}</span>
+                </div>
+              }
+              @if (lp.zeroEnergyMethod) {
+                <div class="drawing-info-row">
+                  <span class="detail-label">Zero Energy</span>
+                  <span class="detail-value">{{ lp.zeroEnergyMethod }}</span>
+                </div>
+              }
+            }
+            @if (m.type === 'equipment' && asEquipment(m.target); as eq) {
+              @if (eq.eqType?.name) {
+                <div class="drawing-info-row">
+                  <span class="detail-label">Type</span>
+                  <span class="detail-value">{{ eq.eqType?.name }}</span>
+                </div>
+              }
+              @if (eq.system?.name) {
+                <div class="drawing-info-row">
+                  <span class="detail-label">System</span>
+                  <span class="detail-value">{{ eq.system?.name }}</span>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        @if (connectors().length > 0) {
+          <div class="drawing-info-section">
+            <div class="connector-list-header">Jump to referenced drawing</div>
+            <div class="connector-chip-list">
+              @for (c of connectors(); track c.id) {
+                <button class="connector-chip" (click)="jumpToConnector(c)">
+                  <span class="chip-arrow">&rarr;</span>
+                  <span class="chip-label">{{ c.displayLabel() }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
       </div>
 
       <!-- Equipment detail panel (shape click) -->
@@ -135,7 +202,7 @@
       <div class="details-only-container">
         <div class="details-only-card">
           <div class="details-only-header">
-            <span class="type-badge" [class.type-loto]="m.type === 'lotoPoint'" [class.type-equipment]="m.type === 'equipment'">
+            <span class="type-badge" [class.type-loto]="m.type === 'lotoPoint'" [class.type-equipment]="m.type === 'equipment'" [class.type-file]="m.type === 'file'">
               {{ matchTypeLabel(m) }}
             </span>
             <span class="details-only-tag">{{ m.tagNumber }}</span>

@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
 import jakarta.persistence.EntityNotFoundException;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ import java.util.Map;
 @Component
 @RestController
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class NgLotoStandardController {
     private final NgLotoStandardService lotoStandardService;
 

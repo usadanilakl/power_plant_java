@@ -65,7 +65,7 @@ interface ApiResponse<T> {
           <a routerLink="/permit-builder/hot-works" routerLinkActive="nav-active">Hot Works</a>
           <a routerLink="/permit-builder/confined-spaces" routerLinkActive="nav-active">Confined Spaces</a>
           <a routerLink="/permit-builder/lotos" routerLinkActive="nav-active">LOTO</a>
-          <a routerLink="/permit-builder/loto-board" routerLinkActive="nav-active">LOTO Board</a>
+          <a routerLink="/loto-board" routerLinkActive="nav-active">LOTO Board</a>
         </nav>
         <button class="refresh-btn" (click)="loadData()" [disabled]="loading">
           <span class="material-icons" [class.spinning]="loading">refresh</span>

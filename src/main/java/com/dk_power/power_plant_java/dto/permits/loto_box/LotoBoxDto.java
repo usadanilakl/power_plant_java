@@ -47,6 +47,7 @@ public class LotoBoxDto extends BaseDto {
     private Integer setSize = 0;
     private Boolean active = true;
     private Boolean portable = false;
+    private Boolean manualOverride = false;
 
     private List<LockDto> homeLocks = new ArrayList<>();
 
