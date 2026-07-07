@@ -17,6 +17,7 @@ export interface RecurringPm {
   lastTargetDate: string | null;
   catalogRefreshedAt: string | null;
   manuallyAdded?: boolean;              // operator manually converted a WO to a recurring task
+  formKey?: string | null;             // assigned electronic completion form (MaximoFormTemplate.formKey), or null
 }
 
 export interface PmPersonOption {

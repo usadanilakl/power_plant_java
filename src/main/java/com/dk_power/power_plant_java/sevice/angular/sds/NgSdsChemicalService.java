@@ -262,7 +262,10 @@ public class NgSdsChemicalService {
                 boolean dup = attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
                         SdsChemicalMapper.ENTITY_TYPE, entity.getId(), pdf.getFileName(), hash);
                 if (!dup) {
-                    uploadAttachment(entity.getId(), pdf.getFileName(), pdf.getContentType(), pdf.getBase64Content());
+                    // origin="ebinder" tags this row as scraper-owned so a future Sync PDFs run
+                    // recognizes it as replaceable (manual uploads keep origin=null and survive).
+                    uploadAttachment(entity.getId(), pdf.getFileName(), pdf.getContentType(),
+                        pdf.getBase64Content(), "ebinder");
                     report.setPdfsAttached(report.getPdfsAttached() + 1);
                 }
             }
@@ -314,7 +317,16 @@ public class NgSdsChemicalService {
 
     // ============ Attachments ============
 
+    /** Default path — used by the desktop upload button and PWA submit → manually-added,
+     *  {@code origin=null}. Preserved by the Sync PDFs tool. */
     public PermitAttachment uploadAttachment(Long entityId, String fileName, String contentType, String base64Content) {
+        return uploadAttachment(entityId, fileName, contentType, base64Content, null);
+    }
+
+    /** Full form — {@code origin='ebinder'} on scraper-added PDFs so Sync PDFs can recognize
+     *  and replace them. Any other value (or {@code null}) marks the row as manual. */
+    public PermitAttachment uploadAttachment(Long entityId, String fileName, String contentType,
+                                             String base64Content, String origin) {
         String hash = computeContentHash(base64Content);
 
         PermitAttachment att = new PermitAttachment();
@@ -326,6 +338,7 @@ public class NgSdsChemicalService {
         att.setBase64Content(base64Content);
         att.setContentHash(hash);
         att.setOriginMachineId(syncConfig.getMachineId());
+        att.setOrigin(origin);
         att.setSyncedToServer(false);
         att = attachmentRepo.save(att);
 
@@ -390,7 +403,9 @@ public class NgSdsChemicalService {
                     }
                 }
                 // Replace attachments: delete-all-then-re-push to avoid SP's duplicate filename refusal.
-                List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
+                // Skip tombstoned rows — Sync PDFs marks superseded rows deleted=true for peer
+                // propagation, and this push would silently resurrect them on SharePoint.
+                List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse(
                         SdsChemicalMapper.ENTITY_TYPE, c.getId());
                 if (c.getSharepointId() != null) {
                     int removed = spAdapter.deleteAllAttachments(c.getSharepointId());

@@ -23,6 +23,12 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
   @Input() options: Option[] = [];
   question = input<Question | null>(null);
 
+  /** Unique per-instance key so option ids don't collide across groups (a <label for> otherwise targets the
+   *  first element with a matching id, mis-toggling another group's box when option labels repeat). */
+  private static seq = 0;
+  private readonly uid = `cbg${CheckboxGroupComponent.seq++}`;
+  optionId(i: number): string { return `${this.uid}-${i}`; }
+
   value: any = {};
   mode: 'object' | 'array' = 'object';
 

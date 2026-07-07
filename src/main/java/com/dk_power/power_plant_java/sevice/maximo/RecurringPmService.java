@@ -334,6 +334,29 @@ public class RecurringPmService {
                 .lastTargetDate(r.getLastTargetDate())
                 .catalogRefreshedAt(r.getCatalogRefreshedAt())
                 .manuallyAdded(r.getManuallyAdded())
+                .formKey(r.getFormKey())
                 .build();
+    }
+
+    /** Assign (or clear, when blank) the electronic completion form for a recurring PM. */
+    public RecurringPmDto assignForm(Long id, String formKey) {
+        RecurringPm row = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown recurring-PM id: " + id));
+        row.setFormKey((formKey == null || formKey.isBlank()) ? null : formKey.trim());
+        return toDto(repo.save(row));
+    }
+
+    /**
+     * Find the recurring-PM catalog row for a work order (pmnum first, then normalized description) — used to
+     * look up the WO's assigned completion form. Read-only.
+     */
+    @Transactional(readOnly = true)
+    public Optional<RecurringPm> findForWorkOrder(String pmnum, String description) {
+        if (pmnum != null && !pmnum.isBlank()) {
+            Optional<RecurringPm> byPm = repo.findFirstByPmKey(pmnum.trim());
+            if (byPm.isPresent()) return byPm;
+        }
+        String nd = normDesc(description);
+        return (nd == null) ? Optional.empty() : repo.findFirstByPmKey("D:" + nd);
     }
 }

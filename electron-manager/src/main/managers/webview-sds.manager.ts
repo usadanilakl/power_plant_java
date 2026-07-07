@@ -227,6 +227,144 @@ export class WebViewSdsManager {
   }
 
   /**
+   * "Sync PDFs with eBinder" — walk-and-replace reconciliation. Walks the eBinder once with
+   * capturePdfs=true (sharing the same capturePdf flow as scrape/close-gaps, so the frame-ID
+   * pairing fix applies here too), then POSTs each captured row individually to
+   * {@code /ng/sds-chemicals/sync-pdfs} at batch size 1 — bounded payloads (~few MB / request)
+   * and per-chemical progress. The report accumulates across posts.
+   * <p>
+   * Guards:
+   * <ul>
+   *   <li>Shares the {@code isScraping} mutex with scrape() and getGapReport(), so we can't
+   *       collide with a Close-gaps run.</li>
+   *   <li>{@code dryRun=true} still performs the full eBinder walk and hash comparison but the
+   *       backend skips every write — the report shows what WOULD change.</li>
+   *   <li>Backend enforces hub-only role — a 403 from a non-hub instance surfaces to the UI
+   *       verbatim so the operator learns the correct place to run it.</li>
+   * </ul>
+   */
+  public async syncPdfs(opts?: SdsScrapeOptions & { dryRun?: boolean; limit?: number }): Promise<any> {
+    const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+    if (!(await this.springHealthy(port))) throw new Error('Spring Boot unavailable — start the app first');
+    if (this.isScraping) throw new Error('A scrape is already running — try again shortly');
+
+    this.isScraping = true;
+    this.abortRequested = false;
+    this.progressRow = 0;
+    this.progressTotal = 0;
+    this.progressPhase = 'list';
+
+    // Streaming state — one PDF at a time. `firstBatchSent` decouples the isFirstBatch flag
+    // from the row index so early transport failures don't cause the preflight to be missed.
+    let report: any = null;
+    let firstBatchSent = false;
+    // Buffer transport errors that happen BEFORE the first successful POST — otherwise they'd
+    // vanish (report is still null in the catch below). Flushed into the report on first
+    // successful response.
+    const pendingTransportErrors: any[] = [];
+    let stoppedByPreflight = false;
+    let stoppedByAbort = false;
+    let stoppedByLimit = false;
+    let itemsProcessed = 0;
+    // Sentinel used to break out of the eBinder walk when the caller-supplied limit is reached.
+    // Instance-comparison in the catch lets us distinguish it from real errors.
+    const LIMIT_REACHED = new Error('__SDS_SYNC_LIMIT_REACHED__');
+    const limit = (typeof opts?.limit === 'number' && opts.limit > 0) ? opts.limit : null;
+
+    const postOne = async (row: ScrapedRow, pdf: { fileName: string; contentType: string; base64: string } | null) => {
+      if (this.abortRequested) { stoppedByAbort = true; throw new Error('Aborted by user'); }
+      if (stoppedByPreflight) return;
+
+      const item: any = {
+        sourceItemId: row.sourceId,
+        names: row.names,
+        manufacturer: row.manufacturer,
+        revisionDate: row.revisionDate,
+        pdf: pdf ? { fileName: pdf.fileName, contentType: pdf.contentType, base64Content: pdf.base64 } : null
+      };
+      const body = {
+        items: [item],
+        // JSON key MUST be "firstBatch" (not "isFirstBatch") to bind to Lombok's setFirstBatch.
+        firstBatch: !firstBatchSent,
+        dryRun: !!opts?.dryRun,
+        report
+      };
+      try {
+        const res = await this.postJson(port, '/ng/sds-chemicals/sync-pdfs', body);
+        if (res?.responseData) {
+          report = res.responseData;
+          if (!firstBatchSent) {
+            // First successful post — flush any earlier transport errors into the fresh report
+            // so operators can see everything that happened even if row 0 initially failed.
+            if (pendingTransportErrors.length > 0) {
+              report.errors = report.errors || [];
+              report.errors.push(...pendingTransportErrors);
+              pendingTransportErrors.length = 0;
+            }
+            firstBatchSent = true;
+          }
+          if (Array.isArray(report.preflightBlockers) && report.preflightBlockers.length > 0) {
+            console.warn('[SDS-Sync] preflight blocked:', report.preflightBlockers);
+            stoppedByPreflight = true;
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[SDS-Sync] transport error on sourceId=${row.sourceId}: ${e.message}`);
+        const entry = {
+          sourceId: row.sourceId,
+          chemicalName: row.names?.split('\n')[0] || null,
+          stage: 'TRANSPORT',
+          message: e.message
+        };
+        if (report) {
+          report.errors = report.errors || [];
+          report.errors.push(entry);
+        } else {
+          pendingTransportErrors.push(entry);
+        }
+      }
+      itemsProcessed++;
+      this.progressRow = itemsProcessed;
+
+      // Caller opted into a test-scope run — stop cleanly after N items are actually posted.
+      if (limit !== null && itemsProcessed >= limit) {
+        stoppedByLimit = true;
+        throw LIMIT_REACHED;
+      }
+    };
+
+    try {
+      // Streaming walk — each captured PDF is posted immediately then discarded. Memory stays
+      // bounded to a single PDF at a time regardless of catalog size. onCaptured throwing ends
+      // the walk cleanly (user abort or hitting the caller-supplied limit).
+      this.progressPhase = 'upload';
+      try {
+        await this.collectFromEbinder({
+          capturePdfs: true,
+          onCaptured: postOne,
+          ...opts
+        });
+      } catch (walkErr) {
+        // LIMIT_REACHED is expected termination — swallow. Anything else re-throws.
+        if (walkErr !== LIMIT_REACHED) throw walkErr;
+      }
+
+      if (stoppedByAbort && report) {
+        report.warnings = report.warnings || [];
+        report.warnings.push(`Aborted after ${itemsProcessed} items.`);
+      }
+      if (stoppedByLimit && report) {
+        report.warnings = report.warnings || [];
+        report.warnings.push(`Test-scope limit reached: stopped after ${itemsProcessed} item(s).`);
+      }
+      return report;
+    } finally {
+      this.isScraping = false;
+      this.progressPhase = 'idle';
+    }
+  }
+
+  /**
    * Email the gap report to the given recipient with PDFs of every missing-from-eBinder chemical
    * attached. Reuses the catalog from the most recent {@link getGapReport} run so the email
    * matches what the user just saw — if no report has been run yet, falls back to an empty
@@ -265,9 +403,17 @@ export class WebViewSdsManager {
   /**
    * Open the eBinder, optionally filter to a single location, load the chemical list, and scrape
    * every page. When {@code capturePdfs} is true each row's "View PDF" is fetched too (slow).
+   * <p>
+   * When {@code opts.onCaptured} is supplied and {@code capturePdfs} is true, the callback is
+   * invoked after each row's PDF is captured — the caller is expected to consume the PDF then
+   * and there. In that mode the returned {@code pdfs} dict stays empty (the pdf is discarded to
+   * keep memory bounded — critical for hundreds of multi-megabyte SDSes). If the callback
+   * throws, the walk aborts.
    */
   private async collectFromEbinder(
-    opts: { capturePdfs: boolean } & SdsScrapeOptions
+    opts: { capturePdfs: boolean;
+            onCaptured?: (row: ScrapedRow, pdf: { fileName: string; contentType: string; base64: string } | null) => Promise<void> | void }
+      & SdsScrapeOptions
   ): Promise<{ rows: ScrapedRow[]; pdfs: Record<string, { fileName: string; contentType: string; base64: string } | null> }> {
     const showWindow = opts.showWindow ?? this.config.showScrapeWindow === true;
     const win = new BrowserWindow({
@@ -511,7 +657,15 @@ export class WebViewSdsManager {
           this.progressRow = rows.length;
           if (opts.capturePdfs) {
             const key = row.sourceId || `idx-${page}-${i}`;
-            pdfs[key] = await this.capturePdf(win, ses, i, key);
+            const capturedPdf = await this.capturePdf(win, ses, i, key);
+            if (opts.onCaptured) {
+              // Streaming mode: hand the PDF off to the caller and drop it — memory stays
+              // bounded to one PDF at a time regardless of catalog size. Aborts on callback
+              // throw so partial state doesn't accumulate silently.
+              await opts.onCaptured(row, capturedPdf);
+            } else {
+              pdfs[key] = capturedPdf;
+            }
           }
         }
 
@@ -893,6 +1047,25 @@ export class WebViewSdsManager {
     ses.once('will-download', downloadHandler);
 
     try {
+      // 0. Best-effort cleanup of any leftover viewer from a previous row's capture, then snapshot
+      //    the viewer frames that STILL exist. Anything in this snapshot survived the dismiss
+      //    attempt — the poll below refuses to bind to them and demands a genuinely new frame
+      //    spawned by *this* click, so we can never grab a stale PDF.
+      const main = win.webContents.mainFrame;
+      const isViewerFrame = (f: Electron.WebFrameMain) => {
+        const u = String(f.url || '');
+        return u.startsWith('chrome-extension://')
+            || u.startsWith('chrome-untrusted://')
+            || u.includes('mhjfbmdgcfjbbpaeojofohoefgiehjai');   // Chromium PDF viewer extension id
+      };
+      await this.dismissPdfViewer(win).catch(() => { /* best effort */ });
+      const preClickFrameIds = new Set(
+        main.framesInSubtree.filter(isViewerFrame).map(f => f.frameTreeNodeId)
+      );
+      if (preClickFrameIds.size > 0) {
+        console.log(`[SDS-Scraper] row ${rowIndex} (${key}): ${preClickFrameIds.size} leftover viewer frame(s) survived dismiss — will require a new frame ID after click`);
+      }
+
       // 1. Click View PDF on the chemical row → eBinder spawns the viewer iframe.
       const clickedRow = await this.exec(win, `
         ${FIRE_CLICK}
@@ -914,32 +1087,26 @@ export class WebViewSdsManager {
         return null;
       }
 
-      // 2. Poll for the PDF viewer's chrome-extension iframe via Electron's frame API. The embed
-      //    plugin mounts the actual PDF viewer as a child frame whose shadow root is opaque from
-      //    the outer page, but Electron's `framesInSubtree` exposes the frame directly and we can
-      //    `executeJavaScript` inside it — full DOM access, including the Download button.
+      // 2. Poll for a viewer frame that WASN'T there before the click. Filtering by
+      //    `frameTreeNodeId` guarantees we bind to this row's viewer even if a previous row's
+      //    viewer is still mounted — that was the pairing bug: the poll would return the stale
+      //    frame and we'd download the previous row's PDF under this row's key.
       let pdfFrame: Electron.WebFrameMain | null = null;
-      const main = win.webContents.mainFrame;
       for (let attempt = 0; attempt < 24 && !pdfFrame; attempt++) {   // up to 12s
         await this.sleep(500);
         const all = main.framesInSubtree;
-        pdfFrame = all.find(f => {
-          const u = String(f.url || '');
-          return u.startsWith('chrome-extension://')
-              || u.startsWith('chrome-untrusted://')
-              || u.includes('mhjfbmdgcfjbbpaeojofohoefgiehjai');   // Chromium PDF viewer extension id
-        }) || null;
+        pdfFrame = all.find(f => isViewerFrame(f) && !preClickFrameIds.has(f.frameTreeNodeId)) || null;
       }
 
       if (!pdfFrame) {
         // Diagnostic: list every frame we saw so we know where the viewer actually lives.
         const all = main.framesInSubtree;
-        console.warn(`[SDS-Scraper] row ${rowIndex} (${key}): no PDF viewer frame; ${all.length} frames in subtree:`);
+        console.warn(`[SDS-Scraper] row ${rowIndex} (${key}): no NEW PDF viewer frame after click; ${all.length} frame(s) in subtree, ${preClickFrameIds.size} pre-existing viewer(s):`);
         for (const f of all) console.warn(`  url=${String(f.url || '').slice(0, 160)} origin=${f.origin}`);
         ses.removeListener('will-download', downloadHandler);
         return null;
       }
-      console.log(`[SDS-Scraper] row ${rowIndex} (${key}): PDF viewer frame found: ${pdfFrame.url.slice(0, 100)}`);
+      console.log(`[SDS-Scraper] row ${rowIndex} (${key}): fresh PDF viewer frame found (id=${pdfFrame.frameTreeNodeId}): ${pdfFrame.url.slice(0, 100)}`);
 
       // 3. Click the Download button by running JS *inside* the viewer frame. Walk nested shadow
       //    roots in case the toolbar's button is one or two levels deep.
@@ -997,7 +1164,48 @@ export class WebViewSdsManager {
     } finally {
       ses.removeListener('will-download', downloadHandler);
       try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch { /* ignore */ }
+      // Dismiss the viewer so the next row starts with a clean slate. Two attempts:
+      // (a) look for the eBinder's modal close affordance and click it; (b) send an ESC keystroke.
+      // Neither is destructive if the viewer is already gone.
+      await this.dismissPdfViewer(win).catch(() => { /* best effort */ });
     }
+  }
+
+  /**
+   * Close whatever PDF viewer overlay the eBinder currently has open. Tries a JS-based close
+   * (looking for common close-button selectors that surround the PDF plugin embed) and then falls
+   * back to an ESC keystroke on the main window. Called from {@link capturePdf}'s finally block
+   * so every row starts without a stale viewer frame in the subtree.
+   */
+  private async dismissPdfViewer(win: BrowserWindow): Promise<void> {
+    if (win.isDestroyed()) return;
+    try {
+      await this.exec(win, `
+        ${FIRE_CLICK}
+        (function () {
+          // Common close-button shapes in the eBinder's PDF modal. First hit wins.
+          var selectors = [
+            '.pdf-viewer-modal .close', '.pdf-modal .close',
+            '.modal.pdf .close', '.modal .close-modal',
+            'button[aria-label="Close"]', 'button[title="Close"]',
+            '.modal__close', '.modal-close', '[data-dismiss="modal"]'
+          ];
+          for (var i = 0; i < selectors.length; i++) {
+            var btn = document.querySelector(selectors[i]);
+            if (btn) { __fireClick(btn); return 'closed:' + selectors[i]; }
+          }
+          return 'no-close-btn';
+        })()
+      `);
+    } catch { /* ignore */ }
+    // ESC key as a belt-and-suspenders — closes native modal-style overlays even when no explicit
+    // close button matched. sendInputEvent needs both keyDown and keyUp to register as a keystroke.
+    try {
+      win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+      win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    } catch { /* ignore */ }
+    // Give the eBinder a beat to actually tear the frame down before the next capturePdf snapshots.
+    await this.sleep(400);
   }
 
   /** Fetch a URL with the scrape session's cookies and return it as base64 (kept for misc reuse). */

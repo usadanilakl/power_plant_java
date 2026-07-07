@@ -28,6 +28,9 @@ public class MaximoWorkOrderAdapter {
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
             + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum,spi:statusdate";
 
+    /** Task fetch adds the child-WO fields; kept off the shared select so a bad field can't break every WO query. */
+    private static final String TASK_SELECT_FIELDS = SELECT_FIELDS + ",spi:taskid,spi:parent,spi:istask";
+
     private final MaximoAccessService access;
 
     public List<MaximoWorkOrderDto> listForAsset(String assetnum, int pageSize) {
@@ -339,6 +342,29 @@ public class MaximoWorkOrderAdapter {
         return Optional.of(map(body));
     }
 
+    /**
+     * The internal TASKS of a work order — the child WO rows carrying {@code istask=1} with this WO's number
+     * in their {@code parent} field. Each is a full work order (own href/status), so it is displayed and
+     * completed exactly like a top-level WO ({@link #changeStatus}/{@link #completeWorkOrder} on its href).
+     * Ordered by task sequence. Filters {@code istask} client-side (robust against the OSLC YORN
+     * where-clause quirk) so any non-task child WOs are excluded. Empty when the WO has no tasks.
+     */
+    public List<MaximoWorkOrderDto> listTasks(String parentWonum) {
+        if (parentWonum == null || parentWonum.isBlank()) return List.of();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", TASK_SELECT_FIELDS);
+        params.put("oslc.where", "spi:parent=\"" + escape(parentWonum.trim()) + "\""
+                + " and spi:siteid=\"" + access.defaultSite() + "\"");
+        params.put("oslc.orderBy", "spi:taskid");
+        params.put("oslc.pageSize", "200");
+        Map<String, Object> body = access.getMap(access.osUrl(OS), params);
+        List<MaximoWorkOrderDto> out = new ArrayList<>();
+        for (Map<String, Object> row : members(body)) {
+            if (Boolean.TRUE.equals(MaximoOslcMapper.boolVal(row, "istask"))) out.add(map(row));
+        }
+        return out;
+    }
+
     private List<MaximoWorkOrderDto> mapAll(List<Map<String, Object>> rows) {
         List<MaximoWorkOrderDto> out = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) out.add(map(row));
@@ -366,6 +392,9 @@ public class MaximoWorkOrderAdapter {
         d.setPriority(str(row, "wopriority"));
         d.setPmnum(str(row, "pmnum"));
         d.setStatusDate(str(row, "statusdate"));
+        d.setTaskid(str(row, "taskid"));
+        d.setParent(str(row, "parent"));
+        d.setIstask(MaximoOslcMapper.boolVal(row, "istask"));
         return d;
     }
 

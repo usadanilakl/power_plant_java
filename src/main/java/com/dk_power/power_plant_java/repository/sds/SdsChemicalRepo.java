@@ -14,6 +14,15 @@ public interface SdsChemicalRepo extends BaseRepository<SdsChemical> {
     Optional<SdsChemical> findFirstBySharepointIdOrderByIdAsc(String sharepointId);
     Optional<SdsChemical> findFirstByLocalUuidOrderByIdAsc(String localUuid);
     Optional<SdsChemical> findFirstBySourceIdOrderByIdAsc(String sourceId);
+    /** All chemicals sharing a sourceId — used by Sync PDFs to detect and refuse ambiguous matches. */
+    List<SdsChemical> findAllBySourceId(String sourceId);
+
+    /** Preflight for Sync PDFs: rows sharing a sharepointId are a data-integrity break — if two
+     *  chemicals both write to the same SP folder they'd delete each other's attachments. Native
+     *  SQL because we need to see rows even with the @Where soft-delete guard. */
+    @Query(value = "SELECT sharepoint_id FROM sds_chemical WHERE sharepoint_id IS NOT NULL AND sharepoint_id <> '' AND (deleted IS NULL OR deleted = FALSE) GROUP BY sharepoint_id HAVING COUNT(*) > 1",
+            nativeQuery = true)
+    List<String> findDuplicateSharepointIds();
     List<SdsChemical> findByStatus_NameIgnoreCase(String statusName);
     List<SdsChemical> findByStatus_NameIn(List<String> statusNames);
     boolean existsBySharepointId(String sharepointId);

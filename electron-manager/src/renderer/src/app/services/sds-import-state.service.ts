@@ -6,7 +6,8 @@ import {
   SdsScrapeReport,
   SdsMatchChemical,
   SdsEmailGapReportResult,
-  SdsEmailRecipient
+  SdsEmailRecipient,
+  SdsSyncPdfsReport
 } from './electron.service';
 
 /**
@@ -224,6 +225,58 @@ export class SdsImportStateService {
   }
 
   async stop(): Promise<void> { await this.electron.sdsScrapeAbort(); }
+
+  // ─── Sync PDFs (walk-and-replace reconcile) ───────────────────────────────
+  syncingPdfs = signal(false);
+  syncPdfsError = signal('');
+  syncPdfsReport = signal<SdsSyncPdfsReport | null>(null);
+  syncPdfsIsPreview = signal(false);
+  /** Cap number of chemicals to process — for a first-live-run scope check. 0/blank = no cap. */
+  syncPdfsLimit = signal(0);
+  syncPdfsLimitEnabled = signal(false);
+
+  async syncPdfs(dryRun: boolean): Promise<void> {
+    if (!dryRun) {
+      const ok = window.confirm(
+        'For each chemical listed in the eBinder, we will download its current PDF and, if it ' +
+        "differs from what we have, replace this chemical's eBinder-owned attachments (local + " +
+        'SharePoint) with the fresh copy.\n\n' +
+        'PRESERVED — never touched by this tool:\n' +
+        '  • Chemicals not on the eBinder (including your manual submissions).\n' +
+        "  • Manual uploads on chemicals that ARE on the eBinder (any attachment we didn't scrape).\n" +
+        '  • Chemicals whose eBinder PDF matches your current copy byte-for-byte.\n\n' +
+        'Deletes propagate to every desktop via the attachment sync channel.\n\n' +
+        'This runs an eBinder walk (a few minutes for the full inventory). Continue?'
+      );
+      if (!ok) return;
+    }
+
+    this.syncingPdfs.set(true);
+    this.syncPdfsError.set('');
+    this.syncPdfsReport.set(null);
+    this.syncPdfsIsPreview.set(dryRun);
+    this.startPolling();
+    try {
+      const limit = this.syncPdfsLimitEnabled() ? Math.max(0, this.syncPdfsLimit() | 0) : 0;
+      const res = await this.electron.sdsSyncPdfs({
+        filterLocation: this.filterLocation(),
+        showWindow: this.showWindow(),
+        dryRun,
+        limit: limit > 0 ? limit : undefined
+      });
+      if (!res.success) throw new Error(res.error || 'Sync PDFs failed');
+      this.syncPdfsReport.set(res.data ?? null);
+      const rep = res.data;
+      if (rep && rep.preflightBlockers.length > 0) {
+        this.syncPdfsError.set('Preflight blocked: ' + rep.preflightBlockers.join('; '));
+      }
+    } catch (err: any) {
+      this.syncPdfsError.set(err.message || 'Sync PDFs failed');
+    } finally {
+      this.syncingPdfs.set(false);
+      this.stopPolling();
+    }
+  }
 
   /**
    * Bind an existing DB chemical (one in missingFromEbinder) to a real eBinder Document ID. The

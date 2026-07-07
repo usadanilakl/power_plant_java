@@ -19,6 +19,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,6 +63,26 @@ public class MaximoFormCompletionService {
         return complete(saved.getId());
     }
 
+    /**
+     * Render the completion PDF for a submission WITHOUT touching Maximo — the exact same bytes {@link #complete}
+     * would attach (identical template load, field/value parsing, formName/submittedBy resolution, signature,
+     * and {@link MaximoFormPdfService#render} call). For the fill page's "Preview PDF" button: see the attachment
+     * as it will ship, for testing/development, without saving a draft or writing anything back to Maximo.
+     */
+    public byte[] renderPreviewPdf(MaximoFormSubmissionDto dto) {
+        if (dto == null) throw new IllegalArgumentException("A form submission is required");
+        MaximoFormTemplate t = (dto.getTemplateFormKey() == null) ? null
+                : templateRepo.findFirstByFormKey(dto.getTemplateFormKey()).orElse(null);
+        List<Map<String, Object>> fields = parseList(t == null ? null : t.getFieldsJson());
+        Map<String, Object> values = parseMap(dto.getValuesJson());
+        User user = currentUser();
+        String submittedBy = (user != null && user.getName() != null && !user.getName().isBlank()) ? user.getName() : "app";
+        String formName = (t != null && t.getFormName() != null) ? t.getFormName()
+                : (dto.getTemplateName() != null && !dto.getTemplateName().isBlank() ? dto.getTemplateName() : dto.getTemplateFormKey());
+        byte[] signatureBytes = loadSignatureBytes(user);
+        return pdfService.render(formName, dto.getWonum(), submittedBy, fields, values, signatureBytes);
+    }
+
     public MaximoFormSubmissionDto complete(Long submissionId) {
         MaximoFormSubmission s = submissionRepo.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown submission " + submissionId));
@@ -93,7 +117,8 @@ public class MaximoFormCompletionService {
         if (doclinkId != null && !doclinkId.isBlank()) {
             notes.add("PDF already attached");
         } else {
-            byte[] pdf = pdfService.render(formName, s.getWonum(), submittedBy, fields, values);
+            byte[] signatureBytes = loadSignatureBytes(user);
+            byte[] pdf = pdfService.render(formName, s.getWonum(), submittedBy, fields, values, signatureBytes);
             String fileName = safeName(formName + "_" + s.getWonum()) + ".pdf";
             doclinkId = doclinks.upload(WO_OS, href, fileName, "application/pdf", pdf, "Attachments").getHref();
             if (doclinkId == null || doclinkId.isBlank()) {
@@ -188,6 +213,19 @@ public class MaximoFormCompletionService {
         Object principal = auth.getPrincipal();
         if (!(principal instanceof CustomUserDetails cud)) return null;
         return userRepo.findById(cud.getId()).orElse(null);
+    }
+
+    /** Read the user's stored signature PNG to bytes, or null when none is on file / unreadable (the PDF then falls back to a blank line). */
+    private byte[] loadSignatureBytes(User user) {
+        if (user == null || user.getSignaturePath() == null || user.getSignaturePath().isBlank()) return null;
+        try {
+            Path p = Paths.get(user.getSignaturePath());
+            if (!Files.exists(p)) return null;
+            return Files.readAllBytes(p);
+        } catch (IOException e) {
+            log.warn("[MaximoForms] could not read signature for user {}: {}", user.getId(), e.getMessage());
+            return null;
+        }
     }
 
     private List<Map<String, Object>> parseList(String json) {

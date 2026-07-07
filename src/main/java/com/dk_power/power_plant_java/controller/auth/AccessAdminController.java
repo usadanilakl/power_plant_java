@@ -20,7 +20,11 @@ import java.util.*;
 
 /**
  * Admin endpoints for managing web access grants.
- * Requires ADMIN role + localhost (desktop) access only.
+ * Requires ADMIN role + plant-network access (localhost OR direct-LAN). An admin at any plant
+ * desktop can therefore approve requests on the hub by hitting it directly by IP. External
+ * (reverse-proxied) traffic is rejected — see {@link NetworkUtils#isInternalRequest} (not spoofable:
+ * any request carrying proxy headers is treated as external). The 403 messages below still say
+ * "desktop application" but now also cover LAN desktops.
  */
 @RestController
 @RequestMapping("/api/auth/admin")
@@ -33,7 +37,7 @@ public class AccessAdminController {
 
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingRequests(HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
                 "error", "LOCALHOST_REQUIRED",
                 "message", "Access management is only available from the desktop application"
@@ -46,7 +50,7 @@ public class AccessAdminController {
 
     @GetMapping("/active-grants")
     public ResponseEntity<?> getActiveGrants(HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
                 "error", "LOCALHOST_REQUIRED",
                 "message", "Access management is only available from the desktop application"
@@ -69,7 +73,7 @@ public class AccessAdminController {
     public ResponseEntity<?> approveRequest(@PathVariable Long id,
                                             HttpServletRequest request,
                                             HttpServletResponse response) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
                 "error", "LOCALHOST_REQUIRED",
                 "message", "Access approval is only available from the desktop application"
@@ -116,7 +120,7 @@ public class AccessAdminController {
 
     @PostMapping("/deny/{id}")
     public ResponseEntity<?> denyRequest(@PathVariable Long id, HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 
@@ -132,7 +136,7 @@ public class AccessAdminController {
 
     @PostMapping("/revoke/{id}")
     public ResponseEntity<?> revokeGrant(@PathVariable Long id, HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 
@@ -150,7 +154,7 @@ public class AccessAdminController {
     public ResponseEntity<?> prolongGrant(@PathVariable Long id,
                                           @RequestBody ProlongRequest req,
                                           HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED",
                 "message", "Grant prolongation is only available from the desktop application"));
         }
@@ -190,7 +194,7 @@ public class AccessAdminController {
 
     @GetMapping("/grant-history")
     public ResponseEntity<?> getGrantHistory(HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED",
                 "message", "Grant history is only available from the desktop application"));
         }
@@ -203,7 +207,7 @@ public class AccessAdminController {
 
     @GetMapping("/pwa-users")
     public ResponseEntity<?> getPwaUsers(HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
                 "error", "LOCALHOST_REQUIRED",
                 "message", "PWA user management is only available from the desktop application"
@@ -232,7 +236,7 @@ public class AccessAdminController {
     public ResponseEntity<?> activatePwaUser(@PathVariable Long id,
                                               @RequestBody Map<String, String> body,
                                               HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 
@@ -252,7 +256,7 @@ public class AccessAdminController {
     public ResponseEntity<?> setPwaUserPermissionLevel(@PathVariable Long id,
                                                         @RequestBody Map<String, String> body,
                                                         HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 
@@ -273,7 +277,7 @@ public class AccessAdminController {
 
     @PostMapping("/pwa-users/{id}/deactivate")
     public ResponseEntity<?> deactivatePwaUser(@PathVariable Long id, HttpServletRequest request) {
-        if (!NetworkUtils.isLoopbackRequest(request)) {
+        if (!NetworkUtils.isInternalRequest(request)) {
             return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 

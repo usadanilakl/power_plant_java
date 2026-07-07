@@ -27,13 +27,54 @@ public class HubAttachmentService {
     /**
      * Store an attachment uploaded by a client.
      * Deduplicates by entityType + entityId + fileName.
+     * When {@code deleted=true} the payload is a tombstone: find the matching live local row
+     * and mark it deleted so subsequent /pending polls carry the tombstone to peers.
      * Returns the saved attachment (new or existing).
      */
     @Transactional
     public PermitAttachment storeAttachment(String entityType, Long entityId, String fileName,
                                              String contentType, String attachmentType,
                                              String base64Content, String contentHash,
-                                             String originMachineId) {
+                                             String originMachineId, boolean deleted, String origin) {
+
+        // Tombstone path: convert an existing live row on the hub to deleted=true so the /pending
+        // endpoint carries the delete signal to every other machine that hasn't seen it.
+        if (deleted) {
+            java.util.Optional<PermitAttachment> matchOpt = contentHash != null && !contentHash.isEmpty()
+                ? attachmentRepo.findFirstByEntityTypeAndEntityIdAndContentHashAndDeletedFalseOrderByIdAsc(
+                    entityType, entityId, contentHash)
+                : attachmentRepo.findFirstByEntityTypeAndEntityIdAndFileNameOrderByIdAsc(
+                    entityType, entityId, fileName);
+            if (matchOpt.isPresent()) {
+                PermitAttachment existing = matchOpt.get();
+                existing.setDeleted(true);
+                existing.addSyncedMachine(originMachineId);
+                // Reset the propagation trail so every peer picks up the tombstone. The uploader
+                // (originMachineId) already applied the delete locally, so we mark it synced.
+                existing.setSyncedToMachines("|" + originMachineId + "|");
+                PermitAttachment saved = attachmentRepo.save(existing);
+                log.info("[Hub Attachment] Tombstone applied: {} for {}#{} from {}",
+                    fileName, entityType, entityId, originMachineId);
+                return saved;
+            }
+            // Tombstone for a row the hub never had — accept it as a pre-tombstoned row so any
+            // peer that DOES have the row picks up the delete.
+            PermitAttachment att = new PermitAttachment();
+            att.setEntityType(entityType);
+            att.setEntityId(entityId);
+            att.setFileName(fileName);
+            att.setContentHash(contentHash);
+            att.setOriginMachineId(originMachineId);
+            att.setOrigin(origin);
+            att.setDeleted(true);
+            att.setCreatedAt(LocalDateTime.now());
+            att.setSyncedToServer(true);
+            att.addSyncedMachine(originMachineId);
+            att = attachmentRepo.save(att);
+            log.info("[Hub Attachment] Tombstone stored (no local match): {} for {}#{} from {}",
+                fileName, entityType, entityId, originMachineId);
+            return att;
+        }
 
         // Dedup by filename + content hash when available.
         if (contentHash != null && !contentHash.isEmpty() &&
@@ -69,6 +110,7 @@ public class HubAttachmentService {
         att.setContentHash(contentHash);
         att.setCreatedAt(LocalDateTime.now());
         att.setOriginMachineId(originMachineId);
+        att.setOrigin(origin);
         att.setSyncedToServer(true); // Hub IS the server
         att.addSyncedMachine(originMachineId); // Origin already has it
 

@@ -68,6 +68,44 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 .complete-form button.primary[disabled] { opacity: 0.6; cursor: default; }
 .complete-done { color: #7ee787; padding: 10px 0; font-size: 15px; }
 
+/* Electronic completion form (assigned to the PM) rendered on the Complete tab.
+   Scoped SmartForm styling — mirrors the standalone fill page so sections read as distinct cards. */
+.complete-form-wrap { max-width: 100%; }
+.complete-form-wrap .actions { margin-top: 14px; padding-top: 12px; border-top: 1px solid #333; }
+.complete-form-wrap ::ng-deep form {
+  background: transparent; border: 0; box-shadow: none; padding: 0; gap: 18px;
+}
+.complete-form-wrap ::ng-deep .form-group {
+  background: #242424; border: 0; border-left: 3px solid #0e639c;
+  border-radius: 8px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.complete-form-wrap ::ng-deep .group-title {
+  grid-column: 1 / -1; width: 100%;
+  font-size: 1rem; font-weight: 700; color: #7cc6ff; letter-spacing: 0.01em;
+  margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #3a3a3a;
+}
+.complete-form-wrap ::ng-deep [class*="form-field-layout"]:has(.form-image),
+.complete-form-wrap ::ng-deep [class*="form-field-layout"]:has(app-radio-group),
+.complete-form-wrap ::ng-deep [class*="form-field-layout"]:has(app-checkbox-group),
+.complete-form-wrap ::ng-deep [class*="form-field-layout"]:has(app-multi-select-searchable-dropdown),
+.complete-form-wrap ::ng-deep [class*="form-field-layout"]:has(textarea) {
+  grid-column: 1 / -1; flex-basis: 100%; width: 100%;
+}
+.complete-form-wrap ::ng-deep .form-image { margin: 2px 0 8px; }
+.complete-form-wrap ::ng-deep .form-image img {
+  max-height: 240px; border: 1px solid #4a4a4a; border-radius: 6px;
+}
+.complete-form-wrap ::ng-deep .form-image figcaption { color: #9fb0c0; font-size: 0.82rem; }
+
+/* Tasks tab */
+.task-table { width: 100%; border-collapse: collapse; }
+.task-table th, .task-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #333; vertical-align: top; }
+.task-table td.num, .task-table th.num { text-align: right; white-space: nowrap; width: 48px; }
+.task-table .task-status { font-size: 12px; color: #9fb0c0; }
+.task-table tr.task-done td { color: #7f8f7f; }
+.task-table tr.task-done .task-status { color: #7ee787; }
+.task-table td.task-action { text-align: right; white-space: nowrap; }
+
 /* Materials tab */
 .mat-table td.num, .mat-table th.num { text-align: right; white-space: nowrap; }
 .mat-table tr.is-return td { color: #9fe0b0; }
@@ -117,3 +155,27 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 .att-office .sheet-name { margin: 8px 0 4px; color: #0e639c; }
 .short-desc { margin-top: 14px; }
 .short-desc h4 { margin: 0 0 6px; color: #7cc6ff; }
+
+/* Mobile (<=768px): make the record dialog full-screen, let the tab bar
+   scroll horizontally instead of overflowing, and free the key/value label
+   column so values get room. Uses --vh for the Android address-bar case. */
+@media (max-width: 768px) {
+  /* Pin the full-screen dialog to the TOP of the viewport instead of centering
+     it — centering a 100vh-tall box inside the mobile layout viewport pushed the
+     header + tab bar above the fold. Size to --vh so the height matches the
+     *visible* viewport (excludes the Android/iOS address bar), keeping the
+     header, tabs and body all on screen with the body scrolling internally. */
+  .mx-backdrop { padding: 0; align-items: flex-start; }
+  .mx-dialog {
+    width: 100vw; max-width: 100vw;
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    max-height: 100vh;
+    max-height: calc(var(--vh, 1vh) * 100);
+    border-radius: 0; border: 0;
+  }
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs button { flex: 0 0 auto; white-space: nowrap; }
+  table.kv th { width: auto; padding-right: 8px; }
+  .sr-edit-grid { grid-template-columns: 1fr; }
+}

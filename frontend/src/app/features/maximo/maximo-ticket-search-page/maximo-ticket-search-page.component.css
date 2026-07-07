@@ -51,3 +51,12 @@ td.date { white-space: nowrap; color: #aaa; font-variant-numeric: tabular-nums; 
 
 .sugg .chip { display: inline-block; background: #262b33; border: 1px solid #3a4250; border-radius: 10px;
   padding: 1px 8px; margin: 1px 3px 1px 0; font-size: 11px; color: #cfe8ff; }
+
+/* Mobile (<=768px): let the wide results table scroll inside its own box
+   instead of dragging the whole page sideways, and let the tag input fill
+   the bar row. */
+@media (max-width: 768px) {
+  .mx-page { padding: 8px; }
+  table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .tag-input { flex-basis: 100%; min-width: 0; }
+}

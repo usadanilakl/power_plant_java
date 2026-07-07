@@ -171,7 +171,7 @@ public class NgInventoryItemController {
     public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(new NgApiResponse<>(
-                    attachmentRepo.findByEntityTypeAndEntityId("InventoryItem", id), "Attachments retrieved"));
+                    attachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse("InventoryItem", id), "Attachments retrieved"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }

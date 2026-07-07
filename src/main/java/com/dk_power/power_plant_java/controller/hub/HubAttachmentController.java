@@ -50,10 +50,15 @@ public class HubAttachmentController {
         String base64Content = (String) body.get("base64Content");
         String contentHash = (String) body.get("contentHash");
         String originMachineId = (String) body.get("originMachineId");
+        Boolean deletedFlag = (Boolean) body.get("deleted");
+        boolean deleted = Boolean.TRUE.equals(deletedFlag);
+        String origin = (String) body.get("origin");
 
-        if (entityType == null || entityIdNum == null || fileName == null || base64Content == null) {
+        // For tombstones the bytes are absent; the hub only needs identity to find the row to
+        // mark deleted. For a live upload the base64 is still required.
+        if (entityType == null || entityIdNum == null || fileName == null || (!deleted && base64Content == null)) {
             return ResponseEntity.badRequest().body(Map.of(
-                "error", "Missing required fields: entityType, entityId, fileName, base64Content",
+                "error", "Missing required fields: entityType, entityId, fileName" + (deleted ? "" : ", base64Content"),
                 "success", false));
         }
 
@@ -64,7 +69,7 @@ public class HubAttachmentController {
 
         PermitAttachment saved = hubAttachmentService.storeAttachment(
             entityType, entityIdNum.longValue(), fileName,
-            contentType, attachmentType, base64Content, contentHash, originMachineId);
+            contentType, attachmentType, base64Content, contentHash, originMachineId, deleted, origin);
 
         // Broadcast to other SSE clients
         hubSseService.broadcastFileUpload(entityType, entityIdNum.longValue(),
@@ -91,6 +96,8 @@ public class HubAttachmentController {
             meta.put("contentType", att.getContentType());
             meta.put("attachmentType", att.getAttachmentType());
             meta.put("originMachineId", att.getOriginMachineId());
+            meta.put("deleted", att.isDeleted());
+            meta.put("origin", att.getOrigin());
             meta.put("createdAt", att.getCreatedAt() != null ? att.getCreatedAt().toString() : null);
             return meta;
         }).toList();
@@ -123,6 +130,8 @@ public class HubAttachmentController {
         result.put("contentHash", att.getContentHash());
         result.put("base64Content", att.getBase64Content());
         result.put("originMachineId", att.getOriginMachineId());
+        result.put("deleted", att.isDeleted());
+        result.put("origin", att.getOrigin());
         result.put("createdAt", att.getCreatedAt() != null ? att.getCreatedAt().toString() : null);
 
         return ResponseEntity.ok(result);

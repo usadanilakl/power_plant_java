@@ -7,26 +7,26 @@
       </span>
     }
   </div>
-  @for (option of options; track option.label) {
+  @for (option of options; track option.label; let i = $index) {
     @if (isBoolean(option.value)) {
       <div>
         <input type="checkbox"
-               [id]="option.label"
+               [id]="optionId(i)"
                [value]="option.value"
                [checked]="option.value"
                (change)="onCheckboxChange(option, $event)"
                #checkbox>
-        <label [for]="option.label">{{ option.label }}</label>
+        <label [for]="optionId(i)">{{ option.label }}</label>
       </div>
     } @else if(mode === 'array') {
       <div>
         <input type="checkbox"
-               [id]="option.label"
+               [id]="optionId(i)"
                [value]="option.value"
                [checked]="value.includes(option.value)"
                (change)="onCheckboxChange(option, $event)"
                #checkbox>
-        <label [for]="option.label">{{ option.label }}</label>
+        <label [for]="optionId(i)">{{ option.label }}</label>
       </div>
     }
   }

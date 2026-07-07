@@ -41,6 +41,12 @@ public class MaximoFormService {
         return templateRepo.findById(id).map(this::toDto).orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public MaximoFormTemplateDto getTemplateByFormKey(String formKey) {
+        if (formKey == null || formKey.isBlank()) return null;
+        return templateRepo.findFirstByFormKey(formKey.trim()).map(this::toDto).orElse(null);
+    }
+
     /** Create or update a template (upsert by formKey). formKey is required and immutable per template. */
     public MaximoFormTemplateDto saveTemplate(MaximoFormTemplateDto dto) {
         if (dto == null || dto.getFormKey() == null || dto.getFormKey().isBlank()) {

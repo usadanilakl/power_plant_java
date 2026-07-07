@@ -107,17 +107,21 @@ export const DEFAULT_SDS_SCRAPER_CONFIG = {
 // the report-type dialog; `savedSearch` is the saved-search preset to apply.
 // `wireMode` controls how cells are pinned: 'column' wires a whole column
 // (latest reading), 'row' wires a whole row.
+// `aggregateByShift` collapses the many timestamped rows of a Trend-Table export
+// into ONE merged row per shift (Day / Night) — see WebViewAmsManager.
 export interface WebViewAmsReportDef {
   key: string;
   label: string;
   reportName: string;
   savedSearch: string;
   wireMode: 'column' | 'row';
+  aggregateByShift?: boolean;
 }
 
 export const WEBVIEW_AMS_REPORTS: WebViewAmsReportDef[] = [
   { key: 'rounds', label: 'Rounds',
-    reportName: 'Trend Table (Recurring Task Excel)', savedSearch: 'Rounds', wireMode: 'column' },
+    reportName: 'Trend Table (Recurring Task Excel)', savedSearch: 'Rounds', wireMode: 'column',
+    aggregateByShift: true },
   { key: 'alarms', label: 'Alarms',
     reportName: 'Alarm List (Excel)', savedSearch: 'All active alarms', wireMode: 'row' }
 ];

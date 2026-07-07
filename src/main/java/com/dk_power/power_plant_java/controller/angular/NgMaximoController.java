@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.angular;
 
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.dto.maximo.CompleteWorkOrderRequest;
 import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryItemDto;
@@ -78,6 +79,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/ng/maximo")
 @RequiredArgsConstructor
+@RestrictedAllowed  // access is gated on ROLE_PLANT/ROLE_ADMIN (SecurityConfig); no separate FULL grant required
 @ConditionalOnProperty(name = "maximo.api-key")
 public class NgMaximoController {
 
@@ -325,6 +327,21 @@ public class NgMaximoController {
     }
 
     /**
+     * The internal TASKS of a work order (child WO rows with {@code istask=1}), for the WO dialog's Tasks
+     * tab. {@code parentWonum} is the parent WO's number (not its href). Each task is a full work order with
+     * its own href/status, so it is completed via the existing {@code /work-orders/{href}/complete} endpoint.
+     */
+    @GetMapping("/work-orders/{parentWonum}/tasks")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> listWoTasks(@PathVariable String parentWonum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(workOrders.listTasks(parentWonum), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] list tasks for WO {} failed: {}", parentWonum, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Add a worklog note to a work order (no labor, no status change). Handy for adding a log to an
      * already-completed WO. Returns the refreshed worklog list.
      */
@@ -497,6 +514,18 @@ public class NgMaximoController {
         }
     }
 
+    /** Assign (or clear, when formKey is blank) the electronic completion form for a recurring PM. */
+    @PutMapping("/pm/catalog/{id}/form")
+    public ResponseEntity<NgApiResponse<RecurringPmDto>> pmAssignForm(
+            @PathVariable Long id, @RequestBody FormAssignRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(recurringPms.assignForm(id, req.formKey()), "updated"));
+        } catch (Exception e) {
+            log.warn("[Maximo] PM assign-form {} failed: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     /** Manually convert a work order into a recurring-PM catalog entry (auto-detection missed it). */
     @PostMapping("/pm/catalog/from-wo")
     public ResponseEntity<NgApiResponse<RecurringPmDto>> pmMakeRecurring(@RequestBody MakeRecurringRequest req) {
@@ -544,6 +573,9 @@ public class NgMaximoController {
     }
 
     public record ClassifyRequest(ShiftPreference shift, RecurrenceCadence cadence, Integer dayOfWeek) {}
+
+    /** Body for assigning a completion form to a recurring PM (blank/null clears it). */
+    public record FormAssignRequest(String formKey) {}
 
     /** Body for manually converting a WO to a recurring task — the fields we already have on the pending row. */
     public record MakeRecurringRequest(String pmnum, String description, String lead, String wonum) {}

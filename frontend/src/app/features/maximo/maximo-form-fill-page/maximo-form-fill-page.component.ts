@@ -40,6 +40,7 @@ export class MaximoFormFillPageComponent implements OnInit {
   loading = signal(false);
   saving = signal(false);
   completing = signal(false);
+  previewing = signal(false);
   error = signal<string | null>(null);
   info = signal<string | null>(null);
 
@@ -106,6 +107,37 @@ export class MaximoFormFillPageComponent implements OnInit {
     const values = { ...(this.valuesSig() ?? {}), ...(live ?? {}) };
     if (!window.confirm(`Attach the completed “${t.formName}” PDF to WO ${this.wonum.trim()} and write back to Maximo?`)) return;
     await this.persist(values, true);
+  }
+
+  /**
+   * Preview the PDF exactly as it would attach to Maximo (same server render path), without shipping it.
+   * Opens the rendered PDF in a new tab. Uses the live form values; a work order number is optional here.
+   */
+  async preview() {
+    const t = this.selectedTemplate();
+    if (!t || this.previewing()) return;
+    // Read the LIVE value (SmartForm's change output is debounced) and merge with any prefilled values.
+    const live = this.smartForm?.getCurrentFormValues() ?? this.currentValues();
+    const values = { ...(this.valuesSig() ?? {}), ...(live ?? {}) };
+    this.previewing.set(true); this.error.set(null); this.info.set(null);
+    try {
+      const dto: MaximoFormSubmission = {
+        templateFormKey: t.formKey,
+        templateName: t.formName,
+        wonum: this.wonum.trim(),          // optional for a preview — blank just renders "—" in the header
+        woHref: this.woHref || undefined,
+        valuesJson: JSON.stringify(values ?? {}),
+      };
+      const blob = await firstValueFrom(this.api.previewPdf(dto));
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (!win) this.info.set('Preview generated — allow pop-ups to view it, or check your downloads.');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e: any) {
+      this.error.set('Preview failed. ' + this.msg(e));
+    } finally {
+      this.previewing.set(false);
+    }
   }
 
   private async persist(values: any, complete: boolean) {

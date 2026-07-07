@@ -16,16 +16,41 @@ public class NetworkUtils {
      * and common IPv6 LAN ranges (link-local and unique-local).
      */
     public static boolean isInternalRequest(HttpServletRequest request) {
-        String ip = getClientIp(request);
-        return isInternalIp(ip);
+        // A request that arrived through the reverse proxy is external by definition on this
+        // deployment: internal clients connect to the app directly (no forwarding headers),
+        // external clients come via IIS (which adds them). Presence-only check — the header
+        // value is never trusted, so a client cannot forge its way to "internal".
+        if (arrivedViaProxy(request)) {
+            return false;
+        }
+        return isInternalIp(getClientIp(request));
     }
 
     /**
      * Check if the request originates from localhost (loopback only).
+     *
+     * SECURITY: a genuinely local request carries NO proxy-forwarding headers. If any
+     * proxy touched the request it is not loopback, whatever IP it resolves to — so we
+     * reject it up front. This keeps the highest-value loopback gates (desktop
+     * auto-auth, /server/stop) robust even if RemoteIpValve were misconfigured.
      */
     public static boolean isLoopbackRequest(HttpServletRequest request) {
-        String ip = getClientIp(request);
-        return isLoopbackIp(ip);
+        if (arrivedViaProxy(request)) {
+            return false;
+        }
+        return isLoopbackIp(getClientIp(request));
+    }
+
+    /**
+     * True if the request carries reverse-proxy forwarding headers, i.e. it did NOT connect to
+     * the app directly. On this deployment only IIS (external traffic) adds these; internal LAN
+     * clients connect straight to Tomcat. Presence-only check — the value is never read, so a
+     * client cannot forge its way to "internal"/"loopback" by adding a header.
+     */
+    private static boolean arrivedViaProxy(HttpServletRequest request) {
+        return request.getHeader("X-Forwarded-For") != null
+                || request.getHeader("X-Real-IP") != null
+                || request.getHeader("Forwarded") != null;
     }
 
     public static boolean isLoopbackIp(String ip) {
@@ -115,13 +140,16 @@ public class NetworkUtils {
     }
 
     /**
-     * Extract client IP, checking X-Forwarded-For for proxied requests.
+     * Client IP for AUTHORIZATION decisions.
+     *
+     * SECURITY: uses only the real socket peer — resolved, behind the IIS reverse proxy,
+     * by Tomcat's RemoteIpValve (see server.tomcat.remoteip.internal-proxies on the
+     * 'server' profile). It deliberately does NOT read X-Forwarded-For / X-Real-IP here:
+     * those are client-settable, and trusting them previously let a remote caller forge a
+     * loopback/LAN address and bypass every IP-based gate. Use header values for logging
+     * only, never for trust decisions.
      */
     public static String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
         return request.getRemoteAddr();
     }
 }

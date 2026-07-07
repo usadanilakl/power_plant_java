@@ -68,7 +68,8 @@ public class SdsGapReportEmailService {
         if (includeAttachments) {
             for (SdsGapReportDto.Gap gap : report.getMissingFromEbinder()) {
                 if (gap.getId() == null) continue;   // missing-from-eBinder always has a DB id
-                List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(
+                // Skip tombstones — those have base64=null and would confuse the recipient.
+                List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse(
                         SdsChemicalMapper.ENTITY_TYPE, gap.getId());
                 for (PermitAttachment att : atts) {
                     String b64 = att.getBase64Content();

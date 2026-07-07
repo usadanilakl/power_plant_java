@@ -12,6 +12,7 @@ import { QrEquipmentViewerComponent } from './features/qr/qr-equipment-viewer/qr
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
 import { fullAccessGuard } from './guards/full-access.guard';
+import { plantAccessGuard } from './guards/plant-access.guard';
 
 // Feature routes
 import { FILE_ROUTES } from './routes/file.routes';
@@ -70,6 +71,6 @@ export const routes: Routes = [
   ...SDS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...ETAPRO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...ETAPRO_REPORTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...MAXIMO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...MAXIMO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, plantAccessGuard] })),
   ...PLANT_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
 ];

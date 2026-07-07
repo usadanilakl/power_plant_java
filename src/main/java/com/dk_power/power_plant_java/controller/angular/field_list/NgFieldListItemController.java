@@ -132,7 +132,7 @@ public class NgFieldListItemController {
     @GetMapping("/{id}/attachments")
     public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
         try {
-            List<PermitAttachment> attachments = attachmentRepo.findByEntityTypeAndEntityId("FieldListItem", id);
+            List<PermitAttachment> attachments = attachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse("FieldListItem", id);
             return ResponseEntity.ok(new NgApiResponse<>(attachments, "Attachments retrieved"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(

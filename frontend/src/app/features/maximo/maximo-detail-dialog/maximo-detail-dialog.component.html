@@ -19,6 +19,9 @@
       <button *ngIf="isWo" [class.active]="tab() === 'materials'" (click)="setTab('materials')">
         Materials <span class="muted" *ngIf="materialsLoaded()">({{ materials().length }})</span>
       </button>
+      <button *ngIf="isWo" [class.active]="tab() === 'tasks'" (click)="setTab('tasks')">
+        Tasks <span class="muted" *ngIf="tasksLoaded()">({{ tasks().length }})</span>
+      </button>
       <button *ngIf="canComplete" [class.active]="tab() === 'complete'" (click)="setTab('complete')">
         Complete
       </button>
@@ -178,42 +181,105 @@
         </div>
       </div>
 
+      <!-- Tasks tab (WO only) — internal child work orders, each completed independently -->
+      <div *ngIf="tab() === 'tasks' && !loading()">
+        <div *ngIf="tasks().length === 0" class="muted">This work order has no internal tasks.</div>
+        <table *ngIf="tasks().length" class="task-table">
+          <thead>
+            <tr><th class="num">Task</th><th>Description</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let t of tasks()" [class.task-done]="!taskCompletable(t)">
+              <td class="num">{{ t.taskid || '—' }}</td>
+              <td>{{ t.description || t.wonum }}</td>
+              <td><span class="task-status">{{ t.status }}</span></td>
+              <td class="task-action">
+                <button class="link" *ngIf="taskCompletable(t)" (click)="completeTask(t)"
+                        [disabled]="completingTaskHref() != null">
+                  {{ completingTaskHref() === t.href ? 'Completing…' : 'Complete' }}
+                </button>
+                <span class="muted" *ngIf="!taskCompletable(t)">✓</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="muted hint" *ngIf="tasks().length">
+          Completing a task changes only that task's status. Maximo decides whether finishing the last task
+          advances the parent work order.
+        </p>
+      </div>
+
       <!-- Complete tab (WO only) -->
       <div *ngIf="tab() === 'complete'">
         <div *ngIf="completeDone()" class="complete-done">
-          ✓ Work order completed. Status is now <strong>{{ wo?.status }}</strong>.
+          ✓ {{ completeSummary() || 'Done.' }}
         </div>
 
-        <ng-container *ngIf="!completeDone()">
-          <p class="muted">
-            Records actual labor and a log note, then completes the work order.
-          </p>
-          <fieldset class="complete-form" [disabled]="completing()">
-            <div class="row">
-              <label>Labor (who did the work)
-                <select [(ngModel)]="cLaborcode">
-                  <option value="">— select person —</option>
-                  <option *ngFor="let p of laborPeople()" [value]="p.personid">
-                    {{ p.name }} ({{ p.personid }})
-                  </option>
-                </select>
-              </label>
-              <label>Regular hours
-                <input type="number" min="0" step="0.25" [(ngModel)]="cHours" />
-              </label>
+        <div class="muted" *ngIf="!completeDone() && resolvingForm()">Loading completion form…</div>
+
+        <ng-container *ngIf="!completeDone() && !resolvingForm()">
+          <!-- Assigned electronic form → complete by filling it out (PDF + attach + write-back) -->
+          <ng-container *ngIf="completionForm() as t; else manualComplete">
+            <p class="muted">
+              This PM is completed with the <strong>{{ t.formName }}</strong> form. Two steps:
+              <strong>1)</strong> fill it out and <em>Finalize &amp; Attach</em> (renders a PDF and attaches it to the work order);
+              <strong>2)</strong> <em>Complete Work Order</em> to close it in Maximo.
+            </p>
+            <div class="complete-form-wrap">
+              <app-smart-form
+                [fields]="formFields()"
+                [values]="formValues"
+                [layout]="'reactive'"
+                [submitButtonText]="''">
+              </app-smart-form>
+              <div class="actions">
+                <button class="primary" (click)="submitCompleteForm()" [disabled]="completing() || formFinalized()">
+                  {{ completing() ? 'Submitting…' : (formFinalized() ? '✓ Form finalized' : 'Finalize & Attach Form') }}
+                </button>
+                <button class="primary" (click)="completeWoAfterForm()"
+                        [disabled]="completing() || !formFinalized()"
+                        [title]="formFinalized() ? 'Close the work order in Maximo (status → COMP)' : 'Finalize the form first'">
+                  {{ completing() ? 'Completing…' : 'Complete Work Order' }}
+                </button>
+              </div>
+              <p class="muted" *ngIf="!formFinalized()" style="margin-top:6px; font-size:12px;">
+                Finalize the form first — then “Complete Work Order” will close the WO in Maximo.
+              </p>
             </div>
-            <label>Log summary
-              <input type="text" [(ngModel)]="cSummary" placeholder="e.g. C Crew Areas are clean." />
-            </label>
-            <label>Log details (optional)
-              <textarea rows="3" [(ngModel)]="cDetails"></textarea>
-            </label>
-            <div class="actions">
-              <button class="primary" (click)="submitComplete()" [disabled]="completing()">
-                {{ completing() ? 'Completing…' : 'Complete Work Order' }}
-              </button>
-            </div>
-          </fieldset>
+          </ng-container>
+
+          <!-- No form assigned → manual labor + log completion -->
+          <ng-template #manualComplete>
+            <p class="muted">
+              Records actual labor and a log note, then completes the work order.
+            </p>
+            <fieldset class="complete-form" [disabled]="completing()">
+              <div class="row">
+                <label>Labor (who did the work)
+                  <select [(ngModel)]="cLaborcode">
+                    <option value="">— select person —</option>
+                    <option *ngFor="let p of laborPeople()" [value]="p.personid">
+                      {{ p.name }} ({{ p.personid }})
+                    </option>
+                  </select>
+                </label>
+                <label>Regular hours
+                  <input type="number" min="0" step="0.25" [(ngModel)]="cHours" />
+                </label>
+              </div>
+              <label>Log summary
+                <input type="text" [(ngModel)]="cSummary" placeholder="e.g. C Crew Areas are clean." />
+              </label>
+              <label>Log details (optional)
+                <textarea rows="3" [(ngModel)]="cDetails"></textarea>
+              </label>
+              <div class="actions">
+                <button class="primary" (click)="submitComplete()" [disabled]="completing()">
+                  {{ completing() ? 'Completing…' : 'Complete Work Order' }}
+                </button>
+              </div>
+            </fieldset>
+          </ng-template>
         </ng-container>
       </div>
     </div>

@@ -99,8 +99,10 @@ public class SdsOutboundSharePointSync {
         dto.setSharepointId(spId);
         fieldMergeService.updateSnapshot(syncable.getEntityTypeName(), spId, syncable.extractSpFieldValues(dto));
 
-        // Push attachments (the SDS PDF) so the SharePoint backup is complete.
-        List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId(SdsChemicalMapper.ENTITY_TYPE, entity.getId());
+        // Push attachments (the SDS PDF) so the SharePoint backup is complete. Skip tombstones
+        // — Sync PDFs marks superseded rows deleted=true for peer propagation; pushing them here
+        // would silently resurrect the stale PDF on SP.
+        List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse(SdsChemicalMapper.ENTITY_TYPE, entity.getId());
         for (PermitAttachment att : atts) {
             try {
                 PaAttachmentDto pa = new PaAttachmentDto();

@@ -1,12 +1,17 @@
 package com.dk_power.power_plant_java.controller.angular;
 
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormTemplateDto;
+import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormSeeder;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
+import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -27,11 +33,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/ng/maximo/forms")
 @RequiredArgsConstructor
+@RestrictedAllowed  // access gated on ROLE_PLANT/ROLE_ADMIN (SecurityConfig); no separate FULL grant required
 public class NgMaximoFormController {
 
     private final MaximoFormService forms;
     private final MaximoFormCompletionService completion;
     private final MaximoFormSeeder seeder;
+    private final RecurringPmService recurringPms;
 
     // ── Templates ─────────────────────────────────────────────────────────────
 
@@ -80,6 +88,20 @@ public class NgMaximoFormController {
         return ResponseEntity.ok(new NgApiResponse<>(forms.templatesForWorkOrder(pmnum, description), "ok"));
     }
 
+    /**
+     * The completion form ASSIGNED to a WO's recurring PM (matched by pmnum, then description), or null if
+     * none. Drives the WO Complete tab: when non-null, the operator completes the WO by filling this form.
+     */
+    @GetMapping("/for-wo")
+    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> completionFormForWo(
+            @RequestParam(value = "pmnum", required = false) String pmnum,
+            @RequestParam(value = "description", required = false) String description) {
+        RecurringPm pm = recurringPms.findForWorkOrder(pmnum, description).orElse(null);
+        String key = (pm == null) ? null : pm.getFormKey();
+        MaximoFormTemplateDto t = (key == null || key.isBlank()) ? null : forms.getTemplateByFormKey(key);
+        return ResponseEntity.ok(new NgApiResponse<>(t, "ok"));
+    }
+
     // ── Submissions ────────────────────────────────────────────────────────────
 
     @GetMapping("/submissions/{id}")
@@ -116,6 +138,27 @@ public class NgMaximoFormController {
         } catch (Exception e) {
             log.warn("[MaximoForms] complete failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Preview the completion PDF WITHOUT touching Maximo — returns the exact same PDF bytes that
+     * {@code /submissions/complete} would attach, for testing/development on the fill page. Nothing is saved
+     * and no work-order write-back happens. Returns {@code application/pdf} (or a plain-text error on failure).
+     */
+    @PostMapping("/submissions/preview-pdf")
+    public ResponseEntity<byte[]> previewPdf(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            byte[] pdf = completion.renderPreviewPdf(dto);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"form-preview.pdf\"")
+                    .body(pdf);
+        } catch (Exception e) {
+            log.warn("[MaximoForms] preview-pdf failed: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(("Preview failed: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
         }
     }
 }

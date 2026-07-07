@@ -97,6 +97,22 @@ public class SdsChemicalSharePointAdapter {
     }
 
     /**
+     * Delete a single SharePoint attachment by its filename on the given list item. Used by
+     * "Sync PDFs" after an add-then-delete swap: the new PDF is added under a fresh filename,
+     * then the old ones are removed by name so any manual SP uploads (different names) survive.
+     * Propagates the exception so the caller can distinguish "SP row missing" from other errors.
+     */
+    public boolean deleteAttachmentByFileName(String sharepointId, String fileName) {
+        return certAccess.deleteListItemAttachment(LIST_TITLE, sharepointId, fileName);
+    }
+
+    /** Reads at the call site as "delete OLD attachments matching this filename" for the Sync
+     *  PDFs replace step. Currently a straight delegate; future variant could match a pattern. */
+    public boolean deleteAllAttachmentsMatching(String sharepointId, String fileName) {
+        return deleteAttachmentByFileName(sharepointId, fileName);
+    }
+
+    /**
      * Remove every attachment on the SharePoint list item. Used by clearAllPdfs so a fresh scrape
      * can re-upload clean copies instead of accumulating duplicates next to a stale broken file.
      * Best-effort: per-file delete failures are logged and don't stop the loop.

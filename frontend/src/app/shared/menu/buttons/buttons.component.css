@@ -115,3 +115,22 @@ button.guide-highlight {
   position: relative;
   z-index: 100;
 }
+
+/* Mobile (<=768px): a wrapping button row grows tall and, inside fixed-height
+   containers like the table's selection bar, pushes content off-screen.
+   Collapse to a single horizontally-scrollable strip so the row stays one
+   line and all buttons remain reachable. Desktop layout unchanged. */
+@media (max-width: 768px) {
+  .buttons-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .buttons-row button {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}

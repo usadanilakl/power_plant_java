@@ -35,3 +35,13 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #2a2a2a; font-size: 12px; }
 th { color: #7cc6ff; font-weight: 500; }
 td.num, th.num { text-align: right; white-space: nowrap; }
+
+/* Mobile (<=768px): stack the two flex panels and clear their 320/340px
+   min-widths so the page no longer forces >660px of horizontal scroll.
+   Let the detail table scroll inside its own box. */
+@media (max-width: 768px) {
+  .mx-page { padding: 8px; }
+  .split { flex-direction: column; }
+  .results, .detail { min-width: 0; }
+  .detail table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

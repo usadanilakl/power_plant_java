@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.angular.sds;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.sds.SdsChemicalDto;
 import com.dk_power.power_plant_java.dto.sds.SdsGapReportDto;
@@ -8,6 +9,7 @@ import com.dk_power.power_plant_java.dto.sds.SdsGapReportEmailResultDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportItemDto;
 import com.dk_power.power_plant_java.dto.sds.SdsImportReportDto;
 import com.dk_power.power_plant_java.dto.sds.SdsSeedReportDto;
+import com.dk_power.power_plant_java.dto.sds.SdsSyncPdfsReportDto;
 import com.dk_power.power_plant_java.dto.sds.SdsSyncReportDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.mappers.sds.SdsChemicalMapper;
@@ -16,6 +18,7 @@ import com.dk_power.power_plant_java.sevice.angular.sds.NgSdsChemicalService;
 import com.dk_power.power_plant_java.sevice.angular.sds.SdsAddressService;
 import com.dk_power.power_plant_java.sevice.angular.sds.SdsGapReportEmailService;
 import com.dk_power.power_plant_java.sevice.angular.sds.SdsSeedService;
+import com.dk_power.power_plant_java.sevice.angular.sds.SdsSyncPdfsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +37,8 @@ public class NgSdsChemicalController {
     private final SdsAddressService addressService;
     private final SdsSeedService seedService;
     private final SdsGapReportEmailService gapReportEmailService;
+    private final SdsSyncPdfsService syncPdfsService;
+    private final SyncConfig syncConfig;
     private final PermitAttachmentRepo attachmentRepo;
 
     /** Suggested filing address (latest book, next section) for a new chemical; user approves/edits. */
@@ -68,6 +73,51 @@ public class NgSdsChemicalController {
             return ResponseEntity.ok(new NgApiResponse<>(service.reconcileMissing(sourceIds), "Reconcile complete"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * "Sync PDFs with eBinder" — walk-and-replace reconciliation of scraper-owned PDFs across
+     * the local DB and SharePoint. Content-hash driven so re-runs on already-synced items are
+     * no-ops; only touches attachments tagged {@code origin='ebinder'} (or the legacy filename
+     * pattern) so manual uploads are preserved even on matched chemicals.
+     * <p>
+     * Body: {@code { "items": [...scraped batch...], "dryRun": bool, "isFirstBatch": bool,
+     * "report": {previous report to accumulate into} }}. Batching is client-driven — the
+     * Electron scraper pushes one item at a time so payloads stay under HTTP limits and the
+     * per-chemical progress is granular.
+     * <p>
+     * <b>Gated on hub role.</b> Running Sync PDFs from a desktop would spawn a competing writer
+     * against SharePoint and diverge the fleet — 403 if invoked anywhere else.
+     */
+    @PostMapping("/sync-pdfs")
+    public ResponseEntity<NgApiResponse<SdsSyncPdfsReportDto>> syncPdfs(
+            @RequestBody com.dk_power.power_plant_java.dto.sds.SdsSyncPdfsRequestDto req) {
+        if (!syncConfig.isHubMode()) {
+            return ResponseEntity.status(403).body(new NgApiResponse<>(null,
+                "Sync PDFs must run on the hub — this instance is not configured as a hub."));
+        }
+        try {
+            SdsSyncPdfsReportDto report = req.getReport() != null ? req.getReport() : new SdsSyncPdfsReportDto();
+            report.setDryRun(req.isDryRun() || report.isDryRun());
+
+            // Preflight runs once, on the first batch. If it flags blocking invariants the
+            // blockers travel with the report on every subsequent batch and we refuse writes.
+            if (req.isFirstBatch()) {
+                syncPdfsService.runPreflight(report);
+            }
+            if (!report.getPreflightBlockers().isEmpty()) {
+                return ResponseEntity.ok(new NgApiResponse<>(report,
+                    "Preflight failed: " + String.join("; ", report.getPreflightBlockers())));
+            }
+
+            syncPdfsService.reconcileBatch(req.getItems(), req.isDryRun(), report);
+            return ResponseEntity.ok(new NgApiResponse<>(report,
+                (req.isDryRun() ? "Preview: " : "") + "checked " + report.getChemicalsChecked()
+                + ", updated " + report.getUpdated()
+                + ", already up-to-date " + report.getAlreadyUpToDate()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Sync PDFs failed: " + e.getMessage()));
         }
     }
 
@@ -291,8 +341,12 @@ public class NgSdsChemicalController {
     @GetMapping("/{id}/attachments")
     public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
         try {
+            // Filter tombstones — Sync PDFs marks superseded rows deleted=true so the tombstone
+            // propagates over the attachment sync channel; those rows linger until the purge
+            // sweep runs, but MUST NOT surface in the UI.
             return ResponseEntity.ok(new NgApiResponse<>(
-                    attachmentRepo.findByEntityTypeAndEntityId(SdsChemicalMapper.ENTITY_TYPE, id), "Attachments retrieved"));
+                    attachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse(SdsChemicalMapper.ENTITY_TYPE, id),
+                    "Attachments retrieved"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }

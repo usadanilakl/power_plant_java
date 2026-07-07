@@ -681,17 +681,26 @@ export class WebViewAmsManager {
     );
     if (headerIdx < 0) headerIdx = 5; // fallback to the known fixed layout
 
-    const columns = (aoa[headerIdx] || []).map(c => String(c || '').replace(/\s+/g, ' ').trim());
+    let columns = (aoa[headerIdx] || []).map(c => String(c || '').replace(/\s+/g, ' ').trim());
     while (columns.length && !columns[columns.length - 1]) {
       columns.pop(); // drop trailing empty columns
     }
 
-    const rows: string[][] = [];
+    let rows: string[][] = [];
     for (let i = headerIdx + 1; i < aoa.length; i++) {
       const raw = aoa[i] || [];
       const row = columns.map((_, ci) => String(raw[ci] == null ? '' : raw[ci]).trim());
       if (row.every(c => !c)) continue; // skip fully-blank rows
       rows.push(row);
+    }
+
+    // Trend-Table exports carry one row per round (many per shift). Collapse
+    // them to a single merged row per Day/Night shift so the table reads as
+    // two rows per day instead of a confusing wall of timestamps.
+    if (def.aggregateByShift) {
+      const agg = this.aggregateRowsByShift(columns, rows);
+      columns = agg.columns;
+      rows = agg.rows;
     }
 
     const contentHash = crypto
@@ -708,6 +717,65 @@ export class WebViewAmsManager {
       scrapedAt: new Date().toISOString(),
       contentHash
     };
+  }
+
+  /**
+   * Collapse a Trend-Table's many per-round rows into ONE merged row per shift
+   * (Day / Night), newest shift first. Each merged row keeps the latest
+   * non-empty reading for every question column, so a single row shows every
+   * value recorded across all of that shift's rounds. Column 0 (the raw
+   * "Response Date") becomes a readable "<weekday>, <Mon> <D> · <Shift>" label
+   * — the entry's date, so a pinned value's freshness is obvious.
+   *
+   * Rows are ordered newest-shift-first; getWiredItems() relies on that to
+   * surface the most recent non-empty reading.
+   */
+  private aggregateRowsByShift(columns: string[], rows: string[][]): { columns: string[]; rows: string[][] } {
+    if (rows.length === 0) return { columns, rows };
+
+    interface Bucket { dateKey: string; shift: string; latest: number; entries: { t: number; row: string[] }[]; }
+    const buckets = new Map<string, Bucket>();
+    const passthrough: string[][] = []; // rows whose date won't parse — kept verbatim
+
+    for (const row of rows) {
+      const t = Date.parse(row[0]);
+      if (isNaN(t)) { passthrough.push(row); continue; }
+      const { dateKey, shift } = this.shiftForDate(new Date(t));
+      const bk = `${dateKey}|${shift}`;
+      let b = buckets.get(bk);
+      if (!b) { b = { dateKey, shift, latest: t, entries: [] }; buckets.set(bk, b); }
+      b.entries.push({ t, row });
+      if (t > b.latest) b.latest = t;
+    }
+
+    const merged: string[][] = [];
+    const ordered = Array.from(buckets.values()).sort((a, b) => b.latest - a.latest); // newest shift first
+    for (const b of ordered) {
+      b.entries.sort((x, y) => x.t - y.t); // oldest → newest so the latest non-empty reading wins
+      const out = columns.map(() => '');
+      for (const { row } of b.entries) {
+        for (let c = 1; c < columns.length; c++) {
+          if (row[c]) out[c] = row[c];
+        }
+      }
+      out[0] = this.shiftLabel(b.dateKey, b.shift);
+      merged.push(out);
+    }
+    // Keep any unparseable rows visible below the shift rows rather than dropping them.
+    for (const row of passthrough) merged.push(row);
+
+    const cols = columns.slice();
+    cols[0] = 'Shift'; // was "Response Date" — now a per-shift bucket label
+    return { columns: cols, rows: merged };
+  }
+
+  /** Human date label for a shift bucket, e.g. "Wed, May 20 · Night". */
+  private shiftLabel(dateKey: string, shift: string): string {
+    const d = new Date(`${dateKey}T12:00:00`);
+    const nice = isNaN(d.getTime())
+      ? dateKey
+      : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return `${nice} · ${shift}`;
   }
 
   // ─── Auto-refresh (once per shift) ────────────────────────────────────
@@ -748,21 +816,31 @@ export class WebViewAmsManager {
 
   /** Shift key for a moment in time, e.g. "2026-05-21-Day" / "2026-05-21-Night". */
   private currentShiftKey(now = new Date()): string {
+    const { dateKey, shift } = this.shiftForDate(now);
+    return `${dateKey}-${shift}`;
+  }
+
+  /**
+   * Which shift a moment belongs to, honoring the configured day/night start
+   * hours. Pre-dawn hours (before day start) belong to the PREVIOUS calendar
+   * day's Night shift. Returns the bucket's owning date + shift name.
+   */
+  private shiftForDate(d: Date): { dateKey: string; shift: 'Day' | 'Night' } {
     const dayStart = this.config.dayShiftStartHour;
     const nightStart = this.config.nightShiftStartHour;
-    const h = now.getHours();
-    const ymd = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const h = d.getHours();
+    const ymd = (x: Date) =>
+      `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 
     if (h >= dayStart && h < nightStart) {
-      return `${ymd(now)}-Day`;
+      return { dateKey: ymd(d), shift: 'Day' };
     }
     if (h < dayStart) {
-      const prev = new Date(now);
-      prev.setDate(now.getDate() - 1);
-      return `${ymd(prev)}-Night`;
+      const prev = new Date(d);
+      prev.setDate(d.getDate() - 1);
+      return { dateKey: ymd(prev), shift: 'Night' };
     }
-    return `${ymd(now)}-Night`;
+    return { dateKey: ymd(d), shift: 'Night' };
   }
 
   // ─── Disk cache (survives restarts) ───────────────────────────────────
@@ -831,8 +909,34 @@ export class WebViewAmsManager {
     }
   }
 
+  /** Trailing "(N)" question-ordinal stripped — the stable part of a column header. */
+  private stripColumnOrdinal(header: string): string {
+    return header.replace(/\s*\(\d+\)\s*$/, '').trim();
+  }
+
+  /** The trailing "(N)" question-ordinal of a column header (0 if none). */
+  private columnOrdinal(header: string): number {
+    const m = header.match(/\((\d+)\)\s*$/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
   /** Wired items resolved against the latest cached reports. */
   public getWiredItems(): WebViewAmsWiredValue[] {
+    // Rank the column pins that share a base name (ordinal-stripped) within a
+    // report, ordered by their stored ordinal. Used to pair duplicate-named
+    // columns positionally when the checklist changes and ordinals drift.
+    const rankById = new Map<string, number>();
+    const groups = new Map<string, WebViewAmsWiredItem[]>();
+    for (const it of this.wiredItems) {
+      if (it.mode !== 'column') continue;
+      const g = `${it.reportKey} ${this.stripColumnOrdinal(it.key)}`;
+      (groups.get(g) ?? groups.set(g, []).get(g)!).push(it);
+    }
+    for (const arr of groups.values()) {
+      arr.sort((a, b) => this.columnOrdinal(a.key) - this.columnOrdinal(b.key));
+      arr.forEach((it, i) => rankById.set(it.id, i));
+    }
+
     return this.wiredItems.map(item => {
       const report = this.cachedReports[item.reportKey];
       const base: WebViewAmsWiredValue = {
@@ -841,16 +945,24 @@ export class WebViewAmsManager {
       if (!report) return base;
 
       if (item.mode === 'column') {
-        // Latest non-empty reading in the column, scanning newest row first.
-        const colIdx = report.columns.indexOf(item.key);
+        // Resolve the pinned column tolerantly — the checklist grows over time
+        // and shifts every column's "(N)" ordinal, so an exact header match
+        // silently breaks. Fall back to the ordinal-stripped base name.
+        const colIdx = this.resolveColumnIndex(report, item, rankById.get(item.id) ?? 0);
         if (colIdx < 0) return base;
-        for (let i = report.rows.length - 1; i >= 0; i--) {
+        const colName = report.columns[colIdx];
+        // Latest non-empty reading in the column. Aggregated rows are
+        // newest-shift-first, so scan top-down and take the first shift that
+        // actually recorded a value — a pin never blanks out just because the
+        // most recent shift skipped that reading. `time` carries the shift/date
+        // label of the reading so the user can tell fresh from stale.
+        for (let i = 0; i < report.rows.length; i++) {
           const cell = (report.rows[i][colIdx] || '').trim();
           if (cell) {
-            return { ...base, found: true, label: item.key, value: cell, time: report.rows[i][0] || '' };
+            return { ...base, found: true, label: colName, value: cell, time: report.rows[i][0] || '' };
           }
         }
-        return { ...base, found: true, label: item.key }; // column exists, no readings yet
+        return { ...base, found: true, label: colName }; // column exists, no readings yet
       }
 
       // row mode — the whole row by its first-column key
@@ -871,6 +983,29 @@ export class WebViewAmsManager {
         fields
       };
     });
+  }
+
+  /**
+   * Map a pinned column to a current column index, tolerant of the volatile
+   * trailing "(N)" question-ordinal that shifts whenever the round checklist
+   * gains or loses questions:
+   *   1) exact header match (checklist unchanged),
+   *   2) unique ordinal-stripped base-name match (the common case),
+   *   3) duplicate base names → pair by rank, since both the pins and the
+   *      current columns are ordered (e.g. the two "…injection strainer DP").
+   */
+  private resolveColumnIndex(report: WebViewAmsReport, item: WebViewAmsWiredItem, rank: number): number {
+    const exact = report.columns.indexOf(item.key);
+    if (exact >= 0) return exact;
+
+    const base = this.stripColumnOrdinal(item.key);
+    const matches: number[] = [];
+    for (let i = 1; i < report.columns.length; i++) { // skip col 0 (the Shift label)
+      if (this.stripColumnOrdinal(report.columns[i]) === base) matches.push(i);
+    }
+    if (matches.length === 0) return -1;
+    if (matches.length === 1) return matches[0];
+    return matches[Math.min(rank, matches.length - 1)];
   }
 
   /**

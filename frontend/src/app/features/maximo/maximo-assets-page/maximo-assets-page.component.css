@@ -61,3 +61,12 @@ button.secondary { background: #444; }
 
 .muted { color: #777; }
 .error { color: #ff7b72; }
+
+/* Mobile (<=768px): collapse the 380px + 1fr split into one column so the
+   page stops scrolling sideways, and let the location picker fill the row. */
+@media (max-width: 768px) {
+  .mx-page { padding: 8px; }
+  .split { grid-template-columns: 1fr; }
+  .search-bar app-maximo-location-picker { width: 100%; margin-left: 0; }
+  .results app-maximo-table { max-height: 60vh; }
+}

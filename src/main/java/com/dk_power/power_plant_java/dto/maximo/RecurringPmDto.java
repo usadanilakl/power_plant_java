@@ -31,4 +31,5 @@ public class RecurringPmDto {
     private LocalDate lastTargetDate;
     private LocalDateTime catalogRefreshedAt;
     private Boolean manuallyAdded;        // true = operator manually converted a WO to a recurring task
+    private String formKey;               // assigned electronic completion form (MaximoFormTemplate.formKey), or null
 }

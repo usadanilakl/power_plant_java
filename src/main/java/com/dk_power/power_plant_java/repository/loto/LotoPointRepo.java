@@ -28,6 +28,14 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 
     List<LotoPoint> findByTagNumber(String tag);
 
+    /**
+     * Case-insensitive active-only lookup used by the QR resolver. Ordered by
+     * id ascending so callers get deterministic multi-match results (a tag
+     * with no uniqueness constraint can yield multiple hits).
+     */
+    @Query("SELECT lp FROM LotoPoint lp WHERE UPPER(lp.tagNumber) = UPPER(:tagNumber) AND (lp.deleted IS NULL OR lp.deleted = false) ORDER BY lp.id ASC")
+    List<LotoPoint> findAllActiveByTagNumberIgnoreCase(@Param("tagNumber") String tagNumber);
+
     @Query("SELECT lp FROM LotoPoint lp WHERE UPPER(lp.tagNumber) IN :tagNumbers")
     List<LotoPoint> findByTagNumberUpperIn(@Param("tagNumbers") Collection<String> tagNumbers);
 

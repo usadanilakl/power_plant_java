@@ -171,6 +171,7 @@
               <th class="sortable" (click)="sortCatalog('cadence')">Cadence{{ sortIndicator('cadence') }}</th>
               <th class="sortable" (click)="sortCatalog('shift')">Shift{{ sortIndicator('shift') }}</th>
               <th class="sortable" (click)="sortCatalog('preferredDayOfWeek')">Pref. day{{ sortIndicator('preferredDayOfWeek') }}</th>
+              <th title="Electronic completion form the operator must fill out to close this PM's work orders">Completion form</th>
               <th class="sortable" (click)="sortCatalog('lastWonum')">Last WO{{ sortIndicator('lastWonum') }}</th>
             </tr>
           </thead>
@@ -197,6 +198,14 @@
                     <option *ngFor="let d of dowOptions" [ngValue]="d.value">{{ d.label }}</option>
                   </select>
                 </td>
+                <td class="form-cell">
+                  <select [ngModel]="pm.formKey ?? ''" (ngModelChange)="assignForm(pm, $event)"
+                          [class.assigned]="!!pm.formKey"
+                          title="Assign an electronic form — its work orders are then completed by filling it out">
+                    <option value="">— none —</option>
+                    <option *ngFor="let t of formTemplates()" [value]="t.formKey">{{ t.formName }}</option>
+                  </select>
+                </td>
                 <td class="row-actions">
                   <button class="link peek-toggle" [class.on]="isPmExpanded(pm.id)" (click)="togglePmHistory(pm)"
                           [title]="isPmExpanded(pm.id) ? 'Hide history' : 'Show history + upcoming WOs'">🕑</button>
@@ -207,7 +216,7 @@
               <!-- Occurrence timeline: real Maximo WOs (history + upcoming) for this PM -->
               <tr class="peek-row" *ngIf="isPmExpanded(pm.id)">
                 <td></td>
-                <td colspan="6">
+                <td colspan="7">
                   <div class="peek-note" *ngIf="isOccLoading(pm.id)"><span class="muted">Loading work orders…</span></div>
                   <div class="occ-wrap" *ngIf="!isOccLoading(pm.id) && occLoaded(pm.id)">
                     <div class="occ-col">

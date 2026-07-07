@@ -26,6 +26,20 @@ export class RadioGroupComponent implements ControlValueAccessor {
   @Input() name: string = '';
   question = input<Question | null>(null);
 
+  /**
+   * Unique per-instance key. Native radios group by their `name` attribute and `<label for>` targets the
+   * first element with a matching `id`, so multiple radio-groups on one page MUST have distinct names/ids —
+   * otherwise every Yes/No pair collapses into a single group. The caller rarely passes a unique `name`
+   * (SmartForm doesn't), so we always fall back to this instance id.
+   */
+  private static seq = 0;
+  private readonly uid = `rg${RadioGroupComponent.seq++}`;
+
+  /** The radio group's shared `name` — caller-provided name, else the unique instance id. */
+  get groupName(): string { return this.name || this.uid; }
+  /** A DOM-unique element id for the option at index i (never the raw value, which repeats across groups). */
+  optionId(i: number): string { return `${this.uid}-${i}`; }
+
   value: any;
 
   onChange: any = () => {};

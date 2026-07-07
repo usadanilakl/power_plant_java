@@ -6,6 +6,8 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoPmApiService } from '../../../services/maximo/maximo-pm-api.service';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoFormApiService } from '../../../services/maximo/maximo-form-api.service';
+import { MaximoFormTemplate } from '../../../models/maximo/maximo-form.models';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoWorkOrder } from '../../../models/maximo/maximo.models';
@@ -53,6 +55,7 @@ interface PeekGrid {
 export class MaximoPmPageComponent implements OnInit {
   private api = inject(MaximoPmApiService);
   private maximoApi = inject(MaximoApiService);
+  private formApi = inject(MaximoFormApiService);
 
   tab = signal<Tab>('assignments');
   loading = signal(false);
@@ -70,6 +73,8 @@ export class MaximoPmPageComponent implements OnInit {
   // Catalog
   catalog = signal<RecurringPm[]>([]);
   catalogLoaded = signal(false);
+  /** Active electronic form templates, for the per-PM "completion form" dropdown. */
+  formTemplates = signal<MaximoFormTemplate[]>([]);
   // Manually add a recurring PM the auto-scan missed (no WO needed).
   showAddPm = signal(false);
   addingPm = signal(false);
@@ -152,10 +157,25 @@ export class MaximoPmPageComponent implements OnInit {
   async loadCatalog() {
     this.loading.set(true); this.error.set(null);
     try {
-      this.catalog.set(await firstValueFrom(this.api.getCatalog()));
+      const [catalog, templates] = await Promise.all([
+        firstValueFrom(this.api.getCatalog()),
+        firstValueFrom(this.formApi.listTemplates()),
+      ]);
+      this.catalog.set(catalog);
+      this.formTemplates.set((templates ?? []).filter(t => t.active !== false));
       this.catalogLoaded.set(true);
     } catch (e: any) { this.error.set(this.msg(e)); }
     finally { this.loading.set(false); }
+  }
+
+  /** Assign (or clear, when formKey is '') a completion form to a recurring PM; persists immediately. */
+  async assignForm(pm: RecurringPm, formKey: string) {
+    const key = formKey || null;
+    if ((pm.formKey ?? null) === key) return;
+    try {
+      const updated = await firstValueFrom(this.api.assignForm(pm.id, key));
+      this.catalog.update(list => list.map(r => r.id === pm.id ? updated : r));
+    } catch (e: any) { this.error.set(this.msg(e)); }
   }
 
   async refreshCatalog() {

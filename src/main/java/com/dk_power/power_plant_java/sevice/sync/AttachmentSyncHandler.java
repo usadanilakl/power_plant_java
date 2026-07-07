@@ -61,6 +61,10 @@ public class AttachmentSyncHandler {
                     body.put("contentHash", att.getContentHash() != null
                         ? att.getContentHash()
                         : computeContentHash(att.getBase64Content()));
+                    // Tombstone + provenance ride the same channel so a delete on one machine
+                    // reaches every other. Origin lets receivers distinguish scraper-owned rows.
+                    body.put("deleted", att.isDeleted());
+                    body.put("origin", att.getOrigin());
 
                     HttpHeaders headers = createHeaders();
                     HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
@@ -142,6 +146,32 @@ public class AttachmentSyncHandler {
                     if (contentHash == null || contentHash.isEmpty()) {
                         contentHash = computeContentHash((String) attData.get("base64Content"));
                     }
+                    Boolean deletedFlag = (Boolean) attData.get("deleted");
+                    boolean incomingIsTombstone = Boolean.TRUE.equals(deletedFlag);
+                    String incomingOrigin = (String) attData.get("origin");
+
+                    // Incoming tombstone → find matching local row and mark it deleted (or hard
+                    // remove). The tombstone carries the same fileName + contentHash the original
+                    // row had; we prefer hash match (content-authoritative) with filename fallback
+                    // for legacy rows lacking a hash.
+                    if (incomingIsTombstone) {
+                        java.util.Optional<PermitAttachment> localOpt = contentHash != null && !contentHash.isEmpty()
+                            ? attachmentRepo.findFirstByEntityTypeAndEntityIdAndContentHashAndDeletedFalseOrderByIdAsc(
+                                entityType, entityId, contentHash)
+                            : attachmentRepo.findFirstByEntityTypeAndEntityIdAndFileNameOrderByIdAsc(
+                                entityType, entityId, fileName);
+                        if (localOpt.isPresent()) {
+                            PermitAttachment local = localOpt.get();
+                            local.setDeleted(true);
+                            local.setSyncedToServer(true);   // came from server; no re-upload needed
+                            attachmentRepo.save(local);
+                            downloaded++;
+                            log.info("[Attachment Sync] Applied tombstone: {} for {}#{}", fileName, entityType, entityId);
+                        }
+                        // Whether the local existed or not, the pending row is consumed by the
+                        // download call above (getAndMarkSynced marks it). Move on.
+                        continue;
+                    }
 
                     boolean exists = contentHash != null && !contentHash.isEmpty()
                         ? attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
@@ -160,6 +190,7 @@ public class AttachmentSyncHandler {
                     att.setBase64Content((String) attData.get("base64Content"));
                     att.setContentHash(contentHash);
                     att.setOriginMachineId((String) attData.get("originMachineId"));
+                    att.setOrigin(incomingOrigin);
                     att.setSyncedToServer(true);
                     attachmentRepo.save(att);
                     downloaded++;

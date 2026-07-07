@@ -41,15 +41,24 @@ export class RouterMenuComponent {
   /** Grouped menu filtered by access level and test mode — hides groups/items accordingly */
   filteredGroupedMenu = computed<GroupedRouterMenu>(() => {
     const groups = this.groupedMenu();
-    const hasFullAccess = this.currentUser()?.accessLevel === 'FULL';
+    const user = this.currentUser();
+    const hasFullAccess = user?.accessLevel === 'FULL';
+    const roles = user?.roles ?? [];
+    // Plant-role (or admin) users can see Plant-gated groups (e.g. Maximo) without FULL access.
+    const hasPlant = roles.includes('ROLE_PLANT') || roles.includes('ROLE_ADMIN');
     const testMode = this.isTestMode();
 
+    // A Plant-gated group (e.g. Maximo) is shown iff the user has the Plant role — matching its route
+    // guard, so a FULL-but-non-Plant user never sees a Maximo menu that would bounce them at the route.
+    const groupVisible = (g: RouterMenuGroup) =>
+      g.requiresPlant ? hasPlant : (hasFullAccess || !g.requiresFullAccess);
+
     return groups
-      .filter(group => hasFullAccess || !group.requiresFullAccess)
+      .filter(group => groupVisible(group))
       .map(group => ({
         ...group,
         items: group.items.filter(item =>
-          (hasFullAccess || !item.requiresFullAccess) &&
+          (group.requiresPlant ? hasPlant : (hasFullAccess || !item.requiresFullAccess)) &&
           (!item.testOnly || testMode)
         )
       }))

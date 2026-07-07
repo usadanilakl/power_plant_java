@@ -435,3 +435,32 @@ td {
 .clear-btn:hover {
   background-color: var(--primary-text, #616161);
 }
+
+/* === Mobile (<=768px): keep the selection/bulk bar compact so it never eats
+   the table. On a phone the bulk-action buttons wrap into several rows, making
+   .selection-info tall enough to steal all the flex space from the scroll
+   viewport (which can shrink to 0 via min-height:0) — so it "covers" the rows.
+   Lock the bar to a fixed short height and let the buttons scroll inside it.
+   Companion rule lives in buttons.component.css (.buttons-row nowrap). === */
+@media (max-width: 768px) {
+  .selection-info {
+    min-height: 0;
+    height: 56px;
+    flex: 0 0 56px;      /* never grow, never shrink — the viewport keeps its space */
+    padding: 6px 8px;
+    gap: 8px;
+    overflow: hidden;    /* height is locked; buttons scroll internally */
+  }
+
+  .selection-info > span {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .selection-info app-buttons {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: block;
+  }
+}

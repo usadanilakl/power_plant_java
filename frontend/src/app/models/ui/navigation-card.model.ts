@@ -26,6 +26,8 @@ export interface NavigationCardGroup {
   defaultRoute: string;
   items: NavigationCard[];
   requiresFullAccess?: boolean;
+  /** Visible to Plant-role (or admin) users even without FULL access — e.g. the Maximo group. */
+  requiresPlant?: boolean;
 }
 
 export type NavigationCards = NavigationCard[];
@@ -149,6 +151,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     color: '#26C6DA',
     defaultRoute: '/maximo/assets',
     requiresFullAccess: true,
+    requiresPlant: true,
     items: [
       { title: 'Assets', description: 'Search Maximo assets and view their SR / WO history', icon: 'precision_manufacturing', route: '/maximo/assets', color: '#26C6DA' },
       { title: 'Plant Locations', description: 'Browse the Maximo-seeded location hierarchy; per-node work orders & service requests', icon: 'account_tree', route: '/plant/hierarchy', color: '#42A5F5' },

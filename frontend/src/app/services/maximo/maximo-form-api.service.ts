@@ -46,6 +46,18 @@ export class MaximoFormApiService {
       .pipe(map(r => r.responseData ?? []));
   }
 
+  /**
+   * The completion form ASSIGNED to a WO's recurring PM (via PM Scheduling), matched by pmnum then
+   * description, or null when none is assigned. Drives the WO Complete tab.
+   */
+  completionFormForWo(pmnum?: string, description?: string): Observable<MaximoFormTemplate | null> {
+    let p = new HttpParams();
+    if (pmnum) p = p.set('pmnum', pmnum);
+    if (description) p = p.set('description', description);
+    return this.http.get<SpringApiResponse<MaximoFormTemplate>>(`${this.base}/for-wo`, { params: p })
+      .pipe(map(r => r.responseData ?? null));
+  }
+
   // ── Submissions ────────────────────────────────────────────────────────────
   submissionsForWo(wonum: string): Observable<MaximoFormSubmission[]> {
     const p = new HttpParams().set('wonum', wonum);
@@ -62,5 +74,13 @@ export class MaximoFormApiService {
   complete(dto: MaximoFormSubmission): Observable<MaximoFormSubmission> {
     return this.http.post<SpringApiResponse<MaximoFormSubmission>>(`${this.base}/submissions/complete`, dto)
       .pipe(map(r => r.responseData));
+  }
+
+  /**
+   * Preview the completion PDF WITHOUT shipping to Maximo — the exact same bytes {@link complete} would attach,
+   * returned as a Blob for viewing/testing. Nothing is saved and no work-order write-back happens.
+   */
+  previewPdf(dto: MaximoFormSubmission): Observable<Blob> {
+    return this.http.post(`${this.base}/submissions/preview-pdf`, dto, { responseType: 'blob' });
   }
 }

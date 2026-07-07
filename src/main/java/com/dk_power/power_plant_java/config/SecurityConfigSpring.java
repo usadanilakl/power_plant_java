@@ -132,13 +132,21 @@ public class SecurityConfigSpring {
                     "/work-requests-api/heal-snapshot"
                 )).permitAll()
 
-                // Admin-only endpoints — admin grant approval is localhost-only
-                .requestMatchers(localhostMatcher("/api/auth/admin/")).hasRole("ADMIN")
-                .requestMatchers("/api/auth/admin/**").denyAll() // Block non-localhost
+                // Admin-only endpoints — grant approval allowed from the plant network (localhost OR
+                // direct-LAN), so an admin at any plant desktop can approve requests on the hub by IP.
+                // Not spoofable: NetworkUtils rejects any request carrying reverse-proxy headers, so
+                // external traffic (via IIS) can never look "internal".
+                .requestMatchers(lanOnlyMatcher("/api/auth/admin/")).hasRole("ADMIN")
+                .requestMatchers("/api/auth/admin/**").denyAll() // Block external (reverse-proxied)
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
+
+                // Maximo — open to plant staff (ROLE_PLANT) and admins. Combined with @RestrictedAllowed on
+                // the Maximo controllers, a Plant-role user reaches Maximo without needing a FULL access grant
+                // (e.g. off-LAN via the hub), while non-Plant users are denied.
+                .requestMatchers("/ng/maximo/**").hasAnyRole("PLANT", "ADMIN")
 
                 // Auth endpoints (must be logged in)
                 .requestMatchers("/api/auth/**").authenticated()

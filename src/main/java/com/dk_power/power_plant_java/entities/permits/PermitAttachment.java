@@ -37,6 +37,26 @@ public class PermitAttachment {
     @Column(name = "synced_to_machines", columnDefinition = "TEXT")
     private String syncedToMachines;  // Pipe-delimited: |MACHINE_1|MACHINE_2|
 
+    /**
+     * Tombstone flag for attachment sync. When {@code true}, this row represents a delete that
+     * still needs to be broadcast to peer machines. The row lingers in the database only long
+     * enough for the sync channel to carry the tombstone to every client; the receiving side
+     * removes its local copy (see {@link com.dk_power.power_plant_java.sevice.sync.AttachmentSyncHandler}).
+     * Consumers that display attachments (UI, exports, SharePoint push) MUST filter this out.
+     */
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
+    /**
+     * Provenance marker. Well-known values: {@code "ebinder"} for PDFs pulled by the eBinder
+     * scraper (the "Sync PDFs" tool only touches rows tagged this way); {@code null} or
+     * anything else is treated as manually uploaded and preserved even on matched chemicals.
+     * Legacy scraper attachments in production DB carry {@code null} — the sync tool applies
+     * a filename-shape fallback ({@code sds-*.pdf}) to treat them as {@code ebinder}-owned.
+     */
+    @Column(name = "origin", length = 32)
+    private String origin;
+
     public void addSyncedMachine(String machineId) {
         String delimitedId = "|" + machineId + "|";
         if (syncedToMachines == null || syncedToMachines.isEmpty()) {

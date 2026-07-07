@@ -285,6 +285,38 @@ export interface SdsEmailRecipient {
   email: string;
 }
 
+/** Payload for the Sync PDFs walk-and-replace flow. */
+export interface SdsSyncPdfsOptions {
+  filterLocation?: boolean;
+  showWindow?: boolean;
+  /** True → preview mode: full walk + hash comparison, no writes to local or SP. */
+  dryRun?: boolean;
+  /** When > 0, stop cleanly after posting this many chemicals — safer for the first live run. */
+  limit?: number;
+}
+
+/** Report returned by the backend after a Sync PDFs run (accumulates across batches). */
+export interface SdsSyncPdfsReport {
+  chemicalsChecked: number;
+  alreadyUpToDate: number;
+  updated: number;
+  notInOurSystem: number;
+  ebinderHadNoPdf: number;
+  rejectedInvalidPdf: number;
+  ambiguousSourceId: number;
+  localOnlyNoSpId: number;
+  sharepointRowMissing: number;
+  dryRun: boolean;
+  warnings: string[];
+  preflightBlockers: string[];
+  errors: Array<{
+    sourceId?: string | null;
+    chemicalName?: string | null;
+    stage: string;
+    message: string;
+  }>;
+}
+
 export interface GateLogConfig {
   onLocationApiKey: string;
   onLocationBaseUrl: string;
@@ -614,6 +646,7 @@ interface ElectronAPI {
   sdsMatchChemical: (payload: SdsMatchChemical) => Promise<IpcResult>;
   sdsEmailGapReport: (payload: SdsEmailGapReportPayload) => Promise<IpcResult<SdsEmailGapReportResult>>;
   sdsGetEmailRecipients: () => Promise<IpcResult<SdsEmailRecipient[]>>;
+  sdsSyncPdfs: (opts: SdsSyncPdfsOptions) => Promise<IpcResult<SdsSyncPdfsReport>>;
   sdsClearPdfs: () => Promise<IpcResult<number>>;
   sdsScrapeGetStatus: () => Promise<IpcResult<SdsScrapeStatus>>;
   sdsScrapeGetConfig: () => Promise<IpcResult<SdsScraperConfig>>;
@@ -1182,6 +1215,11 @@ export class ElectronService implements OnDestroy {
   async sdsGetEmailRecipients(): Promise<IpcResult<SdsEmailRecipient[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.sdsGetEmailRecipients();
+  }
+
+  async sdsSyncPdfs(opts: SdsSyncPdfsOptions): Promise<IpcResult<SdsSyncPdfsReport>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.sdsSyncPdfs(opts);
   }
 
   async sdsClearPdfs(): Promise<IpcResult<number>> {

@@ -38,6 +38,13 @@ export class MaximoPmApiService {
       .pipe(map(r => r.responseData));
   }
 
+  /** Assign (or clear, when formKey is null/'') the electronic completion form for a recurring PM. */
+  assignForm(id: number, formKey: string | null): Observable<RecurringPm> {
+    return this.http.put<SpringApiResponse<RecurringPm>>(
+      `${this.base}/catalog/${id}/form`, { formKey: formKey ?? '' })
+      .pipe(map(r => r.responseData));
+  }
+
   /** A catalog PM's real Maximo WOs (history + upcoming), matched by pmnum or description. */
   getOccurrences(id: number): Observable<PmOccurrence[]> {
     return this.http.get<SpringApiResponse<PmOccurrence[]>>(`${this.base}/catalog/${id}/occurrences`)

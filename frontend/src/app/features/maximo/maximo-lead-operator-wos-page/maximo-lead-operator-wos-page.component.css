@@ -64,3 +64,13 @@ button.ghost:hover:not(:disabled) { background: #3d3d3d; }
 
 .all-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; flex-shrink: 0; }
 .all-bar .trunc-warn { margin: 0; }
+
+/* Mobile (<=768px): single-column people list and a horizontally-scrollable
+   due-status tab strip so it reads as one row instead of a tall wrap. The
+   shared app-maximo-table already scrolls internally, so no table rule here. */
+@media (max-width: 768px) {
+  .mx-page { padding: 8px; }
+  .people-list { grid-template-columns: 1fr; }
+  .wo-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .wo-tabs button { flex: 0 0 auto; white-space: nowrap; }
+}

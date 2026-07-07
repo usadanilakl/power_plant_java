@@ -48,6 +48,12 @@ export interface MaximoWorkOrder {
   pmnum: string;
   /** When the WO's status last changed (completion time for COMP WOs); present on overview rows. */
   statusDate?: string;
+  /** Task sequence number when this row is an internal task of a parent WO; null on top-level WOs. */
+  taskid?: string;
+  /** Parent WO number when this row is a task/child WO; null on top-level WOs. */
+  parent?: string;
+  /** True when this row is an internal task (completed independently on the parent's Tasks tab). */
+  istask?: boolean;
 }
 
 /** One Maximo ticket (SR or WO) with the asset the tag matcher identified/suggested for it. */

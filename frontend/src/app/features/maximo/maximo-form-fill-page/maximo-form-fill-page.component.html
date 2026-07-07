@@ -36,6 +36,10 @@
         </app-smart-form>
 
         <div class="complete-row">
+          <button (click)="preview()" [disabled]="previewing()"
+                  title="Render the attachment PDF exactly as it would ship to Maximo — for testing; nothing is saved or sent">
+            {{ previewing() ? 'Rendering…' : 'Preview PDF' }}
+          </button>
           <button class="primary" (click)="complete()"
                   [disabled]="completing() || saving() || existing()?.status === 'COMPLETED'">
             {{ completing() ? 'Submitting to Maximo…' : (existing()?.status === 'COMPLETED' ? 'Completed ✓' : 'Complete & submit to Maximo') }}

@@ -18,6 +18,8 @@ export interface RouterMenuGroup {
     defaultRoute: string;
     items: RouterMenuItem[];
     requiresFullAccess?: boolean;
+    /** Visible to Plant-role (or admin) users even without FULL access — e.g. the Maximo group. */
+    requiresPlant?: boolean;
 }
 
 export type RouterMenuItems = RouterMenuItem[];
@@ -135,6 +137,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
     },
     {
         label: 'Maximo',
+        requiresPlant: true,
         icon: 'engineering',
         color: '#26C6DA',
         defaultRoute: '/maximo/assets',

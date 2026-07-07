@@ -213,6 +213,17 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData ?? {}));
   }
 
+  /**
+   * The internal tasks of a work order (child WO rows with istask=true). Each is itself a work order,
+   * so complete it with {@link completeWorkOrder} using the task's own href. Keyed by the PARENT wonum.
+   */
+  listWoTasks(parentWonum: string): Observable<MaximoWorkOrder[]> {
+    return this.http
+      .get<SpringApiResponse<MaximoWorkOrder[]>>(
+        `${this.base}/work-orders/${encodeURIComponent(parentWonum)}/tasks`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   /** Report labor + worklog and (by default) change status to COMP. Returns the refreshed WO. */
   completeWorkOrder(href: string, body: CompleteWorkOrderRequest): Observable<MaximoWorkOrder | null> {
     return this.http

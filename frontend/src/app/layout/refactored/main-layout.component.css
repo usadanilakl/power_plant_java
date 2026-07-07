@@ -334,10 +334,45 @@
 
   .header {
     padding: 0.75rem;
+    /* Safety net: the header can never eat more than ~40% of the screen.
+       If its content is still tall it scrolls internally instead of
+       pushing the page content off-screen. */
+    max-height: 40vh;
+    max-height: calc(var(--vh, 1vh) * 40);
+    overflow-y: auto;
+    /* Let the action icons wrap onto their own row so the title + nav get
+       the full width instead of being crushed into a sliver beside them. */
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+  }
+
+  /* Title + projected nav take the whole first row (forces the icons to
+     wrap below); stacking them puts the nav on its own full-width line
+     where it has room to scroll. */
+  .header-content {
+    flex: 1 1 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  /* The right-edge scroll-fade would overlap the stacked nav — drop it here. */
+  .header-content::after {
+    display: none;
   }
 
   .header-content h1 {
     font-size: 1.25rem;
+  }
+
+  /* Action icons sit on their own row, right-aligned, never shrinking
+     below their 40px touch targets. */
+  .header-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    gap: 0.25rem;
   }
 
   .auth-btn {

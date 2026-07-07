@@ -198,3 +198,194 @@
   color: var(--text-primary, #eee);
   text-align: right;
 }
+
+/* -- Multi-type QR resolver additions -- */
+
+/* Type badge: color-coded to distinguish LotoPoint vs Equipment matches
+   both in the picker and in the header once a match is active. */
+.type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.type-badge.type-loto {
+  background: #d97706;
+}
+
+.type-badge.type-equipment {
+  background: #2563eb;
+}
+
+/* Header adjustments to fit the badge + description on one line without
+   pushing the tag number out of view on small phones. */
+.header-info {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  flex: 1;
+}
+
+.picker-back-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #eee);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.picker-back-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Multi-match picker */
+.picker-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  color: var(--text-primary, #eee);
+}
+
+.picker-header h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.picker-hint {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #999);
+}
+
+.match-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.match-card {
+  background: var(--background-secondary, #16213e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.05s ease;
+}
+
+.match-card:hover {
+  border-color: var(--primary-color, #007bff);
+}
+
+.match-card:active {
+  transform: scale(0.995);
+}
+
+.match-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.match-tag {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary, #eee);
+}
+
+.match-id {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #999);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.match-desc {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #bbb);
+  line-height: 1.35;
+}
+
+/* Warning strip on a match that can't render a drawing. Same styling used
+   inside the details-only card so the "incomplete" cue is consistent. */
+.match-warning,
+.details-only-warning {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(245, 158, 11, 0.15);
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  color: #fbbf24;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.35;
+}
+
+.warning-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #000;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 18px;
+  flex-shrink: 0;
+}
+
+.match-cta {
+  margin-top: 8px;
+  color: var(--primary-color, #7cb8ff);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Details-only card — shown when the active match has no drawing */
+.details-only-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  color: var(--text-primary, #eee);
+}
+
+.details-only-card {
+  background: var(--background-secondary, #16213e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.details-only-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+}
+
+.details-only-tag {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary, #eee);
+}

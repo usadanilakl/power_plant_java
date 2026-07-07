@@ -103,4 +103,12 @@ public class RecurringPm extends BaseAuditEntity {
     @lombok.Builder.Default
     @Column(name = "manually_added")
     private Boolean manuallyAdded = Boolean.FALSE;
+
+    /**
+     * Optional electronic completion form ({@code MaximoFormTemplate.formKey}) assigned to this PM. When set,
+     * every active work order for this PM shows the form on its "Complete" tab and completing the WO means
+     * filling it out. Null = no form (manual labor/log completion). Preserved across catalog refreshes.
+     */
+    @Column(name = "form_key", length = 128)
+    private String formKey;
 }

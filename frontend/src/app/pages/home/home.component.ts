@@ -22,15 +22,20 @@ export class HomeComponent {
   private isTestMode = toSignal(this.appConfigService.testMode$);
 
   filteredGroupedCards = computed(() => {
-    const hasFullAccess = this.currentUser()?.accessLevel === 'FULL';
+    const user = this.currentUser();
+    const hasFullAccess = user?.accessLevel === 'FULL';
+    const roles = user?.roles ?? [];
+    // Plant-role (or admin) users can see Plant-gated groups (e.g. Maximo) without FULL access.
+    const hasPlant = roles.includes('ROLE_PLANT') || roles.includes('ROLE_ADMIN');
     const testMode = this.isTestMode();
 
+    // A Plant-gated group (Maximo) is shown iff the user has the Plant role — matching its route guard.
     return GROUPED_HOME_NAVIGATION_CARDS
-      .filter(group => hasFullAccess || !group.requiresFullAccess)
+      .filter(group => group.requiresPlant ? hasPlant : (hasFullAccess || !group.requiresFullAccess))
       .map(group => ({
         ...group,
         items: group.items.filter(item =>
-          (hasFullAccess || !item.requiresFullAccess) &&
+          (group.requiresPlant ? hasPlant : (hasFullAccess || !item.requiresFullAccess)) &&
           (!item.testOnly || testMode)
         )
       }))

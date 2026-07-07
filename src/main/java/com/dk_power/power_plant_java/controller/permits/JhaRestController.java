@@ -146,7 +146,7 @@ public class JhaRestController {
     @GetMapping("/{id}/attachments")
     public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
         try {
-            List<PermitAttachment> attachments = permitAttachmentRepo.findByEntityTypeAndEntityId("Jha", id);
+            List<PermitAttachment> attachments = permitAttachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse("Jha", id);
             return ResponseEntity.ok(new NgApiResponse<>(attachments, "Attachments fetched"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));

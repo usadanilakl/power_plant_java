@@ -126,9 +126,24 @@ td.assignee-cell app-maximo-person-picker { display: block; min-width: 180px; ma
 .make-rec:hover:not([disabled]) { text-decoration: underline; }
 .manual-tag { color: #ffcf4d; font-size: 12px; margin-left: 2px; }
 
+/* Catalog: assigned completion-form dropdown — highlight when a form is set. */
+td.form-cell select { min-width: 150px; max-width: 200px; font-size: 12px; }
+td.form-cell select.assigned { border-color: #1c7c3a; color: #9fe0b0; }
+
 /* Manual "add recurring PM" inline form (catalog tab) */
 .add-pm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px; }
 .add-pm .add-num { width: 180px; }
 .add-pm .add-desc { flex: 1 1 260px; min-width: 200px; }
 .add-pm input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 5px 7px; font: inherit; }
+
+/* Mobile (<=768px): let the raw Recurring-PMs / Assignments tables scroll
+   horizontally without dragging the page. The people×days schedule grid is
+   already wrapped in .grid-scroll, so exclude it to avoid a double scrollbar.
+   Also make the tab strip scroll instead of overflowing. */
+@media (max-width: 768px) {
+  .mx-page { padding: 8px; }
+  table:not(.sched-grid) { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs button { flex: 0 0 auto; white-space: nowrap; }
+}

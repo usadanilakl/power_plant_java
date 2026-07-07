@@ -44,3 +44,10 @@ app-maximo-table { flex: 1; display: flex; flex-direction: column; min-height: 0
 
 .muted { color: #777; }
 .error { color: #ff7b72; }
+
+/* Mobile (<=768px): stop the wide filter input from overflowing the row.
+   The filter rows already flex-wrap, so let it drop to its own full line. */
+@media (max-width: 768px) {
+  .mx-page { padding: 8px; }
+  input.wide { min-width: 0; width: 100%; box-sizing: border-box; margin-left: 0; }
+}

@@ -177,7 +177,7 @@ public class WorkRequestRestController {
     @GetMapping("/{id}/attachments")
     public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
         try {
-            List<PermitAttachment> attachments = permitAttachmentRepo.findByEntityTypeAndEntityId("WorkRequest", id);
+            List<PermitAttachment> attachments = permitAttachmentRepo.findByEntityTypeAndEntityIdAndDeletedFalse("WorkRequest", id);
             return ResponseEntity.ok(new NgApiResponse<>(attachments, "Attachments fetched"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));

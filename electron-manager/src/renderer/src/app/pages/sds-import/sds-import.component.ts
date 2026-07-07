@@ -202,10 +202,10 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
             browser and can take a few minutes.
           </p>
           <div class="actions">
-            <button class="btn btn-primary" [disabled]="scraping" (click)="closeGaps()">
+            <button class="btn btn-primary" [disabled]="scraping || syncingPdfs" (click)="closeGaps()">
               {{ scraping ? 'Scraping eBinder…' : 'Close gaps (scrape eBinder)' }}
             </button>
-            <button class="btn btn-warn" [disabled]="scraping" (click)="reloadAllPdfs()" title="Delete all local SDS PDFs and re-download them from the eBinder. Useful after a capture bug or to refresh stale files. SharePoint attachments are not removed.">
+            <button class="btn btn-warn" [disabled]="scraping || syncingPdfs" (click)="reloadAllPdfs()" title="Delete all local SDS PDFs and re-download them from the eBinder. Useful after a capture bug or to refresh stale files. SharePoint attachments are not removed.">
               {{ scraping ? '…' : 'Reload all PDFs' }}
             </button>
             @if (scraping) {
@@ -223,6 +223,90 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
                 · Revised: {{ scrapeReport.revisedChemicals.length }}
                 · Missing from source: {{ scrapeReport.missingFromSource.length }}</div>
               <div class="hint">Re-run the report above to confirm the gaps are closed.</div>
+            </div>
+          }
+        </div>
+
+        <!-- Step 3: sync PDFs -->
+        <div class="card">
+          <div class="card-title">3 · Sync PDFs with eBinder</div>
+          <p class="muted">
+            Walks every chemical on the eBinder and, if its PDF differs from what we have,
+            replaces this chemical's eBinder-owned attachments (local + SharePoint) with the fresh
+            copy. Chemicals not on the eBinder — <strong>including your manual submissions and any
+            manual uploads on eBinder-matched chemicals</strong> — are never touched. Content-hash
+            driven so re-runs on already-synced items are no-ops. <strong>Runs on the hub only.</strong>
+          </p>
+          <div class="actions">
+            <button class="btn" [disabled]="scraping || syncingPdfs" (click)="previewSyncPdfs()"
+                    title="Full walk + hash comparison but no writes — see what WOULD change before committing.">
+              {{ syncingPdfs && syncPdfsIsPreview ? 'Previewing…' : 'Preview' }}
+            </button>
+            <button class="btn btn-primary" [disabled]="scraping || syncingPdfs" (click)="runSyncPdfs()">
+              {{ syncingPdfs && !syncPdfsIsPreview ? 'Syncing…' : 'Sync PDFs' }}
+            </button>
+            @if (syncingPdfs) {
+              <button class="btn btn-stop" (click)="stop()">Stop</button>
+            }
+          </div>
+
+          <label class="opt limit-opt" title="Cap the walk to the first N chemicals — safe way to sanity-check a real run before letting the tool touch every item.">
+            <input type="checkbox"
+                   [ngModel]="syncPdfsLimitEnabled" (ngModelChange)="syncPdfsLimitEnabled = $event"
+                   [disabled]="syncingPdfs" />
+            <span>Limit to first</span>
+            <input type="number" class="limit-input" min="1" max="1000"
+                   [ngModel]="syncPdfsLimit" (ngModelChange)="syncPdfsLimit = $event"
+                   [disabled]="!syncPdfsLimitEnabled || syncingPdfs" />
+            <span>chemicals (test scope)</span>
+          </label>
+          @if (syncPdfsError) { <div class="error-banner">{{ syncPdfsError }}</div> }
+          @if (syncPdfsReport) {
+            <div class="final">
+              @if (syncPdfsReport.dryRun) { <div class="hint"><strong>Preview only</strong> — no changes were made.</div> }
+              <div class="stats">
+                <span class="stat ok">{{ syncPdfsReport.chemicalsChecked }} checked</span>
+                <span class="stat new">{{ syncPdfsReport.alreadyUpToDate }} already up-to-date</span>
+                <span class="stat warn">{{ syncPdfsReport.updated }} {{ syncPdfsReport.dryRun ? 'would update' : 'updated' }}</span>
+                @if (syncPdfsReport.notInOurSystem) {
+                  <span class="stat unmatched" title="eBinder listed this chemical but we don't have it — use Close gaps to import it first.">{{ syncPdfsReport.notInOurSystem }} not in our system</span>
+                }
+                @if (syncPdfsReport.ebinderHadNoPdf) {
+                  <span class="stat warn" title="eBinder entry exists but PDF capture failed or was blank — try again; existing PDFs preserved.">{{ syncPdfsReport.ebinderHadNoPdf }} eBinder had no PDF</span>
+                }
+                @if (syncPdfsReport.rejectedInvalidPdf) {
+                  <span class="stat warn" title="Captured PDF failed structural validation (truncated/error page) — existing PDFs preserved.">{{ syncPdfsReport.rejectedInvalidPdf }} invalid PDF</span>
+                }
+                @if (syncPdfsReport.ambiguousSourceId) {
+                  <span class="stat unmatched" title="Multiple local chemicals share this sourceId — deduplicate before syncing.">{{ syncPdfsReport.ambiguousSourceId }} ambiguous match</span>
+                }
+                @if (syncPdfsReport.localOnlyNoSpId) {
+                  <span class="stat">{{ syncPdfsReport.localOnlyNoSpId }} no SP row (local only)</span>
+                }
+                @if (syncPdfsReport.sharepointRowMissing) {
+                  <span class="stat warn">{{ syncPdfsReport.sharepointRowMissing }} SP row missing</span>
+                }
+              </div>
+              @if (syncPdfsReport.preflightBlockers.length) {
+                <div class="error-banner">
+                  <strong>Preflight blocked:</strong>
+                  <ul>@for (b of syncPdfsReport.preflightBlockers; track b) { <li>{{ b }}</li> }</ul>
+                </div>
+              }
+              @if (syncPdfsReport.errors.length) {
+                <details class="list">
+                  <summary>Per-chemical errors ({{ syncPdfsReport.errors.length }})</summary>
+                  <ul>@for (e of syncPdfsReport.errors; track $index) {
+                    <li><span class="mono">[{{ e.stage }}]</span> {{ e.chemicalName || e.sourceId }} — {{ e.message }}</li>
+                  }</ul>
+                </details>
+              }
+              @if (syncPdfsReport.warnings.length) {
+                <details class="list">
+                  <summary>Warnings ({{ syncPdfsReport.warnings.length }})</summary>
+                  <ul>@for (w of syncPdfsReport.warnings; track $index) { <li>{{ w }}</li> }</ul>
+                </details>
+              }
             </div>
           }
         </div>
@@ -285,6 +369,11 @@ import { SdsImportStateService } from '../../services/sds-import-state.service';
     .modal-input { width: 100%; padding: 8px 10px; background: var(--surface-2, #2a2d3a); color: inherit;
       border: 1px solid var(--border, #333); border-radius: 6px; font-size: 14px; box-sizing: border-box; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .limit-opt { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13px; color: var(--text-secondary, #aaa); cursor: pointer; }
+    .limit-opt input[type="checkbox"] { accent-color: #3b82f6; }
+    .limit-input { width: 64px; padding: 3px 6px; background: var(--surface-2, #2a2d3a); color: inherit;
+      border: 1px solid var(--border, #333); border-radius: 4px; font-size: 13px; }
+    .limit-input:disabled { opacity: .5; }
     .modal-check { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 0; cursor: pointer; }
     .modal-check input { margin-top: 3px; accent-color: #3b82f6; }
     .modal-check span { font-weight: 600; font-size: 14px; }
@@ -329,6 +418,18 @@ export class SdsImportComponent {
   openEmailDialog() { return this.state.openEmailDialog(); }
   closeEmailDialog() { return this.state.closeEmailDialog(); }
   sendEmail() { return this.state.sendEmail(); }
+
+  get syncingPdfs() { return this.state.syncingPdfs(); }
+  get syncPdfsError() { return this.state.syncPdfsError(); }
+  get syncPdfsReport() { return this.state.syncPdfsReport(); }
+  get syncPdfsIsPreview() { return this.state.syncPdfsIsPreview(); }
+  get syncPdfsLimit() { return this.state.syncPdfsLimit(); }
+  set syncPdfsLimit(v: number) { this.state.syncPdfsLimit.set(Number(v) || 0); }
+  get syncPdfsLimitEnabled() { return this.state.syncPdfsLimitEnabled(); }
+  set syncPdfsLimitEnabled(v: boolean) { this.state.syncPdfsLimitEnabled.set(v); }
+
+  runSyncPdfs() { return this.state.syncPdfs(false); }
+  previewSyncPdfs() { return this.state.syncPdfs(true); }
 
   // matchPick is ephemeral UI state for the per-row dropdowns — the service holds it as a signal
   // but we expose the underlying Record for direct ngModel two-way binding via index access. Any

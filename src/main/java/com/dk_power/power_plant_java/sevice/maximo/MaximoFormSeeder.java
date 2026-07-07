@@ -32,8 +32,65 @@ public class MaximoFormSeeder {
         List<MaximoFormTemplateDto> out = new ArrayList<>();
         out.add(formService.saveTemplate(roSandFilterBackflush()));
         out.add(formService.saveTemplate(emergencyEyewashSafetyShower()));
+        out.add(formService.saveTemplate(monthlyAedCheck()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
+    }
+
+    /**
+     * From procedures/pm/AED.pdf — "Monthly AED Check". The plant has four AEDs; this PM walks the
+     * inspector through all four locations in order (Admin Building → U1 Turbine Building → U1 HRSG →
+     * U2 HRSG). Each location repeats the same 5 external/internal indicator checks, and every check is
+     * REQUIRED — so the work order cannot be completed until all four AEDs have been inspected.
+     */
+    private MaximoFormTemplateDto monthlyAedCheck() {
+        Fields f = new Fields();
+
+        // Shared indicator reference (embedded once at the top — not per location, to keep the form lean).
+        f.section("Reference — how to read the AED indicators")
+                .image("ref_external", "EXTERNAL: the Rescue-Ready STATUS light (should be GREEN) and the Pad "
+                        + "Expiration window.", img("aed", "external-indicators.png"))
+                .image("ref_internal", "INTERNAL: battery-capacity LEDs (adequate charge); Service indicator "
+                        + "(wrench — must be OFF); Pad-connection indicator (must be OFF).",
+                        img("aed", "internal-indicators.png"));
+
+        // The four AED locations, walked in order. Same checklist per location; all checks required.
+        String[][] locations = {
+                {"1. Admin Building", "admin"},
+                {"2. U1 Turbine Building", "u1turb"},
+                {"3. U1 HRSG", "u1hrsg"},
+                {"4. U2 HRSG", "u2hrsg"},
+        };
+        for (String[] loc : locations) {
+            String title = loc[0];
+            String p = loc[1];
+            f.section(title)
+                    .radio(p + "_status_green", "External — Status / Rescue-Ready indicator is GREEN", true, "Yes", "No")
+                    .radio(p + "_not_expired", "External — Pads & battery NOT expired "
+                            + "(order a replacement 2 months before the expiration date)", true, "Yes", "No")
+                    .radio(p + "_charge_ok", "Internal — Adequate charge (battery LEDs)", true, "Yes", "No")
+                    .radio(p + "_service_off", "Internal — Service indicator (wrench) is OFF", true, "Yes", "No")
+                    .radio(p + "_padconn_off", "Internal — Pad-connection indicator is OFF", true, "Yes", "No")
+                    .textarea(p + "_findings", "Findings — describe any 'No' answer (reference the user manual "
+                            + "for abnormal indicators); leave blank if all good", null);
+        }
+
+        f.section("Sign-off")
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Overall notes / actions taken (batteries or pads ordered, WOs generated, etc.)", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("MONTHLY_AED_CHECK")
+                .formName("Monthly AED Check")
+                .description("Monthly inspection of all four plant AEDs, in order: Admin Building, U1 Turbine Building, "
+                        + "U1 HRSG, U2 HRSG. For each: Status/Rescue-Ready indicator GREEN; pads & battery not expired "
+                        + "(order replacements 2 months early); adequate charge; Service indicator OFF; Pad-connection "
+                        + "indicator OFF. Every check is required — the work order cannot be completed until all four "
+                        + "AEDs have been inspected. Note any abnormal indicator and reference the AED user manual.")
+                .matchDescriptionContains("aed")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
     }
 
     /** From procedures/pm/sand-filter-backflush.pdf — "RO Sand Filter Operation/Backflush". */
@@ -147,13 +204,23 @@ public class MaximoFormSeeder {
                 .build();
     }
 
-    /** Load a seed reference photo from the classpath and return it as a base64 data URL (null if missing). */
+    /** Load a seed reference photo from procedures/sand-filter/ (legacy default dir). */
     private String img(String fileName) {
-        try (InputStream in = new ClassPathResource("procedures/sand-filter/" + fileName).getInputStream()) {
+        return img("sand-filter", fileName);
+    }
+
+    /**
+     * Load a seed reference image from {@code procedures/<dir>/} on the classpath as a base64 data URL.
+     * MIME type is inferred from the extension (png vs jpeg). Returns null (image field then omitted) if
+     * the resource is missing, so a missing photo never breaks seeding.
+     */
+    private String img(String dir, String fileName) {
+        try (InputStream in = new ClassPathResource("procedures/" + dir + "/" + fileName).getInputStream()) {
             byte[] bytes = in.readAllBytes();
-            return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(bytes);
+            String mime = fileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+            return "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
         } catch (Exception e) {
-            log.warn("[MaximoForms] seed image {} missing: {}", fileName, e.getMessage());
+            log.warn("[MaximoForms] seed image {}/{} missing: {}", dir, fileName, e.getMessage());
             return null;
         }
     }

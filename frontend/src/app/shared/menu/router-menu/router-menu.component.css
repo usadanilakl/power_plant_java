@@ -320,3 +320,54 @@
 :host-context(.dark-theme) .router-menu.column .secondary-menu li.separator {
   border-top-color: rgba(255, 255, 255, 0.15);
 }
+
+/* ------------------------------------------------------------------ *
+ * Mobile: the horizontal (row) header menu must not stack into a
+ * full-screen-tall block. Collapse each row into a single
+ * horizontally-scrollable strip so the header stays compact and the
+ * page content below it remains visible. Desktop (`.column` side menus
+ * and >768px) is unaffected.
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  /* Allow the menu to shrink inside its flex parent so its inner rows
+     can overflow-scroll instead of forcing the header to grow. */
+  :host {
+    min-width: 0;
+  }
+
+  .router-menu.row,
+  .router-menu.row .menu-container {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .router-menu.row .primary-menu,
+  .router-menu.row .secondary-menu {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* legacy Edge */
+    /* Keep the scroll strips tall enough to stay tappable now that they get
+       full width from the header stacking fix. */
+    min-height: 40px;
+  }
+
+  .router-menu.row .primary-menu::-webkit-scrollbar,
+  .router-menu.row .secondary-menu::-webkit-scrollbar {
+    display: none;              /* WebKit */
+  }
+
+  /* Keep links at their natural width and scroll past them rather than
+     squishing each into an unreadable sliver. */
+  .router-menu.row .primary-menu > li,
+  .router-menu.row .secondary-menu > li {
+    flex-shrink: 0;
+  }
+
+  /* Alt+N shortcut badges are keyboard-only — hide on narrow screens. */
+  .router-menu.row .shortcut-badge {
+    display: none;
+  }
+}

@@ -1094,6 +1094,15 @@ export class IpcHandlers {
       }
     });
 
+    ipcMain.handle(events.IPC_SDS_SYNC_PDFS, async (_event, opts: any) => {
+      try {
+        const data = await this.webViewSdsManager.syncPdfs(opts);
+        return { success: true, data };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle(events.IPC_SDS_CLEAR_PDFS, async () => {
       try {
         const count = await this.webViewSdsManager.clearAllPdfs();
