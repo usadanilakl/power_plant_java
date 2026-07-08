@@ -39,13 +39,15 @@ import { PointDrawing } from './loto-standard.model';
                (pointerup)="onUp($event)" (pointercancel)="onUp($event)" (wheel)="onWheel($event)">
             <div class="dv-stage" [style.transform]="transform()">
               @if (imgUrl()) {
-                <img class="dv-img" [src]="imgUrl()" alt="drawing" (load)="onImgLoad()" draggable="false">
+                <img class="dv-img" [src]="imgUrl()" alt="drawing" (load)="onImgLoad($event)" draggable="false">
                 @if (current(); as d) {
-                  <div class="dv-hl"
-                       [style.left.%]="d.x / d.imageWidth * 100"
-                       [style.top.%]="d.y / d.imageHeight * 100"
-                       [style.width.%]="d.width / d.imageWidth * 100"
-                       [style.height.%]="d.height / d.imageHeight * 100"></div>
+                  @if (d.x != null && d.y != null && d.width != null && d.height != null && d.imageWidth && d.imageHeight) {
+                    <div class="dv-hl"
+                         [style.left.%]="d.x / d.imageWidth * 100"
+                         [style.top.%]="d.y / d.imageHeight * 100"
+                         [style.width.%]="d.width / d.imageWidth * 100"
+                         [style.height.%]="d.height / d.imageHeight * 100"></div>
+                  }
                 }
               }
             </div>
@@ -89,6 +91,10 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   @ViewChild('viewport') viewport?: ElementRef<HTMLElement>;
 
   private drawingService = inject(LotoDrawingService);
+  private host = inject(ElementRef<HTMLElement>);
+
+  private natW = 0;
+  private natH = 0;
 
   drawings = signal<PointDrawing[]>([]);
   index = signal(0);
@@ -109,6 +115,8 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   private objectUrl: string | null = null;
 
   async ngOnInit(): Promise<void> {
+    // Render at <body> level so position:fixed anchors to the viewport, not a transformed/scrolled ancestor.
+    document.body.appendChild(this.host.nativeElement);
     try {
       const list = await this.drawingService.drawingsForPoint(this.standardId, this.pointId);
       this.drawings.set(list);
@@ -120,7 +128,7 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void { this.revoke(); }
+  ngOnDestroy(): void { this.revoke(); this.host.nativeElement.remove(); }
 
   async select(i: number): Promise<void> { if (i !== this.index()) await this.load(i); }
 
@@ -136,7 +144,13 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     this.loading.set(false);
   }
 
-  onImgLoad(): void { this.zoomToPoint(); }
+  onImgLoad(e: Event): void {
+    const img = e.target as HTMLImageElement;
+    this.natW = img.naturalWidth; this.natH = img.naturalHeight;
+    const d = this.current();
+    if (d && d.x != null && d.width != null && d.imageWidth && d.imageHeight) this.zoomToPoint();
+    else this.fit();
+  }
 
   // ── Zoom / pan ─────────────────────────────────────────────────────────────
   private vp(): { w: number; h: number } {
@@ -146,7 +160,9 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
 
   zoomToPoint(): void {
     const d = this.current(); const { w, h } = this.vp();
-    if (!d || !w || !h) return;
+    if (!d || d.x == null || d.y == null || d.width == null || d.height == null || !d.imageWidth || !d.imageHeight || !w || !h) {
+      this.fit(); return;
+    }
     // stage width == viewport width at scale 1; stage height follows the image aspect.
     const stageH = w * d.imageHeight / d.imageWidth;
     const hlH = d.height / d.imageHeight * stageH;
@@ -159,9 +175,12 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   }
 
   fit(): void {
-    const d = this.current(); const { w, h } = this.vp();
-    if (!d || !w) { this.scale.set(1); this.tx.set(0); this.ty.set(0); return; }
-    const stageH = w * d.imageHeight / d.imageWidth;
+    const { w, h } = this.vp();
+    if (!w) { this.scale.set(1); this.tx.set(0); this.ty.set(0); return; }
+    const d = this.current();
+    const aspect = (this.natW && this.natH) ? this.natH / this.natW
+      : (d?.imageWidth && d?.imageHeight ? d.imageHeight / d.imageWidth : 1);
+    const stageH = w * aspect;
     const s = Math.min(1, h / Math.max(stageH, 1));
     this.scale.set(s);
     this.tx.set((w - w * s) / 2);

@@ -66,7 +66,10 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                       <summary>View {{ g.order }} order</summary>
                       <ol class="w-order">
                         @for (p of orderFor(g.order); track p.id) {
-                          <li><b>{{ p.tagNumber || '—' }}</b>@if (p.description) { <span class="w-order-desc"> — {{ p.description }}</span> }</li>
+                          <li class="w-order-item">
+                            <span class="w-order-tag">{{ p.tagNumber || '—' }}</span>
+                            @if (p.description) { <span class="w-order-desc">{{ p.description }}</span> }
+                          </li>
                         }
                       </ol>
                     </details>
@@ -83,15 +86,21 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                   <span class="w-tag">{{ corrTag(p) || '—' }}</span>
                   <span class="w-point-head-right">
                     @if (hasDrawing(p.id)) { <button class="w-drawing-btn" (click)="openDrawing(p)">📄 Drawing</button> }
+                    @else if (drawingMissing(p.id)) { <span class="w-flag-missing">⚠ No drawing</span> }
                     @if (pointComplete(p.id)) { <span class="w-badge-ok">✓ complete</span> }
                   </span>
                 </div>
 
-                @if (p.zeroEnergyMethod) {
-                  <div class="w-ze"><span class="w-ze-label">Zero energy:</span> {{ p.zeroEnergyMethod }}</div>
-                } @else {
-                  <div class="w-ze w-ze-missing">⚠ No zero-energy method recorded — flag it below.</div>
-                }
+                <dl class="w-point-info">
+                  @if (corrDesc(p)) { <dt>Description</dt><dd>{{ corrDesc(p) }}</dd> }
+                  <dt>Isolation position</dt><dd>{{ isoName(p) || '—' }}</dd>
+                  <dt>Restored position</dt><dd>{{ normName(p) || '—' }}</dd>
+                  @if (p.zeroEnergyMethod) {
+                    <dt>Zero energy</dt><dd>{{ p.zeroEnergyMethod }}</dd>
+                  } @else {
+                    <dt>Zero energy</dt><dd class="w-missing">⚠ none recorded — flag it below</dd>
+                  }
+                </dl>
 
                 @for (c of checks; track c.key) {
                   <div class="w-check">
@@ -192,8 +201,11 @@ type TransitionMode = 'verify' | 'walkdown' | null;
     .w-reveal summary { font-size: 0.78rem; color: var(--accent-color); cursor: pointer; }
     .w-reveal-body { white-space: pre-wrap; font-size: 0.85rem; color: var(--primary-text); margin: 0.35rem 0 0; }
     .w-reveal-empty { display: block; margin: 0.15rem 0 0 1.65rem; font-size: 0.72rem; font-style: italic; color: var(--secondary-text, #888); }
-    .w-order { margin: 0.35rem 0 0 1.65rem; padding-left: 1.1rem; font-size: 0.85rem; color: var(--primary-text); }
-    .w-order-desc { color: var(--secondary-text, #888); }
+    .w-order { margin: 0.4rem 0 0 1.4rem; padding-left: 1rem; font-size: 0.85rem; color: var(--primary-text); }
+    .w-order-item { margin: 0.35rem 0; padding-bottom: 0.35rem; border-bottom: 1px dashed var(--border-color); }
+    .w-order-item:last-child { border-bottom: none; }
+    .w-order-tag { font-weight: 700; }
+    .w-order-desc { display: block; color: var(--secondary-text, #888); font-size: 0.8rem; margin-top: 0.1rem; }
     .w-point { border: 1px solid var(--border-color); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem; background: var(--card-bg, var(--secondary-background)); }
     .w-point.done { border-color: #27ae60; }
     .w-point-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
@@ -201,9 +213,11 @@ type TransitionMode = 'verify' | 'walkdown' | null;
     .w-drawing-btn { background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; padding: 0.2rem 0.55rem; font-size: 0.72rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .w-tag { font-weight: 700; color: var(--primary-text); }
     .w-badge-ok { font-size: 0.72rem; font-weight: 700; color: #fff; background: #27ae60; padding: 0.12rem 0.5rem; border-radius: 999px; }
-    .w-ze { font-size: 0.8rem; color: var(--secondary-text, #888); margin-bottom: 0.4rem; }
-    .w-ze-label { font-weight: 700; }
-    .w-ze-missing { color: #e67e22; font-weight: 600; }
+    .w-point-info { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.7rem; margin: 0 0 0.55rem; }
+    .w-point-info dt { font-size: 0.72rem; font-weight: 700; color: var(--secondary-text, #888); align-self: start; }
+    .w-point-info dd { margin: 0; font-size: 0.85rem; color: var(--primary-text); }
+    .w-point-info .w-missing { color: #e67e22; font-weight: 600; }
+    .w-flag-missing { font-size: 0.72rem; font-weight: 700; color: #e67e22; white-space: nowrap; }
     .w-check { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0; }
     .w-check-label { font-size: 0.85rem; color: var(--primary-text); flex: 1; }
     .w-check-btns { display: flex; gap: 0.3rem; flex-shrink: 0; }
@@ -246,6 +260,7 @@ export class LotoStandardWalkdownComponent implements OnInit {
   flash = signal<string | null>(null);
   flashErr = signal(false);
   pointsWithDrawings = signal<Set<number>>(new Set());
+  drawingsChecked = signal(false);
   viewerPoint = signal<{ pointId: number; tag: string } | null>(null);
 
   points = computed<LotoPointRef[]>(() => this.std()?.lotoPoints ?? []);
@@ -345,12 +360,24 @@ export class LotoStandardWalkdownComponent implements OnInit {
 
   // ── Drawings ───────────────────────────────────────────────────────────────
   private async loadDrawings(id: number): Promise<void> {
-    try { this.pointsWithDrawings.set(await this.drawingService.pointIdsWithDrawings(id)); } catch { /* none */ }
+    const list = await this.drawingService.drawingDescriptors(id);
+    if (list) { this.pointsWithDrawings.set(new Set(list.map(d => d.pointId))); this.drawingsChecked.set(true); }
     this.drawingService.precache(id); // fire-and-forget: cache image blobs for offline field use
   }
   hasDrawing(pointId: number): boolean { return this.pointsWithDrawings().has(pointId); }
+  drawingMissing(pointId: number): boolean { return this.drawingsChecked() && !this.pointsWithDrawings().has(pointId); }
   openDrawing(p: LotoPointRef): void { this.viewerPoint.set({ pointId: p.id, tag: this.corrTag(p) || String(p.id) }); }
   closeDrawing(): void { this.viewerPoint.set(null); }
+  isoName(p: LotoPointRef): string {
+    const cid = this.draft()?.corrections?.[String(p.id)]?.isoPosId;
+    if (cid) return this.positions().isoPos.find(o => o.id === cid)?.name ?? '';
+    return p.isoPos?.name ?? p.isolatedPosition ?? '';
+  }
+  normName(p: LotoPointRef): string {
+    const cid = this.draft()?.corrections?.[String(p.id)]?.normPosId;
+    if (cid) return this.positions().normPos.find(o => o.id === cid)?.name ?? '';
+    return p.normPos?.name ?? p.normalPosition ?? '';
+  }
 
   // ── Per-point checks ───────────────────────────────────────────────────────
   checkValue(pointId: number, key: keyof PointChecklist): boolean | null | undefined {

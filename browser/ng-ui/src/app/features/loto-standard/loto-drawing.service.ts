@@ -13,7 +13,7 @@ import { PointDrawing } from './loto-standard.model';
 export class LotoDrawingService {
   private api = inject(LotoStandardApiService);
 
-  private readonly DB = 'loto-drawings';
+  private readonly DB = 'loto-drawings-v2'; // bumped: abandon caches from the earlier (empty) resolver
   private readonly VERSION = 1;
   private readonly IMAGES = 'images';           // key: fileId  → Blob
   private readonly DESCRIPTORS = 'descriptors'; // key: standardId → PointDrawing[]
@@ -29,7 +29,7 @@ export class LotoDrawingService {
     } catch {
       return; // offline / error — keep whatever is already cached
     }
-    if (!list) return;
+    if (!list || !list.length) return; // nothing to cache (don't persist an empty list)
     await this.put(this.DESCRIPTORS, standardId, list).catch(() => {});
     const uniqueIds = [...new Set(list.map(d => d.fileId))];
     for (const fileId of uniqueIds) {
@@ -41,26 +41,28 @@ export class LotoDrawingService {
     }
   }
 
-  /** All cached descriptors for a standard (falls back to a network fetch when not cached and online). */
-  async drawingDescriptors(standardId: number): Promise<PointDrawing[]> {
-    let list = await this.get<PointDrawing[]>(this.DESCRIPTORS, standardId);
-    if (!list) {
-      try {
-        list = await firstValueFrom(this.api.getDrawings(standardId));
-        if (list) await this.put(this.DESCRIPTORS, standardId, list).catch(() => {});
-      } catch { list = []; }
+  /**
+   * All descriptors for a standard, cache-first. Returns `null` when it genuinely can't determine them
+   * (offline and never cached, or the endpoint errored) so callers can tell "no drawings" from "unknown".
+   */
+  async drawingDescriptors(standardId: number): Promise<PointDrawing[] | null> {
+    const cached = await this.get<PointDrawing[]>(this.DESCRIPTORS, standardId);
+    if (cached && cached.length) return cached; // only trust a non-empty cache; re-fetch if empty/absent
+    try {
+      const list = await firstValueFrom(this.api.getDrawings(standardId));
+      if (list) {
+        if (list.length) await this.put(this.DESCRIPTORS, standardId, list).catch(() => {});
+        return list;
+      }
+      return null;
+    } catch {
+      return cached ?? null;
     }
-    return list ?? [];
   }
 
   /** Cached descriptors for a single point. */
   async drawingsForPoint(standardId: number, pointId: number): Promise<PointDrawing[]> {
-    return (await this.drawingDescriptors(standardId)).filter(d => d.pointId === pointId);
-  }
-
-  /** Point ids that have at least one drawing — for showing the "View drawing" affordance. */
-  async pointIdsWithDrawings(standardId: number): Promise<Set<number>> {
-    return new Set((await this.drawingDescriptors(standardId)).map(d => d.pointId));
+    return ((await this.drawingDescriptors(standardId)) ?? []).filter(d => d.pointId === pointId);
   }
 
   /** An object URL for a drawing image (from cache, else fetched + cached). Caller must revokeObjectURL. */

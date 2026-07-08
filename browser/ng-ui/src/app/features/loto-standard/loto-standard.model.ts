@@ -237,10 +237,11 @@ export interface PointDrawing {
   pointId: number;
   fileId: number;
   fileName?: string;
-  imageWidth: number;
-  imageHeight: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  // Highlight rectangle (original image pixels) — null when the drawing is linked but no shape was drawn.
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+  x?: number | null;
+  y?: number | null;
+  width?: number | null;
+  height?: number | null;
 }

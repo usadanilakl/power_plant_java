@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { LotoDrawingService } from './loto-drawing.service';
+import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
 import { LotoStandardApiService } from './loto-standard-api.service';
 import { LotoStandardStore } from './loto-standard-store.service';
 import { LOTO_STANDARD_STATUS, LotoStandard, LotoPointRef, statusPhase } from './loto-standard.model';
@@ -12,7 +13,7 @@ type Tab = 'standard' | 'procedure';
 @Component({
   selector: 'app-loto-standard-detail',
   standalone: true,
-  imports: [MainLayoutComponent, DatePipe],
+  imports: [MainLayoutComponent, DatePipe, LotoDrawingViewerComponent],
   template: `
     <app-main-layout [header]="std()?.name || 'LOTO Standard'">
       <ng-container main-content>
@@ -62,6 +63,7 @@ type Tab = 'standard' | 'procedure';
                       <div class="d-point-top">
                         <span class="d-tag">{{ p.tagNumber || '—' }}</span>
                         <span class="d-flags">
+                          @if (hasDrawing(p.id)) { <button class="d-drawing-btn" (click)="openDrawing(p)">📄 Drawing</button> }
                           @if (p.isLockable) { <span class="d-flag">lockable</span> }
                           @if (p.isLabeled) { <span class="d-flag">tagged</span> }
                         </span>
@@ -96,6 +98,11 @@ type Tab = 'standard' | 'procedure';
                   <p class="d-note">Removal reverses the installation order.</p>
                 }
               </section>
+            }
+
+            @if (viewerPoint(); as vp) {
+              <app-loto-drawing-viewer [standardId]="std()!.id" [pointId]="vp.pointId" [title]="vp.tag"
+                                       (close)="closeDrawing()"></app-loto-drawing-viewer>
             }
           }
         </div>
@@ -134,6 +141,7 @@ type Tab = 'standard' | 'procedure';
     .d-tag { font-weight: 700; color: var(--primary-text); }
     .d-flags { display: flex; gap: 0.3rem; }
     .d-flag { font-size: 0.68rem; background: var(--border-color); color: var(--primary-text); padding: 0.1rem 0.4rem; border-radius: 6px; }
+    .d-drawing-btn { font-size: 0.68rem; font-weight: 700; background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); padding: 0.1rem 0.4rem; border-radius: 6px; cursor: pointer; font-family: inherit; }
     .d-point-desc { color: var(--primary-text); font-size: 0.9rem; margin-top: 0.25rem; }
     .d-point-pos { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; margin-top: 0.35rem; font-size: 0.82rem; color: var(--secondary-text, #888); }
     .d-point-loc { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text, #888); }
@@ -155,6 +163,8 @@ export class LotoStandardDetailComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
   tab = signal<Tab>('standard');
+  pointsWithDrawings = signal<Set<number>>(new Set());
+  viewerPoint = signal<{ pointId: number; tag: string } | null>(null);
 
   points = computed<LotoPointRef[]>(() => this.std()?.lotoPoints ?? []);
   phase = computed(() => statusPhase(this.std()?.developmentStatus?.name));
@@ -187,7 +197,7 @@ export class LotoStandardDetailComponent implements OnInit {
     if (cached) { this.std.set(cached.std); this.loading.set(false); }
     this.api.getById(id).subscribe({
       next: s => {
-        if (s) { this.std.set(s); this.store.cacheStandard(s); this.drawingService.precache(s.id); }
+        if (s) { this.std.set(s); this.store.cacheStandard(s); }
         else if (!cached) this.error.set('Standard not found.');
         this.loading.set(false);
       },
@@ -196,7 +206,17 @@ export class LotoStandardDetailComponent implements OnInit {
         this.loading.set(false);
       }
     });
+    this.loadDrawings(Number(id));
   }
+
+  private async loadDrawings(id: number): Promise<void> {
+    const list = await this.drawingService.drawingDescriptors(id);
+    if (list) this.pointsWithDrawings.set(new Set(list.map(d => d.pointId)));
+    this.drawingService.precache(id);
+  }
+  hasDrawing(pointId: number): boolean { return this.pointsWithDrawings().has(pointId); }
+  openDrawing(p: LotoPointRef): void { this.viewerPoint.set({ pointId: p.id, tag: p.tagNumber || String(p.id) }); }
+  closeDrawing(): void { this.viewerPoint.set(null); }
 
   back(): void { this.router.navigate(['/loto-standards']); }
   openWalkdown(): void { this.router.navigate(['/loto-standards', this.std()!.id, 'walkdown']); }
