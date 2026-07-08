@@ -1,46 +1,7 @@
 [ {
-  "name" : "Unit 1 Steam turbine west side Ground floor ",
-  "id" : 2000063735
-}, {
-  "name" : "U2 BFP area ground level ",
-  "id" : 2000042069
-}, {
-  "name" : "U2 CRT/DA Tank",
-  "id" : 2000042325
-}, {
-  "name" : "Unit 2 HRSG lower (Heat Recovery Steam Generator)",
-  "id" : 2000042066
-}, {
-  "name" : "U1 inlet filter house ",
-  "id" : 2000063602
-}, {
-  "name" : "Unit 2 Steam turbine west side Ground floor ",
-  "id" : 2000042064
+  "name" : "Switchyard",
+  "id" : 1000000092
 }, {
   "name" : "Control Room",
-  "id" : 2000000095
-}, {
-  "name" : "U2 CRT/DA Area ",
-  "id" : 2000041242
-}, {
-  "name" : "Switchyard",
-  "id" : 2000014712
-}, {
-  "name" : "Unit 1 HRSG lower (Heat Recovery Steam Generator)",
-  "id" : 2000042072
-}, {
-  "name" : "U2 1st level pipe rack ",
-  "id" : 2000042437
-}, {
-  "name" : "U2 3rd level pipe rack ",
-  "id" : 2000042062
-}, {
-  "name" : "Unit 2 HRSG LP Drum (Heat Recovery Steam Generator)",
-  "id" : 2000042060
-}, {
-  "name" : "Unit 2 HRSG HP Drum (Heat Recovery Steam Generator)",
-  "id" : 2000042058
-}, {
-  "name" : "U1 1st level pipe rack ",
-  "id" : 2000041800
+  "id" : 1000000093
 } ]

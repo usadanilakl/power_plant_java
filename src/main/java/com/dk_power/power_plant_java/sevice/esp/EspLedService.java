@@ -9,9 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -47,10 +49,22 @@ public class EspLedService {
     /** Default color for unassigned LEDs — matches the "closed" box color. */
     private static final int[] DEFAULT_RGB = {0, 0, 32};
 
-    private final RestTemplate restTemplate;
+    // Dedicated short-timeout client for ESP boxes. The shared RestTemplate bean
+    // (WebConfigurer) has a 5-minute response timeout, which would pin a scheduler
+    // thread for minutes on a half-alive box. A box on the LAN answers in well under
+    // a second, so fail fast instead. (WledLeadershipService hand-rolls the same 2s
+    // timeout for its hub probe for exactly this reason.)
+    private final RestTemplate restTemplate = buildEspRestTemplate();
     private final EspDeviceService espDeviceService;
     private final LotoBoxRepo lotoBoxRepo;
     private final LedStripService ledStripService;
+
+    private static RestTemplate buildEspRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(2));
+        factory.setReadTimeout(Duration.ofSeconds(3));
+        return new RestTemplate(factory);
+    }
 
     /**
      * Rebuild the full LED array for one ESP from current DB state and POST

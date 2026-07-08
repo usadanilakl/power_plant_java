@@ -60,7 +60,10 @@ public class SequenceInitializer {
             List<String> tables = jdbcTemplate.queryForList(
                 "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
                 "WHERE UPPER(COLUMN_NAME) = 'ID' AND TABLE_SCHEMA = CURRENT_SCHEMA " +
-                "AND UPPER(TABLE_NAME) NOT LIKE '%_AUD' AND UPPER(TABLE_NAME) <> 'REVINFO'",
+                "AND UPPER(TABLE_NAME) NOT LIKE '%_AUD' AND UPPER(TABLE_NAME) <> 'REVINFO' " +
+                // Only numeric-id tables: MOD(ID,?) throws on UUID ids (e.g. FIELD_CHANGE),
+                // which otherwise spams the H2 trace file every startup.
+                "AND UPPER(DATA_TYPE) IN ('BIGINT','INTEGER','SMALLINT','NUMERIC','DECIMAL')",
                 String.class
             );
 

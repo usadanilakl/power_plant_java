@@ -19,6 +19,15 @@ import type { SharePointElectronConfig, PjmDaAward, PjmDaHourEntry } from '../..
 
 const DA_AWARDS_LIST = 'PJM Day Ahead Awards';
 
+type SharePointListFieldDefinition = {
+  name: string;
+  typeKind: number;
+};
+
+type SharePointHttpError = Error & {
+  statusCode?: number;
+};
+
 export class SharePointManager {
   private config: SharePointElectronConfig | null = null;
   private credential: ClientCertificateCredential | null = null;
@@ -121,6 +130,170 @@ export class SharePointManager {
   }
 
   // ── SharePoint REST API ─────────────────────────────────────────────────
+
+  private listEndpoint(listTitle: string): string {
+    return `/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')`;
+  }
+
+  private makeHttpError(statusCode: number | undefined, body: string, context: string): SharePointHttpError {
+    const message = statusCode
+      ? `SharePoint ${context} returned ${statusCode}: ${body.substring(0, 500)}`
+      : `SharePoint ${context} failed: ${body.substring(0, 500)}`;
+    const err = new Error(message) as SharePointHttpError;
+    err.statusCode = statusCode;
+    return err;
+  }
+
+  private async requestJson(
+    apiPath: string,
+    method: 'GET' | 'POST' = 'GET',
+    body?: unknown,
+    extraHeaders: Record<string, string> = {},
+    retry = true
+  ): Promise<any> {
+    const token = await this.ensureToken();
+    const urlObj = new URL(this.config!.siteUrl + apiPath);
+    const payload = body === undefined ? undefined : (typeof body === 'string' ? body : JSON.stringify(body));
+
+    return new Promise((resolve, reject) => {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json;odata=nometadata',
+        ...extraHeaders,
+      };
+      if (payload !== undefined && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const options: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method,
+        headers,
+        timeout: 30_000,
+      };
+
+      const req = https.request(options, (res) => {
+        let responseBody = '';
+        res.on('data', (chunk) => responseBody += chunk);
+        res.on('end', async () => {
+          if (res.statusCode === 401 && retry) {
+            this.cachedToken = null;
+            this.tokenExpiry = 0;
+            try {
+              resolve(await this.requestJson(apiPath, method, body, extraHeaders, false));
+            } catch (err) {
+              reject(err);
+            }
+            return;
+          }
+
+          if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+            reject(this.makeHttpError(res.statusCode, responseBody, `${method} ${apiPath}`));
+            return;
+          }
+
+          if (!responseBody.trim()) {
+            resolve(null);
+            return;
+          }
+
+          try {
+            resolve(JSON.parse(responseBody));
+          } catch (err: any) {
+            reject(new Error(`Failed to parse SharePoint response: ${err.message}`));
+          }
+        });
+      });
+
+      req.on('error', (err) => reject(new Error(`SharePoint request failed: ${err.message}`)));
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('SharePoint request timed out'));
+      });
+
+      if (payload !== undefined) {
+        req.write(payload);
+      }
+      req.end();
+    });
+  }
+
+  public async listExists(listTitle: string): Promise<boolean> {
+    try {
+      await this.requestJson(`${this.listEndpoint(listTitle)}?$select=Title`);
+      return true;
+    } catch (err: any) {
+      if (err?.statusCode === 404) return false;
+      throw err;
+    }
+  }
+
+  public async fieldExists(listTitle: string, fieldName: string): Promise<boolean> {
+    try {
+      await this.requestJson(`${this.listEndpoint(listTitle)}/fields/getbyinternalnameortitle('${encodeURIComponent(fieldName)}')`);
+      return true;
+    } catch (err: any) {
+      if (err?.statusCode === 400 || err?.statusCode === 404) return false;
+      throw err;
+    }
+  }
+
+  public async createList(listTitle: string): Promise<void> {
+    await this.requestJson('/_api/web/lists', 'POST', {
+      Title: listTitle,
+      BaseTemplate: 100,
+      Description: 'Auto-provisioned by DK Power Manager',
+    });
+    console.log(`[SharePoint] Created list '${listTitle}'`);
+  }
+
+  public async addFieldToList(listTitle: string, fieldName: string, fieldTypeKind: number): Promise<void> {
+    await this.requestJson(`${this.listEndpoint(listTitle)}/fields`, 'POST', {
+      Title: fieldName,
+      FieldTypeKind: fieldTypeKind,
+      Required: false,
+    });
+    console.log(`[SharePoint] Added field '${fieldName}' to '${listTitle}'`);
+  }
+
+  public async addFieldToDefaultView(listTitle: string, fieldName: string): Promise<void> {
+    try {
+      await this.requestJson(`${this.listEndpoint(listTitle)}/DefaultView/ViewFields/addviewfield('${encodeURIComponent(fieldName)}')`, 'POST', {});
+    } catch (err: any) {
+      console.warn(`[SharePoint] Failed to add '${fieldName}' to '${listTitle}' default view:`, err.message);
+    }
+  }
+
+  public async ensureList(listTitle: string, fields: SharePointListFieldDefinition[]): Promise<void> {
+    const exists = await this.listExists(listTitle);
+    if (!exists) {
+      await this.createList(listTitle);
+    }
+
+    for (const field of fields) {
+      const exists = await this.fieldExists(listTitle, field.name);
+      if (exists) continue;
+      await this.addFieldToList(listTitle, field.name, field.typeKind);
+      await this.addFieldToDefaultView(listTitle, field.name);
+    }
+  }
+
+  public async createListItem(listTitle: string, fields: Record<string, unknown>): Promise<string> {
+    const data = await this.requestJson(`${this.listEndpoint(listTitle)}/items`, 'POST', fields);
+    const id = data?.ID ?? data?.Id ?? data?.d?.ID ?? data?.d?.Id;
+    if (id == null) {
+      throw new Error(`SharePoint did not return an ID for new item in '${listTitle}'`);
+    }
+    return String(id);
+  }
+
+  public async updateListItem(listTitle: string, itemId: string | number, fields: Record<string, unknown>): Promise<void> {
+    await this.requestJson(`${this.listEndpoint(listTitle)}/items(${itemId})`, 'POST', fields, {
+      'IF-MATCH': '*',
+      'X-HTTP-Method': 'MERGE',
+    });
+  }
 
   /**
    * GET list items from a SharePoint list.

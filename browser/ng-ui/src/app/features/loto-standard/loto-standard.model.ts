@@ -20,6 +20,7 @@ export interface LotoPointRef {
   isLabeled?: boolean;
   isLockable?: boolean;
   fileIds?: string;
+  zeroEnergyMethod?: string;
   processingStatus?: LotoValueRef | null;
 }
 
@@ -35,6 +36,7 @@ export interface LotoStandard {
   removalHazardControlText?: string;
   removalProcedureText?: string;
   removalReversesInstallOrder?: boolean;
+  lotoPointOrder?: string;
   developmentStatus?: LotoValueRef | null;
   currentVersion?: number;
   submittedForVerificationBy?: string;
@@ -68,4 +70,177 @@ export function statusPhase(statusName: string | undefined | null): string {
     case LOTO_STANDARD_STATUS.VERIFIED: return 'Verification';
     default: return 'Under construction';
   }
+}
+
+// ── Phase 2: verification / walkdown checklist ─────────────────────────────
+
+/** A checkmark against a standard-level (global) item. */
+export interface GlobalItem {
+  checked: boolean;
+  checkedBy?: string;
+  checkedAt?: string;
+  notes?: string;
+}
+
+/** Per-point field walkdown. The seven checks are tri-state: null = unanswered, true = pass, false = fail. */
+export interface PointChecklist {
+  fileReferenceProvided?: boolean | null;
+  metalTagPresent?: boolean | null;
+  equipmentAccessible?: boolean | null;
+  tagNumbersMatch?: boolean | null;
+  isolationPositionCorrect?: boolean | null;
+  restoredPositionCorrect?: boolean | null;
+  equipmentLockable?: boolean | null;
+  zeroEnergyAdequate?: boolean | null;
+  comment?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+}
+
+export interface LotoStandardWalkdown {
+  standardId: number;
+  standardVersion?: number;
+  startedBy?: string;
+  startedAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  globalItems: Record<string, GlobalItem>;
+  pointResults: Record<string, PointChecklist>;
+}
+
+/** The per-point checks, in display order, with their prompts. */
+export const POINT_CHECKS: { key: keyof PointChecklist; label: string }[] = [
+  { key: 'fileReferenceProvided',    label: 'File reference provided' },
+  { key: 'metalTagPresent',          label: 'Metal tag present' },
+  { key: 'equipmentAccessible',      label: 'Equipment accessible' },
+  { key: 'tagNumbersMatch',          label: 'Tag numbers match (app / file / metal tag)' },
+  { key: 'isolationPositionCorrect', label: 'Isolation position correct' },
+  { key: 'restoredPositionCorrect',  label: 'Restored position correct' },
+  { key: 'equipmentLockable',        label: 'Equipment lockable' },
+  { key: 'zeroEnergyAdequate',       label: 'Zero energy adequate' },
+];
+
+export interface GlobalItemDef {
+  key: string;
+  label: string;
+  /** A standard prose field to show for verification (prerequisites / hazard control / procedure). */
+  field?: keyof LotoStandard;
+  /** Show the item even when its prose field is empty (procedures — the order still needs verifying). */
+  showWhenEmpty?: boolean;
+  /** Show the ordered point sequence to verify. */
+  order?: 'install' | 'removal';
+}
+
+/**
+ * Global (standard-level) checklist items. Prerequisites/hazard-control show only when they have content;
+ * procedures + order always show (the sequence needs verifying even without prose). Each item that has a
+ * `field` or `order` renders its actual content inline so the verifier can read what they're signing off.
+ */
+export const GLOBAL_ITEMS: GlobalItemDef[] = [
+  { key: 'name',                 label: 'Standard name is correct' },
+  { key: 'installPrerequisites', label: 'Install prerequisites',  field: 'installPrerequisitesText' },
+  { key: 'installHazardControl', label: 'Install hazard control', field: 'installHazardControlText' },
+  { key: 'installProcedure',     label: 'Install procedure',      field: 'installProcedureText', showWhenEmpty: true },
+  { key: 'installOrder',         label: 'Installation order is correct', order: 'install' },
+  { key: 'removalPrerequisites', label: 'Removal prerequisites',  field: 'removalPrerequisitesText' },
+  { key: 'removalHazardControl', label: 'Removal hazard control', field: 'removalHazardControlText' },
+  { key: 'removalProcedure',     label: 'Removal procedure',      field: 'removalProcedureText', showWhenEmpty: true },
+  { key: 'removalOrder',         label: 'Removal order is correct', order: 'removal' },
+];
+
+/** Points in install or removal sequence (from lotoPointOrder; removal reverses install when flagged). */
+export function orderedPoints(std: LotoStandard | null, which: 'install' | 'removal'): LotoPointRef[] {
+  const pts = std?.lotoPoints ?? [];
+  if (pts.length < 2) return [...pts];
+  let ordered = [...pts];
+  const raw = std?.lotoPointOrder;
+  if (raw) {
+    try {
+      const map = JSON.parse(raw) as Record<string, number>;
+      ordered = [...pts].sort((a, b) => (map[String(a.id)] ?? 0) - (map[String(b.id)] ?? 0));
+    } catch { /* keep natural order */ }
+  }
+  if (which === 'removal' && std?.removalReversesInstallOrder) ordered = [...ordered].reverse();
+  return ordered;
+}
+
+/** True when every one of the seven checks has been answered (non-null). */
+export function pointChecklistComplete(c: PointChecklist | undefined): boolean {
+  if (!c) return false;
+  return POINT_CHECKS.every(({ key }) => c[key] === true || c[key] === false);
+}
+
+/** True when any answered check is negative (fail). */
+export function pointHasNegative(c: PointChecklist | undefined): boolean {
+  if (!c) return false;
+  return POINT_CHECKS.some(({ key }) => c[key] === false);
+}
+
+// ── Position options + in-field corrections ────────────────────────────────
+
+/** isoPos / normPos Value option lists (mirror the desktop 'isoPos' / 'normPos' categories). */
+export interface PositionOptions {
+  isoPos: LotoValueRef[];
+  normPos: LotoValueRef[];
+}
+
+export interface PointCorrection {
+  tagNumber?: string;
+  description?: string;
+  isoPosId?: number | null;
+  normPosId?: number | null;
+}
+
+// ── Offline draft + one-shot submit ────────────────────────────────────────
+
+export type SubmissionStatus = 'draft' | 'pending' | 'submitted' | 'failed';
+
+export interface GlobalItemInput {
+  checked: boolean;
+  notes?: string;
+}
+
+/** Everything captured for one standard's walkdown — persisted locally, submitted in one shot. */
+export interface WalkdownDraft {
+  standardId: number;
+  capturedVersion?: number;
+  transition: 'verify' | 'walkdown' | null;
+  notes: string;
+  globalItems: Record<string, GlobalItemInput>;
+  pointResults: Record<string, PointChecklist>;
+  corrections: Record<string, PointCorrection>;
+  status: SubmissionStatus;
+  updatedAt: number;   // epoch millis (avoids the localStorage ISO-date reviver)
+  lastError?: string;
+}
+
+/** The payload POSTed to /walkdown/submit (derived from a WalkdownDraft). */
+export interface WalkdownSubmitPayload {
+  capturedVersion?: number;
+  transition: 'verify' | 'walkdown' | null;
+  notes?: string;
+  globalItems: Record<string, GlobalItemInput>;
+  pointResults: Record<string, PointChecklist>;
+  corrections: Record<string, PointCorrection>;
+}
+
+export interface WalkdownSubmitResult {
+  standard: LotoStandard | null;
+  transitioned: boolean;
+  transitionMessage?: string | null;
+}
+
+// ── Drawings (per-point file viewer) ───────────────────────────────────────
+
+/** "This point on this drawing": which file + the highlight rectangle in the image's original pixels. */
+export interface PointDrawing {
+  pointId: number;
+  fileId: number;
+  fileName?: string;
+  imageWidth: number;
+  imageHeight: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }

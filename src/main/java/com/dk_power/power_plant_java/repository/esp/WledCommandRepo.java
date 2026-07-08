@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.repository.esp;
 import com.dk_power.power_plant_java.entities.esp.WledCommand;
 import com.dk_power.power_plant_java.enums.WledCommandStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -28,4 +29,18 @@ public interface WledCommandRepo extends JpaRepository<WledCommand, Long> {
     long countByCommandStatus(WledCommandStatus status);
 
     void deleteByCommandStatus(WledCommandStatus status);
+
+    /**
+     * Bulk-delete all rows in a status. Uses a @Modifying DELETE (not the derived
+     * deleteBy... which loads + removes each row and would fire the sync listener),
+     * so it does NOT emit FieldChange rows. Used to drain resolved SENT markers.
+     */
+    @Modifying
+    @Query("DELETE FROM WledCommand c WHERE c.commandStatus = :status")
+    int purgeByStatus(@Param("status") WledCommandStatus status);
+
+    /** Bulk-delete rows in a status older than a cutoff — for pruning stale EXPIRED rows. */
+    @Modifying
+    @Query("DELETE FROM WledCommand c WHERE c.commandStatus = :status AND c.createdAt < :cutoff")
+    int purgeByStatusOlderThan(@Param("status") WledCommandStatus status, @Param("cutoff") LocalDateTime cutoff);
 }

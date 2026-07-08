@@ -20,7 +20,10 @@ import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestShare
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.SessionFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -43,6 +46,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final NgValueService ngValueService;
     private final WorkRequestSharePointAdapter wrAdapter;
     private final OldWorkRequestExcelStatusService oldWorkRequestExcelStatusService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public JobLogRepo getRepo() {
@@ -342,19 +346,48 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         // 5. Persist
         JobLog saved = jobLogRepo.save(job);
 
-        // 6. Push status to SharePoint (best-effort)
-        try {
-            if (wr.getSharepointId() != null && !wr.getSharepointId().isEmpty()) {
-                wrAdapter.changeStatus(wr.getSharepointId(), "Processed");
-            }
-        } catch (Exception e) {
-            log.warn("[ProcessWR] Failed to update SharePoint status for WR id={}, spId={}: {}",
-                    workRequestId, wr.getSharepointId(), e.getMessage());
-        }
-        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(wr, "Processed");
+        // 6. Push status to SharePoint AFTER this transaction commits — NOT inside it.
+        // changeStatus + updateStatusIfBackedByOldExcel are blocking network calls; running them
+        // here pins the pooled DB connection for the whole HTTP round-trip. On the hub that
+        // starved the 20-connection pool and produced the historical >10-min "connection leak"
+        // (getAll was the victim waiting for a connection). The AFTER_COMMIT listener below runs
+        // once this tx has committed and its connection is released. Write-back is best-effort.
+        eventPublisher.publishEvent(new WorkRequestProcessedEvent(wr.getId(), wr.getSharepointId()));
 
         return jobLogMapper.convertToDto(saved);
     }
+
+    /**
+     * SharePoint write-back for a processed WorkRequest. Fires only after
+     * {@link #processWorkRequest}'s transaction commits, and runs with NO transaction
+     * ({@code NOT_SUPPORTED}) so its blocking HTTP calls never hold a pooled DB connection.
+     * Best-effort: every failure is logged, never propagated.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public void onWorkRequestProcessed(WorkRequestProcessedEvent event) {
+        try {
+            if (event.sharepointId() != null && !event.sharepointId().isEmpty()) {
+                wrAdapter.changeStatus(event.sharepointId(), "Processed");
+            }
+        } catch (Exception e) {
+            log.warn("[ProcessWR] SharePoint status update failed for WR id={}, spId={}: {}",
+                    event.workRequestId(), event.sharepointId(), e.getMessage());
+        }
+        try {
+            WorkRequest wr = workRequestRepo.findById(event.workRequestId()).orElse(null);
+            if (wr != null) {
+                oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(wr, "Processed");
+            }
+        } catch (Exception e) {
+            log.warn("[ProcessWR] Old-Excel status update failed for WR id={}: {}",
+                    event.workRequestId(), e.getMessage());
+        }
+    }
+
+    /** Signals that a WorkRequest was processed and its SharePoint status should be pushed post-commit. */
+    public record WorkRequestProcessedEvent(Long workRequestId, String sharepointId) {}
 
     public List<Map<String, Object>> findMatchingJobs(String workRequestId) {
         WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId))

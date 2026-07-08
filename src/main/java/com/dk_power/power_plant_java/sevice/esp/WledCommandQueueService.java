@@ -141,4 +141,22 @@ public class WledCommandQueueService {
     public void clearSentCommands() {
         wledCommandRepo.deleteByCommandStatus(WledCommandStatus.SENT);
     }
+
+    /**
+     * Keep the WLED_COMMAND table bounded. Resolved commands have no future value:
+     * SENT markers are done, and EXPIRED rows are superseded by the next box change.
+     * Left unpruned they accumulate forever (this table is a per-node work queue, so
+     * every box color change adds a row). Runs every 10 min on ALL nodes over their
+     * own local queue. Bulk deletes bypass the entity listener, so no FieldChange churn.
+     */
+    @Scheduled(fixedDelay = 600_000, initialDelay = 120_000)
+    @Transactional
+    public void cleanupResolvedCommands() {
+        int sent = wledCommandRepo.purgeByStatus(WledCommandStatus.SENT);
+        int expired = wledCommandRepo.purgeByStatusOlderThan(
+                WledCommandStatus.EXPIRED, LocalDateTime.now().minusDays(1));
+        if (sent + expired > 0) {
+            log.info("[WledQueue] cleanup purged sent={} expired(>1d)={}", sent, expired);
+        }
+    }
 }

@@ -3,11 +3,18 @@ package com.dk_power.power_plant_java.entities.permits;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "permit_attachment")
+@Table(name = "permit_attachment", indexes = {
+    // Every per-entity attachment count (WorkRequestMapper, JobLog list, etc.) queries by
+    // (entityType, entityId). Without this index that is a FULL SCAN of the multi-hundred-MB
+    // base64 table — the hidden N+1 behind the JobLog getAll connection leak.
+    @Index(name = "idx_permit_attachment_entity", columnList = "entity_type, entity_id")
+})
+@DynamicUpdate  // only UPDATE dirty columns — avoids rewriting the ~1.3MB base64Content row on sync-flag-only saves
 @Getter
 @Setter
 public class PermitAttachment {

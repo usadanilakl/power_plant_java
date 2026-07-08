@@ -283,6 +283,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // TOI/TMOD
   toiListFiles: (): Promise<any> => ipcRenderer.invoke(events.IPC_TOI_LIST_FILES),
+  corkBoardListItems: (): Promise<any> => ipcRenderer.invoke(events.IPC_CORK_BOARD_LIST_ITEMS),
+  corkBoardListActions: (): Promise<any> => ipcRenderer.invoke(events.IPC_CORK_BOARD_LIST_ACTIONS),
+  corkBoardCreateAction: (request: any): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_CORK_BOARD_CREATE_ACTION, request),
+  corkBoardSubmitAction: (request: any): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_CORK_BOARD_SUBMIT_ACTION, request),
 
   // Personnel / Schedule
   personnelGetStatus: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_STATUS),

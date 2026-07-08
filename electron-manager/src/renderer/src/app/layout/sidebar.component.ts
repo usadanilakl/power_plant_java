@@ -363,6 +363,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'SDS Import', route: '/sds-import', icon: 'science', color: '#8D6E63' },
     { label: 'Personnel', route: '/personnel', icon: 'groups', color: '#8b5cf6' },
     { label: 'TOI/TMOD', route: '/toi', icon: 'description', color: '#10b981' },
+    { label: 'Cork-Board', route: '/cork-board', icon: 'collections', color: '#f59e0b' },
     { label: 'Weather', route: '/weather', icon: 'thunderstorm', color: '#f59e0b' },
     { label: 'PJM', route: '/pjm', icon: 'bolt', color: '#eab308' },
     { label: 'Logs', route: '/logs', icon: 'terminal', color: '#22c55e' },

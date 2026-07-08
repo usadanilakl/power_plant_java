@@ -1,8 +1,10 @@
 package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.JobLogDto;
+import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.JobLog;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
+import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
@@ -81,7 +83,16 @@ public class JobLogMapper implements BaseMapper {
             dto.setJobStatus(valueMapper.convertToDto(entity.getJobStatus()));
         }
         if (entity.getOriginatingWorkRequest() != null) {
-            dto.setOriginatingWorkRequest(workRequestMapper.convertToNgDto(entity.getOriginatingWorkRequest()));
+            // LIST path: a job-log row only displays originatingWorkRequest.name. Do NOT build the
+            // full NgWorkRequestDto here — that path (WorkRequestMapper.convertToNgDto) fires a
+            // per-row JHA-exists + a permit_attachment count (a full-table scan) and drags the WR's
+            // nested graph, which is the root of the getAll connection leak. The detail path
+            // (convertToDto) still builds the complete DTO.
+            WorkRequest wr = entity.getOriginatingWorkRequest();
+            NgWorkRequestDto wrLite = new NgWorkRequestDto();
+            wrLite.setId(wr.getId());
+            wrLite.setName(wr.getName());
+            dto.setOriginatingWorkRequest(wrLite);
         }
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));

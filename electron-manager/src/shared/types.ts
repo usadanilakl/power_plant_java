@@ -536,3 +536,70 @@ export interface PersonnelContact {
   emergencyPhone?: string;
   emergencyRelation?: string;
 }
+
+export interface CorkBoardItem {
+  name: string;
+  displayName: string;
+  serverRelativeUrl: string;
+  size: number;
+  modified: string;
+  mimeType: string;
+  kind: 'image' | 'pdf';
+  sortOrder?: number;
+  expiresOn?: string;
+  important: boolean;
+  pinned: boolean;
+  dataUrl: string;
+}
+
+export type CorkBoardActionType = 'acknowledge' | 'poll' | 'signup';
+
+export interface CorkBoardActionResponse {
+  id: string;
+  actionId: string;
+  actionTitle: string;
+  responderName: string;
+  responseValue: string;
+  comment?: string;
+  submittedAt: string;
+  modified?: string;
+}
+
+export interface CorkBoardActionSummary {
+  value: string;
+  count: number;
+}
+
+export interface CorkBoardAction {
+  id: string;
+  title: string;
+  description?: string;
+  type: CorkBoardActionType;
+  options: string[];
+  active: boolean;
+  expiresOn?: string;
+  createdBy?: string;
+  createdAt?: string;
+  modified?: string;
+  responseCount: number;
+  responseSummary: CorkBoardActionSummary[];
+  responses: CorkBoardActionResponse[];
+}
+
+export interface CorkBoardActionCreateRequest {
+  title: string;
+  description?: string;
+  type: CorkBoardActionType;
+  options?: string[];
+  expiresOn?: string;
+  createdBy?: string;
+  active?: boolean;
+}
+
+export interface CorkBoardActionSubmitRequest {
+  actionId: string;
+  actionTitle: string;
+  responderName: string;
+  responseValue: string;
+  comment?: string;
+}

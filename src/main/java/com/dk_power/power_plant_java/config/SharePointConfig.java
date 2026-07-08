@@ -7,7 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
 
 @Slf4j
 @Configuration
@@ -38,6 +41,11 @@ public class SharePointConfig {
 
     @Bean("sharepointRestTemplate")
     public RestTemplate sharepointRestTemplate() {
-        return new RestTemplate();
+        // Bounded timeouts so a hung SharePoint/Power-Automate endpoint can never pin the
+        // calling thread (and, historically, a pooled DB connection) indefinitely.
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(10));
+        factory.setReadTimeout(Duration.ofSeconds(60));
+        return new RestTemplate(factory);
     }
 }

@@ -2,8 +2,10 @@ import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
+import { LotoDrawingService } from './loto-drawing.service';
 import { LotoStandardApiService } from './loto-standard-api.service';
-import { LotoStandard, LotoPointRef, statusPhase } from './loto-standard.model';
+import { LotoStandardStore } from './loto-standard-store.service';
+import { LOTO_STANDARD_STATUS, LotoStandard, LotoPointRef, statusPhase } from './loto-standard.model';
 
 type Tab = 'standard' | 'procedure';
 
@@ -26,6 +28,12 @@ type Tab = 'standard' | 'procedure';
               <h1 class="d-title">{{ std()!.name || '(unnamed)' }}</h1>
               <span class="d-badge" [class]="badgeClass()">{{ phase() }}</span>
             </div>
+
+            @if (walkdownMode()) {
+              <button class="d-action" (click)="openWalkdown()">
+                {{ walkdownMode() === 'verify' ? '✓ Verify this standard' : '✓ Walk down this standard' }}
+              </button>
+            }
 
             <div class="d-tabs">
               <button class="d-tab" [class.active]="tab() === 'standard'" (click)="tab.set('standard')">Standard &amp; Points</button>
@@ -66,6 +74,9 @@ type Tab = 'standard' | 'procedure';
                       @if (p.specificLocation || p.generalLocation) {
                         <div class="d-point-loc">{{ p.specificLocation || p.generalLocation }}</div>
                       }
+                      @if (p.zeroEnergyMethod) {
+                        <div class="d-point-ze"><b>Zero energy:</b> {{ p.zeroEnergyMethod }}</div>
+                      }
                     </div>
                   }
                 </div>
@@ -104,6 +115,7 @@ type Tab = 'standard' | 'procedure';
     .d-badge.b-walkdown { background: #2980b9; }
     .d-badge.b-verification { background: #e67e22; }
     .d-badge.b-draft { background: #95a5a6; }
+    .d-action { display: block; width: 100%; margin: 0 0 1rem; background: #e67e22; color: #fff; border: none; border-radius: 10px; padding: 0.7rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .d-tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; }
     .d-tab {
       background: none; border: none; padding: 0.6rem 0.4rem; font-size: 0.95rem; font-weight: 600; cursor: pointer;
@@ -125,6 +137,7 @@ type Tab = 'standard' | 'procedure';
     .d-point-desc { color: var(--primary-text); font-size: 0.9rem; margin-top: 0.25rem; }
     .d-point-pos { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; margin-top: 0.35rem; font-size: 0.82rem; color: var(--secondary-text, #888); }
     .d-point-loc { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text, #888); }
+    .d-point-ze { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text, #888); }
     .d-proc { margin-bottom: 1rem; }
     .d-proc-h { font-size: 0.9rem; font-weight: 700; color: var(--primary-text); margin: 0 0 0.3rem; }
     .d-proc-body { white-space: pre-wrap; color: var(--primary-text); font-size: 0.9rem; margin: 0; }
@@ -133,6 +146,8 @@ type Tab = 'standard' | 'procedure';
 })
 export class LotoStandardDetailComponent implements OnInit {
   private api = inject(LotoStandardApiService);
+  private store = inject(LotoStandardStore);
+  private drawingService = inject(LotoDrawingService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -143,6 +158,13 @@ export class LotoStandardDetailComponent implements OnInit {
 
   points = computed<LotoPointRef[]>(() => this.std()?.lotoPoints ?? []);
   phase = computed(() => statusPhase(this.std()?.developmentStatus?.name));
+  walkdownMode = computed<'verify' | 'walkdown' | null>(() => {
+    switch (this.std()?.developmentStatus?.name) {
+      case LOTO_STANDARD_STATUS.PENDING_VERIFICATION: return 'verify';
+      case LOTO_STANDARD_STATUS.VERIFIED: return 'walkdown';
+      default: return null;
+    }
+  });
 
   procedureBlocks = computed(() => {
     const s = this.std();
@@ -160,13 +182,24 @@ export class LotoStandardDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) { this.error.set('Missing standard id.'); this.loading.set(false); return; }
+    // Serve the cached copy instantly (works offline); refresh + re-cache when the network answers.
+    const cached = this.store.getCachedStandard(id);
+    if (cached) { this.std.set(cached.std); this.loading.set(false); }
     this.api.getById(id).subscribe({
-      next: s => { this.std.set(s); if (!s) this.error.set('Standard not found.'); this.loading.set(false); },
-      error: () => { this.error.set('Could not load this standard. Check your connection and sign-in.'); this.loading.set(false); }
+      next: s => {
+        if (s) { this.std.set(s); this.store.cacheStandard(s); this.drawingService.precache(s.id); }
+        else if (!cached) this.error.set('Standard not found.');
+        this.loading.set(false);
+      },
+      error: () => {
+        if (!cached) this.error.set('Could not load this standard. You may be offline — open it once on a connection to cache it.');
+        this.loading.set(false);
+      }
     });
   }
 
   back(): void { this.router.navigate(['/loto-standards']); }
+  openWalkdown(): void { this.router.navigate(['/loto-standards', this.std()!.id, 'walkdown']); }
   badgeClass(): string {
     switch (this.phase()) {
       case 'Active': return 'd-badge b-active';

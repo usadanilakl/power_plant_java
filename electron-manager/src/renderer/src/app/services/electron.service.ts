@@ -539,6 +539,73 @@ export interface ToiFile {
   instructions?: string;
 }
 
+export interface CorkBoardItem {
+  name: string;
+  displayName: string;
+  serverRelativeUrl: string;
+  size: number;
+  modified: string;
+  mimeType: string;
+  kind: 'image' | 'pdf';
+  sortOrder?: number;
+  expiresOn?: string;
+  important: boolean;
+  pinned: boolean;
+  dataUrl: string;
+}
+
+export type CorkBoardActionType = 'acknowledge' | 'poll' | 'signup';
+
+export interface CorkBoardActionResponse {
+  id: string;
+  actionId: string;
+  actionTitle: string;
+  responderName: string;
+  responseValue: string;
+  comment?: string;
+  submittedAt: string;
+  modified?: string;
+}
+
+export interface CorkBoardActionSummary {
+  value: string;
+  count: number;
+}
+
+export interface CorkBoardAction {
+  id: string;
+  title: string;
+  description?: string;
+  type: CorkBoardActionType;
+  options: string[];
+  active: boolean;
+  expiresOn?: string;
+  createdBy?: string;
+  createdAt?: string;
+  modified?: string;
+  responseCount: number;
+  responseSummary: CorkBoardActionSummary[];
+  responses: CorkBoardActionResponse[];
+}
+
+export interface CorkBoardActionCreateRequest {
+  title: string;
+  description?: string;
+  type: CorkBoardActionType;
+  options?: string[];
+  expiresOn?: string;
+  createdBy?: string;
+  active?: boolean;
+}
+
+export interface CorkBoardActionSubmitRequest {
+  actionId: string;
+  actionTitle: string;
+  responderName: string;
+  responseValue: string;
+  comment?: string;
+}
+
 interface ElectronAPI {
   isElectron: boolean;
   platform: string;
@@ -700,6 +767,10 @@ interface ElectronAPI {
 
   // TOI/TMOD
   toiListFiles: () => Promise<IpcResult<ToiFile[]>>;
+  corkBoardListItems: () => Promise<IpcResult<CorkBoardItem[]>>;
+  corkBoardListActions: () => Promise<IpcResult<CorkBoardAction[]>>;
+  corkBoardCreateAction: (request: CorkBoardActionCreateRequest) => Promise<IpcResult<{ id: string }>>;
+  corkBoardSubmitAction: (request: CorkBoardActionSubmitRequest) => Promise<IpcResult<{ id: string; updated: boolean }>>;
 
   // Print
   printHtml: (html: string, options?: { silent?: boolean }) => Promise<IpcResult>;
@@ -1434,6 +1505,26 @@ export class ElectronService implements OnDestroy {
   async toiListFiles(): Promise<IpcResult<ToiFile[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.toiListFiles();
+  }
+
+  async corkBoardListItems(): Promise<IpcResult<CorkBoardItem[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.corkBoardListItems();
+  }
+
+  async corkBoardListActions(): Promise<IpcResult<CorkBoardAction[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.corkBoardListActions();
+  }
+
+  async corkBoardCreateAction(request: CorkBoardActionCreateRequest): Promise<IpcResult<{ id: string }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.corkBoardCreateAction(request);
+  }
+
+  async corkBoardSubmitAction(request: CorkBoardActionSubmitRequest): Promise<IpcResult<{ id: string; updated: boolean }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.corkBoardSubmitAction(request);
   }
 
   // Sync entity updates

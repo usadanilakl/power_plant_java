@@ -185,6 +185,12 @@ export const IPC_VOSK_ERROR = 'vosk:error';                // send/on (main -> r
 // TOI/TMOD (invoke/handle)
 export const IPC_TOI_LIST_FILES = 'toi:list-files';
 
+// Cork-Board (invoke/handle)
+export const IPC_CORK_BOARD_LIST_ITEMS = 'cork-board:list-items';
+export const IPC_CORK_BOARD_LIST_ACTIONS = 'cork-board:list-actions';
+export const IPC_CORK_BOARD_CREATE_ACTION = 'cork-board:create-action';
+export const IPC_CORK_BOARD_SUBMIT_ACTION = 'cork-board:submit-action';
+
 // Personnel / Schedule (invoke/handle)
 export const IPC_PERSONNEL_GET_STATUS = 'personnel:get-status';
 export const IPC_PERSONNEL_REFRESH = 'personnel:refresh';

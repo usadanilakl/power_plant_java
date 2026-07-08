@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.esp.WledCommand;
 import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -42,12 +43,23 @@ public class FieldChangeEntityListener {
     }
 
     /**
+     * LOCAL-ONLY BaseIdEntity types: they inherit the sync listener but are never registered
+     * for cluster sync (see EntityTableRegistry). Tracking them only churns FIELD_CHANGE rows.
+     * WledCommand is a high-frequency per-node ESP work queue — skip it.
+     */
+    private static final java.util.Set<Class<?>> LOCAL_ONLY_ENTITIES = java.util.Set.of(WledCommand.class);
+
+    private static boolean isTracked(Object entity) {
+        return entity instanceof BaseIdEntity && !LOCAL_ONLY_ENTITIES.contains(entity.getClass());
+    }
+
+    /**
      * Capture entity state before update for comparison.
      * Uses Hibernate to get the ORIGINAL database values before the in-memory changes.
      */
     @PreUpdate
     public void preUpdate(Object entity) {
-        if (entityStateCapture != null && entity instanceof BaseIdEntity) {
+        if (entityStateCapture != null && isTracked(entity)) {
             entityStateCapture.captureState((BaseIdEntity) entity);
         }
     }
@@ -62,7 +74,7 @@ public class FieldChangeEntityListener {
         if (syncContext != null && syncContext.isSyncing()) {
             return;
         }
-        if (fieldChangeTracker != null && entity instanceof BaseIdEntity) {
+        if (fieldChangeTracker != null && isTracked(entity)) {
             try {
                 BaseIdEntity baseEntity = (BaseIdEntity) entity;
                 // For new entities, old state is null
@@ -86,7 +98,7 @@ public class FieldChangeEntityListener {
         if (syncContext != null && syncContext.isSyncing()) {
             return;
         }
-        if (fieldChangeTracker != null && entityStateCapture != null && entity instanceof BaseIdEntity) {
+        if (fieldChangeTracker != null && entityStateCapture != null && isTracked(entity)) {
             try {
                 BaseIdEntity newState = (BaseIdEntity) entity;
                 Map<String, Object> originalValues = entityStateCapture.getAndClearStateMap(newState.getId());
@@ -120,7 +132,7 @@ public class FieldChangeEntityListener {
      */
     @PostRemove
     public void postRemove(Object entity) {
-        if (fieldChangeTracker != null && entity instanceof BaseIdEntity) {
+        if (fieldChangeTracker != null && isTracked(entity)) {
             try {
                 fieldChangeTracker.trackDelete((BaseIdEntity) entity);
                 log.debug("Tracked deletion of {} #{}",

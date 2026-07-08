@@ -14,7 +14,8 @@ export type WidgetId =
   | 'notes'
   | 'personnel'
   | 'toi'
-  | 'web-view-ams';
+  | 'web-view-ams'
+  | 'cork-board';
 
 export interface WidgetDefinition {
   id: WidgetId;
@@ -66,6 +67,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'personnel', title: 'Personnel', icon: 'groups', iconColor: '#8b5cf6', description: 'Shift schedule and roster', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'toi', title: 'TOI/TMOD', icon: 'description', iconColor: '#10b981', description: 'Active TOI/TMOD documents', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'web-view-ams', title: 'WebView AMS', icon: 'checklist', iconColor: '#14b8a6', description: 'Wired report values from WebView AMS', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 2, requiresSpringBoot: false },
+  { id: 'cork-board', title: 'Cork-Board', icon: 'collections', iconColor: '#f59e0b', description: 'SharePoint Cork-Board PDFs and images', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 2, requiresSpringBoot: false },
 ];
 
 // 3-column grid, auto-placed top-to-bottom left-to-right
@@ -75,7 +77,7 @@ function buildDefaultPreset(): WidgetPlacement[] {
     'fire-impairment', 'gate-log', 'weather',
     'pjm', 'permits', 'maximo-lead-op',
     'external-links', 'contacts', 'paging-system',
-    'clock', 'notes', 'personnel', 'toi', 'web-view-ams',
+    'clock', 'notes', 'personnel', 'toi', 'web-view-ams', 'cork-board',
   ];
   return order.map((id, i) => ({
     widgetId: id,
@@ -83,7 +85,7 @@ function buildDefaultPreset(): WidgetPlacement[] {
     x: i % cols,
     y: Math.floor(i / cols),
     cols: 1,
-    rows: 1,
+    rows: id === 'cork-board' ? 2 : 1,
   }));
 }
 
@@ -97,7 +99,8 @@ function buildOperationsPreset(): WidgetPlacement[] {
     { widgetId: 'clock', visible: true, x: 1, y: 2, cols: 1, rows: 1 },
     { widgetId: 'notes', visible: true, x: 2, y: 2, cols: 1, rows: 1 },
     { widgetId: 'personnel', visible: true, x: 0, y: 3, cols: 2, rows: 1 },
-    { widgetId: 'contacts', visible: false, x: 2, y: 3, cols: 1, rows: 1 },
+    { widgetId: 'cork-board', visible: true, x: 2, y: 3, cols: 1, rows: 2 },
+    { widgetId: 'contacts', visible: false, x: 2, y: 5, cols: 1, rows: 1 },
     { widgetId: 'external-links', visible: false, x: 0, y: 4, cols: 1, rows: 1 },
     { widgetId: 'paging-system', visible: false, x: 1, y: 4, cols: 1, rows: 1 },
   ];
@@ -116,6 +119,7 @@ function buildCompactPreset(): WidgetPlacement[] {
     { widgetId: 'notes', visible: false, x: 2, y: 2, cols: 1, rows: 1 },
     { widgetId: 'contacts', visible: false, x: 0, y: 3, cols: 1, rows: 1 },
     { widgetId: 'paging-system', visible: false, x: 1, y: 3, cols: 1, rows: 1 },
+    { widgetId: 'cork-board', visible: false, x: 2, y: 3, cols: 1, rows: 2 },
   ];
 }
 

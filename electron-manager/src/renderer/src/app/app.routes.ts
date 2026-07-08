@@ -12,6 +12,7 @@ import { PersonnelComponent } from './pages/personnel/personnel.component';
 import { ToiComponent } from './pages/toi/toi.component';
 import { WebViewAmsComponent } from './pages/web-view-ams/web-view-ams.component';
 import { SdsImportComponent } from './pages/sds-import/sds-import.component';
+import { CorkBoardComponent } from './pages/cork-board/cork-board.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -26,6 +27,7 @@ export const routes: Routes = [
   { path: 'sync-updates', component: SyncUpdatesComponent },
   { path: 'personnel', component: PersonnelComponent },
   { path: 'toi', component: ToiComponent },
+  { path: 'cork-board', component: CorkBoardComponent },
   { path: 'settings', component: SettingsComponent },
   { path: '**', redirectTo: '' }
 ];

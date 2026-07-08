@@ -128,6 +128,11 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
+      path: 'loto-standards/:id/walkdown',
+      loadComponent: () => import('./features/loto-standard/loto-standard-walkdown.component').then(m => m.LotoStandardWalkdownComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
       path: 'instruments',
       component: InstrumentPageComponent,
       canActivate: [standaloneGuard, userSetupGuard],

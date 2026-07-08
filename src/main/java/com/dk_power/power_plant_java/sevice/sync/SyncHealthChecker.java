@@ -233,7 +233,7 @@ public class SyncHealthChecker {
         // Latest field change timestamp
         try {
             Instant latestChange = jdbcTemplate.queryForObject(
-                "SELECT MAX(changed_at) FROM field_change", Instant.class);
+                "SELECT MAX(timestamp) FROM field_change", Instant.class);
             stats.setLatestChangeTime(latestChange);
         } catch (Exception e) {
             log.debug("Could not get latest change time: {}", e.getMessage());
@@ -243,7 +243,7 @@ public class SyncHealthChecker {
         try {
             Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
             Long recentChanges = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM field_change WHERE changed_at > ?",
+                "SELECT COUNT(*) FROM field_change WHERE timestamp > ?",
                 Long.class, oneHourAgo);
             stats.setRecentChangeCount(recentChanges != null ? recentChanges : 0);
         } catch (Exception e) {

@@ -29,7 +29,32 @@ import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, MaximoOverviewConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig, SdsScraperConfig } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, MaximoOverviewConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig, SdsScraperConfig, CorkBoardItem, CorkBoardAction, CorkBoardActionCreateRequest, CorkBoardActionResponse, CorkBoardActionSubmitRequest, CorkBoardActionSummary, CorkBoardActionType } from '../../shared/types';
+
+const CORK_BOARD_FOLDER = '/sites/JG/External/Cork-Board';
+const CORK_BOARD_ACTIONS_LIST = 'Cork Board Actions';
+const CORK_BOARD_RESPONSES_LIST = 'Cork Board Responses';
+const SHAREPOINT_FIELD_TEXT = 2;
+const SHAREPOINT_FIELD_NOTE = 3;
+const SHAREPOINT_FIELD_DATE_TIME = 4;
+const SHAREPOINT_FIELD_BOOLEAN = 8;
+const CORK_BOARD_ACTION_FIELDS = [
+  { name: 'ActionType', typeKind: SHAREPOINT_FIELD_TEXT },
+  { name: 'ActionDescription', typeKind: SHAREPOINT_FIELD_NOTE },
+  { name: 'ActionOptionsJson', typeKind: SHAREPOINT_FIELD_NOTE },
+  { name: 'ActionActive', typeKind: SHAREPOINT_FIELD_BOOLEAN },
+  { name: 'ActionExpiresOn', typeKind: SHAREPOINT_FIELD_DATE_TIME },
+  { name: 'ActionCreatedBy', typeKind: SHAREPOINT_FIELD_TEXT },
+  { name: 'ActionCreatedAt', typeKind: SHAREPOINT_FIELD_DATE_TIME },
+];
+const CORK_BOARD_RESPONSE_FIELDS = [
+  { name: 'ActionId', typeKind: SHAREPOINT_FIELD_TEXT },
+  { name: 'ActionTitle', typeKind: SHAREPOINT_FIELD_TEXT },
+  { name: 'ResponderName', typeKind: SHAREPOINT_FIELD_TEXT },
+  { name: 'ResponseValue', typeKind: SHAREPOINT_FIELD_TEXT },
+  { name: 'ResponseComment', typeKind: SHAREPOINT_FIELD_NOTE },
+  { name: 'SubmittedAt', typeKind: SHAREPOINT_FIELD_DATE_TIME },
+];
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -1884,6 +1909,423 @@ export class IpcHandlers {
         return { success: false, error: err.message };
       }
     });
+
+    ipcMain.handle(events.IPC_CORK_BOARD_LIST_ITEMS, async () => {
+      try {
+        const files = await this.sharepointManager.listFiles(CORK_BOARD_FOLDER);
+        const mediaFiles = files
+          .map(file => {
+            const lower = file.name.toLowerCase();
+            if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+              return { file, kind: 'image' as const, mimeType: 'image/jpeg' };
+            }
+            if (lower.endsWith('.pdf')) {
+              return { file, kind: 'pdf' as const, mimeType: 'application/pdf' };
+            }
+            return null;
+          })
+          .filter((entry): entry is { file: typeof files[number]; kind: 'image' | 'pdf'; mimeType: string } => entry !== null);
+
+        const items = await Promise.all(mediaFiles.map(async ({ file, kind, mimeType }) => {
+          try {
+            const parsed = this.parseCorkBoardFileName(file.name);
+            if (this.isCorkBoardItemExpired(parsed.expiresOn)) {
+              return null;
+            }
+            const buffer = await this.sharepointManager.downloadFile(file.serverRelativeUrl);
+            return {
+              ...file,
+              ...parsed,
+              kind,
+              mimeType,
+              dataUrl: `data:${mimeType};base64,${buffer.toString('base64')}`,
+            } satisfies CorkBoardItem;
+          } catch (err: any) {
+            console.warn(`[CorkBoard] Failed to load ${file.name}:`, err.message);
+            return null;
+          }
+        }));
+
+        const loadedItems = items
+          .filter((item): item is CorkBoardItem => item !== null)
+          .sort((a, b) => this.compareCorkBoardItems(a, b));
+
+        console.log(`[CorkBoard] Loaded ${loadedItems.length} media items`);
+        return { success: true, data: loadedItems };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CORK_BOARD_LIST_ACTIONS, async () => {
+      try {
+        await this.ensureCorkBoardActionLists();
+        const actions = await this.loadCorkBoardActions();
+        return { success: true, data: actions };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CORK_BOARD_CREATE_ACTION, async (_event, request: CorkBoardActionCreateRequest) => {
+      try {
+        await this.ensureCorkBoardActionLists();
+        const normalized = this.normalizeCorkBoardActionRequest(request);
+        const now = new Date().toISOString();
+        const fields: Record<string, unknown> = {
+          Title: normalized.title,
+          ActionType: normalized.type,
+          ActionDescription: normalized.description || '',
+          ActionOptionsJson: JSON.stringify(normalized.options || []),
+          ActionActive: normalized.active !== false,
+          ActionCreatedBy: normalized.createdBy || '',
+          ActionCreatedAt: now,
+        };
+        if (normalized.expiresOn) {
+          fields.ActionExpiresOn = `${normalized.expiresOn}T12:00:00Z`;
+        }
+
+        const id = await this.sharepointManager.createListItem(CORK_BOARD_ACTIONS_LIST, fields);
+        console.log(`[CorkBoard] Created action item ${id}: ${normalized.title}`);
+        return { success: true, data: { id } };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_CORK_BOARD_SUBMIT_ACTION, async (_event, request: CorkBoardActionSubmitRequest) => {
+      try {
+        await this.ensureCorkBoardActionLists();
+        const normalized = this.normalizeCorkBoardActionResponseRequest(request);
+        const now = new Date().toISOString();
+        const fields: Record<string, unknown> = {
+          Title: `${normalized.actionTitle} - ${normalized.responderName}`,
+          ActionId: normalized.actionId,
+          ActionTitle: normalized.actionTitle,
+          ResponderName: normalized.responderName,
+          ResponseValue: normalized.responseValue,
+          ResponseComment: normalized.comment || '',
+          SubmittedAt: now,
+        };
+
+        const existing = await this.sharepointManager.getListItems(
+          CORK_BOARD_RESPONSES_LIST,
+          `$filter=ActionId eq '${this.escapeODataString(normalized.actionId)}' and ResponderName eq '${this.escapeODataString(normalized.responderName)}'&$top=1`
+        );
+        const existingId = existing[0]?.ID ?? existing[0]?.Id;
+        if (existingId != null) {
+          await this.sharepointManager.updateListItem(CORK_BOARD_RESPONSES_LIST, existingId, fields);
+          console.log(`[CorkBoard] Updated response for action ${normalized.actionId} by ${normalized.responderName}`);
+          return { success: true, data: { id: String(existingId), updated: true } };
+        }
+
+        const id = await this.sharepointManager.createListItem(CORK_BOARD_RESPONSES_LIST, fields);
+        console.log(`[CorkBoard] Created response ${id} for action ${normalized.actionId}`);
+        return { success: true, data: { id, updated: false } };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+  }
+
+  private parseCorkBoardFileName(name: string): Pick<CorkBoardItem, 'displayName' | 'sortOrder' | 'expiresOn' | 'important' | 'pinned'> {
+    const extensionless = name.replace(/\.[^.]+$/, '');
+    const important = /\b(?:important|urgent)\b/i.test(extensionless);
+    const pinned = /\b(?:pin|pinned)\b/i.test(extensionless);
+    const expiresOn = this.parseCorkBoardExpirationDate(extensionless);
+    const orderMatch =
+      extensionless.match(/\b(?:order|index|sort)\s*[-_ ]?\s*(\d{1,4})\b/i) ||
+      extensionless
+        .replace(/\b(?:important|urgent|pin|pinned)\b/gi, '')
+        .replace(/\b(?:expires|expire|exp)\s*[-_: ]?\s*\d{4}[-_.]\d{1,2}[-_.]\d{1,2}\b/gi, '')
+        .replace(/^[\s\-_.:#()\[\]]+/, '')
+        .match(/^(\d{1,4})(?:\s*[-_.):]+|\s+|$)/);
+
+    const sortOrder = orderMatch ? Number(orderMatch[1]) : undefined;
+    let displayName = extensionless
+      .replace(/\b(?:order|index|sort)\s*[-_ ]?\s*\d{1,4}\b/gi, '')
+      .replace(/\b(?:expires|expire|exp)\s*[-_: ]?\s*\d{4}[-_.]\d{1,2}[-_.]\d{1,2}\b/gi, '')
+      .replace(/\b(?:important|urgent|pin|pinned)\b/gi, '')
+      .replace(/^[\s\-_.:#()\[\]]*\d{1,4}(?:\s*[-_.):]+|\s+|$)/, '')
+      .replace(/^[\s\-_.:#()\[\]]+/, '')
+      .replace(/[\s\-_.:#()\[\]]+$/, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    if (!displayName) {
+      displayName = extensionless.trim() || name;
+    }
+
+    return { displayName, sortOrder, expiresOn, important, pinned };
+  }
+
+  private parseCorkBoardExpirationDate(value: string): string | undefined {
+    const match = value.match(/\b(?:expires|expire|exp)\s*[-_: ]?\s*(\d{4})[-_.](\d{1,2})[-_.](\d{1,2})\b/i);
+    if (!match) return undefined;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const parsed = new Date(year, month - 1, day);
+    if (
+      parsed.getFullYear() !== year ||
+      parsed.getMonth() !== month - 1 ||
+      parsed.getDate() !== day
+    ) {
+      return undefined;
+    }
+
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  private isCorkBoardItemExpired(expiresOn?: string): boolean {
+    if (!expiresOn) return false;
+    const match = expiresOn.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return false;
+
+    const expiryDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return expiryDate < today;
+  }
+
+  private compareCorkBoardItems(a: CorkBoardItem, b: CorkBoardItem): number {
+    const attentionA = a.important || a.pinned ? 0 : 1;
+    const attentionB = b.important || b.pinned ? 0 : 1;
+    if (attentionA !== attentionB) return attentionA - attentionB;
+
+    const orderA = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+
+    const modifiedA = new Date(a.modified).getTime();
+    const modifiedB = new Date(b.modified).getTime();
+    if (Number.isFinite(modifiedA) && Number.isFinite(modifiedB) && modifiedA !== modifiedB) {
+      return modifiedB - modifiedA;
+    }
+
+    return a.displayName.localeCompare(b.displayName, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  private async ensureCorkBoardActionLists(): Promise<void> {
+    await this.sharepointManager.ensureList(CORK_BOARD_ACTIONS_LIST, CORK_BOARD_ACTION_FIELDS);
+    await this.sharepointManager.ensureList(CORK_BOARD_RESPONSES_LIST, CORK_BOARD_RESPONSE_FIELDS);
+  }
+
+  private async loadCorkBoardActions(): Promise<CorkBoardAction[]> {
+    const [actionItems, responseItems] = await Promise.all([
+      this.sharepointManager.getListItems(CORK_BOARD_ACTIONS_LIST, '$orderby=Created desc&$top=200'),
+      this.sharepointManager.getListItems(CORK_BOARD_RESPONSES_LIST, '$orderby=SubmittedAt desc&$top=5000'),
+    ]);
+
+    const responses = responseItems
+      .map(item => this.mapCorkBoardActionResponse(item))
+      .filter((response): response is CorkBoardActionResponse => response !== null);
+
+    const responseByResponder = new Map<string, CorkBoardActionResponse>();
+    for (const response of responses) {
+      const key = `${response.actionId.toLowerCase()}::${response.responderName.toLowerCase()}`;
+      if (!responseByResponder.has(key)) {
+        responseByResponder.set(key, response);
+      }
+    }
+
+    const responsesByAction = new Map<string, CorkBoardActionResponse[]>();
+    for (const response of responseByResponder.values()) {
+      const list = responsesByAction.get(response.actionId) || [];
+      list.push(response);
+      responsesByAction.set(response.actionId, list);
+    }
+
+    return actionItems
+      .map(item => this.mapCorkBoardAction(item, responsesByAction.get(String(item.ID ?? item.Id ?? '')) || []))
+      .filter((action): action is CorkBoardAction => action !== null)
+      .filter(action => action.active && !this.isCorkBoardItemExpired(action.expiresOn))
+      .sort((a, b) => this.compareCorkBoardActions(a, b));
+  }
+
+  private mapCorkBoardAction(item: any, responses: CorkBoardActionResponse[]): CorkBoardAction | null {
+    const id = String(item.ID ?? item.Id ?? '');
+    const title = String(item.Title || '').trim();
+    if (!id || !title) return null;
+
+    const type = this.normalizeCorkBoardActionType(item.ActionType);
+    const sortedResponses = [...responses].sort((a, b) =>
+      new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+    );
+
+    return {
+      id,
+      title,
+      description: this.cleanOptionalString(item.ActionDescription),
+      type,
+      options: this.parseCorkBoardActionOptions(item.ActionOptionsJson),
+      active: item.ActionActive !== false,
+      expiresOn: this.toDateOnly(item.ActionExpiresOn),
+      createdBy: this.cleanOptionalString(item.ActionCreatedBy),
+      createdAt: this.toIsoString(item.ActionCreatedAt || item.Created),
+      modified: this.toIsoString(item.Modified),
+      responseCount: sortedResponses.length,
+      responseSummary: this.buildCorkBoardActionSummary(type, this.parseCorkBoardActionOptions(item.ActionOptionsJson), sortedResponses),
+      responses: sortedResponses,
+    };
+  }
+
+  private mapCorkBoardActionResponse(item: any): CorkBoardActionResponse | null {
+    const id = String(item.ID ?? item.Id ?? '');
+    const actionId = String(item.ActionId || '').trim();
+    const responderName = String(item.ResponderName || '').trim();
+    const responseValue = String(item.ResponseValue || '').trim();
+    if (!id || !actionId || !responderName || !responseValue) return null;
+
+    return {
+      id,
+      actionId,
+      actionTitle: String(item.ActionTitle || item.Title || '').trim(),
+      responderName,
+      responseValue,
+      comment: this.cleanOptionalString(item.ResponseComment),
+      submittedAt: this.toIsoString(item.SubmittedAt || item.Created) || new Date(0).toISOString(),
+      modified: this.toIsoString(item.Modified),
+    };
+  }
+
+  private buildCorkBoardActionSummary(
+    type: CorkBoardActionType,
+    options: string[],
+    responses: CorkBoardActionResponse[]
+  ): CorkBoardActionSummary[] {
+    if (type === 'acknowledge') {
+      return responses.length > 0 ? [{ value: 'Acknowledged', count: responses.length }] : [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const option of options) {
+      counts.set(option, 0);
+    }
+    for (const response of responses) {
+      counts.set(response.responseValue, (counts.get(response.responseValue) || 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([value, count]) => ({ value, count }));
+  }
+
+  private normalizeCorkBoardActionRequest(request: CorkBoardActionCreateRequest): CorkBoardActionCreateRequest {
+    const title = String(request?.title || '').trim();
+    if (!title) throw new Error('Action title is required');
+
+    const type = this.normalizeCorkBoardActionType(request?.type);
+    const options = Array.from(new Set((request?.options || [])
+      .map(option => String(option || '').trim())
+      .filter(Boolean)));
+    if (type === 'poll' && options.length < 2) {
+      throw new Error('Poll action items need at least two options');
+    }
+
+    return {
+      title,
+      type,
+      description: this.cleanOptionalString(request?.description),
+      options,
+      expiresOn: request?.expiresOn ? this.validateDateOnly(request.expiresOn) : undefined,
+      createdBy: this.cleanOptionalString(request?.createdBy),
+      active: request?.active !== false,
+    };
+  }
+
+  private normalizeCorkBoardActionResponseRequest(request: CorkBoardActionSubmitRequest): CorkBoardActionSubmitRequest {
+    const actionId = String(request?.actionId || '').trim();
+    const actionTitle = String(request?.actionTitle || '').trim();
+    const responderName = String(request?.responderName || '').trim();
+    const responseValue = String(request?.responseValue || '').trim();
+    if (!actionId) throw new Error('Action ID is required');
+    if (!actionTitle) throw new Error('Action title is required');
+    if (!responderName) throw new Error('Name is required');
+    if (!responseValue) throw new Error('Response is required');
+
+    return {
+      actionId,
+      actionTitle,
+      responderName,
+      responseValue,
+      comment: this.cleanOptionalString(request?.comment),
+    };
+  }
+
+  private normalizeCorkBoardActionType(value: unknown): CorkBoardActionType {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized === 'poll' || normalized === 'signup') return normalized;
+    return 'acknowledge';
+  }
+
+  private parseCorkBoardActionOptions(value: unknown): string[] {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.map(option => String(option || '').trim()).filter(Boolean);
+    }
+    try {
+      const parsed = JSON.parse(String(value));
+      if (Array.isArray(parsed)) {
+        return parsed.map(option => String(option || '').trim()).filter(Boolean);
+      }
+    } catch { /* fall through to line splitting */ }
+    return String(value)
+      .split(/\r?\n|,/)
+      .map(option => option.trim())
+      .filter(Boolean);
+  }
+
+  private compareCorkBoardActions(a: CorkBoardAction, b: CorkBoardAction): number {
+    if (a.expiresOn && b.expiresOn && a.expiresOn !== b.expiresOn) {
+      return a.expiresOn.localeCompare(b.expiresOn);
+    }
+    if (a.expiresOn && !b.expiresOn) return -1;
+    if (!a.expiresOn && b.expiresOn) return 1;
+
+    const createdA = new Date(a.createdAt || a.modified || 0).getTime();
+    const createdB = new Date(b.createdAt || b.modified || 0).getTime();
+    if (Number.isFinite(createdA) && Number.isFinite(createdB) && createdA !== createdB) {
+      return createdB - createdA;
+    }
+    return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  private cleanOptionalString(value: unknown): string | undefined {
+    const cleaned = String(value || '').trim();
+    return cleaned ? cleaned : undefined;
+  }
+
+  private toIsoString(value: unknown): string | undefined {
+    if (!value) return undefined;
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+  }
+
+  private toDateOnly(value: unknown): string | undefined {
+    if (!value) return undefined;
+    const text = String(value);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) return undefined;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private validateDateOnly(value: string): string {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) throw new Error('Expiration date must use YYYY-MM-DD');
+    const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (
+      parsed.getFullYear() !== Number(match[1]) ||
+      parsed.getMonth() !== Number(match[2]) - 1 ||
+      parsed.getDate() !== Number(match[3])
+    ) {
+      throw new Error('Expiration date is not valid');
+    }
+    return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+
+  private escapeODataString(value: string): string {
+    return value.replace(/'/g, "''");
   }
 
   private registerContractorHandlers(): void {

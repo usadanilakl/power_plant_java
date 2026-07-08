@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
 import { LotoStandardApiService } from './loto-standard-api.service';
+import { LotoStandardStore } from './loto-standard-store.service';
 import { LotoStandard, statusPhase } from './loto-standard.model';
 
 @Component({
@@ -73,6 +74,7 @@ import { LotoStandard, statusPhase } from './loto-standard.model';
 })
 export class LotoStandardsListComponent implements OnInit {
   private api = inject(LotoStandardApiService);
+  private store = inject(LotoStandardStore);
   private router = inject(Router);
 
   standards = signal<LotoStandard[]>([]);
@@ -88,9 +90,14 @@ export class LotoStandardsListComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    const cached = this.store.getCachedList();
+    if (cached) { this.standards.set(cached.list); this.loading.set(false); }
     this.api.getAll().subscribe({
-      next: list => { this.standards.set(list ?? []); this.loading.set(false); },
-      error: () => { this.error.set('Could not load standards. Check your connection and that you are signed in.'); this.loading.set(false); }
+      next: list => { this.standards.set(list ?? []); this.store.cacheList(list ?? []); this.loading.set(false); },
+      error: () => {
+        if (!cached) this.error.set('Could not load standards. You may be offline — connect once to cache the list.');
+        this.loading.set(false);
+      }
     });
   }
 
