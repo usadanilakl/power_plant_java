@@ -74,7 +74,8 @@ public class RoundsReading {
     @Column(nullable = false)
     private LocalDateTime shiftTime;
 
-    /** Parsed numeric value. */
+    /** Parsed numeric value. ("value" is a reserved word in H2 — map to a safe column name.) */
+    @Column(name = "reading_value")
     private double value;
 
     /** Original cell text (kept for display / audit). */

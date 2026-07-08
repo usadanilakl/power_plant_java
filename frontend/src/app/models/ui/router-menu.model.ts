@@ -55,7 +55,6 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         color: '#FFA726',
         defaultRoute: '/loto',
         requiresFullAccess: true,
-        requiresPlant: true, // Plant staff see LOTO off-LAN by role (like Maximo)
         items: [
             { route: '/loto', label: 'LOTO', icon: 'lock', iconColor: '#FFA726' },
             { route: '/loto-points', label: 'Loto Points', icon: 'place', iconColor: '#EF5350', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },

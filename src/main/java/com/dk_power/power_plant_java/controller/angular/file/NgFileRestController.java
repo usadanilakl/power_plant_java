@@ -376,6 +376,7 @@ public class NgFileRestController {
     }
 
     /** Distinct fileType names actually used by FileObjects in the database. */
+    @com.dk_power.power_plant_java.config.security.RestrictedAllowed // LOTO off-LAN: file-type filter (read)
     @GetMapping("/distinct-types")
     public ResponseEntity<NgApiResponse<List<String>>> getDistinctFileTypes() {
         return ResponseEntity.ok(new NgApiResponse<>(ngFileService.getDistinctFileTypeNames(),

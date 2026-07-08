@@ -19,6 +19,7 @@ import { SdsComponent } from './features/sds/sds.component';
 import { SdsAuditPageComponent } from './pages/sds-audit-page/sds-audit-page.component';
 import { SdsAuditComponent } from './features/sds-audit/sds-audit.component';
 import { authGuard } from './auth/auth.guard';
+import { plantGuard } from './guards/plant.guard';
 
 export const routes: Routes = [
     {
@@ -115,6 +116,16 @@ export const routes: Routes = [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: SdsAuditComponent }
       ]
+    },
+    {
+      path: 'loto-standards',
+      loadComponent: () => import('./features/loto-standard/loto-standards-list.component').then(m => m.LotoStandardsListComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'loto-standards/:id',
+      loadComponent: () => import('./features/loto-standard/loto-standard-detail.component').then(m => m.LotoStandardDetailComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
       path: 'instruments',

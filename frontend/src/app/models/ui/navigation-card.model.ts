@@ -66,7 +66,6 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     color: '#e74c3c',
     defaultRoute: '/loto',
     requiresFullAccess: true,
-    requiresPlant: true, // Plant staff see LOTO off-LAN by role (like Maximo), without a FULL grant
     items: [
       { title: 'LOTO', description: 'Manage LOTO procedures', icon: 'lock', route: '/loto', color: '#e74c3c' },
       { title: 'Loto Points', description: 'Manage isolation points', icon: 'location_on', route: '/loto-points', color: '#9b59b6' },

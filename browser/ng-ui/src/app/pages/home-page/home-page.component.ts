@@ -17,7 +17,8 @@ interface PlantTool {
   title: string;
   description: string;
   icon: string;
-  url: string; // external — opens the full web app (jgportal) in a new tab
+  url?: string;   // external — opens the full web app (jgportal) in a new tab
+  route?: string; // internal ng-ui route (a built-in mobile screen)
 }
 
 /** Base URL of the full desktop web app (served behind the hub, path routing under /angular/browser/). */
@@ -68,12 +69,11 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
           @if (showPlantTools) {
             <section class="card-section">
               <h2 class="section-title">Plant Tools</h2>
-              <p class="section-note">Opens the full web app in a new tab</p>
               <div class="card-grid">
-                @for (tool of plantTools; track tool.url) {
-                  <button class="home-card" (click)="openExternal(tool.url)">
+                @for (tool of plantTools; track tool.title) {
+                  <button class="home-card" (click)="openTool(tool)">
                     <span class="card-icon">{{ tool.icon }}</span>
-                    <span class="card-title">{{ tool.title }} ↗</span>
+                    <span class="card-title">{{ tool.title }}{{ tool.route ? '' : ' ↗' }}</span>
                     <span class="card-desc">{{ tool.description }}</span>
                   </button>
                 }
@@ -229,7 +229,7 @@ export class HomePageComponent {
   plantTools: PlantTool[] = [
     { title: 'Maximo', description: 'Assets, work orders, service requests', icon: '🏭', url: `${APP_BASE}/maximo` },
     { title: 'LOTO', description: 'Lockout/tagout points, boxes, locks', icon: '🔒', url: `${APP_BASE}/loto/loto` },
-    { title: 'LOTO Standards', description: 'Lockout/tagout standards library', icon: '📚', url: `${APP_BASE}/loto-standard` }
+    { title: 'LOTO Standards', description: 'View, verify, and walk down standards', icon: '📚', route: '/loto-standards' }
   ];
 
   get signedInCards(): HomeCard[] {
@@ -245,7 +245,13 @@ export class HomePageComponent {
     this.router.navigate([route]);
   }
 
-  openExternal(url: string): void {
-    window.open(url, '_blank', 'noopener');
+  openExternal(url: string | undefined): void {
+    if (url) window.open(url, '_blank', 'noopener');
+  }
+
+  /** Plant tool: internal route navigates in-app; external url opens the full web app in a new tab. */
+  openTool(tool: PlantTool): void {
+    if (tool.route) { this.navigate(tool.route); }
+    else if (tool.url) { this.openExternal(tool.url); }
   }
 }

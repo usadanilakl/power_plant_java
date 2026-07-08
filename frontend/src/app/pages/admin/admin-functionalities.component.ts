@@ -72,6 +72,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              [active]="rla6.isActive">
             SDS
           </a>
+          <a mat-tab-link
+             routerLink="db-health"
+             routerLinkActive
+             #rla7="routerLinkActive"
+             [active]="rla7.isActive">
+            DB Health
+          </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>
           <router-outlet></router-outlet>

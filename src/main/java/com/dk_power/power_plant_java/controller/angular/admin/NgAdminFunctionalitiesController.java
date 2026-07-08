@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.angular.admin;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.admin.DbHealthDto;
 import com.dk_power.power_plant_java.dto.admin.SyncAuditEntityReportDto;
 import com.dk_power.power_plant_java.dto.admin.SyncAuditIncidentReportRequestDto;
 import com.dk_power.power_plant_java.dto.admin.SyncAuditMachineCompareReportDto;
@@ -8,6 +9,7 @@ import com.dk_power.power_plant_java.dto.admin.SyncAuditRecentEntityDto;
 import com.dk_power.power_plant_java.dto.admin.SyncAuditReconstructionDto;
 import com.dk_power.power_plant_java.dto.admin.SyncAuditTypeSummaryDto;
 import com.dk_power.power_plant_java.sevice.angular.admin.AdminFunctionalitiesService;
+import com.dk_power.power_plant_java.sevice.angular.admin.DbHealthService;
 import com.dk_power.power_plant_java.sevice.angular.admin.SyncAuditService;
 import com.dk_power.power_plant_java.sevice.hub.H2ToPostgresMigrationService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,23 @@ public class NgAdminFunctionalitiesController {
     private final AdminFunctionalitiesService adminFunctionalitiesService;
     private final SyncAuditService syncAuditService;
     private final H2ToPostgresMigrationService migrationService;
+    private final DbHealthService dbHealthService;
+
+    /**
+     * Read-only DB health snapshot (file size, dead-space %, biggest tables, attachment
+     * dedup stats, FieldChange volume). Powers the admin "DB Health" tab.
+     */
+    @GetMapping("/db-health/stats")
+    public ResponseEntity<NgApiResponse<DbHealthDto>> dbHealthStats() {
+        try {
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(dbHealthService.getDbHealth(), "DB health stats"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error reading DB health: " + e.getMessage()));
+        }
+    }
 
     /**
      * Check file integrity - compares physical files with database entries.
