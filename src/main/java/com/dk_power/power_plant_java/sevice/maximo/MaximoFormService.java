@@ -106,6 +106,17 @@ public class MaximoFormService {
     }
 
     /**
+     * The newest submission of a form across ALL work orders — used to carry settings/values forward to a
+     * fresh run (e.g. the chem-inventory form's target levels + reorder settings). Null if none exists yet.
+     */
+    @Transactional(readOnly = true)
+    public MaximoFormSubmissionDto getLatestSubmissionForForm(String formKey) {
+        if (formKey == null || formKey.isBlank()) return null;
+        return submissionRepo.findFirstByTemplateFormKeyOrderByDateModifiedDesc(formKey.trim())
+                .map(this::toDto).orElse(null);
+    }
+
+    /**
      * Save a submission draft (upsert by submissionKey = templateFormKey|wonum). Does NOT push to Maximo —
      * that happens on completion (phase 3). A COMPLETED status may only be set by the completion bridge.
      */

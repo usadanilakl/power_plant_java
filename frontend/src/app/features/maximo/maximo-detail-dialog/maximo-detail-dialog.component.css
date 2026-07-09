@@ -97,6 +97,18 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 }
 .complete-form-wrap ::ng-deep .form-image figcaption { color: #9fb0c0; font-size: 0.82rem; }
 
+/* Reorder offer (chem-inventory form, Complete tab) */
+.reorder-panel { margin-top: 14px; padding: 12px 14px; background: #2a2410;
+  border: 1px solid #6b5a1a; border-radius: 6px; }
+.reorder-panel h4 { margin: 0 0 8px; color: #f0e4b0; font-size: 14px; }
+.reorder-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.reorder-table th, .reorder-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #4a3f18; font-size: 13px; }
+.reorder-table th { color: #d9c98a; font-weight: 500; }
+.reorder-table td.num, .reorder-table th.num { text-align: right; white-space: nowrap; }
+.reorder-table td.order { color: #ffd34d; font-weight: 600; }
+.reorder-panel .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.reorder-done { margin-top: 10px; color: #7ee787; font-size: 14px; }
+
 /* Tasks tab */
 .task-table { width: 100%; border-collapse: collapse; }
 .task-table th, .task-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #333; vertical-align: top; }

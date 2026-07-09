@@ -34,6 +34,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(emergencyEyewashSafetyShower()));
         out.add(formService.saveTemplate(monthlyAedCheck()));
         out.add(formService.saveTemplate(gtInletInspection()));
+        out.add(formService.saveTemplate(chemLabInventory()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -251,6 +252,73 @@ public class MaximoFormSeeder {
                         + "gasketed joints) and annual (corrosion) checks are on the same form — mark N/A when not due. "
                         + "Filters are disposable and cannot be cleaned.")
                 .matchDescriptionContains("inlet")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * Chemistry lab reagent & test inventory (from the plant's "Reagent and Test Inventory Order Form"
+     * spreadsheet). One card per reagent: In stock (filled monthly) + Target level + Include-in-reorder.
+     * A "Reorder settings" section holds the vendor email, CC list, PO number and ship-to — those and the
+     * target levels carry forward from the previous run (nothing here is re-typed each month unless changed).
+     * Reorder is convention-driven: any field named {@code <key>__instock} makes the form reorder-capable;
+     * need = target - in-stock, and included reagents with need &gt; 0 go on the vendor email (see
+     * ChemInventoryReorderService). The completed inventory PDF attaches to the WO as usual.
+     */
+    private MaximoFormTemplateDto chemLabInventory() {
+        Fields f = new Fields();
+
+        f.section("Reorder settings (set once - carried forward each month)")
+                .text("cfg_email_to", "Vendor email (e.g. orders@hach.com)")
+                .text("cfg_email_cc", "CC (comma-separated email addresses)")
+                .text("cfg_po_number", "PO number (e.g. J25-3573)")
+                .textarea("cfg_ship_to", "Ship-to / billing address", null);
+
+        // {reagent (Hach #), size ; field key ; sheet's target level (guidance only)}
+        String[][] reagents = {
+                {"Iron", "FerroZine Iron Reagent (230149), 500 mL", "ferrozine", "5"},
+                {"Free & Total Chlorine", "DPD Free Chlorine Powder Pillows (2105569), 100 packets", "dpd_free", "5"},
+                {"Free & Total Chlorine", "DPD Total Chlorine Powder Pillows (2105669), 100 packets", "dpd_total", "5"},
+                {"ULR Silica", "Molybdate 3 Reagent Solution (199532), 100 mL", "molybdate3", "5"},
+                {"ULR Silica", "Citric Acid Reagent Solution (2254232), 100 mL", "citric_acid", "5"},
+                {"ULR Silica", "Amino Acid F Reagent (2386442), 100 mL", "amino_acid_f", "5"},
+                {"Standards", "pH 4.0 Standard (2283449), 500 mL", "ph4", "3"},
+                {"Standards", "pH 7.0 Standard (2283549), 500 mL", "ph7", "3"},
+                {"Standards", "pH 10.0 Standard (2283649), 500 mL", "ph10", "3"},
+                {"Standards", "1000 mS Conductivity Standard (1440026), 500 mL", "cond1000", "2"},
+                {"Standards", "1.0 mg/L Iron Standard (13949), 500 mL", "iron_std", "2"},
+                {"Standards", "1.0 mg/L Silica Standard (110649), 500 mL", "silica_std", "2"},
+                {"pH Storage", "pH Storage Solution (2756549), 500 mL", "ph_storage", "3"},
+                {"Silica Analyzer Kits", "Silica Analyzer reagent - Yellow", "kit_yellow", "5"},
+                {"Silica Analyzer Kits", "Silica Analyzer reagent - Blue", "kit_blue", "5"},
+                {"Silica Analyzer Kits", "Silica Analyzer reagent - Green", "kit_green", "5"},
+                {"Silica Analyzer Kits", "Silica Analyzer reagent - Red", "kit_red", "5"},
+                {"Silica Analyzer Kits", "Silica Analyzer reagent - Powder", "kit_powder", "5"},
+        };
+        for (String[] r : reagents) {
+            String category = r[0], reagent = r[1], key = r[2], target = r[3];
+            // Section header = reagent alone (the reorder email uses it verbatim). Category noted on the field.
+            f.section(reagent)
+                    .number(key + "__instock", "In stock (" + category + ")", null, null)
+                    .number(key + "__desired", "Target level - reorder when stock is below this (sheet: " + target + ")", null, null)
+                    .checkbox(key + "__include", "Include in the reorder email", false);
+        }
+
+        f.section("Sign-off")
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("CHEM_LAB_INVENTORY")
+                .formName("Chemistry Lab Reagent & Test Inventory")
+                .description("Monthly chemistry-lab reagent & test inventory (Hach order form). Set the reorder "
+                        + "settings once (vendor email, CC, PO number, ship-to) and the target level for each reagent - "
+                        + "they carry forward each month. Fill in the current in-stock count for every reagent; the "
+                        + "completed inventory attaches to the work order as a PDF. Before closing, if any included "
+                        + "reagent is below its target the app offers to email the reorder to the vendor and attaches "
+                        + "that order summary to the work order.")
+                .matchDescriptionContains("inventory")
                 .active(true)
                 .fieldsJson(toJson(f.build()))
                 .build();

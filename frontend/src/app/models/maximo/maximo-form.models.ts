@@ -59,3 +59,22 @@ export interface MaximoFormSubmission {
   pdfDoclinkId?: string;
   writeBackNote?: string;
 }
+
+/** One reagent below target on an inventory form (chem-lab reorder flow). qty to order = need. */
+export interface ReorderLine {
+  reagent: string;
+  target: number;
+  inStock: number;
+  need: number;
+}
+
+/** Result of sending (or previewing) the vendor reorder email. */
+export interface ReorderResult {
+  sent: boolean;
+  message: string;
+  recipient?: string;
+  cc?: string;
+  poNumber?: string;
+  doclinkId?: string;
+  lines: ReorderLine[];
+}

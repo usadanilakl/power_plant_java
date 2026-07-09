@@ -215,6 +215,32 @@
           ✓ {{ completeSummary() || 'Done.' }}
         </div>
 
+        <!-- Reorder offer (inventory forms): reagents below target — email the vendor. Shown independently of
+             the form area so it survives closing the WO, and stays until the order is sent. -->
+        <div class="reorder-panel" *ngIf="formFinalized() && reorderLines().length">
+          <h4>Reorder needed — {{ reorderLines().length }} item(s) below target</h4>
+          <table class="reorder-table">
+            <thead><tr><th>Reagent</th><th class="num">Target</th><th class="num">In&nbsp;stock</th><th class="num">Order</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let l of reorderLines()">
+                <td>{{ l.reagent }}</td>
+                <td class="num">{{ l.target }}</td>
+                <td class="num">{{ l.inStock }}</td>
+                <td class="num order">{{ l.need }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="actions">
+            <button class="primary" (click)="sendReorder()" [disabled]="reorderSending()">
+              {{ reorderSending() ? 'Sending…' : 'Send reorder email to vendor' }}
+            </button>
+            <span class="muted">Emails the vendor (settings on the form) and attaches the order summary to this work order.</span>
+          </div>
+        </div>
+        <div class="reorder-done" *ngIf="reorderResult()?.sent">
+          ✓ {{ reorderResult()?.message }}
+        </div>
+
         <div class="muted" *ngIf="!completeDone() && resolvingForm()">Loading completion form…</div>
 
         <ng-container *ngIf="!completeDone() && !resolvingForm()">

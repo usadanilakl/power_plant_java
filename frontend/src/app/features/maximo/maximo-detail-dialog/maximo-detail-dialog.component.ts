@@ -11,7 +11,7 @@ import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-
 import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { FormField } from '../../../models/ui/form-field.model';
-import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate } from '../../../models/maximo/maximo-form.models';
+import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult } from '../../../models/maximo/maximo-form.models';
 import {
   MaximoAsset,
   MaximoInventoryItem,
@@ -133,6 +133,15 @@ export class MaximoDetailDialogComponent {
    * re-opened dialog still offers the close action.
    */
   formFinalized = signal(false);
+
+  // ── Reorder step (chem-inventory form: after finalize, before close) ──────
+  /** Reagents below target on the just-finalized inventory form — the offered reorder. */
+  reorderLines = signal<ReorderLine[]>([]);
+  reorderSending = signal(false);
+  /** Result of a sent reorder (drives the "email sent" confirmation); null until sent. */
+  reorderResult = signal<ReorderResult | null>(null);
+  /** The exact values used to finalize — reused verbatim for the reorder preview/send. */
+  private reorderValues: any = null;
 
   /** Only WOs in a still-open status can be completed. */
   get canComplete(): boolean {
@@ -287,6 +296,19 @@ export class MaximoDetailDialogComponent {
             if (match?.status === 'COMPLETED') this.formFinalized.set(true);
             // Only collapse the whole tab if the WO itself is already terminal.
             if (this.isCompletedStatus(this.wo?.status)) this.completeDone.set(true);
+            // Inventory forms carry their settings + target levels forward from the last run (any WO); the
+            // in-stock counts are cleared so they're re-counted. Scoped to inventory forms (have __instock
+            // fields) so ordinary inspection forms still start blank each time.
+            if (!match && defs.some(d => (d.name ?? '').endsWith('__instock'))) {
+              try {
+                const latest = await firstValueFrom(this.formApi.latestSubmissionForForm(t.formKey));
+                if (latest?.valuesJson) {
+                  const carried = this.parseValues(latest.valuesJson) ?? {};
+                  for (const k of Object.keys(carried)) if (k.endsWith('__instock')) delete carried[k];
+                  values = carried;
+                }
+              } catch { /* carry-forward is best-effort */ }
+            }
           } catch { /* prefill is best-effort */ }
         }
         this.formValues.set(values);
@@ -510,6 +532,11 @@ export class MaximoDetailDialogComponent {
       const st = this.wo?.status ?? '';
       // The form only closes the WO if its template sets completeWoStatus; otherwise it's attach-only.
       this.formFinalized.set(true);
+      // Inventory forms: after the PDF is attached, surface any reagents below target as a reorder offer
+      // (before the WO is closed). No-op / empty for non-inventory forms.
+      this.reorderValues = values;
+      this.reorderResult.set(null);
+      await this.checkReorder();
       if (this.isCompletedStatus(st)) {
         // Template set completeWoStatus → the WO already closed; finish the tab in one step.
         this.completeSummary.set(`Work order completed. Status is now ${st}.`);
@@ -525,6 +552,58 @@ export class MaximoDetailDialogComponent {
     } finally {
       this.completing.set(false);
     }
+  }
+
+  /**
+   * After an inventory form is finalized, ask the server which reagents are below target (the reorder
+   * offer). Empty for non-inventory forms — the reorder panel then never shows. Best-effort.
+   */
+  private async checkReorder() {
+    const t = this.completionForm();
+    if (!t || !this.reorderValues) { this.reorderLines.set([]); return; }
+    try {
+      this.reorderLines.set(await firstValueFrom(this.formApi.reorderPreview(this.reorderDto(t))));
+    } catch {
+      this.reorderLines.set([]);   // never block the completion flow on the reorder preview
+    }
+  }
+
+  /**
+   * Send the vendor reorder email (uses the settings entered on the form) and attach the order summary to
+   * the WO. Outward-facing — confirmed first. On success the offer is cleared and a confirmation shown.
+   */
+  async sendReorder() {
+    const t = this.completionForm();
+    if (!t || this.reorderSending() || !this.reorderValues) return;
+    const n = this.reorderLines().length;
+    if (!n) return;
+    if (!window.confirm(`Send the reorder email for ${n} item(s) to the vendor now?`)) return;
+    this.reorderSending.set(true);
+    this.error.set(null);
+    try {
+      const result = await firstValueFrom(this.formApi.reorderSend(this.reorderDto(t)));
+      this.reorderResult.set(result);
+      if (result?.sent) {
+        this.reorderLines.set([]);     // offer fulfilled
+        this.notesLoaded.set(false);   // a worklog/doclink may have changed
+      } else if (result?.message) {
+        this.error.set(result.message);
+      }
+    } catch (e: any) {
+      this.error.set(this.errMsg(e));
+    } finally {
+      this.reorderSending.set(false);
+    }
+  }
+
+  private reorderDto(t: MaximoFormTemplate): MaximoFormSubmission {
+    return {
+      templateFormKey: t.formKey,
+      templateName: t.formName,
+      wonum: this.wo?.wonum?.trim() ?? '',
+      woHref: this.wo?.href || undefined,
+      valuesJson: JSON.stringify(this.reorderValues ?? {}),
+    };
   }
 
   // ── Completion-form mapping (mirrors the standalone fill page) ────────────

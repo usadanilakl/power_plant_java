@@ -11,4 +11,7 @@ public interface MaximoFormSubmissionRepo extends BaseRepository<MaximoFormSubmi
     Optional<MaximoFormSubmission> findFirstBySubmissionKey(String submissionKey);
 
     List<MaximoFormSubmission> findByWonumOrderByDateModifiedDesc(String wonum);
+
+    /** Newest submission for a form (any work order) — used to carry settings forward to a new run. */
+    Optional<MaximoFormSubmission> findFirstByTemplateFormKeyOrderByDateModifiedDesc(String templateFormKey);
 }

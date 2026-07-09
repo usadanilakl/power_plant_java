@@ -3,7 +3,10 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormTemplateDto;
+import com.dk_power.power_plant_java.dto.maximo.ReorderLineDto;
+import com.dk_power.power_plant_java.dto.maximo.ReorderResultDto;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
+import com.dk_power.power_plant_java.sevice.maximo.ChemInventoryReorderService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormSeeder;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
@@ -40,6 +43,7 @@ public class NgMaximoFormController {
     private final MaximoFormCompletionService completion;
     private final MaximoFormSeeder seeder;
     private final RecurringPmService recurringPms;
+    private final ChemInventoryReorderService reorder;
 
     // ── Templates ─────────────────────────────────────────────────────────────
 
@@ -114,6 +118,39 @@ public class NgMaximoFormController {
     public ResponseEntity<NgApiResponse<List<MaximoFormSubmissionDto>>> submissionsForWo(
             @RequestParam("wonum") String wonum) {
         return ResponseEntity.ok(new NgApiResponse<>(forms.getSubmissionsForWo(wonum), "ok"));
+    }
+
+    /**
+     * The newest submission of a form across all work orders — used to carry settings/values forward into a
+     * fresh run (e.g. the chem-inventory target levels + reorder settings). Null when the form has none yet.
+     */
+    @GetMapping("/submissions/latest-for-form")
+    public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> latestForForm(
+            @RequestParam("formKey") String formKey) {
+        return ResponseEntity.ok(new NgApiResponse<>(forms.getLatestSubmissionForForm(formKey), "ok"));
+    }
+
+    /** Dry-run: which reagents on a filled inventory form are below target (need to reorder). No email/writes. */
+    @PostMapping("/submissions/reorder-preview")
+    public ResponseEntity<NgApiResponse<List<ReorderLineDto>>> reorderPreview(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(reorder.computeReorder(dto), "ok"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] reorder-preview failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Send the vendor reorder email and attach the order summary to the work order. Caller confirms first. */
+    @PostMapping("/submissions/reorder-send")
+    public ResponseEntity<NgApiResponse<ReorderResultDto>> reorderSend(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            ReorderResultDto result = reorder.sendReorder(dto);
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.isSent() ? "sent" : "not-sent"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] reorder-send failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
     }
 
     /** Save a submission draft (does not push to Maximo — use /complete to submit). */
