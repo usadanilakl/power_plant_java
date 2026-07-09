@@ -255,27 +255,49 @@ public class MaximoWorkOrderAdapter {
         postMaterial(href, lines, storeroom, "RETURN");
     }
 
+    /** Per-line issue/return cap — one Maximo matusetrans row = one unit (see {@link #postMaterial}). */
+    private static final int MAX_UNITS_PER_LINE = 500;
+
     /**
-     * Add matusetrans rows of a given issue type. {@code storeroom} defaults to WAREHOUSE1 when blank;
-     * quantity is the positive absolute amount (Maximo applies the sign from issuetype). No-op if no lines.
+     * Add matusetrans rows of a given issue type. {@code storeroom} defaults to WAREHOUSE1 when blank; each
+     * line's storeroom overrides it.
+     *
+     * <p><b>Maximo quantity quirk (verified live 2026-07-09 on WO J26-41830):</b> a matusetrans added via the
+     * {@code mxapiwodetail} MERGE ALWAYS issues exactly ONE unit — the {@code quantity}/{@code enterquantity}/
+     * {@code qtyrequested} fields are ignored on create (qtyrequested is stored but the actual issued
+     * {@code quantity} stays 1). Multiple rows in one payload DO each issue a unit. So a line quantity of N is
+     * expanded into N single-unit rows. Whole units only (parts are issued in EACH); a fractional quantity is
+     * rounded to the nearest whole unit (this API path cannot issue a partial unit).
      */
     private void postMaterial(String href, List<com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest.Line> lines,
                               String storeroom, String issuetype) {
         if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
         if (lines == null || lines.isEmpty()) return;
-        String store = (storeroom != null && !storeroom.isBlank())
+        // Request-level fallback storeroom; each line may override it with the exact warehouse the user picked
+        // (critical when the same itemnum is stocked ACTIVE in one warehouse and OBSOLETE in another).
+        String fallbackStore = (storeroom != null && !storeroom.isBlank())
                 ? storeroom : MaximoInventoryAdapter.DEFAULT_STOREROOM;
         List<Map<String, Object>> rows = new ArrayList<>();
         for (var line : lines) {
             if (line == null || line.getItemnum() == null || line.getItemnum().isBlank()) continue;
             double qty = line.getQuantity() == null ? 0 : line.getQuantity();
             if (qty <= 0) continue;
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("spi:itemnum", line.getItemnum().trim());
-            row.put("spi:quantity", qty);
-            row.put("spi:storeloc", store);
-            row.put("spi:issuetype", issuetype);
-            rows.add(row);
+            long units = Math.round(qty);
+            if (units < 1) units = 1;
+            if (units > MAX_UNITS_PER_LINE) {
+                throw new IllegalArgumentException("Maximo issues one unit per line; " + units + " of item "
+                        + line.getItemnum().trim() + " exceeds the " + MAX_UNITS_PER_LINE + "-unit cap — split it.");
+            }
+            String store = (line.getStoreroom() != null && !line.getStoreroom().isBlank())
+                    ? line.getStoreroom().trim() : fallbackStore;
+            // One row per unit — the quantity field is ignored by Maximo on this path (see javadoc).
+            for (long i = 0; i < units; i++) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("spi:itemnum", line.getItemnum().trim());
+                row.put("spi:storeloc", store);
+                row.put("spi:issuetype", issuetype);
+                rows.add(row);
+            }
         }
         if (rows.isEmpty()) return;
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -355,14 +377,22 @@ public class MaximoWorkOrderAdapter {
         params.put("oslc.select", TASK_SELECT_FIELDS);
         params.put("oslc.where", "spi:parent=\"" + escape(parentWonum.trim()) + "\""
                 + " and spi:siteid=\"" + access.defaultSite() + "\"");
-        params.put("oslc.orderBy", "spi:taskid");
+        // NB: no oslc.orderBy — Maximo requires a sort-order SIGN (BMXAA8744E on a sign-less field), and the
+        // '+'/'-' prefix is fragile over URL transport. Sort by task sequence in Java instead.
         params.put("oslc.pageSize", "200");
         Map<String, Object> body = access.getMap(access.osUrl(OS), params);
         List<MaximoWorkOrderDto> out = new ArrayList<>();
         for (Map<String, Object> row : members(body)) {
             if (Boolean.TRUE.equals(MaximoOslcMapper.boolVal(row, "istask"))) out.add(map(row));
         }
+        out.sort(java.util.Comparator.comparingInt(d -> taskSeq(d.getTaskid())));
         return out;
+    }
+
+    /** Numeric task sequence for ordering; non-numeric/blank sort last. */
+    private static int taskSeq(String taskid) {
+        if (taskid == null || taskid.isBlank()) return Integer.MAX_VALUE;
+        try { return (int) Double.parseDouble(taskid.trim()); } catch (NumberFormatException e) { return Integer.MAX_VALUE; }
     }
 
     private List<MaximoWorkOrderDto> mapAll(List<Map<String, Object>> rows) {

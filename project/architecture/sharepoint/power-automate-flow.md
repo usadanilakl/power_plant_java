@@ -1,7 +1,7 @@
 # Power Automate Flow Architecture
 
 ## Overview
-Three separate PA flows, one per entity. Each flow connects to its own SharePoint List.
+Separate PA flows back the SharePoint-list based entities. Each flow connects to one SharePoint list, except combined flows that use an `entity` discriminator.
 All flows share the same generic request/response schema with entity-specific `data` fields.
 
 Old flows (Excel-based) remain untouched. Java and PWA switch entirely to new List-based flows.
@@ -12,6 +12,7 @@ Old flows (Excel-based) remain untouched. Java and PWA switch entirely to new Li
 | WorkRequest | Work Requests | `pa.flow.work-request-url` |
 | JHA | JHA | `pa.flow.jha-url` |
 | ConfinedSpace | Confined Spaces | `pa.flow.confined-space-url` |
+| UserQualifications | Employees Qualifications + Qualification Catalog | `pa.flow.qualifications-url` |
 
 ---
 

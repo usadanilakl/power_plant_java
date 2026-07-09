@@ -61,3 +61,13 @@
 .complete-row button:disabled { opacity: 0.5; cursor: not-allowed; }
 .complete-row button.primary { background: #1c7c3a; border-color: #1c7c3a; color: #fff; }
 .complete-row button.primary:hover:not(:disabled) { background: #23913f; }
+
+/* Live "to be reordered" summary at the bottom of the form (inventory forms) */
+.reorder-summary { margin-top: 14px; padding: 10px 12px; background: #171717; border: 1px solid #2c2c2c; border-radius: 6px; max-width: 880px; }
+.reorder-summary h4 { margin: 0 0 8px; color: #7cc6ff; font-size: 14px; }
+.reorder-summary p { margin: 0; color: #777; }
+.reorder-table { width: 100%; border-collapse: collapse; }
+.reorder-table th, .reorder-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #2c2c2c; font-size: 13px; }
+.reorder-table th { color: #9fb0c0; font-weight: 500; }
+.reorder-table td.num, .reorder-table th.num { text-align: right; white-space: nowrap; }
+.reorder-table td.order { color: #ffd34d; font-weight: 600; }

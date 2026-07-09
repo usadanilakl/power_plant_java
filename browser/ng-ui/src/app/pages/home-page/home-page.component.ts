@@ -229,7 +229,8 @@ export class HomePageComponent {
   plantTools: PlantTool[] = [
     { title: 'Maximo', description: 'Assets, work orders, service requests', icon: '🏭', url: `${APP_BASE}/maximo` },
     { title: 'LOTO', description: 'Lockout/tagout points, boxes, locks', icon: '🔒', url: `${APP_BASE}/loto/loto` },
-    { title: 'LOTO Standards', description: 'View, verify, and walk down standards', icon: '📚', route: '/loto-standards' }
+    { title: 'LOTO Standards', description: 'View, verify, and walk down standards', icon: '📚', route: '/loto-standards' },
+    { title: 'Qualifications', description: 'Manage personnel qualifications and QR codes', icon: 'ID', route: '/qualification-management' }
   ];
 
   get signedInCards(): HomeCard[] {

@@ -233,7 +233,20 @@ public class SharePointListProvisioner {
                 list("SDS Audit",
                         text("PwaId"), text("ChemicalSpId"), text("ChemicalLocalUuid"), text("ChemicalName"),
                         text("Action"), note("OldSnapshot"), text("AuditedByName"), text("AuditedByEmail"),
-                        text("AuditedAt"), note("Comments"), text("Campaign"))
+                        text("AuditedAt"), note("Comments"), text("Campaign")),
+
+                list("Qualification Catalog",
+                        text("PwaId"), text("QualificationCode"), text("QualificationName"),
+                        text("QualificationType"), note("Description"), bool("RequiresExpiration"),
+                        text("DefaultValidityMonths"), bool("IsActive"), text("SortOrder"),
+                        note("Notes")),
+
+                list("Employees Qualifications",
+                        text("PwaId"), text("UserId"), text("UserName"), text("UserEmail"),
+                        text("WindowsUsername"), text("Role"), text("QualificationId"),
+                        text("QualificationCode"), text("QualificationName"), text("QualificationType"),
+                        text("Status"), text("IssuedDate"), text("ExpirationDate"),
+                        text("CredentialNumber"), text("Issuer"), note("Notes"))
         );
     }
 
@@ -243,7 +256,7 @@ public class SharePointListProvisioner {
 
     // High-priority fields to index first (most commonly filtered/sorted)
     private static final List<String> HIGH_PRIORITY_FIELDS = List.of(
-            "PwaId", "Status", "CurrentStatus"
+            "PwaId", "Status", "CurrentStatus", "UserId", "QualificationId"
     );
 
     // Medium-priority: date-related fields (commonly used in range queries)

@@ -61,20 +61,27 @@
           <div class="search-row">
             <input [(ngModel)]="itemQuery" (ngModelChange)="onItemQueryChange()" (keyup.enter)="searchItems()"
                    placeholder="type to search — words narrow (e.g. “gel desiccant”)" />
-            <span class="srch-status muted" *ngIf="itemSearching()">…</span>
+            <span class="srch-status" *ngIf="itemSearching()"><span class="spinner"></span> Searching inventory…</span>
+          </div>
+          <div class="srch-status warming" *ngIf="catalogWarming() && !itemSearching()">
+            <span class="spinner"></span> Loading inventory catalog… (first search after a while can take a moment)
           </div>
           <div class="muted hint" *ngIf="itemQuery.trim().length >= 2 && !itemSearching() && itemResults().length === 0">
             No items match “{{ itemQuery }}”.
           </div>
 
           <table class="results" *ngIf="itemResults().length">
-            <thead><tr><th>Item</th><th>Description</th><th>Bal</th><th></th></tr></thead>
+            <thead><tr><th>Item</th><th>Description</th><th>Warehouse</th><th>Bal</th><th></th></tr></thead>
             <tbody>
-              <tr *ngFor="let it of itemResults()">
+              <tr *ngFor="let it of itemResults()" [class.obsolete]="isObsolete(it.status)">
                 <td>{{ it.itemnum }}</td>
                 <td class="desc">{{ it.description }}</td>
+                <td>{{ it.storeroom }}<span class="obs-tag" *ngIf="isObsolete(it.status)">obsolete</span></td>
                 <td class="num">{{ it.curbal ?? '—' }} {{ it.issueunit }}</td>
-                <td><button class="link" (click)="addLine(it)">add</button></td>
+                <td>
+                  <button class="link" (click)="addLine(it)" *ngIf="!isObsolete(it.status)">add</button>
+                  <span class="muted" *ngIf="isObsolete(it.status)" title="This warehouse's stock is obsolete — pick another warehouse">—</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -86,17 +93,18 @@
         <h3>3 · Checkout lines <span class="muted" *ngIf="lines().length">({{ lines().length }})</span></h3>
         <div *ngIf="!lines().length" class="muted">No parts added yet — search and click “add”.</div>
         <table class="lines" *ngIf="lines().length">
-          <thead><tr><th>Item</th><th>Description</th><th>In stock</th><th>Qty</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th>Description</th><th>Warehouse</th><th>In stock</th><th>Qty</th><th></th></tr></thead>
           <tbody>
-            <tr *ngFor="let l of lines()" [class.warn]="overStock(l)">
+            <tr *ngFor="let l of lines()" [class.warn]="overStock(l)" [class.obsolete]="isObsolete(l.status)">
               <td>{{ l.itemnum }}</td>
               <td class="desc">{{ l.description }}</td>
+              <td>{{ l.storeroom }}<span class="obs-tag" *ngIf="isObsolete(l.status)">obsolete — can't issue</span></td>
               <td class="num">{{ l.curbal ?? '—' }} {{ l.issueunit }}</td>
               <td class="num">
                 <input type="number" min="0.01" step="1" [(ngModel)]="l.quantity" />
                 <span class="warn-txt" *ngIf="overStock(l)">over stock</span>
               </td>
-              <td><button class="link danger" (click)="removeLine(l.itemnum)">remove</button></td>
+              <td><button class="link danger" (click)="removeLine(l)">remove</button></td>
             </tr>
           </tbody>
         </table>

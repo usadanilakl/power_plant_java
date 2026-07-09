@@ -160,17 +160,21 @@
             <span class="muted" *ngIf="mItemSearching()">…</span>
           </div>
           <table *ngIf="mItemResults().length" class="mat-table">
-            <thead><tr><th>Item</th><th>Description</th><th class="num">Bal</th><th>Issue</th></tr></thead>
+            <thead><tr><th>Item</th><th>Description</th><th>Warehouse</th><th class="num">Bal</th><th>Issue</th></tr></thead>
             <tbody>
-              <tr *ngFor="let it of mItemResults()">
+              <tr *ngFor="let it of mItemResults()" [class.obsolete]="isObsolete(it.status)">
                 <td>{{ it.itemnum }}</td>
                 <td>{{ it.description }}</td>
+                <td>{{ it.storeroom }}<span class="obs-tag" *ngIf="isObsolete(it.status)">obsolete</span></td>
                 <td class="num">{{ it.curbal ?? '—' }} {{ it.issueunit }}</td>
                 <td>
-                  <input #qty type="number" min="0.01" step="1" value="1" />
-                  <button class="link" (click)="issueItem(it, qty.valueAsNumber)" [disabled]="issuingItem() != null">
-                    {{ issuingItem() === it.itemnum ? '…' : 'Issue' }}
-                  </button>
+                  <ng-container *ngIf="!isObsolete(it.status)">
+                    <input #qty type="number" min="0.01" step="1" value="1" />
+                    <button class="link" (click)="issueItem(it, qty.valueAsNumber)" [disabled]="issuingItem() != null">
+                      {{ issuingItem() === it.itemnum ? '…' : 'Issue' }}
+                    </button>
+                  </ng-container>
+                  <span class="muted" *ngIf="isObsolete(it.status)" title="Obsolete at this warehouse — can't issue">—</span>
                 </td>
               </tr>
             </tbody>
@@ -256,8 +260,30 @@
                 [fields]="formFields()"
                 [values]="formValues"
                 [layout]="'reactive'"
-                [submitButtonText]="''">
+                [submitButtonText]="''"
+                (formValueChange)="liveFormValues.set($event)">
               </app-smart-form>
+
+              <!-- Live "what will be reordered" summary (inventory forms) — shown BEFORE finalizing so the
+                   operator sees exactly what goes on the vendor email. After finalize the amber send-offer takes over. -->
+              <div class="reorder-summary" *ngIf="chemInventoryForm() && !formFinalized()">
+                <h4>To be reordered <span class="muted">— {{ reorderSummary().length }} item(s) below target</span></h4>
+                <table class="reorder-table" *ngIf="reorderSummary().length; else nothingToReorder">
+                  <thead><tr><th>Reagent</th><th class="num">Target</th><th class="num">In&nbsp;stock</th><th class="num">Order</th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let l of reorderSummary()">
+                      <td>{{ l.reagent }}</td>
+                      <td class="num">{{ l.target }}</td>
+                      <td class="num">{{ l.inStock }}</td>
+                      <td class="num order">{{ l.need }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <ng-template #nothingToReorder>
+                  <p class="muted">Nothing is below its target level — no reorder will be needed. (Only reagents with “Include in the reorder email” checked are counted.)</p>
+                </ng-template>
+              </div>
+
               <div class="actions">
                 <button class="primary" (click)="submitCompleteForm()" [disabled]="completing() || formFinalized()">
                   {{ completing() ? 'Submitting…' : (formFinalized() ? '✓ Form finalized' : 'Finalize & Attach Form') }}

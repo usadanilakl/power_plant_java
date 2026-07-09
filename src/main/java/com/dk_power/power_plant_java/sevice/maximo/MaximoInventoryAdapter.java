@@ -35,7 +35,9 @@ public class MaximoInventoryAdapter {
     private final MaximoAccessService access;
 
     // Site-wide stocked catalog cache (one stock line per item×warehouse). Search filters it in memory.
-    private static final long CATALOG_TTL_MS = 10 * 60 * 1000L;
+    // 30-min TTL: the build is the slow part (paged inventory + description enrichment), so rebuild rarely —
+    // stale on-hand balances are fine for a picker (Maximo re-validates the real balance at issue time).
+    private static final long CATALOG_TTL_MS = 30 * 60 * 1000L;
     private static final int CATALOG_PAGE = 500;
     private static final int CATALOG_MAX_PAGES = 20;   // 500*20 = 10000 stock-line ceiling
     private volatile List<MaximoInventoryItemDto> catalogCache;
@@ -109,6 +111,7 @@ public class MaximoInventoryAdapter {
                 d.setStoreroom(loc);
                 d.setBinnum(str(r, "binnum"));
                 d.setIssueunit(str(r, "issueunit"));
+                d.setStatus(str(r, "status"));
                 String raw = str(r, "curbal");
                 d.setCurbal(raw == null ? null : safeDouble(raw, null));
                 byKey.put(k, d);
@@ -131,7 +134,7 @@ public class MaximoInventoryAdapter {
         List<String> itemnums = catalog.stream().map(MaximoInventoryItemDto::getItemnum)
                 .filter(n -> n != null && !n.isBlank()).distinct().collect(Collectors.toList());
         Map<String, String> descByItem = new HashMap<>();
-        int chunk = 150;
+        int chunk = 250;   // fewer mxapiitem round-trips (itemnums are short — the "in [...]" URL stays well under limits)
         for (int i = 0; i < itemnums.size(); i += chunk) {
             List<String> slice = itemnums.subList(i, Math.min(i + chunk, itemnums.size()));
             String inList = slice.stream().map(n -> "\"" + escape(n) + "\"").collect(Collectors.joining(","));

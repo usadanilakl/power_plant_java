@@ -156,6 +156,7 @@ export interface MaximoInventoryItem {
   storeroom: string;   // warehouse
   binnum: string;      // bin / physical address within the warehouse
   curbal: number | null;
+  status?: string;     // inventory status AT THIS storeroom (ACTIVE/OBSOLETE) — OBSOLETE lines can't be issued
 }
 
 export interface MaximoInventoryStock {
@@ -194,6 +195,9 @@ export interface MaximoWorkType {
 export interface PartsCheckoutLine {
   itemnum: string;
   quantity: number;
+  /** Warehouse to issue this line from — the storeroom of the picked inventory line (same itemnum can be
+   *  ACTIVE in one warehouse and OBSOLETE in another). Defaults server-side when omitted. */
+  storeroom?: string;
 }
 
 export interface PartsCheckoutRequest {

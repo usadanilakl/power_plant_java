@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -7,7 +7,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { MaximoFormApiService } from '../../../services/maximo/maximo-form-api.service';
-import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate } from '../../../models/maximo/maximo-form.models';
+import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, computeReorderLines, isInventoryForm } from '../../../models/maximo/maximo-form.models';
 import { FormField } from '../../../models/ui/form-field.model';
 
 /**
@@ -33,9 +33,16 @@ export class MaximoFormFillPageComponent implements OnInit {
   templates = signal<MaximoFormTemplate[]>([]);
   selectedTemplate = signal<MaximoFormTemplate | null>(null);
   smartFields = signal<FormField[]>([]);
+  formDefs = signal<MaximoFormFieldDef[]>([]);   // raw template defs — for the live reorder summary
   valuesSig = signal<any>({});
   currentValues = signal<any>({});   // latest values from the form (for Complete, which is outside SmartForm's submit)
   existing = signal<MaximoFormSubmission | null>(null);
+
+  /** True when this form is a reorder-capable inventory form (chem-lab inventory). */
+  chemInventoryForm = computed(() => isInventoryForm(this.formDefs()));
+  /** Live "what will be reordered" preview — shown at the bottom of the form BEFORE submitting. */
+  reorderSummary = computed<ReorderLine[]>(() =>
+    computeReorderLines(this.formDefs(), { ...(this.valuesSig() ?? {}), ...(this.currentValues() ?? {}) }));
 
   loading = signal(false);
   saving = signal(false);
@@ -71,7 +78,9 @@ export class MaximoFormFillPageComponent implements OnInit {
   private async selectTemplate(t: MaximoFormTemplate) {
     this.selectedTemplate.set(t);
     this.info.set(null); this.error.set(null);
-    this.smartFields.set(this.toSmartFields(this.parseFields(t.fieldsJson)));
+    const defs = this.parseFields(t.fieldsJson);
+    this.formDefs.set(defs);
+    this.smartFields.set(this.toSmartFields(defs));
     // Prefill from an existing submission for this WO+form, if any.
     let values: any = {};
     this.existing.set(null);

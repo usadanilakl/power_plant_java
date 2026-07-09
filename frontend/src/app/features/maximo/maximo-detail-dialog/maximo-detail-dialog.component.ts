@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, ViewChild, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -11,7 +11,7 @@ import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-
 import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { FormField } from '../../../models/ui/form-field.model';
-import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult } from '../../../models/maximo/maximo-form.models';
+import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult, computeReorderLines, isInventoryForm } from '../../../models/maximo/maximo-form.models';
 import {
   MaximoAsset,
   MaximoInventoryItem,
@@ -126,6 +126,13 @@ export class MaximoDetailDialogComponent {
   formValues = signal<any>({});
   /** The prior submission for this WO+form, if any (drives the "already completed" guard). */
   formSubmission = signal<MaximoFormSubmission | null>(null);
+  /** Live form values (from SmartForm's change output, debounced) — drives the pre-submit reorder summary. */
+  liveFormValues = signal<any>({});
+  /** True when the assigned form is a reorder-capable inventory form (chem-lab inventory). */
+  chemInventoryForm = computed(() => isInventoryForm(this.formDefs()));
+  /** What WILL be reordered given the current entries — shown at the bottom of the form BEFORE submitting. */
+  reorderSummary = computed<ReorderLine[]>(() =>
+    computeReorderLines(this.formDefs(), { ...(this.formValues() ?? {}), ...(this.liveFormValues() ?? {}) }));
   /**
    * True once the assigned form's PDF has been finalized + attached to this WO (Button A). Distinct from
    * completeDone(): attaching the form does NOT close the WO unless the template sets completeWoStatus.
@@ -353,7 +360,8 @@ export class MaximoDetailDialogComponent {
     this.error.set(null);
     try {
       const rows = await firstValueFrom(this.api.returnMaterial(this.wo.href, {
-        lines: [{ itemnum: row.itemnum, quantity: qty }]
+        // Return to the SAME storeroom the material was issued from (row.storeloc), not the default warehouse.
+        lines: [{ itemnum: row.itemnum, quantity: qty, storeroom: row.storeloc }]
       }));
       this.materials.set(rows);
       for (const r of rows) {
@@ -386,6 +394,11 @@ export class MaximoDetailDialogComponent {
     }
   }
 
+  /** OBSOLETE inventory at a storeroom can't be issued — the Issue button is hidden for those lines. */
+  isObsolete(status?: string): boolean {
+    return (status ?? '').toUpperCase() === 'OBSOLETE';
+  }
+
   async issueItem(item: MaximoInventoryItem, qty: number) {
     if (!this.wo?.href || this.issuingItem() != null) return;
     if (!qty || qty <= 0) { this.error.set('Enter a quantity greater than 0.'); return; }
@@ -394,7 +407,7 @@ export class MaximoDetailDialogComponent {
     this.error.set(null);
     try {
       const rows = await firstValueFrom(this.api.issueMaterial(this.wo.href, {
-        lines: [{ itemnum: item.itemnum, quantity: qty }]
+        lines: [{ itemnum: item.itemnum, quantity: qty, storeroom: item.storeroom }]
       }));
       this.materials.set(rows);
       for (const r of rows) {

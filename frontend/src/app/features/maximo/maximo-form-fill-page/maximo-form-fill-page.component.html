@@ -35,6 +35,25 @@
           (formSubmit)="onSubmit($event)">
         </app-smart-form>
 
+        <!-- Live "what will be reordered" summary (inventory forms) — shown before submitting -->
+        <div class="reorder-summary" *ngIf="chemInventoryForm()">
+          <h4>To be reordered <span class="muted">— {{ reorderSummary().length }} item(s) below target</span></h4>
+          <table class="reorder-table" *ngIf="reorderSummary().length; else nothingToReorder">
+            <thead><tr><th>Reagent</th><th class="num">Target</th><th class="num">In&nbsp;stock</th><th class="num">Order</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let l of reorderSummary()">
+                <td>{{ l.reagent }}</td>
+                <td class="num">{{ l.target }}</td>
+                <td class="num">{{ l.inStock }}</td>
+                <td class="num order">{{ l.need }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #nothingToReorder>
+            <p class="muted">Nothing is below its target level — no reorder needed. (Only reagents with “Include in the reorder email” checked are counted.)</p>
+          </ng-template>
+        </div>
+
         <div class="complete-row">
           <button (click)="preview()" [disabled]="previewing()"
                   title="Render the attachment PDF exactly as it would ship to Maximo — for testing; nothing is saved or sent">

@@ -133,6 +133,15 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
+      path: 'qualifications/:userId',
+      loadComponent: () => import('./features/qualifications/qualification-lookup.component').then(m => m.QualificationLookupComponent)
+    },
+    {
+      path: 'qualification-management',
+      loadComponent: () => import('./features/qualifications/qualification-management.component').then(m => m.QualificationManagementComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
       path: 'instruments',
       component: InstrumentPageComponent,
       canActivate: [standaloneGuard, userSetupGuard],

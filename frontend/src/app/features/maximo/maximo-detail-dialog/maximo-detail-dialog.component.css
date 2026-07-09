@@ -109,6 +109,11 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 .reorder-panel .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .reorder-done { margin-top: 10px; color: #7ee787; font-size: 14px; }
 
+/* Live pre-submit "to be reordered" summary (neutral — it's a preview, not the actionable amber offer) */
+.reorder-summary { margin-top: 12px; padding: 10px 12px; background: #1c1c1c; border: 1px solid #333; border-radius: 6px; }
+.reorder-summary h4 { margin: 0 0 8px; color: #7cc6ff; font-size: 13px; }
+.reorder-summary p { margin: 0; }
+
 /* Tasks tab */
 .task-table { width: 100%; border-collapse: collapse; }
 .task-table th, .task-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #333; vertical-align: top; }
@@ -120,6 +125,9 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 
 /* Materials tab */
 .mat-table td.num, .mat-table th.num { text-align: right; white-space: nowrap; }
+.mat-table tr.obsolete td { color: #8a7f6a; }
+.obs-tag { margin-left: 6px; font-size: 11px; font-weight: 600; color: #ffb454;
+  background: #3a2a14; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
 .mat-table tr.is-return td { color: #9fe0b0; }
 .mat-table input[type="number"] { width: 64px; text-align: right; margin-right: 6px;
   background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 3px 5px; font: inherit; }

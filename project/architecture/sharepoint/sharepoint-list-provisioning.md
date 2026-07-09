@@ -31,6 +31,8 @@ Automatically creates SharePoint lists with the correct columns for all permit t
 | Instrumentation | PwaId, Tag Number, Description, Vendor, Location, Type, CurrentStatus, LastUpdatedDate/Time/By, LastComment (note) | Text + 1 Note |
 | Instrumentation Log | PwaId, Tag Number, InstrumentId (lookup→Instrumentation.ID), Description, Status, Date, Time, Name, Comment (note) | Text + 1 Lookup + 1 Note |
 | Field Lists | PwaId, ListType, Status, Location, SpecificLocation, Notes (note), DateObserved, EquipmentTag, SubmitterName/Email/Phone | Text + 1 Note |
+| Qualification Catalog | PwaId, QualificationCode, QualificationName, QualificationType, Description (note), RequiresExpiration (bool), DefaultValidityMonths, IsActive (bool), SortOrder, Notes (note) | Text + 2 Boolean + 2 Note |
+| Employees Qualifications | PwaId, UserId, UserName, UserEmail, WindowsUsername, Role, QualificationId, QualificationCode, QualificationName, QualificationType, Status, IssuedDate, ExpirationDate, CredentialNumber, Issuer, Notes (note) | Text + 1 Note |
 
 ## Field Type Kinds
 

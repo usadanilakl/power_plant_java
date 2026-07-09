@@ -27,5 +27,11 @@ public class PartsCheckoutRequest {
     public static class Line {
         private String itemnum;
         private Double quantity;
+        /**
+         * Storeroom to issue THIS line from. Same itemnum can be stocked (and have different status —
+         * ACTIVE vs OBSOLETE) in more than one warehouse, so the line must carry the storeroom the user
+         * actually picked. Falls back to the request-level storeroom, then WAREHOUSE1, when blank.
+         */
+        private String storeroom;
     }
 }

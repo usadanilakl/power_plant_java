@@ -32,6 +32,8 @@ interface CheckoutLine {
   issueunit: string;
   curbal: number | null;
   quantity: number;
+  storeroom: string;   // the picked line's warehouse — issued from exactly this storeroom
+  status?: string;     // ACTIVE / OBSOLETE at that storeroom
 }
 
 /**
@@ -64,6 +66,8 @@ export class MaximoPartsCheckoutPageComponent {
   itemQuery = '';
   itemResults = signal<MaximoInventoryItem[]>([]);
   itemSearching = signal(false);
+  /** True while the server-side inventory catalog is being (pre)built — the first search waits on it. */
+  catalogWarming = signal(false);
 
   // chosen lines
   lines = signal<CheckoutLine[]>([]);
@@ -90,7 +94,19 @@ export class MaximoPartsCheckoutPageComponent {
   constructor() {
     this.loadWorkTypes();
     this.loadRecent();
+    this.prewarmInventory();
     this.seedFromQuery();
+  }
+
+  /**
+   * Warm the server-side inventory catalog as soon as the page opens (fire-and-forget), so the first part
+   * search doesn't pay for the full catalog build. getStorerooms() builds the same cached catalog.
+   */
+  private async prewarmInventory() {
+    this.catalogWarming.set(true);
+    try { await firstValueFrom(this.api.getStorerooms()); }
+    catch { /* non-fatal — the first real search will build it instead */ }
+    finally { this.catalogWarming.set(false); }
   }
 
   /** When arriving from the Inventory page (?item=…), pre-add that item to the checkout lines. */
@@ -206,18 +222,27 @@ export class MaximoPartsCheckoutPageComponent {
   }
 
   addLine(item: MaximoInventoryItem) {
-    if (this.lines().some(l => l.itemnum === item.itemnum)) return; // already added
+    // Key by itemnum + storeroom: the same itemnum in a different warehouse is a distinct line (and may have
+    // a different status), so both can be added and each is issued from its own storeroom.
+    if (this.lines().some(l => l.itemnum === item.itemnum && l.storeroom === item.storeroom)) return;
     this.lines.update(ls => [...ls, {
       itemnum: item.itemnum,
       description: item.description,
       issueunit: item.issueunit,
       curbal: item.curbal,
-      quantity: 1
+      quantity: 1,
+      storeroom: item.storeroom,
+      status: item.status
     }]);
   }
 
-  removeLine(itemnum: string) {
-    this.lines.update(ls => ls.filter(l => l.itemnum !== itemnum));
+  removeLine(line: CheckoutLine) {
+    this.lines.update(ls => ls.filter(l => !(l.itemnum === line.itemnum && l.storeroom === line.storeroom)));
+  }
+
+  /** An OBSOLETE line at its storeroom can't be issued — warn and block submit. */
+  isObsolete(status?: string): boolean {
+    return (status ?? '').toUpperCase() === 'OBSOLETE';
   }
 
   /** True when a line asks for more than is in stock (warn but don't block — Maximo is the authority). */
@@ -228,7 +253,7 @@ export class MaximoPartsCheckoutPageComponent {
   get canSubmit(): boolean {
     return !!this.selectedLocation()
       && this.lines().length > 0
-      && this.lines().every(l => l.quantity > 0)
+      && this.lines().every(l => l.quantity > 0 && !this.isObsolete(l.status))
       && !this.submitting();
   }
 
@@ -244,7 +269,7 @@ export class MaximoPartsCheckoutPageComponent {
         description: this.description.trim() || undefined,
         location: loc.location,
         worktype: this.worktype || undefined,
-        lines: this.lines().map(l => ({ itemnum: l.itemnum, quantity: l.quantity }))
+        lines: this.lines().map(l => ({ itemnum: l.itemnum, quantity: l.quantity, storeroom: l.storeroom }))
       }));
       this.result.set(res);
       if (res) {

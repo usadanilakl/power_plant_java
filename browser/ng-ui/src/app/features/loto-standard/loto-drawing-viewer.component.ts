@@ -4,10 +4,20 @@ import {
 import { LotoDrawingService } from './loto-drawing.service';
 import { PointDrawing } from './loto-standard.model';
 
+interface DrawingFile {
+  fileId: number;
+  fileName?: string;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+  rects: { x: number; y: number; width: number; height: number }[];
+}
+
 /**
- * Full-screen popup that shows a LOTO point's drawing with the point's rectangle highlighted, auto-zoomed to it,
- * with drag-to-pan + zoom controls. Reads the image + descriptors from the offline cache (falls back to network),
- * so it works in the field with no signal once the standard has been opened online.
+ * Full-screen popup that shows a LOTO point's drawing(s) with the point's shape(s) highlighted, auto-zoomed,
+ * with drag-to-pan + zoom. Descriptors are grouped by file, so one drawing shows ALL of the point's shapes on
+ * it. The highlight border counter-scales with the zoom (via a CSS var) so it stays thin and never buries the
+ * symbol. Reads image + descriptors from the offline cache (network fallback). Renders at <body> so
+ * position:fixed anchors to the viewport regardless of a scrolled/transformed ancestor.
  */
 @Component({
   selector: 'app-loto-drawing-viewer',
@@ -25,11 +35,11 @@ import { PointDrawing } from './loto-standard.model';
         } @else if (error()) {
           <p class="dv-msg dv-err">{{ error() }}</p>
         } @else {
-          @if (drawings().length > 1) {
+          @if (files().length > 1) {
             <div class="dv-tabs">
-              @for (d of drawings(); track d.fileId; let i = $index) {
+              @for (f of files(); track f.fileId; let i = $index) {
                 <button class="dv-tab" [class.active]="i === index()" (click)="select(i)">
-                  {{ d.fileName || ('Drawing ' + (i + 1)) }}
+                  {{ f.fileName || ('Drawing ' + (i + 1)) }}
                 </button>
               }
             </div>
@@ -40,21 +50,19 @@ import { PointDrawing } from './loto-standard.model';
             <div class="dv-stage" [style.transform]="transform()">
               @if (imgUrl()) {
                 <img class="dv-img" [src]="imgUrl()" alt="drawing" (load)="onImgLoad($event)" draggable="false">
-                @if (current(); as d) {
-                  @if (d.x != null && d.y != null && d.width != null && d.height != null && d.imageWidth && d.imageHeight) {
-                    <div class="dv-hl"
-                         [style.left.%]="d.x / d.imageWidth * 100"
-                         [style.top.%]="d.y / d.imageHeight * 100"
-                         [style.width.%]="d.width / d.imageWidth * 100"
-                         [style.height.%]="d.height / d.imageHeight * 100"></div>
-                  }
+                @for (r of currentRects(); track $index) {
+                  <div class="dv-hl" [style.--s]="scale()"
+                       [style.left.%]="r.x / imgW() * 100"
+                       [style.top.%]="r.y / imgH() * 100"
+                       [style.width.%]="r.width / imgW() * 100"
+                       [style.height.%]="r.height / imgH() * 100"></div>
                 }
               }
             </div>
           </div>
           <div class="dv-controls">
             <button (click)="zoomBy(0.8)" aria-label="Zoom out">−</button>
-            <button (click)="zoomToPoint()">◎ Point</button>
+            @if (currentRects().length) { <button (click)="zoomToPoint()">◎ Point</button> }
             <button (click)="fit()">Fit</button>
             <button (click)="zoomBy(1.25)" aria-label="Zoom in">+</button>
           </div>
@@ -77,7 +85,7 @@ import { PointDrawing } from './loto-standard.model';
     .dv-viewport:active { cursor: grabbing; }
     .dv-stage { position: absolute; top: 0; left: 0; width: 100%; transform-origin: 0 0; }
     .dv-img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
-    .dv-hl { position: absolute; border: 3px solid #ff3b30; box-shadow: 0 0 0 9999px rgba(0,0,0,0.28); border-radius: 3px; pointer-events: none; }
+    .dv-hl { position: absolute; border-style: solid; border-color: #ff3b30; border-width: calc(2px / var(--s, 1)); background: rgba(255,59,48,0.12); border-radius: calc(2px / var(--s, 1)); pointer-events: none; box-sizing: border-box; }
     .dv-controls { display: flex; gap: 0.5rem; justify-content: center; padding: 0.55rem; border-top: 1px solid var(--border-color); }
     .dv-controls button { background: var(--card-bg, #2a2a2a); color: var(--primary-text); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem 0.9rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
   `]
@@ -93,21 +101,37 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   private drawingService = inject(LotoDrawingService);
   private host = inject(ElementRef<HTMLElement>);
 
-  private natW = 0;
-  private natH = 0;
-
-  drawings = signal<PointDrawing[]>([]);
+  private drawings = signal<PointDrawing[]>([]);
   index = signal(0);
   imgUrl = signal<string | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
 
-  private scale = signal(1);
+  private natW = signal(0);
+  private natH = signal(0);
+  scale = signal(1);
   private tx = signal(0);
   private ty = signal(0);
   transform = computed(() => `translate(${this.tx()}px, ${this.ty()}px) scale(${this.scale()})`);
 
-  current = computed<PointDrawing | null>(() => this.drawings()[this.index()] ?? null);
+  /** Descriptors grouped into one entry per file, each carrying that file's highlight rectangles. */
+  files = computed<DrawingFile[]>(() => {
+    const byId = new Map<number, DrawingFile>();
+    for (const d of this.drawings()) {
+      let f = byId.get(d.fileId);
+      if (!f) { f = { fileId: d.fileId, fileName: d.fileName, imageWidth: d.imageWidth, imageHeight: d.imageHeight, rects: [] }; byId.set(d.fileId, f); }
+      if (d.imageWidth && !f.imageWidth) f.imageWidth = d.imageWidth;
+      if (d.imageHeight && !f.imageHeight) f.imageHeight = d.imageHeight;
+      if (d.x != null && d.y != null && d.width != null && d.height != null) {
+        f.rects.push({ x: d.x, y: d.y, width: d.width, height: d.height });
+      }
+    }
+    return [...byId.values()];
+  });
+  private currentFile = computed<DrawingFile | null>(() => this.files()[this.index()] ?? null);
+  currentRects = computed(() => this.currentFile()?.rects ?? []);
+  imgW = computed(() => this.currentFile()?.imageWidth || this.natW() || 1);
+  imgH = computed(() => this.currentFile()?.imageHeight || this.natH() || 1);
 
   private dragging = false;
   private lastX = 0;
@@ -115,12 +139,11 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   private objectUrl: string | null = null;
 
   async ngOnInit(): Promise<void> {
-    // Render at <body> level so position:fixed anchors to the viewport, not a transformed/scrolled ancestor.
     document.body.appendChild(this.host.nativeElement);
     try {
       const list = await this.drawingService.drawingsForPoint(this.standardId, this.pointId);
       this.drawings.set(list);
-      if (!list.length) { this.error.set('No drawing linked to this point.'); this.loading.set(false); return; }
+      if (!this.files().length) { this.error.set('No drawing linked to this point.'); this.loading.set(false); return; }
       await this.load(0);
     } catch {
       this.error.set('Could not load the drawing. If offline, open this standard once on a connection first.');
@@ -136,8 +159,9 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.revoke();
     this.index.set(i);
-    const d = this.drawings()[i];
-    const url = await this.drawingService.imageObjectUrl(d.fileId);
+    this.natW.set(0); this.natH.set(0);
+    const f = this.files()[i];
+    const url = await this.drawingService.imageObjectUrl(f.fileId);
     if (!url) { this.error.set('Drawing image is not available offline. Reconnect to fetch it.'); this.loading.set(false); return; }
     this.objectUrl = url;
     this.imgUrl.set(url);
@@ -146,10 +170,8 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
 
   onImgLoad(e: Event): void {
     const img = e.target as HTMLImageElement;
-    this.natW = img.naturalWidth; this.natH = img.naturalHeight;
-    const d = this.current();
-    if (d && d.x != null && d.width != null && d.imageWidth && d.imageHeight) this.zoomToPoint();
-    else this.fit();
+    this.natW.set(img.naturalWidth); this.natH.set(img.naturalHeight);
+    if (this.currentRects().length) this.zoomToPoint(); else this.fit();
   }
 
   // ── Zoom / pan ─────────────────────────────────────────────────────────────
@@ -157,31 +179,29 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     const el = this.viewport?.nativeElement;
     return { w: el?.clientWidth ?? 300, h: el?.clientHeight ?? 300 };
   }
+  /** Displayed stage height at scale 1 (stage width == viewport width; height follows the image aspect). */
+  private stageHeight(w: number): number {
+    if (this.natW() && this.natH()) return w * this.natH() / this.natW();
+    return w * this.imgH() / this.imgW();
+  }
 
   zoomToPoint(): void {
-    const d = this.current(); const { w, h } = this.vp();
-    if (!d || d.x == null || d.y == null || d.width == null || d.height == null || !d.imageWidth || !d.imageHeight || !w || !h) {
-      this.fit(); return;
-    }
-    // stage width == viewport width at scale 1; stage height follows the image aspect.
-    const stageH = w * d.imageHeight / d.imageWidth;
-    const hlH = d.height / d.imageHeight * stageH;
-    const hlCx = (d.x + d.width / 2) / d.imageWidth * w;
-    const hlCy = (d.y + d.height / 2) / d.imageHeight * stageH;
-    const s = Math.min(6, Math.max(1, (h * 0.45) / Math.max(hlH, 1)));
+    const r = this.currentRects()[0]; const { w, h } = this.vp();
+    if (!r || !w || !h) { this.fit(); return; }
+    const stageH = this.stageHeight(w);
+    const cx = (r.x + r.width / 2) / this.imgW() * w;
+    const cy = (r.y + r.height / 2) / this.imgH() * stageH;
+    const hlH = r.height / this.imgH() * stageH;
+    const s = Math.min(6, Math.max(1, (h * 0.4) / Math.max(hlH, 1)));
     this.scale.set(s);
-    this.tx.set(w / 2 - s * hlCx);
-    this.ty.set(h / 2 - s * hlCy);
+    this.tx.set(w / 2 - s * cx);
+    this.ty.set(h / 2 - s * cy);
   }
 
   fit(): void {
     const { w, h } = this.vp();
     if (!w) { this.scale.set(1); this.tx.set(0); this.ty.set(0); return; }
-    const d = this.current();
-    const aspect = (this.natW && this.natH) ? this.natH / this.natW
-      : (d?.imageWidth && d?.imageHeight ? d.imageHeight / d.imageWidth : 1);
-    const stageH = w * aspect;
-    const s = Math.min(1, h / Math.max(stageH, 1));
+    const s = Math.min(1, h / Math.max(this.stageHeight(w), 1));
     this.scale.set(s);
     this.tx.set((w - w * s) / 2);
     this.ty.set(0);
@@ -191,7 +211,6 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     const { w, h } = this.vp();
     const s0 = this.scale();
     const s = Math.min(8, Math.max(0.2, s0 * factor));
-    // keep the viewport centre stable
     this.tx.set(w / 2 - (w / 2 - this.tx()) * (s / s0));
     this.ty.set(h / 2 - (h / 2 - this.ty()) * (s / s0));
     this.scale.set(s);

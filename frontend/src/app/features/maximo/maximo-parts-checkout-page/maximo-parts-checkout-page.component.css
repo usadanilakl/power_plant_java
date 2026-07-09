@@ -13,8 +13,20 @@
   background: #2a2a2a; color: #e6e6e6; border: 1px solid #444; border-radius: 3px;
   padding: 6px 8px; font: inherit; }
 
-.search-row { display: flex; gap: 8px; }
+.search-row { display: flex; gap: 8px; align-items: center; }
 .search-row input { flex: 1; }
+
+/* Clear search / catalog-loading indicator */
+.srch-status { color: #7cc6ff; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.srch-status.warming { margin-top: 6px; color: #ffb454; white-space: normal; }
+.spinner { width: 12px; height: 12px; border: 2px solid #3a3a3a; border-top-color: currentColor;
+  border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Obsolete inventory line (per-warehouse status) — can't be issued */
+tr.obsolete td { color: #8a7f6a; }
+.obs-tag { margin-left: 6px; font-size: 11px; font-weight: 600; color: #ffb454;
+  background: #3a2a14; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
 
 .selected { display: flex; align-items: center; justify-content: space-between; gap: 10px;
   background: #14301d; border: 1px solid #2c5; border-radius: 3px; padding: 6px 10px; }

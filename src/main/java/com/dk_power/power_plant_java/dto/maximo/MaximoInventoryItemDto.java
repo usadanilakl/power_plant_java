@@ -14,4 +14,7 @@ public class MaximoInventoryItemDto {
     private String storeroom;   // warehouse (spi:location)
     private String binnum;      // bin / physical address within the warehouse
     private Double curbal;
+    /** Inventory status at THIS storeroom (ACTIVE / OBSOLETE / …). Per-storeroom — the same item can be
+     *  ACTIVE in one warehouse and OBSOLETE in another; OBSOLETE lines cannot be issued. */
+    private String status;
 }

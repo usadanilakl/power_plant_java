@@ -149,7 +149,10 @@ public class PwaLotoDrawingService {
     private Map<String, Double> parseKv(String s) {
         Map<String, Double> m = new HashMap<>();
         if (s == null || s.isBlank()) return m;
-        for (String part : s.split(",")) {
+        // Values may be stored JSON-ish ({"startX":..}) or plain (startX:..). Strip backslashes, braces,
+        // quotes and spaces so the key:value split works for both forms (mirrors the desktop parser).
+        String cleaned = s.replace("\\", "").replace("{", "").replace("}", "").replace("\"", "").replace(" ", "");
+        for (String part : cleaned.split(",")) {
             int i = part.indexOf(':');
             if (i <= 0) continue;
             String k = part.substring(0, i).trim().toLowerCase();

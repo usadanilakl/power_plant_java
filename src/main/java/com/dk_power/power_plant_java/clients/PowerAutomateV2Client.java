@@ -65,6 +65,9 @@ public class PowerAutomateV2Client {
     @Value("${pa.flow.sds-url:}")
     private String sdsFlowUrl;
 
+    @Value("${pa.flow.qualifications-url:}")
+    private String qualificationsFlowUrl;
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -236,6 +239,14 @@ public class PowerAutomateV2Client {
 
     public boolean isSdsConfigured() {
         return sdsFlowUrl != null && !sdsFlowUrl.isBlank();
+    }
+
+    public PaResponseDto qualifications(PaRequestDto request) {
+        return sendRequest(qualificationsFlowUrl, request);
+    }
+
+    public boolean isQualificationsConfigured() {
+        return qualificationsFlowUrl != null && !qualificationsFlowUrl.isBlank();
     }
 
 }

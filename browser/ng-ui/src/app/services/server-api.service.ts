@@ -184,6 +184,59 @@ export interface PwaJhaDto {
   attachments: { fileName: string; contentType: string; base64Content: string }[];
 }
 
+export interface PwaQualificationDto {
+  sharepointId?: string;
+  localUuid?: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  windowsUsername?: string;
+  role?: string;
+  qualificationId?: string;
+  qualificationCode?: string;
+  qualificationName: string;
+  qualificationType?: string;
+  status?: string;
+  issuedDate?: string;
+  expirationDate?: string;
+  credentialNumber?: string;
+  issuer?: string;
+  notes?: string;
+  spModifiedTime?: string;
+}
+
+export interface PwaQualificationDefinitionDto {
+  sharepointId?: string;
+  localUuid?: string;
+  qualificationCode?: string;
+  qualificationName: string;
+  qualificationType?: string;
+  description?: string;
+  requiresExpiration?: boolean;
+  defaultValidityMonths?: string;
+  active?: boolean;
+  sortOrder?: string;
+  notes?: string;
+  spModifiedTime?: string;
+}
+
+export interface PwaQualificationPersonDto {
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  windowsUsername?: string;
+  role?: string;
+  qualificationCount: number;
+  qualifications: PwaQualificationDto[];
+}
+
+export interface PwaQualificationSeedResult {
+  plantUsersFound: number;
+  created: number;
+  skipped: number;
+  failed: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -522,6 +575,134 @@ export class ServerApiService {
       timeout(5000),
       map(response => response.responseData),
       catchError(() => of(0))
+    );
+  }
+
+  // ============ Employees Qualifications ============
+
+  getPublicQualifications(userId: string): Observable<PwaQualificationPersonDto> {
+    return this.http.get<{ responseData: PwaQualificationPersonDto }>(
+      `${this.baseUrl}/api/pwa/qualifications/person/${encodeURIComponent(userId)}`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getQualificationPeople(): Observable<PwaQualificationPersonDto[]> {
+    return this.http.get<{ responseData: PwaQualificationPersonDto[] }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/people`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(this.handleError)
+    );
+  }
+
+  getQualifications(): Observable<PwaQualificationDto[]> {
+    return this.http.get<{ responseData: PwaQualificationDto[] }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(this.handleError)
+    );
+  }
+
+  getQualificationDefinitions(): Observable<PwaQualificationDefinitionDto[]> {
+    return this.http.get<{ responseData: PwaQualificationDefinitionDto[] }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/definitions`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(this.handleError)
+    );
+  }
+
+  createQualification(payload: PwaQualificationDto): Observable<PwaQualificationDto> {
+    return this.http.post<{ responseData: PwaQualificationDto }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications`,
+      payload
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  updateQualification(sharepointId: string, payload: PwaQualificationDto): Observable<PwaQualificationDto> {
+    return this.http.put<{ responseData: PwaQualificationDto }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/${encodeURIComponent(sharepointId)}`,
+      payload
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  deleteQualification(sharepointId: string): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ responseData: { deleted: boolean } }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/${encodeURIComponent(sharepointId)}`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  createQualificationDefinition(payload: PwaQualificationDefinitionDto): Observable<PwaQualificationDefinitionDto> {
+    return this.http.post<{ responseData: PwaQualificationDefinitionDto }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/definitions`,
+      payload
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  updateQualificationDefinition(sharepointId: string, payload: PwaQualificationDefinitionDto): Observable<PwaQualificationDefinitionDto> {
+    return this.http.put<{ responseData: PwaQualificationDefinitionDto }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/definitions/${encodeURIComponent(sharepointId)}`,
+      payload
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  deleteQualificationDefinition(sharepointId: string): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ responseData: { deleted: boolean } }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/definitions/${encodeURIComponent(sharepointId)}`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  provisionQualificationList(): Observable<any> {
+    return this.http.post<{ responseData: any }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/provision-list`,
+      {}
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  seedQualificationPlantUsers(): Observable<PwaQualificationSeedResult> {
+    return this.http.post<{ responseData: PwaQualificationSeedResult }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/seed-plant-users`,
+      {}
+    ).pipe(
+      timeout(60000),
+      map(response => response.responseData),
+      catchError(this.handleError)
     );
   }
 

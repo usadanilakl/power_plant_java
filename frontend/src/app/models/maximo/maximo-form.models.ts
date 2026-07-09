@@ -78,3 +78,32 @@ export interface ReorderResult {
   doclinkId?: string;
   lines: ReorderLine[];
 }
+
+/** True when a form is a reorder-capable inventory form (has any `<key>__instock` field). */
+export function isInventoryForm(defs: MaximoFormFieldDef[] | null | undefined): boolean {
+  return (defs ?? []).some(d => (d?.name ?? '').endsWith('__instock'));
+}
+
+/**
+ * Live reorder preview computed from a filled inventory form — a client-side mirror of the server's
+ * ChemInventoryReorderService, so the form can show "what will be reordered" as it's filled. For each
+ * `<key>__instock` field: need = target(`<key>__desired`) - inStock; included reagents (`<key>__include`
+ * truthy) with need > 0 are returned. Reagent label = the field's section. Empty for non-inventory forms.
+ */
+export function computeReorderLines(defs: MaximoFormFieldDef[] | null | undefined, values: any): ReorderLine[] {
+  const v = values ?? {};
+  const num = (x: any) => { const n = parseFloat(x); return isNaN(n) ? 0 : n; };
+  const out: ReorderLine[] = [];
+  for (const d of defs ?? []) {
+    const name = d?.name ?? '';
+    if (!name.endsWith('__instock')) continue;
+    const base = name.slice(0, -'__instock'.length);
+    const include = v[base + '__include'];
+    if (!(include === true || include === 'true')) continue;
+    const target = num(v[base + '__desired']);
+    const inStock = num(v[name]);
+    const need = target - inStock;
+    if (need > 0) out.push({ reagent: d.section || d.label || name, target, inStock, need });
+  }
+  return out;
+}
