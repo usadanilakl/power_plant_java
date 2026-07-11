@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -34,6 +34,7 @@ interface CheckoutLine {
   quantity: number;
   storeroom: string;   // the picked line's warehouse — issued from exactly this storeroom
   status?: string;     // ACTIVE / OBSOLETE at that storeroom
+  verifying?: boolean; // re-reading the real balance/status from Maximo right now
 }
 
 /**
@@ -66,7 +67,7 @@ export class MaximoPartsCheckoutPageComponent {
   itemQuery = '';
   itemResults = signal<MaximoInventoryItem[]>([]);
   itemSearching = signal(false);
-  /** True while the server-side inventory catalog is being (pre)built — the first search waits on it. */
+  /** True while the server is still building its inventory catalog — searches can't match anything yet. */
   catalogWarming = signal(false);
 
   // chosen lines
@@ -90,23 +91,38 @@ export class MaximoPartsCheckoutPageComponent {
   private static readonly MIN_CHARS = 2;
 
   private route = inject(ActivatedRoute);
+  private destroyed = false;
+
+  private static readonly CATALOG_POLL_MS = 3000;
+  private static readonly CATALOG_POLL_TIMEOUT_MS = 5 * 60 * 1000;
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.destroyed = true);
     this.loadWorkTypes();
     this.loadRecent();
-    this.prewarmInventory();
+    this.watchCatalog();
     this.seedFromQuery();
   }
 
   /**
-   * Warm the server-side inventory catalog as soon as the page opens (fire-and-forget), so the first part
-   * search doesn't pay for the full catalog build. getStorerooms() builds the same cached catalog.
+   * The server keeps its inventory catalog in memory and mirrors it to a disk snapshot, so it is normally
+   * ready the instant the page opens. Only a first-ever run has to build it (~100s of Maximo paging), and a
+   * search before then would silently return nothing — so poll until it's ready and say so in the UI.
+   * Asking for the status also tells the server to start building.
    */
-  private async prewarmInventory() {
-    this.catalogWarming.set(true);
-    try { await firstValueFrom(this.api.getStorerooms()); }
-    catch { /* non-fatal — the first real search will build it instead */ }
-    finally { this.catalogWarming.set(false); }
+  private async watchCatalog() {
+    const deadline = Date.now() + MaximoPartsCheckoutPageComponent.CATALOG_POLL_TIMEOUT_MS;
+    while (!this.destroyed && Date.now() < deadline) {
+      try {
+        const status = await firstValueFrom(this.api.getInventoryCatalogStatus());
+        if (status.ready) break;
+      } catch {
+        break;   // non-fatal: searching still works, it just can't report progress
+      }
+      this.catalogWarming.set(true);
+      await new Promise(r => setTimeout(r, MaximoPartsCheckoutPageComponent.CATALOG_POLL_MS));
+    }
+    this.catalogWarming.set(false);
   }
 
   /** When arriving from the Inventory page (?item=…), pre-add that item to the checkout lines. */
@@ -221,19 +237,43 @@ export class MaximoPartsCheckoutPageComponent {
     }
   }
 
-  addLine(item: MaximoInventoryItem) {
+  async addLine(item: MaximoInventoryItem) {
     // Key by itemnum + storeroom: the same itemnum in a different warehouse is a distinct line (and may have
     // a different status), so both can be added and each is issued from its own storeroom.
     if (this.lines().some(l => l.itemnum === item.itemnum && l.storeroom === item.storeroom)) return;
-    this.lines.update(ls => [...ls, {
+    const line: CheckoutLine = {
       itemnum: item.itemnum,
       description: item.description,
       issueunit: item.issueunit,
       curbal: item.curbal,
       quantity: 1,
       storeroom: item.storeroom,
-      status: item.status
-    }]);
+      status: item.status,
+      verifying: true
+    };
+    this.lines.update(ls => [...ls, line]);
+    await this.verifyLineStock(line);
+  }
+
+  /**
+   * Search results come from the server's cached catalog, whose balance is only as fresh as its last full
+   * rebuild — Maximo's INVENTORY table has no change timestamp, so a balance change is invisible to the
+   * incremental refresh. The moment a part is actually chosen, re-read its true on-hand and status live.
+   */
+  private async verifyLineStock(line: CheckoutLine) {
+    try {
+      const stock = await firstValueFrom(this.api.getInventoryItem(line.itemnum, line.storeroom));
+      if (stock) this.patchLine(line, { curbal: stock.curbal, status: stock.status });
+    } catch {
+      // keep the cached balance — Maximo re-validates the real one at issue time anyway
+    } finally {
+      this.patchLine(line, { verifying: false });
+    }
+  }
+
+  private patchLine(line: CheckoutLine, patch: Partial<CheckoutLine>) {
+    this.lines.update(ls => ls.map(l =>
+      l.itemnum === line.itemnum && l.storeroom === line.storeroom ? { ...l, ...patch } : l));
   }
 
   removeLine(line: CheckoutLine) {
@@ -253,7 +293,7 @@ export class MaximoPartsCheckoutPageComponent {
   get canSubmit(): boolean {
     return !!this.selectedLocation()
       && this.lines().length > 0
-      && this.lines().every(l => l.quantity > 0 && !this.isObsolete(l.status))
+      && this.lines().every(l => l.quantity > 0 && !this.isObsolete(l.status) && !l.verifying)
       && !this.submitting();
   }
 

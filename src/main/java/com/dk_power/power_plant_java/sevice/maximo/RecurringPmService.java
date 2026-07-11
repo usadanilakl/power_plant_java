@@ -241,7 +241,9 @@ public class RecurringPmService {
         if (pm.getPmnum() != null && !pm.getPmnum().isBlank()) {
             c.setPmnum(pm.getPmnum().trim());
         } else if (pm.getPmDescription() != null && !pm.getPmDescription().isBlank()) {
-            c.setDescriptionContains(pm.getPmDescription().trim());
+            // Phrase, not word bucket: these are THIS PM's own generated WOs, so the description must appear
+            // intact. A word bucket would drag in any WO that happens to share the same words.
+            c.setDescriptionPhrase(pm.getPmDescription().trim());
         } else {
             return List.of();
         }

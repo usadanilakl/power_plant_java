@@ -185,3 +185,5 @@ global.env
 backend-port.txt
 /electron-manager/vosk-model/**
 /.m2repo/**
+# Maximo inventory catalog snapshot — a rebuildable cache, not data
+/data/cache/

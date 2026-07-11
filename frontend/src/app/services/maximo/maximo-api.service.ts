@@ -9,6 +9,7 @@ import {
   MaximoAsset,
   MaximoAttachmentParent,
   MaximoDoclink,
+  MaximoInventoryCatalogStatus,
   MaximoInventoryItem,
   MaximoInventoryStock,
   MaximoInventoryUsage,
@@ -67,6 +68,7 @@ export class MaximoApiService {
     if (c.classstructureid)     p = p.set('classstructureid', c.classstructureid);
     if (c.reportdateFrom)       p = p.set('reportdateFrom', c.reportdateFrom);
     if (c.reportdateTo)         p = p.set('reportdateTo', c.reportdateTo);
+    if (c.textContains)             p = p.set('textContains', c.textContains);
     if (c.descriptionContains)      p = p.set('descriptionContains', c.descriptionContains);
     if (c.longDescriptionContains)  p = p.set('longDescriptionContains', c.longDescriptionContains);
     if (c.siteid)                   p = p.set('siteid', c.siteid);
@@ -165,6 +167,7 @@ export class MaximoApiService {
     if (c.schedfinishTo)  p = p.set('schedfinishTo', c.schedfinishTo);
     if (c.reportdateFrom) p = p.set('reportdateFrom', c.reportdateFrom);
     if (c.reportdateTo)   p = p.set('reportdateTo', c.reportdateTo);
+    if (c.textContains)            p = p.set('textContains', c.textContains);
     if (c.descriptionContains)     p = p.set('descriptionContains', c.descriptionContains);
     if (c.longDescriptionContains) p = p.set('longDescriptionContains', c.longDescriptionContains);
     if (c.wonumContains)           p = p.set('wonumContains', c.wonumContains);
@@ -266,6 +269,18 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData ?? []));
   }
 
+  /**
+   * The operating-location chain above a location, leaf first (site rung excluded). Assets carry no parent in
+   * this Maximo, so this is the only way to reach "the thing one level up" from a too-specific asset.
+   */
+  getLocationAncestors(location: string, siteid?: string): Observable<MaximoLocation[]> {
+    let p = new HttpParams().set('location', location);
+    if (siteid) p = p.set('siteid', siteid);
+    return this.http
+      .get<SpringApiResponse<MaximoLocation[]>>(`${this.base}/location-ancestors`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   getWorkTypes(): Observable<MaximoWorkType[]> {
     return this.http
       .get<SpringApiResponse<MaximoWorkType[]>>(`${this.base}/work-types`)
@@ -300,6 +315,16 @@ export class MaximoApiService {
     return this.http
       .get<SpringApiResponse<string[]>>(`${this.base}/inventory/storerooms`)
       .pipe(map(r => r.responseData ?? []));
+  }
+
+  /**
+   * Is the server's inventory catalog loaded? Until it is, an empty search means "still building", not
+   * "no match". Calling this also asks the server to start building it.
+   */
+  getInventoryCatalogStatus(): Observable<MaximoInventoryCatalogStatus> {
+    return this.http
+      .get<SpringApiResponse<MaximoInventoryCatalogStatus>>(`${this.base}/inventory-catalog/status`)
+      .pipe(map(r => r.responseData ?? { ready: false, building: false, rows: 0 }));
   }
 
   /** Full stock detail for one item at a warehouse (on-hand, reserved, reorder levels, cost, usage stats). */

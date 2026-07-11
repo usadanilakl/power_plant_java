@@ -147,6 +147,8 @@ export interface MaximoLocation {
   type: string;
   status: string;
   siteid: string;
+  /** Parent location code. Only populated by the ancestors endpoint and the seeder query. */
+  parent?: string;
 }
 
 export interface MaximoInventoryItem {
@@ -157,6 +159,19 @@ export interface MaximoInventoryItem {
   binnum: string;      // bin / physical address within the warehouse
   curbal: number | null;
   status?: string;     // inventory status AT THIS storeroom (ACTIVE/OBSOLETE) — OBSOLETE lines can't be issued
+}
+
+/**
+ * Readiness of the server's in-memory inventory catalog. It is loaded from a disk snapshot at boot and
+ * refreshed in the background, so it is normally ready immediately; only a first-ever run has to build it.
+ */
+export interface MaximoInventoryCatalogStatus {
+  ready: boolean;
+  building: boolean;
+  rows: number;
+  site?: string;
+  builtAt?: string | null;
+  fullBuiltAt?: string | null;
 }
 
 export interface MaximoInventoryStock {
@@ -266,8 +281,10 @@ export interface MaximoServiceRequestCriteria {
   classstructureid?: string;
   reportdateFrom?: string;     // ISO 8601
   reportdateTo?: string;       // ISO 8601
-  descriptionContains?: string;
-  longDescriptionContains?: string;
+  /** Word bucket across BOTH the title and the long description — what the search box sends. */
+  textContains?: string;
+  descriptionContains?: string;      // title only
+  longDescriptionContains?: string;  // long-text body only
   siteid?: string;
 }
 
@@ -283,8 +300,10 @@ export interface MaximoWorkOrderCriteria {
   schedfinishTo?: string;      // ISO 8601
   reportdateFrom?: string;     // ISO 8601
   reportdateTo?: string;       // ISO 8601
-  descriptionContains?: string;
-  longDescriptionContains?: string;
+  /** Word bucket across BOTH the title and the long description — what the search box sends. */
+  textContains?: string;
+  descriptionContains?: string;      // title only
+  longDescriptionContains?: string;  // long-text body only
   wonumContains?: string;
   siteid?: string;
 }

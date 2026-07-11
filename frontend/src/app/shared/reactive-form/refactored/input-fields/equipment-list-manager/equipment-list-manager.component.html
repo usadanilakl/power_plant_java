@@ -93,6 +93,24 @@
             </small>
           </div>
           @if (!disabled) {
+            <div class="item-reorder">
+              <button
+                type="button"
+                class="btn-reorder"
+                [disabled]="$index === 0"
+                (click)="$event.stopPropagation(); moveItem($index, -1)"
+                title="Move up">
+                &#9650;
+              </button>
+              <button
+                type="button"
+                class="btn-reorder"
+                [disabled]="$index === equipmentList().length - 1"
+                (click)="$event.stopPropagation(); moveItem($index, 1)"
+                title="Move down">
+                &#9660;
+              </button>
+            </div>
             <button
               type="button"
               class="btn-remove"
@@ -113,12 +131,14 @@
   [title]="'Add Equipment'"
   [size]="'large'"
   [fullHeight]="true"
-  [zIndex]="10050"
+  [zIndex]="12050"
   (close)="closeUnifiedDialog()">
   <app-equipment-unified-dialog
     [requireLotoPointForDrawn]="requireLotoPointForDrawn"
     [requireLotoPointForUnassociated]="requireLotoPointForUnassociated"
+    [multiSelect]="multiSelect"
     (equipmentAcquired)="onUnifiedEquipmentAcquired($event)"
+    (equipmentListAcquired)="onUnifiedEquipmentListAcquired($event)"
     (equipmentDrawnForLotoPoint)="onUnifiedEquipmentDrawnForLotoPoint($event)"
     (close)="closeUnifiedDialog()"
   />
@@ -129,7 +149,7 @@
   [isOpen]="isBrowserOpen()"
   [title]="'Select Existing Equipment'"
   [size]="'large'"
-  [zIndex]="10050"
+  [zIndex]="12050"
   (close)="closeBrowser()">
   <app-equipment-browser-dialog
     (equipmentSelected)="onEquipmentSelected($event)"
@@ -142,7 +162,7 @@
   [isOpen]="isDrawerOpen()"
   [title]="'Draw New Equipment Shape'"
   [size]="'large'"
-  [zIndex]="10050"
+  [zIndex]="12050"
   (close)="closeDrawer()">
   <app-equipment-shape-drawer-dialog
     [enableLotoPointCreation]="requireLotoPointForDrawn"
@@ -158,7 +178,7 @@
   [title]="'Viewing File'"
   [size]="'large'"
   [fullHeight]="true"
-  [zIndex]="10050"
+  [zIndex]="12050"
   (close)="closeViewer()">
   <app-rf-equipment-editor
     [selectedEquipmentId]="selectedEquipment()?.id!"
@@ -178,7 +198,7 @@
   [isOpen]="isLotoPointFormOpen()"
   [title]="'Create LOTO Point for Equipment'"
   [size]="'large'"
-  [zIndex]="10100"
+  [zIndex]="12100"
   (close)="closeLotoPointForm()">
   <div class="loto-point-form-container">
     @if (pendingEquipment()) {

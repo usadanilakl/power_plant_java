@@ -1,6 +1,8 @@
 <div class="double-table-container">
-  <app-source-loto-point-table></app-source-loto-point-table>
-  <div class="divider"></div>
+  @if (!hideSource()) {
+    <app-source-loto-point-table></app-source-loto-point-table>
+    <div class="divider"></div>
+  }
   <app-destination-loto-point-table></app-destination-loto-point-table>
 </div>
 

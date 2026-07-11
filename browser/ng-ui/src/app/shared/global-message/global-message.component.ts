@@ -26,12 +26,33 @@ export class GlobalMessageComponent implements OnInit, OnDestroy {
     this.subscription?.unsubscribe();
   }
 
+  /** Glyph shown above the message text. Loading renders a spinner instead. */
+  get icon(): string {
+    switch (this.message?.color) {
+      case 'green': return '✓';
+      case 'red': return '✗';
+      case 'yellow':
+      case 'orange': return '!';
+      default: return 'i';
+    }
+  }
+
   hide(): void {
     this.globalMessageService.hideMessage();
   }
 
+  onCardClick(): void {
+    // Blocking messages are dismissed via the OK button, loading not at all.
+    if (this.message?.type === 'informational') {
+      this.hide();
+    }
+  }
+
   onOverlayClick(event: MouseEvent): void {
-    // Close only if the overlay background is clicked, not the message box
+    // Never dismiss an operation that is still in flight
+    if (this.message?.type === 'loading') return;
+
+    // Close only if the overlay background is clicked, not the message card
     if ((event.target as HTMLElement).classList.contains('overlay')) {
       this.hide();
     }

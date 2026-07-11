@@ -96,6 +96,23 @@ public final class MaximoOslcMapper {
         return sb.toString();
     }
 
+    /**
+     * The same word bucket as {@link #andLike}, but as separate conditions ready to be joined into an
+     * {@code oslc.where} that is already being assembled from a list.
+     *
+     * <p>Each word becomes its own {@code LIKE %word%}, AND-ed together, so the words may appear in any order
+     * and with anything between them. A single contiguous {@code LIKE "%sample panel%"} would miss
+     * {@code "UNIT 2 MONTHLY SAMPLE PANEL MAINTENANCE"} for the query {@code "unit 2 sample panel"} — the
+     * phrase is broken by {@code MONTHLY}. Returns an empty list for a null/blank value (i.e. no filter).
+     */
+    public static List<String> likeWordConditions(String field, String value) {
+        List<String> conds = new java.util.ArrayList<>();
+        for (String w : words(value)) {
+            conds.add("spi:" + field + "=\"%" + w.replace("\"", "\\\"") + "%\"");
+        }
+        return conds;
+    }
+
     public static Boolean boolVal(Map<String, Object> record, String key) {
         Object v = record == null ? null : record.get("spi:" + key);
         if (v == null) v = record == null ? null : record.get(key);

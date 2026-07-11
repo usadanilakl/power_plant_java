@@ -21,7 +21,13 @@ public class ZeroEnergy extends BaseAuditEntity {
     private Value zeroEnergyTemplate;
 
     @Column(name = "template_loto_point_ids", columnDefinition = "TEXT")
-    private String templateEquipmentIds; // Comma-separated equipment IDs: "123,456,789"
+    private String templateEquipmentIds; // Comma-separated equipment IDs, SORTED (doubles as the dedup key): "123,456,789"
+
+    // Same equipment IDs but in the user's SLOT order (placeholder 0, 1, 2, ...). The sorted
+    // column above is the dedup key and cannot carry order, so resolution reads this instead.
+    // Nullable: legacy rows fall back to the sorted column.
+    @Column(name = "template_loto_point_ids_ordered", columnDefinition = "TEXT")
+    private String templateEquipmentIdsOrdered;
 
     @Column(name = "method", columnDefinition = "TEXT")
     private String method; // Resolved zero energy method with equipment tag numbers substituted
@@ -77,6 +83,38 @@ public class ZeroEnergy extends BaseAuditEntity {
                 .filter(s -> !s.isEmpty())
                 .map(Long::parseLong)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Equipment IDs in the user's SLOT order (placeholder 0, 1, 2, ...) when available,
+     * otherwise the sorted storage order. This is the order placeholder resolution must use.
+     */
+    @Transient
+    public java.util.List<Long> getSlotOrderedEquipmentIds() {
+        if (templateEquipmentIdsOrdered == null || templateEquipmentIdsOrdered.isEmpty()) {
+            return getOrderedTemplateEquipmentIds();
+        }
+        return java.util.Arrays.stream(templateEquipmentIdsOrdered.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Stores equipment IDs in slot order (NOT sorted), filtering nulls and non-positive ids.
+     * The sorted {@link #templateEquipmentIds} dedup key is set separately.
+     */
+    public void setOrderedEquipmentIds(java.util.List<Long> equipmentIds) {
+        if (equipmentIds == null || equipmentIds.isEmpty()) {
+            this.templateEquipmentIdsOrdered = null;
+        } else {
+            String joined = equipmentIds.stream()
+                    .filter(id -> id != null && id > 0)
+                    .map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(","));
+            this.templateEquipmentIdsOrdered = joined.isEmpty() ? null : joined;
+        }
     }
 
     /**

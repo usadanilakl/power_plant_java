@@ -1,14 +1,22 @@
 @if (message) {
-  <!-- Blocking messages show with overlay -->
+  <!-- Centered card: blocking (needs OK), informational (auto-dismiss), or loading (spinner) -->
   @if (!message.isMinimized) {
     <div class="overlay"
          [class.transparent-overlay]="message.type === 'informational'"
          (click)="onOverlayClick($event)">
-      <div class="message-box"
+      <div class="message-card"
            [ngClass]="message.color"
            [class.informational]="message.type === 'informational'"
-           (click)="hide()">
-        {{ message.text }}
+           (click)="onCardClick()">
+        @if (message.type === 'loading') {
+          <div class="spinner"></div>
+        } @else {
+          <span class="message-icon">{{ icon }}</span>
+        }
+        <p class="message-text">{{ message.text }}</p>
+        @if (message.type === 'blocking') {
+          <button class="message-btn" type="button" (click)="hide()">OK</button>
+        }
       </div>
     </div>
   } @else {
@@ -16,7 +24,8 @@
     <div class="minimized-message"
          [ngClass]="message.color"
          (click)="hide()">
-      {{ message.text }}
+      <span class="minimized-icon">{{ icon }}</span>
+      <span class="minimized-text">{{ message.text }}</span>
     </div>
   }
 }

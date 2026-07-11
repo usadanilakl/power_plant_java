@@ -1,23 +1,37 @@
 <div class="layout-container">
-  <header class="header">
-    <div class="header-content">
-      @if (header()) {
-        <h1>{{ header() }}</h1>
-      }@else {
-        <h1>Jackson Generation</h1>  
-      }
-      <ng-content select="[header]"></ng-content>
-    </div>
-    <div class="header-actions">
-        <app-sync-indicator></app-sync-indicator>
-        <app-guide-trigger></app-guide-trigger>
-        <app-qa-toggle></app-qa-toggle>
-        <app-agent-toggle></app-agent-toggle>
-        <!-- <app-tour-trigger></app-tour-trigger> -->
-        <app-theme-toggle></app-theme-toggle>
-        <app-user-profile></app-user-profile>
-    </div>
-  </header>
+  @if (isHeaderEnabled()) {
+    @if (!headerHidden()) {
+      <header class="header">
+        <div class="header-content">
+          @if (header()) {
+            <h1>{{ header() }}</h1>
+          }@else {
+            <h1>Jackson Generation</h1>
+          }
+          <ng-content select="[header]"></ng-content>
+        </div>
+        <div class="header-actions">
+            <app-sync-indicator></app-sync-indicator>
+            <app-guide-trigger></app-guide-trigger>
+            <app-qa-toggle></app-qa-toggle>
+            <app-agent-toggle></app-agent-toggle>
+            <!-- <app-tour-trigger></app-tour-trigger> -->
+            <app-theme-toggle></app-theme-toggle>
+            <app-user-profile></app-user-profile>
+        </div>
+      </header>
+    }
+
+    <!-- Persistent header collapse/restore tab (arrow up = hide, down = restore) -->
+    <button
+      class="header-toggle-btn"
+      [class.header-hidden]="headerHidden()"
+      (click)="toggleHeader()"
+      [title]="headerHidden() ? 'Show header' : 'Hide header'"
+    >
+      <i class="header-arrow" [class.collapsed]="headerHidden()"></i>
+    </button>
+  }
 
   <div class="content-wrapper">
     @if(isSideMenuEnabled()){

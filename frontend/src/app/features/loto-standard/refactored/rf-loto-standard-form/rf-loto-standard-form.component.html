@@ -86,12 +86,19 @@
         <div class="slide-content loto-points-section">
           <div class="loto-points-header">
             <h3>LOTO Points</h3>
+            <button
+              type="button"
+              class="bulk-add-btn"
+              [title]="hideAllItemsTable() ? 'Show the available-points table' : 'Hide the available-points table for more width'"
+              (click)="toggleAllItemsTable()"
+            >{{ hideAllItemsTable() ? 'Show All Items' : 'Hide All Items' }}</button>
             @if (entity().id) {
               <button type="button" class="bulk-add-btn" (click)="showBulkSearchDialog.set(true)">Bulk Add</button>
             }
           </div>
           <app-double-loto-point-table
             [selectedItems]="selectedLotoPoints()"
+            [hideSource]="hideAllItemsTable()"
             (itemAdded)="onLotoPointAdded($event)"
             (itemRemoved)="onLotoPointRemoved($event)"
             (itemsReordered)="onLotoPointsReordered($event)"

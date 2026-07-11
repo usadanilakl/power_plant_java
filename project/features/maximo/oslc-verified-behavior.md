@@ -65,6 +65,13 @@ body: {"spi:description":"...","spi:location":"01-ACC","spi:worktype":"CM","spi:
 - **Consequence — search:** a code-OR-description search is run as **two single-field queries,
   merged in Java**. A multi-word AND bucket is built by **AND-chaining `LIKE` per word within a
   field** (one query), unioned across fields. An OR bucket would need per-word fan-out (not built).
+- **Never LIKE a multi-word phrase.** `description="%unit 2 sample panel%"` requires the words to be
+  contiguous *and in order*: it finds 6 WOs, while the AND word bucket
+  (`%unit%` AND `%2%` AND `%sample%` AND `%panel%`) finds 62 — every
+  `UNIT 2 MONTHLY SAMPLE PANEL MAINTENANCE` is missed by the phrase, because `MONTHLY` splits it.
+  Use `MaximoOslcMapper.likeWordConditions(field, value)`. The one legitimate use of a contiguous
+  phrase is **identity matching** (a PM's own generated WOs — `descriptionPhrase`), where a word
+  bucket would drag in unrelated WOs that merely share the same words.
 - `in [ "A","B" ]` uses **square brackets**, never parens. Used for `spi:lead in [...]`.
 - LIKE: `spi:field="%term%"` (case-insensitive).
 
@@ -77,10 +84,44 @@ body: {"spi:description":"...","spi:location":"01-ACC","spi:worktype":"CM","spi:
 - For **ascending**, do **not** send `+` through `MaximoAccessService` — **omit `oslc.orderBy` and
   sort the (small, capped) result list in Java** (Location/Inventory adapters do this).
 
+## `count=1` — a real count query (cheap)
+- `count=1` + `oslc.pageSize=1` returns a **top-level `totalCount` with zero members**, in **~0.1 s**, whatever
+  the collection size. Without `oslc.pageSize=1` it still materialises a full page (~1.1 s).
+- This is what makes incremental refresh viable: probe first, fetch only when the count says something changed.
+  Used by `MaximoInventoryAdapter.countStockLines/countChangedSince` and to size the page cap of a paged fetch
+  so it can never silently truncate.
+
+## Timestamps — `statusdate`, and the sub-second trap
+- `mxapiinventory` exposes **no `changedate`/`changeby`** — asking for them returns nothing. `spi:statusdate` is
+  the only timestamp, and it stamps **row creation and status transitions**, not every edit. So it detects new
+  stock lines and ACTIVE↔OBSOLETE flips, but a **`curbal` / description / bin change is invisible to it**.
+- Maximo stores statusdate with **sub-second precision but only ever emits whole seconds**. A row that reads back
+  as `09:07:55` really is `09:07:55.412`, so `spi:statusdate>"2026-06-29T09:07:55"` **still matches that row**
+  (verified: `totalCount:1`). A watermark probe at the raw max therefore reports "1 changed" on **every tick,
+  forever**. Round the boundary up: `truncatedTo(SECONDS).plusSeconds(1)` → `totalCount:0` (verified).
+- Filter values are **naive local** (`yyyy-MM-dd'T'HH:mm:ss`); an offset is not accepted. Responses *do* carry an
+  offset and it varies with DST (`-05:00` in CDT, `-06:00` in CST) — parse as `OffsetDateTime` and compare by
+  instant, then format the winner's own local fields back into the filter.
+
+## Hierarchy: assets are flat, locations are not
+- **Every asset's `spi:parent` is null** — verified across all 3,614 assets at site JG. There is no asset tree
+  on this instance. Every asset *does* carry a `spi:location`.
+- **`mxapioperloc` carries the real hierarchy**: `spi:parent`, `spi:hasparent`, `spi:haschildren`, and a
+  `spi:locancestor` child collection listing every ancestor code (including the location itself and the site).
+  Example: `01-FE-BFW407A` (ORIFICE PLATE) → location `01-FDW-INST` (INSTRUMENTATION) → `01-FDW`
+  (UNIT 01 FEEDWATER) → `01` (UNIT 01 - LEVEL 1) → `JG` (site).
+- **Consequence:** "the parent of this asset" only has an answer via its location. When the broken thing isn't
+  an asset (a flange, an attemperator ring), file the ticket against a **location** with no assetnum — a valid,
+  normal Maximo shape. `MaximoLocationAdapter.ancestors()` returns the chain in two calls (locancestor, then
+  one `location in [...]` batch to order it by `parent`).
+- Maximo **derives location from assetnum**, so a ticket must not carry a wrong asset alongside a deliberately
+  broader location — the asset wins. Clear `assetnum` when aiming at a parent location.
+- `putIfPresent` drops blank values from the create payload, so an omitted `spi:assetnum` is safe.
+
 ## Reference data (site JG)
 | Need | Source | Notes |
 |---|---|---|
-| Locations | `mxapioperloc` | `spi:location/description/type/status`, filter `spi:siteid="JG"`. ("U1 ACC" = `01-ACC`.) |
+| Locations | `mxapioperloc` | `spi:location/description/type/status/parent`, filter `spi:siteid="JG"`. ("U1 ACC" = `01-ACC`.) Hierarchical — see above. |
 | Work types | — | The `MXDOMAIN` OS is **not API-authorized** (`BMXAA9301E`). Options are **curated** from values in use: CM, PM, WAR, REG. |
 | Items | `mxapiitem` | `itemnum` + `description` (supports `description` LIKE). |
 | Stock balance | `mxapiinventory` | `curbal`, `issueunit`, storeroom `spi:location` (main = `WAREHOUSE1`). `mxapiinventory`'s `item{description}` join returns **null** → descriptions must come from `mxapiitem` separately. |

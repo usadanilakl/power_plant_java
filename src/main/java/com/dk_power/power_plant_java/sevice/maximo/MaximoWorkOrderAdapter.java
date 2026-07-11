@@ -8,10 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.hrefId;
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.members;
@@ -31,6 +34,9 @@ public class MaximoWorkOrderAdapter {
     /** Task fetch adds the child-WO fields; kept off the shared select so a bad field can't break every WO query. */
     private static final String TASK_SELECT_FIELDS = SELECT_FIELDS + ",spi:taskid,spi:parent,spi:istask";
 
+    /** Ceiling for the unfiltered "latest" view — an unbounded site-wide sort is ~49k rows on this instance. */
+    private static final int MAX_LATEST_PAGE_SIZE = 200;
+
     private final MaximoAccessService access;
 
     public List<MaximoWorkOrderDto> listForAsset(String assetnum, int pageSize) {
@@ -40,12 +46,32 @@ public class MaximoWorkOrderAdapter {
         return listByCriteria(c, pageSize);
     }
 
+    /** The two text columns a free-text search must cover: the WO title and its long-text body. */
+    private static final List<String> TEXT_FIELDS = List.of("description", "description_longdescription");
+
     /**
      * AND-combined query across any subset of {status, worktype, assetnum, location, priority}.
      * Returns empty list if no criteria provided (don't blast the whole site).
+     *
+     * <p>{@code textContains} is special: it must match the title OR the long description, and OSLC has
+     * neither {@code OR} nor parentheses. So it runs as one query per text column, merged and de-duplicated
+     * by wonum in Java — the same trick the location/asset pickers use. Every other criterion is applied to
+     * both queries, so the AND semantics are preserved.
      */
     public List<MaximoWorkOrderDto> listByCriteria(MaximoWorkOrderCriteria c, int pageSize) {
-        String where = buildWhere(c);
+        if (c != null && c.getTextContains() != null && !c.getTextContains().isBlank()) {
+            Map<String, MaximoWorkOrderDto> byWonum = new LinkedHashMap<>();
+            for (String field : TEXT_FIELDS) {
+                for (MaximoWorkOrderDto d : queryPage(buildWhere(c, field), pageSize)) {
+                    if (d.getWonum() != null) byWonum.putIfAbsent(d.getWonum(), d);
+                }
+            }
+            return newestFirst(byWonum.values(), pageSize);
+        }
+        return queryPage(buildWhere(c, null), pageSize);
+    }
+
+    private List<MaximoWorkOrderDto> queryPage(String where, int pageSize) {
         if (where == null) return List.of();
         Map<String, String> params = new LinkedHashMap<>();
         params.put("oslc.select", SELECT_FIELDS);
@@ -56,13 +82,39 @@ public class MaximoWorkOrderAdapter {
         return mapAll(members(body));
     }
 
+    /** Re-impose the newest-first order the merged per-field pages lost, then cap to one page. */
+    private static List<MaximoWorkOrderDto> newestFirst(Collection<MaximoWorkOrderDto> rows, int pageSize) {
+        return rows.stream()
+                .sorted(Comparator.comparing((MaximoWorkOrderDto d) -> d.getReportdate() == null ? "" : d.getReportdate())
+                        .reversed())
+                .limit(Math.max(1, pageSize))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * The newest work orders at the site, no filter — what the Work Orders page shows on open so it isn't an
+     * empty table. Deliberately a separate method rather than letting {@link #listByCriteria} fall through on
+     * empty criteria: several callers there build criteria dynamically and rely on "no criteria → no rows"
+     * instead of accidentally pulling the whole site. Bounded by {@code pageSize} (hard cap 200).
+     */
+    public List<MaximoWorkOrderDto> listLatest(String siteid, int pageSize) {
+        String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.pageSize", Integer.toString(Math.clamp(pageSize, 1, MAX_LATEST_PAGE_SIZE)));
+        params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\"");
+        params.put("oslc.orderBy", "-spi:reportdate");
+        return mapAll(members(access.getMap(access.osUrl(OS), params)));
+    }
+
     /**
      * Like {@link #listByCriteria} but pages through the whole result set (merges every
      * {@code pageno}). Use for catalog-style queries (e.g. a year of PM WOs across all leads) where
      * the single-page {@link #listByCriteria} would silently truncate. Returns empty if no criteria.
      */
     public List<MaximoWorkOrderDto> listAllByCriteria(MaximoWorkOrderCriteria c, int pageSizePerPage, int maxPages) {
-        String where = buildWhere(c);
+        // textContains is a two-query merge and has no meaning for a paged scan; callers here never set it.
+        String where = buildWhere(c, null);
         if (where == null) return List.of();
         Map<String, String> params = new LinkedHashMap<>();
         params.put("oslc.select", SELECT_FIELDS);
@@ -71,10 +123,16 @@ public class MaximoWorkOrderAdapter {
         return mapAll(access.getAllMembers(access.osUrl(OS), params, pageSizePerPage, maxPages));
     }
 
-    /** Build the AND-joined `oslc.where` (incl. siteid). Returns null when no real criteria were given. */
-    private String buildWhere(MaximoWorkOrderCriteria c) {
+    /**
+     * Build the AND-joined `oslc.where` (incl. siteid). Returns null when no real criteria were given.
+     *
+     * @param textField which column {@code textContains} is applied to on this pass
+     *                  ({@code description} or {@code description_longdescription}), or null to ignore it.
+     */
+    private String buildWhere(MaximoWorkOrderCriteria c, String textField) {
         if (c == null) return null;
         List<String> conds = new ArrayList<>();
+        if (textField != null) addLike(conds, textField, c.getTextContains());
         addStr(conds, "status", c.getStatus());
         addStrIn(conds, "status", c.getStatusIn());
         addStr(conds, "worktype", c.getWorktype());
@@ -92,6 +150,7 @@ public class MaximoWorkOrderAdapter {
         addStrOp(conds, "statusdate", ">=", c.getStatusdateFrom());
         addStrOp(conds, "statusdate", "<=", c.getStatusdateTo());
         addLike(conds, "description", c.getDescriptionContains());
+        addLikePhrase(conds, "description", c.getDescriptionPhrase());
         addLike(conds, "description_longdescription", c.getLongDescriptionContains());
         addLike(conds, "wonum", c.getWonumContains());
         if (conds.isEmpty()) return null;
@@ -164,8 +223,23 @@ public class MaximoWorkOrderAdapter {
         conds.add("spi:" + field + op + "\"" + escape(value) + "\"");
     }
 
-    /** SQL-style LIKE: wraps value in %...% so users type "pump" and match "%pump%". */
+    /**
+     * AND word-bucket, not a phrase match: {@code "unit 2 sample panel"} becomes four AND-ed {@code LIKE %word%}
+     * conditions, so the words may appear in any order with anything between them. It therefore finds
+     * {@code "UNIT 2 MONTHLY SAMPLE PANEL MAINTENANCE"}, which a single contiguous {@code LIKE "%unit 2 sample
+     * panel%"} misses because {@code MONTHLY} breaks the phrase. Same rule the inventory picker uses.
+     * A null/blank value contributes no condition.
+     */
     private static void addLike(List<String> conds, String field, String value) {
+        conds.addAll(MaximoOslcMapper.likeWordConditions(field, value));
+    }
+
+    /**
+     * Contiguous {@code LIKE "%value%"} — the whole string, spaces and all, must appear intact. For identity
+     * matching (a PM's own generated WOs), NOT for user search: a word bucket would let unrelated WOs that
+     * happen to contain the same words masquerade as occurrences of that PM.
+     */
+    private static void addLikePhrase(List<String> conds, String field, String value) {
         if (value == null || value.isBlank()) return;
         conds.add("spi:" + field + "=\"%" + escape(value) + "%\"");
     }

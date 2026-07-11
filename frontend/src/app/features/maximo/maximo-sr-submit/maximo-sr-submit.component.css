@@ -88,3 +88,20 @@ button.link:hover { text-decoration: underline; background: transparent; }
 .err   { color: #ff7b72; }
 .small { font-size: 11px; }
 code   { background: #2a2a2a; padding: 1px 4px; border-radius: 2px; }
+
+/* Asset → location ladder: climb from a too-specific asset to the area that actually broke. */
+.ladder { border: 1px solid #333; border-radius: 4px; padding: 8px 10px; background: #1b1b1b; }
+.ladder-head { margin-bottom: 6px; }
+.ladder-foot { margin-top: 6px; }
+.rungs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rungs .arrow { color: #555; }
+.rung {
+  display: inline-flex; align-items: baseline; gap: 6px; text-align: left;
+  background: #262626; color: #e6e6e6; border: 1px solid #3d3d3d; border-radius: 3px;
+  padding: 4px 8px; cursor: pointer; font: inherit;
+}
+.rung:hover { background: #303030; border-color: #555; }
+.rung.active { border-color: #2c5; background: #14301d; }
+.rung .code { font-weight: 600; }
+.rung .kind { font-size: 10px; text-transform: uppercase; color: #777; letter-spacing: 0.04em; }
+.rung.asset-rung .kind { color: #7cc6ff; }

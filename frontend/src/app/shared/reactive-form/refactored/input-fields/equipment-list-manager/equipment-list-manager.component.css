@@ -240,6 +240,40 @@
   color: #dc3545;
 }
 
+.item-reorder {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.btn-reorder {
+  background: none;
+  border: none;
+  color: var(--secondary-text, #999);
+  cursor: pointer;
+  padding: 0;
+  width: 22px;
+  height: 14px;
+  font-size: 0.6rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-reorder:hover:not(:disabled) {
+  background-color: var(--secondary-background, #f0f0f0);
+  color: var(--accent-color, #007bff);
+}
+
+.btn-reorder:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* LOTO Point Form Container */
 .loto-point-form-container {
   display: flex;

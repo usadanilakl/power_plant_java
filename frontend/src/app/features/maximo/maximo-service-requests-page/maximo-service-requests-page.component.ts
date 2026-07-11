@@ -27,8 +27,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
   affectedperson: '',
   reportdateFrom: '',
   reportdateTo: '',
-  descriptionContains: '',
-  longDescriptionContains: '',
+  textContains: '',
   siteid: ''
 });
 
@@ -72,7 +71,7 @@ export class MaximoServiceRequestsPageComponent {
   activeFilterCount(): number {
     const c = this.criteria;
     return [c.status, c.assetnum, c.location, c.priority, c.reportedby, c.affectedperson,
-      c.reportdateFrom, c.reportdateTo, c.descriptionContains, c.longDescriptionContains, c.siteid]
+      c.reportdateFrom, c.reportdateTo, c.textContains, c.siteid]
       .filter(v => v != null && v.trim() !== '').length;
   }
 
@@ -80,15 +79,22 @@ export class MaximoServiceRequestsPageComponent {
     return this.activeFilterCount() > 0;
   }
 
+  /** True when the table is showing the unfiltered newest-first default rather than a filtered result. */
+  showingLatest = signal(true);
+
+  constructor() {
+    // Open on the newest service requests instead of an empty table. With no filters set, the server answers
+    // with the latest `pageSize` for the site, ordered by report date.
+    this.apply();
+  }
+
   async apply() {
-    if (!this.hasAnyCriteria()) {
-      this.error.set('Set at least one filter before loading.');
-      return;
-    }
     this.loading.set(true);
     this.error.set(null);
+    const filtered = this.hasAnyCriteria();
     try {
       this.list.set(await firstValueFrom(this.api.listServiceRequestsByCriteria(this.criteria, this.pageSize)));
+      this.showingLatest.set(!filtered);
       this.loaded.set(true);
     } catch (e: any) {
       this.error.set(e?.error?.message ?? e?.message ?? String(e));
@@ -99,9 +105,8 @@ export class MaximoServiceRequestsPageComponent {
 
   clear() {
     this.criteria = emptyCriteria();
-    this.list.set([]);
-    this.loaded.set(false);
     this.error.set(null);
+    this.apply();   // back to the newest-first default, not an empty table
   }
 
   // ---- New SR submission via MaximoSrSubmitComponent --------------------

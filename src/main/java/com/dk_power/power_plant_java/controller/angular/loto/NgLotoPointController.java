@@ -43,6 +43,9 @@ public class NgLotoPointController {
                             "location.name", "location.id", "zeroEnergy.id", "zeroEnergy.method",
                             "equipmentIds", "characteristicsJson",
                             "processingStatus.id", "processingStatus.name", "processingStatus.alias",
+                            // drives the bulk-edit "apply to counterparts?" prompt - without it
+                            // every cold-loaded row looks counterpart-less
+                            "counterpartId",
                             "isLabeled", "isLockable"
                     )),
                     PageRequest.of(page - 1, pageSize)

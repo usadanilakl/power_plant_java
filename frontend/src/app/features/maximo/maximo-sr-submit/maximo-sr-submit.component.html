@@ -60,9 +60,50 @@
     </label>
     <label>Location
       <app-maximo-location-picker [(ngModel)]="sr.location" [freeText]="true"
+                                  (picked)="pickLocation($event)"
                                   placeholder="auto-filled from asset"></app-maximo-location-picker>
     </label>
     <label>Site <input [(ngModel)]="sr.siteid" /></label>
+  </div>
+
+  <!--
+    Asset → location ladder. Maximo assets here have no parent, so when the broken thing isn't an asset
+    (a flange, an attemperator ring) the only way to aim one level up is the asset's location, then its
+    parents. Picking a rung drops the assetnum: a broader location beats a precisely wrong asset.
+  -->
+  <div class="ladder" *ngIf="chainLoading() || locationChain().length">
+    <div class="ladder-head">
+      Not the right thing?
+      <span class="muted small">File against the area it sits in instead — this clears the asset.</span>
+    </div>
+
+    <div *ngIf="chainLoading()" class="muted small">Loading the location hierarchy…</div>
+
+    <div class="rungs" *ngIf="!chainLoading()">
+      <button type="button" class="rung asset-rung"
+              *ngIf="anchorAsset() as a"
+              [class.active]="filedAgainst() === 'asset'"
+              (click)="fileAgainstAsset()">
+        <span class="code">{{ a.assetnum }}</span>
+        <span class="muted"> — {{ a.description }}</span>
+        <span class="kind">asset</span>
+      </button>
+
+      <ng-container *ngFor="let l of locationChain()">
+        <span class="arrow" aria-hidden="true">↑</span>
+        <button type="button" class="rung"
+                [class.active]="isTargetLocation(l)"
+                (click)="fileAgainstLocation(l)">
+          <span class="code">{{ l.location }}</span>
+          <span class="muted"> — {{ l.description }}</span>
+          <span class="kind">location</span>
+        </button>
+      </ng-container>
+    </div>
+
+    <div class="ladder-foot muted small" *ngIf="filedAgainst() === 'location'">
+      Filing against location <strong>{{ sr.location }}</strong> with no asset.
+    </div>
   </div>
 
   <div class="row">

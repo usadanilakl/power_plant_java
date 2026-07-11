@@ -16,7 +16,7 @@
 # Schematics and Simulator
 # Visual Plant
     - 3D Plant
-    - Equipment hierarchy
+    - Equipment hierarchy (2D)
     - Areas hierarchy
     - shcematics
 # Files
@@ -26,6 +26,10 @@
     - LOTO
 # 3D Printing
 # Users
+    - Qualifications
+# SDS
+# WebView
+# CorkBoard
 
 
 ## Electron
@@ -34,3 +38,4 @@
 
 ## PWA
 ## SpringBoot
+## Database management - de-bloating.

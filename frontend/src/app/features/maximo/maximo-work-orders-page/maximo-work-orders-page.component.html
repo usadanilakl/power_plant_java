@@ -53,10 +53,10 @@
         </div>
         <div class="row">
           <label>WO # contains <input [(ngModel)]="criteria.wonumContains" placeholder="J26-" /></label>
-          <label>Description contains <input [(ngModel)]="criteria.descriptionContains" placeholder="title only" class="wide" /></label>
-        </div>
-        <div class="row">
-          <label>Long description contains <input [(ngModel)]="criteria.longDescriptionContains" placeholder="long-text body" class="wide" /></label>
+          <label>Search text
+            <input [(ngModel)]="criteria.textContains" class="wide"
+                   placeholder="title + details — words narrow (e.g. “unit 2 sample panel”)" />
+          </label>
         </div>
         <div class="row actions">
           <button (click)="apply()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Apply filters' }}</button>
@@ -67,10 +67,18 @@
       </section>
 
       <div class="results-header">
-        <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>
+        <h3>
+          {{ showingLatest() ? 'Latest work orders' : 'Results' }}
+          <span class="muted" *ngIf="loaded()">({{ list().length }})</span>
+        </h3>
+        <span class="muted" *ngIf="showingLatest() && loaded()">
+          newest {{ pageSize }} for the site — set filters above to narrow
+        </span>
       </div>
 
-      <div *ngIf="!loaded()" class="muted empty-msg">Set filters above and click Apply.</div>
+      <div *ngIf="!loaded()" class="muted empty-msg">
+        {{ loading() ? 'Loading the latest work orders…' : 'Set filters above and click Apply.' }}
+      </div>
 
       <app-maximo-table *ngIf="loaded()"
         [columns]="columns"

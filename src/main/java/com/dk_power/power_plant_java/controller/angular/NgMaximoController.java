@@ -23,6 +23,7 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoTicketIndexService;
 import com.dk_power.power_plant_java.entities.maximo.RecurrenceCadence;
 import com.dk_power.power_plant_java.entities.maximo.ShiftPreference;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryCatalogService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
 import com.dk_power.power_plant_java.sevice.maximo.PmAssignmentService;
@@ -91,6 +92,7 @@ public class NgMaximoController {
     private final MaximoBundleService bundles;
     private final MaximoLocationAdapter locations;
     private final MaximoInventoryAdapter inventory;
+    private final MaximoInventoryCatalogService inventoryCatalog;
     private final MaximoPartsCheckoutService partsCheckout;
     private final RecurringPmService recurringPms;
     private final PmAssignmentService pmAssignments;
@@ -147,11 +149,13 @@ public class NgMaximoController {
             @RequestParam(value = "classstructureid", required = false) String classstructureid,
             @RequestParam(value = "reportdateFrom", required = false) String reportdateFrom,
             @RequestParam(value = "reportdateTo", required = false) String reportdateTo,
+            @RequestParam(value = "textContains", required = false) String textContains,
             @RequestParam(value = "descriptionContains", required = false) String descriptionContains,
             @RequestParam(value = "longDescriptionContains", required = false) String longDescriptionContains,
             @RequestParam(value = "siteid", required = false) String siteid,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         MaximoServiceRequestCriteria c = new MaximoServiceRequestCriteria();
+        c.setTextContains(textContains);
         c.setStatus(status);
         c.setAssetnum(assetnum);
         c.setLocation(location);
@@ -164,8 +168,10 @@ public class NgMaximoController {
         c.setDescriptionContains(descriptionContains);
         c.setLongDescriptionContains(longDescriptionContains);
         c.setSiteid(siteid);
+        // No filters = the page just opened. Show the newest SRs rather than an empty table.
         return ResponseEntity.ok(new NgApiResponse<>(
-                serviceRequests.listByCriteria(c, pageSize), "ok"));
+                c.hasAnyFilter() ? serviceRequests.listByCriteria(c, pageSize)
+                                 : serviceRequests.listLatest(siteid, pageSize), "ok"));
     }
 
     @PostMapping("/service-requests")
@@ -268,12 +274,14 @@ public class NgMaximoController {
             @RequestParam(value = "schedfinishTo", required = false) String schedfinishTo,
             @RequestParam(value = "reportdateFrom", required = false) String reportdateFrom,
             @RequestParam(value = "reportdateTo", required = false) String reportdateTo,
+            @RequestParam(value = "textContains", required = false) String textContains,
             @RequestParam(value = "descriptionContains", required = false) String descriptionContains,
             @RequestParam(value = "longDescriptionContains", required = false) String longDescriptionContains,
             @RequestParam(value = "wonumContains", required = false) String wonumContains,
             @RequestParam(value = "siteid", required = false) String siteid,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
+        c.setTextContains(textContains);
         c.setStatus(status);
         c.setWorktype(worktype);
         c.setAssetnum(assetnum);
@@ -289,8 +297,10 @@ public class NgMaximoController {
         c.setLongDescriptionContains(longDescriptionContains);
         c.setWonumContains(wonumContains);
         c.setSiteid(siteid);
+        // No filters = the page just opened. Show the newest WOs rather than an empty table.
         return ResponseEntity.ok(new NgApiResponse<>(
-                workOrders.listByCriteria(c, pageSize), "ok"));
+                c.hasAnyFilter() ? workOrders.listByCriteria(c, pageSize)
+                                 : workOrders.listLatest(siteid, pageSize), "ok"));
     }
 
     @GetMapping("/work-orders/{href}")
@@ -406,6 +416,17 @@ public class NgMaximoController {
         return ResponseEntity.ok(new NgApiResponse<>(locations.search(q, siteid, pageSize), "ok"));
     }
 
+    /**
+     * The operating-location chain above a location, leaf first. Lets an SR be filed one level up when the
+     * broken thing isn't an asset itself. Query param, not a path variable — location codes are free-form.
+     */
+    @GetMapping("/location-ancestors")
+    public ResponseEntity<NgApiResponse<List<MaximoLocationDto>>> locationAncestors(
+            @RequestParam("location") String location,
+            @RequestParam(value = "siteid", required = false) String siteid) {
+        return ResponseEntity.ok(new NgApiResponse<>(locations.ancestors(location, siteid), "ok"));
+    }
+
     @GetMapping("/work-types")
     public ResponseEntity<NgApiResponse<List<Map<String, String>>>> getWorkTypes() {
         return ResponseEntity.ok(new NgApiResponse<>(WORK_TYPES, "ok"));
@@ -429,6 +450,7 @@ public class NgMaximoController {
         return ResponseEntity.ok(new NgApiResponse<>(people, people.size() + " people"));
     }
 
+    /** Served from the in-memory catalog (see {@link MaximoInventoryCatalogService}) — never blocks on Maximo. */
     @GetMapping("/inventory")
     public ResponseEntity<NgApiResponse<List<MaximoInventoryItemDto>>> searchInventory(
             @RequestParam(value = "q", required = false) String q,
@@ -436,14 +458,23 @@ public class NgMaximoController {
             @RequestParam(value = "storeroom", required = false) String storeroom,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         return ResponseEntity.ok(new NgApiResponse<>(
-                inventory.search(q, siteid, storeroom, pageSize), "ok"));
+                inventoryCatalog.search(q, siteid, storeroom, pageSize), "ok"));
     }
 
     /** Warehouses (storerooms) that hold stock at the site — for the inventory warehouse filter. */
     @GetMapping("/inventory/storerooms")
     public ResponseEntity<NgApiResponse<List<String>>> inventoryStorerooms(
             @RequestParam(value = "siteid", required = false) String siteid) {
-        return ResponseEntity.ok(new NgApiResponse<>(inventory.storerooms(siteid), "ok"));
+        return ResponseEntity.ok(new NgApiResponse<>(inventoryCatalog.storerooms(siteid), "ok"));
+    }
+
+    /**
+     * Whether the inventory catalog is loaded. Empty search results mean "no match" once ready, and
+     * "still building" before that — the UI needs to tell those apart. Requesting this also warms the catalog.
+     */
+    @GetMapping("/inventory-catalog/status")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> inventoryCatalogStatus() {
+        return ResponseEntity.ok(new NgApiResponse<>(inventoryCatalog.status(), "ok"));
     }
 
     /** Full stock detail for one item (on-hand, reserved, reorder levels, cost, usage stats). */

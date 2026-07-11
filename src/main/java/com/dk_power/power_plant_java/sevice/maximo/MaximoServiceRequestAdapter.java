@@ -8,10 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.hrefId;
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.members;
@@ -27,6 +30,9 @@ public class MaximoServiceRequestAdapter {
             "spi:ticketid,spi:description,spi:description_longdescription,spi:status,"
             + "spi:assetnum,spi:location,spi:siteid,spi:reportedby,spi:reportdate,"
             + "spi:classstructureid,spi:reportedpriority,spi:affectedperson,spi:statusdate";
+
+    /** Ceiling for the unfiltered "latest" view — an unbounded site-wide sort is thousands of rows. */
+    private static final int MAX_LATEST_PAGE_SIZE = 200;
 
     private final MaximoAccessService access;
 
@@ -47,11 +53,45 @@ public class MaximoServiceRequestAdapter {
     }
 
     /**
+     * The newest service requests at the site, no filter — what the Service Requests page shows on open so it
+     * isn't an empty table. Kept separate from {@link #listByCriteria} so callers that build criteria
+     * dynamically keep their "no criteria → no rows" guard. Bounded by {@code pageSize} (hard cap 200).
+     */
+    public List<MaximoServiceRequestDto> listLatest(String siteid, int pageSize) {
+        String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_FIELDS);
+        params.put("oslc.pageSize", Integer.toString(Math.clamp(pageSize, 1, MAX_LATEST_PAGE_SIZE)));
+        params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\"");
+        params.put("oslc.orderBy", "-spi:reportdate");
+        return mapAll(members(access.getMap(access.osUrl(OS), params)));
+    }
+
+    /** The two text columns a free-text search must cover: the SR title and its long-text body. */
+    private static final List<String> TEXT_FIELDS = List.of("description", "description_longdescription");
+
+    /**
      * AND-combined query across any subset of SR criteria fields.
      * Returns empty list if no criteria provided (don't blast the whole site).
+     *
+     * <p>{@code textContains} must match the title OR the long description, and OSLC has neither {@code OR}
+     * nor parentheses — so it runs one query per text column and merges by ticketid in Java. All other
+     * criteria are applied to both queries, preserving AND semantics.
      */
     public List<MaximoServiceRequestDto> listByCriteria(MaximoServiceRequestCriteria c, int pageSize) {
-        String where = buildWhere(c);
+        if (c != null && c.getTextContains() != null && !c.getTextContains().isBlank()) {
+            Map<String, MaximoServiceRequestDto> byTicket = new LinkedHashMap<>();
+            for (String field : TEXT_FIELDS) {
+                for (MaximoServiceRequestDto d : queryPage(buildWhere(c, field), pageSize)) {
+                    if (d.getTicketid() != null) byTicket.putIfAbsent(d.getTicketid(), d);
+                }
+            }
+            return newestFirst(byTicket.values(), pageSize);
+        }
+        return queryPage(buildWhere(c, null), pageSize);
+    }
+
+    private List<MaximoServiceRequestDto> queryPage(String where, int pageSize) {
         if (where == null) return List.of();
         Map<String, String> params = new LinkedHashMap<>();
         params.put("oslc.select", SELECT_FIELDS);
@@ -62,13 +102,23 @@ public class MaximoServiceRequestAdapter {
         return mapAll(members(body));
     }
 
+    /** Re-impose the newest-first order the merged per-field pages lost, then cap to one page. */
+    private static List<MaximoServiceRequestDto> newestFirst(Collection<MaximoServiceRequestDto> rows, int pageSize) {
+        return rows.stream()
+                .sorted(Comparator.comparing((MaximoServiceRequestDto d) -> d.getReportdate() == null ? "" : d.getReportdate())
+                        .reversed())
+                .limit(Math.max(1, pageSize))
+                .collect(Collectors.toList());
+    }
+
     /**
      * Like {@link #listByCriteria} but pages through the WHOLE result set (merges every {@code pageno}) —
      * for backfill-style scans (e.g. all SRs in the last N years). Mirrors
      * {@code MaximoWorkOrderAdapter.listAllByCriteria}. Returns empty when no criteria were given.
      */
     public List<MaximoServiceRequestDto> listAllByCriteria(MaximoServiceRequestCriteria c, int pageSizePerPage, int maxPages) {
-        String where = buildWhere(c);
+        // textContains is a two-query merge and has no meaning for a paged scan; callers here never set it.
+        String where = buildWhere(c, null);
         if (where == null) return List.of();
         Map<String, String> params = new LinkedHashMap<>();
         params.put("oslc.select", SELECT_FIELDS);
@@ -77,10 +127,16 @@ public class MaximoServiceRequestAdapter {
         return mapAll(access.getAllMembers(access.osUrl(OS), params, pageSizePerPage, maxPages));
     }
 
-    /** Build the AND-joined {@code oslc.where} (incl. siteid). Returns null when no real criteria were given. */
-    private String buildWhere(MaximoServiceRequestCriteria c) {
+    /**
+     * Build the AND-joined {@code oslc.where} (incl. siteid). Returns null when no real criteria were given.
+     *
+     * @param textField which column {@code textContains} is applied to on this pass
+     *                  ({@code description} or {@code description_longdescription}), or null to ignore it.
+     */
+    private String buildWhere(MaximoServiceRequestCriteria c, String textField) {
         if (c == null) return null;
         List<String> conds = new ArrayList<>();
+        if (textField != null) addLike(conds, textField, c.getTextContains());
         addStr(conds, "status", c.getStatus());
         addStr(conds, "assetnum", c.getAssetnum());
         addStr(conds, "location", c.getLocation());
@@ -117,9 +173,12 @@ public class MaximoServiceRequestAdapter {
         conds.add("spi:" + field + op + "\"" + escape(value) + "\"");
     }
 
+    /**
+     * AND word-bucket, not a phrase match — see {@code MaximoWorkOrderAdapter.addLike}. Words may appear in any
+     * order with anything between them, matching how the inventory picker searches. Blank value adds nothing.
+     */
     private static void addLike(List<String> conds, String field, String value) {
-        if (value == null || value.isBlank()) return;
-        conds.add("spi:" + field + "=\"%" + escape(value) + "%\"");
+        conds.addAll(MaximoOslcMapper.likeWordConditions(field, value));
     }
 
     public Optional<MaximoServiceRequestDto> findByHref(String href) {

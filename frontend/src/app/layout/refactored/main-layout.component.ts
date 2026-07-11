@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, HostListener, inject, input, NgZone, OnDestroy, PLATFORM_ID, Renderer2, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, inject, input, NgZone, OnDestroy, PLATFORM_ID, Renderer2, signal, ViewChild } from '@angular/core';
 import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.component";
 import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
@@ -29,11 +29,16 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
 
   header = input<string>();
+  /** Set false to reclaim the header's vertical space (also hides the top router menu) */
+  isHeaderEnabled = input<boolean>(true);
   isSideMenuEnabled = input<boolean>(false);
   isBottomMenuEnabled = input<boolean>(false);
   bottomMenuHeader = input<string | null>(null);
   isLeftMenuEnabled = input<boolean>(false);
   mainContentPadding = input<boolean>(true);
+
+  /** Runtime collapse of the header to reclaim vertical space (in addition to the isHeaderEnabled hard on/off) */
+  headerHidden = signal(false);
 
   initialFooterHeight = 0;
   initialMouseY = 0;
@@ -176,6 +181,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       this.closeMenu();
     }
   };
+
+  toggleHeader() {
+    this.headerHidden.update(hidden => !hidden);
+  }
 
   toggleMenu() {
     if (this.isMobileView) {

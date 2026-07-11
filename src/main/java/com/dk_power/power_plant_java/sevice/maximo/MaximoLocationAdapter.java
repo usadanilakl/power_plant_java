@@ -5,10 +5,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.hrefId;
@@ -75,6 +78,75 @@ public class MaximoLocationAdapter {
                 .sorted(Comparator.comparing(MaximoLocationDto::getLocation,
                         Comparator.nullsLast(String::compareToIgnoreCase)))
                 .limit(cap).collect(Collectors.toList());
+    }
+
+    /**
+     * The operating-location chain for {@code location}, leaf first: itself, its parent, its grandparent, up to
+     * the top. The site-level rung (code == siteid) is dropped — {@code siteid} already carries that, and "the
+     * whole plant" is not a useful thing to file against.
+     *
+     * <p>This is the ONLY hierarchy this Maximo has. Assets expose {@code spi:parent}, but it is null on every
+     * one of them; each asset does carry a {@code location}. So "the parent of this asset" only has an answer
+     * through its location: {@code 01-FE-BFW407A} (ORIFICE PLATE) sits in {@code 01-FDW-INST} (INSTRUMENTATION),
+     * whose parent is {@code 01-FDW} (UNIT 01 FEEDWATER). An SR filed against a location with no assetnum is
+     * valid, and is the right answer when the broken thing isn't itself an asset.
+     *
+     * <p>Two calls: {@code spi:locancestor} gives the ancestor codes (unordered), then one
+     * {@code location in [...]} batch fetches their descriptions and parents so the chain can be ordered by
+     * following {@code parent}. Empty list when the location is unknown.
+     */
+    public List<MaximoLocationDto> ancestors(String location, String siteid) {
+        if (location == null || location.isBlank()) return List.of();
+        String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+        String leaf = location.trim();
+
+        List<String> codes = ancestorCodes(leaf, site);
+        if (codes.isEmpty()) return List.of();
+
+        Map<String, MaximoLocationDto> byCode = new LinkedHashMap<>();
+        String inList = codes.stream().map(c -> "\"" + escape(c) + "\"").collect(Collectors.joining(","));
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", SELECT_ALL);
+        params.put("oslc.pageSize", Integer.toString(codes.size() + 5));
+        params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\" and spi:location in [" + inList + "]");
+        for (Map<String, Object> row : members(access.getMap(access.osUrl(OS), params))) {
+            MaximoLocationDto d = map(row);
+            if (d.getLocation() != null) byCode.put(d.getLocation(), d);
+        }
+
+        // Walk parent links from the leaf upward. `seen` guards against a cycle in bad hierarchy data.
+        List<MaximoLocationDto> chain = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        String cursor = leaf;
+        while (cursor != null && seen.add(cursor)) {
+            MaximoLocationDto d = byCode.get(cursor);
+            if (d == null) break;
+            if (!cursor.equalsIgnoreCase(site)) chain.add(d);
+            cursor = d.getParent();
+        }
+        return chain;
+    }
+
+    /** Ancestor codes from the {@code locancestor} child collection, plus the location itself. */
+    @SuppressWarnings("unchecked")
+    private List<String> ancestorCodes(String leaf, String site) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", "spi:location,spi:locancestor");
+        params.put("oslc.pageSize", "1");
+        params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\" and spi:location=\"" + escape(leaf) + "\"");
+        List<Map<String, Object>> rows = members(access.getMap(access.osUrl(OS), params));
+        if (rows.isEmpty()) return List.of();
+        List<String> codes = new ArrayList<>();
+        codes.add(leaf);
+        if (rows.get(0).get("spi:locancestor") instanceof List<?> list) {
+            for (Object o : list) {
+                if (o instanceof Map<?, ?> m) {
+                    Object ancestor = ((Map<String, Object>) m).get("spi:ancestor");
+                    if (ancestor != null && !codes.contains(ancestor.toString())) codes.add(ancestor.toString());
+                }
+            }
+        }
+        return codes;
     }
 
     private void runInto(Map<String, MaximoLocationDto> merged, String where, int cap) {

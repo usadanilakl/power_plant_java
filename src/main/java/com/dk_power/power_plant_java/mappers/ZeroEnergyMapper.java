@@ -86,15 +86,17 @@ public class ZeroEnergyMapper implements BaseMapper {
                 dto.setZeroEnergyTemplate(valueService.convertToDto(entity.getZeroEnergyTemplate()));
             }
 
-            // Set template equipment IDs
-            if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
-                List<Long> list = entity.getTemplateEquipmentIds().stream().filter(e -> e != 0).toList();
+            // Set template equipment IDs in SLOT order so the phrase builder re-populates
+            // each placeholder with its own equipment on edit (the raw column is sorted).
+            List<Long> orderedIds = entity.getSlotOrderedEquipmentIds();
+            if (orderedIds != null && !orderedIds.isEmpty()) {
+                List<Long> list = orderedIds.stream().filter(e -> e != 0).toList();
                 if(!list.isEmpty()){
                     dto.setTemplateEquipmentIds(new ArrayList<>(list));
 
                     // Load equipment by IDs (full conversion - cycle detected above prevents infinite recursion)
                     List<EquipmentDto> equipmentDtos = new ArrayList<>();
-                    for (Long equipmentId : entity.getTemplateEquipmentIds()) {
+                    for (Long equipmentId : list) {
                         equipmentService.findById(equipmentId).ifPresent(equipment -> {
                             equipmentDtos.add(equipmentService.toDto(equipment));
                         });
@@ -151,9 +153,10 @@ public class ZeroEnergyMapper implements BaseMapper {
             dto.setZeroEnergyTemplateId(entity.getZeroEnergyTemplate().getId());
         }
 
-        // Set template equipment IDs
-        if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
-            dto.setTemplateEquipmentIds(new ArrayList<>(entity.getTemplateEquipmentIds()));
+        // Set template equipment IDs in SLOT order (raw column is sorted for dedup)
+        List<Long> orderedIdsForIdDto = entity.getSlotOrderedEquipmentIds();
+        if (orderedIdsForIdDto != null && !orderedIdsForIdDto.isEmpty()) {
+            dto.setTemplateEquipmentIds(new ArrayList<>(orderedIdsForIdDto));
         }
 
         // Use the persisted method field directly (already resolved and stored in DB)
@@ -193,8 +196,10 @@ public class ZeroEnergyMapper implements BaseMapper {
                 return null;
             }
 
-            // Get equipment IDs in storage order (order must match placeholder indices in template)
-            java.util.List<Long> equipmentIds = entity.getOrderedTemplateEquipmentIds();
+            // Get equipment IDs in SLOT order (placeholder index i -> equipmentIds.get(i)).
+            // The primary templateEquipmentIds column is sorted for dedup, so use the slot-order
+            // column (falls back to sorted for legacy rows that predate it).
+            java.util.List<Long> equipmentIds = entity.getSlotOrderedEquipmentIds();
 
             // Load equipment entities to get tag numbers
             java.util.Map<Integer, String> placeholderToTagNumber = new java.util.HashMap<>();
@@ -280,9 +285,10 @@ public class ZeroEnergyMapper implements BaseMapper {
             entity.setZeroEnergyTemplate(valueService.convertToEntity(dto.getZeroEnergyTemplate()));
         }
 
-        // Set template equipment IDs with normalization (sorted, no duplicates)
+        // Set template equipment IDs: sorted for the dedup key, plus slot order for resolution
         if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
             entity.setNormalizedEquipmentIds(dto.getTemplateEquipmentIds());
+            entity.setOrderedEquipmentIds(dto.getTemplateEquipmentIds());
         }
 
         // Build and persist the resolved method
@@ -347,9 +353,11 @@ public class ZeroEnergyMapper implements BaseMapper {
             entity.setZeroEnergyTemplate(valueService.findById(dto.getZeroEnergyTemplateId()).orElse(null));
         }
 
-        // Set template equipment IDs
+        // Set template equipment IDs: sorted for the dedup key (was unsorted here, which made the
+        // sorted dedup lookup miss and create duplicate rows), plus slot order for resolution
         if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
-            entity.setTemplateEquipmentIdsList(dto.getTemplateEquipmentIds());
+            entity.setNormalizedEquipmentIds(dto.getTemplateEquipmentIds());
+            entity.setOrderedEquipmentIds(dto.getTemplateEquipmentIds());
         }
 
         // Build and persist the resolved method

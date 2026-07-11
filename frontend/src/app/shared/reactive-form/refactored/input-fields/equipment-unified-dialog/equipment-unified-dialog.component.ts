@@ -99,9 +99,16 @@ export class EquipmentUnifiedDialogComponent {
   requireLotoPointForUnassociated = input<boolean>(false);
   immediateSelection = input<boolean>(false);
   hideActions = input<boolean>(false);
+  /**
+   * When true, browsing (select-existing) accumulates multiple equipment across drawing
+   * switches and emits them together via equipmentListAcquired on confirm. Drawing a NEW
+   * shape stays single-item. Default false = original single-select behavior.
+   */
+  multiSelect = input<boolean>(false);
 
   // Outputs
   equipmentAcquired = output<EquipmentDto>();
+  equipmentListAcquired = output<EquipmentDto[]>(); // Emitted (instead of equipmentAcquired) in multiSelect mode
   equipmentDrawnForLotoPoint = output<EquipmentDto>(); // Keep for backwards compatibility but won't use
   close = output<void>();
 
@@ -118,6 +125,8 @@ export class EquipmentUnifiedDialogComponent {
 
   // State - mimicking wizard's approach
   selectedEquipment = signal<EquipmentDto | null>(null);  // Currently selected/saved equipment
+  // Accumulated selections for multiSelect mode (persists across drawing switches)
+  selectedEquipmentList = signal<EquipmentDto[]>([]);
   drawnShape = signal<RfShape | null>(null);  // Drawn shape (before saving)
   highlightEquipmentId = signal<number | null>(null);
   isLoading = signal(false);
@@ -235,21 +244,24 @@ export class EquipmentUnifiedDialogComponent {
     const eq = this.equipment();
     const drawn = this.drawnShape();
     const selected = this.selectedEquipment();
+    const multi = this.multiSelect();
+    const listIds = new Set(this.selectedEquipmentList().map(e => e.id));
 
     // Map existing equipment to shapes
     const shapes = eq.map((e: EquipmentDto) =>
       this.equipmentMapper.mapToRfShape(e)
     ).filter(s => s !== null) as RfShape[];
 
-    // Highlight selected equipment
-    if (selected?.id) {
-      shapes.forEach((shape: RfShape) => {
-        if (shape.id === selected.id) {
-          shape.isSelected = true;
-          shape.color = '#FF0000';
-        }
-      });
-    }
+    // Highlight selected equipment (all accumulated ones in multiSelect mode)
+    shapes.forEach((shape: RfShape) => {
+      const isSelected = multi
+        ? (shape.id != null && listIds.has(shape.id))
+        : (selected?.id != null && shape.id === selected.id);
+      if (isSelected) {
+        shape.isSelected = true;
+        shape.color = '#FF0000';
+      }
+    });
 
     // Add drawn shape if exists (with highlight)
     if (drawn) {
@@ -285,6 +297,11 @@ export class EquipmentUnifiedDialogComponent {
       return true; // Enable button to trigger save flow
     }
 
+    // Multi-select: confirmable once at least one equipment is accumulated
+    if (this.multiSelect()) {
+      return this.selectedEquipmentList().length > 0;
+    }
+
     // If equipment is selected and has LOTO point (or LOTO not required)
     if (selected) {
       if (this.requireLotoPointForUnassociated()) {
@@ -309,6 +326,13 @@ export class EquipmentUnifiedDialogComponent {
 
     if (drawn) {
       return 'New shape drawn. Click "Save & Select" to save the equipment.';
+    }
+
+    if (this.multiSelect()) {
+      const count = this.selectedEquipmentList().length;
+      return count > 0
+        ? `${count} equipment selected. Click more (any drawing), then "Add ${count}".`
+        : 'Left-click equipment to add. Switch drawings to keep selecting, then confirm.';
     }
 
     if (selected) {
@@ -459,6 +483,13 @@ export class EquipmentUnifiedDialogComponent {
           mainFileObject: file || undefined
         });
 
+        // Multi-select: toggle into the accumulated list, keep the dialog open
+        if (this.multiSelect()) {
+          this.toggleInList(enrichedEquipment);
+          this.highlightEquipmentId.set(selectedId);
+          return;
+        }
+
         this.selectedEquipment.set(enrichedEquipment);
         this.highlightEquipmentId.set(selectedId);
 
@@ -468,6 +499,24 @@ export class EquipmentUnifiedDialogComponent {
         }
       }
     }
+  }
+
+  /** Add or remove an equipment from the accumulated multi-select list (dedupe by id). */
+  private toggleInList(equipment: EquipmentDto): void {
+    const list = this.selectedEquipmentList();
+    const idx = list.findIndex(e => e.id === equipment.id);
+    if (idx >= 0) {
+      this.selectedEquipmentList.set(list.filter((_, i) => i !== idx));
+    } else {
+      this.selectedEquipmentList.set([...list, equipment]);
+    }
+  }
+
+  /** Remove one equipment from the multi-select tray (chip close button). */
+  removeFromList(equipment: EquipmentDto): void {
+    this.selectedEquipmentList.set(
+      this.selectedEquipmentList().filter(e => e.id !== equipment.id)
+    );
   }
 
   // Handle new shape drawn
@@ -485,13 +534,23 @@ export class EquipmentUnifiedDialogComponent {
     const drawn = this.drawnShape();
     const selected = this.selectedEquipment();
 
-    // Case 1: There's a drawn shape - save it first
+    // Case 1: There's a drawn shape - save it first (single-item even in multiSelect mode)
     if (drawn) {
       this.saveDrawnShape(file);
       return;
     }
 
-    // Case 2: Equipment is selected
+    // Case 2: Multi-select — emit the whole accumulated list
+    if (this.multiSelect()) {
+      const list = this.selectedEquipmentList();
+      if (list.length > 0) {
+        this.equipmentListAcquired.emit(list);
+        this.reset();
+      }
+      return;
+    }
+
+    // Case 3: Single equipment is selected
     if (selected) {
       // Check if LOTO point is required but missing
       if (this.requireLotoPointForUnassociated()) {
@@ -579,6 +638,7 @@ export class EquipmentUnifiedDialogComponent {
   private reset() {
     this.fileService.reset();
     this.clearSelection();
+    this.selectedEquipmentList.set([]);
   }
 
   // ==================== LOTO Point Form Methods ====================

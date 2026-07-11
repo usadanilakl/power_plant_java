@@ -114,13 +114,16 @@ Asset lookup. `SELECT_FIELDS`: assetnum, description, siteid, location, status, 
 ### `MaximoServiceRequestAdapter` — OS `mxapisr`
 SR query + create. `SELECT_FIELDS`: ticketid, description, description_longdescription, status, assetnum, location, siteid, reportedby, reportdate, classstructureid, reportedpriority, affectedperson.
 - `listByStatus`, `listForAsset` — convenience wrappers around `listByCriteria`.
-- `listByCriteria(c, pageSize)` — AND-chains: status, assetnum, location (`=`); reportedpriority (numeric, unquoted); reportedby, affectedperson, classstructureid (`=`); reportdate `>=`/`<=`; description / description_longdescription LIKE. Adds `siteid` (defaulted). `oslc.orderBy=-spi:reportdate`. Empty criteria → empty list (won't blast the site).
+- `listByCriteria(c, pageSize)` — AND-chains: status, assetnum, location (`=`); reportedpriority (numeric, unquoted); reportedby, affectedperson, classstructureid (`=`); reportdate `>=`/`<=`; description / description_longdescription as an **AND word bucket** (one `LIKE %word%` per word — never a contiguous phrase). Adds `siteid` (defaulted). `oslc.orderBy=-spi:reportdate`. Empty criteria → empty list (won't blast the site).
+- `listLatest(siteid, pageSize)` — newest-first, site only, no filter. The SR page's default view on open. Hard cap 200. Kept separate from `listByCriteria` so its "no criteria → no rows" guard still protects callers that build criteria dynamically. The controller picks between them via `MaximoServiceRequestCriteria.hasAnyFilter()` (which ignores `siteid`, since that only scopes the query).
 - `create(CreateMaximoServiceRequestDto)` — builds spi-prefixed payload (description, description_longdescription, assetnum, location, siteid[default], reportedby, classstructureid, reportedpriority, affectedperson) **plus `spi:class="SR"`** (required so Maximo creates an SR, not Incident/Problem). `postJson` then `map`.
 - `findByHref(href)`.
 
 ### `MaximoWorkOrderAdapter` — OS `mxapiwodetail`
 The richest adapter. `SELECT_FIELDS`: wonum, description, description_longdescription, status, worktype, assetnum, location, siteid, reportdate, targstartdate, schedstart, schedfinish, lead, supervisor, wopriority.
-- `listForAsset`, `listByCriteria(c, pageSize)` — AND-chains status/worktype/assetnum/location (`=`), wopriority (numeric), lead (`=`), **leadIn** via OSLC `in [...]`, supervisor, schedstart `>=`, schedfinish `<=`, reportdate `>=`/`<=`, description/description_longdescription/wonum LIKE. Adds default site. `oslc.orderBy=-spi:reportdate`. Empty → empty list.
+- `listForAsset`, `listByCriteria(c, pageSize)` — AND-chains status/worktype/assetnum/location (`=`), wopriority (numeric), lead (`=`), **leadIn** via OSLC `in [...]`, supervisor, schedstart `>=`, schedfinish `<=`, reportdate `>=`/`<=`, and description/description_longdescription/wonum as an **AND word bucket** (one `LIKE %word%` per word). Adds default site. `oslc.orderBy=-spi:reportdate`. Empty → empty list.
+  - `descriptionPhrase` is the deliberate exception: a **contiguous** `LIKE "%…%"` for identity matching (`RecurringPmService.occurrences` finding a PM's own generated WOs). Never use it for user-facing search — and never use the word bucket for identity.
+- `listLatest(siteid, pageSize)` — newest-first, site only, no filter. The Work Orders page's default view on open (~1.9 s over ~49k WOs). Hard cap 200. Separate from `listByCriteria` so callers relying on "no criteria → no rows" can't accidentally pull the whole site. The controller chooses via `MaximoWorkOrderCriteria.hasAnyFilter()` (ignores `siteid`).
 - `findByHref(href)`.
 - `reportActuals(href, labor, summary, details, logtype)` — builds one MERGE payload: `spi:labtrans` rows (each `spi:laborcode` uppercased + optional `spi:regularhrs`); a single `spi:worklog` row (`spi:description`=summary[or "Note"], `spi:description_longdescription`=details, `spi:logtype`=logtype or **`CLIENTNOTE`**). No-op if nothing to add. Calls `addChildren`.
 - `create(description, location, worktype, siteid)` — spi-prefixed `postJson`; new WO returns at status WAPPR.
@@ -145,11 +148,25 @@ Worklog notes on a parent. **SR → sub-collection `uxworklog` under `mxapisr`; 
 ### `MaximoLocationAdapter` — OS `mxapioperloc`
 Operating-location picker. `SELECT`: location, description, type, status, siteid.
 - `search(query, siteid, pageSize)` — site condition always; if no words, one query; else two queries — `andLike("location", words)` and `andLike("description", words)` — **merged** (deduped by location code) because OSLC has no OR/parens. Sorted in Java by location code (ascending), capped to pageSize. (Java-side sort because Maximo's `oslc.orderBy` needs a `+`/`-` sign and Spring sends `+` as a literal space which Maximo rejects.)
+- `ancestors(location, siteid)` — the location chain, **leaf first**, site rung dropped. Two calls: `spi:locancestor` for the ancestor codes, then one `location in [...]` batch for descriptions + parents, ordered by walking `parent` (cycle-guarded). Exposed as `GET /ng/maximo/location-ancestors?location=&siteid=`.
+  - This is the **only hierarchy Maximo has here** — `spi:parent` is null on all 3,614 assets, while every asset has a location. The SR form uses it as an asset→location ladder so a ticket can be filed one level up (e.g. `01-FE-BFW407A` → `01-FDW-INST` → `01-FDW` UNIT 01 FEEDWATER) when the broken thing isn't itself an asset. Picking a rung clears `assetnum`, because Maximo derives location from asset and a wrong asset would override the chosen location.
 
 ### `MaximoInventoryAdapter`
-Item/parts picker. `DEFAULT_STOREROOM = "WAREHOUSE1"`.
-- `search(query, siteid, storeroom, pageSize)` — queries the **item master** `mxapiitem` (select itemnum, description, issueunit, status) with `spi:status="ACTIVE"`; no-words → one query, else two AND-word queries over `itemnum` and `description`, merged/deduped by itemnum. Sorted in Java by itemnum. Then `enrichBalances`.
-- `enrichBalances(items, site, store)` — one batched call to `mxapiinventory` (select itemnum, curbal) with `siteid AND location=store AND itemnum in [...]`; sets `curbal` per item (descriptions come from the item master because `mxapiinventory`'s item join returns null on this instance).
+Stateless Maximo access for items/inventory — it fetches; the cached catalog lives in `MaximoInventoryCatalogService`. `DEFAULT_STOREROOM = "WAREHOUSE1"`.
+- `countStockLines(site)` / `countChangedSince(site, since)` — `count=1` + `oslc.pageSize=1` → bare `totalCount`, ~0.1 s. The drift and change probes.
+- `fetchStockLines(site, since)` → `StockFetch(rows, maxStatusdate, rawCount)` — stock lines from `mxapiinventory` (itemnum, location, binnum, curbal, issueunit, status, statusdate), deduped by `itemnum|location`. `since != null` restricts to `statusdate >` (the incremental path). The page cap is derived from the live `totalCount`, so truncation is impossible — a shortfall logs an error.
+- `fetchDescriptions(itemnums)` — `mxapiitem` via `itemnum in [...]` in chunks of 250 (indexed → fast). Descriptions must come from the item master: `mxapiinventory`'s `item{description}` join returns null on this instance. Never use a leading-wildcard `description LIKE "%x%"` there — 40 s+ full scan.
+- `findLiveByItemnum(itemnum, siteid)` — live exact lookup (~0.2 s), the fallback for a part not yet in the catalog. Never throws.
+- `getStock(itemnum, siteid, storeroom)` — full live stock detail (curbal, status, reserved, min/max/reorder/orderqty, invcost, usage stats, href). **The authority for balance and status**; callers about to act on stock must use this, not the catalog.
+- `getUsage(itemnum, siteid, storeroom, pageSize)` — `mxapiinventory/{href}/matusetrans`, newest first.
+
+### `MaximoInventoryCatalogService`
+The searchable inventory catalog: in-memory, mirrored to `data/cache/maximo-inventory-catalog.json.gz` (gzip JSON, atomic temp+rename, gitignored). Loaded at boot in ~50 ms so a restart never costs the ~100 s full build. Never evicted; refreshed on a private daemon thread that publishes by swapping one `volatile` reference, so a search never blocks on Maximo.
+- `search(query, siteid, storeroom, pageSize)` — AND word-bucket over itemnum + description, filtered in Java. Exact itemnum sorts first, then prefix. Falls back to `findLiveByItemnum` when a single-token query has no cached hit.
+- `storerooms(siteid)`, `status()` (→ `{ready, building, rows, site, builtAt, fullBuiltAt}`), `warm()`.
+- `@Scheduled` (5 min) calls `warm()` — **never refreshes inline**, because Spring's scheduler pool is one thread and a full rebuild would stall every other job. Change probe (~0.1 s) → incremental merge (~2 s) only when something changed; drift probe → full rebuild on deletions; forced full rebuild every `maximo.inventory.full-rebuild-hours` (12).
+- Watermark = Maximo's own newest `statusdate`, probed at `truncatedTo(SECONDS).plusSeconds(1)`. Drift baseline is `sourceCount` (Maximo's raw member count), never `rows.size()`. Repeated storeroom/issueunit/status strings are pooled (~40 % memory). See `inventory-checkout-api.md`.
+- Config: `maximo.inventory.catalog-file`, `.refresh-interval-ms` (300000), `.refresh-initial-delay-ms` (20000), `.full-rebuild-hours` (12).
 
 ### `MaximoBundleService`
 Cross-source aggregation combining local `User` data with Maximo. `LEAD_OPERATOR_ROLE = "LEAD_OPERATOR"`.

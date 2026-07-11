@@ -205,6 +205,13 @@ export class RfLotoStandardFormComponent {
   // Bulk search dialog
   showBulkSearchDialog = signal<boolean>(false);
 
+  /** Collapses the "available points" browse table once the user is done adding points */
+  hideAllItemsTable = signal<boolean>(false);
+
+  toggleAllItemsTable(): void {
+    this.hideAllItemsTable.update(hidden => !hidden);
+  }
+
   /**
    * Carousel state
    */

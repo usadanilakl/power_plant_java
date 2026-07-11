@@ -10,6 +10,7 @@ import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-
 import {
   CreateMaximoServiceRequest,
   MaximoAsset,
+  MaximoLocation,
   MaximoServiceRequest
 } from '../../../models/maximo/maximo.models';
 
@@ -70,6 +71,19 @@ export class MaximoSrSubmitComponent implements OnChanges {
   pending = signal<PendingFile[]>([]);
   isDragOver = signal(false);
 
+  /**
+   * Where this SR is being aimed. Assets in this Maximo are leaves — none of them carries a parent — so when
+   * the broken thing isn't itself an asset (a flange, an attemperator ring), the only way to aim one level up
+   * is the asset's LOCATION, or one of that location's ancestors. Choosing a location clears assetnum: a
+   * deliberately broader location beats a precisely wrong asset.
+   */
+  filedAgainst = signal<'asset' | 'location'>('asset');
+  /** The asset the chain was derived from — kept so the user can switch back after exploring parents. */
+  anchorAsset = signal<MaximoAsset | null>(null);
+  /** Leaf first: the asset's own location, then parent, grandparent… The site rung is excluded server-side. */
+  locationChain = signal<MaximoLocation[]>([]);
+  chainLoading = signal(false);
+
   submitting = signal(false);
   submitError = signal<string | null>(null);
   attachmentProgress = signal<string | null>(null);
@@ -123,12 +137,58 @@ export class MaximoSrSubmitComponent implements OnChanges {
     this.sr.assetnum = a.assetnum ?? '';
     this.sr.location = a.location ?? '';
     if (!this.sr.siteid) this.sr.siteid = a.siteid ?? this.defaultSite;
+    this.anchorAsset.set(a);
+    this.filedAgainst.set('asset');
+    this.loadLocationChain(a.location);
   }
 
   /** Asset picked in the shared picker → fill assetnum + location + site (applyAsset is the single source). */
   pickAsset(a: MaximoAsset) {
     this.applyAsset(a);
     this.match.set({ kind: 'exact', asset: a, tier: 'exact' });
+  }
+
+  /** A location chosen directly in the location picker also gets its own ladder, so the user can climb from it. */
+  pickLocation(l: MaximoLocation) {
+    this.sr.location = l.location ?? '';
+    this.loadLocationChain(l.location);
+  }
+
+  private async loadLocationChain(location: string | null | undefined) {
+    if (!location) { this.locationChain.set([]); return; }
+    this.chainLoading.set(true);
+    try {
+      this.locationChain.set(
+        await firstValueFrom(this.api.getLocationAncestors(location, this.sr.siteid || this.defaultSite)));
+    } catch {
+      this.locationChain.set([]);   // non-fatal: the plain location picker still works
+    } finally {
+      this.chainLoading.set(false);
+    }
+  }
+
+  /**
+   * File against a location instead of the asset. The assetnum is cleared on purpose — attaching the SR to a
+   * flow orifice when the leak is on a flange upstream of it is worse than attaching it to "UNIT 01 FEEDWATER".
+   */
+  fileAgainstLocation(l: MaximoLocation) {
+    this.sr.location = l.location;
+    this.sr.assetnum = '';
+    this.filedAgainst.set('location');
+  }
+
+  /** Go back to filing against the asset the chain came from. */
+  fileAgainstAsset() {
+    const a = this.anchorAsset();
+    if (!a) return;
+    this.sr.assetnum = a.assetnum ?? '';
+    this.sr.location = a.location ?? '';
+    this.filedAgainst.set('asset');
+  }
+
+  /** True when this rung is the one the SR currently points at. */
+  isTargetLocation(l: MaximoLocation): boolean {
+    return this.filedAgainst() === 'location' && this.sr.location === l.location;
   }
 
   // ---- attachment dropzone ----------------------------------------------------

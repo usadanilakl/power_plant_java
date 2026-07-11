@@ -94,6 +94,7 @@ export interface EquipmentListManagerContext {
   useUnifiedDialog?: boolean;  // Use unified browse/draw dialog instead of separate dialogs
   requireLotoPointForDrawn?: boolean;  // Require LOTO point creation for newly drawn equipment
   requireLotoPointForUnassociated?: boolean;  // Require LOTO point creation for equipment without LOTO point association
+  multiSelect?: boolean;  // Allow selecting multiple existing equipment at once (across drawings)
 }
 
 export interface FormFieldGroup {

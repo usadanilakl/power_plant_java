@@ -9,6 +9,10 @@ parts** (create a WO and issue material), **return/issue** material to correct m
 - **[oslc-verified-behavior.md](oslc-verified-behavior.md)** — the hard-won, live-probed OSLC rules
   (auth, MERGE-vs-AddChange, changeStatus, no-parens/OR, the orderBy `+` trap, reference-data
   sources). Start here before touching any Maximo query.
+- **[inventory-checkout-api.md](inventory-checkout-api.md)** — parts-checkout / issue / return
+  end-to-end, **plus the full test matrix proving `MATUSETRANS.QUANTITY` is read-only to the
+  integration** (why a qty-N issue is sent as N single-unit rows), per-storeroom OBSOLETE status,
+  and the exact object-structure fix a Maximo admin must make. Read before touching material issue.
 - **[backend-reference.md](backend-reference.md)** — every adapter, service, REST endpoint, DTO, and
   the access facade.
 - **[frontend-reference.md](frontend-reference.md)** — routes, pages, components, the api service,

@@ -441,13 +441,27 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
                     continue;
                 }
 
-                // Step 4: Get the first equipment from the counterpart's equipment list
+                // Step 4: Pick the counterpart equipment. When the counterpart LOTO point owns
+                // several equipment, prefer the one whose tag is the unit-swapped source tag
+                // (e.g. 01-VHHS846F -> 02-VHHS846F) so slots resolve to the right tag; otherwise
+                // fall back to the first. Set-iteration order is otherwise arbitrary.
                 Set<Equipment> counterpartEquipmentSet = counterpartLotoPoint.getEquipmentList();
                 if (counterpartEquipmentSet == null || counterpartEquipmentSet.isEmpty()) {
                     System.out.println("No equipment found for counterpart LOTO point: " + counterpartLotoPoint.getTagNumber());
                     continue;
                 }
-                Equipment counterpartEquipment = counterpartEquipmentSet.iterator().next();
+                Equipment counterpartEquipment = null;
+                String srcTag = equipment.getTagNumber();
+                if (srcTag != null && srcTag.length() >= 2) {
+                    String wantTag = targetUnit + srcTag.substring(2);
+                    counterpartEquipment = counterpartEquipmentSet.stream()
+                            .filter(e -> wantTag.equals(e.getTagNumber()))
+                            .findFirst()
+                            .orElse(null);
+                }
+                if (counterpartEquipment == null) {
+                    counterpartEquipment = counterpartEquipmentSet.iterator().next();
+                }
 
                 // Step 5: Convert to DTO and add to list
                 EquipmentDto counterpartDto = ngEquipmentService.toDto(counterpartEquipment);
@@ -543,6 +557,8 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
             existing.setZeroEnergyTemplate(valueService.findById(newTemplateId).orElse(null));
         }
         existing.setNormalizedEquipmentIds(idDto.getTemplateEquipmentIds());
+        // Slot order for placeholder resolution (sorted key above can't carry it)
+        existing.setOrderedEquipmentIds(idDto.getTemplateEquipmentIds());
 
         // Rebuild method string via mapper (parses template JSON and substitutes equipment tags)
         ZeroEnergy rebuilt = zeroEnergyMapper.convertIdDtoToEntity(idDto);

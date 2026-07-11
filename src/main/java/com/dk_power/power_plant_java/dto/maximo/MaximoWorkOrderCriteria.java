@@ -31,8 +31,34 @@ public class MaximoWorkOrderCriteria {
     private String reportdateTo;         // ISO 8601, applied as spi:reportdate <= value
     private String statusdateFrom;       // ISO 8601, applied as spi:statusdate >= value (e.g. completed-since)
     private String statusdateTo;         // ISO 8601, applied as spi:statusdate <= value
-    private String descriptionContains;       // LIKE %...% on spi:description (title only)
-    private String longDescriptionContains;   // LIKE %...% on spi:description_longdescription
+    /**
+     * Free-text search across the title AND the long description. OSLC has no OR, so the adapter runs one
+     * query per column and merges. This is what a user-facing search box should send — a WO's title may say
+     * "UNIT 2 MONTHLY SAMPLE PANEL MAINTENANCE" while its long description is empty, and vice versa.
+     */
+    private String textContains;
+    private String descriptionContains;       // AND word-bucket of LIKE %word% on spi:description (title only)
+    /** Contiguous LIKE %...% on spi:description — for identity matching (e.g. a PM's own WOs), not user search. */
+    private String descriptionPhrase;
+    private String longDescriptionContains;   // AND word-bucket of LIKE %word% on spi:description_longdescription
     private String wonumContains;              // LIKE %...% on spi:wonum
     private String siteid;               // override default site
+
+    /**
+     * Whether any real filter was supplied. {@code siteid} is excluded on purpose: it scopes every query
+     * anyway, so "site JG and nothing else" is still the unfiltered view. Lets a caller pick between
+     * {@code listByCriteria} and the newest-first {@code listLatest} default.
+     */
+    public boolean hasAnyFilter() {
+        return anyText(status, worktype, pmnum, assetnum, location, priority, leadCraft, supervisor,
+                schedstartFrom, schedfinishTo, reportdateFrom, reportdateTo, statusdateFrom, statusdateTo,
+                textContains, descriptionContains, descriptionPhrase, longDescriptionContains, wonumContains)
+                || (statusIn != null && !statusIn.isEmpty())
+                || (leadIn != null && !leadIn.isEmpty());
+    }
+
+    private static boolean anyText(String... values) {
+        for (String v : values) if (v != null && !v.isBlank()) return true;
+        return false;
+    }
 }

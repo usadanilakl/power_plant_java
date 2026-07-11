@@ -18,6 +18,48 @@
   overflow: hidden;
 }
 
+/* Header collapse/restore tab — mirrors .menu-toggle-btn, themed via CSS vars.
+   Persistent at top-center (header uses space-between so the center stays clear). */
+.header-toggle-btn {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 18px;
+  border-radius: 0 0 10px 10px;
+  background-color: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.3s ease;
+  z-index: 1002;
+}
+
+.header-toggle-btn:hover {
+  background-color: var(--accent-color);
+}
+
+.header-arrow {
+  border: solid var(--primary-text);
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 2.5px;
+  /* Arrow pointing UP (header shown -> click to hide) */
+  transform: translateY(2px) rotate(-135deg);
+  transition: transform 0.3s ease;
+}
+
+/* Arrow pointing DOWN (header hidden -> click to restore) */
+.header-arrow.collapsed {
+  transform: translateY(-2px) rotate(45deg);
+}
+
 .header {
   position: relative;
   background-color: var(--header-background);

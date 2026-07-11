@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
-export type MessageColor = 'red' | 'green' | 'white' | 'yellow';
-export type MessageType = 'blocking' | 'informational';
+export type MessageColor = 'red' | 'green' | 'white' | 'yellow' | 'orange';
+export type MessageType = 'blocking' | 'informational' | 'loading';
 
 export interface Message {
   text: string;
@@ -75,6 +75,14 @@ export class GlobalMessageService {
     this.show(text, 'yellow', durationMs, 'blocking');
   }
 
+  /**
+   * Show a spinner while an operation is in flight. Never auto-hides - the caller
+   * replaces it with showSuccess/showError, or calls hideMessage().
+   */
+  showLoading(text: string, color: MessageColor = 'white') {
+    this.show(text, color, 0, 'loading');
+  }
+
   private show(text: string, color: MessageColor, durationMs: number, type: MessageType) {
     this.clearTimeouts();
 
@@ -86,9 +94,12 @@ export class GlobalMessageService {
       isMinimized: false
     });
 
-    this.timeoutId = setTimeout(() => {
-      this.hideMessage();
-    }, durationMs);
+    // durationMs of 0 means "stay until explicitly dismissed" (loading)
+    if (durationMs > 0) {
+      this.timeoutId = setTimeout(() => {
+        this.hideMessage();
+      }, durationMs);
+    }
   }
 
   private minimizeMessage() {

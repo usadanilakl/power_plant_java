@@ -68,6 +68,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   @Input() conflictMode: ConflictMode = 'has-association';  // Conflict detection mode
   @Input() requireLotoPointForDrawn: boolean = false;  // Require LOTO point creation for newly drawn equipment
   @Input() requireLotoPointForUnassociated: boolean = false;  // Require LOTO point creation for equipment without LOTO point association
+  @Input() multiSelect: boolean = false;  // Allow selecting multiple existing equipment at once (across drawings) in the unified dialog
 
   // ViewContainerRef for dynamic component loading
   @ViewChild('lotoFormContainer', { read: ViewContainerRef }) lotoFormContainer!: ViewContainerRef;
@@ -194,6 +195,26 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     }
 
     this.addEquipmentToList(equipment, equipment.id ? 'browsed' : 'drawn');
+    this.closeUnifiedDialog();
+  }
+
+  /**
+   * Multi-select: the unified dialog emits several browsed (existing) equipment at once.
+   * Each is added directly, deduped against what's already in the list. The interactive
+   * per-item conflict/LOTO-form modals don't compose with a batch, so they are intentionally
+   * skipped here — they remain in force on the default single-select path.
+   */
+  onUnifiedEquipmentListAcquired(equipmentList: EquipmentDto[]) {
+    const existingIds = new Set(this.equipmentList().map(item => item.id));
+    for (const equipment of equipmentList) {
+      if (equipment.id != null && existingIds.has(equipment.id)) {
+        continue; // already in the list
+      }
+      this.addEquipmentToList(equipment, 'browsed');
+      if (equipment.id != null) {
+        existingIds.add(equipment.id);
+      }
+    }
     this.closeUnifiedDialog();
   }
 
@@ -535,6 +556,24 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       this.onChange(this.value());
       this.onTouched();
     }
+  }
+
+  /**
+   * Reorder an item by one position. For zero-energy this changes which equipment
+   * fills which placeholder slot (list order = placeholder index).
+   * @param direction -1 to move up, +1 to move down
+   */
+  moveItem(index: number, direction: -1 | 1) {
+    if (this.disabled) return;
+    const currentList = this.equipmentList();
+    const target = index + direction;
+    if (target < 0 || target >= currentList.length) return;
+    const updatedList = [...currentList];
+    [updatedList[index], updatedList[target]] = [updatedList[target], updatedList[index]];
+    this.equipmentList.set(updatedList);
+    this.value.set(updatedList);
+    this.onChange(this.value());
+    this.onTouched();
   }
 
   clearAll() {

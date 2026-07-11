@@ -606,6 +606,7 @@ export class LotoPointMapperService {
             useUnifiedDialog: true,  // Use unified dialog (single button for browse + draw)
             requireLotoPointForDrawn: true,  // Require LOTO point creation when drawing new equipment
             requireLotoPointForUnassociated: true,  // Require LOTO point creation for equipment without association
+            multiSelect: true,  // Pick equipment for several placeholders at once, across drawings
           },
         },
         {

@@ -26,6 +26,8 @@ export class DoubleLotoPointTableComponent implements OnInit {
 
   // Inputs
   selectedItems = input<LotoPointDto[]>([]);
+  /** Hides the "available points" browse table so the selected-points table gets the full width */
+  hideSource = input<boolean>(false);
 
   // Output signals for parent components to react to changes
   itemAdded = output<LotoPointDto>();

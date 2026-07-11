@@ -167,8 +167,13 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
 
         // Transform changes for counterpart
         const transformedChanges: Record<string, any> = {};
+        const hasZeroEnergyChange = 'zeroEnergy' in changes;
 
         for (const [key, value] of Object.entries(changes)) {
+          // zeroEnergy cannot be transformed synchronously - it needs an equipment
+          // lookup against the target unit, handled below via syncZeroEnergy
+          if (key === 'zeroEnergy') continue;
+
           if (SYNCABLE_FIELDS.includes(key as SyncableField)) {
             // Use counterpart service to transform the field
             const tempSource = new LotoPointDto({ ...sourceItem, [key]: value });
@@ -185,15 +190,31 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
           }
         }
 
-        // Apply transformed changes to counterpart
-        const updatedCounterpart = new LotoPointDto({
-          ...counterpart,
-          ...transformedChanges,
-          id: counterpart.id // Preserve counterpart's id
-        });
+        // Resolve zeroEnergy for the target unit the same way the dual form does:
+        // look up the counterpart LOTO points of the source's template equipment so
+        // the counterpart gets its own unit's equipment rather than the source's.
+        const counterpartBase$: Observable<LotoPointDto> = hasZeroEnergyChange
+          ? this.counterpartService.syncZeroEnergy(
+              new LotoPointDto({ ...sourceItem, zeroEnergy: changes.zeroEnergy }),
+              counterpart,
+              sourceUnit,
+              this.destroyRef
+            )
+          : of(counterpart);
 
-        return this.apiService.updateLotoPoint(updatedCounterpart).pipe(
-          map(res => res.responseData),
+        return counterpartBase$.pipe(
+          switchMap(base => {
+            // Apply transformed changes to counterpart
+            const updatedCounterpart = new LotoPointDto({
+              ...base,
+              ...transformedChanges,
+              id: counterpart.id // Preserve counterpart's id
+            });
+
+            return this.apiService.updateLotoPoint(updatedCounterpart).pipe(
+              map(res => res.responseData)
+            );
+          }),
           catchError(error => {
             console.error(`Error updating counterpart ${counterpartId}:`, error);
             return of(null as any);

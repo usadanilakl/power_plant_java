@@ -5,6 +5,7 @@ import { ServerApiService } from '../../services/server-api.service';
 import { ServerStatusService } from '../../services/server-status.service';
 import { SubmissionOrchestratorService } from '../../services/submission-orchestrator.service';
 import { UserSetupService } from '../../services/user-setup.service';
+import { GlobalMessageService } from '../../services/global-message.service';
 import { AuthService } from '../../auth/auth.service';
 import { ReactiveFormComponent } from '../../shared/forms/reactive-form/reactive-form.component';
 import { FormField } from '../../models/inputs/form-field.model';
@@ -12,7 +13,6 @@ import { fieldListFormFields } from '../../models/field-list/field-list-item.mod
 import { Option } from '../../models/inputs/option.model';
 
 type ViewMode = 'select' | 'new' | 'edit' | 'open-items';
-type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
 interface OpenItem {
   id: number;
@@ -35,34 +35,6 @@ interface OpenItem {
   standalone: true,
   imports: [CommonModule, ReactiveFormComponent],
   template: `
-    <!-- Submission overlay -->
-    @if (submitState() === 'submitting') {
-      <div class="overlay">
-        <div class="overlay-card">
-          <div class="spinner"></div>
-          <p class="overlay-text">Submitting field list item...</p>
-        </div>
-      </div>
-    }
-    @if (submitState() === 'success') {
-      <div class="overlay">
-        <div class="overlay-card success">
-          <span class="overlay-icon">&#10003;</span>
-          <p class="overlay-text">{{ submitMessage() }}</p>
-          <button class="overlay-btn" (click)="dismissResult()">OK</button>
-        </div>
-      </div>
-    }
-    @if (submitState() === 'error') {
-      <div class="overlay">
-        <div class="overlay-card error">
-          <span class="overlay-icon">&#10007;</span>
-          <p class="overlay-text">{{ submitMessage() }}</p>
-          <button class="overlay-btn" (click)="dismissResult()">OK</button>
-        </div>
-      </div>
-    }
-
     <!-- Mode selector -->
     @if (mode() === 'select') {
       <div class="action-selector">
@@ -332,14 +304,6 @@ interface OpenItem {
       white-space: pre-wrap; font-size: 13px; margin-top: 4px; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex;
       align-items: center; justify-content: center; z-index: 9999; }
-    .overlay-card { background: var(--primary-background); border-radius: 16px; padding: 32px;
-      text-align: center; min-width: 280px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
-    .overlay-card.success .overlay-icon { color: #4caf50; }
-    .overlay-card.error .overlay-icon { color: #f44336; }
-    .overlay-icon { font-size: 48px; display: block; margin-bottom: 12px; }
-    .overlay-text { font-size: 16px; margin: 0 0 16px; }
-    .overlay-btn { padding: 10px 32px; background: var(--accent-color); color: white; border: none;
-      border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; }
     .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color);
       border-top-color: var(--accent-color); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -375,6 +339,7 @@ export class FieldListComponent implements OnInit {
   private authService = inject(AuthService);
   private orchestrator = inject(SubmissionOrchestratorService);
   private userSetup = inject(UserSetupService);
+  private globalMessage = inject(GlobalMessageService);
   private http = inject(HttpClient);
 
   mode = signal<ViewMode>('select');
@@ -384,8 +349,6 @@ export class FieldListComponent implements OnInit {
   editEntity = signal<any>({});
   editingSubmitted = signal(false);
   draftEntity = signal<any>({});
-  submitState = signal<SubmitState>('idle');
-  submitMessage = signal('');
   presetListType = signal('');
 
   // Open items
@@ -584,7 +547,7 @@ export class FieldListComponent implements OnInit {
   // ====================== Submit new ======================
 
   onSubmit(formData: any): void {
-    this.submitState.set('submitting');
+    this.globalMessage.showLoading('Submitting field list item...');
 
     const payload = this.buildPayload(formData);
     payload.localUuid = crypto.randomUUID();
@@ -595,18 +558,16 @@ export class FieldListComponent implements OnInit {
         this.saveToLocalHistory(payload);
         if (result.success) {
           this.clearDraft(this.presetListType());
-          this.submitState.set('success');
-          this.submitMessage.set(result.message || `Submitted via ${result.method}`);
+          this.globalMessage.showSuccess(result.message || `Submitted via ${result.method}`);
+          this.backToSelect();
         } else {
-          this.submitState.set('error');
-          this.submitMessage.set(result.message || 'Submission failed. Item saved locally.');
+          this.globalMessage.showError(result.message || 'Submission failed. Item saved locally.');
         }
       },
       error: () => {
         payload.submitted = false;
         this.saveToLocalHistory(payload);
-        this.submitState.set('error');
-        this.submitMessage.set('Submission failed. Item saved locally for retry.');
+        this.globalMessage.showError('Submission failed. Item saved locally for retry.');
       }
     });
   }
@@ -614,12 +575,13 @@ export class FieldListComponent implements OnInit {
   // ====================== Edit existing ======================
 
   onUpdate(formData: any): void {
-    this.submitState.set('submitting');
+    this.globalMessage.showLoading('Submitting field list item...');
 
     const payload = this.buildPayload(formData);
     payload.localUuid = this.editingLocalUuid;
 
-    const action$ = this.editingSubmitted()
+    const wasSubmitted = this.editingSubmitted();
+    const action$ = wasSubmitted
       ? this.orchestrator.updateFieldListItem(payload)
       : this.orchestrator.submitFieldListItem(payload);
 
@@ -628,34 +590,23 @@ export class FieldListComponent implements OnInit {
         payload.submitted = result.success;
         this.updateLocalHistory(payload);
         if (result.success) {
-          this.submitState.set('success');
-          this.submitMessage.set(this.editingSubmitted()
+          this.globalMessage.showSuccess(wasSubmitted
             ? (result.message || 'Updated successfully')
             : (result.message || 'Submitted successfully'));
+          this.backToSelect();
         } else {
-          this.submitState.set('error');
-          this.submitMessage.set(result.message || 'Failed. Changes saved locally.');
+          this.globalMessage.showError(result.message || 'Failed. Changes saved locally.');
         }
       },
       error: () => {
         payload.submitted = false;
         this.updateLocalHistory(payload);
-        this.submitState.set('error');
-        this.submitMessage.set('Failed. Changes saved locally.');
+        this.globalMessage.showError('Failed. Changes saved locally.');
       }
     });
   }
 
   // ====================== Shared ======================
-
-  dismissResult(): void {
-    const wasSuccess = this.submitState() === 'success';
-    this.submitState.set('idle');
-    this.submitMessage.set('');
-    if (wasSuccess) {
-      this.backToSelect();
-    }
-  }
 
   private buildPayload(formData: any): any {
     let equipmentTag = '';

@@ -208,6 +208,20 @@
     </div>
   }
 
+  <!-- Multi-select tray: accumulated equipment across all drawings -->
+  @if (multiSelect() && selectedEquipmentList().length > 0) {
+    <div class="multi-select-tray">
+      <span class="multi-select-tray-label">Selected ({{ selectedEquipmentList().length }}):</span>
+      @for (eq of selectedEquipmentList(); track eq.id) {
+        <span class="multi-select-chip">
+          {{ getEquipmentLabel(eq) }}
+          <button type="button" class="multi-select-chip-remove"
+                  title="Remove" (click)="removeFromList(eq)">&times;</button>
+        </span>
+      }
+    </div>
+  }
+
   <!-- Dialog Actions -->
   @if (!hideActions()) {
     <div class="dialog-actions">
@@ -226,6 +240,8 @@
           Saving...
         } @else if (drawnShape()) {
           Save & Select
+        } @else if (multiSelect()) {
+          Add {{ selectedEquipmentList().length }} equipment
         } @else {
           Select Equipment
         }

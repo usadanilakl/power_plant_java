@@ -227,7 +227,7 @@ export class HomePageComponent {
 
   /** Tier 3 — Plant staff only. Opens the full web app (jgportal) in a new tab. */
   plantTools: PlantTool[] = [
-    { title: 'Maximo', description: 'Assets, work orders, service requests', icon: '🏭', url: `${APP_BASE}/maximo` },
+    { title: 'Maximo', description: 'Work orders, requests, PMs, parts', icon: '🏭', route: '/maximo' },
     { title: 'LOTO', description: 'Lockout/tagout points, boxes, locks', icon: '🔒', url: `${APP_BASE}/loto/loto` },
     { title: 'LOTO Standards', description: 'View, verify, and walk down standards', icon: '📚', route: '/loto-standards' },
     { title: 'Qualifications', description: 'Manage personnel qualifications and QR codes', icon: 'ID', route: '/qualification-management' }

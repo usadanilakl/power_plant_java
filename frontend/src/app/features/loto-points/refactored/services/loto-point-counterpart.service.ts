@@ -287,28 +287,22 @@ export class LotoPointCounterpartService {
       }));
     }
 
-    // Extract LOTO point IDs from templateEquipment[].lotoPoints[]
-    // Equipment items have associated LOTO points - we need those LOTO point IDs
-    const lotoPointIds: number[] = [];
-    if (sourceZeroEnergy.templateEquipment?.length) {
-      for (const equipment of sourceZeroEnergy.templateEquipment) {
-        // Check if item has lotoPoints array (Equipment with LOTO point associations)
-        if (equipment.lotoPoints?.length) {
-          for (const lp of equipment.lotoPoints) {
-            if (lp.id != null && lp.id > 0) {
-              lotoPointIds.push(lp.id);
-            }
-          }
-        }
-        // Also check if the item itself is a LOTO point (has tagNumber but no lotoPoints)
-        else if (equipment.tagNumber && equipment.id != null && equipment.id > 0) {
-          lotoPointIds.push(equipment.id);
-        }
-      }
+    // Extract source EQUIPMENT IDs in slot order (each placeholder maps to one equipment).
+    // We resolve counterparts at the EQUIPMENT level (1:1) rather than via LOTO points:
+    // a counterpart LOTO point can own several equipment, and expanding its whole
+    // equipmentList duplicated some tags and dropped others, breaking slot alignment.
+    let sourceEquipmentIds: number[] = [];
+    if (sourceZeroEnergy.templateEquipmentIds?.length) {
+      sourceEquipmentIds = sourceZeroEnergy.templateEquipmentIds
+        .filter((id): id is number => id != null && id > 0);
+    } else if (sourceZeroEnergy.templateEquipment?.length) {
+      sourceEquipmentIds = sourceZeroEnergy.templateEquipment
+        .map((eq: any) => eq?.id)
+        .filter((id: any): id is number => id != null && id > 0);
     }
 
-    if (lotoPointIds.length === 0) {
-      // No LOTO points to lookup - just copy template and method
+    if (sourceEquipmentIds.length === 0) {
+      // No equipment to map - just copy template and method
       const counterpartZeroEnergy = new ZeroEnergyDto({
         zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
         method: sourceZeroEnergy.method,
@@ -322,39 +316,19 @@ export class LotoPointCounterpartService {
       }));
     }
 
-    // Call API to lookup counterpart LOTO points and their associated Equipment
-    return this.apiService.lookupCounterpartLotoPoints(lotoPointIds, sourceUnit).pipe(
+    // Look up one counterpart equipment per source equipment, preserving slot order
+    return this.apiService.lookupCounterpartEquipment(sourceEquipmentIds, sourceUnit).pipe(
       takeUntilDestroyed(destroyRef),
       switchMap((response) => {
-        const counterpartLotoPoints = response.responseData || [];
-
-        // Build counterpart equipment list from counterpart LOTO points
-        // Each counterpart LOTO point should have equipmentList with the associated equipment
-        const counterpartEquipment: any[] = [];
-        for (const lp of counterpartLotoPoints) {
-          if (lp.equipmentList?.length) {
-            // Add equipment with the LOTO point reference
-            for (const eq of lp.equipmentList) {
-              counterpartEquipment.push({
-                ...eq,
-                lotoPoints: [lp], // Associate the LOTO point
-              });
-            }
-          } else {
-            // No equipment on LOTO point - use LOTO point itself as reference
-            counterpartEquipment.push({
-              id: lp.id,
-              tagNumber: lp.tagNumber,
-              lotoPoints: [lp],
-            });
-          }
-        }
+        const counterpartEquipment = response.responseData || [];
 
         const counterpartZeroEnergy = new ZeroEnergyDto({
           zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
           method: sourceZeroEnergy.method,
           templateEquipment: counterpartEquipment,
-          templateEquipmentIds: counterpartEquipment.map(eq => eq.id).filter((id): id is number => id != null),
+          templateEquipmentIds: counterpartEquipment
+            .map(eq => eq.id)
+            .filter((id): id is number => id != null),
         });
 
         return of(new LotoPointDto({
@@ -363,7 +337,7 @@ export class LotoPointCounterpartService {
         }));
       }),
       catchError((error) => {
-        console.error('Error looking up counterpart LOTO points:', error);
+        console.error('Error looking up counterpart equipment:', error);
 
         // Fallback: copy template without equipment
         const counterpartZeroEnergy = new ZeroEnergyDto({

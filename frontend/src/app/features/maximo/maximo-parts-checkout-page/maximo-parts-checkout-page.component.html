@@ -64,9 +64,10 @@
             <span class="srch-status" *ngIf="itemSearching()"><span class="spinner"></span> Searching inventory…</span>
           </div>
           <div class="srch-status warming" *ngIf="catalogWarming() && !itemSearching()">
-            <span class="spinner"></span> Loading inventory catalog… (first search after a while can take a moment)
+            <span class="spinner"></span> Building the inventory catalog for the first time — search will be instant once it's done.
           </div>
-          <div class="muted hint" *ngIf="itemQuery.trim().length >= 2 && !itemSearching() && itemResults().length === 0">
+          <div class="muted hint"
+               *ngIf="itemQuery.trim().length >= 2 && !itemSearching() && !catalogWarming() && itemResults().length === 0">
             No items match “{{ itemQuery }}”.
           </div>
 
@@ -99,7 +100,10 @@
               <td>{{ l.itemnum }}</td>
               <td class="desc">{{ l.description }}</td>
               <td>{{ l.storeroom }}<span class="obs-tag" *ngIf="isObsolete(l.status)">obsolete — can't issue</span></td>
-              <td class="num">{{ l.curbal ?? '—' }} {{ l.issueunit }}</td>
+              <td class="num">
+                <span class="spinner" *ngIf="l.verifying" title="Checking the live balance in Maximo…"></span>
+                <ng-container *ngIf="!l.verifying">{{ l.curbal ?? '—' }} {{ l.issueunit }}</ng-container>
+              </td>
               <td class="num">
                 <input type="number" min="0.01" step="1" [(ngModel)]="l.quantity" />
                 <span class="warn-txt" *ngIf="overStock(l)">over stock</span>
