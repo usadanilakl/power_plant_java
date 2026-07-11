@@ -80,6 +80,76 @@ export interface MaximoOverview {
   upcoming: MaximoWorkOrder[];
 }
 
+// ── Offline PM grab + completion draft ─────────────────────────────────────
+
+/** A work order grabbed for offline work: the WO + its completion form, cached locally. */
+export interface MaximoGrab {
+  wo: MaximoWorkOrder;
+  formTemplate: MaximoFormTemplate | null;
+  grabbedAt: number;
+}
+
+/** An in-progress completion, saved locally; submitted on reconnect. */
+export interface MaximoCompletionDraft {
+  wonum: string;
+  href: string;
+  mode: 'form' | 'manual';
+  templateFormKey?: string;
+  siteid?: string;
+  formValues?: Record<string, any>;
+  hours?: string;
+  summary?: string;
+  details?: string;
+  status: 'draft' | 'pending' | 'failed';
+  updatedAt: number;
+  lastError?: string;
+}
+
+// ── Dynamic PM completion forms ────────────────────────────────────────────
+
+export type MaximoFieldType =
+  | 'text' | 'textarea' | 'number' | 'date'
+  | 'checkbox' | 'select' | 'radio-group' | 'checkbox-group' | 'image';
+
+export interface MaximoFormFieldDef {
+  name: string;
+  label: string;
+  type: MaximoFieldType;
+  required?: boolean;
+  options?: string[];
+  unit?: string;
+  section?: string;
+  placeholder?: string;
+  maximoTarget?: '' | 'worklog' | 'laborhours' | 'reading';
+  imageSrc?: string;
+}
+
+export interface MaximoFormTemplate {
+  id?: number;
+  formKey: string;
+  formName: string;
+  description?: string;
+  fieldsJson: string;                 // JSON.stringify(MaximoFormFieldDef[])
+  matchPmnum?: string | null;
+  matchDescriptionContains?: string | null;
+  completeWoStatus?: string | null;
+  active?: boolean;
+}
+
+export interface MaximoFormSubmission {
+  id?: number;
+  submissionKey?: string;
+  templateFormKey: string;
+  templateName?: string;
+  wonum: string;
+  woHref?: string;
+  siteid?: string;
+  valuesJson: string;                 // JSON.stringify(fieldName -> value)
+  status?: 'DRAFT' | 'COMPLETED';
+  submittedBy?: string;
+  submittedAt?: string;
+}
+
 export interface MaximoLocation {
   href: string;
   location: string;
@@ -88,6 +158,41 @@ export interface MaximoLocation {
   status: string;
   siteid: string;
   parent?: string;
+}
+
+// ── Parts checkout ─────────────────────────────────────────────────────────
+
+export interface MaximoInventoryItem {
+  itemnum: string;
+  description: string;
+  issueunit: string;
+  storeroom: string;
+  binnum: string;
+  curbal: number | null;
+  status?: string;
+}
+
+export interface PartsCheckoutLine {
+  itemnum: string;
+  quantity: number;
+  storeroom?: string;
+}
+
+export interface PartsCheckoutRequest {
+  description?: string;
+  location: string;
+  worktype?: string;
+  siteid?: string;
+  storeroom?: string;
+  lines: PartsCheckoutLine[];
+  memo?: string;
+}
+
+export interface PartsCheckoutResult {
+  wonum: string;
+  href: string;
+  status: string;
+  actmatcost?: number;
 }
 
 /** WO status choices offered in the mobile filter (mirrors the desktop dropdown). */

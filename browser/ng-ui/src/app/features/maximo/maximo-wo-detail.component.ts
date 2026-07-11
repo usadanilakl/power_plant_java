@@ -1,7 +1,11 @@
 import { DatePipe } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, computed, inject, signal } from '@angular/core';
 import { MaximoApiService } from './maximo-api.service';
-import { COMPLETABLE_WO_STATUSES, MaximoWorkOrder, statusClass } from './maximo.model';
+import { MaximoOfflineStore } from './maximo-offline.service';
+import { MaximoSyncService } from './maximo-sync.service';
+import {
+  COMPLETABLE_WO_STATUSES, MaximoCompletionDraft, MaximoFormFieldDef, MaximoFormTemplate, MaximoWorkOrder, statusClass,
+} from './maximo.model';
 
 type Tab = 'details' | 'tasks' | 'complete';
 
@@ -23,6 +27,17 @@ type Tab = 'details' | 'tasks' | 'complete';
           <button class="wd-x" (click)="close.emit()">✕</button>
         </div>
         <h2 class="wd-title">{{ wo.description || '(no description)' }}</h2>
+
+        @if (canComplete()) {
+          @if (grabbed()) {
+            <div class="wd-grabbed">⚡ Grabbed for offline</div>
+          } @else {
+            <button class="wd-grab" [disabled]="grabbing()" (click)="grab()">
+              {{ grabbing() ? 'Grabbing…' : '⚡ Grab for offline' }}
+            </button>
+            @if (grabError()) { <p class="wd-err">{{ grabError() }}</p> }
+          }
+        }
 
         <div class="wd-tabs">
           <button class="wd-tab" [class.active]="tab() === 'details'" (click)="tab.set('details')">Details</button>
@@ -69,6 +84,73 @@ type Tab = 'details' | 'tasks' | 'complete';
         @if (tab() === 'complete') {
           @if (done()) {
             <div class="wd-success"><span class="wd-success-i">✓</span> Work order completed.</div>
+          } @else if (queued()) {
+            <div class="wd-success"><span class="wd-success-i">⏳</span> Saved on this device — it submits to Maximo when you reconnect.</div>
+          } @else if (formLoading()) {
+            <p class="wd-msg">Checking for a PM form…</p>
+          } @else if (formTemplate()) {
+            <p class="wd-formname">{{ formTemplate()?.formName }}</p>
+            @for (row of formRows(); track row.f.name) {
+              @if (row.header) { <h4 class="wd-sec">{{ row.header }}</h4> }
+              @switch (row.f.type) {
+                @case ('image') {
+                  <div class="wd-ff-img"><span class="wd-ff-label">{{ row.f.label }}</span>@if (row.f.imageSrc) { <img [src]="row.f.imageSrc" alt="reference"> }</div>
+                }
+                @case ('textarea') {
+                  <label class="wd-field">{{ row.f.label }}{{ req(row.f) }}
+                    <textarea rows="2" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)" [placeholder]="row.f.placeholder || ''"></textarea>
+                  </label>
+                }
+                @case ('checkbox') {
+                  <label class="wd-check"><input type="checkbox" [checked]="!!formValues()[row.f.name]" (change)="setVal(row.f.name, $any($event.target).checked)"> {{ row.f.label }}</label>
+                }
+                @case ('select') {
+                  <label class="wd-field">{{ row.f.label }}{{ req(row.f) }}
+                    <select [value]="val(row.f.name)" (change)="setVal(row.f.name, $any($event.target).value)">
+                      <option value="">—</option>
+                      @for (o of row.f.options || []; track o) { <option [value]="o">{{ o }}</option> }
+                    </select>
+                  </label>
+                }
+                @case ('radio-group') {
+                  <div class="wd-field"><span>{{ row.f.label }}{{ req(row.f) }}</span>
+                    <div class="wd-opts">
+                      @for (o of row.f.options || []; track o) {
+                        <label class="wd-opt"><input type="radio" [name]="row.f.name" [checked]="val(row.f.name) === o" (change)="setVal(row.f.name, o)"> {{ o }}</label>
+                      }
+                    </div>
+                  </div>
+                }
+                @case ('checkbox-group') {
+                  <div class="wd-field"><span>{{ row.f.label }}{{ req(row.f) }}</span>
+                    <div class="wd-opts">
+                      @for (o of row.f.options || []; track o) {
+                        <label class="wd-opt"><input type="checkbox" [checked]="hasGroupVal(row.f.name, o)" (change)="toggleGroupVal(row.f.name, o, $any($event.target).checked)"> {{ o }}</label>
+                      }
+                    </div>
+                  </div>
+                }
+                @case ('number') {
+                  <label class="wd-field">{{ row.f.label }}{{ row.f.unit ? ' (' + row.f.unit + ')' : '' }}{{ req(row.f) }}
+                    <input type="number" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)">
+                  </label>
+                }
+                @case ('date') {
+                  <label class="wd-field">{{ row.f.label }}{{ req(row.f) }}
+                    <input type="date" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)">
+                  </label>
+                }
+                @default {
+                  <label class="wd-field">{{ row.f.label }}{{ req(row.f) }}
+                    <input type="text" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)" [placeholder]="row.f.placeholder || ''">
+                  </label>
+                }
+              }
+            }
+            @if (error()) { <p class="wd-err">{{ error() }}</p> }
+            <button class="wd-complete" [disabled]="completing()" (click)="submitForm()">
+              {{ completing() ? 'Submitting…' : 'Submit &amp; complete' }}
+            </button>
           } @else {
             <label class="wd-field">Labor hours
               <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value)" placeholder="e.g. 1.5">
@@ -95,6 +177,9 @@ type Tab = 'details' | 'tasks' | 'complete';
     .wd-id { font-weight: 700; color: var(--primary-text); }
     .wd-x { margin-left: auto; background: none; border: none; color: var(--secondary-text, #888); font-size: 1.1rem; cursor: pointer; }
     .wd-title { font-size: 1.1rem; font-weight: 700; color: var(--primary-text); margin: 0 0 0.6rem; }
+    .wd-grab { width: 100%; background: #e67e22; color: #fff; border: none; border-radius: 10px; padding: 0.6rem; font-size: 0.92rem; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 0.7rem; }
+    .wd-grab:disabled { opacity: 0.6; }
+    .wd-grabbed { background: rgba(230,126,34,0.15); color: #e67e22; border: 1px solid #e67e22; border-radius: 10px; padding: 0.45rem; text-align: center; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.7rem; }
     .wd-tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.8rem; }
     .wd-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 0.5rem 0.4rem; font-size: 0.9rem; font-weight: 700; color: var(--secondary-text, #888); cursor: pointer; font-family: inherit; }
     .wd-tab.active { color: var(--primary-text); border-bottom-color: var(--accent-color); }
@@ -117,6 +202,15 @@ type Tab = 'details' | 'tasks' | 'complete';
     .wd-task-ok { color: #27ae60; font-weight: 700; }
     .wd-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.8rem; }
     .wd-field input, .wd-field textarea { padding: 0.55rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-weight: 400; box-sizing: border-box; }
+    .wd-formname { font-size: 0.85rem; font-weight: 700; color: var(--accent-color); margin: 0 0 0.6rem; }
+    .wd-sec { font-size: 0.9rem; font-weight: 700; color: var(--primary-text); margin: 1rem 0 0.4rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--border-color); }
+    .wd-check { display: flex; align-items: center; gap: 0.5rem; color: var(--primary-text); font-size: 0.9rem; margin-bottom: 0.7rem; }
+    .wd-check input { width: 1.1rem; height: 1.1rem; }
+    .wd-opts { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.3rem; }
+    .wd-opt { display: flex; align-items: center; gap: 0.5rem; color: var(--primary-text); font-size: 0.9rem; font-weight: 400; }
+    .wd-ff-img { margin-bottom: 0.7rem; }
+    .wd-ff-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.3rem; }
+    .wd-ff-img img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); }
     .wd-err { color: #e74c3c; font-size: 0.85rem; margin: 0 0 0.7rem; }
     .wd-complete { width: 100%; background: #27ae60; color: #fff; border: none; border-radius: 10px; padding: 0.8rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .wd-complete:disabled { opacity: 0.6; cursor: default; }
@@ -130,9 +224,15 @@ export class MaximoWoDetailComponent implements OnInit {
   @Output() completed = new EventEmitter<void>();
 
   private api = inject(MaximoApiService);
+  private store = inject(MaximoOfflineStore);
+  private sync = inject(MaximoSyncService);
 
   tab = signal<Tab>('details');
   status = signal('');
+  grabbed = signal(false);
+  grabbing = signal(false);
+  grabError = signal<string | null>(null);
+  queued = signal(false);
   tasks = signal<MaximoWorkOrder[]>([]);
   tasksLoading = signal(false);
   private tasksLoaded = false;
@@ -145,7 +245,110 @@ export class MaximoWoDetailComponent implements OnInit {
   done = signal(false);
   error = signal<string | null>(null);
 
-  ngOnInit(): void { this.status.set(this.wo.status); }
+  // Dynamic PM completion form (present only when the WO's PM has an assigned formKey).
+  formLoading = signal(true);
+  formTemplate = signal<MaximoFormTemplate | null>(null);
+  formValues = signal<Record<string, any>>({});
+  formRows = computed<{ f: MaximoFormFieldDef; header: string | null }[]>(() => {
+    const t = this.formTemplate();
+    if (!t) return [];
+    let fields: MaximoFormFieldDef[] = [];
+    try { fields = JSON.parse(t.fieldsJson) as MaximoFormFieldDef[]; } catch { fields = []; }
+    let prev = '';
+    return fields.map(f => {
+      const header = (f.section && f.section !== prev) ? f.section : null;
+      if (f.section) prev = f.section;
+      return { f, header };
+    });
+  });
+
+  ngOnInit(): void {
+    this.status.set(this.wo.status);
+    const grab = this.store.getGrab(this.wo.wonum);
+    if (grab) {
+      // Grabbed: read the form from cache (works offline) + restore any in-progress completion.
+      this.grabbed.set(true);
+      this.formTemplate.set(grab.formTemplate);
+      this.formLoading.set(false);
+      this.restoreDraft();
+    } else {
+      this.api.getCompletionForm(this.wo.pmnum, this.wo.description).subscribe({
+        next: t => { this.formTemplate.set(t); this.formLoading.set(false); },
+        error: () => { this.formTemplate.set(null); this.formLoading.set(false); }
+      });
+    }
+  }
+
+  private restoreDraft(): void {
+    const d = this.store.getDraft(this.wo.wonum);
+    if (!d) return;
+    if (d.mode === 'form' && d.formValues) this.formValues.set(d.formValues);
+    if (d.mode === 'manual') { this.hours.set(d.hours ?? ''); this.summary.set(d.summary ?? ''); this.details.set(d.details ?? ''); }
+  }
+
+  /** Grab (reserve) this WO for offline work: server marks it in-progress + caches it locally. Needs signal. */
+  grab(): void {
+    this.grabbing.set(true); this.grabError.set(null);
+    this.api.grabWorkOrder(this.wo.href).subscribe({
+      next: updated => {
+        this.grabbing.set(false);
+        const wo = updated ?? { ...this.wo, status: 'INPRG' };
+        this.status.set(wo.status || 'INPRG');
+        this.store.saveGrab(wo, this.formTemplate());
+        this.grabbed.set(true);
+      },
+      error: e => { this.grabbing.set(false); this.grabError.set(e?.error?.message || e?.message || 'You need a connection to grab (reserve) a PM.'); }
+    });
+  }
+
+  /** Save the completion as a draft, then submit (queues + auto-flushes on reconnect if offline). */
+  private submitDraft(draft: MaximoCompletionDraft): void {
+    draft.status = 'draft';
+    this.store.saveDraft(draft);
+    this.completing.set(true); this.error.set(null);
+    this.sync.submit(draft).subscribe({
+      next: () => { this.completing.set(false); this.done.set(true); this.status.set('COMP'); this.completed.emit(); },
+      error: err => {
+        this.completing.set(false);
+        const s = err?.status;
+        if (s === 400 || s === 409) this.error.set(err?.error?.message || err?.message || 'Could not complete.');
+        else this.queued.set(true); // network/offline — sync re-saved it as pending; it'll flush on reconnect
+      }
+    });
+  }
+
+  // ── Dynamic form helpers ─────────────────────────────────────────────────
+  val(name: string): any { return this.formValues()[name] ?? ''; }
+  setVal(name: string, value: any): void { this.formValues.set({ ...this.formValues(), [name]: value }); }
+  req(f: MaximoFormFieldDef): string { return f.required ? ' *' : ''; }
+  hasGroupVal(name: string, opt: string): boolean {
+    const v = this.formValues()[name];
+    return Array.isArray(v) && v.includes(opt);
+  }
+  toggleGroupVal(name: string, opt: string, checked: boolean): void {
+    const cur = this.formValues()[name];
+    const v: string[] = Array.isArray(cur) ? [...cur] : [];
+    const i = v.indexOf(opt);
+    if (checked && i < 0) v.push(opt);
+    else if (!checked && i >= 0) v.splice(i, 1);
+    this.setVal(name, v);
+  }
+
+  submitForm(): void {
+    const t = this.formTemplate();
+    if (!t) return;
+    for (const { f } of this.formRows()) {
+      if (!f.required) continue;
+      const v = this.formValues()[f.name];
+      const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+      if (empty) { this.error.set(`"${f.label}" is required.`); return; }
+    }
+    this.submitDraft({
+      wonum: this.wo.wonum, href: this.wo.href, mode: 'form',
+      templateFormKey: t.formKey, siteid: this.wo.siteid, formValues: this.formValues(),
+      status: 'draft', updatedAt: Date.now(),
+    });
+  }
 
   chip(s: string | undefined): string { return statusClass(s); }
   completable(s: string | undefined): boolean { return COMPLETABLE_WO_STATUSES.includes((s || '').toUpperCase()); }
@@ -163,33 +366,21 @@ export class MaximoWoDetailComponent implements OnInit {
   }
 
   completeTask(t: MaximoWorkOrder): void {
+    // Optimistic + queued so it works offline; the sync service flushes it (and clears the queue) on reconnect.
+    this.tasks.set(this.tasks().map(x => x.href === t.href ? { ...x, status: 'COMP' } : x));
+    this.store.queueTask(t.href, t.wonum);
     this.busyTask.set(t.href);
-    this.api.completeWorkOrder(t.href, { complete: true }).subscribe({
-      next: () => {
-        this.tasks.set(this.tasks().map(x => x.href === t.href ? { ...x, status: 'COMP' } : x));
-        this.busyTask.set(null);
-      },
-      error: () => { this.busyTask.set(null); }
+    this.sync.submitTask(t.href, t.wonum).subscribe({
+      next: () => this.busyTask.set(null),
+      error: () => this.busyTask.set(null) // stays queued for reconnect
     });
   }
 
   completeWo(): void {
-    const h = parseFloat(this.hours());
-    const body = {
-      labor: !isNaN(h) && h > 0 ? [{ regularhrs: h }] : undefined,
-      summary: this.summary().trim() || undefined,
-      details: this.details().trim() || undefined,
-      complete: true,
-    };
-    this.completing.set(true); this.error.set(null);
-    this.api.completeWorkOrder(this.wo.href, body).subscribe({
-      next: updated => {
-        this.completing.set(false);
-        this.done.set(true);
-        if (updated?.status) this.status.set(updated.status);
-        this.completed.emit();
-      },
-      error: e => { this.completing.set(false); this.error.set(e?.error?.message || e?.message || 'Could not complete. Try again with signal.'); }
+    this.submitDraft({
+      wonum: this.wo.wonum, href: this.wo.href, mode: 'manual',
+      hours: this.hours(), summary: this.summary(), details: this.details(),
+      status: 'draft', updatedAt: Date.now(),
     });
   }
 }

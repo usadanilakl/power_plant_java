@@ -90,11 +90,11 @@ public class ZeroEnergyServiceImpl implements ZeroEnergyService {
 
         Set<Long> equipmentIds = normalizeEquipmentIds(dto.getTemplateEquipmentIds());
 
-        // Try to find existing
+        // Try to find existing (tolerate duplicate rows for the same key: take lowest-id canonical)
         Optional<ZeroEnergy> existing = zeroEnergyRepo.findByTemplateAndEquipmentIds(
                 templateId,
                 sortAndJoinIds(equipmentIds)
-        );
+        ).stream().findFirst();
 
         if (existing.isPresent()) {
             // Reuse existing ZeroEnergy

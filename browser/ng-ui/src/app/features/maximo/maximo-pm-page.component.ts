@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { MaximoApiService } from './maximo-api.service';
+import { MaximoSyncService } from './maximo-sync.service';
 import { MaximoWoDetailComponent } from './maximo-wo-detail.component';
 import { MaximoOverview, MaximoWorkOrder, statusClass } from './maximo.model';
 
@@ -16,7 +17,10 @@ type Bucket = 'overdue' | 'due' | 'upcoming' | 'done';
     <app-main-layout [header]="'PM Overview'">
       <ng-container main-content>
         <div class="pm-container">
-          <button class="pm-back" (click)="back()">← Maximo</button>
+          <div class="pm-header">
+            <button class="pm-back" (click)="back()">← Maximo</button>
+            <button class="pm-grabbed" (click)="goGrabbed()">⚡ Grabbed@if (pending() > 0) { <span class="pm-pending-badge">{{ pending() }}</span> }</button>
+          </div>
 
           <div class="pm-mode">
             <button class="pm-mode-btn" [class.active]="mode() === 'leads'" (click)="setMode('leads')">Leads</button>
@@ -73,7 +77,10 @@ type Bucket = 'overdue' | 'due' | 'upcoming' | 'done';
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; }
     .pm-container { padding: 0.85rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-    .pm-back { background: none; border: none; color: var(--accent-color); font-size: 0.9rem; padding: 0.2rem 0; cursor: pointer; margin-bottom: 0.5rem; }
+    .pm-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .pm-back { background: none; border: none; color: var(--accent-color); font-size: 0.9rem; padding: 0.2rem 0; cursor: pointer; }
+    .pm-grabbed { background: transparent; border: 1px solid #e67e22; color: #e67e22; border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .pm-pending-badge { display: inline-block; background: #e67e22; color: #fff; border-radius: 999px; font-size: 0.7rem; padding: 0.02rem 0.4rem; margin-left: 0.3rem; }
     .pm-mode { display: flex; gap: 0.3rem; margin-bottom: 0.7rem; }
     .pm-mode-btn { flex: 1; background: transparent; border: 1px solid var(--border-color); color: var(--secondary-text, #888); border-radius: 8px; padding: 0.4rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .pm-mode-btn.active { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
@@ -109,7 +116,9 @@ type Bucket = 'overdue' | 'due' | 'upcoming' | 'done';
 })
 export class MaximoPmPageComponent implements OnInit {
   private api = inject(MaximoApiService);
+  private sync = inject(MaximoSyncService);
   private router = inject(Router);
+  pending = this.sync.pendingCount;
 
   mode = signal<'leads' | 'mine'>('leads');
   bucket = signal<Bucket>('overdue');
@@ -143,5 +152,6 @@ export class MaximoPmPageComponent implements OnInit {
 
   chip(status: string | undefined): string { return statusClass(status); }
   dateOf(w: MaximoWorkOrder): string { return this.bucket() === 'done' ? (w.statusDate || w.targetStart) : (w.targetStart || w.reportdate); }
+  goGrabbed(): void { this.router.navigate(['/maximo/grabbed']); }
   back(): void { this.router.navigate(['/maximo']); }
 }

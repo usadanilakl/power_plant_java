@@ -3,7 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  CompleteWorkOrderRequest, CreateMaximoServiceRequest, MaximoLocation, MaximoOverview, MaximoServiceRequest, MaximoWorkOrder,
+  CompleteWorkOrderRequest, CreateMaximoServiceRequest, MaximoFormSubmission, MaximoFormTemplate,
+  MaximoInventoryItem, MaximoLocation, MaximoOverview, MaximoServiceRequest, MaximoWorkOrder,
+  PartsCheckoutRequest, PartsCheckoutResult,
 } from './maximo.model';
 
 export interface WoQuery { status?: string; worktype?: string; textContains?: string; pageSize?: number; }
@@ -46,6 +48,21 @@ export class MaximoApiService {
     );
   }
 
+  searchInventory(q: string): Observable<MaximoInventoryItem[]> {
+    const params = new HttpParams().set('q', q).set('pageSize', '30');
+    return this.http.get<{ responseData: MaximoInventoryItem[] }>(`${this.base}/inventory`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  checkoutParts(req: PartsCheckoutRequest): Observable<PartsCheckoutResult | null> {
+    return this.http.post<{ responseData: PartsCheckoutResult }>(`${this.base}/parts-checkout`, req).pipe(
+      timeout(60000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
   searchLocations(q: string): Observable<MaximoLocation[]> {
     const params = new HttpParams().set('q', q).set('pageSize', '25');
     return this.http.get<{ responseData: MaximoLocation[] }>(`${this.base}/locations`, { params }).pipe(
@@ -62,10 +79,38 @@ export class MaximoApiService {
     );
   }
 
+  /** The completion form assigned to a WO's PM (by pmnum then description), or null if none. */
+  getCompletionForm(pmnum: string | undefined, description: string | undefined): Observable<MaximoFormTemplate | null> {
+    let params = new HttpParams();
+    if (pmnum) params = params.set('pmnum', pmnum);
+    if (description) params = params.set('description', description);
+    return this.http.get<{ responseData: MaximoFormTemplate }>(`${this.base}/forms/for-wo`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
+  /** Submit a completed PM form. */
+  completeForm(dto: MaximoFormSubmission): Observable<MaximoFormSubmission | null> {
+    return this.http.post<{ responseData: MaximoFormSubmission }>(`${this.base}/forms/complete`, dto).pipe(
+      timeout(60000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
   /** Complete a work order or task (by href). Blank laborcode defaults to the signed-in user server-side. */
   completeWorkOrder(href: string, body: CompleteWorkOrderRequest): Observable<MaximoWorkOrder | null> {
     const params = new HttpParams().set('href', href);
     return this.http.post<{ responseData: MaximoWorkOrder }>(`${this.base}/work-orders/complete`, body, { params }).pipe(
+      timeout(40000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
+  /** Grab a WO for offline work: server marks it in-progress + assigns it to you. Returns the refreshed WO. */
+  grabWorkOrder(href: string): Observable<MaximoWorkOrder | null> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorkOrder }>(`${this.base}/work-orders/grab`, {}, { params }).pipe(
       timeout(40000),
       map(r => r.responseData ?? null)
     );

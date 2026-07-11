@@ -148,6 +148,16 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
+      path: 'maximo/grabbed',
+      loadComponent: () => import('./features/maximo/maximo-grabbed-page.component').then(m => m.MaximoGrabbedPageComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'maximo/parts',
+      loadComponent: () => import('./features/maximo/maximo-parts-page.component').then(m => m.MaximoPartsPageComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
       path: 'qualifications/:userId',
       loadComponent: () => import('./features/qualifications/qualification-lookup.component').then(m => m.QualificationLookupComponent)
     },

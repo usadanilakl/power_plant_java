@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyIdDto;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.mappers.ZeroEnergyMapper;
+import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.ZeroEnergyRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.FuzzySearchService;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergyDto, ZeroEnergyRepo, ZeroEnergyMapper> {
     private final ZeroEnergyRepo zeroEnergyRepo;
     private final LotoPointRepo lotoPointRepo;
+    private final EquipmentRepo equipmentRepo;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final ZeroEnergyMapper zeroEnergyMapper;
@@ -140,11 +142,13 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         Set<Long> equipmentIds = normalizeEquipmentIds(idDto.getTemplateEquipmentIds());
         String normalizedEquipmentIdsString = sortAndJoinIds(equipmentIds);
 
-        // Try to find existing ZeroEnergy with same template and equipment IDs
+        // Try to find existing ZeroEnergy with same template and equipment IDs.
+        // Tolerate duplicate rows for the same key (take the lowest-id canonical) instead of
+        // throwing NonUniqueResultException.
         Optional<ZeroEnergy> existing = zeroEnergyRepo.findByTemplateAndEquipmentIds(
                 templateId,
                 normalizedEquipmentIdsString
-        );
+        ).stream().findFirst();
 
         if (existing.isPresent()) {
             // Reuse existing ZeroEnergy
@@ -274,11 +278,12 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         Set<Long> equipmentIds = normalizeEquipmentIds(dto.getTemplateEquipmentIds());
         String normalizedEquipmentIdsString = sortAndJoinIds(equipmentIds);
 
-        // Try to find existing ZeroEnergy with same template and equipment IDs
+        // Try to find existing ZeroEnergy with same template and equipment IDs.
+        // Tolerate duplicate rows for the same key (take the lowest-id canonical).
         Optional<ZeroEnergy> existing = zeroEnergyRepo.findByTemplateAndEquipmentIds(
                 templateId,
                 normalizedEquipmentIdsString
-        );
+        ).stream().findFirst();
 
         if (existing.isPresent()) {
             // Reuse existing ZeroEnergy
@@ -412,68 +417,99 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         String targetUnit = "01".equals(sourceUnit) ? "02" : "01";
         List<EquipmentDto> counterpartEquipmentList = new ArrayList<>();
 
+        // Position-preserving: exactly one output per source slot (real counterpart or a stub),
+        // so placeholder i always maps to source i. Skipping misses would shift later slots.
+        int slot = 0;
         for (Long equipmentId : sourceEquipmentIds) {
-            if (equipmentId == null || equipmentId <= 0) {
-                continue;
-            }
-
+            slot++;
             try {
-                // Step 1: Find the equipment entity
-                Optional<Equipment> equipmentOpt = ngEquipmentService.findById(equipmentId);
-                if (equipmentOpt.isEmpty()) {
-                    System.out.println("Equipment not found for ID: " + equipmentId);
-                    continue;
-                }
-                Equipment equipment = equipmentOpt.get();
-
-                // Step 2: Get the first LOTO point from the equipment
-                Set<LotoPoint> lotoPoints = equipment.getLotoPoints();
-                if (lotoPoints == null || lotoPoints.isEmpty()) {
-                    System.out.println("No LOTO points found for equipment ID: " + equipmentId);
-                    continue;
-                }
-                LotoPoint sourceLotoPoint = lotoPoints.iterator().next();
-
-                // Step 3: Find the counterpart LOTO point for the other unit
-                LotoPoint counterpartLotoPoint = findCounterpartLotoPoint(sourceLotoPoint, targetUnit);
-                if (counterpartLotoPoint == null) {
-                    System.out.println("No counterpart LOTO point found for: " + sourceLotoPoint.getTagNumber());
-                    continue;
-                }
-
-                // Step 4: Pick the counterpart equipment. When the counterpart LOTO point owns
-                // several equipment, prefer the one whose tag is the unit-swapped source tag
-                // (e.g. 01-VHHS846F -> 02-VHHS846F) so slots resolve to the right tag; otherwise
-                // fall back to the first. Set-iteration order is otherwise arbitrary.
-                Set<Equipment> counterpartEquipmentSet = counterpartLotoPoint.getEquipmentList();
-                if (counterpartEquipmentSet == null || counterpartEquipmentSet.isEmpty()) {
-                    System.out.println("No equipment found for counterpart LOTO point: " + counterpartLotoPoint.getTagNumber());
-                    continue;
-                }
-                Equipment counterpartEquipment = null;
-                String srcTag = equipment.getTagNumber();
-                if (srcTag != null && srcTag.length() >= 2) {
-                    String wantTag = targetUnit + srcTag.substring(2);
-                    counterpartEquipment = counterpartEquipmentSet.stream()
-                            .filter(e -> wantTag.equals(e.getTagNumber()))
-                            .findFirst()
-                            .orElse(null);
-                }
-                if (counterpartEquipment == null) {
-                    counterpartEquipment = counterpartEquipmentSet.iterator().next();
-                }
-
-                // Step 5: Convert to DTO and add to list
-                EquipmentDto counterpartDto = ngEquipmentService.toDto(counterpartEquipment);
-                counterpartEquipmentList.add(counterpartDto);
-                System.out.println("Mapped equipment " + equipmentId + " -> " + counterpartEquipment.getId());
-
+                counterpartEquipmentList.add(resolveCounterpartEquipment(equipmentId, sourceUnit, targetUnit, slot));
             } catch (Exception e) {
                 System.out.println("Error looking up counterpart for equipment ID " + equipmentId + ": " + e.getMessage());
+                counterpartEquipmentList.add(counterpartStub(null, slot));
             }
         }
 
         return counterpartEquipmentList;
+    }
+
+    /**
+     * Resolves the counterpart equipment for one source equipment id. Prefers a direct
+     * equipment-by-tag match (the unit-swapped source tag), falls back to routing through the
+     * source equipment's LOTO point counterpart, and finally returns a slot-preserving stub
+     * (id = negative sentinel, tag = the expected counterpart tag) when nothing matches.
+     */
+    private EquipmentDto resolveCounterpartEquipment(Long equipmentId, String sourceUnit, String targetUnit, int slot) {
+        Equipment equipment = (equipmentId != null && equipmentId > 0)
+                ? ngEquipmentService.findById(equipmentId).orElse(null)
+                : null;
+        String srcTag = equipment != null ? equipment.getTagNumber() : null;
+        String wantTag = counterpartTag(srcTag, sourceUnit, targetUnit);
+
+        // 1. Direct: find the counterpart equipment by its (unit-swapped) tag. Deterministic
+        //    (lowest id) and independent of LOTO-point wiring.
+        if (wantTag != null && !wantTag.isEmpty()) {
+            List<Equipment> byTag = equipmentRepo.findAllActiveByTagNumberIgnoreCase(wantTag);
+            if (byTag != null && !byTag.isEmpty()) {
+                return ngEquipmentService.toDto(byTag.get(0));
+            }
+        }
+
+        // 2. Fallback: source equipment -> its LOTO point -> counterpart LOTO point -> its equipment
+        if (equipment != null) {
+            LotoPoint sourceLotoPoint = pickLotoPointForEquipment(equipment);
+            if (sourceLotoPoint != null) {
+                LotoPoint counterpartLotoPoint = findCounterpartLotoPoint(sourceLotoPoint, targetUnit);
+                Set<Equipment> cpSet = counterpartLotoPoint != null ? counterpartLotoPoint.getEquipmentList() : null;
+                if (cpSet != null && !cpSet.isEmpty()) {
+                    final String want = wantTag;
+                    Equipment cpEq = cpSet.stream()
+                            .filter(e -> want != null && want.equalsIgnoreCase(e.getTagNumber()))
+                            .findFirst()
+                            .orElseGet(() -> cpSet.iterator().next());
+                    return ngEquipmentService.toDto(cpEq);
+                }
+            }
+        }
+
+        // 3. Miss: keep the slot with a stub carrying the expected tag so the user sees which
+        //    counterparts still need to be created/linked. The negative id keeps JSON identity
+        //    unique and is filtered out on save (never persists as a real equipment reference).
+        return counterpartStub(wantTag != null ? wantTag : srcTag, slot);
+    }
+
+    /** Builds the unit-swapped counterpart tag, leaving shared/common tags (e.g. "00-...") unchanged. */
+    private String counterpartTag(String srcTag, String sourceUnit, String targetUnit) {
+        if (srcTag == null || srcTag.length() < 2) {
+            return srcTag;
+        }
+        // Only swap the prefix when the tag actually carries the source unit; shared equipment
+        // (00-...) or an already-target-unit tag has no distinct counterpart to fabricate.
+        if (srcTag.startsWith(sourceUnit)) {
+            return targetUnit + srcTag.substring(2);
+        }
+        return srcTag;
+    }
+
+    /** Picks the LOTO point whose tag matches the equipment's tag (deterministic), else the first. */
+    private LotoPoint pickLotoPointForEquipment(Equipment equipment) {
+        Set<LotoPoint> lps = equipment.getLotoPoints();
+        if (lps == null || lps.isEmpty()) {
+            return null;
+        }
+        String eqTag = equipment.getTagNumber();
+        return lps.stream()
+                .filter(lp -> eqTag != null && eqTag.equalsIgnoreCase(lp.getTagNumber()))
+                .findFirst()
+                .orElseGet(() -> lps.iterator().next());
+    }
+
+    /** A placeholder counterpart carrying the expected tag; negative id marks it non-persistable. */
+    private EquipmentDto counterpartStub(String tag, int slot) {
+        EquipmentDto stub = new EquipmentDto();
+        stub.setId((long) -slot);
+        stub.setTagNumber(tag);
+        return stub;
     }
 
     /**
@@ -544,7 +580,7 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         String newEquipmentIds = sortAndJoinIds(normalizeEquipmentIds(idDto.getTemplateEquipmentIds()));
 
         // Check if this new combination already exists as a different record
-        Optional<ZeroEnergy> duplicate = zeroEnergyRepo.findByTemplateAndEquipmentIds(newTemplateId, newEquipmentIds);
+        Optional<ZeroEnergy> duplicate = zeroEnergyRepo.findByTemplateAndEquipmentIds(newTemplateId, newEquipmentIds).stream().findFirst();
         if (duplicate.isPresent() && !duplicate.get().getId().equals(existing.getId())) {
             // Merge: move all LotoPoints from existing to duplicate, then delete existing
             lotoPointRepo.reassignZeroEnergy(existing.getId(), duplicate.get().getId());

@@ -4,19 +4,30 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.maximo.CompleteWorkOrderRequest;
 import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoDoclinkDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoFormTemplateDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoInventoryItemDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoLocationDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoOverviewDto;
+import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutRequest;
+import com.dk_power.power_plant_java.dto.maximo.PartsCheckoutResult;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoBundleService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoDoclinksAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryCatalogService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
@@ -49,8 +60,13 @@ public class PwaMaximoController {
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoServiceRequestAdapter serviceRequests;
     private final MaximoLocationAdapter locations;
+    private final MaximoInventoryCatalogService inventoryCatalog;
+    private final MaximoPartsCheckoutService partsCheckout;
     private final MaximoDoclinksAdapter doclinks;
     private final MaximoBundleService bundles;
+    private final RecurringPmService recurringPms;
+    private final MaximoFormService forms;
+    private final MaximoFormCompletionService completion;
     private final UserRepo userRepo;
 
     // ── Work orders ────────────────────────────────────────────────────────────
@@ -118,6 +134,35 @@ public class PwaMaximoController {
                     .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "completed")));
         } catch (Exception e) {
             log.warn("[PWA-Maximo] complete WO failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * "Grab" a work order for offline work: mark it in-progress (INPRG) and assign it to the signed-in user
+     * (the reservation), then return the refreshed WO. Must be online — the client then caches the WO + its
+     * form/tasks locally and performs offline. NOTE: only COMP transitions are Maximo-verified on this instance;
+     * verify WAPPR/APPR→INPRG works live.
+     */
+    @PostMapping("/work-orders/grab")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> grabWorkOrder(
+            @RequestParam("href") String href,
+            @RequestParam(value = "memo", required = false) String memo) {
+        try {
+            workOrders.changeStatus(href, "INPRG", memo != null ? memo : "Grabbed via mobile");
+            String pid = currentUserPersonid();
+            if (pid != null && !pid.isBlank()) {
+                try {
+                    workOrders.setLead(href, pid);
+                } catch (Exception le) {
+                    log.warn("[PWA-Maximo] setLead on grab failed: {}", le.getMessage());
+                }
+            }
+            return workOrders.findByHref(href)
+                    .map(wo -> ResponseEntity.ok(new NgApiResponse<>(wo, "grabbed")))
+                    .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "grabbed")));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] grab failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
@@ -248,6 +293,63 @@ public class PwaMaximoController {
     private boolean isPm(MaximoWorkOrderDto w) {
         if (w == null) return false;
         return "PM".equalsIgnoreCase(w.getWorktype()) || (w.getPmnum() != null && !w.getPmnum().isBlank());
+    }
+
+    // ── PM completion forms (dynamic, formKey-assigned) ────────────────────────
+
+    /** The completion form assigned to a WO's PM (by pmnum then description), or null if the PM has none. */
+    @GetMapping("/forms/for-wo")
+    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> completionFormForWo(
+            @RequestParam(value = "pmnum", required = false) String pmnum,
+            @RequestParam(value = "description", required = false) String description) {
+        try {
+            RecurringPm pm = recurringPms.findForWorkOrder(pmnum, description).orElse(null);
+            String key = (pm == null) ? null : pm.getFormKey();
+            MaximoFormTemplateDto t = (key == null || key.isBlank()) ? null : forms.getTemplateByFormKey(key);
+            return ResponseEntity.ok(new NgApiResponse<>(t, "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] form for-wo failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Submit a completed PM form: renders the PDF, attaches it to the WO, write-backs, advances status. */
+    @PostMapping("/forms/complete")
+    public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> completeForm(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(completion.completeFromDto(dto), "completed"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] form complete failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    // ── Parts checkout ──────────────────────────────────────────────────────────
+
+    /** Inventory search (from the in-memory catalog — never blocks on Maximo). */
+    @GetMapping("/inventory")
+    public ResponseEntity<NgApiResponse<List<MaximoInventoryItemDto>>> searchInventory(
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "storeroom", required = false) String storeroom,
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(inventoryCatalog.search(q, siteid, storeroom, pageSize), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] inventory search failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Parts checkout: create a WO → approve → issue the material lines → complete. */
+    @PostMapping("/parts-checkout")
+    public ResponseEntity<NgApiResponse<PartsCheckoutResult>> checkoutParts(@RequestBody PartsCheckoutRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(partsCheckout.checkout(req), "checked out"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] parts checkout failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

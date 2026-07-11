@@ -325,10 +325,13 @@ export class LotoPointCounterpartService {
         const counterpartZeroEnergy = new ZeroEnergyDto({
           zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
           method: sourceZeroEnergy.method,
+          // templateEquipment keeps every slot (real counterparts + stubs for missing ones,
+          // so the preview shows which counterparts still need creating); the persisted id list
+          // keeps only real equipment (stubs carry a negative sentinel id).
           templateEquipment: counterpartEquipment,
           templateEquipmentIds: counterpartEquipment
             .map(eq => eq.id)
-            .filter((id): id is number => id != null),
+            .filter((id): id is number => id != null && id > 0),
         });
 
         return of(new LotoPointDto({

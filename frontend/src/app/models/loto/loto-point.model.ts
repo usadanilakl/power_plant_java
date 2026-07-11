@@ -752,7 +752,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         zeroEnergyTemplateId: typeof this.zeroEnergy.zeroEnergyTemplate === 'number'
           ? this.zeroEnergy.zeroEnergyTemplate
           : this.zeroEnergy.zeroEnergyTemplate?.id || null,
-        templateEquipmentIds: this.zeroEnergy.templateEquipment?.map((eq: any) => eq.id).filter((id: any) => id != null) || [],
+        // Only real equipment persists; counterpart-sync stubs carry a negative sentinel id
+        templateEquipmentIds: this.zeroEnergy.templateEquipment?.map((eq: any) => eq.id).filter((id: any) => id != null && id > 0) || [],
         editShared: (this.zeroEnergy as any).editShared || false,
       } : null,
       location: this.location?.id || null,

@@ -7,24 +7,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface ZeroEnergyRepo extends BaseRepository<ZeroEnergy> {
 
     /**
-     * Finds a ZeroEnergy with matching template and equipment IDs.
-     * Equipment IDs are stored as sorted, comma-separated string.
+     * Finds ZeroEnergy rows with matching template and equipment IDs.
+     * Equipment IDs are stored as a sorted, comma-separated string, which is the dedup key.
+     * Returns a List (ordered by id) rather than Optional because legacy/collided data can
+     * contain duplicate rows for the same key — callers take the first (lowest id) as canonical
+     * instead of throwing NonUniqueResultException.
      *
      * @param templateId The zero energy template (Value) ID
      * @param equipmentIds Sorted, comma-separated equipment IDs (e.g., "123,456,789")
-     * @return Matching ZeroEnergy if found
+     * @return Matching ZeroEnergy rows, lowest id first
      */
     @Query("SELECT ze FROM ZeroEnergy ze " +
            "WHERE (:templateId IS NULL AND ze.zeroEnergyTemplate IS NULL " +
            "       OR ze.zeroEnergyTemplate.id = :templateId) " +
            "AND (:equipmentIds = '' AND (ze.templateEquipmentIds IS NULL OR ze.templateEquipmentIds = '') " +
-           "     OR ze.templateEquipmentIds = :equipmentIds)")
-    Optional<ZeroEnergy> findByTemplateAndEquipmentIds(
+           "     OR ze.templateEquipmentIds = :equipmentIds) " +
+           "ORDER BY ze.id ASC")
+    List<ZeroEnergy> findByTemplateAndEquipmentIds(
             @Param("templateId") Long templateId,
             @Param("equipmentIds") String equipmentIds
     );
