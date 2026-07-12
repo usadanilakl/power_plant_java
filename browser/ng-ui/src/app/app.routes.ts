@@ -158,6 +158,21 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
+      path: 'rounds',
+      loadComponent: () => import('./features/rounds/rounds-list.component').then(m => m.RoundsListComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'rounds/issues',
+      loadComponent: () => import('./features/rounds/round-issues.component').then(m => m.RoundIssuesComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'rounds/:id/perform',
+      loadComponent: () => import('./features/rounds/round-perform.component').then(m => m.RoundPerformComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
       path: 'qualifications/:userId',
       loadComponent: () => import('./features/qualifications/qualification-lookup.component').then(m => m.QualificationLookupComponent)
     },

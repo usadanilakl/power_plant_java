@@ -155,16 +155,16 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
             System.out.println("Reusing existing ZeroEnergy ID: " + existing.get().getId());
             ZeroEnergy existingEntity = existing.get();
 
-            // Check if method needs to be generated (for legacy records)
-            if (existingEntity.getMethod() == null || existingEntity.getMethod().isEmpty()) {
-                System.out.println("Generating method for existing ZeroEnergy ID: " + existingEntity.getId());
-                // Convert to IdDto and back to regenerate the method
-                ZeroEnergyIdDto tempDto = zeroEnergyMapper.convertToIdDto(existingEntity);
-                ZeroEnergy updated = zeroEnergyMapper.convertIdDtoToEntity(tempDto);
-                return zeroEnergyRepo.save(updated);
-            }
-
-            return existingEntity;
+            // Refresh the SLOT ORDER from the incoming DTO. Reordering equipment does not change
+            // the sorted dedup key, so findOrCreate returns this same row; without this the reused
+            // row keeps its old order and the reorder is lost on reload. Also rebuild the resolved
+            // method to match the new order. (If this ZeroEnergy is shared across multiple LOTO
+            // points wanting different orders, this is last-writer-wins - a known limitation.)
+            existingEntity.setOrderedEquipmentIds(idDto.getTemplateEquipmentIds());
+            ZeroEnergyIdDto refreshed = zeroEnergyMapper.convertToIdDto(existingEntity);
+            ZeroEnergy rebuilt = zeroEnergyMapper.convertIdDtoToEntity(refreshed);
+            existingEntity.setMethod(rebuilt.getMethod());
+            return zeroEnergyRepo.save(existingEntity);
         }
 
         // Create new ZeroEnergy
@@ -289,16 +289,13 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
             // Reuse existing ZeroEnergy
             ZeroEnergy existingEntity = existing.get();
 
-            // Check if method needs to be generated (for legacy records)
-            if (existingEntity.getMethod() == null || existingEntity.getMethod().isEmpty()) {
-                System.out.println("Generating method for existing ZeroEnergy ID: " + existingEntity.getId());
-                // Convert to IdDto and back to regenerate the method
-                ZeroEnergyIdDto tempDto = zeroEnergyMapper.convertToIdDto(existingEntity);
-                ZeroEnergy updated = zeroEnergyMapper.convertIdDtoToEntity(tempDto);
-                return zeroEnergyRepo.save(updated);
-            }
-
-            return existingEntity;
+            // Refresh the slot order from the incoming DTO (reorder doesn't change the sorted
+            // dedup key) and rebuild the method, so a reorder persists. See the IdDto overload.
+            existingEntity.setOrderedEquipmentIds(dto.getTemplateEquipmentIds());
+            ZeroEnergyIdDto refreshed = zeroEnergyMapper.convertToIdDto(existingEntity);
+            ZeroEnergy rebuilt = zeroEnergyMapper.convertIdDtoToEntity(refreshed);
+            existingEntity.setMethod(rebuilt.getMethod());
+            return zeroEnergyRepo.save(existingEntity);
         }
 
         // Create new ZeroEnergy

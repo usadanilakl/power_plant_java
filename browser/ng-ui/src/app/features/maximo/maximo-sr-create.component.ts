@@ -1,5 +1,5 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, debounceTime, switchMap, of, catchError, from, concatMap } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { MaximoApiService } from './maximo-api.service';
@@ -115,6 +115,7 @@ import { CreateMaximoServiceRequest, MaximoLocation } from './maximo.model';
 export class MaximoSrCreateComponent implements OnDestroy {
   private api = inject(MaximoApiService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   description = signal('');
   longDescription = signal('');
@@ -136,6 +137,13 @@ export class MaximoSrCreateComponent implements OnDestroy {
       debounceTime(300),
       switchMap(q => q.trim().length < 2 ? of([]) : this.api.searchLocations(q.trim()).pipe(catchError(() => of([]))))
     ).subscribe(res => this.locResults.set(res));
+
+    // Prefill from a deep-link (e.g. "Report to Maximo" on a Rounds object / out-of-range issue).
+    const qp = this.route.snapshot.queryParamMap;
+    const asset = qp.get('assetnum'); if (asset) this.assetnum.set(asset);
+    const loc = qp.get('location'); if (loc) { this.location.set(loc); this.locationQuery.set(loc); }
+    const desc = qp.get('description'); if (desc) this.description.set(desc);
+    const long = qp.get('longDescription'); if (long) this.longDescription.set(long);
   }
 
   canSubmit(): boolean { return this.description().trim().length > 0; }

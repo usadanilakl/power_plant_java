@@ -1,0 +1,52 @@
+<app-main-layout header="Active Out-of-Range">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="ri-page">
+
+      <section class="toolbar">
+        <span class="count">{{ openCount() }} open</span>
+        <label class="chk"><input type="checkbox" [(ngModel)]="showResolved" (ngModelChange)="reload()" /> include resolved</label>
+        <button (click)="reload()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Refresh' }}</button>
+        <span class="spacer"></span>
+        <span class="error" *ngIf="error()">{{ error() }}</span>
+      </section>
+
+      <div class="list" *ngIf="!loading()">
+        <div class="empty" *ngIf="!issues().length">✓ Nothing out of range.</div>
+
+        <ng-container *ngFor="let g of grouped()">
+          <div class="group-head">{{ g[0] }}</div>
+          <div class="card" *ngFor="let i of g[1]" [class.resolved]="i.status === 'RESOLVED'">
+            <div class="card-head">
+              <span class="prompt">{{ i.questionPrompt }}</span>
+              <span class="badge" [class.res]="i.status === 'RESOLVED'">{{ i.status }}</span>
+            </div>
+            <div class="meta">
+              <span>opened {{ i.openedAt | date:'MMM d, y' }} · {{ i.openedBy }}</span>
+              <span *ngIf="i.lastValue">last: {{ i.lastValue }} {{ i.unit }}</span>
+              <span *ngIf="i.resolvedAt">resolved {{ i.resolvedAt | date:'MMM d' }} · {{ i.resolvedBy }}</span>
+            </div>
+            <div class="first" *ngIf="i.firstComment">“{{ i.firstComment }}”</div>
+
+            <div class="actions">
+              <button (click)="toggleComments(i)">Comments ({{ i.commentCount }})</button>
+              <button class="resolve" *ngIf="i.status !== 'RESOLVED'" (click)="resolve(i)">Resolve</button>
+            </div>
+
+            <div class="comments" *ngIf="openComments() === i.id">
+              <div class="comment" *ngFor="let c of comments()">
+                <span>{{ c.text }}</span><em>{{ c.author }} · {{ c.createdAt | date:'short' }}</em>
+              </div>
+              <div class="addc">
+                <input [(ngModel)]="newComment" placeholder="Add a comment…" (keyup.enter)="addComment(i)" />
+                <button [disabled]="!newComment.trim()" (click)="addComment(i)">Add</button>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>

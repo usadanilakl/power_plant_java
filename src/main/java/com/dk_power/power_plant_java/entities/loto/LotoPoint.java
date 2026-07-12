@@ -53,6 +53,14 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Value processingStatus;
     private String fileIds;
     private String equipmentIds;
+
+    /**
+     * Soft FK to the {@link com.dk_power.power_plant_java.entities.physical.PhysicalObject} this LOTO point is bound to —
+     * the informational binder ("everything about this object" surfaces its LOTO points). Plain Long (same convention as
+     * {@code FileObject.physicalObjectId}/{@code WorkArea.physicalObjectId}), sync-tracked automatically and inbound
+     * dedup-remapped in {@code FieldSyncService} (PhysicalObject is a dedup candidate on maximoKey).
+     */
+    private Long physicalObjectId;
     @ManyToOne()
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;

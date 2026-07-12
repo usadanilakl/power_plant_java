@@ -1,0 +1,30 @@
+.ri-page { display: flex; flex-direction: column; height: 100%; font-size: 13px; }
+
+.toolbar { display: flex; align-items: center; gap: 14px; padding: 8px 12px; border-bottom: 1px solid #e0e0e0; background: #fafafa; }
+.toolbar .spacer { flex: 1; }
+.toolbar .count { font-weight: 600; color: #c62828; }
+.chk { display: flex; align-items: center; gap: 5px; color: #555; }
+.toolbar button { font: inherit; border: 1px solid #bbb; background: #fff; border-radius: 4px; padding: 5px 12px; cursor: pointer; }
+.error { color: #c62828; }
+
+.list { overflow-y: auto; flex: 1; padding: 12px; }
+.empty { text-align: center; color: #2e7d32; padding: 40px; font-size: 15px; }
+.group-head { font-size: 11px; font-weight: 700; color: #455a64; text-transform: uppercase; margin: 14px 0 6px; }
+
+.card { background: #fff; border: 1px solid #ffcdd2; border-left: 4px solid #ef5350; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; max-width: 900px; }
+.card.resolved { border-color: #c8e6c9; border-left-color: #66bb6a; opacity: 0.8; }
+.card-head { display: flex; justify-content: space-between; gap: 10px; }
+.prompt { font-size: 14px; font-weight: 600; }
+.badge { flex: none; background: #ffebee; color: #c62828; border-radius: 4px; padding: 1px 8px; font-size: 11px; height: fit-content; }
+.badge.res { background: #e8f5e9; color: #2e7d32; }
+.meta { display: flex; gap: 14px; flex-wrap: wrap; color: #999; font-size: 12px; margin-top: 4px; }
+.first { color: #555; font-size: 13px; margin-top: 5px; }
+.actions { display: flex; gap: 8px; margin-top: 8px; }
+.actions button { background: #eef4fb; color: #1976d2; border: none; border-radius: 5px; padding: 6px 12px; font: inherit; cursor: pointer; }
+.actions .resolve { background: #e8f5e9; color: #2e7d32; margin-left: auto; }
+.comments { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px; }
+.comment { font-size: 13px; padding: 3px 0; }
+.comment em { display: block; color: #999; font-size: 11px; }
+.addc { display: flex; gap: 6px; margin-top: 8px; }
+.addc input { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 5px; font: inherit; }
+.addc button { background: #1976d2; color: #fff; border: none; border-radius: 5px; padding: 6px 14px; cursor: pointer; }

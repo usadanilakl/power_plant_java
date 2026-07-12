@@ -1,8 +1,11 @@
 package com.dk_power.power_plant_java.controller.angular;
 
 import com.dk_power.power_plant_java.dto.physical.PhysicalObjectDto;
+import com.dk_power.power_plant_java.dto.physical.PhysicalObjectAggregate;
 import com.dk_power.power_plant_java.dto.diagrams.DiagramDto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.sevice.physical.PhysicalObjectAggregateService;
 import com.dk_power.power_plant_java.entities.physical.PhysicalObjectType;
 import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -56,6 +59,7 @@ public class NgPhysicalObjectController {
     private final FileRepo fileRepo;
     private final ValueRepo valueRepo;
     private final WorkAreaRepo workAreaRepo;
+    private final PhysicalObjectAggregateService aggregateService;
 
     /** Whole hierarchy as a flat list of nodes (id + parentId + hasChildren); the frontend assembles the tree. */
     @GetMapping("/tree")
@@ -247,6 +251,71 @@ public class NgPhysicalObjectController {
             fileRepo.save(f);
         }
         return ResponseEntity.ok(new NgApiResponse<>(null, "unlinked"));
+    }
+
+    // ---- Binder: LOTO points (isolation points bound to a node) -------------------------------
+
+    /** LOTO points bound to this node. */
+    @GetMapping("/{id}/loto-points")
+    public ResponseEntity<NgApiResponse<List<PhysicalObjectAggregate.LotoPointRef>>> lotoPoints(@PathVariable Long id) {
+        List<PhysicalObjectAggregate.LotoPointRef> dtos = lotoPointRepo.findByPhysicalObjectId(id).stream()
+                .map(p -> new PhysicalObjectAggregate.LotoPointRef(p.getId(), p.getTagNumber(), p.getDescription(),
+                        p.getType(), p.getNormalPosition(), p.getIsolatedPosition(), p.getSpecificLocation()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.size() + " loto points"));
+    }
+
+    /** Bind a LOTO point to this node (scalar soft-FK → syncs normally). */
+    @PostMapping("/{id}/loto-points/{lotoId}")
+    public ResponseEntity<NgApiResponse<Void>> linkLoto(@PathVariable Long id, @PathVariable Long lotoId) {
+        if (repo.findById(id).isEmpty()) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "node not found"));
+        LotoPoint p = lotoPointRepo.findById(lotoId).orElse(null);
+        if (p == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "loto point not found"));
+        p.setPhysicalObjectId(id);
+        lotoPointRepo.save(p);
+        return ResponseEntity.ok(new NgApiResponse<>(null, "linked"));
+    }
+
+    /** Unbind a LOTO point from this node (only if currently bound to it). */
+    @DeleteMapping("/{id}/loto-points/{lotoId}")
+    public ResponseEntity<NgApiResponse<Void>> unlinkLoto(@PathVariable Long id, @PathVariable Long lotoId) {
+        LotoPoint p = lotoPointRepo.findById(lotoId).orElse(null);
+        if (p != null && id.equals(p.getPhysicalObjectId())) {
+            p.setPhysicalObjectId(null);
+            lotoPointRepo.save(p);
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(null, "unlinked"));
+    }
+
+    // ---- Binder: object logs (polymorphic Comment, entityType="PhysicalObject") ----------------
+
+    /** Object-scoped log entries (newest first). */
+    @GetMapping("/{id}/logs")
+    public ResponseEntity<NgApiResponse<List<PhysicalObjectAggregate.ObjectLog>>> logs(@PathVariable Long id) {
+        List<PhysicalObjectAggregate.ObjectLog> logs = aggregateService.listLogs(id);
+        return ResponseEntity.ok(new NgApiResponse<>(logs, logs.size() + " logs"));
+    }
+
+    /** Add a log entry to this node (author = the acting user via Spring Data auditing). */
+    @PostMapping("/{id}/logs")
+    public ResponseEntity<NgApiResponse<PhysicalObjectAggregate.ObjectLog>> addLog(@PathVariable Long id, @RequestBody AddLogRequest req) {
+        if (repo.findById(id).isEmpty()) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "node not found"));
+        if (req == null || req.content() == null || req.content().isBlank())
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "content required"));
+        return ResponseEntity.ok(new NgApiResponse<>(
+                aggregateService.addLog(id, req.content().trim(), req.needsAttention() != null && req.needsAttention()), "added"));
+    }
+
+    public record AddLogRequest(String content, Boolean needsAttention) {}
+
+    // ---- Aggregate: "everything about this object" in one call ----------------------------------
+
+    /** The full informational binder for a node: files, LOTO, work areas, systems, logs (+ Maximo WO/SR if available). */
+    @GetMapping("/{id}/aggregate")
+    public ResponseEntity<NgApiResponse<PhysicalObjectAggregate>> aggregate(@PathVariable Long id) {
+        PhysicalObjectAggregate agg = aggregateService.aggregate(id, true);
+        if (agg == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
+        return ResponseEntity.ok(new NgApiResponse<>(agg, "ok"));
     }
 
     // ---- System membership (the cross-cutting functional axis / map layers) -------------------

@@ -1,0 +1,317 @@
+<app-main-layout header="Rounds Workbench">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="rw-page">
+
+      <!-- toolbar -->
+      <section class="toolbar">
+        <label class="primary file-btn" [class.disabled]="loading()">
+          {{ loading() ? 'Working…' : 'Import from Excel' }}
+          <input type="file" accept=".xlsx,.xls" (change)="onExcelFile($event)" [disabled]="loading()" hidden />
+        </label>
+        <button class="ghost" (click)="openNewRound()">+ New Round</button>
+        <button class="ghost" (click)="openNewQuestion()" [disabled]="!rounds().length">+ New Question</button>
+        <button class="ghost" (click)="clearStaging()" [disabled]="loading()">Clear staging</button>
+        <span class="import-msg" *ngIf="importMsg()">{{ importMsg() }}</span>
+        <span class="spacer"></span>
+        <span class="error" *ngIf="errorMsg()">{{ errorMsg() }}</span>
+      </section>
+
+      <div class="rw-grid">
+
+        <!-- LEFT: staging list -->
+        <section class="panel staging">
+          <div class="tabs">
+            <button *ngFor="let t of ['NEW','PROCESSED','IGNORED','ALL']"
+                    [class.active]="statusTab() === t"
+                    (click)="statusTab.set($any(t))">
+              {{ t }} <span class="badge">{{ $any(counts())[t] }}</span>
+            </button>
+          </div>
+
+          <div class="list-tools">
+            <button class="link" (click)="selectAllNew()" title="Select all NEW to build a full round">Select all</button>
+            <button class="link" (click)="clearSelection()" *ngIf="selectedCount() > 0">Deselect ({{ selectedCount() }})</button>
+            <span class="spacer"></span>
+            <button class="link" (click)="collapseAll()">Collapse all</button>
+            <button class="link" (click)="expandAll()">Show all</button>
+          </div>
+
+          <div class="list">
+            <ng-container *ngFor="let g of grouped()">
+              <div class="group-head">
+                <label class="gsel" *ngIf="statusTab() !== 'PROCESSED' && statusTab() !== 'IGNORED'">
+                  <input type="checkbox" [checked]="groupAllSelected(g[1])" (change)="toggleGroupSelect(g[1])" />
+                </label>
+                <button class="gcaret" (click)="toggleGroupCollapse(g[0])">{{ isCollapsed(g[0]) ? '▸' : '▾' }}</button>
+                <span class="gname" (click)="toggleGroupCollapse(g[0])">{{ g[0] }}</span>
+                <span class="gcount">{{ g[1].length }}</span>
+              </div>
+              <div *ngFor="let row of g[1]" class="row" [hidden]="isCollapsed(g[0])"
+                   [class.selected]="selected()?.id === row.id"
+                   [class.done]="row.status === 'PROCESSED'"
+                   [class.ignored]="row.status === 'IGNORED'"
+                   [class.checked]="isSelected(row.id)">
+                <label class="rsel" *ngIf="row.status === 'NEW'">
+                  <input type="checkbox" [checked]="isSelected(row.id)" (change)="toggleSelect(row)" />
+                </label>
+                <button class="row-body" (click)="select(row)">
+                  <span class="row-prompt">{{ row.prompt || row.sourceWebviewKey }}</span>
+                  <span class="row-meta">
+                    <span class="chip type">{{ row.suggestedType }}</span>
+                    <span class="chip" *ngIf="row.tagCode">{{ row.tagCode }}</span>
+                    <span class="chip range" *ngIf="row.lowLimit != null || row.highLimit != null">
+                      {{ row.lowLimit ?? '' }}–{{ row.highLimit ?? '' }} {{ row.unit }}
+                    </span>
+                    <span class="chip warn" *ngIf="row.changedSinceProcessed" title="Source header changed since processed">changed</span>
+                  </span>
+                </button>
+              </div>
+            </ng-container>
+            <div class="empty" *ngIf="!filteredStaging().length">
+              No rows. Click <b>Import from WebView</b> to pull the latest scraped round columns.
+            </div>
+          </div>
+        </section>
+
+        <!-- MIDDLE: batch panel (selection) OR single detail OR hint -->
+        <section class="panel process" *ngIf="selectedCount() > 0; else detailOrHint">
+          <div class="proc-head">
+            <h3>{{ selectedCount() }} selected — process as a group</h3>
+            <button class="link" (click)="clearSelection()">clear</button>
+          </div>
+          <p class="batch-hint">Bind these questions to one round and (optionally) one physical object, then generate them all.
+            Each keeps its own parsed prompt, type and limits.</p>
+
+          <div class="bind">
+            <div class="bind-head"><label>Physical object <span class="hint">(all selected)</span></label></div>
+            <ng-container [ngTemplateOutlet]="poPicker"></ng-container>
+          </div>
+          <div class="bind">
+            <div class="bind-head"><label>Round</label></div>
+            <ng-container [ngTemplateOutlet]="roundPicker"></ng-container>
+          </div>
+
+          <div class="actions">
+            <button class="primary" (click)="generateBatch()" [disabled]="saving()">
+              {{ saving() ? 'Generating…' : 'Generate ' + selectedCount() + ' → add to round' }}
+            </button>
+            <button class="ghost" (click)="ignoreSelected()" [disabled]="saving()">Ignore {{ selectedCount() }}</button>
+          </div>
+        </section>
+
+        <ng-template #detailOrHint>
+          <section class="panel process" *ngIf="selected() as row; else pickHint">
+            <div class="proc-head">
+              <h3>Process question</h3>
+              <button class="link" (click)="clearDetail()">✕</button>
+            </div>
+            <pre class="source-raw">{{ row.sourceRaw }}</pre>
+
+            <div class="field">
+              <label>Prompt</label>
+              <input [(ngModel)]="fPrompt" placeholder="Question prompt" />
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label>Type</label>
+                <select [(ngModel)]="fType">
+                  <option *ngFor="let t of answerTypes" [value]="t">{{ t }}</option>
+                </select>
+              </div>
+              <div class="field" *ngIf="fType === 'READING'">
+                <label>Unit</label>
+                <input [(ngModel)]="fUnit" size="8" />
+              </div>
+            </div>
+
+            <div class="field-row" *ngIf="fType === 'READING'">
+              <div class="field"><label>Low limit</label><input type="number" [(ngModel)]="fLow" /></div>
+              <div class="field"><label>High limit</label><input type="number" [(ngModel)]="fHigh" /></div>
+            </div>
+
+            <div class="field" *ngIf="fType === 'CHOICE'">
+              <label>Choices (JSON array)</label>
+              <input [(ngModel)]="fChoices" placeholder='["A","B","C"]' />
+            </div>
+
+            <div class="field" *ngIf="fType !== 'READING'">
+              <label>Expected value <span class="hint">(optional)</span></label>
+              <input [(ngModel)]="fExpected" />
+            </div>
+
+            <label class="check">
+              <input type="checkbox" [(ngModel)]="fTrackIssues" />
+              Track out-of-range issues (persist an open issue until resolved)
+            </label>
+
+            <div class="bind">
+              <div class="bind-head"><label>Physical object</label></div>
+              <ng-container [ngTemplateOutlet]="poPicker"></ng-container>
+            </div>
+            <div class="bind">
+              <div class="bind-head"><label>Round</label></div>
+              <ng-container [ngTemplateOutlet]="roundPicker"></ng-container>
+            </div>
+
+            <div class="actions">
+              <button class="primary" (click)="generate()" [disabled]="saving()">
+                {{ saving() ? 'Generating…' : 'Generate → add to round' }}
+              </button>
+              <button class="ghost" (click)="ignore(row)" [disabled]="saving()">Ignore</button>
+            </div>
+          </section>
+        </ng-template>
+
+        <ng-template #pickHint>
+          <section class="panel process empty-panel">
+            <p>Select a row to process it, or check several to process a whole group at once.</p>
+          </section>
+        </ng-template>
+
+        <!-- RIGHT: rounds -->
+        <section class="panel rounds">
+          <h3>Rounds</h3>
+          <div class="round" *ngFor="let r of rounds()">
+            <div class="round-head-row">
+              <button class="round-head" (click)="toggleRound(r)">
+                <span class="caret">{{ expandedRoundId() === r.id ? '▾' : '▸' }}</span>
+                <span class="round-name">{{ r.name }}</span>
+                <span class="chip">{{ r.questionCount }} q</span>
+                <span class="chip" *ngIf="r.area">{{ r.area }}</span>
+                <span class="chip" *ngIf="r.cadence">{{ r.cadence }}</span>
+              </button>
+              <button class="link edit-btn" (click)="editRound(r)">Manage</button>
+            </div>
+            <div class="round-body" *ngIf="expandedRoundId() === r.id">
+              <ng-container *ngFor="let qg of groupQuestions(r.questions)">
+                <div class="q-group">{{ qg[0] }}</div>
+                <div class="q" *ngFor="let q of qg[1]">
+                  <span class="q-prompt">{{ q.prompt }}</span>
+                  <span class="chip type">{{ q.answerType }}</span>
+                  <span class="chip" *ngIf="q.physicalObjectId" title="Bound to physical object">🔗</span>
+                  <button class="link danger" (click)="deleteQuestion(q, r.id)">✕</button>
+                </div>
+              </ng-container>
+              <div class="empty" *ngIf="!r.questions?.length">No questions yet.</div>
+            </div>
+          </div>
+          <div class="empty" *ngIf="!rounds().length">No rounds yet — create one with <b>+ New Round</b> or while processing.</div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- New Round modal -->
+    <div class="modal-backdrop" *ngIf="showNewRound()" (click)="showNewRound.set(false)">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h3>New Round</h3>
+        <div class="field"><label>Name</label><input [(ngModel)]="nrName" placeholder="e.g. Unit 1 Outside Rounds" /></div>
+        <div class="field"><label>Area <span class="hint">(optional)</span></label><input [(ngModel)]="nrArea" /></div>
+        <div class="field-row">
+          <div class="field"><label>Cadence</label>
+            <select [(ngModel)]="nrCadence"><option *ngFor="let c of cadences" [value]="c">{{ c }}</option></select>
+          </div>
+          <div class="field"><label>Shift</label>
+            <select [(ngModel)]="nrShift"><option *ngFor="let s of shifts" [value]="s">{{ s }}</option></select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" (click)="createRoundNow()" [disabled]="saving()">Create round</button>
+          <button class="ghost" (click)="showNewRound.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Question modal -->
+    <div class="modal-backdrop" *ngIf="showNewQuestion()" (click)="showNewQuestion.set(false)">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h3>New Question</h3>
+        <div class="field"><label>Round</label>
+          <select [(ngModel)]="nqRoundId">
+            <option [ngValue]="null">— select round —</option>
+            <option *ngFor="let r of rounds()" [ngValue]="r.id">{{ r.name }}</option>
+          </select>
+        </div>
+        <div class="field"><label>Prompt</label><input [(ngModel)]="nqPrompt" placeholder="Question prompt" /></div>
+        <div class="field-row">
+          <div class="field"><label>Type</label>
+            <select [(ngModel)]="nqType"><option *ngFor="let t of answerTypes" [value]="t">{{ t }}</option></select>
+          </div>
+          <div class="field" *ngIf="nqType === 'READING'"><label>Unit</label><input [(ngModel)]="nqUnit" size="8" /></div>
+        </div>
+        <div class="field-row" *ngIf="nqType === 'READING'">
+          <div class="field"><label>Low</label><input type="number" [(ngModel)]="nqLow" /></div>
+          <div class="field"><label>High</label><input type="number" [(ngModel)]="nqHigh" /></div>
+        </div>
+        <div class="field" *ngIf="nqType === 'CHOICE'"><label>Choices (JSON)</label><input [(ngModel)]="nqChoices" placeholder='["A","B"]' /></div>
+        <div class="field" *ngIf="nqType !== 'READING'"><label>Expected <span class="hint">(optional)</span></label><input [(ngModel)]="nqExpected" /></div>
+        <div class="field"><label>Physical object <span class="hint">(optional)</span></label>
+          <select [(ngModel)]="nqPoId">
+            <option [ngValue]="null">— none —</option>
+            <option *ngFor="let n of tree()" [ngValue]="n.id">{{ n.name }} <span *ngIf="n.tagNumber">({{ n.tagNumber }})</span></option>
+          </select>
+        </div>
+        <label class="check"><input type="checkbox" [(ngModel)]="nqTrackIssues" /> Track out-of-range issues</label>
+        <div class="actions">
+          <button class="primary" (click)="createQuestionNow()" [disabled]="saving()">Create question</button>
+          <button class="ghost" (click)="showNewQuestion.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- shared pickers -->
+    <ng-template #poPicker>
+      <div class="bind-head sub">
+        <button class="link" (click)="poCreating = !poCreating">{{ poCreating ? 'pick existing' : '+ create new' }}</button>
+      </div>
+      <ng-container *ngIf="!poCreating">
+        <input [(ngModel)]="poQuery" placeholder="Search name or tag…" />
+        <div class="po-selected" *ngIf="poSelectedNode() as n">
+          <span class="dot" [style.background]="poColor(n.type)"></span>
+          {{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
+          <button class="link" (click)="poSelectedId = null">clear</button>
+        </div>
+        <div class="po-results" *ngIf="!poSelectedId">
+          <button *ngFor="let n of poResults()" class="po-opt" (click)="poSelectedId = n.id">
+            <span class="dot" [style.background]="poColor(n.type)"></span>
+            {{ n.name }} <span class="muted">{{ n.tagNumber }} · {{ n.type }}</span>
+          </button>
+        </div>
+      </ng-container>
+      <div class="create-po" *ngIf="poCreating">
+        <input [(ngModel)]="newPoName" placeholder="Name" />
+        <div class="field-row">
+          <select [(ngModel)]="newPoType"><option *ngFor="let t of poTypes" [value]="t">{{ t }}</option></select>
+          <input [(ngModel)]="newPoTag" placeholder="Tag #" size="10" />
+        </div>
+        <select [(ngModel)]="newPoParentId">
+          <option [ngValue]="null">— no parent —</option>
+          <option *ngFor="let n of tree()" [ngValue]="n.id">{{ n.name }} ({{ n.type }})</option>
+        </select>
+      </div>
+    </ng-template>
+
+    <ng-template #roundPicker>
+      <div class="bind-head sub">
+        <button class="link" (click)="roundCreating = !roundCreating">{{ roundCreating ? 'pick existing' : '+ create new' }}</button>
+      </div>
+      <select *ngIf="!roundCreating" [(ngModel)]="roundSelectedId">
+        <option [ngValue]="null">— select round —</option>
+        <option *ngFor="let r of rounds()" [ngValue]="r.id">{{ r.name }} ({{ r.questionCount }})</option>
+      </select>
+      <div class="create-round" *ngIf="roundCreating">
+        <input [(ngModel)]="newRoundName" placeholder="Round name" />
+        <input [(ngModel)]="newRoundArea" placeholder="Area (optional)" />
+        <div class="field-row">
+          <select [(ngModel)]="newRoundCadence"><option *ngFor="let c of cadences" [value]="c">{{ c }}</option></select>
+          <select [(ngModel)]="newRoundShift"><option *ngFor="let s of shifts" [value]="s">{{ s }}</option></select>
+        </div>
+      </div>
+    </ng-template>
+
+  </ng-container>
+</app-main-layout>

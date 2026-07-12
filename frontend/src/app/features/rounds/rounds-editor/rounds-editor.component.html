@@ -1,0 +1,184 @@
+<app-main-layout header="Edit Round">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="re-page">
+      <div class="re-top">
+        <button class="link" (click)="back()">← Workbench</button>
+        <span class="spacer"></span>
+        <span class="msg" *ngIf="msg()">{{ msg() }}</span>
+        <span class="error" *ngIf="error()">{{ error() }}</span>
+      </div>
+
+      <ng-container *ngIf="!loading() && round() as r; else loadingTpl">
+        <!-- round header form -->
+        <section class="card head">
+          <div class="grid">
+            <div class="field grow"><label>Name</label><input [(ngModel)]="hName" /></div>
+            <div class="field grow"><label>Area</label><input [(ngModel)]="hArea" /></div>
+            <div class="field"><label>Cadence</label>
+              <select [(ngModel)]="hCadence"><option *ngFor="let c of cadences" [value]="c">{{ c }}</option></select>
+            </div>
+            <div class="field"><label>Shift</label>
+              <select [(ngModel)]="hShift"><option *ngFor="let s of shifts" [value]="s">{{ s }}</option></select>
+            </div>
+            <div class="field" *ngIf="hCadence === 'CUSTOM'"><label>Interval (h)</label><input type="number" [(ngModel)]="hInterval" /></div>
+            <label class="active"><input type="checkbox" [(ngModel)]="hActive" /> Active</label>
+          </div>
+          <div class="head-actions">
+            <button class="primary" (click)="saveRound()" [disabled]="saving()">Save round</button>
+            <button class="danger-btn" (click)="deleteRound()">Delete round</button>
+            <span class="qc">{{ questions().length }} questions · {{ groups().length }} groups</span>
+          </div>
+        </section>
+
+        <!-- questions by group -->
+        <section class="card">
+          <div class="qhead">
+            <h3>Questions</h3>
+            <span class="spacer"></span>
+            <button class="link" (click)="collapseAll()">Collapse all</button>
+            <button class="link" (click)="expandAll()">Show all</button>
+          </div>
+
+          <div class="add-row">
+            <input [(ngModel)]="addingPrompt" placeholder="New question prompt…" (keyup.enter)="addQuestion()" />
+            <select [(ngModel)]="addingType"><option *ngFor="let t of answerTypes" [value]="t">{{ t }}</option></select>
+            <button class="primary" (click)="addQuestion()" [disabled]="saving() || !addingPrompt.trim()">+ Add</button>
+          </div>
+
+          <div class="empty" *ngIf="!groups().length">No questions yet. Add one above, or generate from staging in the workbench.</div>
+
+          <div class="group" *ngFor="let g of groups(); let gi = index">
+            <!-- group header -->
+            <div class="ghead">
+              <button class="gcaret" (click)="toggleCollapse(g.cat)">{{ isCollapsed(g.cat) ? '▸' : '▾' }}</button>
+              <ng-container *ngIf="renamingGroup() !== g.cat; else renameTpl">
+                <span class="gname" (click)="toggleCollapse(g.cat)">{{ g.cat }}</span>
+                <span class="gcount">{{ g.questions.length }}</span>
+                <span class="gactions">
+                  <button (click)="moveGroup(gi, -1)" [disabled]="gi === 0" title="Move group up">▲</button>
+                  <button (click)="moveGroup(gi, 1)" [disabled]="gi === groups().length - 1" title="Move group down">▼</button>
+                  <button class="link" (click)="openGroupPo(g.cat)">Assign object</button>
+                  <button class="link" (click)="startRenameGroup(g.cat)">Rename</button>
+                  <button class="link danger" (click)="deleteGroup(g.cat)">Delete</button>
+                </span>
+              </ng-container>
+              <ng-template #renameTpl>
+                <input class="rename-input" [(ngModel)]="renameValue" placeholder="Group name (existing = merge)"
+                       (keyup.enter)="commitRenameGroup(g.cat)" />
+                <button class="link" (click)="commitRenameGroup(g.cat)">Save</button>
+                <button class="link" (click)="cancelRenameGroup()">Cancel</button>
+              </ng-template>
+            </div>
+
+            <!-- group PO picker -->
+            <div class="group-po" *ngIf="groupPoTarget() === g.cat">
+              <span>Bind all {{ g.questions.length }} questions to:</span>
+              <input [(ngModel)]="groupPoQuery" placeholder="Search name or tag…" />
+              <button class="link" (click)="assignGroupPo(g.cat, null)">clear binding</button>
+              <button class="link" (click)="closeGroupPo()">close</button>
+              <div class="po-results" *ngIf="groupPoQuery.trim()">
+                <button *ngFor="let n of groupPoResults()" class="po-opt" (click)="assignGroupPo(g.cat, n.id)">
+                  <span class="dot" [style.background]="poColor(n.type)"></span>{{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- questions -->
+            <div class="gbody" *ngIf="!isCollapsed(g.cat)">
+              <div class="qrow" *ngFor="let q of g.questions; let qi = index" [class.editing]="editingId() === q.id">
+                <div class="ord">
+                  <button (click)="moveQuestion(g.cat, qi, -1)" [disabled]="qi === 0" title="Move up">▲</button>
+                  <button (click)="moveQuestion(g.cat, qi, 1)" [disabled]="qi === g.questions.length - 1" title="Move down">▼</button>
+                </div>
+
+                <ng-container *ngIf="editingId() !== q.id; else editTpl">
+                  <div class="qmain" (click)="startEdit(q)">
+                    <div class="qprompt">{{ q.prompt }}</div>
+                    <div class="qmeta">
+                      <span class="chip type">{{ q.answerType }}</span>
+                      <span class="chip" *ngIf="q.tagCode">{{ q.tagCode }}</span>
+                      <span class="chip range" *ngIf="q.lowLimit != null || q.highLimit != null">{{ q.lowLimit ?? '' }}–{{ q.highLimit ?? '' }} {{ q.unit }}</span>
+                      <span class="chip exp" *ngIf="q.expectedValue">= {{ q.expectedValue }}</span>
+                      <span class="chip po" *ngIf="q.physicalObjectId" title="{{ poName(q.physicalObjectId) }}">🔗 {{ poName(q.physicalObjectId) }}</span>
+                      <span class="chip dep" *ngIf="q.predecessorQuestionId" title="Conditional">↳ shows if: {{ questionPrompt(q.predecessorQuestionId) }} {{ q.showWhenOp }} {{ q.showWhenValue }}</span>
+                      <span class="chip warn" *ngIf="!q.trackIssues">no-alerts</span>
+                    </div>
+                  </div>
+                  <div class="qactions">
+                    <button class="link" (click)="startEdit(q)">Edit</button>
+                    <button class="link danger" (click)="deleteQuestion(q)">✕</button>
+                  </div>
+                </ng-container>
+
+                <ng-template #editTpl>
+                  <div class="qedit">
+                    <div class="field"><label>Prompt</label><input [(ngModel)]="draft.prompt" /></div>
+                    <div class="grid">
+                      <div class="field"><label>Type</label>
+                        <select [(ngModel)]="draft.answerType"><option *ngFor="let t of answerTypes" [value]="t">{{ t }}</option></select>
+                      </div>
+                      <div class="field"><label>Group</label><input [(ngModel)]="draft.category" /></div>
+                      <div class="field" *ngIf="draft.answerType === 'READING'"><label>Unit</label><input [(ngModel)]="draft.unit" /></div>
+                    </div>
+                    <div class="grid" *ngIf="draft.answerType === 'READING'">
+                      <div class="field"><label>Low limit</label><input type="number" [(ngModel)]="draft.lowLimit" /></div>
+                      <div class="field"><label>High limit</label><input type="number" [(ngModel)]="draft.highLimit" /></div>
+                    </div>
+                    <div class="field" *ngIf="draft.answerType === 'CHOICE'"><label>Choices (JSON)</label><input [(ngModel)]="draft.choicesJson" placeholder='["A","B"]' /></div>
+                    <div class="field" *ngIf="draft.answerType !== 'READING'"><label>Expected / pass value</label><input [(ngModel)]="draft.expectedValue" /></div>
+
+                    <div class="field">
+                      <label>Physical object</label>
+                      <div class="po-cur" *ngIf="draft.physicalObjectId != null">
+                        {{ poName(draft.physicalObjectId) }}
+                        <button class="link" (click)="draft.physicalObjectId = null">clear</button>
+                      </div>
+                      <ng-container *ngIf="draft.physicalObjectId == null">
+                        <input [(ngModel)]="poQuery" placeholder="Search name or tag…" />
+                        <div class="po-results" *ngIf="poQuery.trim()">
+                          <button *ngFor="let n of poResults()" class="po-opt" (click)="draft.physicalObjectId = n.id; poQuery=''">
+                            <span class="dot" [style.background]="poColor(n.type)"></span>{{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
+                          </button>
+                        </div>
+                      </ng-container>
+                    </div>
+
+                    <!-- dependency -->
+                    <div class="dep-box">
+                      <div class="field"><label>Only show when (dependency)</label>
+                        <select [(ngModel)]="draft.predecessorQuestionId">
+                          <option [ngValue]="null">— always show —</option>
+                          <option *ngFor="let p of predecessorOptions()" [ngValue]="p.id">{{ p.label }}</option>
+                        </select>
+                      </div>
+                      <div class="grid" *ngIf="draft.predecessorQuestionId != null">
+                        <div class="field"><label>Condition</label>
+                          <select [(ngModel)]="draft.showWhenOp"><option *ngFor="let o of showWhenOps" [value]="o">{{ o }}</option></select>
+                        </div>
+                        <div class="field grow" *ngIf="draft.showWhenOp !== 'ANSWERED'"><label>Answer value</label><input [(ngModel)]="draft.showWhenValue" placeholder="e.g. Yes / FAIL" /></div>
+                      </div>
+                    </div>
+
+                    <label class="active"><input type="checkbox" [(ngModel)]="draft.trackIssues" /> Track out-of-range alerts</label>
+
+                    <div class="edit-actions">
+                      <button class="primary" (click)="saveEdit()" [disabled]="saving()">Save</button>
+                      <button class="ghost" (click)="cancelEdit()">Cancel</button>
+                    </div>
+                  </div>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+        </section>
+      </ng-container>
+
+      <ng-template #loadingTpl>
+        <p class="loading">{{ loading() ? 'Loading…' : (error() || 'Round not found.') }}</p>
+      </ng-template>
+    </div>
+  </ng-container>
+</app-main-layout>

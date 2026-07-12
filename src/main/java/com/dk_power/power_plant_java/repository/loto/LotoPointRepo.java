@@ -28,6 +28,9 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 
     List<LotoPoint> findByTagNumber(String tag);
 
+    /** LOTO points bound to a PhysicalObject (informational binder soft-FK). */
+    List<LotoPoint> findByPhysicalObjectId(Long physicalObjectId);
+
     /**
      * Case-insensitive active-only lookup used by the QR resolver. Ordered by
      * id ascending so callers get deterministic multi-match results (a tag

@@ -136,6 +136,17 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         ]
     },
     {
+        label: 'Rounds',
+        icon: 'checklist',
+        color: '#7E57C2',
+        defaultRoute: '/rounds/workbench',
+        requiresFullAccess: true,
+        items: [
+            { route: '/rounds/workbench', label: 'Rounds Workbench', icon: 'edit_note', iconColor: '#7E57C2' },
+            { route: '/rounds/issues', label: 'Active Out-of-Range', icon: 'warning', iconColor: '#EF5350' }
+        ]
+    },
+    {
         label: 'Maximo',
         requiresPlant: true,
         icon: 'engineering',

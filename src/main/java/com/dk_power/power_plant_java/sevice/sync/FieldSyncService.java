@@ -1146,7 +1146,8 @@ public class FieldSyncService {
             String bindingEntityType = entity.getClass().getSimpleName();
             if (value instanceof Long rawFk
                     && "physicalObjectId".equals(change.getFieldName())
-                    && ("FileObject".equals(bindingEntityType) || "WorkArea".equals(bindingEntityType))) {
+                    && ("FileObject".equals(bindingEntityType) || "WorkArea".equals(bindingEntityType)
+                        || "LotoPoint".equals(bindingEntityType))) {
                 Long remapped = DedupKeyResolver.resolveRemappedId("PhysicalObject", rawFk, idRemapTable);
                 if (!remapped.equals(rawFk)) {
                     log.debug("Remapped {}.physicalObjectId {} -> {}", bindingEntityType, rawFk, remapped);
