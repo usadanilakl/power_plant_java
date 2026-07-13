@@ -377,6 +377,16 @@ export class RfReactiveFormComponent {
     return this.form ? this.form.value : null;
   }
 
+  /**
+   * Live merged value (entity + current form controls) — the SAME shape that formSubmit and the
+   * debounced formValueChange emit, but read synchronously. Callers that persist on a custom
+   * button (e.g. the dual form's Save) must use this instead of the debounced snapshot, or a save
+   * clicked within the 1s debounce window would write stale values.
+   */
+  getMergedFormValue(): any {
+    return this.dataService.deepMerge(this.entity() || {}, this.form ? this.form.value : {});
+  }
+
   private updateFormErrors(): void {
     const errors = this.validationService.getFormErrors(this.form, this.fields());
     this.formErrors.set(errors);

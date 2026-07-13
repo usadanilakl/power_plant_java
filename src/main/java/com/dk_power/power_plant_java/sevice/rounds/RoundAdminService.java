@@ -250,6 +250,19 @@ public class RoundAdminService {
         return n;
     }
 
+    /** Merge several groups into one target category (moves every question in {@code fromCategories} to {@code toCategory}). */
+    public int mergeGroups(Long roundId, List<String> fromCategories, String toCategory) {
+        if (fromCategories == null || fromCategories.isEmpty()) return 0;
+        java.util.Set<String> froms = fromCategories.stream().map(RoundAdminService::nz).collect(java.util.stream.Collectors.toSet());
+        String to = (toCategory == null || toCategory.isBlank()) ? null : toCategory.trim();
+        List<RoundQuestion> qs = questionRepo.findByRound_IdAndDeletedFalseOrderByOrderIndexAsc(roundId);
+        int n = 0;
+        for (RoundQuestion q : qs) {
+            if (froms.contains(nz(q.getCategory()))) { q.setCategory(to); questionRepo.save(q); n++; }
+        }
+        return n;
+    }
+
     /** Bind every question in a group to one PhysicalObject (null clears). Returns affected count. */
     public int assignGroupObject(Long roundId, String category, Long physicalObjectId) {
         Long poId = (physicalObjectId != null && physicalObjectId < 0) ? null : physicalObjectId;
@@ -378,6 +391,7 @@ public class RoundAdminService {
 
     public record GroupRenameRequest(String fromCategory, String toCategory) {}
     public record GroupAssignObjectRequest(String category, Long physicalObjectId) {}
+    public record GroupMergeRequest(List<String> fromCategories, String toCategory) {}
 
     public record BulkGenerateRequest(Long roundId, Long physicalObjectId, List<Long> stagingIds) {}
 }

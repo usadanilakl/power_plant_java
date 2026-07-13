@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.BulkGenerat
 import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.CreateRoundRequest;
 import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.GenerateQuestionRequest;
 import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.GroupAssignObjectRequest;
+import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.GroupMergeRequest;
 import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.GroupRenameRequest;
 import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.UpdateQuestionRequest;
 import com.dk_power.power_plant_java.sevice.rounds.RoundAdminService.UpdateRoundRequest;
@@ -218,6 +219,17 @@ public class NgRoundsAdminController {
         try {
             adminService.renameGroup(id, body.fromCategory(), body.toCategory());
             return json(new NgApiResponse<>(adminService.getRound(id), "Group renamed"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Merge several groups into one target category. */
+    @PostMapping("/rounds/{id}/group/merge")
+    public ResponseEntity<NgApiResponse<RoundDto>> mergeGroups(@PathVariable Long id, @RequestBody GroupMergeRequest body) {
+        try {
+            adminService.mergeGroups(id, body.fromCategories(), body.toCategory());
+            return json(new NgApiResponse<>(adminService.getRound(id), "Groups merged"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }

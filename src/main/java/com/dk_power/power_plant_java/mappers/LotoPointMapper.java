@@ -120,7 +120,10 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getFileIds()!=null) dto.setFileIds(entity.getFileIds());
         if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
 
-        if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
+        // Resolve-on-read: the flat sentence follows the point's own ZeroEnergy (live phrase +
+        // its equipment); only fall back to the stored flat string for points with no ZeroEnergy.
+        if(entity.getZeroEnergy()!=null) dto.setZeroEnergyMethod(zeroEnergyService.resolveMethod(entity.getZeroEnergy()));
+        else if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
         if(entity.getZeroEnergy()!=null) dto.setZeroEnergy(zeroEnergyService.toDto(entity.getZeroEnergy()));
         if(entity.getLocation()!=null) dto.setLocation(valueService.convertToDto(entity.getLocation()));
         if(entity.getEqType()!=null) dto.setEqType(valueService.convertToDto(entity.getEqType()));
@@ -209,8 +212,16 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getFileIds()!=null) dto.setFileIds(entity.getFileIds());
         if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
 
-        if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
-        if(entity.getZeroEnergyId()!=null) dto.setZeroEnergy(zeroEnergyService.getDtoById(entity.getZeroEnergyId()));
+        if(entity.getZeroEnergyId()!=null) {
+            // Resolve-on-read: the fetched DTO already carries the freshly-resolved sentence;
+            // use it for the flat field too so a phrase edit shows here without a re-save.
+            var zeDto = zeroEnergyService.getDtoById(entity.getZeroEnergyId());
+            dto.setZeroEnergy(zeDto);
+            if(zeDto!=null && zeDto.getMethod()!=null) dto.setZeroEnergyMethod(zeDto.getMethod());
+            else if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
+        } else if(entity.getZeroEnergyMethod()!=null) {
+            dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
+        }
         if(entity.getLocation()!=null) dto.setLocation(valueService.getDtoById(entity.getLocation()));
         if(entity.getEqType()!=null) dto.setEqType(valueService.getDtoById(entity.getEqType()));
         if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
@@ -274,6 +285,11 @@ public class LotoPointMapper implements BaseMapper{
         return entity;
     }
 
+    /** Resolve-on-read helper for callers that read the sentence directly off the entity (e.g. summary DTO). */
+    public String resolveZeroEnergyMethod(ZeroEnergy ze) {
+        return ze != null ? zeroEnergyService.resolveMethod(ze) : null;
+    }
+
     @Override
     public ModelMapper getMapper() {
         return modelMapper;
@@ -328,18 +344,13 @@ public class LotoPointMapper implements BaseMapper{
         // DO NOT set equipmentList here - it's the non-owning side
         // Equipment relationships are managed in processLotoPoint via the owning side (Equipment)
 
-        // Handle ZeroEnergy - if nested object exists, process it; otherwise use ID
+        // ZeroEnergy is now PER-POINT: each point owns its own row (no cross-point dedup).
+        // `lotoPoint` is the loaded existing entity, so its current zeroEnergy is this point's
+        // own row, which saveForPoint updates in place (or forks if still shared). editShared is
+        // no longer used here — "apply to all" is realized by editing the shared phrase Value,
+        // which reaches every point via resolve-on-read.
         if (dto.getZeroEnergy() != null) {
-            ZeroEnergy zeroEnergy;
-            if (Boolean.TRUE.equals(dto.getZeroEnergy().getEditShared())
-                    && dto.getZeroEnergy().getId() != null) {
-                // Edit the shared ZeroEnergy record in-place
-                zeroEnergy = zeroEnergyService.updateShared(dto.getZeroEnergy());
-            } else {
-                // Default: find-or-create (deduplication)
-                zeroEnergy = zeroEnergyService.findOrCreate(dto.getZeroEnergy());
-            }
-            lotoPoint.setZeroEnergy(zeroEnergy);
+            lotoPoint.setZeroEnergy(zeroEnergyService.saveForPoint(lotoPoint, dto.getZeroEnergy()));
         } else if (dto.getZeroEnergyId() != null) {
             lotoPoint.setZeroEnergy(zeroEnergyService.getEntityById(dto.getZeroEnergyId()));
         }

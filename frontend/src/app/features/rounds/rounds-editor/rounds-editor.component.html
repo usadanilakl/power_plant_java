@@ -38,8 +38,16 @@
           <div class="qhead">
             <h3>Questions</h3>
             <span class="spacer"></span>
+            <button class="link" [class.on]="mergeMode()" (click)="toggleMergeMode()">{{ mergeMode() ? 'Cancel merge' : 'Merge groups' }}</button>
             <button class="link" (click)="collapseAll()">Collapse all</button>
             <button class="link" (click)="expandAll()">Show all</button>
+          </div>
+
+          <div class="merge-bar" *ngIf="mergeMode()">
+            <span>{{ mergeSelected().size }} selected — merge into:</span>
+            <input [(ngModel)]="mergeName" placeholder="Merged group name" (keyup.enter)="doMerge()" />
+            <button class="primary" (click)="doMerge()" [disabled]="saving() || mergeSelected().size < 2 || !mergeName.trim()">Merge</button>
+            <span class="hint">tick the groups below</span>
           </div>
 
           <div class="add-row">
@@ -53,45 +61,46 @@
           <div class="group" *ngFor="let g of groups(); let gi = index">
             <!-- group header -->
             <div class="ghead">
-              <button class="gcaret" (click)="toggleCollapse(g.cat)">{{ isCollapsed(g.cat) ? '▸' : '▾' }}</button>
-              <ng-container *ngIf="renamingGroup() !== g.cat; else renameTpl">
-                <span class="gname" (click)="toggleCollapse(g.cat)">{{ g.cat }}</span>
+              <label class="gmerge" *ngIf="mergeMode()"><input type="checkbox" [checked]="isMergeSelected(g.key)" (change)="toggleMergeSelect(g)" /></label>
+              <button class="gcaret" (click)="toggleCollapse(g.key)">{{ isCollapsed(g.key) ? '▸' : '▾' }}</button>
+              <ng-container *ngIf="renamingGroup() !== g.key; else renameTpl">
+                <span class="gname" (click)="toggleCollapse(g.key)">{{ g.cat }}</span>
                 <span class="gcount">{{ g.questions.length }}</span>
                 <span class="gactions">
                   <button (click)="moveGroup(gi, -1)" [disabled]="gi === 0" title="Move group up">▲</button>
                   <button (click)="moveGroup(gi, 1)" [disabled]="gi === groups().length - 1" title="Move group down">▼</button>
-                  <button class="link" (click)="openGroupPo(g.cat)">Assign object</button>
-                  <button class="link" (click)="startRenameGroup(g.cat)">Rename</button>
-                  <button class="link danger" (click)="deleteGroup(g.cat)">Delete</button>
+                  <button class="link" (click)="openGroupPo(g)">Assign object</button>
+                  <button class="link" (click)="startRenameGroup(g)">Rename</button>
+                  <button class="link danger" (click)="deleteGroup(g)">Delete</button>
                 </span>
               </ng-container>
               <ng-template #renameTpl>
                 <input class="rename-input" [(ngModel)]="renameValue" placeholder="Group name (existing = merge)"
-                       (keyup.enter)="commitRenameGroup(g.cat)" />
-                <button class="link" (click)="commitRenameGroup(g.cat)">Save</button>
+                       (keyup.enter)="commitRenameGroup(g)" />
+                <button class="link" (click)="commitRenameGroup(g)">Save</button>
                 <button class="link" (click)="cancelRenameGroup()">Cancel</button>
               </ng-template>
             </div>
 
             <!-- group PO picker -->
-            <div class="group-po" *ngIf="groupPoTarget() === g.cat">
+            <div class="group-po" *ngIf="groupPoTarget() === g.key">
               <span>Bind all {{ g.questions.length }} questions to:</span>
               <input [(ngModel)]="groupPoQuery" placeholder="Search name or tag…" />
-              <button class="link" (click)="assignGroupPo(g.cat, null)">clear binding</button>
+              <button class="link" (click)="assignGroupPo(g, null)">clear binding</button>
               <button class="link" (click)="closeGroupPo()">close</button>
               <div class="po-results" *ngIf="groupPoQuery.trim()">
-                <button *ngFor="let n of groupPoResults()" class="po-opt" (click)="assignGroupPo(g.cat, n.id)">
+                <button *ngFor="let n of groupPoResults()" class="po-opt" (click)="assignGroupPo(g, n.id)">
                   <span class="dot" [style.background]="poColor(n.type)"></span>{{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
                 </button>
               </div>
             </div>
 
             <!-- questions -->
-            <div class="gbody" *ngIf="!isCollapsed(g.cat)">
+            <div class="gbody" *ngIf="!isCollapsed(g.key)">
               <div class="qrow" *ngFor="let q of g.questions; let qi = index" [class.editing]="editingId() === q.id">
                 <div class="ord">
-                  <button (click)="moveQuestion(g.cat, qi, -1)" [disabled]="qi === 0" title="Move up">▲</button>
-                  <button (click)="moveQuestion(g.cat, qi, 1)" [disabled]="qi === g.questions.length - 1" title="Move down">▼</button>
+                  <button (click)="moveQuestion(g.key, qi, -1)" [disabled]="qi === 0" title="Move up">▲</button>
+                  <button (click)="moveQuestion(g.key, qi, 1)" [disabled]="qi === g.questions.length - 1" title="Move down">▼</button>
                 </div>
 
                 <ng-container *ngIf="editingId() !== q.id; else editTpl">
@@ -103,7 +112,7 @@
                       <span class="chip range" *ngIf="q.lowLimit != null || q.highLimit != null">{{ q.lowLimit ?? '' }}–{{ q.highLimit ?? '' }} {{ q.unit }}</span>
                       <span class="chip exp" *ngIf="q.expectedValue">= {{ q.expectedValue }}</span>
                       <span class="chip po" *ngIf="q.physicalObjectId" title="{{ poName(q.physicalObjectId) }}">🔗 {{ poName(q.physicalObjectId) }}</span>
-                      <span class="chip dep" *ngIf="q.predecessorQuestionId" title="Conditional">↳ shows if: {{ questionPrompt(q.predecessorQuestionId) }} {{ q.showWhenOp }} {{ q.showWhenValue }}</span>
+                      <span class="chip dep" *ngIf="q.predecessorQuestionId" title="Conditional">↳ shows if: {{ questionPrompt(q.predecessorQuestionId) }} {{ q.showWhenOp }}<span *ngIf="q.showWhenOp !== 'ANSWERED'"> {{ q.showWhenValue }}</span></span>
                       <span class="chip warn" *ngIf="!q.trackIssues">no-alerts</span>
                     </div>
                   </div>

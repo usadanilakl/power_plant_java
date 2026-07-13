@@ -1301,9 +1301,9 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                         ? lp.getSystem()
                         : "Unknown")
                 .unit(lp.getUnit())
-                .zeroEnergyMethod(lp.getZeroEnergy() != null
-                        ? lp.getZeroEnergy().getMethod()
-                        : null)
+                // Resolve-on-read: rebuild from the live phrase + equipment (entity-direct read
+                // that bypasses the mapper), so a phrase edit reaches the left-menu grouping.
+                .zeroEnergyMethod(lotoPointMapper.resolveZeroEnergyMethod(lp.getZeroEnergy()))
                 .fileName(firstEquipment != null && firstEquipment.getMainFile() != null
                         ? firstEquipment.getMainFile().getName()
                         : "Unknown")

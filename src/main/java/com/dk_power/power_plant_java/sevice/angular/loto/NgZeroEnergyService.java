@@ -102,6 +102,11 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         return this.zeroEnergyMapper.convertToDto(entity);
     }
 
+    /** Resolve-on-read: current sentence from the live phrase + this row's equipment (stored fallback). */
+    public String resolveMethod(ZeroEnergy entity) {
+        return this.zeroEnergyMapper.resolveMethod(entity);
+    }
+
     @Override
     public ZeroEnergy toEntity(ZeroEnergyDto dto) {
         return this.zeroEnergyMapper.convertToEntity(dto);
@@ -120,6 +125,44 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         System.out.println("Processing ZeroEnergy - DEPRECATED, use findOrCreate instead");
         // Redirect to findOrCreate for deduplication
         return findOrCreate(zeroEnergyIdDto);
+    }
+
+    /**
+     * Per-point save (replaces the shared findOrCreate/updateShared dedup): each LOTO point owns
+     * its own ZeroEnergy row. If this point's current row is not referenced by any OTHER point,
+     * update it in place; otherwise fork a fresh private row so sibling points are never affected.
+     * The mutate-vs-fork decision keys on countByZeroEnergyId, so it is order-independent and safe
+     * even before the one-time un-share migration runs. Wording propagation lives on the shared
+     * phrase Value + resolve-on-read, not on sharing this row.
+     *
+     * @param lotoPoint the loaded point being saved (its current zeroEnergy is this point's own row)
+     * @param idDto     the incoming zero-energy data (template id + slot-ordered equipment ids)
+     */
+    @Transactional
+    public ZeroEnergy saveForPoint(LotoPoint lotoPoint, ZeroEnergyIdDto idDto) {
+        if (idDto == null) {
+            return null;
+        }
+        ZeroEnergy current = lotoPoint != null ? lotoPoint.getZeroEnergy() : null;
+
+        if (current != null && current.getId() != null
+                && lotoPointRepo.countByZeroEnergyId(current.getId()) <= 1) {
+            // Update this point's own row in place.
+            if (idDto.getZeroEnergyTemplateId() != null) {
+                current.setZeroEnergyTemplate(valueService.findById(idDto.getZeroEnergyTemplateId()).orElse(null));
+            }
+            if (idDto.getTemplateEquipmentIds() != null && !idDto.getTemplateEquipmentIds().isEmpty()) {
+                current.setNormalizedEquipmentIds(idDto.getTemplateEquipmentIds()); // sorted (legacy key)
+                current.setOrderedEquipmentIds(idDto.getTemplateEquipmentIds());    // slot order (for resolution)
+            }
+            // Rebuild the cached snapshot from the row's now-updated state (display re-resolves anyway).
+            current.setMethod(zeroEnergyMapper.resolveMethod(current));
+            return zeroEnergyRepo.save(current);
+        }
+
+        // Shared (or none): fork a fresh private row for this point, leaving any shared row untouched.
+        idDto.setId(null);
+        return zeroEnergyRepo.save(zeroEnergyMapper.convertIdDtoToEntity(idDto));
     }
 
     /**

@@ -137,6 +137,14 @@ export class RoundsAdminService {
       .pipe(map(r => r.responseData));
   }
 
+  /** Merge several groups into one target category. Null (ungrouped bucket) is sent as ''. */
+  mergeGroups(roundId: number, fromCategories: (string | null)[], toCategory: string): Observable<Round> {
+    return this.http
+      .post<SpringApiResponse<Round>>(`${this.base}/rounds/${roundId}/group/merge`,
+        { fromCategories: fromCategories.map(c => c ?? ''), toCategory })
+      .pipe(map(r => r.responseData));
+  }
+
   deleteQuestion(id: number): Observable<void> {
     return this.http
       .delete<SpringApiResponse<void>>(`${this.base}/questions/${id}`)

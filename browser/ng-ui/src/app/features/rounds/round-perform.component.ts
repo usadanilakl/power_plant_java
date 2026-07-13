@@ -248,13 +248,38 @@ export class RoundPerformComponent implements OnInit {
     this.loading.set(false);
   }
 
-  /** Persist the in-progress answers so a reload / connection loss doesn't lose work. */
+  /** The answers to submit: only currently-visible questions with a value (hidden dependents are skipped). */
+  private visibleAnswersSnapshot(): Record<number, { value: string; comment: string }> {
+    const r = this.rp();
+    if (!r) return { ...this.draft };
+    const by = this.qById();
+    const out: Record<number, { value: string; comment: string }> = {};
+    for (const q of r.questions) {
+      if (isQuestionVisible(q, by, id => this.draft[id]?.value ?? '') && (this.draft[q.id]?.value ?? '').trim() !== '') {
+        out[q.id] = this.draft[q.id];
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Persist the in-progress answers so a reload / connection loss doesn't lose work. Autosave ('draft') must NOT
+   * demote an already-queued 'pending'/'failed' submit — otherwise editing a re-opened offline round would strand the
+   * queued submit (it never auto-flushes). When a queued state is preserved, the answers are re-snapshotted to the
+   * visible set so the eventual flush never sends a since-hidden answer.
+   */
   private persistDraft(status: RoundDraft['status'] = 'draft', answers?: Record<number, { value: string; comment: string }>): RoundDraft | null {
     const r = this.rp();
     if (!r || r.instanceId == null) return null;
+    let effective = status;
+    if (status === 'draft') {
+      const existing = this.store.getDraft(r.instanceId);
+      if (existing && (existing.status === 'pending' || existing.status === 'failed')) effective = existing.status;
+    }
+    const finalAnswers = answers ?? (effective === 'draft' ? this.draft : this.visibleAnswersSnapshot());
     const d: RoundDraft = {
       instanceId: r.instanceId, roundId: r.id, roundName: r.name,
-      answers: answers ?? this.draft, notes: this.notes, savedAt: Date.now(), status,
+      answers: finalAnswers, notes: this.notes, savedAt: Date.now(), status: effective,
     };
     this.store.saveDraft(d);
     return d;
@@ -306,14 +331,7 @@ export class RoundPerformComponent implements OnInit {
     this.submitting.set(true);
     this.error.set('');
     // queue only visible questions' answers (hidden dependents are skipped)
-    const by = this.qById();
-    const visibleAnswers: Record<number, { value: string; comment: string }> = {};
-    for (const q of r.questions) {
-      if (isQuestionVisible(q, by, id => this.draft[id]?.value ?? '') && (this.draft[q.id]?.value ?? '').trim() !== '') {
-        visibleAnswers[q.id] = this.draft[q.id];
-      }
-    }
-    const draft = this.persistDraft('pending', visibleAnswers);
+    const draft = this.persistDraft('pending', this.visibleAnswersSnapshot());
     if (!draft) { this.submitting.set(false); this.error.set('No active round instance'); return; }
 
     this.sync.submit(draft).subscribe({

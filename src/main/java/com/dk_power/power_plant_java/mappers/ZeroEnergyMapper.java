@@ -26,6 +26,10 @@ public class ZeroEnergyMapper implements BaseMapper {
      */
     private static final ThreadLocal<Set<Long>> CONVERTING_IDS = ThreadLocal.withInitial(HashSet::new);
 
+    // Shared, thread-safe reader — resolve-on-read runs per row, so don't build one each time.
+    private static final com.fasterxml.jackson.databind.ObjectMapper PHRASE_JSON =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
     private final ModelMapper modelMapper;
     private final ValueService valueService;
     private final NgZeroEnergyService zeroEnergyService;
@@ -106,15 +110,12 @@ public class ZeroEnergyMapper implements BaseMapper {
                 }
             }
 
-            // Use the persisted method field, re-resolving if it contains unresolved placeholders
-            if (entity.getMethod() != null) {
-                if (entity.getMethod().contains("[tag")) {
-                    // Method has unresolved placeholders - rebuild it
-                    String resolved = buildResolvedMethod(entity);
-                    dto.setMethod(resolved != null ? resolved : entity.getMethod());
-                } else {
-                    dto.setMethod(entity.getMethod());
-                }
+            // Resolve-on-read: always rebuild from the current shared phrase + this row's
+            // equipment (falls back to the stored method) so a phrase-wording edit reaches
+            // every point on read without re-saving them.
+            String resolvedMethod = resolveMethod(entity);
+            if (resolvedMethod != null) {
+                dto.setMethod(resolvedMethod);
             }
 
             return dto;
@@ -175,6 +176,23 @@ public class ZeroEnergyMapper implements BaseMapper {
      * @param entity The ZeroEnergy entity
      * @return Resolved method string with equipment tag numbers substituted
      */
+    /**
+     * Resolve-on-read entry point: rebuild the sentence from the current (shared, live) phrase
+     * template + this row's equipment, falling back to the stored method column when resolution
+     * is not possible (template-less rows, parse failure). Called from every read path so a
+     * shared-phrase wording edit reaches all points without re-saving them.
+     */
+    public String resolveMethod(ZeroEnergy entity) {
+        if (entity == null) {
+            return null;
+        }
+        String resolved = buildResolvedMethod(entity);
+        if (resolved != null && !resolved.isBlank()) {
+            return resolved;
+        }
+        return entity.getMethod();
+    }
+
     private String buildResolvedMethod(ZeroEnergy entity) {
         if (entity == null || entity.getZeroEnergyTemplate() == null ||
             entity.getZeroEnergyTemplate().getAlias() == null) {
@@ -185,8 +203,7 @@ public class ZeroEnergyMapper implements BaseMapper {
             String phraseJson = entity.getZeroEnergyTemplate().getAlias();
 
             // Parse JSON to extract segments
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(phraseJson);
+            com.fasterxml.jackson.databind.JsonNode root = PHRASE_JSON.readTree(phraseJson);
 
             if (!root.has("segments")) {
                 // No segments, return rawText if available

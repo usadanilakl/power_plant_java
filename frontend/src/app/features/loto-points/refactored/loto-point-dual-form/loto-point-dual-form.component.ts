@@ -741,8 +741,24 @@ export class LotoPointDualFormComponent {
   /**
    * Save primary LOTO point
    */
+  /**
+   * Live values straight from the form control (bypasses the 1s debounce that feeds
+   * currentPrimaryValues). Custom Save buttons must use these or a quick save persists stale data.
+   */
+  private livePrimary(): LotoPointDto {
+    return (this.primaryFormRef?.getMergedFormValue()
+      ?? this.currentPrimaryValues()
+      ?? this.primaryLotoPoint()) as LotoPointDto;
+  }
+
+  private liveCounterpart(): LotoPointDto {
+    return (this.counterpartFormRef?.getMergedFormValue()
+      ?? this.currentCounterpartValues()
+      ?? this.counterpartLotoPoint()) as LotoPointDto;
+  }
+
   savePrimary(): void {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const primary = this.livePrimary();
     if (!primary) return;
 
     this.isSavingPrimary.set(true);
@@ -774,7 +790,7 @@ export class LotoPointDualFormComponent {
    * Save counterpart LOTO point
    */
   saveCounterpart(): void {
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    const counterpart = this.liveCounterpart();
     if (!counterpart) return;
 
     this.isSavingCounterpart.set(true);
@@ -808,8 +824,8 @@ export class LotoPointDualFormComponent {
    * Save both LOTO points and link them
    */
   saveBoth(): void {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    const primary = this.livePrimary();
+    const counterpart = this.liveCounterpart();
 
     if (!primary || !counterpart) return;
 

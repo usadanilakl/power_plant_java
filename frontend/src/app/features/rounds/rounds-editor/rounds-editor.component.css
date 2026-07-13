@@ -32,6 +32,11 @@ button { font: inherit; cursor: pointer; border-radius: 4px; }
 .qhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .qhead .spacer { flex: 1; }
 .qhead h3 { margin: 0; }
+.qhead .link.on { background: #ede7f6; color: #4527a0; border-radius: 4px; padding: 2px 8px; }
+.merge-bar { display: flex; align-items: center; gap: 8px; background: #ede7f6; border: 1px solid #d1c4e9; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; }
+.merge-bar input { padding: 5px 8px; border: 1px solid #b39ddb; border-radius: 5px; font: inherit; }
+.merge-bar .hint { color: #7e57c2; font-size: 12px; }
+.gmerge { display: flex; align-items: center; }
 
 .group { border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
 .ghead { display: flex; align-items: center; gap: 8px; background: #eceff1; padding: 5px 8px; }
