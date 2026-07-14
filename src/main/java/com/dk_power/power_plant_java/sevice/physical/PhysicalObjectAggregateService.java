@@ -11,11 +11,17 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.entities.rounds.RoundAnswer;
+import com.dk_power.power_plant_java.entities.rounds.RoundIssueStatus;
+import com.dk_power.power_plant_java.entities.rounds.RoundQuestion;
 import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
+import com.dk_power.power_plant_java.repository.rounds.RoundAnswerRepository;
+import com.dk_power.power_plant_java.repository.rounds.RoundIssueRepository;
+import com.dk_power.power_plant_java.repository.rounds.RoundQuestionRepository;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +55,9 @@ public class PhysicalObjectAggregateService {
     private final LotoPointRepo lotoPointRepo;
     private final WorkAreaRepo workAreaRepo;
     private final CommentRepo commentRepo;
+    private final RoundQuestionRepository roundQuestionRepo;
+    private final RoundAnswerRepository roundAnswerRepo;
+    private final RoundIssueRepository roundIssueRepo;
     private final ObjectProvider<MaximoWorkOrderAdapter> workOrders;
     private final ObjectProvider<MaximoServiceRequestAdapter> serviceRequests;
 
@@ -65,9 +74,33 @@ public class PhysicalObjectAggregateService {
         List<WorkAreaRef> areas = workAreaRepo.findByPhysicalObjectId(id).stream().map(this::areaRef).toList();
         List<SystemRef> systems = systemRefs(node.getSystems());
         List<ObjectLog> logs = listLogs(id);
+        List<RoundCheckRef> roundChecks = roundQuestionRepo.findByPhysicalObjectIdAndDeletedFalse(id).stream()
+                .map(this::roundCheckRef).toList();
         MaximoFacet maximo = includeMaximo ? maximoFacet(node) : new MaximoFacet(false, node.getMaximoAssetnum(), node.getMaximoLocation(), List.of(), List.of());
 
-        return new PhysicalObjectAggregate(nodeDto, breadcrumb, files, loto, areas, systems, logs, maximo);
+        return new PhysicalObjectAggregate(nodeDto, breadcrumb, files, loto, areas, systems, logs, roundChecks, maximo);
+    }
+
+    /** The round checks that monitor this object (cheap — no Maximo), for the desktop plant-map/object panels. */
+    @Transactional(readOnly = true)
+    public List<RoundCheckRef> listRoundChecks(Long id) {
+        return roundQuestionRepo.findByPhysicalObjectIdAndDeletedFalse(id).stream().map(this::roundCheckRef).toList();
+    }
+
+    /** Map a RoundQuestion that references this object into a check ref, with its latest reading + open-issue flag. */
+    private RoundCheckRef roundCheckRef(RoundQuestion q) {
+        String roundName = q.getRound() != null ? q.getRound().getName() : null;
+        Long roundId = q.getRound() != null ? q.getRound().getId() : null;
+        List<RoundAnswer> answers = roundAnswerRepo.findByQuestionIdOrderByAnsweredAtDesc(q.getId());
+        RoundAnswer last = answers.isEmpty() ? null : answers.get(0);
+        boolean openIssue = q.isTrackIssues()
+                && roundIssueRepo.findFirstByQuestionIdAndStatus(q.getId(), RoundIssueStatus.OPEN) != null;
+        return new RoundCheckRef(q.getId(), roundId, roundName, q.getCategory(), q.getPrompt(),
+                q.getAnswerType() == null ? null : q.getAnswerType().name(), q.getUnit(),
+                q.getLowLimit(), q.getHighLimit(), q.getExpectedValue(),
+                last == null ? null : last.getValue(),
+                last == null || last.getAnsweredAt() == null ? null : last.getAnsweredAt().toString(),
+                openIssue);
     }
 
     // ── object logs (polymorphic Comment) ──

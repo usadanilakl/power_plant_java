@@ -265,10 +265,21 @@ export class SdsImportStateService {
         limit: limit > 0 ? limit : undefined
       });
       if (!res.success) throw new Error(res.error || 'Sync PDFs failed');
-      this.syncPdfsReport.set(res.data ?? null);
-      const rep = res.data;
-      if (rep && rep.preflightBlockers.length > 0) {
+      const rep = res.data ?? null;
+      this.syncPdfsReport.set(rep);
+      if (!rep) {
+        // Backend never accepted a single batch — usually the hub-only endpoint returned 403 from
+        // the local Spring Boot (this instance isn't the hub). Check the Electron main log for the
+        // transport errors to confirm; the routing helper redirects to the hub URL when
+        // sync-config.properties is present.
+        this.syncPdfsError.set('No batches were accepted by the backend. Check the Electron log '
+          + '(look for "[SDS-Sync] transport error") — most likely this desktop is posting to '
+          + 'its own Spring Boot instead of the hub, or the hub is unreachable.');
+      } else if (rep.preflightBlockers.length > 0) {
         this.syncPdfsError.set('Preflight blocked: ' + rep.preflightBlockers.join('; '));
+      } else if (rep.chemicalsChecked === 0) {
+        this.syncPdfsError.set('Backend accepted requests but processed 0 chemicals. Preflight or '
+          + 'endpoint gating may have rejected each one — see the log.');
       }
     } catch (err: any) {
       this.syncPdfsError.set(err.message || 'Sync PDFs failed');

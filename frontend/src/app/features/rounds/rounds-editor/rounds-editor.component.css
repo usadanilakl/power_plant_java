@@ -47,9 +47,8 @@ button { font: inherit; cursor: pointer; border-radius: 4px; }
 .gactions button:not(.link) { border: 1px solid #ccd; background: #fff; width: 20px; height: 18px; line-height: 1; font-size: 9px; color: #666; border-radius: 3px; }
 .gactions button:disabled { opacity: 0.3; }
 .rename-input { flex: 1; padding: 4px 6px; border: 1px solid #90caf9; border-radius: 4px; font: inherit; }
-.group-po { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; background: #fff8e1; padding: 6px 10px; font-size: 12px; }
-.group-po input { padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; font: inherit; min-width: 160px; }
-.group-po .po-results { flex-basis: 100%; }
+.group-po { background: #fff8e1; padding: 6px 10px; font-size: 12px; }
+.group-po-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .gbody { padding: 2px 8px 6px; }
 
 .qrow { display: flex; align-items: flex-start; gap: 8px; border-bottom: 1px solid #f0f0f0; padding: 6px 4px; }

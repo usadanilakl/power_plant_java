@@ -107,13 +107,13 @@ export class LotoStandardWorkflowPanelComponent {
     if (!hasRole) {
       disabledReason = `Requires ${required} role`;
     } else if (target === LotoStandardStatusName.VERIFIED) {
-      // Second-person verification: surface client-side rather than waiting for backend reject
-      if (userName && std.createdBy && userName.toLowerCase() === std.createdBy.toLowerCase()) {
+      // Second-person verification: same-person rule is against the submitter
+      // (per operational policy: the submitter of the draft is the builder).
+      // Surface client-side so the button says why it's disabled rather than
+      // waiting for the backend to reject with a 400.
+      if (userName && std.submittedForVerificationBy && userName.toLowerCase() === std.submittedForVerificationBy.toLowerCase()) {
         enabled = false;
-        disabledReason = 'Verifier must differ from creator';
-      } else if (userName && std.submittedForVerificationBy && userName.toLowerCase() === std.submittedForVerificationBy.toLowerCase()) {
-        enabled = false;
-        disabledReason = 'Verifier must differ from submitter';
+        disabledReason = 'Verifier must differ from the person who submitted the draft';
       }
     }
 

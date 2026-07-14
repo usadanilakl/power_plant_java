@@ -324,8 +324,14 @@ public class SdsSyncPdfsService {
 
     private boolean isScraperOwned(PermitAttachment att) {
         String o = att.getOrigin();
-        if (EBINDER_ORIGIN.equalsIgnoreCase(o)) return true;
-        // Legacy fallback for rows that predate the origin column.
+        // ebinder — rows this tool just wrote. sharepoint — rows pulled back from SP by
+        // pullAllFromSharePoint (which might carry stale wrong PDFs from a pre-fix era); we
+        // WANT Sync PDFs to be able to replace those.
+        if (EBINDER_ORIGIN.equalsIgnoreCase(o) || "sharepoint".equalsIgnoreCase(o)) return true;
+        // Legacy fallback for rows that predate the origin column. Two shapes are known-safe:
+        //  (a) sds-{sourceId}.pdf — the historical scraper filename convention;
+        //  (b) sds-{sourceId}-{hash8}.pdf — the newer uniqueSpFilename shape (Sync PDFs writes).
+        // Both are internal scraper filenames and would never be produced by a manual upload.
         if (o == null && att.getFileName() != null && LEGACY_SCRAPER_FILENAME.matcher(att.getFileName()).matches()) {
             return true;
         }

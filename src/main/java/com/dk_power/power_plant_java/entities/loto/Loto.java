@@ -234,9 +234,42 @@ public class Loto extends BasePermitEntity {
 
     public List<LotoPointIdDto> getLotoPoints() {
         Map<Long, Integer> lotoPointOrderMap = getLotoPointOrderMap();
+        // Legacy permits created before Loto.lotoPointOrder got seeded from the
+        // standard have an empty map here — fall back to the snapshot's own
+        // lotoPointOrder JSON string so those permits still render in the
+        // authored order instead of shuffling every render.
+        if (lotoPointOrderMap.isEmpty()) {
+            lotoPointOrderMap = readOrderFromLatestSnapshot();
+        }
         List<LotoPointIdDto> sortedList = new ArrayList<>(this.getLotoPointDtos());
-        sortedList.sort(Comparator.comparingInt(point -> lotoPointOrderMap.getOrDefault(point.getId(), Integer.MAX_VALUE)));
+        final Map<Long, Integer> orderMap = lotoPointOrderMap;
+        // Tiebreak on point ID so ties (or missing entries) don't shuffle across
+        // successive queries — a stable ID-ascending fallback is fine because
+        // IDs monotonically increase in the standard's authored order.
+        sortedList.sort(Comparator
+                .<LotoPointIdDto>comparingInt(point -> orderMap.getOrDefault(point.getId(), Integer.MAX_VALUE))
+                .thenComparing(point -> point.getId() == null ? Long.MAX_VALUE : point.getId()));
         return sortedList;
+    }
+
+    private Map<Long, Integer> readOrderFromLatestSnapshot() {
+        try {
+            LotoSnapshot latest = getLatestSnapshot();
+            if (latest == null || latest.getLotoPointOrder() == null || latest.getLotoPointOrder().isEmpty()) {
+                return new LinkedHashMap<>();
+            }
+            Map<String, Integer> raw = objectMapper.readValue(latest.getLotoPointOrder(),
+                    new TypeReference<Map<String, Integer>>() {});
+            Map<Long, Integer> out = new LinkedHashMap<>();
+            for (Map.Entry<String, Integer> e : raw.entrySet()) {
+                try {
+                    out.put(Long.parseLong(e.getKey()), e.getValue());
+                } catch (NumberFormatException ignore) { /* skip bad keys */ }
+            }
+            return out;
+        } catch (Exception e) {
+            return new LinkedHashMap<>();
+        }
     }
 
     public LotoSnapshot setLotoPoints(Set<LotoPointIdDto> lotoPoints) {

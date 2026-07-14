@@ -14,6 +14,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Entity
@@ -164,7 +165,13 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
             .registerModule(new JavaTimeModule());
 
     public Set<LotoPointIdDto> getLotoPointDtos() {
-        Set<LotoPointIdDto> dtos = new HashSet<>();
+        // LinkedHashSet — deterministic iteration so callers that don't apply
+        // their own sort still get a stable order across queries. The Loto's
+        // authored order lives on {@code lotoPointOrder} and is applied by
+        // {@code Loto.getLotoPoints()}, but everything else that iterates
+        // this set (paper forms, PDF exports, sync export, LOTO board table)
+        // should also see something reproducible.
+        Set<LotoPointIdDto> dtos = new LinkedHashSet<>();
 
         for (String jsonData : lotoPointsData) {
             try {

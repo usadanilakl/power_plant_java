@@ -1,6 +1,8 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../../environments/environment';
 import { CvManagerApiService } from '../../services/cv-manager-api.service';
 import { RfCategoryDto, RfValueDto } from '../../models/rf-value.model';
 import {
@@ -15,8 +17,15 @@ import { TableComponent } from '../../../../../shared/table/table.component';
 import { Column } from '../../../../../models/column.model';
 import { RfPopupProjectionComponent } from '../../../../../shared/popup-projection/rf-popup-projection.component';
 
-type TabType = 'categories' | 'values';
+type TabType = 'categories' | 'values' | 'zeroEnergy';
 type FormMode = 'create' | 'edit';
+
+interface ZeroEnergyHealth {
+  sharedRows: number;
+  extraCopiesIfUnshared: number;
+  orphanRows: number;
+  rowsWithUnresolvedPlaceholders: number;
+}
 
 @Component({
   selector: 'app-cv-manager-page',
@@ -27,9 +36,16 @@ type FormMode = 'create' | 'edit';
 })
 export class CvManagerPageComponent implements OnInit {
   private apiService = inject(CvManagerApiService);
+  private http = inject(HttpClient);
+  private lotoPointsUrl = `${environment.apiUrl}/loto-points`;
 
   // Tab state
   activeTab = signal<TabType>('categories');
+
+  // Zero Energy health tab
+  zeHealth = signal<ZeroEnergyHealth | null>(null);
+  zeLoading = signal(false);
+  zeMessage = signal<string>('');
 
   // Data signals
   categories = signal<CategoryWithCountDto[]>([]);
@@ -121,6 +137,42 @@ export class CvManagerPageComponent implements OnInit {
 
   setActiveTab(tab: TabType) {
     this.activeTab.set(tab);
+    if (tab === 'zeroEnergy' && !this.zeHealth()) {
+      this.loadZeHealth();
+    }
+  }
+
+  // ==================== ZERO ENERGY HEALTH ====================
+
+  loadZeHealth() {
+    this.zeLoading.set(true);
+    this.zeMessage.set('');
+    this.http.get<{ responseData: ZeroEnergyHealth }>(`${this.lotoPointsUrl}/zero-energy/health`)
+      .subscribe({
+        next: (res) => { this.zeHealth.set(res.responseData); this.zeLoading.set(false); },
+        error: (e) => { this.zeMessage.set('Failed to load: ' + (e.error?.message || e.message)); this.zeLoading.set(false); }
+      });
+  }
+
+  runUnshare() {
+    if (!confirm('Give every LOTO point its own copy of its zero-energy row? This is a one-time, safe operation.')) return;
+    this.zeLoading.set(true);
+    this.zeMessage.set('');
+    this.http.post<{ message: string }>(`${this.lotoPointsUrl}/unshare-zero-energy`, {})
+      .subscribe({
+        next: (res) => { this.zeMessage.set(res.message); this.loadZeHealth(); },
+        error: (e) => { this.zeMessage.set('Failed: ' + (e.error?.message || e.message)); this.zeLoading.set(false); }
+      });
+  }
+
+  runCleanupOrphans() {
+    this.zeLoading.set(true);
+    this.zeMessage.set('');
+    this.http.post<{ message: string }>(`${this.lotoPointsUrl}/zero-energy/cleanup-orphans`, {})
+      .subscribe({
+        next: (res) => { this.zeMessage.set(res.message); this.loadZeHealth(); },
+        error: (e) => { this.zeMessage.set('Failed: ' + (e.error?.message || e.message)); this.zeLoading.set(false); }
+      });
   }
 
   // ==================== DATA LOADING ====================

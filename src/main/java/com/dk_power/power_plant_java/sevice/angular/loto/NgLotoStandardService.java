@@ -137,6 +137,10 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     }
 
     public LotoStandardDto createStandard(LotoStandardIdDto standard) {
+        // Only Control Authority may build a LOTO Standard. The subsequent verify
+        // step will reject the submitter as its own verifier, so gate build here to
+        // keep everything downstream honest.
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         LotoStandard standardEntity = lotoStandardMapper.convertIdDtoToEntity(standard);
         // Initialize workflow state for new standards
         if (standardEntity.getDevelopmentStatus() == null) {
@@ -152,6 +156,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
     @Transactional
     public LotoStandardDto addLotoPointToStandard(Long lotoPointId, String lotoStandardId) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         try {
             LotoStandard standard = getEntityById(lotoStandardId);
             LotoPoint lotoPoint = ngLotoPointService.getEntityById(lotoPointId);
@@ -190,6 +195,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
     @Transactional
     public LotoStandardDto removeLotoPointToStandard(Long lotoPointId, String lotoStandardId) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         try {
             LotoStandard standard = getEntityById(lotoStandardId);
             LotoPoint lotoPoint = ngLotoPointService.getEntityById(lotoPointId);
@@ -235,6 +241,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     }
 
     public LotoStandardDto reorderLotoPoints(Long currentStandardId, List<Long> lotoPoints) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         LotoStandard standard = getEntityById(currentStandardId);
         if (standard == null) {
             throw new EntityNotFoundException("LotoStandard not found");
@@ -367,6 +374,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
      */
     @Transactional
     public LotoStandardDto updateStandard(LotoStandardIdDto standardIdDto) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         if (standardIdDto.getId() == null) {
             throw new IllegalArgumentException("ID is required for update");
         }
@@ -690,17 +698,24 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return toDto(save(s));
     }
 
-    /** Second-person verify. Verifier must be qualified AND not the standard's creator. */
+    /**
+     * Second-person verify. Verifier must hold {@link LotoRole#CONTROL_AUTHORITY}
+     * AND must be a different person than the one who submitted the draft for
+     * verification. Per operational rule, "the submitter of the draft is the
+     * builder" — the same-person check is against {@code submittedForVerificationBy},
+     * not against {@code createdBy}. The old {@code createdBy} guard was a silent
+     * no-op anyway because JPA auditing is disabled in this codebase and the field
+     * is never populated; keeping only the check that actually has teeth avoids
+     * pretending we're enforcing something we're not.
+     */
     @Transactional
     public LotoStandardDto verify(Long standardId, String notes) {
         LotoStandard s = requireStandard(standardId);
         requireRole(LotoRole.CONTROL_AUTHORITY);
         String user = currentUserName();
-        if (user.equalsIgnoreCase(s.getCreatedBy())) {
-            throw new IllegalStateException("Verifier must be a different qualified person than the creator");
-        }
-        if (user.equalsIgnoreCase(s.getSubmittedForVerificationBy())) {
-            throw new IllegalStateException("Verifier must be a different qualified person than the submitter");
+        if (s.getSubmittedForVerificationBy() != null
+                && user.equalsIgnoreCase(s.getSubmittedForVerificationBy())) {
+            throw new IllegalStateException("Verifier must be a different qualified person than the one who submitted the draft");
         }
         String from = transition(s, LotoStandardStatus.VERIFIED);
         s.setVerifiedBy(user);
@@ -709,11 +724,17 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return toDto(save(s));
     }
 
-    /** Mark walkdown complete. Any qualified user. */
+    /**
+     * Mark walkdown complete. MANAGER-only per operational policy — walkdown is a
+     * manager responsibility, distinct from the Control Authority who built and
+     * verified. No same-person check here: the role gate is the only guard because
+     * a manager who happened to also hold CONTROL_AUTHORITY and built the standard
+     * is still allowed to complete walkdown under the current spec.
+     */
     @Transactional
     public LotoStandardDto markWalkdownComplete(Long standardId, String notes) {
         LotoStandard s = requireStandard(standardId);
-        requireRole(LotoRole.CONTROL_AUTHORITY);
+        requireRole(LotoRole.MANAGER);
         String from = transition(s, LotoStandardStatus.WALKDOWN_COMPLETE);
         String user = currentUserName();
         s.setWalkdownBy(user);
@@ -779,6 +800,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto updateStandardPrerequisites(Long standardId,
                                                        java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> prerequisites) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         LotoStandard s = requireStandard(standardId);
         Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> proposed =
                 prerequisites != null ? prerequisites : new HashMap<>();
@@ -803,6 +825,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto updateStandardProceduralText(Long standardId,
                                                         java.util.Map<String, String> fields) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         LotoStandard s = requireStandard(standardId);
         if (fields == null) return toDto(s);
         boolean approved = isApproved(s);
@@ -846,6 +869,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
      */
     @Transactional
     public LotoStandardDto setRemovalReversesInstallOrder(Long standardId, boolean reverse) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         LotoStandard s = requireStandard(standardId);
         if (s.isRemovalReversesInstallOrder() == reverse) return toDto(s);
         boolean oldVal = s.isRemovalReversesInstallOrder();
@@ -1282,6 +1306,17 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
     private void requireRole(LotoRole role) {
         requireAnyRole(role);
+    }
+
+    /**
+     * Public role-check entry point for other services that need the same
+     * LOTO-role gating without duplicating the user-lookup logic. The private
+     * {@link #requireAnyRole(LotoRole...)} stays private so its callers within
+     * this class can keep using it directly; this wrapper is the intended
+     * cross-service handle.
+     */
+    public void requireLotoRole(LotoRole... roles) {
+        requireAnyRole(roles);
     }
 
     /** Pass-if-any-of helper. CONTROL_AUTHORITY callers also satisfy legacy QUALIFIED gates. */

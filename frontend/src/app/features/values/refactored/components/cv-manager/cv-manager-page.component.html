@@ -43,8 +43,14 @@
         (click)="setActiveTab('values')">
         Values
       </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'zeroEnergy'"
+        (click)="setActiveTab('zeroEnergy')">
+        Zero Energy
+      </button>
     </div>
-    <div class="actions">
+    <div class="actions" [hidden]="activeTab() === 'zeroEnergy'">
       <button class="btn btn-secondary" (click)="findDuplicates()" [disabled]="isLoading()">
         Find Duplicates
       </button>
@@ -87,6 +93,57 @@
   @if (isLoading()) {
     <div class="loading-overlay">
       <div class="spinner"></div>
+    </div>
+  }
+
+  <!-- Zero Energy health -->
+  @if (activeTab() === 'zeroEnergy') {
+    <div class="ze-health">
+      <p class="ze-intro">
+        Zero-energy sentences re-generate from the shared phrase on display, and each LOTO point now
+        owns its own copy. This view shows any leftover shared or orphaned rows and lets you tidy them.
+      </p>
+
+      @if (zeLoading()) {
+        <div class="loading-overlay"><div class="spinner"></div></div>
+      }
+
+      @if (zeMessage()) {
+        <div class="ze-message">{{ zeMessage() }}</div>
+      }
+
+      @if (zeHealth(); as h) {
+        <div class="ze-cards">
+          <div class="ze-card" [class.warn]="h.sharedRows > 0">
+            <div class="ze-num">{{ h.sharedRows }}</div>
+            <div class="ze-label">shared rows</div>
+            <div class="ze-sub">{{ h.extraCopiesIfUnshared }} copies to create</div>
+          </div>
+          <div class="ze-card" [class.warn]="h.orphanRows > 0">
+            <div class="ze-num">{{ h.orphanRows }}</div>
+            <div class="ze-label">orphan rows</div>
+            <div class="ze-sub">unreferenced</div>
+          </div>
+          <div class="ze-card" [class.warn]="h.rowsWithUnresolvedPlaceholders > 0">
+            <div class="ze-num">{{ h.rowsWithUnresolvedPlaceholders }}</div>
+            <div class="ze-label">unresolved blanks</div>
+            <div class="ze-sub">missing equipment tag</div>
+          </div>
+        </div>
+
+        <div class="ze-actions">
+          <button class="btn btn-secondary" (click)="loadZeHealth()" [disabled]="zeLoading()">Refresh</button>
+          <button class="btn btn-primary" (click)="runUnshare()"
+                  [disabled]="zeLoading() || h.sharedRows === 0"
+                  title="Give every LOTO point its own copy of its zero-energy row (one-time, safe).">
+            Un-share ({{ h.extraCopiesIfUnshared }})
+          </button>
+          <button class="btn btn-secondary" (click)="runCleanupOrphans()"
+                  [disabled]="zeLoading() || h.orphanRows === 0">
+            Delete orphans ({{ h.orphanRows }})
+          </button>
+        </div>
+      }
     </div>
   }
 

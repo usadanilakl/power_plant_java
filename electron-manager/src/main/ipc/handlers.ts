@@ -92,7 +92,9 @@ export class IpcHandlers {
     this.gateLogManager = new GateLogManager();
     this.maximoOverviewManager = new MaximoOverviewManager();
     this.webViewAmsManager = new WebViewAmsManager();
-    this.webViewSdsManager = new WebViewSdsManager();
+    this.webViewSdsManager = new WebViewSdsManager(
+      () => this.springBoot.getDeviceConfigManager().getConfig()?.syncServerUrl
+    );
     this.daEmailManager = new DaEmailManager();
     this.voskManager = new VoskManager(
       (result: VoskResult) => {

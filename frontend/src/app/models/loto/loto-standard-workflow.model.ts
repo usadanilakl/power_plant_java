@@ -140,10 +140,18 @@ export function endpointForTarget(targetStatus: string): string | null {
   }
 }
 
-/** Required role for each transition. Final APPROVED is manager-only; all others are CA. */
+/**
+ * Required role for each transition. Kept aligned with the backend gates in
+ * {@code NgLotoStandardService}:
+ * - APPROVED and WALKDOWN_COMPLETE are Manager-only (final approval + walkdown-
+ *   is-a-manager-responsibility).
+ * - Everything else (submit, verify, ready-for-testing, send-back-to-draft) is
+ *   Control Authority.
+ */
 export function roleForTarget(targetStatus: string): LotoRoleValue {
   switch (targetStatus) {
     case LotoStandardStatusName.APPROVED: return LotoRole.MANAGER;
+    case LotoStandardStatusName.WALKDOWN_COMPLETE: return LotoRole.MANAGER;
     default: return LotoRole.CONTROL_AUTHORITY;
   }
 }

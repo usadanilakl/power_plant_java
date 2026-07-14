@@ -469,6 +469,50 @@ public class NgLotoPointController {
     }
 
     /**
+     * One-time migration: un-share ZeroEnergy so each LOTO point owns its own row. Run once on the
+     * hub after deploying the per-point change; changes propagate to desktops via sync. Idempotent.
+     */
+    @PostMapping("/unshare-zero-energy")
+    public ResponseEntity<NgApiResponse<Integer>> unshareZeroEnergy() {
+        try {
+            int forked = ngZeroEnergyService.unshareAllZeroEnergy();
+            NgApiResponse<Integer> response = new NgApiResponse<>(
+                    forked,
+                    "Un-shared ZeroEnergy: created " + forked + " per-point copies"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Read-only ZeroEnergy health summary for the admin diagnostic view. */
+    @GetMapping("/zero-energy/health")
+    public ResponseEntity<NgApiResponse<java.util.Map<String, Object>>> zeroEnergyHealth() {
+        try {
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(ngZeroEnergyService.getZeroEnergyHealth(), "OK"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Delete ZeroEnergy rows no longer referenced by any LOTO point. */
+    @PostMapping("/zero-energy/cleanup-orphans")
+    public ResponseEntity<NgApiResponse<Integer>> cleanupZeroEnergyOrphans() {
+        try {
+            int deleted = ngZeroEnergyService.cleanupOrphans();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(deleted, "Deleted " + deleted + " orphaned ZeroEnergy row(s)"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Get the unit counterpart for a LOTO point.
      * For tag numbers starting with 01 or 02, finds or generates the counterpart.
      * Response includes:

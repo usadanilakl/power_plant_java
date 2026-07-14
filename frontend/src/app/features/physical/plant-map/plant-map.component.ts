@@ -10,7 +10,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { PhysicalObjectApiService } from '../../../services/physical/physical-object-api.service';
 import {
-  LinkedFile, PhysicalObjectNode, PO_TYPE_OPTIONS, poColor, WorkAreaOption, WorkAreaRef,
+  LinkedFile, PhysicalObjectNode, PO_TYPE_OPTIONS, poColor, RoundCheckRef, WorkAreaOption, WorkAreaRef,
 } from '../../../models/physical/physical-object.models';
 import { environment } from '../../../../environments/environment';
 import { RfFileApiService } from '../../files/refactored/services/rf-file-api.service';
@@ -164,6 +164,19 @@ export class PlantMapComponent implements OnDestroy {
   fileResults = signal<FileDto[]>([]);
   fileSearching = signal(false);
   private lastSelectedNodeId: number | null = null;
+
+  // round checks (reverse of RoundQuestion.physicalObjectId)
+  roundChecks = signal<RoundCheckRef[]>([]);
+  roundChecksLoading = signal(false);
+
+  // collapsible inspector sections (Systems default-collapsed — it's the big one)
+  collapsedSections = signal<Set<string>>(new Set(['systems']));
+  isSectionOpen(key: string): boolean { return !this.collapsedSections().has(key); }
+  toggleSection(key: string): void {
+    const s = new Set(this.collapsedSections());
+    if (s.has(key)) s.delete(key); else s.add(key);
+    this.collapsedSections.set(s);
+  }
 
   // work areas (safety binder)
   workAreas = signal<WorkAreaRef[]>([]);
@@ -1575,6 +1588,7 @@ export class PlantMapComponent implements OnDestroy {
       this.editName = this.editType = this.editTag = this.editDesc = this.editLoc = this.editFloor = '';
       this.files.set([]); this.fileResults.set([]); this.fileQuery = '';
       this.workAreas.set([]); this.waPickerOpen.set(false);
+      this.roundChecks.set([]);
       return;
     }
     this.editName = child.name ?? '';
@@ -1587,6 +1601,14 @@ export class PlantMapComponent implements OnDestroy {
     this.waPickerOpen.set(false);
     void this.loadFiles(child.id);
     void this.loadWorkAreas(child.id);
+    void this.loadRoundChecks(child.id);
+  }
+
+  private async loadRoundChecks(nodeId: number) {
+    this.roundChecksLoading.set(true);
+    try { this.roundChecks.set(await firstValueFrom(this.nodesApi.getRoundChecks(nodeId))); }
+    catch { this.roundChecks.set([]); }
+    finally { this.roundChecksLoading.set(false); }
   }
 
   // ── inspector: work areas (safety) ──

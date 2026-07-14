@@ -43,12 +43,21 @@ interface ScrapedRow {
   dateAdded: string;
 }
 
+/** POST target discriminator — localhost for hub instances, remote for desktops routing to the hub. */
+type SdsSyncTarget =
+  | { kind: 'localhost'; port: number }
+  | { kind: 'remote'; hostname: string; port: number; https: boolean };
+
 // 5 instead of 15: each chemical's import upserts in H2 AND pushes the attachment to SharePoint
 // (in the same request), which is ~1-3 s per item over the network — bigger batches push past the
 // HTTP timeout. With 5 we stay comfortably inside a 5-minute per-batch budget.
 const IMPORT_BATCH_SIZE = 5;
 
 export class WebViewSdsManager {
+  /** Returns the currently-configured hub URL from Electron's DeviceConfigManager, or undefined
+   *  when this instance IS the hub (no separate sync server configured). Called on every Sync
+   *  PDFs invocation so the URL reflects the latest saved config, not a startup snapshot. */
+  private readonly getHubUrl: () => string | undefined;
   private config: SdsScraperConfig;
   private configPath: string;
   private isScraping = false;
@@ -115,7 +124,8 @@ export class WebViewSdsManager {
     }
   }
 
-  constructor() {
+  constructor(getHubUrl?: () => string | undefined) {
+    this.getHubUrl = getHubUrl ?? (() => undefined);
     this.configPath = path.join(getWorkingDir(), 'sds-scraper-config.json');
     this.config = this.loadConfig();
   }
@@ -244,8 +254,14 @@ export class WebViewSdsManager {
    * </ul>
    */
   public async syncPdfs(opts?: SdsScrapeOptions & { dryRun?: boolean; limit?: number }): Promise<any> {
-    const port = DEFAULT_SPRING_BOOT_CONFIG.port;
-    if (!(await this.springHealthy(port))) throw new Error('Spring Boot unavailable — start the app first');
+    // Sync PDFs is hub-only on the backend (guards against two-hub deployments diverging SP).
+    // When this Electron instance is a DESKTOP (sync-config.properties points at a remote hub),
+    // we must POST to that hub URL — hitting localhost's Spring Boot would 403. On a hub itself
+    // sync-config.properties either doesn't exist or points at self, so localhost is fine.
+    const target = this.resolveSyncPdfsTarget();
+    if (target.kind === 'localhost' && !(await this.springHealthy(target.port))) {
+      throw new Error('Spring Boot unavailable — start the app first');
+    }
     if (this.isScraping) throw new Error('A scrape is already running — try again shortly');
 
     this.isScraping = true;
@@ -290,7 +306,7 @@ export class WebViewSdsManager {
         report
       };
       try {
-        const res = await this.postJson(port, '/ng/sds-chemicals/sync-pdfs', body);
+        const res = await this.postJsonToTarget(target, '/ng/sds-chemicals/sync-pdfs', body);
         if (res?.responseData) {
           report = res.responseData;
           if (!firstBatchSent) {
@@ -1066,13 +1082,35 @@ export class WebViewSdsManager {
         console.log(`[SDS-Scraper] row ${rowIndex} (${key}): ${preClickFrameIds.size} leftover viewer frame(s) survived dismiss — will require a new frame ID after click`);
       }
 
-      // 1. Click View PDF on the chemical row → eBinder spawns the viewer iframe.
+      // 1. Click View PDF on the chemical row. IMPORTANT: locate the row by its checkbox id
+      //    (which is the sourceId — same identifier scrapePageScript captured). We used to
+      //    pick rows[rowIndex] positionally, but the scrape's push-condition filtered out
+      //    rows lacking a name/sourceId while the click did NOT — so ANY spacer/header row in
+      //    the DOM shifted every downstream row by one, attaching the wrong PDF to every
+      //    chemical after the first. This lookup is filter-independent AND reorder-independent.
+      //    After locating the row we assert its checkbox id equals `key` — belt-and-suspenders
+      //    against any future DOM oddity.
       const clickedRow = await this.exec(win, `
         ${FIRE_CLICK}
         (function() {
-          var rows = document.querySelectorAll('tr.data-table__tr');
-          var row = rows[${rowIndex}];
-          if (!row) return 'row-not-found';
+          var key = ${JSON.stringify(String(key))};
+          // Prefer checkbox-id lookup — that's the sourceId scrape captured. Fall back to the
+          // primary-anchor href which also encodes the sourceId (the eBinder sometimes hides
+          // the checkbox in later rows).
+          var cb = document.getElementById(key);
+          var row = cb ? cb.closest('tr.data-table__tr') : null;
+          if (!row) {
+            var links = document.querySelectorAll('tr.data-table__tr .data-table__td--primary a[href]');
+            for (var i = 0; i < links.length; i++) {
+              var href = links[i].getAttribute('href') || '';
+              var parts = href.split('/');
+              if (parts[parts.length - 1] === key) { row = links[i].closest('tr.data-table__tr'); break; }
+            }
+          }
+          if (!row) return 'row-not-found-by-key';
+          // Assert the row's own checkbox id equals key so any subtle DOM re-org still fails loud.
+          var rowCb = row.querySelector('input[type=checkbox]');
+          if (rowCb && rowCb.id && rowCb.id !== key) return 'row-key-mismatch:' + rowCb.id;
           var btn = row.querySelector('.data-table__td--action button')
                  || row.querySelector('button[title="View PDF"]');
           if (!btn) { var ic = row.querySelector('.icon--ghs-pdf'); btn = ic ? ic.closest('button') : null; }
@@ -1338,17 +1376,50 @@ export class WebViewSdsManager {
   }
 
   private postJson(port: number, apiPath: string, body: any): Promise<any> {
+    return this.postJsonToTarget({ kind: 'localhost', port }, apiPath, body);
+  }
+
+  /**
+   * Resolve where the Sync PDFs POST should go. On a desktop instance, DeviceConfigManager holds
+   * the operator-configured hub URL — that's what we must use because localhost:8082 is the
+   * desktop's own Spring Boot which 403s on the hub-only sync-pdfs endpoint. On a hub instance
+   * the URL either isn't set or resolves to self, so localhost is fine.
+   */
+  private resolveSyncPdfsTarget(): SdsSyncTarget {
+    const url = (this.getHubUrl() ?? '').trim();
+    if (url) {
+      try {
+        // Redirect only when the URL points somewhere OTHER than localhost — otherwise the
+        // localhost path picks up the correct port from DEFAULT_SPRING_BOOT_CONFIG.
+        if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url)) {
+          const parsed = new URL(url);
+          const isHttps = parsed.protocol === 'https:';
+          const port = parsed.port ? parseInt(parsed.port, 10) : (isHttps ? 443 : 80);
+          console.log(`[SDS-Sync] routing sync-pdfs POST to hub: ${url}`);
+          return { kind: 'remote', hostname: parsed.hostname, port, https: isHttps };
+        }
+      } catch (e: any) {
+        console.warn(`[SDS-Sync] hub URL "${url}" not parseable, falling back to localhost: ${e.message}`);
+      }
+    }
+    return { kind: 'localhost', port: DEFAULT_SPRING_BOOT_CONFIG.port };
+  }
+
+  private postJsonToTarget(target: SdsSyncTarget, apiPath: string, body: any): Promise<any> {
     const payload = JSON.stringify(body);
+    const isHttps = target.kind === 'remote' && target.https;
+    const hostname = target.kind === 'remote' ? target.hostname : '127.0.0.1';
     return new Promise((resolve, reject) => {
-      const req = http.request(
+      const lib = isHttps ? require('https') : http;
+      const req = lib.request(
         {
-          hostname: '127.0.0.1', port, path: apiPath, method: 'POST',
+          hostname, port: target.port, path: apiPath, method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
           timeout: 300000   // 5 min — each import batch can include SharePoint roundtrips per item
         },
-        (res) => {
+        (res: any) => {
           let data = '';
-          res.on('data', (c) => { data += c; });
+          res.on('data', (c: any) => { data += c; });
           res.on('end', () => {
             if (!res.statusCode || res.statusCode >= 400) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
             try { resolve(JSON.parse(data)); } catch { reject(new Error('bad JSON')); }

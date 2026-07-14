@@ -535,3 +535,63 @@
 .dedup-result { margin-top: 4px; padding: 12px; border-radius: 4px; background: #e8f5e9; border-left: 3px solid #4caf50; }
 .dedup-result.is-dry-run { background: #fff8e1; border-left-color: #ffa726; }
 .dedup-result h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+
+/* Zero Energy health tab */
+.ze-health {
+  padding: 8px 4px;
+}
+.ze-intro {
+  color: var(--secondary-text, #718096);
+  font-size: 0.9rem;
+  max-width: 720px;
+  margin: 0 0 16px;
+}
+.ze-message {
+  background: var(--secondary-background, #f5f7fa);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  color: var(--primary-text, #2d3748);
+}
+.ze-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.ze-card {
+  background: var(--card-background, white);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
+  padding: 16px 20px;
+  min-width: 150px;
+  text-align: center;
+}
+.ze-card.warn {
+  border-color: #e0a800;
+}
+.ze-num {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-text, #2d3748);
+  line-height: 1;
+}
+.ze-card.warn .ze-num {
+  color: #b8860b;
+}
+.ze-label {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: var(--primary-text, #2d3748);
+}
+.ze-sub {
+  font-size: 0.75rem;
+  color: var(--secondary-text, #718096);
+}
+.ze-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

@@ -323,6 +323,13 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             snapshot.setLotoPointOrder("{}");
         }
 
+        // Also stamp the order on the Loto entity itself so Loto.getLotoPoints() can
+        // sort deterministically without needing to reach into the snapshot's JSON.
+        // Historically only the snapshot got this — Loto.lotoPointOrder was left null,
+        // and getLotoPointOrderMap() fell back to iterating the transient HashSet, which
+        // is what shuffles the hang list on every "Mark Hung" round-trip.
+        loto.setLotoPointOrder(standard.getLotoPointOrder());
+
         // Copy point prerequisites from standard so the instance has its own editable copy
         snapshot.setPointPrerequisites(standard.getPointPrerequisites());
         // Capture removal direction policy at flip time — used by per-point removal enforcement
@@ -924,15 +931,10 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 latest.getPointPrerequisites().get(pointId);
         if (spec == null) return;
 
-        java.util.Set<Long> alreadyVerified = latest.getPointVerifiedBy().keySet();
-        if (spec.getInstallRequiredPointIds() != null) {
-            for (Long required : spec.getInstallRequiredPointIds()) {
-                if (!alreadyVerified.contains(required)) {
-                    throw new IllegalStateException(
-                            "Cannot verify point " + pointId + " — required predecessor point " + required + " is not yet verified");
-                }
-            }
-        }
+        // Verification is ORDER-DEVIATABLE by design: every point must be verified, but a verifier may take them in
+        // any order (unlike hanging, which is locked to the predecessor DAG). So we deliberately do NOT require the
+        // predecessor points to be verified first — we only enforce the point's own safety conditions. The all-points-
+        // hung gate and the hanger≠verifier separation-of-duty rule are enforced by the caller (markPointVerified).
         enforceSafetyConditions("verify", pointId, spec.getInstallSafetyConditions(), acknowledged);
     }
 

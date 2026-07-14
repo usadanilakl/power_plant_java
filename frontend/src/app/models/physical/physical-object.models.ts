@@ -79,6 +79,23 @@ export interface WorkAreaOption {
   description?: string | null;
 }
 
+/** A round check that monitors this object (reverse of RoundQuestion.physicalObjectId) + live status. */
+export interface RoundCheckRef {
+  questionId: number;
+  roundId: number | null;
+  roundName: string | null;
+  category: string | null;
+  prompt: string | null;
+  answerType: string | null;
+  unit: string | null;
+  lowLimit: number | null;
+  highLimit: number | null;
+  expectedValue: string | null;
+  lastValue: string | null;
+  lastAt: string | null;
+  openIssue: boolean;
+}
+
 /** A file bound to a node — the binder's "Documents" (backend LinkedFileDto). */
 export interface LinkedFile {
   id: number;

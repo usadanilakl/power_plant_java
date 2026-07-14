@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ import java.util.Set;
 public class PwaLotoDrawingService {
 
     private final LotoStandardRepo standardRepo;
+    private final LotoRepo lotoRepo;
     private final LotoPointRepo lotoPointRepo;
     private final FileRepo fileRepo;
 
@@ -62,11 +64,26 @@ public class PwaLotoDrawingService {
     public List<PointDrawingDto> drawingsForStandard(Long standardId) {
         LotoStandard s = standardRepo.findById(standardId)
                 .orElseThrow(() -> new IllegalArgumentException("LOTO standard not found: " + standardId));
+        return drawingsForPoints(s.getLotoPoints().stream().map(LotoPoint::getId).toList());
+    }
+
+    /** Same resolver, for a LOTO permit — its ordered points → drawings. Backs the permit hang/verify/walkdown viewer. */
+    @Transactional(readOnly = true)
+    public List<PointDrawingDto> drawingsForLoto(Long lotoId) {
+        var loto = lotoRepo.findById(lotoId)
+                .orElseThrow(() -> new IllegalArgumentException("LOTO permit not found: " + lotoId));
+        return drawingsForPoints(loto.getLotoPoints().stream().map(com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto::getId).toList());
+    }
+
+    /** Every point→drawing occurrence for the given point ids (see class doc for the highlight-suppression rule). */
+    @Transactional(readOnly = true)
+    public List<PointDrawingDto> drawingsForPoints(List<Long> pointIds) {
         List<PointDrawingDto> out = new ArrayList<>();
-        for (LotoPoint stub : s.getLotoPoints()) {
+        for (Long pointId : pointIds) {
+            if (pointId == null) continue;
             // Re-fetch with the equipment collection eagerly joined (its mainFile is EAGER) — the same load
-            // the desktop uses; walking the lazy collection off the standard could otherwise come back empty.
-            LotoPoint p = lotoPointRepo.findByIdWithEquipment(stub.getId());
+            // the desktop uses; walking the lazy collection could otherwise come back empty.
+            LotoPoint p = lotoPointRepo.findByIdWithEquipment(pointId);
             if (p == null || p.getEquipmentList() == null) continue;
             List<PointDrawingDto> withRect = new ArrayList<>();
             Map<Long, PointDrawingDto> noRect = new LinkedHashMap<>();

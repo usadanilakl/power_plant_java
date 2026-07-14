@@ -37,17 +37,36 @@ public class NgWalkdownSessionService {
 
     @SuppressWarnings("deprecation")
     private void requireHangVerifyRole() {
-        String username = currentUserName();
-        if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
-            throw new SecurityException("Authentication required");
-        }
-        User user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
-        if (user == null) throw new SecurityException("User not found: " + username);
+        User user = currentUser();
+        if (user == null) throw new SecurityException("Authentication required");
         if (user.hasLotoRole(LotoRole.CONTROL_AUTHORITY)) return;
         if (user.hasLotoRole(LotoRole.LOTO_QUALIFIED)) return;
         if (user.hasLotoRole(LotoRole.QUALIFIED)) return;
         if (user.hasLotoRole(LotoRole.AUTHORIZED)) return;
         throw new SecurityException("Walkdown requires CONTROL_AUTHORITY or LOTO_QUALIFIED role");
+    }
+
+    /**
+     * Resolve the signed-in user robustly across auth paths: PWA JWT sets a CustomUserDetails principal whose name is
+     * the EMAIL (not the username column), so a username-only lookup would 404 a valid Plant user. Match NgLotoService:
+     * CustomUserDetails id first, then email, then username.
+     */
+    private User currentUser() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()) return null;
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails d) {
+                return userRepo.findById(d.getId()).orElse(null);
+            }
+            String name = auth.getName();
+            if (name == null || "anonymousUser".equalsIgnoreCase(name) || "anonymous".equalsIgnoreCase(name)) return null;
+            User u = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(name);
+            if (u == null) u = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(name);
+            return u;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String currentUserName() {

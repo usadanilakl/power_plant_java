@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { PhysicalObjectApiService } from './physical-object-api.service';
 import { PhysicalObjectAggregate } from './physical-object.model';
 
-type Tab = 'overview' | 'loto' | 'files' | 'logs' | 'maximo';
+type Tab = 'overview' | 'loto' | 'files' | 'logs' | 'checks' | 'maximo';
 
 /**
  * Embeddable "everything about this object" binder for the PWA. Given an {@code objectId}, loads the aggregate
@@ -42,6 +42,9 @@ type Tab = 'overview' | 'loto' | 'files' | 'logs' | 'maximo';
           <button [class.active]="tab() === 'loto'" (click)="tab.set('loto')">LOTO ({{ a.lotoPoints.length }})</button>
           <button [class.active]="tab() === 'files'" (click)="tab.set('files')">P&amp;IDs ({{ a.files.length }})</button>
           <button [class.active]="tab() === 'logs'" (click)="tab.set('logs')">Logs ({{ a.logs.length }})</button>
+          @if (a.roundChecks.length) {
+            <button [class.active]="tab() === 'checks'" (click)="tab.set('checks')">Checks ({{ a.roundChecks.length }})</button>
+          }
           @if (a.maximo.available) {
             <button [class.active]="tab() === 'maximo'" (click)="tab.set('maximo')">Maximo</button>
           }
@@ -104,6 +107,23 @@ type Tab = 'overview' | 'loto' | 'files' | 'logs' | 'maximo';
                 }
               } @else { <p class="oc-empty">No logs yet.</p> }
             }
+            @case ('checks') {
+              @for (c of a.roundChecks; track c.questionId) {
+                <div class="oc-row" [class.oc-attn-row]="c.openIssue">
+                  <div class="oc-row-main">
+                    {{ c.prompt }}
+                    @if (c.openIssue) { <span class="oc-badge oor">out of range</span> }
+                  </div>
+                  <div class="oc-row-sub">
+                    <span>{{ c.roundName }}</span>
+                    @if (c.answerType) { <span>{{ c.answerType }}</span> }
+                    @if (c.lowLimit != null || c.highLimit != null) { <span>{{ c.lowLimit ?? '' }}–{{ c.highLimit ?? '' }} {{ c.unit }}</span> }
+                    @else if (c.expectedValue) { <span>= {{ c.expectedValue }}</span> }
+                    @if (c.lastValue) { <span class="oc-last">last: {{ c.lastValue }} {{ c.lastAt ? '(' + (c.lastAt | date:'MMM d') + ')' : '' }}</span> }
+                  </div>
+                </div>
+              } @empty { <p class="oc-empty">No round checks reference this object.</p> }
+            }
             @case ('maximo') {
               <div class="oc-mx-group">Work orders</div>
               @if (a.maximo.workOrders.length) {
@@ -156,6 +176,9 @@ type Tab = 'overview' | 'loto' | 'files' | 'logs' | 'maximo';
     .oc-addlog button { background: #1976d2; color: #fff; border: none; border-radius: 5px; padding: 6px 12px; }
     .oc-attn { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #777; }
     .oc-mx-group { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; margin: 8px 0 2px; }
+    .oc-badge { border-radius: 3px; padding: 1px 5px; font-size: 10px; margin-left: 6px; }
+    .oc-badge.oor { background: #ffebee; color: #c62828; }
+    .oc-last { color: #666; }
   `],
 })
 export class ObjectContextComponent {

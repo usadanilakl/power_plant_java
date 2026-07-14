@@ -35,6 +35,8 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(monthlyAedCheck()));
         out.add(formService.saveTemplate(gtInletInspection()));
         out.add(formService.saveTemplate(chemLabInventory()));
+        out.add(formService.saveTemplate(dieselFirePumpTest()));
+        out.add(formService.saveTemplate(electricFirePumpTest()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -319,6 +321,157 @@ public class MaximoFormSeeder {
                         + "reagent is below its target the app offers to email the reorder to the vendor and attaches "
                         + "that order summary to the work order.")
                 .matchDescriptionContains("inventory")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * From procedures/pm/diesel-fire-pump-test.xlsx — "Diesel Fire Pump Weekly Inspection and Test" (NFPA 25).
+     * A no-flow (churn) run: pre-op pump-house and fire-pump checks, diesel-engine checks, then operational
+     * readings taken while the pump runs its 30-minute timer. Every verification is required — the WO can't be
+     * completed until the full weekly test is recorded; readings capture the run's actual values.
+     */
+    private MaximoFormTemplateDto dieselFirePumpTest() {
+        Fields f = new Fields();
+
+        f.section("Pre-operation — Pump house checks")
+                .radio("ph_heat", "Building heat > 40°F", true, "OK", "Not OK")
+                .radio("ph_louvers", "Louvers operational", true, "OK", "Not OK")
+                .radio("ph_no_water", "No water on floor", true, "OK", "Not OK")
+                .radio("ph_coupling_guard", "Coupling guard in place", true, "OK", "Not OK");
+
+        f.section("Pre-operation — Fire pump proper checks")
+                .radio("fp_valves_open", "Suction / discharge / bypass valves OPEN", true, "OK", "Not OK")
+                .radio("fp_no_leaks", "No leaks in pipes", true, "OK", "Not OK")
+                .radio("fp_gauges_ok", "Suction / discharge gauges okay", true, "OK", "Not OK")
+                .radio("fp_flowtest_shut", "Water-flow test valves SHUT", true, "OK", "Not OK")
+                .radio("fp_hose_shut", "Water-to-hose connection SHUT", true, "OK", "Not OK");
+
+        f.section("Diesel engine checks")
+                .radio("de_fuel", "Fuel tank > 2/3 full", true, "OK", "Not OK")
+                .radio("de_batt_voltage", "Battery voltages are okay", true, "OK", "Not OK")
+                .radio("de_charger_no_alarm", "Battery charger — no alarm lights", true, "OK", "Not OK")
+                .radio("de_oil_level", "Oil level is okay", true, "OK", "Not OK")
+                .radio("de_batt_terminals", "Battery terminals okay", true, "OK", "Not OK")
+                .radio("de_jacket_heater", "Water-jacket heater is okay", true, "OK", "Not OK")
+                .radio("de_selector_auto", "Controller selector switch in AUTO", true, "OK", "Not OK")
+                .radio("de_charge_current", "Battery charging current okay", true, "OK", "Not OK")
+                .number("de_run_hours", "Engine run time (hour meter)", "hrs", "reading")
+                .radio("de_cooling_level", "Cooling water level okay", true, "OK", "Not OK")
+                .radio("de_electrolyte_level", "Electrolyte water level okay", true, "OK", "Not OK");
+
+        f.section("Operational checks (pump running)")
+                .number("op_suction_psi", "Suction pressure", "psi", "reading")
+                .number("op_discharge_psi", "Discharge pressure", "psi", "reading")
+                .radio("op_packing_discharge", "Pump packing has slight discharge (adjust as needed)", true, "OK", "Adjusted", "Not OK")
+                .radio("op_noise_vibration", "Check for unusual noise or vibration", true, "None", "Present")
+                .radio("op_overheating", "Packing boxes, bearings & pump casing — no overheating", true, "OK", "Not OK")
+                .radio("op_exhaust_clear", "No opacity or plume from exhaust stack during operation", true, "OK", "Not OK")
+                .radio("op_cranking_time", "Cranking-to-full-speed time okay", true, "OK", "Not OK")
+                .number("op_oil_pressure", "Engine oil pressure", "psi", "reading")
+                .number("op_engine_rpm", "Engine speed", "rpm", "reading")
+                .number("op_water_temp", "Engine water temperature", "°F", "reading")
+                .number("op_oil_temp", "Engine oil temperature", "°F", "reading")
+                .radio("op_cooling_flow", "Cooling water flow indication okay", true, "OK", "Not OK");
+
+        f.section("Sign-off")
+                .radio("shutoff_verified", "After the 30-minute timer, verified the pump shut off and all pumps returned to AUTO",
+                        true, "Yes", "No")
+                .textarea("findings", "Findings — describe any 'Not OK' / 'Present'; leave blank if all good", null)
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes / actions taken (WOs generated, adjustments made, etc.)", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("DIESEL_FIRE_PUMP_TEST")
+                .formName("Diesel Fire Pump Weekly Inspection & Test")
+                .description("Weekly no-flow (churn) inspection and test of the diesel fire pump (NFPA 25). "
+                        + "Complete the pre-operation pump-house and fire-pump checks and the diesel-engine checks, "
+                        + "then run the pump and record the operational readings. Procedure: (1) In the Diesel Fire "
+                        + "Pump Building, before starting verify oil level; jacket heater on & engine warm; battery "
+                        + "chargers & voltage ok; cooling water valves lined up normal; raw water level & valves lined "
+                        + "up to the pump. (2) Notify the Control Room you are starting the Diesel Fire Pump. "
+                        + "(3) Press the spigot icon on the controller to start the pump and the 30-minute timer. "
+                        + "(4) With the pump running, ensure good oil pressure and coolant flow. (5) Monitor water flow "
+                        + "through the overspeed relief valve (should be none) and the engine heat exchanger. (6) After "
+                        + "the 30-minute timer completes, verify the diesel fire pump shuts off. (7) Notify the Control "
+                        + "Room the test is complete and all pumps are back in AUTO.")
+                .matchDescriptionContains("diesel fire pump")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * From procedures/pm/electric-fire-pump-test.xlsx — "Electric & Jockey Fire Pump Monthly Inspection and
+     * Test" (NFPA 25). Pre-op pump-house and fire-pump checks, jockey/electric controller checks with at-rest
+     * phase voltage, then operational readings (under-load phase voltage/current, pressures) taken while the
+     * motor runs its 10-minute timer. All verifications required; readings capture the run's actual values.
+     */
+    private MaximoFormTemplateDto electricFirePumpTest() {
+        Fields f = new Fields();
+
+        f.section("Pre-operation — Pump house checks")
+                .radio("ph_heat", "Building heat > 40°F", true, "OK", "Not OK")
+                .radio("ph_louvers", "Louvers operational", true, "OK", "Not OK")
+                .radio("ph_no_water", "No water on floor", true, "OK", "Not OK")
+                .radio("ph_coupling_guard", "Coupling guard in place", true, "OK", "Not OK");
+
+        f.section("Pre-operation — Fire pump proper checks")
+                .radio("fp_valves_open", "Suction / discharge valves OPEN", true, "OK", "Not OK")
+                .radio("fp_no_leaks", "No leaks in pipes", true, "OK", "Not OK")
+                .radio("fp_gauges_ok", "Suction / discharge gauges okay", true, "OK", "Not OK")
+                .radio("fp_flowtest_shut", "Water-flow test valves SHUT", true, "OK", "Not OK")
+                .radio("fp_hose_shut", "Water-to-hose connection SHUT", true, "OK", "Not OK");
+
+        f.section("Fire pump checks (at rest)")
+                .radio("jc_jockey_on", "Jockey pump controller ON & okay", true, "OK", "Not OK")
+                .radio("jc_electric_on", "Electric fire pump controller ON, no alarms", true, "OK", "Not OK")
+                .radio("jc_space_heater", "Space heater is ON / motor warm", true, "OK", "Not OK")
+                .number("rest_pv_a", "Phase voltage A", "V", "reading")
+                .number("rest_pv_b", "Phase voltage B", "V", "reading")
+                .number("rest_pv_c", "Phase voltage C", "V", "reading")
+                .number("rest_system_psi", "System pressure", "psi", "reading");
+
+        f.section("Operational checks (pump running)")
+                .number("op_suction_psi", "Suction pressure", "psi", "reading")
+                .number("op_discharge_psi", "Discharge pressure", "psi", "reading")
+                .radio("op_packing_discharge", "Pump packing has slight discharge (adjust as needed)", true, "OK", "Adjusted", "Not OK")
+                .radio("op_noise_vibration", "Check for unusual noise or vibration", true, "None", "Present")
+                .radio("op_overheating", "Packing boxes, bearings & pump casing — no overheating", true, "OK", "Not OK")
+                .radio("op_ramp_time", "Motor ramp-to-full-speed time okay", true, "OK", "Not OK")
+                .radio("op_relief_flow", "Slight flow verified on relief valve", true, "OK", "Not OK")
+                .number("op_pv_a", "Phase voltage A (under load)", "V", "reading")
+                .number("op_pv_b", "Phase voltage B (under load)", "V", "reading")
+                .number("op_pv_c", "Phase voltage C (under load)", "V", "reading")
+                .number("op_pc_a", "Phase current A", "A", "reading")
+                .number("op_pc_b", "Phase current B", "A", "reading")
+                .number("op_pc_c", "Phase current C", "A", "reading")
+                .number("op_system_psi", "System pressure", "psi", "reading")
+                .number("op_starting_current", "Starting current, highest phase", "A", "reading");
+
+        f.section("Sign-off")
+                .radio("shutoff_verified", "Verified the fire pump shut down automatically after 10 minutes and all pumps returned to AUTO",
+                        true, "Yes", "No")
+                .textarea("findings", "Findings — describe any 'Not OK' / 'Present'; leave blank if all good", null)
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes / actions taken (WOs generated, adjustments made, etc.)", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("ELECTRIC_FIRE_PUMP_TEST")
+                .formName("Electric & Jockey Fire Pump Monthly Inspection & Test")
+                .description("Monthly no-flow (churn) inspection and test of the electric and jockey fire pumps "
+                        + "(NFPA 25). Complete the pre-operation pump-house and fire-pump checks and the controller "
+                        + "checks (record at-rest phase voltage and system pressure), then run the pump and record the "
+                        + "operational readings (under-load phase voltage/current, pressures, starting current). "
+                        + "Procedure: (1) Perform pre-operation checks. (2) Verify raw water tank level and isolation "
+                        + "valves are at proper level and positions. (3) Start the jockey pump by slowly bleeding off "
+                        + "pressure at the jockey pump controller sensing lines. (4) Close the sensing lines and verify "
+                        + "the jockey pump stops. (5) Start the electric fire pump by depressing the spigot icon "
+                        + "pushbutton on the controller. (6) Observe the motor coming up to speed and record the max "
+                        + "current. (7) Monitor slight water flow through the relief valve. (8) Record the operational "
+                        + "checks. (9) Verify the fire pump shuts down automatically after 10 minutes.")
+                .matchDescriptionContains("electric fire pump")
                 .active(true)
                 .fieldsJson(toJson(f.build()))
                 .build();

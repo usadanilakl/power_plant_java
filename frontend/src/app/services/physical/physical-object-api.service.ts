@@ -9,6 +9,7 @@ import {
   PhysicalObjectMaximoTab,
   PhysicalObjectNode,
   PhysicalObjectSeedResult,
+  RoundCheckRef,
   SystemRef,
   TagMatchProbe,
   WorkAreaOption,
@@ -90,6 +91,13 @@ export class PhysicalObjectApiService {
   getNodeFiles(id: number): Observable<LinkedFile[]> {
     return this.http
       .get<SpringApiResponse<LinkedFile[]>>(`${this.base}/${id}/files`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Round checks that monitor this node (reverse of RoundQuestion.physicalObjectId). */
+  getRoundChecks(id: number): Observable<RoundCheckRef[]> {
+    return this.http
+      .get<SpringApiResponse<RoundCheckRef[]>>(`${this.base}/${id}/round-checks`)
       .pipe(map(r => r.responseData ?? []));
   }
 

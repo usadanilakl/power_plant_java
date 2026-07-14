@@ -409,6 +409,99 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
     }
 
     /**
+     * One-time migration: un-share ZeroEnergy so each active LOTO point owns its own row.
+     * For every row referenced by more than one point, the row is KEPT for one point and a fresh
+     * private clone is created + repointed for each of the others. All mutations go through managed
+     * saves (zeroEnergyRepo.save + lotoPointRepo.save) so FieldChangeEntityListener @PostPersist/
+     * @PostUpdate fire and the new rows + FK repoints sync — NEVER via the bulk reassignZeroEnergy
+     * JPQL (which bypasses the listener). Idempotent: a second run is a no-op once every row is 1:1.
+     * Not a correctness prerequisite (saveForPoint already self-forks shared rows on next save) — this
+     * just converts existing data in one shot. Run on the hub; changes propagate to desktops.
+     *
+     * @return number of clone-and-repoint operations performed
+     */
+    @Transactional
+    public int unshareAllZeroEnergy() {
+        // Group active points by the ZeroEnergy row they reference.
+        Map<Long, List<LotoPoint>> pointsByZeroEnergy = new HashMap<>();
+        for (LotoPoint p : lotoPointRepo.findAll()) { // @Where(deleted) excludes soft-deleted points
+            ZeroEnergy ze = p.getZeroEnergy();
+            if (ze != null && ze.getId() != null) {
+                pointsByZeroEnergy.computeIfAbsent(ze.getId(), k -> new ArrayList<>()).add(p);
+            }
+        }
+
+        int forked = 0;
+        for (List<LotoPoint> points : pointsByZeroEnergy.values()) {
+            if (points.size() <= 1) {
+                continue; // already 1:1
+            }
+            // Keep the row for points.get(0); give every other referencing point a private clone.
+            for (int i = 1; i < points.size(); i++) {
+                LotoPoint p = points.get(i);
+                ZeroEnergy clone = zeroEnergyRepo.save(cloneZeroEnergy(p.getZeroEnergy()));
+                p.setZeroEnergy(clone);
+                lotoPointRepo.save(p);
+                forked++;
+            }
+        }
+
+        cleanupOrphans();
+        return forked;
+    }
+
+    /**
+     * Read-only health summary of the ZeroEnergy data, for the admin diagnostic view:
+     * how many rows are still shared (and how many per-point copies an un-share would create),
+     * how many are orphaned, and how many still contain unresolved [tag] placeholders.
+     */
+    public Map<String, Object> getZeroEnergyHealth() {
+        Map<Long, Integer> refCounts = new HashMap<>();
+        for (LotoPoint p : lotoPointRepo.findAll()) {
+            ZeroEnergy ze = p.getZeroEnergy();
+            if (ze != null && ze.getId() != null) {
+                refCounts.merge(ze.getId(), 1, Integer::sum);
+            }
+        }
+        int sharedRows = 0;
+        int extraCopies = 0;
+        for (int c : refCounts.values()) {
+            if (c > 1) {
+                sharedRows++;
+                extraCopies += (c - 1);
+            }
+        }
+
+        int unresolved = 0;
+        for (ZeroEnergy ze : zeroEnergyRepo.findAll()) {
+            String m = resolveMethod(ze);
+            if (m != null && m.contains("[tag")) {
+                unresolved++;
+            }
+        }
+
+        Map<String, Object> health = new LinkedHashMap<>();
+        health.put("sharedRows", sharedRows);
+        health.put("extraCopiesIfUnshared", extraCopies);
+        health.put("orphanRows", zeroEnergyRepo.findOrphans().size());
+        health.put("rowsWithUnresolvedPlaceholders", unresolved);
+        return health;
+    }
+
+    /** Deep copy of a ZeroEnergy into a new, unsaved private row (template + equipment + cached method). */
+    private ZeroEnergy cloneZeroEnergy(ZeroEnergy src) {
+        ZeroEnergy c = new ZeroEnergy();
+        c.setZeroEnergyTemplate(src.getZeroEnergyTemplate());
+        List<Long> ordered = src.getSlotOrderedEquipmentIds(); // slot order (falls back to sorted)
+        if (ordered != null && !ordered.isEmpty()) {
+            c.setNormalizedEquipmentIds(ordered); // sorted dedup key
+            c.setOrderedEquipmentIds(ordered);    // slot order (for resolution)
+        }
+        c.setMethod(src.getMethod());
+        return c;
+    }
+
+    /**
      * Migrates all ZeroEnergy records to populate the method field.
      * This is needed for existing records that were created before the method field was persisted.
      *

@@ -47,6 +47,8 @@ public class EntityTableRegistry {
         Map.entry("LotoStandard", "loto_standard"),
         Map.entry("RedTagStandard", "red_tag_standard"),
         Map.entry("LotoSnapshot", "loto_snapshot"),
+        Map.entry("LotoStandardPendingChange", "loto_standard_pending_change"),
+        Map.entry("WalkdownSession", "walkdown_session"),
         Map.entry("LotoBox", "loto_boxes"),        // @Table(name = "loto_boxes")
         Map.entry("Lock", "lock"),
         Map.entry("ZeroEnergy", "zero_energy"),
@@ -153,6 +155,8 @@ public class EntityTableRegistry {
         "LotoStandard",
         "RedTagStandard",
         "LotoSnapshot",
+        "LotoStandardPendingChange", // depends on LotoStandard + LotoPoint (nullable) — both above
+        "WalkdownSession",           // depends on Loto — above
         "LotoBox",
         "Lock",
         "ZeroEnergy",

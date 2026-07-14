@@ -134,7 +134,12 @@ public class SecurityConfigSpring {
                     "/api/data-integrity/", "/api/backup/",
                     "/api/attachments/",
                     "/h2-console/",
-                    "/work-requests-api/heal-snapshot"
+                    "/work-requests-api/heal-snapshot",
+                    // Sync PDFs: any LAN desktop drives the scrape locally and POSTs the
+                    // captured PDFs to the hub. Hub-only enforcement is already applied at the
+                    // controller (syncConfig.isHubMode() → 403 on non-hub), so a mis-configured
+                    // desktop can't act as a rogue writer.
+                    "/ng/sds-chemicals/sync-pdfs"
                 )).permitAll()
 
                 // Admin-only endpoints — grant approval allowed from the plant network (localhost OR

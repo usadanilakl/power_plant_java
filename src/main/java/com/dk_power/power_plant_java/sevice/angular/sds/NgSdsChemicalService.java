@@ -573,6 +573,11 @@ public class NgSdsChemicalService {
         att.setBase64Content(base64Content);
         att.setContentHash(hash);
         att.setOriginMachineId(syncConfig.getMachineId());
+        // origin='sharepoint' marks rows that came FROM SP via pullAllFromSharePoint. Without
+        // this tag, Sync PDFs' isScraperOwned filter couldn't see them and they'd survive every
+        // reconcile run — the exact "ghost row" bug that had wrong PDFs sticking around after
+        // pull-from-SP → close-gaps cycles.
+        att.setOrigin("sharepoint");
         att.setSyncedToServer(false);   // let AttachmentSyncHandler ship it to hub → other clients
         attachmentRepo.save(att);
     }

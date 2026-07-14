@@ -559,80 +559,107 @@
            object — a box's child OR a selected pipe/fitting — so pipes and fittings are first-class objects. -->
       <ng-template #objectLinks>
        <ng-container *ngIf="objNode() as o">
-        <div class="systems">
-          <h4>Systems ({{ st.childSystems().get(o.id)?.size || 0 }})</h4>
-          <div class="chips">
+        <div class="systems section">
+          <h4 class="sec-h" (click)="toggleSection('systems')"><span class="sec-caret">{{ isSectionOpen('systems') ? '▾' : '▸' }}</span> Systems ({{ st.childSystems().get(o.id)?.size || 0 }})</h4>
+          <div class="chips" *ngIf="isSectionOpen('systems')">
             <button *ngFor="let s of systems()" type="button" class="chipbtn"
                     [class.on]="selectedObjectInSystem(s.id)" (click)="toggleSelectedObjectSystem(s.id)">{{ s.name }}</button>
             <span class="muted" *ngIf="!systems().length">No systems defined yet.</span>
           </div>
         </div>
 
-        <div class="safety">
-          <h4>Safety / Work Areas ({{ workAreas().length }})</h4>
-          <span class="muted" *ngIf="waLoading()">loading…</span>
-          <ul class="wa-list">
-            <li *ngFor="let w of workAreas()">
-              <div class="wa-main">
-                <span class="wa-name">{{ w.name || ('#'+w.id) }}</span>
-                <span class="wa-sub">
-                  <span *ngIf="w.areaType">{{ w.areaType }}</span>
-                  <span *ngIf="w.lotoCount"> · {{ w.lotoCount }} LOTO</span>
+        <div class="checks section">
+          <h4 class="sec-h" (click)="toggleSection('checks')"><span class="sec-caret">{{ isSectionOpen('checks') ? '▾' : '▸' }}</span> Round Checks ({{ roundChecks().length }})</h4>
+          <div *ngIf="isSectionOpen('checks')">
+            <span class="muted" *ngIf="roundChecksLoading()">loading…</span>
+            <ul class="check-list">
+              <li *ngFor="let c of roundChecks()" [class.oor]="c.openIssue">
+                <div class="chk-main">
+                  <span class="chk-prompt">{{ c.prompt }}</span>
+                  <span class="chk-oor" *ngIf="c.openIssue">out of range</span>
+                </div>
+                <div class="chk-sub">
+                  <span>{{ c.roundName }}</span>
+                  <span *ngIf="c.lowLimit != null || c.highLimit != null"> · {{ c.lowLimit ?? '' }}–{{ c.highLimit ?? '' }} {{ c.unit }}</span>
+                  <span *ngIf="c.lastValue"> · last: {{ c.lastValue }}</span>
+                </div>
+              </li>
+              <li class="muted" *ngIf="!roundChecks().length && !roundChecksLoading()">No round checks reference this object.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="safety section">
+          <h4 class="sec-h" (click)="toggleSection('safety')"><span class="sec-caret">{{ isSectionOpen('safety') ? '▾' : '▸' }}</span> Safety / Work Areas ({{ workAreas().length }})</h4>
+          <div *ngIf="isSectionOpen('safety')">
+            <span class="muted" *ngIf="waLoading()">loading…</span>
+            <ul class="wa-list">
+              <li *ngFor="let w of workAreas()">
+                <div class="wa-main">
+                  <span class="wa-name">{{ w.name || ('#'+w.id) }}</span>
+                  <span class="wa-sub">
+                    <span *ngIf="w.areaType">{{ w.areaType }}</span>
+                    <span *ngIf="w.lotoCount"> · {{ w.lotoCount }} LOTO</span>
+                  </span>
+                </div>
+                <button class="wa-permit" (click)="startPermit(w)"
+                        title="Start a permit here — opens a work request pre-filled with this work area (hazards/PPE prefill)">permit ↗</button>
+                <button class="x" (click)="unlinkWorkArea(w)" title="unbind">×</button>
+              </li>
+              <li class="muted" *ngIf="!workAreas().length && !waLoading()">No work area bound.</li>
+            </ul>
+            <button class="add-wa" (click)="waPickerOpen.set(!waPickerOpen())">
+              {{ waPickerOpen() ? 'Cancel' : '+ Bind work area' }}
+            </button>
+            <ul class="results" *ngIf="waPickerOpen()">
+              <li *ngFor="let w of availableWorkAreas()" (click)="linkWorkArea(w)">{{ w.name }}</li>
+              <li class="muted" *ngIf="!availableWorkAreas().length">No more work areas to bind.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="maximo section">
+          <h4 class="sec-h" (click)="toggleSection('maximo')"><span class="sec-caret">{{ isSectionOpen('maximo') ? '▾' : '▸' }}</span> Maximo</h4>
+          <div *ngIf="isSectionOpen('maximo')">
+            <div class="mx-current" *ngIf="o.maximoAssetnum || o.maximoLocation">
+              <span class="mx-tag" *ngIf="o.maximoAssetnum" title="Maximo asset">⚙ {{ o.maximoAssetnum }}</span>
+              <span class="mx-tag" *ngIf="o.maximoLocation" title="Maximo location">◍ {{ o.maximoLocation }}</span>
+              <button class="x" (click)="unlinkMaximo()" title="unlink Maximo">×</button>
+            </div>
+            <span class="muted" *ngIf="!o.maximoAssetnum && !o.maximoLocation">Not linked to Maximo.</span>
+            <button class="mx-btn" (click)="mxPickerOpen.set(!mxPickerOpen())">
+              {{ mxPickerOpen() ? 'Cancel' : ((o.maximoAssetnum || o.maximoLocation) ? 'Change link' : '+ Link Maximo asset / location') }}
+            </button>
+            <div class="mx-picker" *ngIf="mxPickerOpen()">
+              <label class="mx-lbl">Asset</label>
+              <app-maximo-asset-picker (picked)="onAssetPicked($event)"></app-maximo-asset-picker>
+              <label class="mx-lbl">Location</label>
+              <app-maximo-location-picker (picked)="onLocationPicked($event)"></app-maximo-location-picker>
+            </div>
+          </div>
+        </div>
+
+        <div class="docs section">
+          <h4 class="sec-h" (click)="toggleSection('docs')"><span class="sec-caret">{{ isSectionOpen('docs') ? '▾' : '▸' }}</span> Documents ({{ files().length }})</h4>
+          <div *ngIf="isSectionOpen('docs')">
+            <span class="muted" *ngIf="filesLoading()">loading…</span>
+            <ul class="doc-list">
+              <li *ngFor="let f of files()">
+                <span class="doc-open" (click)="openFile(f)">{{ f.name || ('#'+f.id) }}
+                  <span class="ext" *ngIf="f.extension">.{{ f.extension }}</span>
                 </span>
-              </div>
-              <button class="wa-permit" (click)="startPermit(w)"
-                      title="Start a permit here — opens a work request pre-filled with this work area (hazards/PPE prefill)">permit ↗</button>
-              <button class="x" (click)="unlinkWorkArea(w)" title="unbind">×</button>
-            </li>
-            <li class="muted" *ngIf="!workAreas().length && !waLoading()">No work area bound.</li>
-          </ul>
-          <button class="add-wa" (click)="waPickerOpen.set(!waPickerOpen())">
-            {{ waPickerOpen() ? 'Cancel' : '+ Bind work area' }}
-          </button>
-          <ul class="results" *ngIf="waPickerOpen()">
-            <li *ngFor="let w of availableWorkAreas()" (click)="linkWorkArea(w)">{{ w.name }}</li>
-            <li class="muted" *ngIf="!availableWorkAreas().length">No more work areas to bind.</li>
-          </ul>
-        </div>
-
-        <div class="maximo">
-          <h4>Maximo</h4>
-          <div class="mx-current" *ngIf="o.maximoAssetnum || o.maximoLocation">
-            <span class="mx-tag" *ngIf="o.maximoAssetnum" title="Maximo asset">⚙ {{ o.maximoAssetnum }}</span>
-            <span class="mx-tag" *ngIf="o.maximoLocation" title="Maximo location">◍ {{ o.maximoLocation }}</span>
-            <button class="x" (click)="unlinkMaximo()" title="unlink Maximo">×</button>
+                <button class="x" (click)="unlinkFile(f)" title="unlink">×</button>
+              </li>
+              <li class="muted" *ngIf="!files().length && !filesLoading()">No documents linked.</li>
+            </ul>
+            <div class="doc-search">
+              <input [(ngModel)]="fileQuery" placeholder="search files / P&IDs…" (keyup.enter)="searchFiles()" />
+              <button (click)="searchFiles()" [disabled]="fileSearching()">Find</button>
+            </div>
+            <ul class="results" *ngIf="fileResults().length">
+              <li *ngFor="let f of fileResults()" (click)="linkFile(f)">{{ fileLabel(f) }}</li>
+            </ul>
           </div>
-          <span class="muted" *ngIf="!o.maximoAssetnum && !o.maximoLocation">Not linked to Maximo.</span>
-          <button class="mx-btn" (click)="mxPickerOpen.set(!mxPickerOpen())">
-            {{ mxPickerOpen() ? 'Cancel' : ((o.maximoAssetnum || o.maximoLocation) ? 'Change link' : '+ Link Maximo asset / location') }}
-          </button>
-          <div class="mx-picker" *ngIf="mxPickerOpen()">
-            <label class="mx-lbl">Asset</label>
-            <app-maximo-asset-picker (picked)="onAssetPicked($event)"></app-maximo-asset-picker>
-            <label class="mx-lbl">Location</label>
-            <app-maximo-location-picker (picked)="onLocationPicked($event)"></app-maximo-location-picker>
-          </div>
-        </div>
-
-        <div class="docs">
-          <h4>Documents ({{ files().length }})</h4>
-          <span class="muted" *ngIf="filesLoading()">loading…</span>
-          <ul class="doc-list">
-            <li *ngFor="let f of files()">
-              <span class="doc-open" (click)="openFile(f)">{{ f.name || ('#'+f.id) }}
-                <span class="ext" *ngIf="f.extension">.{{ f.extension }}</span>
-              </span>
-              <button class="x" (click)="unlinkFile(f)" title="unlink">×</button>
-            </li>
-            <li class="muted" *ngIf="!files().length && !filesLoading()">No documents linked.</li>
-          </ul>
-          <div class="doc-search">
-            <input [(ngModel)]="fileQuery" placeholder="search files / P&IDs…" (keyup.enter)="searchFiles()" />
-            <button (click)="searchFiles()" [disabled]="fileSearching()">Find</button>
-          </div>
-          <ul class="results" *ngIf="fileResults().length">
-            <li *ngFor="let f of fileResults()" (click)="linkFile(f)">{{ fileLabel(f) }}</li>
-          </ul>
         </div>
        </ng-container>
       </ng-template>

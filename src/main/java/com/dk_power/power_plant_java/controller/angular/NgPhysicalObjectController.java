@@ -318,6 +318,13 @@ public class NgPhysicalObjectController {
         return ResponseEntity.ok(new NgApiResponse<>(agg, "ok"));
     }
 
+    /** The round checks that monitor this node (reverse of RoundQuestion.physicalObjectId) — cheap, no Maximo. */
+    @GetMapping("/{id}/round-checks")
+    public ResponseEntity<NgApiResponse<List<PhysicalObjectAggregate.RoundCheckRef>>> roundChecks(@PathVariable Long id) {
+        List<PhysicalObjectAggregate.RoundCheckRef> checks = aggregateService.listRoundChecks(id);
+        return ResponseEntity.ok(new NgApiResponse<>(checks, checks.size() + " checks"));
+    }
+
     // ---- System membership (the cross-cutting functional axis / map layers) -------------------
 
     /** The System values this object belongs to (the functional axis, orthogonal to the spatial tree). */

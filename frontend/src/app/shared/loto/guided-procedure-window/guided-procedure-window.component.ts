@@ -10,6 +10,7 @@ import { LotoService } from '../../../services/loto/loto.service';
 import { WalkdownSessionService } from '../../../services/loto/walkdown-session.service';
 import { WalkdownSessionDto } from '../../../models/loto/walkdown-session.model';
 import { StepUpDialogComponent } from '../../step-up/step-up-dialog.component';
+import { AuthService } from '../../../services/auth.service';
 
 export type GuidedProcedureMode = 'HANG' | 'VERIFY' | 'WALKDOWN' | 'REMOVE';
 
@@ -352,6 +353,7 @@ interface RowState {
 export class GuidedProcedureWindowComponent {
   private lotoService = inject(LotoService);
   private walkdownSessionService = inject(WalkdownSessionService);
+  private authService = inject(AuthService);
 
   // ── Walkdown sessions state ───────────────────────────────────────────────
   sessions = signal<WalkdownSessionDto[]>([]);
@@ -689,17 +691,43 @@ export class GuidedProcedureWindowComponent {
   }
 
   /**
-   * Tracks a pending VERIFY action waiting on PIN entry. Other modes (HANG,
-   * WALKDOWN, REMOVE) run directly under the logged-in user. VERIFY enforces
-   * separation of duty — the verifier signs in via PIN even if the hanger is
-   * the active session.
+   * Tracks a pending VERIFY action waiting on PIN entry. Non-VERIFY modes run
+   * directly under the logged-in user. For VERIFY, the PIN dialog is a shared-
+   * workstation affordance — see {@link sessionCanVerifyDirectly}.
    */
   stepUpRow = signal<RowState | null>(null);
 
+  /**
+   * True when the currently signed-in session ALREADY satisfies the "verifier
+   * must be a different person than the hanger" rule — in which case there's
+   * no need to prompt for a PIN. Requires:
+   *   - a logged-in user with an email,
+   *   - LOTO-qualified (or higher) role,
+   *   - the point has a recorded hanger,
+   *   - and that hanger identity is NOT the logged-in email (case-insensitive).
+   *
+   * When any of those fail, we fall back to the step-up PIN dialog. The
+   * backend still enforces the same rule server-side against whichever
+   * identity actually acts (session token OR step-up token), so this is
+   * purely a UX shortcut — a wrong local decision can't bypass the rule.
+   */
+  private sessionCanVerifyDirectly(pointId: number): boolean {
+    const email = this.authService.currentUser?.email;
+    if (!email) return false;
+    if (!this.authService.isLotoQualified()) return false;
+    const snap = this.latestSnapshot();
+    const hung = (snap?.pointHungBy ?? {}) as Record<number, string>;
+    const hangerId = hung[pointId];
+    if (!hangerId) return false; // no hanger recorded — safer to prompt for PIN
+    return hangerId.toLowerCase() !== email.toLowerCase();
+  }
+
   act(row: RowState): void {
-    if (this.mode() === 'VERIFY') {
-      // Verifier identity must be confirmed via PIN, not inherited from the
-      // logged-in session. Open the step-up dialog; runVerify() runs after.
+    if (this.mode() === 'VERIFY' && !this.sessionCanVerifyDirectly(row.pointId)) {
+      // Session user is either not LOTO-qualified, is the same person who
+      // hung this point, or the hanger identity is unknown — prompt for PIN
+      // so a physically different person can identify themselves. On success
+      // the backend uses the PIN bearer as the actor.
       this.stepUpRow.set(row);
       return;
     }

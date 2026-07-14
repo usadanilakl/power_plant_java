@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.entities.loto.LotoStandardWalkdown;
 import com.dk_power.power_plant_java.entities.loto.LotoStandardWalkdown.GlobalItem;
 import com.dk_power.power_plant_java.entities.loto.LotoStandardWalkdown.PointChecklist;
+import com.dk_power.power_plant_java.entities.users.LotoRole;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
@@ -107,6 +108,13 @@ public class PwaLotoStandardWalkdownService {
      */
     @Transactional
     public void saveEvidence(Long standardId, WalkdownSubmitRequest req) {
+        // Walkdown evidence-recording is a manager activity per operational policy.
+        // The evidence IS the walkdown; the eventual markWalkdownComplete transition
+        // is also manager-gated (see NgLotoStandardService.markWalkdownComplete).
+        // Gate them consistently so a non-manager can't fill out the checklist and
+        // then hand the transition to a manager to rubber-stamp.
+        lotoStandardService.requireLotoRole(LotoRole.MANAGER);
+
         LotoStandard s = standardRepo.findById(standardId)
                 .orElseThrow(() -> new IllegalArgumentException("LOTO standard not found: " + standardId));
 
@@ -161,6 +169,11 @@ public class PwaLotoStandardWalkdownService {
      * and set only if it resolves. Goes through JPA so the {@code FieldChangeEntityListener} fires (syncs).
      */
     public void applyCorrection(Long pointId, String tagNumber, String description, Long isoPosId, Long normPosId) {
+        // Corrections modify a LOTO point in place (tag/description/positions).
+        // Either a Control Authority (who owns build-time content) or a Manager
+        // (who owns walkdown and might spot an in-field discrepancy) may apply
+        // one — anyone lower is rejected.
+        lotoStandardService.requireLotoRole(LotoRole.CONTROL_AUTHORITY, LotoRole.MANAGER);
         LotoPoint p = lotoPointRepo.findById(pointId)
                 .orElseThrow(() -> new IllegalArgumentException("LOTO point not found: " + pointId));
         if (tagNumber != null) p.setTagNumber(tagNumber.trim());

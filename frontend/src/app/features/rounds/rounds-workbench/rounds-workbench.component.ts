@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { PhysicalObjectApiService } from '../../../services/physical/physical-object-api.service';
 import { PhysicalObjectNode, PO_TYPE_OPTIONS, poColor } from '../../../models/physical/physical-object.models';
+import { PoPickerComponent } from '../po-picker/po-picker.component';
 import { RoundsAdminService } from '../services/rounds-admin.service';
 import {
   ANSWER_TYPES,
@@ -33,7 +34,7 @@ type StatusTab = StagingStatus | 'ALL';
 @Component({
   selector: 'app-rounds-workbench',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, PoPickerComponent],
   templateUrl: './rounds-workbench.component.html',
   styleUrl: './rounds-workbench.component.css',
 })
@@ -73,7 +74,6 @@ export class RoundsWorkbenchComponent implements OnInit {
   fChoices = '';
 
   // ── shared physical-object binding (single + batch) ──
-  poQuery = '';
   poSelectedId: number | null = null;
   poCreating = false;
   newPoName = '';
@@ -139,17 +139,6 @@ export class RoundsWorkbenchComponent implements OnInit {
   });
 
   readonly selectedCount = computed(() => this.selectedIds().size);
-
-  readonly poResults = computed(() => {
-    const q = this.poQuery.trim().toLowerCase();
-    const all = this.tree();
-    const base = q
-      ? all.filter(n =>
-          (n.name || '').toLowerCase().includes(q) ||
-          (n.tagNumber || '').toLowerCase().includes(q))
-      : all;
-    return base.slice(0, 40);
-  });
 
   readonly poSelectedNode = computed(() =>
     this.tree().find(n => n.id === this.poSelectedId) ?? null);
@@ -260,7 +249,6 @@ export class RoundsWorkbenchComponent implements OnInit {
     this.fExpected = '';
     this.fTrackIssues = true;
     this.fChoices = '';
-    this.poQuery = '';
     this.poSelectedId = null;
     this.poCreating = false;
     this.newPoName = row.tagCode ? `${row.tagCode}` : (row.category || '');

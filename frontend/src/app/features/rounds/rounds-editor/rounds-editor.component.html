@@ -84,15 +84,12 @@
 
             <!-- group PO picker -->
             <div class="group-po" *ngIf="groupPoTarget() === g.key">
-              <span>Bind all {{ g.questions.length }} questions to:</span>
-              <input [(ngModel)]="groupPoQuery" placeholder="Search name or tag…" />
-              <button class="link" (click)="assignGroupPo(g, null)">clear binding</button>
-              <button class="link" (click)="closeGroupPo()">close</button>
-              <div class="po-results" *ngIf="groupPoQuery.trim()">
-                <button *ngFor="let n of groupPoResults()" class="po-opt" (click)="assignGroupPo(g, n.id)">
-                  <span class="dot" [style.background]="poColor(n.type)"></span>{{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
-                </button>
+              <div class="group-po-head">
+                <span>Bind all {{ g.questions.length }} questions to:</span>
+                <button class="link" (click)="assignGroupPo(g, null)">clear binding</button>
+                <button class="link" (click)="closeGroupPo()">close</button>
               </div>
+              <app-po-picker [nodes]="tree()" (pick)="assignGroupPo(g, $event)" />
             </div>
 
             <!-- questions -->
@@ -141,18 +138,8 @@
 
                     <div class="field">
                       <label>Physical object</label>
-                      <div class="po-cur" *ngIf="draft.physicalObjectId != null">
-                        {{ poName(draft.physicalObjectId) }}
-                        <button class="link" (click)="draft.physicalObjectId = null">clear</button>
-                      </div>
-                      <ng-container *ngIf="draft.physicalObjectId == null">
-                        <input [(ngModel)]="poQuery" placeholder="Search name or tag…" />
-                        <div class="po-results" *ngIf="poQuery.trim()">
-                          <button *ngFor="let n of poResults()" class="po-opt" (click)="draft.physicalObjectId = n.id; poQuery=''">
-                            <span class="dot" [style.background]="poColor(n.type)"></span>{{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
-                          </button>
-                        </div>
-                      </ng-container>
+                      <div class="po-cur" *ngIf="draft.physicalObjectId != null">{{ poName(draft.physicalObjectId) }}</div>
+                      <app-po-picker [nodes]="tree()" [selectedId]="draft.physicalObjectId" (pick)="draft.physicalObjectId = $event" />
                     </div>
 
                     <!-- dependency -->

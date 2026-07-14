@@ -15,6 +15,7 @@ public record PhysicalObjectAggregate(
         List<WorkAreaRef> workAreas,
         List<SystemRef> systems,
         List<ObjectLog> logs,
+        List<RoundCheckRef> roundChecks,
         MaximoFacet maximo
 ) {
     public record LinkedFileRef(Long id, String name, String fileNumber, String fileLink, String extension) {}
@@ -28,6 +29,11 @@ public record PhysicalObjectAggregate(
 
     /** One object log entry (backed by a polymorphic Comment, entityType="PhysicalObject"). */
     public record ObjectLog(Long id, String content, String author, String createdAt, boolean needsAttention) {}
+
+    /** A round check that monitors this object (reverse of RoundQuestion.physicalObjectId) + its live status. */
+    public record RoundCheckRef(Long questionId, Long roundId, String roundName, String category, String prompt,
+                                String answerType, String unit, Double lowLimit, Double highLimit, String expectedValue,
+                                String lastValue, String lastAt, boolean openIssue) {}
 
     /** Maximo WO/SR for the object's asset/location link. {@code available=false} when no key / no link. */
     public record MaximoFacet(boolean available, String assetnum, String location,

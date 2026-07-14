@@ -269,18 +269,11 @@
         <button class="link" (click)="poCreating = !poCreating">{{ poCreating ? 'pick existing' : '+ create new' }}</button>
       </div>
       <ng-container *ngIf="!poCreating">
-        <input [(ngModel)]="poQuery" placeholder="Search name or tag…" />
         <div class="po-selected" *ngIf="poSelectedNode() as n">
           <span class="dot" [style.background]="poColor(n.type)"></span>
           {{ n.name }} <span class="muted">{{ n.tagNumber }}</span>
-          <button class="link" (click)="poSelectedId = null">clear</button>
         </div>
-        <div class="po-results" *ngIf="!poSelectedId">
-          <button *ngFor="let n of poResults()" class="po-opt" (click)="poSelectedId = n.id">
-            <span class="dot" [style.background]="poColor(n.type)"></span>
-            {{ n.name }} <span class="muted">{{ n.tagNumber }} · {{ n.type }}</span>
-          </button>
-        </div>
+        <app-po-picker [nodes]="tree()" [selectedId]="poSelectedId" (pick)="poSelectedId = $event" />
       </ng-container>
       <div class="create-po" *ngIf="poCreating">
         <input [(ngModel)]="newPoName" placeholder="Name" />

@@ -103,6 +103,9 @@ public class ServiceFacade {
             @Lazy NgLotoStandardService ngLotoStandardService,
             @Lazy NgLotoBoxService ngLotoBoxService,
             @Lazy NgLockService ngLockService,
+            @Lazy NgLotoSnapshotService ngLotoSnapshotService,
+            @Lazy NgLotoStandardPendingChangeService ngLotoStandardPendingChangeService,
+            @Lazy NgWalkdownSessionSyncService ngWalkdownSessionSyncService,
             @Lazy ZeroEnergyService zeroEnergyService,
             // Comments
             @Lazy NgCommentService ngCommentService,
@@ -188,6 +191,11 @@ public class ServiceFacade {
         serviceMap.put(RedTagStandard.class.getSimpleName(), ngRedTagStandardService);
         serviceMap.put(LotoBox.class.getSimpleName(), ngLotoBoxService);
         serviceMap.put(Lock.class.getSimpleName(), ngLockService);
+        // LOTO lifecycle-event capture — see NgLotoSnapshotService javadoc for the
+        // pre-fix silent-drop bug that motivated adding these to the sync map.
+        serviceMap.put(LotoSnapshot.class.getSimpleName(), ngLotoSnapshotService);
+        serviceMap.put(LotoStandardPendingChange.class.getSimpleName(), ngLotoStandardPendingChangeService);
+        serviceMap.put(WalkdownSession.class.getSimpleName(), ngWalkdownSessionSyncService);
         serviceMap.put(ZeroEnergy.class.getSimpleName(), zeroEnergyService);
         // Comments
         serviceMap.put(Comment.class.getSimpleName(), ngCommentService);

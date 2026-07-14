@@ -58,6 +58,22 @@ export interface ObjectLog {
   needsAttention: boolean;
 }
 
+export interface RoundCheckRef {
+  questionId: number;
+  roundId: number | null;
+  roundName: string | null;
+  category: string | null;
+  prompt: string | null;
+  answerType: string | null;
+  unit: string | null;
+  lowLimit: number | null;
+  highLimit: number | null;
+  expectedValue: string | null;
+  lastValue: string | null;
+  lastAt: string | null;
+  openIssue: boolean;
+}
+
 export interface MaximoFacet {
   available: boolean;
   assetnum: string | null;
@@ -74,5 +90,6 @@ export interface PhysicalObjectAggregate {
   workAreas: WorkAreaRef[];
   systems: SystemRef[];
   logs: ObjectLog[];
+  roundChecks: RoundCheckRef[];
   maximo: MaximoFacet;
 }
