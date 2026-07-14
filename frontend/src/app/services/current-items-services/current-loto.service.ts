@@ -1,7 +1,8 @@
 import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { LotoService } from "../loto/loto.service";
-import { BehaviorSubject, catchError, EMPTY, map, Observable, of, tap } from "rxjs";
+import { BehaviorSubject, catchError, debounceTime, EMPTY, map, Observable, of, Subject, tap } from "rxjs";
+import { EntityUpdateEvent, SyncUpdateService } from "../sync/sync-update.service";
 import { LotoDto } from "../../models/loto/loto.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
@@ -42,9 +43,55 @@ export class CurrentLotoService{
     isPaperViewActive = signal<boolean>(false);
     selectedItem = toSignal(this.currentLotoSubject.asObservable(), { initialValue: new LotoDto() });
 
+    private syncUpdateService = inject(SyncUpdateService);
+    /** Coalesces the burst of field-changes one remote transition produces into a single refetch. */
+    private lotoChanged$ = new Subject<number>();
+
     constructor() {
         this.loadLotosFromServer();
         this.loadPaperForm();
+
+        // Live-refresh when a LOTO changes on another machine. These SSE events only fire for changes RECEIVED from
+        // sync (never our own writes), so this is exactly the "someone else approved/hung/verified it" case that
+        // previously required a manual page refresh.
+        //
+        // IMPORTANT: the lifecycle transitions (CA-approve-for-hanging, per-point hang/verify, aggregate hung/verified)
+        // all write LotoSnapshot, NOT Loto — so watching 'Loto' alone would miss every one of them.
+        this.syncUpdateService.getEntityTypeUpdates$('Loto')
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(e => this.lotoChanged$.next(e.entityId));
+
+        this.syncUpdateService.getEntityTypeUpdates$('LotoSnapshot')
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(e => {
+                const lotoId = this.resolveLotoIdFromSnapshot(e);
+                if (lotoId != null) this.lotoChanged$.next(lotoId);
+            });
+
+        // A single hang/verify emits several snapshot field-changes (pointHungByJson + hungBy + hungAt …) — debounce
+        // so we issue one GET instead of one per change.
+        this.lotoChanged$
+            .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+            .subscribe(lotoId => this.applyRemoteLotoChange(lotoId));
+    }
+
+    /** A LotoSnapshot event carries the SNAPSHOT id — map it back to the permit that owns it. */
+    private resolveLotoIdFromSnapshot(e: EntityUpdateEvent): number | null {
+        // A brand-new snapshot's change batch carries its parent FK (LotoSnapshot.loto).
+        const fk = e.changes?.find(c => c.fieldName === 'loto')?.newValue;
+        if (fk) {
+            const n = Number(fk);
+            if (!Number.isNaN(n)) return n;
+        }
+        // An existing snapshot: find the permit whose snapshots[] contains it.
+        return this.allLotosSubject.value.find(l => l.snapshots?.some(s => s.id === e.entityId))?.id ?? null;
+    }
+
+    private applyRemoteLotoChange(lotoId: number): void {
+        this.loadLotosFromServer();                       // refresh list / left menu / status grouping
+        if (this.currentLotoSubject.value?.id === lotoId) {
+            this.setCurrentLotoById(lotoId);              // re-feed the open permit so the form re-renders
+        }
     }
 
     private normalizeLoto(item: Partial<LotoDto> | null | undefined): LotoDto {

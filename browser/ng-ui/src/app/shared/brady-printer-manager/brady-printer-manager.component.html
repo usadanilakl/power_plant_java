@@ -1,0 +1,131 @@
+@if (bradyPrinterModalService.isVisible()) {
+  <app-popup
+    [title]="'Brady Printer'"
+    [size]="isQueueMode() ? 'large' : 'medium'"
+    [isOpen]="true"
+    (close)="close()"
+  >
+    @if (state(); as state) {
+      <div class="printer-manager-container" [class.queue-mode]="isQueueMode()">
+        @if (isQueueMode()) {
+          <div class="queue-sidebar">
+            <div class="queue-header">
+              <h4>Print Queue</h4>
+              <span class="queue-count">{{ getCompletedCount() }} / {{ getTotalCount() }}</span>
+            </div>
+            <div class="queue-list">
+              @for (item of bradyPrinterModalService.printQueue(); track item.id; let i = $index) {
+                <div
+                  class="queue-item"
+                  [class.active]="bradyPrinterModalService.currentIndex() === i"
+                  [class.completed]="item.status === 'completed'"
+                  [class.error]="item.status === 'error'"
+                  [class.printing]="item.status === 'printing'"
+                  (click)="selectQueueItem(i)"
+                >
+                  <span class="queue-item-status">
+                    @switch (item.status) {
+                      @case ('completed') { <span class="status-icon">&#10003;</span> }
+                      @case ('error') { <span class="status-icon error">&#10007;</span> }
+                      @case ('printing') { <span class="status-icon printing">&#8635;</span> }
+                      @default { <span class="status-icon pending">&#9675;</span> }
+                    }
+                  </span>
+                  <div class="queue-item-content">
+                    <span class="queue-item-line1">{{ item.line1 || '(empty)' }}</span>
+                    <span class="queue-item-line2">{{ item.line2 || '' }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="queue-actions">
+              @if (!isAutoPrinting()) {
+                <button (click)="startAutoPrint()" [disabled]="!state.isConnected" class="btn primary">
+                  Auto Print All
+                </button>
+              } @else {
+                <button (click)="stopAutoPrint()" class="btn danger">
+                  Stop Auto Print
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="main-content">
+          <div class="status-section">
+            <p>
+              <strong>Status:</strong>
+              <span [class.connected]="state.isConnected" [class.disconnected]="!state.isConnected">
+                {{ state.status || 'Not Initialized' }}
+              </span>
+            </p>
+            @if (state.isConnected) {
+              <p><strong>Printer:</strong> {{ state.printerName }}</p>
+            }
+            @if (state.error) {
+              <div class="error-message">
+                <p><strong>Error:</strong> {{ state.error }}</p>
+              </div>
+            }
+          </div>
+
+          <div class="actions-section">
+            @if (!state.isConnected) {
+              <button (click)="scanForPrinters()" class="btn primary">Connect to Printer</button>
+            } @else {
+              <button (click)="testPrint()" class="btn secondary">Test Print</button>
+              <button (click)="disconnect()" class="btn danger">Disconnect</button>
+            }
+          </div>
+
+          @if (state.isConnected) {
+            <hr>
+          }
+
+          <h3>
+            @if (isQueueMode()) {
+              Current Label ({{ bradyPrinterModalService.currentIndex() + 1 }} of {{ getTotalCount() }})
+            } @else {
+              Print a Label
+            }
+          </h3>
+
+          <div class="preview-area">
+            <h4>Label Preview</h4>
+            <div #previewContainer class="preview-container"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="line1">Line 1 (Tag Number):</label>
+            <input id="line1" type="text" [(ngModel)]="line1" (input)="updatePreview()" placeholder="e.g., INV-001" />
+          </div>
+          <div class="form-group">
+            <label for="line2">Line 2 (Description):</label>
+            <input id="line2" type="text" [(ngModel)]="line2" (input)="updatePreview()" placeholder="e.g., Torque Wrench 3/4in" />
+          </div>
+
+          <div class="actions-section">
+            <button (click)="onPrint()" [disabled]="!state.isConnected || isAutoPrinting()" class="btn primary">
+              @if (isQueueMode()) {
+                Print Current
+              } @else {
+                Print Label
+              }
+            </button>
+            <button (click)="toggleQr()" class="btn secondary">{{ withQr() ? 'Remove QR' : 'Add QR' }}</button>
+            @if (isQueueMode() && !isAutoPrinting()) {
+              <button (click)="printNextInQueue()" [disabled]="!state.isConnected" class="btn secondary">
+                Skip to Next
+              </button>
+            }
+          </div>
+
+          @if (printStatus) {
+            <p class="print-status">{{ printStatus }}</p>
+          }
+        </div>
+      </div>
+    }
+  </app-popup>
+}

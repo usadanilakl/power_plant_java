@@ -35,6 +35,16 @@ public class SyncContext {
     }
 
     /**
+     * Static view of {@link #isSyncing()} for code that has no bean reference — notably JPA entities, which are not
+     * Spring-managed. Used by {@code Loto.getLatestSnapshot()} to refuse to manufacture a snapshot while an inbound
+     * apply is in flight (the Loto row is applied before its LotoSnapshots, so creating one there would persist an
+     * empty phantom that shadows the real points).
+     */
+    public static boolean isSyncingThread() {
+        return IS_SYNCING.get();
+    }
+
+    /**
      * Execute a runnable within sync context (won't trigger broadcasts)
      */
     public void executeInSyncContext(Runnable action) {

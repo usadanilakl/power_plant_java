@@ -170,6 +170,27 @@ public class PwaQualificationService {
         return new PwaQualificationSeedResult(users.size(), created, skipped, failed);
     }
 
+    public PwaQualificationSeedResult seedPlantUser(Long userId) {
+        provisionQualificationLists();
+        PwaQualificationDefinitionDto plantRoleDefinition = ensurePlantRoleDefinition();
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getIsActive()) || !hasPlantRole(user)) {
+            throw new IllegalArgumentException("User must be active and have a Plant role.");
+        }
+
+        String pwaId = seedPwaId(user);
+        if (assignmentAdapter.getByPwaId(pwaId) != null) {
+            return new PwaQualificationSeedResult(1, 0, 1, 0);
+        }
+
+        PwaQualificationDto dto = baselineQualification(user, pwaId, plantRoleDefinition);
+        String sharepointId = assignmentAdapter.create(dto);
+        dto.setSharepointId(sharepointId);
+        return new PwaQualificationSeedResult(1, 1, 0, 0);
+    }
+
     private PwaQualificationDefinitionDto ensurePlantRoleDefinition() {
         PwaQualificationDefinitionDto existing = definitionAdapter.getByPwaId(PLANT_ROLE_DEFINITION_ID);
         if (existing != null) {

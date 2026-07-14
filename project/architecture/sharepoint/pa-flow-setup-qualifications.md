@@ -1,11 +1,30 @@
 # Power Automate Flow Setup: Employees Qualifications
 
-The qualifications feature uses two SharePoint lists:
+This feature is set up for **one Power Automate flow URL**.
+
+That single flow handles two SharePoint lists:
 
 - **Qualification Catalog**: the reusable qualification definitions admins maintain.
-- **Employees Qualifications**: one assignment row per user per qualification, including issued/expiration details.
+- **Employees Qualifications**: one assignment row per employee per qualification, including issued/expiration details.
 
-The QR fallback only needs **Employees Qualifications** because assignment rows copy the catalog name, code, and type. Catalog actions are optional Power Automate fallback support for management CRUD when the Java server is running but certificate access fails.
+The PWA and Java backend both use the same config key:
+
+```properties
+pa.flow.qualifications-url=<your-one-flow-url>
+```
+
+```ts
+paFlowUrls: {
+  qualifications: '<your-one-flow-url>'
+}
+```
+
+How the app uses that one flow:
+
+- Public QR fallback calls `getByUser` only.
+- Backend assignment fallback calls `create`, `getAll`, `getByUser`, `getByPwaId`, `update`, `delete`.
+- Backend catalog fallback calls `catalogCreate`, `catalogGetAll`, `catalogGetByPwaId`, `catalogUpdate`, `catalogDelete`.
+- PWA management normally writes through the Java server; if the server is unreachable, it can use this same flow for catalog and assignment CRUD.
 
 ---
 
@@ -53,17 +72,21 @@ Run the PWA management page action **Provision Lists** or the SharePoint provisi
 
 ---
 
-## Step 2: Flow Schema
+## Step 2: HTTP Trigger
 
-Create or update the **Employees Qualifications V2** flow with an HTTP trigger. Use this sample payload to generate the schema:
+Create or update one flow named **Employees Qualifications V2**.
+
+Trigger: **When an HTTP request is received**.
+
+Click **Use sample payload to generate schema** and paste this example payload. It is intentionally a superset, so Power Automate detects both employee assignment fields and catalog fields.
 
 ```json
 {
   "actionType": "create",
-  "id": null,
+  "id": "123",
   "data": {
     "Title": "Jane Smith - Confined Space Entrant",
-    "PwaId": "a4a83d13-4544-44ee-bf7a-8e9e16ac5c8e",
+    "PwaId": "assignment-jane-smith-cse",
     "UserId": "42",
     "UserName": "Jane Smith",
     "UserEmail": "jane.smith@example.com",
@@ -74,25 +97,187 @@ Create or update the **Employees Qualifications V2** flow with an HTTP trigger. 
     "QualificationName": "Confined Space Entrant",
     "QualificationType": "Safety",
     "Status": "Active",
-    "IssuedDate": "2026-07-09",
-    "ExpirationDate": "2027-07-09",
+    "IssuedDate": "2026-07-14",
+    "ExpirationDate": "2027-07-14",
     "CredentialNumber": "CS-1234",
     "Issuer": "Training Department",
+    "Description": "Allows employee to enter confined spaces.",
+    "RequiresExpiration": true,
+    "DefaultValidityMonths": "12",
+    "IsActive": true,
+    "SortOrder": "10",
     "Notes": "Annual refresher complete."
   },
   "attachments": []
 }
 ```
 
-The same flow URL is used by Java and the PWA:
+If you prefer to paste the schema manually instead of using the parser, paste this into **Request Body JSON Schema**:
 
-```properties
-pa.flow.qualifications-url=<your-flow-url>
-```
-
-```ts
-paFlowUrls: {
-  qualifications: '<your-flow-url>'
+```json
+{
+  "type": "object",
+  "properties": {
+    "actionType": {
+      "type": "string"
+    },
+    "id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "Title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "PwaId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "UserId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "UserName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "UserEmail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "WindowsUsername": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "QualificationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "QualificationCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "QualificationName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "QualificationType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "IssuedDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ExpirationDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CredentialNumber": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Issuer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "RequiresExpiration": {
+          "type": [
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        "DefaultValidityMonths": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "IsActive": {
+          "type": [
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        "SortOrder": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "required": [
+    "actionType"
+  ],
+  "additionalProperties": true
 }
 ```
 
@@ -115,7 +300,7 @@ Inside a Scope, add a Switch on:
 triggerBody()?['actionType']
 ```
 
-Assignment cases:
+Add these cases to the same Switch:
 
 - `create`
 - `getAll`
@@ -123,9 +308,6 @@ Assignment cases:
 - `getByPwaId`
 - `update`
 - `delete`
-
-Optional catalog cases:
-
 - `catalogCreate`
 - `catalogGetAll`
 - `catalogGetByPwaId`
@@ -134,11 +316,18 @@ Optional catalog cases:
 
 ---
 
-## Assignment Cases
+## Employee Assignment Cases
+
+These cases use the **Employees Qualifications** SharePoint list.
 
 ### `create`
 
-Use **SharePoint > Create item** against **Employees Qualifications**. Map:
+Add **SharePoint > Create item**.
+
+- Site Address: JG SharePoint site.
+- List Name: **Employees Qualifications**.
+
+Map fields:
 
 | SharePoint field | Expression |
 |------------------|------------|
@@ -160,7 +349,7 @@ Use **SharePoint > Create item** against **Employees Qualifications**. Map:
 | Issuer | `triggerBody()?['data']?['Issuer']` |
 | Notes | `triggerBody()?['data']?['Notes']` |
 
-Set `responseId` to:
+Then set `responseId`:
 
 ```text
 string(body('Create_item')?['ID'])
@@ -168,45 +357,62 @@ string(body('Create_item')?['ID'])
 
 ### `getAll`
 
-Use **SharePoint > Get items** against **Employees Qualifications**, Top Count `5000`, then Select:
+Add **SharePoint > Get items**.
 
-| Key | Value |
-|-----|-------|
-| ID | `string(item()?['ID'])` |
-| Title | `item()?['Title']` |
-| PwaId | `item()?['PwaId']` |
-| UserId | `item()?['UserId']` |
-| UserName | `item()?['UserName']` |
-| UserEmail | `item()?['UserEmail']` |
-| WindowsUsername | `item()?['WindowsUsername']` |
-| Role | `item()?['Role']` |
-| QualificationId | `item()?['QualificationId']` |
-| QualificationCode | `item()?['QualificationCode']` |
-| QualificationName | `item()?['QualificationName']` |
-| QualificationType | `item()?['QualificationType']` |
-| Status | `item()?['Status']` |
-| IssuedDate | `item()?['IssuedDate']` |
-| ExpirationDate | `item()?['ExpirationDate']` |
-| CredentialNumber | `item()?['CredentialNumber']` |
-| Issuer | `item()?['Issuer']` |
-| Notes | `item()?['Notes']` |
-| Modified | `item()?['Modified']` |
+- List Name: **Employees Qualifications**.
+- Top Count: `5000`.
 
-Set `responseData` to the Select output.
+Then add **Data Operations > Select**.
+
+- From: `body('Get_items')?['value']`
+- In the Select map, switch to text mode and paste:
+
+```json
+{
+  "ID": "@{string(item()?['ID'])}",
+  "Title": "@{item()?['Title']}",
+  "PwaId": "@{item()?['PwaId']}",
+  "UserId": "@{item()?['UserId']}",
+  "UserName": "@{item()?['UserName']}",
+  "UserEmail": "@{item()?['UserEmail']}",
+  "WindowsUsername": "@{item()?['WindowsUsername']}",
+  "Role": "@{item()?['Role']}",
+  "QualificationId": "@{item()?['QualificationId']}",
+  "QualificationCode": "@{item()?['QualificationCode']}",
+  "QualificationName": "@{item()?['QualificationName']}",
+  "QualificationType": "@{item()?['QualificationType']}",
+  "Status": "@{item()?['Status']}",
+  "IssuedDate": "@{item()?['IssuedDate']}",
+  "ExpirationDate": "@{item()?['ExpirationDate']}",
+  "CredentialNumber": "@{item()?['CredentialNumber']}",
+  "Issuer": "@{item()?['Issuer']}",
+  "Notes": "@{item()?['Notes']}",
+  "Modified": "@{item()?['Modified']}"
+}
+```
+
+Set `responseData` to:
+
+```text
+body('Select')
+```
 
 ### `getByUser`
 
-Same as `getAll`, but add this Filter Query expression:
+Same as `getAll`, but on **Get items** add this Filter Query expression:
 
 ```text
 concat('UserId eq ''', triggerBody()?['data']?['UserId'], '''')
 ```
 
-This is the case used by QR scan fallback.
+This is the case used by public QR scan fallback.
 
 ### `getByPwaId`
 
-Same as `getAll`, Top Count `1`, with this Filter Query expression:
+Same as `getAll`, but:
+
+- Top Count: `1`
+- Filter Query expression:
 
 ```text
 concat('PwaId eq ''', triggerBody()?['data']?['PwaId'], '''')
@@ -214,59 +420,45 @@ concat('PwaId eq ''', triggerBody()?['data']?['PwaId'], '''')
 
 ### `update`
 
-Use **SharePoint > Update item** against **Employees Qualifications**. Id:
+Add **SharePoint > Update item**.
+
+- List Name: **Employees Qualifications**.
+- Id: `triggerBody()?['id']`.
+
+Map the same fields as `create`.
+
+Then set `responseId`:
 
 ```text
 triggerBody()?['id']
 ```
-
-Map the same fields as `create`, then set `responseId` to `triggerBody()?['id']`.
 
 ### `delete`
 
-Use **SharePoint > Delete item** against **Employees Qualifications**. Id:
+Add **SharePoint > Delete item**.
+
+- List Name: **Employees Qualifications**.
+- Id: `triggerBody()?['id']`.
+
+Then set `responseId`:
 
 ```text
 triggerBody()?['id']
 ```
 
-Set `responseId` to `triggerBody()?['id']`.
-
 ---
 
-## Optional Catalog Cases
+## Catalog Cases
 
-Use these if you want Java's catalog CRUD to fall back to the same Power Automate flow.
+These cases use the **Qualification Catalog** SharePoint list in the same flow.
 
-### Catalog Select Mapping
+### `catalogCreate`
 
-For `catalogGetAll` and `catalogGetByPwaId`, use **Qualification Catalog** and Select:
+Add **SharePoint > Create item**.
 
-| Key | Value |
-|-----|-------|
-| ID | `string(item()?['ID'])` |
-| Title | `item()?['Title']` |
-| PwaId | `item()?['PwaId']` |
-| QualificationCode | `item()?['QualificationCode']` |
-| QualificationName | `item()?['QualificationName']` |
-| QualificationType | `item()?['QualificationType']` |
-| Description | `item()?['Description']` |
-| RequiresExpiration | `item()?['RequiresExpiration']` |
-| DefaultValidityMonths | `item()?['DefaultValidityMonths']` |
-| IsActive | `item()?['IsActive']` |
-| SortOrder | `item()?['SortOrder']` |
-| Notes | `item()?['Notes']` |
-| Modified | `item()?['Modified']` |
+- List Name: **Qualification Catalog**.
 
-`catalogGetByPwaId` filter:
-
-```text
-concat('PwaId eq ''', triggerBody()?['data']?['PwaId'], '''')
-```
-
-### Catalog Create/Update Mapping
-
-Use **Qualification Catalog** and map:
+Map fields:
 
 | SharePoint field | Expression |
 |------------------|------------|
@@ -282,13 +474,92 @@ Use **Qualification Catalog** and map:
 | Sort Order | `triggerBody()?['data']?['SortOrder']` |
 | Notes | `triggerBody()?['data']?['Notes']` |
 
-Use **Create item** for `catalogCreate`, **Update item** for `catalogUpdate`, and **Delete item** for `catalogDelete`.
+Then set `responseId`:
+
+```text
+string(body('Create_item')?['ID'])
+```
+
+### `catalogGetAll`
+
+Add **SharePoint > Get items**.
+
+- List Name: **Qualification Catalog**.
+- Top Count: `5000`.
+
+Then add **Data Operations > Select**.
+
+- From: `body('Get_items')?['value']`
+- In the Select map, switch to text mode and paste:
+
+```json
+{
+  "ID": "@{string(item()?['ID'])}",
+  "Title": "@{item()?['Title']}",
+  "PwaId": "@{item()?['PwaId']}",
+  "QualificationCode": "@{item()?['QualificationCode']}",
+  "QualificationName": "@{item()?['QualificationName']}",
+  "QualificationType": "@{item()?['QualificationType']}",
+  "Description": "@{item()?['Description']}",
+  "RequiresExpiration": "@{item()?['RequiresExpiration']}",
+  "DefaultValidityMonths": "@{item()?['DefaultValidityMonths']}",
+  "IsActive": "@{item()?['IsActive']}",
+  "SortOrder": "@{item()?['SortOrder']}",
+  "Notes": "@{item()?['Notes']}",
+  "Modified": "@{item()?['Modified']}"
+}
+```
+
+Set `responseData` to:
+
+```text
+body('Select')
+```
+
+### `catalogGetByPwaId`
+
+Same as `catalogGetAll`, but:
+
+- Top Count: `1`
+- Filter Query expression:
+
+```text
+concat('PwaId eq ''', triggerBody()?['data']?['PwaId'], '''')
+```
+
+### `catalogUpdate`
+
+Add **SharePoint > Update item**.
+
+- List Name: **Qualification Catalog**.
+- Id: `triggerBody()?['id']`.
+
+Map the same fields as `catalogCreate`.
+
+Then set `responseId`:
+
+```text
+triggerBody()?['id']
+```
+
+### `catalogDelete`
+
+Add **SharePoint > Delete item**.
+
+- List Name: **Qualification Catalog**.
+- Id: `triggerBody()?['id']`.
+
+Then set `responseId`:
+
+```text
+triggerBody()?['id']
+```
 
 ---
 
 ## Response and Error Handling
 
-Inside the Scope, after the Switch, add **Response - Success**:
+Inside the Scope, after the Switch, add **Response - Success**.
 
 - Status Code: `200`
 - Header: `Content-Type` = `application/json`
@@ -311,16 +582,71 @@ After the Scope, add a failure branch that runs only when the Scope has failed:
 
 ---
 
-## Test
+## Test Payloads
 
-QR fallback lookup:
+### Create Catalog Item
 
-```bash
-curl -X POST "<flow-url>" -H "Content-Type: application/json" -d '{
+```json
+{
+  "actionType": "catalogCreate",
+  "id": null,
+  "data": {
+    "Title": "Confined Space Entrant",
+    "PwaId": "qualification-confined-space-entrant",
+    "QualificationCode": "CSE",
+    "QualificationName": "Confined Space Entrant",
+    "QualificationType": "Safety",
+    "Description": "Allows employee to enter confined spaces.",
+    "RequiresExpiration": true,
+    "DefaultValidityMonths": "12",
+    "IsActive": true,
+    "SortOrder": "10",
+    "Notes": ""
+  },
+  "attachments": []
+}
+```
+
+### Create Employee Assignment
+
+```json
+{
+  "actionType": "create",
+  "id": null,
+  "data": {
+    "Title": "Jane Smith - Confined Space Entrant",
+    "PwaId": "assignment-jane-smith-cse",
+    "UserId": "42",
+    "UserName": "Jane Smith",
+    "UserEmail": "jane.smith@example.com",
+    "WindowsUsername": "jsmith",
+    "Role": "ROLE_PLANT",
+    "QualificationId": "qualification-confined-space-entrant",
+    "QualificationCode": "CSE",
+    "QualificationName": "Confined Space Entrant",
+    "QualificationType": "Safety",
+    "Status": "Active",
+    "IssuedDate": "2026-07-14",
+    "ExpirationDate": "2027-07-14",
+    "CredentialNumber": "CS-1234",
+    "Issuer": "Training Department",
+    "Notes": "Annual refresher complete."
+  },
+  "attachments": []
+}
+```
+
+### QR Fallback Lookup
+
+```json
+{
   "actionType": "getByUser",
   "id": "42",
-  "data": { "UserId": "42" }
-}'
+  "data": {
+    "UserId": "42"
+  },
+  "attachments": []
+}
 ```
 
 Expected response shape:
@@ -333,10 +659,14 @@ Expected response shape:
     {
       "ID": "1",
       "UserId": "42",
-      "UserName": "Test User",
-      "QualificationId": "qualification-plant-role",
-      "QualificationName": "Plant Role",
-      "Status": "Active"
+      "UserName": "Jane Smith",
+      "QualificationId": "qualification-confined-space-entrant",
+      "QualificationCode": "CSE",
+      "QualificationName": "Confined Space Entrant",
+      "QualificationType": "Safety",
+      "Status": "Active",
+      "IssuedDate": "2026-07-14",
+      "ExpirationDate": "2027-07-14"
     }
   ],
   "message": ""
@@ -345,8 +675,10 @@ Expected response shape:
 
 ## Common Pitfalls
 
-1. Use internal column names exactly, especially `QualificationId`, `UserId`, `PwaId`, and `QualificationName`.
-2. Keep `getByUser` on **Employees Qualifications**; QR fallback does not query the catalog.
-3. Set Top Count to `5000` for assignment and catalog list reads.
-4. The Filter Query for text fields needs single quotes around the value.
-5. Configure both `pa.flow.qualifications-url` and `paFlowUrls.qualifications`; the backend and PWA direct fallback use different config files.
+1. This is **one flow**, not two flows.
+2. Use **Employees Qualifications** for assignment cases and **Qualification Catalog** for catalog cases.
+3. Include `QualificationId` and `QualificationCode` in create/update/select for employee assignments.
+4. Keep `getByUser` on **Employees Qualifications**; QR fallback does not query the catalog.
+5. Set Top Count to `5000` for assignment and catalog list reads.
+6. The Filter Query for text fields needs single quotes around the value.
+7. Configure both `pa.flow.qualifications-url` and `paFlowUrls.qualifications`; they should point to the same flow URL.

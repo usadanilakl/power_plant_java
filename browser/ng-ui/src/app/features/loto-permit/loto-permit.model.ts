@@ -18,6 +18,8 @@ export interface PwaLotoListItem {
   pointCount: number;
   hungCount: number;
   verifiedCount: number;
+  /** Separation-of-duty: this user hung every still-unverified point, so they cannot verify any of them. */
+  verifyBlockedForMe: boolean;
 }
 
 export interface PwaLotoPoint {
@@ -40,6 +42,9 @@ export interface PwaLotoPoint {
   hungAt: string | null;
   verifiedBy: string | null;
   verifiedAt: string | null;
+  /** False when the current user hung this point (hanger≠verifier) — disable Mark-verified and show the reason. */
+  canVerify: boolean;
+  verifyBlockedReason: string | null;
 }
 
 export interface PwaLotoDetail {
@@ -54,6 +59,8 @@ export interface PwaLotoDetail {
   phases: Phase[];
   hangGrab: GrabInfo | null;
   verifyGrab: GrabInfo | null;
+  /** Any still-unverified point this user did NOT hang. False → they may view but not verify this permit. */
+  canVerifyAny: boolean;
   points: PwaLotoPoint[];
 }
 

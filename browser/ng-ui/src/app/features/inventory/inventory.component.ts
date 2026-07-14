@@ -13,6 +13,7 @@ import { ReactiveFormComponent } from '../../shared/forms/reactive-form/reactive
 import { FormField } from '../../models/inputs/form-field.model';
 import { inventoryFormFields, inventoryUsageFormFields } from '../../models/inventory/inventory-item.model';
 import { Option } from '../../models/inputs/option.model';
+import { BradyPrinterModalService } from '../../shared/brady-printer-manager/brady-printer-modal.service';
 
 type ViewMode = 'select' | 'new' | 'edit' | 'scan-result' | 'list';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -119,6 +120,19 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
             }
           </div>
 
+          <div class="print-row">
+            @if (bluetoothAvailable) {
+              <button class="btn-print" (click)="printLabel(scannedItem())">
+                <svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align: middle; margin-right: 6px;">
+                  <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+                </svg>
+                Print Label
+              </button>
+            } @else {
+              <span class="print-unavailable">Printing not supported on this device</span>
+            }
+          </div>
+
           <h4 class="usage-form-title">Record Usage</h4>
           <app-reactive-form
             [fields]="usageFields()"
@@ -145,16 +159,25 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
         } @else {
           <div class="items-list">
             @for (item of items(); track item.id || $index) {
-              <button class="list-item" (click)="onItemClick(item)">
-                <div class="list-item-main">
-                  <div class="list-item-title">{{ item.title }}</div>
-                  <div class="list-item-meta">
-                    @if (item.serialNumber) { <span>{{ item.serialNumber }}</span> }
-                    @if (item.manufacturer || item.model) { <span>{{ item.manufacturer }} {{ item.model }}</span> }
+              <div class="list-item-row">
+                <button class="list-item" (click)="onItemClick(item)">
+                  <div class="list-item-main">
+                    <div class="list-item-title">{{ item.title }}</div>
+                    <div class="list-item-meta">
+                      @if (item.serialNumber) { <span>{{ item.serialNumber }}</span> }
+                      @if (item.manufacturer || item.model) { <span>{{ item.manufacturer }} {{ item.model }}</span> }
+                    </div>
                   </div>
-                </div>
-                <div class="status-badge" [attr.data-status]="item.statusName">{{ item.statusName }}</div>
-              </button>
+                  <div class="status-badge" [attr.data-status]="item.statusName">{{ item.statusName }}</div>
+                </button>
+                @if (bluetoothAvailable && item.qrToken) {
+                  <button class="list-item-print" (click)="printLabel(item); $event.stopPropagation()" title="Print label">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                      <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+                    </svg>
+                  </button>
+                }
+              </div>
             }
           </div>
         }
@@ -191,10 +214,36 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
     .loading-row { display: flex; align-items: center; gap: 12px; padding: 24px; justify-content: center; color: var(--secondary-text); }
     .empty { padding: 32px; text-align: center; color: var(--secondary-text); }
     .items-list { display: flex; flex-direction: column; gap: 8px; }
-    .list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    .list-item-row { display: flex; align-items: stretch; gap: 8px; }
+    .list-item { flex: 1; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
       border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-background);
       cursor: pointer; text-align: left; font-family: inherit; color: var(--primary-text); }
     .list-item:hover { border-color: var(--accent-color); }
+    .list-item-print {
+      display: flex; align-items: center; justify-content: center;
+      width: 48px; min-height: 44px;
+      border: 1px solid var(--border-color); border-radius: 8px;
+      background: var(--card-background); color: var(--accent-color);
+      cursor: pointer; padding: 0;
+    }
+    .list-item-print:hover { border-color: var(--accent-color); background: var(--hover-background); }
+    .print-row { margin: 12px 0; }
+    .btn-print {
+      display: inline-flex; align-items: center;
+      padding: 10px 16px;
+      background: var(--accent-color); color: #ffffff;
+      border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; min-height: 44px;
+    }
+    .btn-print:hover { background: var(--accent-color-hover); }
+    .print-unavailable {
+      display: inline-block;
+      padding: 8px 12px;
+      font-size: 12px; color: var(--secondary-text);
+      background: var(--secondary-background);
+      border-radius: 6px;
+    }
     .list-item-main { flex: 1; min-width: 0; }
     .list-item-title { font-size: 15px; font-weight: 500; }
     .list-item-meta { font-size: 12px; color: var(--secondary-text); display: flex; gap: 10px; flex-wrap: wrap; }
@@ -226,6 +275,11 @@ export class InventoryComponent implements OnInit {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   qrScannerService = inject(QrScannerService);
+  private bradyModal = inject(BradyPrinterModalService);
+
+  // Web Bluetooth is unavailable on iOS Safari / any WebKit-based iOS browser.
+  // Show a helpful hint instead of a dead button on those devices.
+  bluetoothAvailable = typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
 
   mode = signal<ViewMode>('select');
   fields = signal<FormField[]>([]);
@@ -302,10 +356,29 @@ export class InventoryComponent implements OnInit {
     this.qrScannerService.openScanner().subscribe(result => this.handleScan(result));
   }
 
+  private extractQrToken(scanned: string): string {
+    const s = (scanned || '').trim();
+    // Format A: current PWA labels — https://<pwa>/inventory/form?scan=<token>
+    try {
+      const url = new URL(s);
+      const scan = url.searchParams.get('scan');
+      if (scan) return decodeURIComponent(scan);
+    } catch { /* not a URL — fall through */ }
+    // Format B: legacy/desktop hub URL — https://<hub>/qr/inv/<token>
+    const legacyMatch = s.match(/qr\/inv\/([^/?#]+)/i);
+    if (legacyMatch) return decodeURIComponent(legacyMatch[1]);
+    // Format C: bare token
+    return s;
+  }
+
   private handleScan(result: string): void {
-    // Extract token: handle both raw token and full URL like .../qr/inv/{token}
-    const match = result.match(/qr\/inv\/([^/?#]+)/i);
-    const token = match ? match[1] : result.trim();
+    // Extract token from the scanned payload. Labels printed by this app encode
+    //   https://<pwa>/inventory/form?scan=<token>
+    // Older/desktop labels encode
+    //   https://<hub>/qr/inv/<token>
+    // The in-app ZXing scanner passes the raw string here (no router involved),
+    // so both must be parsed. Fall back to trimmed raw for a bare token.
+    const token = this.extractQrToken(result);
 
     this.serverApi.getInventoryItemByQr(token).subscribe({
       next: item => {
@@ -444,5 +517,23 @@ export class InventoryComponent implements OnInit {
     this.submitState.set('idle');
     this.submitMessage.set('');
     if (wasSuccess) this.backToSelect();
+  }
+
+  /**
+   * Open the Brady printer modal pre-loaded with this item's label data.
+   * Line 1 = serial/title, line 2 = manufacturer + model. QR encodes the
+   * PWA deep-link so a phone camera scan reopens this same item.
+   */
+  printLabel(item: any): void {
+    if (!item) return;
+    const line1 = item.serialNumber || item.title || '';
+    const line2 = [item.manufacturer, item.model].filter(Boolean).join(' ');
+    // encodeURIComponent guards against future qrToken formats that contain
+    // '&', '#', '+', or non-ASCII — any of which would break the scan URL
+    // and can never be corrected on labels that are already printed.
+    const qrData = item.qrToken
+      ? `https://jacksongeneration.github.io/permits/inventory/form?scan=${encodeURIComponent(item.qrToken)}`
+      : undefined;
+    this.bradyModal.openWithData({ line1, line2, withQr: !!qrData, qrData });
   }
 }

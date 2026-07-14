@@ -1,6 +1,6 @@
 <div class="qr-container">
   @if (qrCodeHtml) {
-    <div [innerHTML]="qrCodeHtml"></div>
+    <div class="qr-markup" [innerHTML]="qrCodeHtml"></div>
   } @else {
     <div class="qr-placeholder" [style.width.px]="size" [style.height.px]="size">
       <span>No data provided</span>

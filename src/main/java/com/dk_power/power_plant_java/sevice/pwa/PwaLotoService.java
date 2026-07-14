@@ -25,10 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Mobile (PWA) LOTO permit hang / verify / walkdown. A thin orchestration layer over the existing synced beans
@@ -52,6 +50,7 @@ public class PwaLotoService {
     private final LotoPermitGrabRepo grabRepo;
     private final PwaLotoStandardWalkdownService standardsWalkdown; // reuse position-options helper
     private final PwaLotoDrawingService drawingService;
+    private final PwaLotoReadService readService; // transactional reads (separate bean — see its Javadoc)
     private final UserRepo userRepo;
 
     // ── list ──
@@ -66,7 +65,7 @@ public class PwaLotoService {
                     loto.getEquipmentSystem(), p.status, p.phases,
                     grabInfo(loto.getId(), "HANG"), grabInfo(loto.getId(), "VERIFY"),
                     walkdownService.listForLoto(loto.getId()).size(),
-                    p.pointCount, p.hungCount, p.verifiedCount));
+                    p.pointCount, p.hungCount, p.verifiedCount, p.verifyBlockedForMe));
         }
         return out;
     }
@@ -81,23 +80,29 @@ public class PwaLotoService {
         Map<Long, String> verAt = latest != null ? latest.getPointVerifiedAt() : Map.of();
         Map<Long, PointPrerequisite> pre = latest != null ? latest.getPointPrerequisites() : Map.of();
 
+        String me = currentUserName();
         List<PwaLotoPoint> points = new ArrayList<>();
         int idx = 1;
         for (LotoPointIdDto d : loto.getLotoPoints()) {
             Long pid = d.getId();
             PointPrerequisite spec = pre.get(pid);
+            // separation-of-duty, surfaced UP FRONT: the user who hung a point may not verify it
+            String hb = hungBy.get(pid);
+            boolean iHung = hb != null && hb.equals(me);
             points.add(new PwaLotoPoint(pid, idx++, d.getTagNumber(), d.getDescription(),
                     d.getIsoPos(), d.getIsolatedPosition(), d.getNormPos(), d.getNormalPosition(),
                     d.getZeroEnergyMethod(), d.getSpecificLocation(), d.getGeneralLocation(),
                     d.getIsLockable(), d.getIsLabeled(),
                     spec != null ? spec.getInstallRequiredPointIds() : null,
                     spec != null ? spec.getInstallSafetyConditions() : null,
-                    hungBy.get(pid), hungAt.get(pid), verBy.get(pid), verAt.get(pid)));
+                    hb, hungAt.get(pid), verBy.get(pid), verAt.get(pid),
+                    !iHung, iHung ? "You hung this point — another qualified person must verify it." : null));
         }
+        boolean canVerifyAny = points.stream().anyMatch(p -> p.verifiedBy() == null && p.canVerify());
         Phases p = computePhases(loto);
         return new PwaLotoDetail(id, loto.getPermitNumber(), loto.getLotoRequestor(), loto.getEquipmentSystem(),
                 p.status, p.caApproved, p.aggHung, p.aggVerified, p.phases,
-                grabInfo(id, "HANG"), grabInfo(id, "VERIFY"), points);
+                grabInfo(id, "HANG"), grabInfo(id, "VERIFY"), canVerifyAny, points);
     }
 
     // ── grab / release (advisory) ──
@@ -128,11 +133,11 @@ public class PwaLotoService {
     // ── submit hang (predecessor order; server re-enforces) ──
 
     public PhaseSubmitResult submitHang(Long lotoId, HangSubmitRequest req) {
-        Set<Long> already = hungPointIds(lotoId);
+        java.util.Set<Long> already = readService.hungPointIds(lotoId);
         int applied = 0, skipped = 0;
         List<String> failures = new ArrayList<>();
         for (PointAck pa : safe(req.points())) {
-            if (already.contains(pa.pointId())) { skipped++; continue; }
+            if (already.contains(pa.pointId())) { skipped++; continue; } // idempotent re-submit — never overwrite an existing hang
             try {
                 ngLotoService.markPointHung(lotoId, pa.pointId(), pa.acknowledged(), pa.notes());
                 applied++;
@@ -153,11 +158,11 @@ public class PwaLotoService {
     // ── submit verify (any order; server enforces all-hung + hanger≠verifier + safety ack) ──
 
     public PhaseSubmitResult submitVerify(Long lotoId, VerifySubmitRequest req) {
-        Set<Long> already = verifiedPointIds(lotoId);
+        java.util.Set<Long> already = readService.verifiedPointIds(lotoId);
         int applied = 0, skipped = 0;
         List<String> failures = new ArrayList<>();
         for (PointAck pa : safe(req.points())) {
-            if (already.contains(pa.pointId())) { skipped++; continue; }
+            if (already.contains(pa.pointId())) { skipped++; continue; } // idempotent re-submit — never overwrite an existing verify
             try {
                 ngLotoService.markPointVerified(lotoId, pa.pointId(), pa.acknowledged(), pa.notes());
                 applied++;
@@ -185,14 +190,18 @@ public class PwaLotoService {
     }
 
     public PwaWalkdownSession submitWalkdown(Long sessionId, WalkdownSubmitRequest req) {
+        List<String> failures = new ArrayList<>();
         for (PointCheck pc : safe(req.points())) {
             try { walkdownService.checkPoint(sessionId, pc.pointId(), pc.checked(), pc.notes()); }
-            catch (Exception e) { log.warn("[PwaLoto] walkdown check {} on session {} failed: {}", pc.pointId(), sessionId, rootMsg(e)); }
+            catch (Exception e) { failures.add("Point " + pc.pointId() + ": " + rootMsg(e)); }
         }
         if (req.complete()) {
             try { walkdownService.completeWalkdown(sessionId, req.notes()); }
-            catch (Exception e) { log.warn("[PwaLoto] complete walkdown {} failed: {}", sessionId, rootMsg(e)); }
+            catch (Exception e) { failures.add("Complete: " + rootMsg(e)); }
         }
+        // Surface failures so the offline client is NOT told "submitted" and keeps its draft to retry/fix (a rejected
+        // session — e.g. not permitted, or already completed by another crew — must not silently clear the draft).
+        if (!failures.isEmpty()) throw new IllegalStateException(String.join("; ", failures));
         return getSession(sessionId);
     }
 
@@ -217,14 +226,18 @@ public class PwaLotoService {
     // ── helpers ──
 
     private record Phases(String status, boolean caApproved, boolean aggHung, boolean aggVerified,
-                          List<String> phases, int pointCount, int hungCount, int verifiedCount) {}
+                          List<String> phases, int pointCount, int hungCount, int verifiedCount,
+                          boolean verifyBlockedForMe) {}
 
     private Phases computePhases(Loto loto) {
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
         LotoSnapshot latest = loto.getLatestSnapshot();
-        int pointCount = loto.getLotoPoints().size();
-        int hungCount = latest != null ? latest.getPointHungBy().size() : 0;
-        int verifiedCount = latest != null ? latest.getPointVerifiedBy().size() : 0;
+        Map<Long, String> hungBy = latest != null ? latest.getPointHungBy() : Map.of();
+        Map<Long, String> verBy = latest != null ? latest.getPointVerifiedBy() : Map.of();
+        List<LotoPointIdDto> pts = loto.getLotoPoints();
+        int pointCount = pts.size();
+        int hungCount = hungBy.size();
+        int verifiedCount = verBy.size();
         boolean caApproved = latest != null && latest.getCaApprovedForHangingBy() != null;
         boolean aggHung = loto.getSnapshots().stream().anyMatch(s -> s.getHungBy() != null);
         boolean aggVerified = loto.getSnapshots().stream().anyMatch(s -> s.getVerifiedBy() != null);
@@ -232,7 +245,18 @@ public class PwaLotoService {
         if ("Building".equals(status) && caApproved && !aggHung) phases.add("HANG");
         if ("Building".equals(status) && aggHung && !aggVerified) phases.add("VERIFY");
         if (aggVerified && !"Closed".equals(status)) phases.add("WALKDOWN");
-        return new Phases(status, caApproved, aggHung, aggVerified, phases, pointCount, hungCount, verifiedCount);
+
+        // SoD up front: is there ANY still-unverified point this user did NOT hang? If not, they can't verify at all.
+        String me = currentUserName();
+        boolean canVerifyAny = false;
+        for (LotoPointIdDto d : pts) {
+            Long pid = d.getId();
+            if (verBy.containsKey(pid)) continue;
+            String hb = hungBy.get(pid);
+            if (hb == null || !hb.equals(me)) { canVerifyAny = true; break; }
+        }
+        return new Phases(status, caApproved, aggHung, aggVerified, phases, pointCount, hungCount, verifiedCount,
+                !canVerifyAny);
     }
 
     private GrabInfo grabInfo(Long lotoId, String phase) {
@@ -240,18 +264,6 @@ public class PwaLotoService {
                 .map(g -> new GrabInfo(phase, g.getGrabbedBy(), g.getGrabbedByName(),
                         g.getGrabbedAt() != null ? g.getGrabbedAt().toString() : null))
                 .orElse(null);
-    }
-
-    @Transactional(readOnly = true)
-    public Set<Long> hungPointIds(Long lotoId) {
-        LotoSnapshot latest = lotoRepo.findById(lotoId).map(Loto::getLatestSnapshot).orElse(null);
-        return latest != null ? new LinkedHashSet<>(latest.getPointHungBy().keySet()) : Set.of();
-    }
-
-    @Transactional(readOnly = true)
-    public Set<Long> verifiedPointIds(Long lotoId) {
-        LotoSnapshot latest = lotoRepo.findById(lotoId).map(Loto::getLatestSnapshot).orElse(null);
-        return latest != null ? new LinkedHashSet<>(latest.getPointVerifiedBy().keySet()) : Set.of();
     }
 
     private PwaWalkdownSession toSessionDto(WalkdownSession s) {

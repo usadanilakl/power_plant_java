@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { LocalStorageService } from '../../services/local-storage.service';
-import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoListItem, WalkdownDraft } from './loto-permit.model';
+import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoListItem, PwaWalkdownSession, WalkdownDraft } from './loto-permit.model';
 
 interface Cached<T> { cachedAt: number; data: T; }
 
@@ -16,6 +16,7 @@ export class LotoPermitStore {
   private readonly LIST = 'lotoPermit.list';
   private readonly POSITIONS = 'lotoPermit.positions';
   private readonly DETAIL = (id: number | string) => `lotoPermit.detail.${id}`;
+  private readonly SESSIONS = (id: number | string) => `lotoPermit.sessions.${id}`;
   private readonly PHASE = (lotoId: number | string, phase: string) => `lotoPermit.phaseDraft.${lotoId}.${phase}`;
   private readonly PHASE_INDEX = 'lotoPermit.phaseDraft.index';
   private readonly WD = (sessionId: number | string) => `lotoPermit.wdDraft.${sessionId}`;
@@ -32,6 +33,14 @@ export class LotoPermitStore {
   getCachedDetail(id: number): { at: number; detail: PwaLotoDetail } | null {
     const c = this.ls.getItem<Cached<PwaLotoDetail>>(this.DETAIL(id));
     return c ? { at: c.cachedAt, detail: c.data } : null;
+  }
+
+  cacheSessions(lotoId: number, sessions: PwaWalkdownSession[]): void {
+    this.ls.setItem<Cached<PwaWalkdownSession[]>>(this.SESSIONS(lotoId), { cachedAt: Date.now(), data: sessions });
+  }
+  getCachedSessions(lotoId: number): PwaWalkdownSession[] | null {
+    const c = this.ls.getItem<Cached<PwaWalkdownSession[]>>(this.SESSIONS(lotoId));
+    return c ? c.data ?? [] : null;
   }
 
   cachePositions(p: PositionOptions): void { this.ls.setItem<Cached<PositionOptions>>(this.POSITIONS, { cachedAt: Date.now(), data: p }); }

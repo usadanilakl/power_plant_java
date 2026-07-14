@@ -37,6 +37,13 @@ import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto
               <div class="ph-sub">{{ d.equipmentSystem }} · {{ doneCount() }}/{{ d.points.length }} {{ mode() === 'HANG' ? 'hung' : 'verified' }}</div>
             </div>
 
+            @if (mode() === 'VERIFY' && !d.canVerifyAny) {
+              <div class="ph-blocked">
+                🔒 <b>You hung these points.</b> A different qualified person must verify them (separation of duty).
+                You can review the permit below, but not verify it.
+              </div>
+            }
+
             @for (p of d.points; track p.id) {
               <div class="ph-p" [class.done]="isDone(p)" [class.locked]="!available(p)">
                 <div class="ph-p-head">
@@ -54,8 +61,12 @@ import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto
                   @if (p.specificLocation || p.generalLocation) { <span>{{ p.specificLocation || p.generalLocation }}</span> }
                 </div>
 
-                @if (mode() === 'HANG' && !available(p) && !isServerDone(p)) {
-                  <div class="ph-lock">🔒 Hang predecessor(s) first: {{ predecessorTags(p, d.points) }}</div>
+                @if (!available(p) && !isServerDone(p)) {
+                  @if (mode() === 'HANG') {
+                    <div class="ph-lock">🔒 Hang predecessor(s) first: {{ predecessorTags(p, d.points) }}</div>
+                  } @else {
+                    <div class="ph-lock">🔒 {{ p.verifyBlockedReason || 'You cannot verify this point.' }}</div>
+                  }
                 }
 
                 @if (!isServerDone(p)) {
@@ -116,6 +127,7 @@ import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto
     .ph-desc { margin: 4px 0 6px; font-size: 14px; }
     .ph-pos { display: flex; flex-wrap: wrap; gap: 10px; color: #555; font-size: 12px; }
     .ph-lock { margin-top: 8px; background: #fff3e0; color: #e65100; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+    .ph-blocked { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
     .ph-safety { margin-top: 8px; }
     .ph-safety-h { font-size: 12px; color: #666; font-weight: 600; }
     .ph-chk { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; margin-top: 3px; }
@@ -213,8 +225,9 @@ export class LotoPermitPhaseComponent implements OnInit {
 
   available(p: PwaLotoPoint): boolean {
     this.tick();
-    if (this.mode() === 'VERIFY') return true;            // verify = any order
     if (this.isServerDone(p)) return true;
+    // VERIFY = any order, but separation-of-duty blocks the point's own hanger (surfaced here, not at submit)
+    if (this.mode() === 'VERIFY') return p.canVerify;
     const preds = p.installPredecessors ?? [];
     const d = this.detail();
     if (!d) return true;
@@ -281,9 +294,12 @@ export class LotoPermitPhaseComponent implements OnInit {
 
   private persist(): void {
     this.tick.update(n => n + 1);
+    // never demote an already-queued ('pending'/'failed') submit back to 'draft' — that would strand the auto-flush
+    const existing = this.store.getPhaseDraft(this.lotoId, this.mode());
+    const status = existing && (existing.status === 'pending' || existing.status === 'failed') ? existing.status : 'draft';
     const draft: PhaseDraft = {
       lotoId: this.lotoId, phase: this.mode(), answers: this.draft, sign: this.sign(),
-      aggregateNotes: this.aggNotes(), savedAt: Date.now(), status: 'draft',
+      aggregateNotes: this.aggNotes(), savedAt: Date.now(), status,
     };
     this.store.savePhaseDraft(draft);
   }
@@ -305,10 +321,16 @@ export class LotoPermitPhaseComponent implements OnInit {
     this.store.savePhaseDraft(draft);
     this.syncSvc.submitPhase(draft).subscribe({
       next: (res) => {
+        // If the server rejected everything, stay put and SHOW WHY (don't bounce back with a bare "0 applied").
+        if (res.applied === 0 && res.failures?.length) {
+          this.submitting.set(false);
+          this.error.set(`Nothing was applied. ${res.failures[0]}` + (res.failures.length > 1 ? ` (+${res.failures.length - 1} more)` : ''));
+          return;
+        }
         const parts = [`${res.applied} applied`];
         if (res.skipped) parts.push(`${res.skipped} already done`);
         if (res.aggregateSigned) parts.push('signed complete');
-        if (res.failures?.length) parts.push(`${res.failures.length} rejected`);
+        if (res.failures?.length) parts.push(`${res.failures.length} rejected: ${res.failures[0]}`);
         if (res.aggregateMessage) parts.push(res.aggregateMessage);
         alert('Submitted — ' + parts.join(', '));
         this.router.navigate(['/loto']);

@@ -237,6 +237,16 @@ export interface PwaQualificationSeedResult {
   failed: number;
 }
 
+export interface PwaQualificationSeedUserDto {
+  id: number;
+  name: string;
+  email?: string;
+  windowsUsername?: string;
+  role?: string;
+  roles?: string[];
+  isActive?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -702,6 +712,27 @@ export class ServerApiService {
     ).pipe(
       timeout(60000),
       map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  seedQualificationPlantUser(userId: number | string): Observable<PwaQualificationSeedResult> {
+    return this.http.post<{ responseData: PwaQualificationSeedResult }>(
+      `${this.baseUrl}/api/pwa/secured/qualifications/seed-plant-user/${encodeURIComponent(String(userId))}`,
+      {}
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getQualificationSeedUsers(): Observable<PwaQualificationSeedUserDto[]> {
+    return this.http.get<{ responseData: PwaQualificationSeedUserDto[] }>(
+      `${this.baseUrl}/ng/users/all-options`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
       catchError(this.handleError)
     );
   }

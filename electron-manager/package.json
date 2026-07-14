@@ -17,8 +17,8 @@
     "download-jre": "node scripts/download-jre.js",
     "sync-defaults": "node scripts/sync-etapro-defaults.js",
     "prepackage": "npm run download-jre && npm run sync-defaults",
-    "package": "npm run build && electron-builder",
-    "package:dir": "npm run download-jre && npm run sync-defaults && npm run build && electron-builder --dir",
+    "package": "node scripts/ensure-package-output-free.js && npm run build && electron-builder",
+    "package:dir": "node scripts/ensure-package-output-free.js && npm run download-jre && npm run sync-defaults && npm run build && electron-builder --dir",
     "package:zip": "npm run package:dir && node scripts/create-update-zip.js"
   },
   "dependencies": {

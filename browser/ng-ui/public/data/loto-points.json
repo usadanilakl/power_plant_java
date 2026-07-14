@@ -1,10 +1,24 @@
 [ {
   "id" : 21002,
-  "tagNumber" : "01-PMP-LOS001-JG dk-test1",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
+  "tagNumber" : "LOTONODATA219",
+  "description" : "LV SWGR 11 BREAKER CONTROL WITH VERY LONG DESCRIPTION FOR TESTING ENGRAVER...",
   "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "HEATER-DRYER",
-  "locationId" : 6053
+  "eqType" : "",
+  "locationId" : null
+}, {
+  "id" : 21003,
+  "tagNumber" : "LOTONODATA221",
+  "description" : "LV SWGR 21 BREAKER CONTROL",
+  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR2",
+  "eqType" : "",
+  "locationId" : null
+}, {
+  "id" : 21004,
+  "tagNumber" : "LOTONODATA220",
+  "description" : "LV SWGR BREAKER TEST CABINET",
+  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR3",
+  "eqType" : "",
+  "locationId" : null
 }, {
   "id" : 21005,
   "tagNumber" : "00-FGS-CMP-01A",
@@ -14,8 +28,8 @@
   "locationId" : 23707
 }, {
   "id" : 21006,
-  "tagNumber" : "01BFJ01-MD",
-  "description" : "M-U1 480V AC FEED TO RECTIFIER PANEL",
+  "tagNumber" : "01BFJ01",
+  "description" : "U1 480V AC FEED TO RECTIFIER PANEL",
   "specificLocation" : " TCP , 01BFJ01, 5L",
   "eqType" : "",
   "locationId" : null
@@ -28,8 +42,8 @@
   "locationId" : 23707
 }, {
   "id" : 21008,
-  "tagNumber" : "02BFJ01-MD",
-  "description" : "M-U2 480V AC FEED TO RECTIFIER PANEL",
+  "tagNumber" : "02BFJ01",
+  "description" : "U2 480V AC FEED TO RECTIFIER PANEL",
   "specificLocation" : " TCP",
   "eqType" : "",
   "locationId" : null
@@ -11024,12 +11038,26 @@
   "eqType" : "Manual Valve",
   "locationId" : 5906
 }, {
+  "id" : 22579,
+  "tagNumber" : "02-MOV-CND-221",
+  "description" : "UNIT 2 COND IRON FLTR BYP MOV HANDWHEEL",
+  "specificLocation" : "CRT AREA",
+  "eqType" : "",
+  "locationId" : null
+}, {
   "id" : 22580,
   "tagNumber" : "02-MOV-CND201",
   "description" : "CND IRON FILTER A INLET MOV HANDWHEEL",
   "specificLocation" : "CRT AREA",
   "eqType" : "Motor Operated Valve",
   "locationId" : 5906
+}, {
+  "id" : 22581,
+  "tagNumber" : "02-MOV-CND-211",
+  "description" : "UNIT 2 COND TO COND IRON FLTR 01B MOV HANDWHEEL",
+  "specificLocation" : "CRT AREA",
+  "eqType" : "",
+  "locationId" : null
 }, {
   "id" : 22582,
   "tagNumber" : "02MPX01AA115",
@@ -12398,7 +12426,7 @@
 }, {
   "id" : 22777,
   "tagNumber" : "00-FPS-PNL-11",
-  "description" : "00-FSP-PNL-11",
+  "description" : "SWITCHYARD ELEC. ENCL. LOCAL FIRE ALRM CPL",
   "specificLocation" : "NO DATA",
   "eqType" : "",
   "locationId" : null
@@ -18852,7 +18880,7 @@
 }, {
   "id" : 23699,
   "tagNumber" : "02BVR01",
-  "description" : "25V DC STARTER PANEL",
+  "description" : "125V DC STARTER PANEL",
   "specificLocation" : " TCP",
   "eqType" : "",
   "locationId" : null
@@ -19040,11 +19068,11 @@
   "locationId" : null
 }, {
   "id" : 23726,
-  "tagNumber" : "02BTL01",
+  "tagNumber" : "01BTL01",
   "description" : "220V DC RECTIFIER PANE",
   "specificLocation" : " TCP",
   "eqType" : "",
-  "locationId" : null
+  "locationId" : 10910
 }, {
   "id" : 23727,
   "tagNumber" : "02MKA01GH001",
@@ -31410,7 +31438,7 @@
 }, {
   "id" : 25493,
   "tagNumber" : "01BVR01",
-  "description" : "25V DC STARTER PANEL",
+  "description" : "125V DC STARTER PANEL",
   "specificLocation" : " TCP",
   "eqType" : "",
   "locationId" : null
@@ -31803,8 +31831,8 @@
   "id" : 25549,
   "tagNumber" : "01-HPL-1111-01",
   "description" : "HTT-1610/HTT-1611/HTT-1612/HTT-1613/HTT-1614/HTT-1615/HTT-1616/",
-  "specificLocation" : "HRSG UPPER WEST, 01-HTT-HPL-111, BR:01(1/3)",
-  "eqType" : "Breaker 480VAC",
+  "specificLocation" : "HRSG UPPER WEST BR:01(1/3)",
+  "eqType" : "",
   "locationId" : null
 }, {
   "id" : 25550,
@@ -50952,6 +50980,13 @@
   "eqType" : "",
   "locationId" : null
 }, {
+  "id" : 28285,
+  "tagNumber" : "01-VCND190",
+  "description" : "01-FIT-CND231B ISO (CND DISCH FLOW)",
+  "specificLocation" : "CONDENSATE CORNER",
+  "eqType" : "Manual Valve",
+  "locationId" : 5906
+}, {
   "id" : 28286,
   "tagNumber" : "02-ARM-IV-906B",
   "description" : "PRESSURE GAUGE ISO",
@@ -61366,7 +61401,7 @@
   "description" : "HPS HEADER PIT-HPS121B ROOT ISO",
   "specificLocation" : "ST BUILDING WEST- LOWER",
   "eqType" : "Manual Valve",
-  "locationId" : 17302
+  "locationId" : 6053
 }, {
   "id" : 29774,
   "tagNumber" : "02-VHPS103",
@@ -61675,6 +61710,13 @@
   "specificLocation" : "SAMPLE PANEL",
   "eqType" : "Manual Valve",
   "locationId" : 10906
+}, {
+  "id" : 29818,
+  "tagNumber" : "02-VCND190",
+  "description" : "02-FIT-CND231B ISO (CND DISCH FLOW)",
+  "specificLocation" : "CONDENSATE CORNER",
+  "eqType" : "Manual Valve",
+  "locationId" : 5906
 }, {
   "id" : 29819,
   "tagNumber" : "01-VSMP130F",
@@ -72915,8 +72957,8 @@
   "tagNumber" : "01-ARM-MPM-01E",
   "description" : "LRVP 01E BREAKER",
   "specificLocation" : "01-ACC-MCC-251, CUBICLE13FM",
-  "eqType" : "",
-  "locationId" : null
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10905
 }, {
   "id" : 31427,
   "tagNumber" : "02-LVE-CHG-01AQ011",
@@ -73253,6 +73295,13 @@
   "specificLocation" : "ST BUILDING SW - UPPER",
   "eqType" : "Manual Valve",
   "locationId" : 6054
+}, {
+  "id" : 33352,
+  "tagNumber" : "01-YV-CND705",
+  "description" : "CRH Ventilator Attemperator Block Valve",
+  "specificLocation" : "ST BUILDING WEST- UPPER",
+  "eqType" : "",
+  "locationId" : null
 }, {
   "id" : 33353,
   "tagNumber" : "O1-VBFW619",
@@ -75570,6 +75619,20 @@
   "specificLocation" : "WEST HRSG LANDING",
   "eqType" : "Air Operated Valve",
   "locationId" : 10907
+}, {
+  "id" : 68552,
+  "tagNumber" : "02-MOV-CND211",
+  "description" : "CND IRON FILTER B INLET MOV HANDWHEEL",
+  "specificLocation" : "CRT AREA",
+  "eqType" : "Motor Operated Valve",
+  "locationId" : 5906
+}, {
+  "id" : 68553,
+  "tagNumber" : "02-MOV-CND221",
+  "description" : "CND IRON FILTER BYP MOV HANDWHEEL",
+  "specificLocation" : "CRT AREA",
+  "eqType" : "Motor Operated Valve",
+  "locationId" : 5906
 }, {
   "id" : 68554,
   "tagNumber" : "02-BDN-CPL-01 (MCC211)",
@@ -78661,7 +78724,7 @@
   "id" : 92852,
   "tagNumber" : "00-MOV-AXS902",
   "description" : "AUX BOILER VENT STOP MOV POWER",
-  "specificLocation" : "",
+  "specificLocation" : "Aux boiler",
   "eqType" : "Motor Operated Valve",
   "locationId" : 14106
 }, {
@@ -81225,7 +81288,7 @@
   "description" : "DB PILOT PURGE CREDIT AOV VENT #1",
   "specificLocation" : "HRSG WEST - LOWER",
   "eqType" : "",
-  "locationId" : null
+  "locationId" : 10907
 }, {
   "id" : 107292,
   "tagNumber" : "02-V-BUR891",
@@ -83306,129 +83369,227 @@
   "eqType" : "Manual Valve",
   "locationId" : 10907
 }, {
-  "id" : 1000011706,
-  "tagNumber" : "02-PCV-SMP800",
-  "description" : "asdfasdf",
+  "id" : 1000082568,
+  "tagNumber" : "00-SAT-CPL-11",
+  "description" : "SAT 11 CTRL PNL 480 VAC PWR MAIN 1",
+  "specificLocation" : "MVB, 01-LVB-SVB-171, BR56",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10904
+}, {
+  "id" : 1000082572,
+  "tagNumber" : "00-SAT-CPL-21",
+  "description" : "SAT 21 CTRL PNL 480 VAC PWR MAIN 2",
+  "specificLocation" : "MVB, 01-LVB-SVB-171, BR54",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10904
+}, {
+  "id" : 1000082631,
+  "tagNumber" : "00-FGS-HTR-11",
+  "description" : "FUEL GAS LP DEW POINT HEATER",
+  "specificLocation" : "U1 HRSG MCC, 01-LVB-SWG-21",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10907
+}, {
+  "id" : 1000082635,
+  "tagNumber" : "00-INA-PNL-01B",
+  "description" : "AIR COMPRESSOR B CONTROL PANEL",
+  "specificLocation" : "U1 HRSG MCC, 01-LVB-SWG-21",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10907
+}, {
+  "id" : 1000082644,
+  "tagNumber" : "01BFJ01",
+  "description" : "U1 MHI MCC 01BFJ01 (UPSTREAM FEED)",
+  "specificLocation" : "MV BLDG, 01-LVB-SWG-17, CUBICLE",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10904
+}, {
+  "id" : 1000082646,
+  "tagNumber" : "01BMC01",
+  "description" : "U1 MHI ESS MCC 01BMC01 (UPSTREAM FEED)",
+  "specificLocation" : "MV BLDG, 01-LVB-SWG-17, CUBICLE",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10904
+}, {
+  "id" : 1000082648,
+  "tagNumber" : "02BMC01",
+  "description" : "U2 MHI ESS MCC 02BMC01 (UPSTREAM FEED)",
+  "specificLocation" : "MV BLDG, 02-LVB-SWG-27, CUBICLE",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10904
+}, {
+  "id" : 1000082650,
+  "tagNumber" : "02BFJ01",
+  "description" : "U2 MHI MCC 01BFJ01 (UPSTREAM FEED)",
+  "specificLocation" : "MV BLDG, 01-LVB-SWG-27, CUBICLE",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10904
+}, {
+  "id" : 1000082688,
+  "tagNumber" : "01-HTT-XFR-1118",
+  "description" : "HRSG 1 GRADE W HEAT TRACE XFMR",
+  "specificLocation" : "HRSG-1 ENCLOSURE MCC 111 CUBICLE 4FF(R)",
+  "eqType" : "",
+  "locationId" : null
+}, {
+  "id" : 1000082775,
+  "tagNumber" : "01-HTT-XFR-1117",
+  "description" : "HRSG 1 FINGER RACK S HEAT TRACE XFMR",
+  "specificLocation" : "HRSG-1 ENCLOSURE MCC 111 CUBICLE 4FF(L)",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10907
+}, {
+  "id" : 1000082776,
+  "tagNumber" : "01-HTT-XFR-1116",
+  "description" : "HRSG 1 GRADE HEAT TRACE XFMR",
+  "specificLocation" : "HRSG-1 ENCLOSURE MCC 111 CUBICLE 11FC(R)",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10907
+}, {
+  "id" : 1000083057,
+  "tagNumber" : "01BJT01",
+  "description" : "120V AC DISTRIBUTION PANEL TCP 01BJT01",
+  "specificLocation" : "TCP, 01BFJ01,",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10910
+}, {
+  "id" : 1000083058,
+  "tagNumber" : "02BJT01",
+  "description" : "120V AC DISTRIBUTION PANEL TCP 02BJT01",
+  "specificLocation" : "TCP, 02BFJ01,",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10910
+}, {
+  "id" : 1000083133,
+  "tagNumber" : "01BTB01GS101",
+  "description" : "125V DC BATTERY SWITCH",
+  "specificLocation" : "TCP, 01BTB01GS101 BOX",
+  "eqType" : "125VDC DISCONNECT",
+  "locationId" : 10910
+}, {
+  "id" : 1000083134,
+  "tagNumber" : "02BTB01GS101",
+  "description" : "125V DC BATTERY SWITCH",
+  "specificLocation" : "TCP, 02BTB01GS101 BOX",
+  "eqType" : "125VDC DISCONNECT",
+  "locationId" : 10910
+}, {
+  "id" : 1000083172,
+  "tagNumber" : "02MPV03AN102-M01",
+  "description" : "LUBE OIL VAPOR EXTRACTOR B POWER FEED",
+  "specificLocation" : " TCP",
+  "eqType" : "FAN-BLOWER-COMPRESSOR",
+  "locationId" : 17302
+}, {
+  "id" : 1000083261,
+  "tagNumber" : "02BAW11GH001(NGC)",
+  "description" : "NEUTRAL GROUND CUBICLE FOR GEN",
+  "specificLocation" : "TURBINE BUILDING",
+  "eqType" : "",
+  "locationId" : null
+}, {
+  "id" : 1000083262,
+  "tagNumber" : "02BTL01",
+  "description" : "220V DC RECTIFIER PANE",
+  "specificLocation" : " TCP",
+  "eqType" : "",
+  "locationId" : 10910
+}, {
+  "id" : 1000083299,
+  "tagNumber" : "01-HTT-XFR-1312",
+  "description" : "U1 ACC HEAT TRACE XFMR 480-120/208 VAC",
+  "specificLocation" : "01-ACC-MCC-131, CUBICLE 2FJ(R)",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10905
+}, {
+  "id" : 1000083333,
+  "tagNumber" : "01-LVB-XFR-2311",
+  "description" : "ACC 1 GRADE XFMR 480-120/208VAC",
+  "specificLocation" : "ACC MCC, 01-ACC-MCC-231, CUBICLE 4FF",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : null
+}, {
+  "id" : 1000083344,
+  "tagNumber" : "01-ACC-HEX-01A",
+  "description" : "UNIT 1 ACC FAN GEARBOX OIL COOLER 01A",
+  "specificLocation" : "01-ACC-MCC-131, CUBICLE 17FB",
+  "eqType" : "FAN-BLOWER-COMPRESSOR",
+  "locationId" : 12502
+}, {
+  "id" : 1000083434,
+  "tagNumber" : "02-LVB-XFR-2411",
+  "description" : "ACC 2 GRADE XFMR 480-208/120VAC",
+  "specificLocation" : "ACC MCC, 02-ACC-MCC-241, CUBICLE 4FF",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : null
+}, {
+  "id" : 1000083466,
+  "tagNumber" : "02-HTT-XFR-1612",
+  "description" : "U2 ACC HEAT TRACE XFMR 480-120/208VAC",
+  "specificLocation" : "ACC MCC, 02-ACC-MCC-161, CUBICLE 3FJ(R)",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : null
+}, {
+  "id" : 5000014301,
+  "tagNumber" : "02MPV01AA702",
+  "description" : "L/O SUPPLY PRESSURE REGULATOR",
+  "specificLocation" : "LUBE OIL TANK",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 17302
+}, {
+  "id" : 5000049965,
+  "tagNumber" : "01LBG02AA701",
+  "description" : "AUX TO GLAND STEAM PCV",
+  "specificLocation" : "ST BUILDING WEST- UPPER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6054
+}, {
+  "id" : 5000049966,
+  "tagNumber" : "01LCE01AA701",
+  "description" : "LP HOOD SPRAY FCV",
+  "specificLocation" : "ST BUILDING WEST- UPPER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6054
+}, {
+  "id" : 5000049967,
+  "tagNumber" : "01-YV CND705",
+  "description" : "CRH Ventilator Attemperator Block Valve",
+  "specificLocation" : "ST BUILDING WEST- UPPER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6054
+}, {
+  "id" : 5000049968,
+  "tagNumber" : "02-LBG-02AA701",
+  "description" : "AUX TO GLAND STEAM PCV",
+  "specificLocation" : "ST BUILDING WEST- UPPER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6054
+}, {
+  "id" : 5000049969,
+  "tagNumber" : "02-LCE-01AA701",
+  "description" : "LP HOOD SPRAY FCV",
   "specificLocation" : "",
-  "eqType" : "PRV",
-  "locationId" : 5904
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6054
 }, {
-  "id" : 1000011720,
-  "tagNumber" : "01-test-001",
-  "description" : "test description",
-  "specificLocation" : "test location",
-  "eqType" : "Pump",
-  "locationId" : 5904
-}, {
-  "id" : 1000011721,
-  "tagNumber" : "02-test-001",
-  "description" : "test description",
-  "specificLocation" : "test location",
-  "eqType" : "Pump",
-  "locationId" : 5904
-}, {
-  "id" : 1000011734,
-  "tagNumber" : "01-PMP-LOS001-JG dk-test22",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
-  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "PRV",
-  "locationId" : 5904
-}, {
-  "id" : 1000011736,
-  "tagNumber" : "02-PMP-LOS001-JG dk-test",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
-  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "PRV",
-  "locationId" : 5904
-}, {
-  "id" : 1000011750,
-  "tagNumber" : "asdfasd",
-  "description" : "asdfasdf",
-  "specificLocation" : "sdf",
-  "eqType" : "PRV",
+  "id" : 5000049972,
+  "tagNumber" : "02-MOV-CND221.",
+  "description" : "UNIT 1 COND IRON FLTR BYP VLV PWR 480VAC",
+  "specificLocation" : "02-LVB-PPL-1311, BR 19/21/23, ACC MCC",
+  "eqType" : "Motor Operated Valve",
   "locationId" : 5906
 }, {
-  "id" : 2000000169,
-  "tagNumber" : "ZE-1771760902877",
-  "description" : "Zero Energy Equipment",
-  "specificLocation" : "",
-  "eqType" : "CONTROL PANEL",
-  "locationId" : 2000000093
+  "id" : 5000049973,
+  "tagNumber" : "02-MOV-CND211.",
+  "description" : "UNIT 1 COND TO COND IRON FLTR 02B LVL PWR 480VAC",
+  "specificLocation" : "02-LVB-PPL-1311, BR 14/16/18 , ACC MCC",
+  "eqType" : "Motor Operated Valve",
+  "locationId" : 5906
 }, {
-  "id" : 2000000171,
-  "tagNumber" : "00-full309",
-  "description" : "Full form test LOTO Point 1771760843309",
-  "specificLocation" : "Building A, Floor 2, Room 205",
-  "eqType" : "Manual Valve",
-  "locationId" : 2000000093
-}, {
-  "id" : 2000042479,
-  "tagNumber" : "01--V-0003",
-  "description" : " MANUAL VALVE",
-  "specificLocation" : "",
-  "eqType" : "",
-  "locationId" : null
-}, {
-  "id" : 2000042480,
-  "tagNumber" : "01--V-0001",
-  "description" : " MANUAL VALVE",
-  "specificLocation" : "",
-  "eqType" : "",
-  "locationId" : null
-}, {
-  "id" : 2000042481,
-  "tagNumber" : "test007",
-  "description" : "Test Description",
-  "specificLocation" : "Specific location",
-  "eqType" : "",
-  "locationId" : 2000014976
-}, {
-  "id" : 2000042482,
-  "tagNumber" : "01--V-0002",
-  "description" : " MANUAL VALVE",
-  "specificLocation" : "",
-  "eqType" : "",
-  "locationId" : null
-}, {
-  "id" : 2000071883,
-  "tagNumber" : "TESTINGSYNC",
-  "description" : "TESTING SYNC",
-  "specificLocation" : "TESTINGSYNC",
-  "eqType" : "",
-  "locationId" : 2000014976
-}, {
-  "id" : 2000074043,
-  "tagNumber" : "02-PMP-LOS001-JG dk-test1",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
-  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "HEATER-DRYER",
-  "locationId" : 6053
-}, {
-  "id" : 3000071916,
-  "tagNumber" : "01-TV-HPS123TEST",
-  "description" : "HP HEADER DRIPLEG DRAIN AOV",
-  "specificLocation" : "ST BUILDING WEST- LOWER",
-  "eqType" : "Air Operated Valve",
-  "locationId" : 6053
-}, {
-  "id" : 3000071948,
-  "tagNumber" : "01-TV-HPS123TEST2",
-  "description" : "HP HEADER DRIPLEG DRAIN AOV",
-  "specificLocation" : "ST BUILDING WEST- LOWER",
-  "eqType" : "Air Operated Valve",
-  "locationId" : 6053
-}, {
-  "id" : 3000071951,
-  "tagNumber" : "01-TV-HPS123TEST3",
-  "description" : "HP HEADER DRIPLEG DRAIN AOV",
-  "specificLocation" : "ST BUILDING WEST- LOWER",
-  "eqType" : "Air Operated Valve",
-  "locationId" : 6053
-}, {
-  "id" : 3000071980,
-  "tagNumber" : "01-TV-HPS123TEST4",
-  "description" : "HP HEADER DRIPLEG DRAIN AOV",
-  "specificLocation" : "ST BUILDING WEST- LOWER",
-  "eqType" : "Air Operated Valve",
-  "locationId" : 6053
+  "id" : 11000029508,
+  "tagNumber" : "01-LVB-XFR-1111",
+  "description" : "HRSG 1 PDC XFMR",
+  "specificLocation" : "HRSG-1 ENCLOSURE MCC 111 CUBICLE 11FC(L)",
+  "eqType" : "Breaker 480VAC",
+  "locationId" : 10907
 } ]

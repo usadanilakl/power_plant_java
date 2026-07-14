@@ -38,9 +38,13 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
                         @if (b.phase === 'WALKDOWN' && it.walkdownSessions) { <span class="pl-chip">{{ it.walkdownSessions }} session(s)</span> }
                       </div>
                       @if (grabLabel(b.phase, it); as g) { <div class="pl-grab">{{ g }}</div> }
+                      @if (b.phase === 'VERIFY' && it.verifyBlockedForMe) {
+                        <div class="pl-blocked">🔒 You hung this — someone else must verify</div>
+                      }
                     </div>
-                    <button class="pl-go" [disabled]="busyId() === it.id" (click)="go(b.phase, it)">
-                      {{ busyId() === it.id ? '…' : b.action }}
+                    <button class="pl-go" [class.view]="b.phase === 'VERIFY' && it.verifyBlockedForMe"
+                            [disabled]="busyId() === it.id" (click)="go(b.phase, it)">
+                      {{ busyId() === it.id ? '…' : (b.phase === 'VERIFY' && it.verifyBlockedForMe ? 'View' : b.action) }}
                     </button>
                   </div>
                 } @empty { <p class="pl-empty">Nothing {{ b.empty }}.</p> }
@@ -66,6 +70,8 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
     .pl-meta { margin-top: 4px; }
     .pl-chip { display: inline-block; background: #eef2f7; color: #445; border-radius: 4px; padding: 2px 7px; margin: 2px 4px 0 0; font-size: 12px; }
     .pl-grab { margin-top: 5px; color: #e65100; font-size: 12px; }
+    .pl-blocked { margin-top: 5px; color: #b71c1c; font-size: 12px; }
+    .pl-go.view { background: #607d8b; }
     .pl-go { flex: none; background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 10px 14px; font-size: 14px; }
     .pl-go:disabled { background: #90caf9; }
     .pl-empty { color: #999; font-size: 13px; padding: 6px 2px; }
@@ -114,6 +120,8 @@ export class LotoPermitListComponent implements OnInit {
 
   async go(phase: Phase, it: PwaLotoListItem): Promise<void> {
     if (phase === 'WALKDOWN') { this.router.navigate(['/loto', it.id, 'walkdown']); return; }
+    // Separation of duty: the hanger may open the permit to review it, but must not grab it for verification.
+    if (phase === 'VERIFY' && it.verifyBlockedForMe) { this.router.navigate(['/loto', it.id, 'verify']); return; }
     this.busyId.set(it.id);
     this.error.set('');
     try {

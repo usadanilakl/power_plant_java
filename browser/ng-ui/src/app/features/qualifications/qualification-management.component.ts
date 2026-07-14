@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
@@ -9,8 +9,10 @@ import {
   PwaQualificationDefinitionDto,
   PwaQualificationDto,
   PwaQualificationPersonDto,
+  PwaQualificationSeedUserDto,
   ServerApiService
 } from '../../services/server-api.service';
+import { PowerAutomateService } from '../../services/power-automate.service';
 
 @Component({
   selector: 'app-qualification-management',
@@ -35,6 +37,21 @@ import {
               <button type="button" (click)="load()" [disabled]="busy()">Refresh</button>
             </div>
           </section>
+
+          @if (seedUsers().length > 0) {
+            <section class="seed-strip">
+              <label class="seed-select">
+                <span>Add Employee</span>
+                <select name="seedUserId" [ngModel]="seedUserId()" (ngModelChange)="seedUserId.set($event)">
+                  <option value="">Select user</option>
+                  @for (user of seedUsers(); track user.id) {
+                    <option [value]="user.id.toString()">{{ seedUserLabel(user) }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" (click)="seedSelectedUser()" [disabled]="busy() || !seedUserId()">Add Employee</button>
+            </section>
+          }
 
           @if (busy()) {
             <div class="busy-row">Working...</div>
@@ -152,13 +169,14 @@ import {
             </section>
 
             <aside class="side-tools">
-              <section class="qr-panel">
+              <section class="qr-panel" #qrPanel>
                 @if (selectedPerson()) {
                   <div class="panel-title">QR Code</div>
                   <app-qr-generator [data]="qualificationLink(selectedPerson()!)" [size]="220" [label]="selectedPerson()!.userName"></app-qr-generator>
                   <input class="link-output" readonly [value]="qualificationLink(selectedPerson()!)">
                   <div class="qr-actions">
                     <button type="button" (click)="copyLink(selectedPerson()!)">Copy Link</button>
+                    <button type="button" (click)="printQr(selectedPerson()!)">Print</button>
                     <a [href]="qualificationLink(selectedPerson()!)" target="_blank" rel="noopener">Open</a>
                   </div>
                 } @else {
@@ -257,6 +275,8 @@ import {
     .toolbar p, .person-meta, .workspace-header p, .assignment-row p, .catalog-row p, .empty { color: var(--secondary-text); }
     .toolbar p, .workspace-header p, .assignment-row p, .catalog-row p { margin: 0; }
     .toolbar-actions, .editor-actions, .qr-actions, .row-actions, .catalog-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .seed-strip { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; padding: 12px 0 4px; }
+    .seed-select { display: flex; flex-direction: column; gap: 5px; min-width: min(100%, 380px); font-size: .85rem; font-weight: 650; }
     button, .qr-actions a { border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-background); color: var(--primary-text); padding: 8px 12px; font: inherit; cursor: pointer; text-decoration: none; }
     button:disabled { opacity: .55; }
     button.danger { color: #b42318; }
@@ -309,9 +329,15 @@ import {
 })
 export class QualificationManagementComponent implements OnInit {
   private serverApi = inject(ServerApiService);
+  private pa = inject(PowerAutomateService);
+
+  @ViewChild('qrPanel', { static: false }) qrPanel?: ElementRef<HTMLElement>;
 
   people = signal<PwaQualificationPersonDto[]>([]);
   definitions = signal<PwaQualificationDefinitionDto[]>([]);
+  seedUsers = signal<PwaQualificationSeedUserDto[]>([]);
+  seedUserId = signal<string>('');
+  paFallbackActive = signal(false);
   selectedUserId = signal<string>('');
   busy = signal(false);
   statusMessage = signal('');
@@ -335,22 +361,28 @@ export class QualificationManagementComponent implements OnInit {
       definitions: this.serverApi.getQualificationDefinitions()
     }).subscribe({
       next: ({ people, definitions }) => {
+        this.paFallbackActive.set(false);
         this.people.set(people || []);
         this.definitions.set(definitions || []);
         if (!this.selectedUserId() || !people.some(p => p.userId === this.selectedUserId())) {
           this.selectedUserId.set(people[0]?.userId || '');
         }
         this.startAssign();
+        this.loadSeedUsers();
         this.busy.set(false);
       },
       error: err => {
-        this.statusMessage.set(err?.message || 'Could not load qualifications.');
-        this.busy.set(false);
+        this.seedUsers.set([]);
+        this.loadViaPowerAutomate(err);
       }
     });
   }
 
   provision(): void {
+    if (this.paFallbackActive()) {
+      this.statusMessage.set('Provisioning requires the server.');
+      return;
+    }
     this.busy.set(true);
     this.serverApi.provisionQualificationList().subscribe({
       next: () => {
@@ -366,6 +398,10 @@ export class QualificationManagementComponent implements OnInit {
   }
 
   seedPlantUsers(): void {
+    if (this.paFallbackActive()) {
+      this.statusMessage.set('Seeding plant users requires the server.');
+      return;
+    }
     this.busy.set(true);
     this.serverApi.seedQualificationPlantUsers().subscribe({
       next: result => {
@@ -426,6 +462,11 @@ export class QualificationManagementComponent implements OnInit {
     }
 
     this.busy.set(true);
+    if (this.paFallbackActive()) {
+      this.saveAssignmentViaPowerAutomate(payload);
+      return;
+    }
+
     const request = this.editingSharepointId()
       ? this.serverApi.updateQualification(this.editingSharepointId()!, payload)
       : this.serverApi.createQualification(payload);
@@ -447,6 +488,11 @@ export class QualificationManagementComponent implements OnInit {
     if (!qualification.sharepointId) return;
     if (!confirm(`Delete ${qualification.qualificationName || 'qualification'} from this person?`)) return;
     this.busy.set(true);
+    if (this.paFallbackActive()) {
+      this.deleteAssignmentViaPowerAutomate(qualification);
+      return;
+    }
+
     this.serverApi.deleteQualification(qualification.sharepointId).subscribe({
       next: () => {
         this.statusMessage.set('Qualification assignment deleted.');
@@ -477,6 +523,11 @@ export class QualificationManagementComponent implements OnInit {
   saveDefinition(): void {
     const payload = { ...this.definitionDraft() };
     this.busy.set(true);
+    if (this.paFallbackActive()) {
+      this.saveDefinitionViaPowerAutomate(payload);
+      return;
+    }
+
     const request = this.editingDefinitionSharepointId()
       ? this.serverApi.updateQualificationDefinition(this.editingDefinitionSharepointId()!, payload)
       : this.serverApi.createQualificationDefinition(payload);
@@ -499,6 +550,11 @@ export class QualificationManagementComponent implements OnInit {
     if (!definition.sharepointId) return;
     if (!confirm(`Delete ${definition.qualificationName || 'catalog item'}?`)) return;
     this.busy.set(true);
+    if (this.paFallbackActive()) {
+      this.deleteDefinitionViaPowerAutomate(definition);
+      return;
+    }
+
     this.serverApi.deleteQualificationDefinition(definition.sharepointId).subscribe({
       next: () => {
         this.statusMessage.set('Catalog item deleted.');
@@ -529,9 +585,164 @@ export class QualificationManagementComponent implements OnInit {
     );
   }
 
+  seedSelectedUser(): void {
+    if (this.paFallbackActive()) {
+      this.statusMessage.set('Adding one employee requires the server.');
+      return;
+    }
+
+    const userId = this.seedUserId();
+    const user = this.seedUsers().find(candidate => String(candidate.id) === userId);
+    if (!user) {
+      this.statusMessage.set('Select an employee first.');
+      return;
+    }
+
+    this.busy.set(true);
+    this.serverApi.seedQualificationPlantUser(user.id).subscribe({
+      next: result => {
+        const created = result?.created || 0;
+        const skipped = result?.skipped || 0;
+        this.statusMessage.set(
+          created > 0
+            ? `Employee added for ${user.name}.`
+            : skipped > 0
+              ? `${user.name} was already in the qualification list.`
+              : 'No employee was added.'
+        );
+        this.seedUserId.set(userId);
+        this.selectedUserId.set(String(user.id));
+        this.busy.set(false);
+        this.load();
+      },
+      error: err => {
+        this.statusMessage.set(err?.message || 'Could not add employee.');
+        this.busy.set(false);
+      }
+    });
+  }
+
+  printQr(person: PwaQualificationPersonDto): void {
+    const qrCard = this.qrPanel?.nativeElement.querySelector('.qr-container') as HTMLElement | null;
+    if (!qrCard) {
+      this.statusMessage.set('QR preview is not ready to print.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) {
+      this.statusMessage.set('Popup blocked the print preview.');
+      return;
+    }
+
+    const title = this.escapeHtml(person.userName || `User ${person.userId}`);
+    const svgMarkup = qrCard.outerHTML;
+    const documentHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${title} QR</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        color: #111111;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+
+      .print-sheet {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+
+      .qr-container {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background: #ffffff;
+        color: #111111;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        box-sizing: border-box;
+        box-shadow: none;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .qr-markup {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+      }
+
+      .qr-markup svg {
+        display: block;
+        width: 280px;
+        height: 280px;
+        background: #ffffff;
+      }
+
+      .qr-label {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        text-align: center;
+        color: #111111;
+      }
+
+      @page {
+        margin: 0.35in;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="print-sheet">
+      ${svgMarkup}
+    </div>
+    <script>
+      window.onload = () => {
+        window.focus();
+        window.print();
+      };
+      window.onafterprint = () => window.close();
+    </script>
+  </body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(documentHtml);
+    printWindow.document.close();
+  }
+
   catalogLabel(definition: PwaQualificationDefinitionDto): string {
     const code = definition.qualificationCode ? `${definition.qualificationCode} - ` : '';
     return `${code}${definition.qualificationName || 'Qualification'}`;
+  }
+
+  seedUserLabel(user: PwaQualificationSeedUserDto): string {
+    const email = user.email ? ` (${user.email})` : '';
+    return `${user.name || `User ${user.id}`}${email}`;
   }
 
   normalizedStatus(qualification: PwaQualificationDto): string {
@@ -543,6 +754,319 @@ export class QualificationManagementComponent implements OnInit {
     if (!qualification.expirationDate) return false;
     const expiration = new Date(`${qualification.expirationDate}T23:59:59`);
     return !Number.isNaN(expiration.getTime()) && expiration.getTime() < Date.now();
+  }
+
+  private loadSeedUsers(): void {
+    if (this.paFallbackActive()) {
+      this.seedUsers.set([]);
+      return;
+    }
+
+    this.serverApi.getQualificationSeedUsers().subscribe({
+      next: users => {
+        const plantUsers = (users || [])
+          .filter(user => this.isPlantSeedUser(user))
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        this.seedUsers.set(plantUsers);
+        if (!this.seedUserId() || !plantUsers.some(user => String(user.id) === this.seedUserId())) {
+          this.seedUserId.set(plantUsers[0] ? String(plantUsers[0].id) : '');
+        }
+      },
+      error: () => {
+        this.seedUsers.set([]);
+        this.seedUserId.set('');
+      }
+    });
+  }
+
+  private isPlantSeedUser(user: PwaQualificationSeedUserDto): boolean {
+    const roleValues = [
+      user.role || '',
+      ...(user.roles || [])
+    ].map(value => value.toUpperCase());
+    return user.isActive !== false && roleValues.some(role => role.includes('PLANT'));
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  private loadViaPowerAutomate(originalError: any): void {
+    this.seedUsers.set([]);
+    this.seedUserId.set('');
+    if (!this.pa.isV2Configured('qualifications')) {
+      this.statusMessage.set(originalError?.message || 'Could not load qualifications.');
+      this.busy.set(false);
+      return;
+    }
+
+    forkJoin({
+      assignments: this.pa.submitV2('qualifications', { actionType: 'getAll', data: {}, attachments: [] }),
+      definitions: this.pa.submitV2('qualifications', { actionType: 'catalogGetAll', data: {}, attachments: [] })
+    }).subscribe({
+      next: ({ assignments, definitions }) => {
+        const assignmentRows = (assignments.data || []).map(row => this.mapPaAssignment(row));
+        const definitionRows = (definitions.data || []).map(row => this.mapPaDefinition(row));
+        if (assignmentRows.length === 0 && definitionRows.length === 0) {
+          this.statusMessage.set(assignments.message || definitions.message || 'Power Automate fallback returned no data.');
+          this.busy.set(false);
+          return;
+        }
+
+        const people = this.peopleFromAssignments(assignmentRows);
+        const warnings = [assignments.success, definitions.success].some(success => success === false)
+          ? [assignments.message, definitions.message].filter(Boolean).join(' | ')
+          : '';
+
+        this.paFallbackActive.set(true);
+        this.people.set(people);
+        this.definitions.set(this.sortDefinitions(definitionRows));
+        if (!this.selectedUserId() || !people.some(p => p.userId === this.selectedUserId())) {
+          this.selectedUserId.set(people[0]?.userId || '');
+        }
+        this.startAssign();
+        this.statusMessage.set(warnings ? `Loaded from Power Automate. ${warnings}` : 'Server is unreachable; loaded from Power Automate.');
+        this.busy.set(false);
+      },
+      error: err => {
+        this.statusMessage.set(err?.message || 'Server and Power Automate are unreachable.');
+        this.busy.set(false);
+      }
+    });
+  }
+
+  private saveAssignmentViaPowerAutomate(payload: PwaQualificationDto): void {
+    const actionType = this.editingSharepointId() ? 'update' : 'create';
+    this.pa.submitV2('qualifications', {
+      actionType,
+      id: this.editingSharepointId() || undefined,
+      data: this.assignmentToPaMap(payload),
+      attachments: []
+    }).subscribe({
+      next: response => {
+        if (!response.success) {
+          this.statusMessage.set(response.message || 'Power Automate assignment save failed.');
+          this.busy.set(false);
+          return;
+        }
+        this.statusMessage.set('Qualification assignment saved through Power Automate.');
+        this.busy.set(false);
+        this.load();
+      },
+      error: err => {
+        this.statusMessage.set(err?.message || 'Power Automate assignment save failed.');
+        this.busy.set(false);
+      }
+    });
+  }
+
+  private deleteAssignmentViaPowerAutomate(qualification: PwaQualificationDto): void {
+    this.pa.submitV2('qualifications', {
+      actionType: 'delete',
+      id: qualification.sharepointId,
+      data: {},
+      attachments: []
+    }).subscribe({
+      next: response => {
+        if (!response.success) {
+          this.statusMessage.set(response.message || 'Power Automate assignment delete failed.');
+          this.busy.set(false);
+          return;
+        }
+        this.statusMessage.set('Qualification assignment deleted through Power Automate.');
+        this.busy.set(false);
+        this.load();
+      },
+      error: err => {
+        this.statusMessage.set(err?.message || 'Power Automate assignment delete failed.');
+        this.busy.set(false);
+      }
+    });
+  }
+
+  private saveDefinitionViaPowerAutomate(payload: PwaQualificationDefinitionDto): void {
+    const actionType = this.editingDefinitionSharepointId() ? 'catalogUpdate' : 'catalogCreate';
+    this.pa.submitV2('qualifications', {
+      actionType,
+      id: this.editingDefinitionSharepointId() || undefined,
+      data: this.definitionToPaMap(payload),
+      attachments: []
+    }).subscribe({
+      next: response => {
+        if (!response.success) {
+          this.statusMessage.set(response.message || 'Power Automate catalog save failed.');
+          this.busy.set(false);
+          return;
+        }
+        this.statusMessage.set('Catalog item saved through Power Automate.');
+        this.startDefinitionCreate();
+        this.busy.set(false);
+        this.load();
+      },
+      error: err => {
+        this.statusMessage.set(err?.message || 'Power Automate catalog save failed.');
+        this.busy.set(false);
+      }
+    });
+  }
+
+  private deleteDefinitionViaPowerAutomate(definition: PwaQualificationDefinitionDto): void {
+    this.pa.submitV2('qualifications', {
+      actionType: 'catalogDelete',
+      id: definition.sharepointId,
+      data: {},
+      attachments: []
+    }).subscribe({
+      next: response => {
+        if (!response.success) {
+          this.statusMessage.set(response.message || 'Power Automate catalog delete failed.');
+          this.busy.set(false);
+          return;
+        }
+        this.statusMessage.set('Catalog item deleted through Power Automate.');
+        this.busy.set(false);
+        this.load();
+      },
+      error: err => {
+        this.statusMessage.set(err?.message || 'Power Automate catalog delete failed.');
+        this.busy.set(false);
+      }
+    });
+  }
+
+  private mapPaAssignment(row: any): PwaQualificationDto {
+    return {
+      sharepointId: this.text(row.ID ?? row.Id ?? row.id),
+      localUuid: this.text(row.PwaId),
+      userId: this.text(row.UserId),
+      userName: this.text(row.UserName || row.Title),
+      userEmail: this.text(row.UserEmail),
+      windowsUsername: this.text(row.WindowsUsername),
+      role: this.text(row.Role),
+      qualificationId: this.text(row.QualificationId),
+      qualificationCode: this.text(row.QualificationCode),
+      qualificationName: this.text(row.QualificationName),
+      qualificationType: this.text(row.QualificationType),
+      status: this.text(row.Status),
+      issuedDate: this.text(row.IssuedDate),
+      expirationDate: this.text(row.ExpirationDate),
+      credentialNumber: this.text(row.CredentialNumber),
+      issuer: this.text(row.Issuer),
+      notes: this.text(row.Notes),
+      spModifiedTime: this.text(row.Modified)
+    };
+  }
+
+  private mapPaDefinition(row: any): PwaQualificationDefinitionDto {
+    return {
+      sharepointId: this.text(row.ID ?? row.Id ?? row.id),
+      localUuid: this.text(row.PwaId),
+      qualificationCode: this.text(row.QualificationCode),
+      qualificationName: this.text(row.QualificationName || row.Title),
+      qualificationType: this.text(row.QualificationType),
+      description: this.text(row.Description),
+      requiresExpiration: this.bool(row.RequiresExpiration),
+      defaultValidityMonths: this.text(row.DefaultValidityMonths),
+      active: this.bool(row.IsActive ?? row.Active, true),
+      sortOrder: this.text(row.SortOrder),
+      notes: this.text(row.Notes),
+      spModifiedTime: this.text(row.Modified)
+    };
+  }
+
+  private peopleFromAssignments(assignments: PwaQualificationDto[]): PwaQualificationPersonDto[] {
+    const byUser = new Map<string, PwaQualificationDto[]>();
+    for (const assignment of assignments) {
+      const key = assignment.userId || assignment.userEmail || assignment.userName || assignment.sharepointId || '';
+      if (!key) continue;
+      byUser.set(key, [...(byUser.get(key) || []), assignment]);
+    }
+
+    return Array.from(byUser.entries()).map(([userId, qualifications]) => {
+      const sorted = [...qualifications].sort((a, b) => (a.qualificationName || '').localeCompare(b.qualificationName || ''));
+      const first = sorted[0];
+      return {
+        userId,
+        userName: first?.userName || `User ${userId}`,
+        userEmail: first?.userEmail,
+        windowsUsername: first?.windowsUsername,
+        role: first?.role,
+        qualificationCount: sorted.length,
+        qualifications: sorted
+      };
+    }).sort((a, b) => (a.userName || '').localeCompare(b.userName || ''));
+  }
+
+  private assignmentToPaMap(dto: PwaQualificationDto): Record<string, any> {
+    const pwaId = dto.localUuid || crypto.randomUUID();
+    return {
+      Title: this.assignmentTitle(dto),
+      PwaId: pwaId,
+      UserId: dto.userId || '',
+      UserName: dto.userName || '',
+      UserEmail: dto.userEmail || '',
+      WindowsUsername: dto.windowsUsername || '',
+      Role: dto.role || '',
+      QualificationId: dto.qualificationId || '',
+      QualificationCode: dto.qualificationCode || '',
+      QualificationName: dto.qualificationName || '',
+      QualificationType: dto.qualificationType || '',
+      Status: dto.status || 'Active',
+      IssuedDate: dto.issuedDate || '',
+      ExpirationDate: dto.expirationDate || '',
+      CredentialNumber: dto.credentialNumber || '',
+      Issuer: dto.issuer || '',
+      Notes: dto.notes || ''
+    };
+  }
+
+  private definitionToPaMap(dto: PwaQualificationDefinitionDto): Record<string, any> {
+    const pwaId = dto.localUuid || crypto.randomUUID();
+    return {
+      Title: dto.qualificationName || dto.qualificationCode || 'Qualification',
+      PwaId: pwaId,
+      QualificationCode: dto.qualificationCode || '',
+      QualificationName: dto.qualificationName || '',
+      QualificationType: dto.qualificationType || '',
+      Description: dto.description || '',
+      RequiresExpiration: !!dto.requiresExpiration,
+      DefaultValidityMonths: dto.defaultValidityMonths || '',
+      IsActive: dto.active !== false,
+      SortOrder: dto.sortOrder || '',
+      Notes: dto.notes || ''
+    };
+  }
+
+  private sortDefinitions(definitions: PwaQualificationDefinitionDto[]): PwaQualificationDefinitionDto[] {
+    return [...definitions].sort((a, b) => {
+      const left = Number(a.sortOrder || Number.MAX_SAFE_INTEGER);
+      const right = Number(b.sortOrder || Number.MAX_SAFE_INTEGER);
+      if (Number.isFinite(left) && Number.isFinite(right) && left !== right) return left - right;
+      return (a.qualificationName || '').localeCompare(b.qualificationName || '');
+    });
+  }
+
+  private assignmentTitle(dto: PwaQualificationDto): string {
+    const user = dto.userName || dto.userEmail || 'Unknown User';
+    return dto.qualificationName ? `${user} - ${dto.qualificationName}` : user;
+  }
+
+  private text(value: any): string {
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  private bool(value: any, defaultValue = false): boolean {
+    if (value === null || value === undefined || value === '') return defaultValue;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    const text = String(value).trim().toLowerCase();
+    return text === 'true' || text === 'yes' || text === '1';
   }
 
   private applyDefinitionToDraft(

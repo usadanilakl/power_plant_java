@@ -37,6 +37,28 @@ public class EmailFacadeService {
     }
 
     /**
+     * Sends email using the Microsoft Graph upload-session flow — supports large attachment
+     * payloads (well above the ~3 MB per-request cap of {@link #sendEmail}). Used by callers
+     * that need to ship a batch of PDFs in a single message (e.g. the SDS gap report).
+     * <p>
+     * Falls back to the manual email client on API failure, same as {@link #sendEmail}.
+     */
+    public void sendEmailLarge(EmailRequest request) {
+        try {
+            apiEmailService.sendEmailWithLargeAttachments(request);
+            log.info("[Email] Large-attachment email sent via API to {}", request.getTo());
+        } catch (Exception e) {
+            log.warn("[Email] Large-attachment API send failed, falling back to manual: {}", e.getMessage());
+            try {
+                manualEmailService.openEmailClient(request);
+            } catch (Exception fallbackException) {
+                log.error("[Email] Both API and manual fallback failed for large-attachment send", fallbackException);
+                throw new RuntimeException("Failed to send large-attachment email via both API and manual fallback", fallbackException);
+            }
+        }
+    }
+
+    /**
      * Sends email via API using draft-then-send approach to capture metadata.
      * Returns metadata (graphMessageId, internetMessageId, conversationId) for correspondence tracking.
      * Falls back to manual email client if API fails, returning null metadata.

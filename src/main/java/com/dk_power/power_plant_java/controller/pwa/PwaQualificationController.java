@@ -168,4 +168,18 @@ public class PwaQualificationController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Seed failed: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/secured/qualifications/seed-plant-user/{userId}")
+    public ResponseEntity<NgApiResponse<PwaQualificationSeedResult>> seedPlantUser(@PathVariable Long userId) {
+        try {
+            PwaQualificationSeedResult result = qualificationService.seedPlantUser(userId);
+            String message = result.getCreated() > 0
+                    ? "Plant user seeded into SharePoint"
+                    : "Plant user already exists in SharePoint";
+            return ResponseEntity.ok(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            log.error("[PWA Qualifications] Single seed failed for userId={}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Seed failed: " + e.getMessage()));
+        }
+    }
 }

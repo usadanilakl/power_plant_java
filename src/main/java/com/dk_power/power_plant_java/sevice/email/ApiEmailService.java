@@ -6,6 +6,7 @@ import com.azure.identity.ClientCertificateCredential;
 import com.dk_power.power_plant_java.dto.email.EmailAttachment;
 import com.dk_power.power_plant_java.dto.email.EmailRequest;
 import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
+import java.util.Base64;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -175,6 +176,194 @@ public class ApiEmailService {
 
         log.info("[Email] Email sent via draft-then-send to {} (from {})", request.getTo(), senderEmail);
         return metadata;
+    }
+
+    /**
+     * Send an email whose combined attachment payload exceeds Microsoft Graph's ~4 MB per-request
+     * limit for the {@code sendMail} action. Uses the three-step flow: create draft (no
+     * attachments) → per-attachment upload session (chunked PUT) → send draft. Individual
+     * attachments up to 150 MB and total messages up to your tenant's cap (typically 150 MB) are
+     * supported this way — versus ~3 MB per email for the simple {@code sendMail} path.
+     * <p>
+     * Falls back to the {@code fallbackEmail} sender on a 404 from the primary mailbox, matching
+     * the fallback semantics of {@link #sendEmail}.
+     */
+    public void sendEmailWithLargeAttachments(EmailRequest request) {
+        if (credential == null) {
+            throw new RuntimeException("ClientCertificateCredential not available for email sending");
+        }
+        try {
+            sendEmailWithLargeAttachmentsAs(request, fromEmail);
+        } catch (HttpClientErrorException.NotFound e) {
+            if (hasFallback()) {
+                log.warn("[Email] Primary mailbox {} failed ({}), trying fallback {}",
+                        fromEmail, extractErrorCode(e), fallbackEmail);
+                sendEmailWithLargeAttachmentsAs(request, fallbackEmail);
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private void sendEmailWithLargeAttachmentsAs(EmailRequest request, String senderEmail) {
+        ensureValidToken();
+
+        HttpHeaders jsonHeaders = new HttpHeaders();
+        jsonHeaders.setBearerAuth(emailAccessToken);
+        jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        // Step 1: create the draft — WITHOUT attachments. Attachments ride the upload-session
+        // flow below; embedding them in the draft creation would hit the same ~4 MB request cap
+        // we're trying to escape.
+        String draftBody = buildMessageJsonWithoutAttachments(request);
+        String createUrl = "https://graph.microsoft.com/v1.0/users/" + senderEmail + "/messages";
+        log.debug("[Email] Creating draft (upload-session path) for {} as {}", request.getTo(), senderEmail);
+        ResponseEntity<String> draftResp = exchangeWithRetry(
+                createUrl, HttpMethod.POST, new HttpEntity<>(draftBody, jsonHeaders), String.class);
+        if (!draftResp.getStatusCode().is2xxSuccessful() || draftResp.getBody() == null) {
+            throw new RuntimeException("Failed to create draft: " + draftResp.getStatusCode()
+                    + " body=" + draftResp.getBody());
+        }
+        String msgId;
+        try {
+            msgId = new ObjectMapper().readTree(draftResp.getBody()).path("id").asText(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse draft id: " + e.getMessage(), e);
+        }
+        if (msgId == null || msgId.isEmpty()) {
+            throw new RuntimeException("Draft response missing 'id'");
+        }
+
+        // Step 2: upload each attachment via createUploadSession + PUT to the pre-signed uploadUrl.
+        List<EmailAttachment> attachments = request.getAttachments();
+        int uploaded = 0;
+        long totalBytes = 0;
+        if (attachments != null) {
+            for (EmailAttachment att : attachments) {
+                long size = uploadAttachmentViaSession(senderEmail, msgId, att);
+                uploaded++;
+                totalBytes += size;
+            }
+        }
+        log.info("[Email] Uploaded {} attachment(s) totalling {} KB to draft {}",
+                uploaded, totalBytes / 1024, msgId);
+
+        // Step 3: send the draft.
+        String sendUrl = "https://graph.microsoft.com/v1.0/users/" + senderEmail
+                + "/messages/" + msgId + "/send";
+        ResponseEntity<String> sendResp = exchangeWithRetry(
+                sendUrl, HttpMethod.POST, new HttpEntity<>(jsonHeaders), String.class);
+        if (!sendResp.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Failed to send draft: " + sendResp.getStatusCode()
+                    + " body=" + sendResp.getBody());
+        }
+        log.info("[Email] Large-attachment email sent to {} (from {}, {} atts, {} KB)",
+                request.getTo(), senderEmail, uploaded, totalBytes / 1024);
+    }
+
+    /**
+     * Upload one attachment via Microsoft Graph's upload session flow. Returns the decoded size
+     * for reporting. Chunk size is 3200 KiB — a valid Graph chunk size (multiple of 320 KiB,
+     * under the 4 MB per-chunk limit); the last chunk is whatever's left. Files under 3200 KiB
+     * upload in a single PUT.
+     */
+    private long uploadAttachmentViaSession(String senderEmail, String msgId, EmailAttachment att) {
+        String b64 = att.getBase64Content() != null ? att.getBase64Content().replaceAll("\\s+", "") : "";
+        if (b64.isEmpty()) {
+            log.warn("[Email] Skipping empty attachment: {}", att.getFileName());
+            return 0;
+        }
+        byte[] bytes;
+        try {
+            bytes = Base64.getDecoder().decode(b64);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Attachment '" + att.getFileName() + "' has invalid base64: " + e.getMessage(), e);
+        }
+        long totalSize = bytes.length;
+        if (totalSize == 0) return 0;
+
+        // Create the upload session. Graph returns a pre-authenticated uploadUrl — subsequent
+        // PUTs to that URL must NOT carry the tenant bearer token.
+        HttpHeaders sessionHeaders = new HttpHeaders();
+        sessionHeaders.setBearerAuth(emailAccessToken);
+        sessionHeaders.setContentType(MediaType.APPLICATION_JSON);
+        String sessionBody = "{\"AttachmentItem\":{"
+                + "\"attachmentType\":\"file\","
+                + "\"name\":\"" + escapeJson(att.getFileName()) + "\","
+                + "\"size\":" + totalSize
+                + "}}";
+        String createSessionUrl = "https://graph.microsoft.com/v1.0/users/" + senderEmail
+                + "/messages/" + msgId + "/attachments/createUploadSession";
+        ResponseEntity<String> sessionResp = exchangeWithRetry(
+                createSessionUrl, HttpMethod.POST, new HttpEntity<>(sessionBody, sessionHeaders), String.class);
+        if (!sessionResp.getStatusCode().is2xxSuccessful() || sessionResp.getBody() == null) {
+            throw new RuntimeException("createUploadSession failed for '" + att.getFileName()
+                    + "': " + sessionResp.getStatusCode() + " body=" + sessionResp.getBody());
+        }
+        String uploadUrl;
+        try {
+            uploadUrl = new ObjectMapper().readTree(sessionResp.getBody()).path("uploadUrl").asText(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse uploadUrl for '" + att.getFileName() + "'", e);
+        }
+        if (uploadUrl == null || uploadUrl.isEmpty()) {
+            throw new RuntimeException("uploadUrl missing for '" + att.getFileName() + "'");
+        }
+
+        // Chunk config: multiples of 320 KiB, each chunk < 4 MiB. 3200 KiB = 10 × 320 KiB.
+        final int CHUNK_SIZE = 3200 * 1024;
+        long offset = 0;
+        while (offset < totalSize) {
+            int chunkLen = (int) Math.min(CHUNK_SIZE, totalSize - offset);
+            byte[] chunk = new byte[chunkLen];
+            System.arraycopy(bytes, (int) offset, chunk, 0, chunkLen);
+
+            HttpHeaders chunkHeaders = new HttpHeaders();
+            chunkHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            chunkHeaders.setContentLength(chunkLen);
+            chunkHeaders.set("Content-Range",
+                    "bytes " + offset + "-" + (offset + chunkLen - 1) + "/" + totalSize);
+            // NOTE: uploadUrl is pre-signed by Graph — do NOT include Authorization.
+
+            ResponseEntity<String> putResp = restTemplate.exchange(
+                    uploadUrl, HttpMethod.PUT, new HttpEntity<>(chunk, chunkHeaders), String.class);
+            if (!putResp.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Chunk PUT failed for '" + att.getFileName()
+                        + "' at offset " + offset + ": " + putResp.getStatusCode()
+                        + " body=" + putResp.getBody());
+            }
+            offset += chunkLen;
+        }
+        return totalSize;
+    }
+
+    /** Draft-safe variant of the message JSON — everything except the attachments array. */
+    private String buildMessageJsonWithoutAttachments(EmailRequest request) {
+        StringBuilder json = new StringBuilder();
+        json.append("{");
+        json.append("\"subject\": \"").append(escapeJson(request.getSubject())).append("\",");
+        json.append("\"body\": {");
+        json.append("\"contentType\": \"").append(request.isHtml() ? "HTML" : "Text").append("\",");
+        json.append("\"content\": \"").append(escapeJson(request.getBody())).append("\"");
+        json.append("},");
+        json.append("\"toRecipients\": [{");
+        json.append("\"emailAddress\": {\"address\": \"").append(escapeJson(request.getTo())).append("\"}");
+        json.append("}]");
+        if (request.getCc() != null && !request.getCc().isEmpty()) {
+            String[] ccAddresses = request.getCc().split("[;,]");
+            json.append(",\"ccRecipients\": [");
+            boolean first = true;
+            for (String addr : ccAddresses) {
+                String trimmed = addr.trim();
+                if (trimmed.isEmpty()) continue;
+                if (!first) json.append(",");
+                json.append("{\"emailAddress\": {\"address\": \"").append(escapeJson(trimmed)).append("\"}}");
+                first = false;
+            }
+            json.append("]");
+        }
+        json.append("}");
+        return json.toString();
     }
 
     /**

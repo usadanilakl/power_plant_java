@@ -82,7 +82,13 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Override
     public Loto save(Loto entity) {
         if(entity.isArchived()) throw new IllegalArgumentException("Archived loto cannot be saved");
-        lotoSnapshotRepo.save(entity.getLatestSnapshot());
+        // Never MANUFACTURE a snapshot here. getLatestSnapshot() creates one when the set is empty, and the sync apply
+        // saves the Loto BEFORE its LotoSnapshots have been applied — so this used to persist an empty phantom snapshot
+        // (dateCreated = now(), zero points) that then won max(dateCreated) and hid the permit's real LOTO points.
+        // Only persist a snapshot that genuinely exists.
+        LotoSnapshot latest = entity.getSnapshots() == null || entity.getSnapshots().isEmpty()
+                ? null : entity.getLatestSnapshot();
+        if (latest != null) lotoSnapshotRepo.save(latest);
         return this.repo.save(entity);
     }
 

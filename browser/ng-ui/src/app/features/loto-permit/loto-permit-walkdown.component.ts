@@ -151,22 +151,21 @@ export class LotoPermitWalkdownComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.lotoId = Number(this.route.snapshot.paramMap.get('id'));
     this.loading.set(true);
+    // cache-first for both detail and sessions so an in-progress walkdown can be continued with no signal
     const cached = this.store.getCachedDetail(this.lotoId);
-    if (cached) { this.detail.set(cached.detail); this.loading.set(false); }
-    try {
-      const [d, sess] = await Promise.all([
-        firstValueFrom(this.api.getDetail(this.lotoId)),
-        firstValueFrom(this.api.walkdownSessions(this.lotoId)).catch(() => [] as PwaWalkdownSession[]),
-      ]);
-      if (d) { this.detail.set(d); this.store.cacheDetail(d); }
-      this.sessions.set(sess);
-      void this.drawingSvc.precache(this.lotoId, 'permit');
-      void this.loadDrawingIndex();
-    } catch {
-      if (!this.detail()) this.error.set('Connect to the network to open this permit.');
-    } finally {
-      this.loading.set(false);
-    }
+    if (cached) this.detail.set(cached.detail);
+    const cachedSess = this.store.getCachedSessions(this.lotoId);
+    if (cachedSess) this.sessions.set(cachedSess);
+
+    const d = await firstValueFrom(this.api.getDetail(this.lotoId)).catch(() => null);
+    if (d) { this.detail.set(d); this.store.cacheDetail(d); }
+    const sess = await firstValueFrom(this.api.walkdownSessions(this.lotoId)).catch(() => null);
+    if (sess) { this.sessions.set(sess); this.store.cacheSessions(this.lotoId, sess); }
+
+    if (!this.detail()) this.error.set('Connect to the network to open this permit.');
+    this.loading.set(false);
+    void this.drawingSvc.precache(this.lotoId, 'permit');
+    void this.loadDrawingIndex();
   }
 
   private async loadDrawingIndex(): Promise<void> {
@@ -222,9 +221,12 @@ export class LotoPermitWalkdownComponent implements OnInit {
     this.tick.update(n => n + 1);
     const sid = this.sessionId();
     if (sid == null) return;
+    // never demote an already-queued ('pending'/'failed') submit back to 'draft' — that would strand the auto-flush
+    const existing = this.store.getWalkdownDraft(sid);
+    const status = existing && (existing.status === 'pending' || existing.status === 'failed') ? existing.status : 'draft';
     const draft: WalkdownDraft = {
       sessionId: sid, lotoId: this.lotoId, answers: this.answers, complete: this.complete(),
-      notes: this.notes(), savedAt: Date.now(), status: 'draft',
+      notes: this.notes(), savedAt: Date.now(), status,
     };
     this.store.saveWalkdownDraft(draft);
   }

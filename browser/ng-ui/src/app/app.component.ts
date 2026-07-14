@@ -4,11 +4,12 @@ import { ThemeService } from './core/theme.service';
 import { GlobalMessageComponent } from "./shared/global-message/global-message.component";
 import { ViewportService } from './services/viewport.service';
 import { QrScannerComponent } from "./shared/qr-scanner/qr-scanner.component";
+import { BradyPrinterManagerComponent } from './shared/brady-printer-manager/brady-printer-manager.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, GlobalMessageComponent, QrScannerComponent],
+  imports: [RouterOutlet, GlobalMessageComponent, QrScannerComponent, BradyPrinterManagerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

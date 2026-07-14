@@ -192,7 +192,18 @@ public class Loto extends BasePermitEntity {
         if (lotoPointDtos == null) lotoPointDtos = new HashSet<>();
         lotoPointDtos.add(dto);
         currentSnapshot.setLotoPointDtos(lotoPointDtos);
+        touchForSync(currentSnapshot);
         return currentSnapshot;
+    }
+
+    /**
+     * The permit's points live in {@code LotoSnapshot.lotoPointsData}, an {@code @ElementCollection}. Mutating ONLY a
+     * collection does not dirty the owner row, so Hibernate issues no UPDATE, {@code @PostUpdate} never fires, and the
+     * FieldChangeEntityListener emits nothing — i.e. a points-only edit would silently never sync (the same hazard
+     * documented for PhysicalObject's system membership). Touching dateModified dirties the row so the change emits.
+     */
+    private void touchForSync(LotoSnapshot snapshot) {
+        if (snapshot != null) snapshot.setDateModified(java.time.LocalDateTime.now());
     }
 
     private LotoSnapshot duplicateLatestSnapshot() {
@@ -223,9 +234,8 @@ public class Loto extends BasePermitEntity {
         });
 
         currentSnapshot.setLotoPointDtos(lotoPointDtos);
+        touchForSync(currentSnapshot);
         return currentSnapshot;
-
-
     }
 
     /*******************************************************************************************************************
@@ -281,14 +291,25 @@ public class Loto extends BasePermitEntity {
         return this.getLatestSnapshot();
     }
 
+    /**
+     * The snapshot holding current state. NOTE: for historical reasons this getter CREATES one when there is none —
+     * convenient for the authoring flows, but a landmine during sync.
+     *
+     * <p><b>Sync guard:</b> while an inbound sync apply is in flight we must NOT manufacture a snapshot. The sync
+     * order applies {@code Loto} BEFORE {@code LotoSnapshot}, so at that moment the permit legitimately has zero
+     * snapshots; creating one here (with {@code dateCreated = now()} and an EMPTY point set) produced a phantom that
+     * then won {@code max(dateCreated)} and shadowed the real snapshot — the permit rendered with no LOTO points
+     * while its approval/hang/verify history still showed. Returning null lets the real snapshots land first.</p>
+     */
     @Transient
     public LotoSnapshot getLatestSnapshot() {
         if (this.getSnapshots() == null || this.getSnapshots().isEmpty()) {
+            if (com.dk_power.power_plant_java.sevice.sync.SyncContext.isSyncingThread()) return null;
             return createNewSnapshot();
         }
         return this.getSnapshots().stream()
                 .max(Comparator.comparing(LotoSnapshot::getDateCreated))
-                .orElseGet(this::createNewSnapshot);
+                .orElse(null);
     }
 
     @Transient
