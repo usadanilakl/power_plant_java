@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { LotoStandardApiService } from './loto-standard-api.service';
+import { LotoPermitApiService } from '../loto-permit/loto-permit-api.service';
 import { PointDrawing } from './loto-standard.model';
+
+/** Which entity a drawing set belongs to — 'standard' (default) or 'permit' (LOTO permit). */
+export type DrawingSource = 'standard' | 'permit';
 
 /**
  * Offline store + fetcher for LOTO point drawings. Descriptors (per-point highlight rectangles) and the drawing
@@ -12,46 +16,57 @@ import { PointDrawing } from './loto-standard.model';
 @Injectable({ providedIn: 'root' })
 export class LotoDrawingService {
   private api = inject(LotoStandardApiService);
+  private permitApi = inject(LotoPermitApiService);
 
   private readonly DB = 'loto-drawings-v2'; // bumped: abandon caches from the earlier (empty) resolver
   private readonly VERSION = 1;
-  private readonly IMAGES = 'images';           // key: fileId  → Blob
-  private readonly DESCRIPTORS = 'descriptors'; // key: standardId → PointDrawing[]
+  private readonly IMAGES = 'images';           // key: fileId  → Blob (shared across sources — same bytes per fileId)
+  private readonly DESCRIPTORS = 'descriptors'; // key: descKey(source,id) → PointDrawing[]
   private dbPromise?: Promise<IDBDatabase>;
 
-  // ── Public API ─────────────────────────────────────────────────────────────
+  private fetchDescriptors(id: number, source: DrawingSource): Observable<PointDrawing[]> {
+    return source === 'permit' ? this.permitApi.getDrawings(id) : this.api.getDrawings(id);
+  }
+  private fetchImage(fileId: number, source: DrawingSource): Observable<Blob> {
+    return source === 'permit' ? this.permitApi.getDrawingImage(fileId) : this.api.getDrawingImage(fileId);
+  }
+  private descKey(id: number, source: DrawingSource): IDBValidKey {
+    return source === 'standard' ? id : `${source}:${id}`; // keep the standard's legacy numeric key untouched
+  }
 
-  /** Fetch + cache a standard's drawing descriptors and unique image blobs. Safe to call fire-and-forget. */
-  async precache(standardId: number): Promise<void> {
+  // ── Public API (source defaults to 'standard' so existing callers are unchanged) ─────────────
+
+  /** Fetch + cache an entity's drawing descriptors and unique image blobs. Safe to call fire-and-forget. */
+  async precache(id: number, source: DrawingSource = 'standard'): Promise<void> {
     let list: PointDrawing[];
     try {
-      list = await firstValueFrom(this.api.getDrawings(standardId));
+      list = await firstValueFrom(this.fetchDescriptors(id, source));
     } catch {
       return; // offline / error — keep whatever is already cached
     }
     if (!list || !list.length) return; // nothing to cache (don't persist an empty list)
-    await this.put(this.DESCRIPTORS, standardId, list).catch(() => {});
+    await this.put(this.DESCRIPTORS, this.descKey(id, source), list).catch(() => {});
     const uniqueIds = [...new Set(list.map(d => d.fileId))];
     for (const fileId of uniqueIds) {
       if (await this.hasImage(fileId)) continue;
       try {
-        const blob = await firstValueFrom(this.api.getDrawingImage(fileId));
+        const blob = await firstValueFrom(this.fetchImage(fileId, source));
         if (blob && blob.size) await this.put(this.IMAGES, fileId, blob);
       } catch { /* a missing/unavailable drawing shouldn't fail the batch */ }
     }
   }
 
   /**
-   * All descriptors for a standard, cache-first. Returns `null` when it genuinely can't determine them
+   * All descriptors for an entity, cache-first. Returns `null` when it genuinely can't determine them
    * (offline and never cached, or the endpoint errored) so callers can tell "no drawings" from "unknown".
    */
-  async drawingDescriptors(standardId: number): Promise<PointDrawing[] | null> {
-    const cached = await this.get<PointDrawing[]>(this.DESCRIPTORS, standardId);
+  async drawingDescriptors(id: number, source: DrawingSource = 'standard'): Promise<PointDrawing[] | null> {
+    const cached = await this.get<PointDrawing[]>(this.DESCRIPTORS, this.descKey(id, source));
     if (cached && cached.length) return cached; // only trust a non-empty cache; re-fetch if empty/absent
     try {
-      const list = await firstValueFrom(this.api.getDrawings(standardId));
+      const list = await firstValueFrom(this.fetchDescriptors(id, source));
       if (list) {
-        if (list.length) await this.put(this.DESCRIPTORS, standardId, list).catch(() => {});
+        if (list.length) await this.put(this.DESCRIPTORS, this.descKey(id, source), list).catch(() => {});
         return list;
       }
       return null;
@@ -61,16 +76,16 @@ export class LotoDrawingService {
   }
 
   /** Cached descriptors for a single point. */
-  async drawingsForPoint(standardId: number, pointId: number): Promise<PointDrawing[]> {
-    return ((await this.drawingDescriptors(standardId)) ?? []).filter(d => d.pointId === pointId);
+  async drawingsForPoint(id: number, pointId: number, source: DrawingSource = 'standard'): Promise<PointDrawing[]> {
+    return ((await this.drawingDescriptors(id, source)) ?? []).filter(d => d.pointId === pointId);
   }
 
   /** An object URL for a drawing image (from cache, else fetched + cached). Caller must revokeObjectURL. */
-  async imageObjectUrl(fileId: number): Promise<string | null> {
+  async imageObjectUrl(fileId: number, source: DrawingSource = 'standard'): Promise<string | null> {
     let blob = await this.getImage(fileId);
     if (!blob) {
       try {
-        blob = await firstValueFrom(this.api.getDrawingImage(fileId));
+        blob = await firstValueFrom(this.fetchImage(fileId, source));
         if (blob && blob.size) await this.put(this.IMAGES, fileId, blob);
       } catch { blob = null; }
     }

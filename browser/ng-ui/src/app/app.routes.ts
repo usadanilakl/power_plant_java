@@ -133,6 +133,28 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
+      path: 'loto',
+      loadComponent: () => import('./features/loto-permit/loto-permit-list.component').then(m => m.LotoPermitListComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'loto/:id/hang',
+      loadComponent: () => import('./features/loto-permit/loto-permit-phase.component').then(m => m.LotoPermitPhaseComponent),
+      data: { mode: 'HANG' },
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'loto/:id/verify',
+      loadComponent: () => import('./features/loto-permit/loto-permit-phase.component').then(m => m.LotoPermitPhaseComponent),
+      data: { mode: 'VERIFY' },
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'loto/:id/walkdown',
+      loadComponent: () => import('./features/loto-permit/loto-permit-walkdown.component').then(m => m.LotoPermitWalkdownComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
+    },
+    {
       path: 'maximo',
       loadComponent: () => import('./features/maximo/maximo-page.component').then(m => m.MaximoPageComponent),
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]

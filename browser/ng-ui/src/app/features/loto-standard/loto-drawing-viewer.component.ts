@@ -1,7 +1,7 @@
 import {
   Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild, computed, inject, signal,
 } from '@angular/core';
-import { LotoDrawingService } from './loto-drawing.service';
+import { DrawingSource, LotoDrawingService } from './loto-drawing.service';
 import { PointDrawing } from './loto-standard.model';
 
 interface DrawingFile {
@@ -91,9 +91,12 @@ interface DrawingFile {
   `]
 })
 export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
+  /** The entity id whose drawings to show — a standard id (default) or a LOTO permit id when source='permit'. */
   @Input({ required: true }) standardId!: number;
   @Input({ required: true }) pointId!: number;
   @Input() title = 'Point';
+  /** Where the drawings come from — 'standard' (default) or 'permit'. */
+  @Input() source: DrawingSource = 'standard';
   @Output() close = new EventEmitter<void>();
 
   @ViewChild('viewport') viewport?: ElementRef<HTMLElement>;
@@ -141,7 +144,7 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     document.body.appendChild(this.host.nativeElement);
     try {
-      const list = await this.drawingService.drawingsForPoint(this.standardId, this.pointId);
+      const list = await this.drawingService.drawingsForPoint(this.standardId, this.pointId, this.source);
       this.drawings.set(list);
       if (!this.files().length) { this.error.set('No drawing linked to this point.'); this.loading.set(false); return; }
       await this.load(0);
@@ -161,7 +164,7 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     this.index.set(i);
     this.natW.set(0); this.natH.set(0);
     const f = this.files()[i];
-    const url = await this.drawingService.imageObjectUrl(f.fileId);
+    const url = await this.drawingService.imageObjectUrl(f.fileId, this.source);
     if (!url) { this.error.set('Drawing image is not available offline. Reconnect to fetch it.'); this.loading.set(false); return; }
     this.objectUrl = url;
     this.imgUrl.set(url);

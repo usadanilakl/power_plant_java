@@ -229,7 +229,7 @@ export class HomePageComponent {
   plantTools: PlantTool[] = [
     { title: 'Rounds', description: 'Perform operator rounds, log out-of-range', icon: '🔁', route: '/rounds' },
     { title: 'Maximo', description: 'Work orders, requests, PMs, parts', icon: '🏭', route: '/maximo' },
-    { title: 'LOTO', description: 'Lockout/tagout points, boxes, locks', icon: '🔒', url: `${APP_BASE}/loto/loto` },
+    { title: 'LOTO', description: 'Hang, verify, and walk down LOTO permits', icon: '🔒', route: '/loto' },
     { title: 'LOTO Standards', description: 'View, verify, and walk down standards', icon: '📚', route: '/loto-standards' },
     { title: 'Qualifications', description: 'Manage personnel qualifications and QR codes', icon: 'ID', route: '/qualification-management' }
   ];
