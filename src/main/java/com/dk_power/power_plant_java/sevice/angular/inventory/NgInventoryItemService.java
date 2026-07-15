@@ -244,6 +244,16 @@ public class NgInventoryItemService {
         repo.findById(id).ifPresent(entity -> {
             entity.setDeleted(true);
             repo.save(entity);
+            // Push hard-delete to SharePoint so the row disappears from the
+            // Inventory list. Best-effort: local + hub soft-delete already
+            // happened above via repo.save; SP failure must not undo that.
+            if (entity.getSharepointId() != null && !entity.getSharepointId().isBlank()) {
+                try {
+                    spAdapter.delete(entity.getSharepointId());
+                } catch (Exception e) {
+                    log.warn("[Inventory] SP delete failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
+                }
+            }
         });
     }
 

@@ -62,6 +62,15 @@ public class InventoryItemSharePointAdapter {
                 "changeStatus InventoryItem");
     }
 
+    /** Hard-delete the SharePoint list item. Local delete is soft (deleted=true);
+     *  SP is hard-deleted so the row disappears from the "Inventory" list. */
+    public void delete(String sharepointId) {
+        spService.executeWithFallback(
+                () -> { certAccess.deleteListItem(LIST_TITLE, sharepointId); return null; },
+                () -> { paDelete(sharepointId); return null; },
+                "delete InventoryItem");
+    }
+
     public List<PaAttachmentDto> getAttachments(String sharepointId) {
         return spService.executeWithFallback(
                 () -> certGetAttachments(sharepointId),
@@ -170,6 +179,15 @@ public class InventoryItemSharePointAdapter {
         req.setData(Map.of("Status", status));
         PaResponseDto resp = v2Client.inventory(req);
         if (!resp.isSuccess()) throw new RuntimeException("PA-V2 changeStatus Inventory failed: " + resp.getMessage());
+    }
+
+    private void paDelete(String sharepointId) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("delete");
+        req.setEntity("item");
+        req.setId(sharepointId);
+        PaResponseDto resp = v2Client.inventory(req);
+        if (!resp.isSuccess()) throw new RuntimeException("PA-V2 delete Inventory failed: " + resp.getMessage());
     }
 
     private List<PaAttachmentDto> paGetAttachments(String sharepointId) {

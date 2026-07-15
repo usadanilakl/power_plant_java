@@ -22,13 +22,17 @@ import java.util.List;
  * three gap categories; every missing-from-eBinder chemical's local PDFs are attached so the
  * recipient can upload them to the eBinder.
  * <p>
- * <b>One email per run.</b> Uses Microsoft Graph's upload-session flow
+ * <b>Sending strategy.</b> Uses Microsoft Graph's upload-session flow
  * ({@link com.dk_power.power_plant_java.sevice.email.ApiEmailService#sendEmailWithLargeAttachments})
- * so the ~4 MB per-request ceiling of the {@code sendMail} action doesn't apply — the operator
- * receives a single email with every relevant PDF attached, regardless of the combined size.
- * PDFs individually above {@link #MAX_SINGLE_ATTACHMENT_BYTES} (100 MB) are still skipped — no
- * mail server we'd hand this to would accept an attachment that large — and surfaced in
- * {@code skippedReasons}.
+ * so each email can carry up to {@link #MAX_TOTAL_MESSAGE_BYTES} of attachments (vastly more than
+ * the ~4 MB {@code sendMail} cap). If the total attachment size exceeds that per-email cap,
+ * attachments are split into a minimum number of "Part N of M" emails — a batch of 90 MB of
+ * PDFs becomes ~5 emails rather than the ~100 we'd have needed under the sendMail cap.
+ * <p>
+ * The per-email cap exists because Exchange Online's mailbox message-size limit is a
+ * tenant-level policy (typical default 25-50 MB); we can't discover it in advance, so we default
+ * to a conservative value that works on the common configurations. If your tenant allows more,
+ * override via the {@code sds.gap-report.email.max-message-mb} property.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,6 +45,20 @@ public class SdsGapReportEmailService {
      * hits this it's almost certainly corrupted or an unrelated file — skip and report.
      */
     private static final long MAX_SINGLE_ATTACHMENT_BYTES = 100L * 1024 * 1024;
+
+    /**
+     * Per-email combined-attachment ceiling. Exchange Online's default mailbox message-size limit
+     * is 25 MB for many tenants; some are raised to 50 MB or 150 MB. 20 MB of raw PDF bytes,
+     * after MIME/base64 encoding by Exchange, lands around 27 MB — comfortably under most
+     * tenants' policy, and if yours is stricter you can lower it. If yours is more generous,
+     * raise it via the property override.
+     */
+    @org.springframework.beans.factory.annotation.Value("${sds.gap-report.email.max-message-mb:20}")
+    private int maxMessageMb;
+
+    /** Convenience accessor — returns the configured cap in raw bytes. */
+    private long maxTotalMessageBytes() { return maxMessageMb * 1024L * 1024L; }
+
 
     private final SdsSeedService seedService;
     private final PermitAttachmentRepo attachmentRepo;
@@ -101,45 +119,94 @@ public class SdsGapReportEmailService {
             }
         }
 
-        long totalBytes = all.stream().mapToLong(AttachmentWithGap::size).sum();
-        List<EmailAttachment> emailAtts = all.stream().map(AttachmentWithGap::att).toList();
-        String subject = "SDS Gap Report — " + LocalDate.now();
-        String body = buildHtmlBody(report, all, totalBytes, result);
-
-        EmailRequest req = EmailRequest.builder()
-                .to(to)
-                .cc((cc != null && !cc.isBlank()) ? cc : null)
-                .subject(subject)
-                .body(body)
-                .attachments(emailAtts)
-                .html(true)
-                .build();
-
-        try {
-            if (emailAtts.isEmpty()) {
-                // No attachments — the sendMail path is faster and cheaper (one request vs the
-                // upload-session dance).
-                emailFacadeService.sendEmail(req);
-            } else {
-                // Any attachment total → upload-session path so we never hit sendMail's 4 MB cap.
-                emailFacadeService.sendEmailLarge(req);
+        // First-fit pack into chunks whose total raw bytes stay under the tenant's mailbox
+        // message-size policy. Each chunk becomes one outbound email; the recipient sees
+        // "Part N of M" in the subject when there's more than one.
+        List<List<AttachmentWithGap>> chunks = new ArrayList<>();
+        List<AttachmentWithGap> current = new ArrayList<>();
+        long currentBytes = 0;
+        long capBytes = maxTotalMessageBytes();
+        for (AttachmentWithGap a : all) {
+            if (currentBytes + a.size() > capBytes && !current.isEmpty()) {
+                chunks.add(current);
+                current = new ArrayList<>();
+                currentBytes = 0;
             }
+            current.add(a);
+            currentBytes += a.size();
+        }
+        if (!current.isEmpty()) chunks.add(current);
+        if (chunks.isEmpty()) chunks.add(List.of());   // report-only path — still send one email
+
+        int totalParts = chunks.size();
+        long totalBytesAll = all.stream().mapToLong(AttachmentWithGap::size).sum();
+        String baseSubject = "SDS Gap Report — " + LocalDate.now();
+        int sentParts = 0;
+        int sentAttachments = 0;
+        long sentBytes = 0;
+        List<String> failures = new ArrayList<>();
+
+        for (int i = 0; i < totalParts; i++) {
+            int partNum = i + 1;
+            List<AttachmentWithGap> chunk = chunks.get(i);
+            long chunkBytes = chunk.stream().mapToLong(AttachmentWithGap::size).sum();
+            List<EmailAttachment> chunkAtts = chunk.stream().map(AttachmentWithGap::att).toList();
+            String subject = totalParts > 1
+                    ? baseSubject + " (Part " + partNum + " of " + totalParts + ")"
+                    : baseSubject;
+            String body = buildHtmlBody(report, chunk, chunkBytes, partNum, totalParts, result);
+
+            EmailRequest req = EmailRequest.builder()
+                    .to(to)
+                    .cc((cc != null && !cc.isBlank()) ? cc : null)
+                    .subject(subject)
+                    .body(body)
+                    .attachments(chunkAtts)
+                    .html(true)
+                    .build();
+
+            try {
+                if (chunkAtts.isEmpty()) {
+                    // Report-only: sendMail is cheaper than the upload-session dance.
+                    emailFacadeService.sendEmail(req);
+                } else {
+                    emailFacadeService.sendEmailLarge(req);
+                }
+                sentParts++;
+                sentAttachments += chunkAtts.size();
+                sentBytes += chunkBytes;
+            } catch (Exception e) {
+                failures.add("Part " + partNum + " of " + totalParts + ": " + e.getMessage());
+                log.warn("[SDS] gap report part {}/{} failed ({} atts, {} MB): {}",
+                        partNum, totalParts, chunkAtts.size(), chunkBytes / (1024.0 * 1024.0),
+                        e.getMessage(), e);
+            }
+        }
+
+        result.setAttachmentsSent(sentAttachments);
+        result.setTotalAttachmentBytes(sentBytes);
+        result.setPartsSent(sentParts);
+
+        if (sentParts == totalParts) {
             result.setSent(true);
-            result.setAttachmentsSent(emailAtts.size());
-            result.setTotalAttachmentBytes(totalBytes);
-            result.setPartsSent(1);
             if (!includeAttachments) {
                 result.setMessage(String.format("Sent to %s — report only (no attachments)", to));
-            } else {
+            } else if (totalParts == 1) {
                 result.setMessage(String.format("Sent to %s — %d PDF(s) attached (%.1f MB total)",
-                        to, emailAtts.size(), totalBytes / (1024.0 * 1024.0)));
+                        to, sentAttachments, sentBytes / (1024.0 * 1024.0)));
+            } else {
+                result.setMessage(String.format("Sent to %s in %d parts — %d PDF(s), %.1f MB total (per-email cap %d MB)",
+                        to, sentParts, sentAttachments, sentBytes / (1024.0 * 1024.0), maxMessageMb));
             }
-        } catch (Exception e) {
+        } else if (sentParts > 0) {
+            result.setSent(true);   // partial delivery — some parts arrived, others didn't
+            result.setMessage(String.format("Sent %d of %d parts to %s — %d PDF(s) delivered. Failures: %s",
+                    sentParts, totalParts, to, sentAttachments, String.join("; ", failures)));
+        } else {
             result.setSent(false);
-            result.setPartsSent(0);
-            result.setMessage("Send failed: " + e.getMessage());
-            log.warn("[SDS] gap report email failed ({} atts, {} MB): {}",
-                    emailAtts.size(), totalBytes / (1024.0 * 1024.0), e.getMessage(), e);
+            result.setMessage("All parts failed: " + String.join("; ", failures));
+            log.warn("[SDS] gap report — every part failed (attempted {} atts, {} MB total)",
+                    all.size(), totalBytesAll / (1024.0 * 1024.0));
         }
         return result;
     }
@@ -174,16 +241,28 @@ public class SdsGapReportEmailService {
     }
 
     private String buildHtmlBody(SdsGapReportDto report, List<AttachmentWithGap> attachments,
-                                 long totalBytes, SdsGapReportEmailResultDto result) {
+                                 long chunkBytes, int partNum, int totalParts,
+                                 SdsGapReportEmailResultDto result) {
         StringBuilder sb = new StringBuilder();
         sb.append("<html><body style='font-family:Segoe UI,Arial,sans-serif;color:#222;'>");
-        sb.append("<h2 style='color:#8D6E63;margin:0 0 8px;'>SDS Gap Report</h2>");
+        sb.append("<h2 style='color:#8D6E63;margin:0 0 8px;'>SDS Gap Report");
+        if (totalParts > 1) sb.append(" — Part ").append(partNum).append(" of ").append(totalParts);
+        sb.append("</h2>");
         sb.append("<p style='margin:0 0 16px;color:#555;font-size:13px;'>Generated ")
           .append(LocalDate.now())
           .append(" — eBinder catalog: ").append(report.getCatalogCount())
           .append(" chemicals; local active: ").append(report.getActiveCount()).append(".</p>");
 
-        sb.append("<h3 style='margin:16px 0 4px;'>Missing on eBinder (PDFs attached) — ")
+        if (totalParts > 1) {
+            sb.append("<p style='margin:0 0 12px;padding:8px 12px;background:#fff8e1;border-left:4px solid #f9a825;font-size:13px;'>")
+              .append("This is part ").append(partNum).append(" of ").append(totalParts)
+              .append(". Attachments were split across multiple emails to stay under the mail server's ")
+              .append("message-size policy — this part carries ").append(attachments.size())
+              .append(" PDF(s) (").append(String.format("%.1f", chunkBytes / (1024.0 * 1024.0))).append(" MB).")
+              .append("</p>");
+        }
+
+        sb.append("<h3 style='margin:16px 0 4px;'>Missing on eBinder (PDFs attached across all parts) — ")
           .append(report.getMissingFromEbinder().size()).append("</h3>");
         sb.append("<p style='margin:0 0 8px;color:#555;font-size:13px;'>These chemicals exist in the local inventory ")
           .append("but have no matching record in the live eBinder. The attached PDFs are theirs — please upload each ")
@@ -191,8 +270,9 @@ public class SdsGapReportEmailService {
         appendTable(sb, report.getMissingFromEbinder());
 
         if (!attachments.isEmpty()) {
-            sb.append("<h4 style='margin:12px 0 4px;'>Attached PDFs (")
-              .append(attachments.size()).append(")</h4>");
+            sb.append("<h4 style='margin:12px 0 4px;'>PDFs attached to this ")
+              .append(totalParts > 1 ? "part" : "email")
+              .append(" (").append(attachments.size()).append(")</h4>");
             sb.append("<ul style='margin:0 0 12px 18px;font-size:13px;color:#444;'>");
             for (AttachmentWithGap a : attachments) {
                 sb.append("<li>").append(escape(displayName(a.gap())))
@@ -213,7 +293,7 @@ public class SdsGapReportEmailService {
         sb.append("<hr style='margin:16px 0;border:none;border-top:1px solid #ddd;'>");
         sb.append("<p style='margin:0;color:#555;font-size:13px;'>Attachments in this email: ")
           .append(attachments.size()).append(" — ")
-          .append(String.format("%.1f", totalBytes / (1024.0 * 1024.0))).append(" MB.");
+          .append(String.format("%.1f", chunkBytes / (1024.0 * 1024.0))).append(" MB.");
         if (result.getAttachmentsSkipped() > 0) {
             sb.append(" <b>").append(result.getAttachmentsSkipped()).append(" file(s) skipped (over per-attachment cap)</b>:");
             sb.append("<ul style='margin:4px 0 0 16px;'>");
