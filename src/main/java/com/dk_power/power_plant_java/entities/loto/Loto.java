@@ -215,6 +215,7 @@ public class Loto extends BasePermitEntity {
             newSnapshot.setDateCreated(java.time.LocalDateTime.now());
             newSnapshot.setLoto(this);
             newSnapshot.clearLifecycleEventFields();
+            newSnapshot.setSnapshotSeq(nextSnapshotSeq());
             this.snapshots.add(newSnapshot);
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
@@ -307,9 +308,24 @@ public class Loto extends BasePermitEntity {
             if (com.dk_power.power_plant_java.sevice.sync.SyncContext.isSyncingThread()) return null;
             return createNewSnapshot();
         }
+        // Order by the synced monotonic snapshotSeq (deterministic across devices regardless of
+        // apply order); fall back to dateCreated only for legacy rows that predate the field.
         return this.getSnapshots().stream()
-                .max(Comparator.comparing(LotoSnapshot::getDateCreated))
+                .max(Comparator
+                        .comparing((LotoSnapshot s) -> s.getSnapshotSeq() == null ? Integer.MIN_VALUE : s.getSnapshotSeq())
+                        .thenComparing(s -> s.getDateCreated() == null ? java.time.LocalDateTime.MIN : s.getDateCreated()))
                 .orElse(null);
+    }
+
+    /** Next per-permit snapshot sequence number: max existing seq + 1 (0 for the first). */
+    private int nextSnapshotSeq() {
+        if (this.snapshots == null) return 0;
+        return this.snapshots.stream()
+                .map(LotoSnapshot::getSnapshotSeq)
+                .filter(java.util.Objects::nonNull)
+                .max(Integer::compareTo)
+                .map(m -> m + 1)
+                .orElse(0);
     }
 
     @Transient
@@ -321,6 +337,7 @@ public class Loto extends BasePermitEntity {
         if (this.snapshots == null) {
             this.snapshots = new HashSet<>();
         }
+        newSnapshot.setSnapshotSeq(nextSnapshotSeq());
         this.snapshots.add(newSnapshot);
         return newSnapshot;
     }

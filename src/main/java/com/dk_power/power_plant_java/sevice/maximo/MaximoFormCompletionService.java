@@ -57,10 +57,33 @@ public class MaximoFormCompletionService {
     private final UserRepo userRepo;
     private final ObjectMapper objectMapper;
 
-    /** Save the submission then complete it (one call for the fill page). */
+    /**
+     * Per-(formKey|wonum) locks so two in-flight completions of the same submission can't both attach. The
+     * sequential no-op guard in {@link #complete} only fires once the first has committed COMPLETED; without
+     * this lock, two concurrent "Submit" taps (e.g. a slow mobile request the user retries) both read DRAFT and
+     * each render+attach a PDF — the duplicate-attachment bug. Single-instance hub, so a JVM lock is sufficient.
+     */
+    private final java.util.concurrent.ConcurrentMap<String, Object> completionLocks =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Save the submission then complete it (one call for the fill page). Serialized per submission. */
     public MaximoFormSubmissionDto completeFromDto(MaximoFormSubmissionDto dto) {
-        MaximoFormSubmissionDto saved = formService.saveDraft(dto);
-        return complete(saved.getId());
+        String key = lockKey(dto);
+        if (key == null) {   // let saveDraft raise the precise validation error, unlocked
+            return complete(formService.saveDraft(dto).getId(), dto != null && dto.isCompleteWo());
+        }
+        Object lock = completionLocks.computeIfAbsent(key, k -> new Object());
+        synchronized (lock) {
+            MaximoFormSubmissionDto saved = formService.saveDraft(dto);
+            return complete(saved.getId(), dto.isCompleteWo());
+        }
+    }
+
+    /** The saveDraft dedup key ({@code templateFormKey|wonum}); null when either part is missing. */
+    private static String lockKey(MaximoFormSubmissionDto dto) {
+        if (dto == null || dto.getTemplateFormKey() == null || dto.getTemplateFormKey().isBlank()
+                || dto.getWonum() == null || dto.getWonum().isBlank()) return null;
+        return dto.getTemplateFormKey().trim() + "|" + dto.getWonum().trim();
     }
 
     /**
@@ -84,6 +107,14 @@ public class MaximoFormCompletionService {
     }
 
     public MaximoFormSubmissionDto complete(Long submissionId) {
+        return complete(submissionId, false);
+    }
+
+    /**
+     * @param forceCompleteWo when the template has no {@code completeWoStatus}, still advance the WO to COMP.
+     *                        The mobile "Submit &amp; complete" flow sets this so performing a PM closes its WO.
+     */
+    public MaximoFormSubmissionDto complete(Long submissionId, boolean forceCompleteWo) {
         MaximoFormSubmission s = submissionRepo.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown submission " + submissionId));
 
@@ -171,8 +202,11 @@ public class MaximoFormCompletionService {
             log.warn("[MaximoForms] worklog write failed for {}: {}", s.getWonum(), e.getMessage());
         }
 
-        // 3. Advance the WO status if the template asks for it.
-        String targetStatus = (t == null) ? null : t.getCompleteWoStatus();
+        // 3. Advance the WO status. The template's completeWoStatus wins; otherwise the caller can ask for COMP
+        //    (the mobile "Submit & complete" flow), so performing a PM actually closes its work order.
+        String templateStatus = (t == null) ? null : t.getCompleteWoStatus();
+        String targetStatus = (templateStatus != null && !templateStatus.isBlank()) ? templateStatus
+                : (forceCompleteWo ? "COMP" : null);
         if (targetStatus != null && !targetStatus.isBlank()) {
             try {
                 workOrders.changeStatus(href, targetStatus, summary);

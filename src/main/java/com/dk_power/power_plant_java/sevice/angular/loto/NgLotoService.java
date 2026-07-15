@@ -418,6 +418,15 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                     if (!caActivated) {
                         throw new IllegalStateException("Control Authority must Activate the LOTO before it can be marked Active");
                     }
+                    // Defense-in-depth: re-derive completeness in case a point was added or unmarked
+                    // between CA activation and this Building → Active flip (caActivatedBy stays set).
+                    LotoSnapshot latest = loto.getLatestSnapshot();
+                    java.util.Set<Long> pointIds = new java.util.HashSet<>();
+                    for (var p : latest.getLotoPointDtos()) { if (p != null && p.getId() != null) pointIds.add(p.getId()); }
+                    if (!latest.getPointHungBy().keySet().containsAll(pointIds)
+                            || !latest.getPointVerifiedBy().keySet().containsAll(pointIds)) {
+                        throw new IllegalStateException("Cannot activate: every point must be hung and independently verified");
+                    }
                 }
                 LotoSnapshot latest = loto.getLatestSnapshot();
                 latest.setPersonnelSnapshot(loto.getPersonnelJson());
@@ -613,11 +622,19 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "CA activation", "Building");
-        // Guard: hung + verified must be done before CA can activate
-        boolean hung = loto.getSnapshots().stream().anyMatch(sn -> sn.getHungBy() != null);
-        boolean verified = loto.getSnapshots().stream().anyMatch(sn -> sn.getVerifiedBy() != null);
+        // Guard: every CURRENT point must be hung AND independently verified before CA can activate.
+        // The aggregate hungBy/verifiedBy stamps alone are not sufficient — a point can be added or
+        // unmarked in Building after "Hanging Complete"/"Verified Complete" were signed, and those
+        // stamps would still read true. Re-derive completeness from the live point set.
+        java.util.Set<Long> currentPointIds = loto.getLotoPointDtos().stream()
+                .map(LotoPointIdDto::getId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        boolean hung = loto.getSnapshots().stream().anyMatch(sn -> sn.getHungBy() != null)
+                && aggregatePointKeys(loto, true).containsAll(currentPointIds);
+        boolean verified = loto.getSnapshots().stream().anyMatch(sn -> sn.getVerifiedBy() != null)
+                && aggregatePointKeys(loto, false).containsAll(currentPointIds);
         if (!hung || !verified) {
-            throw new IllegalStateException("LOTO must be Hung and Verified before Control Authority can activate it");
+            throw new IllegalStateException("Every LOTO point must be hung AND independently verified before Control Authority can activate it");
         }
         LotoSnapshot s = loto.recordCaActivated(currentAuditActor());
         lotoSnapshotRepo.save(s);
@@ -665,6 +682,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requirePerPointHangVerifyStatus(loto, "Mark point hung", pointId);
+        // CA must approve the LOTO for hanging before any point is hung (Building initial build).
+        // Mod/Test re-hangs run against a cloned snapshot whose approval stamp was cleared on clone,
+        // and are instead gated by the needs-rehang check in requirePerPointHangVerifyStatus above.
+        String hangStatus = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Building".equals(hangStatus)
+                && loto.getSnapshots().stream().noneMatch(sn -> sn.getCaApprovedForHangingBy() != null)) {
+            throw new IllegalStateException("Control Authority must approve the LOTO for hanging before points can be hung");
+        }
         LotoSnapshot latest = loto.getLatestSnapshot();
         enforcePrerequisitesForHang(loto, latest, pointId, acknowledgedSafetyConditions);
         LotoSnapshot s = loto.markPointHung(pointId, currentUserName(), notes);
@@ -726,18 +751,17 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         LotoSnapshot latest = loto.getLatestSnapshot();
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
         if ("Building".equals(status)) {
-            // Verify is only available after the aggregate "Hanging Complete" sign-off has been
-            // signed by one of the hangers (markHung above). That gate already enforces all
-            // points are hung, so we just check the aggregate stamp here.
             boolean hangingComplete = loto.getSnapshots().stream().anyMatch(sn -> sn.getHungBy() != null);
             if (!hangingComplete) {
                 throw new IllegalStateException("Cannot verify points until 'Hanging Complete' is signed by one of the hangers");
             }
-        } else {
-            // During Mod/Test resume: the affected point must already be re-hung.
-            if (!latest.getPointHungBy().containsKey(pointId)) {
-                throw new IllegalStateException("Cannot verify point " + pointId + " — it must be re-hung first");
-            }
+        }
+        // A point may only be verified if it is itself currently hung — enforced in EVERY status.
+        // Building: catches a point added or unmarked after the aggregate "Hanging Complete" sign-off,
+        // whose stamp would otherwise let an un-hung point be "verified" with no second-person check.
+        // Mod/Test: the re-hang flow requires the affected point to be re-hung first.
+        if (!latest.getPointHungBy().containsKey(pointId)) {
+            throw new IllegalStateException("Cannot verify point " + pointId + " — it must be hung first");
         }
         enforcePrerequisitesForVerify(loto, latest, pointId, acknowledgedSafetyConditions);
         // Second-person rule: the user who hung this point cannot verify it.
@@ -1371,28 +1395,4 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return result;
     }
 
-    /**
-     * Activate all LOTOs that have no status or are in Building status.
-     * Sets their permitStatus to "Active" and updates box LED color.
-     */
-    @Transactional
-    public String activateAllLotos() {
-        List<Loto> allLotos = repo.findAll();
-        int activated = 0;
-
-        for (Loto loto : allLotos) {
-            String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
-            if (status == null || status.isEmpty() || "Building".equals(status)) {
-                loto.setPermitStatus(ngValueService.createValue("Permit Status", "Active"));
-                repo.save(loto);
-
-                if (loto.getLotoBox() != null) {
-                    lotoBoxService.updateBoxColorForStatus(loto.getLotoBox(), "Active");
-                }
-                activated++;
-            }
-        }
-
-        return "Activated " + activated + " LOTOs";
-    }
 }

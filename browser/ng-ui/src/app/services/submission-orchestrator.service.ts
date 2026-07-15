@@ -1181,6 +1181,78 @@ export class SubmissionOrchestratorService {
     );
   }
 
+  /**
+   * Get all active inventory items, with PA fallback when the hub is offline.
+   * Falls through: hub → PA getAll (entity=item) → empty list.
+   * PA returns SharePoint column names; we map them into the shape the
+   * inventory UI expects (title/serialNumber/manufacturer/model/qrToken/etc).
+   */
+  getInventoryItems(type?: string): Observable<any[]> {
+    console.log('[Orchestrator] getInventoryItems called — this line proves the new bundle is running');
+    return this.serverApi.getActiveInventoryItems(type).pipe(
+      catchError(serverError => {
+        console.warn('[Orchestrator] Hub inventory list failed, trying PA getAll:', serverError?.message);
+        if (!this.powerAutomate.isV2Configured('inventory')) {
+          return of([]);
+        }
+        const paRequest = {
+          actionType: 'getAll',
+          entity: 'item',
+          data: {},
+        };
+        return this.powerAutomate.submitV2('inventory', paRequest).pipe(
+          map(response => {
+            const isSuccess = response?.success === true || String(response?.success).toLowerCase() === 'true';
+            if (!isSuccess || !Array.isArray(response?.data)) {
+              console.warn('[Orchestrator] PA inventory getAll returned no data:', response?.message);
+              return [];
+            }
+            let items = response.data.map((row: any) => this.mapPaInventoryItem(row));
+            // The hub only returns ACTIVE items (not soft-deleted, and only in
+            // ACTIVE statuses). PA has no such filter server-side, so we
+            // approximate here: hide items whose status is Retired.
+            items = items.filter(it => it.statusName !== 'Retired');
+            if (type) {
+              items = items.filter(it =>
+                (it.itemTypeName || '').toLowerCase() === type.toLowerCase()
+              );
+            }
+            return items;
+          }),
+          catchError(paError => {
+            console.error('[Orchestrator] PA inventory getAll also failed:', paError?.message);
+            return of([]);
+          })
+        );
+      })
+    );
+  }
+
+  private mapPaInventoryItem(row: any): any {
+    // Map SharePoint column names → the shape the PWA inventory UI expects.
+    // Keep the SharePoint numeric ID as `sharepointId`; the UI keys off
+    // qrToken for scan-lookup, so a missing hub `id` is not fatal.
+    return {
+      id: null,
+      sharepointId: row.ID != null ? String(row.ID) : (row.Id != null ? String(row.Id) : null),
+      localUuid: row.PwaId ?? null,
+      title: row.Title ?? '',
+      itemTypeName: row.ItemType ?? '',
+      statusName: row.Status ?? 'Available',
+      locationName: row.Location ?? '',
+      serialNumber: row.SerialNumber ?? '',
+      manufacturer: row.Manufacturer ?? '',
+      model: row.Model ?? '',
+      description: row.Description ?? '',
+      qrToken: row.QrToken ?? '',
+      currentLocation: row.CurrentLocation ?? '',
+      currentHolderName: row.CurrentHolderName ?? '',
+      currentHolderEmail: row.CurrentHolderEmail ?? '',
+      submitterName: row.SubmitterName ?? '',
+      submitterEmail: row.SubmitterEmail ?? '',
+    };
+  }
+
   private tryPowerAutomateFieldList(payload: any, localUuid: string): Observable<SubmissionResult> {
     if (!this.powerAutomate.isV2Configured('fieldList')) {
       return of({

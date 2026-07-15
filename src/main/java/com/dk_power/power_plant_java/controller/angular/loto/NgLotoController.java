@@ -507,15 +507,4 @@ public class NgLotoController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
     }
-
-    @PostMapping("/activate-all")
-    public ResponseEntity<NgApiResponse<String>> activateAllLotos() {
-        try {
-            String result = ngLotoService.activateAllLotos();
-            return ResponseEntity.ok(new NgApiResponse<>("OK", result));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
-        }
-    }
 }

@@ -707,9 +707,4 @@ export class AdminFunctionalitiesService {
     );
   }
 
-  activateAllLotos(): Observable<SpringApiResponse<string>> {
-    return this.http.post<SpringApiResponse<string>>(
-      `${environment.apiUrl}/lotos/activate-all`, {}
-    );
-  }
 }

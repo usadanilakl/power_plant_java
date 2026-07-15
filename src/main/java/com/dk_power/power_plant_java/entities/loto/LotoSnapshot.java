@@ -46,6 +46,16 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
     private String snapshotReason;
 
+    /**
+     * Monotonic per-permit sequence number, assigned at creation time and SYNCED (unlike
+     * {@code dateCreated}, which is excluded from field-sync and re-minted by {@code @PrePersist}
+     * on the receiver at apply time). {@code Loto.getLatestSnapshot()} orders by this so a
+     * multi-snapshot permit (Test/Modification) resolves the same "current" snapshot on every
+     * device regardless of the order snapshots happen to be applied in. Null on legacy rows
+     * created before this field existed — the getter falls back to {@code dateCreated} for those.
+     */
+    private Integer snapshotSeq;
+
     // ---- Lifecycle event fields (each populated only on the snapshot that recorded that event) ----
 
     private String caApprovedForHangingBy;

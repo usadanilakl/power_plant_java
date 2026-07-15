@@ -1,0 +1,74 @@
+@if (svc.isVisible()) {
+  <app-popup [title]="'Print via System Printer'" [size]="'medium'" [isOpen]="true" (close)="close()">
+    <div class="native-print-body">
+      <p class="hint">
+        Any printer installed on this computer works — pick it in the print dialog after clicking Print.
+        Adjust size below; the preview matches what will print at 100%.
+      </p>
+
+      <div class="preview-wrap">
+        <div class="preview-frame"
+             [style.width.in]="widthIn()"
+             [style.height.in]="heightIn()"
+             [style.transform]="'scale(' + previewScale() + ')'"
+             [style.transform-origin]="'top left'">
+          <div class="label"
+               [style.padding.in]="0.04"
+               [style.font-size.pt]="fontPt()">
+            @if (withQr() && qrSvgHtml()) {
+              <div class="qr" [style.width.in]="qrEdgeIn()" [style.height.in]="qrEdgeIn()" [innerHTML]="qrSvgHtml()"></div>
+            }
+            <div class="text">
+              <div class="line1">{{ svc.data()?.line1 || '' }}</div>
+              @if (svc.data()?.line2) {
+                <div class="line2" [style.font-size.pt]="line2FontPt()">{{ svc.data()?.line2 }}</div>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="preview-caption">
+          {{ widthIn() }}" &times; {{ heightIn() }}" &#64; {{ fontPt() }}pt
+        </div>
+      </div>
+
+      <div class="controls">
+        <label>
+          <span class="ctrl-label">Width ({{ widthIn() | number:'1.1-2' }}")</span>
+          <input type="range" min="0.5" max="8" step="0.1"
+                 [value]="widthIn()"
+                 (input)="onSizeChange('widthIn', $any($event.target).value)">
+        </label>
+        <label>
+          <span class="ctrl-label">Height ({{ heightIn() | number:'1.1-2' }}")</span>
+          <input type="range" min="0.25" max="4" step="0.05"
+                 [value]="heightIn()"
+                 (input)="onSizeChange('heightIn', $any($event.target).value)">
+        </label>
+        <label>
+          <span class="ctrl-label">Font ({{ fontPt() }}pt)</span>
+          <input type="range" min="6" max="48" step="1"
+                 [value]="fontPt()"
+                 (input)="onSizeChange('fontPt', $any($event.target).value)">
+        </label>
+        <label class="qr-toggle">
+          <input type="checkbox" [checked]="withQr()" (change)="toggleQr()">
+          Include QR code
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" (click)="onPrint()" [disabled]="printing() || !hasRenderableContent()">
+          {{ printing() ? 'Printing…' : 'Print' }}
+        </button>
+        <button class="btn secondary" (click)="close()">Close</button>
+      </div>
+      @if (!hasRenderableContent()) {
+        <p class="print-status warn">Label would be blank. Fill line 1 / line 2 or enable a QR code.</p>
+      }
+
+      @if (printStatus()) {
+        <p class="print-status">{{ printStatus() }}</p>
+      }
+    </div>
+  </app-popup>
+}

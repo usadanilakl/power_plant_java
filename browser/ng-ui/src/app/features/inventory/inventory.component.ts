@@ -14,6 +14,7 @@ import { FormField } from '../../models/inputs/form-field.model';
 import { inventoryFormFields, inventoryUsageFormFields } from '../../models/inventory/inventory-item.model';
 import { Option } from '../../models/inputs/option.model';
 import { BradyPrinterModalService } from '../../shared/brady-printer-manager/brady-printer-modal.service';
+import { NativePrintService } from '../../shared/native-print/native-print.service';
 
 type ViewMode = 'select' | 'new' | 'edit' | 'scan-result' | 'list';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -126,9 +127,18 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
                 <svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align: middle; margin-right: 6px;">
                   <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
                 </svg>
-                Print Label
+                Print (Brady)
               </button>
-            } @else {
+            }
+            @if (nativePrintAvailable) {
+              <button class="btn-print btn-print-system" (click)="printLabelNative(scannedItem())">
+                <svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align: middle; margin-right: 6px;">
+                  <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+                </svg>
+                Print (System)
+              </button>
+            }
+            @if (!bluetoothAvailable && !nativePrintAvailable) {
               <span class="print-unavailable">Printing not supported on this device</span>
             }
           </div>
@@ -171,7 +181,14 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
                   <div class="status-badge" [attr.data-status]="item.statusName">{{ item.statusName }}</div>
                 </button>
                 @if (bluetoothAvailable && item.qrToken) {
-                  <button class="list-item-print" (click)="printLabel(item); $event.stopPropagation()" title="Print label">
+                  <button class="list-item-print" (click)="printLabel(item); $event.stopPropagation()" title="Print via Brady">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                      <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+                    </svg>
+                  </button>
+                }
+                @if (nativePrintAvailable && item.qrToken) {
+                  <button class="list-item-print list-item-print-system" (click)="printLabelNative(item); $event.stopPropagation()" title="Print via system printer">
                     <svg viewBox="0 0 24 24" width="20" height="20">
                       <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
                     </svg>
@@ -237,6 +254,17 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
       cursor: pointer; min-height: 44px;
     }
     .btn-print:hover { background: var(--accent-color-hover); }
+    .btn-print-system {
+      background: var(--secondary-background);
+      color: var(--primary-text);
+      border: 1px solid var(--border-color);
+      margin-left: 8px;
+    }
+    .btn-print-system:hover { background: var(--hover-background); border-color: var(--accent-color); }
+    .list-item-print-system {
+      color: var(--secondary-text);
+    }
+    .list-item-print-system:hover { border-color: var(--accent-color); color: var(--accent-color); }
     .print-unavailable {
       display: inline-block;
       padding: 8px 12px;
@@ -276,10 +304,14 @@ export class InventoryComponent implements OnInit {
   private route = inject(ActivatedRoute);
   qrScannerService = inject(QrScannerService);
   private bradyModal = inject(BradyPrinterModalService);
+  private nativePrint = inject(NativePrintService);
 
   // Web Bluetooth is unavailable on iOS Safari / any WebKit-based iOS browser.
   // Show a helpful hint instead of a dead button on those devices.
   bluetoothAvailable = typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
+  // Native print via window.print() works everywhere the browser supports it —
+  // routes through OS to any installed printer (label printer or sheet paper).
+  nativePrintAvailable = typeof window !== 'undefined' && typeof window.print === 'function';
 
   mode = signal<ViewMode>('select');
   fields = signal<FormField[]>([]);
@@ -400,12 +432,19 @@ export class InventoryComponent implements OnInit {
 
   openList(): void {
     this.mode.set('list');
-    if (!this.authService.isLoggedIn() || !this.serverStatus.isOnline()) {
+    // Anonymous users still can't see the list (no auth).
+    if (!this.authService.isLoggedIn()) {
       this.items.set([]);
       return;
     }
+    // NOTE: intentionally does NOT gate on serverStatus.isOnline(). The
+    // orchestrator has a PA fallback that reads directly from SharePoint
+    // when the hub is unreachable, so gating here on the hub's status
+    // would prevent the fallback from ever running. Let the orchestrator
+    // decide: it tries hub first, falls through to PA, returns empty as
+    // a last resort.
     this.loadingList.set(true);
-    this.serverApi.getActiveInventoryItems().subscribe({
+    this.orchestrator.getInventoryItems().subscribe({
       next: items => {
         this.items.set(items || []);
         this.loadingList.set(false);
@@ -526,6 +565,22 @@ export class InventoryComponent implements OnInit {
    */
   printLabel(item: any): void {
     if (!item) return;
+    const { line1, line2, qrData } = this.labelDataFor(item);
+    this.bradyModal.openWithData({ line1, line2, withQr: !!qrData, qrData });
+  }
+
+  /**
+   * Print via OS/system printer (window.print()). Uses whichever printer
+   * Windows has installed; user picks the target in the browser print dialog.
+   * Works on iOS/AirPrint where Web Bluetooth (Brady) is unavailable.
+   */
+  printLabelNative(item: any): void {
+    if (!item) return;
+    const { line1, line2, qrData } = this.labelDataFor(item);
+    this.nativePrint.openWithData({ line1, line2, qrData });
+  }
+
+  private labelDataFor(item: any): { line1: string; line2: string; qrData: string | undefined } {
     const line1 = item.serialNumber || item.title || '';
     const line2 = [item.manufacturer, item.model].filter(Boolean).join(' ');
     // encodeURIComponent guards against future qrToken formats that contain
@@ -534,6 +589,6 @@ export class InventoryComponent implements OnInit {
     const qrData = item.qrToken
       ? `https://jacksongeneration.github.io/permits/inventory/form?scan=${encodeURIComponent(item.qrToken)}`
       : undefined;
-    this.bradyModal.openWithData({ line1, line2, withQr: !!qrData, qrData });
+    return { line1, line2, qrData };
   }
 }

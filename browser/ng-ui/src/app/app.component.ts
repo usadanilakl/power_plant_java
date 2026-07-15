@@ -5,11 +5,12 @@ import { GlobalMessageComponent } from "./shared/global-message/global-message.c
 import { ViewportService } from './services/viewport.service';
 import { QrScannerComponent } from "./shared/qr-scanner/qr-scanner.component";
 import { BradyPrinterManagerComponent } from './shared/brady-printer-manager/brady-printer-manager.component';
+import { NativePrintModalComponent } from './shared/native-print/native-print-modal.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, GlobalMessageComponent, QrScannerComponent, BradyPrinterManagerComponent],
+  imports: [RouterOutlet, GlobalMessageComponent, QrScannerComponent, BradyPrinterManagerComponent, NativePrintModalComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

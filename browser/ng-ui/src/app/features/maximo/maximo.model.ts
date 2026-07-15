@@ -148,6 +148,31 @@ export interface MaximoFormSubmission {
   status?: 'DRAFT' | 'COMPLETED';
   submittedBy?: string;
   submittedAt?: string;
+  /** Also transition the WO to COMP on completion — the mobile "Submit & complete" flow sets this. */
+  completeWo?: boolean;
+}
+
+/** A Maximo attachment (doclink) on a WO — phone subset of the desktop MaximoDoclink. */
+export interface MaximoDoclink {
+  href: string;            // doclink id
+  title?: string;
+  urlname?: string;        // download filename
+  doctype?: string;
+  mimeType?: string;
+  size?: number;
+  createdDate?: string;
+  createby?: string;
+}
+
+/** A Maximo worklog note on a WO. */
+export interface MaximoWorklog {
+  href?: string;
+  worklogid?: number;
+  description?: string;        // summary
+  longDescription?: string;   // details
+  logtype?: string;
+  createby?: string;
+  createdate?: string;
 }
 
 export interface MaximoLocation {

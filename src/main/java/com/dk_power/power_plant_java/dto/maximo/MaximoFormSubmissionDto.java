@@ -27,4 +27,10 @@ public class MaximoFormSubmissionDto {
     private LocalDateTime submittedAt;
     private String pdfDoclinkId;
     private String writeBackNote;
+    /**
+     * On completion, also transition the work order to COMP (when the template doesn't already specify a target
+     * status). The mobile "Submit &amp; complete" flow sets this so performing a PM closes its work order; the
+     * desktop leaves it false (its Complete tab drives the status change separately). Default false.
+     */
+    private boolean completeWo;
 }

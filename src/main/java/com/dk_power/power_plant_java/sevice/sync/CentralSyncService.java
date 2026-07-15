@@ -143,61 +143,54 @@ public class CentralSyncService {
             return;
         }
 
-        // Diagnostic: a published change event should leave the rows pending for SERVER.
-        // If the event carried N changes but nothing is pending, the rows were never
-        // persisted as outbound (or were cleared) — this is the exact signature of the
-        // "local edits silently never reach the hub" bug. Log it loudly so it's visible
-        // at INFO without enabling DEBUG sync logging.
-        long pendingForServer = fieldChangeRepository.countPendingChangesFor("SERVER");
-        if (pendingForServer == 0) {
-            log.warn("server_sync.changes_detected.no_pending eventChanges={} pendingForServer=0 "
-                + "(published changes did not become SERVER-pending rows)", eventSize);
-            pendingForServer = restoreMissingEventChanges(event.getChanges());
-        } else {
-            log.info("server_sync.changes_detected eventChanges={} pendingForServer={}",
-                eventSize, pendingForServer);
-        }
+        // A published change event should leave THIS event's rows pending for SERVER.
+        // Verify that per-event and restore any of its own changes that failed to persist —
+        // UNCONDITIONALLY, never gated on the global pending count. A concurrent event's
+        // pending rows would otherwise mask this event's own failure: when two change-sets
+        // from one transaction publish together (e.g. a LotoStandard status flip alongside
+        // its LotoStandardApprovalEvent), the sibling's pending rows make the global count
+        // non-zero, the "no_pending" recovery is skipped, and this event's un-persisted
+        // changes leak — the hub never receives them and shows the stale status forever.
+        long pendingForServer = restoreMissingEventChanges(event.getChanges());
+        log.info("server_sync.changes_detected eventChanges={} pendingForServer={}",
+            eventSize, pendingForServer);
 
         sendToServer();
     }
 
+    /**
+     * Ensure every change carried by a just-published event is durably persisted as an
+     * outbound (SERVER-pending) row, re-saving any that failed to persist. Runs on every
+     * change event and is never gated on the global pending count, so a concurrent event's
+     * pending rows cannot mask this event's own changes leaking. Returns the current
+     * SERVER-pending count (for the caller's diagnostic log).
+     */
     private long restoreMissingEventChanges(List<FieldChange> eventChanges) {
         List<FieldChange> restorable = eventChanges.stream()
             .filter(change -> change.getId() != null)
             .filter(change -> !change.isSyncedTo("SERVER"))
             .toList();
 
-        if (restorable.isEmpty()) {
-            return 0;
-        }
+        if (!restorable.isEmpty()) {
+            Set<java.util.UUID> persistedIds = new HashSet<>();
+            fieldChangeRepository.findAllById(
+                restorable.stream().map(FieldChange::getId).toList()
+            ).forEach(change -> persistedIds.add(change.getId()));
 
-        Set<java.util.UUID> persistedIds = new HashSet<>();
-        fieldChangeRepository.findAllById(
-            restorable.stream().map(FieldChange::getId).toList()
-        ).forEach(change -> {
-            persistedIds.add(change.getId());
-            if (!change.isSyncedTo("SERVER")) {
-                log.warn("server_sync.no_pending.persisted_unsent changeId={} entity={}#{} field={}",
-                    change.getId(), change.getEntityType(), change.getEntityId(), change.getFieldName());
+            List<FieldChange> missing = restorable.stream()
+                .filter(change -> !persistedIds.contains(change.getId()))
+                .toList();
+
+            if (!missing.isEmpty()) {
+                fieldChangeRepository.saveAll(missing);
+                log.warn("server_sync.restored_missing count={} ids={} "
+                    + "(published changes had not persisted as SERVER-pending rows)",
+                    missing.size(),
+                    missing.stream().map(change -> change.getId().toString()).toList());
             }
-        });
-
-        List<FieldChange> missing = restorable.stream()
-            .filter(change -> !persistedIds.contains(change.getId()))
-            .toList();
-
-        if (!missing.isEmpty()) {
-            fieldChangeRepository.saveAll(missing);
-            log.warn("server_sync.no_pending.restored_missing count={} ids={}",
-                missing.size(),
-                missing.stream().map(change -> change.getId().toString()).toList());
         }
 
-        long pendingForServer = fieldChangeRepository.countPendingChangesFor("SERVER");
-        if (pendingForServer > 0) {
-            log.info("server_sync.no_pending.recovered pendingForServer={}", pendingForServer);
-        }
-        return pendingForServer;
+        return fieldChangeRepository.countPendingChangesFor("SERVER");
     }
 
     /**

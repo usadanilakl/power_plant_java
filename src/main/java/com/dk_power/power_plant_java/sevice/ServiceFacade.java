@@ -31,6 +31,10 @@ import com.dk_power.power_plant_java.entities.messaging.Message;
 import com.dk_power.power_plant_java.entities.scheduler.Flow;
 import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.entities.users.User;
+import com.dk_power.power_plant_java.entities.users.ShiftDay;
+import com.dk_power.power_plant_java.entities.users.ContractorChangeReport;
+import com.dk_power.power_plant_java.sevice.users.ShiftDaySyncService;
+import com.dk_power.power_plant_java.sevice.users.ContractorChangeReportSyncService;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramPlacementService;
 import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramConnectionService;
@@ -105,6 +109,7 @@ public class ServiceFacade {
             @Lazy NgLockService ngLockService,
             @Lazy NgLotoSnapshotService ngLotoSnapshotService,
             @Lazy NgLotoStandardPendingChangeService ngLotoStandardPendingChangeService,
+            @Lazy NgLotoStandardApprovalEventService ngLotoStandardApprovalEventService,
             @Lazy NgWalkdownSessionSyncService ngWalkdownSessionSyncService,
             @Lazy ZeroEnergyService zeroEnergyService,
             // Comments
@@ -116,11 +121,14 @@ public class ServiceFacade {
             @Lazy NgMessageService ngMessageService,
             // Users
             @Lazy NgUserService ngUserService,
+            @Lazy ShiftDaySyncService shiftDaySyncService,
+            @Lazy ContractorChangeReportSyncService contractorChangeReportSyncService,
             // Permits
             @Lazy NgSafeWorkService ngSafeWorkService,
             @Lazy NgHotWorkService ngHotWorkService,
             @Lazy NgConfinedSpaceService ngConfinedSpaceService,
             @Lazy NgWorkAreaService ngWorkAreaService,
+            @Lazy WorkCategoryProfileSyncService workCategoryProfileSyncService,
             @Lazy NgWorkRequestService ngWorkRequestService,
             @Lazy NgJhaService ngJhaService,
             @Lazy NgDailyPermitPackageService ngDailyPermitPackageService,
@@ -195,6 +203,7 @@ public class ServiceFacade {
         // pre-fix silent-drop bug that motivated adding these to the sync map.
         serviceMap.put(LotoSnapshot.class.getSimpleName(), ngLotoSnapshotService);
         serviceMap.put(LotoStandardPendingChange.class.getSimpleName(), ngLotoStandardPendingChangeService);
+        serviceMap.put(LotoStandardApprovalEvent.class.getSimpleName(), ngLotoStandardApprovalEventService);
         serviceMap.put(WalkdownSession.class.getSimpleName(), ngWalkdownSessionSyncService);
         serviceMap.put(ZeroEnergy.class.getSimpleName(), zeroEnergyService);
         // Comments
@@ -206,8 +215,11 @@ public class ServiceFacade {
         serviceMap.put(Message.class.getSimpleName(), ngMessageService);
         // Users
         serviceMap.put(User.class.getSimpleName(), ngUserService);
+        serviceMap.put(ShiftDay.class.getSimpleName(), shiftDaySyncService);
+        serviceMap.put(ContractorChangeReport.class.getSimpleName(), contractorChangeReportSyncService);
         // Permits
         serviceMap.put(SafeWork.class.getSimpleName(), ngSafeWorkService);
+        serviceMap.put(WorkCategoryProfile.class.getSimpleName(), workCategoryProfileSyncService);
         serviceMap.put(HotWork.class.getSimpleName(), ngHotWorkService);
         serviceMap.put(ConfinedSpace.class.getSimpleName(), ngConfinedSpaceService);
         serviceMap.put(WorkArea.class.getSimpleName(), ngWorkAreaService);

@@ -48,6 +48,7 @@ public class EntityTableRegistry {
         Map.entry("RedTagStandard", "red_tag_standard"),
         Map.entry("LotoSnapshot", "loto_snapshot"),
         Map.entry("LotoStandardPendingChange", "loto_standard_pending_change"),
+        Map.entry("LotoStandardApprovalEvent", "loto_standard_approval_event"),
         Map.entry("WalkdownSession", "walkdown_session"),
         Map.entry("LotoBox", "loto_boxes"),        // @Table(name = "loto_boxes")
         Map.entry("Lock", "lock"),
@@ -156,6 +157,7 @@ public class EntityTableRegistry {
         "RedTagStandard",
         "LotoSnapshot",
         "LotoStandardPendingChange", // depends on LotoStandard + LotoPoint (nullable) — both above
+        "LotoStandardApprovalEvent", // lifecycle audit rows — depends on LotoStandard, above
         "WalkdownSession",           // depends on Loto — above
         "LotoBox",
         "Lock",

@@ -245,22 +245,6 @@ import {
       </div>
 
       <!-- Activate All LOTOs -->
-      <div class="admin-section">
-        <h3>Activate All LOTOs</h3>
-        <p class="description">
-          Sets all LOTOs that have no status or are in "Building" status to "Active".
-          Updates their box LED colors to red. Use after initial reconciliation.
-        </p>
-        <div class="button-group">
-          <button (click)="activateAllLotos()" [disabled]="lotoLoading.activate" class="action-btn">
-            {{ lotoLoading.activate ? 'Activating...' : 'Activate All LOTOs' }}
-          </button>
-        </div>
-        <div class="error" *ngIf="lotoErrors.activate">{{ lotoErrors.activate }}</div>
-        <div class="result" *ngIf="lotoMessages.activate">
-          <span class="badge success">{{ lotoMessages.activate }}</span>
-        </div>
-      </div>
     </div>
   `,
   styles: [`
@@ -312,9 +296,9 @@ export class AdminLotoComponent {
   assignAttributesResult: AssignAttributesResult | null = null;
   counterpartResult: CounterpartAssociationResult | null = null;
 
-  lotoLoading = { seed: false, reconcile: false, espSync: false, queue: false, activate: false };
-  lotoMessages = { seed: '', reconcile: '', espSync: '', queue: '', activate: '' };
-  lotoErrors = { seed: '', reconcile: '', espSync: '', queue: '', activate: '' };
+  lotoLoading = { seed: false, reconcile: false, espSync: false, queue: false };
+  lotoMessages = { seed: '', reconcile: '', espSync: '', queue: '' };
+  lotoErrors = { seed: '', reconcile: '', espSync: '', queue: '' };
   wledQueueStatus: { pending: number; expired: number } | null = null;
 
   expandedSections: { [key: string]: boolean } = {
@@ -459,22 +443,4 @@ export class AdminLotoComponent {
     });
   }
 
-  activateAllLotos() {
-    if (!confirm('This will activate ALL LOTOs that have no status or are in Building. Continue?')) return;
-
-    this.lotoLoading.activate = true;
-    this.lotoErrors.activate = '';
-    this.lotoMessages.activate = '';
-
-    this.adminService.activateAllLotos().subscribe({
-      next: (res) => {
-        this.lotoMessages.activate = res.message || 'All LOTOs activated';
-        this.lotoLoading.activate = false;
-      },
-      error: (err) => {
-        this.lotoErrors.activate = err.error?.message || err.message || 'Failed';
-        this.lotoLoading.activate = false;
-      }
-    });
-  }
 }

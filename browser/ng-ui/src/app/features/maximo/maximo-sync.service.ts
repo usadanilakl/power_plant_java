@@ -12,6 +12,9 @@ import { MaximoCompletionDraft } from './maximo.model';
  * immediately if online, otherwise it stays queued and auto-flushes when {@link ServerStatusService} reports the
  * server is reachable again (same pattern as the LOTO walkdown sync).
  */
+export type MaximoSubmitPhase = 'submitting' | 'done' | 'queued' | 'failed';
+export interface MaximoSubmitState { phase: MaximoSubmitPhase; error?: string; }
+
 @Injectable({ providedIn: 'root' })
 export class MaximoSyncService {
   private store = inject(MaximoOfflineStore);
@@ -20,6 +23,21 @@ export class MaximoSyncService {
 
   private flushing = false;
   pendingCount = signal(0);
+
+  /**
+   * Live submit state per WO, keyed by wonum. Held here (a root singleton) rather than in the WO-detail
+   * component so a submit SURVIVES the sheet being closed: closing the sheet destroys the component and would
+   * otherwise cancel the in-flight HTTP request (while the server keeps going — the duplicate-attachment trap).
+   * Reopening the same WO reads this state, so the operator sees "Submitting…/done" instead of a fresh button.
+   */
+  submitStates = signal<Record<string, MaximoSubmitState>>({});
+  stateFor(wonum: string): MaximoSubmitState | undefined { return this.submitStates()[wonum]; }
+  clearState(wonum: string): void {
+    const next = { ...this.submitStates() }; delete next[wonum]; this.submitStates.set(next);
+  }
+  private setState(wonum: string, phase: MaximoSubmitPhase, error?: string): void {
+    this.submitStates.set({ ...this.submitStates(), [wonum]: { phase, error } });
+  }
 
   constructor() {
     this.refreshPendingCount();
@@ -32,6 +50,20 @@ export class MaximoSyncService {
 
   refreshPendingCount(): void {
     this.pendingCount.set(this.store.listPending().length + this.store.listTaskQueue().length);
+  }
+
+  /**
+   * Submit a completion draft, owning the subscription here so it can't be cancelled by the sheet closing.
+   * The draft is marked 'pending' up front so an app kill mid-flight still recovers on reconnect; the backend
+   * de-duplicates a repeat attach, so a recovery resubmit is safe. Progress is exposed via {@link stateFor}.
+   */
+  submitOwned(draft: MaximoCompletionDraft): void {
+    draft.status = 'pending';
+    this.store.saveDraft(draft);
+    this.refreshPendingCount();
+    this.setState(draft.wonum, 'submitting');
+    // submit() drives the terminal state (done / failed / queued); errors are already recorded there, so swallow.
+    this.submit(draft).subscribe({ error: () => {} });
   }
 
   /** Complete a queued task (child WO) by href; dequeues on success, stays queued on failure. */
@@ -52,6 +84,7 @@ export class MaximoSyncService {
           siteid: draft.siteid,
           valuesJson: JSON.stringify(draft.formValues ?? {}),
           status: 'COMPLETED',
+          completeWo: true,   // performing a PM via the form closes its work order (COMP)
         })
       : this.api.completeWorkOrder(draft.href, {
           labor: draft.hours && Number(draft.hours) > 0 ? [{ regularhrs: Number(draft.hours) }] : undefined,
@@ -60,12 +93,17 @@ export class MaximoSyncService {
           complete: true,
         });
     return call.pipe(
-      tap(() => { this.store.clearGrab(draft.wonum); this.refreshPendingCount(); }),
+      // Drive the durable submit state here (not just in submitOwned) so a reconnect flush also flips any open
+      // sheet from "Saved on this device" to "completed".
+      tap(() => { this.store.clearGrab(draft.wonum); this.setState(draft.wonum, 'done'); this.refreshPendingCount(); }),
       catchError(err => {
         const status = err?.status;
-        draft.status = (status === 400 || status === 409) ? 'failed' : 'pending';
+        const failed = status === 400 || status === 409;
+        draft.status = failed ? 'failed' : 'pending';
         draft.lastError = err?.error?.message || err?.message || 'Submit failed';
         this.store.saveDraft(draft);
+        this.setState(draft.wonum, failed ? 'failed' : 'queued',
+          failed ? (err?.error?.message || err?.message || 'Could not complete.') : undefined);
         this.refreshPendingCount();
         return throwError(() => err);
       })

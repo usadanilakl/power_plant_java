@@ -15,6 +15,8 @@ import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto;
+import com.dk_power.power_plant_java.dto.maximo.AddWorklogRequest;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
@@ -27,6 +29,7 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import org.springframework.web.multipart.MultipartFile;
@@ -63,6 +66,7 @@ public class PwaMaximoController {
     private final MaximoInventoryCatalogService inventoryCatalog;
     private final MaximoPartsCheckoutService partsCheckout;
     private final MaximoDoclinksAdapter doclinks;
+    private final MaximoWorklogAdapter worklog;
     private final MaximoBundleService bundles;
     private final RecurringPmService recurringPms;
     private final MaximoFormService forms;
@@ -163,6 +167,73 @@ public class PwaMaximoController {
                     .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "grabbed")));
         } catch (Exception e) {
             log.warn("[PWA-Maximo] grab failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    // ── Work-order attachments (doclinks) & notes (worklog) ────────────────────
+    // href is a query param throughout — Maximo hrefs contain slashes/colons that break path matching.
+
+    /** List a work order's attachments (photos/PDFs/docs). */
+    @GetMapping("/work-orders/attachments")
+    public ResponseEntity<NgApiResponse<List<MaximoDoclinkDto>>> listWoAttachments(@RequestParam("href") String href) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(doclinks.list("mxapiwodetail", href), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] WO attachments list failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Stream one attachment's bytes (inline, so the phone can preview an image/PDF). */
+    @GetMapping("/work-orders/attachments/content")
+    public ResponseEntity<byte[]> woAttachmentContent(
+            @RequestParam("href") String href, @RequestParam("attachmentId") String attachmentId) {
+        ResponseEntity<byte[]> upstream = doclinks.streamBinary("mxapiwodetail", href, attachmentId);
+        org.springframework.http.HttpHeaders out = new org.springframework.http.HttpHeaders();
+        if (upstream.getHeaders().getContentType() != null) out.setContentType(upstream.getHeaders().getContentType());
+        long len = upstream.getHeaders().getContentLength();
+        if (len > 0) out.setContentLength(len);
+        out.set(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline");
+        return new ResponseEntity<>(upstream.getBody(), out, upstream.getStatusCode());
+    }
+
+    /** Attach a photo/file to a work order (e.g. a field photo taken while performing a PM). */
+    @PostMapping("/work-orders/attachment")
+    public ResponseEntity<NgApiResponse<MaximoDoclinkDto>> uploadWoAttachment(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("href") String href,
+            @RequestParam(value = "doctype", required = false, defaultValue = "Attachments") String doctype) {
+        try {
+            MaximoDoclinkDto created = doclinks.upload("mxapiwodetail", href,
+                    file.getOriginalFilename(), file.getContentType(), file.getBytes(), doctype);
+            return ResponseEntity.ok(new NgApiResponse<>(created, "uploaded"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] WO attachment upload failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Attachment failed: " + e.getMessage()));
+        }
+    }
+
+    /** List a work order's worklog notes (newest first, as the adapter returns them). */
+    @GetMapping("/work-orders/worklog")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> listWoWorklog(@RequestParam("href") String href) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(worklog.listForWo(href), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] WO worklog list failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Add a note (worklog) to a work order — no labor, no status change. Returns the refreshed list. */
+    @PostMapping("/work-orders/worklog")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> addWoWorklog(
+            @RequestParam("href") String href, @RequestBody AddWorklogRequest req) {
+        try {
+            workOrders.reportActuals(href, null, req.getSummary(), req.getDetails(), req.getLogtype());
+            return ResponseEntity.ok(new NgApiResponse<>(worklog.listForWo(href), "added"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] add WO worklog failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }

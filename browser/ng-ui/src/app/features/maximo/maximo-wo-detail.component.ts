@@ -1,13 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoOfflineStore } from './maximo-offline.service';
 import { MaximoSyncService } from './maximo-sync.service';
+import { MaximoWoFilesComponent } from './maximo-wo-files.component';
+import { MaximoWoNotesComponent } from './maximo-wo-notes.component';
 import {
-  COMPLETABLE_WO_STATUSES, MaximoCompletionDraft, MaximoFormFieldDef, MaximoFormTemplate, MaximoWorkOrder, statusClass,
+  COMPLETABLE_WO_STATUSES, MaximoFormFieldDef, MaximoFormTemplate, MaximoWorkOrder, statusClass,
 } from './maximo.model';
 
-type Tab = 'details' | 'tasks' | 'complete';
+type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
 
 /**
  * Bottom-sheet for a work order: read its details, complete its child tasks, and complete the WO itself
@@ -17,7 +19,7 @@ type Tab = 'details' | 'tasks' | 'complete';
 @Component({
   selector: 'app-maximo-wo-detail',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, MaximoWoFilesComponent, MaximoWoNotesComponent],
   template: `
     <div class="wd-backdrop" (click)="close.emit()">
       <div class="wd-modal" (click)="$event.stopPropagation()">
@@ -42,6 +44,8 @@ type Tab = 'details' | 'tasks' | 'complete';
         <div class="wd-tabs">
           <button class="wd-tab" [class.active]="tab() === 'details'" (click)="tab.set('details')">Details</button>
           <button class="wd-tab" [class.active]="tab() === 'tasks'" (click)="openTasks()">Tasks</button>
+          <button class="wd-tab" [class.active]="tab() === 'files'" (click)="tab.set('files')">Files</button>
+          <button class="wd-tab" [class.active]="tab() === 'notes'" (click)="tab.set('notes')">Notes</button>
           @if (canComplete()) {
             <button class="wd-tab" [class.active]="tab() === 'complete'" (click)="tab.set('complete')">Complete</button>
           }
@@ -79,6 +83,14 @@ type Tab = 'details' | 'tasks' | 'complete';
               }
             </div>
           }
+        }
+
+        @if (tab() === 'files') {
+          <app-maximo-wo-files [href]="wo.href"></app-maximo-wo-files>
+        }
+
+        @if (tab() === 'notes') {
+          <app-maximo-wo-notes [href]="wo.href"></app-maximo-wo-notes>
         }
 
         @if (tab() === 'complete') {
@@ -147,21 +159,21 @@ type Tab = 'details' | 'tasks' | 'complete';
                 }
               }
             }
-            @if (error()) { <p class="wd-err">{{ error() }}</p> }
+            @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
             <button class="wd-complete" [disabled]="completing()" (click)="submitForm()">
               {{ completing() ? 'Submitting…' : 'Submit &amp; complete' }}
             </button>
           } @else {
             <label class="wd-field">Labor hours
-              <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value)" placeholder="e.g. 1.5">
+              <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value); autosave()" placeholder="e.g. 1.5">
             </label>
             <label class="wd-field">Summary
-              <input type="text" [value]="summary()" (input)="summary.set($any($event.target).value)" placeholder="Short work summary">
+              <input type="text" [value]="summary()" (input)="summary.set($any($event.target).value); autosave()" placeholder="Short work summary">
             </label>
             <label class="wd-field">Details
-              <textarea rows="3" [value]="details()" (input)="details.set($any($event.target).value)" placeholder="What was done (optional)"></textarea>
+              <textarea rows="3" [value]="details()" (input)="details.set($any($event.target).value); autosave()" placeholder="What was done (optional)"></textarea>
             </label>
-            @if (error()) { <p class="wd-err">{{ error() }}</p> }
+            @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
             <button class="wd-complete" [disabled]="completing()" (click)="completeWo()">
               {{ completing() ? 'Completing…' : 'Complete work order' }}
             </button>
@@ -232,7 +244,6 @@ export class MaximoWoDetailComponent implements OnInit {
   grabbed = signal(false);
   grabbing = signal(false);
   grabError = signal<string | null>(null);
-  queued = signal(false);
   tasks = signal<MaximoWorkOrder[]>([]);
   tasksLoading = signal(false);
   private tasksLoaded = false;
@@ -241,9 +252,28 @@ export class MaximoWoDetailComponent implements OnInit {
   hours = signal('');
   summary = signal('');
   details = signal('');
-  completing = signal(false);
-  done = signal(false);
-  error = signal<string | null>(null);
+  error = signal<string | null>(null);   // validation only (required-field etc.)
+
+  // Submit lifecycle is owned by the (root) sync service, keyed by wonum, so it survives this sheet closing —
+  // closing mid-submit would otherwise cancel the request while the server kept going (the double-attach trap).
+  submitState = computed(() => this.wo ? this.sync.stateFor(this.wo.wonum) : undefined);
+  completing = computed(() => this.submitState()?.phase === 'submitting');
+  done = computed(() => this.submitState()?.phase === 'done');
+  queued = computed(() => this.submitState()?.phase === 'queued');
+  submitError = computed(() => this.submitState()?.phase === 'failed' ? (this.submitState()?.error ?? 'Could not complete.') : null);
+  bannerError = computed(() => this.error() ?? this.submitError());
+  private emittedDone = false;
+
+  constructor() {
+    // When the owned submit reports done, reflect COMP locally and tell the opener to refresh its list (once).
+    effect(() => {
+      if (this.done() && !this.emittedDone) {
+        this.emittedDone = true;
+        this.status.set('COMP');
+        this.completed.emit();
+      }
+    });
+  }
 
   // Dynamic PM completion form (present only when the WO's PM has an assigned formKey).
   formLoading = signal(true);
@@ -266,17 +296,19 @@ export class MaximoWoDetailComponent implements OnInit {
     this.status.set(this.wo.status);
     const grab = this.store.getGrab(this.wo.wonum);
     if (grab) {
-      // Grabbed: read the form from cache (works offline) + restore any in-progress completion.
+      // Grabbed: read the form from cache (works offline).
       this.grabbed.set(true);
       this.formTemplate.set(grab.formTemplate);
       this.formLoading.set(false);
-      this.restoreDraft();
     } else {
       this.api.getCompletionForm(this.wo.pmnum, this.wo.description).subscribe({
         next: t => { this.formTemplate.set(t); this.formLoading.set(false); },
         error: () => { this.formTemplate.set(null); this.formLoading.set(false); }
       });
     }
+    // Restore any in-progress entries whether or not the WO was grabbed — a form filled online but not yet
+    // submitted must survive the app closing too (values are autosaved on every change).
+    this.restoreDraft();
   }
 
   private restoreDraft(): void {
@@ -284,6 +316,28 @@ export class MaximoWoDetailComponent implements OnInit {
     if (!d) return;
     if (d.mode === 'form' && d.formValues) this.formValues.set(d.formValues);
     if (d.mode === 'manual') { this.hours.set(d.hours ?? ''); this.summary.set(d.summary ?? ''); this.details.set(d.details ?? ''); }
+  }
+
+  /**
+   * Persist the in-progress entry on every change so nothing is lost if the app closes mid-fill. Kept a plain
+   * DRAFT (not queued for submit); a submit-in-flight is left alone so autosave can't revert its 'pending' state.
+   */
+  autosave(): void {
+    if (this.completing() || this.done()) return;
+    const t = this.formTemplate();
+    if (t) {
+      this.store.saveDraft({
+        wonum: this.wo.wonum, href: this.wo.href, mode: 'form',
+        templateFormKey: t.formKey, siteid: this.wo.siteid, formValues: this.formValues(),
+        status: 'draft', updatedAt: Date.now(),
+      });
+    } else {
+      this.store.saveDraft({
+        wonum: this.wo.wonum, href: this.wo.href, mode: 'manual',
+        hours: this.hours(), summary: this.summary(), details: this.details(),
+        status: 'draft', updatedAt: Date.now(),
+      });
+    }
   }
 
   /** Grab (reserve) this WO for offline work: server marks it in-progress + caches it locally. Needs signal. */
@@ -301,25 +355,9 @@ export class MaximoWoDetailComponent implements OnInit {
     });
   }
 
-  /** Save the completion as a draft, then submit (queues + auto-flushes on reconnect if offline). */
-  private submitDraft(draft: MaximoCompletionDraft): void {
-    draft.status = 'draft';
-    this.store.saveDraft(draft);
-    this.completing.set(true); this.error.set(null);
-    this.sync.submit(draft).subscribe({
-      next: () => { this.completing.set(false); this.done.set(true); this.status.set('COMP'); this.completed.emit(); },
-      error: err => {
-        this.completing.set(false);
-        const s = err?.status;
-        if (s === 400 || s === 409) this.error.set(err?.error?.message || err?.message || 'Could not complete.');
-        else this.queued.set(true); // network/offline — sync re-saved it as pending; it'll flush on reconnect
-      }
-    });
-  }
-
   // ── Dynamic form helpers ─────────────────────────────────────────────────
   val(name: string): any { return this.formValues()[name] ?? ''; }
-  setVal(name: string, value: any): void { this.formValues.set({ ...this.formValues(), [name]: value }); }
+  setVal(name: string, value: any): void { this.formValues.set({ ...this.formValues(), [name]: value }); this.autosave(); }
   req(f: MaximoFormFieldDef): string { return f.required ? ' *' : ''; }
   hasGroupVal(name: string, opt: string): boolean {
     const v = this.formValues()[name];
@@ -335,18 +373,20 @@ export class MaximoWoDetailComponent implements OnInit {
   }
 
   submitForm(): void {
+    if (this.completing()) return;   // guard within this sheet; the sync state guards across reopen
     const t = this.formTemplate();
     if (!t) return;
     for (const { f } of this.formRows()) {
       if (!f.required) continue;
       const v = this.formValues()[f.name];
       const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
-      if (empty) { this.error.set(`"${f.label}" is required.`); return; }
+      if (empty) { this.error.set(`"${f.label}" is required.`); this.tab.set('complete'); return; }
     }
-    this.submitDraft({
+    this.error.set(null);
+    this.sync.submitOwned({
       wonum: this.wo.wonum, href: this.wo.href, mode: 'form',
       templateFormKey: t.formKey, siteid: this.wo.siteid, formValues: this.formValues(),
-      status: 'draft', updatedAt: Date.now(),
+      status: 'pending', updatedAt: Date.now(),
     });
   }
 
@@ -377,10 +417,12 @@ export class MaximoWoDetailComponent implements OnInit {
   }
 
   completeWo(): void {
-    this.submitDraft({
+    if (this.completing()) return;
+    this.error.set(null);
+    this.sync.submitOwned({
       wonum: this.wo.wonum, href: this.wo.href, mode: 'manual',
       hours: this.hours(), summary: this.summary(), details: this.details(),
-      status: 'draft', updatedAt: Date.now(),
+      status: 'pending', updatedAt: Date.now(),
     });
   }
 }
