@@ -165,6 +165,7 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
     .sync-indicator.state-disabled mat-icon { color: #9e9e9e; }
     .sync-indicator.state-out-of-sync mat-icon { color: #f44336; }
     .sync-indicator.state-possibly-out-of-sync mat-icon { color: #ff9800; }
+    .sync-indicator.state-catching-up mat-icon { color: #2196f3; }
 
     .pulse {
       animation: pulse 1.5s ease-in-out infinite;
@@ -267,6 +268,7 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
     .status-row .icon-orange { color: #ff9800; }
     .status-row .icon-red { color: #f44336; }
     .status-row .icon-grey { color: #9e9e9e; }
+    .status-row .icon-blue { color: #2196f3; }
 
     .status-text {
       display: flex;
@@ -422,6 +424,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     // If remote sync server is not available, show disconnected
     if (!available) return 'disconnected' as const;
 
+    // Actively behind — the hub has changes for us we haven't applied yet (e.g. just reconnected
+    // after being offline). This is a FRIENDLY, transient "catching up" state, not an error — it
+    // avoids a normal reconnect catch-up reading as "Possibly Out of Sync" or silently as green.
+    if (this.serverPendingCount() > 0) return 'catching-up' as const;
+
     // Server is available — check health
     const health = this.syncHealthState();
     if (health === 'OUT_OF_SYNC') return 'out-of-sync' as const;
@@ -436,6 +443,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       case 'connecting': return 'cloud_sync';
       case 'out-of-sync': return 'sync_problem';
       case 'possibly-out-of-sync': return 'sync';
+      case 'catching-up': return 'sync';
       case 'connected': return 'cloud_done';
     }
   });
@@ -444,12 +452,14 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
 
   shouldPulse = computed(() => {
     const state = this.effectiveState();
-    return state === 'connecting' || state === 'out-of-sync';
+    return state === 'connecting' || state === 'out-of-sync' || state === 'catching-up';
   });
 
   showWarningBadge = computed(() => {
     const health = this.syncHealthState();
+    // No alarming badge while merely catching up — that's a friendly, transient state.
     return this.syncEnabled() && this.serverAvailable() === true &&
+      this.effectiveState() !== 'catching-up' &&
       (health === 'OUT_OF_SYNC' || health === 'POSSIBLY_OUT_OF_SYNC');
   });
 
@@ -460,6 +470,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       case 'connecting': return 'Checking...';
       case 'out-of-sync': return 'Out of Sync';
       case 'possibly-out-of-sync': return 'Possibly Out of Sync';
+      case 'catching-up': return 'Syncing…';
       case 'connected': return 'All Up to Date';
     }
   });
@@ -469,6 +480,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     if (state === 'disabled') return 'Toggle sync on to resume synchronization';
     if (state === 'disconnected') return 'Cannot reach sync server';
     if (state === 'connecting') return 'Checking sync server status...';
+    if (state === 'catching-up') {
+      const n = this.serverPendingCount();
+      return n > 0 ? `Catching up — ${n} change${n === 1 ? '' : 's'} to apply` : 'Catching up…';
+    }
     const msg = this.syncHealthMessage();
     if (msg && (state === 'out-of-sync' || state === 'possibly-out-of-sync')) return msg;
     if (state === 'connected') return 'Connected and synchronized';
@@ -482,6 +497,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       case 'out-of-sync': return 'icon-red';
       case 'connecting':
       case 'possibly-out-of-sync': return 'icon-orange';
+      case 'catching-up': return 'icon-blue';
       case 'connected': return 'icon-green';
     }
   });
