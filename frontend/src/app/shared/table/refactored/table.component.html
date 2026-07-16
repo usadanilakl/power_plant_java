@@ -91,6 +91,7 @@
             [class.selected]="selectionService.isItemSelected(item)"
             [class.dragged]="dragService.isItemDragged(item)"
             [class.external-hover]="hoveredItemId() !== null && item.id === hoveredItemId()"
+            [class.external-click]="externalClickedItemId() !== null && item.id === externalClickedItemId()"
             [ngStyle]="syncService.getRowStyle(item)"
             [class.ghost-row]="dragService.dragState().ghostRowIndex === item.index"
             (mousedown)="dragService.onMouseDown($event, item)"

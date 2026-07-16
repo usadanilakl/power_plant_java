@@ -21,6 +21,17 @@ export class LotoStandardService {
         return this.http.post<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/create-standard`, idDto);
     }
 
+    /**
+     * Duplicate an existing standard into a fresh independent DRAFT copy.
+     * LOTO points are shared references between source and copy — physical
+     * isolation points aren't duplicated. Everything else on the standard
+     * (name w/ "(Copy)" suffix, description, procedural prose, prerequisites,
+     * ordering, groups) is deep-copied. Backend gates on CONTROL_AUTHORITY.
+     */
+    duplicateLotoStandard(standardId: number): Observable<SpringApiResponse<LotoStandardDto>> {
+        return this.http.post<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${standardId}/duplicate`, null);
+    }
+
     getAllLotoStandards(): Observable<SpringApiResponse<LotoStandardDto[]>> {
         return this.http.get<SpringApiResponse<LotoStandardDto[]>>(`${this.apiUrl}/get-all`);
     }

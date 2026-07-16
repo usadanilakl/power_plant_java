@@ -60,6 +60,8 @@ export class LotoPointDisplayTableComponent {
   hoveredItemId = input<number | null>(null);
   /** ID of item to scroll to (triggered by external click events) */
   scrollToItemId = input<number | null>(null);
+  /** ID of item externally "clicked" — highlights the row without a real click. */
+  externalClickedItemId = input<number | null>(null);
 
   selectedItemsEvent = output<LotoPointDto[]>();
   rowHoveredEvent = output<LotoPointDto | null>();

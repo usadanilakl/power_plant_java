@@ -146,6 +146,90 @@ export class RfUnifiedImageViewerComponent {
   clickedLotoPoint = signal<LotoPointDto | null>(null);
   isCollapsed = signal<boolean>(true);
 
+  /**
+   * Drives {@code [scrollToItemId]} on the embedded LOTO-point table. Set when
+   * the operator clicks a shape on the drawing so the row for the owning
+   * LOTO point scrolls into view (and is highlighted via {@link clickedLotoPoint}).
+   * A monotonically increasing tick appended to the id would let re-clicking
+   * the SAME shape re-scroll; we live without it — the table's scroll effect
+   * fires on any input change, and repeat clicks usually mean "I lost the
+   * row", which the highlight itself will draw attention to.
+   */
+  scrollToLotoPointId = signal<number | null>(null);
+
+  // ==================== SPLIT PANEL RESIZE ====================
+  // Draggable split between the table panel and the image section. The table
+  // panel used to be a fixed 400px — operators with wider tables (many custom
+  // columns) couldn't see field names, and operators with lots of vertical
+  // real estate wanted more room for the drawing.
+  //
+  // Width persists in localStorage keyed by ${TABLE_WIDTH_STORAGE_KEY} so the
+  // choice survives navigation. Session-only would also be fine — trade-off
+  // is whether operator preference should stay across desktop restarts.
+  private static readonly TABLE_WIDTH_STORAGE_KEY = 'rf-unified-viewer.table-panel-width';
+  private static readonly TABLE_WIDTH_MIN = 240;
+  private static readonly TABLE_WIDTH_MAX = 900;
+  private static readonly TABLE_WIDTH_DEFAULT = 400;
+
+  tablePanelWidth = signal<number>(this.readStoredTableWidth());
+  private isResizingTablePanel = false;
+  private resizeStartX = 0;
+  private resizeStartWidth = 0;
+  private resizeSide: 'left' | 'right' = 'left';
+
+  private readStoredTableWidth(): number {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage?.getItem(RfUnifiedImageViewerComponent.TABLE_WIDTH_STORAGE_KEY) : null;
+      const n = raw != null ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n)) return this.clampTableWidth(n);
+    } catch {
+      // localStorage disabled (SSR, private mode, permission). Fall through.
+    }
+    return RfUnifiedImageViewerComponent.TABLE_WIDTH_DEFAULT;
+  }
+
+  private clampTableWidth(w: number): number {
+    return Math.max(
+      RfUnifiedImageViewerComponent.TABLE_WIDTH_MIN,
+      Math.min(RfUnifiedImageViewerComponent.TABLE_WIDTH_MAX, Math.round(w)),
+    );
+  }
+
+  /**
+   * Start of a split-panel resize. Captures pointer via pointer events so
+   * the drag survives even if the cursor briefly leaves the handle (which
+   * happens as the panel resizes and the handle moves under the cursor).
+   * The 'side' argument tracks which side the handle is on so we know
+   * whether to add or subtract cursor delta from the current width.
+   */
+  startTablePanelResize(event: PointerEvent, side: 'left' | 'right'): void {
+    event.preventDefault();
+    this.isResizingTablePanel = true;
+    this.resizeStartX = event.clientX;
+    this.resizeStartWidth = this.tablePanelWidth();
+    this.resizeSide = side;
+    (event.target as HTMLElement)?.setPointerCapture?.(event.pointerId);
+  }
+
+  onTablePanelResizeMove(event: PointerEvent): void {
+    if (!this.isResizingTablePanel) return;
+    const delta = event.clientX - this.resizeStartX;
+    const signedDelta = this.resizeSide === 'left' ? delta : -delta;
+    this.tablePanelWidth.set(this.clampTableWidth(this.resizeStartWidth + signedDelta));
+  }
+
+  endTablePanelResize(event: PointerEvent): void {
+    if (!this.isResizingTablePanel) return;
+    this.isResizingTablePanel = false;
+    (event.target as HTMLElement)?.releasePointerCapture?.(event.pointerId);
+    try {
+      window.localStorage?.setItem(
+        RfUnifiedImageViewerComponent.TABLE_WIDTH_STORAGE_KEY,
+        String(this.tablePanelWidth()),
+      );
+    } catch { /* ignore storage failures — width still applies for this session */ }
+  }
+
   // ==================== COMPUTED DATA ====================
 
   /**
@@ -153,7 +237,12 @@ export class RfUnifiedImageViewerComponent {
    */
   carouselImages = computed(() => {
     const source = this.dataSource();
-    const imagesMap = new Map<number, CarouselImage & { lotoPointId?: number }>();
+    // Deduped by file id — one carousel entry per unique file. Selection is
+    // resolved by file id in {@link onLotoPointClicked}, not by any lotoPointId
+    // stored here (a legacy scheme that misfired when >1 LOTO point referenced
+    // the same file — only the first point's id survived and the rest silently
+    // failed to switch the image).
+    const imagesMap = new Map<number, CarouselImage>();
 
     switch (source.type) {
       case 'loto-point':
@@ -164,7 +253,6 @@ export class RfUnifiedImageViewerComponent {
                 imagesMap.set(equipment.mainFileObject.id, {
                   file: equipment.mainFileObject,
                   equipmentTagNumber: equipment.tagNumber || undefined,
-                  lotoPointId: source.lotoPoint?.id || 0,
                 });
               }
             }
@@ -182,7 +270,6 @@ export class RfUnifiedImageViewerComponent {
                     imagesMap.set(equipment.mainFileObject.id, {
                       file: equipment.mainFileObject,
                       equipmentTagNumber: equipment.tagNumber || undefined,
-                      lotoPointId: lotoPoint.id || 0,
                     });
                   }
                 }
@@ -419,6 +506,40 @@ export class RfUnifiedImageViewerComponent {
     return cfg.showTable && cfg.tablePosition !== 'none' && this.lotoPointsForTable().length > 0;
   });
 
+  /**
+   * Carousel entries that belong to the currently highlighted LOTO point.
+   * Empty until a point is selected. Length ≥ 2 → renders the "jump between
+   * this point's P&IDs" chip strip near the drawing; length ≤ 1 → the strip
+   * is redundant with the drawing itself and stays hidden.
+   * <p>
+   * We resolve by file id (matches how {@link onLotoPointClicked} switches),
+   * NOT by re-running the shape filter — a LOTO point can legitimately live
+   * on a P&ID even if its shape wasn't rendered on that file yet.
+   */
+  activePointCarouselImages = computed<CarouselImage[]>(() => {
+    const point = this.externalClickedLotoPoint() || this.clickedLotoPoint();
+    if (!point?.equipmentList) return [];
+    const fileIds = new Set<number>();
+    for (const eq of point.equipmentList) {
+      const id = eq?.mainFileObject?.id;
+      if (id != null) fileIds.add(id);
+    }
+    if (fileIds.size < 2) return [];
+    return this.carouselImages().filter(img => img.file?.id != null && fileIds.has(img.file.id));
+  });
+
+  /** Convenience helper for the template — is a chip the currently selected image? */
+  isActiveCarouselFile(fileId: number | null | undefined): boolean {
+    const selected = this.selectedCarouselImage();
+    return selected?.file?.id != null && selected.file.id === fileId;
+  }
+
+  /** Chip click — swap the drawing to this file without touching the highlight. */
+  selectCarouselImage(image: CarouselImage): void {
+    this.selectedCarouselImage.set(image);
+    this.imageSelected.emit(image);
+  }
+
   constructor() {
     // Auto-select first image when carousel images change
     effect(() => {
@@ -450,6 +571,60 @@ export class RfUnifiedImageViewerComponent {
 
   onShapeClicked(shape: RfShape): void {
     this.shapeClicked.emit(shape);
+
+    // Round-trip: shape click on the drawing → highlight that shape's owning
+    // LOTO point in the table AND scroll its row into view. Equipment shapes
+    // carry {@code shape.id === equipment.id}, so we find the LOTO point on
+    // the current data source whose equipmentList contains that id.
+    //
+    // Skips for non-equipment shapes (file-connectors, drawing scratch) — those
+    // aren't tied to a LOTO point. Also skips when the resolved point is
+    // already the highlighted one (avoid a re-scroll on the same row).
+    const point = this.findLotoPointOwningShape(shape);
+    if (!point || point.id == null) return;
+    if (this.clickedLotoPoint()?.id === point.id && this.scrollToLotoPointId() === point.id) return;
+    this.clickedLotoPoint.set(point);
+    this.scrollToLotoPointId.set(point.id);
+    this.lotoPointClicked.emit(point);
+  }
+
+  /**
+   * Which LOTO point owns the equipment behind this shape? Walks the current
+   * data source. Returns null for shape types we can't attribute (e.g. file
+   * connectors — those are file-level, not point-level).
+   */
+  private findLotoPointOwningShape(shape: RfShape): LotoPointDto | null {
+    if (shape == null || shape.id == null) return null;
+    if (shape.type === 'file-connector') return null;
+
+    const source = this.dataSource();
+    const equipmentId = shape.id;
+
+    switch (source.type) {
+      case 'loto-point':
+        if (source.lotoPoint?.equipmentList?.some(eq => eq?.id === equipmentId)) {
+          return source.lotoPoint;
+        }
+        return null;
+
+      case 'loto-standard':
+        if (!source.lotoStandard?.lotoPoints) return null;
+        for (const point of source.lotoStandard.lotoPoints) {
+          if (point?.equipmentList?.some(eq => eq?.id === equipmentId)) {
+            return point;
+          }
+        }
+        return null;
+
+      case 'equipment-list':
+      case 'file':
+        // Equipment list is flat — no LOTO-point layer to resolve. Callers
+        // that want row-scroll semantics on these modes wire it themselves.
+        return null;
+
+      default:
+        return null;
+    }
   }
 
   onShapeDoubleClicked(shape: RfShape): void {
@@ -472,13 +647,33 @@ export class RfUnifiedImageViewerComponent {
     this.clickedLotoPoint.set(clickedPoint);
     this.lotoPointClicked.emit(clickedPoint);
 
-    // Find first image from this LOTO point and select it
-    const pointImages = this.carouselImages().filter(
-      img => (img as any).lotoPointId === clickedPoint.id
-    );
+    // Resolve any file this LOTO point references and switch the carousel to it.
+    //
+    // Historically the carousel entry carried a single `lotoPointId` taken from
+    // the FIRST LOTO point that referenced the file. Every subsequent LOTO
+    // point sharing that file had no carousel entry keyed to its id, so
+    // clicking those rows filtered to nothing and the image never switched
+    // — even though the shape overlay would happily light up once the user
+    // manually picked the file from the carousel. Fix: look up files from the
+    // LOTO point itself and match carousel entries by file id.
+    const fileIds = new Set<number>();
+    (clickedPoint.equipmentList ?? []).forEach(eq => {
+      const id = eq?.mainFileObject?.id;
+      if (id != null) fileIds.add(id);
+    });
+    if (fileIds.size === 0) return;
 
-    if (pointImages.length > 0) {
-      this.selectedCarouselImage.set(pointImages[0]);
+    // If we're already showing one of the LOTO point's files, no switch needed.
+    // Prevents a jarring image swap when the user is stepping through several
+    // points that all live on the same P&ID.
+    const currentSelected = this.selectedCarouselImage();
+    if (currentSelected?.file?.id != null && fileIds.has(currentSelected.file.id)) return;
+
+    const match = this.carouselImages().find(
+      img => img.file?.id != null && fileIds.has(img.file.id)
+    );
+    if (match) {
+      this.selectedCarouselImage.set(match);
     }
   }
 

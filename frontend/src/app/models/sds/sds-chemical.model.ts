@@ -16,6 +16,7 @@ export interface SdsChemicalModel extends BaseModel {
   processedAt: string;
   lastAuditedAt: string;
   sharepointId: string;
+  sharePointUrl: string;
   localUuid: string;
   submitterName: string;
   submitterEmail: string;
@@ -42,6 +43,7 @@ export class SdsChemicalDto extends BaseDto implements SdsChemicalModel {
   processedAt: string;
   lastAuditedAt: string;
   sharepointId: string;
+  sharePointUrl: string;
   localUuid: string;
   submitterName: string;
   submitterEmail: string;
@@ -66,6 +68,7 @@ export class SdsChemicalDto extends BaseDto implements SdsChemicalModel {
     this.processedAt = data.processedAt || '';
     this.lastAuditedAt = data.lastAuditedAt || '';
     this.sharepointId = data.sharepointId || '';
+    this.sharePointUrl = data.sharePointUrl || '';
     this.localUuid = data.localUuid || '';
     this.submitterName = data.submitterName || '';
     this.submitterEmail = data.submitterEmail || '';
@@ -122,6 +125,7 @@ export class SdsChemicalDto extends BaseDto implements SdsChemicalModel {
       processedAt: json.processedAt || '',
       lastAuditedAt: json.lastAuditedAt || '',
       sharepointId: json.sharepointId || '',
+      sharePointUrl: json.sharePointUrl || '',
       localUuid: json.localUuid || '',
       submitterName: json.submitterName || '',
       submitterEmail: json.submitterEmail || '',

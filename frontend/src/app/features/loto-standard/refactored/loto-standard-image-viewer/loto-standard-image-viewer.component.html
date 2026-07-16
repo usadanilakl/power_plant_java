@@ -1,6 +1,10 @@
-<!-- Unified Image Viewer -->
+<!-- Unified Image Viewer.
+     Mode is EQUIPMENT_BROWSER, not VIEW_ONLY: VIEW_ONLY has canSelectShapes=false
+     which suppresses the shape-click emit in interactive-image.component.ts:874,
+     so the "click shape → highlight+scroll row" wiring couldn't fire. The
+     LOTO builder uses the same preset for the same reason. -->
 <app-rf-unified-image-viewer
-  [mode]="'VIEW_ONLY'"
+  [mode]="'EQUIPMENT_BROWSER'"
   [dataSource]="dataSource()"
   [config]="viewerConfig"
   [externalClickedLotoPoint]="clickedLotoPoint()"

@@ -64,6 +64,8 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   hoveredItemId = input<number | null>(null);
   /** ID of item to scroll to (triggered by external click events) */
   scrollToItemId = input<number | null>(null);
+  /** ID of item externally "clicked" — highlights the row without a real click. See TableComponent. */
+  externalClickedItemId = input<number | null>(null);
   fieldsToDisplay = input<(keyof LotoPointDto)[]>();
   /** Initial search criteria to apply when the table loads */
   initialSearchCriteria = input<SearchCriteria | null>(null);

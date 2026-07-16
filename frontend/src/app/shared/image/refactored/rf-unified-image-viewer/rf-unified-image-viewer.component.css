@@ -21,7 +21,7 @@
 /* Collapsible Header */
 .viewer-header {
   padding: 0.75rem 1rem;
-  background: var(--surface-color, #f5f5f5);
+  background: var(--secondary-background, #f5f5f5);
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   cursor: pointer;
   user-select: none;
@@ -29,7 +29,7 @@
 }
 
 .viewer-header:hover {
-  background: var(--surface-hover, #ececec);
+  background: var(--hover-color, #ececec);
 }
 
 .viewer-title {
@@ -52,7 +52,7 @@
 }
 
 .image-count {
-  color: var(--text-secondary, #666);
+  color: var(--secondary-text, #666);
   font-size: 0.875rem;
   font-weight: normal;
 }
@@ -89,29 +89,62 @@
 .table-panel {
   display: flex;
   flex-direction: column;
-  background: var(--surface-color, #ffffff);
+  background: var(--card-background, #ffffff);
+  color: var(--primary-text, inherit);
   border-right: 1px solid var(--border-color, #e0e0e0);
   overflow: hidden;
 }
 
+/* Widths are set inline by the component via [style.width.px]="tablePanelWidth()"
+   so the split-handle drag can update them at pointer-move rate. We only carry
+   the visual chrome (border, flex-shrink guard) here — no width/min/max. */
 .table-panel.left-panel {
-  width: 400px;
-  min-width: 300px;
-  max-width: 50%;
+  flex: 0 0 auto;
   border-right: 1px solid var(--border-color, #e0e0e0);
 }
 
 .table-panel.right-panel {
-  width: 400px;
-  min-width: 300px;
-  max-width: 50%;
+  flex: 0 0 auto;
   border-left: 1px solid var(--border-color, #e0e0e0);
+}
+
+/* Draggable split between the table panel and the image section.
+   Wide enough to hit with a mouse (6px). `col-resize` cursor telegraphs
+   drag-ability; the pill affordance in the middle telegraphs it visually. */
+.split-handle {
+  flex: 0 0 6px;
+  background: var(--border-color, #e0e0e0);
+  cursor: col-resize;
+  transition: background-color 0.15s ease;
+  touch-action: none; /* prevents mobile scroll interference during drag */
+  user-select: none;
+  position: relative;
+}
+
+.split-handle:hover,
+.split-handle:active {
+  background: var(--accent-color, #007bff);
+}
+
+.split-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  background: var(--secondary-text, #666);
+  opacity: 0.4;
+  border-radius: 1px;
+  pointer-events: none;
 }
 
 .panel-header {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
-  background: var(--surface-color, #f9f9f9);
+  background: var(--secondary-background, #f9f9f9);
+  color: var(--primary-text, inherit);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -125,7 +158,7 @@
 
 .point-count {
   font-size: 0.875rem;
-  color: var(--text-secondary, #666);
+  color: var(--secondary-text, #666);
 }
 
 .panel-content {
@@ -143,14 +176,16 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--background-color, #ffffff);
+  background: var(--primary-background, #ffffff);
+  color: var(--primary-text, inherit);
 }
 
 /* Carousel Section */
 .carousel-section {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
-  background: var(--surface-color, #f9f9f9);
+  background: var(--secondary-background, #f9f9f9);
+  color: var(--primary-text, inherit);
   /* Containing block for the carousel — clip anything that still tries to
      exceed it so the prev/next arrows always stay reachable. */
   min-width: 0;
@@ -162,12 +197,72 @@
 .single-image-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
-  background: var(--surface-color, #f9f9f9);
+  background: var(--secondary-background, #f9f9f9);
+  color: var(--primary-text, inherit);
 }
 
 .image-name {
   font-weight: 500;
   font-size: 0.875rem;
+}
+
+/* Multi-P&ID quick-switch strip. Shown only when the currently highlighted
+   LOTO point references ≥2 files — lets the operator jump between that
+   point's P&IDs without wading back through the full-standard carousel.
+   Uses the app's own theme tokens (theme-styles.css) so section-accent
+   colors and dark mode both work. */
+.point-file-chip-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: var(--secondary-background, #f5f5f5);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  font-size: 0.8rem;
+}
+
+.chip-strip-label {
+  color: var(--secondary-text, #666);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.point-file-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  background: var(--primary-background, transparent);
+  color: var(--primary-text, inherit);
+  border: 1px solid var(--border-color, #cfcfcf);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.point-file-chip:hover,
+.point-file-chip:focus-visible {
+  background: var(--hover-color, rgba(0, 0, 0, 0.04));
+  border-color: var(--accent-color, #007bff);
+  outline: none;
+}
+
+.point-file-chip.active {
+  background: var(--accent-color, #007bff);
+  color: var(--header-text, #fff);
+  border-color: var(--accent-color, #007bff);
+}
+
+.point-file-chip.active:hover,
+.point-file-chip.active:focus-visible {
+  background: var(--accent-color-hover, #0056b3);
+  border-color: var(--accent-color-hover, #0056b3);
 }
 
 /* Large Image Container */
@@ -185,7 +280,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--text-secondary, #999);
+  color: var(--secondary-text, #999);
   font-size: 1rem;
 }
 
@@ -193,7 +288,8 @@
 .legend {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border-color, #e0e0e0);
-  background: var(--surface-color, #f9f9f9);
+  background: var(--secondary-background, #f9f9f9);
+  color: var(--primary-text, inherit);
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
@@ -222,7 +318,7 @@
 }
 
 .legend-text {
-  color: var(--text-primary, #333);
+  color: var(--primary-text, #333);
 }
 
 /* Empty State */
@@ -246,12 +342,12 @@
   font-size: 1.25rem;
   font-weight: 500;
   margin: 0 0 0.5rem 0;
-  color: var(--text-primary, #333);
+  color: var(--primary-text, #333);
 }
 
 .empty-message {
   font-size: 0.875rem;
-  color: var(--text-secondary, #666);
+  color: var(--secondary-text, #666);
   margin: 0;
   max-width: 400px;
 }

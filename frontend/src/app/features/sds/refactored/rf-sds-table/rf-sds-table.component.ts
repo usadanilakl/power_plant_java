@@ -71,6 +71,13 @@ interface Attachment {
       <button class="cell-btn" (click)="onViewDetails($event, item)" title="View details">&#x1F50D;</button>
     </ng-template>
 
+    <ng-template #spLinkTpl let-item let-column="column">
+      @if (item.sharePointUrl) {
+        <a class="cell-sp-link" [href]="item.sharePointUrl" target="_blank" rel="noopener noreferrer"
+           (click)="$event.stopPropagation()" title="Open this item in SharePoint">&#x1F517;</a>
+      }
+    </ng-template>
+
     @if (lightboxSrc()) {
       <div class="lightbox" (click)="lightboxSrc.set(null)">
         <img [src]="lightboxSrc()!" alt="Full size" class="lightbox-img" (click)="$event.stopPropagation()">
@@ -96,6 +103,9 @@ interface Attachment {
     .cell-btn { background: none; border: none; cursor: pointer; font-size: 16px;
       padding: 2px 6px; border-radius: 4px; line-height: 1; }
     .cell-btn:hover { background: var(--hover-background); }
+    .cell-sp-link { text-decoration: none; font-size: 15px; padding: 2px 6px; border-radius: 4px;
+      line-height: 1; cursor: pointer; display: inline-block; }
+    .cell-sp-link:hover { background: var(--hover-background); }
     .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex;
       align-items: center; justify-content: center; z-index: 10000; cursor: pointer; }
     .lightbox-img { max-width: 90vw; max-height: 90vh; object-fit: contain; cursor: default; border-radius: 4px; }
@@ -119,6 +129,7 @@ export class RfSdsTableComponent implements AfterViewInit {
 
   imageTpl = viewChild.required<TemplateRef<any>>('imageTpl');
   actionsTpl = viewChild.required<TemplateRef<any>>('actionsTpl');
+  spLinkTpl = viewChild.required<TemplateRef<any>>('spLinkTpl');
 
   private items$ = toSignal(this.stateService.allItems$, { initialValue: [] as SdsChemicalDto[] });
   items = computed(() => this.items$());
@@ -170,9 +181,18 @@ export class RfSdsTableComponent implements AfterViewInit {
       template: this.actionsTpl(),
       accessorFn: () => '',
     };
+    const spLinkCol: Column = {
+      id: 'sharePointUrl',
+      header: 'SP',
+      width: 44,
+      sortable: false,
+      filterable: false,
+      template: this.spLinkTpl(),
+      accessorFn: (item: any) => item.sharePointUrl ? '\u{1F517}' : '',
+    };
 
     const filtered = baseColumns.filter(c => c.id !== 'attachmentCount');
-    this.columns.set([imageCol, ...filtered, actionsCol]);
+    this.columns.set([imageCol, ...filtered, spLinkCol, actionsCol]);
   }
 
   getFirstImage(itemId: number): string | null { return this.imageCache.get(itemId) ?? null; }

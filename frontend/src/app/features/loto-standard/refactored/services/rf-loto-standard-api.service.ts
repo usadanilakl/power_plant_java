@@ -96,6 +96,21 @@ export class RfLotoStandardApiService {
   }
 
   /**
+   * Duplicate an existing standard into a fresh independent DRAFT copy.
+   * LOTO points are shared references (physical isolation points); everything
+   * else — name/description/prose/prerequisites/order/groups — is deep-copied.
+   * Backend gates this on CONTROL_AUTHORITY.
+   */
+  duplicateLotoStandard(
+    standardId: number
+  ): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.post<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/duplicate`,
+      null
+    );
+  }
+
+  /**
    * Update existing loto standard
    * Note: lotoPoints are excluded from updates as they are managed separately via
    * addLotoPointToStandard, removeLotoPointFromStandard, and reorderLotoPoints

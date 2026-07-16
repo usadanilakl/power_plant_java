@@ -31,6 +31,10 @@ interface Attachment {
             }
             <button class="action-btn btn-edit" (click)="edit.emit(item())">Edit</button>
             <button class="action-btn btn-print" (click)="onPrintTitleSheet()">Print Title Sheet</button>
+            @if (item().sharePointUrl) {
+              <a class="action-btn btn-sp" [href]="item().sharePointUrl" target="_blank" rel="noopener noreferrer"
+                 title="Open this item in SharePoint">Open in SharePoint</a>
+            }
             <button class="action-btn btn-delete" (click)="onDelete()">Delete</button>
             <button class="action-btn" (click)="close.emit()">&times;</button>
           </div>
@@ -174,6 +178,9 @@ interface Attachment {
     .btn-edit { background: var(--accent-color); color: white; border-color: var(--accent-color); }
     .btn-process { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; font-weight: 600; }
     .btn-print { background: #fff8e1; color: #f57f17; border-color: #ffe082; }
+    .btn-sp { background: #e3f2fd; color: #1565c0; border-color: #90caf9; text-decoration: none;
+      display: inline-flex; align-items: center; }
+    .btn-sp:hover { background: #bbdefb; }
     .btn-delete { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
     .btn-upload { display: inline-flex; align-items: center; }
 

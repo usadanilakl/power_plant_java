@@ -325,8 +325,8 @@ public class ApiEmailService {
                     "bytes " + offset + "-" + (offset + chunkLen - 1) + "/" + totalSize);
             // NOTE: uploadUrl is pre-signed by Graph — do NOT include Authorization.
 
-            ResponseEntity<String> putResp = restTemplate.exchange(
-                    uploadUrl, HttpMethod.PUT, new HttpEntity<>(chunk, chunkHeaders), String.class);
+            ResponseEntity<String> putResp = putChunkWithThrottleRetry(
+                    uploadUrl, chunk, chunkHeaders, att.getFileName(), offset);
             if (!putResp.getStatusCode().is2xxSuccessful()) {
                 throw new RuntimeException("Chunk PUT failed for '" + att.getFileName()
                         + "' at offset " + offset + ": " + putResp.getStatusCode()
@@ -335,6 +335,39 @@ public class ApiEmailService {
             offset += chunkLen;
         }
         return totalSize;
+    }
+
+    /**
+     * PUTs a chunk to a pre-signed upload URL with 429/Retry-After handling. Graph's
+     * IncomingBytes throttle can trip mid-upload after a burst — reuse the same backoff
+     * schedule as {@link #exchangeWithRetry} instead of failing the whole email.
+     */
+    private ResponseEntity<String> putChunkWithThrottleRetry(String uploadUrl, byte[] chunk,
+                                                             HttpHeaders chunkHeaders,
+                                                             String fileName, long offset) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return restTemplate.exchange(
+                        uploadUrl, HttpMethod.PUT, new HttpEntity<>(chunk, chunkHeaders), String.class);
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                if (attempt >= MAX_THROTTLE_RETRIES) {
+                    log.error("[Email] 429 throttled on chunk PUT for '{}' at offset {} after {} retries",
+                            fileName, offset, MAX_THROTTLE_RETRIES);
+                    throw e;
+                }
+                final int a = attempt;
+                long waitSec = parseRetryAfterSeconds(e.getResponseHeaders())
+                        .orElseGet(() -> (long) THROTTLE_BACKOFF_SEC[Math.min(a, THROTTLE_BACKOFF_SEC.length - 1)]);
+                log.warn("[Email] 429 throttled on chunk PUT for '{}' (attempt {}/{}), sleeping {}s",
+                        fileName, attempt + 1, MAX_THROTTLE_RETRIES, waitSec);
+                try {
+                    Thread.sleep(waitSec * 1000L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for throttle backoff", ie);
+                }
+            }
+        }
     }
 
     /** Draft-safe variant of the message JSON — everything except the attachments array. */
@@ -419,22 +452,59 @@ public class ApiEmailService {
     }
 
     /**
-     * Executes a REST exchange with automatic 401 retry.
+     * Executes a REST exchange with automatic 401 retry and 429 throttle handling.
      * On Unauthorized, invalidates cached token, re-authenticates, and retries once.
+     * On TooManyRequests, honors the Retry-After header (or falls back to exponential
+     * backoff 30s → 60s → 120s) and retries up to {@link #MAX_THROTTLE_RETRIES} times.
+     * Graph's tenant-wide IncomingBytes limit can trip after a burst of upload-session
+     * traffic (~150 MB / 5 min) — see the SDS gap-report email flow.
      */
     private <T> ResponseEntity<T> exchangeWithRetry(String url, HttpMethod method,
                                                       HttpEntity<?> entity, Class<T> responseType) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return restTemplate.exchange(url, method, entity, responseType);
+            } catch (HttpClientErrorException.Unauthorized e) {
+                log.warn("[Email] 401 received, refreshing token and retrying: {} {}", method, url);
+                emailTokenExpirationTime = null;
+                ensureValidToken();
+                HttpHeaders newHeaders = new HttpHeaders();
+                newHeaders.putAll(entity.getHeaders());
+                newHeaders.setBearerAuth(emailAccessToken);
+                entity = new HttpEntity<>(entity.getBody(), newHeaders);
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                if (attempt >= MAX_THROTTLE_RETRIES) {
+                    log.error("[Email] 429 throttled after {} retries, giving up: {} {}",
+                            MAX_THROTTLE_RETRIES, method, url);
+                    throw e;
+                }
+                final int a = attempt;
+                long waitSec = parseRetryAfterSeconds(e.getResponseHeaders())
+                        .orElseGet(() -> (long) THROTTLE_BACKOFF_SEC[Math.min(a, THROTTLE_BACKOFF_SEC.length - 1)]);
+                log.warn("[Email] 429 throttled ({} attempt {}/{}), sleeping {}s before retry",
+                        extractErrorCode(e), attempt + 1, MAX_THROTTLE_RETRIES, waitSec);
+                try {
+                    Thread.sleep(waitSec * 1000L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for throttle backoff", ie);
+                }
+            }
+        }
+    }
+
+    private static final int MAX_THROTTLE_RETRIES = 4;
+    private static final int[] THROTTLE_BACKOFF_SEC = {30, 60, 120, 240};
+
+    private java.util.Optional<Long> parseRetryAfterSeconds(HttpHeaders headers) {
+        if (headers == null) return java.util.Optional.empty();
+        String ra = headers.getFirst(HttpHeaders.RETRY_AFTER);
+        if (ra == null || ra.isBlank()) return java.util.Optional.empty();
         try {
-            return restTemplate.exchange(url, method, entity, responseType);
-        } catch (HttpClientErrorException.Unauthorized e) {
-            log.warn("[Email] 401 received, refreshing token and retrying: {} {}", method, url);
-            emailTokenExpirationTime = null;
-            ensureValidToken();
-            HttpHeaders newHeaders = new HttpHeaders();
-            newHeaders.putAll(entity.getHeaders());
-            newHeaders.setBearerAuth(emailAccessToken);
-            HttpEntity<?> retryEntity = new HttpEntity<>(entity.getBody(), newHeaders);
-            return restTemplate.exchange(url, method, retryEntity, responseType);
+            long sec = Long.parseLong(ra.trim());
+            return java.util.Optional.of(Math.max(1L, Math.min(sec, 600L)));
+        } catch (NumberFormatException ignored) {
+            return java.util.Optional.empty();
         }
     }
 

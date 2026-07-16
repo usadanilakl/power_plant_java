@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.sds.SdsChemical;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -19,6 +20,15 @@ public class SdsChemicalMapper {
 
     private final NgValueService valueService;
     private final PermitAttachmentRepo attachmentRepo;
+
+    @Value("${sharepoint.site.hostname:}")
+    private String spHostname;
+
+    @Value("${sharepoint.site.path:}")
+    private String spSitePath;
+
+    @Value("${sharepoint.list.sds.title:SDS}")
+    private String spListTitle;
 
     public SdsChemicalDto convertToDto(SdsChemical entity) {
         if (entity == null) return null;
@@ -65,6 +75,7 @@ public class SdsChemicalMapper {
         dto.setSharepointId(entity.getSharepointId());
         dto.setLocalUuid(entity.getLocalUuid());
         dto.setSpModifiedTime(entity.getSpModifiedTime());
+        dto.setSharePointUrl(buildSharePointUrl(entity.getSharepointId()));
         dto.setSubmitterName(entity.getSubmitterName());
         dto.setSubmitterEmail(entity.getSubmitterEmail());
         dto.setSubmitterPhone(entity.getSubmitterPhone());
@@ -104,6 +115,20 @@ public class SdsChemicalMapper {
             entity.setStatus(valueService.createValue("SdsStatus", dto.getStatusName()));
         }
         return entity;
+    }
+
+    /**
+     * Builds the deep-link URL to the SharePoint list item (DispForm.aspx).
+     * Returns null when the item hasn't been synced yet or when SP config is missing —
+     * the frontend hides the link in that case.
+     */
+    private String buildSharePointUrl(String sharepointId) {
+        if (sharepointId == null || sharepointId.isBlank()) return null;
+        if (spHostname == null || spHostname.isBlank()) return null;
+        if (spSitePath == null || spSitePath.isBlank()) return null;
+        String site = spSitePath.startsWith("/") ? spSitePath : "/" + spSitePath;
+        return "https://" + spHostname + site + "/Lists/" + spListTitle
+                + "/DispForm.aspx?ID=" + sharepointId;
     }
 
     /** First non-blank line of the newline-delimited names. */

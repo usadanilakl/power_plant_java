@@ -152,6 +152,38 @@ public class NgLotoStandardController {
     }
 
     /**
+     * Duplicate an existing LOTO standard into a fresh independent DRAFT copy.
+     * Response body is the new standard's DTO — the frontend can then load it
+     * into the current-standard state and navigate to its editor.
+     * <p>
+     * LOTO points are shared references between the source and the copy (they
+     * represent physical isolation points); everything else — name (with a
+     * "(Copy)" suffix), description, procedural prose, prerequisites JSON,
+     * groups, ordering — is deep-copied. See {@code NgLotoStandardService.duplicate}
+     * javadoc for the full field list.
+     */
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> duplicateLotoStandard(@PathVariable Long id) {
+        try {
+            LotoStandardDto duplicated = lotoStandardService.duplicate(id);
+            NgApiResponse<LotoStandardDto> response = new NgApiResponse<>(
+                    duplicated,
+                    "LOTO standard duplicated successfully",
+                    LocalDateTime.now()
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Update existing LOTO standard
      */
     @PutMapping

@@ -15,6 +15,8 @@ import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.s
 import { LotoStandardMapperService } from '../services/rf-loto-standard-mapper.service';
 import { RfLotoStandardApiService } from '../services/rf-loto-standard-api.service';
 import { LotoService } from '../../../../services/loto/loto.service';
+import { AuthService } from '../../../../services/auth.service';
+import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { LotoStandardDto, PointPrerequisiteDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { RfLotoPointApiService } from '../../../loto-points/refactored/services/rf-loto-point-api.service';
@@ -62,8 +64,23 @@ export class RfLotoStandardFormComponent {
   private apiService = inject(RfLotoStandardApiService);
   private lotoService = inject(LotoService);
   private lotoPointApi = inject(RfLotoPointApiService);
+  private authService = inject(AuthService);
+  private messageService = inject(GlobalMessageService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+
+  /** Read the tab-bar's Duplicate button visibility from the template. */
+  canDuplicate = computed(() => !!this.entity().id && this.authService.isControlAuthority());
+
+  /** Non-CA users don't see the Duplicate button, but we surface a tooltip anyway
+   *  for anyone inspecting via keyboard nav. */
+  duplicateTooltip = computed(() => {
+    if (!this.entity().id) return 'Save the standard first';
+    if (!this.authService.isControlAuthority()) return 'Requires the Control Authority role';
+    return 'Duplicate this standard as a new independent DRAFT';
+  });
+
+  isDuplicating = signal(false);
 
   entityInput = input<LotoStandardDto>();
   fieldsInput = input<LotoStandardFieldName[]>([]);
@@ -369,6 +386,57 @@ export class RfLotoStandardFormComponent {
 
   openCounterpartDialog(): void {
     this.showCounterpartDialog.set(true);
+  }
+
+  /**
+   * Duplicate the current standard into a fresh independent DRAFT.
+   * <p>
+   * The server does the deep-copy work (name with "(Copy)" suffix, description,
+   * procedural prose, prerequisites JSON, ordering, groups). LOTO points are
+   * SHARED between the source and the copy — they represent physical isolation
+   * points and duplicating them would fork the physical world. Editing points,
+   * prose, prerequisites, or ordering on the copy does not affect the source.
+   * <p>
+   * On success: the state service's {@code selectedItem} flips to the new copy
+   * so the form re-renders on the duplicate, and the copy is appended to the
+   * loaded-standards list so it appears in the sidebar. A confirm() prompt
+   * gates the action since it creates a persistent row.
+   */
+  onDuplicate(): void {
+    const source = this.entity();
+    if (!source.id) return;
+    if (!this.authService.isControlAuthority()) {
+      this.messageService.showError('Duplicating a LOTO standard requires the Control Authority role.');
+      return;
+    }
+    if (this.isDuplicating()) return;
+
+    const confirmMsg = `Duplicate "${source.name || 'this standard'}"?\n\n`
+      + `A new DRAFT with the same LOTO points and content will be created. `
+      + `LOTO points are shared — editing them on the copy also affects the original. `
+      + `Everything else can be edited independently.`;
+    if (!confirm(confirmMsg)) return;
+
+    this.isDuplicating.set(true);
+    this.apiService.duplicateLotoStandard(source.id).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (response) => {
+        this.isDuplicating.set(false);
+        const copy = LotoStandardDto.fromJson(response.responseData);
+        this.stateService.addLotoStandards([copy]);
+        this.stateService.selectedItem.set(copy);
+        this.messageService.showSuccess(`Duplicated as "${copy.name}"`);
+        // Bring the form back to the General Info slide so the operator sees
+        // the new name and can rename it right away if needed.
+        this.currentSlide.set(0);
+      },
+      error: (err) => {
+        this.isDuplicating.set(false);
+        const msg = err?.error?.message || err?.message || 'Failed to duplicate the standard';
+        this.messageService.showError(msg);
+      },
+    });
   }
 
   flipToPermit(): void {

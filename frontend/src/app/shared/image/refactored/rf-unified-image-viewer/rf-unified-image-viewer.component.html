@@ -20,7 +20,7 @@
 
         <!-- Left Table (if configured) -->
         @if (shouldShowTable() && config().tablePosition === 'left') {
-          <div class="table-panel left-panel">
+          <div class="table-panel left-panel" [style.width.px]="tablePanelWidth()">
             <div class="panel-header">
               <h3>LOTO Points</h3>
               <span class="point-count">{{ lotoPointsForTable().length }} points</span>
@@ -31,12 +31,26 @@
                 [isTableIsolated]="true"
                 [loadMoreEnabled]="false"
                 [hoverDebounceTime]="200"
+                [scrollToItemId]="scrollToLotoPointId()"
+                [externalClickedItemId]="clickedLotoPoint()?.id ?? null"
                 (selectedItemsEvent)="onLotoPointSelected($event)"
                 (rowClickedEvent)="onLotoPointClicked($event)"
                 (rowHoveredEvent)="onLotoPointHovered($event)"
               ></app-loto-point-display-table>
             </div>
           </div>
+          <!-- Split handle — pointer events with capture so drag survives the
+               cursor briefly outrunning the handle while the panel resizes. -->
+          <div
+            class="split-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize LOTO points panel"
+            (pointerdown)="startTablePanelResize($event, 'left')"
+            (pointermove)="onTablePanelResizeMove($event)"
+            (pointerup)="endTablePanelResize($event)"
+            (pointercancel)="endTablePanelResize($event)"
+          ></div>
         }
 
         <!-- Image Section -->
@@ -55,6 +69,27 @@
           @if (carouselImages().length === 1) {
             <div class="single-image-header">
               <span class="image-name">{{ carouselImages()[0].file.name }}</span>
+            </div>
+          }
+
+          <!-- Multi-P&ID quick-switch strip: appears only when the highlighted
+               LOTO point references ≥2 files. Lets the operator hop between the
+               point's P&IDs without going back to the table or the full carousel. -->
+          @if (activePointCarouselImages().length > 1) {
+            <div class="point-file-chip-strip" role="tablist" aria-label="P&IDs for the highlighted LOTO point">
+              <span class="chip-strip-label">This LOTO point:</span>
+              @for (img of activePointCarouselImages(); track img.file?.id) {
+                <button
+                  type="button"
+                  role="tab"
+                  class="point-file-chip"
+                  [class.active]="isActiveCarouselFile(img.file?.id)"
+                  [attr.aria-selected]="isActiveCarouselFile(img.file?.id)"
+                  [title]="img.file?.name || ''"
+                  (click)="selectCarouselImage(img)">
+                  {{ img.file?.name || ('File #' + img.file?.id) }}
+                </button>
+              }
             </div>
           }
 
@@ -104,7 +139,20 @@
 
         <!-- Right Table (if configured) -->
         @if (shouldShowTable() && config().tablePosition === 'right') {
-          <div class="table-panel right-panel">
+          <!-- Split handle mirrors the left-panel version but with inverted
+               drag semantics: dragging left grows the panel (right side of
+               the layout), so we pass side='right' to invert the delta. -->
+          <div
+            class="split-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize LOTO points panel"
+            (pointerdown)="startTablePanelResize($event, 'right')"
+            (pointermove)="onTablePanelResizeMove($event)"
+            (pointerup)="endTablePanelResize($event)"
+            (pointercancel)="endTablePanelResize($event)"
+          ></div>
+          <div class="table-panel right-panel" [style.width.px]="tablePanelWidth()">
             <div class="panel-header">
               <h3>LOTO Points</h3>
               <span class="point-count">{{ lotoPointsForTable().length }} points</span>
@@ -115,6 +163,8 @@
                 [isTableIsolated]="true"
                 [loadMoreEnabled]="false"
                 [hoverDebounceTime]="200"
+                [scrollToItemId]="scrollToLotoPointId()"
+                [externalClickedItemId]="clickedLotoPoint()?.id ?? null"
                 (selectedItemsEvent)="onLotoPointSelected($event)"
                 (rowClickedEvent)="onLotoPointClicked($event)"
                 (rowHoveredEvent)="onLotoPointHovered($event)"

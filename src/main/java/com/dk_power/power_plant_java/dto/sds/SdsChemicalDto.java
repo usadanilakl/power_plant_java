@@ -36,6 +36,8 @@ public class SdsChemicalDto {
     private String sharepointId;
     private String localUuid;
     private Instant spModifiedTime;
+    /** Direct link to the SharePoint list item (DispForm.aspx); null when not yet synced. */
+    private String sharePointUrl;
 
     private String submitterName;
     private String submitterEmail;

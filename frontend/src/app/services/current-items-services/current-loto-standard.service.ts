@@ -7,6 +7,8 @@ import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { LotoPointDto } from "../../models/loto/loto-point.model";
 import { LotoPointService } from "../loto/loto-point.service";
 import { FileDto } from "../../models/file/file.model";
+import { AuthService } from "../auth.service";
+import { GlobalMessageService } from "../../shared/global-message/global-message.service";
 
 @Injectable({
   providedIn: 'root'
@@ -15,10 +17,29 @@ export class CurrentLotoStandardService{
 
     private lotoStandardService = inject(LotoStandardService);
     private lotoPointService = inject(LotoPointService);
+    private authService = inject(AuthService);
+    private messageService = inject(GlobalMessageService);
     private destroyRef = inject(DestroyRef);
 
     constructor(){
       this.loadStandardsFromServer();
+    }
+
+    /**
+     * Client-side guard for build-side writes (add / remove / reorder LOTO points,
+     * create standard). The backend already rejects unauthorized calls with 403,
+     * but that lands as a generic "Requires CONTROL_AUTHORITY" error toast and
+     * a wasted round-trip. Short-circuiting here gives the operator immediate
+     * feedback and keeps the state store from optimistically mutating on a
+     * request that will fail.
+     *
+     * Returns true iff the current user is Control Authority (or the legacy
+     * QUALIFIED alias, per AuthService.isControlAuthority()).
+     */
+    private requireControlAuthority(actionLabel: string): boolean {
+      if (this.authService.isControlAuthority()) return true;
+      this.messageService.showError(`${actionLabel} requires the Control Authority role.`);
+      return false;
     }
 
     private allStandards = new BehaviorSubject<LotoStandardDto[]>([]);
@@ -51,7 +72,39 @@ export class CurrentLotoStandardService{
       ).subscribe();
     }
 
+    /**
+     * Duplicate an existing standard. Server does the deep-copy work; here we
+     * just append the resulting DTO to the in-memory list and set it as the
+     * current standard so the operator lands directly on the copy for editing.
+     * <p>
+     * Guarded on Control Authority — non-CA users get a toast and no request
+     * is sent. Backend also gates, so this is only to save a round-trip and
+     * give the operator immediate feedback.
+     */
+    duplicateStandard(standardId: number): Observable<LotoStandardDto | null> {
+      if (!this.requireControlAuthority('Duplicating a LOTO standard')) {
+        return of(null);
+      }
+      return this.lotoStandardService.duplicateLotoStandard(standardId).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
+        tap((standard: LotoStandardDto) => {
+          if (!standard) return;
+          const standardDto = new LotoStandardDto(standard);
+          this.allStandards.next([...this.allStandards.getValue(), standardDto]);
+          this.currentStandardSubject.next(standardDto);
+          this.messageService.showSuccess(`Duplicated "${standardDto.name}"`);
+        }),
+        catchError((error) => {
+          console.error('Error duplicating LOTO standard:', error);
+          this.messageService.showError(error?.error?.message || 'Failed to duplicate standard');
+          return of(null);
+        })
+      );
+    }
+
     addStandard(lotoStandard: LotoStandardDto) {
+      if (!this.requireControlAuthority('Creating a LOTO standard')) return;
       this.lotoStandardService.createLotoStandard(lotoStandard).pipe(
         takeUntilDestroyed(this.destroyRef),
         map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
@@ -68,6 +121,7 @@ export class CurrentLotoStandardService{
     }
 
     addLotoPointToStandard(lotoPoint: LotoPointDto) {
+      if (!this.requireControlAuthority('Adding a LOTO point')) return;
       const lotoStandardId = this.currentStandardSubject.getValue()?.id;
       this.lotoStandardService.addLotoPointToStandard(lotoPoint.id, lotoStandardId).pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -100,6 +154,7 @@ export class CurrentLotoStandardService{
     }
 
     removeLotoPointFromStandard(lotoPointId: number) {
+      if (!this.requireControlAuthority('Removing a LOTO point')) return;
       const lotoStandardId = this.currentStandardSubject.getValue()?.id;
       if (!lotoStandardId) {
         console.error('No current LOTO standard selected');
@@ -133,6 +188,7 @@ export class CurrentLotoStandardService{
     }
 
     reorderLotoPoints(lotoPoints: LotoPointDto[]) {
+      if (!this.requireControlAuthority('Reordering LOTO points')) return;
       const currentStandardId = this.currentStandardSubject.getValue()?.id;
       if (!currentStandardId) {
         console.error('No current LOTO standard selected');

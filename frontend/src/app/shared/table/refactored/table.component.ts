@@ -93,6 +93,15 @@ export class TableComponent implements OnInit, AfterViewInit {
   hoveredItemId = input<number | null>(null);
   /** ID of item to scroll to (triggered by external click events) */
   scrollToItemId = input<number | null>(null);
+  /**
+   * ID of item that an external source has "clicked". Applies the
+   * {@code .external-click} row class so the row is visually highlighted
+   * even though no in-table click occurred. Kept separate from
+   * {@code hoveredItemId} so hover semantics don't fight click semantics
+   * — clicking a shape in a paired image viewer should leave a persistent
+   * highlight until another shape is clicked, whereas hover comes and goes.
+   */
+  externalClickedItemId = input<number | null>(null);
   clickSetupInput = input<ClickSetup>({
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],

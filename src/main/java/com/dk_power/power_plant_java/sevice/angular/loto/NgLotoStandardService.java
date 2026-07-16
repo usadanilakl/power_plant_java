@@ -153,6 +153,95 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return lotoStandardMapper.convertToDto(standardEntity);
     }
 
+    /**
+     * Duplicate an existing LOTO Standard into a fresh independent DRAFT.
+     * <p>
+     * Copies the standard's own content — name (with a "(Copy)" suffix), description,
+     * procedural prose (install + removal sides), removal-order flag, groups,
+     * point-order map, and per-point prerequisites JSON — into a brand-new
+     * {@link LotoStandard} row. The two are then completely independent for edits
+     * on any of those fields.
+     * <p>
+     * <b>LOTO points are shared, not duplicated.</b> LotoPoint entities represent
+     * physical isolation points (a specific valve, breaker, etc.); duplicating
+     * them would fork the physical world. Both standards reference the same
+     * points via the ManyToMany join table; adding or removing a point on the
+     * copy only touches the join, not the original.
+     * <p>
+     * <b>Workflow state resets.</b> The copy starts in DRAFT at v1 with no
+     * approval attribution, no pending-review marker, and no approval-event
+     * history. The source's audit trail stays untouched.
+     */
+    @Transactional
+    public LotoStandardDto duplicate(Long sourceId) {
+        requireRole(LotoRole.CONTROL_AUTHORITY);
+        LotoStandard source = lotoStandardRepo.findById(sourceId)
+                .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found: " + sourceId));
+
+        LotoStandard copy = new LotoStandard();
+        copy.setName(deriveCopyName(source.getName()));
+        copy.setDescription(source.getDescription());
+
+        // Procedural prose — copy verbatim. These are text fields on the standard
+        // itself, not shared with any other row, so the operator can edit freely.
+        copy.setInstallPrerequisitesText(source.getInstallPrerequisitesText());
+        copy.setInstallHazardControlText(source.getInstallHazardControlText());
+        copy.setInstallProcedureText(source.getInstallProcedureText());
+        copy.setRemovalPrerequisitesText(source.getRemovalPrerequisitesText());
+        copy.setRemovalHazardControlText(source.getRemovalHazardControlText());
+        copy.setRemovalProcedureText(source.getRemovalProcedureText());
+        copy.setRemovalReversesInstallOrder(source.isRemovalReversesInstallOrder());
+
+        // JSON blobs — deep copy via the domain setters/getters so the copy carries
+        // its own serialized string, not an alias to the source's.
+        copy.setLotoPointOrder(source.getLotoPointOrder());
+        copy.setPointPrerequisites(source.getPointPrerequisites());
+
+        // Groups — categorization labels are shared references (they're Values).
+        copy.setGroups(new HashSet<>(source.getGroups()));
+
+        // LOTO points — SHARE references. Save the copy so it exists in the
+        // join table with the same set of points as the source.
+        copy.getLotoPoints().addAll(source.getLotoPoints());
+
+        // Workflow reset — start fresh in DRAFT v1 with no attribution.
+        copy.setDevelopmentStatus(getOrCreateStatus(LotoStandardStatus.DRAFT));
+        copy.setCurrentVersion(1);
+        copy.clearWorkflowAttribution();
+        copy.setPendingReviewSince(null);
+
+        lotoStandardRepo.save(copy);
+
+        // Update the reverse side of the ManyToMany so LotoPoint.lotoStandards
+        // includes the new standard on the in-memory graph too. Without this,
+        // a subsequent read of the point's lotoStandards set would omit the
+        // copy until the persistence context is refreshed.
+        for (LotoPoint p : source.getLotoPoints()) {
+            p.addLotoStandard(copy);
+        }
+
+        return lotoStandardMapper.convertToDto(copy);
+    }
+
+    /**
+     * Compute the copy's display name. Handles chained duplicates so
+     * "X" → "X (Copy)" → "X (Copy 2)" → "X (Copy 3)" etc., rather than
+     * "X (Copy) (Copy)" or "X (Copy) (Copy) (Copy)".
+     */
+    private String deriveCopyName(String original) {
+        if (original == null || original.isBlank()) return "Standard (Copy)";
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\\s*\\(Copy(?:\\s+(\\d+))?\\)\\s*$")
+                .matcher(original);
+        if (m.find()) {
+            String base = original.substring(0, m.start()).trim();
+            String nStr = m.group(1);
+            int nextN = (nStr == null) ? 2 : Integer.parseInt(nStr) + 1;
+            return base + " (Copy " + nextN + ")";
+        }
+        return original + " (Copy)";
+    }
+
 
     @Transactional
     public LotoStandardDto addLotoPointToStandard(Long lotoPointId, String lotoStandardId) {
