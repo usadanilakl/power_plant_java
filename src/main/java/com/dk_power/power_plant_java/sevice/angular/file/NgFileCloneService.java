@@ -18,10 +18,13 @@ import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
+import com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,6 +74,18 @@ public class NgFileCloneService {
     private final EquipmentService equipmentService;
     private final NgLotoPointService ngLotoPointService;
     private final LotoPointService lotoPointService;
+
+    // The FieldChange sync channel carries only the FileObject ROW; the actual file bytes ride the
+    // separate PendingFileSync queue (FileObjectSyncHandler). For a normal upload the automatic
+    // "FileObject changed -> queue upload" hook (fired from the CREATE emission's afterCommit) handles
+    // that. It does NOT fire cleanly for the clone: the clone's mid-transaction saveAndFlush makes the
+    // hook run during the outer flush (reentrant, before the disk copy), so no upload task is enqueued
+    // and the hub never receives the cloned file. We therefore trigger the upload explicitly at the end
+    // of the clone. @Lazy field injection avoids the FileObjectSyncHandler dependency cycle (the same
+    // reason FieldChangeTracker wires it via a setter).
+    @Lazy
+    @Autowired
+    private FileObjectSyncHandler fileObjectSyncHandler;
 
     @Value("${files.root.path}")
     private String filesRootPath;
@@ -147,6 +162,13 @@ public class NgFileCloneService {
         // 2. Disk copy (each extension the source has). NOT transactional — done
         //    AFTER the metadata save so any DB error above prevents wasted I/O.
         int diskCopied = copyDiskFiles(source, clone);
+
+        // 2b. Explicitly enqueue the cloned file's bytes for sync to the hub. The FieldChange channel
+        //     only syncs the FileObject row; without this the hub gets the row but never the file.
+        //     Idempotent (queueFileUpload dedups) and hub-aware (onLocalFileObjectChanged registers the
+        //     file for download-serving when this runs on the hub). See the field comment for why the
+        //     automatic hook doesn't cover the clone.
+        fileObjectSyncHandler.onLocalFileObjectChanged(clone, true);
 
         // 3. Clone each equipment and resolve its LOTO points.
         EquipmentImportResult eqResult = cloneEquipmentAndLotoFrom(source, clone, sourceUnit, targetUnit);
