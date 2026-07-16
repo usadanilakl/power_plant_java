@@ -12,11 +12,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,6 +36,12 @@ public class FieldChangeTracker {
     private final ObjectMapper objectMapper;
     private final SyncEventPublisher syncEventPublisher;
     private final SyncContext syncContext;
+
+    // Field-injected (NOT a @RequiredArgsConstructor final field) — used only to unwrap the current
+    // transaction's Hibernate session so UPDATE FieldChange rows can be INSERTed on its own JDBC
+    // connection. Same acquisition idiom as EntityStateCapture. See persistFieldChangesOnConnection.
+    @PersistenceContext
+    private EntityManager entityManager;
 
     // Lazy injection to avoid circular dependency
     private FileObjectSyncHandler fileObjectSyncHandler;
@@ -530,35 +542,108 @@ public class FieldChangeTracker {
 
             log.debug("Found {} changes for {} #{}", changes.size(), entityType, entityId);
 
-            if (!changes.isEmpty()) {
-                fieldChangeRepository.saveAll(changes);
-                // Diagnostic for "local edits never reach the hub": record that outbound
-                // rows were saved, their initial syncedToMachines (must NOT contain
-                // |SERVER| for a normal local edit, or they'll never be sent), and whether
-                // publication will fire on commit or immediately. Pairs with
-                // CentralSyncService.server_sync.changes_detected.* to localize where rows
-                // are lost between save and send.
-                boolean txActive = TransactionSynchronizationManager.isSynchronizationActive();
-                log.info("field_change.saved entity={}#{} count={} syncedToMachines={} publishMode={}",
-                    entityType, entityId, changes.size(),
-                    changes.get(0).getSyncedToMachines(),
-                    txActive ? "afterCommit" : "immediate");
-
-                // Defer publication (and FileObjectSyncHandler notification) to
-                // afterCommit of the active transaction. Without this, a
-                // synthetic emission inside a pair tx that later rolls back
-                // would still broadcast an SSE event for a FieldChange row
-                // that never made it to the DB, leaving clients with phantom
-                // updates they cannot reconcile. HubLocalChangeBroadcaster
-                // publishes asynchronously, so even an immediate publish here
-                // races with commit / rollback.
-                publishOnCommit(changes, entityType, newEntity);
-            }
         } catch (Exception e) {
-            log.error("Error tracking entity update for {} #{}: {}", entityType, entityId, e.getMessage(), e);
+            // This catch guards ONLY the diff computation above. Persistence is deliberately
+            // OUTSIDE it (below): the prior code did saveAll() inside this catch, so a persist
+            // failure was swallowed while a non-empty `changes` was still returned — which
+            // defeats the fail-loud guard in ValueReferenceRepointService.emitPendingFieldChanges
+            // (it treats a non-empty return as "row written"). Persist failures must PROPAGATE.
+            log.error("Error building field-change diff for {} #{}: {}", entityType, entityId, e.getMessage(), e);
+        }
+
+        if (!changes.isEmpty()) {
+            // IMPORTANT: persist via an immediate same-transaction JDBC INSERT, NOT
+            // fieldChangeRepository.saveAll(). @PostUpdate fires DURING the commit-time flush;
+            // a JPA saveAll there only registers a write-behind ActionQueue insert that Hibernate
+            // never re-drains for a "terminal" update (entity dirtied, then the tx returns with no
+            // later flush — every LOTO lifecycle transition), so the UPDATE change-log row was
+            // silently dropped while the entity's own UPDATE committed. A direct INSERT on the
+            // session's own JDBC connection bypasses the ActionQueue and commits atomically with
+            // the entity UPDATE (same connection => rolls back together).
+            persistFieldChangesOnConnection(changes);
+            boolean txActive = TransactionSynchronizationManager.isSynchronizationActive();
+            log.info("field_change.saved entity={}#{} count={} syncedToMachines={} publishMode={}",
+                entityType, entityId, changes.size(),
+                changes.get(0).getSyncedToMachines(),
+                txActive ? "afterCommit" : "immediate");
+
+            // Defer publication (and FileObjectSyncHandler notification) to afterCommit of the
+            // active transaction so a rollback doesn't broadcast an SSE event for a FieldChange
+            // row that never committed. HubLocalChangeBroadcaster publishes asynchronously.
+            publishOnCommit(changes, entityType, newEntity);
         }
 
         return changes;
+    }
+
+    // FieldChange table column coupling — hand-written because these rows are INSERTed via raw JDBC
+    // on the session's own connection (see persistFieldChangesOnConnection). Column names/order/types
+    // MUST match the field_change schema; a mismatch is caught at build time by the schema-drift guard
+    // test (asserts this column set against INFORMATION_SCHEMA). timestamp/received_at are
+    // TIMESTAMP WITH TIME ZONE, id is UUID, change_type is VARCHAR (EnumType.STRING).
+    private static final String FIELD_CHANGE_INSERT_SQL =
+        "INSERT INTO field_change (id, entity_type, entity_id, field_name, old_value, new_value, "
+        + "timestamp, origin_machine_id, origin_machine_name, synced_to_machines, change_type, "
+        + "relationship_type, received_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+    /**
+     * Persist UPDATE FieldChange rows via an IMMEDIATE parameterized JDBC INSERT executed on the
+     * current transaction's own Hibernate connection ({@link SessionImplementor#doWork}).
+     *
+     * <p>Why not {@code fieldChangeRepository.saveAll()}? These rows are emitted from
+     * {@code @PostUpdate}, which fires DURING the commit-time flush. A JPA persist there only enqueues
+     * a write-behind insert that Hibernate never re-drains for a terminal update (no subsequent flush)
+     * — the row is silently lost while the entity's own UPDATE commits. A direct INSERT bypasses the
+     * ActionQueue, lands on the live connection immediately, and is committed by the SAME transaction's
+     * COMMIT — so it is both durable (survives the terminal flush) and atomic (rolls back with the
+     * entity on a pair/outer rollback). Same mid-flush-safe raw-JDBC idiom as
+     * {@code EntityStateCapture.queryJoinTable}. Exceptions PROPAGATE (no swallow) so the dedup pair
+     * rolls back on failure rather than committing a repoint clients never see.
+     */
+    private void persistFieldChangesOnConnection(List<FieldChange> changes) {
+        if (changes == null || changes.isEmpty()) return;
+        // MANDATORY propagation guarantees a live tx on every real caller; assert rather than silently
+        // autocommit on a fresh connection (which would break rollback atomicity).
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException(
+                "persistFieldChangesOnConnection requires an active transaction (FieldChange rows must "
+                + "commit atomically with the entity change)");
+        }
+        for (FieldChange fc : changes) {
+            if (fc.getId() == null) fc.setId(UUID.randomUUID()); // mirrors GenerationType.UUID (Java-assigned)
+        }
+        entityManager.unwrap(SessionImplementor.class).doWork(conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(FIELD_CHANGE_INSERT_SQL)) {
+                for (FieldChange fc : changes) {
+                    ps.setObject(1, fc.getId());                          // id                   UUID
+                    ps.setString(2, fc.getEntityType());                 // entity_type          VARCHAR NOT NULL
+                    ps.setLong(3, fc.getEntityId());                     // entity_id            BIGINT  NOT NULL
+                    ps.setString(4, fc.getFieldName());                  // field_name           VARCHAR NOT NULL
+                    setNullableString(ps, 5, fc.getOldValue());          // old_value            VARCHAR
+                    setNullableString(ps, 6, fc.getNewValue());          // new_value            VARCHAR
+                    setNullableInstant(ps, 7, fc.getTimestamp());        // timestamp            TSTZ    NOT NULL
+                    ps.setString(8, fc.getOriginMachineId());            // origin_machine_id    VARCHAR NOT NULL
+                    ps.setString(9, fc.getOriginMachineName());          // origin_machine_name  VARCHAR NOT NULL
+                    setNullableString(ps, 10, fc.getSyncedToMachines()); // synced_to_machines   VARCHAR
+                    ps.setString(11, fc.getChangeType().name());         // change_type          VARCHAR NOT NULL (EnumType.STRING)
+                    setNullableString(ps, 12, fc.getRelationshipType()); // relationship_type    VARCHAR
+                    setNullableInstant(ps, 13, fc.getReceivedAt());      // received_at          TSTZ
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
+    }
+
+    private static void setNullableString(PreparedStatement ps, int idx, String value) throws SQLException {
+        if (value == null) ps.setNull(idx, Types.VARCHAR);
+        else ps.setString(idx, value);
+    }
+
+    /** Bind an {@link Instant} to a {@code TIMESTAMP WITH TIME ZONE} column as a UTC OffsetDateTime. */
+    private static void setNullableInstant(PreparedStatement ps, int idx, Instant value) throws SQLException {
+        if (value == null) ps.setNull(idx, Types.TIMESTAMP_WITH_TIMEZONE);
+        else ps.setObject(idx, value.atOffset(ZoneOffset.UTC));
     }
 
     /**

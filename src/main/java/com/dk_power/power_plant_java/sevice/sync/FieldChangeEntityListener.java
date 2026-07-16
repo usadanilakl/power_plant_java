@@ -115,9 +115,19 @@ public class FieldChangeEntityListener {
                     // on the inner tx) independently of the outer tx — which,
                     // for the dedup pair tx, meant a scalar @ManyToOne repoint
                     // could leak a FieldChange + event even when verify-before-
-                    // delete later rolled the pair back. @PostUpdate is always
-                    // invoked during flush of an active transaction (JPA spec),
-                    // so MANDATORY is safe.
+                    // delete later rolled the pair back.
+                    //
+                    // Durability note: @PostUpdate fires DURING the caller's
+                    // commit-time flush. Persisting the rows there via JPA
+                    // saveAll only enqueued a write-behind insert Hibernate
+                    // never re-drained for a "terminal" update (entity dirtied
+                    // then the tx returns with no later flush — every LOTO
+                    // lifecycle transition), so the UPDATE change-log was
+                    // silently dropped while the entity UPDATE committed. The
+                    // tracker now INSERTs these rows directly on the tx's own
+                    // JDBC connection (persistFieldChangesOnConnection), which
+                    // is durable through the terminal flush AND atomic with the
+                    // entity UPDATE. Do NOT revert this to saveAll().
                     fieldChangeTracker.trackEntityUpdateInCurrentTx(originalValues, newState);
                     log.debug("Tracked update of {} #{}",
                         newState.getClass().getSimpleName(), newState.getId());
@@ -126,6 +136,16 @@ public class FieldChangeEntityListener {
                         newState.getClass().getSimpleName(), newState.getId());
                 }
             } catch (Exception e) {
+                // NOTE on fail semantics: a DIFF-building exception is swallowed here (write commits,
+                // change-log lost) — the broad fail-closed the project deferred stays deferred. But a
+                // PERSIST-INSERT failure is different: trackEntityUpdateInCurrentTx is
+                // @Transactional(MANDATORY), so its interceptor marks the participating tx rollback-only
+                // (default RuntimeException rule) BEFORE this catch runs. This catch then only stops the
+                // exception propagating further up the stack — the business write still rolls back
+                // (narrow fail-closed on emission-persist). That is acceptable and intended: a column/
+                // schema drift is caught at build by FieldChangeSchemaDriftGuardIT, and a genuine DB
+                // write error on the SAME connection would fail the entity write regardless. The dedup
+                // path (ValueReferenceRepointService) relies on this propagation to roll its pair back.
                 log.error("Error tracking entity update: {}", e.getMessage());
             }
         }
