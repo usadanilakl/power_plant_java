@@ -67,6 +67,12 @@ public class CentralSyncService {
     private final AtomicLong totalChangesReceived = new AtomicLong(0);
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
 
+    // D6: how many times a change may be deferred (parent not yet arrived) before we give up and ack
+    // it anyway, so a change whose referenced entity never arrives can't re-pull forever. In-memory,
+    // per-client; resets on restart (a restart legitimately re-attempts).
+    private static final int MAX_DEFERRALS = 15;
+    private final java.util.Map<java.util.UUID, Integer> deferralAttempts = new java.util.concurrent.ConcurrentHashMap<>();
+
     private static final int DEFAULT_SEND_BATCH_SIZE = 5000;
     private static final int DEFAULT_RECEIVE_BATCH_SIZE = 100;
     private static final int MAX_CONSECUTIVE_FAILURES = 5;
@@ -480,6 +486,9 @@ public class CentralSyncService {
 
         // Request changes in batches using the paginated endpoint
         int page = 0;
+        // D6: count each deferred change at most ONCE per drain (not per loop iteration), so the
+        // MAX_DEFERRALS give-up budget spans real sync cycles (minutes) rather than one fast spin.
+        java.util.Set<java.util.UUID> countedThisDrain = new java.util.HashSet<>();
         while (true) {
             // Wall-clock budget: yield between batches to let HTTP requests through.
             // The next scheduled run (or immediate follow-up) will continue draining.
@@ -500,24 +509,61 @@ public class CentralSyncService {
                 batchNumber++;
                 result.totalReceived += batch.size();
 
-                // Apply this batch within sync context
-                int applied = applyIncomingChanges(batch);
+                // Apply this batch, collecting DEFERRED change ids (relationship changes whose parent
+                // hasn't arrived yet — transient, will retry).
+                java.util.Set<java.util.UUID> deferred = new java.util.HashSet<>();
+                int applied = applyIncomingChanges(batch, deferred);
                 result.totalApplied += applied;
 
-                // Acknowledge ALL received changes so hub marks them as synced to this client.
-                // Even if applied=0 (LWW rejected them as older), the client has seen them
-                // and doesn't need them again. Without this, unapplied changes stay pending
-                // on the hub forever, causing the client to re-download them every cycle.
+                // Bound deferral: a change whose referenced entity never arrives must not re-pull
+                // forever. After MAX_DEFERRALS attempts, give up and let it be acked (matches the old
+                // drop behavior, but only after real retries — so a transient parent-lag converges).
+                if (!deferred.isEmpty()) {
+                    deferred.removeIf(id -> {
+                        // Advance the attempt counter only on this id's FIRST appearance in this drain,
+                        // so a spinning/mixed drain can't burn the whole MAX_DEFERRALS budget at once.
+                        int n = countedThisDrain.add(id)
+                                ? deferralAttempts.merge(id, 1, Integer::sum)
+                                : deferralAttempts.getOrDefault(id, 0);
+                        if (n >= MAX_DEFERRALS) {
+                            log.warn("server_sync.receive.deferred_giveup changeId={} attempts={} — acking to stop re-pull loop", id, n);
+                            deferralAttempts.remove(id);
+                            return true; // drop from deferred -> gets acked
+                        }
+                        return false;
+                    });
+                }
+
+                // Acknowledge only TERMINAL changes (applied, or LWW-superseded as older). Deferred
+                // changes are NOT acked, so the hub keeps them pending and re-sends them next cycle.
+                // Previously ALL received ids were acked — a deferred change got marked synced on the
+                // hub and was then silently dropped (D6). LWW-superseded changes are still acked (the
+                // client has the newer value and never needs them again).
+                List<java.util.UUID> ackIds = batch.stream()
+                    .map(FieldChange::getId)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(id -> !deferred.contains(id))
+                    .collect(java.util.stream.Collectors.toList());
+                ackIds.forEach(deferralAttempts::remove); // clear counters for changes now resolved
                 try {
-                    List<java.util.UUID> receivedIds = batch.stream()
-                        .map(FieldChange::getId)
-                        .filter(java.util.Objects::nonNull)
-                        .collect(java.util.stream.Collectors.toList());
-                    if (!receivedIds.isEmpty()) {
-                        acknowledgeChangesToServer(receivedIds);
+                    if (!ackIds.isEmpty()) {
+                        acknowledgeChangesToServer(ackIds);
                     }
                 } catch (Exception ackEx) {
-                    log.warn("Failed to acknowledge {} changes: {}", batch.size(), ackEx.getMessage());
+                    log.warn("Failed to acknowledge changes: {}", ackEx.getMessage());
+                }
+                if (!deferred.isEmpty()) {
+                    log.info("server_sync.receive.deferred count={} (kept pending for retry, not acked)",
+                        deferred.size());
+                }
+
+                // No-progress guard: if this batch acked NOTHING (every change deferred), re-fetching
+                // page 0 would return the identical batch and spin. Yield to the next sync cycle so the
+                // lagging parent has time to arrive (and MAX_DEFERRALS advances per cycle, not per spin).
+                if (ackIds.isEmpty() && !deferred.isEmpty()) {
+                    result.morePending = true;
+                    log.info("server_sync.receive.all_deferred count={} — yielding to next cycle", deferred.size());
+                    break;
                 }
 
                 log.debug("Batch {}: received {} changes, applied {}", batchNumber, batch.size(), applied);
@@ -628,9 +674,14 @@ public class CentralSyncService {
      * Apply incoming changes from server using LWW.
      */
     private int applyIncomingChanges(List<FieldChange> incomingChanges) {
+        return applyIncomingChanges(incomingChanges, null);
+    }
+
+    /** Apply variant that also collects deferred change ids (D6) so the caller can avoid acking them. */
+    private int applyIncomingChanges(List<FieldChange> incomingChanges, java.util.Set<java.util.UUID> deferredOut) {
         syncContext.startSync();
         try {
-            return fieldSyncService.applyIncomingChanges(incomingChanges);
+            return fieldSyncService.applyIncomingChanges(incomingChanges, false, deferredOut);
         } finally {
             syncContext.endSync();
         }

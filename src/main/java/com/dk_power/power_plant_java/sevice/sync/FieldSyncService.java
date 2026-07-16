@@ -66,6 +66,10 @@ public class FieldSyncService {
     // Safe to use as plain field because applyChangesLock ensures single-threaded access.
     private boolean skipSaveFieldChanges = false;
 
+    // Set by the applyIncomingChanges overload; if non-null, deferred change ids are collected here
+    // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
+    private java.util.Set<java.util.UUID> deferredChangeIds = null;
+
     // Persistent dedup remap table — lives in memory across batches.
     // Loaded from DB once on first use (for JVM restart recovery), then kept in-memory.
     // New remaps are added in-memory AND persisted to DB as write-behind.
@@ -148,23 +152,46 @@ public class FieldSyncService {
      * @return number of changes actually applied
      */
     public int applyIncomingChanges(List<FieldChange> incomingChanges) {
-        return applyIncomingChanges(incomingChanges, false);
+        return applyIncomingChanges(incomingChanges, false, null);
     }
 
     /**
      * @param skipSave true when FieldChanges are already saved (hub path) — prevents duplicates
      */
     public int applyIncomingChanges(List<FieldChange> incomingChanges, boolean skipSave) {
+        return applyIncomingChanges(incomingChanges, skipSave, null);
+    }
+
+    /**
+     * @param deferredOut if non-null, is populated with the ids of changes that were DEFERRED — not
+     *        applied because a referenced parent/entity hasn't arrived yet (transient; will retry).
+     *        The client uses this to acknowledge only terminal changes and keep deferred ones pending,
+     *        so the hub re-sends them (fixes the D6 silent-drop where deferred relationship changes
+     *        were acked and then never re-sent). NOTE: currently captures OneToMany parent-missing and
+     *        unresolved ManyToOne deferrals; ManyToMany-internal and scalar-entity-not-found deferrals
+     *        still fall through to ack pending the full per-change disposition work.
+     */
+    public int applyIncomingChanges(List<FieldChange> incomingChanges, boolean skipSave,
+                                    java.util.Set<java.util.UUID> deferredOut) {
         // Serialize across all callers (CentralSyncService, ServerSseClient, pending-sync, etc.)
         // Each batch runs in REQUIRES_NEW transaction — without serialization, concurrent threads
         // race to CREATE the same entity, causing PK violations that poison the Hibernate session.
         applyChangesLock.lock();
         try {
             this.skipSaveFieldChanges = skipSave;
+            this.deferredChangeIds = deferredOut;
             return applyIncomingChangesLocked(incomingChanges);
         } finally {
             this.skipSaveFieldChanges = false;
+            this.deferredChangeIds = null;
             applyChangesLock.unlock();
+        }
+    }
+
+    /** Records a change id as deferred (retry next sync), if the caller requested deferred tracking. */
+    private void markDeferred(FieldChange change) {
+        if (deferredChangeIds != null && change != null && change.getId() != null) {
+            deferredChangeIds.add(change.getId());
         }
     }
 
@@ -379,6 +406,7 @@ public class FieldSyncService {
                     BaseIdEntity parentEntity = (BaseIdEntity) service.getEntityById(resolvedId);
                     if (parentEntity == null) {
                         log.debug("OneToMany parent {}#{} not found, deferring to next sync", entityType, resolvedId);
+                        changes.forEach(this::markDeferred); // don't ack — retry once the parent arrives (D6)
                         continue;
                     }
 
@@ -393,9 +421,11 @@ public class FieldSyncService {
                             if (applied) {
                                 saveIncomingChange(change);
                                 totalApplied++;
+                            } else {
+                                // Children missing — deferred; don't ack so the hub re-sends it (D6).
+                                // (Only reached when shouldApply is true, i.e. not an LWW-supersede.)
+                                markDeferred(change);
                             }
-                            // If not applied (children missing), change is NOT saved —
-                            // next sync will retry since the change isn't marked as received
                         }
                     }
                 }
@@ -490,6 +520,7 @@ public class FieldSyncService {
                     } else {
                         log.debug("Retry failed: referenced entity {}#{} still not found (will resolve in next sync)",
                             refTypeName, referencedId);
+                        markDeferred(failedRef.change); // don't ack — retry once the referenced entity arrives (D6)
                     }
                 } catch (Exception e) {
                     log.error("Error retrying ManyToOne reference {}.{}: {}",

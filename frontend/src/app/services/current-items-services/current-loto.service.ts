@@ -17,6 +17,10 @@ import { PrintableFormDto } from "../../models/forms/printable-form.model";
   providedIn: 'root'
 })
 export class CurrentLotoService{
+
+    /** Sentinel for a LotoSnapshot change we couldn't map to a cached permit: refresh the list +
+     *  re-feed the open permit rather than dropping the event. */
+    private static readonly UNRESOLVED_LOTO = -1;
     private lotoService = inject(LotoService);
     private lotoPointService = inject(LotoPointService);
     private printableFormService = inject(PrintableFormService);
@@ -65,7 +69,11 @@ export class CurrentLotoService{
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe(e => {
                 const lotoId = this.resolveLotoIdFromSnapshot(e);
-                if (lotoId != null) this.lotoChanged$.next(lotoId);
+                // null = a lifecycle-only snapshot change (hungBy/caApprovedForHangingBy…, no 'loto' FK)
+                // for a permit not yet in the cached list, or whose snapshots[] predates this snapshot.
+                // Do NOT drop it (that was the "lifecycle updates don't show until the next permit"
+                // symptom) — emit a sentinel so it still triggers a debounced list refresh.
+                this.lotoChanged$.next(lotoId ?? CurrentLotoService.UNRESOLVED_LOTO);
             });
 
         // A single hang/verify emits several snapshot field-changes (pointHungByJson + hungBy + hungAt …) — debounce
@@ -89,8 +97,12 @@ export class CurrentLotoService{
 
     private applyRemoteLotoChange(lotoId: number): void {
         this.loadLotosFromServer();                       // refresh list / left menu / status grouping
-        if (this.currentLotoSubject.value?.id === lotoId) {
-            this.setCurrentLotoById(lotoId);              // re-feed the open permit so the form re-renders
+        const openId = this.currentLotoSubject.value?.id;
+        // Re-feed the open permit when the change is for it, OR when we couldn't map the snapshot
+        // (UNRESOLVED) — in that case re-read the open permit anyway so a lifecycle change we couldn't
+        // attribute still renders. Harmless if unrelated (re-reads the same data).
+        if (openId != null && (lotoId === openId || lotoId === CurrentLotoService.UNRESOLVED_LOTO)) {
+            this.setCurrentLotoById(openId);              // re-feed the open permit so the form re-renders
         }
     }
 
