@@ -32,7 +32,12 @@ import java.util.concurrent.TimeUnit;
 @CrossOrigin(origins = "*")
 public class SyncUpdateController {
 
-    private static final long EMITTER_TIMEOUT_MS = 60_000L; // 60s — frontend reconnects well before this
+    // 10 min (matches HubSseService). The 15s heartbeat keeps the connection alive and detects death
+    // on both ends (server via send-failure cleanup, browser via missed heartbeats -> EventSource
+    // reconnect), so the emitter timeout is only a safety cap. It was 60s, which forced every browser
+    // tab to reconnect to /stream once a minute — pure churn (the connect/disconnect log flood) with a
+    // brief refresh gap each time. Longer timeout = ~10x fewer reconnects, same liveness.
+    private static final long EMITTER_TIMEOUT_MS = 600_000L;
     private static final long HEARTBEAT_INTERVAL_MS = 15_000L;
 
     private final ObjectMapper objectMapper;
