@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
-import com.dk_power.power_plant_java.entities.esp.WledCommand;
 import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -43,14 +42,14 @@ public class FieldChangeEntityListener {
     }
 
     /**
-     * LOCAL-ONLY BaseIdEntity types: they inherit the sync listener but are never registered
-     * for cluster sync (see EntityTableRegistry). Tracking them only churns FIELD_CHANGE rows.
-     * WledCommand is a high-frequency per-node ESP work queue — skip it.
+     * A tracked entity is any {@link BaseIdEntity} not marked {@link LocalOnlyEntity}. The
+     * annotation is the single source of truth for the sync opt-out — the {@link SyncRegistryValidator}
+     * consults the same marker, so listener and validator can never disagree. ({@code @LocalOnlyEntity}
+     * is {@code @Inherited}, so a Hibernate proxy subclass still reports it here.)
      */
-    private static final java.util.Set<Class<?>> LOCAL_ONLY_ENTITIES = java.util.Set.of(WledCommand.class);
-
     private static boolean isTracked(Object entity) {
-        return entity instanceof BaseIdEntity && !LOCAL_ONLY_ENTITIES.contains(entity.getClass());
+        return entity instanceof BaseIdEntity
+                && !entity.getClass().isAnnotationPresent(LocalOnlyEntity.class);
     }
 
     /**
@@ -77,7 +76,12 @@ public class FieldChangeEntityListener {
         if (fieldChangeTracker != null && isTracked(entity)) {
             try {
                 BaseIdEntity baseEntity = (BaseIdEntity) entity;
-                // For new entities, old state is null
+                // Create emission runs in its OWN transaction (REQUIRES_NEW). Joining the entity's own
+                // INSERT flush via MANDATORY caused reentrant-flush "could not commit" failures on
+                // cascade-inserting saves (e.g. a new LotoStandard also inserts its status Value + join
+                // rows). The Inc 1 win kept here is that this now publishes afterCommit (of the inner
+                // tx) instead of synchronously pre-commit, so removing CentralSyncService's commit-wait
+                // sleep stays safe. Full same-tx CREATE atomicity is deferred to a beforeCommit approach.
                 fieldChangeTracker.trackEntityCreation(baseEntity);
                 log.debug("Tracked creation of {} #{}",
                     baseEntity.getClass().getSimpleName(), baseEntity.getId());

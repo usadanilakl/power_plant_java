@@ -119,12 +119,24 @@ public class EntityTableRegistry {
         // Scheduler
         Map.entry("Flow", "flow"),
         Map.entry("Task", "task"),
+        Map.entry("FlowTemplate", "flow_template"),
+        Map.entry("TaskTemplate", "task_template"),
+        Map.entry("TaskReference", "task_reference"),
+
+        // Diagrams (schematic builder — user content, synced)
+        Map.entry("Diagram", "diagram"),
+        Map.entry("DiagramPlacement", "diagram_placement"),
+        Map.entry("DiagramConnection", "diagram_connection"),
+
+        // Simulator
+        Map.entry("SimEquipment", "sim_equipment"),
 
         // EtaPro
         Map.entry("EtaProPoint", "eta_pro_point"),
         Map.entry("EtaProReading", "eta_pro_reading"),
         Map.entry("EtaProScrapeJob", "eta_pro_scrape_job"),
         Map.entry("EtaProLogEntry", "eta_pro_log_entry"),
+        Map.entry("EtaProReport", "eta_pro_report"),
 
         // Rounds (WebView AMS scraper)
         Map.entry("RoundsReport", "rounds_report")
@@ -177,6 +189,11 @@ public class EntityTableRegistry {
         "RoundsReport",
         "EspDevice",
         "LedStrip",
+        "SimEquipment",
+        "EtaProReport",
+        "Diagram",
+        "DiagramPlacement",   // ManyToOne Diagram — after it
+        "DiagramConnection",  // ManyToOne Diagram — after it
         "WorkAreaMapShape",
         "WorkArea",
         "WorkCategoryProfile",
@@ -200,8 +217,11 @@ public class EntityTableRegistry {
         "SdsAuditRecord",
         "PrintableForm",
         "FormContainer",
+        "FlowTemplate",       // scheduler templates before their instances
+        "TaskTemplate",
         "Flow",
         "Task",
+        "TaskReference",      // ManyToOne Task — after it
         // Tier 4: Polymorphic entities (entityType + entityId → reference ANY entity above)
         // MUST be last so dedup remaps for referenced entities exist before entityId is applied.
         "Comment",

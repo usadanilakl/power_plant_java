@@ -11,6 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@com.dk_power.power_plant_java.sevice.sync.LocalOnlyEntity(reason = "one-time data-import staging; never synced across the cluster")
 public class HrsgPipeIso extends BaseIdEntity {
     private String rev;
     private String itemTagNumber;

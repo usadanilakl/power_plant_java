@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@com.dk_power.power_plant_java.sevice.sync.LocalOnlyEntity(reason = "high-frequency per-node ESP work queue; never synced across the cluster")
 public class WledCommand extends BaseIdEntity {
 
     /** Target ESP — leader looks up its IP + LED strips fresh at processing time. */

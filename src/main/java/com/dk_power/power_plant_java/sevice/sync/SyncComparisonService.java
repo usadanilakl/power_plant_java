@@ -315,6 +315,111 @@ public class SyncComparisonService {
         return result;
     }
 
+    // ==================== Content-hash drift (Inc 0b harness) ====================
+
+    /**
+     * Content hashes (id -> rowHash) for every local non-deleted entity of a type — computed the
+     * SAME way as the hub ({@code serviceFacade.getService(type).getAll()} + {@code serializeEntityFields}
+     * + {@link SyncContentHasher}) so identical state hashes identically.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> computeLocalContentHashes(String entityType) {
+        SyncableService<?> service = serviceFacade.getService(entityType);
+        if (service == null) return Collections.emptyMap();
+        Map<Long, String> out = new HashMap<>();
+        for (Object o : service.getAll()) {
+            if (!(o instanceof BaseIdEntity be) || be.getId() == null) continue;
+            out.put(be.getId(), SyncContentHasher.hashRow(serializeEntityFields(be)));
+        }
+        return out;
+    }
+
+    /**
+     * Compare a type's CONTENT (not just ids/timestamps) against the hub. Cheap path: compare the
+     * per-type digest; only on mismatch fetch the hub's full id->hash map and diff. Report-only.
+     */
+    @Transactional(readOnly = true)
+    public ContentDriftSummary compareEntityTypeByContent(String entityType) {
+        String url = syncConfig.getSyncServerUrl();
+        if (url == null || url.isEmpty()) {
+            return ContentDriftSummary.builder().entityType(entityType).error("no sync server configured").build();
+        }
+        Map<Long, String> local = computeLocalContentHashes(entityType);
+        String localDigest = SyncContentHasher.typeDigest(local);
+
+        Object serverDigest = null;
+        try {
+            Map<String, Object> summary = fetchServerContentHashSummary(entityType, url);
+            serverDigest = summary != null ? summary.get("typeDigest") : null;
+        } catch (Exception e) {
+            return ContentDriftSummary.builder().entityType(entityType).error("hub probe failed: " + e.getMessage()).build();
+        }
+        if (localDigest.equals(serverDigest)) {
+            return ContentDriftSummary.builder().entityType(entityType)
+                .localCount(local.size()).serverCount(local.size()).inSync(true).build();
+        }
+
+        Map<Long, String> server = fetchServerContentHashes(entityType, url);
+        List<Long> differing = new ArrayList<>();
+        List<Long> missingLocally = new ArrayList<>(); // on hub, absent locally
+        List<Long> missingOnHub = new ArrayList<>();    // local, absent on hub
+        for (Map.Entry<Long, String> e : local.entrySet()) {
+            String s = server.get(e.getKey());
+            if (s == null) missingOnHub.add(e.getKey());
+            else if (!s.equals(e.getValue())) differing.add(e.getKey());
+        }
+        for (Long id : server.keySet()) if (!local.containsKey(id)) missingLocally.add(id);
+        return ContentDriftSummary.builder()
+            .entityType(entityType).localCount(local.size()).serverCount(server.size())
+            .differing(differing).missingLocally(missingLocally).missingOnHub(missingOnHub)
+            .inSync(differing.isEmpty() && missingLocally.isEmpty() && missingOnHub.isEmpty())
+            .build();
+    }
+
+    /** Content-drift dry run across every synced type. On-demand only (1-2 hub calls per type). */
+    public List<ContentDriftSummary> scanAllTypesForContentDrift() {
+        List<ContentDriftSummary> result = new ArrayList<>();
+        for (String entityType : entityTableRegistry.getSyncOrder()) {
+            try {
+                ContentDriftSummary s = compareEntityTypeByContent(entityType);
+                if (!s.isInSync() || s.getError() != null) result.add(s);
+            } catch (Exception e) {
+                log.warn("Content drift scan failed for {}: {}", entityType, e.getMessage());
+                result.add(ContentDriftSummary.builder().entityType(entityType).error(e.getMessage()).build());
+            }
+        }
+        return result;
+    }
+
+    private Map<String, Object> fetchServerContentHashSummary(String entityType, String syncServerUrl) {
+        ResponseEntity<Map<String, Object>> r = restTemplate.exchange(
+            syncServerUrl + "/api/sync/entity-content-hash-summary/" + entityType,
+            HttpMethod.GET, new HttpEntity<>(buildHeaders()), new ParameterizedTypeReference<>() {});
+        return r.getBody();
+    }
+
+    private Map<Long, String> fetchServerContentHashes(String entityType, String syncServerUrl) {
+        ResponseEntity<Map<Long, String>> r = restTemplate.exchange(
+            syncServerUrl + "/api/sync/entity-content-hashes/" + entityType,
+            HttpMethod.GET, new HttpEntity<>(buildHeaders()), new ParameterizedTypeReference<>() {});
+        return r.getBody() != null ? r.getBody() : Collections.emptyMap();
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ContentDriftSummary {
+        private String entityType;
+        private int localCount;
+        private int serverCount;
+        @Builder.Default private List<Long> differing = new ArrayList<>();
+        @Builder.Default private List<Long> missingLocally = new ArrayList<>();
+        @Builder.Default private List<Long> missingOnHub = new ArrayList<>();
+        private boolean inSync;
+        private String error;
+    }
+
     // ==================== Private helpers ====================
 
     public Set<Long> getLocalEntityIds(String entityType) {

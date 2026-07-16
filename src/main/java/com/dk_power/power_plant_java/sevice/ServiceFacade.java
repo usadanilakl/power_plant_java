@@ -173,7 +173,16 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.maximo.MaximoFormTemplateSyncService maximoFormTemplateSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.maximo.MaximoFormSubmissionSyncService maximoFormSubmissionSyncService,
             // Physical hierarchy (Maximo-seeded plant tree; synced so all desktops share it)
-            @Lazy com.dk_power.power_plant_java.sevice.physical.PhysicalObjectSyncService physicalObjectSyncService
+            @Lazy com.dk_power.power_plant_java.sevice.physical.PhysicalObjectSyncService physicalObjectSyncService,
+            // 2026-07-15 registration-gap closure — diagrams + scheduler templates + sim + etapro report + ESP (all synced)
+            @Lazy com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramService ngDiagramService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.scheduler.FlowTemplateService flowTemplateService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.scheduler.TaskTemplateService taskTemplateService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.scheduler.TaskReferenceSyncService taskReferenceSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.sim_equipment.NgSimEquipmentService ngSimEquipmentService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.etapro.NgEtaProReportService ngEtaProReportService,
+            @Lazy com.dk_power.power_plant_java.sevice.esp.EspDeviceSyncService espDeviceSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.esp.LedStripSyncService ledStripSyncService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -266,6 +275,15 @@ public class ServiceFacade {
         serviceMap.put(com.dk_power.power_plant_java.entities.maximo.MaximoFormSubmission.class.getSimpleName(), maximoFormSubmissionSyncService);
         // Physical hierarchy (plant tree)
         serviceMap.put(com.dk_power.power_plant_java.entities.physical.PhysicalObject.class.getSimpleName(), physicalObjectSyncService);
+        // 2026-07-15 registration-gap closure — diagrams, scheduler templates, sim, etapro report, ESP
+        serviceMap.put(com.dk_power.power_plant_java.entities.diagrams.Diagram.class.getSimpleName(), ngDiagramService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.scheduler.FlowTemplate.class.getSimpleName(), flowTemplateService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.scheduler.TaskTemplate.class.getSimpleName(), taskTemplateService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.scheduler.TaskReference.class.getSimpleName(), taskReferenceSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.sim_equipment.SimEquipment.class.getSimpleName(), ngSimEquipmentService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.etapro.EtaProReport.class.getSimpleName(), ngEtaProReportService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.esp.EspDevice.class.getSimpleName(), espDeviceSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.esp.LedStrip.class.getSimpleName(), ledStripSyncService);
     }
 
     public SyncableService getService(String entityClass) {

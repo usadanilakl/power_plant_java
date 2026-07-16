@@ -56,6 +56,7 @@ public class FieldSyncService {
     private final ConversationMergeService conversationMergeService;
     private final MessageMergeService messageMergeService;
     private final DedupKeyResolver dedupKeyResolver;
+    private final SyncDeadLetterService syncDeadLetterService;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -105,7 +106,8 @@ public class FieldSyncService {
             InstrumentLogMergeService instrumentLogMergeService,
             ConversationMergeService conversationMergeService,
             MessageMergeService messageMergeService,
-            DedupKeyResolver dedupKeyResolver) {
+            DedupKeyResolver dedupKeyResolver,
+            SyncDeadLetterService syncDeadLetterService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.serviceFacade = serviceFacade;
         this.syncConfig = syncConfig;
@@ -133,6 +135,7 @@ public class FieldSyncService {
         this.conversationMergeService = conversationMergeService;
         this.messageMergeService = messageMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
+        this.syncDeadLetterService = syncDeadLetterService;
     }
 
     /**
@@ -759,7 +762,16 @@ public class FieldSyncService {
         try {
             SyncableService service = serviceFacade.getService(entityType);
             if (service == null) {
-                log.warn("No service found for entity type: {}", entityType);
+                // Fail-loud: an unregistered entity type is a permanent (dead-letter) condition — NOT a
+                // silent drop. Previously this logged at WARN and returned 0; the change was never marked
+                // received, so it re-arrived and re-dropped forever (the LotoStandardApprovalEvent /
+                // ShiftDay / WorkCategoryProfile class of data loss). Record it so it is visible and
+                // replayable once the type is registered. The startup SyncRegistryValidator prevents most
+                // of these from ever reaching here.
+                log.error("sync.dead_letter reason=NO_SERVICE entityType={} entityId={} changes={} — "
+                        + "type is not registered (EntityTableRegistry + ServiceFacade); dead-lettering",
+                        entityType, entityId, changes.size());
+                syncDeadLetterService.recordNoService(entityType, changes);
                 return 0;
             }
 

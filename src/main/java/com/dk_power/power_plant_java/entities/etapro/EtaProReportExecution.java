@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_report_exec_status", columnList = "status"),
         @Index(name = "idx_report_exec_report", columnList = "report_id")
 })
+@com.dk_power.power_plant_java.sevice.sync.LocalOnlyEntity(reason = "per-node EtaPRO scrape run-instance; only the report definition syncs")
 public class EtaProReportExecution extends BaseAuditEntity {
 
     public enum Status { PENDING, RUNNING, COMPLETE, FAILED, CANCELLED }

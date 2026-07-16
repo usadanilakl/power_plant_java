@@ -196,7 +196,9 @@ public class FieldChangeTracker {
                 log.debug("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
                 log.debug("Publishing {} changes for sync broadcast", changes.size());
-                syncEventPublisher.publishChanges(changes);
+                // afterCommit (of this REQUIRES_NEW tx), not synchronous pre-commit — see the removed
+                // sleep in CentralSyncService.onChangesDetected.
+                publishChangesOnCommit(changes);
             }
         } catch (Exception e) {
             log.error("Error tracking changes for {} #{}: {}", entityType, entityId, e.getMessage(), e);
@@ -324,15 +326,10 @@ public class FieldChangeTracker {
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
                 log.debug("Saved {} field changes for new {} #{}", changes.size(), entityType, entityId);
-
-                log.debug("Publishing {} changes for sync broadcast (create)", changes.size());
-                syncEventPublisher.publishChanges(changes);
-
-                // Notify FileObjectSyncHandler for file uploads
-                if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
-                    fileObjectSyncHandler.onLocalFileObjectChanged(
-                        (com.dk_power.power_plant_java.entities.files.FileObject) entity, true);
-                }
+                // Publish afterCommit (of this REQUIRES_NEW tx) rather than synchronously mid-method,
+                // so an SSE/send event never races ahead of the committed rows. isCreate=true keeps
+                // the FileObject upload semantics.
+                publishOnCommit(changes, entityType, entity, true);
             }
         } catch (Exception e) {
             log.error("Error tracking entity creation for {} #{}: {}", entityType, entityId, e.getMessage(), e);
@@ -380,7 +377,13 @@ public class FieldChangeTracker {
                 log.info("Backfilled {} synthetic create FieldChanges for {} #{}",
                     changes.size(), entityType, entityId);
 
-                syncEventPublisher.publishChanges(changes);
+                // Publish afterCommit (of this REQUIRES_NEW tx), NOT synchronously pre-commit — otherwise
+                // the @Async onChangesDetected handler (whose commit-wait sleep was removed in Inc 1)
+                // can read these rows back before this tx commits, judge them "missing", and re-insert
+                // them (spurious restored_missing / duplicate-PK). This path is live via
+                // NgLotoPointService / AdminFunctionalitiesService / WorkRequestSyncRepairService.
+                // publishChangesOnCommit (no FileObject hook) matches the original synchronous call.
+                publishChangesOnCommit(changes);
             }
         } catch (Exception e) {
             log.error("Error ensuring create history for {} #{}: {}", entityType, entityId, e.getMessage(), e);
@@ -569,6 +572,11 @@ public class FieldChangeTracker {
      */
     private void publishOnCommit(List<FieldChange> changes, String entityType,
                                  BaseIdEntity newEntity) {
+        publishOnCommit(changes, entityType, newEntity, false);
+    }
+
+    private void publishOnCommit(List<FieldChange> changes, String entityType,
+                                 BaseIdEntity newEntity, boolean isCreate) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -583,7 +591,7 @@ public class FieldChangeTracker {
                     if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
                         try {
                             fileObjectSyncHandler.onLocalFileObjectChanged(
-                                (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
+                                (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, isCreate);
                         } catch (Exception e) {
                             log.error("afterCommit: FileObjectSyncHandler failed for #{}",
                                     newEntity.getId(), e);
@@ -596,8 +604,30 @@ public class FieldChangeTracker {
             syncEventPublisher.publishChanges(changes);
             if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
                 fileObjectSyncHandler.onLocalFileObjectChanged(
-                    (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
+                    (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, isCreate);
             }
+        }
+    }
+
+    /**
+     * Publish field-changes on commit WITHOUT the FileObject upload hook — used for DELETE, where
+     * re-notifying the file handler for a removed entity would be wrong.
+     */
+    private void publishChangesOnCommit(List<FieldChange> changes) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        syncEventPublisher.publishChanges(changes);
+                    } catch (Exception e) {
+                        log.error("afterCommit: failed to publish {} delete change(s): {}",
+                                changes.size(), e.getMessage(), e);
+                    }
+                }
+            });
+        } else {
+            syncEventPublisher.publishChanges(changes);
         }
     }
 
@@ -629,7 +659,14 @@ public class FieldChangeTracker {
             FieldChange.ChangeType.DELETE
         );
 
-        return fieldChangeRepository.save(deleteChange);
+        FieldChange saved = fieldChangeRepository.save(deleteChange);
+        // Publish afterCommit so a hard-delete propagates immediately (previously trackDelete NEVER
+        // published, so a hard-delete only reached the hub on the next 15s periodic send). Kept in its
+        // own REQUIRES_NEW tx (like create emission) to avoid a reentrant-flush "could not commit"
+        // during the entity's @PostRemove; afterCommit of the inner tx means the row is committed
+        // before it publishes.
+        publishChangesOnCommit(java.util.List.of(saved));
+        return saved;
     }
 
     /**

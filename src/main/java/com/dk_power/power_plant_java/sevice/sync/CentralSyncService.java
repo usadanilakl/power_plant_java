@@ -137,20 +137,15 @@ public class CentralSyncService {
         int eventSize = event.getChanges().size();
         log.debug("Changes detected ({} changes), sending to server", eventSize);
 
-        // Small delay to ensure FieldChange transaction has committed
-        try { Thread.sleep(500); } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-
-        // A published change event should leave THIS event's rows pending for SERVER.
-        // Verify that per-event and restore any of its own changes that failed to persist —
-        // UNCONDITIONALLY, never gated on the global pending count. A concurrent event's
-        // pending rows would otherwise mask this event's own failure: when two change-sets
-        // from one transaction publish together (e.g. a LotoStandard status flip alongside
-        // its LotoStandardApprovalEvent), the sibling's pending rows make the global count
-        // non-zero, the "no_pending" recovery is skipped, and this event's un-persisted
-        // changes leak — the hub never receives them and shows the stale status forever.
+        // No commit-wait needed anymore: every emission path now PUBLISHES on afterCommit of its own
+        // transaction (Inc 1) — UPDATE in the caller's tx; CREATE/DELETE/backfill in their own
+        // REQUIRES_NEW tx — so the FieldChange rows are always committed when this @Async handler runs.
+        // The old Thread.sleep(500) worked around the CREATE path that used to publish pre-commit.
+        //
+        // restoreMissingEventChanges is retained as a (now-expected-no-op) per-event safety net and
+        // should log NOTHING; once the content-hash harness confirms zero restores over a release it
+        // becomes a pure assertion. It is unconditional (never gated on the global pending count) so a
+        // concurrent sibling change-set can't mask this event's own rows failing to persist.
         long pendingForServer = restoreMissingEventChanges(event.getChanges());
         log.info("server_sync.changes_detected eventChanges={} pendingForServer={}",
             eventSize, pendingForServer);

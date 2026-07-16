@@ -123,6 +123,37 @@ public class HubEntityComparisonService {
     }
 
     /**
+     * Content hashes (entityId -> rowHash) for every non-deleted entity of a type — the drift
+     * oracle (Inc 0b). Uses the same {@code serializeEntityFields} as the timestamp/data endpoints,
+     * canonicalized by {@link com.dk_power.power_plant_java.sevice.sync.SyncContentHasher} so a hub
+     * and a client that hold identical entity state produce identical hashes.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> getContentHashes(String entityType) {
+        SyncableService<?> service = serviceFacade.getService(entityType);
+        if (service == null) {
+            throw new IllegalArgumentException("No service for entity type: " + entityType);
+        }
+        Map<Long, String> hashes = new HashMap<>();
+        for (BaseIdEntity entity : service.getAll()) {
+            if (entity == null || entity.getId() == null) continue;
+            hashes.put(entity.getId(),
+                    com.dk_power.power_plant_java.sevice.sync.SyncContentHasher.hashRow(serializeEntityFields(entity)));
+        }
+        return hashes;
+    }
+
+    /** Cheap per-type equality probe: {@code {count, typeDigest}} over all non-deleted entities. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getContentHashSummary(String entityType) {
+        Map<Long, String> hashes = getContentHashes(entityType);
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("count", hashes.size());
+        summary.put("typeDigest", com.dk_power.power_plant_java.sevice.sync.SyncContentHasher.typeDigest(hashes));
+        return summary;
+    }
+
+    /**
      * Serialize all trackable fields of an entity to a string map.
      * Mirrors the serialization approach from FieldChangeTracker.
      */

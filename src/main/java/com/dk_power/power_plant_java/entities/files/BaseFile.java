@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Inheritance(strategy = InheritanceType.JOINED)
+@com.dk_power.power_plant_java.sevice.sync.LocalOnlyEntity(reason = "vestigial JOINED-inheritance root with no subclasses and no rows; real file entity is FileObject")
 public class BaseFile extends BaseAuditEntity implements Referenceable {
 
     @ManyToOne(cascade = CascadeType.ALL)

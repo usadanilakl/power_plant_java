@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.repository.esp;
 
 import com.dk_power.power_plant_java.entities.esp.EspDevice;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface EspDeviceRepo extends JpaRepository<EspDevice, Long> {
+public interface EspDeviceRepo extends BaseRepository<EspDevice> {
     Optional<EspDevice> findByIpAddress(String ipAddress);
     Optional<EspDevice> findByName(String name);
 

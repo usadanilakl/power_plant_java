@@ -51,6 +51,35 @@ public class NgSyncComparisonController {
         }
     }
 
+    /**
+     * Inc 0b harness — CONTENT drift (hash of synced fields), not just ids/timestamps. Cheap per-type
+     * digest probe; drills into differing rows only on mismatch. Report-only; supersedes the ±5s
+     * timestamp heuristic as the convergence oracle.
+     */
+    @GetMapping("/content/scan-all")
+    public ResponseEntity<NgApiResponse<List<ContentDriftSummary>>> scanAllContent() {
+        try {
+            List<ContentDriftSummary> drift = syncComparisonService.scanAllTypesForContentDrift();
+            return ResponseEntity.ok(new NgApiResponse<>(drift,
+                "Scanned all entity types for content drift: " + drift.size() + " diverging"));
+        } catch (Exception e) {
+            log.error("Content drift scan-all failed: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Scan failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/content/{entityType}")
+    public ResponseEntity<NgApiResponse<ContentDriftSummary>> compareContent(
+            @PathVariable String entityType) {
+        try {
+            ContentDriftSummary result = syncComparisonService.compareEntityTypeByContent(entityType);
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Content comparison complete"));
+        } catch (Exception e) {
+            log.error("Content comparison failed for {}: {}", entityType, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Comparison failed: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/{entityType}")
     public ResponseEntity<NgApiResponse<EntityComparisonResult>> compareEntityType(
             @PathVariable String entityType) {

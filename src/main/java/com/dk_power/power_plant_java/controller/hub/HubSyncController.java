@@ -495,6 +495,26 @@ public class HubSyncController {
         }
     }
 
+    /** Cheap per-type content-drift probe: {count, typeDigest}. (Inc 0b harness) */
+    @GetMapping("/entity-content-hash-summary/{entityType}")
+    public ResponseEntity<?> getContentHashSummary(@PathVariable String entityType) {
+        try {
+            return ResponseEntity.ok(hubEntityComparisonService.getContentHashSummary(entityType));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** Full id->rowHash map for a type, for drilling into which rows differ. (Inc 0b harness) */
+    @GetMapping("/entity-content-hashes/{entityType}")
+    public ResponseEntity<?> getContentHashes(@PathVariable String entityType) {
+        try {
+            return ResponseEntity.ok(hubEntityComparisonService.getContentHashes(entityType));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // -------------------------------------------------------------------
     // Changes by entity type (for per-type resync)
     // -------------------------------------------------------------------
