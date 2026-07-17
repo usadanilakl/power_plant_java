@@ -57,6 +57,15 @@ export class RfJhaStateService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => this.handleSyncUpdate(event));
 
+    // Refetch on SSE reconnect. SSE is at-most-once — any Jha broadcast
+    // that landed during the abort window is dropped. reloadData() is
+    // already the "re-fetch page 1 of JHAs" path used elsewhere, and
+    // updateJhaInList (which it calls under the hood) preserves the
+    // currently open item.
+    this.syncUpdateService.reconnected$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadData());
+
     this.loadPaperForm();
   }
 

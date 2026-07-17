@@ -75,6 +75,15 @@ export class RfFileStateService {
         this.handleSyncUpdate(event);
       });
 
+    // Refetch selected on SSE reconnect. SSE is at-most-once — a FileObject
+    // update that landed during the abort window is dropped, so preemptively
+    // reload whatever the user has open. Silent (no toast) because this
+    // isn't a peer-driven change we can attribute; it's just a "we might be
+    // stale" recovery.
+    this.syncUpdateService.reconnected$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refetchSelectedSilently());
+
     // Unique items pipeline: debounce 200ms + switchMap (cancels stale requests)
     this.uniqueItemsTrigger$.pipe(
       debounceTime(200),
@@ -111,6 +120,27 @@ export class RfFileStateService {
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe();
+  }
+
+  /**
+   * Refetch the currently selected file without emitting the "updated from
+   * another machine" info toast. Used by the reconnect-refetch path — the
+   * user didn't do anything, we just don't know what we missed, so
+   * silently reload rather than nagging with a toast.
+   */
+  private refetchSelectedSilently(): void {
+    const selected = this.selectedItem();
+    if (!selected?.id) return;
+    this.apiService.getFileById(String(selected.id))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response?.responseData) {
+            this.updateFileInList(new FileDto(response.responseData));
+          }
+        },
+        error: (err) => console.error('Reconnect refetch (file) failed:', err),
+      });
   }
 
   /**

@@ -75,6 +75,25 @@ export class CurrentFileService {
 
       this.subscribeToEquipmentUpdates();
       this.subscribeToLotoPointUpdates();
+
+      // Refetch on SSE reconnect. SSE is at-most-once — any FileObject
+      // broadcasts (including this file's shape / point edits from a peer)
+      // that landed during the abort window are dropped. Re-issue
+      // setCurrentFile with the current file, which triggers a fresh
+      // server fetch inside setCurrentFile's "isIncompleteDto" branch —
+      // that's how it already handles "hydrate from server" for any dto
+      // with an id.
+      this.syncUpdateService.reconnected$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => {
+          const current = this.currentFileSubject.getValue();
+          if (current?.id) {
+            // Force the isIncompleteDto branch (points=[]) so setCurrentFile
+            // does a fresh GET rather than short-circuiting on the cached
+            // DTO already having populated points.
+            this.setCurrentFile(new FileDto({ ...current, points: [] }));
+          }
+        });
     }
 
     /** Fetch distinct fileType names from the data and trigger file loading

@@ -58,6 +58,13 @@ export class RfWorkRequestStateService {
         this.updateWorkRequestInList(updatedItem);
       });
 
+    // Refetch on SSE reconnect. SSE is at-most-once — any WorkRequest
+    // broadcast that landed during the abort window is dropped. reloadData()
+    // rebuilds the currently-visible page and preserves the open item.
+    this.syncUpdateService.reconnected$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadData());
+
     this.syncUpdateService.getEntityTypeUpdates$('WorkRequest')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {

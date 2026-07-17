@@ -48,6 +48,19 @@ export class WorkAreaMapStateService {
         this.reloadDataPreservingSelection();
         this.loadMapImage();
       });
+
+    // Refetch on SSE reconnect. SSE is at-most-once — any WorkArea /
+    // WorkAreaMapShape broadcast that landed during the abort window is
+    // dropped. reloadDataPreservingSelection is already the "refetch and
+    // keep whatever the user has selected" path; also refresh the map
+    // image because a peer's shape edit during the disconnect window
+    // could have re-rendered it server-side.
+    this.syncUpdateService.reconnected$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.reloadDataPreservingSelection();
+        this.loadMapImage();
+      });
   }
 
   // --- Computed ---
