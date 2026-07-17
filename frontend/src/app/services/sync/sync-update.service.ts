@@ -1,6 +1,7 @@
 import { Injectable, inject, DestroyRef, NgZone, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Subject, BehaviorSubject, combineLatest } from 'rxjs';
+import { Subject, BehaviorSubject, combineLatest, Observable } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../auth.service';
@@ -22,6 +23,15 @@ export interface EntityUpdateEvent {
   entityId: number;
   changes: FieldChangeDto[];
   timestamp: number;
+  /**
+   * The X-Client-Id of the tab that originated this change, when the write
+   * came from a local REST call (see backend {@code LocalChangeSseBroadcaster}).
+   * Absent for changes propagated from another machine (receive-path
+   * broadcast in {@code FieldSyncService}). Consumers use this to suppress
+   * their own writes — the initiating tab already has fresh state and would
+   * otherwise trigger a redundant refetch immediately after saving.
+   */
+  originClientId?: string;
 }
 
 export interface SyncCompleteEvent {
@@ -61,8 +71,13 @@ export class SyncUpdateService {
   private baseReconnectDelay = 1000;
   private maxReconnectDelay = 60000;
 
-  /** Unique ID for this browser tab — server uses it to evict stale emitters on reconnect */
-  private readonly clientId = crypto.randomUUID();
+  /**
+   * Unique ID for this browser tab. Server uses it to evict stale emitters
+   * on reconnect AND (via {@code ClientIdInterceptor}) to stamp every write
+   * so the tab can filter its own echo out of {@code getEntityTypeUpdates$}.
+   * <p>Public — the interceptor reads it. Readonly — set once at load.</p>
+   */
+  readonly clientId = crypto.randomUUID();
 
   // Connection state
   private connectionStateSubject = new BehaviorSubject<'connected' | 'disconnected' | 'connecting'>('disconnected');
@@ -254,12 +269,29 @@ export class SyncUpdateService {
   }
 
   /**
-   * Get an observable for updates to a specific entity type.
-   * Creates a new subject if one doesn't exist.
+   * Get an observable for updates to a specific entity type. Emits ONLY events
+   * that originated on other tabs (or other machines) — events from this tab
+   * are suppressed via {@code originClientId} echo. Consumers can safely
+   * refetch on every emission without triggering a self-loop after their
+   * own save call.
+   * <p>
+   * If a caller needs the raw stream (e.g. a debug feed that wants to see
+   * self-echoes), use {@link #getEntityTypeUpdatesRaw$}.
    *
-   * @param entityType The entity type to listen for (e.g., 'LotoPoint', 'Equipment')
+   * @param entityType The entity type to listen for (e.g., 'LotoPoint', 'Equipment', 'LotoStandard')
    */
-  getEntityTypeUpdates$(entityType: string): Subject<EntityUpdateEvent> {
+  getEntityTypeUpdates$(entityType: string): Observable<EntityUpdateEvent> {
+    return this.getEntityTypeUpdatesRaw$(entityType).pipe(
+      filter(evt => evt.originClientId !== this.clientId),
+    );
+  }
+
+  /**
+   * Raw per-entity-type Subject — includes self-echoes. Prefer {@link #getEntityTypeUpdates$}
+   * for state-refresh consumers. Kept public so a diagnostic feed (e.g. the
+   * SyncActivity panel) can render every event without filtering.
+   */
+  getEntityTypeUpdatesRaw$(entityType: string): Subject<EntityUpdateEvent> {
     if (!this.entityTypeUpdatedSubjects.has(entityType)) {
       this.entityTypeUpdatedSubjects.set(entityType, new Subject<EntityUpdateEvent>());
     }

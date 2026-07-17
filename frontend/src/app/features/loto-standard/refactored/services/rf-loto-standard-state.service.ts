@@ -3,7 +3,7 @@ import {
   LotoStandardDto,
   LotoStandardFieldName,
 } from '../../../../models/loto/loto-standard.model';
-import { BehaviorSubject, Observable, filter, take } from 'rxjs';
+import { BehaviorSubject, Observable, filter, take, debounceTime } from 'rxjs';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { RfLotoStandardApiService } from './rf-loto-standard-api.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -71,12 +71,59 @@ export class RfLotoStandardStateService {
       this.loadInitialData();
     });
 
-    // Subscribe to SSE sync updates for real-time reactivity
+    // Subscribe to SSE sync updates for real-time reactivity. The
+    // getEntityTypeUpdates$ pipe already filters out self-echoes, so we only
+    // see events from OTHER tabs (same machine) or OTHER machines.
     this.syncUpdateService.getEntityTypeUpdates$('LotoStandard')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {
         this.handleSyncUpdate(event);
       });
+
+    // LotoStandardPendingChange / LotoStandardApprovalEvent — a peer edit that
+    // creates one of these implicitly changes what the pending-changes panel
+    // and workflow history render. The panel components subscribe to the same
+    // stream themselves; here we refetch the parent standard so the "pending
+    // review since" banner + attribution fields stay accurate.
+    this.syncUpdateService.getEntityTypeUpdates$('LotoStandardPendingChange')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refetchSelectedIfLoaded());
+    this.syncUpdateService.getEntityTypeUpdates$('LotoStandardApprovalEvent')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refetchSelectedIfLoaded());
+
+    // LotoPoint changes ARE relevant — a point's tag/description edit shows
+    // up in the standard's LOTO Points tab. But refetching the currently
+    // selected standard on EVERY LotoPoint update across the plant would be
+    // noisy (many standards, many points), so scope to points that live on
+    // the selected standard AND debounce so a burst collapses to one refetch.
+    this.syncUpdateService.getEntityTypeUpdates$('LotoPoint')
+      .pipe(
+        filter(evt => this.pointIsOnSelectedStandard(evt.entityId)),
+        debounceTime(300),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.refetchSelectedIfLoaded());
+  }
+
+  /** True iff the given LotoPoint id is a member of the currently selected standard. */
+  private pointIsOnSelectedStandard(pointId: number): boolean {
+    const sel = this.selectedItem();
+    if (!sel?.lotoPoints || pointId == null) return false;
+    return sel.lotoPoints.some(p => p?.id === pointId);
+  }
+
+  /** Refetch the currently selected standard; no-op if nothing is selected. */
+  private refetchSelectedIfLoaded(): void {
+    const sel = this.selectedItem();
+    if (!sel?.id) return;
+    this.handleSyncUpdate({
+      type: 'entity_updated',
+      entityType: 'LotoStandard',
+      entityId: sel.id,
+      changes: [],
+      timestamp: Date.now(),
+    });
   }
 
   /**
@@ -107,25 +154,25 @@ export class RfLotoStandardStateService {
   }
 
   /**
-   * Handle sync update from SSE - reload the entity from server
-   * This is called when a LotoStandard is updated by server sync
+   * Handle sync update from SSE — reload the entity from server (silent refetch).
+   * <p>
+   * Per user decision on the reactivity work: the store refetches whenever a
+   * peer tab or peer machine reports a change to this LotoStandard, but does
+   * NOT surface a toast, dialog, or banner even when the currently-selected
+   * item was the one that changed. Rationale: two operators editing the same
+   * standard in two windows want to see each other's edits, not be told
+   * "someone edited this". If a dirty-form guard is added later, this method
+   * is the anchor point.
    */
   private handleSyncUpdate(event: EntityUpdateEvent): void {
     const entityId = event.entityId;
 
-    // Reload the entity from server to get fresh data
     this.apiService.getLotoStandardById(entityId + '')
       .pipe(
         tap((response) => {
           if (response.responseData) {
             const updatedItem = LotoStandardDto.fromJson(response.responseData);
             this.updateLotoStandardInList(updatedItem);
-
-            // Show a notification if the currently selected item was updated
-            const selectedItem = this.selectedItem();
-            if (selectedItem?.id === entityId) {
-              this.messageService.showInfo('This LOTO standard was updated from another machine');
-            }
           }
         }),
         catchError((error) => {

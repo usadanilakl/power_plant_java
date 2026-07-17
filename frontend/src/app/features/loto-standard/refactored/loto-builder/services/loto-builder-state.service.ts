@@ -7,6 +7,8 @@ import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
+import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
+import { RfLotoStandardStateService } from '../../services/rf-loto-standard-state.service';
 
 export type LeftMenuTab = 'file' | 'loto-point';
 export type DisplayMode = 'table' | 'toggle-menu';
@@ -24,6 +26,67 @@ export class LotoBuilderStateService {
   private apiService = inject(RfLotoStandardApiService);
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
+  private syncUpdateService = inject(SyncUpdateService);
+  private standardsStateService = inject(RfLotoStandardStateService);
+
+  constructor() {
+    // Reactivity: refetch a standard held in the carousel when a peer tab or
+    // peer machine reports a change to it. Self-echoes are filtered out by
+    // {@code SyncUpdateService.getEntityTypeUpdates$}, so this only fires
+    // for OTHER writers.
+    this.syncUpdateService.getEntityTypeUpdates$('LotoStandard')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(evt => this.onRemoteStandardChanged(evt.entityId));
+
+    // LotoPoint changes on any point that belongs to a carousel standard —
+    // same rationale as the standards-page's scoped subscription. Debounce
+    // isn't strictly necessary here (carousel usually holds ≤ 2 standards)
+    // but keeps behavior symmetrical with the standards page.
+    this.syncUpdateService.getEntityTypeUpdates$('LotoPoint')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(evt => this.onRemoteLotoPointChanged(evt.entityId));
+  }
+
+  /**
+   * If the changed standard is one we're building on, refetch it and swap
+   * the carousel entry in place. If it's not in the carousel, do nothing —
+   * the standards-page state service handles its own list.
+   */
+  private onRemoteStandardChanged(standardId: number): void {
+    const standards = this.selectedLotoStandards();
+    const idx = standards.findIndex(s => s?.id === standardId);
+    if (idx < 0) return;
+    this.apiService.getLotoStandardById(String(standardId)).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (response) => {
+        if (!response?.responseData) return;
+        const fresh = LotoStandardDto.fromJson(response.responseData);
+        this.selectedLotoStandards.update(list => {
+          const copy = [...list];
+          const i = copy.findIndex(s => s?.id === standardId);
+          if (i >= 0) copy[i] = fresh;
+          return copy;
+        });
+      },
+      error: (err) => console.error('Builder: failed to refetch remote-changed standard', err),
+    });
+  }
+
+  /**
+   * When a LotoPoint changes remotely, refresh any carousel standard whose
+   * point set includes it. Small hot-loop guard: bail if nothing in the
+   * carousel references the point.
+   */
+  private onRemoteLotoPointChanged(pointId: number): void {
+    if (pointId == null) return;
+    const affected = this.selectedLotoStandards()
+      .filter(s => s?.lotoPoints?.some(p => p?.id === pointId));
+    if (affected.length === 0) return;
+    for (const s of affected) {
+      if (s?.id != null) this.onRemoteStandardChanged(s.id);
+    }
+  }
   // ========== Left Panel State ==========
 
   /** Current active tab in left panel */
@@ -511,7 +574,12 @@ export class LotoBuilderStateService {
   }
 
   /**
-   * Add LOTO standard to the list
+   * Add LOTO standard to the builder carousel.
+   * <p>
+   * If the standard has been persisted (has an id), also mirror it into the
+   * standards-page shared list so the left menu on the other route reflects
+   * the change immediately — no more "creating a standard in the builder
+   * doesn't refresh the left menu" gap.
    */
   addLotoStandard(standard: LotoStandardDto): void {
     this.selectedLotoStandards.update(standards => [...standards, standard]);
@@ -519,6 +587,14 @@ export class LotoBuilderStateService {
     this.activeLotoStandardIndex.set(this.selectedLotoStandards().length - 1);
     // Enable building mode to show the carousel
     this.isLotoBuildingMode.set(true);
+
+    // Mirror into the shared standards-page list so both surfaces stay in
+    // sync within the same window. Only for persisted standards — an unsaved
+    // in-carousel draft shouldn't show up in the left menu (per user decision
+    // #3 on the reactivity plan).
+    if (standard?.id) {
+      this.standardsStateService.updateLotoStandardInList(standard);
+    }
 
     // If there's a pending LOTO point, add it to this new standard
     const pendingPoint = this.currentLotoPoint();
@@ -529,7 +605,9 @@ export class LotoBuilderStateService {
   }
 
   /**
-   * Update LOTO standard at specific index
+   * Update LOTO standard at specific index. Also mirrors into the standards-page
+   * shared list when the DTO has an id, so the left menu / table on the other
+   * route stays coherent without needing a manual refresh.
    */
   updateLotoStandard(index: number, standard: LotoStandardDto): void {
     this.selectedLotoStandards.update(standards => {
@@ -539,6 +617,9 @@ export class LotoBuilderStateService {
       }
       return updated;
     });
+    if (standard?.id) {
+      this.standardsStateService.updateLotoStandardInList(standard);
+    }
   }
 
   /**
