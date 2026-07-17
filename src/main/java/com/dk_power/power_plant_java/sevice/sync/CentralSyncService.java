@@ -561,10 +561,14 @@ public class CentralSyncService {
                     .filter(java.util.Objects::nonNull)
                     .filter(id -> !deferred.contains(id))
                     .collect(java.util.stream.Collectors.toList());
-                ackIds.forEach(deferralAttempts::remove); // clear counters for changes now resolved
                 try {
                     if (!ackIds.isEmpty()) {
                         acknowledgeChangesToServer(ackIds);
+                        // Clear retry budgets ONLY after the ack actually lands. Clearing before the call
+                        // meant a failed ack re-delivered the same rows with their budget reset, so a
+                        // change could defer indefinitely without ever reaching the give-up valve —
+                        // turning a bounded stall into an unbounded one.
+                        ackIds.forEach(deferralAttempts::remove);
                     }
                 } catch (Exception ackEx) {
                     log.warn("Failed to acknowledge changes: {}", ackEx.getMessage());
