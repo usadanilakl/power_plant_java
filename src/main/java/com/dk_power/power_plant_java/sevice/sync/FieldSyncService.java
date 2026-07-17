@@ -60,11 +60,20 @@ public class FieldSyncService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    // Set by applyIncomingChanges overload to skip re-saving FieldChanges.
-    // When true, also skips LWW comparison — the hub just saved these records,
-    // so they ARE the latest and should always be applied to entities.
+    // Set by applyIncomingChanges overload to skip re-saving FieldChanges (the hub already saved them
+    // in processIncomingChangesBatched). Historically this ALSO skipped the LWW check at apply, which
+    // let a concurrent exchange's OLDER change overwrite a newer one on the hub (D4 hub-bypass). That
+    // second concern is now split off behind hubApplyLwwEnabled below.
     // Safe to use as plain field because applyChangesLock ensures single-threaded access.
     private boolean skipSaveFieldChanges = false;
+
+    // When true, the hub apply path runs real LWW (with an identity short-circuit for a change comparing
+    // against its OWN just-saved row) instead of blindly applying. Default FALSE = current behavior, so
+    // shipping this is a no-op; it is enabled per-hub in the field (with a content-hash scan-all right
+    // after) so a wrong self-compare — which would make the hub silently apply NOTHING while still
+    // reporting success — can be reverted without a redeploy.
+    @org.springframework.beans.factory.annotation.Value("${sync.hub.apply-lww-enabled:false}")
+    private boolean hubApplyLwwEnabled;
 
     // Set by the applyIncomingChanges overload; if non-null, deferred change ids are collected here
     // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
@@ -1192,20 +1201,30 @@ public class FieldSyncService {
      * @return true if the incoming change should be applied
      */
     private boolean shouldApplyChange(FieldChange incoming, Map<String, FieldChange> latestChangesMap) {
-        // Hub path: FieldChanges are already saved (Phase 2), so LWW would find them
-        // and reject the incoming changes as "same timestamp, same origin." Skip LWW
-        // entirely — these records are definitionally the latest, just apply them.
-        if (skipSaveFieldChanges) {
+        // Legacy hub behavior (flag off, the default): the hub already saved these rows, so apply them
+        // without LWW. Definitionally-latest for a single exchange, but blind across CONCURRENT
+        // exchanges — an older change can then overwrite a newer one on the hub. hubApplyLwwEnabled
+        // turns on the real LWW below; the persist-skip (saveIncomingChange) is unaffected either way.
+        if (skipSaveFieldChanges && !hubApplyLwwEnabled) {
             return true;
         }
 
         String key = incoming.buildChangeKey();
         FieldChange local = latestChangesMap.get(key);
 
+        // IDENTITY SHORT-CIRCUIT (essential on the hub path, where a change is compared against its OWN
+        // just-saved row): the same global id means `local` IS `incoming`, so apply it. Without this the
+        // hub would compare a change against itself (SyncOrder.compare == 0 -> not > 0 -> false) and
+        // SILENTLY APPLY NOTHING while still returning success/broadcasting — a total, invisible outage.
+        // Inc 4 guarantees the hub preserves the origin id on its saved row, so the ids match.
+        if (skipSaveFieldChanges && local != null && incoming.getId() != null
+                && incoming.getId().equals(local.getId())) {
+            return true;
+        }
+
         // One total order everywhere (SyncOrder): newer wins; ties broken by origin machine id then the
-        // global change id, so every node reaches the SAME verdict. The old inline version compared only
-        // timestamp+origin and had no final tiebreak, so a same-timestamp same-origin pair was resolved
-        // by arrival/DB order — a coin flip.
+        // global change id, so every node reaches the SAME verdict. A genuinely older change from a
+        // concurrent exchange now correctly loses to the newer one already on the hub.
         return SyncOrder.incomingWins(incoming, local);
     }
 
