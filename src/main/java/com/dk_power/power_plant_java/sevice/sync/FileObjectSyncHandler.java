@@ -296,7 +296,7 @@ public class FileObjectSyncHandler {
             .collect(java.util.stream.Collectors.toMap(
                 FieldChange::getFieldName,
                 c -> c,
-                (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b
+                SyncOrder::max // one total order; was `? a : b` (arbitrary on a timestamp tie)
             ));
 
         // Check for extension/content changes

@@ -189,6 +189,54 @@ class FieldSyncServiceDispositionIT {
     }
 
     @Test
+    @DisplayName("CONVERGENCE: two conflicting equal-timestamp changes resolve to the SAME winner in either order")
+    void equalTimestampConflict_convergesRegardlessOfOrder() {
+        // Two machines edit the same field at the SAME instant. Which one wins must NOT depend on the
+        // order they happen to be applied — that dependence is the coin-flip bug. The total order breaks
+        // the tie by origin machine id (MACHINE-Z > MACHINE-A), so MACHINE-Z's value wins both ways.
+        long id1 = givenCommittedLotoPoint("CONVERGE-1");
+        long id2 = givenCommittedLotoPoint("CONVERGE-2");
+        // Truncate to millis so the value is byte-identical after a DB round-trip — otherwise the stored
+        // "first" change (read back from H2) and the in-memory "second" change differ by sub-milli
+        // precision and it stops being a genuine tie, which is a test artifact, not the behaviour we test.
+        Instant tie = Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+
+        // id1: apply A then Z. id2: apply Z then A. Same conflict, opposite order.
+        applyConflictPair(id1, tie, "MACHINE-A", "\"from-A\"", "MACHINE-Z", "\"from-Z\"");
+        applyConflictPair(id2, tie, "MACHINE-Z", "\"from-Z\"", "MACHINE-A", "\"from-A\"");
+
+        String winner1 = currentDescription(id1);
+        String winner2 = currentDescription(id2);
+        assertThat(winner1)
+                .as("MACHINE-Z outranks MACHINE-A on a tie, so its value must win regardless of apply order")
+                .contains("from-Z");
+        assertThat(winner1)
+                .as("both nodes must reach the identical state from the identical conflict")
+                .isEqualTo(winner2);
+    }
+
+    private void applyConflictPair(long entityId, Instant sameTs,
+                                   String origin1, String val1, String origin2, String val2) {
+        FieldChange first = new FieldChange("LotoPoint", entityId, "description", null, val1,
+                origin1, origin1, FieldChange.ChangeType.UPDATE);
+        first.setId(UUID.randomUUID());
+        first.setTimestamp(sameTs);
+        FieldChange second = new FieldChange("LotoPoint", entityId, "description", null, val2,
+                origin2, origin2, FieldChange.ChangeType.UPDATE);
+        second.setId(UUID.randomUUID());
+        second.setTimestamp(sameTs);
+        fieldSyncService.applyIncomingChanges(List.of(first), false, null);
+        fieldSyncService.applyIncomingChanges(List.of(second), false, null);
+    }
+
+    private String currentDescription(long id) {
+        return new TransactionTemplate(txManager).execute(s ->
+                (String) entityManager.createQuery(
+                                "SELECT p.description FROM LotoPoint p WHERE p.id = :id")
+                        .setParameter("id", id).getSingleResult());
+    }
+
+    @Test
     @DisplayName("EQUIVALENCE GATE: the returned applied-count is unchanged by the observer refactor")
     void equivalenceGate_appliedCountUnchanged() {
         long existing = givenCommittedLotoPoint("DISP-IT-EQUIV");

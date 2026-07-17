@@ -24,12 +24,16 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
 
     // PAGINATED: Get changes not yet synced to a specific machine
     // Uses delimited format |MACHINE_ID| to prevent substring matching
-    @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) ORDER BY fc.timestamp ASC")
+    // TOTAL order (timestamp, originMachineId, id): ordering by timestamp ALONE makes page boundaries
+    // unstable when many changes share a timestamp — a row can be skipped or repeated across pages. The
+    // tiebreak matches SyncOrder so pagination is stable and deterministic.
+    @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) ORDER BY fc.timestamp ASC, fc.originMachineId ASC, fc.id ASC")
     Page<FieldChange> findChangesNotSyncedTo(@Param("machineId") String machineId, Pageable pageable);
 
     // PAGINATED: Get changes not yet synced to a machine, excluding changes that originated FROM that machine.
     // Used by hub when serving changes to a client — prevents sending a client's own changes back to it.
-    @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId ORDER BY fc.timestamp ASC")
+    // Total order for stable pagination (see above).
+    @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId ORDER BY fc.timestamp ASC, fc.originMachineId ASC, fc.id ASC")
     Page<FieldChange> findChangesNotSyncedToExcludingOrigin(@Param("machineId") String machineId, Pageable pageable);
 
     // COUNT: Pending changes for a machine, excluding its own changes (hub use)

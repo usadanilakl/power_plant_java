@@ -332,7 +332,7 @@ public class HubSyncService {
                     .collect(Collectors.toMap(
                         fc -> fc.getEntityType() + ":" + fc.getEntityId() + ":" + fc.getFieldName(),
                         fc -> fc,
-                        (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b,
+                        com.dk_power.power_plant_java.sevice.sync.SyncOrder::max, // was `? a : b` (arbitrary on tie)
                         LinkedHashMap::new
                     ));
 
@@ -387,20 +387,8 @@ public class HubSyncService {
     private boolean shouldAcceptChange(FieldChange incoming, Map<String, FieldChange> latestChanges) {
         String key = incoming.getEntityType() + ":" + incoming.getEntityId() + ":" + incoming.getFieldName();
         FieldChange latest = latestChanges.get(key);
-
-        if (latest == null) {
-            return true;
-        }
-
-        if (incoming.getTimestamp().isAfter(latest.getTimestamp())) {
-            return true;
-        }
-
-        if (incoming.getTimestamp().equals(latest.getTimestamp())) {
-            return incoming.getOriginMachineId().compareTo(latest.getOriginMachineId()) > 0;
-        }
-
-        return false;
+        // Same total order the clients use (SyncOrder). Was an inline copy with no final tiebreak.
+        return com.dk_power.power_plant_java.sevice.sync.SyncOrder.incomingWins(incoming, latest);
     }
 
     private List<FieldChange> compactChanges(List<FieldChange> changes) {
@@ -409,7 +397,9 @@ public class HubSyncService {
         for (FieldChange change : changes) {
             String key = change.getEntityType() + ":" + change.getEntityId() + ":" + change.getFieldName();
             FieldChange existing = latestByField.get(key);
-            if (existing == null || change.getTimestamp().isAfter(existing.getTimestamp())) {
+            // Same total order (SyncOrder). The old `isAfter` kept the first-encountered change on a
+            // tie, so which duplicate survived depended on input order.
+            if (existing == null || com.dk_power.power_plant_java.sevice.sync.SyncOrder.incomingWins(change, existing)) {
                 latestByField.put(key, change);
             }
         }

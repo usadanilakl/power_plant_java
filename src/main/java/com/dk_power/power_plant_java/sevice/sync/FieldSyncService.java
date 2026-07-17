@@ -837,7 +837,7 @@ public class FieldSyncService {
             .collect(Collectors.toMap(
                 FieldChange::buildChangeKey,
                 fc -> fc,
-                (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b // Keep newer on conflict
+                SyncOrder::max // one total order; on a tie the old `? a : b` kept an arbitrary DB row
             ));
     }
 
@@ -964,10 +964,16 @@ public class FieldSyncService {
                                   && "_entity_".equals(c.getFieldName()))
                         .findFirst().orElse(null);
 
+                    // Does the local deletion outrank the incoming re-create by the ONE total order?
+                    // The old test (`!incoming.isAfter(localDeleted)`) made the local deletion win on a
+                    // TIE — and "is my deletion not-older than their create" is machine-relative, so two
+                    // nodes reached OPPOSITE states from the identical pair. SyncOrder gives both the same
+                    // verdict. (This only changes the equal-timestamp case; strictly-newer/older is
+                    // unchanged. Whether a deletion should still win when it is OLDER is a separate question.)
                     boolean localDeletionIsNewer = localDeletedChange != null
                         && "true".equals(localDeletedChange.getNewValue())
                         && incomingCreate != null
-                        && !incomingCreate.getTimestamp().isAfter(localDeletedChange.getTimestamp());
+                        && SyncOrder.TOTAL.compare(localDeletedChange, incomingCreate) > 0;
 
                     if (localDeletionIsNewer) {
                         // Local deletion wins — save incoming changes as received (so they stop
@@ -1177,21 +1183,11 @@ public class FieldSyncService {
         String key = incoming.buildChangeKey();
         FieldChange local = latestChangesMap.get(key);
 
-        if (local == null) {
-            return true; // No local change exists, apply incoming
-        }
-
-        // If incoming is newer, apply it
-        if (incoming.getTimestamp().isAfter(local.getTimestamp())) {
-            return true;
-        }
-
-        // If timestamps are equal, use machine ID as tiebreaker (deterministic)
-        if (incoming.getTimestamp().equals(local.getTimestamp())) {
-            return incoming.getOriginMachineId().compareTo(local.getOriginMachineId()) > 0;
-        }
-
-        return false; // Local is newer
+        // One total order everywhere (SyncOrder): newer wins; ties broken by origin machine id then the
+        // global change id, so every node reaches the SAME verdict. The old inline version compared only
+        // timestamp+origin and had no final tiebreak, so a same-timestamp same-origin pair was resolved
+        // by arrival/DB order — a coin flip.
+        return SyncOrder.incomingWins(incoming, local);
     }
 
     /**
