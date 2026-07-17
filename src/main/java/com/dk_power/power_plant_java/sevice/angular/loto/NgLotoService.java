@@ -306,12 +306,15 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Transactional
     public LotoDto createFromStandard(Long standardId, LotoIdDto permitData, Integer requestedBoxNumber) {
         requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
-        LotoStandard standard = lotoStandardRepo.findById(standardId)
+        // PESSIMISTIC_WRITE lock: pairs with the same lock in
+        // NgLotoStandardService.deleteStandard. Without it, this transaction
+        // can read a stale deleted=false snapshot and save a permit whose
+        // sourceStandard is soft-deleted by the time this commits — the
+        // operator would then see the permit reference a "(deleted)"
+        // standard on every subsequent load. The lock serializes so the
+        // deleted check below is authoritative.
+        LotoStandard standard = lotoStandardRepo.findByIdForUpdate(standardId)
                 .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found with id: " + standardId));
-        // A concurrent delete could have flipped this row between the frontend
-        // fetch and this call. Reject rather than spawn a permit whose source
-        // was just retired — the operator would see the permit reference a
-        // "(deleted)" standard on every subsequent load.
         if (Boolean.TRUE.equals(standard.getDeleted())) {
             throw new IllegalStateException(
                     "Cannot create a permit from a deleted LOTO Standard (id " + standardId + ").");

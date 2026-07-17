@@ -234,7 +234,12 @@ public class SecurityConfigSpring {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(
             "authorization", "content-type", "x-auth-token",
-            "X-Machine-Id", "X-Machine-Name", "X-Device-Number"
+            "X-Machine-Id", "X-Machine-Name", "X-Device-Number",
+            // ClientIdInterceptor stamps this on every non-GET Angular write
+            // so the tab can filter its own SSE echoes. Same-origin today, but
+            // omitting it here would silently fail preflight the moment the
+            // frontend is served from a different origin than the API.
+            "X-Client-Id"
         ));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
         configuration.setAllowCredentials(true);

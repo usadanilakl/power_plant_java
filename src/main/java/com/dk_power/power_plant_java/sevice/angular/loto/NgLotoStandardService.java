@@ -571,7 +571,11 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public void deleteStandard(Long id) {
         requireAnyRole(LotoRole.CONTROL_AUTHORITY, LotoRole.MANAGER);
-        LotoStandard s = lotoStandardRepo.findById(id)
+        // PESSIMISTIC_WRITE lock: a concurrent NgLotoService.createFromStandard
+        // may be mid-transaction with a stale deleted=false read. The row lock
+        // serializes the two paths so create either aborts (blocked → sees the
+        // committed deleted=true) or completes before delete begins.
+        LotoStandard s = lotoStandardRepo.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found: " + id));
         if (Boolean.TRUE.equals(s.getDeleted())) {
             // Idempotent: already gone. Return without a second broadcast.
