@@ -99,8 +99,13 @@ public class HubFieldChangeQueryService {
         long total = countChangesSince(since);
 
         // Fetch page
+        // Total order (timestamp, originMachineId, id) — same reason as the other paginated delivery
+        // queries (Inc 5a): ordering by timestamp alone makes page boundaries unstable when many
+        // changes share a timestamp, so a row can be skipped or repeated across pages of this
+        // partial-sync pull (GET /api/sync/partial-sync/changes).
         TypedQuery<FieldChange> query = entityManager.createQuery(
-            "SELECT fc FROM FieldChange fc WHERE fc.timestamp >= :since ORDER BY fc.timestamp ASC",
+            "SELECT fc FROM FieldChange fc WHERE fc.timestamp >= :since "
+                + "ORDER BY fc.timestamp ASC, fc.originMachineId ASC, fc.id ASC",
             FieldChange.class)
             .setParameter("since", since)
             .setFirstResult((int) pageable.getOffset())
