@@ -70,6 +70,23 @@ public class FieldSyncService {
     // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
     private java.util.Set<java.util.UUID> deferredChangeIds = null;
 
+    // Per-change outcomes for the CURRENT apply run. Same plain-field-under-applyChangesLock discipline
+    // as skipSaveFieldChanges/deferredChangeIds above; set and cleared in the same try/finally.
+    // OBSERVER ONLY for now: every int return below is computed exactly as before and nothing reads this
+    // yet — that is what makes threading it through the shared apply path a provable no-op. It becomes
+    // load-bearing when acknowledgement stops acking what it never resolved.
+    private DispositionLedger currentLedger = null;
+
+    /** Record a per-change outcome for this run, if a ledger is active. Never alters control flow. */
+    private void note(FieldChange change, ChangeDisposition disposition) {
+        if (currentLedger != null) currentLedger.record(change, disposition);
+    }
+
+    /** Record the same outcome for every change in {@code changes}, if a ledger is active. */
+    private void noteAll(java.util.Collection<FieldChange> changes, ChangeDisposition disposition) {
+        if (currentLedger != null) currentLedger.recordAll(changes, disposition);
+    }
+
     // Persistent dedup remap table — lives in memory across batches.
     // Loaded from DB once on first use (for JVM restart recovery), then kept in-memory.
     // New remaps are added in-memory AND persisted to DB as write-behind.
@@ -180,16 +197,53 @@ public class FieldSyncService {
         try {
             this.skipSaveFieldChanges = skipSave;
             this.deferredChangeIds = deferredOut;
-            return applyIncomingChangesLocked(incomingChanges);
+            this.currentLedger = new DispositionLedger();
+            int applied = applyIncomingChangesLocked(incomingChanges);
+            // First honest measurement of what this path actually does with a batch. The DEFERRED and
+            // DEAD_LETTER totals are changes the receiver currently acks anyway.
+            if (log.isDebugEnabled()) {
+                log.debug("sync.apply.dispositions {} (returned applied={})", this.currentLedger, applied);
+            }
+            return applied;
         } finally {
             this.skipSaveFieldChanges = false;
             this.deferredChangeIds = null;
+            this.currentLedger = null;
+            applyChangesLock.unlock();
+        }
+    }
+
+    /**
+     * Test seam: run the same apply and RETURN the per-change ledger.
+     *
+     * <p>The ledger is a per-run local (see {@link DispositionLedger}) — the {@code finally} above
+     * clears {@code currentLedger}, so the reference must be captured here, before the run, rather than
+     * read off the field afterwards. That also keeps it readable when the batch rolls back.
+     */
+    DispositionLedger applyIncomingChangesForTest(List<FieldChange> incomingChanges, boolean skipSave,
+                                                 java.util.Set<java.util.UUID> deferredOut) {
+        applyChangesLock.lock();
+        DispositionLedger ledger = new DispositionLedger();
+        try {
+            this.skipSaveFieldChanges = skipSave;
+            this.deferredChangeIds = deferredOut;
+            this.currentLedger = ledger;
+            applyIncomingChangesLocked(incomingChanges);
+            return ledger;
+        } finally {
+            this.skipSaveFieldChanges = false;
+            this.deferredChangeIds = null;
+            this.currentLedger = null;
             applyChangesLock.unlock();
         }
     }
 
     /** Records a change id as deferred (retry next sync), if the caller requested deferred tracking. */
     private void markDeferred(FieldChange change) {
+        // Ledger first: it records faithfully even when the id is null, which the deferredChangeIds
+        // guard below cannot. That null-id hole is deliberately preserved here (idsWith skips nulls) so
+        // this stays a no-op; closing it is an acknowledgement decision, not an observation one.
+        note(change, ChangeDisposition.DEFERRED);
         if (deferredChangeIds != null && change != null && change.getId() != null) {
             deferredChangeIds.add(change.getId());
         }
@@ -206,6 +260,11 @@ public class FieldSyncService {
                     return applyIncomingChangesInternal(incomingChanges);
                 } catch (Exception e) {
                     log.error("Error applying incoming changes, rolling back: {}", e.getMessage(), e);
+                    // NOTHING in this batch survived the rollback — every change is retryable, not
+                    // resolved. The returned 0 cannot express that, and the receiver currently acks the
+                    // whole batch anyway (one constraint violation silently drops every change in it).
+                    // Recorded here so acknowledgement can stop doing that; the return stays 0.
+                    noteAll(incomingChanges, ChangeDisposition.FAILED_RETRYABLE);
                     status.setRollbackOnly();
                     return 0;
                 }
@@ -218,6 +277,7 @@ public class FieldSyncService {
             // was already rolled back, just return 0 and let the caller continue.
             log.warn("Transaction rolled back during incoming changes (batch of {}): {}",
                 incomingChanges.size(), e.getMessage());
+            noteAll(incomingChanges, ChangeDisposition.FAILED_RETRYABLE);
             return 0;
         } finally {
             syncContext.endSync();
@@ -803,6 +863,7 @@ public class FieldSyncService {
                         + "type is not registered (EntityTableRegistry + ServiceFacade); dead-lettering",
                         entityType, entityId, changes.size());
                 syncDeadLetterService.recordNoService(entityType, changes);
+                noteAll(changes, ChangeDisposition.DEAD_LETTER);
                 return 0;
             }
 
@@ -832,15 +893,22 @@ public class FieldSyncService {
                         applyFieldChange(entity, change, null, idRemapTable);
                         saveIncomingChange(change);
                         appliedCount++;
+                        // Mirror the count exactly: this branch increments without checking
+                        // applyFieldChange's result, so a field that silently failed is still counted.
+                        // Recorded as-is rather than "corrected" — the discrepancy is real and belongs to
+                        // the DELETE-ordering work, not to an observer.
+                        note(change, ChangeDisposition.APPLIED);
                     }
                 }
 
                 // Now apply soft delete
                 entity.setDeleted(true);
                 service.save(entity);
-                saveIncomingChange(changes.stream()
+                FieldChange deleteMarker = changes.stream()
                     .filter(c -> c.getChangeType() == FieldChange.ChangeType.DELETE)
-                    .findFirst().orElse(null));
+                    .findFirst().orElse(null);
+                saveIncomingChange(deleteMarker);
+                note(deleteMarker, ChangeDisposition.APPLIED);
                 return appliedCount + 1;
             }
 
@@ -860,6 +928,11 @@ public class FieldSyncService {
                     } else {
                         log.debug("Entity {}#{} not found and no CREATE change present, skipping", entityType, entityId);
                     }
+                    // The parent hasn't arrived yet — retryable, not resolved. The WARN above already
+                    // says "deferring", but nothing ever deferred it: there is no markDeferred here, so
+                    // the receiver acks it and the hub never re-sends. Recording the truth is the whole
+                    // point of this ledger; acting on it is the next increment.
+                    noteAll(changes, ChangeDisposition.DEFERRED);
                     return 0;
                 }
 
@@ -895,6 +968,11 @@ public class FieldSyncService {
                         for (FieldChange change : changes) {
                             saveIncomingChange(change);
                         }
+                        // Already converged: the local deletion wins, so NOTHING was applied to entity
+                        // state. The count returned here says otherwise (changes.size()), which is what
+                        // fires a spurious "entity updated" broadcast at the caller. Left intact —
+                        // observer only — but recorded honestly.
+                        noteAll(changes, ChangeDisposition.NOOP_SUPERSEDED);
                         return changes.size();
                     }
 
@@ -930,6 +1008,9 @@ public class FieldSyncService {
                             for (FieldChange change : changes) {
                                 saveIncomingChange(change);
                             }
+                            // The dedup target vanished between the query and the fetch — retrying can't
+                            // fix it, and these changes are already marked received. Permanent.
+                            noteAll(changes, ChangeDisposition.DEAD_LETTER);
                             return 0;
                         }
 
@@ -943,7 +1024,13 @@ public class FieldSyncService {
                             if ("_entity_".equals(change.getFieldName())) continue;
                             if (shouldApplyChange(change, existingLatestMap)) {
                                 boolean applied = applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
-                                if (applied) modified = true;
+                                if (applied) {
+                                    modified = true;
+                                    note(change, ChangeDisposition.APPLIED);
+                                }
+                                // applied==false is classified inside applyFieldChange, which knows WHY.
+                            } else {
+                                note(change, ChangeDisposition.NOOP_SUPERSEDED);
                             }
                         }
 
@@ -985,10 +1072,12 @@ public class FieldSyncService {
                 advanceSequencePastIfNeeded(entityId);
 
                 // Save the CREATE change record
-                saveIncomingChange(changes.stream()
+                FieldChange createMarker = changes.stream()
                     .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE)
-                    .findFirst().orElse(null));
+                    .findFirst().orElse(null);
+                saveIncomingChange(createMarker);
                 appliedCount++;
+                note(createMarker, ChangeDisposition.APPLIED);
 
                 // For new entities, field changes were already applied above.
                 // Save field change records and return.
@@ -997,6 +1086,13 @@ public class FieldSyncService {
                             && shouldApplyChange(change, latestChangesMap)) {
                         saveIncomingChange(change);
                         appliedCount++;
+                        // Counted applied on the LWW verdict alone — this branch never checks
+                        // applyFieldChange's result. A change recorded here can still be deferred by the
+                        // later ManyToOne retry pass; DispositionLedger's precedence (DEFERRED outranks
+                        // APPLIED) makes that outcome order-independent.
+                        note(change, ChangeDisposition.APPLIED);
+                    } else if (!"_entity_".equals(change.getFieldName())) {
+                        note(change, ChangeDisposition.NOOP_SUPERSEDED);
                     }
                 }
                 return appliedCount;
@@ -1021,10 +1117,15 @@ public class FieldSyncService {
                     if (applied) {
                         modified = true;
                         appliedChanges.add(change);
+                        note(change, ChangeDisposition.APPLIED);
                     }
+                    // applied==false is NOT classified here: applyFieldChange knows whether it was a
+                    // missing ManyToOne (deferred, retried in pass 4), an unknown field (dead-letter) or
+                    // a transient failure. Recording a guess here would race the precedence rule.
                 } else {
                     log.debug("Skipping change for {}.{} - local change is newer or equal",
                         entityType, change.getFieldName());
+                    note(change, ChangeDisposition.NOOP_SUPERSEDED);
                 }
             }
 
@@ -1099,7 +1200,12 @@ public class FieldSyncService {
         try {
             Field field = findField(entity.getClass(), change.getFieldName());
             if (field == null) {
+                // A field the local schema doesn't have (renamed/removed, or a newer peer's field) will
+                // NEVER apply — retrying is pointless. This was a bare log.warn: the change is acked and
+                // gone, with no record anywhere. Dead-letter it so it is visible and replayable.
                 log.warn("Field not found: {}.{}", entity.getClass().getSimpleName(), change.getFieldName());
+                note(change, ChangeDisposition.DEAD_LETTER);
+                syncDeadLetterService.recordUnknownField(change);
                 return false;
             }
 
@@ -1115,6 +1221,9 @@ public class FieldSyncService {
                 // Bidirectional (has mappedBy) — managed by child entity's ManyToOne field
                 log.debug("Skipping bidirectional OneToMany field {}.{} - managed by child entity",
                     entity.getClass().getSimpleName(), change.getFieldName());
+                // Intentionally nothing to do: the child's ManyToOne carries this relationship, so the
+                // state is already correct. Resolved, not pending — safe to ack.
+                note(change, ChangeDisposition.NOOP_SUPERSEDED);
                 return false;
             }
 
@@ -1204,9 +1313,14 @@ public class FieldSyncService {
                 return true;
             }
 
+            // The payload wouldn't deserialize into this field's type — re-sending the same bytes will
+            // fail identically, so this is permanent, not pending.
+            note(change, ChangeDisposition.DEAD_LETTER);
             return false;
         } catch (Exception e) {
             log.error("Error applying field change {}: {}", change.getFieldName(), e.getMessage());
+            // Unknown failure — may be transient (locking, constraint, session state). Retryable.
+            note(change, ChangeDisposition.FAILED_RETRYABLE);
             return false;
         }
     }
@@ -1236,6 +1350,11 @@ public class FieldSyncService {
                 // This is the inverse side (mappedBy), skip it - owning side will handle
                 log.debug("Skipping ManyToMany inverse side {}.{}",
                     entity.getClass().getSimpleName(), change.getFieldName());
+                // NOT deferred: the owning side's change carries the join-table rows, so there is
+                // nothing here to retry — skipping IS the correct final outcome. Classifying this as
+                // DEFERRED would make the receiver re-pull it forever and eventually dead-letter a
+                // perfectly healthy change. Same reasoning as the bidirectional OneToMany skip above.
+                note(change, ChangeDisposition.NOOP_SUPERSEDED);
                 return false;
             }
 
@@ -1285,6 +1404,11 @@ public class FieldSyncService {
                     newIds.size() - existingIds.size(), newIds.size());
                 log.debug("ManyToMany {}.{}: incomplete apply ({}/{} entities), leaving join table unchanged so retry can apply atomically",
                     entity.getClass().getSimpleName(), change.getFieldName(), existingIds.size(), newIds.size());
+                // The comment above promises a retry that never comes: this returns false, the caller
+                // ignores it, and the receiver acks the change anyway — so the join table stays
+                // permanently incomplete (e.g. a LotoStandard that loses points the client never had).
+                // This is THE case the ledger exists for.
+                note(change, ChangeDisposition.DEFERRED);
                 return false;
             }
 
@@ -1314,6 +1438,10 @@ public class FieldSyncService {
         } catch (Exception e) {
             log.error("Error applying ManyToMany change {}.{}: {}",
                 entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
+            // An exception is a transient failure, not a missing reference — FAILED_RETRYABLE per
+            // ChangeDisposition's own definitions. Both are non-terminal (never acked), so this is
+            // equivalent for acknowledgement but stays honest for the hub's durable retry later.
+            note(change, ChangeDisposition.FAILED_RETRYABLE);
             return false;
         }
     }

@@ -28,9 +28,23 @@ import java.util.List;
 public class SyncDeadLetterService {
 
     public static final String REASON_NO_SERVICE = "NO_SERVICE";
+    public static final String REASON_UNKNOWN_FIELD = "UNKNOWN_FIELD";
 
     private final SyncDeadLetterRepo repo;
     private final SyncConfig syncConfig;
+
+    /**
+     * The local schema has no such field — a renamed/removed field, or one only a newer peer knows.
+     * This can never apply, so retrying is pointless and acking it is correct; but it is still a real
+     * change that this machine silently discards, and it previously vanished into a {@code log.warn}
+     * inside {@code FieldSyncService.applyFieldChange}. Recorded so it is visible and replayable.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordUnknownField(FieldChange change) {
+        if (change == null) return;
+        record(change.getEntityType(), change.getEntityId(), change.getId(), change.getFieldName(),
+                change.getOldValue(), change.getNewValue(), change.getOriginMachineId(), REASON_UNKNOWN_FIELD);
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordNoService(String entityType, List<FieldChange> changes) {
