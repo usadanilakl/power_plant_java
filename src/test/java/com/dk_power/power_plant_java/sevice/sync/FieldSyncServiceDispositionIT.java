@@ -189,6 +189,30 @@ class FieldSyncServiceDispositionIT {
     }
 
     @Test
+    @DisplayName("IN-BATCH LWW: two changes to one field in ONE out-of-order batch resolve to the NEWEST, not list order")
+    void sameFieldTwiceInBatch_newestWinsRegardlessOfOrder() {
+        long id = givenCommittedLotoPoint("INBATCH-LWW");
+        Instant base = Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+
+        FieldChange older = new FieldChange("LotoPoint", id, "description", null, "\"older\"",
+                "MACHINE-A", "MACHINE-A", FieldChange.ChangeType.UPDATE);
+        older.setId(UUID.randomUUID());
+        older.setTimestamp(base);
+        FieldChange newer = new FieldChange("LotoPoint", id, "description", null, "\"newer\"",
+                "MACHINE-A", "MACHINE-A", FieldChange.ChangeType.UPDATE);
+        newer.setId(UUID.randomUUID());
+        newer.setTimestamp(base.plusMillis(50));
+
+        // Deliver NEWEST FIRST in one batch (the out-of-timestamp-order case, e.g. SSE fast-path).
+        // Pre-fix: newer applied, then older applied against the stale DB snapshot -> "older" wins.
+        fieldSyncService.applyIncomingChanges(List.of(newer, older), false, null);
+
+        assertThat(currentDescription(id))
+                .as("the newest value must win even when the batch is not timestamp-ordered")
+                .isEqualTo("newer");
+    }
+
+    @Test
     @DisplayName("CONVERGENCE: two conflicting equal-timestamp changes resolve to the SAME winner in either order")
     void equalTimestampConflict_convergesRegardlessOfOrder() {
         // Two machines edit the same field at the SAME instant. Which one wins must NOT depend on the

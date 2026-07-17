@@ -1129,6 +1129,14 @@ public class FieldSyncService {
 
                 // Check if we should apply this change (LWW) using pre-fetched map
                 if (shouldApplyChange(change, latestChangesMap)) {
+                    // This change won LWW — make the in-batch map reflect it so a LATER change to the
+                    // SAME field in this same batch is compared against THIS winner, not the now-stale DB
+                    // snapshot. Without it, two changes to one field resolve by list order rather than by
+                    // SyncOrder whenever the batch isn't timestamp-ordered (SSE fast-path / resync): a
+                    // newer change applied first could then be overwritten by an older one arriving later
+                    // in the list. Recorded on the LWW verdict (not applyFieldChange's result) so a
+                    // deferred winner still blocks an older sibling.
+                    latestChangesMap.put(change.buildChangeKey(), change);
                     boolean applied = applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
                     if (applied) {
                         modified = true;
