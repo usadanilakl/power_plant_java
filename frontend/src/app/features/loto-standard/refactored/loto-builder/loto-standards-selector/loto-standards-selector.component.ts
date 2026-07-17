@@ -1,4 +1,4 @@
-import { Component, computed, inject, output, signal, DestroyRef } from '@angular/core';
+import { Component, computed, effect, inject, output, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
@@ -6,6 +6,7 @@ import { RfLotoStandardApiService } from '../../../refactored/services/rf-loto-s
 import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-window/rf-floating-window.component';
+import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
 
 @Component({
   selector: 'app-loto-standards-selector',
@@ -18,6 +19,7 @@ export class LotoStandardsSelectorComponent {
   private builderState = inject(LotoBuilderStateService);
   private apiService = inject(RfLotoStandardApiService);
   private destroyRef = inject(DestroyRef);
+  private syncUpdateService = inject(SyncUpdateService);
 
   // Window configuration
   readonly windowId = 'loto-selector';
@@ -33,6 +35,7 @@ export class LotoStandardsSelectorComponent {
   availableStandards = signal<LotoStandardDto[]>([]);
   selectedStandardIds = signal<Set<number>>(new Set());
   isLoading = signal<boolean>(false);
+  isSaving = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
   showCreateNew = signal<boolean>(false);
   newStandardName = signal<string>('');
@@ -64,6 +67,24 @@ export class LotoStandardsSelectorComponent {
 
   constructor() {
     this.loadStandards();
+
+    // Peer edits (other tab / other machine): SSE echo triggers a refetch so
+    // a new standard appears here without waiting for the next popup open.
+    // Self-echoes are filtered out by SyncUpdateService.getEntityTypeUpdates$,
+    // so the tab that just clicked "Create & Add" won't see its own event —
+    // that case is covered by the isVisible effect below.
+    this.syncUpdateService.getEntityTypeUpdates$('LotoStandard')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadStandards());
+
+    // Also refetch whenever the popup opens — cheap 100-row fetch that
+    // catches the two gaps SSE alone doesn't: (a) this tab's own recent
+    // "Create & Add" saves (filtered as self-echo), and (b) peer changes
+    // that arrived during an SSE reconnect gap. Skips the initial false
+    // observation.
+    effect(() => {
+      if (this.isVisible()) this.loadStandards();
+    });
   }
 
   /**
@@ -150,23 +171,53 @@ export class LotoStandardsSelectorComponent {
   }
 
   /**
-   * Create and add new LOTO standard
+   * Create and add new LOTO standard.
+   * <p>
+   * POSTs to /ng/loto-standards so the standard is persisted BEFORE it lands
+   * in the carousel. The persisted DTO (with id) then flows through
+   * LotoBuilderStateService.addLotoStandard, which mirrors it into
+   * RfLotoStandardStateService.allLoadedLotoStandards$ — the Standards
+   * left menu updates immediately without waiting for the SSE echo (which
+   * is filtered on this tab). Peer tabs / peer machines pick up the write
+   * via LocalChangeSseBroadcaster on the same commit.
+   * <p>
+   * Previously this only added a local-in-memory DTO with no id, so the
+   * standard existed only in the carousel until the user hit the Save
+   * button inside the form — every other window (and this window's own
+   * Standards page) was blind to it until then.
    */
   createNewStandard(): void {
-    if (!this.canCreateNew()) {
+    if (!this.canCreateNew() || this.isSaving()) {
       return;
     }
 
-    const newStandard = new LotoStandardDto({
+    const draft = new LotoStandardDto({
       name: this.newStandardName().trim(),
       description: this.newStandardDescription().trim() || null,
       lotoPoints: [],
     });
 
-    this.builderState.addLotoStandard(newStandard);
-    this.hideCreateNewForm();
-    this.close.emit();
-    this.builderState.closeLotoStandardsPopup();
+    this.isSaving.set(true);
+    this.errorMessage.set(null);
+    this.apiService.createLotoStandard(draft)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const saved = LotoStandardDto.fromJson(response.responseData);
+          this.builderState.addLotoStandard(saved);
+          this.hideCreateNewForm();
+          this.close.emit();
+          this.builderState.closeLotoStandardsPopup();
+          this.isSaving.set(false);
+        },
+        error: (error) => {
+          console.error('Error creating LOTO standard:', error);
+          this.errorMessage.set(
+            error?.error?.message || 'Failed to create LOTO standard'
+          );
+          this.isSaving.set(false);
+        },
+      });
   }
 
   /**
