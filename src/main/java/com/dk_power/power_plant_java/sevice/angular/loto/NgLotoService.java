@@ -308,6 +308,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         LotoStandard standard = lotoStandardRepo.findById(standardId)
                 .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found with id: " + standardId));
+        // A concurrent delete could have flipped this row between the frontend
+        // fetch and this call. Reject rather than spawn a permit whose source
+        // was just retired — the operator would see the permit reference a
+        // "(deleted)" standard on every subsequent load.
+        if (Boolean.TRUE.equals(standard.getDeleted())) {
+            throw new IllegalStateException(
+                    "Cannot create a permit from a deleted LOTO Standard (id " + standardId + ").");
+        }
 
         Loto loto = new Loto();
         if (permitData != null) mapper.updateLotoFromDto(permitData, loto);

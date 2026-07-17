@@ -82,6 +82,18 @@ export class RfLotoStandardFormComponent {
 
   isDuplicating = signal(false);
 
+  /** Delete Standard button — visible to Control Authority OR Manager
+   *  (mirrors backend requireAnyRole gate on NgLotoStandardService.deleteStandard). */
+  canDelete = computed(() => !!this.entity().id && (this.authService.isControlAuthority() || this.authService.isManager()));
+
+  deleteTooltip = computed(() => {
+    if (!this.entity().id) return 'Save the standard first';
+    if (!this.canDelete()) return 'Requires the Control Authority or Manager role';
+    return 'Delete this standard (pending changes, approval events, walkdown removed; LOTO Points preserved)';
+  });
+
+  isDeleting = signal(false);
+
   entityInput = input<LotoStandardDto>();
   fieldsInput = input<LotoStandardFieldName[]>([]);
 
@@ -434,6 +446,58 @@ export class RfLotoStandardFormComponent {
       error: (err) => {
         this.isDuplicating.set(false);
         const msg = err?.error?.message || err?.message || 'Failed to duplicate the standard';
+        this.messageService.showError(msg);
+      },
+    });
+  }
+
+  /**
+   * Delete the current standard. Backend cascades pending changes / approval
+   * events / walkdown; permits are unlinked (never deleted); LOTO Points survive.
+   * See {@code NgLotoStandardService.deleteStandard} for the full contract.
+   * <p>
+   * On success we prune the standard from the standards-page list AND from
+   * the builder's carousel (if it happens to be there), then navigate to the
+   * standards page — leaving the operator on a valid surface without a
+   * dangling reference to a deleted id.
+   */
+  onDelete(): void {
+    const s = this.entity();
+    if (!s.id) return;
+    if (!this.canDelete()) {
+      this.messageService.showError('Deleting a LOTO standard requires the Control Authority or Manager role.');
+      return;
+    }
+    if (this.isDeleting()) return;
+
+    const confirmMsg = `Delete "${s.name || 'this standard'}"?\n\n`
+      + `Pending changes, approval events, and the walkdown checklist will be removed.\n`
+      + `LOTO Points are preserved.\n`
+      + `Historical permits sourced from this standard survive with the source unlinked.\n\n`
+      + `This cannot be undone from the UI.`;
+    if (!confirm(confirmMsg)) return;
+
+    this.isDeleting.set(true);
+    this.apiService.deleteLotoStandard(String(s.id)).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.isDeleting.set(false);
+        const deletedId = s.id!;
+        this.stateService.removeLotoStandardById(deletedId);
+        if (this.stateService.selectedItem()?.id === deletedId) {
+          this.stateService.selectedItem.set(null);
+        }
+        this.messageService.showSuccess(`Deleted "${s.name}"`);
+        this.router.navigate(['/loto-standard']);
+      },
+      error: (err) => {
+        this.isDeleting.set(false);
+        const status = err?.status;
+        const serverMsg = err?.error?.message || err?.message;
+        const msg = status === 409
+          ? (serverMsg || 'Cannot delete — another user modified the standard while this delete was running. Try again.')
+          : (serverMsg || 'Failed to delete the standard');
         this.messageService.showError(msg);
       },
     });

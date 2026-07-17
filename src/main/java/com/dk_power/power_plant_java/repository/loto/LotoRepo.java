@@ -28,4 +28,12 @@ public interface LotoRepo extends PermitRepo<Loto> {
     @Query("SELECT l FROM Loto l WHERE l.boxNumber IS NOT NULL AND l.deleted = false " +
            "AND (l.permitStatus IS NULL OR l.permitStatus.name IN ('Building', 'Active', 'Test'))")
     List<Loto> findActiveWithBox();
+
+    /**
+     * All (undeleted) permits that were spawned from the given standard. Used
+     * by the standard-delete flow to unlink the {@code sourceStandard} FK on
+     * every historical permit before the standard is soft-deleted, so the
+     * permits survive with a null source rather than an orphan pointer.
+     */
+    List<Loto> findBySourceStandard_Id(Long sourceStandardId);
 }

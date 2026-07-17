@@ -53,8 +53,17 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     private final NgValueService ngValueService;
     private final UserRepo userRepo;
     private final ObjectMapper objectMapper;
+    // Delete-cascade dependencies — used by deleteStandard() to unlink or soft-delete children.
+    private final com.dk_power.power_plant_java.repository.loto.LotoRepo lotoRepo;
+    private final com.dk_power.power_plant_java.repository.permits.WorkAreaRepo workAreaRepo;
+    private final com.dk_power.power_plant_java.repository.loto.RedTagStandardRepo redTagStandardRepo;
+    private final com.dk_power.power_plant_java.repository.loto.LotoStandardWalkdownRepo lotoStandardWalkdownRepo;
 
-    public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService, LotoStandardApprovalEventRepo approvalEventRepo, LotoStandardPendingChangeRepo pendingChangeRepo, NgValueService ngValueService, UserRepo userRepo, ObjectMapper objectMapper) {
+    public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService, LotoStandardApprovalEventRepo approvalEventRepo, LotoStandardPendingChangeRepo pendingChangeRepo, NgValueService ngValueService, UserRepo userRepo, ObjectMapper objectMapper,
+                                  com.dk_power.power_plant_java.repository.loto.LotoRepo lotoRepo,
+                                  com.dk_power.power_plant_java.repository.permits.WorkAreaRepo workAreaRepo,
+                                  com.dk_power.power_plant_java.repository.loto.RedTagStandardRepo redTagStandardRepo,
+                                  com.dk_power.power_plant_java.repository.loto.LotoStandardWalkdownRepo lotoStandardWalkdownRepo) {
         this.lotoStandardRepo = lotoStandardRepo;
         this.lotoStandardMapper = lotoStandardMapper;
         this.sessionFactory = sessionFactory;
@@ -65,6 +74,10 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         this.ngValueService = ngValueService;
         this.userRepo = userRepo;
         this.objectMapper = objectMapper;
+        this.lotoRepo = lotoRepo;
+        this.workAreaRepo = workAreaRepo;
+        this.redTagStandardRepo = redTagStandardRepo;
+        this.lotoStandardWalkdownRepo = lotoStandardWalkdownRepo;
     }
 
     @Override
@@ -531,11 +544,96 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     }
 
     /**
-     * Delete LOTO standard by ID
+     * Delete a LOTO Standard end-to-end.
+     * <p>
+     * Semantics (per user decision):
+     * <ul>
+     *   <li><b>Standards, not permits.</b> Historical permits sourced from this
+     *       standard survive with a NULL {@code sourceStandard} FK. Permits are
+     *       never deleted; they carry their own snapshot of the procedure they
+     *       were flipped from, so losing the standard doesn't corrupt them.</li>
+     *   <li><b>LOTO Points are physical isolation points and are never touched.</b>
+     *       The M2M join rows are cleared, but every point survives.</li>
+     *   <li><b>Related lifecycle rows die with the standard.</b> Pending changes
+     *       and approval events soft-delete (goes through JPA {@code save} so
+     *       {@code FieldChangeEntityListener.@PostUpdate} fires and sync propagates).
+     *       The hub-local walkdown row hard-deletes (not synced by design).</li>
+     * </ul>
+     * <p>
+     * <b>Role:</b> {@code CONTROL_AUTHORITY} or {@code MANAGER}. Mirrors the
+     * pending-change resolution methods.
+     * <p>
+     * <b>Never use {@code lotoStandardRepo.deleteById}</b> — it (a) hits H2's
+     * FK enforcement because the M2M join rows and per-child lifecycle rows
+     * still reference the standard, and (b) bypasses the sync listener, so
+     * peer desktops keep a phantom row.
      */
-    public void deleteById(String id) {
-        Long longId = Long.parseLong(id);
-        lotoStandardRepo.deleteById(longId);
+    @Transactional
+    public void deleteStandard(Long id) {
+        requireAnyRole(LotoRole.CONTROL_AUTHORITY, LotoRole.MANAGER);
+        LotoStandard s = lotoStandardRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found: " + id));
+        if (Boolean.TRUE.equals(s.getDeleted())) {
+            // Idempotent: already gone. Return without a second broadcast.
+            return;
+        }
+
+        // 1. Unlink historical permits — they survive with sourceStandard=null.
+        //    Never delete a permit as a side-effect of deleting a standard.
+        for (com.dk_power.power_plant_java.entities.loto.Loto permit : lotoRepo.findBySourceStandard_Id(id)) {
+            permit.setSourceStandard(null);
+            lotoRepo.save(permit);
+        }
+
+        // 2. Unlink LOTO Points — clear the M2M join. Points survive (they're
+        //    physical isolation points shared across many standards / permits).
+        //    IMPORTANT: use the persistent list directly, NOT getLotoPoints() —
+        //    the domain getter returns a sorted COPY, so mutations on it don't
+        //    reach the join table. Assign a fresh empty list so Hibernate's
+        //    dirty-checker flushes the deletes on save.
+        s.setLotoPoints(new java.util.ArrayList<>());
+
+        // 3. Unlink from WorkArea.constantLotos M2M (WorkArea is the owning side).
+        for (com.dk_power.power_plant_java.entities.permits.WorkArea wa :
+                workAreaRepo.findByConstantLotoStandardId(id)) {
+            wa.getConstantLotos().removeIf(cs -> cs.getId().equals(id));
+            workAreaRepo.save(wa);
+        }
+
+        // 4. Null out the soft-FK on any RedTagStandard row that spawned this standard.
+        for (com.dk_power.power_plant_java.entities.loto.RedTagStandard rts :
+                redTagStandardRepo.findByGeneratedStandardId(id)) {
+            rts.setGeneratedStandardId(null);
+            redTagStandardRepo.save(rts);
+        }
+
+        // 5. Unlink groups (shared Value labels; never delete them).
+        if (s.getGroups() != null) s.getGroups().clear();
+
+        // 6. Soft-delete pending changes — sync-registered, propagates.
+        for (com.dk_power.power_plant_java.entities.loto.LotoStandardPendingChange c :
+                pendingChangeRepo.findByStandard_IdOrderByEditedAtAsc(id)) {
+            c.setDeleted(true);
+            pendingChangeRepo.save(c);
+        }
+
+        // 7. Soft-delete approval events — sync-registered, propagates.
+        for (com.dk_power.power_plant_java.entities.loto.LotoStandardApprovalEvent e :
+                approvalEventRepo.findByStandard_IdOrderByEventAtAsc(id)) {
+            e.setDeleted(true);
+            approvalEventRepo.save(e);
+        }
+
+        // 8. Hard-delete the hub-local walkdown row. Not in the sync entity table
+        //    registry — a soft-delete would not propagate to peers, and the row
+        //    lives only on the hub anyway.
+        lotoStandardWalkdownRepo.deleteByStandardId(id);
+
+        // 9. Soft-delete the standard itself. @PostUpdate on BaseIdEntity fires
+        //    → FieldChangeEntityListener emits a sync event → peers receive
+        //    setDeleted(true) and hide the row.
+        s.setDeleted(true);
+        lotoStandardRepo.save(s);
     }
 
     /**

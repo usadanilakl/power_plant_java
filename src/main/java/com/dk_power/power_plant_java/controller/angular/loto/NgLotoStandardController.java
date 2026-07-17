@@ -205,17 +205,25 @@ public class NgLotoStandardController {
     }
 
     /**
-     * Delete LOTO standard by ID
+     * Delete a LOTO Standard. Historical permits sourced from this standard
+     * survive with a null {@code sourceStandard} FK; LOTO Points survive
+     * unmodified; pending changes / approval events soft-delete (sync
+     * propagates); the hub-local walkdown row hard-deletes. Role: CA or Manager.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> deleteLotoStandard(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<Void>> deleteLotoStandard(@PathVariable Long id) {
         try {
-            lotoStandardService.deleteById(id);
-            NgApiResponse<Void> response = new NgApiResponse<>(
-                    null,
-                    "LOTO standard deleted successfully"
-            );
+            lotoStandardService.deleteStandard(id);
+            NgApiResponse<Void> response = new NgApiResponse<>(null, "LOTO standard deleted successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));

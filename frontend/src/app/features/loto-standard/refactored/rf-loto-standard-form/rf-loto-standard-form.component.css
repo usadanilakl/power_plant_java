@@ -91,38 +91,9 @@
   cursor: not-allowed;
 }
 
-/* Action-style button sitting at the end of the tab bar. Distinct from the
-   .nav-btn tabs — narrower (no flex-grow), and a subtle accent border so it
-   reads as "this is an action on the current standard", not "another tab".
-   Uses the app's own theme tokens so it respects dark mode + section-accent
-   rotation. */
-.nav-action-btn {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 16px;
-  min-width: 96px;
-  background: var(--primary-background, white);
-  color: var(--accent-color, #2196F3);
-  border: 2px dashed var(--accent-color, #2196F3);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.nav-action-btn:hover:not(:disabled) {
-  background: var(--accent-color, #2196F3);
-  color: var(--header-text, white);
-  border-style: solid;
-}
-
-.nav-action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* .nav-action-btn removed — the Duplicate button moved to the General Info
+   tab's action row alongside Generate Counterpart / Flip to Permit / Delete.
+   All four use .counterpart-btn (below) for a consistent look. */
 
 .nav-icon {
   font-size: 24px;
@@ -304,19 +275,60 @@
   font-size: 16px;
 }
 
+/* Shared style for the General Info action row: Generate Counterpart,
+   Duplicate, Flip to Permit, Delete Standard. Consistent size + accent
+   framing so the row reads as a single toolbar; hover flips to a solid
+   accent fill so the CTA is unmistakable. Uses theme tokens so LOTO's
+   blue accent, permits' orange accent, and dark mode all work. */
 .counterpart-btn {
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  min-height: 34px;
   background: transparent;
-  color: #4fc3f7;
-  border: 1px solid #2a4a5a;
-  border-radius: 4px;
+  color: var(--accent-color, #007bff);
+  border: 1px solid var(--accent-color, #007bff);
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.15s;
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
 
-.counterpart-btn:hover {
-  background: #1a3a4a;
+.counterpart-btn:hover:not(:disabled),
+.counterpart-btn:focus-visible:not(:disabled) {
+  background: var(--accent-color, #007bff);
+  color: var(--header-text, #fff);
+  outline: none;
+}
+
+.counterpart-btn:active:not(:disabled) {
+  background: var(--accent-color-hover, #0056b3);
+  border-color: var(--accent-color-hover, #0056b3);
+}
+
+.counterpart-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Danger variant for Delete — red accent instead of the section accent,
+   so a misclick is visually distinct from the harmless actions next to it. */
+.counterpart-btn.danger {
+  color: var(--error-background, #d32f2f);
+  border-color: var(--error-background, #d32f2f);
+}
+
+.counterpart-btn.danger:hover:not(:disabled),
+.counterpart-btn.danger:focus-visible:not(:disabled) {
+  background: var(--error-background, #d32f2f);
+  color: #fff;
+}
+
+.counterpart-btn.danger:active:not(:disabled) {
+  filter: brightness(0.9);
 }
 
 .procedures-section { padding: 12px; overflow-y: auto; }

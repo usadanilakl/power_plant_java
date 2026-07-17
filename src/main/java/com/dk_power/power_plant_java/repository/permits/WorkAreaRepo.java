@@ -25,4 +25,13 @@ public interface WorkAreaRepo extends BaseRepository<WorkArea> {
 
     @Query("SELECT DISTINCT wa FROM WorkArea wa LEFT JOIN FETCH wa.locations")
     List<WorkArea> findAllWithLocations();
+
+    /**
+     * Work areas that carry a given LOTO Standard in their {@code constantLotos}
+     * many-to-many. Used by the standard-delete flow so we can unlink the
+     * standard from every referencing work area before its rows are removed
+     * from the join table.
+     */
+    @Query("SELECT DISTINCT wa FROM WorkArea wa JOIN wa.constantLotos c WHERE c.id = :standardId")
+    List<WorkArea> findByConstantLotoStandardId(@Param("standardId") Long standardId);
 }

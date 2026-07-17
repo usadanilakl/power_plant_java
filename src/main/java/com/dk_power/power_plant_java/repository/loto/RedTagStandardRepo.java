@@ -12,4 +12,11 @@ public interface RedTagStandardRepo extends BaseRepository<RedTagStandard> {
 
     /** All standards for a plant unit ("U1" / "U2" / "BOP"), name-ordered. */
     List<RedTagStandard> findByUnitOrderByNameAsc(String unit);
+
+    /**
+     * Red-tag rows that carry a soft-FK to the given generated LOTO Standard.
+     * Used by the standard-delete flow to null out {@code generatedStandardId}
+     * so the red-tag row survives when the standard it spawned is removed.
+     */
+    List<RedTagStandard> findByGeneratedStandardId(Long generatedStandardId);
 }

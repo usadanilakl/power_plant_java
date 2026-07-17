@@ -56,21 +56,6 @@
       <span class="nav-label">Images</span>
     </button>
 
-    <!-- Duplicate: creates a fresh independent DRAFT copy of the current standard.
-         Visible only when a standard is loaded AND the operator holds the Control
-         Authority role. Non-CA users don't see it because the backend would 403
-         anyway, and showing it disabled adds visual noise for the wrong audience. -->
-    @if (canDuplicate()) {
-      <button
-        class="nav-action-btn"
-        (click)="onDuplicate()"
-        [disabled]="isDuplicating()"
-        [title]="duplicateTooltip()"
-        data-testid="duplicate-standard-btn">
-        <span class="nav-icon">📄</span>
-        <span class="nav-label">{{ isDuplicating() ? 'Duplicating…' : 'Duplicate' }}</span>
-      </button>
-    }
   </div>
 
   <!-- Carousel Container -->
@@ -90,7 +75,29 @@
             <ng-container extra-buttons>
               @if (entity().id) {
                 <button type="button" class="counterpart-btn" (click)="openCounterpartDialog()">Generate Counterpart</button>
+                @if (canDuplicate()) {
+                  <button
+                    type="button"
+                    class="counterpart-btn"
+                    (click)="onDuplicate()"
+                    [disabled]="isDuplicating()"
+                    [title]="duplicateTooltip()"
+                    data-testid="duplicate-standard-btn">
+                    {{ isDuplicating() ? 'Duplicating…' : 'Duplicate' }}
+                  </button>
+                }
                 <button type="button" class="counterpart-btn" (click)="flipToPermit()">Flip to Permit</button>
+                @if (canDelete()) {
+                  <button
+                    type="button"
+                    class="counterpart-btn danger"
+                    (click)="onDelete()"
+                    [disabled]="isDeleting()"
+                    [title]="deleteTooltip()"
+                    data-testid="delete-standard-btn">
+                    {{ isDeleting() ? 'Deleting…' : 'Delete Standard' }}
+                  </button>
+                }
               }
             </ng-container>
           </app-rf-reactive-form>
