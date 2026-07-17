@@ -20,8 +20,16 @@ import java.util.UUID;
 @NoArgsConstructor
 public class FieldChange {
 
+    // Keep an id already assigned by the origin machine (sync replication) instead of minting a fresh
+    // one — a change must have ONE global identity for its whole life. Hibernate's built-in UUID
+    // strategy re-mints even when a value is present, so identity is enforced by the generator itself,
+    // mirroring DevicePrefixedIdGenerator for BaseIdEntity. Locally-emitted changes leave id null and
+    // get a random UUID.
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(generator = "assigned-or-random-uuid")
+    @org.hibernate.annotations.GenericGenerator(
+        name = "assigned-or-random-uuid",
+        type = com.dk_power.power_plant_java.sevice.sync.AssignedOrRandomUuidGenerator.class)
     private UUID id;
 
     // Entity identification

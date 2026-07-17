@@ -133,10 +133,13 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
            ") AND fc2.entityType = :entityType AND fc2.entityId IN :entityIds)")
     List<FieldChange> findLatestChangesForEntities(@Param("entityType") String entityType, @Param("entityIds") List<Long> entityIds);
 
-    // BATCH: Check for existing changes (batch deduplication) - returns matching keys
-    @Query("SELECT CONCAT(fc.entityType, ':', fc.entityId, ':', fc.fieldName, ':', fc.timestamp, ':', fc.originMachineId) " +
-           "FROM FieldChange fc WHERE fc.entityType = :entityType AND fc.entityId IN :entityIds")
-    List<String> findExistingChangeKeys(@Param("entityType") String entityType, @Param("entityIds") List<Long> entityIds);
+    // BATCH id-existence: which of these change ids are already stored. Used to dedup re-delivered
+    // changes now that a change keeps ONE global id for its whole life (Inc 4). This replaced the old
+    // key-based gate (CONCAT of entityType:entityId:fieldName:timestamp:originMachineId), which was a
+    // dead no-op — the SQL rendered the timestamp as '2026-... 12:34:56+00' while the Java side compared
+    // against Instant.toString() '2026-...T12:34:56Z', so its keys never matched.
+    @Query("SELECT fc.id FROM FieldChange fc WHERE fc.id IN :ids")
+    java.util.Set<UUID> findExistingIds(@Param("ids") java.util.Collection<UUID> ids);
 
     // Get recent incoming changes (from other machines) for hub entity retry
     @Query("SELECT fc FROM FieldChange fc WHERE fc.originMachineId != :hubMachineId " +

@@ -314,8 +314,17 @@ public class HubSyncService {
                     .distinct()
                     .collect(Collectors.toList());
 
-                Set<String> existingKeys = new HashSet<>(
-                    fieldChangeRepository.findExistingChangeKeys(entityType, entityIds));
+                // Dedup re-delivered changes by their GLOBAL id (Inc 4). The old key-based gate
+                // (findExistingChangeKeys + buildChangeKey) was a dead no-op — a Java-vs-SQL timestamp
+                // format mismatch meant its keys never matched — so re-delivered changes were minted
+                // fresh ids and accumulated as duplicate rows. Preserving the origin id would turn that
+                // into a PK violation on saveAll, so the id-preserve and this gate MUST land together.
+                java.util.Set<java.util.UUID> incomingIds = typeChanges.stream()
+                    .map(FieldChange::getId).filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+                Set<java.util.UUID> existingIds = incomingIds.isEmpty()
+                    ? java.util.Set.of()
+                    : new HashSet<>(fieldChangeRepository.findExistingIds(incomingIds));
 
                 Map<String, FieldChange> latestChanges = fieldChangeRepository
                     .findLatestChangesForEntities(entityType, entityIds)
@@ -328,16 +337,21 @@ public class HubSyncService {
                     ));
 
                 List<FieldChange> batch = new ArrayList<>();
+                java.util.Set<java.util.UUID> seenInThisBatch = new HashSet<>();
                 for (FieldChange change : typeChanges) {
-                    String changeKey = buildChangeKey(change);
-
-                    if (existingKeys.contains(changeKey)) {
+                    // Already stored (re-delivery), or a duplicate within this same batch — skip so the
+                    // saveAll below can never hit a PK collision on the preserved id.
+                    java.util.UUID cid = change.getId();
+                    if (cid != null && (existingIds.contains(cid) || !seenInThisBatch.add(cid))) {
                         result.duplicatesSkipped++;
                         continue;
                     }
 
                     if (shouldAcceptChange(change, latestChanges)) {
                         FieldChange newChange = new FieldChange();
+                        // Preserve the origin's global id (see the dedup note above); the custom id
+                        // generator keeps a pre-set id where Hibernate's default UUID strategy re-mints.
+                        newChange.setId(cid);
                         newChange.setEntityType(change.getEntityType());
                         newChange.setEntityId(change.getEntityId());
                         newChange.setFieldName(change.getFieldName());
@@ -368,11 +382,6 @@ public class HubSyncService {
         }
 
         return result;
-    }
-
-    private String buildChangeKey(FieldChange change) {
-        return change.getEntityType() + ":" + change.getEntityId() + ":" +
-            change.getFieldName() + ":" + change.getTimestamp() + ":" + change.getOriginMachineId();
     }
 
     private boolean shouldAcceptChange(FieldChange incoming, Map<String, FieldChange> latestChanges) {

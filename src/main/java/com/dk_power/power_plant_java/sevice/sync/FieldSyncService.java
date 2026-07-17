@@ -1646,17 +1646,28 @@ public class FieldSyncService {
         // Hub already saved FieldChanges in processIncomingChangesBatched — skip to avoid duplicates
         if (skipSaveFieldChanges) return;
 
-        // Check if we already have this exact change
-        boolean exists = fieldChangeRepository.existsByEntityTypeAndEntityIdAndFieldNameAndTimestampAndOriginMachineId(
-            change.getEntityType(), change.getEntityId(), change.getFieldName(),
-            change.getTimestamp(), change.getOriginMachineId());
+        // Identity IS the dedup key now: a change carries one global id for its whole life, so
+        // re-delivery is a plain existsById check. This replaces the old 5-tuple pre-check
+        // (entityType+entityId+fieldName+timestamp+originMachineId), which was a proxy for the same
+        // thing. A null id means a legacy/local change with no global identity — fall back to the tuple
+        // check so those still dedup correctly.
+        UUID originId = change.getId();
+        boolean exists = originId != null
+            ? fieldChangeRepository.existsById(originId)
+            : fieldChangeRepository.existsByEntityTypeAndEntityIdAndFieldNameAndTimestampAndOriginMachineId(
+                change.getEntityType(), change.getEntityId(), change.getFieldName(),
+                change.getTimestamp(), change.getOriginMachineId());
 
         if (!exists) {
             // Create a NEW entity to avoid Hibernate persistence context conflicts.
             // The incoming 'change' may be a managed entity (e.g., when called from
-            // HubSyncService.syncExchange with already-saved changes), and mutating its
-            // ID with setId(null) causes "identifier was altered" errors at flush time.
+            // HubSyncService.syncExchange with already-saved changes), and mutating it directly
+            // causes "identifier was altered" errors at flush time.
             FieldChange newChange = new FieldChange();
+            // Preserve the ORIGIN's id so this row is the same logical change everywhere — the basis of
+            // idempotent re-delivery and of using the change id as the conflict tiebreak. The custom
+            // id generator keeps a pre-set id (Hibernate's default UUID strategy would re-mint it).
+            newChange.setId(originId);
             newChange.setEntityType(change.getEntityType());
             newChange.setEntityId(change.getEntityId());
             newChange.setFieldName(change.getFieldName());
