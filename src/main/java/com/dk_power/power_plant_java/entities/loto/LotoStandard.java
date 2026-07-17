@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Where;
 
 import java.io.IOException;
@@ -15,9 +16,22 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * {@link DynamicUpdate} closes the write-race window codex flagged on the
+ * reactivity fix pass: without it, ANY writer path that loads via unlocked
+ * findById (updateStandard, workflow transitions, procedure-text edits,
+ * loto-point add/remove, etc.) writes ALL loaded columns on save, including
+ * the stale {@code deleted=false} that was in memory before a concurrent
+ * {@code deleteStandard} committed {@code deleted=true}. With DynamicUpdate,
+ * Hibernate's UPDATE only lists columns the tx actually modified — a
+ * concurrent name-edit no longer silently undoes the delete. No @Version
+ * introduction needed (kept off per the sync design). Same benefit as the
+ * write-amplification fix already applied to PermitAttachment.
+ */
 @Entity
 @Getter
 @Setter
+@DynamicUpdate
 @Where(clause = "deleted IS NOT TRUE")
 public class LotoStandard extends BaseAuditEntity {
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
