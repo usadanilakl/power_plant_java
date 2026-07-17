@@ -213,6 +213,38 @@ class FieldSyncServiceDispositionIT {
     }
 
     @Test
+    @DisplayName("IN-BATCH LWW on CREATE: a new entity created from an out-of-order batch takes the NEWEST field value")
+    void createFromBatch_sameFieldTwice_newestWins() {
+        long newId = 1_000_055_123L; // an id not present locally -> the CREATE branch runs
+        Instant base = Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+
+        FieldChange createMarker = new FieldChange("LotoPoint", newId, "_entity_", null, "CREATED",
+                "MACHINE-A", "MACHINE-A", FieldChange.ChangeType.CREATE);
+        createMarker.setId(UUID.randomUUID());
+        createMarker.setTimestamp(base);
+        FieldChange tag = new FieldChange("LotoPoint", newId, "tagNumber", null, "\"CREATE-INBATCH\"",
+                "MACHINE-A", "MACHINE-A", FieldChange.ChangeType.CREATE);
+        tag.setId(UUID.randomUUID());
+        tag.setTimestamp(base);
+        FieldChange descOlder = new FieldChange("LotoPoint", newId, "description", null, "\"older\"",
+                "MACHINE-A", "MACHINE-A", FieldChange.ChangeType.CREATE);
+        descOlder.setId(UUID.randomUUID());
+        descOlder.setTimestamp(base);
+        FieldChange descNewer = new FieldChange("LotoPoint", newId, "description", null, "\"newer\"",
+                "MACHINE-A", "MACHINE-A", FieldChange.ChangeType.UPDATE);
+        descNewer.setId(UUID.randomUUID());
+        descNewer.setTimestamp(base.plusMillis(50));
+
+        // Deliver NEWEST-first (out of timestamp order) in one create batch.
+        fieldSyncService.applyIncomingChanges(
+                List.of(createMarker, tag, descNewer, descOlder), false, null);
+
+        assertThat(currentDescription(newId))
+                .as("a create batch out of timestamp order must still land the newest field value")
+                .isEqualTo("newer");
+    }
+
+    @Test
     @DisplayName("CONVERGENCE: two conflicting equal-timestamp changes resolve to the SAME winner in either order")
     void equalTimestampConflict_convergesRegardlessOfOrder() {
         // Two machines edit the same field at the SAME instant. Which one wins must NOT depend on the

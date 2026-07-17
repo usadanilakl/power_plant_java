@@ -1039,6 +1039,10 @@ public class FieldSyncService {
                         for (FieldChange change : changes) {
                             if ("_entity_".equals(change.getFieldName())) continue;
                             if (shouldApplyChange(change, existingLatestMap)) {
+                                // In-batch LWW: record the winner so a later same-field change in this
+                                // batch is compared against it, not the stale snapshot (see the main
+                                // existing-entity loop). existingLatestMap is used only in this loop.
+                                existingLatestMap.put(change.buildChangeKey(), change);
                                 boolean applied = applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
                                 if (applied) {
                                     modified = true;
@@ -1069,9 +1073,16 @@ public class FieldSyncService {
 
                     // Apply ALL field changes to the in-memory entity BEFORE persist.
                     // This ensures NOT NULL columns have real values (no dummy defaults).
+                    // In-batch LWW via a LOCAL copy of the latest-map refreshed in-loop: when a batch
+                    // carries two changes to the SAME field out of timestamp order, only the winner is
+                    // applied to the entity. A local copy (not the shared map) is used so the separate
+                    // save/count loop below still sees the original map — that loop must save+ack ALL
+                    // changes, and would mis-classify the winner as superseded if it saw the mutated map.
+                    Map<String, FieldChange> createApplyMap = new HashMap<>(latestChangesMap);
                     for (FieldChange change : changes) {
                         if (!"_entity_".equals(change.getFieldName())
-                                && shouldApplyChange(change, latestChangesMap)) {
+                                && shouldApplyChange(change, createApplyMap)) {
+                            createApplyMap.put(change.buildChangeKey(), change);
                             applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
                         }
                     }
