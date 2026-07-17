@@ -61,7 +61,12 @@ class FieldSyncServiceDispositionIT {
         FieldChange c = new FieldChange(entityType, entityId, field, null, newValue,
                 "REMOTE-MACHINE", "remote-machine", type);
         c.setId(UUID.randomUUID());
-        c.setTimestamp(Instant.now());
+        // Stamp clearly in the future, NOT Instant.now(). Persisting the fixture entity emits its own
+        // CREATE FieldChanges microseconds earlier; on a same-microsecond collision LWW falls through to
+        // the lexical origin-id tiebreaker ("REMOTE-MACHINE" vs the local machine id) and REJECTS the
+        // change, so the test flips to applied=0 at random. These tests are about dispositions, not LWW —
+        // make "this change is newer than anything local" unambiguous.
+        c.setTimestamp(Instant.now().plusSeconds(3600));
         return c;
     }
 
@@ -128,6 +133,59 @@ class FieldSyncServiceDispositionIT {
         assertThat(ledger.of(m2m))
                 .as("whatever it is, it must NOT be a terminal/ackable outcome")
                 .isNotIn(ChangeDisposition.APPLIED, ChangeDisposition.NOOP_SUPERSEDED, ChangeDisposition.DEAD_LETTER);
+    }
+
+    // ── Acknowledgement: a change may only be acked if it was genuinely resolved ──────────────
+    // These assert the deferredOut contract the receiver uses to decide what to acknowledge.
+    // Before this, deferredOut was populated by only three hand-picked call sites, so an incomplete
+    // ManyToMany or a missing parent was acked — the sender marked it delivered and never re-sent it.
+
+    @Test
+    @DisplayName("an incomplete ManyToMany is NOT acknowledged, so the sender re-sends it")
+    void incompleteManyToMany_isNotAcknowledged() {
+        long pointId = givenCommittedLotoPoint("ACK-IT-M2M");
+        FieldChange m2m = change("Equipment", 999_000_555L, "lotoPoints",
+                "[" + pointId + ",999000556]", FieldChange.ChangeType.UPDATE);
+        m2m.setRelationshipType("ManyToMany");
+
+        java.util.Set<UUID> deferred = new java.util.HashSet<>();
+        fieldSyncService.applyIncomingChanges(List.of(m2m), false, deferred);
+
+        assertThat(deferred)
+                .as("acking this would leave the join table permanently incomplete — the exact way a "
+                        + "LotoStandard loses points the client hadn't received yet")
+                .contains(m2m.getId());
+    }
+
+    @Test
+    @DisplayName("a change whose parent hasn't arrived is NOT acknowledged")
+    void entityNotFound_isNotAcknowledged() {
+        FieldChange orphan = change("LotoPoint", 999_000_666L, "description", "\"orphan\"",
+                FieldChange.ChangeType.UPDATE);
+
+        java.util.Set<UUID> deferred = new java.util.HashSet<>();
+        fieldSyncService.applyIncomingChanges(List.of(orphan), false, deferred);
+
+        assertThat(deferred)
+                .as("the parent may still arrive — acking now means it never gets another chance")
+                .contains(orphan.getId());
+    }
+
+    @Test
+    @DisplayName("a change that DID apply IS acknowledged (guards against over-deferring)")
+    void appliedChange_isAcknowledged() {
+        long pointId = givenCommittedLotoPoint("ACK-IT-APPLIED");
+        FieldChange real = change("LotoPoint", pointId, "description", "\"applied by sync\"",
+                FieldChange.ChangeType.UPDATE);
+
+        java.util.Set<UUID> deferred = new java.util.HashSet<>();
+        int applied = fieldSyncService.applyIncomingChanges(List.of(real), false, deferred);
+
+        assertThat(applied).isEqualTo(1);
+        assertThat(deferred)
+                .as("a resolved change must be acked — deferring it would re-pull it forever and "
+                        + "eventually burn the give-up budget on healthy data")
+                .doesNotContain(real.getId());
     }
 
     @Test

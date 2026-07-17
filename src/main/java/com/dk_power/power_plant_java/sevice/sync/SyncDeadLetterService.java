@@ -29,9 +29,24 @@ public class SyncDeadLetterService {
 
     public static final String REASON_NO_SERVICE = "NO_SERVICE";
     public static final String REASON_UNKNOWN_FIELD = "UNKNOWN_FIELD";
+    public static final String REASON_UNRESOLVED_AFTER_RETRIES = "UNRESOLVED_AFTER_RETRIES";
 
     private final SyncDeadLetterRepo repo;
     private final SyncConfig syncConfig;
+
+    /**
+     * A change that never became applicable: its referenced parent/relationship did not arrive within
+     * {@code attempts} sync cycles, so the receiver stops re-pulling it and acknowledges it to break the
+     * loop. Acking is the right call (an unbounded re-pull stalls the pipeline behind it), but the change
+     * IS being abandoned — record it, or this is silent loss wearing a retry budget as a disguise.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordUnresolvedAfterRetries(FieldChange change, int attempts) {
+        if (change == null) return;
+        record(change.getEntityType(), change.getEntityId(), change.getId(), change.getFieldName(),
+                change.getOldValue(), change.getNewValue(), change.getOriginMachineId(),
+                REASON_UNRESOLVED_AFTER_RETRIES + "(attempts=" + attempts + ")");
+    }
 
     /**
      * The local schema has no such field — a renamed/removed field, or one only a newer peer knows.

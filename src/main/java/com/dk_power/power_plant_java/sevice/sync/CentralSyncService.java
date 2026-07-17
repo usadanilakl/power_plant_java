@@ -45,6 +45,9 @@ public class CentralSyncService {
     private final RestTemplate restTemplate;
     private final SyncContext syncContext;
     private final FieldSyncService fieldSyncService;
+    // Records changes abandoned by the deferral give-up budget, so the budget can't become a slow
+    // silent drop for the relationship data that now routes through it.
+    private final SyncDeadLetterService syncDeadLetterService;
     private final ApplicationContext applicationContext;
     private final WorkRequestMergeService workRequestMergeService;
     private final JhaMergeService jhaMergeService;
@@ -526,9 +529,23 @@ public class CentralSyncService {
                                 ? deferralAttempts.merge(id, 1, Integer::sum)
                                 : deferralAttempts.getOrDefault(id, 0);
                         if (n >= MAX_DEFERRALS) {
-                            log.warn("server_sync.receive.deferred_giveup changeId={} attempts={} — acking to stop re-pull loop", id, n);
+                            // Giving up and acking is correct — an unresolvable change must not re-pull
+                            // forever and stall the pipeline behind it. But the change IS being
+                            // abandoned, so it must be RECORDED. Without this, the retry budget is just
+                            // a slower silent drop — and now that every incomplete ManyToMany and
+                            // missing parent lands here, this valve drains exactly the LOTO data we care
+                            // about. Dead-letter first, then ack.
+                            FieldChange abandoned = batch.stream()
+                                    .filter(c -> id.equals(c.getId()))
+                                    .findFirst().orElse(null);
+                            log.error("server_sync.receive.deferred_giveup changeId={} attempts={} entity={}#{} field={} "
+                                            + "— dead-lettering, then acking to stop the re-pull loop", id, n,
+                                    abandoned != null ? abandoned.getEntityType() : "?",
+                                    abandoned != null ? abandoned.getEntityId() : "?",
+                                    abandoned != null ? abandoned.getFieldName() : "?");
+                            syncDeadLetterService.recordUnresolvedAfterRetries(abandoned, n);
                             deferralAttempts.remove(id);
-                            return true; // drop from deferred -> gets acked
+                            return true; // drop from deferred -> gets acked (recorded, no longer silent)
                         }
                         return false;
                     });

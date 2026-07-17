@@ -199,8 +199,18 @@ public class FieldSyncService {
             this.deferredChangeIds = deferredOut;
             this.currentLedger = new DispositionLedger();
             int applied = applyIncomingChangesLocked(incomingChanges);
-            // First honest measurement of what this path actually does with a batch. The DEFERRED and
-            // DEAD_LETTER totals are changes the receiver currently acks anyway.
+
+            // Report EVERY non-terminal change to the caller, not just the three sites that happened to
+            // call markDeferred. A change is terminal (safe to acknowledge) only if it was applied,
+            // superseded by a newer local value, or dead-lettered. Anything DEFERRED (a parent that
+            // hasn't arrived, an incomplete ManyToMany) or FAILED_RETRYABLE (a rolled-back batch) has
+            // NOT been resolved — acking it makes the sender mark it delivered and never send it again.
+            // Previously those fell through to ack: an incomplete join table stayed permanently
+            // incomplete, and one constraint violation silently dropped an entire batch.
+            if (deferredOut != null) {
+                deferredOut.addAll(currentLedger.idsWith(
+                        ChangeDisposition.DEFERRED, ChangeDisposition.FAILED_RETRYABLE));
+            }
             if (log.isDebugEnabled()) {
                 log.debug("sync.apply.dispositions {} (returned applied={})", this.currentLedger, applied);
             }
