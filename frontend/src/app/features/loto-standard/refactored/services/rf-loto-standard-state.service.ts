@@ -104,6 +104,46 @@ export class RfLotoStandardStateService {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => this.refetchSelectedIfLoaded());
+
+    // Refetch on SSE reconnect. SSE is at-most-once: any entity_updated
+    // broadcasts that landed during the abort window were dropped. On
+    // recovery we don't know what we missed, so refetch the selected
+    // standard AND merge page 1 back into the list (existing entries
+    // update in place; anything new prepends). Fires only on RECOVERY
+    // from a disconnect (initial connect is skipped).
+    this.syncUpdateService.reconnected$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.refetchSelectedIfLoaded();
+        this.refreshFirstPage();
+      });
+  }
+
+  /**
+   * Re-fetch page 1 without disturbing pagination state, and merge each
+   * item into the loaded list. New standards prepend; existing ones update
+   * in place. Used by the reconnect-refetch path — the user may have
+   * missed CREATE events during the SSE abort window.
+   */
+  private refreshFirstPage(): void {
+    this.apiService
+      .getLotoStandards(1, this.pageSize)
+      .pipe(
+        tap((response) => {
+          const items = response.responseData?.content;
+          if (!items) return;
+          for (const raw of items) {
+            const dto = LotoStandardDto.fromJson(raw);
+            this.updateLotoStandardInList(dto);
+          }
+        }),
+        catchError((error) => {
+          console.error('Reconnect refresh (page 1) failed:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
   }
 
   /** True iff the given LotoPoint id is a member of the currently selected standard. */

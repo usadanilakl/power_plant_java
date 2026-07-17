@@ -81,6 +81,15 @@ export class CurrentLotoService{
         this.lotoChanged$
             .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
             .subscribe(lotoId => this.applyRemoteLotoChange(lotoId));
+
+        // Refetch on SSE reconnect. SSE is at-most-once — any Loto /
+        // LotoSnapshot broadcasts that landed during the abort window
+        // were dropped, so we don't know what we missed. Reuse
+        // applyRemoteLotoChange with UNRESOLVED_LOTO which reloads the
+        // full permit list AND re-feeds the currently open permit.
+        this.syncUpdateService.reconnected$
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => this.applyRemoteLotoChange(CurrentLotoService.UNRESOLVED_LOTO));
     }
 
     /** A LotoSnapshot event carries the SNAPSHOT id — map it back to the permit that owns it. */

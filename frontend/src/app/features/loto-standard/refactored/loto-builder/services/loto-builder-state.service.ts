@@ -45,6 +45,19 @@ export class LotoBuilderStateService {
     this.syncUpdateService.getEntityTypeUpdates$('LotoPoint')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(evt => this.onRemoteLotoPointChanged(evt.entityId));
+
+    // Refetch every carousel standard on SSE reconnect. SSE is
+    // at-most-once — the user may have missed updates during the abort
+    // window. onRemoteStandardChanged already no-ops if the standard is
+    // no longer in the carousel, so this is safe if the user moved on
+    // while disconnected.
+    this.syncUpdateService.reconnected$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        for (const s of this.selectedLotoStandards()) {
+          if (s?.id != null) this.onRemoteStandardChanged(s.id);
+        }
+      });
   }
 
   /**

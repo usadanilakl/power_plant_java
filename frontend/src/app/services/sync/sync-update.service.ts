@@ -98,6 +98,29 @@ export class SyncUpdateService {
   // Subject for specific entity type updates (e.g., 'LotoPoint')
   private entityTypeUpdatedSubjects = new Map<string, Subject<EntityUpdateEvent>>();
 
+  /**
+   * True once the SSE connection has opened at least once. Used to gate
+   * {@code reconnected$} so the initial connect at app load doesn't fire
+   * (state services are doing their normal initial data load then).
+   */
+  private hasBeenConnected = false;
+
+  private reconnectedSubject = new Subject<void>();
+  /**
+   * Fires when the SSE connection recovers after a disconnect. Consumers
+   * refetch their current view because SSE is at-most-once — any
+   * {@code entity_updated} broadcasts that landed during the abort window
+   * were dropped forever (no replay). Even with a perfect abort fix there
+   * will always be windows (network blips, restarts, sleep/resume) where
+   * a broadcast is missed, so refetch-on-reconnect is the correct design
+   * for this channel, not a workaround.
+   * <p>
+   * Does NOT fire on the initial connect at app load. DOES fire after a
+   * logout/login cycle — desirable, the just-authenticated tab picks up
+   * anything that changed while it was logged out.
+   */
+  readonly reconnected$: Observable<void> = this.reconnectedSubject.asObservable();
+
   constructor() {
     // Only connect in browser environment (not during SSR/prerendering)
     if (isPlatformBrowser(this.platformId)) {
@@ -148,6 +171,13 @@ export class SyncUpdateService {
           console.log('SSE connected to sync updates');
           this.connectionStateSubject.next('connected');
           this.reconnectAttempts = 0;
+          // Emit reconnected$ only on RECOVERY from a disconnect, not on
+          // the initial open (see field docstring).
+          if (this.hasBeenConnected) {
+            this.reconnectedSubject.next();
+          } else {
+            this.hasBeenConnected = true;
+          }
         });
       };
 
