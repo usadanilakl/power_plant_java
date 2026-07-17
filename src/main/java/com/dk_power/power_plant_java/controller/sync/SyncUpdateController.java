@@ -148,23 +148,38 @@ public class SyncUpdateController {
     }
 
     /**
-     * Broadcast entity update to all connected clients.
-     * Called by sync service when changes are applied from server.
+     * Broadcast entity update to all connected clients. Existing signature —
+     * used by the receive-path callers in {@code FieldSyncService} when this
+     * server applies a change RECEIVED from a peer machine (originClientId
+     * is unknown at that layer, so all local tabs get the event).
      */
     public void broadcastEntityUpdate(String entityType, Long entityId, List<FieldChange> changes) {
+        broadcastEntityUpdate(entityType, entityId, changes, null);
+    }
+
+    /**
+     * Broadcast entity update, optionally stamped with the writing tab's
+     * client id. Consumers use it to filter out their own writes so the
+     * initiating tab doesn't refetch immediately after its own successful
+     * save. Called from {@code LocalChangeSseBroadcaster} when this server
+     * originates a change via a Ng REST call.
+     */
+    public void broadcastEntityUpdate(String entityType, Long entityId, List<FieldChange> changes, String originClientId) {
         if (emitters.isEmpty()) {
             log.debug("No SSE clients connected, skipping broadcast");
             return;
         }
 
         try {
-            Map<String, Object> payload = Map.of(
-                "type", "entity_updated",
-                "entityType", entityType,
-                "entityId", entityId,
-                "changes", changes,
-                "timestamp", System.currentTimeMillis()
-            );
+            java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("type", "entity_updated");
+            payload.put("entityType", entityType);
+            payload.put("entityId", entityId);
+            payload.put("changes", changes);
+            payload.put("timestamp", System.currentTimeMillis());
+            if (originClientId != null) {
+                payload.put("originClientId", originClientId);
+            }
 
             String json = objectMapper.writeValueAsString(payload);
             log.debug("Broadcasting entity update to {} clients: {} #{}", emitters.size(), entityType, entityId);

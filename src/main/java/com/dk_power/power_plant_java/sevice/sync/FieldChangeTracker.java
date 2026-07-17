@@ -36,6 +36,11 @@ public class FieldChangeTracker {
     private final ObjectMapper objectMapper;
     private final SyncEventPublisher syncEventPublisher;
     private final SyncContext syncContext;
+    // Origin client-id stash — populated by ClientIdRequestFilter from the
+    // X-Client-Id header on any Ng REST call. Captured into a local BEFORE
+    // registering afterCommit so a stray thread-reuse can't leak a wrong id
+    // into a later request (the ThreadLocal is cleared by the filter's finally).
+    private final RequestClientIdContext requestClientIdContext;
 
     // Field-injected (NOT a @RequiredArgsConstructor final field) — used only to unwrap the current
     // transaction's Hibernate session so UPDATE FieldChange rows can be INSERTed on its own JDBC
@@ -662,13 +667,17 @@ public class FieldChangeTracker {
 
     private void publishOnCommit(List<FieldChange> changes, String entityType,
                                  BaseIdEntity newEntity, boolean isCreate) {
+        // Capture the origin client id from the current request thread NOW —
+        // once the afterCommit callback fires the request thread may already
+        // be re-used by a different request whose header would leak in.
+        final String originClientId = requestClientIdContext.currentOrNull();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     log.debug("Publishing {} changes for sync broadcast (afterCommit)", changes.size());
                     try {
-                        syncEventPublisher.publishChanges(changes);
+                        syncEventPublisher.publishChanges(changes, originClientId);
                     } catch (Exception e) {
                         log.error("afterCommit: failed to publish {} change(s) for {} #{}",
                                 changes.size(), entityType, newEntity.getId(), e);
@@ -686,7 +695,7 @@ public class FieldChangeTracker {
             });
         } else {
             log.debug("Publishing {} changes for sync broadcast (no active synchronization)", changes.size());
-            syncEventPublisher.publishChanges(changes);
+            syncEventPublisher.publishChanges(changes, originClientId);
             if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
                 fileObjectSyncHandler.onLocalFileObjectChanged(
                     (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, isCreate);
@@ -699,12 +708,13 @@ public class FieldChangeTracker {
      * re-notifying the file handler for a removed entity would be wrong.
      */
     private void publishChangesOnCommit(List<FieldChange> changes) {
+        final String originClientId = requestClientIdContext.currentOrNull();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        syncEventPublisher.publishChanges(changes);
+                        syncEventPublisher.publishChanges(changes, originClientId);
                     } catch (Exception e) {
                         log.error("afterCommit: failed to publish {} delete change(s): {}",
                                 changes.size(), e.getMessage(), e);
@@ -712,7 +722,7 @@ public class FieldChangeTracker {
                 }
             });
         } else {
-            syncEventPublisher.publishChanges(changes);
+            syncEventPublisher.publishChanges(changes, originClientId);
         }
     }
 
