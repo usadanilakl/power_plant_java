@@ -119,7 +119,14 @@ public class FieldChangeCompactor {
         }
     }
 
-    @Scheduled(cron = "0 45 3 * * ?")
+    // Cadence is a property so an operator can run compaction more often than nightly (e.g. hourly on a
+    // high-churn hub) WITHOUT a redeploy. Default keeps the original once-a-night behavior. NOTE: each run
+    // does a full GROUP BY ... HAVING COUNT>1 candidate scan over FIELD_CHANGE, so this is a table-scan cost
+    // — cheap nightly, non-trivial hourly on a large log. Inline/per-apply compaction was deliberately
+    // REJECTED (it would inject an N+1 SELECT + DELETE into the apply transaction, coupling a compaction
+    // H2 lock-timeout to a full entity-apply rollback for zero space benefit — H2 only reclaims file space
+    // on DEFRAG regardless). Tune this cron instead when fresher collapse is wanted.
+    @Scheduled(cron = "${sync.hub.compaction-cron:0 45 3 * * ?}")
     public void scheduledCompaction() {
         if (!isActive()) return;
         runCompaction();
