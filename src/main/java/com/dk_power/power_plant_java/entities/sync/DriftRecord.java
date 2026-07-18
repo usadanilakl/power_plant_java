@@ -18,16 +18,19 @@ import java.time.Instant;
  * navigating away mid-review. The lifecycle mirrors {@code RoundIssue}: opened on first detection, kept
  * across scans while still drifting, and auto-closed when a later scan sees the row converge.
  *
+ * <p>A row can drift against TWO peers independently ({@link #peer}: the hub, and — for SP-backed types —
+ * SharePoint), so peer is part of the identity: the same row can carry a HUB record and a SHAREPOINT record.
+ *
  * <p>{@link #fieldName} is {@code "_entity_"} for a ROW-level record (the whole row differs / is missing on
- * one side — the granularity the content-hash oracle reports); a concrete field name is used for a
- * FIELD-level record (populated when the user drills into a differing row). The unique key
- * (entityType, entityId, fieldName) is what makes detection an idempotent upsert — hence the sentinel
- * rather than a nullable column (SQL treats NULLs as distinct, which would defeat the constraint).
+ * one side — the granularity the oracle reports); a concrete field name is used for a FIELD-level record
+ * (populated when the user drills into a differing row). The unique key (entityType, entityId, fieldName,
+ * peer) is what makes detection an idempotent upsert — hence the sentinel rather than a nullable column
+ * (SQL treats NULLs as distinct, which would defeat the constraint).
  */
 @Entity
 @Table(name = "drift_record",
         uniqueConstraints = @UniqueConstraint(name = "uq_drift_record_key",
-                columnNames = {"entityType", "entityId", "fieldName"}),
+                columnNames = {"entityType", "entityId", "fieldName", "peer"}),
         indexes = {
                 @Index(name = "ix_drift_record_type_status", columnList = "entityType, status"),
                 @Index(name = "ix_drift_record_lookup", columnList = "entityType, entityId"),
@@ -49,6 +52,10 @@ public class DriftRecord {
     private Long entityId;
     /** {@link #ROW} for a row-level record, else the drifted field name. Part of the upsert key. */
     private String fieldName = ROW;
+
+    /** Which authority this row drifts against. Part of the upsert key. */
+    @Enumerated(EnumType.STRING)
+    private DriftPeer peer = DriftPeer.HUB;
 
     @Enumerated(EnumType.STRING)
     private DriftKind kind;
