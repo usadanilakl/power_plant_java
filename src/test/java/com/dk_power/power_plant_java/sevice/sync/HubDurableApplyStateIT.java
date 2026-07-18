@@ -82,12 +82,15 @@ class HubDurableApplyStateIT {
     void wireDurablePath() {
         sink = new HubApplyStateSinkImpl(applyStateRepo, txManager);
         ReflectionTestUtils.setField(sink, "durableApplyStateEnabled", true);
+        // The durable path requires LWW (isDurableEnabled() = durable && lww). Matches the
+        // @TestPropertySource apply-lww-enabled=true, which the manually-built sink doesn't read.
+        ReflectionTestUtils.setField(sink, "applyLwwEnabled", true);
         // FieldSyncService.applyIncomingChangesTracked calls this optional field for co-commit B.
         ReflectionTestUtils.setField(fieldSyncService, "hubApplyStateSink", sink);
 
         recovery = new HubApplyStateRecovery(applyStateRepo, fieldChangeRepository, fieldSyncService,
                 sink, syncDeadLetterService, syncConfig, txManager);
-        ReflectionTestUtils.setField(recovery, "durableEnabled", true);
+        // recovery gates on sink.isDurableEnabled() (durable && lww), both set true on the sink above.
         ReflectionTestUtils.setField(recovery, "maxAttempts", 15);
         ReflectionTestUtils.setField(recovery, "deferredMaxAgeMinutes", 1440L);
         ReflectionTestUtils.setField(recovery, "rescanPageSize", 200);

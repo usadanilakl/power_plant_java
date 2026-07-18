@@ -532,7 +532,12 @@ public class FieldSyncService {
 
                     // Parent entity must exist to set FK on children
                     SyncableService service = serviceFacade.getService(entityType);
-                    if (service == null) continue;
+                    if (service == null) {
+                        // No registered service for this type — permanent, like the batched NO_SERVICE
+                        // path. Record it (was an unnoted continue) so the ledger is total.
+                        noteAll(changes, ChangeDisposition.DEAD_LETTER);
+                        continue;
+                    }
                     BaseIdEntity parentEntity = (BaseIdEntity) service.getEntityById(resolvedId);
                     if (parentEntity == null) {
                         log.debug("OneToMany parent {}#{} not found, deferring to next sync", entityType, resolvedId);
@@ -638,6 +643,9 @@ public class FieldSyncService {
                         SyncableService service = serviceFacade.getService(entityType);
                         if (service == null) {
                             log.warn("No service for {} - cannot retry ManyToOne reference", entityType);
+                            // No service for the owner type — permanent. Record it (was an unnoted
+                            // continue) so the ledger is total.
+                            note(failedRef.change, ChangeDisposition.DEAD_LETTER);
                             continue;
                         }
 
@@ -645,6 +653,9 @@ public class FieldSyncService {
                         if (managedEntity == null) {
                             log.warn("Could not re-load {}#{} for ManyToOne retry",
                                 entityType, ownerEntityId);
+                            // The owner row isn't loadable yet — likely still arriving. Retryable, not
+                            // resolved. Record DEFERRED (was an unnoted continue) so the ledger is total.
+                            note(failedRef.change, ChangeDisposition.DEFERRED);
                             continue;
                         }
 

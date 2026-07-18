@@ -47,21 +47,39 @@ public class HubApplyStateSinkImpl implements HubApplyStateSink {
     @Value("${sync.hub.durable-apply-state-enabled:false}")
     private boolean durableApplyStateEnabled;
 
+    // The durable path REQUIRES real LWW. Under LWW-off the hub apply blindly re-applies a change's
+    // value (Inc 6 skipSave legacy), so the rescan re-applying an outstanding row could overwrite a
+    // newer value a concurrent exchange already put on the hub. Requiring LWW makes every (re)apply
+    // LWW-guarded, so a re-apply of an already-converged change is a harmless NOOP. Enabling durable
+    // without LWW leaves the durable path INERT (fail-safe: the legacy in-memory path keeps running).
+    @Value("${sync.hub.apply-lww-enabled:false}")
+    private boolean applyLwwEnabled;
+
     public HubApplyStateSinkImpl(HubChangeApplyStateRepo repo, PlatformTransactionManager txManager) {
         this.repo = repo;
         this.bumpTx = new TransactionTemplate(txManager);
         this.bumpTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
+    /** Loud fail-safe: durable requested but LWW off ⇒ durable stays inert until LWW is also enabled. */
+    @jakarta.annotation.PostConstruct
+    void warnIfMisconfigured() {
+        if (durableApplyStateEnabled && !applyLwwEnabled) {
+            log.error("sync.hub.durable-apply-state-enabled=true but sync.hub.apply-lww-enabled=false — "
+                    + "the durable apply-state path is INERT (a rescan re-apply under LWW-off could "
+                    + "overwrite a newer value). Enable sync.hub.apply-lww-enabled to activate it.");
+        }
+    }
+
     @Override
     public boolean isDurableEnabled() {
-        return durableApplyStateEnabled;
+        return durableApplyStateEnabled && applyLwwEnabled;
     }
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void ensurePending(Collection<FieldChange> savedChanges) {
-        if (!durableApplyStateEnabled || savedChanges == null || savedChanges.isEmpty()) return;
+        if (!isDurableEnabled() || savedChanges == null || savedChanges.isEmpty()) return;
 
         // Only changes with a stable global id (Inc 4) can be tracked durably.
         List<FieldChange> withId = new ArrayList<>();
@@ -92,7 +110,7 @@ public class HubApplyStateSinkImpl implements HubApplyStateSink {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void persistTerminal(Map<UUID, ChangeDisposition> dispositions) {
-        if (!durableApplyStateEnabled || dispositions == null || dispositions.isEmpty()) return;
+        if (!isDurableEnabled() || dispositions == null || dispositions.isEmpty()) return;
         Instant now = Instant.now();
         for (Map.Entry<UUID, ChangeDisposition> e : dispositions.entrySet()) {
             switch (e.getValue()) {
@@ -105,7 +123,7 @@ public class HubApplyStateSinkImpl implements HubApplyStateSink {
 
     @Override
     public void bumpRetryable(Map<UUID, ChangeDisposition> dispositions) {
-        if (!durableApplyStateEnabled || dispositions == null || dispositions.isEmpty()) return;
+        if (!isDurableEnabled() || dispositions == null || dispositions.isEmpty()) return;
         bumpTx.executeWithoutResult(st -> {
             Instant now = Instant.now();
             for (Map.Entry<UUID, ChangeDisposition> e : dispositions.entrySet()) {

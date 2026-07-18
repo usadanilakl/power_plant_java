@@ -64,15 +64,15 @@ public class HubApplyStateRecovery {
     private final SyncConfig syncConfig;
     private final TransactionTemplate transactionTemplate;
 
-    @Value("${sync.hub.durable-apply-state-enabled:false}")
-    private boolean durableEnabled;
     @Value("${sync.hub.apply-max-attempts:15}")
     private int maxAttempts;
     @Value("${sync.hub.deferred-max-age-minutes:1440}")
     private long deferredMaxAgeMinutes;
     @Value("${sync.hub.rescan-page-size:200}")
     private int rescanPageSize;
-    @Value("${sync.hub.reconcile-window-hours:24}")
+    // Default >= the hub FieldChange retention (3 days) so a flag-flip reconcile covers every retained
+    // incoming change, not just a recent sub-window.
+    @Value("${sync.hub.reconcile-window-hours:96}")
     private long reconcileWindowHours;
     @Value("${sync.hub.apply-state-retention-days:7}")
     private long applyStateRetentionDays;
@@ -98,7 +98,7 @@ public class HubApplyStateRecovery {
     /** The restart fix: on boot, reconcile orphans then rescan everything not yet durably applied. */
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
-        if (!durableEnabled) return;
+        if (!sink.isDurableEnabled()) return;
         log.info("hub.apply_state.startup durable-apply-state ENABLED — reconciling orphans + rescanning "
                 + "(maxAttempts={}, deferredMaxAgeMin={})", maxAttempts, deferredMaxAgeMinutes);
         try {
@@ -111,7 +111,7 @@ public class HubApplyStateRecovery {
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 120_000)
     public void scheduledRescan() {
-        if (!durableEnabled) return;
+        if (!sink.isDurableEnabled()) return;
         runRescan();
     }
 
@@ -122,7 +122,7 @@ public class HubApplyStateRecovery {
      */
     @Scheduled(cron = "0 30 3 * * ?")
     public void cleanupApplyState() {
-        if (!durableEnabled) return;
+        if (!sink.isDurableEnabled()) return;
         Instant cutoff = Instant.now().minus(Duration.ofDays(applyStateRetentionDays));
         Integer deleted = transactionTemplate.execute(st -> repo.deleteTerminalGoodBefore(cutoff));
         if (deleted != null && deleted > 0) {
@@ -160,6 +160,12 @@ public class HubApplyStateRecovery {
 
     /** Re-apply one change in its own transaction. Returns true if it reached a terminal-good state. */
     private boolean reapplyOne(UUID changeId) {
+        // Re-read: a concurrent live exchange may have terminalized this row between the eligibility
+        // query and now. Skip it rather than replay. (Re-applying would be a harmless NOOP under LWW,
+        // which the durable path requires, but skipping avoids the wasted work and a redundant write.)
+        HubChangeApplyState row = repo.findById(changeId).orElse(null);
+        if (row == null || isTerminal(row.getDisposition())) return false;
+
         FieldChange change = fieldChangeRepository.findById(changeId).orElse(null);
         if (change == null) {
             // The FieldChange was pruned but its apply-state row survived — nothing to replay. Drop the row.
@@ -179,6 +185,12 @@ public class HubApplyStateRecovery {
             sink.bumpRetryable(Map.of(changeId, ChangeDisposition.FAILED_RETRYABLE));
             return false;
         }
+    }
+
+    private static boolean isTerminal(String disposition) {
+        return ChangeDisposition.APPLIED.name().equals(disposition)
+                || ChangeDisposition.NOOP_SUPERSEDED.name().equals(disposition)
+                || ChangeDisposition.DEAD_LETTER.name().equals(disposition);
     }
 
     /** Give-up valve: dead-letter changes that exhausted their (split) retry budget. */
