@@ -44,9 +44,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       (which itself requires apply-lww) — compaction is INERT otherwise (logged at ERROR).</li>
  * </ul>
  *
- * <p><b>Scope (Phase 1):</b> only real fields are compacted; the {@code _entity_} CREATE/DELETE markers
- * are left untouched (their tombstone handling is Phase 2). Runs in its own nightly schedule, after the
- * age-prune slot and the apply-state cleanup, all flag-gated (default off).
+ * <p><b>The {@code _entity_} CREATE/DELETE markers are deliberately EXCLUDED and this is load-bearing —
+ * do NOT compact them.</b> Keeping every entity's CREATE marker means a fresh/catching-up node always
+ * has it (and the pull is timestamp-ordered, so the early CREATE applies before later field/DELETE
+ * changes) — the entity can always be (re)built, so compacting real fields can never strand them. It
+ * also means DELETE tombstones survive indefinitely, so a node offline any length of time still learns
+ * about deletions (closing the delete-miss gap). Compacting {@code _entity_} would reintroduce exactly
+ * the stranding/tombstone blockers this design avoids. The accumulation is bounded (one CREATE per live
+ * entity, plus one DELETE per deleted entity) and small.
+ *
+ * <p>Runs in its own nightly schedule, after the age-prune slot and the apply-state cleanup, flag-gated
+ * (default off). Physical file space is reclaimed separately (H2 never shrinks its file on delete — pair
+ * with the SHUTDOWN DEFRAG maintenance tooling in scripts/database/).
  */
 @Component
 @ConditionalOnProperty(name = "sync.role", havingValue = "hub")
@@ -169,8 +178,17 @@ public class FieldChangeCompactor {
         long deleted = 0;
         for (int i = 0; i < toDelete.size(); i += deleteBatch) {
             List<UUID> batch = toDelete.subList(i, Math.min(i + deleteBatch, toDelete.size()));
-            Integer n = transactionTemplate.execute(st -> fieldChangeRepository.deleteByIdIn(batch));
-            if (n != null) deleted += n;
+            try {
+                Integer n = transactionTemplate.execute(st -> fieldChangeRepository.deleteByIdIn(batch));
+                if (n != null) deleted += n;
+            } catch (Exception e) {
+                // Each batch is its own short transaction, so a lock clash with a live syncExchange (H2
+                // takes a table-level write lock) or any transient error costs only this batch — skip it
+                // and let the next nightly run collapse those keys. Compaction is idempotent, so nothing
+                // is lost by retrying later.
+                log.warn("hub.compaction delete batch of {} skipped (retry next run): {}",
+                        batch.size(), e.getMessage());
+            }
         }
         return deleted;
     }

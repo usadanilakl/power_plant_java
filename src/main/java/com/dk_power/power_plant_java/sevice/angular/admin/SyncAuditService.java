@@ -43,6 +43,16 @@ public class SyncAuditService {
     private final FieldChangeRepository fieldChangeRepository;
     private final EntityTableRegistry entityTableRegistry;
     private final EntityManager entityManager;
+
+    // Point-in-time reconstruction replays FieldChange HISTORY. When log compaction is active the hub
+    // keeps only the latest change per field, so intermediate/past values are gone — the reconstruction
+    // then reflects current values, not the state at the requested time. Surface that so an operator
+    // never mistakes a compacted reconstruction for a true historical snapshot. (Both flags: compaction
+    // is inert without the durable apply-state — see FieldChangeCompactor.)
+    @org.springframework.beans.factory.annotation.Value("${sync.hub.log-compaction-enabled:false}")
+    private boolean logCompactionEnabled;
+    @org.springframework.beans.factory.annotation.Value("${sync.hub.durable-apply-state-enabled:false}")
+    private boolean durableApplyStateEnabled;
     private final JdbcTemplate jdbcTemplate;
 
     public List<SyncAuditTypeSummaryDto> getTypeSummaries() {
@@ -356,6 +366,12 @@ public class SyncAuditService {
         }
         if (reconstructedFields.containsKey("deleted") && "true".equalsIgnoreCase(reconstructedFields.get("deleted"))) {
             warnings.add("Reconstructed state indicates the entity had been deleted by this timestamp.");
+        }
+        if (logCompactionEnabled && durableApplyStateEnabled) {
+            warnings.add("Log compaction is active: the hub keeps only the latest change per field, so "
+                + "superseded/intermediate values are pruned. This reconstruction may reflect current "
+                + "values rather than the state at the requested time; pre-compaction point-in-time "
+                + "history is not available.");
         }
 
         return new SyncAuditReconstructionDto(
