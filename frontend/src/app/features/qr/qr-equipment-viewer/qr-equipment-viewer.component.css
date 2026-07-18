@@ -169,40 +169,17 @@
   text-overflow: ellipsis;
 }
 
-/* Only remove the max-height cap — don't touch inner element heights.
-   The interactive image handles its own layout and canvas alignment. */
-.qr-viewer-container .large-image-container {
-  max-height: none !important;
-}
-
-.qr-viewer-container .large-image-container .main-image {
-  max-height: none !important;
-}
-
 /* Remove single-image-header to save space on mobile */
 .qr-viewer-container .single-image-header {
   display: none;
 }
 
-/* Shared viewer wraps the drawing in .image-section (white) and
-   .large-image-container (light gray). On a portrait phone the wrapper
-   is given far more vertical space than a landscape P&ID needs at
-   width:100%, so the extra height renders as a big pale block below the
-   drawing. We can't stretch the image without breaking shape-canvas
-   alignment (the canvas is sized to the img element, not to the actual
-   drawn content). Instead: paint those background layers with the QR
-   page's own dark navy so the empty region is invisible, and center
-   the image vertically inside its container so any residual gap gets
-   split top/bottom instead of dumped entirely below the drawing. */
-.qr-viewer-container .image-section {
-  background: var(--background-primary, #1a1a2e) !important;
-}
-
+/* The shared viewer's own backgrounds are light. The drawing is fitted and
+   centered inside the container, so the surrounding area stays visible —
+   paint it in this page's navy rather than letting a pale block frame it. */
+.qr-viewer-container .image-section,
 .qr-viewer-container .large-image-container {
-  background: var(--background-primary, #1a1a2e) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  background: var(--background-primary, #1a1a2e);
 }
 
 .state-container {

@@ -27,6 +27,31 @@ public interface PermitAttachmentRepo extends JpaRepository<PermitAttachment, Lo
     @Query("SELECT a FROM PermitAttachment a WHERE a.syncedToMachines IS NULL OR a.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%')")
     List<PermitAttachment> findNotSyncedTo(@Param("machineId") String machineId);
 
+    /**
+     * Metadata-only view for the /pending endpoint. Base64 now lives in an EAGER out-of-row child,
+     * so loading full entities here would drag every pending blob into heap. This projection selects
+     * scalar columns only — no blob, no entity load.
+     */
+    interface PendingAttachmentView {
+        Long getId();
+        String getEntityType();
+        Long getEntityId();
+        String getFileName();
+        String getContentType();
+        String getAttachmentType();
+        String getOriginMachineId();
+        boolean isDeleted();
+        String getOrigin();
+        java.time.LocalDateTime getCreatedAt();
+    }
+
+    @Query("SELECT a.id AS id, a.entityType AS entityType, a.entityId AS entityId, a.fileName AS fileName, "
+        + "a.contentType AS contentType, a.attachmentType AS attachmentType, a.originMachineId AS originMachineId, "
+        + "a.deleted AS deleted, a.origin AS origin, a.createdAt AS createdAt "
+        + "FROM PermitAttachment a WHERE a.syncedToMachines IS NULL "
+        + "OR a.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%')")
+    List<PendingAttachmentView> findPendingMetadataNotSyncedTo(@Param("machineId") String machineId);
+
     // ─── Tombstone-aware finders (used by the SDS Sync PDFs flow) ─────────────────────────
 
     /** Live (non-tombstoned) attachments for one owning entity. */

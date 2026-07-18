@@ -120,10 +120,12 @@ public class HubAttachmentService {
     }
 
     /**
-     * Get attachments not yet synced to a specific client (metadata only, no base64).
+     * Get attachments not yet synced to a specific client (metadata-only projection — does NOT load
+     * the out-of-row base64 blob; clients fetch content individually via /download).
      */
-    public List<PermitAttachment> getPendingFor(String machineId) {
-        return attachmentRepo.findNotSyncedTo(machineId);
+    public List<com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo.PendingAttachmentView>
+            getPendingFor(String machineId) {
+        return attachmentRepo.findPendingMetadataNotSyncedTo(machineId);
     }
 
     /**

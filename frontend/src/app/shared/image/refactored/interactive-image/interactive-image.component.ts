@@ -339,7 +339,7 @@ export class InteractiveImageComponent {
     this.drawingService.initializeTempCanvas(this.zoomElement);
 
     // Calculate base scale once after image loads
-    this.img.onload = () => {
+    const handleImageLoad = () => {
       this.baseImageScale = this.canvasRenderService.calculateBaseScale(
         this.img
       );
@@ -357,6 +357,15 @@ export class InteractiveImageComponent {
         this.imageLoaded.set(true);
       }, 50); // Small delay to ensure container dimensions are calculated
     };
+
+    this.img.onload = handleImageLoad;
+
+    // src is bound in the template, so a cached image can finish decoding
+    // before this hook runs — onload would then never fire, leaving
+    // baseImageScale at 1 and the drawing unfitted.
+    if (this.img.complete && this.img.naturalWidth > 0) {
+      handleImageLoad();
+    }
 
     // Reset imageLoaded when image URL changes
     this.img.onerror = () => {

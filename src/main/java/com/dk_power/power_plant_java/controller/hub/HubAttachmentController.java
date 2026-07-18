@@ -84,7 +84,8 @@ public class HubAttachmentController {
      */
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingAttachments(@RequestHeader("X-Machine-Id") String machineId) {
-        List<PermitAttachment> pending = hubAttachmentService.getPendingFor(machineId);
+        List<com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo.PendingAttachmentView> pending =
+            hubAttachmentService.getPendingFor(machineId);
 
         // Return metadata only — no base64Content (client downloads individually)
         List<Map<String, Object>> result = pending.stream().map(att -> {

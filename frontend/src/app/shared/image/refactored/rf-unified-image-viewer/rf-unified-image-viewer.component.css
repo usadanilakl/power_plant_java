@@ -270,9 +270,12 @@
   position: relative;
   overflow: hidden;
   background: var(--image-background, #f0f0f0);
-  /* Size to content instead of expanding infinitely */
-  min-height: 200px;
-  max-height: 600px;
+  /* Claim the leftover column space and hand a definite height down to
+     app-interactive-image, which sizes the drawing off height and derives
+     width from the aspect ratio. min-height:0 is load-bearing: without it
+     this flex item refuses to shrink below the image's intrinsic height. */
+  flex: 1;
+  min-height: 0;
 }
 
 .no-image-message {
