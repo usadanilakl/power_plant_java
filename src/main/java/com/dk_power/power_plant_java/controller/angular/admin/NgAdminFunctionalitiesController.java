@@ -206,6 +206,21 @@ public class NgAdminFunctionalitiesController {
         }
     }
 
+    // GET so it can be triggered by simply opening the URL in an authenticated admin browser
+    // (avoids the CSRF token a POST needs). Compaction is idempotent, so a convenience GET is safe.
+    @GetMapping("/sync-queue/compact")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> compactNow() {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.compactNow();
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Compaction run"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/sync-queue/clear-all")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> clearAllChanges() {
         try {

@@ -47,6 +47,11 @@ public class AdminFunctionalitiesService {
     private final SyncConfig syncConfig;
     private final WorkAreaGitHubPublisher workAreaGitHubPublisher;
 
+    // Hub-only (@ConditionalOnProperty sync.role=hub) — null on a desktop/client. Optional so the
+    // (non-hub-conditional) admin service still wires everywhere.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.dk_power.power_plant_java.sevice.hub.FieldChangeCompactor fieldChangeCompactor;
+
     @Value("${files.root.path}")
     private String filesRootPath;
 
@@ -602,6 +607,41 @@ public class AdminFunctionalitiesService {
             result.put("success", false);
             result.put("error", e.getMessage());
         }
+        return result;
+    }
+
+    /**
+     * Run log compaction NOW (hub-only) instead of waiting for the nightly job — for testing/ops.
+     * Reports FieldChange counts before/after so the collapse is visible. Synchronous: on a large
+     * backlog it may take a moment.
+     */
+    public Map<String, Object> compactNow() {
+        Map<String, Object> result = new HashMap<>();
+        if (fieldChangeCompactor == null) {
+            result.put("success", false);
+            result.put("error", "Compaction is hub-only; this instance is not a hub.");
+            return result;
+        }
+        long before = fieldChangeRepository.count();
+        boolean active = fieldChangeCompactor.isActive();
+        result.put("active", active);
+        result.put("fieldChangeCountBefore", before);
+        if (!active) {
+            result.put("success", false);
+            result.put("message", "Compaction is not active. It needs sync.hub.log-compaction-enabled + "
+                    + "sync.hub.durable-apply-state-enabled + sync.hub.apply-lww-enabled all true "
+                    + "(restart the hub to pick up flag changes).");
+            return result;
+        }
+        long start = System.currentTimeMillis();
+        fieldChangeCompactor.runCompaction();
+        long after = fieldChangeRepository.count();
+        result.put("success", true);
+        result.put("fieldChangeCountAfter", after);
+        result.put("deleted", before - after);
+        result.put("durationMs", System.currentTimeMillis() - start);
+        logger.info("Admin: compaction run — {} -> {} FieldChanges ({} removed) in {} ms",
+                before, after, before - after, System.currentTimeMillis() - start);
         return result;
     }
 
