@@ -1,6 +1,7 @@
 <app-shared-table
   [columns]="columns"
   [items]="initialItems$"
+  driftEntityType="LotoPoint"
   [isDragAndDropEnabled]="isReorderEnabled()"
   [clickCallback]="onLeftClick.bind(this)"
   [doubleClickCallback]="onDoubleClick.bind(this)"
