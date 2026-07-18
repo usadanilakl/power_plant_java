@@ -92,6 +92,16 @@ public interface HubChangeApplyStateRepo extends JpaRepository<HubChangeApplySta
 
     long countByDisposition(String disposition);
 
+    /**
+     * Which of these change ids are TERMINAL-GOOD (the hub durably applied them). Compaction of a field
+     * deletes a superseded value only once its REPLACEMENT (the SyncOrder-latest change) is confirmed
+     * APPLIED/NOOP_SUPERSEDED here — otherwise, if the latest is a still-deferred change that never
+     * applies, deleting the older applied value would erase the hub's actual current state.
+     */
+    @Query("SELECT s.changeId FROM HubChangeApplyState s WHERE s.changeId IN :ids "
+            + "AND s.disposition IN ('APPLIED', 'NOOP_SUPERSEDED')")
+    List<UUID> findTerminalGoodIds(@Param("ids") Collection<UUID> ids);
+
     /** Cleanup: terminal-good rows older than the cutoff (the change has long since converged). */
     @Modifying
     @Query("DELETE FROM HubChangeApplyState s WHERE s.disposition IN ('APPLIED', 'NOOP_SUPERSEDED') "

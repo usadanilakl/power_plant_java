@@ -137,6 +137,27 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
            ") AND fc2.entityType = :entityType AND fc2.entityId IN :entityIds)")
     List<FieldChange> findLatestChangesForEntities(@Param("entityType") String entityType, @Param("entityIds") List<Long> entityIds);
 
+    // ===== Log compaction (keep only the latest FieldChange per entityType:entityId:fieldName) =====
+    // Candidate keys = a field with MORE THAN ONE stored change (so there is something to compact).
+    // Excludes the _entity_ CREATE/DELETE markers — those are handled separately (tombstone logic) and
+    // must never be collapsed by field compaction (dropping a CREATE strands a live entity's rows).
+    @Query("SELECT fc.entityType, fc.entityId, fc.fieldName FROM FieldChange fc "
+            + "WHERE fc.fieldName <> '_entity_' "
+            + "GROUP BY fc.entityType, fc.entityId, fc.fieldName HAVING COUNT(fc.id) > 1")
+    List<Object[]> findCompactionCandidateKeys(Pageable pageable);
+
+    // All stored changes for one (entityType, entityId, fieldName) key — the compactor picks the
+    // SyncOrder max to keep and deletes the rest.
+    @Query("SELECT fc FROM FieldChange fc WHERE fc.entityType = :et AND fc.entityId = :eid AND fc.fieldName = :fn")
+    List<FieldChange> findAllForKey(@Param("et") String entityType, @Param("eid") Long entityId,
+                                    @Param("fn") String fieldName);
+
+    // Delete the EXACT superseded rows the compactor identified (never a predicate over the live table),
+    // so a change inserted concurrently — which was never in the id list — can never be deleted.
+    @Modifying
+    @Query("DELETE FROM FieldChange fc WHERE fc.id IN :ids")
+    int deleteByIdIn(@Param("ids") java.util.Collection<UUID> ids);
+
     // BATCH id-existence: which of these change ids are already stored. Used to dedup re-delivered
     // changes now that a change keeps ONE global id for its whole life (Inc 4). This replaced the old
     // key-based gate (CONCAT of entityType:entityId:fieldName:timestamp:originMachineId), which was a

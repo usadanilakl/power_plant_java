@@ -54,6 +54,7 @@ public class HubSyncService {
     private final TransactionTemplate transactionTemplate;
     private final SharePointSyncOrchestrator sharePointSyncOrchestrator;
     private final HubApplyStateSink hubApplyStateSink;
+    private final FieldChangeCompactor fieldChangeCompactor;
 
     // Legacy in-memory apply-failure recovery. Used ONLY when the durable apply-state path is off
     // (hubApplyStateSink.isDurableEnabled() == false). A hub restart wipes this queue — that IS the D7
@@ -302,6 +303,14 @@ public class HubSyncService {
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void cleanupOldChanges() {
+        // When log compaction is active it OWNS FieldChange retention (keep-latest-per-field). The
+        // age-prune deletes by timestamp with no keep-latest floor — it would delete a field's only/
+        // current row if it hasn't changed within retentionDays, reopening the very silent-loss gap
+        // compaction closes. So the two are mutually exclusive: age-prune yields to compaction.
+        if (fieldChangeCompactor.isActive()) {
+            log.debug("hub.cleanupOldChanges skipped — log compaction is active and owns retention");
+            return;
+        }
         long start = System.currentTimeMillis();
         try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.cleanupOldChanges")) {
             LoggingContext.setMachineId(syncConfig.getMachineId());
