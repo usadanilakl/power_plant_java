@@ -3,12 +3,6 @@
     <div class="default-controls">
       <div class="button-row">
         <button (click)="onDeleteSelectedItems()">Delete Selected</button>
-        @if (driftEntityType) {
-          <button class="drift-scan-btn" (click)="scanDrift()" [disabled]="driftScanning()"
-                  title="Scan this list for hub / SharePoint drift">
-            {{ driftScanning() ? 'Scanning…' : '⟳ Scan drift' }}
-          </button>
-        }
         <ng-content select="[table-controls]"></ng-content>
       </div>
       <div class="search-row">
@@ -59,23 +53,11 @@
             [style.cursor]="isDragAndDropEnabled() ? 'move' : 'default'"
             [class.ghost-row]="i === ghostRowIndex"
             [class.dragging]="draggedItem && draggedItem.id === item.id">
-          @for (column of columns; track column.id; let first = $first) {
-            <td
+          @for (column of columns; track column.id) {
+            <td 
               (click)="registerLastClickedCell(item, column, $event)"
               [ngStyle]="getCellStyle(item, column)"
             >
-              @if (first && driftEntityType && driftFor(item); as d) {
-                <span class="drift-badges">
-                  @if (d.hub) {
-                    <span class="drift-dot" [class.ack]="d.hub.status === 'ACKNOWLEDGED'"
-                          [title]="'Hub: ' + d.hub.kind + ' · ' + d.hub.status">H</span>
-                  }
-                  @if (d.sp) {
-                    <span class="drift-dot sp" [class.ack]="d.sp.status === 'ACKNOWLEDGED'"
-                          [title]="'SharePoint: ' + d.sp.kind + ' · ' + d.sp.status">SP</span>
-                  }
-                </span>
-              }
               {{ getCellValue(item, column) }}
             </td>
           }
@@ -91,12 +73,6 @@
     <div class="default-controls">
       <div class="button-row">
         <button (click)="onDeleteSelectedItems()">Delete Selected</button>
-        @if (driftEntityType) {
-          <button class="drift-scan-btn" (click)="scanDrift()" [disabled]="driftScanning()"
-                  title="Scan this list for hub / SharePoint drift">
-            {{ driftScanning() ? 'Scanning…' : '⟳ Scan drift' }}
-          </button>
-        }
         <ng-content select="[table-controls]"></ng-content>
       </div>
       <div class="search-row">

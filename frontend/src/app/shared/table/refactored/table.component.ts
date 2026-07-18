@@ -11,10 +11,13 @@ import {
   OnInit,
   output,
   PLATFORM_ID,
+  signal,
   TemplateRef,
   viewChild,
   viewChildren,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DriftService, RowDrift } from '../../../services/drift.service';
 import {
   CdkVirtualScrollViewport,
   ScrollingModule,
@@ -63,6 +66,17 @@ export interface FilterOutRules {
   ],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css',
+  styles: [`
+    .drift-scan-btn { background:#37474f; color:#eee; border:1px solid #546e7a; border-radius:4px;
+      padding:2px 10px; font-size:12px; cursor:pointer; margin-left:8px; }
+    .drift-scan-btn:disabled { opacity:0.6; cursor:default; }
+    .drift-badges { display:inline-flex; gap:3px; margin-right:6px; vertical-align:middle; }
+    .drift-dot { display:inline-flex; align-items:center; justify-content:center; min-width:15px;
+      height:15px; padding:0 3px; border-radius:8px; font-size:9px; font-weight:700; color:#fff;
+      background:#e67e22; }               /* hub drift = orange */
+    .drift-dot.sp { background:#2980b9; }  /* SharePoint drift = blue */
+    .drift-dot.ack { opacity:0.45; }       /* acknowledged = dimmed */
+  `],
 })
 export class TableComponent implements OnInit, AfterViewInit {
   private platformId = inject(PLATFORM_ID);
@@ -105,6 +119,17 @@ export class TableComponent implements OnInit, AfterViewInit {
   clickSetupInput = input<ClickSetup>({
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
+  });
+  // OPT-IN drift badge: set to a synced entity type (e.g. "LotoPoint") to show a per-row hub/SharePoint
+  // drift indicator in the first cell + a "Scan drift" control. Unset (every existing table) → no change.
+  driftEntityType = input<string | undefined>(undefined);
+  private driftService = inject(DriftService);
+  private driftDestroyRef = inject(DestroyRef);
+  driftMap = signal<Map<number, RowDrift>>(new Map());
+  driftScanning = signal(false);
+  private driftLoadEffect = effect(() => {
+    const type = this.driftEntityType();
+    if (type) this.loadDrift(type);
   });
   /** Initial search criteria to apply when the table loads */
   initialSearchCriteria = input<SearchCriteria | null>(null);
@@ -303,6 +328,30 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {}
+
+  // ==================== Drift badge (opt-in via driftEntityType) ====================
+
+  /** Load the persisted per-row drift map — cheap (one GET), runs automatically as the table renders. */
+  loadDrift(type: string): void {
+    this.driftService.statusForType(type)
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe((m) => { this.driftMap.set(m); this.cdr.markForCheck(); });
+  }
+
+  /** Force a fresh re-detection for this type (hub + SharePoint), then reload the badges. */
+  scanDrift(): void {
+    const type = this.driftEntityType();
+    if (!type || this.driftScanning()) return;
+    this.driftScanning.set(true);
+    this.driftService.scanType(type)
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe(() => { this.driftScanning.set(false); this.loadDrift(type); });
+  }
+
+  /** Drift for a row (or undefined) — drives the badge in the first cell. */
+  driftFor(item: any): RowDrift | undefined {
+    return item?.id != null ? this.driftMap().get(item.id) : undefined;
+  }
 
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;

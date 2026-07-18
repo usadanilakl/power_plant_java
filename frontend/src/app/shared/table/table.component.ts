@@ -13,13 +13,11 @@ import {
   DestroyRef,
   HostListener,
   effect,
-  signal,
   PLATFORM_ID,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
-import { DriftService, RowDrift } from '../../services/drift.service';
 import {
   BehaviorSubject,
   debounceTime,
@@ -42,29 +40,12 @@ import {
   imports: [CommonModule, FormsModule, CopyPasteDirective, ScrollingModule],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.css'],
-  styles: [`
-    .drift-scan-btn { background:#37474f; color:#eee; border:1px solid #546e7a; border-radius:4px;
-      padding:2px 8px; font-size:12px; cursor:pointer; }
-    .drift-scan-btn:disabled { opacity:0.6; cursor:default; }
-    .drift-badges { display:inline-flex; gap:3px; margin-right:6px; vertical-align:middle; }
-    .drift-dot { display:inline-flex; align-items:center; justify-content:center; min-width:16px;
-      height:16px; padding:0 3px; border-radius:8px; font-size:9px; font-weight:700; color:#fff;
-      background:#e67e22; }               /* hub drift = orange */
-    .drift-dot.sp { background:#2980b9; }  /* SharePoint drift = blue */
-    .drift-dot.ack { opacity:0.45; }       /* acknowledged = dimmed */
-  `],
 })
 export class TableComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
 
   @Input() columns: Column[] = [];
-  // OPT-IN drift badge: set to a synced entity type (e.g. "LotoPoint") to show a per-row hub/SharePoint
-  // drift indicator + a "Scan drift" control. Unset (the default) → zero change to the table.
-  @Input() driftEntityType?: string;
-  private driftService = inject(DriftService);
-  driftMap = signal<Map<number, RowDrift>>(new Map());
-  driftScanning = signal(false);
   @Input() clickCallback!: (item: any, event: MouseEvent) => void;
   @Input() doubleClickCallback?: (item: any) => void;
   @Input() rightClickCallback?: (item: any) => void;
@@ -216,44 +197,10 @@ export class TableComponent implements OnInit {
       });
 
     this.updateItemIndices();
-
-    if (this.driftEntityType) {
-      this.loadDrift();
-    }
   }
 
   updateItems(newItems: any[]) {
     this._items.next(newItems);
-  }
-
-  // ==================== Drift badge (opt-in via driftEntityType) ====================
-
-  /** Load the persisted per-row drift map for this table's entity type. */
-  loadDrift(): void {
-    if (!this.driftEntityType) return;
-    this.driftService.statusForType(this.driftEntityType)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((m) => {
-        this.driftMap.set(m);
-        this.cdr.detectChanges();
-      });
-  }
-
-  /** Run a fresh scan for THIS type (hub + SharePoint), then reload the badges. */
-  scanDrift(): void {
-    if (!this.driftEntityType || this.driftScanning()) return;
-    this.driftScanning.set(true);
-    this.driftService.scanType(this.driftEntityType)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.driftScanning.set(false);
-        this.loadDrift();
-      });
-  }
-
-  /** Drift for a row (or undefined) — drives the badge cell. */
-  driftFor(item: any): RowDrift | undefined {
-    return item?.id != null ? this.driftMap().get(item.id) : undefined;
   }
 
   onGlobalSearchChange() {
