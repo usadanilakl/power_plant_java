@@ -96,6 +96,19 @@ public class FieldSyncService {
         if (currentLedger != null) currentLedger.recordAll(changes, disposition);
     }
 
+    // Inc 7 (hub durable apply-state): when true, this apply run persists its per-change terminal
+    // dispositions (co-commit B) into hub_change_apply_state INSIDE the apply transaction, so the hub's
+    // entity state and its record of "what have I applied" commit or roll back together. Set ONLY by
+    // applyIncomingChangesTracked (called only by the hub). Same plain-field-under-applyChangesLock
+    // discipline as skipSaveFieldChanges/currentLedger.
+    private boolean persistApplyStateThisRun = false;
+
+    // Hub-only sink for the durable apply-state (Inc 7). Absent on clients (the impl is
+    // @ConditionalOnProperty sync.role=hub), so this is optional; it is only ever touched when
+    // persistApplyStateThisRun is set, which happens only on the hub.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private HubApplyStateSink hubApplyStateSink;
+
     // Persistent dedup remap table — lives in memory across batches.
     // Loaded from DB once on first use (for JVM restart recovery), then kept in-memory.
     // New remaps are added in-memory AND persisted to DB as write-behind.
@@ -257,6 +270,35 @@ public class FieldSyncService {
         }
     }
 
+    /**
+     * Hub durable-apply entry point (Inc 7): apply {@code changes} AND return the per-change
+     * {@link DispositionLedger}, persisting terminal dispositions into hub_change_apply_state inside the
+     * apply transaction (co-commit B). The caller (hub Phase-4 vthread / the rescan) uses the returned
+     * ledger to advance the retry budget for anything still non-terminal via
+     * {@link HubApplyStateSink#bumpRetryable} in a separate transaction, so the attempts increment
+     * survives an apply rollback.
+     *
+     * <p>Production sibling of {@link #applyIncomingChangesForTest} — same lock/ledger discipline, but it
+     * sets {@code persistApplyStateThisRun} so co-commit B fires. Called ONLY on the hub (the sink is
+     * hub-only); on a client the sink is absent and this method should not be used.
+     */
+    public DispositionLedger applyIncomingChangesTracked(List<FieldChange> changes, boolean skipSave) {
+        applyChangesLock.lock();
+        DispositionLedger ledger = new DispositionLedger();
+        try {
+            this.skipSaveFieldChanges = skipSave;
+            this.currentLedger = ledger;
+            this.persistApplyStateThisRun = true;
+            applyIncomingChangesLocked(changes);
+            return ledger;
+        } finally {
+            this.skipSaveFieldChanges = false;
+            this.currentLedger = null;
+            this.persistApplyStateThisRun = false;
+            applyChangesLock.unlock();
+        }
+    }
+
     /** Records a change id as deferred (retry next sync), if the caller requested deferred tracking. */
     private void markDeferred(FieldChange change) {
         // Ledger first: it records faithfully even when the id is null, which the deferredChangeIds
@@ -276,7 +318,16 @@ public class FieldSyncService {
             // Use programmatic transaction to ensure it works from any thread
             Integer result = transactionTemplate.execute(status -> {
                 try {
-                    return applyIncomingChangesInternal(incomingChanges);
+                    int applied = applyIncomingChangesInternal(incomingChanges);
+                    // Co-commit B (Inc 7): persist terminal dispositions (APPLIED/NOOP/DEAD_LETTER) into
+                    // hub_change_apply_state in THIS transaction, so the hub's entity state and its record
+                    // of "what have I applied" commit or roll back together. No-op unless this is a hub
+                    // tracked run (persistApplyStateThisRun). On the rollback path below this never runs,
+                    // so the co-committed PENDING rows correctly stay PENDING for the rescan.
+                    if (persistApplyStateThisRun && hubApplyStateSink != null && currentLedger != null) {
+                        hubApplyStateSink.persistTerminal(currentLedger.idDispositions());
+                    }
+                    return applied;
                 } catch (Exception e) {
                     log.error("Error applying incoming changes, rolling back: {}", e.getMessage(), e);
                     // NOTHING in this batch survived the rollback — every change is retryable, not
@@ -500,11 +551,19 @@ public class FieldSyncService {
                             if (applied) {
                                 saveIncomingChange(change);
                                 totalApplied++;
+                                // Totality (Inc 7): this convergence site incremented the count without
+                                // recording a disposition, so the durable hub apply-state row would stay
+                                // PENDING forever and eventually dead-letter an APPLIED change.
+                                note(change, ChangeDisposition.APPLIED);
                             } else {
                                 // Children missing — deferred; don't ack so the hub re-sends it (D6).
                                 // (Only reached when shouldApply is true, i.e. not an LWW-supersede.)
                                 markDeferred(change);
                             }
+                        } else {
+                            // Lost LWW — already converged, nothing to apply. Record it so the ledger is
+                            // total (was an unnoted no-else branch).
+                            note(change, ChangeDisposition.NOOP_SUPERSEDED);
                         }
                     }
                 }
@@ -594,6 +653,10 @@ public class FieldSyncService {
                         service.save(managedEntity);
                         saveIncomingChange(failedRef.change);
                         totalApplied++;
+                        // Totality (Inc 7): the retry that finally set the FK must record APPLIED. The
+                        // ManyToOne-missing path in applyFieldChange returns false WITHOUT noting (it just
+                        // queues the ref here), so this pass is the only place it can be classified.
+                        note(failedRef.change, ChangeDisposition.APPLIED);
                         log.debug("Retry succeeded: set {}.{} -> entity #{}",
                             entityType, failedRef.change.getFieldName(), referencedId);
                     } else {
@@ -606,6 +669,9 @@ public class FieldSyncService {
                         failedRef.change.getEntityType(),
                         failedRef.change.getFieldName(),
                         e.getMessage());
+                    // Totality (Inc 7): a thrown retry is a transient failure, not a resolution — record
+                    // FAILED_RETRYABLE so the change is rescanned, not left silently unclassified.
+                    note(failedRef.change, ChangeDisposition.FAILED_RETRYABLE);
                 }
             }
         }
@@ -681,7 +747,43 @@ public class FieldSyncService {
             }
         }
 
+        // Totality gate (Inc 7): the durable hub apply-state is only trustworthy if EVERY input change
+        // ends this run with a disposition — an unclassified change leaves its co-committed PENDING row
+        // un-flipped forever and would eventually dead-letter a change that actually applied. This does
+        // not fix anything; it makes any remaining gap LOUD and countable, and a clean soak (zero gaps,
+        // with sync.hub.apply-lww-enabled=true) is the hard precondition for turning the durable path on.
+        assertLedgerTotality(incomingChanges);
+
         return totalApplied;
+    }
+
+    // Counts input changes that finished an apply run with NO disposition (a ledger-totality gap).
+    // Must stay 0 in a soak before sync.hub.durable-apply-state-enabled is turned on.
+    private final java.util.concurrent.atomic.AtomicLong ledgerTotalityGaps =
+            new java.util.concurrent.atomic.AtomicLong();
+
+    public long getLedgerTotalityGapCount() {
+        return ledgerTotalityGaps.get();
+    }
+
+    /**
+     * Assert every non-null input change was classified this run. Observer only — never throws, never
+     * alters control flow. A gap is logged at ERROR (with the change coordinates) and counted so a soak
+     * can prove totality before the durable apply-state path is enabled.
+     */
+    private void assertLedgerTotality(List<FieldChange> incomingChanges) {
+        if (currentLedger == null || incomingChanges == null) return;
+        for (FieldChange change : incomingChanges) {
+            if (change == null) continue;
+            if (currentLedger.of(change) == null) {
+                ledgerTotalityGaps.incrementAndGet();
+                log.error("sync.apply.totality_gap entityType={} entityId={} field={} changeType={} — "
+                        + "change ended the apply run with NO disposition; durable apply-state would leave "
+                        + "it PENDING. Do NOT enable sync.hub.durable-apply-state-enabled until this is 0.",
+                        change.getEntityType(), change.getEntityId(), change.getFieldName(),
+                        change.getChangeType());
+            }
+        }
     }
 
     /**
@@ -917,6 +1019,10 @@ public class FieldSyncService {
                         // Recorded as-is rather than "corrected" — the discrepancy is real and belongs to
                         // the DELETE-ordering work, not to an observer.
                         note(change, ChangeDisposition.APPLIED);
+                    } else if (!"_entity_".equals(change.getFieldName())) {
+                        // A standalone 'deleted' field change: the soft-delete below converges it, so it
+                        // is already resolved. Record it (was skipped unnoted) to keep the ledger total.
+                        note(change, ChangeDisposition.NOOP_SUPERSEDED);
                     }
                 }
 
@@ -1046,7 +1152,13 @@ public class FieldSyncService {
                         // Apply field changes via LWW to the existing entity
                         boolean modified = false;
                         for (FieldChange change : changes) {
-                            if ("_entity_".equals(change.getFieldName())) continue;
+                            if ("_entity_".equals(change.getFieldName())) {
+                                // The CREATE marker of a change-set redirected onto an existing row: the
+                                // create is superseded by the existing entity. Record it (was an unnoted
+                                // continue) so the ledger is total.
+                                note(change, ChangeDisposition.NOOP_SUPERSEDED);
+                                continue;
+                            }
                             if (shouldApplyChange(change, existingLatestMap)) {
                                 // In-batch LWW: record the winner so a later same-field change in this
                                 // batch is compared against it, not the stale snapshot (see the main
@@ -1144,6 +1256,9 @@ public class FieldSyncService {
             List<FieldChange> appliedChanges = new java.util.ArrayList<>();
             for (FieldChange change : changes) {
                 if ("_entity_".equals(change.getFieldName())) {
+                    // Totality (Inc 7): an entity-level marker on an already-existing entity is a no-op
+                    // (the row is already there). Record it so every input change has a disposition.
+                    note(change, ChangeDisposition.NOOP_SUPERSEDED);
                     continue; // Skip entity-level markers
                 }
 
@@ -1312,6 +1427,9 @@ public class FieldSyncService {
                     } catch (NumberFormatException e) {
                         log.warn("Could not parse relationship ID from '{}' for type {}",
                             change.getNewValue(), field.getType().getSimpleName());
+                        // Unparseable FK id — re-sending the same bytes fails identically, so this is
+                        // permanent. Record it (was an unnoted false) so the ledger stays total.
+                        note(change, ChangeDisposition.DEAD_LETTER);
                         return false;
                     }
                 }

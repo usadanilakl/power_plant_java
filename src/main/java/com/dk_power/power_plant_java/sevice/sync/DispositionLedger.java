@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -96,6 +97,22 @@ public class DispositionLedger {
     /** How many changes were classified at all. */
     public int size() {
         return byChange.size();
+    }
+
+    /**
+     * The outcome per change ID for this run (Inc 7 — what the durable hub apply-state persists).
+     * Changes with a null id are skipped (they cannot be keyed durably). If two instances somehow share
+     * an id, the highest-ranked outcome wins — same precedence as {@link #record}, so a DEFERRED never
+     * loses to an APPLIED for the same id.
+     */
+    public Map<UUID, ChangeDisposition> idDispositions() {
+        Map<UUID, ChangeDisposition> out = new HashMap<>();
+        for (Map.Entry<FieldChange, ChangeDisposition> e : byChange.entrySet()) {
+            UUID id = e.getKey().getId();
+            if (id == null) continue;
+            out.merge(id, e.getValue(), (a, b) -> rank(a) >= rank(b) ? a : b);
+        }
+        return out;
     }
 
     @Override

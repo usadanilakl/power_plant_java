@@ -8,7 +8,9 @@ import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.hub.HubClientInfoRepository;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
+import com.dk_power.power_plant_java.sevice.sync.DispositionLedger;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
+import com.dk_power.power_plant_java.sevice.sync.HubApplyStateSink;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +53,13 @@ public class HubSyncService {
     private final HubSyncConfig hubSyncConfig;
     private final TransactionTemplate transactionTemplate;
     private final SharePointSyncOrchestrator sharePointSyncOrchestrator;
+    private final HubApplyStateSink hubApplyStateSink;
 
+    // Legacy in-memory apply-failure recovery. Used ONLY when the durable apply-state path is off
+    // (hubApplyStateSink.isDurableEnabled() == false). A hub restart wipes this queue — that IS the D7
+    // defect the durable path (Inc 7) fixes. The two paths are mutually exclusive: when durable is on,
+    // the vthread never offers here and retryPendingEntityApplication early-returns, so a change is never
+    // recovered by both.
     private final AtomicBoolean pendingEntityRetry = new AtomicBoolean(false);
     private final java.util.concurrent.ConcurrentLinkedQueue<List<FieldChange>> failedBatches = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
@@ -96,18 +104,31 @@ public class HubSyncService {
                 System.currentTimeMillis() - start);
 
             // Phase 4: Apply to hub entities + broadcast asynchronously.
-            // Safe because FieldChanges are already saved — retryPendingEntityApplication handles failures.
+            // Safe because FieldChanges are already saved — apply failures are recovered by either the
+            // durable rescan (Inc 7, HubApplyStateRecovery) or the legacy in-memory queue, per the flag.
             if (!result.savedChanges.isEmpty()) {
                 List<FieldChange> savedCopy = new ArrayList<>(result.savedChanges);
                 String originMachine = machineId;
+                boolean durable = hubApplyStateSink.isDurableEnabled();
                 Thread.ofVirtual().name("hub-apply-" + machineId).start(() -> {
                     try {
-                        int applied = fieldSyncService.applyIncomingChanges(savedCopy, true);
-                        log.debug("Applied {} changes to hub entities from {}", applied, originMachine);
+                        if (durable) {
+                            // Co-commit B runs INSIDE the apply tx; then advance the retry budget for
+                            // anything still non-terminal (separate tx, so it survives an apply rollback).
+                            DispositionLedger ledger = fieldSyncService.applyIncomingChangesTracked(savedCopy, true);
+                            hubApplyStateSink.bumpRetryable(ledger.idDispositions());
+                        } else {
+                            int applied = fieldSyncService.applyIncomingChanges(savedCopy, true);
+                            log.debug("Applied {} changes to hub entities from {}", applied, originMachine);
+                        }
                     } catch (Exception e) {
                         log.error("Failed to apply changes to hub entities from {}: {}", originMachine, e.getMessage());
-                        failedBatches.offer(savedCopy);
-                        pendingEntityRetry.set(true);
+                        if (!durable) {
+                            // Legacy path only. Under the durable path the co-committed PENDING/FAILED rows
+                            // + the restart-safe rescan handle recovery — no in-memory queue to lose.
+                            failedBatches.offer(savedCopy);
+                            pendingEntityRetry.set(true);
+                        }
                     }
                     broadcastChangesInBatches(savedCopy, originMachine);
                 });
@@ -244,6 +265,9 @@ public class HubSyncService {
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 120_000)
     public void retryPendingEntityApplication() {
+        // Mutually exclusive with the durable path: when it is on, HubApplyStateRecovery's rescan owns
+        // recovery and the vthread never populates failedBatches, so this must not also run.
+        if (hubApplyStateSink.isDurableEnabled()) return;
         if (!pendingEntityRetry.compareAndSet(true, false)) return;
 
         long start = System.currentTimeMillis();
@@ -377,6 +401,12 @@ public class HubSyncService {
                 if (!batch.isEmpty()) {
                     List<FieldChange> saved = fieldChangeRepository.saveAll(batch);
                     result.savedChanges.addAll(saved);
+                    // Co-commit A (Inc 7): write a PENDING apply-state row for each newly-saved change in
+                    // THIS SAME transaction. So no saved change ever lacks a durable "needs apply" marker,
+                    // even if the hub crashes before the Phase-4 apply thread runs. No-op unless the
+                    // durable path is enabled. (This is the exact hole the in-memory failedBatches had: a
+                    // change saved-but-not-yet-applied at crash time had no durable record at all.)
+                    hubApplyStateSink.ensurePending(saved);
                 }
             });
         }
