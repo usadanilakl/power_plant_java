@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.hub;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.repository.sync.HubChangeApplyStateRepo;
+import com.dk_power.power_plant_java.sevice.sync.HubApplyStateSink;
 import com.dk_power.power_plant_java.sevice.sync.SyncOrder;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,40 +67,55 @@ public class FieldChangeCompactor {
 
     private final FieldChangeRepository fieldChangeRepository;
     private final HubChangeApplyStateRepo applyStateRepo;
+    // The gate reads apply-state, which is ONLY maintained when the sink is truly active (durable AND
+    // apply-lww). Depend on the sink's own predicate so compaction can't run against a frozen gate.
+    private final HubApplyStateSink applyStateSink;
     private final TransactionTemplate transactionTemplate;
 
     @Value("${sync.hub.log-compaction-enabled:false}")
     private boolean compactionEnabled;
-    // The apply-state gate requires the durable apply-state. Keep the names aligned with Inc 7.
-    @Value("${sync.hub.durable-apply-state-enabled:false}")
-    private boolean durableApplyStateEnabled;
     @Value("${sync.hub.compaction-page-size:200}")
     private int pageSize;
     @Value("${sync.hub.compaction-delete-batch:500}")
     private int deleteBatch;
+    // A key whose latest change has NO apply-state row (never tracked — the pre-durable-apply-state
+    // backlog — or its terminal-good row was aged out by Inc 7's apply-state cleanup) is compactable once
+    // the latest is older than this: by then any deferral would have long since resolved (deferred-max-age
+    // is 24h) to applied or dead-lettered, and a dead-lettered latest KEEPS a (non-terminal-good) row so
+    // it is excluded here. Default 7 days ≥ the reconcile window, so freshly-enabled hubs don't
+    // age-compact a change the startup reconcile hasn't yet applied+tracked.
+    @Value("${sync.hub.compaction-min-age-hours:168}")
+    private long minAgeHours;
 
     private final AtomicBoolean inFlight = new AtomicBoolean(false);
 
     public FieldChangeCompactor(FieldChangeRepository fieldChangeRepository,
                                 HubChangeApplyStateRepo applyStateRepo,
+                                HubApplyStateSink applyStateSink,
                                 PlatformTransactionManager txManager) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.applyStateRepo = applyStateRepo;
+        this.applyStateSink = applyStateSink;
         this.transactionTemplate = new TransactionTemplate(txManager);
     }
 
-    /** Compaction is active only when enabled AND the durable apply-state it gates on is available. */
+    /**
+     * Active only when enabled AND the durable apply-state it gates on is genuinely being maintained.
+     * {@code sink.isDurableEnabled()} is {@code durable && apply-lww} — checking only the durable flag
+     * would let compaction run against a FROZEN gate when apply-lww is off (the sink stops writing).
+     */
     public boolean isActive() {
-        return compactionEnabled && durableApplyStateEnabled;
+        return compactionEnabled && applyStateSink.isDurableEnabled();
     }
 
     @PostConstruct
     void warnIfMisconfigured() {
-        if (compactionEnabled && !durableApplyStateEnabled) {
-            log.error("sync.hub.log-compaction-enabled=true but sync.hub.durable-apply-state-enabled=false "
+        if (compactionEnabled && !applyStateSink.isDurableEnabled()) {
+            log.error("sync.hub.log-compaction-enabled=true but the durable apply-state is not active "
+                    + "(needs sync.hub.durable-apply-state-enabled=true AND sync.hub.apply-lww-enabled=true) "
                     + "— compaction is INERT. It gates deletion on the apply-state disposition (never delete "
-                    + "a superseded value whose replacement isn't confirmed applied); without the durable "
-                    + "apply-state there is no gate, so it does nothing. Enable durable-apply-state.");
+                    + "a superseded value whose replacement isn't confirmed applied); without a maintained "
+                    + "apply-state there is no valid gate, so it does nothing.");
         }
     }
 
@@ -138,10 +156,11 @@ public class FieldChangeCompactor {
     }
 
     private long compactKeys(List<Object[]> keys) {
-        // Per key: find the SyncOrder-latest row; the rest are compaction victims (only if the latest is
-        // terminal-good, checked in one batch below).
+        // Per key: find the SyncOrder-latest row; the rest are compaction victims (only once the latest is
+        // safe to keep as the sole survivor — the gate below).
         List<UUID> latestIds = new ArrayList<>();
         Map<UUID, List<UUID>> victimsByLatest = new HashMap<>();
+        Map<UUID, Instant> latestTsById = new HashMap<>();
 
         for (Object[] key : keys) {
             String entityType = (String) key[0];
@@ -162,16 +181,27 @@ public class FieldChangeCompactor {
 
             latestIds.add(latest.getId());
             victimsByLatest.put(latest.getId(), victims);
+            latestTsById.put(latest.getId(), latest.getTimestamp());
         }
         if (latestIds.isEmpty()) return 0;
 
-        // Gate: only compact keys whose LATEST is durably applied (or a no-op supersede).
+        // Gate a key's compaction on its LATEST being safe to keep as the sole survivor:
+        //  - terminal-good in apply-state (durably applied / no-op-superseded), OR
+        //  - has NO apply-state row AND is older than minAgeHours. That covers changes the apply-state
+        //    never tracked (the pre-durable backlog) or whose terminal-good row was aged out — after the
+        //    grace window a deferral would have resolved, and a dead-lettered latest still HAS a row so it
+        //    is (correctly) excluded here, keeping its last-applied predecessor.
         Set<UUID> terminalGood = new HashSet<>(applyStateRepo.findTerminalGoodIds(latestIds));
+        Set<UUID> tracked = new HashSet<>(applyStateRepo.findExistingChangeIds(latestIds));
+        Instant graceCutoff = Instant.now().minus(minAgeHours, ChronoUnit.HOURS);
 
         List<UUID> toDelete = new ArrayList<>();
-        for (UUID latestId : terminalGood) {
-            List<UUID> v = victimsByLatest.get(latestId);
-            if (v != null) toDelete.addAll(v);
+        for (UUID latestId : latestIds) {
+            boolean compactable = terminalGood.contains(latestId)
+                    || (!tracked.contains(latestId)
+                        && latestTsById.get(latestId) != null
+                        && latestTsById.get(latestId).isBefore(graceCutoff));
+            if (compactable) toDelete.addAll(victimsByLatest.get(latestId));
         }
         if (toDelete.isEmpty()) return 0;
 
