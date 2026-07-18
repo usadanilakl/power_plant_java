@@ -1230,9 +1230,17 @@ public class FieldSyncService {
                 // collide with synced entities (PK violation on saveAndFlush).
                 advanceSequencePastIfNeeded(entityId);
 
-                // Save the CREATE change record
+                // Save the CREATE change record. Must be the _entity_ marker SPECIFICALLY: on a fresh
+                // entity EVERY field change is CREATE-typed (coordinates/name/deleted/... are all CREATE,
+                // not just the marker), so filtering on changeType alone picks an arbitrary field and
+                // leaves the real _entity_ marker with no disposition — a totality gap that strands its
+                // co-committed durable apply-state row at PENDING forever (the rescan then reapplies it
+                // every cycle and it never resolves). The DELETE path at the top of this method is already
+                // marker-specific for exactly this reason. We only reach here when hasCreate was true,
+                // which required an _entity_ CREATE to exist, so this find is non-null.
                 FieldChange createMarker = changes.stream()
-                    .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE)
+                    .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE
+                              && "_entity_".equals(c.getFieldName()))
                     .findFirst().orElse(null);
                 saveIncomingChange(createMarker);
                 appliedCount++;
