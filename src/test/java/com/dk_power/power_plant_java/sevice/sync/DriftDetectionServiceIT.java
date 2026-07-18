@@ -71,7 +71,7 @@ class DriftDetectionServiceIT {
         when(verify.isSpBacked(type)).thenReturn(true);
         List<EntityVerificationService.EntityVerificationStatus> issues = missingFromSp.stream()
                 .map(id -> EntityVerificationService.EntityVerificationStatus.builder()
-                        .entityId(id).spStatus("MISSING_FROM_SP").overallStatus("MISSING_FROM_SP").build())
+                        .entityId(id).inLocal(true).spStatus("MISSING_FROM_SP").overallStatus("MISSING_FROM_SP").build())
                 .toList();
         when(verify.verify(type, null)).thenReturn(
                 EntityVerificationService.VerificationResult.builder()
@@ -199,6 +199,25 @@ class DriftDetectionServiceIT {
 
         assertThat(row("AckType", 9L, DriftPeer.HUB).getStatus()).isEqualTo(DriftStatus.ACKNOWLEDGED);
         assertThat(row("AckType", 10L, DriftPeer.HUB).getStatus()).isEqualTo(DriftStatus.RECONCILED);
+    }
+
+    @Test
+    @DisplayName("SP: a hub-only row (not present locally) is NOT flagged as SharePoint drift — no phantom badge")
+    void sp_hubOnlyRow_notFlagged() {
+        when(verify.isSpBacked("FileObject")).thenReturn(true);
+        when(verify.verify("FileObject", null)).thenReturn(
+                EntityVerificationService.VerificationResult.builder()
+                        .entityType("FileObject").spBacked(true).hubReachable(true).spReachable(true)
+                        .issues(List.of(EntityVerificationService.EntityVerificationStatus.builder()
+                                .entityId(555L).inLocal(false)          // exists on hub, NOT locally
+                                .spStatus("MISSING_FROM_SP").overallStatus("MISSING_FROM_SP").build()))
+                        .build());
+
+        DriftDetectionService.DriftScanResult r = svc.detectSpForType("FileObject");
+
+        assertThat(r.flagged).as("a row this node doesn't have can't be its local-vs-SP drift").isZero();
+        assertThat(repo.findByEntityTypeAndEntityIdAndFieldNameAndPeer(
+                "FileObject", 555L, DriftRecord.ROW, DriftPeer.SHAREPOINT)).isEmpty();
     }
 
     @Test

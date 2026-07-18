@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.SyncResolutionService;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Transient;
@@ -172,9 +173,21 @@ public class NgSyncResolutionController {
                 // HashMap (not Map.of) so a hub-null value — i.e. "accept hub" means CLEAR the field — is allowed.
                 Map<String, String> single = new HashMap<>();
                 single.put(fieldName, hubData.get(fieldName));
-                int applied = fieldSyncService.applyIncomingChanges(
-                        buildFieldChangesFromData(entityType, entityId, single, true));
-                driftDetectionService.markReconciled(entityType, entityId, DriftPeer.HUB, "ACCEPTED_HUB", null);
+                List<FieldChange> changes = buildFieldChangesFromData(entityType, entityId, single, true);
+                // A relationship field (@ManyToOne/@ManyToMany/@OneToMany) is serialized as an id / id-list;
+                // without relationshipType the apply path treats it as a scalar and dead-letters it. The
+                // content-hash oracle DOES flag relationship drift, so this field can reach here — stamp it.
+                changes.forEach(c -> c.setRelationshipType(relationshipTypeFor(entity.getClass(), c.getFieldName())));
+                int applied = fieldSyncService.applyIncomingChanges(changes);
+                if (applied <= 0) {
+                    // Nothing landed (LWW-rejected / dead-lettered / deferred) — DO NOT clear the badge.
+                    return ResponseEntity.ok(new NgApiResponse<>(
+                            Map.of("applied", 0, "field", fieldName, "source", "hub"),
+                            "Hub value did not apply — drift left flagged for " + fieldName));
+                }
+                // Re-evaluate the row against the oracle (closes it ONLY if the WHOLE row now matches the
+                // hub — accepting one field of a multi-field-drifted row must not clear the others' drift).
+                driftDetectionService.detectHubForType(entityType);
                 return ResponseEntity.ok(new NgApiResponse<>(
                         Map.of("applied", applied, "field", fieldName, "source", "hub"),
                         "Accepted hub value for " + fieldName));
@@ -186,10 +199,17 @@ public class NgSyncResolutionController {
                 return ResponseEntity.ok(new NgApiResponse<>(null, "Not a syncable field: " + fieldName));
             }
             int sent = sendChangesToHub(List.of(change), syncConfig.getSyncServerUrl());
-            driftDetectionService.markReconciled(entityType, entityId, DriftPeer.HUB, "ACCEPTED_LOCAL", null);
+            if (sent <= 0) {
+                // Hub offline / rejected — the value did NOT land, so the drift is unresolved. Keep it flagged.
+                return ResponseEntity.ok(new NgApiResponse<>(
+                        Map.of("sent", 0, "field", fieldName, "source", "local"),
+                        "Hub did not accept the change — drift left flagged for " + fieldName));
+            }
+            // The hub applies the push asynchronously, so we do NOT eagerly reconcile here — the next scan
+            // clears the badge once the hub has actually converged (avoids a premature "resolved").
             return ResponseEntity.ok(new NgApiResponse<>(
                     Map.of("sent", sent, "field", fieldName, "source", "local"),
-                    "Pushed local value for " + fieldName));
+                    "Pushed local value for " + fieldName + " — will reconcile once the hub applies it"));
         } catch (Exception e) {
             log.error("Accept field {}#{}.{} failed: {}", entityType, entityId, fieldName, e.getMessage(), e);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
@@ -205,6 +225,8 @@ public class NgSyncResolutionController {
                         entityType, entityId, fieldName, null, serializeValue(f.get(entity)),
                         syncConfig.getMachineId() + "-RESOLVE", syncConfig.getMachineName(),
                         FieldChange.ChangeType.UPDATE);
+                // A relationship field must carry its type or the hub apply treats the id/id-list as a scalar.
+                fc.setRelationshipType(relationshipTypeFor(entity.getClass(), fieldName));
                 fc.setTimestamp(Instant.now());
                 return fc;
             } catch (Exception e) {
@@ -213,6 +235,19 @@ public class NgSyncResolutionController {
             }
         }
         return null; // not a trackable field
+    }
+
+    /** JPA relationship kind for a field ("ManyToOne"/"ManyToMany"/"OneToMany"), or null for a scalar —
+     *  mirrors how FieldChangeTracker tags real changes so a synthesized change dispatches the same way. */
+    private String relationshipTypeFor(Class<?> entityClass, String fieldName) {
+        for (Field f : getTrackableFields(entityClass)) {
+            if (!f.getName().equals(fieldName)) continue;
+            if (f.isAnnotationPresent(ManyToOne.class)) return "ManyToOne";
+            if (f.isAnnotationPresent(ManyToMany.class)) return "ManyToMany";
+            if (f.isAnnotationPresent(OneToMany.class)) return "OneToMany";
+            return null;
+        }
+        return null;
     }
 
     /**

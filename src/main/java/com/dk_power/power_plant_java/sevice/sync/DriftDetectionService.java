@@ -127,7 +127,10 @@ public class DriftDetectionService {
 
         Map<Long, DriftKind> current = new HashMap<>();
         for (EntityVerificationService.EntityVerificationStatus s : v.getIssues()) {
-            if (s.getEntityId() == null) continue; // SP_ONLY (no local id) — an import case, not row drift
+            // MISSING_ON_PEER means "local present, absent on the peer" — so the row MUST exist locally.
+            // verify() also reports MISSING_FROM_SP for hub-only rows (present on hub, not local, not SP);
+            // recording those as local-drift would be a phantom badge for a row this node doesn't even have.
+            if (s.getEntityId() == null || !s.isInLocal()) continue;
             if ("MISSING_FROM_SP".equals(s.getSpStatus())) {
                 current.put(s.getEntityId(), DriftKind.MISSING_ON_PEER);
             }
