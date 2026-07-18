@@ -221,6 +221,24 @@ public class NgAdminFunctionalitiesController {
         }
     }
 
+    // POST (not GET) because this MUTATES state (bulk dead-letter) — a GET would be reachable via a
+    // cross-site link/prefetch carrying the session cookie. The service also allow-lists the entityType
+    // and age-floors it, so it can only ever clear a known-stale, re-syncs-fresh backlog (ShiftDay).
+    @PostMapping("/sync-queue/deadletter-orphans")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> deadLetterStaleOrphans(
+            @RequestParam(name = "entityType", defaultValue = "ShiftDay") String entityType,
+            @RequestParam(name = "olderThanHours", defaultValue = "1") long olderThanHours) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.deadLetterStaleOrphans(entityType, olderThanHours);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Stale orphans dead-lettered"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/sync-queue/clear-all")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> clearAllChanges() {
         try {

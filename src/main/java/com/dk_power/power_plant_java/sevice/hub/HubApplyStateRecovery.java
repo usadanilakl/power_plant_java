@@ -68,6 +68,23 @@ public class HubApplyStateRecovery {
     private int maxAttempts;
     @Value("${sync.hub.deferred-max-age-minutes:1440}")
     private long deferredMaxAgeMinutes;
+    // PENDING give-up valve. Deliberately LARGE and >> deferred-max-age: with the fairness ordering every
+    // PENDING is attempted within minutes, so a row still PENDING after this long is a totality-gap
+    // straggler that will never resolve. Kept well above the DEFERRED window so a row that legitimately
+    // transitions PENDING->DEFERRED ages out on the DEFERRED clock first, never here.
+    @Value("${sync.hub.pending-max-age-hours:72}")
+    private long pendingMaxAgeHours;
+    // Startup grace: the give-up valves (dead-lettering) are wall-clock aged, and that clock does NOT pause
+    // while the hub is offline. After a long outage a change's window can elapse entirely during downtime,
+    // so a naive boot would dead-letter parent-waiting / unresolved changes the instant it comes back —
+    // before clients have even reconnected to re-send the parents. For this long after process start we
+    // RETRY only and run NO give-up valve, giving changes a fresh attempt (and clients time to re-sync
+    // their parents in) before anything is declared dead.
+    @Value("${sync.hub.startup-grace-minutes:60}")
+    private long startupGraceMinutes;
+
+    // Captured at construction (~app boot). Package-private setter-free; overridden via reflection in tests.
+    private volatile Instant processStartedAt = Instant.now();
     @Value("${sync.hub.rescan-page-size:200}")
     private int rescanPageSize;
     // Default >= the hub FieldChange retention (3 days) so a flag-flip reconcile covers every retained
@@ -139,7 +156,15 @@ public class HubApplyStateRecovery {
         }
         long start = System.currentTimeMillis();
         try {
-            escalateExhausted();
+            // Give-up valves are SKIPPED during the startup grace so a long outage (whose wall-clock burned
+            // the age windows while nothing could arrive) can't dead-letter changes on boot before they are
+            // retried and clients re-send parents. The retry pass below still runs — it heals what it can.
+            if (withinStartupGrace()) {
+                log.info("hub.apply_state.rescan within startup grace ({} min) — retrying only, give-up "
+                        + "valves deferred", startupGraceMinutes);
+            } else {
+                escalateExhausted();
+            }
 
             Instant deferredCutoff = Instant.now().minus(Duration.ofMinutes(deferredMaxAgeMinutes));
             Pageable page = PageRequest.of(0, rescanPageSize);
@@ -179,6 +204,23 @@ public class HubApplyStateRecovery {
             // Advance the retry budget for anything still non-terminal (own tx, survives an apply rollback).
             sink.bumpRetryable(ledger.idDispositions());
             ChangeDisposition d = ledger.of(change);
+            if (d == null) {
+                // No disposition produced (a ledger-totality gap): bumpRetryable saw an empty ledger, so this
+                // row's lastAttemptAt/attempts did not advance and it would keep sorting to the HEAD of the
+                // fairness order and re-starve the scan. Route it so it both ROTATES and eventually DRAINS,
+                // keyed on its current disposition (read at the top of this method; both writes below are
+                // monotonic, so a since-terminalized row is a safe no-op):
+                //  - PENDING: just stamp lastAttemptAt — findPendingExpired ages it out. Do NOT burn attempts,
+                //    preserving the crash-before-apply/D7 guard (a never-applied row must not dead-letter early).
+                //  - non-PENDING (FAILED_RETRYABLE/DEFERRED): touchPendingAttempt is PENDING-scoped and would
+                //    match 0 rows, freezing lastAttemptAt and pinning the row to the head forever with NO valve
+                //    reaching it. Route through the FAILED_RETRYABLE budget so findFailedExhausted drains it.
+                if (HubChangeApplyState.PENDING.equals(row.getDisposition())) {
+                    transactionTemplate.executeWithoutResult(st -> repo.touchPendingAttempt(changeId, Instant.now()));
+                } else {
+                    sink.bumpRetryable(Map.of(changeId, ChangeDisposition.FAILED_RETRYABLE));
+                }
+            }
             return d == ChangeDisposition.APPLIED || d == ChangeDisposition.NOOP_SUPERSEDED;
         } catch (Exception e) {
             log.error("hub.apply_state.reapply_failed changeId={}: {}", changeId, e.getMessage());
@@ -193,15 +235,28 @@ public class HubApplyStateRecovery {
                 || ChangeDisposition.DEAD_LETTER.name().equals(disposition);
     }
 
+    /** True while still inside the post-boot grace window during which NO give-up valve fires. */
+    boolean withinStartupGrace() {
+        return Instant.now().isBefore(processStartedAt.plus(Duration.ofMinutes(startupGraceMinutes)));
+    }
+
     /** Give-up valve: dead-letter changes that exhausted their (split) retry budget. */
     private void escalateExhausted() {
         Instant deferredCutoff = Instant.now().minus(Duration.ofMinutes(deferredMaxAgeMinutes));
+        Instant pendingCutoff = Instant.now().minus(Duration.ofHours(pendingMaxAgeHours));
         Pageable page = PageRequest.of(0, rescanPageSize);
         for (HubChangeApplyState s : repo.findFailedExhausted(maxAttempts, page)) {
             deadLetter(s, "FAILED_RETRYABLE attempts=" + s.getAttempts() + " >= " + maxAttempts);
         }
         for (HubChangeApplyState s : repo.findDeferredExpired(deferredCutoff, page)) {
             deadLetter(s, "DEFERRED older than " + deferredMaxAgeMinutes + " min — parent never arrived");
+        }
+        // PENDING give-up valve: previously PENDING had NO age-out at all, so a change that ended an apply
+        // run with no disposition (a ledger-totality gap) was re-applied every cycle forever. With the
+        // fairness ordering it is now reliably reached; if it is STILL PENDING this long after firstSeen it
+        // will never self-resolve, so escalate it like the other two retryable states.
+        for (HubChangeApplyState s : repo.findPendingExpired(pendingCutoff, page)) {
+            deadLetter(s, "PENDING older than " + pendingMaxAgeHours + "h — never classified (totality gap)");
         }
     }
 

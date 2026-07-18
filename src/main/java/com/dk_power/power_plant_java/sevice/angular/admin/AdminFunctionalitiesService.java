@@ -52,6 +52,18 @@ public class AdminFunctionalitiesService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.dk_power.power_plant_java.sevice.hub.FieldChangeCompactor fieldChangeCompactor;
 
+    // The durable hub apply-state (always instantiated as a Spring Data repo; only populated on the hub).
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.dk_power.power_plant_java.repository.sync.HubChangeApplyStateRepo hubChangeApplyStateRepo;
+
+    @Value("${sync.role:}")
+    private String syncRole;
+
+    // Entity types whose stranded orphans are safe to bulk-abandon: registration-gap backlogs that re-sync
+    // fresh from their source node. Deliberately narrow — extend ONLY for a type proven to re-sync from
+    // scratch (never for a type whose only copy of a change might live in this stranded row).
+    private static final java.util.Set<String> DISPOSABLE_ORPHAN_TYPES = java.util.Set.of("ShiftDay");
+
     @Value("${files.root.path}")
     private String filesRootPath;
 
@@ -642,6 +654,49 @@ public class AdminFunctionalitiesService {
         result.put("durationMs", System.currentTimeMillis() - start);
         logger.info("Admin: compaction run — {} -> {} FieldChanges ({} removed) in {} ms",
                 before, after, before - after, System.currentTimeMillis() - start);
+        return result;
+    }
+
+    /**
+     * Operator cleanup (C): bulk dead-letter a KNOWN-stale orphan backlog on the hub — the apply-state
+     * rows for an entity type that piled up unapplied before a registration gap was fixed and that
+     * re-sync fresh from the source node (notably ShiftDay, ~1.5k rows). Flips PENDING/DEFERRED/
+     * FAILED_RETRYABLE rows for the type to DEAD_LETTER so the rescan stops re-grinding them, instead of
+     * waiting for the per-row age-out to clear 200/cycle. Age-floored (>= 1h, never 0) so it can never
+     * touch a just-received change. The underlying FieldChange rows are left for retention/compaction.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, Object> deadLetterStaleOrphans(String entityType, long olderThanHours) {
+        Map<String, Object> result = new HashMap<>();
+        if (!"hub".equalsIgnoreCase(syncRole)) {
+            result.put("success", false);
+            result.put("error", "Apply-state cleanup is hub-only; this instance is not a hub.");
+            return result;
+        }
+        if (entityType == null || entityType.isBlank()) {
+            result.put("success", false);
+            result.put("error", "entityType is required (e.g. ShiftDay).");
+            return result;
+        }
+        // Allow-list: only types whose orphans are genuinely disposable — a registration-gap backlog that
+        // re-syncs fresh from its source node. Other types (LotoPoint/LotoSnapshot/Permit/...) may be
+        // HEALABLE, so bulk-abandoning them would be data loss; leave those to the fairness rescan + valves.
+        if (!DISPOSABLE_ORPHAN_TYPES.contains(entityType)) {
+            result.put("success", false);
+            result.put("error", "entityType '" + entityType + "' is not bulk-cleanable. Allowed: "
+                    + DISPOSABLE_ORPHAN_TYPES + " (others may be healable — let the rescan drain them).");
+            return result;
+        }
+        long floorHours = Math.max(olderThanHours, 1); // never a 0 floor — always protect fresh changes
+        java.time.Instant cutoff = java.time.Instant.now().minus(java.time.Duration.ofHours(floorHours));
+        int deadLettered = hubChangeApplyStateRepo.deadLetterStaleOrphansByType(
+                entityType, cutoff, java.time.Instant.now());
+        result.put("success", true);
+        result.put("entityType", entityType);
+        result.put("olderThanHours", floorHours);
+        result.put("deadLettered", deadLettered);
+        logger.warn("Admin: bulk dead-lettered {} stale '{}' orphan apply-state row(s) older than {}h",
+                deadLettered, entityType, floorHours);
         return result;
     }
 
