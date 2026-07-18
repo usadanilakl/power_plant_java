@@ -179,6 +179,60 @@ public class DriftDetectionService {
         }
     }
 
+    // ==================== Queries + triage (for the UI) ====================
+
+    /** Active (FLAGGED + ACKNOWLEDGED) records for a type — feeds the table badge map (one call per type). */
+    public List<DriftRecord> activeForType(String entityType) {
+        return repo.findByEntityTypeAndStatusIn(entityType, ACTIVE);
+    }
+
+    /** Every record (any status/field/peer) for one row — the form/row drill-down. */
+    public List<DriftRecord> forRow(String entityType, Long entityId) {
+        return repo.findByEntityTypeAndEntityId(entityType, entityId);
+    }
+
+    /** Mark a record ACKNOWLEDGED (the user saw it and chose to leave it). No-op on a resolved record. */
+    public boolean acknowledge(Long recordId) {
+        return Boolean.TRUE.equals(tx.execute(st -> {
+            DriftRecord r = repo.findById(recordId).orElse(null);
+            if (r == null || r.getStatus() == DriftStatus.RECONCILED) return false;
+            r.setStatus(DriftStatus.ACKNOWLEDGED);
+            repo.save(r);
+            return true;
+        }));
+    }
+
+    /**
+     * Mark a row's records for a peer RECONCILED after the user reconciled it (accept hub/local). Closes
+     * both the row-level record and any field-level records for that (type,id,peer). Called by the resolve
+     * endpoints so the badge clears immediately without waiting for the next scan to auto-converge.
+     */
+    public int markReconciled(String entityType, Long entityId, DriftPeer peer, String resolution, String by) {
+        return tx.execute(st -> {
+            int closed = 0;
+            java.time.Instant now = Instant.now();
+            for (DriftRecord r : repo.findByEntityTypeAndEntityId(entityType, entityId)) {
+                if (r.getPeer() != peer || r.getStatus() == DriftStatus.RECONCILED) continue;
+                r.setStatus(DriftStatus.RECONCILED);
+                r.setResolvedAt(now);
+                r.setResolvedBy(by);
+                r.setResolution(resolution);
+                repo.save(r);
+                closed++;
+            }
+            return closed;
+        });
+    }
+
+    /** Global counts by status — feeds the header indicator's trustworthy drift badge. */
+    public Map<String, Long> summaryCounts() {
+        Map<String, Long> m = new java.util.LinkedHashMap<>();
+        m.put("flagged", repo.countByStatus(DriftStatus.FLAGGED));
+        m.put("acknowledged", repo.countByStatus(DriftStatus.ACKNOWLEDGED));
+        m.put("reconciled", repo.countByStatus(DriftStatus.RECONCILED));
+        return m;
+    }
+
     /** Small mutable tally returned by a scan. */
     public static class DriftScanResult {
         public int typesScanned;

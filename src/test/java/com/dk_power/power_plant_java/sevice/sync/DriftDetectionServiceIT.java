@@ -159,6 +159,48 @@ class DriftDetectionServiceIT {
         assertThat(rec.getStatus()).isEqualTo(DriftStatus.FLAGGED);
     }
 
+    private DriftRecord seed(String type, long id, DriftPeer peer, DriftStatus status) {
+        DriftRecord r = new DriftRecord();
+        r.setEntityType(type);
+        r.setEntityId(id);
+        r.setFieldName(DriftRecord.ROW);
+        r.setPeer(peer);
+        r.setKind(DriftKind.DIFFERING);
+        r.setStatus(status);
+        r.setFirstDetectedAt(java.time.Instant.now());
+        r.setLastDetectedAt(java.time.Instant.now());
+        return repo.save(r);
+    }
+
+    @Test
+    @DisplayName("markReconciled closes a row's records for ONE peer only (the accept-field reconcile hook)")
+    void markReconciled_scopedToPeerAndRow() {
+        seed("MarkRecType", 5L, DriftPeer.HUB, DriftStatus.FLAGGED);
+        seed("MarkRecType", 5L, DriftPeer.SHAREPOINT, DriftStatus.FLAGGED);
+        seed("MarkRecType", 6L, DriftPeer.HUB, DriftStatus.FLAGGED);
+
+        int closed = svc.markReconciled("MarkRecType", 5L, DriftPeer.HUB, "ACCEPTED_HUB", "tester");
+
+        assertThat(closed).isEqualTo(1);
+        assertThat(row("MarkRecType", 5L, DriftPeer.HUB).getStatus()).isEqualTo(DriftStatus.RECONCILED);
+        assertThat(row("MarkRecType", 5L, DriftPeer.HUB).getResolution()).isEqualTo("ACCEPTED_HUB");
+        assertThat(row("MarkRecType", 5L, DriftPeer.SHAREPOINT).getStatus()).as("other peer untouched").isEqualTo(DriftStatus.FLAGGED);
+        assertThat(row("MarkRecType", 6L, DriftPeer.HUB).getStatus()).as("other row untouched").isEqualTo(DriftStatus.FLAGGED);
+    }
+
+    @Test
+    @DisplayName("acknowledge flips FLAGGED -> ACKNOWLEDGED but is a no-op on a resolved record")
+    void acknowledge_onlyActive() {
+        DriftRecord active = seed("AckType", 9L, DriftPeer.HUB, DriftStatus.FLAGGED);
+        DriftRecord done = seed("AckType", 10L, DriftPeer.HUB, DriftStatus.RECONCILED);
+
+        assertThat(svc.acknowledge(active.getId())).isTrue();
+        assertThat(svc.acknowledge(done.getId())).as("cannot re-open a resolved record").isFalse();
+
+        assertThat(row("AckType", 9L, DriftPeer.HUB).getStatus()).isEqualTo(DriftStatus.ACKNOWLEDGED);
+        assertThat(row("AckType", 10L, DriftPeer.HUB).getStatus()).isEqualTo(DriftStatus.RECONCILED);
+    }
+
     @Test
     @DisplayName("SP: an unreachable SharePoint is a no-op — never flags, never auto-reconciles (state unknown)")
     void sp_unreachable_isNoOp() {

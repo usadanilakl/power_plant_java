@@ -3,7 +3,9 @@ package com.dk_power.power_plant_java.controller.angular.sync;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.sync.DriftPeer;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
+import com.dk_power.power_plant_java.sevice.sync.DriftDetectionService;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.sync.EntityVerificationService;
@@ -46,6 +48,7 @@ public class NgSyncResolutionController {
     private final ObjectMapper objectMapper;
     private final EntityVerificationService entityVerificationService;
     private final SyncResolutionService syncResolutionService;
+    private final DriftDetectionService driftDetectionService;
 
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
@@ -133,6 +136,83 @@ public class NgSyncResolutionController {
             log.error("Accept local failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Accept a SINGLE field (hub's value or local's) — the field-level reconcile the content-hash drift
+     * tooling needs. Unlike accept-local/accept-remote (which replay the WHOLE entity and can clobber a
+     * concurrent edit to a different field of the same row), this emits exactly one field's change:
+     * <ul>
+     *   <li>{@code source=hub}: overwrite the local field with the hub's current value (one UPDATE, applied
+     *       locally);</li>
+     *   <li>{@code source=local}: push the local field's value up to the hub (one UPDATE stamped with the
+     *       {@code -RESOLVE} machine id so the hub's LWW accepts it over its existing value).</li>
+     * </ul>
+     * On success the row's HUB drift records are marked RECONCILED so the badge clears immediately.
+     */
+    @PostMapping("/accept-field/{entityType}/{entityId}/{fieldName}")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> acceptField(
+            @PathVariable String entityType, @PathVariable Long entityId, @PathVariable String fieldName,
+            @RequestParam(name = "source", defaultValue = "hub") String source) {
+        try {
+            SyncableService<?> service = serviceFacade.getService(entityType);
+            if (service == null) {
+                return ResponseEntity.ok(new NgApiResponse<>(null, "Unknown entity type: " + entityType));
+            }
+            BaseIdEntity entity = (BaseIdEntity) service.getEntityById(entityId);
+            if (entity == null) {
+                return ResponseEntity.ok(new NgApiResponse<>(null, "Entity not found locally"));
+            }
+
+            if ("hub".equalsIgnoreCase(source)) {
+                Map<String, String> hubData = fetchServerEntityData(entityType, entityId, syncConfig.getSyncServerUrl());
+                if (hubData == null || !hubData.containsKey(fieldName)) {
+                    return ResponseEntity.ok(new NgApiResponse<>(null, "Field not present on hub: " + fieldName));
+                }
+                // HashMap (not Map.of) so a hub-null value — i.e. "accept hub" means CLEAR the field — is allowed.
+                Map<String, String> single = new HashMap<>();
+                single.put(fieldName, hubData.get(fieldName));
+                int applied = fieldSyncService.applyIncomingChanges(
+                        buildFieldChangesFromData(entityType, entityId, single, true));
+                driftDetectionService.markReconciled(entityType, entityId, DriftPeer.HUB, "ACCEPTED_HUB", null);
+                return ResponseEntity.ok(new NgApiResponse<>(
+                        Map.of("applied", applied, "field", fieldName, "source", "hub"),
+                        "Accepted hub value for " + fieldName));
+            }
+
+            // source=local
+            FieldChange change = buildLocalFieldChange(entityType, entityId, entity, fieldName);
+            if (change == null) {
+                return ResponseEntity.ok(new NgApiResponse<>(null, "Not a syncable field: " + fieldName));
+            }
+            int sent = sendChangesToHub(List.of(change), syncConfig.getSyncServerUrl());
+            driftDetectionService.markReconciled(entityType, entityId, DriftPeer.HUB, "ACCEPTED_LOCAL", null);
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    Map.of("sent", sent, "field", fieldName, "source", "local"),
+                    "Pushed local value for " + fieldName));
+        } catch (Exception e) {
+            log.error("Accept field {}#{}.{} failed: {}", entityType, entityId, fieldName, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Build ONE UPDATE FieldChange from the local entity's current value for {@code fieldName} (or null). */
+    private FieldChange buildLocalFieldChange(String entityType, Long entityId, BaseIdEntity entity, String fieldName) {
+        for (Field f : getTrackableFields(entity.getClass())) {
+            if (!f.getName().equals(fieldName)) continue;
+            try {
+                FieldChange fc = new FieldChange(
+                        entityType, entityId, fieldName, null, serializeValue(f.get(entity)),
+                        syncConfig.getMachineId() + "-RESOLVE", syncConfig.getMachineName(),
+                        FieldChange.ChangeType.UPDATE);
+                fc.setTimestamp(Instant.now());
+                return fc;
+            } catch (Exception e) {
+                log.trace("buildLocalFieldChange {}.{}: {}", entityType, fieldName, e.getMessage());
+                return null;
+            }
+        }
+        return null; // not a trackable field
     }
 
     /**
