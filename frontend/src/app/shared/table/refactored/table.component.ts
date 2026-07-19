@@ -17,8 +17,8 @@ import {
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { timer } from 'rxjs';
-import { DriftService, RowDrift, ThreeWayFieldDiff } from '../../../services/drift.service';
+import { timer, forkJoin } from 'rxjs';
+import { DriftService, RowDrift, DriftRecord, ThreeWayFieldDiff } from '../../../services/drift.service';
 import {
   CdkVirtualScrollViewport,
   ScrollingModule,
@@ -83,6 +83,20 @@ export interface FilterOutRules {
     .drift-dot.ack { opacity:0.45; }       /* acknowledged = dimmed */
     .drift-result { margin-left:8px; font-size:12px; color:#cfd8dc; }
     .drift-checked { margin-left:8px; font-size:11px; color:#90a4ae; font-style:italic; }
+    .drift-strip { margin:6px 0; border:1px solid #4a5a2e; border-radius:6px; background:#2a3320; overflow:hidden; }
+    .drift-strip-head { display:flex; align-items:center; gap:8px; padding:7px 10px; cursor:pointer; font-size:13px; color:#dce8c8; }
+    .drift-strip-head b { color:#fff; }
+    .ds-caret { width:12px; color:#9ccc65; }
+    .ds-badge { display:inline-flex; align-items:center; justify-content:center; min-width:15px; height:15px; padding:0 4px;
+      border-radius:4px; font-size:10px; font-weight:700; color:#fff; background:#e67e22; }
+    .ds-spacer { flex:1 1 auto; }
+    .ds-pullall { margin-left:auto; }
+    .ds-result { padding:0 10px 7px 30px; font-size:12px; color:#c5e1a5; }
+    .drift-strip-list { border-top:1px solid #3d4a26; max-height:180px; overflow-y:auto; }
+    .ds-row { display:flex; align-items:center; gap:10px; padding:5px 10px 5px 30px; font-size:12px; color:#cfd8dc; border-top:1px solid #333c22; }
+    .ds-row:first-child { border-top:none; }
+    .ds-id { font-weight:600; color:#fff; min-width:70px; }
+    .ds-note { color:#90a4ae; flex:1 1 auto; }
     /* row-action popover */
     .drift-backdrop { position:fixed; inset:0; z-index:900; }
     .drift-pop { position:fixed; z-index:901; min-width:210px; background:#212734; border:1px solid #353c4a;
@@ -167,6 +181,20 @@ export class TableComponent implements OnInit, AfterViewInit {
   });
   private driftRenderedScanAt: string | null = null; // the scan the badge map currently reflects (plain, non-reactive)
   private driftPollStarted = false;
+  // #1: rows the HUB has but LOCAL doesn't. They have no local row to badge, so they surface in a strip above
+  // the table with per-row + bulk "Pull". Fed from the same driftMap, so it stays reactive with the poll.
+  driftStripOpen = signal(false);
+  driftPullBusy = signal(false);
+  driftPullResult = signal<string>('');
+  /** Emitted after hub-only rows are pulled down, so a parent list can reload its data to show the new rows. */
+  driftEntityPulled = output<{ type: string; ids: number[] }>();
+  driftMissingRows = computed<{ id: number; rec: DriftRecord }[]>(() => {
+    const out: { id: number; rec: DriftRecord }[] = [];
+    for (const [id, row] of this.driftMap()) {
+      if (row.hub?.kind === 'MISSING_LOCALLY') out.push({ id, rec: row.hub });
+    }
+    return out.sort((a, b) => a.id - b.id);
+  });
   private driftLoadEffect = effect(() => {
     const type = this.driftEntityType();
     if (type) { this.loadDrift(type); this.startDriftPoll(); }
@@ -421,6 +449,31 @@ export class TableComponent implements OnInit, AfterViewInit {
     if (s < 3600) return Math.round(s / 60) + 'm ago';
     if (s < 86400) return Math.round(s / 3600) + 'h ago';
     return Math.round(s / 86400) + 'd ago';
+  }
+
+  /** #1: pull ONE hub-only row down (dependency-aware), then re-scan so it leaves the strip. */
+  pullMissing(id: number): void { this.runDriftPull([id]); }
+  /** #1: pull EVERY hub-only row down at once. */
+  pullAllMissing(): void { this.runDriftPull(this.driftMissingRows().map((r) => r.id)); }
+
+  private runDriftPull(ids: number[]): void {
+    const t = this.driftEntityType();
+    if (!t || !ids.length || this.driftPullBusy()) return;
+    this.driftPullBusy.set(true);
+    this.driftPullResult.set('');
+    forkJoin(ids.map((id) => this.driftService.acceptHub(t, id)))
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe(() => {
+        // Re-detect so the pulled rows clear from MISSING_LOCALLY, then refresh the badge map + strip.
+        this.driftService.scanType(t)
+          .pipe(takeUntilDestroyed(this.driftDestroyRef))
+          .subscribe(() => {
+            this.driftPullBusy.set(false);
+            this.driftPullResult.set(`Pulled ${ids.length} row(s) from hub — refresh the list to see them`);
+            this.loadDrift(t);
+            this.driftEntityPulled.emit({ type: t, ids });
+          });
+      });
   }
 
   /** Force a fresh re-detection for this type (hub + SharePoint), then reload the badges. */

@@ -47,6 +47,34 @@
      }
   </div>
 
+  @if (driftEntityType() && driftMissingRows().length) {
+    <div class="drift-strip">
+      <div class="drift-strip-head" (click)="driftStripOpen.set(!driftStripOpen())"
+           title="These rows exist on the hub but not in this local list">
+        <span class="ds-caret">{{ driftStripOpen() ? '▾' : '▸' }}</span>
+        <span class="ds-badge">H</span>
+        <b>{{ driftMissingRows().length }}</b>&nbsp;row(s) on the hub, not here
+        <span class="ds-spacer"></span>
+        <button class="drift-scan-btn ds-pullall" [disabled]="driftPullBusy()"
+                (click)="$event.stopPropagation(); pullAllMissing()">
+          {{ driftPullBusy() ? 'Pulling…' : '⬇ Pull all' }}
+        </button>
+      </div>
+      @if (driftPullResult()) { <div class="ds-result">{{ driftPullResult() }}</div> }
+      @if (driftStripOpen()) {
+        <div class="drift-strip-list">
+          @for (r of driftMissingRows(); track r.id) {
+            <div class="ds-row">
+              <span class="ds-id">#{{ r.id }}</span>
+              <span class="ds-note">on hub, not here</span>
+              <button class="drift-scan-btn ds-pull" [disabled]="driftPullBusy()" (click)="pullMissing(r.id)">⬇ Pull</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
   <div #headerContainer class="header-container">
     <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0)">
       <thead>
