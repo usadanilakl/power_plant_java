@@ -6,6 +6,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SyncUpdateService, SyncActivityEvent } from '../../../services/sync/sync-update.service';
 
@@ -48,6 +49,10 @@ import { SyncUpdateService, SyncActivityEvent } from '../../../services/sync/syn
             <mat-icon class="status-icon" [class]="'status-' + event.status.toLowerCase()">
               {{ event.status === 'SUCCESS' ? 'check_circle' : event.status === 'FAILED' ? 'error' : 'remove_circle_outline' }}
             </mat-icon>
+            <button mat-icon-button class="drift-link-btn" (click)="viewDrift(event)"
+                    [title]="'Review ' + event.entityType + ' drift in the Drift Center'">
+              <mat-icon>rule</mat-icon>
+            </button>
           </div>
         } @empty {
           <div class="empty-feed">
@@ -86,11 +91,15 @@ import { SyncUpdateService, SyncActivityEvent } from '../../../services/sync/syn
     .status-success { color: #4caf50; }
     .status-failed { color: #f44336; }
     .status-skipped { color: #9e9e9e; }
+    .drift-link-btn { margin-left: auto; width: 28px; height: 28px; line-height: 28px; opacity: 0.55; }
+    .drift-link-btn:hover { opacity: 1; }
+    .drift-link-btn mat-icon { font-size: 16px; width: 16px; height: 16px; }
     .empty-feed { display: flex; align-items: center; gap: 8px; padding: 24px; justify-content: center; opacity: 0.5; }
   `]
 })
 export class SyncActivityComponent implements OnInit, OnDestroy {
   private syncUpdateService = inject(SyncUpdateService);
+  private router = inject(Router);
   private sub: Subscription | null = null;
   private maxEvents = 200;
 
@@ -127,6 +136,11 @@ export class SyncActivityComponent implements OnInit, OnDestroy {
 
   clear() {
     this.events.set([]);
+  }
+
+  /** Jump from an event to that entity type's drift in the Drift Center. */
+  viewDrift(event: SyncActivityEvent) {
+    this.router.navigate(['/sync/drift'], { queryParams: { type: event.entityType } });
   }
 
   ngOnDestroy() {

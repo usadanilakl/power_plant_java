@@ -1,5 +1,6 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of } from 'rxjs';
 import {
@@ -23,6 +24,7 @@ interface DriftRow { id: number; hub?: DriftRecord; sp?: DriftRecord; }
 export class DriftCenterComponent implements OnInit {
   private drift = inject(DriftService);
   private destroyRef = inject(DestroyRef);
+  private route = inject(ActivatedRoute);
 
   overview = signal<DriftScanState[]>([]);
   selectedType = signal<string | null>(null);
@@ -64,7 +66,13 @@ export class DriftCenterComponent implements OnInit {
     return id == null ? null : (this.rows().find(r => r.id === id) ?? null);
   });
 
-  ngOnInit(): void { this.reloadOverview(); }
+  ngOnInit(): void {
+    // Honour a ?type= deep-link (from the sync badge / Overview / Activity / in-table links) — select it
+    // BEFORE reloadOverview so its "auto-select first drifting type" fallback doesn't override the request.
+    const t = this.route.snapshot.queryParamMap.get('type');
+    if (t) this.selectType(t);
+    this.reloadOverview();
+  }
 
   private reloadOverview(): void {
     this.drift.overview$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(list => {

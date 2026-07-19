@@ -292,6 +292,22 @@ h2 {
   border-radius: 6px;
 }
 
+.drift-report-link {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background-color: var(--secondary-background);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.drift-report-link .drift-link {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .drift-report h4 {
   margin: 0 0 12px 0;
   color: var(--primary-text);

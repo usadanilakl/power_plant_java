@@ -128,43 +128,11 @@
             <p>{{ syncHealthCheck.message }}</p>
           </div>
 
-          <div class="drift-report" *ngIf="hasEntityDrift() || hasFileDrift()">
-            <h4>Drift Report</h4>
-
-            <div class="file-drift-box" *ngIf="hasFileDrift() && syncHealthCheck.fileDrift">
-              <div><strong>Files</strong></div>
-              <div>Local: {{ syncHealthCheck.fileDrift.localCount }}</div>
-              <div>Server: {{ syncHealthCheck.fileDrift.serverCount }}</div>
-              <div>Difference: {{ syncHealthCheck.fileDrift.difference }}</div>
-            </div>
-
-            <div class="drift-table-wrapper" *ngIf="hasEntityDrift()">
-              <table class="drift-table">
-                <thead>
-                  <tr>
-                    <th>Entity Type</th>
-                    <th>Local</th>
-                    <th>Server</th>
-                    <th>Diff</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let drift of syncHealthCheck.entityDrift">
-                    <td>
-                      <a
-                        [routerLink]="['/admin']"
-                        [queryParams]="{ auditEntityType: drift.entityType, auditSection: 'sync-audit' }"
-                        class="drift-link">
-                        {{ drift.entityType }}
-                      </a>
-                    </td>
-                    <td>{{ drift.localCount }}</td>
-                    <td>{{ drift.serverCount }}</td>
-                    <td class="warning-text">{{ drift.difference }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <!-- The old count-delta "Drift Report" was retired. Real field-level drift (content-hash,
+               hub + SharePoint) lives in the Drift Center; this tab is for recovery/resync actions. -->
+          <div class="drift-report-link">
+            <span>ℹ️ Field-level drift is now tracked accurately in the Drift Center.</span>
+            <a [routerLink]="['/sync/drift']" class="drift-link">Open Drift Center →</a>
           </div>
 
           <!-- Sync Suggestion Box -->

@@ -302,13 +302,8 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     }
   }
 
-  hasEntityDrift(): boolean {
-    return (this.syncHealthCheck?.entityDrift?.length ?? 0) > 0;
-  }
-
-  hasFileDrift(): boolean {
-    return (this.syncHealthCheck?.fileDrift?.difference ?? 0) > 0;
-  }
+  // hasEntityDrift/hasFileDrift removed — the count-delta Drift Report was retired in favour of the
+  // content-hash Drift Center (see the drift-report-link in the template).
 
   loadPreview(): void {
     this.previewLoading = true;
