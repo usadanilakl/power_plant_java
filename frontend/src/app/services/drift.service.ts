@@ -171,9 +171,10 @@ export class DriftService {
   // ==================== Reconcile actions (whole-row) ====================
   private resolveBase = `${environment.baseApiUrl}/ng/sync/resolve`;
 
-  /** Use the HUB's version of the whole row (overwrites local). */
+  /** Use the HUB's version of the whole row — via the dependency-aware pull, so relationship fields whose
+   *  referenced entity is missing locally get that entity pulled too (a plain accept-remote can't resolve them). */
   acceptHub(entityType: string, entityId: number): Observable<any> {
-    return this.http.post<NgApiResponse<any>>(`${this.resolveBase}/accept-remote/${entityType}/${entityId}`, {})
+    return this.http.post<NgApiResponse<any>>(`${this.resolveBase}/execute-pull/${entityType}/${entityId}`, {})
       .pipe(map(r => r?.responseData), catchError(() => of(null)));
   }
   /** Keep the LOCAL version — push it up to the hub (overwrites hub). */

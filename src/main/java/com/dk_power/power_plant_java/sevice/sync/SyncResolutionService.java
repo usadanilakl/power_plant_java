@@ -157,64 +157,143 @@ public class SyncResolutionService {
     }
 
     /**
-     * Execute pull: fetch all related entities from hub and apply locally.
+     * Execute pull: fetch the target from the hub AND every entity it references (transitively) that is
+     * MISSING locally, then apply them together in SYNC_ORDER. This is what makes "Use Hub" actually resolve
+     * a relationship field pointing at a locally-absent entity: the old version discovered dependencies only
+     * from the LOCAL entity's fields, so a locally-missing reference was never found. Here the graph is SEEDED
+     * from the HUB payload's relationship ids, so the referenced rows are created before the FK/join rows that
+     * point at them, and the relationship fields carry their type so the apply dispatches through the M2O/M2M
+     * branches (a bare scalar change never sets an FK). Bounded by a cap.
      */
     public PullResult pullWithDependencies(String entityType, Long entityId) {
-        String syncServerUrl = syncConfig.getSyncServerUrl();
-        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+        String url = syncConfig.getSyncServerUrl();
+        if (url == null || url.isEmpty()) {
             return new PullResult(0, 0, Map.of(), "Sync server URL not configured");
         }
 
-        // Collect graph of what we need
-        List<EntityRef> refs = new ArrayList<>();
-        refs.add(new EntityRef(entityType, entityId));
+        Set<String> visited = new HashSet<>();
+        java.util.Deque<EntityRef> queue = new java.util.ArrayDeque<>();
+        queue.add(new EntityRef(entityType, entityId));
+        Map<EntityRef, Map<String, String>> fetched = new LinkedHashMap<>();
+        final int cap = 500;
 
-        // Try to expand graph if entity exists locally
-        try {
-            SyncableService<?> svc = serviceFacade.getService(entityType);
-            if (svc != null && svc.getEntityById(entityId) != null) {
-                refs = collectDependencyGraph(entityType, entityId);
-            }
-        } catch (Exception e) {
-            log.debug("Could not expand graph for pull: {}", e.getMessage());
-        }
-
-        // For each entity in graph, check if it exists on hub
-        // and fetch its data if it does
-        List<FieldChange> allChanges = new ArrayList<>();
-        Map<String, Integer> countByType = new LinkedHashMap<>();
-
-        // Sort by SYNC_ORDER for proper creation order
-        refs.sort(Comparator.comparingInt(ref ->
-            entityTableRegistry.getSyncOrder().indexOf(ref.entityType)));
-
-        for (EntityRef ref : refs) {
+        while (!queue.isEmpty() && fetched.size() < cap) {
+            EntityRef ref = queue.poll();
+            if (!visited.add(ref.entityType + "#" + ref.entityId)) continue;
+            Map<String, String> hubData;
             try {
-                Map<String, String> hubData = syncComparisonService.fetchServerEntityData(
-                    ref.entityType, ref.entityId, syncServerUrl);
-                if (hubData == null) continue;
-
-                SyncableService<?> svc = serviceFacade.getService(ref.entityType);
-                boolean existsLocally = svc != null && svc.getEntityById(ref.entityId) != null;
-
-                List<FieldChange> changes = buildFieldChangesFromData(
-                    ref.entityType, ref.entityId, hubData, existsLocally);
-                allChanges.addAll(changes);
-                countByType.merge(ref.entityType, 1, Integer::sum);
+                hubData = syncComparisonService.fetchServerEntityData(ref.entityType, ref.entityId, url);
             } catch (Exception e) {
-                log.debug("Could not fetch hub data for {}#{}: {}", ref.entityType, ref.entityId, e.getMessage());
+                log.debug("pull: hub fetch failed for {}#{}: {}", ref.entityType, ref.entityId, e.getMessage());
+                continue;
+            }
+            if (hubData == null) continue;
+            fetched.put(ref, hubData);
+            // Follow this entity's relationship refs; enqueue only those MISSING locally (they block resolution).
+            for (EntityRef child : refsFromHubData(ref.entityType, hubData)) {
+                if (visited.contains(child.entityType + "#" + child.entityId)) continue;
+                SyncableService<?> csvc = serviceFacade.getService(child.entityType);
+                if (csvc == null || csvc.getEntityById(child.entityId) == null) {
+                    queue.add(child);
+                }
             }
         }
 
-        if (allChanges.isEmpty()) {
+        if (fetched.isEmpty()) {
             return new PullResult(0, 0, Map.of(), "No data found on hub");
         }
 
-        int applied = fieldSyncService.applyIncomingChanges(allChanges);
+        List<EntityRef> ordered = new ArrayList<>(fetched.keySet());
+        ordered.sort(Comparator.comparingInt(r -> entityTableRegistry.getSyncOrder().indexOf(r.entityType)));
 
+        List<FieldChange> allChanges = new ArrayList<>();
+        Map<String, Integer> countByType = new LinkedHashMap<>();
+        for (EntityRef ref : ordered) {
+            SyncableService<?> svc = serviceFacade.getService(ref.entityType);
+            boolean existsLocally = svc != null && svc.getEntityById(ref.entityId) != null;
+            allChanges.addAll(buildHubChangesWithRelTypes(ref.entityType, ref.entityId, fetched.get(ref), existsLocally));
+            countByType.merge(ref.entityType, 1, Integer::sum);
+        }
+
+        int applied = fieldSyncService.applyIncomingChanges(allChanges);
         return new PullResult(countByType.values().stream().mapToInt(Integer::intValue).sum(),
             applied, countByType,
-            "Pulled " + countByType.size() + " entity types (" + applied + " changes applied)");
+            "Pulled " + countByType.size() + " entity type(s) (" + applied + " changes applied)");
+    }
+
+    /** Relationship refs (type#id) parsed from a hub entity's serialized fields — the seed for the pull so a
+     *  relationship pointing at a locally-missing entity gets that entity pulled. */
+    private List<EntityRef> refsFromHubData(String entityType, Map<String, String> hubData) {
+        List<EntityRef> refs = new ArrayList<>();
+        Class<?> clazz = entityClassFor(entityType);
+        if (clazz == null) return refs;
+        for (RelationshipField rel : getRelationships(clazz)) {
+            String raw = hubData.get(rel.field.getName());
+            if (raw == null || raw.isBlank() || "null".equals(raw)) continue;
+            Class<?> target = "ManyToOne".equals(rel.type) ? rel.field.getType() : collectionElementType(rel.field);
+            if (target == null) continue;
+            String refType = target.getSimpleName();
+            if (!entityTableRegistry.isRegistered(refType)) continue;
+            if ("ManyToOne".equals(rel.type)) {
+                Long id = tryParseLong(raw.trim());
+                if (id != null) refs.add(new EntityRef(refType, id));
+            } else {
+                for (Long id : parseIdList(raw)) refs.add(new EntityRef(refType, id));
+            }
+        }
+        return refs;
+    }
+
+    /** Build FieldChanges from hub data, tagging relationship fields with their type so the apply dispatches
+     *  through the M2O/M2M branches (a plain scalar change would never set an FK). */
+    private List<FieldChange> buildHubChangesWithRelTypes(String entityType, Long entityId,
+                                                          Map<String, String> hubData, boolean existsLocally) {
+        Class<?> clazz = entityClassFor(entityType);
+        Map<String, String> relTypes = new HashMap<>();
+        if (clazz != null) for (RelationshipField rel : getRelationships(clazz)) relTypes.put(rel.field.getName(), rel.type);
+        List<FieldChange> changes = new ArrayList<>();
+        FieldChange.ChangeType ct = existsLocally ? FieldChange.ChangeType.UPDATE : FieldChange.ChangeType.CREATE;
+        if (!existsLocally) {
+            FieldChange marker = new FieldChange(entityType, entityId, "_entity_", null, "CREATED",
+                "HUB", "Hub Server", FieldChange.ChangeType.CREATE);
+            marker.setTimestamp(Instant.now());
+            changes.add(marker);
+        }
+        for (Map.Entry<String, String> e : hubData.entrySet()) {
+            FieldChange fc = new FieldChange(entityType, entityId, e.getKey(), null, e.getValue(),
+                "HUB", "Hub Server", ct);
+            fc.setTimestamp(Instant.now());
+            String rt = relTypes.get(e.getKey());
+            if (rt != null) fc.setRelationshipType(rt);
+            changes.add(fc);
+        }
+        return changes;
+    }
+
+    private Class<?> entityClassFor(String entityType) {
+        try {
+            SyncableService<?> svc = serviceFacade.getService(entityType);
+            Object proto = svc != null ? svc.getEntity() : null;
+            return proto != null ? proto.getClass() : null;
+        } catch (Exception e) { return null; }
+    }
+
+    private Class<?> collectionElementType(Field f) {
+        java.lang.reflect.Type gt = f.getGenericType();
+        if (gt instanceof java.lang.reflect.ParameterizedType pt) {
+            java.lang.reflect.Type[] args = pt.getActualTypeArguments();
+            if (args.length == 1 && args[0] instanceof Class<?> c) return c;
+        }
+        return null;
+    }
+
+    private Long tryParseLong(String s) {
+        try { return Long.parseLong(s); } catch (Exception e) { return null; }
+    }
+
+    private List<Long> parseIdList(String raw) {
+        try { return java.util.Arrays.asList(objectMapper.readValue(raw, Long[].class)); }
+        catch (Exception e) { return List.of(); }
     }
 
     // ==================== Dependency Graph Walking ====================
