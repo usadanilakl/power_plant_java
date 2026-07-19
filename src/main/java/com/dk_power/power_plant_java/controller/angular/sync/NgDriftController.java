@@ -1,13 +1,16 @@
 package com.dk_power.power_plant_java.controller.angular.sync;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.entities.sync.DriftRecord;
 import com.dk_power.power_plant_java.sevice.sync.DriftDetectionService;
+import com.dk_power.power_plant_java.sevice.sync.SyncComparisonService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +28,8 @@ import java.util.Map;
 public class NgDriftController {
 
     private final DriftDetectionService driftDetectionService;
+    private final SyncComparisonService syncComparisonService;
+    private final SyncConfig syncConfig;
 
     /** Run a full drift scan (both peers, every type) and persist/refresh records. Synchronous. */
     @PostMapping("/scan")
@@ -87,5 +92,40 @@ public class NgDriftController {
     @GetMapping("/summary")
     public ResponseEntity<NgApiResponse<Map<String, Long>>> summary() {
         return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.summaryCounts(), "OK"));
+    }
+
+    /**
+     * Friendly labels (id -> tag/name/description) for HUB-ONLY rows the local list can't render — used by the
+     * "missing from local" strip so a row reads "01-VCND100" instead of a bare id. Fetches each entity's data
+     * from the hub (best-effort; falls back to "#id" on any miss) so it works for rows not present locally.
+     */
+    @PostMapping("/hub-labels/{entityType}")
+    public ResponseEntity<NgApiResponse<Map<Long, String>>> hubLabels(
+            @PathVariable String entityType, @RequestBody List<Long> ids) {
+        Map<Long, String> labels = new LinkedHashMap<>();
+        String url = syncConfig.getSyncServerUrl();
+        if (ids != null && url != null && !url.isBlank()) {
+            for (Long id : ids) {
+                try {
+                    labels.put(id, labelFrom(syncComparisonService.fetchServerEntityData(entityType, id, url), id));
+                } catch (Exception e) {
+                    labels.put(id, "#" + id);
+                }
+            }
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(labels, "OK"));
+    }
+
+    /** Best-effort human label from a hub entity's serialized fields (camelCase field names). */
+    private String labelFrom(Map<String, String> data, Long id) {
+        if (data != null) {
+            for (String key : List.of("tagNumber", "name", "permitNumber", "title", "description")) {
+                String v = data.get(key);
+                if (v != null && !v.isBlank() && !"null".equals(v)) {
+                    return v.length() > 60 ? v.substring(0, 60) + "…" : v;
+                }
+            }
+        }
+        return "#" + id;
     }
 }

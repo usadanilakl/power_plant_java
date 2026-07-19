@@ -95,7 +95,8 @@ export interface FilterOutRules {
     .drift-strip-list { border-top:1px solid #3d4a26; max-height:180px; overflow-y:auto; }
     .ds-row { display:flex; align-items:center; gap:10px; padding:5px 10px 5px 30px; font-size:12px; color:#cfd8dc; border-top:1px solid #333c22; }
     .ds-row:first-child { border-top:none; }
-    .ds-id { font-weight:600; color:#fff; min-width:70px; }
+    .ds-id { font-weight:600; color:#fff; }
+    .ds-idnum { color:#78909c; font-size:11px; }
     .ds-note { color:#90a4ae; flex:1 1 auto; }
     /* row-action popover */
     .drift-backdrop { position:fixed; inset:0; z-index:900; }
@@ -195,6 +196,7 @@ export class TableComponent implements OnInit, AfterViewInit {
     }
     return out.sort((a, b) => a.id - b.id);
   });
+  driftLabels = signal<Map<number, string>>(new Map()); // id -> friendly hub label for the strip
   private driftLoadEffect = effect(() => {
     const type = this.driftEntityType();
     if (type) { this.loadDrift(type); this.startDriftPoll(); }
@@ -417,7 +419,11 @@ export class TableComponent implements OnInit, AfterViewInit {
   private reloadDriftMap(type: string): void {
     this.driftService.statusForType(type)
       .pipe(takeUntilDestroyed(this.driftDestroyRef))
-      .subscribe((m) => { this.driftMap.set(m); this.cdr.markForCheck(); });
+      .subscribe((m) => {
+        this.driftMap.set(m);
+        this.cdr.markForCheck();
+        if (this.driftStripOpen()) this.fetchDriftLabels(); // label any newly-missing rows the poll surfaced
+      });
   }
 
   /** #3 reactive: while this table is open, poll the cheap overview so a background (scheduler) scan — or a
@@ -475,6 +481,28 @@ export class TableComponent implements OnInit, AfterViewInit {
           });
       });
   }
+
+  /** Toggle the missing strip; fetch friendly labels lazily on open. */
+  toggleDriftStrip(): void {
+    const open = !this.driftStripOpen();
+    this.driftStripOpen.set(open);
+    if (open) this.fetchDriftLabels();
+  }
+  /** Fetch hub labels for any missing rows we don't have a label for yet (best-effort). */
+  private fetchDriftLabels(): void {
+    const t = this.driftEntityType();
+    if (!t) return;
+    const need = this.driftMissingRows().map((r) => r.id).filter((id) => !this.driftLabels().has(id));
+    if (!need.length) return;
+    this.driftService.hubLabels(t, need)
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe((m) => {
+        this.driftLabels.update((prev) => { const n = new Map(prev); m.forEach((v, k) => n.set(k, v)); return n; });
+        this.cdr.markForCheck();
+      });
+  }
+  /** Friendly label for a missing row (falls back to #id until the hub label loads). */
+  driftLabel(id: number): string { return this.driftLabels().get(id) ?? ('#' + id); }
 
   /** Force a fresh re-detection for this type (hub + SharePoint), then reload the badges. */
   scanDrift(): void {

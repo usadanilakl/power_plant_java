@@ -218,4 +218,19 @@ export class DriftService {
       `${environment.baseApiUrl}/ng/sync/compare/verify/${entityType}/${entityId}/diff`)
       .pipe(map(r => r?.responseData ?? null), catchError(() => of(null)));
   }
+
+  /** Friendly labels (id -> tag/name/description) for HUB-ONLY rows the local list can't render — the
+   *  "missing from local" strip. Best-effort; ids with no hub data come back as "#id". */
+  hubLabels(entityType: string, ids: number[]): Observable<Map<number, string>> {
+    if (!ids.length) return of(new Map<number, string>());
+    return this.http.post<NgApiResponse<Record<string, string>>>(`${this.base}/hub-labels/${entityType}`, ids).pipe(
+      map(r => {
+        const m = new Map<number, string>();
+        const data = r?.responseData ?? {};
+        for (const k of Object.keys(data)) m.set(Number(k), data[k]);
+        return m;
+      }),
+      catchError(() => of(new Map<number, string>()))
+    );
+  }
 }
