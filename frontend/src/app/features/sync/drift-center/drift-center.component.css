@@ -75,6 +75,9 @@ tr.active{box-shadow:inset 3px 0 0 var(--accent)}
 .dr-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .dr-h h4{font-size:14px}
 .dr-h .x{margin-left:auto;color:var(--dim2);cursor:pointer;font-size:18px;line-height:1}
+.rowclick{cursor:pointer}
+.dr-acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.dr-acts-lb{font:600 11px system-ui;color:var(--dim2);text-transform:uppercase;letter-spacing:.04em;margin-right:2px}
 .diff{overflow:auto;flex:1}
 .diffrow{padding:10px 16px;border-bottom:1px solid var(--line)}
 .fname{font:600 12px var(--mono);color:var(--dim);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}

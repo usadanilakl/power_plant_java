@@ -162,6 +162,19 @@ public class NgSyncResolutionController {
             }
             BaseIdEntity entity = (BaseIdEntity) service.getEntityById(entityId);
             if (entity == null) {
+                // MISSING_LOCALLY row: there is no local row to set a single field on, so a per-field "accept
+                // hub" can't apply. The meaningful resolution is to CREATE the whole entity — route through the
+                // dependency-aware pull so its relationship targets are created too (a plain field write can't).
+                if ("hub".equalsIgnoreCase(source)) {
+                    SyncResolutionService.PullResult pr = syncResolutionService.pullWithDependencies(entityType, entityId);
+                    if (pr.getChangesApplied() > 0) driftDetectionService.detectHubForType(entityType);
+                    return ResponseEntity.ok(new NgApiResponse<>(
+                            Map.of("applied", pr.getChangesApplied(), "field", fieldName, "source", "hub", "pulledWholeEntity", true),
+                            pr.getChangesApplied() > 0
+                                    ? "Row was missing locally — pulled " + entityType + " #" + entityId + " from hub ("
+                                            + pr.getChangesApplied() + " change(s))"
+                                    : "Could not pull " + entityType + " #" + entityId + " from hub: " + pr.getMessage()));
+                }
                 return ResponseEntity.ok(new NgApiResponse<>(null, "Entity not found locally"));
             }
 
@@ -170,6 +183,24 @@ public class NgSyncResolutionController {
                 if (hubData == null || !hubData.containsKey(fieldName)) {
                     return ResponseEntity.ok(new NgApiResponse<>(null, "Field not present on hub: " + fieldName));
                 }
+                // If this field is a RELATIONSHIP whose hub value points at an entity that is MISSING locally,
+                // setting the FK alone would leave it null (the apply defers an unresolved ManyToOne). Pull the
+                // referenced entity (and its own deps) FIRST so the FK resolves — the per-field analogue of what
+                // the whole-row "Use Hub" pull does. Handles the "nested entity field won't accept" case.
+                String relType = relationshipTypeFor(entity.getClass(), fieldName);
+                if (relType != null) {
+                    String refType = relationshipTargetType(entity.getClass(), fieldName);
+                    SyncableService<?> refSvc = refType != null ? serviceFacade.getService(refType) : null;
+                    if (refSvc != null) {
+                        for (Long refId : parseRefIds(hubData.get(fieldName))) {
+                            if (refSvc.getEntityById(refId) == null) {
+                                log.info("accept-field: {}.{} references {} #{} missing locally — pulling it first",
+                                        entityType, fieldName, refType, refId);
+                                syncResolutionService.pullWithDependencies(refType, refId);
+                            }
+                        }
+                    }
+                }
                 // HashMap (not Map.of) so a hub-null value — i.e. "accept hub" means CLEAR the field — is allowed.
                 Map<String, String> single = new HashMap<>();
                 single.put(fieldName, hubData.get(fieldName));
@@ -177,7 +208,7 @@ public class NgSyncResolutionController {
                 // A relationship field (@ManyToOne/@ManyToMany/@OneToMany) is serialized as an id / id-list;
                 // without relationshipType the apply path treats it as a scalar and dead-letters it. The
                 // content-hash oracle DOES flag relationship drift, so this field can reach here — stamp it.
-                changes.forEach(c -> c.setRelationshipType(relationshipTypeFor(entity.getClass(), c.getFieldName())));
+                changes.forEach(c -> c.setRelationshipType(relType != null ? relType : relationshipTypeFor(entity.getClass(), c.getFieldName())));
                 int applied = fieldSyncService.applyIncomingChanges(changes);
                 if (applied <= 0) {
                     // Nothing landed (LWW-rejected / dead-lettered / deferred) — DO NOT clear the badge.
@@ -248,6 +279,40 @@ public class NgSyncResolutionController {
             return null;
         }
         return null;
+    }
+
+    /** The target entity type's simple name for a relationship field (ManyToOne: the field type;
+     *  ManyToMany/OneToMany: the collection element type), or null for a scalar / unresolved generic. */
+    private String relationshipTargetType(Class<?> entityClass, String fieldName) {
+        for (Field f : getTrackableFields(entityClass)) {
+            if (!f.getName().equals(fieldName)) continue;
+            if (f.isAnnotationPresent(ManyToOne.class)) return f.getType().getSimpleName();
+            if (f.isAnnotationPresent(ManyToMany.class) || f.isAnnotationPresent(OneToMany.class)) {
+                java.lang.reflect.Type gt = f.getGenericType();
+                if (gt instanceof java.lang.reflect.ParameterizedType pt) {
+                    java.lang.reflect.Type[] args = pt.getActualTypeArguments();
+                    if (args.length == 1 && args[0] instanceof Class<?> c) return c.getSimpleName();
+                }
+            }
+            return null;
+        }
+        return null;
+    }
+
+    /** Ids referenced by a relationship field's serialized hub value: a single id (ManyToOne) or a
+     *  JSON id-list (ManyToMany/OneToMany). Silently skips anything unparseable. */
+    private List<Long> parseRefIds(String raw) {
+        List<Long> ids = new ArrayList<>();
+        if (raw == null || raw.isBlank() || "null".equals(raw)) return ids;
+        String s = raw.trim();
+        if (s.startsWith("[")) {
+            try {
+                for (Long id : objectMapper.readValue(s, Long[].class)) if (id != null) ids.add(id);
+            } catch (Exception ignore) { /* not a parseable id-list */ }
+        } else {
+            try { ids.add(Long.parseLong(s)); } catch (NumberFormatException ignore) { /* not an id */ }
+        }
+        return ids;
     }
 
     /**

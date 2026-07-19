@@ -76,8 +76,9 @@
             </tr></thead>
             <tbody>
               @for (row of rows(); track row.id) {
-                <tr [class.sel]="isSel(row.id)" [class.active]="compareId() === row.id">
-                  <td class="ck"><span class="cbx" [class.on]="isSel(row.id)" (click)="toggle(row.id)"></span></td>
+                <tr class="rowclick" [class.sel]="isSel(row.id)" [class.active]="compareId() === row.id"
+                    (click)="openCompare(row.id)" title="Click to compare local vs hub before deciding">
+                  <td class="ck" (click)="$event.stopPropagation()"><span class="cbx" [class.on]="isSel(row.id)" (click)="toggle(row.id)"></span></td>
                   <td><span class="id">#{{ row.id }}</span></td>
                   <td>
                     @if (row.hub) { <span class="badge h">H</span> }
@@ -93,7 +94,8 @@
                       {{ rowFlagged(row) ? 'Flagged' : 'Acknowledged' }}
                     </span>
                   </td>
-                  <td class="ra"><div class="rowacts">
+                  <td class="ra"><div class="rowacts" (click)="$event.stopPropagation()">
+                    <button class="btn xs ghost" (click)="openCompare(row.id)">Compare ▸</button>
                     @if (row.hub) {
                       <button class="btn xs hub" [disabled]="busy()" (click)="act(row.id,'hub')">Use Hub</button>
                       <button class="btn xs loc" [disabled]="busy()" (click)="act(row.id,'local')">Keep Local</button>
@@ -101,7 +103,6 @@
                     @if (row.sp) {
                       <button class="btn xs sp" [disabled]="busy()" (click)="act(row.id,'sp')">☁ Push</button>
                     }
-                    <button class="btn xs ghost" (click)="openCompare(row.id)">Compare</button>
                   </div></td>
                 </tr>
               }
@@ -118,6 +119,20 @@
           <div><h4>Compare — #{{ compareId() }}</h4><div class="dc-sub">{{ selectedType() }}</div></div>
           <span class="x" (click)="closeCompare()">✕</span>
         </div>
+        @if (compareRow(); as cr) {
+          <div class="dr-acts">
+            <span class="dr-acts-lb">Whole row:</span>
+            @if (cr.hub) {
+              <button class="btn sm hub" [disabled]="busy()" (click)="act(cr.id,'hub')">Use Hub</button>
+              <button class="btn sm loc" [disabled]="busy()" (click)="act(cr.id,'local')">Keep Local</button>
+            }
+            @if (cr.sp) {
+              <button class="btn sm sp" [disabled]="busy()" (click)="act(cr.id,'sp')">☁ Push to SP</button>
+            }
+            <button class="btn sm" [disabled]="busy()" (click)="ackRow(cr)">Acknowledge</button>
+            @if (busy()) { <span class="busy">working…</span> }
+          </div>
+        }
         @if (diffLoading()) {
           <div class="pad">Loading diff…</div>
         } @else if (!diff()) {
@@ -148,7 +163,9 @@
               }
             }
             @if (diff()!.mismatchCount === 0) {
-              <div class="pad">No field-level differences — this row's drift is a presence difference (missing on a peer). Use the row actions.</div>
+              <div class="pad">No field-level differences — this row's drift is a presence difference (the row exists
+                on one side only). Use the whole-row actions above: <b>Use Hub</b> pulls the entity (and any missing
+                referenced entities) down; <b>Keep Local</b> pushes it up.</div>
             }
           </div>
         }

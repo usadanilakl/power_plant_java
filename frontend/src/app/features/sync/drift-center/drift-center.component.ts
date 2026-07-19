@@ -57,6 +57,13 @@ export class DriftCenterComponent implements OnInit {
   });
   allSelected = computed(() => this.rows().length > 0 && this.selected().size === this.rows().length);
 
+  /** The drifted row currently open in the compare drawer — so the drawer can offer the same whole-row
+   *  actions (Use Hub / Keep Local / Push) right next to the field diff, instead of forcing a blind choice. */
+  compareRow = computed<DriftRow | null>(() => {
+    const id = this.compareId();
+    return id == null ? null : (this.rows().find(r => r.id === id) ?? null);
+  });
+
   ngOnInit(): void { this.reloadOverview(); }
 
   private reloadOverview(): void {
