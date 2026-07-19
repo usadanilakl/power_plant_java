@@ -38,13 +38,6 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
             Activity
           </a>
           <a mat-tab-link
-             routerLink="compare"
-             routerLinkActive
-             #rla2="routerLinkActive"
-             [active]="rla2.isActive">
-            Compare
-          </a>
-          <a mat-tab-link
              routerLink="recovery"
              routerLinkActive
              #rla3="routerLinkActive"
@@ -57,13 +50,6 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              #rla4="routerLinkActive"
              [active]="rla4.isActive">
             SharePoint
-          </a>
-          <a mat-tab-link
-             routerLink="audit"
-             routerLinkActive
-             #rla5="routerLinkActive"
-             [active]="rla5.isActive">
-            Audit
           </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>

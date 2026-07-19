@@ -268,7 +268,8 @@ export class SyncOverviewComponent implements OnInit, OnDestroy {
   }
 
   compareType(entityType: string) {
-    this.router.navigate(['/sync/compare'], { queryParams: { type: entityType } });
+    // Compare panel was retired — the Drift Center is the consolidated compare/reconcile tool now.
+    this.router.navigate(['/sync/drift'], { queryParams: { type: entityType } });
   }
 
   ngOnDestroy() {

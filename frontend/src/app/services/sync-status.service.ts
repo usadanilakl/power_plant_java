@@ -105,21 +105,6 @@ export interface FieldDiffEntry {
   serverValue: string | null;
 }
 
-export interface EntityTypeSummary {
-  entityType: string;
-  localCount: number;
-}
-
-export interface EntityDriftSummary {
-  entityType: string;
-  localCount: number;
-  serverCount: number;
-  missingOnHub: number;    // local rows the hub lacks  -> Accept Local creates
-  missingLocally: number;  // hub rows we lack          -> Accept Remote pulls
-  stale: number;           // exist on both but differ  -> Accept Local/Remote overwrites
-  error?: string;
-}
-
 export interface BulkResolveRequest {
   entityType: string;
   resolution: 'ACCEPT_LOCAL' | 'ACCEPT_REMOTE';
@@ -363,23 +348,12 @@ export class SyncStatusService {
   }
 
   // ==================== Comparison APIs ====================
-
-  getEntityTypeSummaries(): Observable<EntityTypeSummary[]> {
-    return this.http.get<NgApiResponse<EntityTypeSummary[]>>(`${this.compareApiUrl}/entity-types`).pipe(
-      map(res => res.responseData ?? [])
-    );
-  }
+  // NOTE: getEntityTypeSummaries()/scanAllDrift() were removed with the old Compare panel — their
+  // backend endpoints (/entity-types, /scan-all) are gone. The Drift Center scans via DriftService.
 
   compareEntityType(entityType: string): Observable<EntityComparisonResult | null> {
     return this.http.get<NgApiResponse<EntityComparisonResult>>(`${this.compareApiUrl}/${entityType}`).pipe(
       map(res => res.responseData)
-    );
-  }
-
-  /** Scan ALL synced entity types for drift vs the hub in one pass (on-demand). */
-  scanAllDrift(): Observable<EntityDriftSummary[]> {
-    return this.http.get<NgApiResponse<EntityDriftSummary[]>>(`${this.compareApiUrl}/scan-all`).pipe(
-      map(res => res.responseData ?? [])
     );
   }
 

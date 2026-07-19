@@ -249,71 +249,9 @@ public class SyncComparisonService {
             .build();
     }
 
-    /**
-     * Get all registered entity types with their local counts, for the comparison UI.
-     */
-    public List<EntityTypeSummary> getAllEntityTypeSummaries() {
-        List<EntityTypeSummary> summaries = new ArrayList<>();
-        for (String entityType : entityTableRegistry.getSyncOrder()) {
-            String tableName = entityTableRegistry.getTableName(entityType);
-            try {
-                Long count;
-                try {
-                    count = jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM " + tableName + " WHERE deleted = false", Long.class);
-                } catch (Exception e) {
-                    count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Long.class);
-                }
-                summaries.add(new EntityTypeSummary(entityType, count != null ? count : 0));
-            } catch (Exception e) {
-                log.trace("Could not count {}: {}", entityType, e.getMessage());
-            }
-        }
-        return summaries;
-    }
-
-    /**
-     * Scan EVERY synced entity type for drift against the hub in one pass.
-     * Returns a per-type roll-up for types that have ANY divergence:
-     *   - missingOnHub: local rows the hub doesn't have (Accept Local creates them)
-     *   - missingLocally: hub rows we don't have (Accept Remote pulls them)
-     *   - stale: rows present on BOTH but differing (Accept Local now overwrites the
-     *     hub; Accept Remote overwrites local) — this is the case a missing-ID-only
-     *     repair would have ignored.
-     *
-     * This is the "dry run" detection behind the drift-review dashboard. It does NOT
-     * mutate anything; the user reviews the result and applies per-type/per-row via the
-     * existing accept-local / accept-remote / bulk endpoints. On-demand only — it makes
-     * 1-2 hub calls per type, so it is never scheduled. Per-type failures are isolated.
-     */
-    public List<EntityDriftSummary> scanAllTypesForDrift() {
-        List<EntityDriftSummary> result = new ArrayList<>();
-        for (String entityType : entityTableRegistry.getSyncOrder()) {
-            try {
-                EntityComparisonResult cmp = compareEntityType(entityType);
-                int missingOnHub = cmp.getLocalOnly() != null ? cmp.getLocalOnly().size() : 0;
-                int missingLocally = cmp.getServerOnly() != null ? cmp.getServerOnly().size() : 0;
-                int stale = cmp.getStaleEntities() != null ? cmp.getStaleEntities().size() : 0;
-                if (missingOnHub > 0 || missingLocally > 0 || stale > 0) {
-                    result.add(EntityDriftSummary.builder()
-                        .entityType(entityType)
-                        .localCount(cmp.getLocalCount())
-                        .serverCount(cmp.getServerCount())
-                        .missingOnHub(missingOnHub)
-                        .missingLocally(missingLocally)
-                        .stale(stale)
-                        .build());
-                }
-            } catch (Exception e) {
-                log.warn("Drift scan failed for {}: {}", entityType, e.getMessage());
-                result.add(EntityDriftSummary.builder()
-                    .entityType(entityType)
-                    .error(e.getMessage())
-                    .build());
-            }
-        }
-        return result;
-    }
+    // NOTE: the timestamp-based getAllEntityTypeSummaries()/scanAllTypesForDrift() one-pass scan was
+    // removed with the old Compare panel; compareEntityType() (still used by 3-way verify) stays, and the
+    // Drift Center now scans via compareEntityTypeByContent() below (content-hash, not ids/timestamps).
 
     // ==================== Content-hash drift (Inc 0b harness) ====================
 
@@ -649,20 +587,6 @@ public class SyncComparisonService {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class EntityDriftSummary {
-        private String entityType;
-        private int localCount;
-        private int serverCount;
-        private int missingOnHub;    // local rows the hub lacks  -> Accept Local creates
-        private int missingLocally;  // hub rows we lack          -> Accept Remote pulls
-        private int stale;           // exist on both but differ  -> Accept Local/Remote overwrites
-        private String error;        // non-null if the scan failed for this type
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class StaleEntity {
         private Long entityId;
         private Instant localModified;
@@ -688,14 +612,6 @@ public class SyncComparisonService {
         private String fieldName;
         private String localValue;
         private String serverValue;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EntityTypeSummary {
-        private String entityType;
-        private long localCount;
     }
 
     @Data

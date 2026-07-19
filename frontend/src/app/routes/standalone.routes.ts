@@ -17,9 +17,7 @@ import { SyncResyncComponent } from '../features/sync-resync/sync-resync.compone
 import { SharepointSyncComponent } from '../pages/sharepoint-sync/sharepoint-sync.component';
 import { SyncOverviewComponent } from '../features/sync/sync-overview/sync-overview.component';
 import { SyncActivityComponent } from '../features/sync/sync-activity/sync-activity.component';
-import { SyncCompareComponent } from '../features/sync/sync-compare/sync-compare.component';
 import { DriftCenterComponent } from '../features/sync/drift-center/drift-center.component';
-import { SyncAuditPageComponent } from '../features/sync-audit/sync-audit-page/sync-audit-page.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
 import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
@@ -58,11 +56,9 @@ export const STANDALONE_ROUTES: Routes = [
       { path: 'overview', component: SyncOverviewComponent },
       { path: 'activity', component: SyncActivityComponent },
       { path: 'drift', component: DriftCenterComponent },
-      { path: 'compare', component: SyncCompareComponent },
       { path: 'status', component: SyncMonitorComponent },
       { path: 'recovery', component: SyncResyncComponent },
-      { path: 'sharepoint', component: SharepointSyncComponent },
-      { path: 'audit', component: SyncAuditPageComponent }
+      { path: 'sharepoint', component: SharepointSyncComponent }
     ]
   },
   // Full Sync to Server (standalone)

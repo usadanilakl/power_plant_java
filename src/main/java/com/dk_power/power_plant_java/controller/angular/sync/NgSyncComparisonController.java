@@ -26,30 +26,8 @@ public class NgSyncComparisonController {
     private final EntityVerificationService entityVerificationService;
 
     // ==================== Existing 2-way comparison ====================
-
-    @GetMapping("/entity-types")
-    public ResponseEntity<NgApiResponse<List<EntityTypeSummary>>> getEntityTypes() {
-        List<EntityTypeSummary> summaries = syncComparisonService.getAllEntityTypeSummaries();
-        return ResponseEntity.ok(new NgApiResponse<>(summaries, "Entity type summaries"));
-    }
-
-    /**
-     * Scan ALL synced entity types for drift vs the hub in one pass (on-demand).
-     * Returns a per-type roll-up (missing-on-hub / missing-locally / stale) for types
-     * that diverge — the "dry run" report for the drift-review dashboard. Apply happens
-     * via the existing per-type accept-local / accept-remote / bulk endpoints.
-     */
-    @GetMapping("/scan-all")
-    public ResponseEntity<NgApiResponse<List<EntityDriftSummary>>> scanAll() {
-        try {
-            List<EntityDriftSummary> drift = syncComparisonService.scanAllTypesForDrift();
-            return ResponseEntity.ok(new NgApiResponse<>(drift,
-                "Scanned all entity types: " + drift.size() + " with drift"));
-        } catch (Exception e) {
-            log.error("Drift scan-all failed: {}", e.getMessage(), e);
-            return ResponseEntity.ok(new NgApiResponse<>(null, "Scan failed: " + e.getMessage()));
-        }
-    }
+    // NOTE: the timestamp-based /entity-types and /scan-all endpoints were removed with the old
+    // Compare panel — the Drift Center's content-hash scan (/content/*) is the convergence oracle now.
 
     /**
      * Inc 0b harness — CONTENT drift (hash of synced fields), not just ids/timestamps. Cheap per-type
