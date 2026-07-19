@@ -97,6 +97,14 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "../scripts/database",
+        "to": "scripts/database",
+        "filter": [
+          "h2-compact.ps1",
+          "h2-2.2.224.jar"
+        ]
       }
     ],
     "win": {

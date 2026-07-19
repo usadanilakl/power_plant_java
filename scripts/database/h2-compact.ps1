@@ -21,6 +21,7 @@ param(
   [string]$User     = "sa",
   [string]$Password = "password",
   [string]$Jar      = "",              # optional: path to an h2-*.jar (auto-found if blank)
+  [int]$MinDeadMB   = 0,               # only compact if dead space exceeds this many MB (0 = always)
   [switch]$ReportOnly,                 # only inspect; make no changes
   [switch]$DropAudit                   # also drop leftover Envers *_AUD / REVINFO tables before shrinking
 )
@@ -59,6 +60,14 @@ if (-not (Test-Path $Jar)) { Fail "H2 jar not found: $Jar" }
 
 function Run-Sql([string]$url, [string]$sql) { & $java -cp $Jar org.h2.tools.Shell -url $url -user $User -password $Password -sql $sql 2>&1 }
 
+# --- fail fast + friendly if the DB is open (app running) — DEFRAG/inspect needs exclusive-ish access ---
+$prevEap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+$probe = (& $java -cp $Jar org.h2.tools.Shell -url "jdbc:h2:file:$dbFull;ACCESS_MODE_DATA=r;IFEXISTS=TRUE" -user $User -password $Password -sql "SELECT 1" 2>&1 | Out-String)
+$ErrorActionPreference = $prevEap
+if ($probe -match "already in use|Locked|Database may be already") {
+    Fail "The database is IN USE (the app/service is running). Stop it completely, then run this again."
+}
+
 $sizeBefore = (Get-Item $mvFull).Length
 Write-Host ""
 Write-Host "DB file : $mvFull"
@@ -76,6 +85,19 @@ Write-Host "Leftover Envers audit tables (*_AUD / REVINFO). If any appear here, 
 Run-Sql $roUrl "SELECT TABLE_NAME, DISK_SPACE_USED(TABLE_NAME) AS BYTES FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' AND (TABLE_NAME='REVINFO' OR RIGHT(TABLE_NAME,4)='_AUD') ORDER BY BYTES DESC" | ForEach-Object { Write-Host "  $_" }
 
 if ($ReportOnly) { Write-Host ""; Write-Host "ReportOnly: no changes made." -ForegroundColor Green; exit 0 }
+
+# --- STEP 1b: dead-space gate (used by automated callers: -MinDeadMB 200) ---
+$logicalRaw = Run-Sql $roUrl "SELECT SUM(DISK_SPACE_USED(TABLE_NAME)) AS TOTAL FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC'"
+$logLine = ($logicalRaw | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^\d+$' } | Select-Object -First 1)
+$logical = if ($logLine) { [long]$logLine } else { 0L }
+$dead = $sizeBefore - $logical
+if ($dead -lt 0) { $dead = 0 }
+Write-Host ""
+Write-Host ("Dead space: {0:N0} bytes ({1:N2} GB)   real data: {2:N0} bytes" -f $dead, ($dead/1GB), $logical) -ForegroundColor Cyan
+if ($MinDeadMB -gt 0 -and $dead -lt ($MinDeadMB * 1MB)) {
+    Write-Host ("Dead space is below the {0} MB threshold - skipping compaction (no changes)." -f $MinDeadMB) -ForegroundColor Green
+    exit 0
+}
 
 # --- STEP 2: backup (timestamped, alongside the DB) ---
 $stamp  = Get-Date -Format "yyyyMMdd-HHmmss"

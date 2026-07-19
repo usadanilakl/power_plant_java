@@ -18,7 +18,7 @@ import {
   GRACEFUL_SHUTDOWN_TIMEOUT,
   MAX_LOG_LINES
 } from '../constants';
-import { getWorkingDir, getJavaPath } from '../paths';
+import { getWorkingDir, getJavaPath, getCompactScriptPath } from '../paths';
 import { DeviceConfigManager } from './device-config.manager';
 
 export class SpringBootManager {
@@ -98,6 +98,10 @@ export class SpringBootManager {
     } else {
       console.log('  Device: NOT CONFIGURED — Spring Boot will use fallback device 9');
     }
+
+    // Reclaim H2 dead space while the DB is closed (just before we launch the JVM). Throttled to
+    // once/day and gated on >200MB dead space, so normal restarts are unaffected. Never blocks start.
+    await this.maybeCompactDb();
 
     const maxAttempts = killedPreviousInstance ? 4 : 1;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -297,6 +301,52 @@ export class SpringBootManager {
   private updateState(state: AppState): void {
     this.state = state;
     this.statusCallback(this.getStatus());
+  }
+
+  /**
+   * Reclaim H2 dead space via an offline SHUTDOWN DEFRAG, run in the pre-launch window while the
+   * DB is closed. Safe by construction: throttled to once/day (a stamp file), skipped for small DBs,
+   * gated inside the script on >200MB dead space (backs up first), and never allowed to block start.
+   */
+  private async maybeCompactDb(): Promise<void> {
+    if (process.platform !== 'win32') return;
+    try {
+      const workingDir = getWorkingDir();
+      const dbBase = path.join(workingDir, 'db', 'proddb'); // h2-compact.ps1 expects path WITHOUT .mv.db
+      const dbFile = dbBase + '.mv.db';
+      if (!fs.existsSync(dbFile)) return;
+
+      // Throttle: the dead-space check opens the DB (a few seconds on a big file). Do it at most
+      // once/day so frequent restarts stay fast.
+      const stampFile = path.join(workingDir, '.last-defrag-check');
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      if (fs.existsSync(stampFile)) {
+        const last = Number(fs.readFileSync(stampFile, 'utf-8')) || 0;
+        if (Date.now() - last < DAY_MS) return;
+      }
+
+      // Cheap floor: a DB this small cannot hold >200MB of dead space.
+      const sizeMB = fs.statSync(dbFile).size / (1024 * 1024);
+      if (sizeMB < 250) { fs.writeFileSync(stampFile, String(Date.now())); return; }
+
+      const script = getCompactScriptPath();
+      if (!fs.existsSync(script)) { console.warn('[Compact] script not found, skipping:', script); return; }
+
+      console.log(`[Compact] daily maintenance: DB ${Math.round(sizeMB)}MB — DEFRAG if >200MB dead space`);
+      this.addLog(`DB maintenance check (${Math.round(sizeMB)}MB)`);
+      await new Promise<void>((resolve) => {
+        const ps = spawn('powershell.exe',
+          ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-MinDeadMB', '200', '-Db', dbBase],
+          { windowsHide: true });
+        ps.stdout?.on('data', (d) => this.addLog(`[Compact] ${String(d).trim()}`));
+        ps.stderr?.on('data', (d) => this.addLog(`[Compact] ${String(d).trim()}`));
+        ps.on('exit', () => resolve());
+        ps.on('error', (e) => { console.warn('[Compact] spawn failed:', e.message); resolve(); });
+      });
+      fs.writeFileSync(stampFile, String(Date.now()));
+    } catch (e: any) {
+      console.warn('[Compact] skipped due to error:', e?.message); // never block startup
+    }
   }
 
   private startHealthCheck(): void {

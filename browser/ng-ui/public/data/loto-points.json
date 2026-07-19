@@ -83425,6 +83425,27 @@
   "eqType" : "",
   "locationId" : 2000014976
 }, {
+  "id" : 2000083932,
+  "tagNumber" : "TESTINGSYNC",
+  "description" : "TESTING SYNC",
+  "specificLocation" : "TESTINGSYNC",
+  "eqType" : "",
+  "locationId" : 2000014976
+}, {
+  "id" : 2000083936,
+  "tagNumber" : "TESTINGSYNC4321",
+  "description" : "TESTING SYNC",
+  "specificLocation" : "TESTINGSYNC",
+  "eqType" : "",
+  "locationId" : 2000014976
+}, {
+  "id" : 2000083964,
+  "tagNumber" : "compacting-test-tag-number111",
+  "description" : "TESTING SYNC",
+  "specificLocation" : "TESTINGSYNC",
+  "eqType" : "",
+  "locationId" : 2000014976
+}, {
   "id" : 3000071916,
   "tagNumber" : "01-TV-HPS123TEST",
   "description" : "HP HEADER DRIPLEG DRAIN AOV",
@@ -83494,4 +83515,18 @@
   "specificLocation" : "adsf",
   "eqType" : "PRV",
   "locationId" : 2000014976
+}, {
+  "id" : 3000073778,
+  "tagNumber" : "reactive-sync-test",
+  "description" : "adfadf",
+  "specificLocation" : "adsf",
+  "eqType" : "PRV",
+  "locationId" : 2000014976
+}, {
+  "id" : 3000073844,
+  "tagNumber" : "01-TV-HPS123TEST4444",
+  "description" : "HP HEADER DRIPLEG DRAIN AOV",
+  "specificLocation" : "ST BUILDING WEST- LOWER",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 6053
 } ]

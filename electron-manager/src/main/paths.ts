@@ -38,6 +38,16 @@ export function getJavaPath(): string {
   return 'java';
 }
 
+/** Get the path to the bundled H2 compaction script (scripts/database/h2-compact.ps1).
+ *  The h2 jar the script needs is bundled alongside it, so it self-locates. */
+export function getCompactScriptPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'scripts', 'database', 'h2-compact.ps1');
+  }
+  // Dev: dist/main/main/ → up 4 → <project>/scripts/database
+  return path.resolve(__dirname, '..', '..', '..', '..', 'scripts', 'database', 'h2-compact.ps1');
+}
+
 /** Get the path to the bundled tessdata source directory (read-only, for copying to working dir). */
 export function getTessdataSourcePath(): string {
   if (app.isPackaged) {

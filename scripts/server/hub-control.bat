@@ -33,6 +33,7 @@ echo   4. Status (service + port %PORT%)
 echo   5. Watch live log  (Ctrl+C to stop watching)
 echo   6. Debug in console (foreground; Ctrl+C to quit)
 echo   7. Uninstall service
+echo   8. Compact database now (stop, reclaim dead space, restart)
 echo   0. Exit
 echo.
 set /p choice="Choose: "
@@ -44,6 +45,7 @@ if "%choice%"=="4" goto status
 if "%choice%"=="5" goto watch
 if "%choice%"=="6" goto debug
 if "%choice%"=="7" goto uninstall
+if "%choice%"=="8" goto compact
 if "%choice%"=="0" exit /b
 goto menu
 
@@ -90,6 +92,15 @@ echo.
 echo Running in console. Press Ctrl+C to quit, then choose option 1 to restart as a service.
 echo.
 "%EXE%" test
+goto menu
+
+:compact
+echo.
+echo This stops the hub, reclaims H2 dead space (SHUTDOWN DEFRAG, backs up first), then restarts.
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0hub-maintenance-compact.ps1" -MinDeadMB 0 -PrecheckFloorMB 0
+echo.
+pause
 goto menu
 
 :uninstall
