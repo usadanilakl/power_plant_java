@@ -17,13 +17,6 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
       <ng-container main-content>
         <nav mat-tab-nav-bar [tabPanel]="tabPanel">
           <a mat-tab-link
-             routerLink="overview"
-             routerLinkActive
-             #rla0="routerLinkActive"
-             [active]="rla0.isActive">
-            Overview
-          </a>
-          <a mat-tab-link
              routerLink="drift"
              routerLinkActive
              #rlaD="routerLinkActive"

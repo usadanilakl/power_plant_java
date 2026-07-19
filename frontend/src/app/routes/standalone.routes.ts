@@ -15,7 +15,6 @@ import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.c
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
 import { SharepointSyncComponent } from '../pages/sharepoint-sync/sharepoint-sync.component';
-import { SyncOverviewComponent } from '../features/sync/sync-overview/sync-overview.component';
 import { SyncActivityComponent } from '../features/sync/sync-activity/sync-activity.component';
 import { DriftCenterComponent } from '../features/sync/drift-center/drift-center.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
@@ -52,10 +51,9 @@ export const STANDALONE_ROUTES: Routes = [
     path: 'sync',
     component: SyncDashboardComponent,
     children: [
-      { path: '', redirectTo: 'overview', pathMatch: 'full' },
-      { path: 'overview', component: SyncOverviewComponent },
-      { path: 'activity', component: SyncActivityComponent },
+      { path: '', redirectTo: 'drift', pathMatch: 'full' },
       { path: 'drift', component: DriftCenterComponent },
+      { path: 'activity', component: SyncActivityComponent },
       { path: 'status', component: SyncMonitorComponent },
       { path: 'recovery', component: SyncResyncComponent },
       { path: 'sharepoint', component: SharepointSyncComponent }

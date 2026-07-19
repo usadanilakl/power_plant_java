@@ -67,11 +67,14 @@ export class DriftCenterComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // Honour a ?type= deep-link (from the sync badge / Overview / Activity / in-table links) — select it
-    // BEFORE reloadOverview so its "auto-select first drifting type" fallback doesn't override the request.
-    const t = this.route.snapshot.queryParamMap.get('type');
-    if (t) this.selectType(t);
     this.reloadOverview();
+    // Honour a ?type= deep-link (sync badge / Activity / in-table links) on first load AND on re-navigation
+    // to an already-open Drift Center. The observable (not snapshot) fires again when only the query param
+    // changes; it wins over reloadOverview's "auto-select first drifting type" fallback.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((pm) => {
+      const t = pm.get('type');
+      if (t && t !== this.selectedType()) this.selectType(t);
+    });
   }
 
   private reloadOverview(): void {
