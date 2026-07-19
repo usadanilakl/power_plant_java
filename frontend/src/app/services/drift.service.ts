@@ -40,6 +40,15 @@ export interface RowDrift {
   sp?: DriftRecord;
 }
 
+/** Per-type scan bookkeeping (mirrors backend DriftScanState) — powers green-on-load + the Drift Center. */
+export interface DriftScanState {
+  entityType: string;
+  lastScannedAt?: string;
+  spBacked: boolean;
+  flaggedCount: number;
+  lastError?: string;
+}
+
 interface NgApiResponse<T> { responseData: T; message: string; }
 
 /**
@@ -59,10 +68,25 @@ export class DriftService {
    *  confident GREEN "verified in sync" instead of an ambiguous "not checked yet". */
   readonly scannedTypes = signal<Set<string>>(new Set());
   private readonly scannedAll = signal(false);
+  /** Per-type scan state from the server (survives reload) — the background scheduler keeps it fresh. */
+  readonly scanState = signal<Map<string, DriftScanState>>(new Map());
 
-  /** True once we can trust "no drift record ⇒ in sync" for this type (a scan has run). */
+  /** True once we can trust "no drift record ⇒ in sync" for this type — a scan has run this session OR
+   *  the server's overview shows it was scanned (e.g. by the background scheduler). */
   isScanned(type?: string): boolean {
-    return !!type && (this.scannedAll() || this.scannedTypes().has(type));
+    return !!type && (this.scannedAll() || this.scannedTypes().has(type)
+      || !!this.scanState().get(type)?.lastScannedAt);
+  }
+
+  /** Load the per-type scan overview (which types were scanned, when, counts) — cheap; cached in a signal. */
+  loadOverview(): void {
+    this.http.get<NgApiResponse<DriftScanState[]>>(`${this.base}/overview`).pipe(
+      map(r => r?.responseData ?? []), catchError(() => of([]))
+    ).subscribe((list) => {
+      const m = new Map<string, DriftScanState>();
+      for (const s of list) m.set(s.entityType, s);
+      this.scanState.set(m);
+    });
   }
   private markScanned(type: string): void {
     this.scannedTypes.update((s) => { const n = new Set(s); n.add(type); return n; });

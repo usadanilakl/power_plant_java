@@ -3,8 +3,10 @@ package com.dk_power.power_plant_java.sevice.sync;
 import com.dk_power.power_plant_java.entities.sync.DriftKind;
 import com.dk_power.power_plant_java.entities.sync.DriftPeer;
 import com.dk_power.power_plant_java.entities.sync.DriftRecord;
+import com.dk_power.power_plant_java.entities.sync.DriftScanState;
 import com.dk_power.power_plant_java.entities.sync.DriftStatus;
 import com.dk_power.power_plant_java.repository.sync.DriftRecordRepository;
+import com.dk_power.power_plant_java.repository.sync.DriftScanStateRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -43,17 +45,20 @@ public class DriftDetectionService {
     private final SyncComparisonService syncComparisonService;
     private final EntityVerificationService entityVerificationService;
     private final DriftRecordRepository repo;
+    private final DriftScanStateRepository scanStateRepo;
     private final EntityTableRegistry entityTableRegistry;
     private final TransactionTemplate tx;
 
     public DriftDetectionService(SyncComparisonService syncComparisonService,
                                  EntityVerificationService entityVerificationService,
                                  DriftRecordRepository repo,
+                                 DriftScanStateRepository scanStateRepo,
                                  EntityTableRegistry entityTableRegistry,
                                  PlatformTransactionManager txManager) {
         this.syncComparisonService = syncComparisonService;
         this.entityVerificationService = entityVerificationService;
         this.repo = repo;
+        this.scanStateRepo = scanStateRepo;
         this.entityTableRegistry = entityTableRegistry;
         this.tx = new TransactionTemplate(txManager);
     }
@@ -62,32 +67,73 @@ public class DriftDetectionService {
     public DriftScanResult detectAll() {
         DriftScanResult total = new DriftScanResult();
         for (String type : entityTableRegistry.getSyncOrder()) {
-            try {
-                accumulate(total, detectHubForType(type));
-            } catch (Exception e) {
-                total.errors++;
-                log.warn("drift.detect[HUB] failed for {}: {}", type, e.getMessage());
-            }
-            if (entityVerificationService.isSpBacked(type)) {
-                try {
-                    accumulate(total, detectSpForType(type));
-                } catch (Exception e) {
-                    total.errors++;
-                    log.warn("drift.detect[SP] failed for {}: {}", type, e.getMessage());
-                }
-            }
+            DriftScanResult one = scanTypeFull(type);
+            total.typesScanned++;
+            if (one.flagged > 0 || one.reconciled > 0 || one.stillDrifting > 0) total.typesDrifting++;
+            total.flagged += one.flagged;
+            total.stillDrifting += one.stillDrifting;
+            total.reconciled += one.reconciled;
+            total.errors += one.errors;
         }
         log.info("drift.detect complete: {} scans, {} newly flagged, {} still drifting, {} auto-reconciled, {} error(s)",
                 total.typesScanned, total.flagged, total.stillDrifting, total.reconciled, total.errors);
         return total;
     }
 
-    private void accumulate(DriftScanResult total, DriftScanResult one) {
-        total.typesScanned++;
-        if (one.flagged > 0 || one.reconciled > 0 || one.stillDrifting > 0) total.typesDrifting++;
+    /**
+     * Scan ONE type against BOTH peers with each isolated (a hub-probe failure must not abort the SP scan —
+     * the WorkRequest no-badge bug), then record the per-type scan state (so the UI can show a confident
+     * GREEN on clean rows and the Drift Center can list every type). The single source of truth used by the
+     * scan endpoint, detectAll, and the background scheduler.
+     */
+    public DriftScanResult scanTypeFull(String entityType) {
+        DriftScanResult r = new DriftScanResult();
+        r.typesScanned = 1;
+        StringBuilder err = new StringBuilder();
+        try {
+            add(r, detectHubForType(entityType));
+        } catch (Exception e) {
+            r.errors++;
+            err.append("hub check failed: ").append(e.getMessage()).append("; ");
+            log.warn("drift.scan[HUB] {}: {}", entityType, e.getMessage());
+        }
+        boolean spBacked = entityVerificationService.isSpBacked(entityType);
+        if (spBacked) {
+            try {
+                add(r, detectSpForType(entityType));
+            } catch (Exception e) {
+                r.errors++;
+                err.append("SharePoint check failed: ").append(e.getMessage()).append("; ");
+                log.warn("drift.scan[SP] {}: {}", entityType, e.getMessage());
+            }
+        }
+        if (r.flagged > 0 || r.reconciled > 0 || r.stillDrifting > 0) r.typesDrifting = 1;
+        recordScanState(entityType, spBacked, err.length() == 0 ? null : err.toString());
+        return r;
+    }
+
+    private void add(DriftScanResult total, DriftScanResult one) {
         total.flagged += one.flagged;
         total.stillDrifting += one.stillDrifting;
         total.reconciled += one.reconciled;
+    }
+
+    /** Upsert the per-type scan bookkeeping (last-scanned time, SP-backed, active count, any error). */
+    private void recordScanState(String entityType, boolean spBacked, String error) {
+        tx.executeWithoutResult(st -> {
+            DriftScanState s = scanStateRepo.findByEntityType(entityType)
+                    .orElseGet(() -> { DriftScanState n = new DriftScanState(); n.setEntityType(entityType); return n; });
+            s.setLastScannedAt(Instant.now());
+            s.setSpBacked(spBacked);
+            s.setLastError(error);
+            s.setFlaggedCount((int) repo.countByEntityTypeAndStatusIn(entityType, ACTIVE));
+            scanStateRepo.save(s);
+        });
+    }
+
+    /** Per-type scan overview — feeds the Drift Center and the client's "has this type been scanned" check. */
+    public List<DriftScanState> overview() {
+        return scanStateRepo.findAll();
     }
 
     /** HUB drift for one type via the content-hash oracle. Probe runs first (no tx); upsert is one short tx. */

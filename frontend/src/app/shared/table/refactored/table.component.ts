@@ -334,8 +334,11 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ==================== Drift badge (opt-in via driftEntityType) ====================
 
-  /** Load the persisted per-row drift map — cheap (one GET), runs automatically as the table renders. */
+  /** Load the persisted per-row drift map — cheap (one GET), runs automatically as the table renders.
+   *  Also refreshes the per-type overview so a clean row shows a confident GREEN once the type is scanned
+   *  (by the background scheduler or a manual re-check), even on a fresh page load. */
   loadDrift(type: string): void {
+    this.driftService.loadOverview();
     this.driftService.statusForType(type)
       .pipe(takeUntilDestroyed(this.driftDestroyRef))
       .subscribe((m) => { this.driftMap.set(m); this.cdr.markForCheck(); });

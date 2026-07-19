@@ -41,6 +41,8 @@ class DriftDetectionServiceIT {
     @Autowired
     private DriftRecordRepository repo;
     @Autowired
+    private com.dk_power.power_plant_java.repository.sync.DriftScanStateRepository scanStateRepo;
+    @Autowired
     private PlatformTransactionManager txManager;
 
     @MockBean
@@ -56,7 +58,7 @@ class DriftDetectionServiceIT {
     void wire() {
         compare = mock(SyncComparisonService.class);
         verify = mock(EntityVerificationService.class);
-        svc = new DriftDetectionService(compare, verify, repo, mock(EntityTableRegistry.class), txManager);
+        svc = new DriftDetectionService(compare, verify, repo, scanStateRepo, mock(EntityTableRegistry.class), txManager);
     }
 
     private void stubHub(String type, List<Long> differing, List<Long> missingLocally, List<Long> missingOnHub) {

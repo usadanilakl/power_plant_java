@@ -47,33 +47,16 @@ public class NgDriftController {
     @PostMapping("/scan/{entityType}")
     public ResponseEntity<NgApiResponse<DriftDetectionService.DriftScanResult>> scanType(
             @PathVariable String entityType) {
-        DriftDetectionService.DriftScanResult r = new DriftDetectionService.DriftScanResult();
-        r.typesScanned = 1;
-        StringBuilder problems = new StringBuilder();
-        try {
-            add(r, driftDetectionService.detectHubForType(entityType));
-        } catch (Exception e) {
-            r.errors++;
-            problems.append("hub check failed: ").append(e.getMessage()).append("; ");
-            log.error("drift scan[HUB] failed for {}: {}", entityType, e.getMessage());
-        }
-        try {
-            add(r, driftDetectionService.detectSpForType(entityType));
-        } catch (Exception e) {
-            r.errors++;
-            problems.append("SharePoint check failed: ").append(e.getMessage()).append("; ");
-            log.error("drift scan[SP] failed for {}: {}", entityType, e.getMessage());
-        }
-        String msg = problems.length() == 0
+        DriftDetectionService.DriftScanResult r = driftDetectionService.scanTypeFull(entityType);
+        return ResponseEntity.ok(new NgApiResponse<>(r, r.errors == 0
                 ? "Drift scan complete for " + entityType
-                : "Drift scan partial for " + entityType + " — " + problems;
-        return ResponseEntity.ok(new NgApiResponse<>(r, msg));
+                : "Drift scan partial for " + entityType + " (" + r.errors + " check(s) failed)"));
     }
 
-    private void add(DriftDetectionService.DriftScanResult total, DriftDetectionService.DriftScanResult one) {
-        total.flagged += one.flagged;
-        total.stillDrifting += one.stillDrifting;
-        total.reconciled += one.reconciled;
+    /** Per-type scan overview (last-scanned, SP-backed, active count, error) — the Drift Center's list. */
+    @GetMapping("/overview")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.entities.sync.DriftScanState>>> overview() {
+        return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.overview(), "OK"));
     }
 
     /** Active (flagged + acknowledged) records for a type — the frontend builds its per-row badge map. */
