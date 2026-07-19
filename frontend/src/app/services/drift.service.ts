@@ -55,6 +55,18 @@ export class DriftService {
   readonly summary = signal<{ flagged: number; acknowledged: number; reconciled: number }>(
     { flagged: 0, acknowledged: 0, reconciled: 0 });
   readonly scanning = signal(false);
+  /** Types a detection scan has completed for THIS session — so a row with no drift can show a
+   *  confident GREEN "verified in sync" instead of an ambiguous "not checked yet". */
+  readonly scannedTypes = signal<Set<string>>(new Set());
+  private readonly scannedAll = signal(false);
+
+  /** True once we can trust "no drift record ⇒ in sync" for this type (a scan has run). */
+  isScanned(type?: string): boolean {
+    return !!type && (this.scannedAll() || this.scannedTypes().has(type));
+  }
+  private markScanned(type: string): void {
+    this.scannedTypes.update((s) => { const n = new Set(s); n.add(type); return n; });
+  }
 
   refreshSummary(): void {
     this.http.get<NgApiResponse<any>>(`${this.base}/summary`).pipe(
@@ -69,7 +81,7 @@ export class DriftService {
     this.scanning.set(true);
     return this.http.post<NgApiResponse<DriftScanResult>>(`${this.base}/scan`, {}).pipe(
       map(r => r?.responseData ?? null),
-      tap(() => { this.scanning.set(false); this.refreshSummary(); }),
+      tap(() => { this.scanning.set(false); this.scannedAll.set(true); this.refreshSummary(); }),
       catchError(() => { this.scanning.set(false); return of(null); })
     );
   }
@@ -79,7 +91,7 @@ export class DriftService {
     this.scanning.set(true);
     return this.http.post<NgApiResponse<DriftScanResult>>(`${this.base}/scan/${entityType}`, {}).pipe(
       map(r => r?.responseData ?? null),
-      tap(() => { this.scanning.set(false); this.refreshSummary(); }),
+      tap(() => { this.scanning.set(false); this.markScanned(entityType); this.refreshSummary(); }),
       catchError(() => { this.scanning.set(false); return of(null); })
     );
   }

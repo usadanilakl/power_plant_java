@@ -38,6 +38,9 @@
                title="Re-check this list for hub / SharePoint drift now">
          {{ driftScanning() ? 'Scanning…' : '⟳ Re-check drift' }}
        </button>
+       @if (driftResultText()) {
+         <span class="drift-result">{{ driftResultText() }}</span>
+       }
      }
   </div>
 
@@ -132,6 +135,10 @@
                       <span class="drift-dot sp" [class.ack]="d.sp.status === 'ACKNOWLEDGED'"
                             [title]="'SharePoint: ' + d.sp.kind + ' · ' + d.sp.status">SP</span>
                     }
+                  </span>
+                } @else if (isDriftScanned()) {
+                  <span class="drift-badges">
+                    <span class="drift-dot clean" title="Verified in sync (hub + SharePoint)">✓</span>
                   </span>
                 }
               }

@@ -75,7 +75,9 @@ export interface FilterOutRules {
       height:15px; padding:0 3px; border-radius:8px; font-size:9px; font-weight:700; color:#fff;
       background:#e67e22; }               /* hub drift = orange */
     .drift-dot.sp { background:#2980b9; }  /* SharePoint drift = blue */
+    .drift-dot.clean { background:#2e7d32; } /* verified in sync = green */
     .drift-dot.ack { opacity:0.45; }       /* acknowledged = dimmed */
+    .drift-result { margin-left:8px; font-size:12px; color:#cfd8dc; }
   `],
 })
 export class TableComponent implements OnInit, AfterViewInit {
@@ -127,6 +129,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   private driftDestroyRef = inject(DestroyRef);
   driftMap = signal<Map<number, RowDrift>>(new Map());
   driftScanning = signal(false);
+  driftResultText = signal<string>(''); // visible readout of the last scan so we can see what happened
   private driftLoadEffect = effect(() => {
     const type = this.driftEntityType();
     if (type) this.loadDrift(type);
@@ -343,14 +346,27 @@ export class TableComponent implements OnInit, AfterViewInit {
     const type = this.driftEntityType();
     if (!type || this.driftScanning()) return;
     this.driftScanning.set(true);
+    this.driftResultText.set('');
     this.driftService.scanType(type)
       .pipe(takeUntilDestroyed(this.driftDestroyRef))
-      .subscribe(() => { this.driftScanning.set(false); this.loadDrift(type); });
+      .subscribe((r) => {
+        this.driftScanning.set(false);
+        this.driftResultText.set(
+          r == null
+            ? '⚠ scan failed — no response from /ng/sync/drift (backend endpoint?)'
+            : `${r.flagged + r.stillDrifting} drift(s)${r.errors ? ', ' + r.errors + ' err' : ''}`);
+        this.loadDrift(type);
+      });
   }
 
   /** Drift for a row (or undefined) — drives the badge in the first cell. */
   driftFor(item: any): RowDrift | undefined {
     return item?.id != null ? this.driftMap().get(Number(item.id)) : undefined;
+  }
+
+  /** True once a scan has run for this type — lets a clean row show a confident GREEN check. */
+  isDriftScanned(): boolean {
+    return this.driftService.isScanned(this.driftEntityType());
   }
 
   ngAfterViewInit(): void {
