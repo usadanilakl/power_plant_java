@@ -350,7 +350,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   /** Drift for a row (or undefined) — drives the badge in the first cell. */
   driftFor(item: any): RowDrift | undefined {
-    return item?.id != null ? this.driftMap().get(item.id) : undefined;
+    return item?.id != null ? this.driftMap().get(Number(item.id)) : undefined;
   }
 
   ngAfterViewInit(): void {

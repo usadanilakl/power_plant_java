@@ -92,10 +92,11 @@ export class DriftService {
         const m = new Map<number, RowDrift>();
         for (const rec of records) {
           if (rec.fieldName !== '_entity_') continue; // only row-level records drive the badge
-          const row = m.get(rec.entityId) ?? {};
+          const key = Number(rec.entityId); // normalise so a string-vs-number id never misses the lookup
+          const row = m.get(key) ?? {};
           if (rec.peer === 'HUB') row.hub = rec;
           else if (rec.peer === 'SHAREPOINT') row.sp = rec;
-          m.set(rec.entityId, row);
+          m.set(key, row);
         }
         return m;
       }),
