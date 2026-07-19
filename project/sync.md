@@ -4,6 +4,32 @@
 
 This document describes the synchronization system for the Power Plant Java application, including field-based entity sync, file sync, full resync, partial resync, and reconnection handling.
 
+> ### ⚠️ Currency note & recent architecture (read first)
+> The detailed flows below remain accurate for the core mechanics (three-pass apply, `SYNC_ORDER`,
+> file sync, reconnection). Several things have since changed or been added — where this doc and the
+> list below disagree, the list wins:
+>
+> - **Hub-centric, not peer-to-peer.** P2P/peer-reconcile was removed; every desktop syncs to a
+>   central **hub** (this same codebase under `prod,hub,server`). See
+>   `architecture/sync-and-backup/hub-peer-sync.md`.
+> - **Entity coverage is COMPLETE and self-enforcing.** `ServiceFacade` now covers **every** concrete
+>   `BaseIdEntity` subtype (87+, not "22"), and **`SyncRegistryValidator`** asserts it at boot —
+>   logging any gap loudly, degrading `/health`, and hard-failing the hub under
+>   `sync.registry.strict=true`. The only exclusions are device-local (`WledCommand` ESP commands) and
+>   non-`BaseIdEntity` hub-local entities (drift records, Rounds detail). Issue 4's "still not covered"
+>   list and Future-Improvement #6 below are **DONE**.
+> - **Atomic UPDATE emission.** UPDATE `FieldChange` rows are now written in the entity's OWN
+>   transaction (`trackEntityUpdateInCurrentTx`, INSERTed on the tx connection) and published
+>   afterCommit — no more terminal-update drops. CREATE/DELETE emission is still `REQUIRES_NEW` +
+>   afterCommit (full same-tx atomicity deferred to a beforeCommit approach; documented in
+>   `FieldChangeEntityListener`).
+> - **Fail-loud, not silent-drop.** An unknown/unregistered incoming type is dead-lettered
+>   (`sync_dead_letter`) with a per-change disposition, not silently `return 0`'d.
+> - **Drift detection & the Drift Center** are new — an independent content-hash oracle that measures
+>   real hub/SharePoint divergence and reconciles it (per-field / whole-row / dependency-aware pull /
+>   bulk), surfaced in the Sync Dashboard, in-table badges, and on-form flags, and feeding the header
+>   sync badge. **See [`features/sync-and-backup/drift-detection.md`](features/sync-and-backup/drift-detection.md).**
+
 ## Base Paths
 - **Frontend:** `C:\Users\usada\my_projects\power_plant_java\frontend` (or `/home/dk-power/IdeaProjects/power_plant_java/frontend`)
 - **Backend:** `C:\Users\usada\my_projects\power_plant_java\src` (or `/home/dk-power/IdeaProjects/power_plant_java/src`)
@@ -91,8 +117,11 @@ All sync services are in: [/src/main/java/com/dk_power/power_plant_java/sevice/s
 | **FieldChangeTracker** | Persists FieldChange records to database |
 | **EntityStateCapture** | Captures original field values before updates |
 | **EntityTableRegistry** | Entity-to-table mapping and dependency order (SYNC_ORDER) |
-| **SyncHealthChecker** | Monitors sync health and connectivity |
-| **ServiceFacade** | Maps entity type names to SyncableService implementations (22 types) |
+| **SyncHealthChecker** | Connectivity/backlog health (count-based; the accurate field-level signal is now Drift Detection — see the drift doc) |
+| **ServiceFacade** | Maps entity type names to SyncableService implementations (ALL syncable entities, not 22) |
+| **SyncRegistryValidator** | Boot-time assertion that every `BaseIdEntity` subtype is registered + has a service (fail-loud; hard-fails hub under `sync.registry.strict=true`) |
+| **SyncDeadLetterService** | Durable dead-letter (`sync_dead_letter`) for changes with no service / permanent failure (replaces silent `return 0`) |
+| **DriftDetectionService** | Content-hash drift oracle → `DriftRecord` lifecycle (see drift doc) |
 
 ### Server Sync Services
 All server services are in: `/home/dk-power/IdeaProjects/sync-server/src/main/java/com/dk_power/sync_server/`
@@ -374,7 +403,10 @@ service.save(managedEntity);
 
 **Fix:** Added all 22 entity types with SyncableService implementations to ServiceFacade.
 
-**Still not covered (no SyncableService):** LotoSnapshot (no service), Role (no service), EspDevice (custom service), LedStrip (custom service).
+**UPDATE (now RESOLVED):** coverage is complete for **every** `BaseIdEntity` subtype and enforced at
+boot by `SyncRegistryValidator`. LotoSnapshot and the Diagram/ETA-Pro/Sim entities are now wired;
+EspDevice/LedStrip sync (only the `WledCommand` queue is excluded); Role is not a `BaseIdEntity` and
+never synced. See the currency note at the top and `features/sync-and-backup/drift-detection.md`.
 
 ### Issue 5: SSE Reconnection Did Not Trigger Sync (FIXED)
 **Symptom:** Client comes online after being offline — SSE reconnects but missed changes are never fetched. Server comes online after being offline — clients reconnect SSE but don't push accumulated changes. Equipment not rendering after reconnection.
@@ -521,9 +553,15 @@ sync.files.max-file-size=104857600      # 100MB max
 
 ## Future Improvements
 
-1. **Conflict Logging:** Log when LWW discards a local change
-2. **Sync Metrics Dashboard:** Real-time visibility into sync health
-3. **Retry Queue Visibility:** UI to see and retry failed operations
-4. **Selective Sync:** Sync only specific entity types
-5. **Compression:** Compress FieldChange batches for large syncs
-6. **SyncableService for remaining types:** Add to EspDevice, LedStrip, LotoSnapshot, Role
+Some earlier items are now **DONE**: #2 sync-visibility dashboard (Drift Center + drift breakdown +
+in-table/on-form surfaces), #3 dead-letter / failed-item visibility, and #6 full entity coverage
+(enforced by `SyncRegistryValidator`).
+
+Remaining / deferred:
+1. **Conflict Logging:** log when LWW discards a local change.
+4. **Selective Sync:** sync only specific entity types.
+5. **Compression:** compress FieldChange batches for large syncs.
+7. **Deferred sync-engine hardening** (from the 2026-07 audit): full same-tx atomicity for
+   CREATE/DELETE emission (beforeCommit); LWW re-check on the Pass-4 ManyToOne retry; durable
+   dead-letter on the OneToMany / ManyToOne-retry no-service branches; gate hub broadcast on durable
+   apply; move the drift content-hash hub round-trip outside the read-only DB tx.
