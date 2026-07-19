@@ -91,13 +91,17 @@ export class DriftService {
 
   /** Load the per-type scan overview (which types were scanned, when, counts) — cheap; cached in a signal. */
   loadOverview(): void {
-    this.http.get<NgApiResponse<DriftScanState[]>>(`${this.base}/overview`).pipe(
-      map(r => r?.responseData ?? []), catchError(() => of([]))
-    ).subscribe((list) => {
+    this.refreshOverview().subscribe();
+  }
+
+  /** Fetch the overview, update the shared {@link scanState} signal, AND return the list — so a poller can
+   *  both refresh every consumer's "last scan" time and inspect whether a type's scan just advanced. */
+  refreshOverview(): Observable<DriftScanState[]> {
+    return this.overview$().pipe(tap((list) => {
       const m = new Map<string, DriftScanState>();
       for (const s of list) m.set(s.entityType, s);
       this.scanState.set(m);
-    });
+    }));
   }
   private markScanned(type: string): void {
     this.scannedTypes.update((s) => { const n = new Set(s); n.add(type); return n; });

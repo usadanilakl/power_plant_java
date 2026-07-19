@@ -38,6 +38,9 @@
                title="Re-check this list for hub / SharePoint drift now">
          {{ driftScanning() ? 'Scanning…' : '⟳ Re-check drift' }}
        </button>
+       <span class="drift-checked" title="When drift was last checked for this list (auto-refreshes)">
+         checked {{ driftFmt(driftLastCheck()) }}
+       </span>
        @if (driftResultText()) {
          <span class="drift-result">{{ driftResultText() }}</span>
        }

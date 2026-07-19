@@ -17,6 +17,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timer } from 'rxjs';
 import { DriftService, RowDrift, ThreeWayFieldDiff } from '../../../services/drift.service';
 import {
   CdkVirtualScrollViewport,
@@ -81,6 +82,7 @@ export interface FilterOutRules {
     .drift-dot.clean { background:#2e7d32; } /* verified in sync = green */
     .drift-dot.ack { opacity:0.45; }       /* acknowledged = dimmed */
     .drift-result { margin-left:8px; font-size:12px; color:#cfd8dc; }
+    .drift-checked { margin-left:8px; font-size:11px; color:#90a4ae; font-style:italic; }
     /* row-action popover */
     .drift-backdrop { position:fixed; inset:0; z-index:900; }
     .drift-pop { position:fixed; z-index:901; min-width:210px; background:#212734; border:1px solid #353c4a;
@@ -158,9 +160,16 @@ export class TableComponent implements OnInit, AfterViewInit {
   driftMap = signal<Map<number, RowDrift>>(new Map());
   driftScanning = signal(false);
   driftResultText = signal<string>(''); // visible readout of the last scan so we can see what happened
+  /** #2: when the last drift scan ran for this type (from the shared scanState) — shown by the Re-check button. */
+  driftLastCheck = computed<string | null>(() => {
+    const t = this.driftEntityType();
+    return t ? (this.driftService.scanState().get(t)?.lastScannedAt ?? null) : null;
+  });
+  private driftRenderedScanAt: string | null = null; // the scan the badge map currently reflects (plain, non-reactive)
+  private driftPollStarted = false;
   private driftLoadEffect = effect(() => {
     const type = this.driftEntityType();
-    if (type) this.loadDrift(type);
+    if (type) { this.loadDrift(type); this.startDriftPoll(); }
   });
   /** Initial search criteria to apply when the table loads */
   initialSearchCriteria = input<SearchCriteria | null>(null);
@@ -366,10 +375,52 @@ export class TableComponent implements OnInit, AfterViewInit {
    *  Also refreshes the per-type overview so a clean row shows a confident GREEN once the type is scanned
    *  (by the background scheduler or a manual re-check), even on a fresh page load. */
   loadDrift(type: string): void {
-    this.driftService.loadOverview();
+    // Refresh the shared scan-time overview (drives driftLastCheck + the reactive poll) and remember which
+    // scan the badge map reflects, so the poll only re-pulls when a NEWER scan lands.
+    this.driftService.refreshOverview()
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe((list) => {
+        this.driftRenderedScanAt = list.find((o) => o.entityType === type)?.lastScannedAt ?? this.driftRenderedScanAt;
+      });
+    this.reloadDriftMap(type);
+  }
+
+  /** Pull the persisted per-row drift map (the badges). */
+  private reloadDriftMap(type: string): void {
     this.driftService.statusForType(type)
       .pipe(takeUntilDestroyed(this.driftDestroyRef))
       .subscribe((m) => { this.driftMap.set(m); this.cdr.markForCheck(); });
+  }
+
+  /** #3 reactive: while this table is open, poll the cheap overview so a background (scheduler) scan — or a
+   *  scan triggered from the Drift Center — refreshes THIS table's badges + "last checked" time without a
+   *  manual re-check. Re-pulls the badge map only when the scan timestamp actually advances (no churn). */
+  private startDriftPoll(): void {
+    if (this.driftPollStarted) return;
+    this.driftPollStarted = true;
+    timer(30000, 30000)
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe(() => {
+        const t = this.driftEntityType();
+        if (!t) return;
+        this.driftService.refreshOverview()
+          .pipe(takeUntilDestroyed(this.driftDestroyRef))
+          .subscribe((list) => {
+            const at = list.find((o) => o.entityType === t)?.lastScannedAt ?? null;
+            if (at && at !== this.driftRenderedScanAt) { this.driftRenderedScanAt = at; this.reloadDriftMap(t); }
+            this.cdr.markForCheck(); // keep the "checked Xm ago" relative time current even when nothing changed
+          });
+      });
+  }
+
+  /** Relative "x ago" for the last-checked time (mirrors the Drift Center). */
+  driftFmt(iso: string | null): string {
+    if (!iso) return 'not checked yet';
+    const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.round(s / 60) + 'm ago';
+    if (s < 86400) return Math.round(s / 3600) + 'h ago';
+    return Math.round(s / 86400) + 'd ago';
   }
 
   /** Force a fresh re-detection for this type (hub + SharePoint), then reload the badges. */
