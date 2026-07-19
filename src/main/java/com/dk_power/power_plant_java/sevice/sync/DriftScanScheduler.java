@@ -25,7 +25,7 @@ public class DriftScanScheduler {
     private boolean enabled;
 
     @Scheduled(fixedDelayString = "${sync.drift.scan-interval-ms:900000}",
-               initialDelayString = "${sync.drift.scan-initial-delay-ms:90000}")
+               initialDelayString = "${sync.drift.scan-initial-delay-ms:20000}")
     public void scheduledScan() {
         if (!enabled) return;
         String url = syncConfig.getSyncServerUrl();
