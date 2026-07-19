@@ -21,11 +21,15 @@
       (shouldShowField(field)) {
       <div
         class="field-wrapper"
-        [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())"
+        [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout()) + ' rf-drift-field'"
         [appGuide]="field.guideId || ''"
         [guideMessage]="field.guideMessage || ''"
         [guideTooltipOnly]="true"
       >
+        @if (driftEntityType() && driftFor(field.name)) {
+          <button type="button" class="field-drift-flag" (click)="openFieldDrift(field.name, $event)"
+                  title="This field differs from the hub — click to review">H</button>
+        }
         @if (field.tooltip) {
           <div class="field-tooltip">{{ field.tooltip }}</div>
         }
@@ -202,6 +206,25 @@
     </div>
   }
 </form>
+
+@if (driftPopover(); as pop) {
+  <div class="fd-backdrop" (click)="closeFieldDrift()"></div>
+  <div class="fd-pop" [style.left.px]="pop.x" [style.top.px]="pop.y">
+    <div class="fd-head">{{ pop.field }} — differs from hub</div>
+    <div class="fd-vals">
+      <div class="fd-row"><span class="fd-lb">Local</span><span class="fd-v">{{ pop.entry.localValue || '—' }}</span></div>
+      <div class="fd-row"><span class="fd-lb">Hub</span><span class="fd-v">{{ pop.entry.hubValue || '—' }}</span></div>
+      @if (pop.entry.spMapped) {
+        <div class="fd-row"><span class="fd-lb">SP</span><span class="fd-v">{{ pop.entry.spValue || '—' }}</span></div>
+      }
+    </div>
+    <div class="fd-acts">
+      <button type="button" class="fd-btn hub" [disabled]="driftBusy()" (click)="acceptFieldDrift('hub')">Use Hub</button>
+      <button type="button" class="fd-btn loc" [disabled]="driftBusy()" (click)="acceptFieldDrift('local')">Keep Local</button>
+    </div>
+    @if (driftBusy()) { <span class="fd-busy">working…</span> }
+  </div>
+}
 
 <!-- @if (title()!== '') {
   <h2 class="form-header">{{ title() }}</h2>

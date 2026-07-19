@@ -28,6 +28,7 @@ import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
 import { FormDataService } from '../services/form-data.service';
 import { GuideDirective } from '../../../guide/guide.directive';
+import { DriftService, ThreeWayFieldEntry } from '../../../../services/drift.service';
 
 @Component({
   selector: 'app-rf-reactive-form',
@@ -92,6 +93,22 @@ export class RfReactiveFormComponent {
   form: FormGroup = new FormGroup({});
   private isCreatingForm = false;
   private lastPatchedEntity: any = null;
+
+  // ===== Drift on the form (OPT-IN via driftEntityType) — mirrors SmartFormComponent. =====
+  driftEntityType = input<string | undefined>(undefined);
+  private driftService = inject(DriftService);
+  driftByField = signal<Map<string, ThreeWayFieldEntry>>(new Map());
+  driftPopover = signal<{ field: string; entry: ThreeWayFieldEntry; x: number; y: number } | null>(null);
+  driftBusy = signal(false);
+  private driftLoadedId: number | null = null;
+  private driftEffect = effect(() => {
+    const type = this.driftEntityType();
+    const id = this.entity()?.id;
+    if (type && id != null && Number(id) !== this.driftLoadedId) {
+      this.driftLoadedId = Number(id);
+      this.loadFormDrift(type, Number(id));
+    }
+  });
 
   // Computed
   Object = Object;
@@ -439,5 +456,46 @@ export class RfReactiveFormComponent {
     if (group && Object.keys(patch).length > 0) {
       group.patchValue(patch);
     }
+  }
+
+  // ===== Drift on the form =====
+
+  private loadFormDrift(type: string, id: number): void {
+    this.driftService.fieldDiff(type, id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(diff => {
+        const m = new Map<string, ThreeWayFieldEntry>();
+        if (diff) for (const f of diff.fields) if (!f.localHubMatch) m.set(f.fieldName, f);
+        this.driftByField.set(m);
+      });
+  }
+
+  driftFor(fieldName: string): ThreeWayFieldEntry | undefined {
+    return this.driftByField().get(fieldName);
+  }
+
+  openFieldDrift(field: string, event: MouseEvent): void {
+    event.stopPropagation();
+    const entry = this.driftByField().get(field);
+    if (!entry) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.driftPopover.set({ field, entry, x: Math.round(rect.left), y: Math.round(rect.bottom + 4) });
+  }
+  closeFieldDrift(): void { this.driftPopover.set(null); }
+
+  acceptFieldDrift(source: 'hub' | 'local'): void {
+    const pop = this.driftPopover();
+    const type = this.driftEntityType();
+    const id = this.entity()?.id;
+    if (!pop || !type || id == null || this.driftBusy()) return;
+    this.driftBusy.set(true);
+    this.driftService.acceptField(type, Number(id), pop.field, source)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.driftBusy.set(false);
+        if (source === 'hub') this.form.get(pop.field)?.setValue(pop.entry.hubValue, { emitEvent: false });
+        this.closeFieldDrift();
+        this.loadFormDrift(type, Number(id));
+      });
   }
 }
