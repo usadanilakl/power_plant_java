@@ -15,6 +15,7 @@ import { FormField, FormFieldGroup } from '../../../models/ui/form-field.model';
 import { CheckboxOnlyLabelComponent } from "../../checkbox-only-label/checkbox-only-label.component";
 import { WorkAreaSelectComponent } from '../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
 import { WorkAreaDto } from '../../../models/permits/work-area.model';
+import { DriftService, ThreeWayFieldEntry } from '../../../services/drift.service';
 
 @Component({
   selector: 'app-smart-form',
@@ -57,6 +58,23 @@ export class SmartFormComponent {
   isAddValueMenuOpen = signal<boolean>(false);
   selectedCategoryName = signal<string>('');
   formErrors = signal<{ [key: string]: string }>({});
+
+  // ===== Drift on the form (OPT-IN via driftEntityType). Flags fields that differ from the hub, with a
+  //       per-field accept (Use Hub / Keep Local) reusing the same DriftService the Drift Center uses. =====
+  driftEntityType = input<string | undefined>(undefined);
+  private driftService = inject(DriftService);
+  driftByField = signal<Map<string, ThreeWayFieldEntry>>(new Map());
+  driftPopover = signal<{ field: string; entry: ThreeWayFieldEntry; x: number; y: number } | null>(null);
+  driftBusy = signal(false);
+  private driftLoadedId: number | null = null;
+  private driftEffect = effect(() => {
+    const type = this.driftEntityType();
+    const id = this.values()?.id;
+    if (type && id != null && Number(id) !== this.driftLoadedId) {
+      this.driftLoadedId = Number(id);          // plain field — no synchronous signal write inside the effect
+      this.loadFormDrift(type, Number(id));     // async; writes driftByField in its subscribe
+    }
+  });
 
 
   Object = Object;
@@ -341,6 +359,51 @@ export class SmartFormComponent {
       return currentForm.value;
     }
     return null;
+  }
+
+  // ===== Drift on the form =====
+
+  /** Fetch the 3-way diff and keep the fields that differ from the hub (drives the per-field flags). */
+  private loadFormDrift(type: string, id: number): void {
+    this.driftService.fieldDiff(type, id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(diff => {
+        const m = new Map<string, ThreeWayFieldEntry>();
+        if (diff) for (const f of diff.fields) if (!f.localHubMatch) m.set(f.fieldName, f);
+        this.driftByField.set(m);
+      });
+  }
+
+  /** Drift entry for a field (or undefined) — drives the flag on that field. */
+  driftFor(fieldName: string): ThreeWayFieldEntry | undefined {
+    return this.driftByField().get(fieldName);
+  }
+
+  openFieldDrift(field: string, event: MouseEvent): void {
+    event.stopPropagation();
+    const entry = this.driftByField().get(field);
+    if (!entry) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.driftPopover.set({ field, entry, x: Math.round(rect.left), y: Math.round(rect.bottom + 4) });
+  }
+  closeFieldDrift(): void { this.driftPopover.set(null); }
+
+  acceptFieldDrift(source: 'hub' | 'local'): void {
+    const pop = this.driftPopover();
+    const type = this.driftEntityType();
+    const id = this.values()?.id;
+    if (!pop || !type || id == null || this.driftBusy()) return;
+    this.driftBusy.set(true);
+    this.driftService.acceptField(type, Number(id), pop.field, source)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.driftBusy.set(false);
+        // Reflect an accepted hub value in the form immediately (visual only — the sync apply already
+        // persisted it locally). emitEvent:false so this doesn't trip the debounced auto-save.
+        if (source === 'hub') this.form.get(pop.field)?.setValue(pop.entry.hubValue, { emitEvent: false });
+        this.closeFieldDrift();
+        this.loadFormDrift(type, Number(id)); // re-check — the flag clears once the field matches
+      });
   }
   // updateFormValues(newValues: any) {
   //   const form = this.form;

@@ -10,7 +10,11 @@
           <legend class="group-title">{{ groupLabel }}</legend>
         }
         @for (field of groupedFields()[groupLabel]; track field.name) {
-          <div [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())">
+          <div [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout()) + ' sf-field'">
+            @if (driftEntityType() && driftFor(field.name)) {
+              <button type="button" class="field-drift-flag" (click)="openFieldDrift(field.name, $event)"
+                      title="This field differs from the hub — click to review">H</button>
+            }
             @switch (field.type) {
               @case ('select') {
                 <app-searchable-dropdown
@@ -105,6 +109,25 @@
       }
     </div>
   </form>
+
+  @if (driftPopover(); as pop) {
+    <div class="fd-backdrop" (click)="closeFieldDrift()"></div>
+    <div class="fd-pop" [style.left.px]="pop.x" [style.top.px]="pop.y">
+      <div class="fd-head">{{ pop.field }} — differs from hub</div>
+      <div class="fd-vals">
+        <div class="fd-row"><span class="fd-lb">Local</span><span class="fd-v">{{ pop.entry.localValue || '—' }}</span></div>
+        <div class="fd-row"><span class="fd-lb">Hub</span><span class="fd-v">{{ pop.entry.hubValue || '—' }}</span></div>
+        @if (pop.entry.spMapped) {
+          <div class="fd-row"><span class="fd-lb">SP</span><span class="fd-v">{{ pop.entry.spValue || '—' }}</span></div>
+        }
+      </div>
+      <div class="fd-acts">
+        <button type="button" class="fd-btn hub" [disabled]="driftBusy()" (click)="acceptFieldDrift('hub')">Use Hub</button>
+        <button type="button" class="fd-btn loc" [disabled]="driftBusy()" (click)="acceptFieldDrift('local')">Keep Local</button>
+      </div>
+      @if (driftBusy()) { <span class="fd-busy">working…</span> }
+    </div>
+  }
 } @else if(isValueEditMenuOpen()){
   <app-value-form 
     [categoryAlias]="selectedCategoryName()"
