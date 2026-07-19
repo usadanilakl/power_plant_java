@@ -199,26 +199,47 @@ public class SyncResolutionService {
             }
         }
 
+        if (!queue.isEmpty()) {
+            // Cap hit — some referenced entities were never fetched. If one of those is a NOT-NULL reference of a
+            // fetched row, that row simply won't apply (isolated below), so surface the truncation instead of a
+            // silent partial pull.
+            log.warn("pull: dependency graph for {}#{} hit the cap of {}; {} referenced entit(ies) not pulled — "
+                    + "a NOT-NULL reference among them can leave its target unresolved", entityType, entityId, cap, queue.size());
+        }
         if (fetched.isEmpty()) {
             return new PullResult(0, 0, Map.of(), "No data found on hub");
         }
 
+        // Apply PER-ENTITY in SYNC_ORDER (referenced rows first, each in its OWN transaction) so one bad row —
+        // a referenced entity created with a missing NOT-NULL scalar/FK, or a leaf past the cap — fails ALONE
+        // instead of rolling the whole "Use Hub" back and reporting a hollow success. applyIncomingChanges returns
+        // 0 (it does NOT throw) when its own tx rolls back, so a leaf failure just contributes 0 here; the frontend
+        // re-scan after this call is the source of truth for whether the badge clears.
         List<EntityRef> ordered = new ArrayList<>(fetched.keySet());
         ordered.sort(Comparator.comparingInt(r -> entityTableRegistry.getSyncOrder().indexOf(r.entityType)));
 
-        List<FieldChange> allChanges = new ArrayList<>();
         Map<String, Integer> countByType = new LinkedHashMap<>();
+        int applied = 0, unresolved = 0;
         for (EntityRef ref : ordered) {
             SyncableService<?> svc = serviceFacade.getService(ref.entityType);
             boolean existsLocally = svc != null && svc.getEntityById(ref.entityId) != null;
-            allChanges.addAll(buildHubChangesWithRelTypes(ref.entityType, ref.entityId, fetched.get(ref), existsLocally));
+            List<FieldChange> changes = buildHubChangesWithRelTypes(ref.entityType, ref.entityId, fetched.get(ref), existsLocally);
+            if (changes.isEmpty()) continue;
             countByType.merge(ref.entityType, 1, Integer::sum);
+            int n = fieldSyncService.applyIncomingChanges(changes); // own tx; returns 0 (not throws) on rollback
+            applied += n;
+            if (!existsLocally && n <= 0) { // a referenced CREATE that never landed (missing NOT-NULL / unfetched ref)
+                unresolved++;
+                log.warn("pull: {}#{} did not apply (constraint / unfetched reference?) — left for the next scan",
+                        ref.entityType, ref.entityId);
+            }
         }
 
-        int applied = fieldSyncService.applyIncomingChanges(allChanges);
-        return new PullResult(countByType.values().stream().mapToInt(Integer::intValue).sum(),
-            applied, countByType,
-            "Pulled " + countByType.size() + " entity type(s) (" + applied + " changes applied)");
+        String msg = unresolved == 0
+                ? "Pulled " + countByType.size() + " entity type(s) (" + applied + " change(s) applied)"
+                : "Pulled " + countByType.size() + " type(s), " + applied + " change(s) applied; "
+                        + unresolved + " reference(s) could not be created (see log)";
+        return new PullResult(countByType.values().stream().mapToInt(Integer::intValue).sum(), applied, countByType, msg);
     }
 
     /** Relationship refs (type#id) parsed from a hub entity's serialized fields — the seed for the pull so a
