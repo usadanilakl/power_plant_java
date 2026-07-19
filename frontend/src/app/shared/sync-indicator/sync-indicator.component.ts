@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
 import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../services/sync-status.service';
+import { DriftService } from '../../services/drift.service';
 
 /**
  * Sync status indicator component for the header.
@@ -93,9 +94,14 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
               }
             </div>
 
-            @if (suggestResync()) {
-              <div class="resync-suggestion">
-                Full resync recommended
+            @if (driftFlagged() > 0 || driftAcknowledged() > 0) {
+              <div class="resync-suggestion drift" (click)="goToDrift()"
+                   title="Open the Drift Center to review and resolve">
+                @if (driftFlagged() > 0) {
+                  {{ driftFlagged() }} field{{ driftFlagged() === 1 ? '' : 's' }} drifting from hub / SharePoint — review in Drift Center →
+                } @else {
+                  {{ driftAcknowledged() }} acknowledged drift{{ driftAcknowledged() === 1 ? '' : 's' }} — review in Drift Center →
+                }
               </div>
             }
 
@@ -125,9 +131,9 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
                 <mat-icon>sync</mat-icon>
                 {{ syncingNow() ? 'Syncing...' : 'Sync Now' }}
               </button>
-              <button mat-button (click)="goToActivity()">
-                <mat-icon>timeline</mat-icon>
-                Activity
+              <button mat-button (click)="goToDrift()">
+                <mat-icon>rule</mat-icon>
+                Drift
               </button>
               <button mat-button (click)="goToDashboard()">
                 <mat-icon>dashboard</mat-icon>
@@ -318,6 +324,14 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
       border-radius: 0 4px 4px 0;
     }
 
+    .resync-suggestion.drift {
+      cursor: pointer;
+    }
+
+    .resync-suggestion.drift:hover {
+      background: rgba(255, 152, 0, 0.18);
+    }
+
     .resync-suggestion.auto-resync-active {
       display: flex;
       align-items: center;
@@ -390,6 +404,7 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
 export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private syncUpdateService = inject(SyncUpdateService);
   private syncStatusService = inject(SyncStatusService);
+  private driftService = inject(DriftService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private elementRef = inject(ElementRef);
@@ -412,6 +427,12 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   syncingNow = signal<boolean>(false);
   private updateTimer: any = null;
   private statusPollTimer: any = null;
+  private driftSummaryTimer: any = null;
+
+  // NEW drift signal — the accurate content-hash flagged/acknowledged counts (DriftService.summary), which
+  // replace the old count/timestamp "sync health" heuristic that read green while fields were actually drifting.
+  driftFlagged = computed(() => this.driftService.summary().flagged);
+  driftAcknowledged = computed(() => this.driftService.summary().acknowledged);
 
   // Computed: determine the effective visual state
   // Uses serverAvailable from backend /api/field-sync/status (NOT frontend SSE connection state)
@@ -429,10 +450,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     // avoids a normal reconnect catch-up reading as "Possibly Out of Sync" or silently as green.
     if (this.serverPendingCount() > 0) return 'catching-up' as const;
 
-    // Server is available — check health
-    const health = this.syncHealthState();
-    if (health === 'OUT_OF_SYNC') return 'out-of-sync' as const;
-    if (health === 'POSSIBLY_OUT_OF_SYNC') return 'possibly-out-of-sync' as const;
+    // Server is available — decide sync state from the ACCURATE content-hash drift (not the old count/time
+    // heuristic): FLAGGED drift needs attention (red); drift that was acknowledged-but-not-resolved is a
+    // softer warning (orange); none = green/up-to-date.
+    if (this.driftFlagged() > 0) return 'out-of-sync' as const;
+    if (this.driftAcknowledged() > 0) return 'possibly-out-of-sync' as const;
     return 'connected' as const;
   });
 
@@ -456,11 +478,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   });
 
   showWarningBadge = computed(() => {
-    const health = this.syncHealthState();
+    const state = this.effectiveState();
     // No alarming badge while merely catching up — that's a friendly, transient state.
     return this.syncEnabled() && this.serverAvailable() === true &&
-      this.effectiveState() !== 'catching-up' &&
-      (health === 'OUT_OF_SYNC' || health === 'POSSIBLY_OUT_OF_SYNC');
+      (state === 'out-of-sync' || state === 'possibly-out-of-sync');
   });
 
   statusLabel = computed(() => {
@@ -484,8 +505,12 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       const n = this.serverPendingCount();
       return n > 0 ? `Catching up — ${n} change${n === 1 ? '' : 's'} to apply` : 'Catching up…';
     }
-    const msg = this.syncHealthMessage();
-    if (msg && (state === 'out-of-sync' || state === 'possibly-out-of-sync')) return msg;
+    if (state === 'out-of-sync' || state === 'possibly-out-of-sync') {
+      const f = this.driftFlagged(); const a = this.driftAcknowledged();
+      if (f > 0) return `${f} field${f === 1 ? '' : 's'} drifting from hub / SharePoint — open the Drift Center`;
+      if (a > 0) return `${a} acknowledged drift${a === 1 ? '' : 's'} — review in the Drift Center`;
+      return this.syncHealthMessage();
+    }
     if (state === 'connected') return 'Connected and synchronized';
     return '';
   });
@@ -521,6 +546,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
 
     // Poll status every 15 seconds for accurate server availability
     this.startStatusPolling();
+
+    // Keep the accurate content-hash drift summary fresh for the badge — initial + every 60s.
+    this.driftService.refreshSummary();
+    this.driftSummaryTimer = setInterval(() => this.driftService.refreshSummary(), 60000);
 
     // Subscribe to sync health check updates
     this.subscriptions.push(
@@ -616,6 +645,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     this.router.navigate(['/sync/activity']);
   }
 
+  goToDrift(): void {
+    this.closePopover();
+    this.router.navigate(['/sync/drift']);
+  }
+
   goToDashboard(): void {
     this.closePopover();
     this.router.navigate(['/sync']);
@@ -681,6 +715,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       this.syncStatusService.stopHealthCheckPolling();
       if (this.updateTimer) clearTimeout(this.updateTimer);
       if (this.statusPollTimer) clearInterval(this.statusPollTimer);
+      if (this.driftSummaryTimer) clearInterval(this.driftSummaryTimer);
       if (this.documentClickListener) {
         document.removeEventListener('click', this.documentClickListener);
       }

@@ -6,20 +6,20 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subscription } from 'rxjs';
-import { SyncStatusService, SyncHealthCheckResult, EntityDrift } from '../../../services/sync-status.service';
-import { EntitySyncCheckService, VerificationResult } from '../../../services/sync/entity-sync-check.service';
+import { SyncStatusService, SyncHealthCheckResult } from '../../../services/sync-status.service';
+import { DriftService, DriftScanState } from '../../../services/drift.service';
 
-interface DriftRow extends EntityDrift {
-  verifyResult?: VerificationResult | null;
-  verifying?: boolean;
-}
-
+/**
+ * Sync Dashboard › Overview. An at-a-glance summary sourced from the ACCURATE content-hash drift signal
+ * (DriftService), NOT the old count/timestamp heuristic that read green while fields were drifting. Drift
+ * numbers come from DriftService.summary()/overview(); the two "pending" backlog cards remain from the
+ * connectivity health check (orthogonal to drift). Drill-down links into the Drift Center.
+ */
 @Component({
   selector: 'app-sync-overview',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatTableModule, MatChipsModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatTableModule, MatChipsModule],
   template: `
     <div class="overview-container">
       <!-- Status Cards Row -->
@@ -29,22 +29,22 @@ interface DriftRow extends EntityDrift {
             <mat-icon class="status-icon">{{ statusIcon() }}</mat-icon>
             <div class="status-text">
               <span class="status-label">{{ statusLabel() }}</span>
-              <span class="status-detail">{{ health()?.message || 'Checking...' }}</span>
+              <span class="status-detail">{{ statusDetail() }}</span>
             </div>
           </mat-card-content>
         </mat-card>
 
         <mat-card class="metric-card">
           <mat-card-content>
-            <div class="metric-value">{{ health()?.entityDifference ?? '—' }}</div>
-            <div class="metric-label">Entity Drift</div>
+            <div class="metric-value" [class.warn]="summary().flagged > 0">{{ summary().flagged }}</div>
+            <div class="metric-label">Drifting Fields</div>
           </mat-card-content>
         </mat-card>
 
         <mat-card class="metric-card">
           <mat-card-content>
-            <div class="metric-value">{{ health()?.fileDifference ?? '—' }}</div>
-            <div class="metric-label">File Drift</div>
+            <div class="metric-value">{{ driftingTypes().length }}</div>
+            <div class="metric-label">Types Drifting</div>
           </mat-card-content>
         </mat-card>
 
@@ -65,75 +65,58 @@ interface DriftRow extends EntityDrift {
 
       <!-- Actions -->
       <div class="actions-row">
-        <button mat-raised-button color="primary" (click)="checkNow()" [disabled]="checking()">
+        <button mat-raised-button color="primary" (click)="scanNow()" [disabled]="scanning()">
           <mat-icon>refresh</mat-icon>
-          {{ checking() ? 'Checking...' : 'Check Now' }}
+          {{ scanning() ? 'Scanning…' : 'Scan Now' }}
         </button>
+        <button mat-button color="primary" (click)="openDriftCenter()">
+          <mat-icon>rule</mat-icon>
+          Open Drift Center
+        </button>
+        <span class="last-scan">last scan {{ fmt(lastScanAt()) }}</span>
       </div>
 
-      <!-- Entity Drift Table -->
-      @if (entityDrift().length > 0) {
-        <h3>Entity Type Drift</h3>
-        <table mat-table [dataSource]="driftRows()" class="drift-table">
+      <!-- Per-type Drift Table -->
+      @if (driftingTypes().length > 0) {
+        <h3>Drifting Entity Types</h3>
+        <table mat-table [dataSource]="driftingTypes()" class="drift-table">
           <ng-container matColumnDef="entityType">
             <th mat-header-cell *matHeaderCellDef>Entity Type</th>
             <td mat-cell *matCellDef="let row">{{ row.entityType }}</td>
           </ng-container>
-          <ng-container matColumnDef="localCount">
-            <th mat-header-cell *matHeaderCellDef>Local</th>
-            <td mat-cell *matCellDef="let row">{{ row.localCount }}</td>
-          </ng-container>
-          <ng-container matColumnDef="serverCount">
-            <th mat-header-cell *matHeaderCellDef>Hub</th>
-            <td mat-cell *matCellDef="let row">{{ row.serverCount }}</td>
-          </ng-container>
-          <ng-container matColumnDef="difference">
-            <th mat-header-cell *matHeaderCellDef>Diff</th>
+          <ng-container matColumnDef="flagged">
+            <th mat-header-cell *matHeaderCellDef>Drift</th>
             <td mat-cell *matCellDef="let row">
-              <mat-chip [color]="row.difference > 5 ? 'warn' : 'accent'" highlighted>
-                {{ row.difference }}
-              </mat-chip>
+              <mat-chip color="warn" highlighted>{{ row.flaggedCount }}</mat-chip>
             </td>
           </ng-container>
-          <ng-container matColumnDef="spStatus">
-            <th mat-header-cell *matHeaderCellDef>SP Check</th>
-            <td mat-cell *matCellDef="let row">
-              @if (row.verifying) {
-                <mat-spinner diameter="16"></mat-spinner>
-              } @else if (row.verifyResult) {
-                @if (!row.verifyResult.hubReachable) {
-                  <span class="sp-err">Hub unreachable</span>
-                } @else if (row.verifyResult.issueCount === 0) {
-                  <span class="sp-ok"><mat-icon style="font-size:16px;width:16px;height:16px">check_circle</mat-icon> OK</span>
-                } @else {
-                  <span class="sp-warn">{{ row.verifyResult.issueCount }} issues</span>
-                }
-                @if (row.verifyResult.spBacked && row.verifyResult.spReachable) {
-                  <span class="sp-count">(SP: {{ row.verifyResult.spCount }})</span>
-                }
-              } @else {
-                <button mat-button (click)="verifyType(row); $event.stopPropagation()" style="font-size:11px">
-                  Verify
-                </button>
-              }
-            </td>
+          <ng-container matColumnDef="peers">
+            <th mat-header-cell *matHeaderCellDef>Checked against</th>
+            <td mat-cell *matCellDef="let row">{{ row.spBacked ? 'hub + SharePoint' : 'hub' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="lastScan">
+            <th mat-header-cell *matHeaderCellDef>Last scan</th>
+            <td mat-cell *matCellDef="let row">{{ fmt(row.lastScannedAt) }}</td>
           </ng-container>
           <ng-container matColumnDef="action">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let row">
-              <button mat-button color="primary" (click)="compareType(row.entityType)">
-                Compare
-              </button>
+              <button mat-button color="primary" (click)="openDriftCenter(row.entityType)">Review</button>
             </td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="clickable-row"
-              (click)="compareType(row.entityType)"></tr>
+              (click)="openDriftCenter(row.entityType)"></tr>
         </table>
-      } @else if (health() && overallStatus() === 'in-sync') {
+      } @else if (scannedAny()) {
         <div class="all-good">
           <mat-icon>check_circle</mat-icon>
-          <span>All entity counts match — no drift detected</span>
+          <span>No content drift detected — every scanned type matches the hub.</span>
+        </div>
+      } @else {
+        <div class="all-good muted">
+          <mat-icon>hourglass_empty</mat-icon>
+          <span>No scan has run yet — click "Scan Now" to check for drift.</span>
         </div>
       }
     </div>
@@ -153,44 +136,44 @@ interface DriftRow extends EntityDrift {
     .status-label { font-weight: 600; font-size: 16px; }
     .status-detail { font-size: 12px; opacity: 0.7; }
     .metric-value { font-size: 24px; font-weight: 600; }
+    .metric-value.warn { color: #ff9800; }
     .metric-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; }
-    .actions-row { margin-bottom: 16px; }
+    .actions-row { margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .last-scan { font-size: 12px; opacity: 0.6; font-style: italic; }
     .drift-table { width: 100%; }
     .clickable-row { cursor: pointer; }
     .clickable-row:hover { background: rgba(255,255,255,0.05); }
     .all-good { display: flex; align-items: center; gap: 8px; padding: 24px; opacity: 0.7; }
+    .all-good.muted mat-icon { color: #9e9e9e; }
     .all-good mat-icon { color: #4caf50; }
-    .sp-ok { color: #4caf50; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-    .sp-warn { color: #ffb74d; font-size: 12px; font-weight: 600; }
-    .sp-err { color: #ef5350; font-size: 12px; font-weight: 600; }
-    .sp-count { color: var(--text-secondary, #aaa); font-size: 11px; margin-left: 4px; }
     h3 { margin: 16px 0 8px; }
   `]
 })
 export class SyncOverviewComponent implements OnInit, OnDestroy {
+  private driftService = inject(DriftService);
   private syncStatusService = inject(SyncStatusService);
-  private syncCheckService = inject(EntitySyncCheckService);
   private router = inject(Router);
   private subs: Subscription[] = [];
 
-  health = signal<SyncHealthCheckResult | null>(null);
-  checking = signal(false);
-  displayedColumns = ['entityType', 'localCount', 'serverCount', 'difference', 'spStatus', 'action'];
+  health = signal<SyncHealthCheckResult | null>(null); // ONLY for the pending-backlog cards (connectivity)
+  displayedColumns = ['entityType', 'flagged', 'peers', 'lastScan', 'action'];
 
-  // Mutable drift rows with verify state
-  driftRows = signal<DriftRow[]>([]);
+  summary = computed(() => this.driftService.summary());
+  scanning = computed(() => this.driftService.scanning());
+  private states = computed<DriftScanState[]>(() => [...this.driftService.scanState().values()]);
+  driftingTypes = computed(() =>
+    this.states().filter(s => s.flaggedCount > 0).sort((a, b) => b.flaggedCount - a.flaggedCount));
+  scannedAny = computed(() => this.states().some(s => !!s.lastScannedAt));
+  lastScanAt = computed(() =>
+    this.states().map(s => s.lastScannedAt).filter(Boolean).sort().pop() ?? null);
 
   overallStatus = computed(() => {
-    const h = this.health();
-    if (!h) return 'unknown';
-    switch (h.syncStatus) {
-      case 'IN_SYNC': return 'in-sync';
-      case 'POSSIBLY_OUT_OF_SYNC': return 'possibly-out-of-sync';
-      case 'OUT_OF_SYNC': return 'out-of-sync';
-      default: return 'unknown';
-    }
+    const s = this.summary();
+    if (s.flagged > 0) return 'out-of-sync';
+    if (s.acknowledged > 0) return 'possibly-out-of-sync';
+    if (this.scannedAny()) return 'in-sync';
+    return 'unknown';
   });
-
   statusIcon = computed(() => {
     switch (this.overallStatus()) {
       case 'in-sync': return 'cloud_done';
@@ -199,91 +182,50 @@ export class SyncOverviewComponent implements OnInit, OnDestroy {
       default: return 'cloud_sync';
     }
   });
-
   statusLabel = computed(() => {
     switch (this.overallStatus()) {
       case 'in-sync': return 'All Up to Date';
-      case 'possibly-out-of-sync': return 'Possibly Out of Sync';
+      case 'possibly-out-of-sync': return 'Acknowledged Drift';
       case 'out-of-sync': return 'Out of Sync';
-      default: return 'Checking...';
+      default: return 'Not Scanned Yet';
     }
   });
-
-  entityDrift = computed<EntityDrift[]>(() => {
-    const h = this.health();
-    if (!h || !h.localStats || !h.serverStats) return [];
-    const local = h.localStats.entityCounts;
-    const server = h.serverStats.entityCounts;
-    const allTypes = new Set([...Object.keys(local), ...Object.keys(server)]);
-    const drifts: EntityDrift[] = [];
-    for (const type of allTypes) {
-      const lc = local[type] ?? 0;
-      const sc = server[type] ?? 0;
-      if (lc !== sc) {
-        drifts.push({ entityType: type, localCount: lc, serverCount: sc, difference: Math.abs(lc - sc) });
-      }
+  statusDetail = computed(() => {
+    const s = this.summary();
+    switch (this.overallStatus()) {
+      case 'out-of-sync': return `${s.flagged} field(s) drifting across ${this.driftingTypes().length} type(s)`;
+      case 'possibly-out-of-sync': return `${s.acknowledged} acknowledged drift(s) — resolve in the Drift Center`;
+      case 'in-sync': return 'Content matches the hub for every scanned type';
+      default: return 'Run a scan to check for drift';
     }
-    drifts.sort((a, b) => b.difference - a.difference);
-    return drifts;
   });
 
   ngOnInit() {
-    this.subs.push(
-      this.syncStatusService.syncHealth$.subscribe(h => {
-        if (h) {
-          this.health.set(h);
-          this.rebuildDriftRows();
-        }
-      })
-    );
+    this.driftService.refreshSummary();
+    this.driftService.loadOverview();
+    // pending-backlog cards only (connectivity signal, orthogonal to drift)
+    this.subs.push(this.syncStatusService.syncHealth$.subscribe(h => { if (h) this.health.set(h); }));
     this.syncStatusService.fetchSyncHealthCheck().subscribe();
   }
 
-  checkNow() {
-    this.checking.set(true);
-    this.syncStatusService.forceSyncHealthCheck().subscribe({
-      next: h => {
-        this.health.set(h);
-        this.rebuildDriftRows();
-        this.checking.set(false);
-      },
-      error: () => this.checking.set(false)
-    });
+  scanNow() {
+    this.driftService.scanAll().subscribe(() => { this.driftService.loadOverview(); this.driftService.refreshSummary(); });
   }
 
-  verifyType(row: DriftRow) {
-    row.verifying = true;
-    this.driftRows.set([...this.driftRows()]);
-    this.syncCheckService.verify(row.entityType).subscribe({
-      next: result => {
-        row.verifyResult = result;
-        row.verifying = false;
-        this.driftRows.set([...this.driftRows()]);
-      },
-      error: () => {
-        row.verifying = false;
-        this.driftRows.set([...this.driftRows()]);
-      }
-    });
+  openDriftCenter(entityType?: string) {
+    this.router.navigate(['/sync/drift'], entityType ? { queryParams: { type: entityType } } : {});
   }
 
-  compareType(entityType: string) {
-    // Compare panel was retired — the Drift Center is the consolidated compare/reconcile tool now.
-    this.router.navigate(['/sync/drift'], { queryParams: { type: entityType } });
+  fmt(iso?: string | null): string {
+    if (!iso) return 'never';
+    const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.round(s / 60) + 'm ago';
+    if (s < 86400) return Math.round(s / 3600) + 'h ago';
+    return Math.round(s / 86400) + 'd ago';
   }
 
   ngOnDestroy() {
     this.subs.forEach(s => s.unsubscribe());
-  }
-
-  private rebuildDriftRows() {
-    const drifts = this.entityDrift();
-    // Preserve existing verify results
-    const existing = new Map(this.driftRows().map(r => [r.entityType, r]));
-    this.driftRows.set(drifts.map(d => ({
-      ...d,
-      verifyResult: existing.get(d.entityType)?.verifyResult ?? null,
-      verifying: false
-    })));
   }
 }
