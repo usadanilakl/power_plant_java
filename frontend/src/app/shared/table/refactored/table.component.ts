@@ -70,7 +70,10 @@ export interface FilterOutRules {
     .drift-scan-btn { background:#37474f; color:#eee; border:1px solid #546e7a; border-radius:4px;
       padding:2px 10px; font-size:12px; cursor:pointer; margin-left:8px; }
     .drift-scan-btn:disabled { opacity:0.6; cursor:default; }
-    .drift-badges { display:inline-flex; gap:3px; margin-right:6px; vertical-align:middle; }
+    .sync-col, .sync-col-h { text-align:center; }
+    .sync-col-h { font-size:11px; color:#9aa4b2; }
+    .drift-badges { display:inline-flex; gap:3px; vertical-align:middle; }
+    .drift-badges.clickable { cursor:pointer; }
     .drift-dot { display:inline-flex; align-items:center; justify-content:center; min-width:15px;
       height:15px; padding:0 3px; border-radius:8px; font-size:9px; font-weight:700; color:#fff;
       background:#e67e22; }               /* hub drift = orange */
@@ -78,6 +81,22 @@ export interface FilterOutRules {
     .drift-dot.clean { background:#2e7d32; } /* verified in sync = green */
     .drift-dot.ack { opacity:0.45; }       /* acknowledged = dimmed */
     .drift-result { margin-left:8px; font-size:12px; color:#cfd8dc; }
+    /* row-action popover */
+    .drift-backdrop { position:fixed; inset:0; z-index:900; }
+    .drift-pop { position:fixed; z-index:901; min-width:210px; background:#212734; border:1px solid #353c4a;
+      border-radius:10px; box-shadow:0 16px 40px rgba(0,0,0,.55); overflow:hidden; color:#e7ebf2; font-size:13px; }
+    .dp-head { padding:9px 12px; border-bottom:1px solid #2a303c; font-weight:700; font-size:12px; }
+    .dp-sec { padding:9px 12px; border-bottom:1px solid #2a303c; }
+    .dp-foot { border-bottom:0; display:flex; align-items:center; gap:8px; }
+    .dp-lbl { font-size:11px; color:#98a2b3; margin-bottom:7px; display:flex; align-items:center; gap:7px; }
+    .dp-acts { display:flex; gap:6px; flex-wrap:wrap; }
+    .dp-btn { border:1px solid #4a5568; background:#2a303c; color:#e7ebf2; border-radius:6px; padding:4px 9px;
+      font:600 12px system-ui; cursor:pointer; }
+    .dp-btn:disabled { opacity:.55; cursor:default; }
+    .dp-btn.hub { border-color:rgba(245,158,11,.55); }
+    .dp-btn.loc { border-color:rgba(59,130,246,.55); }
+    .dp-btn.sp { border-color:rgba(56,189,248,.55); }
+    .dp-busy { font-size:11px; color:#98a2b3; }
   `],
 })
 export class TableComponent implements OnInit, AfterViewInit {
@@ -370,6 +389,47 @@ export class TableComponent implements OnInit, AfterViewInit {
   /** True once a scan has run for this type — lets a clean row show a confident GREEN check. */
   isDriftScanned(): boolean {
     return this.driftService.isScanned(this.driftEntityType());
+  }
+
+  // ---- Row-action popover: click a drift badge to resolve it in place ----
+  driftPopover = signal<{ item: any; drift: RowDrift; x: number; y: number } | null>(null);
+  driftBusy = signal(false);
+
+  onBadgeClick(item: any, ev: MouseEvent): void {
+    ev.stopPropagation();
+    const drift = this.driftFor(item);
+    if (!drift) return; // a clean (green) row has nothing to act on
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    this.driftPopover.set({ item, drift, x: Math.round(rect.left), y: Math.round(rect.bottom + 4) });
+  }
+  closeDriftPopover(): void { this.driftPopover.set(null); }
+
+  /** Reconcile the whole row (hub/local/SP), then re-scan the type so the badge reflects the new truth. */
+  driftAct(kind: 'hub' | 'local' | 'sp'): void {
+    const pop = this.driftPopover(); const t = this.driftEntityType();
+    if (!pop || !t || this.driftBusy()) return;
+    const id = Number(pop.item.id);
+    const call = kind === 'hub' ? this.driftService.acceptHub(t, id)
+      : kind === 'local' ? this.driftService.keepLocal(t, id)
+        : this.driftService.pushToSp(t, id);
+    this.driftBusy.set(true);
+    call.pipe(takeUntilDestroyed(this.driftDestroyRef)).subscribe(() => {
+      this.driftService.scanType(t).pipe(takeUntilDestroyed(this.driftDestroyRef))
+        .subscribe(() => { this.driftBusy.set(false); this.closeDriftPopover(); this.loadDrift(t); });
+    });
+  }
+
+  /** Acknowledge the row's drift record(s) — leaves the data, stops flagging. */
+  driftAck(): void {
+    const pop = this.driftPopover(); const t = this.driftEntityType();
+    if (!pop || !t || this.driftBusy()) return;
+    const ids = [pop.drift.hub?.id, pop.drift.sp?.id].filter((x): x is number => x != null);
+    if (!ids.length) return;
+    this.driftBusy.set(true);
+    let done = 0;
+    ids.forEach((id) => this.driftService.acknowledge(id)
+      .pipe(takeUntilDestroyed(this.driftDestroyRef))
+      .subscribe(() => { if (++done === ids.length) { this.driftBusy.set(false); this.closeDriftPopover(); this.loadDrift(t); } }));
   }
 
   ngAfterViewInit(): void {

@@ -156,4 +156,23 @@ export class DriftService {
     return this.http.post<NgApiResponse<any>>(`${this.base}/acknowledge/${recordId}`, {}).pipe(
       map(r => r?.responseData), catchError(() => of(null)));
   }
+
+  // ==================== Reconcile actions (whole-row) ====================
+  private resolveBase = `${environment.baseApiUrl}/ng/sync/resolve`;
+
+  /** Use the HUB's version of the whole row (overwrites local). */
+  acceptHub(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(`${this.resolveBase}/accept-remote/${entityType}/${entityId}`, {})
+      .pipe(map(r => r?.responseData), catchError(() => of(null)));
+  }
+  /** Keep the LOCAL version — push it up to the hub (overwrites hub). */
+  keepLocal(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(`${this.resolveBase}/accept-local/${entityType}/${entityId}`, {})
+      .pipe(map(r => r?.responseData), catchError(() => of(null)));
+  }
+  /** Push the local row to SharePoint (resolves a missing-from-SP drift). */
+  pushToSp(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(`${this.resolveBase}/accept-sp/${entityType}/${entityId}`, {})
+      .pipe(map(r => r?.responseData), catchError(() => of(null)));
+  }
 }

@@ -45,10 +45,13 @@
   </div>
 
   <div #headerContainer class="header-container">
-    <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth()">
+    <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0)">
       <thead>
         <tr>
-          <th *ngFor="let column of columns()" 
+          @if (driftEntityType()) {
+            <th class="sync-col-h" [style.width.px]="56" title="Hub / SharePoint sync status">Sync</th>
+          }
+          <th *ngFor="let column of columns()"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
               class="sortable-header">
             <div class="header-content" (click)="sortService.sortColumn(column, true)">
@@ -92,7 +95,7 @@
       [itemSize]="dataService.rowHeight"
       class="viewport"
     >
-      <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth()">
+      <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0)">
         <tbody #tableBody>
           <tr
             *cdkVirtualFor="let item of dataService.filteredItems(); trackBy: utilService.trackByItemId"
@@ -112,21 +115,12 @@
             (mouseenter)="clickService.onRowHover(item)"
             (mouseleave)="clickService.onRowLeave()"
           >
-            <td
-              *ngFor="let column of columns(); let first = first"
-              [attr.data-column-id]="column.id"
-              [style.width.px]="resizeService.getColumnWidth(column.id)"
-              [ngStyle]="clickService.getCellStyleWithHover(item, column)"
-              [attr.title]="!column.template ? utilService.getCellValue(item, column) : null"
-              (mousedown)="clickService.registerCellClick(item, column, $event)"
-              (auxclick)="clickService.onRowMiddleClick(item, $event)"
-              (mouseenter)="clickService.onCellHover(item, column)"
-              (mouseleave)="clickService.onCellLeave()"
-              class="table-cell"
-            >
-              @if (first && driftEntityType()) {
+            @if (driftEntityType()) {
+              <td class="sync-col" [style.width.px]="56"
+                  (mousedown)="$event.stopPropagation()"
+                  (click)="onBadgeClick(item, $event)">
                 @if (driftFor(item); as d) {
-                  <span class="drift-badges">
+                  <span class="drift-badges clickable">
                     @if (d.hub) {
                       <span class="drift-dot" [class.ack]="d.hub.status === 'ACKNOWLEDGED'"
                             [title]="'Hub: ' + d.hub.kind + ' · ' + d.hub.status">H</span>
@@ -141,7 +135,20 @@
                     <span class="drift-dot clean" title="Verified in sync (hub + SharePoint)">✓</span>
                   </span>
                 }
-              }
+              </td>
+            }
+            <td
+              *ngFor="let column of columns()"
+              [attr.data-column-id]="column.id"
+              [style.width.px]="resizeService.getColumnWidth(column.id)"
+              [ngStyle]="clickService.getCellStyleWithHover(item, column)"
+              [attr.title]="!column.template ? utilService.getCellValue(item, column) : null"
+              (mousedown)="clickService.registerCellClick(item, column, $event)"
+              (auxclick)="clickService.onRowMiddleClick(item, $event)"
+              (mouseenter)="clickService.onCellHover(item, column)"
+              (mouseleave)="clickService.onCellLeave()"
+              class="table-cell"
+            >
               <span *ngIf="!column.template">
                 {{ utilService.getCellValue(item, column) }}
               </span>
@@ -163,4 +170,34 @@
     <span>{{ dataService.selectedItems().length }} item(s) selected</span>
      <app-buttons [buttons]="controlsService.tableSelectionControls()"></app-buttons>
   </div>
+
+  @if (driftPopover(); as pop) {
+    <div class="drift-backdrop" (click)="closeDriftPopover()"></div>
+    <div class="drift-pop" [style.left.px]="pop.x" [style.top.px]="pop.y">
+      <div class="dp-head">Sync drift</div>
+      @if (pop.drift.hub) {
+        <div class="dp-sec">
+          <div class="dp-lbl"><span class="drift-dot">H</span>
+            {{ pop.drift.hub.kind === 'DIFFERING' ? 'Differs from hub'
+               : (pop.drift.hub.kind === 'MISSING_LOCALLY' ? 'On hub, not here' : 'Here, not on hub') }}</div>
+          <div class="dp-acts">
+            <button class="dp-btn hub" [disabled]="driftBusy()" (click)="driftAct('hub')">Use Hub</button>
+            <button class="dp-btn loc" [disabled]="driftBusy()" (click)="driftAct('local')">Keep Local</button>
+          </div>
+        </div>
+      }
+      @if (pop.drift.sp) {
+        <div class="dp-sec">
+          <div class="dp-lbl"><span class="drift-dot sp">SP</span> Missing on SharePoint</div>
+          <div class="dp-acts">
+            <button class="dp-btn sp" [disabled]="driftBusy()" (click)="driftAct('sp')">Push to SharePoint</button>
+          </div>
+        </div>
+      }
+      <div class="dp-sec dp-foot">
+        <button class="dp-btn" [disabled]="driftBusy()" (click)="driftAck()">Acknowledge</button>
+        @if (driftBusy()) { <span class="dp-busy">working…</span> }
+      </div>
+    </div>
+  }
 </div>
