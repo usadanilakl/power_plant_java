@@ -163,6 +163,7 @@ public class EntityTableRegistry {
         "EngraverTemplate",
         // Tier 2: Equipment & spatial (depend on Value/Category)
         "Equipment",
+        "ZeroEnergy",       // LotoPoint has a ManyToOne to ZeroEnergy — MUST precede LotoPoint (only depends on Value, above)
         "LotoPoint",
         "Loto",
         "LotoStandard",
@@ -173,7 +174,6 @@ public class EntityTableRegistry {
         "WalkdownSession",           // depends on Loto — above
         "LotoBox",
         "Lock",
-        "ZeroEnergy",
         "HeatTrace",
         "Highlight",
         "ElectricalPanel",
