@@ -17,7 +17,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DriftService, RowDrift } from '../../../services/drift.service';
+import { DriftService, RowDrift, ThreeWayFieldDiff } from '../../../services/drift.service';
 import {
   CdkVirtualScrollViewport,
   ScrollingModule,
@@ -97,6 +97,15 @@ export interface FilterOutRules {
     .dp-btn.loc { border-color:rgba(59,130,246,.55); }
     .dp-btn.sp { border-color:rgba(56,189,248,.55); }
     .dp-busy { font-size:11px; color:#98a2b3; }
+    .dp-diffnote { font-size:11px; color:#98a2b3; padding:2px 0 6px; }
+    .dp-diff { margin:2px 0 8px; max-height:170px; overflow:auto; }
+    .dp-field { padding:5px 0; border-top:1px solid #2a303c; }
+    .dp-fn { font:600 11px ui-monospace,Consolas,monospace; color:#98a2b3; margin-bottom:3px; }
+    .dp-vals { display:flex; align-items:center; gap:6px; font-size:12px; }
+    .dp-loc, .dp-hub { max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      padding:1px 6px; border-radius:4px; background:#1b202b; border:1px solid #2a303c; }
+    .dp-hub { border-color:rgba(245,158,11,.5); }
+    .dp-arr { color:#6b7480; }
   `],
 })
 export class TableComponent implements OnInit, AfterViewInit {
@@ -394,6 +403,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   // ---- Row-action popover: click a drift badge to resolve it in place ----
   driftPopover = signal<{ item: any; drift: RowDrift; x: number; y: number } | null>(null);
   driftBusy = signal(false);
+  driftDiff = signal<ThreeWayFieldDiff | null>(null);
+  driftDiffLoading = signal(false);
 
   onBadgeClick(item: any, ev: MouseEvent): void {
     ev.stopPropagation();
@@ -401,8 +412,17 @@ export class TableComponent implements OnInit, AfterViewInit {
     if (!drift) return; // a clean (green) row has nothing to act on
     const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     this.driftPopover.set({ item, drift, x: Math.round(rect.left), y: Math.round(rect.bottom + 4) });
+    // Fetch the field diff so the user sees WHAT differs before choosing (hub drift only).
+    this.driftDiff.set(null);
+    const t = this.driftEntityType();
+    if (t && drift.hub) {
+      this.driftDiffLoading.set(true);
+      this.driftService.fieldDiff(t, Number(item.id))
+        .pipe(takeUntilDestroyed(this.driftDestroyRef))
+        .subscribe(d => { this.driftDiff.set(d); this.driftDiffLoading.set(false); });
+    }
   }
-  closeDriftPopover(): void { this.driftPopover.set(null); }
+  closeDriftPopover(): void { this.driftPopover.set(null); this.driftDiff.set(null); }
 
   /** Reconcile the whole row (hub/local/SP), then re-scan the type so the badge reflects the new truth. */
   driftAct(kind: 'hub' | 'local' | 'sp'): void {
