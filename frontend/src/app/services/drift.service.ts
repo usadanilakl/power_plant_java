@@ -91,7 +91,13 @@ export class DriftService {
     this.scanning.set(true);
     return this.http.post<NgApiResponse<DriftScanResult>>(`${this.base}/scan/${entityType}`, {}).pipe(
       map(r => r?.responseData ?? null),
-      tap(() => { this.scanning.set(false); this.markScanned(entityType); this.refreshSummary(); }),
+      // Only trust "no record ⇒ in sync" (green) when the scan actually COMPLETED both peers cleanly —
+      // a partial/errored scan must not paint confident green over rows it never really checked.
+      tap((r) => {
+        this.scanning.set(false);
+        if (r && r.errors === 0) this.markScanned(entityType);
+        this.refreshSummary();
+      }),
       catchError(() => { this.scanning.set(false); return of(null); })
     );
   }

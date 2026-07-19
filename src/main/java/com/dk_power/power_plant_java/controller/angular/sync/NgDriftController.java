@@ -37,21 +37,43 @@ public class NgDriftController {
         }
     }
 
-    /** Scan a single type (hub always; SharePoint too if it is SP-backed). */
+    /**
+     * Scan a single type (hub always; SharePoint too if it is SP-backed). The two peers are detected
+     * INDEPENDENTLY — a hub-probe failure must NOT abort the SharePoint scan. This is load-bearing:
+     * a type like WorkRequest drifts ONLY on the SP peer (missing-from-SP rows), while the hub content-hash
+     * probe is the heaviest/most failure-prone (large rows + a possibly-absent hub endpoint). Running them
+     * in one try/catch (hub first) let a hub throw swallow the SP records entirely, so nothing ever showed.
+     */
     @PostMapping("/scan/{entityType}")
     public ResponseEntity<NgApiResponse<DriftDetectionService.DriftScanResult>> scanType(
             @PathVariable String entityType) {
+        DriftDetectionService.DriftScanResult r = new DriftDetectionService.DriftScanResult();
+        r.typesScanned = 1;
+        StringBuilder problems = new StringBuilder();
         try {
-            DriftDetectionService.DriftScanResult r = driftDetectionService.detectHubForType(entityType);
-            DriftDetectionService.DriftScanResult sp = driftDetectionService.detectSpForType(entityType);
-            r.flagged += sp.flagged;
-            r.stillDrifting += sp.stillDrifting;
-            r.reconciled += sp.reconciled;
-            return ResponseEntity.ok(new NgApiResponse<>(r, "Drift scan complete for " + entityType));
+            add(r, driftDetectionService.detectHubForType(entityType));
         } catch (Exception e) {
-            log.error("drift scan failed for {}: {}", entityType, e.getMessage(), e);
-            return ResponseEntity.ok(new NgApiResponse<>(null, "Scan failed: " + e.getMessage()));
+            r.errors++;
+            problems.append("hub check failed: ").append(e.getMessage()).append("; ");
+            log.error("drift scan[HUB] failed for {}: {}", entityType, e.getMessage());
         }
+        try {
+            add(r, driftDetectionService.detectSpForType(entityType));
+        } catch (Exception e) {
+            r.errors++;
+            problems.append("SharePoint check failed: ").append(e.getMessage()).append("; ");
+            log.error("drift scan[SP] failed for {}: {}", entityType, e.getMessage());
+        }
+        String msg = problems.length() == 0
+                ? "Drift scan complete for " + entityType
+                : "Drift scan partial for " + entityType + " — " + problems;
+        return ResponseEntity.ok(new NgApiResponse<>(r, msg));
+    }
+
+    private void add(DriftDetectionService.DriftScanResult total, DriftDetectionService.DriftScanResult one) {
+        total.flagged += one.flagged;
+        total.stillDrifting += one.stillDrifting;
+        total.reconciled += one.reconciled;
     }
 
     /** Active (flagged + acknowledged) records for a type — the frontend builds its per-row badge map. */
