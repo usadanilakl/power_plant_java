@@ -225,10 +225,11 @@ public class SyncResolutionService {
             boolean existsLocally = svc != null && svc.getEntityById(ref.entityId) != null;
             List<FieldChange> changes = buildHubChangesWithRelTypes(ref.entityType, ref.entityId, fetched.get(ref), existsLocally);
             if (changes.isEmpty()) continue;
-            countByType.merge(ref.entityType, 1, Integer::sum);
             int n = fieldSyncService.applyIncomingChanges(changes); // own tx; returns 0 (not throws) on rollback
             applied += n;
-            if (!existsLocally && n <= 0) { // a referenced CREATE that never landed (missing NOT-NULL / unfetched ref)
+            if (n > 0) {
+                countByType.merge(ref.entityType, 1, Integer::sum); // count only entities that ACTUALLY applied
+            } else if (!existsLocally) { // a referenced CREATE that never landed (missing NOT-NULL / unfetched ref)
                 unresolved++;
                 log.warn("pull: {}#{} did not apply (constraint / unfetched reference?) — left for the next scan",
                         ref.entityType, ref.entityId);

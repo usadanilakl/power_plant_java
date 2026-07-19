@@ -20,7 +20,7 @@ import { SyncUpdateService, SyncActivityEvent } from '../../../services/sync/syn
         <h3>Live Sync Activity</h3>
         <div class="controls">
           <mat-slide-toggle [(ngModel)]="paused" color="warn">Pause</mat-slide-toggle>
-          <mat-slide-toggle [(ngModel)]="errorsOnly" color="accent">Errors Only</mat-slide-toggle>
+          <mat-slide-toggle [ngModel]="errorsOnly()" (ngModelChange)="errorsOnly.set($event)" color="accent">Errors Only</mat-slide-toggle>
           <button mat-icon-button (click)="clear()" matTooltip="Clear">
             <mat-icon>delete_sweep</mat-icon>
           </button>
@@ -113,11 +113,11 @@ export class SyncActivityComponent implements OnInit, OnDestroy {
 
   events = signal<SyncActivityEvent[]>([]);
   paused = false;
-  errorsOnly = false;
+  errorsOnly = signal(false); // signal so the filteredEvents computed actually re-evaluates on toggle
 
   filteredEvents = computed(() => {
     let items = this.events();
-    if (this.errorsOnly) {
+    if (this.errorsOnly()) {
       items = items.filter(e => e.status === 'FAILED');
     }
     return items;

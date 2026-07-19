@@ -94,11 +94,13 @@ import { DriftService } from '../../services/drift.service';
               }
             </div>
 
-            @if (driftFlagged() > 0 || driftAcknowledged() > 0) {
+            @if (hubDrift() > 0 || spDrift() > 0 || driftAcknowledged() > 0) {
               <div class="resync-suggestion drift" (click)="goToDrift()"
                    title="Open the Drift Center to review and resolve">
-                @if (driftFlagged() > 0) {
-                  {{ driftFlagged() }} field{{ driftFlagged() === 1 ? '' : 's' }} drifting from hub / SharePoint — review in Drift Center →
+                @if (hubDrift() > 0) {
+                  {{ hubDrift() }} row{{ hubDrift() === 1 ? '' : 's' }} drifting from the hub — review in Drift Center →
+                } @else if (spDrift() > 0) {
+                  {{ spDrift() }} row{{ spDrift() === 1 ? '' : 's' }} missing on SharePoint — review in Drift Center →
                 } @else {
                   {{ driftAcknowledged() }} acknowledged drift{{ driftAcknowledged() === 1 ? '' : 's' }} — review in Drift Center →
                 }
@@ -429,9 +431,13 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private statusPollTimer: any = null;
   private driftSummaryTimer: any = null;
 
-  // NEW drift signal — the accurate content-hash flagged/acknowledged counts (DriftService.summary), which
-  // replace the old count/timestamp "sync health" heuristic that read green while fields were actually drifting.
-  driftFlagged = computed(() => this.driftService.summary().flagged);
+  // NEW drift signal — the accurate content-hash counts (DriftService), replacing the old count/timestamp
+  // "sync health" heuristic. Use the peer BREAKDOWN so HUB drift (real divergence) reads red while
+  // SharePoint-only drift (backup, not authoritative) is a softer warning — not a red alarm.
+  private bd = computed(() => this.driftService.breakdown());
+  hubDrift = computed(() => this.bd().hubDiffers + this.bd().onHubNotLocal + this.bd().localNotOnHub);
+  spDrift = computed(() => this.bd().sharePoint);
+  driftFlagged = computed(() => this.driftService.summary().flagged);       // total flagged ROWS (all peers)
   driftAcknowledged = computed(() => this.driftService.summary().acknowledged);
 
   // Computed: determine the effective visual state
@@ -451,10 +457,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     if (this.serverPendingCount() > 0) return 'catching-up' as const;
 
     // Server is available — decide sync state from the ACCURATE content-hash drift (not the old count/time
-    // heuristic): FLAGGED drift needs attention (red); drift that was acknowledged-but-not-resolved is a
-    // softer warning (orange); none = green/up-to-date.
-    if (this.driftFlagged() > 0) return 'out-of-sync' as const;
-    if (this.driftAcknowledged() > 0) return 'possibly-out-of-sync' as const;
+    // heuristic): HUB drift is real divergence → red; SharePoint-only drift (backup, not authoritative) or
+    // acknowledged drift is a softer warning → orange; none = green/up-to-date.
+    if (this.hubDrift() > 0) return 'out-of-sync' as const;
+    if (this.spDrift() > 0 || this.driftAcknowledged() > 0) return 'possibly-out-of-sync' as const;
     return 'connected' as const;
   });
 
@@ -506,8 +512,9 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       return n > 0 ? `Catching up — ${n} change${n === 1 ? '' : 's'} to apply` : 'Catching up…';
     }
     if (state === 'out-of-sync' || state === 'possibly-out-of-sync') {
-      const f = this.driftFlagged(); const a = this.driftAcknowledged();
-      if (f > 0) return `${f} field${f === 1 ? '' : 's'} drifting from hub / SharePoint — open the Drift Center`;
+      const h = this.hubDrift(); const sp = this.spDrift(); const a = this.driftAcknowledged();
+      if (h > 0) return `${h} row${h === 1 ? '' : 's'} drifting from the hub — open the Drift Center`;
+      if (sp > 0) return `${sp} row${sp === 1 ? '' : 's'} missing on SharePoint (backup) — open the Drift Center`;
       if (a > 0) return `${a} acknowledged drift${a === 1 ? '' : 's'} — review in the Drift Center`;
       return this.syncHealthMessage();
     }
@@ -547,9 +554,13 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     // Poll status every 15 seconds for accurate server availability
     this.startStatusPolling();
 
-    // Keep the accurate content-hash drift summary fresh for the badge — initial + every 60s.
+    // Keep the accurate content-hash drift summary + peer breakdown fresh for the badge — initial + every 60s.
     this.driftService.refreshSummary();
-    this.driftSummaryTimer = setInterval(() => this.driftService.refreshSummary(), 60000);
+    this.driftService.refreshBreakdown();
+    this.driftSummaryTimer = setInterval(() => {
+      this.driftService.refreshSummary();
+      this.driftService.refreshBreakdown();
+    }, 60000);
 
     // Subscribe to sync health check updates
     this.subscriptions.push(
