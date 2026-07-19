@@ -24,6 +24,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
             Overview
           </a>
           <a mat-tab-link
+             routerLink="drift"
+             routerLinkActive
+             #rlaD="routerLinkActive"
+             [active]="rlaD.isActive">
+            Drift Center
+          </a>
+          <a mat-tab-link
              routerLink="activity"
              routerLinkActive
              #rla1="routerLinkActive"

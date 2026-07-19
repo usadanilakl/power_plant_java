@@ -1,0 +1,158 @@
+<div class="dc">
+  <!-- header -->
+  <div class="dc-head">
+    <div class="dc-title">
+      <div class="dc-logo">🔀</div>
+      <div>
+        <h2>Drift Center</h2>
+        <div class="dc-sub">Hub + SharePoint reconciliation · auto-scan every 15 min</div>
+      </div>
+    </div>
+    <div class="chips">
+      <div class="chip"><span class="dot amber"></span><b>{{ typesDrifting() }}</b> types drifting</div>
+      <div class="chip"><span class="dot red"></span><b>{{ totalDrift() }}</b> rows</div>
+      <div class="chip">last scan <b>{{ fmt(lastScanAt()) }}</b></div>
+      <button class="btn" [disabled]="scanning()" (click)="scanNow()">{{ scanning() ? 'Scanning…' : '⟳ Scan now' }}</button>
+    </div>
+  </div>
+
+  <div class="dc-body" [class.with-drawer]="compareId() !== null">
+    <!-- rail -->
+    <div class="rail">
+      <div class="rail-h">Drifting</div>
+      @for (o of driftingTypes(); track o.entityType) {
+        <div class="type" [class.on]="selectedType() === o.entityType" (click)="selectType(o.entityType)">
+          <div class="tinfo">
+            <div class="nm">{{ o.entityType }}</div>
+            <div class="meta">{{ o.spBacked ? 'hub + SP' : 'hub' }} · {{ fmt(o.lastScannedAt) }}</div>
+          </div>
+          <span class="cnt warn">{{ o.flaggedCount }}</span>
+        </div>
+      }
+      @if (!driftingTypes().length) { <div class="empty-rail">No drift 🎉</div> }
+
+      @if (cleanTypes().length) {
+        <div class="rail-h" style="margin-top:10px">In sync</div>
+        @for (o of cleanTypes(); track o.entityType) {
+          <div class="type dim" [class.on]="selectedType() === o.entityType" (click)="selectType(o.entityType)">
+            <div class="tinfo"><div class="nm">{{ o.entityType }}</div><div class="meta">{{ fmt(o.lastScannedAt) }}</div></div>
+            <span class="cnt ok">✓</span>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- main -->
+    <div class="main">
+      @if (selected().size > 0) {
+        <div class="bulkbar">
+          <b>{{ selected().size }}</b> selected
+          <div class="bacts">
+            <button class="btn sm hub" [disabled]="busy()" (click)="bulk('hub')">Use Hub</button>
+            <button class="btn sm loc" [disabled]="busy()" (click)="bulk('local')">Keep Local</button>
+            <button class="btn sm sp" [disabled]="busy()" (click)="bulk('sp')">Push to SharePoint</button>
+            <button class="btn sm" [disabled]="busy()" (click)="bulkAck()">Acknowledge</button>
+          </div>
+          @if (busy()) { <span class="busy">working…</span> }
+        </div>
+      }
+      <div class="main-h">
+        <h3>{{ selectedType() || 'Select a type' }}</h3>
+        @if (selectedType()) { <span class="tag">{{ rows().length }} drifting</span> }
+      </div>
+
+      @if (loadingRecords()) {
+        <div class="pad">Loading…</div>
+      } @else if (!selectedType()) {
+        <div class="pad">Pick an entity type on the left to review its drift.</div>
+      } @else if (!rows().length) {
+        <div class="pad">No drift on {{ selectedType() }} — verified in sync.</div>
+      } @else {
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th class="ck"><span class="cbx" [class.on]="allSelected()" (click)="toggleAll()"></span></th>
+              <th>Entity</th><th>Drift</th><th>Detail</th><th>Status</th><th class="ra">Actions</th>
+            </tr></thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr [class.sel]="isSel(row.id)" [class.active]="compareId() === row.id">
+                  <td class="ck"><span class="cbx" [class.on]="isSel(row.id)" (click)="toggle(row.id)"></span></td>
+                  <td><span class="id">#{{ row.id }}</span></td>
+                  <td>
+                    @if (row.hub) { <span class="badge h">H</span> }
+                    @if (row.sp) { <span class="badge s">SP</span> }
+                  </td>
+                  <td class="detail">
+                    @if (row.hub) { <span class="k">{{ kindText(row.hub) }}</span> }
+                    @if (row.hub && row.sp) { <span> · </span> }
+                    @if (row.sp) { <span class="k">missing on SharePoint</span> }
+                  </td>
+                  <td>
+                    <span class="st" [class.ack]="!rowFlagged(row)">
+                      {{ rowFlagged(row) ? 'Flagged' : 'Acknowledged' }}
+                    </span>
+                  </td>
+                  <td class="ra"><div class="rowacts">
+                    @if (row.hub) {
+                      <button class="btn xs hub" [disabled]="busy()" (click)="act(row.id,'hub')">Use Hub</button>
+                      <button class="btn xs loc" [disabled]="busy()" (click)="act(row.id,'local')">Keep Local</button>
+                    }
+                    @if (row.sp) {
+                      <button class="btn xs sp" [disabled]="busy()" (click)="act(row.id,'sp')">☁ Push</button>
+                    }
+                    <button class="btn xs ghost" (click)="openCompare(row.id)">Compare</button>
+                  </div></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- compare drawer -->
+    @if (compareId() !== null) {
+      <div class="drawer">
+        <div class="dr-h">
+          <div><h4>Compare — #{{ compareId() }}</h4><div class="dc-sub">{{ selectedType() }}</div></div>
+          <span class="x" (click)="closeCompare()">✕</span>
+        </div>
+        @if (diffLoading()) {
+          <div class="pad">Loading diff…</div>
+        } @else if (!diff()) {
+          <div class="pad">Couldn't load the field diff (hub/SharePoint reachable?).</div>
+        } @else {
+          <div class="diff">
+            @for (f of diff()!.fields; track f.fieldName) {
+              @if (!f.allMatch) {
+                <div class="diffrow">
+                  <div class="fname">{{ f.fieldName }}
+                    @if (!f.localHubMatch) { <span class="flag">hub differs</span> }
+                    @if (diff()!.spBacked && f.spMapped && !f.localSpMatch) { <span class="flag sp">SP differs</span> }
+                  </div>
+                  <div class="three" [class.two]="!diff()!.spBacked || !f.spMapped">
+                    <div class="cell" [class.diffv]="!f.localHubMatch"><div class="lb">Local</div>{{ f.localValue || '—' }}</div>
+                    <div class="cell" [class.diffv]="!f.localHubMatch"><div class="lb">Hub</div>{{ f.hubValue || '—' }}</div>
+                    @if (diff()!.spBacked && f.spMapped) {
+                      <div class="cell"><div class="lb">SharePoint</div>{{ f.spValue || '—' }}</div>
+                    }
+                  </div>
+                  @if (!f.localHubMatch) {
+                    <div class="facts">
+                      <button class="mini hub" [disabled]="busy()" (click)="acceptField(f.fieldName,'hub')">Use Hub value</button>
+                      <button class="mini loc" [disabled]="busy()" (click)="acceptField(f.fieldName,'local')">Keep Local</button>
+                    </div>
+                  }
+                </div>
+              }
+            }
+            @if (diff()!.mismatchCount === 0) {
+              <div class="pad">No field-level differences — this row's drift is a presence difference (missing on a peer). Use the row actions.</div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

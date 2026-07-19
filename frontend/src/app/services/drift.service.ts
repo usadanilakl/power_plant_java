@@ -49,6 +49,17 @@ export interface DriftScanState {
   lastError?: string;
 }
 
+/** 3-way field diff (mirrors backend ThreeWayFieldDiff) — the Drift Center compare drawer. */
+export interface ThreeWayFieldEntry {
+  fieldName: string;
+  localValue?: string; hubValue?: string; spValue?: string;
+  spMapped: boolean; allMatch: boolean; localHubMatch: boolean; localSpMatch: boolean; hubSpMatch: boolean;
+}
+export interface ThreeWayFieldDiff {
+  entityType: string; entityId: number; spBacked: boolean;
+  fields: ThreeWayFieldEntry[]; mismatchCount: number;
+}
+
 interface NgApiResponse<T> { responseData: T; message: string; }
 
 /**
@@ -174,5 +185,32 @@ export class DriftService {
   pushToSp(entityType: string, entityId: number): Observable<any> {
     return this.http.post<NgApiResponse<any>>(`${this.resolveBase}/accept-sp/${entityType}/${entityId}`, {})
       .pipe(map(r => r?.responseData), catchError(() => of(null)));
+  }
+  /** Accept a SINGLE field's value from hub or local (no whole-entity clobber) — the compare drawer. */
+  acceptField(entityType: string, entityId: number, fieldName: string, source: 'hub' | 'local'): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(
+      `${this.resolveBase}/accept-field/${entityType}/${entityId}/${encodeURIComponent(fieldName)}?source=${source}`, {})
+      .pipe(map(r => r?.responseData), catchError(() => of(null)));
+  }
+
+  // ==================== Drift Center queries ====================
+
+  /** Raw active drift records for a type (id/peer/kind/status) — the Drift Center's drifted-rows list. */
+  statusRecords(entityType: string): Observable<DriftRecord[]> {
+    return this.http.get<NgApiResponse<DriftRecord[]>>(`${this.base}/status/${entityType}`)
+      .pipe(map(r => r?.responseData ?? []), catchError(() => of([])));
+  }
+
+  /** Per-type scan overview as an observable (for the Drift Center to (re)load on demand). */
+  overview$(): Observable<DriftScanState[]> {
+    return this.http.get<NgApiResponse<DriftScanState[]>>(`${this.base}/overview`)
+      .pipe(map(r => r?.responseData ?? []), catchError(() => of([])));
+  }
+
+  /** 3-way field diff (Local / Hub / SharePoint) for one entity — the compare drawer. */
+  fieldDiff(entityType: string, entityId: number): Observable<ThreeWayFieldDiff | null> {
+    return this.http.get<NgApiResponse<ThreeWayFieldDiff>>(
+      `${environment.baseApiUrl}/ng/sync/compare/verify/${entityType}/${entityId}/diff`)
+      .pipe(map(r => r?.responseData ?? null), catchError(() => of(null)));
   }
 }
