@@ -282,6 +282,33 @@ public class DriftDetectionService {
         return m;
     }
 
+    /**
+     * Breakdown of ACTIVE row-level drift by direction/peer — powers the Drift Center's "what is drifting"
+     * panel. Splits the hub drift into differs / hub-has-extra / local-has-extra, plus SharePoint:
+     * <ul>
+     *   <li>{@code hubDiffers}    — row exists on both, CONTENT differs (peer=HUB, DIFFERING)</li>
+     *   <li>{@code onHubNotLocal} — hub has the row, we don't (peer=HUB, MISSING_LOCALLY) — pull</li>
+     *   <li>{@code localNotOnHub} — we have the row, hub doesn't (peer=HUB, MISSING_ON_PEER) — push</li>
+     *   <li>{@code sharePoint}    — drift against SharePoint (peer=SHAREPOINT)</li>
+     * </ul>
+     */
+    public Map<String, Long> breakdown() {
+        long hubDiffers = 0, onHubNotLocal = 0, localNotOnHub = 0, sharePoint = 0;
+        for (DriftRecord r : repo.findByStatusIn(ACTIVE)) {
+            if (!DriftRecord.ROW.equals(r.getFieldName())) continue; // count rows, not per-field records
+            if (r.getPeer() == DriftPeer.SHAREPOINT) { sharePoint++; continue; }
+            if (r.getKind() == DriftKind.DIFFERING) hubDiffers++;
+            else if (r.getKind() == DriftKind.MISSING_LOCALLY) onHubNotLocal++;
+            else if (r.getKind() == DriftKind.MISSING_ON_PEER) localNotOnHub++;
+        }
+        Map<String, Long> m = new java.util.LinkedHashMap<>();
+        m.put("hubDiffers", hubDiffers);
+        m.put("onHubNotLocal", onHubNotLocal);
+        m.put("localNotOnHub", localNotOnHub);
+        m.put("sharePoint", sharePoint);
+        return m;
+    }
+
     /** Small mutable tally returned by a scan. */
     public static class DriftScanResult {
         public int typesScanned;

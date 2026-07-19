@@ -74,6 +74,9 @@ export class DriftService {
   /** Global counts — the accurate, field-level replacement for the count/timestamp "sync indicator". */
   readonly summary = signal<{ flagged: number; acknowledged: number; reconciled: number }>(
     { flagged: 0, acknowledged: 0, reconciled: 0 });
+  /** Active drift broken down by direction/peer — the Drift Center's "what is drifting" panel. */
+  readonly breakdown = signal<{ hubDiffers: number; onHubNotLocal: number; localNotOnHub: number; sharePoint: number }>(
+    { hubDiffers: 0, onHubNotLocal: 0, localNotOnHub: 0, sharePoint: 0 });
   readonly scanning = signal(false);
   /** Types a detection scan has completed for THIS session — so a row with no drift can show a
    *  confident GREEN "verified in sync" instead of an ambiguous "not checked yet". */
@@ -112,6 +115,16 @@ export class DriftService {
       map(r => r?.responseData ?? {}), catchError(() => of({}))
     ).subscribe(s => this.summary.set({
       flagged: s.flagged ?? 0, acknowledged: s.acknowledged ?? 0, reconciled: s.reconciled ?? 0
+    }));
+  }
+
+  /** Refresh the direction/peer breakdown (hub differs / on-hub-not-here / here-not-on-hub / SharePoint). */
+  refreshBreakdown(): void {
+    this.http.get<NgApiResponse<any>>(`${this.base}/breakdown`).pipe(
+      map(r => r?.responseData ?? {}), catchError(() => of({}))
+    ).subscribe(b => this.breakdown.set({
+      hubDiffers: b.hubDiffers ?? 0, onHubNotLocal: b.onHubNotLocal ?? 0,
+      localNotOnHub: b.localNotOnHub ?? 0, sharePoint: b.sharePoint ?? 0
     }));
   }
 

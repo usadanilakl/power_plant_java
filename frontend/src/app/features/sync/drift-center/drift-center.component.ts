@@ -46,6 +46,8 @@ export class DriftCenterComponent implements OnInit {
     this.overview().filter(o => o.flaggedCount === 0 && o.lastScannedAt).sort((a, b) => a.entityType.localeCompare(b.entityType)));
   typesDrifting = computed(() => this.driftingTypes().length);
   totalDrift = computed(() => this.overview().reduce((s, o) => s + o.flaggedCount, 0));
+  /** Direction/peer breakdown of what's drifting (from the service signal). */
+  breakdown = computed(() => this.drift.breakdown());
 
   rows = computed<DriftRow[]>(() => {
     const byId = new Map<number, DriftRow>();
@@ -78,6 +80,7 @@ export class DriftCenterComponent implements OnInit {
   }
 
   private reloadOverview(): void {
+    this.drift.refreshBreakdown();
     this.drift.overview$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(list => {
       this.overview.set(list);
       const latest = list.map(o => o.lastScannedAt).filter(Boolean).sort().pop();

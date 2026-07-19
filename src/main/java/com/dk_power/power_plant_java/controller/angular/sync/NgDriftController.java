@@ -94,6 +94,12 @@ public class NgDriftController {
         return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.summaryCounts(), "OK"));
     }
 
+    /** Breakdown of active drift by direction/peer (hub differs / on-hub-not-here / here-not-on-hub / SP). */
+    @GetMapping("/breakdown")
+    public ResponseEntity<NgApiResponse<Map<String, Long>>> breakdown() {
+        return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.breakdown(), "OK"));
+    }
+
     /**
      * Friendly labels (id -> tag/name/description) for HUB-ONLY rows the local list can't render — used by the
      * "missing from local" strip so a row reads "01-VCND100" instead of a bare id. Fetches each entity's data

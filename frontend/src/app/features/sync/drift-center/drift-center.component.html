@@ -16,6 +16,22 @@
     </div>
   </div>
 
+  <!-- Breakdown: what is drifting, by direction/peer -->
+  <div class="dc-breakdown">
+    <div class="bd-item hub" title="Row exists on both, but the content differs from the hub">
+      <span class="bd-n">{{ breakdown().hubDiffers }}</span><span class="bd-l">differ from hub</span>
+    </div>
+    <div class="bd-item pull" title="The hub has these rows, this node doesn't — Use Hub pulls them">
+      <span class="bd-n">{{ breakdown().onHubNotLocal }}</span><span class="bd-l">on hub, not here</span>
+    </div>
+    <div class="bd-item push" title="This node has these rows, the hub doesn't — Keep Local pushes them">
+      <span class="bd-n">{{ breakdown().localNotOnHub }}</span><span class="bd-l">here, not on hub</span>
+    </div>
+    <div class="bd-item sp" title="Rows missing on SharePoint">
+      <span class="bd-n">{{ breakdown().sharePoint }}</span><span class="bd-l">not on SharePoint</span>
+    </div>
+  </div>
+
   <div class="dc-body" [class.with-drawer]="compareId() !== null">
     <!-- rail -->
     <div class="rail">
