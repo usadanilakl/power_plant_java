@@ -60,6 +60,12 @@ public class LotoPointDto extends BaseDto {
     private ValueDto eqType;
     private Long counterpartId;
     private FileDto modelFile;
+    /**
+     * Site photos / tag close-ups attached to this LOTO point.
+     * Each entry is a full FileDto with fileType.name == "Picture".
+     * Populated via M2M {@code loto_point_picture} join table on the entity.
+     */
+    private List<FileDto> pictures;
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
     private Boolean isProcessed = false;

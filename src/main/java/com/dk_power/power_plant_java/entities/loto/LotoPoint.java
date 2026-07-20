@@ -98,6 +98,50 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     @ManyToOne
     @JoinColumn(name = "model_file_id")
     private FileObject modelFile;
+
+    /**
+     * Pictures attached to this LOTO point (site photos, tag close-ups, etc.).
+     * <p>
+     * FileObject is the shared file entity — sync, dedup (SHA-256), SharePoint
+     * upload, and viewer components come for free. Bytes live on the filesystem,
+     * not inline base64 in H2 (which was causing PERMIT_ATTACHMENT growth
+     * problems). Each attached file has {@code fileType.name = "Picture"}.
+     * <p>
+     * Owning side of the M2M — join table {@code loto_point_picture} lives
+     * with this entity. {@code EntityStateCapture.captureManyToManyCollections}
+     * discovers the join-table shape via reflection, so the join rows sync
+     * automatically as FieldChange entries on {@code LotoPoint.pictures}.
+     * <p>
+     * A picture can theoretically be shared across multiple LOTO points (M2M,
+     * not M2O), but the typical case is one-picture-one-point. Removing a
+     * picture from a point unlinks the join row only; the FileObject itself
+     * is not deleted (it may be attached elsewhere; and even if not, deleting
+     * files is a separate concern with its own SharePoint / disk cleanup).
+     */
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+        name = "loto_point_picture",
+        joinColumns = @JoinColumn(name = "loto_point_id"),
+        inverseJoinColumns = @JoinColumn(name = "file_id")
+    )
+    private List<FileObject> pictures = new ArrayList<>();
+
+    public void addPicture(FileObject file) {
+        if (this.pictures == null) this.pictures = new ArrayList<>();
+        if (file == null || file.getId() == null) return;
+        // Dedup by id — same file linked twice would be a UI glitch, not a
+        // meaningful "two attachments of the same picture."
+        for (FileObject existing : this.pictures) {
+            if (file.getId().equals(existing.getId())) return;
+        }
+        this.pictures.add(file);
+    }
+
+    public void removePicture(Long fileId) {
+        if (this.pictures == null || fileId == null) return;
+        this.pictures.removeIf(f -> fileId.equals(f.getId()));
+    }
+
     private Long counterpartId;
     @Column(columnDefinition = "TEXT")
     private String relatedLotoPointIds; // e.g., "123,456,789"

@@ -772,4 +772,51 @@ public class NgLotoPointController {
                     .body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    /**
+     * Attach a picture to a LOTO point. Multipart upload: bytes stream to
+     * NgFileService's shared pipeline (dedup, on-disk storage, sync-tracked),
+     * then link to this LotoPoint via M2M. Returns the refreshed LotoPointDto
+     * so the frontend can render the new thumbnail without a follow-up GET.
+     */
+    @PostMapping(value = "/{id}/pictures", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NgApiResponse<LotoPointDto>> uploadPicture(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            LotoPointDto updated = ngLotoPointService.uploadPicture(id, file);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Picture attached"));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Picture upload failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Detach a picture from a LOTO point — unlinks the M2M row only; the
+     * underlying FileObject survives so it can remain attached elsewhere
+     * or be cleaned up via the file-management flow separately.
+     */
+    @DeleteMapping("/{id}/pictures/{fileId}")
+    public ResponseEntity<NgApiResponse<LotoPointDto>> removePicture(
+            @PathVariable Long id, @PathVariable Long fileId) {
+        try {
+            LotoPointDto updated = ngLotoPointService.removePicture(id, fileId);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Picture removed"));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

@@ -98,5 +98,30 @@ export class LotoPointService {
     return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${lotoPointId}/related-files`);
   }
 
-  
+  /**
+   * Attach a picture to a LOTO point via multipart upload. Returns the
+   * refreshed LotoPointDto so the caller can drop the returned dto into
+   * state and see the new thumbnail without a follow-up GET.
+   * <p>
+   * Do NOT set Content-Type manually — the browser sets
+   * "multipart/form-data; boundary=..." including the boundary token,
+   * which we can't reproduce.
+   */
+  uploadPicture(lotoPointId: number, file: File): Observable<SpringApiResponse<LotoPointDto>> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<SpringApiResponse<LotoPointDto>>(
+      `${this.apiUrl}/${lotoPointId}/pictures`, form
+    );
+  }
+
+  /**
+   * Detach a picture from a LOTO point (unlinks the M2M row; does NOT
+   * delete the underlying FileObject — see backend removePicture docs).
+   */
+  removePicture(lotoPointId: number, fileId: number): Observable<SpringApiResponse<LotoPointDto>> {
+    return this.http.delete<SpringApiResponse<LotoPointDto>>(
+      `${this.apiUrl}/${lotoPointId}/pictures/${fileId}`
+    );
+  }
 }

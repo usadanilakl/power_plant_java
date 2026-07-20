@@ -141,6 +141,21 @@ public class LotoPointMapper implements BaseMapper{
             mf.setExtension(entity.getModelFile().getExtension());
             dto.setModelFile(mf);
         }
+        // Pictures — shallow FileDto per attached picture (id/name/link/extension
+        // is all the thumbnail grid needs; bytes live on the filesystem and are
+        // streamed via the existing file-serving endpoints).
+        if (entity.getPictures() != null && !entity.getPictures().isEmpty()) {
+            List<FileDto> pics = new ArrayList<>(entity.getPictures().size());
+            for (FileObject pic : entity.getPictures()) {
+                FileDto p = new FileDto();
+                p.setId(pic.getId());
+                p.setName(pic.getName());
+                p.setFileLink(pic.getFileLink());
+                p.setExtension(pic.getExtension());
+                pics.add(p);
+            }
+            dto.setPictures(pics);
+        }
         dto.setObjectType(entity.getObjectType());
         return dto;
     }

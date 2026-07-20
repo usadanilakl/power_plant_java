@@ -23,6 +23,11 @@ export interface ILotoPointClipboard
     | 'equipmentIdList'
     | 'id'
     | 'zeroEnergyMethod'
+    // Pictures have their own attach/detach UX and cross-machine sync path;
+    // clipboard copy/paste of the "picture set" of a LOTO point isn't a
+    // meaningful operation (each picture is a plant-taken photo of a real
+    // isolation point, not something to be duplicated onto a new point).
+    | 'pictures'
   > {}
 
 export class LotoPointClipboardItem implements ILotoPointClipboard {

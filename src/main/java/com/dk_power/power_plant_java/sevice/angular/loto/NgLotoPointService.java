@@ -45,6 +45,12 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
     private final LotoStandardPendingChangeCaptureService pendingChangeCaptureService;
     private final FieldChangeTracker fieldChangeTracker;
+    // For attaching picture files to LOTO points. @Lazy to insulate against
+    // any transitive cycle a future dep on NgFileService's mapper chain might
+    // introduce — cheap safety, no runtime cost after first resolution.
+    @org.springframework.context.annotation.Lazy
+    private final com.dk_power.power_plant_java.sevice.angular.file.NgFileService ngFileService;
+    private final com.dk_power.power_plant_java.sevice.angular.NgValueService ngValueService;
 
 
     @Override
@@ -1601,6 +1607,90 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
             }
         }
         return result;
+    }
+
+    /*******************************************************************************
+     * PICTURES — attach / detach FileObject rows (fileType.name="Picture") to
+     * the LOTO point via the {@code loto_point_picture} M2M join. Bytes live on
+     * the filesystem via NgFileService's existing upload pipeline; this method
+     * just performs the upload-then-link chain so the caller does one round trip.
+     ******************************************************************************/
+
+    /** Category name for FileType Values (matches existing seeded values). */
+    private static final String FILE_TYPE_CATEGORY = "File Type";
+    /** Category name for Vendor Values (matches existing seeded values). */
+    private static final String VENDOR_CATEGORY = "Vendor";
+    /** FileType Value used for site photos attached to LOTO points. */
+    private static final String PICTURE_FILE_TYPE = "Picture";
+    /**
+     * Vendor Value used for pictures. FileObject.getFileLink() requires a
+     * vendor to compose the on-disk path; "Site" reflects "taken on-site by
+     * our operators" rather than "supplied by an equipment manufacturer,"
+     * which is what Vendor originally meant for P&ID drawings.
+     */
+    private static final String PICTURE_VENDOR = "Site";
+
+    /**
+     * Attach a picture to the LOTO point. Uploads the multipart file via
+     * NgFileService's shared pipeline (SHA-256 dedup, on-disk storage,
+     * SharePoint-ready path structure) as a FileObject with
+     * fileType="Picture" + vendor="Site", then links the resulting FileObject
+     * to this LotoPoint's pictures M2M. Returns the refreshed LotoPointDto
+     * so the caller can render the new thumbnail without a follow-up GET.
+     */
+    @Transactional
+    public LotoPointDto uploadPicture(Long lotoPointId, org.springframework.web.multipart.MultipartFile file)
+            throws java.io.IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Picture file is required");
+        }
+        LotoPoint point = lotoPointRepo.findById(lotoPointId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "LotoPoint not found: " + lotoPointId));
+
+        // Resolve-or-create the FileType and Vendor Values on first use — matches
+        // NgValueService.createValue's get-or-create semantics, safe to call
+        // every time.
+        com.dk_power.power_plant_java.entities.categories.Value pictureType =
+                ngValueService.createValue(FILE_TYPE_CATEGORY, PICTURE_FILE_TYPE);
+        com.dk_power.power_plant_java.entities.categories.Value pictureVendor =
+                ngValueService.createValue(VENDOR_CATEGORY, PICTURE_VENDOR);
+
+        java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> uploaded =
+                ngFileService.processMultipleFiles(
+                        java.util.List.of(file),
+                        pictureType.getId(),
+                        pictureVendor.getId(),
+                        null // shared-name irrelevant for single-file upload
+                );
+        if (uploaded == null || uploaded.isEmpty()) {
+            throw new IllegalStateException("Picture upload returned no FileObject");
+        }
+
+        // Link every FileObject the upload produced (usually 1; PDFs page-split
+        // but pictures don't). Load managed instances via FileRepo so the M2M
+        // join has attached entities.
+        for (com.dk_power.power_plant_java.dto.files.FileDto dto : uploaded) {
+            FileObject managed = entityManager.getReference(FileObject.class, dto.getId());
+            point.addPicture(managed);
+        }
+        return lotoPointMapper.convertToDto(lotoPointRepo.save(point));
+    }
+
+    /**
+     * Remove a picture from the LOTO point — unlinks the M2M join row only.
+     * The FileObject itself is NOT deleted: it may be attached elsewhere, and
+     * even when it isn't, deleting files needs its own SharePoint / disk
+     * cleanup that lives in NgFileService. Idempotent — removing an already-
+     * removed picture returns the DTO unchanged.
+     */
+    @Transactional
+    public LotoPointDto removePicture(Long lotoPointId, Long fileId) {
+        LotoPoint point = lotoPointRepo.findById(lotoPointId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "LotoPoint not found: " + lotoPointId));
+        point.removePicture(fileId);
+        return lotoPointMapper.convertToDto(lotoPointRepo.save(point));
     }
 
 }

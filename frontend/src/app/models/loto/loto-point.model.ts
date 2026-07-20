@@ -50,6 +50,8 @@ export interface LotoPointModel extends BaseModel {
   isProcessed: boolean | null;
   processingStatus: ValueDto | null;
   modelFile: FileDto | null;
+  /** Site photos attached via the LOTO_POINT_PICTURE M2M join table. */
+  pictures: FileDto[] | null;
 }
 
 export interface LotoPointFormField {
@@ -94,6 +96,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   isProcessed: boolean | null;
   processingStatus: ValueDto | null;
   modelFile: FileDto | null;
+  pictures: FileDto[] | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
@@ -137,6 +140,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.isProcessed = data.isProcessed ?? null;
     this.processingStatus = super.setNestedObjectById(data.processingStatus, new ValueDto());
     this.modelFile = data.modelFile ? new FileDto(data.modelFile) : null;
+    this.pictures = data.pictures ? data.pictures.map((p) => new FileDto(p)) : null;
   }
 
   // Serialization method
@@ -179,6 +183,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isProcessed: this.isProcessed ?? false,
       processingStatus: this.processingStatus?.toJson() || null,
       modelFile: this.modelFile?.toJson() ?? null,
+      pictures: this.pictures?.map((p) => p.toJson()) ?? null,
     };
   }
 
@@ -245,6 +250,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         ? ValueDto.fromJson(json.processingStatus)
         : null,
       modelFile: json.modelFile ? FileDto.fromJson(json.modelFile) : null,
+      pictures: Array.isArray(json.pictures)
+        ? json.pictures.map((p: any) => FileDto.fromJson(p))
+        : null,
     });
   }
 
@@ -491,6 +499,16 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: dto.modelFile?.name || null,
       },
+      // Pictures have their own attach/detach UI (see RfLotoPointFormComponent
+      // Pictures slide) — this stub only exists so the exhaustive-key
+      // Record<LotoPointFieldName, LotoPointFormField> type-checks. Never
+      // requested via the `fields` array on the default list, so never rendered.
+      pictures: {
+        name: 'pictures',
+        label: 'Pictures',
+        type: 'text',
+        initialValue: null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -674,6 +692,13 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         id: 'modelFile',
         header: '3D Model',
         accessorFn: (item: LotoPointDto) => item.modelFile?.name || '',
+      },
+      // Stub — pictures are shown in the form's Pictures slide, not the table.
+      // Exists only to satisfy the exhaustive Record<LotoPointFieldName, Column> type.
+      pictures: {
+        id: 'pictures',
+        header: 'Pictures',
+        accessorFn: (item: LotoPointDto) => String(item.pictures?.length ?? 0),
       },
     };
 

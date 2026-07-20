@@ -23,6 +23,9 @@ import { NamingConventionComponent } from '../../../tag-number/naming-convention
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { LotoPointFileViewerComponent } from '../loto-point-file-viewer/loto-point-file-viewer.component';
 import { AiFormAssistantComponent } from '../../../../shared/reactive-form/refactored/ai-form-assistant/ai-form-assistant.component';
+import { LotoPointService } from '../../../../services/loto/loto-point.service';
+import { FileDto } from '../../../../models/file/file.model';
+import { environment } from '../../../../../environments/environment';
 
 type LotoPointFieldName = keyof LotoPointDto;
 
@@ -49,6 +52,7 @@ export class RfLotoPointFormComponent {
   protected clipboardService = inject(ClipboardService);
   protected apiService = inject(RfLotoPointApiService);
   protected confirmationService = inject(ConfirmationService);
+  private lotoPointService = inject(LotoPointService);
 
   // Tag number generator state
   isTagGeneratorOpen = signal<boolean>(false);
@@ -64,7 +68,7 @@ export class RfLotoPointFormComponent {
   }
 
   nextSlide(): void {
-    if (this.currentSlide() < 1) {
+    if (this.currentSlide() < 2) {
       this.currentSlide.update(s => s + 1);
     }
   }
@@ -543,5 +547,94 @@ export class RfLotoPointFormComponent {
    */
   getCurrentValues(): LotoPointDto {
     return this.entity();
+  }
+
+  //===========================PICTURES===========================
+  /**
+   * Uploads a picture (or several) attached to the LotoPoint via the
+   * shared FileObject storage pipeline. Uploads sequentially so an early
+   * failure aborts the batch and the user isn't stuck watching partial
+   * progress. On each success the returned LotoPointDto replaces the
+   * selected item so the thumbnail grid rerenders. Peer tabs / machines
+   * pick up the M2M change through the existing FileChangeEntityListener
+   * -> SSE broadcast path — no extra wiring needed here.
+   */
+  isUploadingPictures = signal<boolean>(false);
+  pictureUploadError = signal<string | null>(null);
+
+  pictures = computed<FileDto[]>(() => this.entity()?.pictures ?? []);
+
+  getPictureUrl(picture: FileDto): string {
+    if (!picture?.fileLink) return '';
+    return `${environment.baseApiUrl}/${picture.fileLink}`;
+  }
+
+  triggerPicturePicker(input: HTMLInputElement): void {
+    if (this.isUploadingPictures()) return;
+    input.click();
+  }
+
+  async onPicturesSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = ''; // reset so re-selecting the same file re-triggers change
+    const point = this.entity();
+    if (!point?.id || files.length === 0) return;
+
+    this.pictureUploadError.set(null);
+    this.isUploadingPictures.set(true);
+    try {
+      let latest: LotoPointDto | null = null;
+      for (const f of files) {
+        const response = await new Promise<LotoPointDto>((resolve, reject) => {
+          this.lotoPointService.uploadPicture(point.id!, f).subscribe({
+            next: (r) => {
+              if (r.responseData) resolve(LotoPointDto.fromJson(r.responseData));
+              else reject(new Error('Upload returned no data'));
+            },
+            error: (err) => reject(err),
+          });
+        });
+        latest = response;
+        // Fold in as we go so a slow batch still shows incremental progress.
+        this.stateService.setSelectedItem(response);
+      }
+      if (latest) this.stateService.setSelectedItem(latest);
+    } catch (err: any) {
+      console.error('Picture upload failed:', err);
+      this.pictureUploadError.set(
+        err?.error?.message || err?.message || 'Failed to upload picture'
+      );
+    } finally {
+      this.isUploadingPictures.set(false);
+    }
+  }
+
+  onRemovePicture(picture: FileDto): void {
+    const point = this.entity();
+    if (!point?.id || !picture?.id) return;
+    this.confirmationService.confirm(
+      `Remove picture "${picture.name}" from this LOTO point?`
+    ).then(confirmed => {
+      if (!confirmed) return;
+      this.lotoPointService.removePicture(point.id!, picture.id!).subscribe({
+        next: (response) => {
+          if (response.responseData) {
+            this.stateService.setSelectedItem(LotoPointDto.fromJson(response.responseData));
+          }
+        },
+        error: (err) => {
+          console.error('Failed to remove picture:', err);
+          this.pictureUploadError.set(
+            err?.error?.message || err?.message || 'Failed to remove picture'
+          );
+        }
+      });
+    });
+  }
+
+  openPictureFullscreen(picture: FileDto): void {
+    const url = this.getPictureUrl(picture);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
   }
 }

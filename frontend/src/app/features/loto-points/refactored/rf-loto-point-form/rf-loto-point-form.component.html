@@ -30,6 +30,14 @@
       <span class="nav-icon">🖼️</span>
       <span class="nav-label">Images</span>
     </button>
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 2"
+      (click)="goToSlide(2)"
+    >
+      <span class="nav-icon">📸</span>
+      <span class="nav-label">Pictures ({{ pictures().length }})</span>
+    </button>
   </div>
 
   <!-- Carousel Container -->
@@ -104,6 +112,61 @@
         </div>
       </div>
 
+      <!-- Slide 3: Pictures -->
+      <div class="carousel-slide">
+        <div class="slide-content pictures-section">
+          <div class="pictures-toolbar">
+            <button
+              type="button"
+              class="add-picture-button"
+              [disabled]="!entity()?.id || isUploadingPictures()"
+              (click)="triggerPicturePicker(picturesInput)">
+              {{ isUploadingPictures() ? 'Uploading…' : '+ Add Pictures' }}
+            </button>
+            <input
+              #picturesInput
+              type="file"
+              hidden
+              accept="image/*"
+              multiple
+              (change)="onPicturesSelected($event)" />
+            @if (!entity()?.id) {
+              <span class="pictures-hint">Save this LOTO point first to attach pictures.</span>
+            }
+          </div>
+
+          @if (pictureUploadError()) {
+            <div class="pictures-error">{{ pictureUploadError() }}</div>
+          }
+
+          @if (pictures().length === 0) {
+            <div class="pictures-empty">
+              No pictures attached yet. Click <b>+ Add Pictures</b> to upload.
+            </div>
+          } @else {
+            <div class="pictures-grid">
+              @for (picture of pictures(); track picture.id) {
+                <div class="picture-tile">
+                  <img
+                    class="picture-thumb"
+                    [src]="getPictureUrl(picture)"
+                    [alt]="picture.name || 'LOTO point picture'"
+                    (click)="openPictureFullscreen(picture)" />
+                  <button
+                    type="button"
+                    class="picture-delete-btn"
+                    title="Remove picture"
+                    (click)="onRemovePicture(picture)">
+                    ×
+                  </button>
+                  <div class="picture-name" [title]="picture.name">{{ picture.name }}</div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -118,7 +181,7 @@
   <button
     class="carousel-arrow carousel-arrow-right"
     (click)="nextSlide()"
-    [disabled]="currentSlide() === 1"
+    [disabled]="currentSlide() === 2"
   >
     ›
   </button>
