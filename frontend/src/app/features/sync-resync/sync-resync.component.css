@@ -1181,3 +1181,22 @@ h2 {
     padding: 8px;
   }
 }
+
+/* Reconcile From Hub Card (the non-destructive gap-closer) */
+.reconcile-card {
+  border-left: 4px solid #0d6efd;
+}
+
+.reconcile-description {
+  color: var(--secondary-text);
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.reconcile-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}

@@ -1,5 +1,5 @@
     <div class="resync-container">
-      <h2>Sync Health & Recovery</h2>
+      <h2>Recovery</h2>
 
       <!-- Message Banner -->
       <div *ngIf="message" class="message" [ngClass]="'message-' + messageType">
@@ -7,77 +7,18 @@
         <button class="close-btn" (click)="message = ''">&times;</button>
       </div>
 
-      <!-- Health Status Card -->
-      <div class="card health-card" [ngClass]="getHealthStatusClass()">
-        <div class="card-header">
-          <h3>Sync Health Status</h3>
-          <span class="status-badge" [ngClass]="getHealthStatusClass()">{{ getHealthStatusText() }}</span>
-        </div>
-
-        <div class="card-body" *ngIf="healthStatus">
-          <div class="info-grid">
-            <div class="info-item">
-              <label>Machine ID</label>
-              <span>{{ healthStatus.machineId }}</span>
-            </div>
-            <div class="info-item">
-              <label>Machine Name</label>
-              <span>{{ healthStatus.machineName }}</span>
-            </div>
-            <div class="info-item">
-              <label>Local Files</label>
-              <span>{{ healthStatus.localFileCount }}</span>
-            </div>
-            <div class="info-item">
-              <label>Backup Available</label>
-              <span>{{ healthStatus.backupAvailable ? 'Yes' : 'No' }}</span>
-            </div>
-            <div class="info-item" *ngIf="healthStatus.backupAvailable">
-              <label>Backup Files</label>
-              <span>{{ healthStatus.backupFileCount }}</span>
-            </div>
-            <div class="info-item" *ngIf="healthStatus.backupAvailable && healthStatus.serverEntityCount">
-              <label>Server Entities</label>
-              <span>{{ healthStatus.serverEntityCount }}</span>
-            </div>
-            <div class="info-item" *ngIf="healthStatus.backupAvailable">
-              <label>Backup Source</label>
-              <span>{{ healthStatus.backupMachineId === 'SYNC_SERVER' ? 'Sync Server' : healthStatus.backupMachineId }}</span>
-            </div>
-            <div class="info-item" *ngIf="healthStatus.backupAvailable">
-              <label>Last Updated</label>
-              <span>{{ formatTimestamp(healthStatus.backupTimestamp) }}</span>
-            </div>
-            <div class="info-item" *ngIf="healthStatus.potentialMismatch">
-              <label>File Difference</label>
-              <span class="warning-text">{{ healthStatus.fileDifference }} files</span>
-            </div>
-          </div>
-
-          <div class="warning-box" *ngIf="healthStatus.potentialMismatch">
-            <strong>Warning:</strong> A potential sync mismatch has been detected.
-            Local file count differs significantly from backup.
-            Consider running a preview to see detailed differences.
-          </div>
-
-          <div class="error-box" *ngIf="healthStatus.errorMessage">
-            <strong>Error:</strong> {{ healthStatus.errorMessage }}
-          </div>
-        </div>
-
-        <div class="card-body loading" *ngIf="!healthStatus">
-          Loading health status...
-        </div>
-      </div>
-
-      <!-- Background Sync Health Check Card -->
+      <!-- Connection Card (connectivity only — field-level drift lives in the Drift Center) -->
       <div class="card sync-health-card" *ngIf="syncHealthCheck" [ngClass]="getSyncStatusClass()">
         <div class="card-header">
-          <h3>Background Sync Check</h3>
+          <h3>Hub Connection</h3>
           <span class="status-badge" [ngClass]="getSyncStatusClass()">{{ getSyncStatusText() }}</span>
         </div>
         <div class="card-body">
           <div class="info-grid">
+            <div class="info-item">
+              <label>Server Reachable</label>
+              <span>{{ syncHealthCheck.serverReachable ? 'Yes' : 'No' }}</span>
+            </div>
             <div class="info-item">
               <label>Last Check</label>
               <span>{{ formatTimestamp(syncHealthCheck.checkTime) }}</span>
@@ -86,34 +27,6 @@
               <label>Next Check</label>
               <span class="countdown-text">{{ nextCheckCountdown }}</span>
             </div>
-            <div class="info-item">
-              <label>Server Reachable</label>
-              <span>{{ syncHealthCheck.serverReachable ? 'Yes' : 'No' }}</span>
-            </div>
-            <div class="info-item" *ngIf="syncHealthCheck.localStats">
-              <label>Local Entities</label>
-              <span>{{ syncHealthCheck.localStats.totalEntities }}</span>
-            </div>
-            <div class="info-item" *ngIf="syncHealthCheck.serverStats">
-              <label>Server Entities</label>
-              <span>{{ syncHealthCheck.serverStats.totalEntities }}</span>
-            </div>
-            <div class="info-item" *ngIf="syncHealthCheck.entityDifference > 0">
-              <label>Entity Difference</label>
-              <span class="warning-text">{{ syncHealthCheck.entityDifference }}</span>
-            </div>
-            <div class="info-item" *ngIf="syncHealthCheck.localStats">
-              <label>Local Files</label>
-              <span>{{ syncHealthCheck.localStats.fileCount }}</span>
-            </div>
-            <div class="info-item" *ngIf="syncHealthCheck.serverStats">
-              <label>Server Files</label>
-              <span>{{ syncHealthCheck.serverStats.fileCount }}</span>
-            </div>
-            <div class="info-item" *ngIf="syncHealthCheck.fileDifference > 0">
-              <label>File Difference</label>
-              <span class="warning-text">{{ syncHealthCheck.fileDifference }}</span>
-            </div>
             <div class="info-item" *ngIf="syncHealthCheck.localStats && syncHealthCheck.localStats.pendingSyncCount > 0">
               <label>Local Pending</label>
               <span class="warning-text">{{ syncHealthCheck.localStats.pendingSyncCount }} changes</span>
@@ -121,39 +34,6 @@
             <div class="info-item" *ngIf="(syncHealthCheck.serverPendingChangesForClient ?? 0) > 0">
               <label>Server Pending</label>
               <span class="warning-text">{{ syncHealthCheck.serverPendingChangesForClient }} changes</span>
-            </div>
-          </div>
-
-          <div class="sync-message" *ngIf="syncHealthCheck.message && syncHealthCheck.syncStatus !== 'IN_SYNC'">
-            <p>{{ syncHealthCheck.message }}</p>
-          </div>
-
-          <!-- The old count-delta "Drift Report" was retired. Real field-level drift (content-hash,
-               hub + SharePoint) lives in the Drift Center; this tab is for recovery/resync actions. -->
-          <div class="drift-report-link">
-            <span>ℹ️ Field-level drift is now tracked accurately in the Drift Center.</span>
-            <a [routerLink]="['/sync/drift']" class="drift-link">Open Drift Center →</a>
-          </div>
-
-          <!-- Sync Suggestion Box -->
-          <div class="sync-suggestion-box" *ngIf="syncHealthCheck.suggestResync">
-            <div class="suggestion-icon">⚠️</div>
-            <div class="suggestion-content">
-              <h4>Sync Recommended</h4>
-              <p>{{ syncHealthCheck.recommendation }}</p>
-              <div class="suggestion-details" *ngIf="syncHealthCheck.suggestedSyncDate">
-                <p><strong>Suggested recovery point:</strong> {{ syncHealthCheck.suggestedSyncDate }}</p>
-                <p><strong>Last successful sync:</strong> {{ formatTimestamp(syncHealthCheck.lastSuccessfulSyncTime) }}</p>
-                <p><strong>Consecutive failures:</strong> {{ syncHealthCheck.consecutiveOutOfSyncCount }}</p>
-              </div>
-              <div class="suggestion-actions">
-                <button
-                  class="btn btn-warning"
-                  (click)="executeSuggestedSync()"
-                  [disabled]="loading || isOperationInProgress()">
-                  Run Full Resync
-                </button>
-              </div>
             </div>
           </div>
 
@@ -168,6 +48,41 @@
         </div>
       </div>
 
+      <!-- Reconcile From Hub Card (the non-destructive "close every gap" action) -->
+      <div class="card reconcile-card">
+        <div class="card-header">
+          <h3>Reconcile from Hub</h3>
+        </div>
+        <div class="card-body">
+          <p class="reconcile-description">
+            Scans every entity type by content hash against the hub and opens the
+            <strong>Drift Center</strong> so you can review and accept the hub's copy — per-field,
+            per-row, or in bulk. This closes data gaps <strong>without a shutdown or database
+            replace</strong>: only genuinely-diverged rows are touched.
+          </p>
+
+          <div class="reconcile-actions">
+            <button
+              class="btn btn-primary"
+              (click)="reconcileFromHub()"
+              [disabled]="reconcileScanning">
+              {{ reconcileScanning ? 'Scanning…' : 'Scan &amp; Reconcile from Hub' }}
+            </button>
+            <button
+              class="btn btn-secondary"
+              (click)="openDriftCenter()"
+              [disabled]="reconcileScanning">
+              Open Drift Center →
+            </button>
+          </div>
+
+          <div class="action-notes">
+            <p><strong>Scan &amp; Reconcile:</strong> Runs a full content-hash drift scan, then opens the Drift Center with the results. Non-destructive.</p>
+            <p><strong>Need a full database rebuild?</strong> A destructive resync (replace the local database and files from the hub) lives in the desktop app's <em>Sync / Updates</em> panel — use it only for disaster recovery.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Failed Sync Items Card -->
       <div class="card failed-items-card" *ngIf="failedSyncItemsCount > 0 || showFailedItems">
         <div class="card-header">
@@ -176,15 +91,10 @@
             <span class="badge badge-warning" *ngIf="failedSyncItemsCount > 0">{{ failedSyncItemsCount }}</span>
           </h3>
           <div class="header-actions">
-            <button
-              class="btn btn-secondary btn-sm"
-              (click)="toggleFailedItems()">
+            <button class="btn btn-secondary btn-sm" (click)="toggleFailedItems()">
               {{ showFailedItems ? 'Hide' : 'Show' }}
             </button>
-            <button
-              class="btn btn-primary btn-sm"
-              (click)="loadFailedSyncItems()"
-              [disabled]="failedItemsLoading">
+            <button class="btn btn-primary btn-sm" (click)="loadFailedSyncItems()" [disabled]="failedItemsLoading">
               {{ failedItemsLoading ? 'Loading...' : 'Refresh' }}
             </button>
           </div>
@@ -192,14 +102,11 @@
         <div class="card-body" *ngIf="showFailedItems">
           <p class="failed-items-description">
             These ManyToMany relationships failed during sync because the related entity didn't exist on the server.
-            You can retry them after running a full sync, or dismiss if they're no longer needed.
+            You can retry them after reconciling from the hub, or dismiss if they're no longer needed.
           </p>
 
           <div class="failed-items-actions" *ngIf="failedSyncItems.length > 0">
-            <button
-              class="btn btn-warning btn-sm"
-              (click)="retryAllFailedItems()"
-              [disabled]="retryingAll">
+            <button class="btn btn-warning btn-sm" (click)="retryAllFailedItems()" [disabled]="retryingAll">
               {{ retryingAll ? 'Retrying...' : 'Retry All' }}
             </button>
           </div>
@@ -222,18 +129,10 @@
                   <td>{{ item.relatedEntityType }} #{{ item.relatedEntityId }}</td>
                   <td>{{ formatTimestamp(item.failedAt) }}</td>
                   <td class="action-cell">
-                    <button
-                      class="btn btn-primary btn-xs"
-                      (click)="retryFailedItem(item)"
-                      [disabled]="item.retrying"
-                      title="Retry this relationship">
+                    <button class="btn btn-primary btn-xs" (click)="retryFailedItem(item)" [disabled]="item.retrying" title="Retry this relationship">
                       {{ item.retrying ? '...' : 'Retry' }}
                     </button>
-                    <button
-                      class="btn btn-secondary btn-xs"
-                      (click)="dismissFailedItem(item)"
-                      [disabled]="item.dismissing"
-                      title="Dismiss (mark as resolved)">
+                    <button class="btn btn-secondary btn-xs" (click)="dismissFailedItem(item)" [disabled]="item.dismissing" title="Dismiss (mark as resolved)">
                       {{ item.dismissing ? '...' : 'Dismiss' }}
                     </button>
                   </td>
@@ -248,68 +147,10 @@
         </div>
       </div>
 
-      <!-- Progress Card (shown during operations) -->
-      <div class="card progress-card" *ngIf="isOperationInProgress()">
-        <div class="card-header">
-          <h3>Operation In Progress</h3>
-          <span class="phase-badge" *ngIf="getCurrentPhaseName()">{{ getCurrentPhaseName() }}</span>
-        </div>
-        <div class="card-body">
-          <div class="progress-info">
-            <span class="phase">{{ getCurrentPhase() }}</span>
-            <span class="percent">{{ getProgressPercent() }}%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="getProgressPercent()"></div>
-          </div>
-
-          <!-- Detailed stats during file operations -->
-          @if (operationStatus?.resyncInProgress && operationStatus?.resyncStatus && isFileOperationPhase()) {
-            <div class="progress-stats">
-              @if (operationStatus?.resyncStatus?.currentPhase === 'file_download') {
-                <div class="stat-row">
-                  <span class="stat-label">Files:</span>
-                  <span class="stat-value">
-                    {{ operationStatus?.resyncStatus?.filesDownloaded || 0 }} / {{ operationStatus?.resyncStatus?.totalFiles || 0 }}
-                    @if ((operationStatus?.resyncStatus?.downloadErrors ?? 0) > 0) {
-                      <span class="error-count">
-                        ({{ operationStatus?.resyncStatus?.downloadErrors }} errors)
-                      </span>
-                    }
-                  </span>
-                </div>
-              }
-              @if (operationStatus?.resyncStatus?.currentPhase === 'file_download' && (operationStatus?.resyncStatus?.totalFileBytes ?? 0) > 0) {
-                <div class="stat-row">
-                  <span class="stat-label">Downloaded:</span>
-                  <span class="stat-value">
-                    {{ formatBytes(operationStatus?.resyncStatus?.downloadedBytes ?? 0) }} /
-                    {{ formatBytes(operationStatus?.resyncStatus?.totalFileBytes ?? 0) }}
-                  </span>
-                </div>
-              }
-              @if (operationStatus?.resyncStatus?.currentPhase === 'file_delete') {
-                <div class="stat-row">
-                  <span class="stat-label">Deleted:</span>
-                  <span class="stat-value">{{ operationStatus?.resyncStatus?.filesDeleted || 0 }} files</span>
-                </div>
-              }
-            </div>
-          }
-
-          <!-- Status message -->
-          @if (operationStatus?.resyncStatus?.statusMessage) {
-            <div class="status-message">
-              {{ operationStatus?.resyncStatus?.statusMessage }}
-            </div>
-          }
-        </div>
-      </div>
-
-      <!-- Preview Card -->
+      <!-- Preview Card (files-only preview) -->
       <div class="card preview-card" *ngIf="previewResult">
         <div class="card-header">
-          <h3>Resync Preview</h3>
+          <h3>File Changes Preview</h3>
           <button class="btn btn-secondary btn-sm" (click)="previewResult = null">Close</button>
         </div>
         <div class="card-body">
@@ -369,7 +210,6 @@
             Includes automatic retry for failed downloads.
           </p>
 
-          <!-- Files Sync Result -->
           <div class="files-sync-result" *ngIf="filesSyncResult">
             <h4>Sync Result</h4>
             <div class="result-summary" [ngClass]="filesSyncResult.success ? 'result-success' : 'result-warning'">
@@ -402,22 +242,13 @@
           </div>
 
           <div class="files-sync-actions">
-            <button
-              class="btn btn-primary"
-              (click)="loadPreview()"
-              [disabled]="loading || previewLoading || isOperationInProgress() || filesSyncLoading">
+            <button class="btn btn-primary" (click)="loadPreview()" [disabled]="previewLoading || filesSyncLoading">
               {{ previewLoading ? 'Loading...' : 'Preview File Changes' }}
             </button>
-            <button
-              class="btn btn-warning"
-              (click)="confirmFilesSync()"
-              [disabled]="loading || isOperationInProgress() || filesSyncLoading">
+            <button class="btn btn-warning" (click)="confirmFilesSync()" [disabled]="filesSyncLoading">
               {{ filesSyncLoading ? 'Syncing...' : 'Sync Files Only' }}
             </button>
-            <button
-              class="btn btn-danger btn-sm"
-              (click)="confirmForceFilesSync()"
-              [disabled]="loading || isOperationInProgress() || filesSyncLoading">
+            <button class="btn btn-danger btn-sm" (click)="confirmForceFilesSync()" [disabled]="filesSyncLoading">
               Force (Skip Safety)
             </button>
           </div>
@@ -440,10 +271,7 @@
           </div>
           <div class="dialog-footer">
             <button class="btn btn-secondary" (click)="cancelFilesSyncConfirm()">Cancel</button>
-            <button
-              class="btn"
-              [ngClass]="forceFilesSync ? 'btn-danger' : 'btn-warning'"
-              (click)="executeFilesSync()">
+            <button class="btn" [ngClass]="forceFilesSync ? 'btn-danger' : 'btn-warning'" (click)="executeFilesSync()">
               Confirm
             </button>
           </div>
@@ -464,7 +292,6 @@
             orphaned references, and missing constraints. Also manage soft-deleted entities.
           </p>
 
-          <!-- Check Result -->
           <div class="integrity-result" *ngIf="integrityCheckResult">
             <div class="preview-summary">
               <div class="summary-item" [class.warning]="integrityCheckResult.totalDuplicates > 0">
@@ -485,7 +312,6 @@
               </div>
             </div>
 
-            <!-- Per-table breakdown (collapsible) -->
             <details *ngIf="integrityCheckResult.hasIssues && getTableIssuesArray().length > 0">
               <summary>Table Details ({{ getTableIssuesArray().length }} with issues)</summary>
               <table class="integrity-table">
@@ -503,7 +329,6 @@
               </table>
             </details>
 
-            <!-- Soft-deleted breakdown -->
             <details *ngIf="getSoftDeletedEntries().length > 0">
               <summary>Soft-Deleted by Entity Type</summary>
               <ul class="soft-deleted-list">
@@ -514,7 +339,6 @@
             </details>
           </div>
 
-          <!-- Fix Result -->
           <div class="fix-result" *ngIf="integrityFixResult">
             <div class="result-summary" [ngClass]="integrityFixResult.success ? 'result-success' : 'result-warning'">
               <p>{{ integrityFixResult.message }}</p>
@@ -538,30 +362,17 @@
             <button class="btn btn-secondary btn-sm" (click)="integrityFixResult = null">Clear Result</button>
           </div>
 
-          <!-- Actions -->
           <div class="integrity-actions">
-            <button
-              class="btn btn-primary"
-              (click)="loadIntegrityCheck()"
-              [disabled]="integrityLoading">
+            <button class="btn btn-primary" (click)="loadIntegrityCheck()" [disabled]="integrityLoading">
               {{ integrityLoading ? 'Checking...' : 'Check Integrity' }}
             </button>
-            <button
-              class="btn btn-secondary"
-              (click)="previewIntegrityFix()"
-              [disabled]="!integrityCheckResult?.hasIssues || integrityFixLoading">
+            <button class="btn btn-secondary" (click)="previewIntegrityFix()" [disabled]="!integrityCheckResult?.hasIssues || integrityFixLoading">
               {{ integrityFixLoading ? 'Loading...' : 'Preview Fix' }}
             </button>
-            <button
-              class="btn btn-warning"
-              (click)="confirmIntegrityFix('all')"
-              [disabled]="!integrityCheckResult?.hasIssues || integrityFixLoading">
+            <button class="btn btn-warning" (click)="confirmIntegrityFix('all')" [disabled]="!integrityCheckResult?.hasIssues || integrityFixLoading">
               Fix All Issues
             </button>
-            <button
-              class="btn btn-danger btn-sm"
-              (click)="confirmPurgeDeleted()"
-              [disabled]="!integrityCheckResult?.totalSoftDeleted || integrityFixLoading">
+            <button class="btn btn-danger btn-sm" (click)="confirmPurgeDeleted()" [disabled]="!integrityCheckResult?.totalSoftDeleted || integrityFixLoading">
               Purge Deleted ({{ integrityCheckResult?.totalSoftDeleted || 0 }})
             </button>
           </div>
@@ -614,88 +425,6 @@
             <button class="btn btn-secondary" (click)="cancelPurgeConfirm()">Cancel</button>
             <button class="btn btn-danger" (click)="executePurgeDeleted()">Permanently Delete</button>
           </div>
-        </div>
-      </div>
-
-      <!-- Actions Card -->
-      <div class="card actions-card">
-        <div class="card-header">
-          <h3>Full Resync Actions</h3>
-        </div>
-        <div class="card-body">
-          <div class="action-buttons">
-            <div class="action-group">
-              <h4>Recovery Actions</h4>
-              <button
-                class="btn btn-primary"
-                (click)="loadPreview()"
-                [disabled]="isElectronManaged || loading || previewLoading || isOperationInProgress()">
-                {{ previewLoading ? 'Loading...' : 'Preview Browser Resync' }}
-              </button>
-              <button
-                class="btn btn-warning"
-                (click)="confirmResync()"
-                [disabled]="loading || isOperationInProgress() || (!isElectronManaged && !healthStatus?.backupAvailable)">
-                {{ isElectronManaged ? 'Desktop Full Resync' : 'Full Resync' }}
-              </button>
-            </div>
-
-            <div class="action-group">
-              <h4>Backup Actions</h4>
-              <button
-                class="btn btn-success"
-                (click)="confirmBackup()"
-                [disabled]="loading || isOperationInProgress()">
-                Create Full Backup
-              </button>
-              <button
-                class="btn btn-secondary"
-                (click)="loadHealth()"
-                [disabled]="loading">
-                Refresh Status
-              </button>
-            </div>
-          </div>
-
-          <div class="action-notes">
-            <p *ngIf="!isElectronManaged"><strong>Preview Browser Resync:</strong> Shows what files would be downloaded or deleted without making changes.</p>
-            <p *ngIf="isElectronManaged"><strong>Desktop Full Resync:</strong> Electron stops the app, replaces the local database and files from the hub, then starts the app again.</p>
-            <p *ngIf="!isElectronManaged"><strong>Full Resync:</strong> Replaces entire database from backup and syncs all files. Use for major recovery.</p>
-            <p><strong>Create Full Backup:</strong> Creates a backup of database and file manifest to shared drive. Only use on a machine with up-to-date data.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Confirmation Dialog -->
-      <div class="dialog-overlay" *ngIf="showConfirmDialog" (click)="cancelConfirm()">
-        <div class="dialog" (click)="$event.stopPropagation()">
-          <div class="dialog-header">
-            <h3>Confirm Action</h3>
-          </div>
-          <div class="dialog-body">
-            <p>{{ getConfirmMessage() }}</p>
-          </div>
-          <div class="dialog-footer">
-            <button class="btn btn-secondary" (click)="cancelConfirm()">Cancel</button>
-            <button
-              class="btn"
-              [ngClass]="confirmAction === 'force-resync' ? 'btn-danger' : 'btn-primary'"
-              (click)="executeConfirmed()">
-              Confirm
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Restart Overlay -->
-      <div class="restart-overlay" *ngIf="restartProgress.isRestarting">
-        <div class="restart-modal">
-          <div class="restart-spinner"></div>
-          <h3>Application Restarting</h3>
-          <p>{{ restartProgress.message }}</p>
-          <p class="restart-note">
-            The page will automatically reload when the application is ready.
-          </p>
         </div>
       </div>
     </div>

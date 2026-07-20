@@ -68,9 +68,12 @@ public class HubFileService {
             extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1);
         }
 
-        // Store in profile-specific uploads directory using original path structure
+        // Store in profile-specific uploads directory using original path structure.
+        // The relative path is derived from CLIENT-supplied originalPath/originalFilename, so it
+        // must be contained inside the files root — a crafted path (".." / absolute) would otherwise
+        // let a client write anywhere on the hub's filesystem.
         String relativePath = extractRelativePath(originalPath, originalFilename, entityType, entityId);
-        Path filePath = Path.of(filesRootPath).resolve(relativePath);
+        Path filePath = resolveWithinRoot(relativePath, entityType, entityId, originalFilename);
         Files.createDirectories(filePath.getParent());
         Files.write(filePath, content);
 
@@ -186,6 +189,48 @@ public class HubFileService {
         String filename = (originalFilename != null && !originalFilename.isEmpty())
             ? originalFilename : "file";
         return entityType + "/" + entityId + "/" + filename;
+    }
+
+    /**
+     * Resolve a client-derived relative path under the files root, guaranteeing the result stays
+     * inside the root. If the requested path escapes (via {@code ..} or an absolute segment), fall
+     * back to the server-controlled {@code entityType/entityId/<sanitized-filename>} structure,
+     * which is always safe. Never returns a path outside the root.
+     */
+    private Path resolveWithinRoot(String relativePath, String entityType, Long entityId, String originalFilename) {
+        Path root = Path.of(filesRootPath).toAbsolutePath().normalize();
+        Path candidate = root.resolve(relativePath).normalize();
+        if (candidate.startsWith(root)) {
+            return candidate;
+        }
+        log.warn("Rejected path-escaping upload target '{}' for {}/{} — using safe fallback path",
+            relativePath, entityType, entityId);
+        Path safe = root.resolve(sanitizePathSegment(entityType))
+                        .resolve(String.valueOf(entityId))
+                        .resolve(sanitizeFilename(originalFilename))
+                        .normalize();
+        if (!safe.startsWith(root)) {
+            // Should be impossible (all segments sanitized) — fail loudly rather than escape.
+            throw new IllegalArgumentException("Refusing to write file outside files root: " + safe);
+        }
+        return safe;
+    }
+
+    /** Strip any path separators / traversal from a single path segment. */
+    private static String sanitizePathSegment(String seg) {
+        if (seg == null || seg.isBlank()) return "_";
+        String cleaned = seg.replaceAll("[^A-Za-z0-9._-]", "_");
+        return (cleaned.isBlank() || cleaned.equals(".") || cleaned.equals("..")) ? "_" : cleaned;
+    }
+
+    /** Reduce a filename to its base name and strip anything that could alter the target directory. */
+    private static String sanitizeFilename(String name) {
+        if (name == null || name.isBlank()) return "file";
+        String base = name.replace('\\', '/');
+        int slash = base.lastIndexOf('/');
+        if (slash >= 0) base = base.substring(slash + 1);
+        base = base.replaceAll("[^A-Za-z0-9._-]", "_");
+        return (base.isBlank() || base.equals(".") || base.equals("..")) ? "file" : base;
     }
 
     private String computeSha256(byte[] data) {

@@ -3,7 +3,9 @@ package com.dk_power.power_plant_java.sevice.sync;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
+import com.dk_power.power_plant_java.entities.sync.PendingFileSync;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
+import com.dk_power.power_plant_java.repository.sync.PendingFileSyncRepository;
 import com.dk_power.power_plant_java.sevice.app_services.H2BackupService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -63,6 +65,7 @@ public class FullResyncService {
     private final FieldSyncService fieldSyncService;
     private final FileRepo fileRepo;
     private final AttachmentSyncHandler attachmentSyncHandler;
+    private final PendingFileSyncRepository pendingFileSyncRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     @org.springframework.context.annotation.Lazy
@@ -348,19 +351,58 @@ public class FullResyncService {
     public ResyncResult smartResync() {
         log.info("smart_resync.start");
 
-        // Step 1: Send local pending changes to hub (only if there are any)
+        // Step 1: Send local pending changes to hub (only if there are any).
+        // A "smart" resync must be non-destructive: the DB replace in step 2/3 overwrites
+        // local data with the hub's copy, so ANY local change that didn't reach the hub is
+        // lost. We therefore ABORT (return success=false) unless the push fully drained the
+        // outbox — never proceed on a failed/partial send. The Electron caller guards on
+        // result.success and shows the error instead of running the destructive DB swap.
         long pending = centralSyncService.getPendingChangeCount();
         if (pending > 0) {
+            CentralSyncService.SyncResult sendResult;
             try {
-                CentralSyncService.SyncResult sendResult = centralSyncService.sendToServer();
-                log.info("smart_resync.send_complete sent={} pending_was={}", sendResult.getChangesSent(), pending);
+                sendResult = centralSyncService.sendToServer();
             } catch (Exception e) {
-                log.warn("smart_resync.send_failed (continuing anyway): {}", e.getMessage());
-                // Don't abort — the full DB resync will overwrite local data anyway.
-                // Unsent changes are lost, but that's the user's choice when clicking Smart Resync.
+                log.error("smart_resync.abort send_failed pending={} — refusing to replace DB and lose unsynced changes: {}",
+                        pending, e.getMessage(), e);
+                return new ResyncResult(false,
+                        "Could not push " + pending + " local change(s) to the hub (" + e.getMessage()
+                                + "). Aborted so your unsynced work isn't lost — retry when the hub is reachable.",
+                        null);
             }
+            long stillPending = centralSyncService.getPendingChangeCount();
+            if (!sendResult.isSuccess() || stillPending > 0) {
+                log.error("smart_resync.abort send_incomplete success={} sent={} still_pending={} — refusing to replace DB and lose unsynced changes",
+                        sendResult.isSuccess(), sendResult.getChangesSent(), stillPending);
+                return new ResyncResult(false,
+                        "Local changes did not fully reach the hub (" + stillPending + " still pending"
+                                + (sendResult.getErrorMessage() != null ? ": " + sendResult.getErrorMessage() : "")
+                                + "). Aborted so they aren't lost — retry when the hub has caught up.",
+                        null);
+            }
+            log.info("smart_resync.send_complete sent={} pending_was={}", sendResult.getChangesSent(), pending);
         } else {
             log.info("smart_resync.no_pending_changes — skipping send");
+        }
+
+        // Step 1b: File BYTES ride a SEPARATE PendingFileSync UPLOAD queue, independent of the
+        // FieldChange metadata outbox checked above. They must ALSO be safely on the hub before we
+        // let the local DB/files be replaced — otherwise a just-created attachment whose METADATA
+        // synced (FieldChange pending == 0) but whose BYTES are still queued (upload in backoff, or
+        // the upload endpoint briefly down while /api/sync was up) would be permanently lost by the
+        // destructive replace (which pulls files FROM the hub, which has no bytes for it).
+        long pendingUploads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+                PendingFileSync.SyncDirection.UPLOAD,
+                List.of(PendingFileSync.SyncStatus.PENDING,
+                        PendingFileSync.SyncStatus.IN_PROGRESS,
+                        PendingFileSync.SyncStatus.FAILED));
+        if (pendingUploads > 0) {
+            log.error("smart_resync.abort pending_file_uploads={} — refusing to replace DB and lose un-uploaded file bytes",
+                    pendingUploads);
+            return new ResyncResult(false,
+                    pendingUploads + " file(s) still need to finish uploading to the hub. Aborted so "
+                            + "they aren't lost — wait for the file uploads to complete, then retry.",
+                    null);
         }
 
         // Step 2: Notify hub to mark all changes as synced (fire-and-forget)

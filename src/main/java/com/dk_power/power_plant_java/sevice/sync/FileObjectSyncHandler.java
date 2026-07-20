@@ -943,10 +943,20 @@ public class FileObjectSyncHandler {
                 pendingFileSyncRepository.save(task);
 
                 // Perform download
-                downloadFilesFromServer(task);
+                DownloadOutcome outcome = downloadFilesFromServer(task);
 
-                // Delete old folders AFTER successful download (for vendor/fileType rename scenarios)
-                deleteOldFoldersAfterDownload(task);
+                // Delete old folders AFTER a FULLY successful download (for vendor/fileType rename
+                // scenarios). Guard: only delete the old location when every file landed in the new
+                // one. A spurious empty response OR a partial download (some files failed) would
+                // otherwise delete the old copy of a file that never arrived = silent file loss.
+                if (outcome.fullSuccess()) {
+                    deleteOldFoldersAfterDownload(task);
+                } else if (task.getOldFolderToDelete() != null && !task.getOldFolderToDelete().isEmpty()) {
+                    log.warn("Skipping old-folder cleanup for FileObject #{} — download not fully "
+                            + "complete (downloaded={}, failed={}); keeping the old copy so no "
+                            + "un-downloaded file is lost", task.getEntityId(),
+                        outcome.downloaded(), outcome.failed());
+                }
 
                 // Mark as completed
                 task.markCompleted();
@@ -1021,6 +1031,48 @@ public class FileObjectSyncHandler {
     }
 
     /**
+     * Periodically recover FAILED download tasks.
+     * A download exhausts its retries while the hub is unreachable (or the file wasn't uploaded
+     * there yet); once things recover we must re-attempt, otherwise the local copy is missing
+     * forever with no signal. Re-queue while the FileObject is still active; drop it once the
+     * entity is gone/deleted (nothing to fetch).
+     */
+    @Scheduled(fixedDelay = 300000, initialDelay = 90000) // every 5 minutes, offset from upload recovery
+    @Transactional
+    public void recoverFailedDownloads() {
+        if (!syncConfig.isServerSyncEnabled()) {
+            return;
+        }
+
+        List<PendingFileSync> failedDownloads = pendingFileSyncRepository
+            .findByDirectionAndStatusIn(SyncDirection.DOWNLOAD, List.of(SyncStatus.FAILED));
+
+        if (failedDownloads.isEmpty()) {
+            return;
+        }
+
+        int recovered = 0;
+        for (PendingFileSync task : failedDownloads) {
+            FileObject fo = fileRepo.findById(task.getEntityId()).orElse(null);
+            if (fo != null && !Boolean.TRUE.equals(fo.getDeleted())) {
+                task.setStatus(SyncStatus.PENDING);
+                task.setRetryCount(0);
+                task.setNextRetryTime(Instant.now());
+                pendingFileSyncRepository.save(task);
+                recovered++;
+            } else {
+                // FileObject no longer exists locally — nothing to download into; close the task.
+                task.markCompleted();
+                pendingFileSyncRepository.save(task);
+            }
+        }
+
+        if (recovered > 0) {
+            log.info("file_sync.recovered_downloads count={}", recovered);
+        }
+    }
+
+    /**
      * Upload files to sync server.
      */
     private void uploadFilesToServer(PendingFileSync task) throws IOException {
@@ -1087,11 +1139,16 @@ public class FileObjectSyncHandler {
      * Download files from sync server.
      * Throws exception on failure to trigger retry with exponential backoff.
      */
-    private void downloadFilesFromServer(PendingFileSync task) {
+    /** Outcome of a download attempt. Old-folder cleanup only runs on a FULL success (no failures). */
+    private record DownloadOutcome(int downloaded, int failed) {
+        boolean fullSuccess() { return downloaded > 0 && failed == 0; }
+    }
+
+    private DownloadOutcome downloadFilesFromServer(PendingFileSync task) {
         FileObject fileObject = fileRepo.findById(task.getEntityId()).orElse(null);
         if (fileObject == null) {
             log.warn("FileObject #{} not found, skipping download", task.getEntityId());
-            return; // Don't retry if entity doesn't exist
+            return new DownloadOutcome(0, 0); // Don't retry if entity doesn't exist
         }
 
         String listUrl = syncConfig.getSyncServerUrl() +
@@ -1115,7 +1172,7 @@ public class FileObjectSyncHandler {
 
             if (response.getBody() == null) {
                 log.debug("No files found on server for FileObject #{}", task.getEntityId());
-                return; // Empty response is OK - no files to download
+                return new DownloadOutcome(0, 0); // Empty response is OK - no files to download
             }
 
             Map<String, Object> body = response.getBody();
@@ -1123,7 +1180,7 @@ public class FileObjectSyncHandler {
 
             if (files == null || files.isEmpty()) {
                 log.debug("No files to download for FileObject #{}", task.getEntityId());
-                return; // No files is OK
+                return new DownloadOutcome(0, 0); // No files is OK
             }
 
             log.debug("Downloading {} files for FileObject #{}", files.size(), task.getEntityId());
@@ -1150,6 +1207,8 @@ public class FileObjectSyncHandler {
                 log.warn("Downloaded {}/{} files for FileObject #{}, {} failed",
                     successCount, files.size(), task.getEntityId(), failCount);
             }
+
+            return new DownloadOutcome(successCount, failCount);
 
         } catch (Exception e) {
             log.error("Error downloading files for FileObject #{}: {}", task.getEntityId(), e.getMessage());
@@ -1210,11 +1269,33 @@ public class FileObjectSyncHandler {
             throw new IOException("Cannot determine target path for file " + fileName);
         }
 
+        // Containment: fileName/relFolder are hub-supplied — never write outside the files root.
+        Path root = Paths.get(filesRootPath).toAbsolutePath().normalize();
+        targetPath = targetPath.toAbsolutePath().normalize();
+        if (!targetPath.startsWith(root)) {
+            throw new IOException("Refusing to write file outside files root: " + targetPath);
+        }
+
         // Create parent directories
         Files.createDirectories(targetPath.getParent());
 
-        // Write file
-        Files.write(targetPath, content);
+        // Atomic write: fully materialize to a temp file in the same directory, then move into
+        // place. A crash mid-write can't leave a truncated/corrupt file where a valid one was.
+        Path tmp = Files.createTempFile(targetPath.getParent(), ".dl-", ".tmp");
+        try {
+            Files.write(tmp, content);
+            try {
+                // REPLACE_EXISTING is required — re-downloads target an existing file, and ATOMIC_MOVE
+                // alone throws FileAlreadyExistsException on providers that don't implicitly replace.
+                Files.move(tmp, targetPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException | UnsupportedOperationException e) {
+                // Rare filesystem without atomic move — temp is already fully written, so a plain
+                // replace is still safer than a direct partial write.
+                Files.move(tmp, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
         log.debug("Downloaded file {} to {} ({} bytes)", fileName, targetPath, content.length);
     }
 
