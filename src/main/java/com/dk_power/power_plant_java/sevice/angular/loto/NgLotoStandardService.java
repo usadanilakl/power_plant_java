@@ -213,9 +213,19 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         // Groups — categorization labels are shared references (they're Values).
         copy.setGroups(new HashSet<>(source.getGroups()));
 
-        // LOTO points — SHARE references. Save the copy so it exists in the
-        // join table with the same set of points as the source.
-        copy.getLotoPoints().addAll(source.getLotoPoints());
+        // LOTO points — SHARE references, so both the source and the copy
+        // point at the same physical isolation points via the M2M join.
+        // Adding a point on the copy only touches the join, not the original.
+        //
+        // IMPORTANT: use setLotoPoints against a fresh list, NOT
+        // getLotoPoints().addAll(...) — getLotoPoints() returns a SORTED
+        // COPY of the persistent list (see LotoStandard.getLotoPoints),
+        // so addAll on it populates the throwaway copy and the persistent
+        // field stays empty. This was the "duplicate ends up with no
+        // points" bug — mirror of the delete-cascade gotcha we already
+        // caught. lotoPointOrder was copied above, so the sorted view
+        // will match the source's order on the very next read.
+        copy.setLotoPoints(new java.util.ArrayList<>(source.getLotoPoints()));
 
         // Workflow reset — start fresh in DRAFT v1 with no attribution.
         copy.setDevelopmentStatus(getOrCreateStatus(LotoStandardStatus.DRAFT));
