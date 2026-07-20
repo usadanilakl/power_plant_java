@@ -28,6 +28,25 @@
     }
   </div>
 
+  <!-- JPG Recovery — force-regenerates the JPG for a PDF file. Same endpoint
+       as the row context menu's Re-generate JPG; surfaced here so users
+       acting from the viewer don't have to jump back to the file list. -->
+  @if (entity()?.id && canRegenerateJpg()) {
+    <div class="regen-jpg-section">
+      <span class="rj-label">JPG:</span>
+      <span class="rj-hint">If the preview looks wrong, regenerate from the source PDF.</span>
+      <button
+        type="button"
+        class="cp-btn cp-btn-secondary"
+        [disabled]="regeneratingJpg()"
+        (click)="regenerateJpg()"
+        title="Delete the current JPG and re-render from the source PDF"
+      >
+        {{ regeneratingJpg() ? 'Regenerating…' : 'Re-generate JPG' }}
+      </button>
+    </div>
+  }
+
   <!-- File Auto-Fill Toggles -->
   <div class="file-autofill-section">
     <div class="toggle-row">

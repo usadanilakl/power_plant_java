@@ -26,6 +26,8 @@ import {
   FootprintShape, FOOTPRINT_SHAPES, hexToRgba, normFootprint,
 } from './plant-glyphs';
 import { DiagramPlacementApiService } from '../../diagram-builder/services/diagram-placement-api.service';
+import { DiagramAlignmentService, ShapeRect, ShapeUpdate } from '../../diagram-builder/services/diagram-alignment.service';
+import { AlignmentType, DistributeType } from '../../diagram-builder/models/diagram-placement.model';
 
 /** One child of a nested container (in the container's OWN diagram coords) — for recursive zoom-nesting.
  *  For a LEVELED container, children from ALL levels are composited (view-from-top): `floor` = its level index,
@@ -49,7 +51,10 @@ interface NestFitting { id: string; nodeId?: number; x: number; y: number; cat: 
 
 /** In-progress pointer gesture on the canvas. */
 type Drag =
-  | { kind: 'move' | 'resize'; localId: number; startClientX: number; startClientY: number; origX: number; origY: number; origW: number; origH: number }
+  | { kind: 'move' | 'resize'; localId: number; startClientX: number; startClientY: number; origX: number; origY: number; origW: number; origH: number;
+      /** Every selected box's start position — a move drags the whole selection, not just the grabbed box. */
+      origins?: { localId: number; x: number; y: number }[] }
+  | { kind: 'marquee'; startX: number; startY: number; additive: boolean }
   | { kind: 'connect'; localId: number }
   | { kind: 'draw'; startX: number; startY: number }
   | { kind: 'pan'; startClientX: number; startClientY: number; startPanX: number; startPanY: number; moved: boolean }
@@ -85,6 +90,7 @@ function borderPoint(b: MapBox, tx: number, ty: number): { x: number; y: number 
 })
 export class PlantMapComponent implements OnDestroy {
   readonly st = inject(PlantMapStateService);
+  private alignSvc = inject(DiagramAlignmentService);
   private nodesApi = inject(PhysicalObjectApiService);
   private filesApi = inject(RfFileApiService);
   private placementApi = inject(DiagramPlacementApiService);
@@ -136,6 +142,9 @@ export class PlantMapComponent implements OnDestroy {
   drawShape = signal<FootprintShape>('rect');
   setDrawShape(s: FootprintShape) { this.drawShape.set(s); }
 
+  // multi-shape ops
+  duplicating = signal(false);
+
   // inline box rename (name-in-place, so a new footprint is named as you draw it)
   editingBoxLocalId = signal<number | null>(null);
   boxEditName = '';
@@ -158,6 +167,7 @@ export class PlantMapComponent implements OnDestroy {
   // ── inspector: edit fields + documents ──
   editName = ''; editType = ''; editTag = ''; editDesc = ''; editLoc = ''; editFloor = '';
   savingEdit = signal(false);
+  editSaved = signal(false);   // brief "Saved ✓" confirmation after an auto-save
   files = signal<LinkedFile[]>([]);
   filesLoading = signal(false);
   fileQuery = '';
@@ -1303,7 +1313,94 @@ export class PlantMapComponent implements OnDestroy {
     return g && g.kind === 'path' ? g : undefined;
   }
   boxHasChildren(b: MapBox): boolean { return this.st.childById().get(b.childId)?.hasChildren ?? false; }
-  isSelected(b: MapBox): boolean { return this.st.selectedLocalId() === b.localId; }
+  isSelected(b: MapBox): boolean { return this.st.selectedLocalIds().includes(b.localId); }
+  /** The reference box (selection[0]) — what align + match-size measure against. Shown with a distinct outline. */
+  isReference(b: MapBox): boolean { return this.st.selectedLocalIds().length > 1 && this.st.selectedLocalId() === b.localId; }
+
+  // ── multi-shape operations (align / match size / duplicate) ─────────────────────────────────────────────
+  // Geometry comes from the shared DiagramAlignmentService (same math the diagram builder uses) — the boxes are
+  // adapted to its ShapeRect contract by localId, and the returned updates are applied back through setBoxRect.
+
+  /** Boxes as ShapeRects, selection order preserved so index 0 stays the reference. */
+  private selectionRects(): ShapeRect[] {
+    return this.st.selectedBoxes().map(b => ({ id: b.localId, x: b.x, y: b.y, width: b.width, height: b.height }));
+  }
+
+  private applyShapeUpdates(updates: ShapeUpdate[]) {
+    const byId = this.boxById();
+    for (const u of updates) {
+      const b = byId.get(u.id);
+      if (!b) continue;
+      this.st.setBoxRect(u.id, u.x ?? b.x, u.y ?? b.y, u.width ?? b.width, u.height ?? b.height);
+    }
+  }
+
+  canOperate = computed(() => this.st.selectedLocalIds().length > 1);
+
+  align(kind: AlignmentType) { this.applyShapeUpdates(this.alignSvc.alignShapes(this.selectionRects(), kind)); }
+  matchSize(dim: 'width' | 'height' | 'both') { this.applyShapeUpdates(this.alignSvc.matchSize(this.selectionRects(), dim)); }
+  distribute(dir: DistributeType) { this.applyShapeUpdates(this.alignSvc.distributeShapes(this.selectionRects(), dir)); }
+
+  /**
+   * Duplicate the selection. A box IS a PhysicalObject, so each copy creates a real new node first, then places
+   * and styles it. Offset so copies don't hide under the originals (the map has no z-order to separate them).
+   * Tag numbers are deliberately NOT copied — they must stay unique.
+   */
+  async duplicateSelection() {
+    if (this.duplicating()) return;
+    const source = this.st.selectedBoxes();
+    if (!source.length) return;
+    this.duplicating.set(true);
+    const OFF = 20;
+    const newIds: number[] = [];
+    try {
+      for (const b of source) {
+        const c = this.st.childById().get(b.childId);
+        const created = await this.st.createChild({ name: `${c?.name || 'Object'} copy`, type: c?.type || undefined });
+        if (!created) continue;
+        const localId = this.st.placeChild(created.id, b.x + OFF, b.y + OFF, b.shape);
+        if (localId == null) continue;
+        this.st.setBoxRect(localId, b.x + OFF, b.y + OFF, b.width, b.height);
+        this.st.patchBox(localId, { glyph: b.glyph, color: b.color, showChildren: b.showChildren });
+        newIds.push(localId);
+      }
+    } finally {
+      this.duplicating.set(false);
+    }
+    if (newIds.length) this.st.setSelection(newIds);   // leave the copies selected, ready to drag away
+  }
+
+  /** Canvas keyboard shortcuts. Guarded so they never fire while a field or the inline rename is being typed in. */
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(ev: KeyboardEvent) {
+    if (this.editingBoxLocalId() != null) return;                 // inline rename input lives ON the canvas
+    const t = ev.target as HTMLElement | null;
+    if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+    if (this.pipeMode() || this.fittingType()) return;             // pipe tools own the keyboard while armed
+    const sel = this.st.selectedLocalIds();
+
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd') {
+      ev.preventDefault(); void this.duplicateSelection(); return;
+    }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a') {
+      ev.preventDefault(); this.st.setSelection(this.st.boxes().map(b => b.localId)); return;
+    }
+    if (!sel.length) return;
+    if (ev.key === 'Delete' || ev.key === 'Backspace') {
+      ev.preventDefault();
+      for (const id of [...sel]) this.st.removeBox(id);
+      return;
+    }
+    const step = ev.shiftKey ? 10 : 1;
+    const dx = ev.key === 'ArrowLeft' ? -step : ev.key === 'ArrowRight' ? step : 0;
+    const dy = ev.key === 'ArrowUp' ? -step : ev.key === 'ArrowDown' ? step : 0;
+    if (dx || dy) {
+      ev.preventDefault();
+      for (const b of this.st.selectedBoxes()) {
+        this.st.setBoxRect(b.localId, Math.max(0, b.x + dx), Math.max(0, b.y + dy), b.width, b.height);
+      }
+    }
+  }
 
   // ── create / place ──
   async addObject() {
@@ -1374,7 +1471,7 @@ export class PlantMapComponent implements OnDestroy {
     return null;
   }
 
-  /** Empty-canvas press: LEFT drag pans the map; RIGHT drag draws a new object. Either way, deselect. */
+  /** Empty-canvas press: LEFT drag pans, SHIFT+LEFT drag box-selects, RIGHT drag draws a new object. */
   onCanvasDown(ev: PointerEvent) {
     // Pipe tool: left-click lays a vertex, right-click finishes. (Boxes/nested are click-through in pipe mode.)
     if (this.pipeMode()) {
@@ -1383,6 +1480,7 @@ export class PlantMapComponent implements OnDestroy {
     }
     if (this.fittingType() && ev.button === 0) { this.placeFitting(ev); return; } // armed fitting → drop on the pipe
     this.st.selectedLocalId.set(null);
+    this.st.selectedLocalIds.set([]);
     this.st.selectedEdgeLocalId.set(null);
     this.st.selectedNestedNode.set(null);
     this.selectedPipeId.set(null);
@@ -1390,6 +1488,11 @@ export class PlantMapComponent implements OnDestroy {
     if (ev.button === 2) {
       const p = this.contentPoint(ev);
       this.drag = { kind: 'draw', startX: p.x, startY: p.y };
+      this.rubber.set({ x: p.x, y: p.y, w: 0, h: 0 });
+    } else if (ev.shiftKey) {
+      // Shift+left = box-select. Plain left stays PAN (it's the documented default and muscle memory).
+      const p = this.contentPoint(ev);
+      this.drag = { kind: 'marquee', startX: p.x, startY: p.y, additive: ev.ctrlKey || ev.metaKey };
       this.rubber.set({ x: p.x, y: p.y, w: 0, h: 0 });
     } else {
       this.drag = { kind: 'pan', startClientX: ev.clientX, startClientY: ev.clientY, startPanX: this.panX(), startPanY: this.panY(), moved: false };
@@ -1416,8 +1519,15 @@ export class PlantMapComponent implements OnDestroy {
 
   onBoxDown(ev: PointerEvent, b: MapBox) {
     ev.stopPropagation();
-    this.st.selectBox(b.localId);
-    this.drag = { kind: 'move', localId: b.localId, startClientX: ev.clientX, startClientY: ev.clientY, origX: b.x, origY: b.y, origW: b.width, origH: b.height };
+    // Modifier-click toggles membership (and starts no drag) so a selection can be built up click by click.
+    if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { this.st.toggleBoxSelection(b.localId); return; }
+    // Grabbing a box that's already part of a multi-selection keeps it — that's what lets you drag the group.
+    if (!this.st.selectedLocalIds().includes(b.localId)) this.st.selectBox(b.localId);
+    this.drag = {
+      kind: 'move', localId: b.localId, startClientX: ev.clientX, startClientY: ev.clientY,
+      origX: b.x, origY: b.y, origW: b.width, origH: b.height,
+      origins: this.st.selectedBoxes().map(s => ({ localId: s.localId, x: s.x, y: s.y })),
+    };
   }
 
   onResizeDown(ev: PointerEvent, b: MapBox) {
@@ -1482,7 +1592,20 @@ export class PlantMapComponent implements OnDestroy {
       const nx = Math.max(0, d.origX + (ev.clientX - d.startClientX) / z);
       const ny = Math.max(0, d.origY + (ev.clientY - d.startClientY) / z);
       const s = this.snapPt({ x: nx, y: ny });
-      this.st.setBoxRect(d.localId, Math.max(0, s.x), Math.max(0, s.y), d.origW, d.origH);
+      if (d.origins && d.origins.length > 1) {
+        // Snap the GRABBED box, then shift the group by that same delta — so snapping can't distort spacing.
+        const dx = Math.max(0, s.x) - d.origX, dy = Math.max(0, s.y) - d.origY;
+        const byId = this.boxById();
+        for (const o of d.origins) {
+          const bb = byId.get(o.localId);
+          if (bb) this.st.setBoxRect(o.localId, Math.max(0, o.x + dx), Math.max(0, o.y + dy), bb.width, bb.height);
+        }
+      } else {
+        this.st.setBoxRect(d.localId, Math.max(0, s.x), Math.max(0, s.y), d.origW, d.origH);
+      }
+    } else if (d.kind === 'marquee') {
+      const c = this.contentPoint(ev);
+      this.rubber.set({ x: Math.min(d.startX, c.x), y: Math.min(d.startY, c.y), w: Math.abs(c.x - d.startX), h: Math.abs(c.y - d.startY) });
     } else if (d.kind === 'resize') {
       const min = this.minSize(this.boxById().get(d.localId)?.shape ?? 'rect');
       const nw = this.snapLen(Math.max(min.w, d.origW + (ev.clientX - d.startClientX) / z), min.w);
@@ -1526,6 +1649,17 @@ export class PlantMapComponent implements OnDestroy {
       this.rubber.set(null);
       // long-enough drag; min-side allows thin pipe runs, long-side rejects accidental taps
       if (r && Math.max(r.w, r.h) >= 24 && Math.min(r.w, r.h) >= 6) void this.createDrawnObject(r);
+    } else if (d.kind === 'marquee') {
+      const r = this.rubber();
+      this.rubber.set(null);
+      if (r) {
+        // Intersection (touch), not containment — grazing a box selects it, which is what people expect.
+        const hits = this.st.boxes()
+          .filter(b => r.x < b.x + b.width && r.x + r.w > b.x && r.y < b.y + b.height && r.y + r.h > b.y)
+          .map(b => b.localId);
+        const prev = this.st.selectedLocalIds();
+        this.st.setSelection(d.additive ? [...prev, ...hits.filter(i => !prev.includes(i))] : hits);
+      }
     }
     // move / resize were persisted live via setBoxRect's debounced save
   }
@@ -1673,7 +1807,7 @@ export class PlantMapComponent implements OnDestroy {
     this.savingEdit.set(true);
     // blank = leave unchanged (PATCH contract) — never silently wipe a field.
     const floor = this.editFloor.trim();
-    await this.st.updateNodeData(child.id, {
+    const updated = await this.st.updateNodeData(child.id, {
       name: this.editName.trim() || undefined,
       type: this.editType || undefined,
       tagNumber: this.editTag.trim() || undefined,
@@ -1681,7 +1815,35 @@ export class PlantMapComponent implements OnDestroy {
       specificLocation: this.editLoc.trim() || undefined,
       floorIndex: floor === '' ? undefined : (Number.isFinite(Number(floor)) ? Number(floor) : undefined),
     });
+    // Re-seed from what actually persisted: a blanked field is "unchanged" server-side, so without this the
+    // input would keep showing the empty value and silently disagree with the shape label.
+    if (updated) {
+      this.editName = updated.name ?? '';
+      this.editType = updated.type ?? '';
+      this.editTag = updated.tagNumber ?? '';
+      this.editDesc = updated.description ?? '';
+      this.editLoc = updated.specificLocation ?? '';
+      this.editFloor = updated.floorIndex != null ? String(updated.floorIndex) : '';
+    }
     this.savingEdit.set(false);
+  }
+
+  /** Commit the inspector form when a field loses focus — no Save click. No-ops when nothing actually changed. */
+  async autoSaveEdit() {
+    const child = this.st.selectedChild();
+    if (!child || this.savingEdit()) return;
+    const floor = this.editFloor.trim();
+    const changed =
+      this.editName.trim() !== (child.name ?? '') ||
+      (this.editType || '') !== (child.type ?? '') ||
+      this.editTag.trim() !== (child.tagNumber ?? '') ||
+      this.editDesc.trim() !== (child.description ?? '') ||
+      this.editLoc.trim() !== (child.specificLocation ?? '') ||
+      floor !== (child.floorIndex != null ? String(child.floorIndex) : '');
+    if (!changed) return;
+    await this.saveEdit();
+    this.editSaved.set(true);
+    setTimeout(() => this.editSaved.set(false), 1800);
   }
 
   drillSelected() { const c = this.st.selectedChild(); if (c) void this.st.navigate(c.id); }
@@ -1693,20 +1855,20 @@ export class PlantMapComponent implements OnDestroy {
   setColor(color: string) { const id = this.st.selectedLocalId(); if (id != null) this.st.patchBox(id, { color }); }
 
   // ── reference underlay (satellite / plot plan) ──
-  onPickBackground(ev: Event) {
+  bgUploading = signal(false);
+  async onPickBackground(ev: Event) {
     const input = ev.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = ''; // allow re-picking the same file
     if (!file) return;
     if (!file.type.startsWith('image/')) { this.st.error.set('The reference must be an image file.'); return; }
-    if (file.size > 3 * 1024 * 1024) { this.st.error.set('Image too large (max 3 MB) — crop or screenshot a smaller area.'); return; }
-    const did = this.st.currentDiagramId(); // snapshot: drop the write if the user drills away before the read lands
-    const reader = new FileReader();
-    reader.onload = () => { this.st.error.set(null); this.st.setBackgroundImage(String(reader.result), did); };
-    reader.onerror = () => this.st.error.set('Could not read that image.');
-    reader.readAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) { this.st.error.set('Image too large (max 10 MB) — crop or downscale it.'); return; }
+    const did = this.st.currentDiagramId(); // snapshot: drop the write if the user drills away before the upload lands
+    this.bgUploading.set(true);
+    try { await this.st.uploadBackground(file, did); }
+    finally { this.bgUploading.set(false); }
   }
-  clearBackground() { this.st.clearBackgroundImage(); }
+  clearBackground() { void this.st.clearBackgroundImage(); }
   setBgOpacity(v: number) { this.st.setBackgroundOpacity(v); }
 
   // ── inspector: legacy box-to-box connection (edge) style ──

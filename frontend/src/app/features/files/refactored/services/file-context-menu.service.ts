@@ -83,6 +83,12 @@ export class FileContextMenuService extends ContextMenuService {
         action: (item) => this.handleOpenInSplit(item),
       },
       {
+        id: 'regenerate-jpg',
+        label: 'Re-generate JPG',
+        icon: '🔄',
+        action: (item) => this.handleRegenerateJpg(item),
+      },
+      {
         id: 'import-from-counterpart',
         label: 'Import Points from Counterpart',
         icon: '📥',
@@ -374,6 +380,43 @@ export class FileContextMenuService extends ContextMenuService {
       error: (err: any) => {
         console.error('Failed to refresh source file:', err);
         this.messageService.showError('Failed to load file #' + item.id);
+      },
+    });
+  }
+
+  /**
+   * Force-regenerate the JPG for a FileObject. Recovery for the pre-fix
+   * multi-page split bug where every split page's JPG was rendered from
+   * the source's last page (usually empty). Backend deletes the current
+   * JPG, re-runs conversion, refreshes the perceptual hash, and queues
+   * the new bytes for sync.
+   *
+   * <p>Confirms first — it overwrites file bytes on disk. Only offered as
+   * meaningful for rows that have a PDF source; still shows for others in
+   * case someone wants to force-recompute (backend will report the missing
+   * source). Refetches the row afterwards so the table's fileLink
+   * cache-buster reflects the new bytes.
+   */
+  private handleRegenerateJpg(item: FileDto): void {
+    if (!item?.id) {
+      this.messageService.showWarning('Cannot regenerate: no file id');
+      return;
+    }
+    const label = item.name || `File #${item.id}`;
+    if (!window.confirm(`Re-generate the JPG for "${label}"? Current JPG will be replaced.`)) return;
+    this.apiService.regenerateJpg(item.id).subscribe({
+      next: () => {
+        // Browser may still show cached JPG until a hard-refresh — the URL
+        // is unchanged, only the bytes on disk are. Tell the user so they
+        // don't mistake a cached preview for the action having failed.
+        this.messageService.showSuccess(
+          `JPG regenerated for "${label}". Hard-refresh (Ctrl+F5) if the preview looks unchanged.`);
+        if (item.id) this.refreshFileInList(item.id);
+      },
+      error: (err: any) => {
+        console.error('regenerate-jpg failed:', err);
+        this.messageService.showError('Re-generate failed: '
+          + (err?.error?.message ?? err?.message ?? 'unknown error'));
       },
     });
   }

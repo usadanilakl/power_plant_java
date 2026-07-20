@@ -391,6 +391,32 @@
   border-radius: 4px;
   flex-wrap: wrap;
 }
+/* JPG recovery — sibling to counterpart-section. Reuses cp-btn styles
+   defined below (the button carries the .cp-btn class in the template). */
+.regen-jpg-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--secondary-background, #f0f2f5);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+.regen-jpg-section .rj-label {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--primary-text, #212529);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.regen-jpg-section .rj-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.85em;
+  color: var(--secondary-text, #6c757d);
+}
 .counterpart-section .cp-label {
   font-weight: 600;
   font-size: 0.85em;
@@ -412,7 +438,8 @@
   font-style: italic;
   font-weight: 400;
 }
-.counterpart-section .cp-btn {
+.counterpart-section .cp-btn,
+.regen-jpg-section .cp-btn {
   flex: 0 0 auto;
   padding: 4px 12px;
   border: 1px solid var(--border-color, #dee2e6);
@@ -423,22 +450,32 @@
   background: var(--card-background, #ffffff);
   color: var(--primary-text, #212529);
 }
-.counterpart-section .cp-btn:hover {
+.counterpart-section .cp-btn:hover,
+.regen-jpg-section .cp-btn:hover {
   background: var(--hover-color, rgba(65, 65, 133, 0.15));
 }
-.counterpart-section .cp-btn-primary {
+.counterpart-section .cp-btn-primary,
+.regen-jpg-section .cp-btn-primary {
   background: var(--accent-color, #007bff);
   color: #ffffff;
   border-color: var(--accent-color, #007bff);
 }
-.counterpart-section .cp-btn-primary:hover {
+.counterpart-section .cp-btn-primary:hover,
+.regen-jpg-section .cp-btn-primary:hover {
   background: var(--accent-color-hover, #0056b3);
   border-color: var(--accent-color-hover, #0056b3);
 }
-.counterpart-section .cp-btn-danger {
+.counterpart-section .cp-btn-danger,
+.regen-jpg-section .cp-btn-danger {
   color: #c62828;
   border-color: #c62828;
 }
-.counterpart-section .cp-btn-danger:hover {
+.counterpart-section .cp-btn-danger:hover,
+.regen-jpg-section .cp-btn-danger:hover {
   background: rgba(198, 40, 40, 0.08);
+}
+.counterpart-section .cp-btn[disabled],
+.regen-jpg-section .cp-btn[disabled] {
+  opacity: 0.5;
+  cursor: wait;
 }

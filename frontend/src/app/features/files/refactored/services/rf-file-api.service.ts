@@ -242,6 +242,36 @@ export class RfFileApiService {
   }
 
   /**
+   * FORCE-regenerate the JPG for a FileObject regardless of whether one
+   * exists. Recovery for the pre-fix multi-page split bug that copied the
+   * source's last page onto every split's JPG. Unlike {@link ensureJpg}
+   * (idempotent, no-op when JPG exists on disk), this deletes the current
+   * JPG first and re-runs conversion. Backend also refreshes the perceptual
+   * hash and explicitly queues the new bytes for sync.
+   */
+  regenerateJpg(fileId: number): Observable<SpringApiResponse<{ fileLink: string }>> {
+    return this.http.post<SpringApiResponse<{ fileLink: string }>>(
+      `${this.apiUrl}/${fileId}/regenerate-jpg`,
+      {}
+    );
+  }
+
+  /** Bulk force-regenerate. Failures don't abort the batch; returned per-id. */
+  regenerateJpgs(ids: number[]): Observable<SpringApiResponse<JpgRegenResult>> {
+    return this.http.post<SpringApiResponse<JpgRegenResult>>(
+      `${this.apiUrl}/regenerate-jpgs`,
+      { ids }
+    );
+  }
+
+  /** Heuristic scan for JPGs likely broken by the pre-fix split bug. */
+  scanBrokenJpgs(): Observable<SpringApiResponse<{ ids: number[]; count: number }>> {
+    return this.http.get<SpringApiResponse<{ ids: number[]; count: number }>>(
+      `${this.apiUrl}/scan-broken-jpgs`
+    );
+  }
+
+  /**
    * Clone a processed FileObject to the other unit (U1 ↔ U2). When force=false
    * and a prior clone exists, backend returns status="exists" with the existing
    * clone IDs — the caller should confirm and re-POST with force=true to
@@ -309,6 +339,19 @@ export class RfFileApiService {
       { params }
     );
   }
+}
+
+/** Per-file failure entry returned by the bulk regenerate endpoint. */
+export interface JpgRegenFailure {
+  id: number;
+  error: string;
+}
+
+/** Response shape of POST /ng/files/regenerate-jpgs. */
+export interface JpgRegenResult {
+  total: number;
+  successCount: number;
+  failures: JpgRegenFailure[];
 }
 
 /** One revision of a document, with every on-disk format (see getRevisionsMap). */

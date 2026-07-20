@@ -204,6 +204,50 @@ export class RfFileFormComponent {
     });
   }
 
+  // ==================== JPG REGENERATION ====================
+  // Force-regenerate the JPG for this file — recovery for the pre-fix
+  // multi-page split bug (see NgFileService.regenerateJpg / PdfConverter).
+  // Same endpoint the row context menu's "Re-generate JPG" action calls,
+  // surfaced in the form so users acting from the viewer don't have to bounce.
+  regeneratingJpg = signal<boolean>(false);
+  /** Enable only when the file has a PDF source — nothing to regenerate from otherwise. */
+  canRegenerateJpg = computed(() => {
+    const exts = this.entity()?.extensions;
+    if (!Array.isArray(exts)) return false;
+    return exts.some(e => (e || '').toLowerCase() === 'pdf');
+  });
+
+  regenerateJpg(): void {
+    const e = this.entity();
+    if (!e?.id) return;
+    const label = e.name || `File #${e.id}`;
+    if (!window.confirm(`Re-generate the JPG for "${label}"? Current JPG will be replaced.`)) return;
+    this.regeneratingJpg.set(true);
+    this.fileApi.regenerateJpg(e.id).subscribe({
+      next: () => {
+        this.regeneratingJpg.set(false);
+        this.messageService.showSuccess(
+          `JPG regenerated for "${label}". Hard-refresh (Ctrl+F5) if the preview looks unchanged.`);
+        // Refresh the file so any cached viewer state (fileLink etc.) picks up
+        // the new bytes on next render.
+        if (e.id) {
+          this.fileApi.getFileById(String(e.id)).pipe(
+            map(r => FileDto.fromJson(r.responseData))
+          ).subscribe({
+            next: (dto) => this.stateService.updateOrAddFile(dto),
+            error: () => { /* soft — success message already showed */ },
+          });
+        }
+      },
+      error: (err: any) => {
+        this.regeneratingJpg.set(false);
+        console.error('regenerate-jpg failed:', err);
+        this.messageService.showError('Re-generate failed: '
+          + (err?.error?.message ?? err?.message ?? 'unknown error'));
+      },
+    });
+  }
+
   // Check for drafts when entity changes
   private checkForDrafts = effect(() => {
     const currentEntity = this.entity();

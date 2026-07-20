@@ -5,6 +5,7 @@ import { NodeWriteRequest, PhysicalObjectNode, poColor } from '../../../../model
 import { PhysicalObjectApiService } from '../../../../services/physical/physical-object-api.service';
 import { DiagramPlacementApiService } from '../../../diagram-builder/services/diagram-placement-api.service';
 import { DiagramConnectionApiService } from '../../../diagram-builder/services/diagram-connection-api.service';
+import { PlantMapBackgroundApiService } from './plant-map-background-api.service';
 import { DiagramPlacementDto } from '../../../diagram-builder/models/diagram-placement-dto.model';
 import { DiagramConnectionDto } from '../../../diagram-builder/models/diagram-connection-dto.model';
 
@@ -72,6 +73,9 @@ export const PIPE_SRC = 'Pipe';
 /** LEGACY: the pre-entity blob placement that carried ALL of a node's pipes as one JSON string. Read only by the
  *  one-time migration that promotes it to real pipe/fitting PhysicalObjects, then dropped. */
 export const PIPE_META = '__pipes__';
+/** The placement row carrying the reference-image METADATA (opacity/ext). The image BYTES are a separate synced
+ *  file (NgPlantMapBackgroundService); this tiny JSON row rides the diagram like PIPE_META. */
+export const BG_SRC = '__bg__';
 
 /**
  * Signal-based state + persistence for the purpose-built plant map. Each PhysicalObject node owns a blank
@@ -85,6 +89,7 @@ export class PlantMapStateService {
   private api = inject(PhysicalObjectApiService);
   private placementApi = inject(DiagramPlacementApiService);
   private connectionApi = inject(DiagramConnectionApiService);
+  private bgApi = inject(PlantMapBackgroundApiService);
 
   // ── node context ──
   currentNode = signal<PhysicalObjectNode | null>(null);
@@ -122,9 +127,11 @@ export class PlantMapStateService {
   boundary = signal<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // ── reference underlay (satellite / plot plan traced beneath the footprints) ──
-  /** data-URL of the current canvas's reference image (stored locally, per diagram). */
+  /** Servable URL of the current canvas's reference image (a synced file, shared across devices; null = none). */
   backgroundUrl = signal<string | null>(null);
   backgroundOpacity = signal(0.55);
+  private bgLocalId: number | null = null;   // stable localId of the __bg__ metadata placement
+  private bgExt: string | null = null;        // stored so the metadata row records the image's extension
 
   // ── pipes — each pipe is a real PhysicalObject drawn as a routed line, persisted as a 'Pipe' placement on its
   //    parent's diagram (geometry + fittings JSON in svgPath). This signal holds the CANVAS node's pipes; the
@@ -197,22 +204,48 @@ export class PlantMapStateService {
     return sel == null ? null : this.edges().find(e => e.localId === sel) ?? null;
   });
 
+  /**
+   * Multi-selection, ORDERED — index 0 is the REFERENCE that align / match-size measure against (same rule as
+   * the form designer). `selectedLocalId` stays the single-selection anchor the inspector keys on, and always
+   * mirrors entry 0, so every existing single-select consumer keeps working untouched.
+   */
+  selectedLocalIds = signal<number[]>([]);
+
+  selectedBoxes = computed<MapBox[]>(() => {
+    const byId = new Map(this.boxes().map(b => [b.localId, b]));
+    return this.selectedLocalIds().map(id => byId.get(id)).filter((b): b is MapBox => !!b);
+  });
+
+  /** Replace the whole selection (first id becomes the reference). */
+  setSelection(localIds: number[]) {
+    this.selectedLocalIds.set(localIds);
+    this.selectedLocalId.set(localIds[0] ?? null);
+    if (localIds.length) { this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null); }
+  }
+
+  /** Modifier-click: add the box to the selection, or drop it if already in. */
+  toggleBoxSelection(localId: number) {
+    const ids = this.selectedLocalIds();
+    this.setSelection(ids.includes(localId) ? ids.filter(i => i !== localId) : [...ids, localId]);
+  }
+
   /** Select a box (clears pipe + nested selection). */
   selectBox(localId: number | null) {
     this.selectedLocalId.set(localId);
+    this.selectedLocalIds.set(localId == null ? [] : [localId]);
     if (localId != null) { this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null); }
   }
 
   /** Select a pipe/connection (clears box + nested selection). */
   selectEdge(localId: number | null) {
     this.selectedEdgeLocalId.set(localId);
-    if (localId != null) { this.selectedLocalId.set(null); this.selectedNestedNode.set(null); }
+    if (localId != null) { this.selectedLocalId.set(null); this.selectedLocalIds.set([]); this.selectedNestedNode.set(null); }
   }
 
   /** Select a zoom-nested descendant to show its info (it has no box on this canvas). */
   selectNested(node: PhysicalObjectNode | null) {
     this.selectedNestedNode.set(node);
-    if (node != null) { this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null); }
+    if (node != null) { this.selectedLocalId.set(null); this.selectedLocalIds.set([]); this.selectedEdgeLocalId.set(null); }
   }
 
   private msg(e: any): string { return e?.error?.message ?? e?.message ?? String(e); }
@@ -223,7 +256,7 @@ export class PlantMapStateService {
    *  (view-from-top), otherwise its own Base canvas. Peel down to lower levels / Base via the peeler. */
   async openNode(id: number) {
     this.loading.set(true); this.error.set(null);
-    this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null);
+    this.selectedLocalId.set(null); this.selectedLocalIds.set([]); this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null);
     this.boxes.set([]); this.edges.set([]); this.ghostBoxes.set([]);
     this.childSystems.set(new Map());
     this.activeSystemId.set(null); // each node starts with no active layer (avoids a stale highlight on drill)
@@ -232,7 +265,7 @@ export class PlantMapStateService {
     this.canvasNode.set(null);
     this.childWorkAreas.set(new Map());
     this.boundary.set(null);
-    this.backgroundUrl.set(null);
+    this.clearBackgroundState();
     try {
       const [node, breadcrumb, children] = await Promise.all([
         firstValueFrom(this.api.getNode(id)),
@@ -277,13 +310,13 @@ export class PlantMapStateService {
    */
   private async loadCanvasNode(cn: PhysicalObjectNode, preChildren?: PhysicalObjectNode[]) {
     this.canvasNode.set(cn);
-    this.selectedLocalId.set(null); this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null);
+    this.selectedLocalId.set(null); this.selectedLocalIds.set([]); this.selectedEdgeLocalId.set(null); this.selectedNestedNode.set(null);
     // Null the diagram id the instant we clear the boxes: during the async load gap the canvas has no valid
     // save target, so a mutation made mid-load can't bulk-save one box to the OLD diagram (which would
     // soft-delete everything on it). doSave early-returns when currentDiagramId is null.
     this.currentDiagramId.set(null);
     this.boxes.set([]); this.edges.set([]); this.ghostBoxes.set([]);
-    this.backgroundUrl.set(null);
+    this.clearBackgroundState();
     const [children, childSystems, childWorkAreas] = await Promise.all([
       preChildren ? Promise.resolve(preChildren) : firstValueFrom(this.api.getChildren(cn.id)),
       firstValueFrom(this.api.getChildSystems(cn.id)),
@@ -295,7 +328,7 @@ export class PlantMapStateService {
     const diagram = await firstValueFrom(this.api.getOrCreateDiagram(cn.id));
     const did = diagram?.id ?? null;
     this.currentDiagramId.set(did);
-    if (did != null) { this.loadBackground(did); await this.loadCanvas(did); }
+    if (did != null) { void this.loadBackground(did); await this.loadCanvas(did); }
     else { // no diagram → no pipes
       this.pipes.set([]); this.pipesLegacyBlob.set(null); this.legacyBlobLocalId = null; this.hiddenChildIds.set(new Set());
       this.pipesLoadNodeId.set(cn.id); this.pipesLoadSeq.update(n => n + 1);
@@ -409,6 +442,14 @@ export class PlantMapStateService {
     const legacy = placements.find(p => p.sourceEntityType === PIPE_META && p.localId != null);
     this.legacyBlobLocalId = legacy?.localId ?? null;
 
+    // Background metadata row (opacity/ext); the URL itself is fetched separately by loadBackground.
+    const bg = placements.find(p => p.sourceEntityType === BG_SRC && p.localId != null);
+    this.bgLocalId = bg?.localId ?? null;
+    if (bg) {
+      try { const j = JSON.parse(bg.svgPath || '{}'); this.backgroundOpacity.set(typeof j.opacity === 'number' ? j.opacity : 0.55); if (j.ext) this.bgExt = j.ext; }
+      catch { this.backgroundOpacity.set(0.55); }
+    }
+
     this.boxes.set(boxes);
     this.edges.set(edges);
     this.pipes.set(pipes);
@@ -420,7 +461,7 @@ export class PlantMapStateService {
     this.nextPlacementLocalId = Math.max(
       boxes.reduce((m, b) => Math.max(m, b.localId), 0),
       pipes.reduce((m, p) => Math.max(m, p.localId ?? 0), 0),
-      legacy?.localId ?? 0) + 1;
+      legacy?.localId ?? 0, bg?.localId ?? 0) + 1;
     this.nextConnectionLocalId = edges.reduce((m, e) => Math.max(m, e.localId), 0) + 1;
     this.dirty = false;
     this.pipesLoadNodeId.set(this.canvasNode()?.id ?? null);
@@ -633,7 +674,8 @@ export class PlantMapStateService {
   removeBox(localId: number) {
     this.boxes.update(list => list.filter(b => b.localId !== localId));
     this.edges.update(list => list.filter(e => e.sourceLocalId !== localId && e.targetLocalId !== localId));
-    if (this.selectedLocalId() === localId) this.selectedLocalId.set(null);
+    this.selectedLocalIds.update(ids => ids.filter(i => i !== localId));
+    if (this.selectedLocalId() === localId) this.selectedLocalId.set(this.selectedLocalIds()[0] ?? null);
     this.scheduleSave();
   }
 
@@ -698,40 +740,48 @@ export class PlantMapStateService {
   }
 
   // ── reference underlay (satellite / plot plan) ──────────────────────────────
-  // Stored locally on this device (per diagram) — a tracing aid, not synced content. Keeps the slice
-  // backend-free; a shared/synced background (Diagram.contextFileId) can promote it later.
+  // The image BYTES are a synced file on disk (NgPlantMapBackgroundService); the opacity/ext METADATA rides the
+  // diagram as a tiny '__bg__' placement (see doSave / loadCanvas). Shared across devices.
 
-  private bgKey(did: number) { return `pm-bg:${did}`; }
-  private bgOpKey(did: number) { return `pm-bg-op:${did}`; }
+  private clearBackgroundState() { this.backgroundUrl.set(null); this.bgLocalId = null; this.bgExt = null; this.backgroundOpacity.set(0.55); }
 
-  private loadBackground(did: number) {
+  /** Fetch the current canvas's background URL (lazily pulling the bytes to this device if a peer uploaded them). */
+  private async loadBackground(did: number) {
     try {
-      this.backgroundUrl.set(localStorage.getItem(this.bgKey(did)));
-      const op = localStorage.getItem(this.bgOpKey(did));
-      this.backgroundOpacity.set(op != null ? Number(op) : 0.55);
-    } catch { this.backgroundUrl.set(null); this.backgroundOpacity.set(0.55); }
+      const r = await firstValueFrom(this.bgApi.get(did));
+      if (this.currentDiagramId() !== did) return;     // navigated away during the fetch
+      this.backgroundUrl.set(r?.responseData?.url ?? null);
+      if (r?.responseData?.ext) this.bgExt = r.responseData.ext;
+    } catch { if (this.currentDiagramId() === did) this.backgroundUrl.set(null); }
   }
 
-  /** Set the current canvas's reference image (a data URL). Returns false if it can't be stored (quota) or
-   *  if the user drilled to another node since the picker fired (expectedDid guards that async race). */
-  setBackgroundImage(dataUrl: string, expectedDid?: number | null): boolean {
+  /** Upload the picked image for the current canvas. Returns false if the canvas changed since picking. */
+  async uploadBackground(file: File, expectedDid?: number | null): Promise<boolean> {
     const did = this.currentDiagramId();
     if (did == null) return false;
-    if (expectedDid != null && expectedDid !== did) return false; // canvas changed since picking — drop the stale write
-    try { localStorage.setItem(this.bgKey(did), dataUrl); this.backgroundUrl.set(dataUrl); return true; }
-    catch { this.error.set('Could not store the image locally (too large / storage full).'); return false; }
+    if (expectedDid != null && expectedDid !== did) return false;
+    try {
+      const res = (await firstValueFrom(this.bgApi.upload(did, file)))?.responseData;
+      if (this.currentDiagramId() !== did) return false;  // drilled away mid-upload
+      if (!res) { this.error.set('Could not save the background.'); return false; }
+      this.error.set(null);
+      this.backgroundUrl.set(res.url);
+      this.bgExt = res.ext;
+      this.scheduleSave();                                // persist the __bg__ metadata row
+      return true;
+    } catch (e: any) { this.error.set(this.msg(e)); return false; }
   }
 
-  clearBackgroundImage() {
+  async clearBackgroundImage() {
     const did = this.currentDiagramId();
-    if (did != null) { try { localStorage.removeItem(this.bgKey(did)); } catch { /* ignore */ } }
-    this.backgroundUrl.set(null);
+    this.backgroundUrl.set(null); this.bgLocalId = null; this.bgExt = null;
+    if (did != null) { try { await firstValueFrom(this.bgApi.delete(did)); } catch { /* ignore */ } }
+    this.scheduleSave();                                  // stop emitting __bg__ → soft-deleted
   }
 
   setBackgroundOpacity(o: number) {
-    const did = this.currentDiagramId();
     this.backgroundOpacity.set(o);
-    if (did != null) { try { localStorage.setItem(this.bgOpKey(did), String(o)); } catch { /* ignore */ } }
+    if (this.backgroundUrl()) this.scheduleSave();        // persist opacity onto the __bg__ row (debounced)
   }
 
   // ── persistence ───────────────────────────────────────────────────────────
@@ -831,6 +881,18 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId: this.legacyBlobLocalId,
           sourceEntityType: PIPE_META, type: 'pipedata', name: PIPE_META, svgPath: blob,
+          x: 0, y: 0, width: 0, height: 0,
+        });
+      }
+      // Background metadata (opacity/ext) — a tiny row emitted only while a background exists. Dropping it (no
+      // background) lets the complete-set soft-delete remove it. The image BYTES live on disk, not here.
+      if (this.backgroundUrl() != null) {
+        const localId = this.bgLocalId ?? this.nextPlacementLocalId++;
+        this.bgLocalId = localId;
+        placementDtos.push({
+          diagramId: did, localId,
+          sourceEntityType: BG_SRC, type: 'bg', name: BG_SRC,
+          svgPath: JSON.stringify({ opacity: this.backgroundOpacity(), ext: this.bgExt }),
           x: 0, y: 0, width: 0, height: 0,
         });
       }

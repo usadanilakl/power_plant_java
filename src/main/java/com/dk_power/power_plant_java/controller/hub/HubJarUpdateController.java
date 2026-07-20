@@ -36,19 +36,33 @@ public class HubJarUpdateController {
     @GetMapping("/check")
     public ResponseEntity<?> checkForUpdate() {
         Optional<HubJarUpdateService.UpdateInfo> info = updateService.getLatestJarInfo();
+        Optional<HubJarUpdateService.UpdatePolicy> policy = updateService.getUpdatePolicy();
 
-        if (info.isEmpty()) {
-            log.debug("Update check: no JAR found in updates directory");
+        // 404 only when there is genuinely nothing to say — no JAR AND no directive. A files/db-only
+        // directive is legitimate without a NEW jar (the current jar stays in the dir), so a present
+        // policy alone keeps the response 200.
+        if (info.isEmpty() && policy.isEmpty()) {
+            log.debug("Update check: no JAR and no policy in updates directory");
             return ResponseEntity.notFound().build();
         }
 
-        HubJarUpdateService.UpdateInfo updateInfo = info.get();
-        log.info("Update check: {} ({} MB, checksum={}...)",
-            updateInfo.fileName(),
-            updateInfo.fileSize() / 1024 / 1024,
-            updateInfo.checksum().substring(0, 12));
+        HubJarUpdateService.UpdateInfo updateInfo = info.orElse(null);
+        HubJarUpdateService.UpdateCheckResponse response = new HubJarUpdateService.UpdateCheckResponse(
+            updateInfo != null ? updateInfo.fileName() : null,
+            updateInfo != null ? updateInfo.fileSize() : 0L,
+            updateInfo != null ? updateInfo.checksum() : null,
+            updateInfo != null ? updateInfo.lastModified() : null,
+            policy.orElse(null)
+        );
 
-        return ResponseEntity.ok(updateInfo);
+        log.info("Update check: jar={} policy={}",
+            updateInfo != null
+                ? updateInfo.fileName() + " (" + updateInfo.fileSize() / 1024 / 1024 + " MB, "
+                    + updateInfo.checksum().substring(0, Math.min(12, updateInfo.checksum().length())) + "...)"
+                : "none",
+            policy.map(p -> p.id() + " " + p.actions()).orElse("none"));
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/download")

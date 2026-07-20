@@ -286,6 +286,69 @@ public class NgFileRestController {
     }
 
     /**
+     * FORCE-regenerate the JPG for a FileObject even when one already exists
+     * on disk. Recovery action for the pre-fix multi-page split bug (see
+     * NgFileService.regenerateJpg / PdfConverter.splitPdfIntoSinglePageFiles).
+     * Distinct from {@link #ensureJpg} which short-circuits when the JPG is
+     * already present.
+     */
+    @PostMapping("/{id}/regenerate-jpg")
+    public ResponseEntity<NgApiResponse<Map<String, String>>> regenerateJpg(@PathVariable Long id) {
+        try {
+            String jpgLink = ngFileService.regenerateJpg(id);
+            return ResponseEntity.ok(new NgApiResponse<>(Map.of("fileLink", jpgLink), "JPG regenerated"));
+        } catch (Exception e) {
+            log.error("regenerate-jpg failed for id={}", id, e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Bulk force-regenerate. Body: {@code { "ids": [1, 2, 3] }}. Loops
+     * per-id; one failure doesn't abort. Returns {@code {total, successCount,
+     * failures: [{id, error}]}} so the admin panel can render a per-file audit.
+     */
+    @PostMapping("/regenerate-jpgs")
+    public ResponseEntity<NgApiResponse<NgFileService.RegenResult>> regenerateJpgs(
+            @RequestBody Map<String, Object> body) {
+        try {
+            // Map.getOrDefault only substitutes when the key is ABSENT — a
+            // present-but-null value ({"ids": null}) returns null unchanged
+            // and would NPE at .stream() below. Guard both.
+            @SuppressWarnings("unchecked")
+            List<Number> raw = (List<Number>) body.getOrDefault("ids", List.of());
+            if (raw == null) raw = List.of();
+            List<Long> ids = raw.stream().filter(n -> n != null).map(Number::longValue).toList();
+            NgFileService.RegenResult result = ngFileService.regenerateJpgs(ids);
+            String msg = String.format("Regenerated %d/%d (failures: %d)",
+                    result.successCount(), result.total(), result.failures().size());
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            log.error("regenerate-jpgs failed", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Scan for FileObjects whose JPGs are likely broken by the pre-fix
+     * multi-page split bug (see {@link NgFileService#scanBrokenJpgs}).
+     * Returns a list of ids the admin panel previews before offering to
+     * pass them to {@link #regenerateJpgs}.
+     */
+    @GetMapping("/scan-broken-jpgs")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> scanBrokenJpgs() {
+        try {
+            List<Long> ids = ngFileService.scanBrokenJpgs();
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    Map.of("ids", ids, "count", ids.size()),
+                    ids.size() + " likely-broken JPG(s)"));
+        } catch (Exception e) {
+            log.error("scan-broken-jpgs failed", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Pre-upload duplicate check by name tokens only.
      * Body: { "fileNumber": ["P-0001"] }
      * Returns name-token matches so the user can review before clicking Upload.

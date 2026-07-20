@@ -232,40 +232,57 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
             throw new IllegalArgumentException("Only PDF files are accepted");
         }
 
-        // Split PDF (take first page only) and convert to JPG
-        List<File> pages = PdfConverter.splitPdfIntoSinglePageFiles(file, "plant-map");
-        if (pages.isEmpty()) {
-            throw new IOException("Failed to process PDF");
-        }
-        File pdfFile = pages.get(0);
-
+        // Split PDF (take first page only) and convert to JPG.
+        // Own the split's temp directory so it gets cleaned up in the finally
+        // block regardless of per-page success — PdfConverter's null-outputDir
+        // path creates a fresh temp dir per call that no one else would remove
+        // (files inside are cleaned, but the empty parent dir accumulates).
+        File splitTempDir = Files.createTempDirectory("pdf-split-").toFile();
         try {
-            // Save PDF to profile-specific uploads dir
-            Path pdfDir = Paths.get(filesRootPath, "pdf", "work-area-map");
-            Files.createDirectories(pdfDir);
-            Path pdfDest = pdfDir.resolve("plant-map.pdf");
-            Files.copy(pdfFile.toPath(), pdfDest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            List<File> pages = PdfConverter.splitPdfIntoSinglePageFiles(file, "plant-map", splitTempDir);
+            if (pages.isEmpty()) {
+                throw new IOException("Failed to process PDF");
+            }
+            File pdfFile = pages.get(0);
 
-            // Convert to JPG and save
-            File jpgFile = PdfConverter.convertPdfToJpg(pdfFile);
-            if (jpgFile != null && jpgFile.exists()) {
-                Path jpgDir = Paths.get(filesRootPath, "jpg", "work-area-map");
-                Files.createDirectories(jpgDir);
-                Path jpgDest = jpgDir.resolve("plant-map.jpg");
-                Files.copy(jpgFile.toPath(), jpgDest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                Files.deleteIfExists(jpgFile.toPath());
-            }
+            try {
+                // Save PDF to profile-specific uploads dir
+                Path pdfDir = Paths.get(filesRootPath, "pdf", "work-area-map");
+                Files.createDirectories(pdfDir);
+                Path pdfDest = pdfDir.resolve("plant-map.pdf");
+                Files.copy(pdfFile.toPath(), pdfDest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            // Clean up extra pages if multi-page PDF
-            for (File page : pages) {
-                Files.deleteIfExists(page.toPath());
+                // Convert to JPG and save
+                File jpgFile = PdfConverter.convertPdfToJpg(pdfFile);
+                if (jpgFile != null && jpgFile.exists()) {
+                    Path jpgDir = Paths.get(filesRootPath, "jpg", "work-area-map");
+                    Files.createDirectories(jpgDir);
+                    Path jpgDest = jpgDir.resolve("plant-map.jpg");
+                    Files.copy(jpgFile.toPath(), jpgDest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    Files.deleteIfExists(jpgFile.toPath());
+                }
+
+                // Clean up extra pages if multi-page PDF
+                for (File page : pages) {
+                    Files.deleteIfExists(page.toPath());
+                }
+            } catch (IOException e) {
+                // Clean up temp files on error
+                for (File page : pages) {
+                    try { Files.deleteIfExists(page.toPath()); } catch (IOException ignored) {}
+                }
+                throw e;
             }
-        } catch (IOException e) {
-            // Clean up temp files on error
-            for (File page : pages) {
-                try { Files.deleteIfExists(page.toPath()); } catch (IOException ignored) {}
-            }
-            throw e;
+        } finally {
+            // Delete the temp split directory itself (dir contents were
+            // handled by the inner try blocks; this catches the parent).
+            try {
+                File[] leftovers = splitTempDir.listFiles();
+                if (leftovers != null) {
+                    for (File c : leftovers) try { Files.deleteIfExists(c.toPath()); } catch (IOException ignored) {}
+                }
+                Files.deleteIfExists(splitTempDir.toPath());
+            } catch (IOException ignored) { /* best-effort */ }
         }
 
         // Build the relative file link

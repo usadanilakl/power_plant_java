@@ -10,6 +10,7 @@ import {
   FixExtensionsResult,
   SystemsTagsMigrationResult
 } from '../../../services/admin/admin-functionalities.service';
+import { RfFileApiService, JpgRegenResult } from '../../../features/files/refactored/services/rf-file-api.service';
 
 @Component({
   selector: 'app-admin-files',
@@ -517,6 +518,86 @@ import {
           </div>
         </div>
       </div>
+
+      <!-- 1f. Re-generate Broken JPGs -->
+      <!-- Recovery pass for the pre-fix multi-page split bug: PdfConverter
+           addPage → import fix. Scan groups split-page rows by base name and
+           flags groups whose members all share a single perceptual hash
+           (the fingerprint of "every page rendered from the last source
+           page"). Apply then force-regenerates each flagged FileObject via
+           the same endpoint the row context menu calls. -->
+      <div class="admin-section">
+        <h3>Re-generate Broken JPGs</h3>
+        <div class="sub-section">
+          <p class="description">
+            Scans for JPGs likely broken by the pre-fix multi-page split bug —
+            groups of 3 or more <code>_page_N</code> files whose perceptual hashes are all identical
+            (indicating every page's JPG was rendered from the same source page).
+            <strong>Scan</strong> is read-only; <strong>Apply</strong> then force-regenerates each
+            flagged FileObject from its source PDF and queues the new bytes for sync.
+            Safe to re-run. <strong>Note:</strong> after regen, browsers may still show the cached JPG
+            until a hard-refresh (Ctrl+F5).
+          </p>
+          <div class="button-group">
+            <button
+              (click)="scanBrokenJpgs()"
+              [disabled]="loading.scanBrokenJpgs || loading.regenerateJpgs"
+              class="toggle-btn">
+              {{ loading.scanBrokenJpgs ? 'Scanning…' : 'Scan for broken JPGs' }}
+            </button>
+            <button
+              (click)="applyRegenerateJpgs()"
+              [disabled]="loading.regenerateJpgs || loading.scanBrokenJpgs || !scanBrokenJpgsResult || scanBrokenJpgsResult.count === 0"
+              class="action-btn">
+              {{ loading.regenerateJpgs
+                  ? 'Regenerating…'
+                  : 'Regenerate ' + (scanBrokenJpgsResult?.count || 0) + ' file(s)' }}
+            </button>
+          </div>
+          <div class="error" *ngIf="errors.scanBrokenJpgs">{{ errors.scanBrokenJpgs }}</div>
+          <div class="error" *ngIf="errors.regenerateJpgs">{{ errors.regenerateJpgs }}</div>
+
+          <div class="result" *ngIf="scanBrokenJpgsResult && !regenerateJpgsResult">
+            <div class="result-summary">
+              <span class="badge"
+                    [class.success]="scanBrokenJpgsResult.count === 0"
+                    [class.warning]="scanBrokenJpgsResult.count > 0">
+                Scanned: {{ scanBrokenJpgsResult.count }} likely-broken JPG(s)
+              </span>
+            </div>
+            <p class="description" *ngIf="scanBrokenJpgsResult.count === 0">
+              Nothing found. Either the bug hasn't been hit on this corpus, or affected files don't have
+              perceptual hashes yet — run <em>Backfill Hashes</em> first and re-scan.
+            </p>
+          </div>
+
+          <div class="result" *ngIf="regenerateJpgsResult">
+            <div class="result-summary">
+              <span class="badge success">
+                Regenerated: {{ regenerateJpgsResult.successCount }} / {{ regenerateJpgsResult.total }}
+              </span>
+              <span class="badge warning" *ngIf="regenerateJpgsResult.failures.length > 0">
+                Failed: {{ regenerateJpgsResult.failures.length }}
+              </span>
+            </div>
+            <div class="name-list" *ngIf="regenerateJpgsResult.failures.length > 0">
+              <h4>
+                <button class="toggle-btn" (click)="regenerateJpgsShowFailures = !regenerateJpgsShowFailures">
+                  {{ regenerateJpgsShowFailures ? 'Hide' : 'Show' }} failures
+                </button>
+                <span class="count">{{ regenerateJpgsResult.failures.length }}</span>
+              </h4>
+              <ul *ngIf="regenerateJpgsShowFailures" class="audit-list">
+                <li *ngFor="let f of regenerateJpgsResult.failures">
+                  <span class="badge warning">FAILED</span>
+                  <code>File #{{ f.id }}</code>
+                  <span class="note">{{ f.error }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -594,7 +675,9 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
     backfillHashes: false,
     migrate: false,
     migrateConnectors: false,
-    resyncConnectors: false
+    resyncConnectors: false,
+    scanBrokenJpgs: false,
+    regenerateJpgs: false
   };
 
   errors = {
@@ -603,7 +686,9 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
     backfillHashes: '',
     migrate: '',
     migrateConnectors: '',
-    resyncConnectors: ''
+    resyncConnectors: '',
+    scanBrokenJpgs: '',
+    regenerateJpgs: ''
   };
 
   migrateResult: SystemsTagsMigrationResult | null = null;
@@ -611,6 +696,10 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
   resyncConnectorsResult: ConnectorResyncResultDto | null = null;
   /** Per-Equipment audit log expanded/collapsed in the result panel. */
   migrateConnectorsShowItems = false;
+  /** Broken-JPG scan/apply state — scan result is the id list; apply result is the batch summary. */
+  scanBrokenJpgsResult: { ids: number[]; count: number } | null = null;
+  regenerateJpgsResult: JpgRegenResult | null = null;
+  regenerateJpgsShowFailures = false;
   /** Configurable tag-length floor for the connector migration's auto-match gate. */
   connectorMinTagLength = 5;
 
@@ -677,7 +766,10 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
     fixedFiles: false
   };
 
-  constructor(private adminService: AdminFunctionalitiesService) {}
+  constructor(
+    private adminService: AdminFunctionalitiesService,
+    private fileApi: RfFileApiService,
+  ) {}
 
   toggleSection(section: string) {
     this.expandedSections[section] = !this.expandedSections[section];
@@ -814,6 +906,66 @@ export class AdminFilesComponent implements OnInit, OnDestroy {
         this.errors.resyncConnectors = error.error?.message || error.message || 'Re-sync failed';
         this.loading.resyncConnectors = false;
       }
+    });
+  }
+
+  /**
+   * Read-only scan for JPGs likely broken by the pre-fix multi-page split
+   * bug. Fills scanBrokenJpgsResult with the id list; user then reviews the
+   * count and hits Regenerate to apply. Clears any prior apply result so
+   * the previous run's badges don't linger next to a fresh scan.
+   */
+  scanBrokenJpgs(): void {
+    if (this.loading.scanBrokenJpgs || this.loading.regenerateJpgs) return;
+    this.loading.scanBrokenJpgs = true;
+    this.errors.scanBrokenJpgs = '';
+    this.errors.regenerateJpgs = '';
+    this.scanBrokenJpgsResult = null;
+    this.regenerateJpgsResult = null;
+    this.regenerateJpgsShowFailures = false;
+    this.fileApi.scanBrokenJpgs().subscribe({
+      next: (response) => {
+        this.scanBrokenJpgsResult = response.responseData;
+        this.loading.scanBrokenJpgs = false;
+      },
+      error: (error) => {
+        this.errors.scanBrokenJpgs = error?.error?.message || error?.message || 'Scan failed';
+        this.loading.scanBrokenJpgs = false;
+      },
+    });
+  }
+
+  /**
+   * Apply — bulk-regenerate every id surfaced by the last scan. Confirms
+   * first (overwrites file bytes on disk) and prompts about the count so
+   * the user can back out if the scan matched more than they expected.
+   */
+  applyRegenerateJpgs(): void {
+    if (this.loading.regenerateJpgs || !this.scanBrokenJpgsResult) return;
+    const ids = this.scanBrokenJpgsResult.ids;
+    if (ids.length === 0) return;
+    if (!confirm(
+        `Force-regenerate the JPG for ${ids.length} FileObject(s)?\n\n` +
+        'Each row\'s current JPG is deleted and re-rendered from its source PDF, ' +
+        'perceptual hash recomputed, and the new bytes queued for sync. Safe to re-run.')) {
+      return;
+    }
+    this.loading.regenerateJpgs = true;
+    this.errors.regenerateJpgs = '';
+    this.regenerateJpgsResult = null;
+    this.fileApi.regenerateJpgs(ids).subscribe({
+      next: (response) => {
+        this.regenerateJpgsResult = response.responseData;
+        this.loading.regenerateJpgs = false;
+        // Clear the scan result so the count-badge on the button doesn't
+        // stay green after a partial-failure run — user should re-scan to
+        // see what's still broken after the pass.
+        this.scanBrokenJpgsResult = null;
+      },
+      error: (error) => {
+        this.errors.regenerateJpgs = error?.error?.message || error?.message || 'Regenerate failed';
+        this.loading.regenerateJpgs = false;
+      },
     });
   }
 

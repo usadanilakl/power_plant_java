@@ -64,6 +64,16 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final ValueRepo valueRepo;
     private final TrashService trashService;
     private final UploadStrategyRegistry uploadStrategyRegistry;
+    // Field injection (not constructor) so we can use @Lazy — FileObjectSyncHandler
+    // pulls in HubFileService which pulls file services back through the sync
+    // chain. Lombok's @RequiredArgsConstructor does NOT copy @Lazy onto the
+    // generated constructor parameter (no lombok.config copyableAnnotations
+    // in this repo), so constructor-injected @Lazy silently didn't work.
+    // Field-injected @Lazy is the pattern used by NgFileCloneService for the
+    // same dep — same rationale.
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler fileObjectSyncHandler;
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -964,25 +974,171 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 ensureJpgListedOnEntity(file);
                 return jpgLink;
             }
+            return doGenerateJpg(file, jpgLink, jpgPath);
+        }
+    }
 
-            String pdfLink = file.buildFileLink("pdf");
-            Path pdfPath = resolveToFileSystem(pdfLink);
-            if (!Files.exists(pdfPath)) {
-                throw new IOException("Source PDF not found at " + pdfPath + " — cannot generate JPG");
+    /**
+     * Force-regenerate the JPG for a FileObject regardless of whether one
+     * exists on disk. Used by the "Re-generate JPG" recovery action (context
+     * menu / file form / admin batch) — the mitigation for JPGs corrupted by
+     * the pre-fix {@code PdfConverter.splitPdfIntoSinglePageFiles} bug where
+     * multi-page splits shared the source's last-page render across every
+     * output JPG (see {@link com.dk_power.power_plant_java.util.PdfConverter}).
+     *
+     * <p>Explicitly queues the new bytes for sync via
+     * {@link com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler#queueFileUpload}
+     * because a pure jpg-file overwrite does NOT touch any FieldChange-tracked
+     * column, so the FieldChangeEntityListener → queueFileUpload auto-trigger
+     * would not fire — the peer would keep the corrupt JPG on next pull.
+     *
+     * <p>Refreshes the perceptual hash after conversion — the stored hash
+     * described the broken JPG and would poison future dedup/scan runs.
+     */
+    public String regenerateJpg(Long fileId) throws IOException {
+        FileObject file = getEntityById(fileId);
+        if (file == null) throw new RuntimeException("File not found: " + fileId);
+        if (file.getFileType() == null || file.getVendor() == null) {
+            throw new RuntimeException("FileObject missing fileType/vendor — cannot resolve paths");
+        }
+
+        String jpgLink = file.buildFileLink("jpg");
+        Path jpgPath = resolveToFileSystem(jpgLink);
+
+        Object lock = ensureJpgLocks.computeIfAbsent(fileId, k -> new Object());
+        synchronized (lock) {
+            // Don't pre-delete the JPG — doGenerateJpg writes to a temp path
+            // and then Files.move(..., REPLACE_EXISTING) into place, which is
+            // an atomic overwrite. Pre-deleting would leave the entity in an
+            // unrecoverable state if the conversion then failed (source PDF
+            // missing / disk full / render exception): the extensions CSV
+            // still advertises jpg but no JPG exists on disk.
+            String result = doGenerateJpg(file, jpgLink, jpgPath);
+
+            // Recompute perceptual hash — stored value described the broken JPG.
+            try {
+                file.setPerceptualHash(computePerceptualHash(file));
+                save(file);
+            } catch (RuntimeException ex) {
+                logger.warn("regenerateJpg: perceptual-hash refresh failed for #{}: {}",
+                        fileId, ex.getMessage());
             }
 
-            // Convert PDF → JPG via the existing utility; output dropped next to the temp source.
-            File pdfTempCopy = pdfPath.toFile();
-            File generatedJpg = com.dk_power.power_plant_java.util.PdfConverter.convertPdfToJpg(pdfTempCopy);
-
-            Files.createDirectories(jpgPath.getParent());
-            Files.move(generatedJpg.toPath(), jpgPath,
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-            ensureJpgListedOnEntity(file);
-            logger.info("Generated JPG for FileObject #{} at {}", fileId, jpgPath);
-            return jpgLink;
+            // Explicit sync notification — jpg-only overwrites don't emit
+            // FieldChange rows, so the FieldChangeEntityListener → sync
+            // auto-trigger never fires. Route through the mode-aware
+            // dispatcher (NOT queueFileUpload directly), so hub-mode calls
+            // registerFilesOnHub and client-mode queues the upload — matches
+            // the NgFileCloneService pattern.
+            try {
+                fileObjectSyncHandler.onLocalFileObjectChanged(file, false);
+            } catch (RuntimeException ex) {
+                logger.warn("regenerateJpg: sync-notify failed for FileObject #{}: {}",
+                        fileId, ex.getMessage());
+            }
+            return result;
         }
+    }
+
+    /**
+     * Bulk force-regenerate. Loops per-id calling {@link #regenerateJpg};
+     * one failure doesn't abort the batch — failures are collected and
+     * returned so the admin panel can surface a per-file audit.
+     */
+    public RegenResult regenerateJpgs(List<Long> ids) {
+        int success = 0;
+        List<Map<String, Object>> failures = new ArrayList<>();
+        for (Long id : ids) {
+            try {
+                regenerateJpg(id);
+                success++;
+            } catch (Exception e) {
+                String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                failures.add(Map.of("id", id, "error", msg));
+                logger.warn("regenerateJpgs: id={} failed: {}", id, msg);
+            }
+        }
+        return new RegenResult(ids == null ? 0 : ids.size(), success, failures);
+    }
+
+    public record RegenResult(int total, int successCount, List<Map<String, Object>> failures) {}
+
+    /**
+     * Heuristically identify FileObjects likely hit by the pre-fix multi-page
+     * JPG bug: groups of split-page rows (fileNumber ending in
+     * {@code _page_N}) where every row in the group shares one perceptual
+     * hash. Legitimate multi-page P&IDs virtually never have identical
+     * content on every page, so a uniform hash across the group is the
+     * bug's fingerprint.
+     *
+     * <p><strong>Min group size &ge; {@value #SCAN_BROKEN_MIN_GROUP_SIZE}</strong>
+     * to keep false positives low. Two-page docs where both pages share a
+     * template (cover sheet + repeat, blank spacer, etc.) match the same
+     * "identical hashes" fingerprint as a real bug hit but are far more
+     * common. A 3+ page doc with EVERY page pixel-identical is much rarer
+     * for real content, so the floor buys precision at the cost of missing
+     * two-page bug victims — those still get caught by the per-file
+     * "Re-generate JPG" context-menu action.
+     *
+     * <p>Silently skips groups where any member lacks a perceptual hash
+     * (the hash-backfill hasn't reached them yet — scan again later).
+     * Returns the IDs the admin panel can preview + pass to
+     * {@link #regenerateJpgs}.
+     */
+    public static final int SCAN_BROKEN_MIN_GROUP_SIZE = 3;
+
+    public List<Long> scanBrokenJpgs() {
+        java.util.regex.Pattern pageSuffix = java.util.regex.Pattern.compile("_page_\\d+$");
+        Map<String, List<FileObject>> groups = new HashMap<>();
+        for (FileObject f : fileRepo.findAllWithPerceptualHash()) {
+            String fn = f.getFileNumber();
+            if (fn == null) continue;
+            if (!pageSuffix.matcher(fn).find()) continue;
+            String base = pageSuffix.matcher(fn).replaceFirst("");
+            groups.computeIfAbsent(base, k -> new ArrayList<>()).add(f);
+        }
+        List<Long> broken = new ArrayList<>();
+        for (List<FileObject> pages : groups.values()) {
+            if (pages.size() < SCAN_BROKEN_MIN_GROUP_SIZE) continue;
+            Set<String> hashes = pages.stream()
+                    .map(FileObject::getPerceptualHash)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            // Every member has a hash AND all hashes are identical → bug fingerprint.
+            if (hashes.size() == 1 && hashes.iterator().next() != null
+                    && pages.stream().allMatch(f -> f.getPerceptualHash() != null)) {
+                pages.forEach(f -> broken.add(f.getId()));
+            }
+        }
+        logger.info("scanBrokenJpgs: {} likely-broken FileObject id(s) across {} split-page group(s) (min-group={})",
+                broken.size(), groups.size(), SCAN_BROKEN_MIN_GROUP_SIZE);
+        return broken;
+    }
+
+    /**
+     * Convert the source PDF to JPG and move to {@code jpgPath}. Caller must
+     * hold the per-file lock. Extracted from {@link #ensureJpgExists} so
+     * {@link #regenerateJpg} can reuse the same convert-and-move path
+     * without duplicating the PDF-resolution + createDirectories + move
+     * choreography.
+     */
+    private String doGenerateJpg(FileObject file, String jpgLink, Path jpgPath) throws IOException {
+        String pdfLink = file.buildFileLink("pdf");
+        Path pdfPath = resolveToFileSystem(pdfLink);
+        if (!Files.exists(pdfPath)) {
+            throw new IOException("Source PDF not found at " + pdfPath + " — cannot generate JPG");
+        }
+        File pdfSource = pdfPath.toFile();
+        File generatedJpg = com.dk_power.power_plant_java.util.PdfConverter.convertPdfToJpg(pdfSource);
+        if (generatedJpg == null) {
+            throw new IOException("PDF→JPG conversion returned null for " + pdfPath);
+        }
+        Files.createDirectories(jpgPath.getParent());
+        Files.move(generatedJpg.toPath(), jpgPath,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        ensureJpgListedOnEntity(file);
+        logger.info("Generated JPG for FileObject #{} at {}", file.getId(), jpgPath);
+        return jpgLink;
     }
 
     /** Add "jpg" to the entity's extensions CSV if not already there. */

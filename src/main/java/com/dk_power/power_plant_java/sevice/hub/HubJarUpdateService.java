@@ -1,5 +1,7 @@
 package com.dk_power.power_plant_java.sevice.hub;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +17,7 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -31,6 +34,10 @@ public class HubJarUpdateService {
 
     @Value("${update.jar.directory:${user.dir}/updates}")
     private String jarDirectory;
+
+    /** Admin-editable directive that sits next to the JAR in the updates dir. */
+    private static final String POLICY_FILE = "update-policy.json";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Path jarDirPath;
 
@@ -76,6 +83,30 @@ public class HubJarUpdateService {
 
     public Optional<Path> getLatestJarPath() {
         return findLatestJar();
+    }
+
+    /**
+     * Read the admin-set update directive ({@code update-policy.json} in the updates dir), if present.
+     * Absent file / parse error / missing required fields → empty (the update stays JAR-checksum-only,
+     * i.e. the pre-existing behaviour). Never throws.
+     */
+    public Optional<UpdatePolicy> getUpdatePolicy() {
+        Path policyPath = jarDirPath.resolve(POLICY_FILE);
+        if (!Files.isRegularFile(policyPath)) {
+            return Optional.empty();
+        }
+        try {
+            UpdatePolicy policy = MAPPER.readValue(Files.readAllBytes(policyPath), UpdatePolicy.class);
+            if (policy.id() == null || policy.id().isBlank()
+                    || policy.actions() == null || policy.actions().isEmpty()) {
+                log.warn("{} present but missing 'id' or 'actions' — ignoring", policyPath);
+                return Optional.empty();
+            }
+            return Optional.of(policy);
+        } catch (IOException e) {
+            log.warn("Failed to read/parse {}: {}", policyPath, e.getMessage());
+            return Optional.empty();
+        }
     }
 
     private Optional<Path> findLatestJar() {
@@ -127,4 +158,19 @@ public class HubJarUpdateService {
     }
 
     public record UpdateInfo(String fileName, long fileSize, String checksum, String lastModified) {}
+
+    /**
+     * Admin-set rollout directive. {@code actions} is any subset of ["jar","db","files"]; the client
+     * applies them in the fixed safe order jar → db (via smart-resync) → files, and records {@code id}
+     * once applied so a db/files action runs exactly once. {@code mandatory} skips the "Later" option.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpdatePolicy(String id, List<String> actions, boolean mandatory, String message) {}
+
+    /**
+     * Combined /check payload: the JAR fields stay at the top level (so the existing client keeps
+     * working unchanged) with the optional {@code policy} alongside.
+     */
+    public record UpdateCheckResponse(String fileName, long fileSize, String checksum,
+                                      String lastModified, UpdatePolicy policy) {}
 }

@@ -86,11 +86,12 @@
 
         <div class="bg-panel" *ngIf="st.currentNode()">
           <span class="lbl">Reference image</span>
-          <p class="hint">Trace a satellite / plot photo. Held on this device for this level.</p>
-          <label class="bg-add" *ngIf="!st.backgroundUrl()">
+          <p class="hint">Trace a satellite / plot photo. Shared &amp; synced across devices for this level.</p>
+          <label class="bg-add" *ngIf="!st.backgroundUrl() && !bgUploading()">
             + Add image
             <input type="file" accept="image/*" (change)="onPickBackground($event)" hidden />
           </label>
+          <span class="hint" *ngIf="bgUploading()">Uploading…</span>
           <div class="bg-ctrls" *ngIf="st.backgroundUrl()">
             <label class="bg-op">Opacity
               <input type="range" min="0.1" max="1" step="0.05" [value]="st.backgroundOpacity()"
@@ -155,8 +156,28 @@
             <button type="button" (click)="setNestReveal(nestReveal() + 40)" title="less / later detail">−</button>
             <button type="button" (click)="setNestReveal(nestReveal() - 40)" title="more / earlier detail">+</button>
           </span>
+          <!-- Multi-shape ops: appear once 2+ boxes are selected. Selection order matters — the FIRST one picked
+               is the reference every align / match-size measures against. -->
+          <span class="shape-ops" *ngIf="canOperate()" title="Aligns to the first-selected box (the reference)">
+            <span class="lbl2">{{ st.selectedLocalIds().length }} selected</span>
+            <button type="button" (click)="align('left')" title="Align left edges">⇤</button>
+            <button type="button" (click)="align('h-center')" title="Center horizontally">⇔</button>
+            <button type="button" (click)="align('right')" title="Align right edges">⇥</button>
+            <button type="button" (click)="align('top')" title="Align top edges">⤒</button>
+            <button type="button" (click)="align('v-center')" title="Center vertically">⇕</button>
+            <button type="button" (click)="align('bottom')" title="Align bottom edges">⤓</button>
+            <span class="sep2"></span>
+            <button type="button" (click)="matchSize('width')" title="Match width to the reference">↔W</button>
+            <button type="button" (click)="matchSize('height')" title="Match height to the reference">↕H</button>
+            <button type="button" (click)="matchSize('both')" title="Match both dimensions to the reference">⬜</button>
+            <span class="sep2"></span>
+            <button type="button" (click)="distribute('horizontal')" title="Even horizontal spacing (needs 3+)">⋯</button>
+            <button type="button" (click)="distribute('vertical')" title="Even vertical spacing (needs 3+)">⋮</button>
+          </span>
+          <button class="pipe-tool" type="button" *ngIf="st.selectedLocalIds().length" [disabled]="duplicating()"
+                  (click)="duplicateSelection()" title="Duplicate the selection as new objects (Ctrl+D)">{{ duplicating() ? '…' : '⧉ Copy' }}</button>
           <button class="zoom-btn" *ngIf="st.currentDiagramId()" (click)="resetView()" title="reset view (fit)">{{ (zoom() * 100) | number:'1.0-0' }}%</button>
-          <span class="hint2">left-drag = pan · wheel = zoom · right-drag = draw footprint · dbl-click = drill</span>
+          <span class="hint2">left-drag = pan · shift-drag = select · wheel = zoom · right-drag = draw footprint · dbl-click = drill</span>
         </div>
 
         <ng-container *ngIf="st.currentDiagramId(); else entry">
@@ -227,6 +248,7 @@
               <div class="box" *ngFor="let b of st.boxes()"
                    [ngClass]="['shape-' + boxShape(b),
                                isSelected(b) ? 'sel' : '',
+                               isReference(b) ? 'ref' : '',
                                isRevealing(b) ? 'revealing' : '',
                                isTiny(b) && !isEditingBox(b) ? 'tiny' : '',
                                boxShape(b) === 'run' && runVertical(b) ? 'run-v' : '',
@@ -362,17 +384,17 @@
         </header>
 
         <div class="edit">
-          <div class="frow"><span class="lbl">Name</span><input [(ngModel)]="editName" /></div>
+          <div class="frow"><span class="lbl">Name</span><input [(ngModel)]="editName" (blur)="autoSaveEdit()" (keyup.enter)="autoSaveEdit()" /></div>
           <div class="frow"><span class="lbl">Type</span>
-            <select [(ngModel)]="editType">
+            <select [(ngModel)]="editType" (change)="autoSaveEdit()">
               <option *ngFor="let t of typeOptions" [value]="t">{{ t }}</option>
             </select>
           </div>
-          <div class="frow"><span class="lbl">Tag</span><input [(ngModel)]="editTag" /></div>
-          <div class="frow"><span class="lbl">Location</span><input [(ngModel)]="editLoc" /></div>
-          <div class="frow"><span class="lbl">Floor #</span><input type="number" [(ngModel)]="editFloor" placeholder="(none — makes it a level)" /></div>
-          <div class="frow top"><span class="lbl">Notes</span><textarea rows="2" [(ngModel)]="editDesc"></textarea></div>
-          <button (click)="saveEdit()" [disabled]="savingEdit()">{{ savingEdit() ? 'Saving…' : 'Save' }}</button>
+          <div class="frow"><span class="lbl">Tag</span><input [(ngModel)]="editTag" (blur)="autoSaveEdit()" (keyup.enter)="autoSaveEdit()" /></div>
+          <div class="frow"><span class="lbl">Location</span><input [(ngModel)]="editLoc" (blur)="autoSaveEdit()" (keyup.enter)="autoSaveEdit()" /></div>
+          <div class="frow"><span class="lbl">Floor #</span><input type="number" [(ngModel)]="editFloor" (blur)="autoSaveEdit()" (keyup.enter)="autoSaveEdit()" placeholder="(none — makes it a level)" /></div>
+          <div class="frow top"><span class="lbl">Notes</span><textarea rows="2" [(ngModel)]="editDesc" (blur)="autoSaveEdit()"></textarea></div>
+          <div class="autosave" [class.ok]="editSaved()">{{ savingEdit() ? 'Saving…' : (editSaved() ? 'Saved ✓' : 'Changes save automatically') }}</div>
         </div>
 
         <div class="appearance" *ngIf="st.selectedBox() as bx">

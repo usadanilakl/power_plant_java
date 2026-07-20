@@ -63,24 +63,49 @@ public class PdfPageSplitUploadStrategy implements UploadStrategy {
 
         // Rename incoming file so split-page naming is deterministic
         MultipartFile renamed = new RenamedMultipartFile(file, target.fileNumber() + ".pdf");
-        List<File> splitPages = PdfConverter.splitPdfIntoSinglePageFiles(renamed, target.fileNumber());
+        // Own the split's temp directory here so it gets cleaned up regardless
+        // of per-page success. If we let PdfConverter create the temp dir with
+        // its null-outputDir path, nobody would delete it (individual page
+        // files are removed in the loop below but the parent dir stays behind
+        // — one empty dir accumulated in java.io.tmpdir per upload).
+        File splitTempDir = Files.createTempDirectory("pdf-split-").toFile();
+        try {
+            List<File> splitPages = PdfConverter.splitPdfIntoSinglePageFiles(renamed, target.fileNumber(), splitTempDir);
 
-        List<UploadedFile> results = new ArrayList<>();
-        for (File pdfPage : splitPages) {
-            try {
-                String writtenPdf = FileUtil.uploadFileToLocal(pdfPage, pdfFolder.toString(), override);
-                File jpg = PdfConverter.convertPdfToJpg(pdfPage);
-                FileUtil.uploadFileToLocal(jpg, jpgFolder.toString(), override);
-                Files.deleteIfExists(pdfPage.toPath());
-                Files.deleteIfExists(jpg.toPath());
+            List<UploadedFile> results = new ArrayList<>();
+            for (File pdfPage : splitPages) {
+                try {
+                    String writtenPdf = FileUtil.uploadFileToLocal(pdfPage, pdfFolder.toString(), override);
+                    File jpg = PdfConverter.convertPdfToJpg(pdfPage);
+                    FileUtil.uploadFileToLocal(jpg, jpgFolder.toString(), override);
+                    Files.deleteIfExists(pdfPage.toPath());
+                    Files.deleteIfExists(jpg.toPath());
 
-                String writtenName = Paths.get(writtenPdf).getFileName().toString();
-                String writtenFileNumber = FileUtil.getNameFromPathWithoutExtension(writtenName);
-                results.add(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf", "jpg")));
-            } catch (IOException e) {
-                log.warn("Failed to write split page {}: {}", pdfPage.getName(), e.getMessage());
+                    String writtenName = Paths.get(writtenPdf).getFileName().toString();
+                    String writtenFileNumber = FileUtil.getNameFromPathWithoutExtension(writtenName);
+                    results.add(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf", "jpg")));
+                } catch (IOException e) {
+                    log.warn("Failed to write split page {}: {}", pdfPage.getName(), e.getMessage());
+                }
             }
+            return results;
+        } finally {
+            // Best-effort cleanup — dir should be empty at this point (per-page
+            // files deleted in the loop) but tolerate leftovers from mid-loop failures.
+            deleteDirQuietly(splitTempDir);
         }
-        return results;
+    }
+
+    private static void deleteDirQuietly(File dir) {
+        if (dir == null || !dir.exists()) return;
+        try {
+            File[] children = dir.listFiles();
+            if (children != null) {
+                for (File c : children) Files.deleteIfExists(c.toPath());
+            }
+            Files.deleteIfExists(dir.toPath());
+        } catch (IOException e) {
+            log.debug("Failed to cleanup split temp dir {}: {}", dir, e.getMessage());
+        }
     }
 }

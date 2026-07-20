@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { AlignmentType, DiagramPlacement, DistributeType } from '../models/diagram-placement.model';
+import { AlignmentType, DistributeType } from '../models/diagram-placement.model';
 
 export interface ShapeUpdate {
   id: number;
@@ -9,10 +9,23 @@ export interface ShapeUpdate {
   height?: number;
 }
 
-@Injectable()
+/**
+ * The minimum a shape must expose to be aligned / distributed / size-matched. `DiagramPlacement` satisfies this
+ * structurally, so diagram-builder call sites are unchanged; the plant map's MapBox adapts to it via its localId.
+ */
+export interface ShapeRect {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Pure geometry helpers shared by the diagram builder and the plant map. First shape in the list is the reference. */
+@Injectable({ providedIn: 'root' })
 export class DiagramAlignmentService {
 
-  alignShapes(shapes: DiagramPlacement[], alignment: AlignmentType): ShapeUpdate[] {
+  alignShapes(shapes: ShapeRect[], alignment: AlignmentType): ShapeUpdate[] {
     if (shapes.length < 2) return [];
 
     const reference = shapes[0];
@@ -49,7 +62,7 @@ export class DiagramAlignmentService {
     return updates;
   }
 
-  distributeShapes(shapes: DiagramPlacement[], direction: DistributeType): ShapeUpdate[] {
+  distributeShapes(shapes: ShapeRect[], direction: DistributeType): ShapeUpdate[] {
     if (shapes.length < 3) return [];
 
     const sorted = [...shapes].sort((a, b) =>
@@ -85,7 +98,7 @@ export class DiagramAlignmentService {
     return updates;
   }
 
-  matchSize(shapes: DiagramPlacement[], dimension: 'width' | 'height' | 'both'): ShapeUpdate[] {
+  matchSize(shapes: ShapeRect[], dimension: 'width' | 'height' | 'both'): ShapeUpdate[] {
     if (shapes.length < 2) return [];
 
     const reference = shapes[0];
