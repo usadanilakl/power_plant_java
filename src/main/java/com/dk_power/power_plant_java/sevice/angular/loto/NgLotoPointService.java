@@ -45,12 +45,23 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
     private final LotoStandardPendingChangeCaptureService pendingChangeCaptureService;
     private final FieldChangeTracker fieldChangeTracker;
-    // For attaching picture files to LOTO points. @Lazy to insulate against
-    // any transitive cycle a future dep on NgFileService's mapper chain might
-    // introduce — cheap safety, no runtime cost after first resolution.
-    @org.springframework.context.annotation.Lazy
-    private final com.dk_power.power_plant_java.sevice.angular.file.NgFileService ngFileService;
-    private final com.dk_power.power_plant_java.sevice.angular.NgValueService ngValueService;
+    // ObjectProvider (not direct injection) for the two dependencies used only
+    // by the picture-attach flow. Direct injection triggered a Spring
+    // constructor cycle:
+    //     NgValueService -> NgLotoPointService -> NgFileService -> NgValueService
+    // NgValueService already depends on NgLotoPointService and NgFileService
+    // already depends on NgValueService (both existing edges); adding a direct
+    // NgLotoPointService -> NgFileService edge closes the loop. ObjectProvider
+    // gives us a proxy that resolves the actual bean on first .getObject()
+    // call, breaking the constructor-time chain without forcing every dep on
+    // this file to become lazy. Matches the WorkAreaGitHubPublisher pattern a
+    // few lines above.
+    //
+    // @Lazy on a Lombok-generated constructor field is a no-op — Lombok does
+    // NOT forward the annotation to the generated constructor parameter, so
+    // it does not defer resolution. That was the previous (broken) attempt.
+    private final ObjectProvider<com.dk_power.power_plant_java.sevice.angular.file.NgFileService> ngFileServiceProvider;
+    private final ObjectProvider<com.dk_power.power_plant_java.sevice.angular.NgValueService> ngValueServiceProvider;
 
 
     @Override
@@ -1648,16 +1659,23 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "LotoPoint not found: " + lotoPointId));
 
+        // Resolve provider-backed beans once per call (see ObjectProvider
+        // field docstring for why direct injection is not viable here).
+        com.dk_power.power_plant_java.sevice.angular.NgValueService valueService =
+                ngValueServiceProvider.getObject();
+        com.dk_power.power_plant_java.sevice.angular.file.NgFileService fileService =
+                ngFileServiceProvider.getObject();
+
         // Resolve-or-create the FileType and Vendor Values on first use — matches
         // NgValueService.createValue's get-or-create semantics, safe to call
         // every time.
         com.dk_power.power_plant_java.entities.categories.Value pictureType =
-                ngValueService.createValue(FILE_TYPE_CATEGORY, PICTURE_FILE_TYPE);
+                valueService.createValue(FILE_TYPE_CATEGORY, PICTURE_FILE_TYPE);
         com.dk_power.power_plant_java.entities.categories.Value pictureVendor =
-                ngValueService.createValue(VENDOR_CATEGORY, PICTURE_VENDOR);
+                valueService.createValue(VENDOR_CATEGORY, PICTURE_VENDOR);
 
         java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> uploaded =
-                ngFileService.processMultipleFiles(
+                fileService.processMultipleFiles(
                         java.util.List.of(file),
                         pictureType.getId(),
                         pictureVendor.getId(),
