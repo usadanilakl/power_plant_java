@@ -1745,18 +1745,83 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
-     * List every FileObject in the plant file library whose fileType is
+     * Bulk-fetch pictures for a page of LOTO points and return a
+     * {pointId -> [pictures]} map. Used by the paginated list endpoint
+     * to hydrate LotoPointDto.pictures without triggering an N+1
+     * (or worse: the reflection-built detached POJOs from the
+     * projection path can't lazy-load M2M at all, so the Photos
+     * column would render EMPTY for every row on initial page load
+     * without this side-fetch).
+     * <p>
+     * One JPQL query per page, regardless of picture count. Returns an
+     * empty map for a null/empty id list.
+     */
+    public java.util.Map<Long, java.util.List<com.dk_power.power_plant_java.dto.files.FileDto>>
+            fetchPicturesForPoints(java.util.Collection<Long> pointIds) {
+        if (pointIds == null || pointIds.isEmpty()) return java.util.Collections.emptyMap();
+        java.util.List<Object[]> rows = entityManager.createQuery(
+                "SELECT p.id, f FROM LotoPoint p JOIN p.pictures f " +
+                "WHERE p.id IN :ids ORDER BY p.id, f.id",
+                Object[].class
+        ).setParameter("ids", pointIds).getResultList();
+        java.util.Map<Long, java.util.List<com.dk_power.power_plant_java.dto.files.FileDto>> byId =
+                new java.util.LinkedHashMap<>();
+        for (Object[] row : rows) {
+            Long pid = (Long) row[0];
+            FileObject f = (FileObject) row[1];
+            com.dk_power.power_plant_java.dto.files.FileDto d =
+                    new com.dk_power.power_plant_java.dto.files.FileDto();
+            d.setId(f.getId());
+            d.setName(f.getName());
+            d.setFileLink(f.getFileLink());
+            d.setExtension(f.getExtension());
+            byId.computeIfAbsent(pid, k -> new java.util.ArrayList<>()).add(d);
+        }
+        return byId;
+    }
+
+    /**
+     * List FileObjects in the plant file library whose fileType is
      * "Picture" — the pool from which the "attach existing picture"
      * picker draws. Returns shallow FileDtos (id/name/link/extension only)
      * matching the shape the tile grid renders.
+     * <p>
+     * PAGINATED + SEARCHABLE — the codex adversarial review flagged the
+     * previous unbounded scan as both a security enumeration primitive
+     * (restricted external users could dump the entire library) and a
+     * perf concern (unbounded scan + eager fileType/vendor N+1). A hard
+     * cap on {@code pageSize} keeps the picker responsive even as the
+     * library grows into the thousands, and the {@code search}
+     * parameter lets the frontend narrow the pool server-side instead
+     * of downloading everything and filtering in the browser.
      */
-    public java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> listPictureLibrary() {
+    public java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> listPictureLibrary(
+            String search, int page, int pageSize) {
+        // Defensive caps — refuse any request larger than 200 rows and any
+        // page below 1. Frontend can iterate for load-more if a real user
+        // has that many pictures on-screen at once.
+        int cappedSize = Math.max(1, Math.min(pageSize, 200));
+        int safePage = Math.max(1, page);
+        int firstResult = (safePage - 1) * cappedSize;
+
         com.dk_power.power_plant_java.entities.categories.Value pictureType =
                 ngValueServiceProvider.getObject().createValue(FILE_TYPE_CATEGORY, PICTURE_FILE_TYPE);
-        java.util.List<FileObject> files = entityManager.createQuery(
-                "SELECT f FROM FileObject f WHERE f.fileType = :ft ORDER BY f.id DESC",
-                FileObject.class
-        ).setParameter("ft", pictureType).getResultList();
+
+        // Server-side substring name filter (case-insensitive). Empty /
+        // null search matches every picture.
+        boolean hasSearch = search != null && !search.trim().isEmpty();
+        String jpql = "SELECT f FROM FileObject f WHERE f.fileType = :ft" +
+                (hasSearch ? " AND LOWER(f.name) LIKE :q" : "") +
+                " ORDER BY f.id DESC";
+        var q = entityManager.createQuery(jpql, FileObject.class)
+                .setParameter("ft", pictureType);
+        if (hasSearch) {
+            q.setParameter("q", "%" + search.trim().toLowerCase() + "%");
+        }
+        java.util.List<FileObject> files = q
+                .setFirstResult(firstResult)
+                .setMaxResults(cappedSize)
+                .getResultList();
         java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> dtos =
                 new java.util.ArrayList<>(files.size());
         for (FileObject f : files) {
@@ -1772,17 +1837,37 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
+     * Legacy no-arg overload — delegates to the paginated variant with
+     * default page 1, size 200. Retained only so the controller entry
+     * point stays stable while callers migrate. New code should call
+     * the paginated variant directly.
+     */
+    public java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> listPictureLibrary() {
+        return listPictureLibrary(null, 1, 200);
+    }
+
+    /**
      * Link an EXISTING FileObject (already uploaded, already in the plant
      * file library) to this LOTO point. Same M2M join as uploadPictures,
      * but no upload — used by the "attach existing picture" picker where
-     * the operator browses the picture library and picks one that was
-     * uploaded from another point (or even from a walkdown session in the
-     * future). Idempotent: attaching an already-linked file is a no-op.
-     * The picker is expected to filter by fileType="Picture", but the
-     * backend does not enforce that — attaching any FileObject is
-     * technically permitted; the thumbnail simply won't render if it's
-     * not an image, which is easier to explain than a hard 400 mismatch
-     * error surfacing three UI layers up.
+     * the operator browses the picture library and picks one uploaded
+     * from another point (or from a walkdown session, later). Idempotent:
+     * attaching an already-linked file is a no-op that suppresses the
+     * relationship-change emission.
+     * <p>
+     * <b>Security guards</b> (codex adversarial-review-driven, HIGH):
+     * <ul>
+     *   <li>Enforces fileType="Picture". Without this the endpoint
+     *       becomes an id-enumeration primitive: a restricted external
+     *       user (class-level @RestrictedAllowed) could POST any
+     *       integer fileId and get back a LotoPointDto whose
+     *       pictures[0].fileLink points at /uploads/... — which is
+     *       permitAll'd and downloadable. That reads SDS PDFs, backup
+     *       docs, and every other non-Picture FileObject via a LOTO
+     *       point view.</li>
+     *   <li>Rejects soft-deleted files. A concurrent delete of the file
+     *       elsewhere shouldn't get resurrected via a fresh link.</li>
+     * </ul>
      */
     @Transactional
     public LotoPointDto linkPicture(Long lotoPointId, Long fileId) {
@@ -1794,6 +1879,17 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         if (file == null) {
             throw new jakarta.persistence.EntityNotFoundException(
                     "FileObject not found: " + fileId);
+        }
+        // Enforce fileType='Picture' — see the security guards docstring above.
+        String fileTypeName = file.getFileType() != null ? file.getFileType().getName() : null;
+        if (!PICTURE_FILE_TYPE.equals(fileTypeName)) {
+            throw new IllegalArgumentException(
+                    "Only Picture files can be attached to LOTO points (got fileType="
+                            + (fileTypeName == null ? "null" : fileTypeName) + ")");
+        }
+        if (Boolean.TRUE.equals(file.getDeleted())) {
+            throw new IllegalArgumentException(
+                    "Cannot attach a deleted file (id=" + fileId + ")");
         }
         Set<Long> beforePictureIds = pictureIds(point);
         point.addPicture(file);

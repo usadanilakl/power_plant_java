@@ -120,13 +120,29 @@ export class LotoPointService {
   }
 
   /**
-   * List every FileObject in the plant file library with
-   * fileType.name="Picture" — the pool from which the "attach existing
-   * picture" picker draws. Shallow FileDtos (id / name / link / extension).
+   * List FileObjects in the plant file library with fileType.name="Picture" —
+   * the pool from which the "attach existing picture" picker draws. Backend
+   * hard-caps {@code pageSize} at 200 rows and supports server-side
+   * substring name search so the picker stays fast as the library grows.
+   *
+   * @param search optional case-insensitive substring; null/empty returns
+   *               the newest page unfiltered.
+   * @param page   1-indexed (backend contract). Default 1.
+   * @param pageSize per-request cap (server clamps to 200). Default 200.
    */
-  getPictureLibrary(): Observable<SpringApiResponse<FileDto[]>> {
+  getPictureLibrary(
+    search: string | null = null,
+    page: number = 1,
+    pageSize: number = 200
+  ): Observable<SpringApiResponse<FileDto[]>> {
+    let params = new HttpParams()
+      .set('page', String(page))
+      .set('pageSize', String(pageSize));
+    if (search && search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
     return this.http.get<SpringApiResponse<FileDto[]>>(
-      `${this.apiUrl}/pictures/library`
+      `${this.apiUrl}/pictures/library`, { params }
     );
   }
 

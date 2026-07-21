@@ -50,6 +50,33 @@ public class NgLotoPointController {
                     )),
                     PageRequest.of(page - 1, pageSize)
             ).map(ngLotoPointService::toDto);
+
+            // Hydrate LotoPointDto.pictures for the page.
+            //
+            // The projection above rebuilds each LotoPoint via reflection
+            // (ProjectionQueryInterface.buildEntity → new instance + setter
+            // calls), so the returned entities are DETACHED — the M2M
+            // pictures collection cannot lazy-load through convertToDto's
+            // getPictures() call. Without this step, the Photos column
+            // renders empty for every row on the initial page load and
+            // "hydrates" only on subsequent /search calls (which use
+            // managed entities). Codex adversarial review, HIGH #1.
+            //
+            // One JPQL query per page, not per row.
+            java.util.List<Long> pageIds = paginatedFiles.getContent().stream()
+                    .map(LotoPointDto::getId)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            if (!pageIds.isEmpty()) {
+                java.util.Map<Long, java.util.List<FileDto>> picturesById =
+                        ngLotoPointService.fetchPicturesForPoints(pageIds);
+                for (LotoPointDto dto : paginatedFiles.getContent()) {
+                    if (dto.getId() == null) continue;
+                    java.util.List<FileDto> pics = picturesById.get(dto.getId());
+                    if (pics != null && !pics.isEmpty()) dto.setPictures(pics);
+                }
+            }
+
             NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
 //            return ResponseEntity.ok(response);
@@ -802,14 +829,24 @@ public class NgLotoPointController {
     }
 
     /**
-     * List every FileObject with fileType="Picture" — the pool from
-     * which the "attach existing" picker draws. Frontend filters out
+     * List FileObjects with fileType="Picture" — the pool from which
+     * the "attach existing" picker draws. Frontend filters out
      * already-attached ones client-side.
+     * <p>
+     * Paginated + searchable (codex review, HIGH #3 + #5). Server hard-
+     * caps {@code pageSize} at 200 rows regardless of the client
+     * request; use {@code search} to narrow, and {@code page} to
+     * iterate. Default parameters preserve the previous "one shot per
+     * open" behavior for small libraries.
      */
     @GetMapping("/pictures/library")
-    public ResponseEntity<NgApiResponse<java.util.List<FileDto>>> getPictureLibrary() {
+    public ResponseEntity<NgApiResponse<java.util.List<FileDto>>> getPictureLibrary(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "200") int pageSize) {
         try {
-            java.util.List<FileDto> pictures = ngLotoPointService.listPictureLibrary();
+            java.util.List<FileDto> pictures =
+                    ngLotoPointService.listPictureLibrary(search, page, pageSize);
             return ResponseEntity.ok(new NgApiResponse<>(pictures, "OK"));
         } catch (Exception e) {
             e.printStackTrace();

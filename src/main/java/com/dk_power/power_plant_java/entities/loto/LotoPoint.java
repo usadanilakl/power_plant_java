@@ -119,6 +119,7 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
      * files is a separate concern with its own SharePoint / disk cleanup).
      */
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @BatchSize(size = 50)
     @JoinTable(
         name = "loto_point_picture",
         joinColumns = @JoinColumn(name = "loto_point_id"),
