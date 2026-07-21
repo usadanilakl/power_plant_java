@@ -1653,18 +1653,30 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private static final String PICTURE_VENDOR = "Site";
 
     /**
-     * Attach a picture to the LOTO point. Uploads the multipart file via
-     * NgFileService's shared pipeline (SHA-256 dedup, on-disk storage,
-     * SharePoint-ready path structure) as a FileObject with
-     * fileType="Picture" + vendor="Site", then links the resulting FileObject
-     * to this LotoPoint's pictures M2M. Returns the refreshed LotoPointDto
-     * so the caller can render the new thumbnail without a follow-up GET.
+     * Attach one or more pictures to the LOTO point. Each multipart file
+     * goes through NgFileService's shared pipeline (SHA-256 dedup, on-disk
+     * storage, SharePoint-ready path) as a FileObject with
+     * fileType="Picture" + vendor="Site". After upload we stamp
+     * LOTO-point metadata onto every new FileObject so the plant's file
+     * library shows a meaningful name and the picture is associated with
+     * the point's system for filtering later:
+     *   - name    = LOTO point description, suffixed " (N)" when >1 in one
+     *               batch so a multi-select upload produces distinct rows
+     *   - system  = the LOTO point's systemValue (Value FK)
+     *   - fileNumber left untouched — it doubles as the on-disk-path
+     *     component, so overriding it would diverge the metadata from
+     *     the file's physical location (per the fileNumber caveat we
+     *     discussed).
+     * <p>
+     * Returns the refreshed LotoPointDto so the caller can render new
+     * thumbnails without a follow-up GET.
      */
     @Transactional
-    public LotoPointDto uploadPicture(Long lotoPointId, org.springframework.web.multipart.MultipartFile file)
+    public LotoPointDto uploadPictures(Long lotoPointId,
+                                       java.util.List<org.springframework.web.multipart.MultipartFile> files)
             throws java.io.IOException {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("Picture file is required");
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("At least one picture file is required");
         }
         LotoPoint point = lotoPointRepo.findById(lotoPointId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
@@ -1687,19 +1699,35 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
         java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> uploaded =
                 fileService.processMultipleFiles(
-                        java.util.List.of(file),
+                        files,
                         pictureType.getId(),
                         pictureVendor.getId(),
-                        null // shared-name irrelevant for single-file upload
+                        null // sharedFileName not used — we overwrite name below per-file
                 );
         if (uploaded == null || uploaded.isEmpty()) {
             throw new IllegalStateException("Picture upload returned no FileObject");
         }
 
-        // Link every FileObject the upload produced (usually 1; PDFs page-split
-        // but pictures don't). Load managed instances via FileRepo so the M2M
-        // join has attached entities.
-        //
+        // Metadata population: stamp LOTO-point context onto every new FileObject
+        // so the plant file library sees "Descriptive Name" attached to the right
+        // system, not the raw camera-supplied filename ("IMG_1234.jpg"). The tile
+        // grid on the LOTO Point form doesn't rely on this — it just renders the
+        // thumbnail — but the FILES page and P&ID library organize by name/system.
+        String description = (point.getDescription() == null || point.getDescription().isBlank())
+                ? "LOTO Point #" + point.getId()
+                : point.getDescription();
+        com.dk_power.power_plant_java.entities.categories.Value system = point.getSystemValue();
+        boolean multi = uploaded.size() > 1;
+        int idx = 1;
+        for (com.dk_power.power_plant_java.dto.files.FileDto dto : uploaded) {
+            FileObject fo = entityManager.find(FileObject.class, dto.getId());
+            if (fo == null) continue;
+            fo.setName(multi ? description + " (" + idx + ")" : description);
+            if (system != null) fo.setSystem(system);
+            entityManager.merge(fo);
+            idx++;
+        }
+
         // Capture the M2M state BEFORE mutating so we can emit an EXPLICIT relationship
         // FieldChange. A pure @ManyToMany collection change does not dirty the LotoPoint row, so
         // @PostUpdate / captureManyToManyCollections never fires for it — without this the join
@@ -1713,6 +1741,44 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         LotoPoint saved = lotoPointRepo.save(point);
         fieldChangeTracker.trackRelationshipUpdateInCurrentTx(
                 saved, "pictures", beforePictureIds, pictureIds(saved), "ManyToMany");
+        return lotoPointMapper.convertToDto(saved);
+    }
+
+    /**
+     * Link an EXISTING FileObject (already uploaded, already in the plant
+     * file library) to this LOTO point. Same M2M join as uploadPictures,
+     * but no upload — used by the "attach existing picture" picker where
+     * the operator browses the picture library and picks one that was
+     * uploaded from another point (or even from a walkdown session in the
+     * future). Idempotent: attaching an already-linked file is a no-op.
+     * The picker is expected to filter by fileType="Picture", but the
+     * backend does not enforce that — attaching any FileObject is
+     * technically permitted; the thumbnail simply won't render if it's
+     * not an image, which is easier to explain than a hard 400 mismatch
+     * error surfacing three UI layers up.
+     */
+    @Transactional
+    public LotoPointDto linkPicture(Long lotoPointId, Long fileId) {
+        if (fileId == null) throw new IllegalArgumentException("fileId is required");
+        LotoPoint point = lotoPointRepo.findById(lotoPointId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "LotoPoint not found: " + lotoPointId));
+        FileObject file = entityManager.find(FileObject.class, fileId);
+        if (file == null) {
+            throw new jakarta.persistence.EntityNotFoundException(
+                    "FileObject not found: " + fileId);
+        }
+        Set<Long> beforePictureIds = pictureIds(point);
+        point.addPicture(file);
+        Set<Long> afterPictureIds = pictureIds(point);
+        // Skip the M2M emission when nothing actually changed (the file was
+        // already linked). save() is still called for safety, but avoiding
+        // a phantom FieldChange keeps sync activity lean.
+        LotoPoint saved = lotoPointRepo.save(point);
+        if (!beforePictureIds.equals(afterPictureIds)) {
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(
+                    saved, "pictures", beforePictureIds, afterPictureIds, "ManyToMany");
+        }
         return lotoPointMapper.convertToDto(saved);
     }
 

@@ -774,18 +774,20 @@ public class NgLotoPointController {
     }
 
     /**
-     * Attach a picture to a LOTO point. Multipart upload: bytes stream to
-     * NgFileService's shared pipeline (dedup, on-disk storage, sync-tracked),
-     * then link to this LotoPoint via M2M. Returns the refreshed LotoPointDto
-     * so the frontend can render the new thumbnail without a follow-up GET.
+     * Attach one or more pictures to a LOTO point in one request. Multipart
+     * batch: bytes stream to NgFileService's shared pipeline (dedup, on-disk
+     * storage, sync-tracked), then each FileObject links via M2M and receives
+     * LOTO-point metadata (name = description, system = LOTO system).
+     * Returns the refreshed LotoPointDto so the frontend can render the new
+     * thumbnails without a follow-up GET.
      */
     @PostMapping(value = "/{id}/pictures", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<NgApiResponse<LotoPointDto>> uploadPicture(
+    public ResponseEntity<NgApiResponse<LotoPointDto>> uploadPictures(
             @PathVariable Long id,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+            @RequestParam("files") java.util.List<org.springframework.web.multipart.MultipartFile> files) {
         try {
-            LotoPointDto updated = ngLotoPointService.uploadPicture(id, file);
-            return ResponseEntity.ok(new NgApiResponse<>(updated, "Picture attached"));
+            LotoPointDto updated = ngLotoPointService.uploadPictures(id, files);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Pictures attached"));
         } catch (jakarta.persistence.EntityNotFoundException e) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
                     .body(new NgApiResponse<>(null, e.getMessage()));
@@ -796,6 +798,30 @@ public class NgLotoPointController {
             e.printStackTrace();
             return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new NgApiResponse<>(null, "Picture upload failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Link an EXISTING FileObject (already in the plant file library) to a
+     * LOTO point. Used by the "attach existing picture" picker so the same
+     * physical photo can back multiple LOTO points without re-uploading.
+     */
+    @PostMapping("/{id}/pictures/link/{fileId}")
+    public ResponseEntity<NgApiResponse<LotoPointDto>> linkPicture(
+            @PathVariable Long id, @PathVariable Long fileId) {
+        try {
+            LotoPointDto updated = ngLotoPointService.linkPicture(id, fileId);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Picture linked"));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Picture link failed: " + e.getMessage()));
         }
     }
 
