@@ -4,15 +4,20 @@ import { CommonModule } from '@angular/common';
 import { Subscription, filter } from 'rxjs';
 import { HeaderComponent } from './components/header.component';
 import { SidebarComponent } from './layout/sidebar.component';
+import { AdvisoryBandComponent } from './components/advisory-band/advisory-band.component';
+import { LightningStanddownBannerComponent } from './components/lightning-standdown-banner.component';
 import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent } from './services/electron.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, AdvisoryBandComponent, LightningStanddownBannerComponent],
   template: `
     <div class="app-container">
       <app-header></app-header>
+
+      <!-- Lightning standdown: highest-priority safety alert, shown on every page -->
+      <app-lightning-standdown-banner></app-lightning-standdown-banner>
 
       <!-- Server unreachable -->
       <div class="notification-bar conflict" *ngIf="serverReachable === false && !syncInProgress">
@@ -46,6 +51,9 @@ import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent 
         <button class="notif-action" (click)="navigateToSettings(); $event.stopPropagation()">Settings</button>
         <button class="notif-dismiss" (click)="deviceConflictWarning = ''; $event.stopPropagation()"><span class="material-icons" style="font-size:14px">close</span></button>
       </div>
+
+      <!-- Always-visible operations advisory band (hidden on the full-screen PID app) -->
+      <app-advisory-band *ngIf="currentUrl !== '/pid-app'"></app-advisory-band>
 
       <div class="app-body">
         <app-sidebar [collapsed]="sidebarCollapsed" (toggle)="onSidebarToggle()"></app-sidebar>
@@ -148,6 +156,7 @@ import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent 
 export class AppComponent implements OnInit, OnDestroy {
   title = 'DK Power Manager';
   sidebarCollapsed = false;
+  currentUrl = '';
 
   // Startup assessment state
   assessment: StartupAssessment | null = null;
@@ -174,6 +183,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.routerSub = this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe(event => {
+        this.currentUrl = event.urlAfterRedirects;
         this.sidebarCollapsed = event.urlAfterRedirects === '/pid-app';
       });
 

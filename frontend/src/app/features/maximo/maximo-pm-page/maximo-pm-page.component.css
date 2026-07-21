@@ -147,3 +147,23 @@ td.form-cell select.assigned { border-color: #1c7c3a; color: #9fe0b0; }
   .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tabs button { flex: 0 0 auto; white-space: nowrap; }
 }
+
+/* Multi-form assignment: collapsed trigger + fixed checklist dropdown */
+.form-cell { white-space: nowrap; }
+.form-dd-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
+  min-width: 150px; max-width: 240px; padding: 5px 8px; background: #2a2a2a; color: #e6e6e6;
+  border: 1px solid #444; border-radius: 4px; cursor: pointer; font: inherit; }
+.form-dd-trigger:hover { border-color: #666; }
+.form-dd-trigger.assigned { border-color: #2c7; }
+.form-dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.form-dd-caret { color: #888; flex: none; font-size: 11px; }
+.form-cell .form-count { display: block; font-size: 10px; margin-top: 2px; }
+
+.form-dd-backdrop { position: fixed; inset: 0; z-index: 900; }
+.form-dd-panel { position: fixed; z-index: 901; max-width: 340px; max-height: 300px; overflow-y: auto;
+  background: #1e1e1e; border: 1px solid #555; border-radius: 6px; box-shadow: 0 8px 22px rgba(0,0,0,0.55); padding: 4px; }
+.form-dd-opt { display: flex; align-items: center; gap: 8px; padding: 7px 9px; cursor: pointer; border-radius: 4px;
+  white-space: nowrap; color: #e6e6e6; font-size: 13px; }
+.form-dd-opt:hover { background: #2a3b4a; }
+.form-dd-opt input { width: 15px; height: 15px; flex: none; }
+.form-dd-empty { padding: 9px; color: #888; font-size: 12px; }

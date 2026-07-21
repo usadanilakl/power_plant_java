@@ -47,15 +47,15 @@ export class MaximoFormApiService {
   }
 
   /**
-   * The completion form ASSIGNED to a WO's recurring PM (via PM Scheduling), matched by pmnum then
-   * description, or null when none is assigned. Drives the WO Complete tab.
+   * The completion form(s) ASSIGNED to a WO's recurring PM (via PM Scheduling), matched by pmnum then
+   * description. Drives the WO Complete tab: none = manual; one = auto; several = the operator picks one.
    */
-  completionFormForWo(pmnum?: string, description?: string): Observable<MaximoFormTemplate | null> {
+  completionFormsForWo(pmnum?: string, description?: string): Observable<MaximoFormTemplate[]> {
     let p = new HttpParams();
     if (pmnum) p = p.set('pmnum', pmnum);
     if (description) p = p.set('description', description);
-    return this.http.get<SpringApiResponse<MaximoFormTemplate>>(`${this.base}/for-wo`, { params: p })
-      .pipe(map(r => r.responseData ?? null));
+    return this.http.get<SpringApiResponse<MaximoFormTemplate[]>>(`${this.base}/for-wo`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
   }
 
   // ── Submissions ────────────────────────────────────────────────────────────

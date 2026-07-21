@@ -10,20 +10,16 @@ import {
   ElectronService,
 } from '../../services/electron.service';
 import { CORK_BOARD_SOURCE_URL } from './cork-board.constants';
+import { CorkBoardActionCardComponent } from '../../components/cork-board-action-card/cork-board-action-card.component';
 
 interface CorkBoardDisplayItem extends CorkBoardItem {
   safeDataUrl?: SafeResourceUrl;
 }
 
-interface ActionDraft {
-  responseValue: string;
-  comment: string;
-}
-
 @Component({
   selector: 'app-cork-board',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CorkBoardActionCardComponent],
   template: `
     <div class="page">
       <div class="page-header">
@@ -117,67 +113,11 @@ interface ActionDraft {
         </div>
 
         <div class="actions-list" *ngIf="actions.length > 0">
-          <article class="action-card" *ngFor="let action of actions; trackBy: trackByActionId">
-            <div class="action-top">
-              <div class="action-title-row">
-                <span class="material-icons action-icon">{{ getActionIcon(action.type) }}</span>
-                <div>
-                  <h3>{{ action.title }}</h3>
-                  <p *ngIf="action.description">{{ action.description }}</p>
-                </div>
-              </div>
-              <div class="action-meta">
-                <span class="type-chip">{{ formatActionType(action.type) }}</span>
-                <span class="expiry-chip" *ngIf="action.expiresOn">Expires {{ formatExpirationDate(action.expiresOn) }}</span>
-                <span class="posted-chip" *ngIf="action.createdBy">{{ action.createdBy }}</span>
-              </div>
-            </div>
-
-            <div class="summary-list" *ngIf="action.responseSummary.length > 0">
-              <div class="summary-row" *ngFor="let summary of action.responseSummary">
-                <div class="summary-label">
-                  <span>{{ summary.value }}</span>
-                  <strong>{{ summary.count }}</strong>
-                </div>
-                <div class="summary-bar">
-                  <span [style.width.%]="summaryPercent(action, summary.count)"></span>
-                </div>
-              </div>
-            </div>
-
-            <div class="response-count" *ngIf="action.responseCount > 0">
-              {{ action.responseCount }} response{{ action.responseCount === 1 ? '' : 's' }}
-              <span *ngIf="recentResponderNames(action)">| {{ recentResponderNames(action) }}</span>
-            </div>
-
-            <div class="response-row" *ngIf="responseDrafts[action.id] as draft">
-              <input
-                type="text"
-                class="name-input"
-                placeholder="Your name"
-                [(ngModel)]="responderName"
-                [ngModelOptions]="{ standalone: true }"
-              />
-              <select
-                *ngIf="requiresChoice(action)"
-                [(ngModel)]="draft.responseValue"
-                [ngModelOptions]="{ standalone: true }"
-              >
-                <option value="">Select response</option>
-                <option *ngFor="let option of action.options" [value]="option">{{ option }}</option>
-              </select>
-              <input
-                type="text"
-                class="comment-input"
-                placeholder="Comment"
-                [(ngModel)]="draft.comment"
-                [ngModelOptions]="{ standalone: true }"
-              />
-              <button class="btn btn-primary" (click)="submitAction(action)" [disabled]="submittingActionId === action.id">
-                {{ submittingActionId === action.id ? 'Saving...' : submitLabel(action) }}
-              </button>
-            </div>
-          </article>
+          <app-cork-board-action-card
+            *ngFor="let action of actions; trackBy: trackByActionId"
+            [action]="action"
+            (changed)="loadActions()"
+          ></app-cork-board-action-card>
         </div>
       </section>
 
@@ -449,7 +389,6 @@ interface ActionDraft {
 export class CorkBoardComponent implements OnInit {
   items: CorkBoardDisplayItem[] = [];
   actions: CorkBoardAction[] = [];
-  responseDrafts: Record<string, ActionDraft> = {};
 
   loading = false;
   loaded = false;
@@ -459,8 +398,6 @@ export class CorkBoardComponent implements OnInit {
   actionNotice = '';
   showActionForm = false;
   creatingAction = false;
-  submittingActionId = '';
-  responderName = '';
   actionForm = {
     type: 'acknowledge' as CorkBoardActionType,
     title: '',
@@ -476,7 +413,6 @@ export class CorkBoardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.restoreResponderName();
     this.load();
     this.loadActions();
   }
@@ -511,7 +447,6 @@ export class CorkBoardComponent implements OnInit {
       const result = await this.electronService.corkBoardListActions();
       if (result.success && result.data) {
         this.actions = result.data;
-        this.ensureResponseDrafts();
       } else {
         this.actionError = result.error || 'Failed to load action items';
       }
@@ -588,80 +523,6 @@ export class CorkBoardComponent implements OnInit {
     }
   }
 
-  async submitAction(action: CorkBoardAction): Promise<void> {
-    this.actionError = '';
-    this.actionNotice = '';
-    const responderName = this.responderName.trim();
-    if (!responderName) {
-      this.actionError = 'Enter your name before submitting';
-      return;
-    }
-
-    const draft = this.responseDrafts[action.id] || this.defaultDraft(action);
-    const responseValue = this.responseValueForAction(action, draft);
-    if (!responseValue) {
-      this.actionError = 'Select a response before submitting';
-      return;
-    }
-
-    this.submittingActionId = action.id;
-    try {
-      const result = await this.electronService.corkBoardSubmitAction({
-        actionId: action.id,
-        actionTitle: action.title,
-        responderName,
-        responseValue,
-        comment: draft.comment.trim() || undefined,
-      });
-      if (!result.success) {
-        this.actionError = result.error || 'Failed to submit response';
-        return;
-      }
-      this.saveResponderName(responderName);
-      draft.comment = '';
-      this.actionNotice = result.data?.updated ? 'Response updated.' : 'Response submitted.';
-      await this.loadActions();
-    } catch (err: any) {
-      this.actionError = err.message;
-    } finally {
-      this.submittingActionId = '';
-    }
-  }
-
-  requiresChoice(action: CorkBoardAction): boolean {
-    return action.type !== 'acknowledge' && action.options.length > 0;
-  }
-
-  submitLabel(action: CorkBoardAction): string {
-    if (action.type === 'poll') return 'Vote';
-    if (action.type === 'signup') return 'Sign Up';
-    return 'Acknowledge';
-  }
-
-  getActionIcon(type: CorkBoardActionType): string {
-    if (type === 'poll') return 'poll';
-    if (type === 'signup') return 'how_to_reg';
-    return 'assignment_turned_in';
-  }
-
-  formatActionType(type: CorkBoardActionType): string {
-    if (type === 'poll') return 'Poll';
-    if (type === 'signup') return 'Signup';
-    return 'Acknowledge';
-  }
-
-  summaryPercent(action: CorkBoardAction, count: number): number {
-    if (action.responseCount < 1 || count < 1) return 0;
-    return Math.max(8, Math.round((count / action.responseCount) * 100));
-  }
-
-  recentResponderNames(action: CorkBoardAction): string {
-    return action.responses
-      .slice(0, 5)
-      .map(response => response.responderName)
-      .join(', ');
-  }
-
   formatSize(bytes: number): string {
     if (!bytes || bytes < 1) return '0 KB';
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -687,29 +548,6 @@ export class CorkBoardComponent implements OnInit {
     return action.id;
   }
 
-  private ensureResponseDrafts(): void {
-    for (const action of this.actions) {
-      if (!this.responseDrafts[action.id]) {
-        this.responseDrafts[action.id] = this.defaultDraft(action);
-      } else if (!this.responseDrafts[action.id].responseValue) {
-        this.responseDrafts[action.id].responseValue = this.defaultDraft(action).responseValue;
-      }
-    }
-  }
-
-  private defaultDraft(action: CorkBoardAction): ActionDraft {
-    if (action.type === 'acknowledge') return { responseValue: 'Acknowledged', comment: '' };
-    if (action.options.length > 0) return { responseValue: action.options[0], comment: '' };
-    if (action.type === 'signup') return { responseValue: 'Signed up', comment: '' };
-    return { responseValue: '', comment: '' };
-  }
-
-  private responseValueForAction(action: CorkBoardAction, draft: ActionDraft): string {
-    if (action.type === 'acknowledge') return 'Acknowledged';
-    if (action.type === 'signup' && action.options.length === 0) return 'Signed up';
-    return draft.responseValue.trim();
-  }
-
   private parseOptionsText(value: string): string[] {
     const seen = new Set<string>();
     const options: string[] = [];
@@ -720,17 +558,5 @@ export class CorkBoardComponent implements OnInit {
       options.push(option);
     }
     return options;
-  }
-
-  private restoreResponderName(): void {
-    try {
-      this.responderName = localStorage.getItem('corkBoardResponderName') || '';
-    } catch { /* ignore unavailable storage */ }
-  }
-
-  private saveResponderName(name: string): void {
-    try {
-      localStorage.setItem('corkBoardResponderName', name);
-    } catch { /* ignore unavailable storage */ }
   }
 }

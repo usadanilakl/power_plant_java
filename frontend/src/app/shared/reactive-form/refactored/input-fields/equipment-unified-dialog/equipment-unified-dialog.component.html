@@ -2,6 +2,24 @@
   <div class="dialog-content">
     <!-- Left Panel: File / LOTO Point Navigation -->
     <div class="navigation-panel">
+      <!-- Quick access: P&IDs this LOTO point already references -->
+      @if (contextFiles().length > 0) {
+        <div class="context-pids-bar">
+          <span class="context-pids-label">This point's P&amp;IDs</span>
+          <div class="context-pids-chips">
+            @for (f of contextFiles(); track f.id) {
+              <button
+                type="button"
+                class="context-pid-chip"
+                [class.active]="f.id === activeContextFileId()"
+                (click)="selectContextFile(f)"
+                [title]="f.name"
+              >{{ f.name }}</button>
+            }
+          </div>
+        </div>
+      }
+
       <!-- Mode toggle -->
       <div class="search-mode-toggle" role="tablist">
         <button

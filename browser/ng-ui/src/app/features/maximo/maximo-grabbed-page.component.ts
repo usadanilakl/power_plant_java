@@ -37,7 +37,7 @@ import { MaximoWoDetailComponent } from './maximo-wo-detail.component';
                   <div class="gb-desc">{{ g.wo.description || '(no description)' }}</div>
                   <div class="gb-meta">
                     @if (g.wo.assetnum || g.wo.location) { <span>{{ g.wo.assetnum || g.wo.location }}</span> }
-                    @if (g.formTemplate) { <span>📋 {{ g.formTemplate.formName }}</span> } @else { <span>manual</span> }
+                    <span>📋 {{ formLabel(g) }}</span>
                   </div>
                 </button>
               }
@@ -86,16 +86,23 @@ export class MaximoGrabbedPageComponent implements OnInit {
   open(g: MaximoGrab): void { this.detail.set(g.wo); }
 
   badge(g: MaximoGrab): string {
-    const d = this.store.getDraft(g.wo.wonum);
-    if (d?.status === 'pending') return 'queued';
-    if (d?.status === 'failed') return 'failed';
+    const ds = this.store.draftsFor(g.wo.wonum);
+    if (ds.some(d => d.status === 'pending')) return 'queued';
+    if (ds.some(d => d.status === 'failed')) return 'failed';
     return g.wo.status || 'INPRG';
   }
   badgeClass(g: MaximoGrab): string {
-    const d = this.store.getDraft(g.wo.wonum);
-    if (d?.status === 'pending') return 'gb-badge b-queued';
-    if (d?.status === 'failed') return 'gb-badge b-failed';
+    const ds = this.store.draftsFor(g.wo.wonum);
+    if (ds.some(d => d.status === 'pending')) return 'gb-badge b-queued';
+    if (ds.some(d => d.status === 'failed')) return 'gb-badge b-failed';
     return 'gb-badge b-open';
+  }
+  /** Short label of the assigned form(s) for the grabbed-list card. */
+  formLabel(g: MaximoGrab): string {
+    const fs = g.formTemplates ?? (g.formTemplate ? [g.formTemplate] : []);
+    if (fs.length === 0) return 'manual';
+    if (fs.length === 1) return fs[0].formName;
+    return `${fs.length} forms`;
   }
   chip(s: string | undefined): string { return statusClass(s); }
   back(): void { this.router.navigate(['/maximo']); }

@@ -1,37 +1,94 @@
 @if (svc.isVisible()) {
-  <app-popup [title]="'Print via System Printer'" [size]="'medium'" [isOpen]="true" (close)="close()">
+  <app-popup [title]="svc.isBulkMode() ? 'Print ' + itemCount() + ' Labels' : 'Print via System Printer'" [size]="'medium'" [isOpen]="true" (close)="close()">
     <div class="native-print-body">
       <p class="hint">
         Any printer installed on this computer works — pick it in the print dialog after clicking Print.
-        Adjust size below; the preview matches what will print at 100%.
+        Each label prints two-up so you can fold it in half and the QR + text show on both faces.
+        @if (svc.isBulkMode()) {
+          <br><strong>{{ itemCount() }} labels</strong> selected — printing {{ arrangement() === 'stacked' ? 'stacked (tall page)' : 'in-line (wide page)' }}.
+        }
       </p>
 
       <div class="preview-wrap">
+        <div class="preview-shrink"
+             [style.width.in]="previewOuterWidthIn()"
+             [style.height.in]="previewOuterHeightIn()">
         <div class="preview-frame"
-             [style.width.in]="widthIn()"
-             [style.height.in]="heightIn()"
+             [style.width.in]="totalWidthIn()"
+             [style.height.in]="totalHeightIn()"
              [style.transform]="'scale(' + previewScale() + ')'"
              [style.transform-origin]="'top left'">
-          <div class="label"
-               [style.padding.in]="0.04"
-               [style.font-size.pt]="fontPt()">
-            @if (withQr() && qrSvgHtml()) {
-              <div class="qr" [style.width.in]="qrEdgeIn()" [style.height.in]="qrEdgeIn()" [innerHTML]="qrSvgHtml()"></div>
-            }
-            <div class="text">
-              <div class="line1">{{ svc.data()?.line1 || '' }}</div>
-              @if (svc.data()?.line2) {
-                <div class="line2" [style.font-size.pt]="line2FontPt()">{{ svc.data()?.line2 }}</div>
+          <div class="sheet"
+               [style.font-size.pt]="fontPt()"
+               [class.stacked]="arrangement() === 'stacked'"
+               [class.inline]="arrangement() === 'inline'">
+            @if (svc.isBulkMode()) {
+              @for (item of items(); track $index; let i = $index) {
+                <div class="label" [style.width.in]="widthIn()" [style.height.in]="heightIn()">
+                  <div class="half left">
+                    @if (withQr() && qrSvgFor(i)) {
+                      <div class="qr" [style.width.in]="qrEdgeIn()" [style.height.in]="qrEdgeIn()" [innerHTML]="qrSvgFor(i)"></div>
+                    }
+                    @if (item.line1) { <div class="serial">{{ item.line1 }}</div> }
+                    @if (item.line2) { <div class="name" [style.font-size.pt]="line2FontPt()">{{ item.line2 }}</div> }
+                  </div>
+                  <div class="half right">
+                    @if (withQr() && qrSvgFor(i)) {
+                      <div class="qr" [style.width.in]="qrEdgeIn()" [style.height.in]="qrEdgeIn()" [innerHTML]="qrSvgFor(i)"></div>
+                    }
+                    @if (item.line1) { <div class="serial">{{ item.line1 }}</div> }
+                    @if (item.line2) { <div class="name" [style.font-size.pt]="line2FontPt()">{{ item.line2 }}</div> }
+                  </div>
+                </div>
               }
-            </div>
+            } @else {
+              <div class="label" [style.width.in]="widthIn()" [style.height.in]="heightIn()">
+                <div class="half left">
+                  @if (withQr() && qrSvgHtml()) {
+                    <div class="qr" [style.width.in]="qrEdgeIn()" [style.height.in]="qrEdgeIn()" [innerHTML]="qrSvgHtml()"></div>
+                  }
+                  @if (svc.data()?.line1) { <div class="serial">{{ svc.data()?.line1 }}</div> }
+                  @if (svc.data()?.line2) { <div class="name" [style.font-size.pt]="line2FontPt()">{{ svc.data()?.line2 }}</div> }
+                </div>
+                <div class="half right">
+                  @if (withQr() && qrSvgHtml()) {
+                    <div class="qr" [style.width.in]="qrEdgeIn()" [style.height.in]="qrEdgeIn()" [innerHTML]="qrSvgHtml()"></div>
+                  }
+                  @if (svc.data()?.line1) { <div class="serial">{{ svc.data()?.line1 }}</div> }
+                  @if (svc.data()?.line2) { <div class="name" [style.font-size.pt]="line2FontPt()">{{ svc.data()?.line2 }}</div> }
+                </div>
+              </div>
+            }
           </div>
         </div>
+        </div>
         <div class="preview-caption">
-          {{ widthIn() }}" &times; {{ heightIn() }}" &#64; {{ fontPt() }}pt
+          @if (svc.isBulkMode()) {
+            {{ itemCount() }} × ({{ widthIn() }}" × {{ heightIn() }}") = {{ totalWidthIn() | number:'1.1-2' }}" × {{ totalHeightIn() | number:'1.1-2' }}"
+          } @else {
+            {{ widthIn() }}" &times; {{ heightIn() }}" &#64; {{ fontPt() }}pt · fold at center
+          }
         </div>
       </div>
 
       <div class="controls">
+        @if (svc.isBulkMode()) {
+          <div class="arrangement-toggle">
+            <span class="ctrl-label">Arrangement</span>
+            <div class="segmented">
+              <button type="button"
+                      [class.active]="arrangement() === 'stacked'"
+                      (click)="setArrangement('stacked')">
+                Stacked (tall)
+              </button>
+              <button type="button"
+                      [class.active]="arrangement() === 'inline'"
+                      (click)="setArrangement('inline')">
+                In-line (wide)
+              </button>
+            </div>
+          </div>
+        }
         <label>
           <span class="ctrl-label">Width ({{ widthIn() | number:'1.1-2' }}")</span>
           <input type="range" min="0.5" max="8" step="0.1"

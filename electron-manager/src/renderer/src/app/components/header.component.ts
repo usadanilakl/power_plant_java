@@ -2,11 +2,12 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ElectronService, APP_DISPLAY_NAME } from '../services/electron.service';
+import { HeaderStatusComponent } from './header-status.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, HeaderStatusComponent],
   template: `
     <header class="header">
       <div class="header-left">
@@ -23,6 +24,9 @@ import { ElectronService, APP_DISPLAY_NAME } from '../services/electron.service'
           <button class="menu-btn" (click)="openMenu('help', $event)">Help</button>
         </div>
       </div>
+
+      <!-- Always-visible weather + day-ahead status -->
+      <app-header-status class="header-center"></app-header-status>
 
       <div class="header-right">
         <span class="version" *ngIf="version">v{{ version }}</span>
@@ -57,6 +61,15 @@ import { ElectronService, APP_DISPLAY_NAME } from '../services/electron.service'
       display: flex;
       align-items: center;
       gap: 16px;
+    }
+
+    .header-center {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+      margin: 0 12px;
     }
 
     .logo {

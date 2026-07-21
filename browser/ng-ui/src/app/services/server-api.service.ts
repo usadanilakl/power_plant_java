@@ -1059,6 +1059,16 @@ export class ServerApiService {
     );
   }
 
+  getInventoryUsageHistory(itemId: number): Observable<any[]> {
+    return this.http.get<{ responseData: any[] }>(
+      `${this.baseUrl}/api/pwa/secured/inventory/${itemId}/usage`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(this.handleError)
+    );
+  }
+
   // ====================== SDS Chemicals ======================
 
   submitSdsChemical(payload: any): Observable<PwaSubmissionResult> {

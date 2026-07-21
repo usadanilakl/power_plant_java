@@ -79,14 +79,14 @@ export class MaximoApiService {
     );
   }
 
-  /** The completion form assigned to a WO's PM (by pmnum then description), or null if none. */
-  getCompletionForm(pmnum: string | undefined, description: string | undefined): Observable<MaximoFormTemplate | null> {
+  /** The completion form(s) assigned to a WO's PM (by pmnum then description): none / one / several. */
+  getFormsForWo(pmnum: string | undefined, description: string | undefined): Observable<MaximoFormTemplate[]> {
     let params = new HttpParams();
     if (pmnum) params = params.set('pmnum', pmnum);
     if (description) params = params.set('description', description);
-    return this.http.get<{ responseData: MaximoFormTemplate }>(`${this.base}/forms/for-wo`, { params }).pipe(
+    return this.http.get<{ responseData: MaximoFormTemplate[] }>(`${this.base}/forms/for-wo`, { params }).pipe(
       timeout(30000),
-      map(r => r.responseData ?? null)
+      map(r => r.responseData ?? [])
     );
   }
 

@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { PjmStatus, PjmDaAward, ElectronService } from '../../../services/electron.service';
+import { PjmStatus, PjmUnitEvolution, PjmUnitStep, PjmDaAward, ElectronService } from '../../../services/electron.service';
 
 type SizeTier = 'compact' | 'standard' | 'large';
 
@@ -65,12 +65,20 @@ type SizeTier = 'compact' | 'standard' | 'large';
           <div class="pjm-evo-row" *ngIf="pjmStatus?.unit1Evolution">
             <span class="pjm-evo-dot" [class]="pjmStatus!.unit1Evolution!.status"></span>
             <span class="pjm-evo-label">U1</span>
-            <span class="pjm-evo-msg">{{ pjmStatus!.unit1Evolution!.message }}</span>
+            <ng-container *ngIf="evoSteps(pjmStatus!.unit1Evolution).length; else u1Msg">
+              <span class="pjm-evo-step" *ngFor="let s of evoSteps(pjmStatus!.unit1Evolution)"
+                    [class.agc]="s.type === 'AGC'" [class.offline]="s.type === 'OFFLINE'">{{ s.type }} {{ s.time }}</span>
+            </ng-container>
+            <ng-template #u1Msg><span class="pjm-evo-msg">{{ pjmStatus!.unit1Evolution!.message }}</span></ng-template>
           </div>
           <div class="pjm-evo-row" *ngIf="pjmStatus?.unit2Evolution">
             <span class="pjm-evo-dot" [class]="pjmStatus!.unit2Evolution!.status"></span>
             <span class="pjm-evo-label">U2</span>
-            <span class="pjm-evo-msg">{{ pjmStatus!.unit2Evolution!.message }}</span>
+            <ng-container *ngIf="evoSteps(pjmStatus!.unit2Evolution).length; else u2Msg">
+              <span class="pjm-evo-step" *ngFor="let s of evoSteps(pjmStatus!.unit2Evolution)"
+                    [class.agc]="s.type === 'AGC'" [class.offline]="s.type === 'OFFLINE'">{{ s.type }} {{ s.time }}</span>
+            </ng-container>
+            <ng-template #u2Msg><span class="pjm-evo-msg">{{ pjmStatus!.unit2Evolution!.message }}</span></ng-template>
           </div>
           <div class="pjm-snippet muted" *ngIf="!hasData && !pjmPolling">Polling disabled</div>
           <div class="pjm-snippet muted" *ngIf="!hasData && pjmPolling">Loading...</div>
@@ -94,7 +102,11 @@ type SizeTier = 'compact' | 'standard' | 'large';
                 <span class="hero-unit-sub">$/MWh LMP</span>
                 <div class="hero-evo" *ngIf="pjmStatus?.unit1Evolution">
                   <span class="pjm-evo-dot" [class]="pjmStatus!.unit1Evolution!.status"></span>
-                  {{ pjmStatus!.unit1Evolution!.message }}
+                  <ng-container *ngIf="evoSteps(pjmStatus!.unit1Evolution).length; else u1HeroMsg">
+                    <span class="pjm-evo-step" *ngFor="let s of evoSteps(pjmStatus!.unit1Evolution)"
+                          [class.agc]="s.type === 'AGC'" [class.offline]="s.type === 'OFFLINE'">{{ s.type }} {{ s.time }}</span>
+                  </ng-container>
+                  <ng-template #u1HeroMsg>{{ pjmStatus!.unit1Evolution!.message }}</ng-template>
                 </div>
               </div>
             </div>
@@ -109,7 +121,11 @@ type SizeTier = 'compact' | 'standard' | 'large';
                 <span class="hero-unit-sub">$/MWh LMP</span>
                 <div class="hero-evo" *ngIf="pjmStatus?.unit2Evolution">
                   <span class="pjm-evo-dot" [class]="pjmStatus!.unit2Evolution!.status"></span>
-                  {{ pjmStatus!.unit2Evolution!.message }}
+                  <ng-container *ngIf="evoSteps(pjmStatus!.unit2Evolution).length; else u2HeroMsg">
+                    <span class="pjm-evo-step" *ngFor="let s of evoSteps(pjmStatus!.unit2Evolution)"
+                          [class.agc]="s.type === 'AGC'" [class.offline]="s.type === 'OFFLINE'">{{ s.type }} {{ s.time }}</span>
+                  </ng-container>
+                  <ng-template #u2HeroMsg>{{ pjmStatus!.unit2Evolution!.message }}</ng-template>
                 </div>
               </div>
             </div>
@@ -215,13 +231,16 @@ type SizeTier = 'compact' | 'standard' | 'large';
     .pjm-unit-label { font-size: 11px; color: var(--text-muted); font-weight: 600; min-width: 20px; }
     .pjm-price { font-size: 16px; font-weight: 700; }
     .pjm-unit { font-size: 11px; color: var(--text-muted); }
-    .pjm-evo-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; }
+    .pjm-evo-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; flex-wrap: wrap; }
     .pjm-evo-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
     .pjm-evo-dot.online { background-color: var(--accent-success); }
     .pjm-evo-dot.offline { background-color: var(--accent-error); }
     .pjm-evo-dot.unknown { background-color: var(--text-muted); }
     .pjm-evo-label { font-weight: 600; color: var(--text-muted); min-width: 20px; }
     .pjm-evo-msg { color: var(--text-secondary); }
+    .pjm-evo-step { color: var(--text-secondary); white-space: nowrap; padding: 0 4px; border-radius: 3px; background: var(--bg-tertiary, rgba(255,255,255,0.05)); }
+    .pjm-evo-step.agc { color: var(--accent-success); }
+    .pjm-evo-step.offline { color: var(--accent-error); }
 
     /* Large — hero */
     .hero-row { display: flex; gap: 20px; flex-wrap: wrap; }
@@ -238,7 +257,7 @@ type SizeTier = 'compact' | 'standard' | 'large';
     .hero-detail { display: flex; flex-direction: column; }
     .hero-unit-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
     .hero-unit-sub { font-size: 10px; color: var(--text-muted); }
-    .hero-evo { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+    .hero-evo { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-secondary); margin-top: 2px; flex-wrap: wrap; }
 
     /* Breakdown chips */
     .breakdown-chips { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -309,6 +328,9 @@ export class PjmWidgetComponent implements OnInit {
 
   get isVertical(): boolean { return this.cols === 1 && this.rows >= 2; }
   get hasData(): boolean { return this.pjmStatus?.unit1?.status === 'available' || this.pjmStatus?.unit2?.status === 'available'; }
+
+  /** All scheduled transitions for a unit (empty when the evolution only has a terminal message). */
+  evoSteps(evo?: PjmUnitEvolution | null): PjmUnitStep[] { return evo?.steps ?? []; }
 
   get daRows(): { he: number; u1mw: number; u1lmp: number; u2mw: number; u2lmp: number }[] {
     if (!this.latestDa) return [];

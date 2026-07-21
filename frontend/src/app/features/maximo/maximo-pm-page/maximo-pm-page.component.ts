@@ -168,14 +168,60 @@ export class MaximoPmPageComponent implements OnInit {
     finally { this.loading.set(false); }
   }
 
-  /** Assign (or clear, when formKey is '') a completion form to a recurring PM; persists immediately. */
-  async assignForm(pm: RecurringPm, formKey: string) {
-    const key = formKey || null;
-    if ((pm.formKey ?? null) === key) return;
+  /** The forms currently assigned to a PM (falls back to the legacy single formKey). */
+  pmFormKeys(pm: RecurringPm): string[] {
+    return pm.formKeys ?? (pm.formKey ? [pm.formKey] : []);
+  }
+
+  /** Assign one or more completion forms to a recurring PM (empty clears); persists immediately. The operator
+   *  picks one of these when completing a WO. */
+  async assignForms(pm: RecurringPm, formKeys: string[]) {
+    const next = (formKeys ?? []).filter(k => !!k);
+    const cur = this.pmFormKeys(pm);
+    if (cur.length === next.length && cur.every(k => next.includes(k))) return;
     try {
-      const updated = await firstValueFrom(this.api.assignForm(pm.id, key));
+      const updated = await firstValueFrom(this.api.assignForms(pm.id, next));
       this.catalog.update(list => list.map(r => r.id === pm.id ? updated : r));
     } catch (e: any) { this.error.set(this.msg(e)); }
+  }
+
+  // ── Form-assignment checklist dropdown ──────────────────────────────────
+  /** Which PM's form dropdown is open (only one at a time). */
+  formMenuOpenId = signal<number | null>(null);
+  /** Fixed-position coords for the open panel (from the trigger's rect) so the scroll container can't clip it.
+   *  Anchors by top (opens down) or bottom (flips up when there's more room above). */
+  formMenuPos = signal<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
+
+  toggleFormMenu(pm: RecurringPm, ev: MouseEvent): void {
+    if (this.formMenuOpenId() === pm.id) { this.closeFormMenu(); return; }
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const spaceBelow = window.innerHeight - r.bottom;
+    const openUp = spaceBelow < 260 && r.top > spaceBelow;   // flip up only when it genuinely fits better
+    this.formMenuPos.set(openUp
+      ? { bottom: window.innerHeight - r.top + 2, left: r.left, width: r.width }
+      : { top: r.bottom + 2, left: r.left, width: r.width });
+    this.formMenuOpenId.set(pm.id);
+  }
+  closeFormMenu(): void { this.formMenuOpenId.set(null); this.formMenuPos.set(null); }
+  /** The PM whose form dropdown is open (looked up from the full catalog by id). */
+  openFormPm = computed(() => {
+    const id = this.formMenuOpenId();
+    return id == null ? null : (this.catalog().find(p => p.id === id) ?? null);
+  });
+
+  isFormAssigned(pm: RecurringPm, key: string): boolean { return this.pmFormKeys(pm).includes(key); }
+
+  toggleForm(pm: RecurringPm, key: string, checked: boolean): void {
+    const cur = this.pmFormKeys(pm);
+    const next = checked ? [...cur, key] : cur.filter(k => k !== key);
+    this.assignForms(pm, next);
+  }
+
+  /** Collapsed-trigger label: the selected form names, or a placeholder when none. */
+  formSummary(pm: RecurringPm): string {
+    const keys = this.pmFormKeys(pm);
+    if (keys.length === 0) return '— none —';
+    return keys.map(k => this.formTemplates().find(t => t.formKey === k)?.formName ?? k).join(', ');
   }
 
   async refreshCatalog() {

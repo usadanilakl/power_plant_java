@@ -28,6 +28,15 @@
   border: 1px solid var(--border-color);
 }
 
+/* Outer wrapper reserves the SCALED layout box so `transform: scale` on the
+   inner .preview-frame doesn't push the modal controls off-screen. Its own
+   width/height are the post-scale dimensions (in inches) — bound to CSS via
+   [style.width.in]. The inner frame is drawn at true inches then scaled. */
+.preview-shrink {
+  overflow: hidden;
+  display: block;
+}
+
 .preview-frame {
   background: white;
   color: black;
@@ -36,22 +45,52 @@
   overflow: hidden;
 }
 
-.preview-frame .label {
+.preview-frame .sheet {
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
   box-sizing: border-box;
   font-family: Arial, Helvetica, sans-serif;
   color: #000;
   background: #fff;
+}
+.preview-frame .sheet.stacked { flex-direction: column; }
+.preview-frame .sheet.inline { flex-direction: row; }
+
+.preview-frame .label {
+  display: flex;
+  box-sizing: border-box;
   overflow: hidden;
+  background: #fff;
+  color: #000;
+  flex: 0 0 auto;
+}
+.preview-frame .sheet.stacked .label:not(:last-child) { border-bottom: 1px dashed #bbb; }
+.preview-frame .sheet.inline .label:not(:last-child) { border-right: 1px dashed #bbb; }
+
+.preview-frame .half {
+  flex: 1 1 50%;
+  height: 100%;
+  padding: 0.04in;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.03in;
+  overflow: hidden;
+}
+.preview-frame .half.left {
+  align-items: flex-start;
+  text-align: left;
+  border-right: 1px dashed #999; /* visible fold hint in preview */
+}
+.preview-frame .half.right {
+  align-items: flex-end;
+  text-align: right;
 }
 
 .preview-frame .qr {
   /* width/height applied inline via [style.width.in] / [style.height.in]
      so the preview matches the same qrEdge sizing the service uses at print. */
-  margin-right: 0.06in;
   flex: 0 0 auto;
 }
 .preview-frame .qr :global(svg),
@@ -61,15 +100,8 @@
   display: block;
 }
 
-.preview-frame .text {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-}
-.preview-frame .line1 { font-weight: 700; line-height: 1.1; word-break: break-word; }
-.preview-frame .line2 { font-weight: 400; line-height: 1.15; margin-top: 0.03in; word-break: break-word; }
+.preview-frame .serial { font-weight: 700; line-height: 1.1; word-break: break-word; }
+.preview-frame .name { font-weight: 400; line-height: 1.15; word-break: break-word; }
 
 .preview-caption {
   font-size: 0.75rem;
@@ -101,6 +133,36 @@
   width: 100%;
   accent-color: var(--accent-color);
 }
+
+.arrangement-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.segmented {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.segmented button {
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+  border: 0;
+  background: var(--card-background);
+  color: var(--primary-text);
+  font-family: inherit; font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background-color 0.15s ease;
+}
+.segmented button + button { border-left: 1px solid var(--border-color); }
+.segmented button.active {
+  background: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+}
+.segmented button:hover:not(.active) { background: var(--hover-background); }
 
 .qr-toggle {
   flex-direction: row !important;

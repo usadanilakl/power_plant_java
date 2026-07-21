@@ -105,6 +105,12 @@ export class EquipmentUnifiedDialogComponent {
    * shape stays single-item. Default false = original single-select behavior.
    */
   multiSelect = input<boolean>(false);
+  /**
+   * The LOTO point this picker was opened for (e.g. the point whose zero-energy equipment is being
+   * chosen). Its referenced P&IDs are offered as quick-access chips so the user can jump straight
+   * to the drawings the point already lives on instead of hunting through the file menu.
+   */
+  contextLotoPointId = input<number | undefined>();
 
   // Outputs
   equipmentAcquired = output<EquipmentDto>();
@@ -147,6 +153,11 @@ export class EquipmentUnifiedDialogComponent {
   /** All files related to the picked LOTO point (one per associated equipment). */
   relatedFiles = signal<FileDto[]>([]);
 
+  /** Quick-access P&IDs for the context LOTO point (the one this picker was opened for). */
+  contextFiles = signal<FileDto[]>([]);
+  /** File id currently loaded from a context quick-access chip (for active highlight). */
+  activeContextFileId = signal<number | null>(null);
+
   /** Index of the currently-shown related file in `relatedFiles`. */
   activeRelatedFileIndex = signal<number>(0);
 
@@ -188,6 +199,29 @@ export class EquipmentUnifiedDialogComponent {
   });
 
   constructor() {
+    // Load the context point's referenced P&IDs for the quick-access bar (fires when the
+    // contextLotoPointId input is set — i.e. when the dialog opens for a specific point).
+    effect(() => {
+      const pointId = this.contextLotoPointId();
+      if (pointId == null) {
+        this.contextFiles.set([]);
+        return;
+      }
+      this.lotoPointApiService
+        .getRelatedFiles(pointId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            const files = res?.responseData ?? [];
+            // De-dupe by file id (a point maps to many equipment on the same file).
+            this.contextFiles.set(files.filter(
+              (f, i, arr) => f?.id != null && arr.findIndex((x) => x.id === f.id) === i
+            ));
+          },
+          error: () => this.contextFiles.set([]),
+        });
+    });
+
     /**
      * After picking a LOTO point and loading one of its related files, auto-select
      * the equipment from that point that lives on the loaded file.
@@ -362,6 +396,7 @@ export class EquipmentUnifiedDialogComponent {
 
   onFileSelect(fileItem: NestedItem) {
     this.fileService.selectFileFromNestedItem(fileItem);
+    this.activeContextFileId.set(null); // browsing the menu → drop the quick-access chip highlight
     this.clearSelection();
   }
 
@@ -462,6 +497,17 @@ export class EquipmentUnifiedDialogComponent {
     if (!file?.id) return;
     this.activeRelatedFileIndex.set(index);
     this.pendingEquipmentIdToSelect.set(null); // let the effect fall back to "any on this file"
+    this.fileService.selectFileById(file.id);
+  }
+
+  /**
+   * Quick-access: load one of the context LOTO point's referenced P&IDs into the viewer so the
+   * user can pick equipment on it directly, instead of hunting through the file menu.
+   */
+  selectContextFile(file: FileDto): void {
+    if (!file?.id) return;
+    this.searchMode.set('files'); // ensure the file viewer (not the LOTO-point table) is active
+    this.activeContextFileId.set(file.id);
     this.fileService.selectFileById(file.id);
   }
 

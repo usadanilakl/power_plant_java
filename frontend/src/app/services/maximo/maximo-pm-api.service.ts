@@ -38,10 +38,10 @@ export class MaximoPmApiService {
       .pipe(map(r => r.responseData));
   }
 
-  /** Assign (or clear, when formKey is null/'') the electronic completion form for a recurring PM. */
-  assignForm(id: number, formKey: string | null): Observable<RecurringPm> {
+  /** Assign the electronic completion form(s) a PM offers (empty array clears; the operator picks one at completion). */
+  assignForms(id: number, formKeys: string[]): Observable<RecurringPm> {
     return this.http.put<SpringApiResponse<RecurringPm>>(
-      `${this.base}/catalog/${id}/form`, { formKey: formKey ?? '' })
+      `${this.base}/catalog/${id}/form`, { formKeys })
       .pipe(map(r => r.responseData));
   }
 

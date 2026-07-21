@@ -7,15 +7,24 @@ export interface NativePrintData {
   qrData?: string;
 }
 
+export type LabelArrangement = 'stacked' | 'inline';
+
 export interface LabelSize {
-  /** Width in inches */
+  /** Width of one mirrored label in inches (each label is a fold-in-half strip) */
   widthIn: number;
-  /** Height in inches */
+  /** Height of one mirrored label in inches */
   heightIn: number;
   /** Font size for line 1 in points; line 2 is 2pt smaller */
   fontPt: number;
   /** Render QR code (requires qrData on the label) */
   withQr: boolean;
+  /**
+   * How multiple labels lay out when printing more than one at once:
+   *  - 'stacked'  → labels stack top-to-bottom (tall page, roll unrolls vertically)
+   *  - 'inline'   → labels sit side-by-side (wide page, roll unrolls horizontally)
+   * Irrelevant for single-item prints (falls through to the same layout code).
+   */
+  arrangement: LabelArrangement;
 }
 
 const STORAGE_KEY = 'pwa_native_print_size';
@@ -25,6 +34,7 @@ export const DEFAULT_SIZE: LabelSize = {
   heightIn: 1.0,
   fontPt: 12,
   withQr: true,
+  arrangement: 'stacked',
 };
 
 /**
@@ -46,7 +56,13 @@ export class NativePrintService {
 
   // Modal state
   isVisible = signal(false);
+  // Single-item state (used by the existing per-row Print button). When set,
+  // dataList is empty and the modal renders one label.
   data = signal<NativePrintData | null>(null);
+  // Bulk-item state. When non-empty, the modal renders N labels arranged per
+  // size().arrangement and prints them all in one print job. `data` is null
+  // in this mode so the two mutually-exclude cleanly.
+  dataList = signal<NativePrintData[]>([]);
   size = signal<LabelSize>(this.loadStoredSize());
 
   // Monotonic attempt counter — used to abort an in-flight doPrint when the
@@ -57,7 +73,25 @@ export class NativePrintService {
 
   openWithData(d: NativePrintData): void {
     this.data.set(d);
+    this.dataList.set([]);
     this.isVisible.set(true);
+  }
+
+  /**
+   * Open the modal for BULK print: caller passes N label-payloads and the
+   * modal arranges them per size().arrangement (stacked or in-line). Empty
+   * lists open in single-mode with a null placeholder (defensive; the caller
+   * should not do this).
+   */
+  openWithList(list: NativePrintData[]): void {
+    if (!list?.length) { this.data.set(null); this.dataList.set([]); this.isVisible.set(true); return; }
+    this.data.set(null);
+    this.dataList.set([...list]);
+    this.isVisible.set(true);
+  }
+
+  isBulkMode(): boolean {
+    return this.dataList().length > 0;
   }
 
   close(): void {
@@ -67,6 +101,7 @@ export class NativePrintService {
     this.flushPendingPersist();
     this.isVisible.set(false);
     this.data.set(null);
+    this.dataList.set([]);
   }
 
   updateSize(patch: Partial<LabelSize>): void {
@@ -99,37 +134,41 @@ export class NativePrintService {
    * cancelled.
    */
   async doPrint(): Promise<void> {
-    const d = this.data();
-    if (!d) return;
+    // Unify single- and bulk-mode into a single list<->one code path. Single
+    // mode is treated as a bulk of length 1 so the page layout math applies
+    // consistently.
+    const items = this.isBulkMode() ? this.dataList() : (this.data() ? [this.data()!] : []);
+    if (items.length === 0) return;
     const size = this.size();
     const attemptId = ++this.printAttemptSeq;
     this.currentAttemptId = attemptId;
 
-    // Refuse to send a blank label. buildLabelHtml would produce a
-    // stylistically-valid but empty label if line1/line2/qrSvg are all
-    // empty — a wasted sticker. The Print button is also disabled in the UI
-    // for this case; this is defense-in-depth against programmatic callers.
-    const willHaveQr = size.withQr && !!d.qrData;
-    if (!d.line1 && !d.line2 && !willHaveQr) {
-      throw new Error('Nothing to print — provide line1, line2, or a QR code.');
+    // Refuse to send a blank label. Any item with nothing to render (no
+    // text and no QR) is skipped rather than printing a blank sticker.
+    const printable = items.filter(d => {
+      const willHaveQr = size.withQr && !!d.qrData;
+      return !!(d.line1 || d.line2 || willHaveQr);
+    });
+    if (printable.length === 0) {
+      throw new Error('Nothing to print — every selected item is blank.');
     }
 
-    // Generate the QR as an SVG string so it scales cleanly at any @page size.
-    // Falls back to text-only if qrData is missing OR SVG generation fails.
-    // margin: 4 per ISO/IEC 18004 quiet-zone spec — industrial scanners
-    // (Zebra/Honeywell) can refuse to decode QR codes with smaller quiet
-    // zones, especially at the small end of the label-size slider.
-    let qrSvg = '';
-    if (willHaveQr) {
+    // Generate QR SVGs for every printable item in parallel. Each one is
+    // small (~4KB) so N parallel toSvgString calls are fine even for 100+
+    // items — the qrcode lib is synchronous-in-microtask internally.
+    // margin: 4 per ISO/IEC 18004 quiet-zone spec.
+    const qrSvgs = await Promise.all(printable.map(async d => {
+      if (!(size.withQr && d.qrData)) return '';
       try {
-        qrSvg = await this.qrCodeService.toSvgString(d.qrData!, { margin: 4 });
+        return await this.qrCodeService.toSvgString(d.qrData, { margin: 4 });
       } catch (e) {
-        console.warn('[NativePrint] QR SVG generation failed, printing without QR:', e);
+        console.warn('[NativePrint] QR SVG generation failed for one item — printing without QR:', e);
+        return '';
       }
-    }
+    }));
     if (this.currentAttemptId !== attemptId) return; // superseded / closed
 
-    const html = this.buildLabelHtml(d.line1, d.line2, qrSvg, size);
+    const html = this.buildPageHtml(printable, qrSvgs, size);
 
     const iframe = document.createElement('iframe');
     iframe.setAttribute('aria-hidden', 'true');
@@ -179,56 +218,98 @@ export class NativePrintService {
     }
   }
 
-  private buildLabelHtml(line1: string, line2: string, qrSvg: string, size: LabelSize): string {
+  /**
+   * Build the full print HTML for a list of labels. `@page size` and the
+   * container flex-direction depend on `size.arrangement`:
+   *   - stacked (column): total = w × (h × N) — labels go top-to-bottom
+   *   - inline (row):     total = (w × N) × h — labels go left-to-right
+   * Single-item calls flow through the same path with N=1, so N=1 output
+   * matches the pre-bulk behavior.
+   */
+  private buildPageHtml(items: NativePrintData[], qrSvgs: string[], size: LabelSize): string {
     const w = size.widthIn;
     const h = size.heightIn;
     const fs1 = size.fontPt;
     const fs2 = Math.max(6, size.fontPt - 2);
-    const line1Esc = escapeHtml(line1 || '');
-    const line2Esc = escapeHtml(line2 || '');
-    const hasQr = !!qrSvg;
-    // Cap the QR edge to the SHORTER label side minus padding/gap and leave
-    // at least 0.2in for text. Without this cap, a portrait label
-    // (height > width) would compute a QR wider than the whole label and
-    // squeeze .text to zero width — printed output shows a clipped QR and
-    // no text. Also cap at 60% of width so wide-short labels don't devote
-    // the whole label to the QR.
-    const availH = Math.max(0, h - 0.08);
-    const availW = Math.max(0, w - 0.08 - 0.06);
-    const qrEdge = Math.min(availH, Math.max(0.1, availW - 0.2), w * 0.6);
+    const n = items.length;
+    const stacked = size.arrangement === 'stacked';
+    const pageW = stacked ? w : w * n;
+    const pageH = stacked ? h * n : h;
+
+    // Compute qrEdge (per-label) — same math as before, kept in sync with the
+    // modal's qrEdgeIn computed. Each label is w × h regardless of arrangement.
+    const halfW = w / 2;
+    const halfPad = 0.04;
+    const availHalfW = Math.max(0.1, halfW - 2 * halfPad);
+    const availH = Math.max(0.1, h - 2 * halfPad);
+    const textReserve = ((fs1 + fs2) * 1.2) / 72;
+    const qrEdge = Math.min(availHalfW, Math.max(0.1, availH - textReserve));
+
+    const blocks = items.map((d, i) => this.buildLabelBlock(d, qrSvgs[i] || '')).join('');
+
     return `<!doctype html>
-<html><head><meta charset="utf-8"><title>Label</title>
+<html><head><meta charset="utf-8"><title>Labels</title>
 <style>
-  @page { size: ${w}in ${h}in; margin: 0; }
+  @page { size: ${pageW}in ${pageH}in; margin: 0; }
   html, body { margin: 0; padding: 0; }
-  .label {
-    width: ${w}in;
-    height: ${h}in;
+  .sheet {
+    width: ${pageW}in;
+    height: ${pageH}in;
     display: flex;
-    align-items: center;
-    padding: 0.04in;
+    flex-direction: ${stacked ? 'column' : 'row'};
     box-sizing: border-box;
     font-family: Arial, Helvetica, sans-serif;
     color: #000;
     background: #fff;
+  }
+  .label {
+    width: ${w}in;
+    height: ${h}in;
+    display: flex;
+    box-sizing: border-box;
+    overflow: hidden;
+    /* Faint boundary between labels on a shared strip — visible in the
+       modal preview and mostly invisible on cheap printers. Skip on the
+       last label to avoid a stray edge line. */
+    ${n > 1 ? (stacked
+      ? `border-bottom: 0.005in dashed #bbb;`
+      : `border-right: 0.005in dashed #bbb;`
+    ) : ''}
+  }
+  .label:last-child { ${stacked ? 'border-bottom: 0;' : 'border-right: 0;'} }
+  .half {
+    flex: 1 1 50%;
+    height: 100%;
+    padding: ${halfPad}in;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.03in;
     overflow: hidden;
   }
-  .qr { width: ${qrEdge}in; height: ${qrEdge}in; margin-right: 0.06in; flex: 0 0 auto; }
+  .half.left { align-items: flex-start; text-align: left; border-right: 0.005in dashed #888; }
+  .half.right { align-items: flex-end; text-align: right; }
+  .qr { width: ${qrEdge}in; height: ${qrEdge}in; flex: 0 0 auto; }
   .qr svg { width: 100%; height: 100%; display: block; }
-  .text { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
-  .line1 { font-size: ${fs1}pt; font-weight: 700; line-height: 1.1; word-break: break-word; }
-  .line2 { font-size: ${fs2}pt; font-weight: 400; line-height: 1.15; word-break: break-word; margin-top: 0.03in; }
+  .serial { font-size: ${fs1}pt; font-weight: 700; line-height: 1.1; word-break: break-word; }
+  .name { font-size: ${fs2}pt; font-weight: 400; line-height: 1.15; word-break: break-word; }
 </style>
 </head>
-<body>
-  <div class="label">
-    ${hasQr ? `<div class="qr">${qrSvg}</div>` : ''}
-    <div class="text">
-      <div class="line1">${line1Esc}</div>
-      ${line2Esc ? `<div class="line2">${line2Esc}</div>` : ''}
-    </div>
-  </div>
-</body></html>`;
+<body><div class="sheet">${blocks}</div></body></html>`;
+  }
+
+  /** Single fold-in-half label. Two halves; right half mirrors position, not
+   *  content (QR must stay unflipped so scanners decode it). */
+  private buildLabelBlock(d: NativePrintData, qrSvg: string): string {
+    const line1Esc = escapeHtml(d.line1 || '');
+    const line2Esc = escapeHtml(d.line2 || '');
+    const hasQr = !!qrSvg;
+    const halfHtml = `
+      ${hasQr ? `<div class="qr">${qrSvg}</div>` : ''}
+      ${line1Esc ? `<div class="serial">${line1Esc}</div>` : ''}
+      ${line2Esc ? `<div class="name">${line2Esc}</div>` : ''}
+    `;
+    return `<div class="label"><div class="half left">${halfHtml}</div><div class="half right">${halfHtml}</div></div>`;
   }
 
   private loadStoredSize(): LabelSize {
@@ -241,6 +322,7 @@ export class NativePrintService {
         heightIn: clamp(parsed.heightIn, 0.25, 6, DEFAULT_SIZE.heightIn),
         fontPt: clamp(parsed.fontPt, 6, 48, DEFAULT_SIZE.fontPt),
         withQr: parsed.withQr !== false,
+        arrangement: parsed.arrangement === 'inline' ? 'inline' : 'stacked',
       };
     } catch {
       return { ...DEFAULT_SIZE };

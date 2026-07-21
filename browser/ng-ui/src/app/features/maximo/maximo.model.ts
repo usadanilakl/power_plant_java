@@ -82,10 +82,11 @@ export interface MaximoOverview {
 
 // ── Offline PM grab + completion draft ─────────────────────────────────────
 
-/** A work order grabbed for offline work: the WO + its completion form, cached locally. */
+/** A work order grabbed for offline work: the WO + all its assigned completion forms, cached locally. */
 export interface MaximoGrab {
   wo: MaximoWorkOrder;
-  formTemplate: MaximoFormTemplate | null;
+  formTemplates: MaximoFormTemplate[];        // all forms assigned to this WO's PM (operator picks one)
+  formTemplate?: MaximoFormTemplate | null;   // legacy single-form field (older cached grabs) — read-compat only
   grabbedAt: number;
 }
 

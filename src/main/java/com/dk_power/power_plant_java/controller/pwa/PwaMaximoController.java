@@ -368,19 +368,18 @@ public class PwaMaximoController {
 
     // ── PM completion forms (dynamic, formKey-assigned) ────────────────────────
 
-    /** The completion form assigned to a WO's PM (by pmnum then description), or null if the PM has none. */
+    /** The completion form(s) assigned to a WO's PM (by pmnum then description): none / one / several. */
     @GetMapping("/forms/for-wo")
-    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> completionFormForWo(
+    public ResponseEntity<NgApiResponse<List<MaximoFormTemplateDto>>> completionFormsForWo(
             @RequestParam(value = "pmnum", required = false) String pmnum,
             @RequestParam(value = "description", required = false) String description) {
         try {
-            RecurringPm pm = recurringPms.findForWorkOrder(pmnum, description).orElse(null);
-            String key = (pm == null) ? null : pm.getFormKey();
-            MaximoFormTemplateDto t = (key == null || key.isBlank()) ? null : forms.getTemplateByFormKey(key);
-            return ResponseEntity.ok(new NgApiResponse<>(t, "ok"));
+            List<String> keys = recurringPms.findForWorkOrder(pmnum, description)
+                    .map(RecurringPm::getFormKeyList).orElse(List.of());
+            return ResponseEntity.ok(new NgApiResponse<>(forms.getTemplatesByFormKeys(keys), "ok"));
         } catch (Exception e) {
             log.warn("[PWA-Maximo] form for-wo failed: {}", e.getMessage());
-            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
         }
     }
 

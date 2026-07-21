@@ -11,6 +11,9 @@ import org.hibernate.annotations.Where;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A recurring Preventive-Maintenance item, identified by its Maximo PM-master id ({@code pmnum},
@@ -105,10 +108,36 @@ public class RecurringPm extends BaseAuditEntity {
     private Boolean manuallyAdded = Boolean.FALSE;
 
     /**
-     * Optional electronic completion form ({@code MaximoFormTemplate.formKey}) assigned to this PM. When set,
-     * every active work order for this PM shows the form on its "Complete" tab and completing the WO means
-     * filling it out. Null = no form (manual labor/log completion). Preserved across catalog refreshes.
+     * LEGACY single-form assignment — kept in sync as the FIRST of {@link #formKeys} so any old reader still
+     * sees a valid key. New code should use {@link #getFormKeyList()} / {@link #setFormKeyList(List)}.
      */
     @Column(name = "form_key", length = 128)
     private String formKey;
+
+    /**
+     * The electronic completion form(s) assigned to this PM, as a comma-separated list of
+     * {@code MaximoFormTemplate.formKey}. When a WO is completed the operator picks one of these (or, with a
+     * single assignment, it's used automatically); none = manual labor/log completion. Preserved across
+     * catalog refreshes. Source of truth for multi-form; {@link #formKey} mirrors the first entry.
+     */
+    @Column(name = "form_keys", length = 1024)
+    private String formKeys;
+
+    /** The assigned form keys, order-preserving and de-duplicated; falls back to the legacy single {@link #formKey}. */
+    public List<String> getFormKeyList() {
+        if (formKeys != null && !formKeys.isBlank()) {
+            return Arrays.stream(formKeys.split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).distinct().collect(Collectors.toList());
+        }
+        if (formKey != null && !formKey.isBlank()) return List.of(formKey.trim());
+        return List.of();
+    }
+
+    /** Set the assigned forms (source of truth = CSV {@link #formKeys}); mirrors the first onto legacy {@link #formKey}. */
+    public void setFormKeyList(List<String> keys) {
+        List<String> clean = (keys == null) ? List.of()
+                : keys.stream().filter(k -> k != null && !k.isBlank()).map(String::trim).distinct().collect(Collectors.toList());
+        this.formKeys = clean.isEmpty() ? null : String.join(",", clean);
+        this.formKey = clean.isEmpty() ? null : clean.get(0);
+    }
 }

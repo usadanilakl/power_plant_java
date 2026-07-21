@@ -37,6 +37,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(chemLabInventory()));
         out.add(formService.saveTemplate(dieselFirePumpTest()));
         out.add(formService.saveTemplate(electricFirePumpTest()));
+        out.add(formService.saveTemplate(pivAndDelugeValveInspection()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -472,6 +473,87 @@ public class MaximoFormSeeder {
                         + "current. (7) Monitor slight water flow through the relief valve. (8) Record the operational "
                         + "checks. (9) Verify the fire pump shuts down automatically after 10 minutes.")
                 .matchDescriptionContains("electric fire pump")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * From procedures/pm/piv-and-deluge-valve-inspection.xlsx — "PIV &amp; Deluge Valve Inspection" (monthly).
+     * Two checklists: (1) the 13 Post Indicator Valves — spin each freely (a couple turns closed, then back
+     * open), verify no leaks and correct position; (2) the deluge/isolation valves — verify each is in its
+     * locked-open position. Every check is required. Any 'Not OK' is noted here and a Service Request raised.
+     */
+    private MaximoFormTemplateDto pivAndDelugeValveInspection() {
+        Fields f = new Fields();
+
+        // {tag + location} — the "Checked OK" column becomes a required radio, plus a per-PIV comments field.
+        String[] pivs = {
+                "FPS-664 (West Admin door)",
+                "FPS-648 (West Admin door)",
+                "FPS-610 (U2 East Turbine bldg. door)",
+                "FPS-665 (West Fire Pump House)",
+                "FPS-662 (West Fire Pump House)",
+                "FPS-660 (West Fire Pump House)",
+                "FPS-611 (Warehouse #2)",
+                "FPS-613 (Warehouse #2)",
+                "FPS-828 (North of Aux Boiler Bldg.)",
+                "FPS-661 (South of Gas Compressor)",
+                "FPS-663 (West U1 filter house)",
+                "FPS-602 (U1 East Turbine Bldg. door)",
+                "FPS-659 (U2 North of ACC)",
+        };
+        f.section("Post Indicator Valves — spin freely (a couple turns closed, then back open), no leaks, correct position");
+        for (int i = 0; i < pivs.length; i++) {
+            int n = i + 1;
+            f.radio("piv" + n + "_ok", n + ". " + pivs[i], true, "OK", "Not OK")
+                    .text("piv" + n + "_cmt", n + ". Comments / repairs");
+        }
+
+        // {sheet item #, group, valve/location detail} — each verified in its LOCKED OPEN position.
+        String[][] deluge = {
+                {"14", "Diesel Fire Pump", "Tank Supply 00-VFPS635"},
+                {"15", "Diesel Fire Pump", "Suction ISO 00-VFPS803"},
+                {"16", "Diesel Fire Pump", "Discharge ISO 00-VFPS804"},
+                {"17", "Fire Pump Recirc", "HDR back to Tank 00-VFPS656"},
+                {"18", "Electric Fire Pump", "Tank Supply 00-VFPS680"},
+                {"19", "Electric Fire Pump", "Suction ISO 00-VFPS801"},
+                {"20", "Electric Fire Pump", "Discharge ISO 00-VFPS802"},
+                {"21", "Jockey Pump", "Suction ISO 00-VFPS809"},
+                {"22", "Jockey Pump", "Discharge ISO 00-VFPS810"},
+                {"23", "Aux Boiler Deluge ISO", "ISO 00-IDV-FPS828"},
+                {"24", "Admin Building Zone #1", "Manual ISO"},
+                {"25", "Admin Building Zone #2", "Manual ISO"},
+                {"26", "Unit 1 Turbine Building Zone 1", "Turbine building ground 00-VFPS800"},
+                {"27", "Unit 1 Turbine Building Zone 2", "ST/GT lube oil tank 00-VFPS801"},
+                {"28", "Unit 1 Turbine Building Zone 3", "ST/Gen coupling 00-VPFS-802"},
+                {"29", "Unit 2 Turbine Building Zone 1", "Turbine building ground 00-VFPS814"},
+                {"30", "Unit 2 Turbine Building Zone 2", "ST/GT lube oil tank 00-VFPS815"},
+                {"31", "Unit 2 Turbine Building Zone 3", "ST/Gen coupling 00-VPFS-816"},
+                {"32", "Warehouse #2", "Fire panel outside Warehouse #2 (key in box on East wall inside)"},
+                {"33", "Warehouse #3", "Fire panel outside Warehouse #3 (key in box on East wall inside)"},
+        };
+        f.section("Deluge & isolation valves — verify each is LOCKED OPEN");
+        for (String[] d : deluge) {
+            f.radio("del" + d[0] + "_ok", d[0] + ". " + d[1] + " — " + d[2] + " (locked open)", true, "OK", "Not OK");
+        }
+
+        f.section("Sign-off")
+                .textarea("findings", "Findings — describe any 'Not OK' (position, leak, or won't spin); leave blank if all good", null)
+                .checkbox("sr_submitted", "Service Request submitted for any repairs needed", false)
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("PIV_DELUGE_VALVE_INSPECTION")
+                .formName("PIV & Deluge Valve Inspection")
+                .description("Monthly inspection to ensure the Post Indicator Valves (PIVs) function and the deluge / "
+                        + "isolation valves are open. For each of the 13 PIVs: spin it freely (a couple turns closed, "
+                        + "then back open), verify it is not leaking and is in the correct position for normal "
+                        + "operation. For each deluge / isolation valve (items 14-33): verify it is in its LOCKED OPEN "
+                        + "position. Every check is required. Note any 'Not OK' and submit a Service Request for the "
+                        + "repair.")
+                .matchDescriptionContains("deluge")
                 .active(true)
                 .fieldsJson(toJson(f.build()))
                 .build();

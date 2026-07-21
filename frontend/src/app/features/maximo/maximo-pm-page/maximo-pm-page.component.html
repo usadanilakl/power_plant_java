@@ -199,12 +199,12 @@
                   </select>
                 </td>
                 <td class="form-cell">
-                  <select [ngModel]="pm.formKey ?? ''" (ngModelChange)="assignForm(pm, $event)"
-                          [class.assigned]="!!pm.formKey"
-                          title="Assign an electronic form — its work orders are then completed by filling it out">
-                    <option value="">— none —</option>
-                    <option *ngFor="let t of formTemplates()" [value]="t.formKey">{{ t.formName }}</option>
-                  </select>
+                  <button type="button" class="form-dd-trigger" [class.assigned]="pmFormKeys(pm).length > 0"
+                          (click)="toggleFormMenu(pm, $event)" [title]="formSummary(pm)">
+                    <span class="form-dd-label">{{ formSummary(pm) }}</span>
+                    <span class="form-dd-caret">▾</span>
+                  </button>
+                  <span class="form-count muted" *ngIf="pmFormKeys(pm).length > 1">operator picks one at completion</span>
                 </td>
                 <td class="row-actions">
                   <button class="link peek-toggle" [class.on]="isPmExpanded(pm.id)" (click)="togglePmHistory(pm)"
@@ -300,6 +300,21 @@
       <!-- WO detail dialog, opened from an Assignments row's WO # -->
       <app-maximo-detail-dialog *ngIf="selectedWo()" [parent]="'wo'" [wo]="selectedWo()"
         (completed)="loadPending()" (closed)="closeWo()"></app-maximo-detail-dialog>
+
+      <!-- Form-assignment checklist dropdown (fixed-positioned so the table's scroll box can't clip it) -->
+      <ng-container *ngIf="openFormPm() as pm">
+        <div class="form-dd-backdrop" (click)="closeFormMenu()"></div>
+        <div class="form-dd-panel"
+             [style.top.px]="formMenuPos()?.top" [style.bottom.px]="formMenuPos()?.bottom"
+             [style.left.px]="formMenuPos()?.left" [style.min-width.px]="formMenuPos()?.width">
+          <label class="form-dd-opt" *ngFor="let t of formTemplates()">
+            <input type="checkbox" [checked]="isFormAssigned(pm, t.formKey)"
+                   (change)="toggleForm(pm, t.formKey, $any($event.target).checked)">
+            <span>{{ t.formName }}</span>
+          </label>
+          <div class="form-dd-empty" *ngIf="formTemplates().length === 0">No forms yet — seed them in the Form Builder.</div>
+        </div>
+      </ng-container>
     </div>
   </ng-container>
 </app-main-layout>

@@ -545,12 +545,16 @@ public class NgMaximoController {
         }
     }
 
-    /** Assign (or clear, when formKey is blank) the electronic completion form for a recurring PM. */
+    /** Assign (or clear, when empty) the electronic completion form(s) for a recurring PM. */
     @PutMapping("/pm/catalog/{id}/form")
     public ResponseEntity<NgApiResponse<RecurringPmDto>> pmAssignForm(
             @PathVariable Long id, @RequestBody FormAssignRequest req) {
         try {
-            return ResponseEntity.ok(new NgApiResponse<>(recurringPms.assignForm(id, req.formKey()), "updated"));
+            // Prefer the multi-form list; fall back to the legacy single formKey for older clients.
+            RecurringPmDto updated = (req.formKeys() != null)
+                    ? recurringPms.assignForms(id, req.formKeys())
+                    : recurringPms.assignForm(id, req.formKey());
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "updated"));
         } catch (Exception e) {
             log.warn("[Maximo] PM assign-form {} failed: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
@@ -605,8 +609,8 @@ public class NgMaximoController {
 
     public record ClassifyRequest(ShiftPreference shift, RecurrenceCadence cadence, Integer dayOfWeek) {}
 
-    /** Body for assigning a completion form to a recurring PM (blank/null clears it). */
-    public record FormAssignRequest(String formKey) {}
+    /** Body for assigning completion form(s) to a recurring PM. {@code formKeys} (empty clears); {@code formKey} is legacy. */
+    public record FormAssignRequest(String formKey, List<String> formKeys) {}
 
     /** Body for manually converting a WO to a recurring task — the fields we already have on the pending row. */
     public record MakeRecurringRequest(String pmnum, String description, String lead, String wonum) {}

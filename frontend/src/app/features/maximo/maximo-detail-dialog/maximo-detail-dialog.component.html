@@ -249,12 +249,13 @@
 
         <ng-container *ngIf="!completeDone() && !resolvingForm()">
           <!-- Assigned electronic form → complete by filling it out (PDF + attach + write-back) -->
-          <ng-container *ngIf="completionForm() as t; else manualComplete">
+          <ng-container *ngIf="completionForm() as t; else noActiveForm">
             <p class="muted">
               This PM is completed with the <strong>{{ t.formName }}</strong> form. Two steps:
               <strong>1)</strong> fill it out and <em>Finalize &amp; Attach</em> (renders a PDF and attaches it to the work order);
               <strong>2)</strong> <em>Complete Work Order</em> to close it in Maximo.
             </p>
+            <button class="link" *ngIf="availableForms().length > 1 && !formFinalized()" (click)="backToFormPicker()">← choose a different form</button>
             <div class="complete-form-wrap">
               <app-smart-form
                 [fields]="formFields()"
@@ -299,6 +300,19 @@
               </p>
             </div>
           </ng-container>
+
+          <!-- No form selected: several assigned → pick one; none assigned → fall through to manual. -->
+          <ng-template #noActiveForm>
+            <ng-container *ngIf="availableForms().length > 1; else manualComplete">
+              <p class="muted">This PM has several completion forms — choose the one you performed:</p>
+              <div class="form-picker">
+                <button class="form-pick" *ngFor="let f of availableForms()" (click)="selectForm(f)">
+                  <span class="fp-name">{{ f.formName }}</span>
+                  <span class="fp-go">›</span>
+                </button>
+              </div>
+            </ng-container>
+          </ng-template>
 
           <!-- No form assigned → manual labor + log completion -->
           <ng-template #manualComplete>

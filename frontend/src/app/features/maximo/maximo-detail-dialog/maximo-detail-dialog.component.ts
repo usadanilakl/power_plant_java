@@ -113,7 +113,9 @@ export class MaximoDetailDialogComponent {
   private profileLoaded = false;
 
   // ── Electronic completion form (assigned to the WO's recurring PM) ────────
-  /** The form assigned to this WO's recurring PM, or null when none — then the manual UI is shown. */
+  /** All forms assigned to this WO's recurring PM. 0 = manual UI; 1 = auto-selected; >1 = the operator picks one. */
+  availableForms = signal<MaximoFormTemplate[]>([]);
+  /** The form currently being filled (auto when only one is assigned), or null when none/awaiting a pick. */
   completionForm = signal<MaximoFormTemplate | null>(null);
   /** Whether we've attempted to resolve the assigned form yet (Complete tab is opened lazily). */
   private formResolved = signal(false);
@@ -283,48 +285,65 @@ export class MaximoDetailDialogComponent {
     if (!this.isWo || !this.wo) return;
     this.resolvingForm.set(true);
     try {
-      const t = await firstValueFrom(
-        this.formApi.completionFormForWo(this.wo.pmnum || undefined, this.wo.description || undefined));
-      this.completionForm.set(t);
-      if (t) {
-        const defs = this.parseFields(t.fieldsJson);
-        this.formDefs.set(defs);
-        this.formFields.set(this.toSmartFields(defs));
-        // Prefill from an existing submission for this WO + form, if any.
-        let values: any = {};
-        this.formSubmission.set(null);
-        const wonum = this.wo.wonum?.trim();
-        if (wonum) {
-          try {
-            const subs = await firstValueFrom(this.formApi.submissionsForWo(wonum));
-            const match = subs.find(s => s.templateFormKey === t.formKey) ?? null;
-            this.formSubmission.set(match);
-            if (match?.valuesJson) values = this.parseValues(match.valuesJson);
-            if (match?.status === 'COMPLETED') this.formFinalized.set(true);
-            // Only collapse the whole tab if the WO itself is already terminal.
-            if (this.isCompletedStatus(this.wo?.status)) this.completeDone.set(true);
-            // Inventory forms carry their settings + target levels forward from the last run (any WO); the
-            // in-stock counts are cleared so they're re-counted. Scoped to inventory forms (have __instock
-            // fields) so ordinary inspection forms still start blank each time.
-            if (!match && defs.some(d => (d.name ?? '').endsWith('__instock'))) {
-              try {
-                const latest = await firstValueFrom(this.formApi.latestSubmissionForForm(t.formKey));
-                if (latest?.valuesJson) {
-                  const carried = this.parseValues(latest.valuesJson) ?? {};
-                  for (const k of Object.keys(carried)) if (k.endsWith('__instock')) delete carried[k];
-                  values = carried;
-                }
-              } catch { /* carry-forward is best-effort */ }
-            }
-          } catch { /* prefill is best-effort */ }
-        }
-        this.formValues.set(values);
+      const list = await firstValueFrom(
+        this.formApi.completionFormsForWo(this.wo.pmnum || undefined, this.wo.description || undefined));
+      this.availableForms.set(list ?? []);
+      if ((list ?? []).length === 1) {
+        await this.selectForm(list[0]);   // exactly one → fill it automatically (unchanged UX)
+      } else {
+        this.completionForm.set(null);    // none → manual; several → the picker is shown until one is chosen
       }
     } catch {
-      this.completionForm.set(null);   // fall back to manual completion
+      this.availableForms.set([]);
+      this.completionForm.set(null);      // fall back to manual completion
     } finally {
       this.resolvingForm.set(false);
     }
+  }
+
+  /** Choose which assigned form to fill (called automatically when only one is assigned), load its fields + prefill. */
+  async selectForm(t: MaximoFormTemplate) {
+    this.completionForm.set(t);
+    this.formFinalized.set(false);
+    this.formSubmission.set(null);
+    const defs = this.parseFields(t.fieldsJson);
+    this.formDefs.set(defs);
+    this.formFields.set(this.toSmartFields(defs));
+    let values: any = {};
+    const wonum = this.wo?.wonum?.trim();
+    if (wonum) {
+      try {
+        const subs = await firstValueFrom(this.formApi.submissionsForWo(wonum));
+        const match = subs.find(s => s.templateFormKey === t.formKey) ?? null;
+        this.formSubmission.set(match);
+        if (match?.valuesJson) values = this.parseValues(match.valuesJson);
+        if (match?.status === 'COMPLETED') this.formFinalized.set(true);
+        // Only collapse the whole tab if the WO itself is already terminal.
+        if (this.isCompletedStatus(this.wo?.status)) this.completeDone.set(true);
+        // Inventory forms carry their settings + target levels forward from the last run (any WO); the in-stock
+        // counts are cleared so they're re-counted. Scoped to inventory forms (have __instock fields).
+        if (!match && defs.some(d => (d.name ?? '').endsWith('__instock'))) {
+          try {
+            const latest = await firstValueFrom(this.formApi.latestSubmissionForForm(t.formKey));
+            if (latest?.valuesJson) {
+              const carried = this.parseValues(latest.valuesJson) ?? {};
+              for (const k of Object.keys(carried)) if (k.endsWith('__instock')) delete carried[k];
+              values = carried;
+            }
+          } catch { /* carry-forward is best-effort */ }
+        }
+      } catch { /* prefill is best-effort */ }
+    }
+    this.formValues.set(values);
+  }
+
+  /** Back to the form picker (only when several forms are assigned) to choose a different one. */
+  backToFormPicker() {
+    this.completionForm.set(null);
+    this.formFinalized.set(false);
+    this.formSubmission.set(null);
+    this.formValues.set({});
+    this.liveFormValues.set({});
   }
 
   async loadMaterials() {

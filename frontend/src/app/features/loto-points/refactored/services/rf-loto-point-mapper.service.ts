@@ -654,6 +654,7 @@ export class LotoPointMapperService {
             requireLotoPointForDrawn: true,  // Require LOTO point creation when drawing new equipment
             requireLotoPointForUnassociated: true,  // Require LOTO point creation for equipment without association
             multiSelect: true,  // Pick equipment for several placeholders at once, across drawings
+            currentLotoPointId: lotoPoint.id,  // quick-access chips to this point's own P&IDs in the picker
           },
         },
         {

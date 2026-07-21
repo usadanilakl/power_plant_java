@@ -14,7 +14,7 @@ import { BrowserWindow } from 'electron';
 import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { PjmStatus, PjmUnitLmp, PjmUnitEvolution, PjmConfig, PjmUnitConfig, PjmDaAward, PjmDaHourEntry } from '../../shared/types';
+import type { PjmStatus, PjmUnitLmp, PjmUnitEvolution, PjmUnitStep, PjmConfig, PjmUnitConfig, PjmDaAward, PjmDaHourEntry } from '../../shared/types';
 import { getWorkingDir } from '../paths';
 import { WindowLayoutManager } from './window-layout.manager';
 import { DaEmailManager } from './da-email.manager';
@@ -347,60 +347,67 @@ export class PjmManager {
       currentlyOnline = entry ? entry.mw > 0 : false;
     }
 
-    // Scan remaining hours today for next transition
+    // Collect EVERY transition (today's remaining hours, then tomorrow), tracking running state.
+    // The first step reproduces the old single-transition message for backward compatibility;
+    // callers that want the full sequence read `steps`.
+    const steps: PjmUnitStep[] = [];
+    let state = currentlyOnline;
+
     if (todayAward) {
       const hours = todayAward[hoursKey] as PjmDaHourEntry[];
       for (let he = currentHE + 1; he <= 24; he++) {
         const entry = hours.find(h => h.he === he);
         const isOn = entry ? entry.mw > 0 : false;
-        if (currentlyOnline && !isOn) {
-          return { status: 'online', message: `OFFLINE by ${this.formatCtTime(he - 1)} CT`, date: todayEptStr };
-        }
-        if (!currentlyOnline && isOn) {
-          return { status: 'offline', message: `AGC by ${this.formatCtTime(he - 2)} CT`, date: todayEptStr };
+        if (state && !isOn) {
+          steps.push({ type: 'OFFLINE', time: `${this.formatCtTime(he - 1)} CT`, he, date: todayEptStr });
+          state = false;
+        } else if (!state && isOn) {
+          steps.push({ type: 'AGC', time: `${this.formatCtTime(he - 2)} CT`, he, date: todayEptStr });
+          state = true;
         }
       }
     }
 
-    // Scan tomorrow's award
     if (tomorrowAward) {
       const hours = tomorrowAward[hoursKey] as PjmDaHourEntry[];
       const dateLabel = this.formatDateShort(tomorrowEptStr);
-
-      if (currentlyOnline) {
-        // Check if tomorrow continues online
-        for (let he = 1; he <= 24; he++) {
-          const entry = hours.find(h => h.he === he);
-          const isOn = entry ? entry.mw > 0 : false;
-          if (!isOn) {
-            // If the very first hour is off, unit comes off at midnight
-            if (he === 1) {
-              return { status: 'online', message: `OFFLINE by ${dateLabel} 12:00 AM CT`, date: tomorrowEptStr };
-            }
-            return { status: 'online', message: `OFFLINE by ${dateLabel} ${this.formatCtTime(he - 1)} CT`, date: tomorrowEptStr };
-          }
+      for (let he = 1; he <= 24; he++) {
+        const entry = hours.find(h => h.he === he);
+        const isOn = entry ? entry.mw > 0 : false;
+        if (state && !isOn) {
+          // If the very first hour is off, unit comes off at midnight
+          const time = he === 1 ? `${dateLabel} 12:00 AM CT` : `${dateLabel} ${this.formatCtTime(he - 1)} CT`;
+          steps.push({ type: 'OFFLINE', time, he, date: tomorrowEptStr });
+          state = false;
+        } else if (!state && isOn) {
+          steps.push({ type: 'AGC', time: `${dateLabel} ${this.formatCtTime(he - 2)} CT`, he, date: tomorrowEptStr });
+          state = true;
         }
-        // All 24 hours awarded tomorrow
-        return { status: 'online', message: `Staying online for ${dateLabel}`, date: tomorrowEptStr };
-      } else {
-        // Currently offline — when does it come on tomorrow?
-        for (let he = 1; he <= 24; he++) {
-          const entry = hours.find(h => h.he === he);
-          const isOn = entry ? entry.mw > 0 : false;
-          if (isOn) {
-            return { status: 'offline', message: `AGC by ${dateLabel} ${this.formatCtTime(he - 2)} CT`, date: tomorrowEptStr };
-          }
-        }
-        // Not scheduled tomorrow
-        return { status: 'offline', message: `Offline for ${dateLabel}`, date: tomorrowEptStr };
       }
     }
 
-    // No tomorrow award — report current state only
-    if (currentlyOnline) {
-      return { status: 'online', message: 'Online — awaiting DA schedule' };
+    // Derive status + backward-compatible message from the collected steps.
+    if (steps.length > 0) {
+      const first = steps[0];
+      return {
+        status: currentlyOnline ? 'online' : 'offline',
+        message: `${first.type} by ${first.time}`,
+        date: first.date,
+        steps,
+      };
     }
-    return { status: 'unknown', message: 'Awaiting DA schedule' };
+
+    // No transitions — terminal state descriptions (unchanged wording).
+    if (currentlyOnline) {
+      if (tomorrowAward) {
+        return { status: 'online', message: `Staying online for ${this.formatDateShort(tomorrowEptStr)}`, date: tomorrowEptStr, steps };
+      }
+      return { status: 'online', message: 'Online — awaiting DA schedule', steps };
+    }
+    if (tomorrowAward) {
+      return { status: 'offline', message: `Offline for ${this.formatDateShort(tomorrowEptStr)}`, date: tomorrowEptStr, steps };
+    }
+    return { status: 'unknown', message: 'Awaiting DA schedule', steps };
   }
 
   /** HE in EPT → CT time string. Handles wrap (negative/over 23). */

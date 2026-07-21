@@ -438,10 +438,18 @@ export interface PjmUnitLmp {
   error?: string;
 }
 
+export interface PjmUnitStep {
+  type: 'AGC' | 'OFFLINE';
+  time: string;
+  he: number;
+  date?: string;
+}
+
 export interface PjmUnitEvolution {
   status: 'online' | 'offline' | 'unknown';
   message: string;
   date?: string;
+  steps?: PjmUnitStep[];
 }
 
 export interface PjmStatus {

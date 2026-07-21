@@ -159,11 +159,20 @@ export interface PjmUnitLmp {
   error?: string;
 }
 
-// Unit evolution — next state change derived from DA awards
+// A single scheduled transition within a DA award
+export interface PjmUnitStep {
+  type: 'AGC' | 'OFFLINE';      // AGC = start up (offline→online), OFFLINE = shut down (online→offline)
+  time: string;                 // CT time, e.g. "2:00 PM CT" or "07/22 6:00 AM CT" (tomorrow prefixed)
+  he: number;                   // Hour ending (EPT) that triggered the transition
+  date?: string;                // YYYY-MM-DD of the award this step belongs to
+}
+
+// Unit evolution — state changes derived from DA awards
 export interface PjmUnitEvolution {
   status: 'online' | 'offline' | 'unknown';
-  message: string;              // e.g. "AGC by 1:00 PM CT" or "OFFLINE by 2:00 PM CT"
+  message: string;              // e.g. "AGC by 1:00 PM CT" or "OFFLINE by 2:00 PM CT" (first step / terminal)
   date?: string;                // YYYY-MM-DD of the award this is based on
+  steps?: PjmUnitStep[];        // ALL scheduled transitions today + tomorrow, in order (empty if none)
 }
 
 // Composite status for both units

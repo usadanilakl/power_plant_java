@@ -101,7 +101,10 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
           } @else if (formLoading()) {
             <p class="wd-msg">Checking for a PM form…</p>
           } @else if (formTemplate()) {
-            <p class="wd-formname">{{ formTemplate()?.formName }}</p>
+            <div class="wd-formhead">
+              <p class="wd-formname">{{ formTemplate()?.formName }}</p>
+              @if (availableForms().length > 1) { <button class="wd-changeform" (click)="backToPicker()">← change form</button> }
+            </div>
             @for (row of formRows(); track row.f.name) {
               @if (row.header) { <h4 class="wd-sec">{{ row.header }}</h4> }
               @switch (row.f.type) {
@@ -163,6 +166,15 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
             <button class="wd-complete" [disabled]="completing()" (click)="submitForm()">
               {{ completing() ? 'Submitting…' : 'Submit &amp; complete' }}
             </button>
+          } @else if (availableForms().length > 1) {
+            <p class="wd-msg">This PM has several forms — choose the one you performed:</p>
+            <div class="wd-formpick">
+              @for (f of availableForms(); track f.formKey) {
+                <button class="wd-formpick-btn" (click)="selectForm(f)">
+                  <span>{{ f.formName }}</span><span class="wd-formpick-go">›</span>
+                </button>
+              }
+            </div>
           } @else {
             <label class="wd-field">Labor hours
               <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value); autosave()" placeholder="e.g. 1.5">
@@ -214,7 +226,15 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
     .wd-task-ok { color: #27ae60; font-weight: 700; }
     .wd-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.8rem; }
     .wd-field input, .wd-field textarea { padding: 0.55rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-weight: 400; box-sizing: border-box; }
-    .wd-formname { font-size: 0.85rem; font-weight: 700; color: var(--accent-color); margin: 0 0 0.6rem; }
+    .wd-formhead { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; }
+    .wd-formname { font-size: 0.85rem; font-weight: 700; color: var(--accent-color); margin: 0; }
+    .wd-changeform { background: none; border: none; color: var(--secondary-text, #888); font-size: 0.78rem; cursor: pointer; font-family: inherit; padding: 0; white-space: nowrap; }
+    .wd-formpick { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem; }
+    .wd-formpick-btn { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.8rem 0.9rem;
+      background: var(--secondary-background, #262626); color: var(--primary-text); border: 1px solid var(--border-color); border-radius: 10px;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; text-align: left; }
+    .wd-formpick-btn:hover { border-color: var(--accent-color); }
+    .wd-formpick-go { color: var(--accent-color); font-size: 1.2rem; }
     .wd-sec { font-size: 0.9rem; font-weight: 700; color: var(--primary-text); margin: 1rem 0 0.4rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--border-color); }
     .wd-check { display: flex; align-items: center; gap: 0.5rem; color: var(--primary-text); font-size: 0.9rem; margin-bottom: 0.7rem; }
     .wd-check input { width: 1.1rem; height: 1.1rem; }
@@ -275,8 +295,11 @@ export class MaximoWoDetailComponent implements OnInit {
     });
   }
 
-  // Dynamic PM completion form (present only when the WO's PM has an assigned formKey).
+  // Dynamic PM completion form(s). A PM can assign several forms; the operator picks one to perform.
   formLoading = signal(true);
+  /** All forms assigned to this WO's PM. 0 = manual UI; 1 = auto-selected; >1 = the picker is shown. */
+  availableForms = signal<MaximoFormTemplate[]>([]);
+  /** The form currently being filled (auto when only one is assigned), or null when none / awaiting a pick. */
   formTemplate = signal<MaximoFormTemplate | null>(null);
   formValues = signal<Record<string, any>>({});
   formRows = computed<{ f: MaximoFormFieldDef; header: string | null }[]>(() => {
@@ -296,26 +319,47 @@ export class MaximoWoDetailComponent implements OnInit {
     this.status.set(this.wo.status);
     const grab = this.store.getGrab(this.wo.wonum);
     if (grab) {
-      // Grabbed: read the form from cache (works offline).
+      // Grabbed: read the assigned form(s) from cache (works offline).
       this.grabbed.set(true);
-      this.formTemplate.set(grab.formTemplate);
+      this.availableForms.set(grab.formTemplates ?? []);
       this.formLoading.set(false);
+      this.initFormSelection();
     } else {
-      this.api.getCompletionForm(this.wo.pmnum, this.wo.description).subscribe({
-        next: t => { this.formTemplate.set(t); this.formLoading.set(false); },
-        error: () => { this.formTemplate.set(null); this.formLoading.set(false); }
+      this.api.getFormsForWo(this.wo.pmnum, this.wo.description).subscribe({
+        next: list => { this.availableForms.set(list ?? []); this.formLoading.set(false); this.initFormSelection(); },
+        error: () => { this.availableForms.set([]); this.formLoading.set(false); this.initFormSelection(); }
       });
     }
-    // Restore any in-progress entries whether or not the WO was grabbed — a form filled online but not yet
-    // submitted must survive the app closing too (values are autosaved on every change).
-    this.restoreDraft();
   }
 
-  private restoreDraft(): void {
-    const d = this.store.getDraft(this.wo.wonum);
-    if (!d) return;
-    if (d.mode === 'form' && d.formValues) this.formValues.set(d.formValues);
-    if (d.mode === 'manual') { this.hours.set(d.hours ?? ''); this.summary.set(d.summary ?? ''); this.details.set(d.details ?? ''); }
+  /** none → manual (restore its draft); one → auto-select it; several → show the picker. */
+  private initFormSelection(): void {
+    const list = this.availableForms();
+    if (list.length === 1) {
+      this.selectForm(list[0]);
+    } else {
+      this.formTemplate.set(null);
+      if (list.length === 0) {
+        // Restore an in-progress MANUAL entry (autosaved on every change; survives the app closing).
+        const d = this.store.getDraft(this.wo.wonum);   // 'manual' draft
+        if (d?.mode === 'manual') { this.hours.set(d.hours ?? ''); this.summary.set(d.summary ?? ''); this.details.set(d.details ?? ''); }
+      }
+    }
+  }
+
+  /** Pick which assigned form to perform; restores that form's own in-progress draft (kept per form). */
+  selectForm(t: MaximoFormTemplate): void {
+    this.formTemplate.set(t);
+    this.error.set(null);
+    const d = this.store.getDraft(this.wo.wonum, t.formKey);
+    this.formValues.set((d?.mode === 'form' && d.formValues) ? d.formValues : {});
+  }
+
+  /** Back to the form picker (only when several are assigned) to choose a different one. */
+  backToPicker(): void {
+    this.formTemplate.set(null);
+    this.formValues.set({});
+    this.error.set(null);
   }
 
   /**
@@ -348,7 +392,7 @@ export class MaximoWoDetailComponent implements OnInit {
         this.grabbing.set(false);
         const wo = updated ?? { ...this.wo, status: 'INPRG' };
         this.status.set(wo.status || 'INPRG');
-        this.store.saveGrab(wo, this.formTemplate());
+        this.store.saveGrab(wo, this.availableForms());
         this.grabbed.set(true);
       },
       error: e => { this.grabbing.set(false); this.grabError.set(e?.error?.message || e?.message || 'You need a connection to grab (reserve) a PM.'); }

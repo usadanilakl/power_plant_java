@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** Wire shape for a recurring-PM catalog row. */
 @Data
@@ -31,5 +32,6 @@ public class RecurringPmDto {
     private LocalDate lastTargetDate;
     private LocalDateTime catalogRefreshedAt;
     private Boolean manuallyAdded;        // true = operator manually converted a WO to a recurring task
-    private String formKey;               // assigned electronic completion form (MaximoFormTemplate.formKey), or null
+    private String formKey;               // legacy: first assigned form (mirrors formKeys[0]), or null
+    private List<String> formKeys;        // all assigned completion forms (MaximoFormTemplate.formKey), order-preserving
 }

@@ -67,16 +67,23 @@ import { ElectronService, PjmStatus, PjmUnitLmp, PjmUnitEvolution, PjmDaAward, P
             {{ getUnit(unitKey).error }}
           </div>
 
-          <!-- Unit Evolution (next state change from DA awards) -->
+          <!-- Unit Schedule (all state changes from DA awards) -->
           <div class="da-next" *ngIf="getEvolution(unitKey) as evo">
-            <span class="da-next-label">Next Evolution</span>
+            <span class="da-next-label">Schedule</span>
             <div class="da-next-content">
               <span class="da-chip" [class.online]="evo.status === 'online'"
                     [class.offline]="evo.status === 'offline'"
                     [class.idle]="evo.status === 'unknown'">
                 {{ evo.status === 'online' ? 'Online' : evo.status === 'offline' ? 'Offline' : '—' }}
               </span>
-              <span class="da-next-info">{{ evo.message }}</span>
+              <div class="da-steps" *ngIf="evo.steps?.length; else evoMsg">
+                <span class="da-step" *ngFor="let s of evo.steps || []"
+                      [class.agc]="s.type === 'AGC'" [class.offline]="s.type === 'OFFLINE'">
+                  <span class="da-step-type">{{ s.type }}</span>
+                  <span class="da-step-time">{{ s.time }}</span>
+                </span>
+              </div>
+              <ng-template #evoMsg><span class="da-next-info">{{ evo.message }}</span></ng-template>
             </div>
           </div>
           <div class="da-next" *ngIf="!getEvolution(unitKey)">
@@ -418,7 +425,32 @@ import { ElectronService, PjmStatus, PjmUnitLmp, PjmUnitEvolution, PjmDaAward, P
       align-items: center;
       gap: 8px;
       margin-top: 4px;
+      flex-wrap: wrap;
     }
+
+    .da-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .da-step {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background-color: rgba(148, 163, 184, 0.12);
+      white-space: nowrap;
+    }
+
+    .da-step-type { font-weight: 700; font-size: 10px; letter-spacing: 0.3px; }
+    .da-step.agc { background-color: rgba(34, 197, 94, 0.12); }
+    .da-step.agc .da-step-type { color: rgb(34, 197, 94); }
+    .da-step.offline { background-color: rgba(239, 68, 68, 0.12); }
+    .da-step.offline .da-step-type { color: rgb(239, 68, 68); }
+    .da-step-time { color: var(--text-secondary); }
 
     .da-chip {
       font-size: 11px;

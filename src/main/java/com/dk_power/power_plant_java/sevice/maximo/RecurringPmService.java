@@ -337,14 +337,20 @@ public class RecurringPmService {
                 .catalogRefreshedAt(r.getCatalogRefreshedAt())
                 .manuallyAdded(r.getManuallyAdded())
                 .formKey(r.getFormKey())
+                .formKeys(r.getFormKeyList())
                 .build();
     }
 
-    /** Assign (or clear, when blank) the electronic completion form for a recurring PM. */
+    /** Assign (or clear, when blank) a SINGLE completion form. Back-compat wrapper over {@link #assignForms}. */
     public RecurringPmDto assignForm(Long id, String formKey) {
+        return assignForms(id, (formKey == null || formKey.isBlank()) ? java.util.List.of() : java.util.List.of(formKey.trim()));
+    }
+
+    /** Assign the completion form(s) a PM offers (empty/null clears them). The operator picks one at completion. */
+    public RecurringPmDto assignForms(Long id, java.util.List<String> formKeys) {
         RecurringPm row = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown recurring-PM id: " + id));
-        row.setFormKey((formKey == null || formKey.isBlank()) ? null : formKey.trim());
+        row.setFormKeyList(formKeys);
         return toDto(repo.save(row));
     }
 

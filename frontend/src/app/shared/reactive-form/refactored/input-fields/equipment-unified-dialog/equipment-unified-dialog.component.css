@@ -564,3 +564,52 @@
   color: #fff;
   font-weight: 500;
 }
+
+/* Quick-access P&IDs for the LOTO point being edited (top of the picker) */
+.context-pids-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--secondary-background, #f0f2f5);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+
+.context-pids-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+}
+
+.context-pids-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.context-pid-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 12px;
+  border: 1px solid var(--accent-color, #007bff);
+  border-radius: 12px;
+  background: var(--primary-background, #ffffff);
+  color: var(--accent-color, #007bff);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.context-pid-chip:hover:not(.active) {
+  background: var(--hover-color, rgba(0, 123, 255, 0.08));
+}
+
+.context-pid-chip.active {
+  background: var(--accent-color, #007bff);
+  color: #fff;
+  font-weight: 500;
+}

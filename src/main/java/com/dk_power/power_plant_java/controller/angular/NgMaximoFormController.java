@@ -93,17 +93,17 @@ public class NgMaximoFormController {
     }
 
     /**
-     * The completion form ASSIGNED to a WO's recurring PM (matched by pmnum, then description), or null if
-     * none. Drives the WO Complete tab: when non-null, the operator completes the WO by filling this form.
+     * The completion form(s) ASSIGNED to a WO's recurring PM (matched by pmnum, then description). Drives the
+     * WO Complete tab: none = manual completion; one = rendered automatically; several = the operator picks one.
+     * Explicit assignment (the PM's own formKeys), not description-matching — see {@code /templates/for-wo}.
      */
     @GetMapping("/for-wo")
-    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> completionFormForWo(
+    public ResponseEntity<NgApiResponse<List<MaximoFormTemplateDto>>> completionFormsForWo(
             @RequestParam(value = "pmnum", required = false) String pmnum,
             @RequestParam(value = "description", required = false) String description) {
-        RecurringPm pm = recurringPms.findForWorkOrder(pmnum, description).orElse(null);
-        String key = (pm == null) ? null : pm.getFormKey();
-        MaximoFormTemplateDto t = (key == null || key.isBlank()) ? null : forms.getTemplateByFormKey(key);
-        return ResponseEntity.ok(new NgApiResponse<>(t, "ok"));
+        List<String> keys = recurringPms.findForWorkOrder(pmnum, description)
+                .map(RecurringPm::getFormKeyList).orElse(List.of());
+        return ResponseEntity.ok(new NgApiResponse<>(forms.getTemplatesByFormKeys(keys), "ok"));
     }
 
     // ── Submissions ────────────────────────────────────────────────────────────
