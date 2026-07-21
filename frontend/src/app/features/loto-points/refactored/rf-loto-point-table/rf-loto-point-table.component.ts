@@ -33,12 +33,17 @@ import { LotoPointBulkEditFormComponent } from '../loto-point-bulk-edit-form/lot
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { RfLotoPointClickService } from './rf-loto-point-click.service';
 import { CommentCellComponent } from '../../../../shared/comments-dialog/comment-cell.component';
+import { LotoPointFieldName } from '../../../../models/loto/loto-point.model';
+import { LotoPointService } from '../../../../services/loto/loto-point.service';
+import { FileDto } from '../../../../models/file/file.model';
+import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
   // forwardRef on the bulk-edit form breaks the import cycle (see loto-point-bulk-edit-form).
-  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent],
+  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent, RfPopupProjectionComponent],
   // providers: [
   //   { provide: TableClickService, useClass: RfLotoPointClickService }
   // ],
@@ -66,7 +71,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   scrollToItemId = input<number | null>(null);
   /** ID of item externally "clicked" — highlights the row without a real click. See TableComponent. */
   externalClickedItemId = input<number | null>(null);
-  fieldsToDisplay = input<(keyof LotoPointDto)[]>();
+  fieldsToDisplay = input<LotoPointFieldName[]>();
   /** Initial search criteria to apply when the table loads */
   initialSearchCriteria = input<SearchCriteria | null>(null);
 
@@ -80,6 +85,60 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
 
   // Template refs
   commentCellTemplate = viewChild<TemplateRef<any>>('commentCellTemplate');
+  photosCellTemplate = viewChild<TemplateRef<any>>('photosCellTemplate');
+  pidsCellTemplate = viewChild<TemplateRef<any>>('pidsCellTemplate');
+
+  private lotoPointService = inject(LotoPointService);
+
+  //===== P&IDs on-demand fetch state =====
+  /**
+   * Per-row P&ID button: on click, fetch related files for THAT specific
+   * LotoPoint (not on page load) and open a popup. Keeps table render cheap
+   * even for pages with 50+ rows — the P&IDs join walks
+   * LotoPoint → Equipment → FileObject and would N+1 across a page.
+   */
+  isPidsPopupOpen = signal<boolean>(false);
+  pidsPopupLotoPoint = signal<LotoPointDto | null>(null);
+  pidsPopupFiles = signal<FileDto[]>([]);
+  isLoadingPids = signal<boolean>(false);
+  pidsError = signal<string | null>(null);
+
+  openPidsPopup(item: LotoPointDto, event?: MouseEvent): void {
+    event?.stopPropagation(); // don't fire a row-click while opening
+    if (!item?.id) return;
+    this.pidsPopupLotoPoint.set(item);
+    this.pidsPopupFiles.set([]);
+    this.pidsError.set(null);
+    this.isLoadingPids.set(true);
+    this.isPidsPopupOpen.set(true);
+    this.lotoPointService.getRelatedFiles(item.id).subscribe({
+      next: (response) => {
+        this.pidsPopupFiles.set(response.responseData ?? []);
+        this.isLoadingPids.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load P&IDs:', err);
+        this.pidsError.set(err?.error?.message || err?.message || 'Failed to load P&IDs');
+        this.isLoadingPids.set(false);
+      },
+    });
+  }
+
+  closePidsPopup(): void {
+    this.isPidsPopupOpen.set(false);
+  }
+
+  openPidInNewTab(file: FileDto, event?: MouseEvent): void {
+    event?.stopPropagation();
+    if (!file?.fileLink) return;
+    const url = `${environment.baseApiUrl}/${file.fileLink}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  getPictureUrl(picture: FileDto): string {
+    if (!picture?.fileLink) return '';
+    return `${environment.baseApiUrl}/${picture.fileLink}`;
+  }
 
   // State
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {
@@ -142,6 +201,20 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
           commentCol.template = template;
         }
       }
+      // Photos + P&IDs custom-cell templates. viewChild is null until the
+      // view initializes so this pass may skip; ngAfterViewInit re-wires
+      // once the templates exist. Assigning `template` swaps the
+      // accessorFn-based default rendering for the ng-template.
+      const photosTpl = this.photosCellTemplate();
+      if (photosTpl) {
+        const col = cols.find(c => c.id === 'pictures');
+        if (col) col.template = photosTpl;
+      }
+      const pidsTpl = this.pidsCellTemplate();
+      if (pidsTpl) {
+        const col = cols.find(c => c.id === 'pids');
+        if (col) col.template = pidsTpl;
+      }
       this.columns.set(cols);
     });
 
@@ -157,16 +230,27 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Assign comment cell template to the comment column if it exists
-    const template = this.commentCellTemplate();
-    if (template) {
-      const cols = this.columns();
-      const commentCol = cols.find(c => c.id === 'comment');
-      if (commentCol) {
-        commentCol.template = template;
-        this.columns.set([...cols]);
-      }
+    // Assign comment / photos / pids cell templates now that viewChild
+    // refs have resolved. Rebuild the columns signal once with all three
+    // wired so the table renders custom cells on the first paint.
+    const cols = this.columns();
+    let mutated = false;
+    const commentTpl = this.commentCellTemplate();
+    if (commentTpl) {
+      const c = cols.find(x => x.id === 'comment');
+      if (c && c.template !== commentTpl) { c.template = commentTpl; mutated = true; }
     }
+    const photosTpl = this.photosCellTemplate();
+    if (photosTpl) {
+      const c = cols.find(x => x.id === 'pictures');
+      if (c && c.template !== photosTpl) { c.template = photosTpl; mutated = true; }
+    }
+    const pidsTpl = this.pidsCellTemplate();
+    if (pidsTpl) {
+      const c = cols.find(x => x.id === 'pids');
+      if (c && c.template !== pidsTpl) { c.template = pidsTpl; mutated = true; }
+    }
+    if (mutated) this.columns.set([...cols]);
   }
 
   ngOnInit(): void {

@@ -1745,6 +1745,33 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
+     * List every FileObject in the plant file library whose fileType is
+     * "Picture" — the pool from which the "attach existing picture"
+     * picker draws. Returns shallow FileDtos (id/name/link/extension only)
+     * matching the shape the tile grid renders.
+     */
+    public java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> listPictureLibrary() {
+        com.dk_power.power_plant_java.entities.categories.Value pictureType =
+                ngValueServiceProvider.getObject().createValue(FILE_TYPE_CATEGORY, PICTURE_FILE_TYPE);
+        java.util.List<FileObject> files = entityManager.createQuery(
+                "SELECT f FROM FileObject f WHERE f.fileType = :ft ORDER BY f.id DESC",
+                FileObject.class
+        ).setParameter("ft", pictureType).getResultList();
+        java.util.List<com.dk_power.power_plant_java.dto.files.FileDto> dtos =
+                new java.util.ArrayList<>(files.size());
+        for (FileObject f : files) {
+            com.dk_power.power_plant_java.dto.files.FileDto d =
+                    new com.dk_power.power_plant_java.dto.files.FileDto();
+            d.setId(f.getId());
+            d.setName(f.getName());
+            d.setFileLink(f.getFileLink());
+            d.setExtension(f.getExtension());
+            dtos.add(d);
+        }
+        return dtos;
+    }
+
+    /**
      * Link an EXISTING FileObject (already uploaded, already in the plant
      * file library) to this LOTO point. Same M2M join as uploadPictures,
      * but no upload — used by the "attach existing picture" picker where

@@ -1,6 +1,6 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { Validators } from '@angular/forms';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { RfFormField } from '../../../../models/ui/form-field.model';
 import { Option } from '../../../../models/option.model';
@@ -48,7 +48,12 @@ export class LotoPointMapperService {
    * @returns Array of Column objects configured for LotoPoint display
    */
   toTableColumns(
-    fields: (keyof LotoPointDto)[] = [
+    // LotoPointFieldName is `keyof LotoPointModel | 'pids'` — the widened
+    // type lets callers request synthetic columns (comment, pids) without
+    // the `as any` cast the old signature forced. 'comment' is still
+    // handled below since it's neither a model field nor a LotoPointFieldName;
+    // it lives entirely in this mapper's fields-post-processing.
+    fields: (LotoPointFieldName | 'comment')[] = [
       'processingStatus',
       'tagNumber',
       'description',
@@ -61,7 +66,7 @@ export class LotoPointMapperService {
       'isLockable',
       'zeroEnergy',
       'equipmentList',
-      'comment' as any,
+      'comment',
     ]
   ): Column[] {
     const allColumns: { [key in keyof LotoPointDto]?: Column } = {
@@ -350,7 +355,10 @@ export class LotoPointMapperService {
     };
 
     const result = fields
-      .map((fieldName) => allColumns[fieldName])
+      // Cast because `fields` includes 'comment' (handled separately below)
+      // and 'pids' (spliced in below), neither of which is a real key in
+      // allColumns. Missing keys resolve to undefined, filtered out next line.
+      .map((fieldName) => allColumns[fieldName as keyof typeof allColumns])
       .filter((column): column is Column => column !== undefined);
 
     // Add comment column if requested (not a LotoPointDto key, so handled separately)
@@ -365,6 +373,40 @@ export class LotoPointMapperService {
       };
       const commentIndex = fields.indexOf('comment' as any);
       result.splice(commentIndex, 0, commentColumn);
+    }
+
+    // Photos column — DTO already carries `pictures: FileDto[]` from the
+    // paginated endpoint (see LotoPointMapper.convertToDto). Only the
+    // rendering is custom (thumbnail + "+N" badge) and it's assigned as
+    // column.template at the component level. The accessorFn stays as a
+    // fallback for export/sort/filter contexts that don't use template.
+    if (fields.includes('pictures' as any)) {
+      const photosColumn: Column = {
+        id: 'pictures',
+        header: 'Photos',
+        accessorFn: (item: LotoPointDto) => String(item.pictures?.length ?? 0),
+        width: 100,
+        filterable: false,
+        sortable: false,
+      };
+      const idx = fields.indexOf('pictures' as any);
+      result.splice(idx, 0, photosColumn);
+    }
+
+    // P&IDs button column — no DTO field. On-demand lazy fetch when the
+    // user clicks the per-row button; nothing loads on table render. The
+    // button + popup live in the component-level template.
+    if (fields.includes('pids' as any)) {
+      const pidsColumn: Column = {
+        id: 'pids',
+        header: 'P&IDs',
+        accessorFn: () => '',
+        width: 90,
+        filterable: false,
+        sortable: false,
+      };
+      const idx = fields.indexOf('pids' as any);
+      result.splice(idx, 0, pidsColumn);
     }
 
     return result;

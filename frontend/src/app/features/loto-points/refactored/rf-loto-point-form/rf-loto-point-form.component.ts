@@ -574,7 +574,7 @@ export class RfLotoPointFormComponent {
     input.click();
   }
 
-  async onPicturesSelected(event: Event): Promise<void> {
+  onPicturesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
     input.value = ''; // reset so re-selecting the same file re-triggers change
@@ -583,31 +583,95 @@ export class RfLotoPointFormComponent {
 
     this.pictureUploadError.set(null);
     this.isUploadingPictures.set(true);
-    try {
-      let latest: LotoPointDto | null = null;
-      for (const f of files) {
-        const response = await new Promise<LotoPointDto>((resolve, reject) => {
-          this.lotoPointService.uploadPicture(point.id!, f).subscribe({
-            next: (r) => {
-              if (r.responseData) resolve(LotoPointDto.fromJson(r.responseData));
-              else reject(new Error('Upload returned no data'));
-            },
-            error: (err) => reject(err),
-          });
-        });
-        latest = response;
-        // Fold in as we go so a slow batch still shows incremental progress.
-        this.stateService.setSelectedItem(response);
-      }
-      if (latest) this.stateService.setSelectedItem(latest);
-    } catch (err: any) {
-      console.error('Picture upload failed:', err);
-      this.pictureUploadError.set(
-        err?.error?.message || err?.message || 'Failed to upload picture'
-      );
-    } finally {
-      this.isUploadingPictures.set(false);
-    }
+    // Single batch POST — backend handles the "-N" suffix in one pass so
+    // multi-select uploads produce distinct FileObject names without the
+    // frontend having to guess indices across separate round trips.
+    this.lotoPointService.uploadPictures(point.id, files).subscribe({
+      next: (response) => {
+        if (response.responseData) {
+          this.stateService.setSelectedItem(LotoPointDto.fromJson(response.responseData));
+        }
+        this.isUploadingPictures.set(false);
+      },
+      error: (err) => {
+        console.error('Picture upload failed:', err);
+        this.pictureUploadError.set(
+          err?.error?.message || err?.message || 'Failed to upload pictures'
+        );
+        this.isUploadingPictures.set(false);
+      },
+    });
+  }
+
+  //===========================PICTURES: ATTACH EXISTING===========================
+  /**
+   * Small picker overlay: fetches every FileObject with fileType="Picture"
+   * so the operator can attach a photo that's already in the plant file
+   * library to this LOTO point (e.g. a photo taken while walking down
+   * another point, or a reference shot from onboarding). Backend
+   * gracefully no-ops on re-link, so a double-click is harmless.
+   */
+  isAttachExistingOpen = signal<boolean>(false);
+  attachCandidates = signal<FileDto[]>([]);
+  attachSearchTerm = signal<string>('');
+  isLoadingAttachCandidates = signal<boolean>(false);
+  isLinkingPicture = signal<boolean>(false);
+
+  filteredAttachCandidates = computed(() => {
+    const all = this.attachCandidates();
+    const q = this.attachSearchTerm().trim().toLowerCase();
+    // Already-attached files are hidden — the picker is for NEW links only,
+    // saves the user from having to visually check the existing grid.
+    const attachedIds = new Set(this.pictures().map((p) => p.id));
+    const notAttached = all.filter((f) => !attachedIds.has(f.id));
+    if (!q) return notAttached;
+    return notAttached.filter((f) => (f.name ?? '').toLowerCase().includes(q));
+  });
+
+  openAttachExisting(): void {
+    if (!this.entity()?.id) return;
+    this.attachSearchTerm.set('');
+    this.isAttachExistingOpen.set(true);
+    // Lazy load — one fetch per open, since the picture library grows
+    // slowly enough that within a single form session the list is stable.
+    this.isLoadingAttachCandidates.set(true);
+    this.lotoPointService.getPictureLibrary().subscribe({
+      next: (response) => {
+        const items = (response.responseData ?? []).map((raw: any) => FileDto.fromJson(raw));
+        this.attachCandidates.set(items);
+        this.isLoadingAttachCandidates.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load picture library:', err);
+        this.attachCandidates.set([]);
+        this.isLoadingAttachCandidates.set(false);
+      },
+    });
+  }
+
+  closeAttachExisting(): void {
+    this.isAttachExistingOpen.set(false);
+  }
+
+  attachExistingPicture(file: FileDto): void {
+    const point = this.entity();
+    if (!point?.id || !file?.id || this.isLinkingPicture()) return;
+    this.isLinkingPicture.set(true);
+    this.lotoPointService.linkPicture(point.id, file.id).subscribe({
+      next: (response) => {
+        if (response.responseData) {
+          this.stateService.setSelectedItem(LotoPointDto.fromJson(response.responseData));
+        }
+        this.isLinkingPicture.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to link picture:', err);
+        this.pictureUploadError.set(
+          err?.error?.message || err?.message || 'Failed to attach picture'
+        );
+        this.isLinkingPicture.set(false);
+      },
+    });
   }
 
   onRemovePicture(picture: FileDto): void {

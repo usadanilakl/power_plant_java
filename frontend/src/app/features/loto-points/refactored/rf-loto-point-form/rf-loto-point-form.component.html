@@ -121,7 +121,14 @@
               class="add-picture-button"
               [disabled]="!entity()?.id || isUploadingPictures()"
               (click)="triggerPicturePicker(picturesInput)">
-              {{ isUploadingPictures() ? 'Uploading…' : '+ Add Pictures' }}
+              {{ isUploadingPictures() ? 'Uploading…' : '+ Upload New' }}
+            </button>
+            <button
+              type="button"
+              class="add-picture-button add-picture-button-secondary"
+              [disabled]="!entity()?.id || isUploadingPictures()"
+              (click)="openAttachExisting()">
+              📎 Attach Existing
             </button>
             <input
               #picturesInput
@@ -208,5 +215,48 @@
   <app-naming-convention
     (nameGenerated)="onDescriptionGenerated($event)">
   </app-naming-convention>
+</app-rf-popup-projection>
+
+<!-- Attach Existing Picture Picker -->
+<app-rf-popup-projection
+  [isOpen]="isAttachExistingOpen()"
+  [title]="'Attach Existing Picture'"
+  [size]="'large'"
+  (close)="closeAttachExisting()">
+  <div class="attach-picker">
+    <input
+      type="text"
+      class="attach-picker-search"
+      placeholder="Search by name…"
+      [value]="attachSearchTerm()"
+      (input)="attachSearchTerm.set($any($event.target).value)" />
+    @if (isLoadingAttachCandidates()) {
+      <div class="attach-picker-hint">Loading pictures…</div>
+    } @else if (filteredAttachCandidates().length === 0) {
+      <div class="attach-picker-hint">
+        @if (attachCandidates().length === 0) {
+          No pictures in the library yet. Upload one first.
+        } @else {
+          All available pictures are already attached to this LOTO point.
+        }
+      </div>
+    } @else {
+      <div class="attach-picker-grid">
+        @for (candidate of filteredAttachCandidates(); track candidate.id) {
+          <div class="attach-picker-tile"
+               [class.disabled]="isLinkingPicture()"
+               (click)="attachExistingPicture(candidate)">
+            <img class="attach-picker-thumb"
+                 [src]="getPictureUrl(candidate)"
+                 [alt]="candidate.name || 'Picture'"
+                 loading="lazy" />
+            <div class="attach-picker-name" [title]="candidate.name">
+              {{ candidate.name }}
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
 </app-rf-popup-projection>
 

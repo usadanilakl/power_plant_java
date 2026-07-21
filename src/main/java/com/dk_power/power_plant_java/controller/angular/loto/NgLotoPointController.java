@@ -802,6 +802,23 @@ public class NgLotoPointController {
     }
 
     /**
+     * List every FileObject with fileType="Picture" — the pool from
+     * which the "attach existing" picker draws. Frontend filters out
+     * already-attached ones client-side.
+     */
+    @GetMapping("/pictures/library")
+    public ResponseEntity<NgApiResponse<java.util.List<FileDto>>> getPictureLibrary() {
+        try {
+            java.util.List<FileDto> pictures = ngLotoPointService.listPictureLibrary();
+            return ResponseEntity.ok(new NgApiResponse<>(pictures, "OK"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to load picture library: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Link an EXISTING FileObject (already in the plant file library) to a
      * LOTO point. Used by the "attach existing picture" picker so the same
      * physical photo can back multiple LOTO points without re-uploading.

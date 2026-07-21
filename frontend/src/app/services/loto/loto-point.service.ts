@@ -99,19 +99,46 @@ export class LotoPointService {
   }
 
   /**
-   * Attach a picture to a LOTO point via multipart upload. Returns the
-   * refreshed LotoPointDto so the caller can drop the returned dto into
-   * state and see the new thumbnail without a follow-up GET.
+   * Attach one or more pictures to a LOTO point via multipart batch upload.
+   * Returns the refreshed LotoPointDto so the caller can drop the returned
+   * dto into state and see the new thumbnails without a follow-up GET.
+   * <p>
+   * Backend deduplicates by SHA-256 and populates FileObject metadata
+   * (name = LOTO description with " (N)" suffix when >1, system = LOTO
+   * system) for each uploaded file — see NgLotoPointService.uploadPictures.
    * <p>
    * Do NOT set Content-Type manually — the browser sets
    * "multipart/form-data; boundary=..." including the boundary token,
    * which we can't reproduce.
    */
-  uploadPicture(lotoPointId: number, file: File): Observable<SpringApiResponse<LotoPointDto>> {
+  uploadPictures(lotoPointId: number, files: File[]): Observable<SpringApiResponse<LotoPointDto>> {
     const form = new FormData();
-    form.append('file', file, file.name);
+    for (const f of files) form.append('files', f, f.name);
     return this.http.post<SpringApiResponse<LotoPointDto>>(
       `${this.apiUrl}/${lotoPointId}/pictures`, form
+    );
+  }
+
+  /**
+   * List every FileObject in the plant file library with
+   * fileType.name="Picture" — the pool from which the "attach existing
+   * picture" picker draws. Shallow FileDtos (id / name / link / extension).
+   */
+  getPictureLibrary(): Observable<SpringApiResponse<FileDto[]>> {
+    return this.http.get<SpringApiResponse<FileDto[]>>(
+      `${this.apiUrl}/pictures/library`
+    );
+  }
+
+  /**
+   * Link an EXISTING FileObject (already uploaded, already in the plant
+   * file library) to a LOTO point. Same M2M join as uploadPictures without
+   * the upload — used by the "attach existing picture" picker so the same
+   * photo can back multiple LOTO points. Idempotent server-side.
+   */
+  linkPicture(lotoPointId: number, fileId: number): Observable<SpringApiResponse<LotoPointDto>> {
+    return this.http.post<SpringApiResponse<LotoPointDto>>(
+      `${this.apiUrl}/${lotoPointId}/pictures/link/${fileId}`, null
     );
   }
 

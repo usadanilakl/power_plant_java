@@ -15,7 +15,14 @@ export interface LotoPointCharacteristic {
   value: string;
 }
 
-export type LotoPointFieldName = keyof LotoPointModel;
+/**
+ * Every real LotoPointModel field, plus synthetic-column keys used only by
+ * {@link LotoPointDto.toTableColumns}. Synthetic columns render derived
+ * data (e.g. "pids" fetches related P&ID files on demand) — they have no
+ * backing field on the DTO but must still appear in the exhaustive
+ * {@code Record<LotoPointFieldName, Column>} shape.
+ */
+export type LotoPointFieldName = keyof LotoPointModel | 'pids';
 
 export interface LotoPointModel extends BaseModel {
   unit: string | null;
@@ -509,6 +516,13 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: null,
       },
+      // Synthetic key — see LotoPointFieldName. Never a real form field.
+      pids: {
+        name: 'pids',
+        label: 'P&IDs',
+        type: 'text',
+        initialValue: null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -693,12 +707,23 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         header: '3D Model',
         accessorFn: (item: LotoPointDto) => item.modelFile?.name || '',
       },
-      // Stub — pictures are shown in the form's Pictures slide, not the table.
-      // Exists only to satisfy the exhaustive Record<LotoPointFieldName, Column> type.
+      // Pictures column — accessorFn returns a count string as a fallback,
+      // but the RfLotoPointTable component overrides column.template at
+      // ngAfterViewInit with a thumbnail-strip renderer so operators see
+      // the actual first thumbnail (with a "+N" badge for extras).
       pictures: {
         id: 'pictures',
-        header: 'Pictures',
+        header: 'Photos',
         accessorFn: (item: LotoPointDto) => String(item.pictures?.length ?? 0),
+      },
+      // Synthetic P&ID column — no backing DTO field. Column.template is
+      // set at the component level to a button that lazy-fetches related
+      // P&IDs on click (per user's "no need at render time — just a
+      // button" decision), so no data comes over the wire unless asked.
+      pids: {
+        id: 'pids',
+        header: 'P&IDs',
+        accessorFn: () => '',
       },
     };
 
