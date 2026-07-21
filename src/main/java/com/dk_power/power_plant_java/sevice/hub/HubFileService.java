@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -292,6 +293,20 @@ public class HubFileService {
             fileName, file.length(), entityType, entityId);
 
         return syncedFile;
+    }
+
+    /**
+     * Best-effort, per-file-isolated variant of {@link #registerLocalFile}, for the FileObject
+     * afterCommit hook ({@code FileObjectSyncHandler.registerFilesOnHub}). Runs in its OWN
+     * transaction (REQUIRES_NEW) so it (a) durably commits even though the caller sits inside a
+     * completed transaction's afterCommit callback, and (b) one file's failure can't roll back the
+     * others in the loop. The delete-and-replace atomicity path ({@code replaceTrackedFiles}) keeps
+     * using {@link #registerLocalFile} (REQUIRED) so its delete + register stay in one transaction.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public HubSyncedFile registerLocalFileIsolated(java.io.File file, String entityType, Long entityId,
+                                                   String originalPath, String machineId) throws IOException {
+        return registerLocalFile(file, entityType, entityId, originalPath, machineId);
     }
 
     public record FileStoreResult(HubSyncedFile syncedFile, boolean isNewFile) {}

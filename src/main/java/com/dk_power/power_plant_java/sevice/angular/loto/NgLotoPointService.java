@@ -368,6 +368,17 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    private Set<Long> pictureIds(LotoPoint point) {
+        if (point == null || point.getPictures() == null) {
+            return new LinkedHashSet<>();
+        }
+        return point.getPictures().stream()
+                .filter(Objects::nonNull)
+                .map(FileObject::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     public LotoPoint copyPointFromOtherUnit(Long id) {
         LotoPoint sourcePoint = getEntityById(id);
         String sourceTagNumber = sourcePoint.getTagNumber();
@@ -1688,11 +1699,21 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         // Link every FileObject the upload produced (usually 1; PDFs page-split
         // but pictures don't). Load managed instances via FileRepo so the M2M
         // join has attached entities.
+        //
+        // Capture the M2M state BEFORE mutating so we can emit an EXPLICIT relationship
+        // FieldChange. A pure @ManyToMany collection change does not dirty the LotoPoint row, so
+        // @PostUpdate / captureManyToManyCollections never fires for it — without this the join
+        // change never syncs (and there is no FieldChange for drift to replay). Mirrors the
+        // Equipment.lotoPoints emission above.
+        Set<Long> beforePictureIds = pictureIds(point);
         for (com.dk_power.power_plant_java.dto.files.FileDto dto : uploaded) {
             FileObject managed = entityManager.getReference(FileObject.class, dto.getId());
             point.addPicture(managed);
         }
-        return lotoPointMapper.convertToDto(lotoPointRepo.save(point));
+        LotoPoint saved = lotoPointRepo.save(point);
+        fieldChangeTracker.trackRelationshipUpdateInCurrentTx(
+                saved, "pictures", beforePictureIds, pictureIds(saved), "ManyToMany");
+        return lotoPointMapper.convertToDto(saved);
     }
 
     /**
@@ -1707,8 +1728,13 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         LotoPoint point = lotoPointRepo.findById(lotoPointId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "LotoPoint not found: " + lotoPointId));
+        Set<Long> beforePictureIds = pictureIds(point);
         point.removePicture(fileId);
-        return lotoPointMapper.convertToDto(lotoPointRepo.save(point));
+        LotoPoint saved = lotoPointRepo.save(point);
+        // Explicit M2M emission — see uploadPicture (a pure collection change won't auto-capture).
+        fieldChangeTracker.trackRelationshipUpdateInCurrentTx(
+                saved, "pictures", beforePictureIds, pictureIds(saved), "ManyToMany");
+        return lotoPointMapper.convertToDto(saved);
     }
 
 }

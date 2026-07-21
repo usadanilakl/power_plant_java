@@ -164,7 +164,13 @@ public class FileObjectSyncHandler {
     /**
      * Called when a local FileObject is created or updated.
      * Queues the file for upload to sync server.
+     *
+     * REQUIRES_NEW is essential: this is invoked from FieldChangeTracker's afterCommit() callback,
+     * where the outer transaction has already committed. A REQUIRED write there would join the
+     * completed transaction and never commit (save() returns an id but no row lands). A fresh
+     * transaction makes the client's queueFileUpload row (and the hub's file registration) durable.
      */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void onLocalFileObjectChanged(FileObject fileObject, boolean isCreate) {
         if (syncContext.isSyncing()) {
             // This change came from an incoming sync, don't re-upload
@@ -215,7 +221,11 @@ public class FileObjectSyncHandler {
         int registered = 0;
         for (File file : files) {
             try {
-                hubFileService.registerLocalFile(
+                // Isolated (REQUIRES_NEW) registration: this loop is best-effort, so one file's
+                // failure must not roll back the others. An unchecked persistence exception from a
+                // REQUIRED registration joined to a shared tx would mark it rollback-only and lose
+                // every prior success in the loop.
+                hubFileService.registerLocalFileIsolated(
                     file, "FileObject", fileObject.getId(),
                     file.getAbsolutePath(), syncConfig.getMachineId());
                 registered++;
