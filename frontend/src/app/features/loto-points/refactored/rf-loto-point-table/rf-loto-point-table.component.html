@@ -105,7 +105,8 @@
 <app-rf-popup-projection
   [isOpen]="isPidsPopupOpen()"
   [title]="'Related P&IDs: ' + (pidsPopupRowSummary()?.tagNumber || pidsPopupRowSummary()?.description || '')"
-  [size]="'large'"
+  [size]="'xlarge'"
+  [fullHeight]="true"
   (close)="closePidsPopup()">
   <div class="pids-popup">
     @if (isLoadingPids()) {

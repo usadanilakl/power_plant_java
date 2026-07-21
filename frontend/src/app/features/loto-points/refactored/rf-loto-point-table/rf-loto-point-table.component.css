@@ -95,10 +95,36 @@ app-table {
   color: var(--header-text);
 }
 
+/* The P&IDs popup body hosts LotoPointFileViewerComponent, which is
+ * height-driven and auto-fits its image on load. The popup projection is
+ * opened with [fullHeight]="true", which gives .popup-content a fixed
+ * 90vh and switches .popup-body's overflow to hidden (see
+ * rf-popup-projection.component.css .popup-full-height rules). That lets
+ * us fill the popup 1-for-1 with the viewer without a scrolling parent
+ * pushing the image out of view. Same pattern as .file-viewer-section
+ * in rf-loto-point-form.component.css where the viewer already works.
+ */
 .pids-popup {
-  padding: 12px;
-  max-height: 60vh;
-  overflow-y: auto;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Give hints their own padding since the popup itself has none now. */
+.pids-popup > .pids-popup-hint,
+.pids-popup > .pids-popup-error {
+  margin: 12px;
+}
+
+.pids-popup > app-loto-point-file-viewer {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
 }
 
 .pids-popup-hint {
