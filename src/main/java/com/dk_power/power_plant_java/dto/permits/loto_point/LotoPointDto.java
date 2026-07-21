@@ -66,6 +66,15 @@ public class LotoPointDto extends BaseDto {
      * Populated via M2M {@code loto_point_picture} join table on the entity.
      */
     private List<FileDto> pictures;
+    /**
+     * Count of related P&IDs (LotoPoint → equipmentList → mainFile ∪ files,
+     * deduped). Populated by the paginated / search endpoints via
+     * {@code NgLotoPointService.fetchRelatedFileCountsForPoints} so the
+     * P&IDs table column can show "📐 P&IDs (N)" (or hide the button
+     * entirely at N=0) without a per-row fetch. Null means "not
+     * populated" (e.g., single-item GET / older callers).
+     */
+    private Integer pidCount;
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
     private Boolean isProcessed = false;

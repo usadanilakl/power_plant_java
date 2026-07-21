@@ -155,3 +155,69 @@ app-table {
   color: var(--muted-text, #888);
   text-transform: uppercase;
 }
+
+/*========== Photos cell click-affordance ==========*/
+
+.photos-cell {
+  cursor: zoom-in;
+  transition: transform 0.05s ease;
+}
+
+.photos-cell:active {
+  transform: scale(0.97);
+}
+
+.photos-cell:hover .photos-cell-thumb {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+/*========== Photos expand popup ==========*/
+
+.photos-popup {
+  padding: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.photos-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.photos-popup-tile {
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: zoom-in;
+  background: var(--surface-color, #f8f8f8);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s ease, transform 0.05s ease;
+}
+
+.photos-popup-tile:hover {
+  border-color: var(--accent-color);
+}
+
+.photos-popup-tile:active {
+  transform: scale(0.99);
+}
+
+.photos-popup-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: var(--surface-color, #f0f0f0);
+  display: block;
+}
+
+.photos-popup-name {
+  padding: 6px 8px;
+  font-size: 0.85em;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

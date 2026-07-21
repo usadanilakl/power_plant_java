@@ -24,10 +24,13 @@
   <!-- Photos cell template — first thumbnail + "+N" badge overlay.
        Data is already on item.pictures (LotoPointDto ships it), so no
        extra fetch per row. loading="lazy" defers image bytes until the
-       row scrolls into view. Empty cell if no pictures attached. -->
+       row scrolls into view. Empty cell if no pictures attached. Click
+       the cell → popup with every attached picture at full size. -->
   <ng-template #photosCellTemplate let-item>
     @if (item.pictures?.length) {
-      <div class="photos-cell" (click)="$event.stopPropagation()">
+      <div class="photos-cell"
+           title="Expand pictures"
+           (click)="openPhotosPopup(item, $event)">
         <img class="photos-cell-thumb"
              [src]="getPictureUrl(item.pictures[0])"
              [alt]="item.pictures[0].name || 'Photo'"
@@ -40,15 +43,19 @@
   </ng-template>
 
   <!-- P&IDs cell template — button that lazy-fetches related files on
-       click. No data comes over the wire at table-render time, so
-       browsing a 50-row page has zero cost from this column. -->
+       click. Count comes from LotoPointDto.pidCount (hydrated by the
+       list/search endpoints via one bulk aggregate query per page).
+       Rows with zero related files render as an empty cell — the
+       button is only useful when there's something to show. -->
   <ng-template #pidsCellTemplate let-item>
-    <button type="button"
-            class="pids-cell-button"
-            title="Show related P&IDs"
-            (click)="openPidsPopup(item, $event)">
-      📐 P&IDs
-    </button>
+    @if ((item.pidCount ?? 0) > 0) {
+      <button type="button"
+              class="pids-cell-button"
+              [title]="'Show ' + item.pidCount + ' related P&ID' + (item.pidCount === 1 ? '' : 's')"
+              (click)="openPidsPopup(item, $event)">
+        📐 P&IDs ({{ item.pidCount }})
+      </button>
+    }
   </ng-template>
 
   <!-- Table component -->
@@ -89,10 +96,15 @@
   (bulkEditApplied)="onBulkEditApplied($event)"
 ></app-loto-point-bulk-edit-form>
 
-<!-- P&IDs on-demand popup, opened by per-row button in the P&IDs column -->
+<!-- P&IDs on-demand popup — reuses the same viewer the LOTO Point form's
+     "Images" slide uses (LotoPointFileViewerComponent → RfUnifiedImageViewer
+     with forceRasterImage=true) so P&IDs open as JPGs with equipment
+     shapes overlaid, not as raw PDFs. The row's LotoPointDto only carries
+     `equipmentIds` (comma-separated); the popup refetches the full DTO on
+     open so the viewer has the equipmentList / shape data it needs. -->
 <app-rf-popup-projection
   [isOpen]="isPidsPopupOpen()"
-  [title]="'Related P&IDs: ' + (pidsPopupLotoPoint()?.tagNumber || pidsPopupLotoPoint()?.description || '')"
+  [title]="'Related P&IDs: ' + (pidsPopupRowSummary()?.tagNumber || pidsPopupRowSummary()?.description || '')"
   [size]="'large'"
   (close)="closePidsPopup()">
   <div class="pids-popup">
@@ -100,17 +112,34 @@
       <div class="pids-popup-hint">Loading related P&IDs…</div>
     } @else if (pidsError()) {
       <div class="pids-popup-error">{{ pidsError() }}</div>
-    } @else if (pidsPopupFiles().length === 0) {
-      <div class="pids-popup-hint">
-        No P&IDs found for this LOTO point (no equipment linked to a P&ID file yet).
-      </div>
+    } @else if (pidsPopupLotoPoint()) {
+      <app-loto-point-file-viewer [lotoPoint]="pidsPopupLotoPoint()!" />
+    }
+  </div>
+</app-rf-popup-projection>
+
+<!-- Photos expand popup — click a photos cell → grid of every attached
+     picture at full size. Click a tile to open the underlying file in a
+     new tab (matches the LOTO Point form's Pictures slide behavior). -->
+<app-rf-popup-projection
+  [isOpen]="isPhotosPopupOpen()"
+  [title]="'Pictures: ' + (photosPopupLotoPoint()?.tagNumber || photosPopupLotoPoint()?.description || '')"
+  [size]="'large'"
+  (close)="closePhotosPopup()">
+  <div class="photos-popup">
+    @if (photosPopupPictures().length === 0) {
+      <div class="pids-popup-hint">No pictures.</div>
     } @else {
-      <div class="pids-popup-list">
-        @for (pid of pidsPopupFiles(); track pid.id) {
-          <div class="pids-popup-row" (click)="openPidInNewTab(pid, $event)">
-            <span class="pids-popup-icon">📄</span>
-            <span class="pids-popup-name">{{ pid.name }}</span>
-            <span class="pids-popup-ext">{{ pid.extension }}</span>
+      <div class="photos-popup-grid">
+        @for (picture of photosPopupPictures(); track picture.id) {
+          <div class="photos-popup-tile"
+               [title]="picture.name || 'Open full size'"
+               (click)="openPhotoInNewTab(picture, $event)">
+            <img class="photos-popup-image"
+                 [src]="getPictureUrl(picture)"
+                 [alt]="picture.name || 'Photo'"
+                 loading="lazy" />
+            <div class="photos-popup-name">{{ picture.name }}</div>
           </div>
         }
       </div>

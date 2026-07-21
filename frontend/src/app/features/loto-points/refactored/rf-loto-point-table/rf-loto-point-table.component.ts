@@ -37,13 +37,14 @@ import { LotoPointFieldName } from '../../../../models/loto/loto-point.model';
 import { LotoPointService } from '../../../../services/loto/loto-point.service';
 import { FileDto } from '../../../../models/file/file.model';
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
+import { LotoPointFileViewerComponent } from '../loto-point-file-viewer/loto-point-file-viewer.component';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
   // forwardRef on the bulk-edit form breaks the import cycle (see loto-point-bulk-edit-form).
-  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent, RfPopupProjectionComponent],
+  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent, RfPopupProjectionComponent, LotoPointFileViewerComponent],
   // providers: [
   //   { provide: TableClickService, useClass: RfLotoPointClickService }
   // ],
@@ -99,21 +100,28 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   isPidsPopupOpen = signal<boolean>(false);
   pidsPopupLotoPoint = signal<LotoPointDto | null>(null);
-  pidsPopupFiles = signal<FileDto[]>([]);
+  pidsPopupRowSummary = signal<LotoPointDto | null>(null); // holds row DTO for popup title while full DTO fetches
   isLoadingPids = signal<boolean>(false);
   pidsError = signal<string | null>(null);
 
   openPidsPopup(item: LotoPointDto, event?: MouseEvent): void {
     event?.stopPropagation(); // don't fire a row-click while opening
     if (!item?.id) return;
-    this.pidsPopupLotoPoint.set(item);
-    this.pidsPopupFiles.set([]);
+    this.pidsPopupRowSummary.set(item);
+    this.pidsPopupLotoPoint.set(null);
     this.pidsError.set(null);
     this.isLoadingPids.set(true);
     this.isPidsPopupOpen.set(true);
-    this.lotoPointService.getRelatedFiles(item.id).subscribe({
+    // Refetch the full DTO — the paginated row carries only `equipmentIds`
+    // (comma-separated), not the `equipmentList` shape data that
+    // LotoPointFileViewerComponent needs to draw equipment overlays on the
+    // JPG. One targeted GET per popup open; nothing pre-fetched.
+    this.lotoPointService.getLotoPointById(String(item.id)).subscribe({
       next: (response) => {
-        this.pidsPopupFiles.set(response.responseData ?? []);
+        const full = response?.responseData
+          ? LotoPointDto.fromJson(response.responseData)
+          : null;
+        this.pidsPopupLotoPoint.set(full);
         this.isLoadingPids.set(false);
       },
       error: (err) => {
@@ -128,16 +136,40 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     this.isPidsPopupOpen.set(false);
   }
 
-  openPidInNewTab(file: FileDto, event?: MouseEvent): void {
-    event?.stopPropagation();
-    if (!file?.fileLink) return;
-    const url = `${environment.baseApiUrl}/${file.fileLink}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
-
   getPictureUrl(picture: FileDto): string {
     if (!picture?.fileLink) return '';
     return `${environment.baseApiUrl}/${picture.fileLink}`;
+  }
+
+  //===== Photos expand popup =====
+  /**
+   * Photos cell click: open a popup with every attached picture on the row
+   * at full size. Uses the row's LotoPointDto.pictures (already hydrated on
+   * the /paginated response since d4c5f70d/ad37ca6f), so no extra fetch.
+   * Click a tile inside the popup to open the picture in a new tab.
+   */
+  isPhotosPopupOpen = signal<boolean>(false);
+  photosPopupLotoPoint = signal<LotoPointDto | null>(null);
+
+  photosPopupPictures = computed<FileDto[]>(
+    () => this.photosPopupLotoPoint()?.pictures ?? []
+  );
+
+  openPhotosPopup(item: LotoPointDto, event?: MouseEvent): void {
+    event?.stopPropagation();
+    if (!item?.pictures || item.pictures.length === 0) return;
+    this.photosPopupLotoPoint.set(item);
+    this.isPhotosPopupOpen.set(true);
+  }
+
+  closePhotosPopup(): void {
+    this.isPhotosPopupOpen.set(false);
+  }
+
+  openPhotoInNewTab(picture: FileDto, event?: MouseEvent): void {
+    event?.stopPropagation();
+    const url = this.getPictureUrl(picture);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   // State

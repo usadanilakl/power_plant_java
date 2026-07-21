@@ -1745,6 +1745,58 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
+     * Bulk-count P&IDs (related files) for a page of LOTO points, returning
+     * a {@code {pointId -> distinct-file-count}} map. Same semantic as
+     * {@code getRelatedFiles(pointId)} — walks LotoPoint → equipmentList →
+     * (Equipment.mainFile ∪ Equipment.files) and counts distinct FileObject
+     * ids — but done in two aggregate JPQL queries per page instead of per
+     * row. Used by the paginated list endpoint to populate
+     * {@code LotoPointDto.pidCount} so the table's P&IDs column can show
+     * "📐 P&IDs (N)" (or hide the button entirely at N=0) without a
+     * per-row fetch.
+     * <p>
+     * The count doesn't distinguish P&IDs from other file types — matches
+     * the existing getRelatedFiles behavior, which returns whatever files
+     * the equipment happens to reference. If a strict "only fileType=P&ID"
+     * count is wanted later, add a WHERE clause on the file type Value.
+     */
+    public java.util.Map<Long, Integer> fetchRelatedFileCountsForPoints(java.util.Collection<Long> pointIds) {
+        if (pointIds == null || pointIds.isEmpty()) return java.util.Collections.emptyMap();
+        java.util.Map<Long, java.util.Set<Long>> byPoint = new java.util.HashMap<>();
+        for (Long id : pointIds) byPoint.put(id, new java.util.HashSet<>());
+
+        // mainFile side — Equipment has one mainFile FK, may be null
+        java.util.List<Object[]> mainFileRows = entityManager.createQuery(
+                "SELECT lp.id, mf.id FROM LotoPoint lp " +
+                "JOIN lp.equipmentList e JOIN e.mainFile mf " +
+                "WHERE lp.id IN :ids",
+                Object[].class
+        ).setParameter("ids", pointIds).getResultList();
+        for (Object[] row : mainFileRows) {
+            Long pid = (Long) row[0];
+            Long fid = (Long) row[1];
+            if (fid != null) byPoint.get(pid).add(fid);
+        }
+
+        // files (M2M) side
+        java.util.List<Object[]> extraFileRows = entityManager.createQuery(
+                "SELECT lp.id, ef.id FROM LotoPoint lp " +
+                "JOIN lp.equipmentList e JOIN e.files ef " +
+                "WHERE lp.id IN :ids",
+                Object[].class
+        ).setParameter("ids", pointIds).getResultList();
+        for (Object[] row : extraFileRows) {
+            Long pid = (Long) row[0];
+            Long fid = (Long) row[1];
+            if (fid != null) byPoint.get(pid).add(fid);
+        }
+
+        java.util.Map<Long, Integer> counts = new java.util.HashMap<>();
+        for (var entry : byPoint.entrySet()) counts.put(entry.getKey(), entry.getValue().size());
+        return counts;
+    }
+
+    /**
      * Bulk-fetch pictures for a page of LOTO points and return a
      * {pointId -> [pictures]} map. Used by the paginated list endpoint
      * to hydrate LotoPointDto.pictures without triggering an N+1

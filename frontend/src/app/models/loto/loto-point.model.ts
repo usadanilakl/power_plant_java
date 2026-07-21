@@ -60,6 +60,13 @@ export interface LotoPointModel extends BaseModel {
   modelFile: FileDto | null;
   /** Site photos attached via the LOTO_POINT_PICTURE M2M join table. */
   pictures: FileDto[] | null;
+  /**
+   * Count of related P&IDs — LotoPoint → equipmentList → (mainFile ∪ files),
+   * deduped. Populated only by list/search endpoints for the table's P&IDs
+   * column (button hides at 0, renders "📐 P&IDs (N)" otherwise). Null on
+   * single-item GETs or older responses.
+   */
+  pidCount: number | null;
 }
 
 export interface LotoPointFormField {
@@ -105,6 +112,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   processingStatus: ValueDto | null;
   modelFile: FileDto | null;
   pictures: FileDto[] | null;
+  pidCount: number | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
@@ -149,6 +157,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.processingStatus = super.setNestedObjectById(data.processingStatus, new ValueDto());
     this.modelFile = data.modelFile ? new FileDto(data.modelFile) : null;
     this.pictures = data.pictures ? data.pictures.map((p) => new FileDto(p)) : null;
+    this.pidCount = data.pidCount ?? null;
   }
 
   // Serialization method
@@ -192,6 +201,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       processingStatus: this.processingStatus?.toJson() || null,
       modelFile: this.modelFile?.toJson() ?? null,
       pictures: this.pictures?.map((p) => p.toJson()) ?? null,
+      pidCount: this.pidCount,
     };
   }
 
@@ -261,6 +271,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       pictures: Array.isArray(json.pictures)
         ? json.pictures.map((p: any) => FileDto.fromJson(p))
         : null,
+      pidCount: typeof json.pidCount === 'number' ? json.pidCount : null,
     });
   }
 
@@ -532,6 +543,14 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: null,
       },
+      // Read-only DTO field populated only by list/search endpoints —
+      // never a form field. Stub so the exhaustive Record<...> shape holds.
+      pidCount: {
+        name: 'pidCount',
+        label: 'P&ID Count',
+        type: 'text',
+        initialValue: null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -742,6 +761,13 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         id: 'comment',
         header: 'Comments',
         accessorFn: () => '',
+      },
+      // pidCount is data-only (populated by list endpoints, consumed by
+      // the P&IDs column's custom template). Stub for exhaustiveness.
+      pidCount: {
+        id: 'pidCount',
+        header: 'P&ID Count',
+        accessorFn: (item: LotoPointDto) => String(item.pidCount ?? 0),
       },
     };
 

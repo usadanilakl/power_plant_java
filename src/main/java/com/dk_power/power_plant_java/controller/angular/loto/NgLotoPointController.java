@@ -70,10 +70,19 @@ public class NgLotoPointController {
             if (!pageIds.isEmpty()) {
                 java.util.Map<Long, java.util.List<FileDto>> picturesById =
                         ngLotoPointService.fetchPicturesForPoints(pageIds);
+                // P&ID count for the table's P&IDs button — {row -> distinct
+                // file count via LotoPoint → equipmentList → mainFile ∪ files}.
+                // Two aggregate JPQLs, one map back-fill; zero-count rows are
+                // hidden entirely on the frontend so we still set the field
+                // (0 vs null distinguishes "counted, empty" from "not fetched").
+                java.util.Map<Long, Integer> pidCountsById =
+                        ngLotoPointService.fetchRelatedFileCountsForPoints(pageIds);
                 for (LotoPointDto dto : paginatedFiles.getContent()) {
                     if (dto.getId() == null) continue;
                     java.util.List<FileDto> pics = picturesById.get(dto.getId());
                     if (pics != null && !pics.isEmpty()) dto.setPictures(pics);
+                    Integer pc = pidCountsById.get(dto.getId());
+                    dto.setPidCount(pc != null ? pc : 0);
                 }
             }
 
@@ -166,6 +175,27 @@ public class NgLotoPointController {
                         sortDirection,
                         true
                 );
+            }
+
+            // Hydrate pidCount alongside the /paginated path so the P&IDs
+            // column renders consistently regardless of which endpoint filled
+            // the table. /search returns managed entities so LotoPointMapper
+            // already gets pictures via lazy-load; pidCount still needs the
+            // aggregate because it's an equipment-walk, not a lazy collection.
+            if (searchResults != null && !searchResults.getContent().isEmpty()) {
+                java.util.List<Long> pageIds = searchResults.getContent().stream()
+                        .map(LotoPointDto::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+                if (!pageIds.isEmpty()) {
+                    java.util.Map<Long, Integer> pidCountsById =
+                            ngLotoPointService.fetchRelatedFileCountsForPoints(pageIds);
+                    for (LotoPointDto dto : searchResults.getContent()) {
+                        if (dto.getId() == null) continue;
+                        Integer pc = pidCountsById.get(dto.getId());
+                        dto.setPidCount(pc != null ? pc : 0);
+                    }
+                }
             }
 
             NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");

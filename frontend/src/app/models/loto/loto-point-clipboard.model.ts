@@ -28,6 +28,9 @@ export interface ILotoPointClipboard
     // meaningful operation (each picture is a plant-taken photo of a real
     // isolation point, not something to be duplicated onto a new point).
     | 'pictures'
+    // pidCount is a read-only derived value populated by list endpoints;
+    // not meaningful to copy between points.
+    | 'pidCount'
   > {}
 
 export class LotoPointClipboardItem implements ILotoPointClipboard {
