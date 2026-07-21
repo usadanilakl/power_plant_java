@@ -13,7 +13,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of, tap, switchMap } from 'rxjs';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName } from '../../../../models/loto/loto-point.model';
 import { LotoPointClipboardItem } from '../../../../models/loto/loto-point-clipboard.model';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
@@ -121,7 +121,10 @@ export class LotoPointDualFormComponent {
 
   // Inputs
   primaryLotoPoint = input.required<LotoPointDto>();
-  fieldsToDisplay = input<(keyof LotoPointDto)[]>();
+  // LotoPointFieldName (widened to include synthetic 'pids' / 'comment')
+  // so callers can pass one shared field-list between the table and the
+  // dual form without a type mismatch — matches RfLotoPointTable/Form.
+  fieldsToDisplay = input<LotoPointFieldName[]>();
 
   // Outputs
   @Output() primarySaved = new EventEmitter<LotoPointDto>();

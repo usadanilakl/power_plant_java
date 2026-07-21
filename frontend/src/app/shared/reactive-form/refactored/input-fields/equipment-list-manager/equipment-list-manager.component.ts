@@ -13,7 +13,7 @@ import { EquipmentLotoConflictService } from '../services/equipment-loto-conflic
 import { EquipmentConflictDialogComponent, ConflictDialogData } from '../equipment-conflict-dialog/equipment-conflict-dialog.component';
 import { LotoPointMapperService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-mapper.service';
 import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
-import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName } from '../../../../../models/loto/loto-point.model';
 import { RfFormField } from '../../../../../models/ui/form-field.model';
 
 /**
@@ -399,7 +399,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     this.newLotoPoint.set(lotoPoint);
 
     // Generate form fields WITHOUT equipmentList field (it's pre-assigned)
-    const fieldsWithoutEquipmentList: (keyof LotoPointDto)[] = [
+    const fieldsWithoutEquipmentList: LotoPointFieldName[] = [
       'unit',
       'tagNumber',
       'description',

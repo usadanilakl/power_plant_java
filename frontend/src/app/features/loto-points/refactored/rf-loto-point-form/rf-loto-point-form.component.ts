@@ -26,8 +26,7 @@ import { AiFormAssistantComponent } from '../../../../shared/reactive-form/refac
 import { LotoPointService } from '../../../../services/loto/loto-point.service';
 import { FileDto } from '../../../../models/file/file.model';
 import { environment } from '../../../../../environments/environment';
-
-type LotoPointFieldName = keyof LotoPointDto;
+import { LotoPointFieldName } from '../../../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-rf-loto-point-form',

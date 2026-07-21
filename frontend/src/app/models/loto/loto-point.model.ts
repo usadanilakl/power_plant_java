@@ -17,12 +17,13 @@ export interface LotoPointCharacteristic {
 
 /**
  * Every real LotoPointModel field, plus synthetic-column keys used only by
- * {@link LotoPointDto.toTableColumns}. Synthetic columns render derived
- * data (e.g. "pids" fetches related P&ID files on demand) — they have no
- * backing field on the DTO but must still appear in the exhaustive
- * {@code Record<LotoPointFieldName, Column>} shape.
+ * {@link LotoPointDto.toTableColumns} and the mapper service. Synthetic
+ * columns render derived data (e.g. "pids" fetches related P&ID files on
+ * demand, "comment" is spliced in by LotoPointMapperService) — they have
+ * no backing field on the DTO but must still appear in the exhaustive
+ * {@code Record<LotoPointFieldName, Column>} shape below.
  */
-export type LotoPointFieldName = keyof LotoPointModel | 'pids';
+export type LotoPointFieldName = keyof LotoPointModel | 'pids' | 'comment';
 
 export interface LotoPointModel extends BaseModel {
   unit: string | null;
@@ -523,6 +524,14 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: null,
       },
+      // Synthetic key — LotoPointMapperService.toTableColumns splices in
+      // the comment column; the DTO never renders 'comment' as a form field.
+      comment: {
+        name: 'comment',
+        label: 'Comments',
+        type: 'text',
+        initialValue: null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -723,6 +732,15 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       pids: {
         id: 'pids',
         header: 'P&IDs',
+        accessorFn: () => '',
+      },
+      // Synthetic comment column — real behavior lives in
+      // LotoPointMapperService.toTableColumns which detects 'comment' in
+      // fields and splices in the comment-cell column. This entry only
+      // satisfies the exhaustive Record<LotoPointFieldName, Column> shape.
+      comment: {
+        id: 'comment',
+        header: 'Comments',
         accessorFn: () => '',
       },
     };

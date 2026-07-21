@@ -422,7 +422,12 @@ export class LotoPointMapperService {
    */
   toFormFields(
     lotoPoint: LotoPointDto,
-    fields: (keyof LotoPointDto)[] = [
+    // Widened to LotoPointFieldName so state services that share one
+    // fields list between the table (which may include 'pids'/'comment')
+    // and the form can pass the same array. Synthetic keys map to stub
+    // form-field entries in LotoPointDto.toFormFields; they simply never
+    // render because no default field list requests them.
+    fields: LotoPointFieldName[] = [
       'unit',
       'tagNumber',
       'description',
@@ -752,7 +757,7 @@ export class LotoPointMapperService {
         guideMessage: 'Add or view comments for this LOTO point',
       };
       const result = fields
-        .map((fieldName) => allFields[fieldName])
+        .map((fieldName) => allFields[fieldName as keyof typeof allFields])
         .filter((field): field is RfFormField => field !== undefined);
       // Insert comment field at the position where 'comment' appears in fields
       const commentIndex = fields.indexOf('comment' as any);
@@ -761,7 +766,9 @@ export class LotoPointMapperService {
     }
 
     return fields
-      .map((fieldName) => allFields[fieldName])
+      // Cast — synthetic keys ('pids', 'comment') aren't in allFields;
+      // they resolve to undefined and are filtered out by the next step.
+      .map((fieldName) => allFields[fieldName as keyof typeof allFields])
       .filter((field): field is RfFormField => field !== undefined);
   }
 
