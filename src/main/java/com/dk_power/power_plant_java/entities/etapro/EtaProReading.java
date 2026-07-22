@@ -20,6 +20,9 @@ import java.time.LocalDateTime;
         @Index(name = "idx_etapro_reading_point_time", columnList = "pointId, readingTime"),
         @Index(name = "idx_etapro_reading_session", columnList = "scrapeSessionId")
 })
+@com.dk_power.power_plant_java.sevice.sync.LocalOnlyEntity(reason =
+        "high-volume historian time-series; collected on explicit request and re-pullable from the "
+        + "EtaPRO historian, so it is kept per-node and NEVER synced (syncing it saturated the sync pipeline)")
 public class EtaProReading extends BaseIdEntity {
     private String pointId;
     /** Renamed from "timestamp" which is a SQL reserved word on H2 and Postgres. */

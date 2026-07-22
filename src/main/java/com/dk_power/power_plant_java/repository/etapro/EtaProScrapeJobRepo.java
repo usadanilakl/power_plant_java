@@ -18,7 +18,17 @@ public interface EtaProScrapeJobRepo extends BaseRepository<EtaProScrapeJob> {
      */
     Optional<EtaProScrapeJob> findFirstByModeAndStatusOrderByDateCreatedAsc(Mode mode, Status status);
 
+    /**
+     * Oldest PENDING HISTORY job OWNED BY this device — the only ones this node's worker executes.
+     * Jobs owned by other nodes are ignored here (they run on their own creator).
+     */
+    Optional<EtaProScrapeJob> findFirstByModeAndStatusAndOwnerDeviceNumberOrderByDateCreatedAsc(
+            Mode mode, Status status, Integer ownerDeviceNumber);
+
     List<EtaProScrapeJob> findByStatus(Status status);
+
+    /** RUNNING jobs owned by this device — used to reap only our own orphans, never other nodes'. */
+    List<EtaProScrapeJob> findByStatusAndOwnerDeviceNumber(Status status, Integer ownerDeviceNumber);
 
     List<EtaProScrapeJob> findByStatusIn(List<Status> statuses);
 

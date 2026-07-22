@@ -13218,7 +13218,7 @@
   "id" : 22890,
   "tagNumber" : "02-MBH06AN101",
   "description" : "ECA COMPRESSOR A",
-  "specificLocation" : " MVB SWITCHGEAR 11, CUBICLE 05A",
+  "specificLocation" : " MVB SWITCHGEAR 11, CUBICLE 05B",
   "eqType" : "Breaker 6.9kV",
   "locationId" : 10904
 }, {
@@ -13260,7 +13260,7 @@
   "id" : 22896,
   "tagNumber" : "02-MBH06AN102",
   "description" : "ECA COMPRESSOR B",
-  "specificLocation" : " MVB SWITCHGEAR 21, CUBICLE 01B",
+  "specificLocation" : " MVB SWITCHGEAR 21, CUBICLE 01A",
   "eqType" : "Breaker 6.9kV",
   "locationId" : 10904
 }, {

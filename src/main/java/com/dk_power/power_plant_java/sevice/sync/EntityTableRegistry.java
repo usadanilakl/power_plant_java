@@ -131,11 +131,11 @@ public class EntityTableRegistry {
         // Simulator
         Map.entry("SimEquipment", "sim_equipment"),
 
-        // EtaPro
+        // EtaPro — EtaProReading + EtaProLogEntry are @LocalOnlyEntity (high-volume historian data,
+        // re-pullable from source) and are intentionally NOT registered here, so inbound changes for
+        // them are ignored too. Only the low-volume config/job/report entities sync.
         Map.entry("EtaProPoint", "eta_pro_point"),
-        Map.entry("EtaProReading", "eta_pro_reading"),
         Map.entry("EtaProScrapeJob", "eta_pro_scrape_job"),
-        Map.entry("EtaProLogEntry", "eta_pro_log_entry"),
         Map.entry("EtaProReport", "eta_pro_report"),
 
         // Rounds (WebView AMS scraper)
@@ -183,9 +183,7 @@ public class EntityTableRegistry {
         "Instrument",
         "InstrumentLog",
         "EtaProPoint",
-        "EtaProReading",
         "EtaProScrapeJob",
-        "EtaProLogEntry",
         "RoundsReport",
         "EspDevice",
         "LedStrip",

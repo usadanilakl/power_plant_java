@@ -147,6 +147,16 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         ]
     },
     {
+        label: 'Ordering',
+        icon: 'shopping_cart',
+        color: '#FB8C00',
+        defaultRoute: '/ordering/workbench',
+        requiresFullAccess: true,
+        items: [
+            { route: '/ordering/workbench', label: 'Ordering Workbench', icon: 'shopping_cart', iconColor: '#FB8C00' }
+        ]
+    },
+    {
         label: 'Maximo',
         requiresPlant: true,
         icon: 'engineering',

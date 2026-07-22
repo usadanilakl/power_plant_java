@@ -34,6 +34,7 @@ import { ETAPRO_REPORTS_ROUTES } from './routes/etapro-reports.routes';
 import { MAXIMO_ROUTES } from './routes/maximo.routes';
 import { PLANT_ROUTES } from './routes/plant.routes';
 import { ROUNDS_ROUTES } from './routes/rounds.routes';
+import { ORDERING_ROUTES } from './routes/ordering.routes';
 
 export const routes: Routes = [
   // Public routes
@@ -74,5 +75,6 @@ export const routes: Routes = [
   ...ETAPRO_REPORTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...MAXIMO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, plantAccessGuard] })),
   ...PLANT_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...ROUNDS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
+  ...ROUNDS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...ORDERING_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
 ];

@@ -122,7 +122,7 @@ class EtaProHistoryJobServiceTest {
 
     @Test
     void planBatchesGeneratesDayByDaySlicesForSinglePointGroup() {
-        EtaProHistoryJobService svc = new EtaProHistoryJobService(null);
+        EtaProHistoryJobService svc = new EtaProHistoryJobService(null, null);
 
         EtaProScrapeJob job = new EtaProScrapeJob();
         job.setPointIds(List.of("P1", "P2"));
@@ -147,7 +147,7 @@ class EtaProHistoryJobServiceTest {
 
     @Test
     void planBatchesInterleavesPointGroupsWithinEachDay() {
-        EtaProHistoryJobService svc = new EtaProHistoryJobService(null);
+        EtaProHistoryJobService svc = new EtaProHistoryJobService(null, null);
 
         List<String> points = new java.util.ArrayList<>();
         for (int i = 1; i <= 25; i++) points.add("P" + i);
@@ -175,7 +175,7 @@ class EtaProHistoryJobServiceTest {
 
     @Test
     void planBatchesTruncatesLastSliceToRangeEnd() {
-        EtaProHistoryJobService svc = new EtaProHistoryJobService(null);
+        EtaProHistoryJobService svc = new EtaProHistoryJobService(null, null);
 
         EtaProScrapeJob job = new EtaProScrapeJob();
         job.setPointIds(List.of("P1"));

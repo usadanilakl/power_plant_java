@@ -106,6 +106,7 @@ export class RoundsAdminService {
     choicesJson: string | null; lowLimit: number | null; highLimit: number | null; trackIssues: boolean;
     physicalObjectId: number | null; orderIndex: number;
     predecessorQuestionId: number | null; showWhenOp: string | null; showWhenValue: string | null;
+    reorderCatalogKey: string | null;
   }>): Observable<RoundQuestion> {
     return this.http
       .put<SpringApiResponse<RoundQuestion>>(`${this.base}/questions/${id}`, body)

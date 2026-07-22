@@ -160,6 +160,9 @@
 
                     <label class="active"><input type="checkbox" [(ngModel)]="draft.trackIssues" /> Track out-of-range alerts</label>
 
+                    <div class="field"><label>Reorder item key (optional)</label>
+                      <input [(ngModel)]="draft.reorderCatalogKey" placeholder="e.g. co2 — a LOW reading raises a reorder suggestion" /></div>
+
                     <div class="edit-actions">
                       <button class="primary" (click)="saveEdit()" [disabled]="saving()">Save</button>
                       <button class="ghost" (click)="cancelEdit()">Cancel</button>

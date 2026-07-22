@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.etapro;
 
+import com.dk_power.power_plant_java.entities.etapro.EtaProLogEntry;
 import com.dk_power.power_plant_java.repository.etapro.EtaProLogEntryRepo;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScraperEngine.BatchResult;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScraperEngine.Template;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +36,8 @@ public class EtaProLogPullService {
 
     private final EtaProScraperEngine engine;
     private final EtaProLogEntryRepo logRepo;
+    /** Present only when etapro.api.enabled — the REST API is the PRIMARY EPLog source when set. */
+    private final Optional<EtaProApiService> apiService;
 
     /** First-run window when the table is empty. */
     @Value("${etapro.eplog.backfill.days:30}")
@@ -41,6 +46,10 @@ public class EtaProLogPullService {
     /** Re-pull overlap behind the watermark so boundary entries aren't missed. */
     @Value("${etapro.eplog.window.overlap.minutes:60}")
     private int overlapMinutes;
+
+    /** When true, an API failure is NOT retried via the scraper (API-only). */
+    @Value("${etapro.api.strict:false}")
+    private boolean strict;
 
     public enum PullState { IDLE, QUEUED, RUNNING, DONE, FAILED }
 
@@ -135,11 +144,35 @@ public class EtaProLogPullService {
                 ? end.minusDays(backfillDays)
                 : watermark.minusMinutes(overlapMinutes);
         log.info("[EtaPro] EPLog incremental pull {} -> {} (watermark={})", start, end, watermark);
-        return engine.executeBatch(Template.EPLOG, List.of(), start, end);
+        return fetchEpLogBatch(start, end);
     }
 
     private BatchResult pull(LocalDateTime start, LocalDateTime end) {
         log.info("[EtaPro] EPLog explicit pull {} -> {}", start, end);
+        return fetchEpLogBatch(start, end);
+    }
+
+    /**
+     * API-first EPLog fetch with scraper fallback — mirrors the history data-source policy.
+     * The REST API returns proper entries (with a real EntryIdKey), no UI Automation needed.
+     */
+    private BatchResult fetchEpLogBatch(LocalDateTime start, LocalDateTime end) {
+        if (apiService.isPresent()) {
+            String sessionId = UUID.randomUUID().toString();
+            try {
+                List<EtaProLogEntry> entries = apiService.get().fetchEpLog(start, end, sessionId);
+                int imported = engine.saveLogEntries(entries);
+                String msg = imported + "/" + entries.size() + " log entries via API";
+                log.debug("[EtaPro] EPLog batch via API: {}", msg);
+                return new BatchResult(true, msg, entries.size(), imported, sessionId);
+            } catch (Exception e) {
+                log.warn("[EtaPro] API EPLog fetch failed: {}", e.getMessage());
+                if (strict) {
+                    return BatchResult.failure("API EPLog fetch failed (strict, no fallback): " + e.getMessage(), sessionId);
+                }
+                log.info("[EtaPro] Falling back to Excel scraper (Refresh EPLog) for this pull");
+            }
+        }
         return engine.executeBatch(Template.EPLOG, List.of(), start, end);
     }
 }

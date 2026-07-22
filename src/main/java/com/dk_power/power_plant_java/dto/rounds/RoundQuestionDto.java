@@ -18,5 +18,6 @@ public record RoundQuestionDto(
         String sourceWebviewKey,
         Long predecessorQuestionId,
         String showWhenOp,
-        String showWhenValue
+        String showWhenValue,
+        String reorderCatalogKey
 ) {}

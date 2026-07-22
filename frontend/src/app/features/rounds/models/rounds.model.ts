@@ -46,6 +46,7 @@ export interface RoundQuestion {
   predecessorQuestionId: number | null;
   showWhenOp: string | null;
   showWhenValue: string | null;
+  reorderCatalogKey: string | null;
 }
 
 /** A round definition (backend RoundDto). */

@@ -64,9 +64,6 @@ public class DedupKeyResolver {
         Map.entry("MaximoFormSubmission",List.of(new NaturalKeyField("submissionKey", "submission_key", false, true))),
         Map.entry("PhysicalObject",      List.of(new NaturalKeyField("maximoKey", "maximo_key", false, true))),
         Map.entry("InstrumentLog",       List.of(new NaturalKeyField("localUuid", "local_uuid", false, true))),
-        // EtaPro operator-log entries are scraped independently on each desktop over overlapping
-        // windows; dedupKey (SHA-256 of createTime|description|createdBy) is the cross-device natural key.
-        Map.entry("EtaProLogEntry",      List.of(new NaturalKeyField("dedupKey", "dedup_key", false, true))),
         Map.entry("Conversation",        List.of(new NaturalKeyField("entityType", "entity_type", false, true),
                                                   new NaturalKeyField("entityId", "entity_id", false, true),
                                                   new NaturalKeyField("initiatorId", "initiator_id", false, true),

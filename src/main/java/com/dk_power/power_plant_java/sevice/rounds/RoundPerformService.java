@@ -1,8 +1,10 @@
 package com.dk_power.power_plant_java.sevice.rounds;
 
+import com.dk_power.power_plant_java.dto.order.ReorderSuggestionDto;
 import com.dk_power.power_plant_java.dto.rounds.RoundPerformDtos.*;
 import com.dk_power.power_plant_java.entities.rounds.*;
 import com.dk_power.power_plant_java.repository.rounds.*;
+import com.dk_power.power_plant_java.sevice.order.OrderLedger;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -38,6 +42,7 @@ public class RoundPerformService {
     private final RoundInstanceRepository instanceRepo;
     private final RoundAnswerRepository answerRepo;
     private final RoundIssueRepository issueRepo;
+    private final OrderLedger orderLedger;
 
     // ── list / open ──
 
@@ -141,6 +146,7 @@ public class RoundPerformService {
         // 2. persist answers + reconcile issues
         int opened = 0, resolved = 0, ongoing = 0, saved = 0;
         List<String> warnings = new ArrayList<>();
+        List<ReorderSuggestionDto> reorderSuggestions = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
         for (AnswerInput a : answers) {
@@ -184,6 +190,7 @@ public class RoundPerformService {
                         issue = issueRepo.save(issue);
                         ans.setIssueId(issue.getId());
                         opened++;
+                        collectReorderSuggestion(q, ans, reorderSuggestions);
                     }
                 } else if (open != null) {
                     open.setStatus(RoundIssueStatus.RESOLVED);
@@ -206,6 +213,7 @@ public class RoundPerformService {
         if (req != null && req.shift() != null) inst.setShift(req.shift());
         if (req != null && req.notes() != null) inst.setNotes(req.notes());
         instanceRepo.save(inst);
+        emitReorderSuggestionsAfterCommit(reorderSuggestions);
 
         return new SubmitResult(instanceId, saved, opened, resolved, ongoing, warnings);
     }
@@ -289,6 +297,51 @@ public class RoundPerformService {
             return value == null || !exp.trim().equalsIgnoreCase(value.trim());
         }
         return false;
+    }
+
+    // ── reorder suggestion (Stage 4) — a LOW reading on a catalog-mapped question raises an order suggestion ──
+
+    private void collectReorderSuggestion(RoundQuestion q, RoundAnswer ans, List<ReorderSuggestionDto> out) {
+        String key = q.getReorderCatalogKey();
+        if (key == null || key.isBlank()) return;
+        // Only a LOW reading (running out) suggests a reorder — a HIGH-limit trip must not.
+        Double n = ans.getNumericValue();
+        if (q.getLowLimit() == null || n == null || n >= q.getLowLimit()) return;
+        String unit = q.getUnit() != null && !q.getUnit().isBlank() ? " " + q.getUnit() : "";
+        String prompt = q.getPrompt() != null ? q.getPrompt() : ("Question #" + q.getId());
+        out.add(ReorderSuggestionDto.builder()
+                .catalogItemKey(key.trim())
+                .source("rounds")
+                .roundQuestionId(String.valueOf(q.getId()))
+                .reading(ans.getValue())
+                .lowLimit(String.valueOf(q.getLowLimit()))
+                .reason(prompt + " read " + ans.getValue() + unit + " — below reorder threshold " + q.getLowLimit() + unit)
+                .status("OPEN")
+                .build());
+    }
+
+    /** Emit after commit so a suggestion fires only when the round actually persists, and the SharePoint call never
+     *  runs inside (or blocks) the DB transaction. Best-effort — a failure never breaks the submit. */
+    private void emitReorderSuggestionsAfterCommit(List<ReorderSuggestionDto> suggestions) {
+        if (suggestions.isEmpty()) return;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { emitReorderSuggestions(suggestions); }
+            });
+        } else {
+            emitReorderSuggestions(suggestions);
+        }
+    }
+
+    private void emitReorderSuggestions(List<ReorderSuggestionDto> suggestions) {
+        for (ReorderSuggestionDto s : suggestions) {
+            try {
+                orderLedger.addSuggestion(s);
+                log.info("[Rounds] reorder suggestion emitted (item {}, question {})", s.getCatalogItemKey(), s.getRoundQuestionId());
+            } catch (Exception e) {
+                log.warn("[Rounds] reorder suggestion emit failed (item {}): {}", s.getCatalogItemKey(), e.getMessage());
+            }
+        }
     }
 
     private QuestionForPerform toPerform(RoundQuestion q) {

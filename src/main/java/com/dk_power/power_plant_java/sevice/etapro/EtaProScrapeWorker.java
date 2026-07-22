@@ -52,6 +52,7 @@ public class EtaProScrapeWorker {
     private final EtaProLiveService liveService;
     private final EtaProHistoryJobService historyJobService;
     private final EtaProLogPullService logPullService;
+    private final EtaProHistoryFetchService historyFetchService;
 
     @Value("${etapro.live.interval.ms:3000}")
     private long liveIntervalMs;
@@ -59,9 +60,18 @@ public class EtaProScrapeWorker {
     @Value("${etapro.worker.idle-sleep.ms:200}")
     private long idleSleepMs;
 
+    /**
+     * Explicit-only collection: a failing LIVE subscription (e.g. Excel unavailable / Protected View)
+     * is auto-stopped after this many consecutive failures instead of retrying forever. The user must
+     * explicitly restart Live to try again — the app never keeps collecting on its own.
+     */
+    private static final int MAX_LIVE_FAILURES = 5;
+
     private volatile boolean running;
     private Thread workerThread;
     private long lastLiveTickStart;
+    /** startedAt of the live subscription whose failure strikes the current counter reflects. */
+    private LocalDateTime lastLiveStartedAt;
 
     // Current job being processed (null when idle or between jobs)
     private volatile Long currentJobId;
@@ -151,6 +161,15 @@ public class EtaProScrapeWorker {
     // ── Live cycle ────────────────────────────────────────────
 
     private void runLiveCycle() {
+        EtaProLiveService.LiveSubscription sub = liveService.snapshot();
+        if (sub == null) return;
+        // A freshly (re)started subscription starts clean — don't inherit failure strikes from a
+        // previous one (else it could auto-stop after <MAX_LIVE_FAILURES failures).
+        if (!java.util.Objects.equals(sub.startedAt(), lastLiveStartedAt)) {
+            lastLiveStartedAt = sub.startedAt();
+            consecutiveFailures = 0;
+        }
+
         List<String> points = liveService.getSubscribedPoints();
         if (points.isEmpty()) return;
 
@@ -171,12 +190,22 @@ public class EtaProScrapeWorker {
             } else {
                 log.warn("[EtaPro] Live batch failed: {}", result.message);
                 consecutiveFailures++;
-                // Back off on repeated failures to avoid hammering a dead process
-                if (consecutiveFailures > 3) {
-                    long backoffMs = Math.min(consecutiveFailures * 2000L, 30_000L);
-                    log.warn("[EtaPro] {} consecutive failures, backing off {}ms", consecutiveFailures, backoffMs);
-                    try { Thread.sleep(backoffMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return; }
+                // Explicit-only: never retry a failing live subscription indefinitely. After a few
+                // consecutive failures, auto-stop the subscription and tear down Excel (same as an
+                // explicit stop). The user must restart Live to try again — no autonomous collection.
+                if (consecutiveFailures >= MAX_LIVE_FAILURES) {
+                    log.error("[EtaPro] Live auto-stopped after {} consecutive failures — collection is "
+                            + "explicit-only, so it will NOT keep retrying. Restart Live to try again. Last error: {}",
+                            consecutiveFailures, result.message);
+                    liveService.stop();
+                    engine.requestStop();   // worker tears down Excel on the next idle tick
+                    consecutiveFailures = 0;
+                    return;
                 }
+                // Otherwise back off briefly before the next cycle to avoid hammering a slow process.
+                long backoffMs = Math.min(consecutiveFailures * 2000L, 15_000L);
+                log.warn("[EtaPro] Live batch failed ({}/{}), backing off {}ms", consecutiveFailures, MAX_LIVE_FAILURES, backoffMs);
+                try { Thread.sleep(backoffMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return; }
                 return; // Don't process remaining chunks if one failed
             }
         }
@@ -216,7 +245,8 @@ public class EtaProScrapeWorker {
         }
 
         BatchPlan plan = currentPlan.get(currentBatchIndex);
-        BatchResult result = engine.executeBatch(Template.HISTORY, plan.pointIds(), plan.start(), plan.end());
+        // API-first (with scraper fallback) when etapro.api.enabled; otherwise the scraper.
+        BatchResult result = historyFetchService.fetchHistoryBatch(plan.pointIds(), plan.start(), plan.end());
 
         if (!result.success) {
             log.error("[EtaPro] History batch failed for job {}: {}", currentJobId, result.message);

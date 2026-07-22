@@ -33,6 +33,11 @@ Automatically creates SharePoint lists with the correct columns for all permit t
 | Field Lists | PwaId, ListType, Status, Location, SpecificLocation, Notes (note), DateObserved, EquipmentTag, SubmitterName/Email/Phone | Text + 1 Note |
 | Qualification Catalog | PwaId, QualificationCode, QualificationName, QualificationType, Description (note), RequiresExpiration (bool), DefaultValidityMonths, IsActive (bool), SortOrder, Notes (note) | Text + 2 Boolean + 2 Note |
 | Employees Qualifications | PwaId, UserId, UserName, UserEmail, WindowsUsername, Role, QualificationId, QualificationCode, QualificationName, QualificationType, Status, IssuedDate, ExpirationDate, CredentialNumber, Issuer, Notes (note) | Text + 1 Note |
+| Orders | PwaId, OrderDate, OrderedBy, Vendor, CatalogItemKey, PoNumber, Recipient, Cc, Subject, LinesJson (note), EmailSent (bool), EmailError (note), SourceSuggestionId, Status | Text + 1 Boolean + 2 Note |
+| OrderCatalog | ItemKey, DisplayName, Vendor, ContactEmail, CcEmails, BodyNote (note), BlanketPoNumber, Unit, DefaultQtyPresets (note), TextOptions (note), Active (bool), SortOrder | Text + 1 Boolean + 3 Note |
+| OrderSuggestions | PwaId, SuggestedAt, CatalogItemKey, Source, RoundQuestionId, Reading, LowLimit, SuggestedQty, Reason (note), Status, ResultingOrderId | Text + 1 Note |
+
+> The three `Order*` lists back the hub-independent Ordering feature (see `project/features/ordering/README.md`). They are schema-only here and are **not** on the CRDT sync bus — `SharePointOrderLedger` reads/writes them directly via the certificate client, and self-provisions them on first use (`provisionSingle`).
 
 ## Field Type Kinds
 

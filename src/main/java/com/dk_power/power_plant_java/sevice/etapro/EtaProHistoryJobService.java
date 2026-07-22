@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.etapro;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob.Mode;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob.Status;
@@ -14,8 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages the history scrape job lifecycle: submission, batching plan, progress
@@ -29,6 +33,15 @@ import java.util.Optional;
 public class EtaProHistoryJobService {
 
     private final EtaProScrapeJobRepo jobRepo;
+    private final SyncConfig syncConfig;
+
+    /**
+     * IDs of jobs submitted by an explicit user action IN THIS PROCESS. The worker runs ONLY these —
+     * never a PENDING job that merely synced in from the hub (e.g. re-introduced after a DB restore or
+     * resync). Combined with device-ownership + the startup reap, this keeps collection strictly
+     * explicit-and-in-session. In-memory, so it is empty after a restart (nothing auto-resumes).
+     */
+    private final Set<Long> submittedThisSession = ConcurrentHashMap.newKeySet();
 
     /**
      * Submit a new history job. Computes batch count, persists as PENDING.
@@ -60,9 +73,13 @@ public class EtaProHistoryJobService {
         job.setBatchesTotal(computeTotalBatches(pointIds.size(), rangeStart, rangeEnd));
         job.setBatchesCompleted(0);
         job.setReadingsImported(0);
+        // Pin execution to THIS node. The job syncs everywhere, but only this device's worker claims it.
+        job.setOwnerDeviceNumber(syncConfig.getDeviceNumber());
 
         EtaProScrapeJob saved = jobRepo.save(job);
-        log.info("[EtaPro] Submitted history job {}: {} points × {} batches", saved.getId(), pointIds.size(), saved.getBatchesTotal());
+        submittedThisSession.add(saved.getId());  // explicit, in-session — the worker will run this one
+        log.info("[EtaPro] Submitted history job {} (owner device {}): {} points × {} batches",
+                saved.getId(), saved.getOwnerDeviceNumber(), pointIds.size(), saved.getBatchesTotal());
         return saved;
     }
 
@@ -162,7 +179,14 @@ public class EtaProHistoryJobService {
     // ── Queries (worker + controller) ────────────────────────
 
     public Optional<EtaProScrapeJob> nextPendingHistoryJob() {
-        return jobRepo.findFirstByModeAndStatusOrderByDateCreatedAsc(Mode.HISTORY, Status.PENDING);
+        // Run ONLY jobs this process explicitly submitted this session (and that this device owns).
+        // A PENDING job synced in from the hub — even one owned by this device from a prior session or
+        // re-introduced by a restore/resync — is NOT auto-run. Collection stays strictly explicit.
+        if (submittedThisSession.isEmpty()) return Optional.empty();
+        return jobRepo.findByStatusAndOwnerDeviceNumber(Status.PENDING, syncConfig.getDeviceNumber())
+                .stream()
+                .filter(j -> submittedThisSession.contains(j.getId()))
+                .min(Comparator.comparing(EtaProScrapeJob::getId));
     }
 
     public Optional<EtaProScrapeJob> runningHistoryJob() {
@@ -185,18 +209,33 @@ public class EtaProHistoryJobService {
     }
 
     /**
-     * On startup: any job left in RUNNING state (Java crashed mid-job) gets marked FAILED.
-     * Per user decision 1b.
+     * On startup: clear THIS node's non-terminal jobs so a restart never autonomously resumes
+     * collection (explicit-only policy). RUNNING jobs (crashed mid-run) → FAILED; PENDING jobs
+     * (submitted but never started) → CANCELLED. Either way the user must explicitly re-submit.
+     *
+     * <p>Scoped to our own device — we must never touch another node's job (its status is synced in,
+     * and clobbering it would sync back and disrupt the scrape on the machine that actually owns it).
      */
     @Transactional
     public void reapOrphanedJobs() {
-        List<EtaProScrapeJob> orphans = jobRepo.findByStatus(Status.RUNNING);
-        for (EtaProScrapeJob job : orphans) {
+        int myDevice = syncConfig.getDeviceNumber();
+
+        List<EtaProScrapeJob> running = jobRepo.findByStatusAndOwnerDeviceNumber(Status.RUNNING, myDevice);
+        for (EtaProScrapeJob job : running) {
             job.setStatus(Status.FAILED);
             job.setErrorMessage("Job orphaned by application restart — please retry");
             job.setCompletedAt(LocalDateTime.now());
             jobRepo.save(job);
-            log.warn("[EtaPro] Reaped orphaned job {} → FAILED", job.getId());
+            log.warn("[EtaPro] Reaped orphaned RUNNING job {} → FAILED", job.getId());
+        }
+
+        List<EtaProScrapeJob> pending = jobRepo.findByStatusAndOwnerDeviceNumber(Status.PENDING, myDevice);
+        for (EtaProScrapeJob job : pending) {
+            job.setStatus(Status.CANCELLED);
+            job.setErrorMessage("Not auto-resumed after restart (collection is explicit-only) — please re-submit");
+            job.setCompletedAt(LocalDateTime.now());
+            jobRepo.save(job);
+            log.warn("[EtaPro] Cancelled stale PENDING job {} on startup (explicit-only, no autonomous resume)", job.getId());
         }
     }
 

@@ -1,14 +1,15 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
-import com.dk_power.power_plant_java.dto.email.EmailRequest;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderLineDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderResultDto;
+import com.dk_power.power_plant_java.dto.order.OrderLineDto;
+import com.dk_power.power_plant_java.dto.order.OrderRequestDto;
 import com.dk_power.power_plant_java.entities.maximo.MaximoFormTemplate;
 import com.dk_power.power_plant_java.repository.maximo.MaximoFormTemplateRepo;
-import com.dk_power.power_plant_java.sevice.email.EmailFacadeService;
+import com.dk_power.power_plant_java.sevice.order.OrderEmailService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,8 @@ import java.util.Map;
  * whether it participates. Need = target - in-stock; included reagents with need &gt; 0 are the reorder
  * lines. On send, one email goes to the vendor ({@code cfg_email_to} / {@code cfg_email_cc}, subject carries
  * {@code cfg_po_number}) and a plain-text order summary is attached to the work order as the record that the
- * reorder was placed. Reuses {@link EmailFacadeService} (jgportal Graph API) and {@link MaximoDoclinksAdapter}.
+ * reorder was placed. Delegates compose + send to the shared {@link OrderEmailService}; the Maximo-specific
+ * pieces (form-field parsing, WO summary attach via {@link MaximoDoclinksAdapter}) stay here.
  */
 @Slf4j
 @Service
@@ -43,7 +45,7 @@ public class ChemInventoryReorderService {
     private final MaximoFormTemplateRepo templateRepo;
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoDoclinksAdapter doclinks;
-    private final EmailFacadeService emailFacadeService;
+    private final OrderEmailService orderEmailService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -103,9 +105,15 @@ public class ChemInventoryReorderService {
         }
 
         String subject = "Reagent & Test Inventory Reorder" + (po != null ? " — PO " + po : "");
-        emailFacadeService.sendEmail(EmailRequest.builder()
-                .to(to).cc(cc).subject(subject).body(buildHtmlBody(lines, po, shipTo)).html(true).build());
-        result.setSent(true);
+        OrderRequestDto order = OrderRequestDto.builder()
+                .to(to).cc(cc).subject(subject).poNumber(po).shipTo(shipTo)
+                .greeting("Good afternoon,")
+                .intro("Jackson Generation would like to order the following:")
+                .lines(lines.stream()
+                        .map(l -> OrderLineDto.builder().description(l.getReagent()).qty(l.getNeed()).build())
+                        .toList())
+                .build();
+        result.setSent(orderEmailService.send(order).isSent());
         log.info("[ChemReorder] reorder email sent to {} (cc {}) — {} line(s), PO {}", to, cc, lines.size(), po);
 
         // Attach the order summary to the WO — the record that the reorder was placed.
@@ -127,27 +135,7 @@ public class ChemInventoryReorderService {
         return result;
     }
 
-    // ── body / summary ──────────────────────────────────────────────────────────
-
-    private String buildHtmlBody(List<ReorderLineDto> lines, String po, String shipTo) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<html><body style='font-family:Segoe UI,Arial,sans-serif;color:#222;font-size:14px;'>");
-        sb.append("<p>Good afternoon,</p>");
-        sb.append("<p>Jackson Generation would like to order the following:</p>");
-        sb.append("<ul style='margin:0 0 14px 18px;'>");
-        for (ReorderLineDto l : lines) {
-            sb.append("<li><b>").append(escape(l.getReagent())).append("</b> — Qty ").append(qty(l.getNeed())).append("</li>");
-        }
-        sb.append("</ul>");
-        if (shipTo != null) {
-            sb.append("<p><b>Shipping &amp; Billing Address:</b><br>")
-              .append(escape(shipTo).replace("\n", "<br>")).append("</p>");
-        }
-        if (po != null) sb.append("<p><b>PO#</b> ").append(escape(po)).append("</p>");
-        sb.append("<p>Thanks,</p>");
-        sb.append("</body></html>");
-        return sb.toString();
-    }
+    // ── summary (Maximo WO attach — inventory-specific: shows target / in-stock) ──────────
 
     private String buildSummaryText(String subject, String to, String cc, String po, String shipTo, List<ReorderLineDto> lines) {
         StringBuilder sb = new StringBuilder();
@@ -213,11 +201,6 @@ public class ChemInventoryReorderService {
         if (d == null) return "0";
         double v = d;
         return (v == Math.floor(v)) ? Long.toString((long) v) : String.format("%.1f", v);
-    }
-    private static String escape(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                .replace("\"", "&quot;").replace("'", "&#39;");
     }
     private static String safeName(String s) {
         return (s == null ? "reorder" : s).replaceAll("[^A-Za-z0-9._-]", "_");

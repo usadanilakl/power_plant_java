@@ -234,6 +234,7 @@ public class RoundAdminService {
         }
         if (req.showWhenOp() != null) q.setShowWhenOp(req.showWhenOp().isBlank() ? null : req.showWhenOp().trim().toUpperCase());
         if (req.showWhenValue() != null) q.setShowWhenValue(req.showWhenValue().isBlank() ? null : req.showWhenValue());
+        if (req.reorderCatalogKey() != null) q.setReorderCatalogKey(req.reorderCatalogKey().isBlank() ? null : req.reorderCatalogKey().trim());
         return toDto(questionRepo.save(q));
     }
 
@@ -362,7 +363,7 @@ public class RoundAdminService {
                 q.getPrompt(), q.getAnswerType() == null ? null : q.getAnswerType().name(), q.getPhysicalObjectId(),
                 q.getTagCode(), q.getUnit(), q.getLowLimit(), q.getHighLimit(), q.getExpectedValue(),
                 q.isTrackIssues(), q.getChoicesJson(), q.getCategory(), q.getSourceWebviewKey(),
-                q.getPredecessorQuestionId(), q.getShowWhenOp(), q.getShowWhenValue());
+                q.getPredecessorQuestionId(), q.getShowWhenOp(), q.getShowWhenValue(), q.getReorderCatalogKey());
     }
 
     private RoundDto toSummaryDto(Round r) {
@@ -387,7 +388,8 @@ public class RoundAdminService {
     public record UpdateQuestionRequest(String prompt, String answerType, String unit, String category,
                                         String expectedValue, String choicesJson, Double lowLimit, Double highLimit,
                                         Boolean trackIssues, Long physicalObjectId, Integer orderIndex,
-                                        Long predecessorQuestionId, String showWhenOp, String showWhenValue) {}
+                                        Long predecessorQuestionId, String showWhenOp, String showWhenValue,
+                                        String reorderCatalogKey) {}
 
     public record GroupRenameRequest(String fromCategory, String toCategory) {}
     public record GroupAssignObjectRequest(String category, Long physicalObjectId) {}

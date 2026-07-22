@@ -246,7 +246,24 @@ public class SharePointListProvisioner {
                         text("WindowsUsername"), text("Role"), text("QualificationId"),
                         text("QualificationCode"), text("QualificationName"), text("QualificationType"),
                         text("Status"), text("IssuedDate"), text("ExpirationDate"),
-                        text("CredentialNumber"), text("Issuer"), note("Notes"))
+                        text("CredentialNumber"), text("Issuer"), note("Notes")),
+
+                // ── Ordering feature (hub-independent cloud ledger — see project/features/ordering) ──
+                list("Orders",
+                        text("PwaId"), text("OrderDate"), text("OrderedBy"), text("Vendor"),
+                        text("CatalogItemKey"), text("PoNumber"), text("Recipient"), text("Cc"),
+                        text("Subject"), note("LinesJson"), bool("EmailSent"), note("EmailError"),
+                        text("SourceSuggestionId"), text("Status")),
+
+                list("OrderCatalog",
+                        text("ItemKey"), text("DisplayName"), text("Vendor"), text("ContactEmail"),
+                        text("CcEmails"), note("BodyNote"), text("BlanketPoNumber"), text("Unit"),
+                        note("DefaultQtyPresets"), note("TextOptions"), bool("Active"), text("SortOrder")),
+
+                list("OrderSuggestions",
+                        text("PwaId"), text("SuggestedAt"), text("CatalogItemKey"), text("Source"),
+                        text("RoundQuestionId"), text("Reading"), text("LowLimit"), text("SuggestedQty"),
+                        note("Reason"), text("Status"), text("ResultingOrderId"))
         );
     }
 

@@ -436,30 +436,37 @@ public class EtaProScraperEngine {
             }
 
             List<EtaProReading> readings = parseCsv(csvOutput, sessionId);
-
-            // Dedup
-            List<EtaProReading> newReadings = new ArrayList<>();
-            for (EtaProReading r : readings) {
-                if (r.getPointId() != null && r.getReadingTime() != null
-                        && !etaProReadingRepo.existsByPointIdAndReadingTime(r.getPointId(), r.getReadingTime())) {
-                    newReadings.add(r);
-                }
-            }
-
-            etaProReadingRepo.saveAll(newReadings);
+            int imported = saveReadings(readings);
 
             lastScrapeAt.set(LocalDateTime.now());
-            String msg = newReadings.size() + "/" + readings.size() + " imported";
+            String msg = imported + "/" + readings.size() + " imported";
             lastStatus.set(msg);
             log.debug("[EtaPro] Batch {} ({}, {} pts): {}", sessionId, template.signalName(), pointIds.size(), msg);
 
-            return new BatchResult(true, msg, readings.size(), newReadings.size(), sessionId);
+            return new BatchResult(true, msg, readings.size(), imported, sessionId);
 
         } catch (Exception e) {
             lastStatus.set("error: " + e.getMessage());
             log.error("[EtaPro] Batch failed", e);
             return BatchResult.failure("Batch failed: " + e.getMessage(), sessionId);
         }
+    }
+
+    /**
+     * Dedup (by pointId + readingTime) against already-stored readings and persist the rest.
+     * Shared by the scraper path and the API path ({@link EtaProApiService}). Returns newly-saved count.
+     */
+    public int saveReadings(List<EtaProReading> readings) {
+        if (readings == null || readings.isEmpty()) return 0;
+        List<EtaProReading> fresh = new ArrayList<>();
+        for (EtaProReading r : readings) {
+            if (r.getPointId() != null && r.getReadingTime() != null
+                    && !etaProReadingRepo.existsByPointIdAndReadingTime(r.getPointId(), r.getReadingTime())) {
+                fresh.add(r);
+            }
+        }
+        etaProReadingRepo.saveAll(fresh);
+        return fresh.size();
     }
 
     // ── CSV Parsing ───────────────────────────────────────────
@@ -584,10 +591,27 @@ public class EtaProScraperEngine {
 
     private BatchResult importEpLog(Path csvOutput, String sessionId) throws IOException {
         List<EtaProLogEntry> entries = parseEpLogCsv(csvOutput, sessionId);
+        int imported = saveLogEntries(entries);
+        lastScrapeAt.set(LocalDateTime.now());
+        String msg = imported + "/" + entries.size() + " log entries imported";
+        lastStatus.set(msg);
+        log.debug("[EtaPro] EPLog batch {}: {}", sessionId, msg);
+        return new BatchResult(true, msg, entries.size(), imported, sessionId);
+    }
 
+    /**
+     * Dedup (by dedupKey) and persist log entries. Computes the composite dedupKey when it's missing
+     * (e.g. entries from the API path) so API and scraper entries deduplicate identically. Shared by
+     * {@link #importEpLog} and {@link EtaProApiService}. Returns the number newly saved.
+     */
+    public int saveLogEntries(List<EtaProLogEntry> entries) {
+        if (entries == null || entries.isEmpty()) return 0;
         Set<String> seen = new HashSet<>();
         List<EtaProLogEntry> fresh = new ArrayList<>();
         for (EtaProLogEntry e : entries) {
+            if (e.getDedupKey() == null) {
+                e.setDedupKey(computeDedupKey(e.getCreateTime(), e.getDescription(), e.getCreatedByName()));
+            }
             String key = e.getDedupKey();
             if (key == null) continue;
             if (!seen.add(key)) continue;                          // duplicate within this batch
@@ -595,12 +619,7 @@ public class EtaProScraperEngine {
             fresh.add(e);
         }
         etaProLogEntryRepo.saveAll(fresh);
-
-        lastScrapeAt.set(LocalDateTime.now());
-        String msg = fresh.size() + "/" + entries.size() + " log entries imported";
-        lastStatus.set(msg);
-        log.debug("[EtaPro] EPLog batch {}: {}", sessionId, msg);
-        return new BatchResult(true, msg, entries.size(), fresh.size(), sessionId);
+        return fresh.size();
     }
 
     List<EtaProLogEntry> parseEpLogCsv(Path csvPath, String sessionId) throws IOException {

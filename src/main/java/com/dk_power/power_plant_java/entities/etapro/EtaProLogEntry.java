@@ -30,6 +30,9 @@ import java.time.LocalDateTime;
         @Index(name = "idx_etapro_log_create_time", columnList = "createTime"),
         @Index(name = "idx_etapro_log_session", columnList = "scrapeSessionId")
 })
+@com.dk_power.power_plant_java.sevice.sync.LocalOnlyEntity(reason =
+        "historian operator-log data; collected on explicit request and re-pullable from the EtaPRO "
+        + "historian, so it is kept per-node and NEVER synced (alongside EtaProReading)")
 public class EtaProLogEntry extends BaseIdEntity {
 
     /** Free-text entry body; can be long and multi-line (newlines flattened to " | " on scrape). */

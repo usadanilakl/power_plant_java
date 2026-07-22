@@ -1183,47 +1183,52 @@ export class SubmissionOrchestratorService {
 
   /**
    * Get all active inventory items, with PA fallback when the hub is offline.
-   * Falls through: hub → PA getAll (entity=item) → empty list.
+   * Falls through: hub (5s) → PA getAll (entity=item) → empty list.
    * PA returns SharePoint column names; we map them into the shape the
    * inventory UI expects (title/serialNumber/manufacturer/model/qrToken/etc).
    */
   getInventoryItems(type?: string): Observable<any[]> {
-    console.log('[Orchestrator] getInventoryItems called — this line proves the new bundle is running');
+    console.log('[Inventory-Fallback] getInventoryItems called — new bundle is running');
     return this.serverApi.getActiveInventoryItems(type).pipe(
-      catchError(serverError => {
-        console.warn('[Orchestrator] Hub inventory list failed, trying PA getAll:', serverError?.message);
-        if (!this.powerAutomate.isV2Configured('inventory')) {
-          return of([]);
+      // Tight budget: the server-api's internal 15s timeout is fine when the
+      // hub is answering, but when it's off the browser can hang on a socket
+      // for the full 15s. A 5s ceiling here cuts to fallback fast so the
+      // user isn't staring at a spinner.
+      timeout(5000),
+      catchError(serverError => this.paInventoryFallback(type, serverError))
+    );
+  }
+
+  private paInventoryFallback(type: string | undefined, serverError: any): Observable<any[]> {
+    console.warn('[Inventory-Fallback] Hub failed, trying PA getAll:', serverError?.message || serverError);
+    if (!this.powerAutomate.isV2Configured('inventory')) {
+      console.error('[Inventory-Fallback] PA inventory flow is NOT configured (env.paFlowUrls.inventory is empty) — returning empty list');
+      return of([]);
+    }
+    console.log('[Inventory-Fallback] POSTing to PA with actionType=getAll entity=item');
+    const paRequest = {
+      actionType: 'getAll',
+      entity: 'item',
+      data: {},
+    };
+    return this.powerAutomate.submitV2('inventory', paRequest).pipe(
+      map(response => {
+        const isSuccess = response?.success === true || String(response?.success).toLowerCase() === 'true';
+        if (!isSuccess || !Array.isArray(response?.data)) {
+          console.warn('[Inventory-Fallback] PA returned success=false or non-array data:', response?.message, response);
+          return [];
         }
-        const paRequest = {
-          actionType: 'getAll',
-          entity: 'item',
-          data: {},
-        };
-        return this.powerAutomate.submitV2('inventory', paRequest).pipe(
-          map(response => {
-            const isSuccess = response?.success === true || String(response?.success).toLowerCase() === 'true';
-            if (!isSuccess || !Array.isArray(response?.data)) {
-              console.warn('[Orchestrator] PA inventory getAll returned no data:', response?.message);
-              return [];
-            }
-            let items = response.data.map((row: any) => this.mapPaInventoryItem(row));
-            // The hub only returns ACTIVE items (not soft-deleted, and only in
-            // ACTIVE statuses). PA has no such filter server-side, so we
-            // approximate here: hide items whose status is Retired.
-            items = items.filter(it => it.statusName !== 'Retired');
-            if (type) {
-              items = items.filter(it =>
-                (it.itemTypeName || '').toLowerCase() === type.toLowerCase()
-              );
-            }
-            return items;
-          }),
-          catchError(paError => {
-            console.error('[Orchestrator] PA inventory getAll also failed:', paError?.message);
-            return of([]);
-          })
-        );
+        console.log(`[Inventory-Fallback] PA returned ${response.data.length} rows`);
+        let items = response.data.map((row: any) => this.mapPaInventoryItem(row));
+        items = items.filter(it => it.statusName !== 'Retired');
+        if (type) {
+          items = items.filter(it => (it.itemTypeName || '').toLowerCase() === type.toLowerCase());
+        }
+        return items;
+      }),
+      catchError(paError => {
+        console.error('[Inventory-Fallback] PA HTTP call itself failed:', paError?.message || paError);
+        return of([]);
       })
     );
   }

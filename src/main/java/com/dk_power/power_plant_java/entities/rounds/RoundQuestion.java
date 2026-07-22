@@ -64,6 +64,9 @@ public class RoundQuestion {
 
     private String category;
 
+    /** If set (a stable OrderCatalogItem itemKey), a LOW reading on this question raises a reorder suggestion. */
+    private String reorderCatalogKey;
+
     // ── Conditional display (dependency) ──
     /** If set, this question only shows when the predecessor's answer satisfies {@code showWhenOp}/{@code showWhenValue}. */
     private Long predecessorQuestionId;

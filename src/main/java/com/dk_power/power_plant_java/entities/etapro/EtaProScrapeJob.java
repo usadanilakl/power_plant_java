@@ -56,6 +56,14 @@ public class EtaProScrapeJob extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     private Status status = Status.PENDING;
 
+    /**
+     * Device number of the node that created this job (from {@code SyncConfig.getDeviceNumber()}).
+     * The job entity syncs to every node, but ONLY the owning node's worker executes it — this stops
+     * a single user-triggered scrape from fanning out and opening Excel on every online desktop.
+     * Nullable for legacy rows created before ownership existed (those are simply never claimed).
+     */
+    private Integer ownerDeviceNumber;
+
     /** Null for LIVE jobs. */
     private LocalDateTime rangeStart;
 

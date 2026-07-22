@@ -357,6 +357,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
     // Reuses the existing SpringBootUiComponent route so we don't duplicate the table/dialog UI.
     { label: 'Lead Op WOs', route: '/pid-app', icon: 'engineering', color: '#26C6DA',
       queryParams: { path: 'maximo/bundles/lead-operators' } },
+    // Ordering — opens the jg-portal Ordering workbench via the same iframe deep-link.
+    { label: 'Ordering', route: '/pid-app', icon: 'shopping_cart', color: '#FB8C00',
+      queryParams: { path: 'ordering/workbench' } },
     { label: 'Fire Impairment', route: '/fire-impairment', icon: 'local_fire_department', color: '#ef4444' },
     { label: 'Gate Log', route: '/gate-log', icon: 'badge', color: '#06b6d4' },
     { label: 'WebView AMS', route: '/web-view-ams', icon: 'checklist', color: '#14b8a6' },

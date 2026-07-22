@@ -14,7 +14,7 @@ import { ANSWER_TYPES, CADENCES, Round, RoundAnswerType, RoundCadence, RoundQues
 interface QDraft {
   prompt: string; answerType: RoundAnswerType; unit: string; lowLimit: number | null; highLimit: number | null;
   expectedValue: string; choicesJson: string; trackIssues: boolean; category: string; physicalObjectId: number | null;
-  predecessorQuestionId: number | null; showWhenOp: string; showWhenValue: string;
+  predecessorQuestionId: number | null; showWhenOp: string; showWhenValue: string; reorderCatalogKey: string;
 }
 
 /** A display group. {@code rawCat} is the real stored category (null for the ungrouped bucket); {@code key} is a
@@ -287,6 +287,7 @@ export class RoundsEditorComponent implements OnInit {
       choicesJson: q.choicesJson || '', trackIssues: q.trackIssues, category: q.category || '',
       physicalObjectId: q.physicalObjectId,
       predecessorQuestionId: q.predecessorQuestionId, showWhenOp: q.showWhenOp || 'ANSWERED', showWhenValue: q.showWhenValue || '',
+      reorderCatalogKey: q.reorderCatalogKey || '',
     };
   }
 
@@ -309,6 +310,7 @@ export class RoundsEditorComponent implements OnInit {
         // send '' (not null) so the backend clears a stale value when the op no longer uses one
         showWhenValue: this.draft.predecessorQuestionId != null && this.draft.showWhenOp !== 'ANSWERED'
           ? (this.draft.showWhenValue.trim() || '') : '',
+        reorderCatalogKey: this.draft.reorderCatalogKey.trim(),
       }));
       await this.reload();
       this.editingId.set(null);
@@ -343,7 +345,7 @@ export class RoundsEditorComponent implements OnInit {
   private blankDraft(): QDraft {
     return { prompt: '', answerType: 'TEXT', unit: '', lowLimit: null, highLimit: null, expectedValue: '',
       choicesJson: '', trackIssues: true, category: '', physicalObjectId: null,
-      predecessorQuestionId: null, showWhenOp: 'ANSWERED', showWhenValue: '' };
+      predecessorQuestionId: null, showWhenOp: 'ANSWERED', showWhenValue: '', reorderCatalogKey: '' };
   }
 
   private errMsg(e: any): string { return e?.error?.message || e?.message || 'Request failed'; }

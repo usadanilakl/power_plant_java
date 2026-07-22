@@ -5,9 +5,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.diagrams.DiagramConnection;
 import com.dk_power.power_plant_java.entities.diagrams.DiagramPlacement;
 import com.dk_power.power_plant_java.entities.equipment.*;
-import com.dk_power.power_plant_java.entities.etapro.EtaProLogEntry;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
-import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.entities.rounds.RoundsReport;
 import com.dk_power.power_plant_java.entities.loto.RedTagStandard;
@@ -63,9 +61,7 @@ import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
 import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentLogSyncService;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentSyncService;
-import com.dk_power.power_plant_java.sevice.etapro.EtaProLogEntryService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProPointService;
-import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScrapeJobService;
 import com.dk_power.power_plant_java.sevice.angular.rounds.NgRoundsService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgRedTagStandardService;
@@ -146,11 +142,9 @@ public class ServiceFacade {
             // Diagrams
             @Lazy NgDiagramPlacementService ngDiagramPlacementService,
             @Lazy NgDiagramConnectionService ngDiagramConnectionService,
-            // EtaPro
+            // EtaPro (readings + log entries are @LocalOnlyEntity — not synced — so no service is wired here)
             @Lazy EtaProPointService etaProPointService,
-            @Lazy EtaProReadingService etaProReadingService,
             @Lazy EtaProScrapeJobService etaProScrapeJobService,
-            @Lazy EtaProLogEntryService etaProLogEntryService,
             // Fire Impairment
             @Lazy FireImpairmentService fireImpairmentService,
             // Field Lists
@@ -249,11 +243,9 @@ public class ServiceFacade {
         // Diagrams
         serviceMap.put(DiagramPlacement.class.getSimpleName(), ngDiagramPlacementService);
         serviceMap.put(DiagramConnection.class.getSimpleName(), ngDiagramConnectionService);
-        // EtaPro
+        // EtaPro (readings + log entries are @LocalOnlyEntity — not synced in either direction)
         serviceMap.put(EtaProPoint.class.getSimpleName(), etaProPointService);
-        serviceMap.put(EtaProReading.class.getSimpleName(), etaProReadingService);
         serviceMap.put(EtaProScrapeJob.class.getSimpleName(), etaProScrapeJobService);
-        serviceMap.put(EtaProLogEntry.class.getSimpleName(), etaProLogEntryService);
         // Fire Impairment
         serviceMap.put(FireImpairment.class.getSimpleName(), fireImpairmentService);
         // Field Lists
