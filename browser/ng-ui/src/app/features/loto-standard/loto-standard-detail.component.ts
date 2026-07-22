@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { LotoDrawingService } from './loto-drawing.service';
 import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
+import { LotoPointActionsComponent } from './loto-point-actions.component';
 import { LotoStandardApiService } from './loto-standard-api.service';
 import { LotoStandardStore } from './loto-standard-store.service';
 import { LOTO_STANDARD_STATUS, LotoStandard, LotoPointRef, statusPhase } from './loto-standard.model';
@@ -13,7 +14,7 @@ type Tab = 'standard' | 'procedure';
 @Component({
   selector: 'app-loto-standard-detail',
   standalone: true,
-  imports: [MainLayoutComponent, DatePipe, LotoDrawingViewerComponent],
+  imports: [MainLayoutComponent, DatePipe, LotoDrawingViewerComponent, LotoPointActionsComponent],
   template: `
     <app-main-layout [header]="std()?.name || 'LOTO Standard'">
       <ng-container main-content>
@@ -79,6 +80,9 @@ type Tab = 'standard' | 'procedure';
                       @if (p.zeroEnergyMethod) {
                         <div class="d-point-ze"><b>Zero energy:</b> {{ p.zeroEnergyMethod }}</div>
                       }
+                      <app-loto-point-actions
+                        [pointId]="p.id"
+                        [pointLabel]="p.tagNumber || null" />
                     </div>
                   }
                 </div>

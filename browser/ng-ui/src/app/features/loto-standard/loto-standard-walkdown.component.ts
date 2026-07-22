@@ -6,6 +6,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { ServerStatusService } from '../../services/server-status.service';
 import { LotoDrawingService } from './loto-drawing.service';
 import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
+import { LotoPointActionsComponent } from './loto-point-actions.component';
 import { LotoStandardApiService } from './loto-standard-api.service';
 import { LotoStandardStore } from './loto-standard-store.service';
 import { LotoWalkdownSyncService } from './loto-walkdown-sync.service';
@@ -19,7 +20,7 @@ type TransitionMode = 'verify' | 'walkdown' | null;
 @Component({
   selector: 'app-loto-standard-walkdown',
   standalone: true,
-  imports: [MainLayoutComponent, LotoDrawingViewerComponent],
+  imports: [MainLayoutComponent, LotoDrawingViewerComponent, LotoPointActionsComponent],
   template: `
     <app-main-layout [header]="'Verify / Walk down'">
       <ng-container main-content>
@@ -140,6 +141,10 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                     </select>
                   </label>
                 </details>
+
+                <app-loto-point-actions
+                  [pointId]="p.id"
+                  [pointLabel]="corrTag(p) || null" />
               </div>
             }
 

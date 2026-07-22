@@ -1,0 +1,148 @@
+<div class="pa-strip">
+  <button type="button"
+          class="pa-btn"
+          [class.active]="photosOpen()"
+          (click)="openPhotos()">
+    📸 Photos
+  </button>
+  <button type="button"
+          class="pa-btn"
+          [class.active]="commentsOpen()"
+          (click)="openComments()">
+    💬 Comments
+  </button>
+</div>
+
+<!-- Photos panel -->
+@if (photosOpen()) {
+  <div class="pa-panel">
+    @if (!isOnline()) {
+      <div class="pa-hint pa-hint-offline">
+        You're offline — photo uploads need a connection. Existing photos still show if cached.
+      </div>
+    }
+    <div class="pa-panel-head">
+      <button type="button"
+              class="pa-add"
+              [disabled]="photoUploading() || !isOnline()"
+              (click)="triggerPhotoPick()">
+        {{ photoUploading() ? 'Uploading…' : '+ Take / Upload Photo' }}
+      </button>
+      <input #photoInput
+             type="file"
+             hidden
+             accept="image/*"
+             capture="environment"
+             multiple
+             (change)="onPhotoInputChange($event)" />
+    </div>
+
+    @if (photoError()) {
+      <div class="pa-error">{{ photoError() }}</div>
+    }
+
+    @if (photoLoading()) {
+      <div class="pa-hint">Loading photos…</div>
+    } @else if (photos().length === 0) {
+      <div class="pa-hint">No photos attached yet.</div>
+    } @else {
+      <div class="pa-grid">
+        @for (photo of photos(); track photo.id) {
+          <div class="pa-tile">
+            <img class="pa-thumb"
+                 [src]="photoUrl(photo)"
+                 [alt]="photo.name || 'Photo'"
+                 loading="lazy"
+                 (click)="openPhotoFullscreen(photo)" />
+            <button type="button"
+                    class="pa-tile-delete"
+                    title="Remove photo"
+                    (click)="onDeletePhoto(photo)">×</button>
+            @if (photo.name) {
+              <div class="pa-tile-name" [title]="photo.name">{{ photo.name }}</div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- Comments panel -->
+@if (commentsOpen()) {
+  <div class="pa-panel">
+    @if (!isOnline()) {
+      <div class="pa-hint pa-hint-offline">
+        You're offline — new comments queue locally and send on reconnect.
+      </div>
+    }
+
+    @if (commentError()) {
+      <div class="pa-error">{{ commentError() }}</div>
+    }
+
+    @if (commentLoading()) {
+      <div class="pa-hint">Loading comments…</div>
+    }
+
+    <div class="pa-comments">
+      @for (c of visibleComments().server; track c.id) {
+        <div class="pa-comment">
+          <div class="pa-comment-body">{{ c.content }}</div>
+          <div class="pa-comment-meta">
+            <span>{{ c.createdBy || 'unknown' }}</span>
+            @if (c.dateCreated) {
+              <span>·</span>
+              <span>{{ c.dateCreated | date:'short' }}</span>
+            }
+            <button type="button"
+                    class="pa-comment-del"
+                    title="Delete comment (author only)"
+                    (click)="onDeleteComment(c)">×</button>
+          </div>
+        </div>
+      }
+      @for (p of visibleComments().pending; track p.localId) {
+        <div class="pa-comment pa-comment-pending">
+          <div class="pa-comment-body">{{ p.content }}</div>
+          <div class="pa-comment-meta">
+            @if (p.lastError) {
+              <span class="pa-comment-pending-badge pa-comment-error-badge">
+                Failed — {{ p.lastError }}
+              </span>
+            } @else {
+              <span class="pa-comment-pending-badge">
+                {{ isOnline() ? 'Sending…' : 'Queued for reconnect' }}
+              </span>
+            }
+            <button type="button"
+                    class="pa-comment-del"
+                    title="Discard queued comment"
+                    (click)="onDiscardPending(p.localId)">×</button>
+          </div>
+        </div>
+      }
+      @if (
+        !commentLoading() &&
+        visibleComments().server.length === 0 &&
+        visibleComments().pending.length === 0
+      ) {
+        <div class="pa-hint">No comments yet.</div>
+      }
+    </div>
+
+    <div class="pa-compose">
+      <textarea class="pa-compose-input"
+                rows="2"
+                placeholder="Write a comment…"
+                [value]="draftComment()"
+                (input)="onDraftInput($any($event.target).value)"></textarea>
+      <button type="button"
+              class="pa-compose-send"
+              [disabled]="!draftComment().trim() || commentPosting()"
+              (click)="onSendComment()">
+        Send
+      </button>
+    </div>
+  </div>
+}

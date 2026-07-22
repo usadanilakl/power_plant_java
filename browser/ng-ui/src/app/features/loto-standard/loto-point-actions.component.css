@@ -1,0 +1,247 @@
+:host {
+  display: block;
+}
+
+/* Button strip — sits on the point card. Very compact so it fits into the
+ * existing per-point card without pushing other controls off-screen. */
+
+.pa-strip {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.pa-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #ccc);
+  background: var(--surface-color, #f5f5f5);
+  color: var(--text-color, #222);
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.pa-btn:hover {
+  background: var(--surface-hover-color, #ececec);
+}
+
+.pa-btn.active {
+  background: var(--accent-color, #2b7cff);
+  color: #fff;
+  border-color: var(--accent-color, #2b7cff);
+}
+
+/* Panels — inline expandable, no modal overlay. */
+
+.pa-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  background: var(--card-background-color, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pa-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pa-add {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-color, #2b7cff);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.pa-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pa-hint {
+  padding: 8px;
+  text-align: center;
+  color: var(--muted-text-color, #777);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.pa-hint-offline {
+  background: rgba(255, 200, 0, 0.12);
+  color: var(--warning-text-color, #855);
+  border-radius: 4px;
+  font-style: normal;
+  text-align: left;
+}
+
+.pa-error {
+  padding: 8px 10px;
+  background: var(--error-background-color, #fdd);
+  color: var(--error-text-color, #900);
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Photo grid */
+
+.pa-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.pa-tile {
+  position: relative;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-color, #f0f0f0);
+  display: flex;
+  flex-direction: column;
+}
+
+.pa-thumb {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  cursor: zoom-in;
+  display: block;
+}
+
+.pa-tile-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.pa-tile-name {
+  padding: 4px 6px;
+  font-size: 0.75em;
+  color: var(--text-color, #222);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Comments list */
+
+.pa-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.pa-comment {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--surface-color, #f5f5f5);
+  border-left: 3px solid var(--accent-color, #2b7cff);
+}
+
+.pa-comment-pending {
+  border-left-color: var(--warning-text-color, #b85);
+  background: rgba(255, 200, 0, 0.08);
+}
+
+.pa-comment-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-color, #222);
+}
+
+.pa-comment-meta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-text-color, #777);
+  font-size: 0.8em;
+}
+
+.pa-comment-pending-badge {
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--warning-text-color, #b85);
+  color: #fff;
+  font-size: 0.75em;
+}
+
+.pa-comment-error-badge {
+  background: var(--error-text-color, #900);
+}
+
+.pa-comment-del {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--muted-text-color, #999);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+.pa-comment-del:hover {
+  color: var(--error-text-color, #900);
+}
+
+/* Compose area */
+
+.pa-compose {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.pa-compose-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #ccc);
+  background: var(--card-background-color, #fff);
+  color: var(--text-color, #222);
+  font-family: inherit;
+  font-size: 0.95em;
+  resize: vertical;
+  min-height: 44px;
+}
+
+.pa-compose-send {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent-color, #2b7cff);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.pa-compose-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

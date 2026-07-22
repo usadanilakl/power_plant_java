@@ -101,6 +101,7 @@ public class SecurityConfigSpring {
                 // Mobile LOTO Standards (Plant-only). The PWA JWT principal carries ROLE_PLANT from the DB,
                 // so hasAnyRole works reliably here (must precede the generic /secured/** authenticated rule).
                 .requestMatchers("/api/pwa/secured/loto-standards/**").hasAnyRole("PLANT", "ADMIN")
+                .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN")

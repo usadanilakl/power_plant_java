@@ -230,6 +230,30 @@ export interface WalkdownSubmitResult {
   transitionMessage?: string | null;
 }
 
+// ── Per-point photos & comments (PWA extension) ────────────────────────────
+
+/** Shallow FileDto shape the backend ships for LOTO Point pictures. */
+export interface LotoPointPhoto {
+  id: number;
+  name?: string | null;
+  /** Relative path under {@code serverUrl}; render as {@code `${serverUrl}/${fileLink}`}. */
+  fileLink?: string | null;
+  extension?: string | null;
+}
+
+/** Comment on a LOTO point — polymorphic entityType="LotoPoint" on the backend. */
+export interface LotoPointComment {
+  id: number;
+  content: string;
+  entityId?: number;
+  entityType?: string;
+  needsAttention?: boolean;
+  isResolved?: boolean;
+  /** Author (from Spring Data auditing @CreatedBy). Backend fills from the JWT principal. */
+  createdBy?: string | null;
+  dateCreated?: string | null;
+}
+
 // ── Drawings (per-point file viewer) ───────────────────────────────────────
 
 /** "This point on this drawing": which file + the highlight rectangle in the image's original pixels. */
