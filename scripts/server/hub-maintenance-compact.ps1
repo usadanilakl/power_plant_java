@@ -20,6 +20,7 @@ param(
   [string]$ServiceExe      = "C:\forms\power_plant\scripts\server\power-plant-hub.exe",
   [string]$ServiceName     = "PowerPlantHub",
   [string]$Db              = "",     # blank => <repo-root>\db\proddb (relative to this script)
+  [string]$Java            = "",     # optional: path to java.exe if the hub has no java on PATH/JAVA_HOME
   [int]$MinDeadMB          = 200,    # only DEFRAG when reclaimable dead space exceeds this
   [int]$PrecheckFloorMB    = 250,    # don't even stop the service if the file is smaller than this
   [int]$LockWaitSeconds    = 10      # wait for the H2 lock to release after stopping
@@ -46,7 +47,7 @@ Log "stopping service $ServiceName ..."
 Start-Sleep -Seconds $LockWaitSeconds
 
 try {
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $compact -Db $dbBase -MinDeadMB $MinDeadMB | Out-Host
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $compact -Db $dbBase -MinDeadMB $MinDeadMB -Java $Java | Out-Host
 } finally {
     Log "starting service $ServiceName ..."
     & $ServiceExe start | Out-Host

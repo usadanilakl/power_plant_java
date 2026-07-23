@@ -146,6 +146,7 @@ public class MaximoFormService {
         s.setTemplateFormKey(dto.getTemplateFormKey().trim());
         s.setTemplateName(dto.getTemplateName());
         s.setWonum(dto.getWonum().trim());
+        if (dto.getPmnum() != null && !dto.getPmnum().isBlank()) s.setPmnum(dto.getPmnum().trim());
         s.setWoHref(dto.getWoHref());
         s.setSiteid(dto.getSiteid());
         s.setValuesJson(dto.getValuesJson());
@@ -177,6 +178,7 @@ public class MaximoFormService {
                 .templateFormKey(s.getTemplateFormKey())
                 .templateName(s.getTemplateName())
                 .wonum(s.getWonum())
+                .pmnum(s.getPmnum())
                 .woHref(s.getWoHref())
                 .siteid(s.getSiteid())
                 .valuesJson(s.getValuesJson())

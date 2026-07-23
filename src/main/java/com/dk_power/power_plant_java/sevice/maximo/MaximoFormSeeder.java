@@ -38,6 +38,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(dieselFirePumpTest()));
         out.add(formService.saveTemplate(electricFirePumpTest()));
         out.add(formService.saveTemplate(pivAndDelugeValveInspection()));
+        out.add(formService.saveTemplate(emergencyDieselGeneratorTest()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -554,6 +555,61 @@ public class MaximoFormSeeder {
                         + "position. Every check is required. Note any 'Not OK' and submit a Service Request for the "
                         + "repair.")
                 .matchDescriptionContains("deluge")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * From procedures/pm/emergency diesel generator test.xlsx — "Emergency Diesel Generator Monthly Inspection
+     * and Test". Pre-operation panel/controller checks, diesel-engine checks, then operational readings taken
+     * while the generator runs. Every verification is required; readings capture the run's actual values.
+     */
+    private MaximoFormTemplateDto emergencyDieselGeneratorTest() {
+        Fields f = new Fields();
+
+        f.section("Pre-operation checks")
+                .radio("pre_heat", "Building heat set > 50°F", true, "OK", "Not OK")
+                .radio("pre_louvers", "Louvers operational", true, "OK", "Not OK")
+                .radio("pre_hmi_local", "HMI selected on local panel", true, "OK", "Not OK")
+                .radio("pre_relay_reset", "Generator trip / shutdown relay reset", true, "OK", "Not OK")
+                .radio("pre_switch_auto", "Kohler local switch in AUTO", true, "OK", "Not OK")
+                .radio("pre_system_ready", "\"System Ready\" illuminated on engine panel", true, "OK", "Not OK");
+
+        f.section("Diesel engine checks")
+                .radio("de_fuel", "Fuel tank > 70% full", true, "OK", "Not OK")
+                .radio("de_batt_voltage", "Battery voltages are okay", true, "OK", "Not OK")
+                .radio("de_charger_no_alarm", "Battery charger — no alarm lights", true, "OK", "Not OK")
+                .radio("de_oil_level", "Oil level is okay", true, "OK", "Not OK")
+                .radio("de_batt_terminals", "Battery terminals okay", true, "OK", "Not OK")
+                .radio("de_batt_liquid", "Battery liquid level okay", true, "OK", "Not OK");
+
+        f.section("Operational checks (generator running)")
+                .number("op_oil_pressure", "Engine oil pressure", "psi", "reading")
+                .number("op_coolant_temp", "Engine coolant temperature", "°F", "reading")
+                .number("op_battery_vdc", "Battery voltage", "VDC", "reading")
+                .radio("op_noise_vibration", "Check for unusual noise or vibration", true, "None", "Present")
+                .radio("op_filters", "Engine filters free of debris", true, "OK", "Not OK")
+                .text("op_stop_time", "Stop time")
+                .number("op_run_hrs", "Run hours (hour meter)", "hrs", "reading")
+                .radio("op_exhaust_clear", "No opacity or plume from exhaust stack during operation", true, "OK", "Not OK");
+
+        f.section("Sign-off")
+                .textarea("findings", "Findings — describe any 'Not OK' / 'Present'; leave blank if all good", null)
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes / actions taken (WOs generated, adjustments made, etc.)", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("EMERGENCY_DIESEL_GENERATOR_TEST")
+                .formName("Emergency Diesel Generator Monthly Inspection & Test")
+                .description("Monthly inspection and test of the emergency diesel generator. Complete the "
+                        + "pre-operation checks (building heat > 50°F, louvers, HMI on local panel, trip/shutdown "
+                        + "relay reset, Kohler switch in AUTO, \"System Ready\" illuminated) and the diesel-engine "
+                        + "checks (fuel > 70%, battery voltages/terminals/liquid level, charger no alarms, oil "
+                        + "level), then run the generator and record the operational readings: engine oil pressure, "
+                        + "coolant temperature, battery VDC, unusual noise/vibration, engine filters free of debris, "
+                        + "stop time and run hours, and no opacity/plume from the exhaust stack during operation.")
+                .matchDescriptionContains("diesel generator")
                 .active(true)
                 .fieldsJson(toJson(f.build()))
                 .build();

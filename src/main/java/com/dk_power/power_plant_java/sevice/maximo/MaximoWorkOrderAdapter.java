@@ -26,6 +26,8 @@ import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.str;
 public class MaximoWorkOrderAdapter {
 
     private static final String OS = "mxapiwodetail";
+    /** Maximo LABTRANS.LABORCODE max length on this instance — a longer personid isn't a valid laborcode. */
+    private static final int MAX_LABORCODE_LEN = 8;
     private static final String SELECT_FIELDS =
             "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
@@ -272,8 +274,18 @@ public class MaximoWorkOrderAdapter {
         if (labor != null) {
             for (CompleteWorkOrderRequest.LaborEntry e : labor) {
                 if (e == null || e.getLaborcode() == null || e.getLaborcode().isBlank()) continue;
+                String code = e.getLaborcode().trim().toUpperCase();
+                // Maximo caps LABTRANS.LABORCODE at 8 chars (BMXAA4049E). Some people's personid is longer
+                // (e.g. "ASTEIN-ROJAS") and is NOT a valid laborcode — sending it 400s the whole call and the
+                // WO can't be completed. Drop that one labor row instead: the worklog + status change still go
+                // through, so the WO always closes. (Labor for such users can be recorded/corrected in Maximo.)
+                if (code.length() > MAX_LABORCODE_LEN) {
+                    log.warn("[Maximo] laborcode '{}' exceeds Maximo's {}-char max — completing without this labor row (href {})",
+                            code, MAX_LABORCODE_LEN, href);
+                    continue;
+                }
                 Map<String, Object> row = new LinkedHashMap<>();
-                row.put("spi:laborcode", e.getLaborcode().trim().toUpperCase());
+                row.put("spi:laborcode", code);
                 if (e.getRegularhrs() != null) row.put("spi:regularhrs", e.getRegularhrs());
                 labtrans.add(row);
             }
@@ -421,6 +433,7 @@ public class MaximoWorkOrderAdapter {
      * change status (default COMP). Returns the refreshed WO. Labor codes must already be resolved.
      */
     public Optional<MaximoWorkOrderDto> completeWorkOrder(String href, CompleteWorkOrderRequest req) {
+        assertDueForCompletion(href);
         reportActuals(href, req.getLabor(), req.getSummary(), req.getDetails(), req.getLogtype());
         boolean doComplete = req.getComplete() == null || req.getComplete();
         if (doComplete) {
@@ -428,6 +441,34 @@ public class MaximoWorkOrderAdapter {
             changeStatus(href, status, req.getMemo());
         }
         return findByHref(href);
+    }
+
+    /**
+     * A PM work order may only be completed once it is DUE — its target start is today or earlier. A WO that is
+     * approved but scheduled for a future date must not be completed early (which would attach a completion form
+     * and close the WO before its period). Throws a client-friendly message when not due; never blocks on a
+     * read failure or an unset target date.
+     */
+    public void assertDueForCompletion(String href) {
+        if (href == null || href.isBlank()) return;
+        java.time.LocalDate targetStart;
+        try {
+            targetStart = findByHref(href).map(w -> parseWoDate(w.getTargetStart())).orElse(null);
+        } catch (RuntimeException e) {
+            log.debug("[Maximo] due-check read failed for {}: {}", href, e.toString());
+            return;   // don't block completion on a read failure
+        }
+        if (targetStart != null && targetStart.isAfter(java.time.LocalDate.now())) {
+            throw new IllegalStateException("This work order isn't due yet — it's scheduled for "
+                    + targetStart + " and can't be completed before its period.");
+        }
+    }
+
+    /** Parse a Maximo datetime string ("yyyy-MM-ddTHH:mm:ss…") to a LocalDate; null if unparseable/blank. */
+    private static java.time.LocalDate parseWoDate(String iso) {
+        if (iso == null || iso.length() < 10) return null;
+        try { return java.time.LocalDate.parse(iso.substring(0, 10)); }
+        catch (RuntimeException e) { return null; }
     }
 
     public Optional<MaximoWorkOrderDto> findByHref(String href) {

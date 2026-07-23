@@ -58,7 +58,7 @@ export class EtaProStateService {
   private eplogPollSub: Subscription | null = null;
 
   // ── UI ────────────────────────────────────────────────────
-  activeTab = signal<'live' | 'history' | 'points' | 'eplog'>('live');
+  activeTab = signal<'trend' | 'live' | 'history' | 'points' | 'eplog'>('live');
 
   // Trend popup (still used in History viewer)
   isTrendOpen = signal(false);

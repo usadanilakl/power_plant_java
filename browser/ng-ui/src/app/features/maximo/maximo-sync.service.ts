@@ -80,6 +80,7 @@ export class MaximoSyncService {
       ? this.api.completeForm({
           templateFormKey: draft.templateFormKey ?? '',
           wonum: draft.wonum,
+          pmnum: draft.pmnum,
           woHref: draft.href,
           siteid: draft.siteid,
           valuesJson: JSON.stringify(draft.formValues ?? {}),

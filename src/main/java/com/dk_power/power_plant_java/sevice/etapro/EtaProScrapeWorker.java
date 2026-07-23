@@ -3,7 +3,6 @@ package com.dk_power.power_plant_java.sevice.etapro;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProHistoryJobService.BatchPlan;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScraperEngine.BatchResult;
-import com.dk_power.power_plant_java.sevice.etapro.EtaProScraperEngine.Template;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +52,7 @@ public class EtaProScrapeWorker {
     private final EtaProHistoryJobService historyJobService;
     private final EtaProLogPullService logPullService;
     private final EtaProHistoryFetchService historyFetchService;
+    private final EtaProLiveFetchService liveFetchService;
 
     @Value("${etapro.live.interval.ms:3000}")
     private long liveIntervalMs;
@@ -177,13 +177,10 @@ public class EtaProScrapeWorker {
                 EtaProScraperEngine.MAX_POINTS_PER_LIVE_BATCH);
         int totalImported = 0;
 
-        // Window: last N seconds. The live template uses a small window (e.g., 10 sec).
-        LocalDateTime end = LocalDateTime.now();
-        LocalDateTime start = end.minusSeconds(15);
-
         for (List<String> chunk : chunks) {
             if (!running || !liveService.isActive()) return;
-            BatchResult result = engine.executeBatch(Template.LIVE, chunk, start, end);
+            // API-first (current-value per point) with Excel Live-template fallback.
+            BatchResult result = liveFetchService.fetchLiveBatch(chunk);
             if (result.success) {
                 totalImported += result.importedCount;
                 consecutiveFailures = 0;

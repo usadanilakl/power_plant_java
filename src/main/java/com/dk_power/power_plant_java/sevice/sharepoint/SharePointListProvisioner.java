@@ -258,7 +258,7 @@ public class SharePointListProvisioner {
                 list("OrderCatalog",
                         text("ItemKey"), text("DisplayName"), text("Vendor"), text("ContactEmail"),
                         text("CcEmails"), note("BodyNote"), text("BlanketPoNumber"), text("Unit"),
-                        note("DefaultQtyPresets"), note("TextOptions"), bool("Active"), text("SortOrder")),
+                        text("OrderMode"), note("DefaultQtyPresets"), note("TextOptions"), bool("Active"), text("SortOrder")),
 
                 list("OrderSuggestions",
                         text("PwaId"), text("SuggestedAt"), text("CatalogItemKey"), text("Source"),

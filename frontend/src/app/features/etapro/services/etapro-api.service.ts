@@ -168,6 +168,19 @@ export class EtaProApiService {
     return this.http.get<SpringApiResponse<EtaProReadingDto[]>>(`${this.apiUrl}/readings/latest`);
   }
 
+  /**
+   * On-demand trend data for a point over a window — fetched live from the historian (not just what's
+   * stored), so a trend can show any period/point without a separate collection step. maxPoints caps
+   * density for the chart.
+   */
+  getTrend(pointId: string, startTime: string, endTime: string, maxPoints = 2000):
+      Observable<SpringApiResponse<EtaProReadingDto[]>> {
+    return this.http.get<SpringApiResponse<EtaProReadingDto[]>>(
+      `${this.apiUrl}/trend?pointId=${encodeURIComponent(pointId)}` +
+      `&startTime=${startTime}&endTime=${endTime}&maxPoints=${maxPoints}`
+    );
+  }
+
   // ── EPLog (Operator/Event Log) ─────────────────────────────
 
   /** Queue a manual pull (async). With a range, backfills that window; without, pulls incrementally. */

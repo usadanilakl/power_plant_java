@@ -5,6 +5,10 @@
 export interface OrderPreset {
   label: string;
   defaultQty: number | null;
+  /** FILL mode: the tank/equipment capacity. */
+  capacity?: number | null;
+  /** FILL mode: the product this equipment holds (used to total the order per product). */
+  product?: string;
 }
 
 export interface OrderTextOption {
@@ -25,6 +29,8 @@ export interface OrderCatalogItem {
   bodyNote?: string;
   blanketPoNumber?: string;
   unit?: string;
+  /** 'QUANTITY' (pick presets + enter qty) or 'FILL' (top-off equipment: order = sum(capacity − level) per product). */
+  orderMode?: string;
   defaultQtyPresets: OrderPreset[];
   textOptions: OrderTextOption[];
   active: boolean;
@@ -76,4 +82,16 @@ export interface PlaceOrderRequest {
   note?: string;
   sourceSuggestionId?: string;
   lines: OrderLine[];
+  testMode?: boolean;
+  testRecipient?: string;
+  testCc?: string;
+}
+
+/** Dry-run render of an order email — exactly what would be sent. */
+export interface OrderPreview {
+  to?: string;
+  cc?: string;
+  subject?: string;
+  poNumber?: string;
+  bodyHtml?: string;
 }

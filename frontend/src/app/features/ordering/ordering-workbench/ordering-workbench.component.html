@@ -32,7 +32,7 @@
             <select [ngModel]="selectedItemKey()" (ngModelChange)="onItemChange($event)">
               <option value="">— select a vendor item —</option>
               @for (c of activeCatalog(); track c.itemKey) {
-                <option [value]="c.itemKey">{{ c.displayName }} — {{ c.vendor }}</option>
+                <option [value]="c.itemKey">{{ c.vendor }} ({{ c.displayName }})</option>
               }
             </select>
           </label>
@@ -45,20 +45,56 @@
               @if (item.unit) { <span>Unit: {{ item.unit }}</span> }
             </div>
 
-            <div class="lines">
-              <div class="lines-head">
-                <span class="c-desc">Item</span><span class="c-qty">Qty</span><span class="c-unit">Unit</span><span class="c-x"></span>
-              </div>
-              @for (line of lines(); track $index) {
-                <div class="line-row">
-                  <input class="c-desc" type="text" [(ngModel)]="line.description" placeholder="Item description" />
-                  <input class="c-qty" type="number" [(ngModel)]="line.qty" placeholder="0" />
-                  <input class="c-unit" type="text" [(ngModel)]="line.unit" placeholder="unit" />
-                  <button class="c-x icon" (click)="removeLine($index)" title="Remove line">✕</button>
+            @if (isFill()) {
+              <p class="hint">Enter each tank's current level. The order is calculated as capacity − current level, totaled per product; the vendor email shows only the product totals.</p>
+              @for (g of fillGroups(); track g.product) {
+                <div class="fill-group">
+                  <div class="fill-group-head">
+                    <b>{{ g.product }}</b>
+                    <span class="fill-total">Order: {{ g.total }} {{ item.unit }}</span>
+                  </div>
+                  <div class="fill-tanks">
+                    <div class="fill-head"><span>Equipment</span><span>Capacity</span><span>Current level</span><span>Needed</span></div>
+                    @for (t of g.tanks; track t.key) {
+                      <div class="fill-row">
+                        <span class="ft-name">{{ t.label }}</span>
+                        <span class="ft-cap">{{ t.capacity ?? '—' }}</span>
+                        <input class="ft-lvl" type="number" min="0" [ngModel]="t.level" (ngModelChange)="setLevel(t.key, $event)"
+                               [disabled]="t.capacity == null"
+                               [placeholder]="t.capacity == null ? 'set capacity in Catalog Admin' : '0'" />
+                        <span class="ft-need">{{ t.needed ?? '—' }}</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               }
-              <button class="link-btn" (click)="addLine()">+ Add line</button>
-            </div>
+            } @else {
+              @if (item.defaultQtyPresets.length) {
+                <div class="presets">
+                  <span class="lbl">Quick add</span>
+                  <div class="preset-chips">
+                    @for (p of item.defaultQtyPresets; track p.label) {
+                      <button class="chip-btn" (click)="addPreset(p)">+ {{ p.label }}@if (p.defaultQty != null) {<span class="q"> ({{ p.defaultQty }})</span>}</button>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="lines">
+                <div class="lines-head">
+                  <span class="c-desc">Item</span><span class="c-qty">Qty</span><span class="c-unit">Unit</span><span class="c-x"></span>
+                </div>
+                @for (line of lines(); track $index) {
+                  <div class="line-row">
+                    <input class="c-desc" type="text" [ngModel]="line.description" (ngModelChange)="line.description = $event; preview.set(null)" placeholder="Item description" />
+                    <input class="c-qty" type="number" [ngModel]="line.qty" (ngModelChange)="line.qty = $event; preview.set(null)" placeholder="0" />
+                    <input class="c-unit" type="text" [ngModel]="line.unit" (ngModelChange)="line.unit = $event; preview.set(null)" placeholder="unit" />
+                    <button class="c-x icon" (click)="removeLine($index)" title="Remove line">✕</button>
+                  </div>
+                }
+                <button class="link-btn" (click)="addLine()">+ Add line</button>
+              </div>
+            }
 
             @if (item.textOptions.length) {
               <div class="options">
@@ -72,7 +108,7 @@
                     </label>
                   }
                 }
-                <textarea rows="2" [ngModel]="freeNote()" (ngModelChange)="freeNote.set($event)"
+                <textarea rows="2" [ngModel]="freeNote()" (ngModelChange)="freeNote.set($event); preview.set(null)"
                           placeholder="Additional notes (optional)"></textarea>
               </div>
             }
@@ -86,12 +122,36 @@
               <div class="hint">Placing this order will resolve the linked reorder suggestion.</div>
             }
 
+            <label class="opt test-opt">
+              <input type="checkbox" [ngModel]="testMode()" (ngModelChange)="onToggleTest($event)" />
+              Send as a test to a specific address (not the vendor)
+            </label>
+            @if (testMode()) {
+              <div class="test-fields">
+                <input type="text" [ngModel]="testRecipient()" (ngModelChange)="testRecipient.set($event)" placeholder="Test recipient email" />
+                <input type="text" [ngModel]="testCc()" (ngModelChange)="testCc.set($event)" placeholder="Test CC (optional)" />
+              </div>
+            }
+
             <div class="actions">
+              <button class="btn" [disabled]="previewing()" (click)="doPreview()">{{ previewing() ? 'Rendering…' : 'Preview email' }}</button>
               <button class="btn primary" [disabled]="!canSend() || sending()" (click)="sendOrder()">
-                {{ sending() ? 'Sending…' : 'Send Order' }}
+                {{ sending() ? 'Sending…' : (testMode() ? 'Send Test' : 'Send Order') }}
               </button>
               <button class="btn" (click)="resetPlace()">Clear</button>
             </div>
+
+            @if (preview(); as pv) {
+              <div class="preview">
+                <div class="preview-head">
+                  <div><b>To:</b> {{ pv.to || '(no recipient)' }}</div>
+                  @if (pv.cc) { <div><b>Cc:</b> {{ pv.cc }}</div> }
+                  <div><b>Subject:</b> {{ pv.subject }}</div>
+                </div>
+                <div class="preview-body" [innerHTML]="pv.bodyHtml"></div>
+                <button class="btn sm" (click)="preview.set(null)">Close preview</button>
+              </div>
+            }
           }
         </div>
       }
@@ -103,7 +163,26 @@
             <button class="btn" (click)="loadOrders()">Refresh</button>
           </div>
           @if (orders().length) {
-            <app-shared-table [columns]="historyColumns" [items]="orders()" [clickCallback]="rowNoop"></app-shared-table>
+            <div class="table-scroll">
+              <table class="grid-table">
+                <thead>
+                  <tr><th>Date</th><th>Vendor</th><th>PO#</th><th>Items</th><th>Sent</th><th>By</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  @for (o of orders(); track o.sharepointId || o.pwaId) {
+                    <tr>
+                      <td>{{ fmtDate(o.orderDate) }}</td>
+                      <td>{{ o.vendor }}</td>
+                      <td>{{ o.poNumber }}</td>
+                      <td>{{ o.lines.length }}</td>
+                      <td>{{ o.emailSent ? '✓' : '✗' }}</td>
+                      <td>{{ o.orderedBy }}</td>
+                      <td>{{ o.status }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           } @else {
             <div class="empty">No orders yet.</div>
           }
@@ -167,14 +246,34 @@
                   <input type="number" [(ngModel)]="item.sortOrder" /></label>
                 <label class="field wide"><span class="lbl">Body note</span>
                   <textarea rows="2" [(ngModel)]="item.bodyNote"></textarea></label>
+                <label class="field"><span class="lbl">Order mode</span>
+                  <select [(ngModel)]="item.orderMode">
+                    <option value="QUANTITY">Quantity (pick + enter qty)</option>
+                    <option value="FILL">Fill equipment (capacity − level)</option>
+                  </select></label>
                 <label class="chk"><input type="checkbox" [(ngModel)]="item.active" /> Active (available to order)</label>
               </div>
-              @if (item.defaultQtyPresets.length || item.textOptions.length) {
-                <div class="ro-note">
-                  Presets: {{ item.defaultQtyPresets.length }} · Text options: {{ item.textOptions.length }}
-                  <em>(edited via seed for now)</em>
+              <div class="preset-editor">
+                <div class="pe-head">
+                  <span class="lbl">{{ item.orderMode === 'FILL' ? 'Equipment / tanks (label · product · capacity)' : 'Presets (quick-add)' }}</span>
+                  <button class="btn sm" (click)="addEditPreset()">+ Add</button>
                 </div>
-              }
+                @for (p of item.defaultQtyPresets; track $index) {
+                  <div class="pe-row">
+                    <input [(ngModel)]="p.label" placeholder="Label" />
+                    @if (item.orderMode === 'FILL') {
+                      <input [(ngModel)]="p.product" placeholder="Product (Diesel/CO2…)" />
+                      <input type="number" [(ngModel)]="p.capacity" placeholder="Capacity" />
+                    } @else {
+                      <input type="number" [(ngModel)]="p.defaultQty" placeholder="Default qty (optional)" />
+                    }
+                    <button class="icon" (click)="removeEditPreset($index)" title="Remove">✕</button>
+                  </div>
+                }
+                @if (item.textOptions.length) {
+                  <div class="ro-note">Text options: {{ item.textOptions.length }} <em>(edited via seed)</em></div>
+                }
+              </div>
               <div class="actions">
                 <button class="btn primary" (click)="saveItem()">Save</button>
                 @if (item.sharepointId) { <button class="btn danger" (click)="deleteItem()">Delete</button> }
@@ -184,7 +283,27 @@
           }
 
           @if (catalog().length) {
-            <app-shared-table [columns]="catalogColumns" [items]="catalog()" [clickCallback]="openEditor"></app-shared-table>
+            <div class="hint">Click a row to edit its vendor email, CC, PO#, and other details.</div>
+            <div class="table-scroll">
+              <table class="grid-table">
+                <thead>
+                  <tr><th>Item</th><th>Vendor</th><th>Contact</th><th>Cc</th><th>PO#</th><th>Unit</th><th>Active</th></tr>
+                </thead>
+                <tbody>
+                  @for (c of catalog(); track c.itemKey) {
+                    <tr class="click" (click)="openEditor(c)">
+                      <td>{{ c.displayName }}</td>
+                      <td>{{ c.vendor }}</td>
+                      <td>{{ c.contactEmail || '—' }}</td>
+                      <td>{{ c.ccEmails || '—' }}</td>
+                      <td>{{ c.blanketPoNumber || '—' }}</td>
+                      <td>{{ c.unit || '—' }}</td>
+                      <td>{{ c.active ? 'Yes' : 'No' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           } @else {
             <div class="empty">No catalog items. Click “Seed standard catalog” to load the vendors.</div>
           }

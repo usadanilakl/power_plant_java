@@ -2,7 +2,6 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
-import { RfPopupProjectionComponent } from '../../../shared/popup-projection/rf-popup-projection.component';
 import { TrendWindowComponent } from '../../../shared/trend-chart/trend-window.component';
 import { EtaProStateService } from '../services/etapro-state.service';
 import { EtaProTrendAdapterService } from '../services/etapro-trend-adapter.service';
@@ -18,7 +17,6 @@ import { EtaProEpLogComponent } from '../etapro-eplog/etapro-eplog.component';
     CommonModule,
     MainLayoutComponent,
     RouterMenuComponent,
-    RfPopupProjectionComponent,
     TrendWindowComponent,
     EtaProLiveComponent,
     EtaProHistoryComponent,
@@ -33,6 +31,8 @@ import { EtaProEpLogComponent } from '../etapro-eplog/etapro-eplog.component';
       <ng-container main-content>
         <div class="etapro-content">
           <div class="tab-bar">
+            <button [class.active]="stateService.activeTab() === 'trend'"
+                    (click)="stateService.activeTab.set('trend')">Trend</button>
             <button [class.active]="stateService.activeTab() === 'live'"
                     (click)="stateService.activeTab.set('live')">Live</button>
             <button [class.active]="stateService.activeTab() === 'history'"
@@ -45,6 +45,14 @@ import { EtaProEpLogComponent } from '../etapro-eplog/etapro-eplog.component';
 
           <div class="tab-content">
             @switch (stateService.activeTab()) {
+              @case ('trend') {
+                <app-trend-window
+                  [adapter]="trendAdapter"
+                  [seriesIds]="stateService.trendPointIds()"
+                  [initialPreset]="'60m'"
+                  (pointsChange)="stateService.trendPointIds.set($event)">
+                </app-trend-window>
+              }
               @case ('live') {
                 <app-etapro-live></app-etapro-live>
               }
@@ -59,14 +67,6 @@ import { EtaProEpLogComponent } from '../etapro-eplog/etapro-eplog.component';
               }
             }
           </div>
-
-          <app-rf-popup-projection [isOpen]="stateService.isTrendOpen()" (close)="stateService.closeTrend()">
-            <app-trend-window
-              [adapter]="trendAdapter"
-              [seriesIds]="stateService.trendPointIds()"
-              [initialPreset]="'1h'">
-            </app-trend-window>
-          </app-rf-popup-projection>
         </div>
       </ng-container>
     </app-main-layout>

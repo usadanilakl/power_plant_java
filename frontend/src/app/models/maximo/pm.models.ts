@@ -1,4 +1,4 @@
-export type RecurrenceCadence = 'DAY' | 'WEEK' | 'MONTH' | 'OTHER';
+export type RecurrenceCadence = 'DAY' | 'WEEK' | 'BIWEEK' | 'MONTH' | 'QUARTER' | 'OTHER';
 export type ShiftPreference = 'DAY' | 'NIGHT' | 'EITHER';
 
 export interface RecurringPm {
@@ -24,6 +24,54 @@ export interface RecurringPm {
 export interface PmPersonOption {
   personid: string;
   name: string;
+}
+
+/** One row of the PM audit list (catalog facts; completion loads per PM on expand). */
+export interface PmAuditRow {
+  pmId: number;
+  pmnum: string;
+  description: string;
+  cadence: string | null;
+  recurring: boolean;
+  targetDate: string | null;      // yyyy-MM-dd (last known target start)
+  lastWonum: string | null;
+  occurrenceCount: number | null;
+  overdue: boolean;               // next-due (last target + interval) has passed
+}
+
+/** A fully-populated audit card: a PM + its real completion status (last completed WO + form/comment, next scheduled). */
+export interface PmAuditCard {
+  pmId: number;
+  pmnum: string;
+  description: string;
+  cadence: string | null;
+  recurring: boolean;
+  targetDate: string | null;         // catalog last known target start
+  lastWonum: string | null;
+  lastHref: string | null;
+  lastCompletedDate: string | null;
+  nextWonum: string | null;
+  nextHref: string | null;
+  nextScheduledDate: string | null;
+  comment: string | null;
+  submissionId: number | null;       // completion-form PDF, if a form was filled
+  formName: string | null;
+  overdue: boolean;
+  overdueOn: string | null;          // yyyy-MM-dd — first date it is overdue (period end + 1)
+  hasIssues: boolean;
+  keywordHit: boolean;
+  formIssues: boolean;
+}
+
+/** Completion detail for one WO (the last completed occurrence of a PM), loaded on expand. */
+export interface PmCompletionDetail {
+  wonum: string;
+  submissionId: number | null;    // the completion-form submission (PDF), if one was filled
+  formName: string | null;
+  comment: string | null;         // the WO's worklog note(s)
+  hasIssues: boolean;             // keyword in the comment OR a failing form answer
+  keywordHit: boolean;
+  formIssues: boolean;
 }
 
 /** One real Maximo WO matching a recurring PM, for the catalog's history/upcoming timeline. */

@@ -6,10 +6,12 @@ import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderLineDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderResultDto;
 import com.dk_power.power_plant_java.dto.order.OrderLineDto;
+import com.dk_power.power_plant_java.dto.order.OrderRecordDto;
 import com.dk_power.power_plant_java.dto.order.OrderRequestDto;
 import com.dk_power.power_plant_java.entities.maximo.MaximoFormTemplate;
 import com.dk_power.power_plant_java.repository.maximo.MaximoFormTemplateRepo;
 import com.dk_power.power_plant_java.sevice.order.OrderEmailService;
+import com.dk_power.power_plant_java.sevice.order.OrderLedger;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,7 @@ import java.util.Map;
 public class ChemInventoryReorderService {
 
     private static final String WO_OS = "mxapiwodetail";
+    private static final String LAB_ITEM_KEY = "lab_reagents";
     private static final String INSTOCK = "__instock";
     private static final String DESIRED = "__desired";
     private static final String INCLUDE = "__include";
@@ -46,6 +50,7 @@ public class ChemInventoryReorderService {
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoDoclinksAdapter doclinks;
     private final OrderEmailService orderEmailService;
+    private final OrderLedger orderLedger;
     private final ObjectMapper objectMapper;
 
     /**
@@ -105,16 +110,26 @@ public class ChemInventoryReorderService {
         }
 
         String subject = "Reagent & Test Inventory Reorder" + (po != null ? " — PO " + po : "");
+        List<OrderLineDto> orderLines = lines.stream()
+                .map(l -> OrderLineDto.builder().description(l.getReagent()).qty(l.getNeed()).build())
+                .toList();
         OrderRequestDto order = OrderRequestDto.builder()
                 .to(to).cc(cc).subject(subject).poNumber(po).shipTo(shipTo)
                 .greeting("Good afternoon,")
                 .intro("Jackson Generation would like to order the following:")
-                .lines(lines.stream()
-                        .map(l -> OrderLineDto.builder().description(l.getReagent()).qty(l.getNeed()).build())
-                        .toList())
+                .lines(orderLines)
                 .build();
-        result.setSent(orderEmailService.send(order).isSent());
+        boolean sent;
+        try {
+            sent = orderEmailService.send(order).isSent();
+        } catch (RuntimeException e) {
+            // record the failed attempt so it still shows in Order History, then propagate as before
+            recordLabOrder(to, cc, po, subject, orderLines, false, e.getMessage());
+            throw e;
+        }
+        result.setSent(sent);
         log.info("[ChemReorder] reorder email sent to {} (cc {}) — {} line(s), PO {}", to, cc, lines.size(), po);
+        recordLabOrder(to, cc, po, subject, orderLines, sent, null);
 
         // Attach the order summary to the WO — the record that the reorder was placed.
         String href = resolveHref(dto);
@@ -133,6 +148,30 @@ public class ChemInventoryReorderService {
         result.setMessage("Reorder email sent to " + to + (cc != null ? " (cc " + cc + ")" : "")
                 + " — " + lines.size() + " item(s)" + (href != null ? "; summary attached to the work order." : "."));
         return result;
+    }
+
+    /** Mirror the lab reorder into the Ordering ledger so it appears in the Ordering-section Order History alongside
+     *  orders placed there. Best-effort — a ledger failure never affects the reorder email or WO attach. */
+    private void recordLabOrder(String to, String cc, String po, String subject, List<OrderLineDto> lines,
+                                boolean sent, String error) {
+        try {
+            orderLedger.recordOrder(OrderRecordDto.builder()
+                    .orderDate(LocalDateTime.now().toString())
+                    .orderedBy("Lab Inventory PM")
+                    .vendor("Hach")
+                    .catalogItemKey(LAB_ITEM_KEY)
+                    .poNumber(po)
+                    .recipient(to)
+                    .cc(cc)
+                    .subject(subject)
+                    .lines(lines)
+                    .emailSent(sent)
+                    .emailError(error)
+                    .status(sent ? "SENT" : "FAILED")
+                    .build());
+        } catch (Exception e) {
+            log.warn("[ChemReorder] could not record lab order to the ordering ledger: {}", e.getMessage());
+        }
     }
 
     // ── summary (Maximo WO attach — inventory-specific: shows target / in-stock) ──────────

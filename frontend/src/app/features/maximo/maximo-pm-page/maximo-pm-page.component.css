@@ -167,3 +167,89 @@ td.form-cell select.assigned { border-color: #1c7c3a; color: #9fe0b0; }
 .form-dd-opt:hover { background: #2a3b4a; }
 .form-dd-opt input { width: 15px; height: 15px; flex: none; }
 .form-dd-empty { padding: 9px; color: #888; font-size: 12px; }
+
+/* ── Auditing tab ─────────────────────────────────────────────────────── */
+.audit-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 12px; }
+.audit-chk { display: inline-flex; align-items: center; gap: 5px; color: #ccc; font-size: 13px; cursor: pointer; }
+.audit-legend { display: inline-flex; gap: 8px; margin-left: auto; }
+.audit-legend .lg { font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.lg-overdue { background: #4a1f1f; color: #ff8f8f; }
+.lg-issue { background: #4a3a14; color: #ffcf7a; }
+.lg-ok { background: #1f3a24; color: #8fe0a0; }
+
+.audit-toolbar .search { min-width: 240px; }
+.audit-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-right: 4px; }
+.audit-badge.b-overdue { background: #e74c3c; color: #fff; }
+.audit-badge.b-issue { background: #e6a23c; color: #2a1f08; }
+
+/* Expandable audit table */
+table.audit-table { width: 100%; border-collapse: collapse; }
+table.audit-table th { color: #7cc6ff; font-weight: 500; text-align: left; padding: 6px 8px; border-bottom: 1px solid #333; font-size: 12px; }
+table.audit-table td { padding: 6px 8px; border-bottom: 1px solid #232323; font-size: 13px; vertical-align: top; }
+tr.audit-row { cursor: pointer; }
+tr.audit-row:hover td { background: #242424; }
+tr.audit-row.audit-overdue td { box-shadow: inset 3px 0 0 #e74c3c; }
+tr.audit-row.audit-issue td { box-shadow: inset 3px 0 0 #e6a23c; }
+tr.audit-row.audit-ok td { box-shadow: inset 3px 0 0 #27ae60; }
+.audit-caret { width: 18px; color: #888; }
+tr.audit-row td.desc { color: #ddd; max-width: 420px; }
+tr.audit-detail-row > td { background: #191919; padding: 8px 12px 12px 30px; }
+.audit-cols { display: flex; gap: 24px; flex-wrap: wrap; }
+.audit-col { min-width: 220px; }
+.audit-col-h { color: #7cc6ff; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 5px; }
+.audit-detail .occ-line { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; }
+.audit-detail .occ-line .link { padding: 0; min-width: 76px; text-align: left; }
+.audit-comment { font-size: 12px; color: #cbb; margin: 5px 0; white-space: pre-wrap; max-width: 460px; }
+.kw-tag { display: inline-block; background: #e6a23c; color: #2a1f08; font-size: 10px; font-weight: 700;
+  border-radius: 3px; padding: 0 5px; margin-left: 4px; vertical-align: middle; }
+.audit-history { margin-top: 12px; }
+.audit-history .occ-line { max-width: 560px; }
+
+.audit-thumb-wrap { position: relative; width: 130px; height: 168px; flex: none; padding: 0; border: 1px solid #444;
+  border-radius: 4px; overflow: hidden; background: #fff; cursor: pointer; }
+.audit-thumb-wrap:hover { border-color: #0e639c; }
+.audit-thumb { width: 260px; height: 336px; border: 0; transform: scale(0.5); transform-origin: top left;
+  pointer-events: none; background: #fff; }
+.audit-thumb-zoom { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 12px; padding: 1px 5px; border-radius: 3px; }
+.audit-noform { width: 130px; height: 168px; flex: none; display: flex; align-items: center; justify-content: center;
+  text-align: center; border: 1px dashed #444; border-radius: 4px; color: #777; font-size: 12px; }
+
+.audit-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; display: flex;
+  align-items: center; justify-content: center; padding: 24px; }
+.audit-lightbox-inner { background: #1e1e1e; border: 1px solid #444; border-radius: 8px; width: min(900px, 92vw);
+  height: min(90vh, 1000px); display: flex; flex-direction: column; overflow: hidden; }
+.audit-lightbox-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; border-bottom: 1px solid #333; color: #e6e6e6; font-size: 13px; }
+.audit-lightbox-pdf { flex: 1; width: 100%; border: 0; background: #fff; }
+
+/* ── Auditing Cards (eager card grid) ─────────────────────────────────── */
+.audit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+.audit-card { display: flex; gap: 10px; border: 1px solid #333; border-left-width: 4px; border-radius: 8px;
+  padding: 10px 12px; background: #1e1e1e; }
+.audit-card.audit-overdue { border-left-color: #e74c3c; background: #241a1a; }
+.audit-card.audit-issue { border-left-color: #e6a23c; background: #241f14; }
+.audit-card.audit-ok { border-left-color: #27ae60; }
+.audit-card.audit-none { border-left-color: #555; }
+.audit-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.audit-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.audit-pm { font-weight: 700; color: #e6e6e6; }
+.audit-badges { display: inline-flex; gap: 5px; }
+.audit-desc { font-size: 13px; color: #ddd; }
+.audit-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 3px 0; }
+.audit-facts dt { font-size: 11px; font-weight: 700; color: #888; align-self: center; }
+.audit-facts dd { margin: 0; font-size: 12px; color: #ddd; display: flex; align-items: center; gap: 8px; }
+.audit-facts dd .link.small { padding: 0; font-size: 11px; }
+.audit-comments { font-size: 12px; color: #cbb; max-height: 4.5em; overflow: hidden; margin-top: 2px; }
+
+/* Card full-history button + modal */
+.hist-btn { align-self: flex-start; padding: 2px 0; font-size: 11px; margin-top: 2px; }
+.audit-lightbox-inner.hist { width: min(720px, 92vw); height: auto; max-height: 80vh; }
+.hist-body { padding: 12px 14px; overflow-y: auto; }
+
+/* Days-until-overdue counter chip + the "due within" number filter */
+.due-chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+  background: #2a3a2a; color: #9fe0b0; white-space: nowrap; }
+.due-chip.due-soon { background: #4a3a14; color: #ffcf7a; }
+.due-chip.due-over { background: #4a1f1f; color: #ff8f8f; }
+.due-input { width: 58px; }

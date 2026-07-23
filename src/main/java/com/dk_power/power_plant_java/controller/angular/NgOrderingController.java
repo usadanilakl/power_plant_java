@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.angular;
 
 import com.dk_power.power_plant_java.dto.order.OrderCatalogItemDto;
+import com.dk_power.power_plant_java.dto.order.OrderPreviewDto;
 import com.dk_power.power_plant_java.dto.order.OrderRecordDto;
 import com.dk_power.power_plant_java.dto.order.PlaceOrderRequestDto;
 import com.dk_power.power_plant_java.dto.order.ReorderSuggestionDto;
@@ -80,6 +81,19 @@ public class NgOrderingController {
             return ResponseEntity.ok(new NgApiResponse<>(ledger.listSuggestions(openOnly), "ok"));
         } catch (Exception e) {
             log.warn("[Ordering] list suggestions failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Dry-run: render exactly what would be sent (subject/recipients/body) without sending. */
+    @PostMapping("/place-order/preview")
+    public ResponseEntity<NgApiResponse<OrderPreviewDto>> previewOrder(@RequestBody PlaceOrderRequestDto req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(orderingService.preview(req), "ok"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.warn("[Ordering] preview failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }

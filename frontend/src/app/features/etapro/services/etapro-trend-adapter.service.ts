@@ -23,9 +23,10 @@ export class EtaProTrendAdapterService implements TrendDataAdapter {
           if (p.pointId) pointMap.set(p.pointId, p);
         }
 
-        // 2. Fetch readings for each requested ID in parallel
+        // 2. Fetch on-demand trend data for each requested ID in parallel (historian pass-through —
+        //    not limited to what's been collected, so any window works).
         const requests = request.ids.map(id =>
-          this.apiService.getReadings(id, request.startTime, request.endTime).pipe(
+          this.apiService.getTrend(id, request.startTime, request.endTime).pipe(
             map(res => {
               const point = pointMap.get(id);
               const readings = res.responseData || [];

@@ -8,8 +8,10 @@ import com.dk_power.power_plant_java.dto.etapro.EtaProReadingDto;
 import com.dk_power.power_plant_java.dto.etapro.EtaProScrapeJobDto;
 import com.dk_power.power_plant_java.entities.etapro.EtaProLogEntry;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
+import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.sevice.angular.etapro.NgEtaProPointService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProApiService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProHistoryJobService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProLiveService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProLogEntryService;
@@ -31,6 +33,8 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/ng/etapro")
@@ -46,6 +50,8 @@ public class NgEtaProController {
     private final EtaProPointImportService pointImportService;
     private final EtaProLogPullService logPullService;
     private final EtaProLogEntryService logEntryService;
+    /** Present only when etapro.api.enabled — used by the trend endpoint to pull on-demand. */
+    private final Optional<EtaProApiService> apiService;
 
     // ── Points CRUD ───────────────────────────────────────────
 
@@ -261,6 +267,36 @@ public class NgEtaProController {
         List<EtaProReadingDto> readings = etaProReadingService.getLatestPerPoint()
                 .stream().map(etaProReadingService::convertToDto).toList();
         return ResponseEntity.ok(new NgApiResponse<>(readings, "Latest readings retrieved"));
+    }
+
+    /**
+     * On-demand trend data for one point over a window — fetched directly from the historian API
+     * (transient, NOT stored), so the trend window is self-contained (any point/period, past or live)
+     * without a separate collection step. Falls back to locally-stored readings if the API is
+     * disabled or the call fails. {@code maxPoints} caps series density for a chart-friendly response.
+     */
+    @GetMapping("/trend")
+    public ResponseEntity<NgApiResponse<List<EtaProReadingDto>>> getTrend(
+            @RequestParam String pointId,
+            @RequestParam LocalDateTime startTime,
+            @RequestParam LocalDateTime endTime,
+            @RequestParam(defaultValue = "2000") int maxPoints) {
+        List<EtaProReading> readings = null;
+        String source = "stored";
+        if (apiService.isPresent()) {
+            try {
+                readings = apiService.get().fetchHistory(List.of(pointId), startTime, endTime,
+                        UUID.randomUUID().toString(), maxPoints);
+                source = "api";
+            } catch (Exception e) {
+                readings = null; // fall back to stored below
+            }
+        }
+        if (readings == null) {
+            readings = etaProReadingService.getByPointAndTimeRange(pointId, startTime, endTime);
+        }
+        List<EtaProReadingDto> dtos = readings.stream().map(etaProReadingService::convertToDto).toList();
+        return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.size() + " trend points (" + source + ")"));
     }
 
     // ── EPLog (Event Log) ─────────────────────────────────────

@@ -7,13 +7,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * Seeds the vendor catalog from {@code project/features/users/communication/email/email-reorder.mc}. Idempotent
- * (upsert by itemKey via {@link OrderLedger#saveCatalogItem}), so it is safe to re-run. Triggered on demand
- * (NgOrderingController) rather than hub-gated at boot, because the Ordering feature runs on each desktop's local
- * backend and never as a hub.
+ * Seeds the vendor catalog from {@code project/features/users/communication/email/email-reorder.mc}. Creates
+ * ONLY the items that don't exist yet — it never overwrites an existing item, so manual edits (vendor emails, PO#s,
+ * tank capacities set in Catalog Admin) survive a re-seed. Triggered on demand (NgOrderingController) rather than
+ * hub-gated at boot, because the Ordering feature runs on each desktop's local backend and never as a hub.
  */
 @Slf4j
 @Service
@@ -22,25 +25,36 @@ public class OrderCatalogSeeder {
 
     private final OrderLedger ledger;
 
-    /** Upsert the curated vendor catalog. Returns the items as seeded. */
+    /** Create any missing catalog items (leaving existing ones — and their manual edits — untouched). Returns those created. */
     public List<OrderCatalogItemDto> seed() {
-        List<OrderCatalogItemDto> items = List.of(
-                co2(), hydrogen(), deminTrailers(), deminChemicals(), dieselGasoline());
-        for (OrderCatalogItemDto item : items) {
-            ledger.saveCatalogItem(item);
-            log.info("[OrderCatalogSeeder] upserted catalog item '{}'", item.getItemKey());
+        Set<String> existing = ledger.listCatalog().stream()
+                .map(OrderCatalogItemDto::getItemKey)
+                .filter(k -> k != null)
+                .collect(Collectors.toSet());
+        List<OrderCatalogItemDto> defaults = List.of(
+                co2(), hydrogen(), deminTrailers(), deminChemicals(), dieselGasoline(), labReagents());
+        List<OrderCatalogItemDto> created = new ArrayList<>();
+        for (OrderCatalogItemDto item : defaults) {
+            if (existing.contains(item.getItemKey())) {
+                log.info("[OrderCatalogSeeder] '{}' already exists — preserving manual edits", item.getItemKey());
+                continue;
+            }
+            created.add(ledger.saveCatalogItem(item));
+            log.info("[OrderCatalogSeeder] seeded catalog item '{}'", item.getItemKey());
         }
-        return items;
+        return created;
     }
 
     private OrderCatalogItemDto co2() {
+        // FILL: order = sum(capacity − current level) across the CO2 tanks. Capacities set in Catalog Admin (unknown here).
         return OrderCatalogItemDto.builder()
                 .itemKey("co2").displayName("CO2").vendor("MacCarb")
                 .contactEmail("dmccarthy@maccarb.com")
                 .blanketPoNumber("J25-3572").unit("LBS")
+                .orderMode("FILL")
                 .defaultQtyPresets(List.of(
-                        preset("Mini-bulk tank", null),
-                        preset("Fire-protection tank", null)))
+                        tank("Mini-bulk tank", null, "CO2"),
+                        tank("Fire-protection tank", null, "CO2")))
                 .textOptions(List.of(free()))
                 .active(true).sortOrder(1).build();
     }
@@ -67,7 +81,7 @@ public class OrderCatalogSeeder {
     private OrderCatalogItemDto deminChemicals() {
         return OrderCatalogItemDto.builder()
                 .itemKey("demin_chemicals")
-                .displayName("Demin Plant Chemicals (Bleach, Caustic, Sodium Bisulfite)")
+                .displayName("Bleach, Caustic, Sodium Bisulfite")
                 .vendor("Univar Solutions")
                 .contactEmail("CustSol-BCDMB@univarsolutions.com")
                 .ccEmails("Kevin.kornblith@univarsolutions.com")
@@ -83,25 +97,64 @@ public class OrderCatalogSeeder {
 
     private OrderCatalogItemDto dieselGasoline() {
         return OrderCatalogItemDto.builder()
-                .itemKey("diesel_gasoline").displayName("Diesel / Gasoline").vendor("Blu Petroleum")
+                .itemKey("diesel_gasoline").displayName("Diesel, Gasoline, DEF").vendor("Blu Petroleum")
                 .contactEmail("orders@blupetroleum.com")
                 .bodyNote("For diesel, specify \"Ultra Low Sulfur\".")
                 .blanketPoNumber("J25-3551").unit("Gallons")
+                .orderMode("FILL")
                 .defaultQtyPresets(List.of(
-                        preset("Diesel cube (small)", 250.0),
-                        preset("Diesel cube (large)", 525.0),
-                        preset("Gasoline cube", 250.0),
-                        preset("DEF cube", 250.0),
-                        preset("EDG", null),
-                        preset("DFP", null)))
+                        tank("Diesel cube (small)", 250.0, "Diesel"),
+                        tank("Diesel cube (large)", 525.0, "Diesel"),
+                        tank("EDG", null, "Diesel"),
+                        tank("DFP", null, "Diesel"),
+                        tank("Gasoline cube", 250.0, "Gasoline"),
+                        tank("DEF cube", 250.0, "DEF")))
                 .textOptions(List.of(
                         seasonal("Winterized fuel (Oct–Apr)", "Please provide winterized fuel.", 10, 4),
                         free()))
                 .active(true).sortOrder(5).build();
     }
 
+    /**
+     * Lab reagents (Hach) — the reagent list from the CHEM_LAB_INVENTORY Maximo form, as quick-add presets. Seeded
+     * INACTIVE: the vendor order email + PO live in the Maximo form's cfg_* today, so set them in Catalog Admin and
+     * toggle Active to order from here. (Lab orders placed from the Maximo inventory PM are recorded to the ledger
+     * under this same {@code lab_reagents} key, so they show in Order History either way.)
+     */
+    private OrderCatalogItemDto labReagents() {
+        return OrderCatalogItemDto.builder()
+                .itemKey("lab_reagents").displayName("Lab Reagents").vendor("Hach")
+                .active(false)
+                .defaultQtyPresets(List.of(
+                        preset("FerroZine Iron Reagent (230149), 500 mL", null),
+                        preset("DPD Free Chlorine Powder Pillows (2105569), 100 packets", null),
+                        preset("DPD Total Chlorine Powder Pillows (2105669), 100 packets", null),
+                        preset("Molybdate 3 Reagent Solution (199532), 100 mL", null),
+                        preset("Citric Acid Reagent Solution (2254232), 100 mL", null),
+                        preset("Amino Acid F Reagent (2386442), 100 mL", null),
+                        preset("pH 4.0 Standard (2283449), 500 mL", null),
+                        preset("pH 7.0 Standard (2283549), 500 mL", null),
+                        preset("pH 10.0 Standard (2283649), 500 mL", null),
+                        preset("1000 mS Conductivity Standard (1440026), 500 mL", null),
+                        preset("1.0 mg/L Iron Standard (13949), 500 mL", null),
+                        preset("1.0 mg/L Silica Standard (110649), 500 mL", null),
+                        preset("pH Storage Solution (2756549), 500 mL", null),
+                        preset("Silica Analyzer reagent - Yellow", null),
+                        preset("Silica Analyzer reagent - Blue", null),
+                        preset("Silica Analyzer reagent - Green", null),
+                        preset("Silica Analyzer reagent - Red", null),
+                        preset("Silica Analyzer reagent - Powder", null)))
+                .textOptions(List.of(free()))
+                .sortOrder(6).build();
+    }
+
     private static OrderPresetDto preset(String label, Double qty) {
         return OrderPresetDto.builder().label(label).defaultQty(qty).build();
+    }
+
+    /** A FILL-mode equipment/tank preset: a fixed {@code capacity} of a {@code product}. */
+    private static OrderPresetDto tank(String label, Double capacity, String product) {
+        return OrderPresetDto.builder().label(label).capacity(capacity).product(product).build();
     }
 
     private static OrderTextOptionDto free() {

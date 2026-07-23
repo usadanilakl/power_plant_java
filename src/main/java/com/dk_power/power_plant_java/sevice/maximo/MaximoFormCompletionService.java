@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -106,6 +107,24 @@ public class MaximoFormCompletionService {
         return pdfService.render(formName, dto.getWonum(), submittedBy, fields, values, signatureBytes);
     }
 
+    /**
+     * Re-render a STORED submission's PDF (for the audit thumbnail) using its own recorded submitter + date, so
+     * the "COMPLETED &lt;date&gt;" watermark shows when it was actually completed. Hub-local: no Maximo call, no
+     * signature (the signed original lives in Maximo) — this is the reviewable copy of the answers.
+     */
+    public byte[] renderSubmissionPdf(Long submissionId) {
+        MaximoFormSubmission s = submissionRepo.findById(submissionId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown submission " + submissionId));
+        MaximoFormTemplate t = (s.getTemplateFormKey() == null) ? null
+                : templateRepo.findFirstByFormKey(s.getTemplateFormKey()).orElse(null);
+        List<Map<String, Object>> fields = parseList(t == null ? null : t.getFieldsJson());
+        Map<String, Object> values = parseMap(s.getValuesJson());
+        String formName = (t != null && t.getFormName() != null) ? t.getFormName()
+                : (s.getTemplateName() != null ? s.getTemplateName() : s.getTemplateFormKey());
+        LocalDate on = (s.getSubmittedAt() != null) ? s.getSubmittedAt().toLocalDate() : null;
+        return pdfService.render(formName, s.getWonum(), s.getSubmittedBy(), fields, values, null, on);
+    }
+
     public MaximoFormSubmissionDto complete(Long submissionId) {
         return complete(submissionId, false);
     }
@@ -135,6 +154,8 @@ public class MaximoFormCompletionService {
         if (href == null || href.isBlank()) {
             throw new IllegalStateException("Could not find Maximo work order " + s.getWonum() + " to attach the form to.");
         }
+        // A PM WO approved but not yet due must not be completed early — block BEFORE attaching the form PDF.
+        workOrders.assertDueForCompletion(href);
 
         User user = currentUser();
         String submittedBy = (user != null && user.getName() != null && !user.getName().isBlank()) ? user.getName() : "app";

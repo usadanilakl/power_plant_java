@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import {
   OrderCatalogItem,
+  OrderPreview,
   OrderRecord,
   PlaceOrderRequest,
   ReorderSuggestion,
@@ -56,6 +57,12 @@ export class OrderingService {
   placeOrder(req: PlaceOrderRequest): Observable<OrderRecord> {
     return this.http
       .post<SpringApiResponse<OrderRecord>>(`${this.base}/place-order`, req)
+      .pipe(map(r => r.responseData));
+  }
+
+  previewOrder(req: PlaceOrderRequest): Observable<OrderPreview> {
+    return this.http
+      .post<SpringApiResponse<OrderPreview>>(`${this.base}/place-order/preview`, req)
       .pipe(map(r => r.responseData));
   }
 

@@ -305,8 +305,10 @@ public class RecurringPmService {
         if (medianGapDays == null) return RecurrenceCadence.OTHER;
         int d = medianGapDays;
         if (d <= 2) return RecurrenceCadence.DAY;
-        if (d <= 10) return RecurrenceCadence.WEEK;
-        if (d <= 45) return RecurrenceCadence.MONTH;
+        if (d <= 10) return RecurrenceCadence.WEEK;      // ~7
+        if (d <= 20) return RecurrenceCadence.BIWEEK;    // ~14
+        if (d <= 45) return RecurrenceCadence.MONTH;     // ~30
+        if (d <= 135) return RecurrenceCadence.QUARTER;  // ~91
         return RecurrenceCadence.OTHER;
     }
 

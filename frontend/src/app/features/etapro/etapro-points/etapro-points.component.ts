@@ -173,7 +173,8 @@ export class EtaProPointsComponent {
       .map(p => p.pointId)
       .filter((id): id is string => !!id);
     if (ids.length > 0) {
-      this.stateService.openTrend(ids);
+      this.stateService.trendPointIds.set(ids);
+      this.stateService.activeTab.set('trend');
     }
   }
 

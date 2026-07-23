@@ -13,6 +13,12 @@
           Recurring PMs <span class="muted" *ngIf="catalogLoaded()">({{ catalog().length }})</span>
         </button>
         <button [class.active]="tab() === 'schedule'" (click)="setTab('schedule')">Schedule</button>
+        <button [class.active]="tab() === 'audit'" (click)="setTab('audit')">
+          Auditing <span class="muted" *ngIf="auditLoaded()">({{ auditRows().length }})</span>
+        </button>
+        <button [class.active]="tab() === 'audit-cards'" (click)="setTab('audit-cards')">
+          Auditing Cards <span class="muted" *ngIf="cardsLoaded()">({{ visibleCards().length }})</span>
+        </button>
       </nav>
 
       <div class="bar">
@@ -296,6 +302,247 @@
             (open/refresh the Personnel widget there); once imported it syncs to all devices. Or widen the date range.</p>
         </ng-template>
       </section>
+
+      <!-- Auditing -->
+      <section *ngIf="tab() === 'audit'">
+        <div class="audit-toolbar">
+          <input class="search" [ngModel]="auditSearch()" (ngModelChange)="auditSearch.set($event)" placeholder="Search PM # or description…">
+          <label class="audit-chk"><input type="checkbox" [checked]="auditRecurringOnly()" (change)="toggleAuditRecurring()"> Recurring only</label>
+          <label class="audit-chk"><input type="checkbox" [checked]="auditOverdueOnly()" (change)="auditOverdueOnly.set($any($event.target).checked)"> Overdue only</label>
+          <button (click)="loadAudit()" [disabled]="auditLoading()">{{ auditLoading() ? 'Loading…' : 'Refresh' }}</button>
+          <span class="audit-legend">
+            <span class="lg lg-overdue">overdue</span>
+            <span class="lg lg-issue">troubled</span>
+            <span class="lg lg-ok">completed</span>
+          </span>
+          <span class="muted" *ngIf="auditLoaded()">({{ visibleAudit().length }})</span>
+        </div>
+
+        <div *ngIf="auditLoading()" class="muted">Loading audit…</div>
+        <div *ngIf="auditLoaded() && visibleAudit().length === 0" class="muted">No PMs match.</div>
+
+        <table class="audit-table" *ngIf="visibleAudit().length">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="sortable" (click)="sortAudit('pmnum')">PM #{{ auditSortArrow('pmnum') }}</th>
+              <th class="sortable" (click)="sortAudit('description')">Description{{ auditSortArrow('description') }}</th>
+              <th class="sortable" (click)="sortAudit('cadence')">Cadence{{ auditSortArrow('cadence') }}</th>
+              <th class="sortable" (click)="sortAudit('target')">Last target{{ auditSortArrow('target') }}</th>
+              <th class="sortable" (click)="sortAudit('overdue')">Status{{ auditSortArrow('overdue') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let r of visibleAudit()">
+              <tr class="audit-row" [class]="auditRowClass(r)" (click)="toggleAuditPm(r)">
+                <td class="audit-caret">{{ isPmExpanded(r.pmId) ? '▾' : '▸' }}</td>
+                <td>{{ r.pmnum || '—' }}</td>
+                <td class="desc">{{ r.description || '(no description)' }}</td>
+                <td>{{ r.cadence || '—' }}</td>
+                <td>{{ r.targetDate ? (r.targetDate | date:'MMM d, y') : '—' }}</td>
+                <td>
+                  <span class="audit-badge b-overdue" *ngIf="r.overdue">OVERDUE</span>
+                  <span class="audit-badge b-issue" *ngIf="completionOf(r.pmId)?.hasIssues">TROUBLED</span>
+                  <span class="muted" *ngIf="!r.overdue && isPmExpanded(r.pmId) && completionOf(r.pmId) && !completionOf(r.pmId)?.hasIssues">ok</span>
+                </td>
+              </tr>
+              <tr class="audit-detail-row" *ngIf="isPmExpanded(r.pmId)">
+                <td colspan="6">
+                  <div *ngIf="isOccLoading(r.pmId)" class="muted">Loading history…</div>
+                  <div class="audit-detail" *ngIf="!isOccLoading(r.pmId)">
+                    <div class="audit-cols">
+                      <div class="audit-col">
+                        <div class="audit-col-h">Last completed / closed</div>
+                        <ng-container *ngIf="lastCompletedOcc(r.pmId) as lc; else noComp">
+                          <div class="occ-line">
+                            <button class="link" (click)="openWoHref(lc.href, lc.wonum)">{{ lc.wonum }}</button>
+                            <span class="occ-st st-done">{{ lc.status }}</span>
+                            <span class="occ-date">{{ lc.date ? (lc.date | date:'MMM d, y') : '—' }}</span>
+                          </div>
+                          <div class="audit-comment" *ngIf="completionOf(r.pmId)?.comment as cm">
+                            💬 {{ cm }}
+                            <span class="kw-tag" *ngIf="completionOf(r.pmId)?.keywordHit">flagged</span>
+                          </div>
+                          <div class="muted small" *ngIf="completionOf(r.pmId) && !completionOf(r.pmId)?.comment">No worklog comment.</div>
+                        </ng-container>
+                        <ng-template #noComp><div class="muted">No completed WO in the last 2 years.</div></ng-template>
+                      </div>
+
+                      <div class="audit-col">
+                        <div class="audit-col-h">Next scheduled</div>
+                        <ng-container *ngIf="nextScheduledOcc(r.pmId) as ns; else noNext">
+                          <div class="occ-line">
+                            <button class="link" (click)="openWoHref(ns.href, ns.wonum)">{{ ns.wonum }}</button>
+                            <span class="occ-st st-open">{{ ns.status }}</span>
+                            <span class="occ-date">{{ ns.date ? (ns.date | date:'MMM d, y') : '—' }}</span>
+                          </div>
+                        </ng-container>
+                        <ng-template #noNext><div class="muted">None scheduled.</div></ng-template>
+                      </div>
+
+                      <div class="audit-col audit-form-col" *ngIf="completionOf(r.pmId)?.safeUrl as su">
+                        <div class="audit-col-h">{{ completionOf(r.pmId)?.formName || 'Completed form' }}</div>
+                        <button class="audit-thumb-wrap" (click)="enlarged.set(completionOf(r.pmId))" title="Click to enlarge">
+                          <iframe class="audit-thumb" [src]="su" scrolling="no" tabindex="-1"></iframe>
+                          <span class="audit-thumb-zoom">⤢</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="audit-history" *ngIf="occHistory(r.pmId).length">
+                      <div class="audit-col-h">History</div>
+                      <div class="occ-line" *ngFor="let o of occHistory(r.pmId)">
+                        <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
+                        <span class="occ-st" [class.st-done]="!o.open" [class.st-open]="o.open">{{ o.status }}</span>
+                        <span class="occ-date">{{ o.date ? (o.date | date:'MMM d, y') : '—' }}</span>
+                        <span class="occ-lead muted" *ngIf="o.lead">{{ o.lead }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Enlarge lightbox for a completed-form PDF -->
+      <div class="audit-lightbox" *ngIf="enlarged() as c" (click)="enlarged.set(null)">
+        <div class="audit-lightbox-inner" (click)="$event.stopPropagation()">
+          <div class="audit-lightbox-head">
+            <span>{{ c.wonum }} — {{ c.formName || 'form' }}
+              <span class="muted" *ngIf="c.occ?.date">({{ c.occ.date | date:'MMM d, y' }})</span></span>
+            <button class="link" (click)="enlarged.set(null)">✕ close</button>
+          </div>
+          <iframe class="audit-lightbox-pdf" [src]="enlargedUrl()"></iframe>
+        </div>
+      </div>
+
+      <!-- Auditing Cards (eager: everything visible at a glance) -->
+      <section *ngIf="tab() === 'audit-cards'">
+        <div class="audit-toolbar">
+          <input class="search" [ngModel]="cardSearch()" (ngModelChange)="cardSearch.set($event)" placeholder="Search PM # or description…">
+          <label class="audit-chk"><input type="checkbox" [checked]="cardsRecurringOnly()" (change)="toggleCardsRecurring()"> Recurring only</label>
+          <label class="audit-chk"><input type="checkbox" [checked]="cardOverdueOnly()" (change)="cardOverdueOnly.set($any($event.target).checked)"> Overdue only</label>
+          <label class="audit-chk"><input type="checkbox" [checked]="cardIssuesOnly()" (change)="cardIssuesOnly.set($any($event.target).checked)"> Troubled only</label>
+          <label class="audit-chk">Cadence
+            <select [ngModel]="cardCadence()" (ngModelChange)="cardCadence.set($event)">
+              <option value="">All</option>
+              <option *ngFor="let c of cadenceOptions" [value]="c">{{ c }}</option>
+            </select>
+          </label>
+          <label class="audit-chk" title="Show items about to expire — coming due within this many days (overdue is a separate filter)">Due within
+            <input type="number" min="0" class="due-input" [ngModel]="cardDueWithin()"
+                   (ngModelChange)="setDueWithin($event)" placeholder="days">
+          </label>
+          <label class="audit-chk"><input type="checkbox" [checked]="cardTargetPast()" (change)="cardTargetPast.set($any($event.target).checked)"> Target start passed</label>
+          <label class="audit-chk">Sort
+            <select [ngModel]="cardSort().col" (ngModelChange)="sortCards($event)">
+              <option value="status">Status</option>
+              <option value="target">Target start</option>
+              <option value="lastCompleted">Last completed</option>
+              <option value="pmnum">PM #</option>
+              <option value="description">Description</option>
+            </select>
+          </label>
+          <button (click)="loadAuditCards()" [disabled]="cardsLoading()">{{ cardsLoading() ? 'Loading…' : 'Refresh' }}</button>
+          <span class="audit-legend">
+            <span class="lg lg-overdue">overdue</span>
+            <span class="lg lg-issue">troubled</span>
+            <span class="lg lg-ok">completed</span>
+          </span>
+        </div>
+
+        <div *ngIf="cardsLoading()" class="muted">Loading all PMs from Maximo… (a few seconds)</div>
+        <div *ngIf="cardsLoaded() && visibleCards().length === 0" class="muted">No PMs match.</div>
+
+        <div class="audit-grid" *ngIf="visibleCards().length">
+          <div class="audit-card" *ngFor="let c of visibleCards()" [class]="auditCardClass(c)">
+            <div class="audit-main">
+              <div class="audit-head">
+                <span class="audit-pm">{{ c.pmnum || '—' }}</span>
+                <span class="audit-badges">
+                  <span class="audit-badge b-overdue" *ngIf="cardOverdue(c)">OVERDUE</span>
+                  <span class="audit-badge b-issue" *ngIf="c.hasIssues">TROUBLED</span>
+                  <span class="due-chip" *ngIf="c.daysUntil !== null && c.daysUntil !== undefined"
+                        [class.due-over]="c.daysUntil <= 0" [class.due-soon]="c.daysUntil > 0 && c.daysUntil <= 3">
+                    {{ dueLabel(c) }}
+                  </span>
+                </span>
+              </div>
+              <div class="audit-desc">{{ c.description || '(no description)' }}</div>
+              <dl class="audit-facts">
+                <dt>Target start</dt>
+                <dd>
+                  {{ (c.nextScheduledDate || c.targetDate) ? ((c.nextScheduledDate || c.targetDate) | date:'MMM d, y') : '—' }}
+                  <button class="link small" *ngIf="c.nextWonum" (click)="openWoHref(c.nextHref || '', c.nextWonum || '')">WO {{ c.nextWonum }}</button>
+                </dd>
+                <dt>Last completed</dt>
+                <dd>
+                  {{ c.lastCompletedDate ? (c.lastCompletedDate | date:'MMM d, y') : 'never' }}
+                  <button class="link small" *ngIf="c.lastWonum" (click)="openWoHref(c.lastHref || '', c.lastWonum || '')">WO {{ c.lastWonum }}</button>
+                </dd>
+              </dl>
+              <div class="audit-comments" *ngIf="c.comment" [title]="c.comment">
+                💬 {{ c.comment }} <span class="kw-tag" *ngIf="c.keywordHit">flagged</span>
+              </div>
+              <button class="link small hist-btn" (click)="openCardHistory(c)">🕑 Full history</button>
+            </div>
+            <button class="audit-thumb-wrap" *ngIf="c.safeUrl" (click)="enlargedCard.set(c)" title="Click to enlarge">
+              <iframe class="audit-thumb" [src]="c.safeUrl" scrolling="no" tabindex="-1"></iframe>
+              <span class="audit-thumb-zoom">⤢</span>
+            </button>
+            <div class="audit-noform" *ngIf="!c.safeUrl">no completed<br>form</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Auditing Cards enlarge lightbox -->
+      <div class="audit-lightbox" *ngIf="enlargedCard() as c" (click)="enlargedCard.set(null)">
+        <div class="audit-lightbox-inner" (click)="$event.stopPropagation()">
+          <div class="audit-lightbox-head">
+            <span>{{ c.lastWonum }} — {{ c.formName || 'form' }}
+              <span class="muted" *ngIf="c.lastCompletedDate">({{ c.lastCompletedDate | date:'MMM d, y' }})</span></span>
+            <button class="link" (click)="enlargedCard.set(null)">✕ close</button>
+          </div>
+          <iframe class="audit-lightbox-pdf" [src]="enlargedCardUrl()"></iframe>
+        </div>
+      </div>
+
+      <!-- Card full-history modal (this PM's real WO occurrences) -->
+      <div class="audit-lightbox" *ngIf="historyCard() as hc" (click)="historyCard.set(null)">
+        <div class="audit-lightbox-inner hist" (click)="$event.stopPropagation()">
+          <div class="audit-lightbox-head">
+            <span>{{ hc.pmnum }} — history <span class="muted">{{ hc.description }}</span></span>
+            <button class="link" (click)="historyCard.set(null)">✕ close</button>
+          </div>
+          <div class="hist-body">
+            <div *ngIf="isOccLoading(hc.pmId)" class="muted">Loading history…</div>
+            <div class="occ-wrap" *ngIf="!isOccLoading(hc.pmId)">
+              <div class="occ-col">
+                <div class="occ-head">Upcoming</div>
+                <div class="occ" *ngFor="let o of occUpcoming(hc.pmId)">
+                  <span class="occ-date">{{ o.date ? (o.date | date:'MMM d, y') : '—' }}</span>
+                  <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
+                  <span class="occ-st st-open">{{ o.status }}</span>
+                  <span class="occ-lead muted" *ngIf="o.lead">{{ o.lead }}</span>
+                </div>
+                <div class="muted" *ngIf="occUpcoming(hc.pmId).length === 0">None scheduled.</div>
+              </div>
+              <div class="occ-col">
+                <div class="occ-head">Completed / history</div>
+                <div class="occ" *ngFor="let o of occHistory(hc.pmId)">
+                  <span class="occ-date">{{ o.date ? (o.date | date:'MMM d, y') : '—' }}</span>
+                  <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
+                  <span class="occ-st st-done">{{ o.status }}</span>
+                  <span class="occ-lead muted" *ngIf="o.lead">{{ o.lead }}</span>
+                </div>
+                <div class="muted" *ngIf="occHistory(hc.pmId).length === 0">No completed WOs in the last 2 years.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- WO detail dialog, opened from an Assignments row's WO # -->
       <app-maximo-detail-dialog *ngIf="selectedWo()" [parent]="'wo'" [wo]="selectedWo()"

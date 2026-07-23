@@ -96,6 +96,7 @@ export interface MaximoCompletionDraft {
   href: string;
   mode: 'form' | 'manual';
   templateFormKey?: string;
+  pmnum?: string;
   siteid?: string;
   formValues?: Record<string, any>;
   hours?: string;
@@ -143,6 +144,7 @@ export interface MaximoFormSubmission {
   templateFormKey: string;
   templateName?: string;
   wonum: string;
+  pmnum?: string;                     // the WO's PM id, so the audit view can group completions by PM
   woHref?: string;
   siteid?: string;
   valuesJson: string;                 // JSON.stringify(fieldName -> value)

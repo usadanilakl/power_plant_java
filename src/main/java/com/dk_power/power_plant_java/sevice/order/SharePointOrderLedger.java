@@ -52,17 +52,27 @@ public class SharePointOrderLedger implements OrderLedger {
         return sp.isAvailable();
     }
 
-    /** Ensure the three lists + columns exist (idempotent, best-effort). Retries next call if it fails (e.g. offline). */
+    /** Ensure the three lists + columns exist (idempotent, best-effort). Only latches success when every list AND
+     *  every column provisioned cleanly — a transient per-field failure (e.g. the OrderMode column) leaves the latch
+     *  off so the next call retries, instead of silently reading FILL items back as QUANTITY until a restart. */
     private void ensureProvisioned() {
         if (provisioned.get()) return;
         try {
-            provisioner.provisionSingle(ORDERS_LIST);
-            provisioner.provisionSingle(CATALOG_LIST);
-            provisioner.provisionSingle(SUGGESTIONS_LIST);
-            provisioned.set(true);
+            boolean ok = provisionOk(provisioner.provisionSingle(ORDERS_LIST))
+                    & provisionOk(provisioner.provisionSingle(CATALOG_LIST))
+                    & provisionOk(provisioner.provisionSingle(SUGGESTIONS_LIST));
+            if (ok) provisioned.set(true);
+            else log.warn("[OrderLedger] list provisioning incomplete (a column may be missing) — will retry on next use");
         } catch (Exception e) {
             log.warn("[OrderLedger] list provisioning ensure failed (will retry on next use): {}", e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean provisionOk(Map<String, Object> r) {
+        if (r == null || !Boolean.TRUE.equals(r.get("success"))) return false;
+        Object failed = r.get("fieldsFailed");
+        return !(failed instanceof Map) || ((Map<String, Object>) failed).isEmpty();
     }
 
     // ── Catalog ──────────────────────────────────────────────
@@ -173,6 +183,7 @@ public class SharePointOrderLedger implements OrderLedger {
         m.put("BodyNote", orEmpty(c.getBodyNote()));
         m.put("BlanketPoNumber", orEmpty(c.getBlanketPoNumber()));
         m.put("Unit", orEmpty(c.getUnit()));
+        m.put("OrderMode", orEmpty(c.getOrderMode()));
         m.put("DefaultQtyPresets", writeJson(c.getDefaultQtyPresets()));
         m.put("TextOptions", writeJson(c.getTextOptions()));
         m.put("Active", c.isActive());
@@ -191,6 +202,7 @@ public class SharePointOrderLedger implements OrderLedger {
                 .bodyNote(txt(n, "BodyNote"))
                 .blanketPoNumber(txt(n, "BlanketPoNumber"))
                 .unit(txt(n, "Unit"))
+                .orderMode(orderModeOrDefault(txt(n, "OrderMode")))
                 .defaultQtyPresets(readList(txt(n, "DefaultQtyPresets"), new TypeReference<List<OrderPresetDto>>() {}))
                 .textOptions(readList(txt(n, "TextOptions"), new TypeReference<List<OrderTextOptionDto>>() {}))
                 .active(n.path("Active").asBoolean(true))
@@ -313,6 +325,8 @@ public class SharePointOrderLedger implements OrderLedger {
             return null;
         }
     }
+
+    private static String orderModeOrDefault(String s) { return isBlank(s) ? "QUANTITY" : s; }
 
     private static String orEmpty(String s) { return s == null ? "" : s; }
     private static boolean isBlank(String s) { return s == null || s.isBlank(); }

@@ -549,6 +549,7 @@ export class MaximoDetailDialogComponent {
         templateFormKey: t.formKey,
         templateName: t.formName,
         wonum,
+        pmnum: this.wo.pmnum || undefined,
         woHref: this.wo.href || undefined,
         valuesJson: JSON.stringify(values ?? {}),
       };
@@ -633,6 +634,7 @@ export class MaximoDetailDialogComponent {
       templateFormKey: t.formKey,
       templateName: t.formName,
       wonum: this.wo?.wonum?.trim() ?? '',
+      pmnum: this.wo?.pmnum || undefined,
       woHref: this.wo?.href || undefined,
       valuesJson: JSON.stringify(this.reorderValues ?? {}),
     };

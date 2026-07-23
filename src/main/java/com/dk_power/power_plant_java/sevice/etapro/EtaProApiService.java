@@ -91,6 +91,16 @@ public class EtaProApiService {
     @Value("${etapro.api.history.endpoint:plotvalues}")
     private String historyEndpoint;
 
+    /**
+     * Live "current value" endpoint — a single compressed value at-or-before the request time.
+     * Confirmed-working on the plant API: {@code history/archivevalue?time=&retrieval=AtOrBefore}.
+     */
+    @Value("${etapro.api.live.endpoint:archivevalue}")
+    private String liveEndpoint;
+
+    @Value("${etapro.api.live.retrieval:AtOrBefore}")
+    private String liveRetrieval;
+
     /** Optional auth header (e.g. name="Authorization", value="Bearer <token>"). Empty = none. */
     @Value("${etapro.api.auth-header-name:}")
     private String authHeaderName;
@@ -194,16 +204,94 @@ public class EtaProApiService {
      */
     public List<EtaProReading> fetchHistory(List<String> pointIds, LocalDateTime start,
                                             LocalDateTime end, String sessionId) throws Exception {
+        return fetchHistory(pointIds, start, end, sessionId, 0);
+    }
+
+    /**
+     * @param maxPointsOverride if &gt; 0, cap the number of series points per point (for a
+     *        chart-friendly trend over a wide window); 0 = use the configured resolution.
+     */
+    public List<EtaProReading> fetchHistory(List<String> pointIds, LocalDateTime start,
+                                            LocalDateTime end, String sessionId, int maxPointsOverride) throws Exception {
         if (baseUrl == null || baseUrl.isBlank()) {
             throw new IllegalStateException("etapro.api.base-url is not configured");
         }
         List<EtaProReading> all = new ArrayList<>();
-        int count = countFor(start, end);
+        int count = maxPointsOverride > 0
+                ? Math.max(2, Math.min(maxValues, maxPointsOverride))
+                : countFor(start, end);
         for (String pointId : pointIds) {
             if (pointId == null || pointId.isBlank()) continue;
             all.addAll(fetchSeries(pointId.trim(), start, end, count, sessionId));
         }
         return all;
+    }
+
+    // ── Live (current value) ───────────────────────────────────
+
+    /**
+     * Fetch the current value of each point (the single compressed value at-or-before now) — the API
+     * analog of the scraper's Live template. One call per point; points that return no value are
+     * skipped. Throws on any failure so the caller can fall back to the scraper.
+     */
+    public List<EtaProReading> fetchCurrent(List<String> pointIds, String sessionId) throws Exception {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new IllegalStateException("etapro.api.base-url is not configured");
+        }
+        LocalDateTime nowLocal = LocalDateTime.now();
+        LocalDateTime nowUtc = toUtc(nowLocal);
+        List<EtaProReading> all = new ArrayList<>();
+        for (String pointId : pointIds) {
+            if (pointId == null || pointId.isBlank()) continue;
+            EtaProReading r = fetchCurrentValue(pointId.trim(), nowUtc, nowLocal, sessionId);
+            if (r != null) all.add(r);
+        }
+        return all;
+    }
+
+    private EtaProReading fetchCurrentValue(String pointId, LocalDateTime atUtc, LocalDateTime nowLocal,
+                                            String sessionId) throws Exception {
+        String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        String endpoint = (liveEndpoint == null || liveEndpoint.isBlank()) ? "archivevalue" : liveEndpoint.trim();
+        String url = base
+                + "/v" + enc(version)
+                + "/" + enc(serverName)
+                + "/" + unitDesignation
+                + "/points/" + enc(pointId)
+                + "/history/" + enc(endpoint)
+                + "?time=" + enc(atUtc.format(API_TIME))
+                + "&timesOffset=" + timesOffset
+                + "&retrieval=" + enc(liveRetrieval)
+                + "&tagCategory=" + enc(tagCategory);
+
+        JsonNode root = objectMapper.readTree(httpGet(url, "current " + pointId));
+        // Robust to shape: a single value object, a {Values:[...]} wrapper, or a bare array — take newest.
+        JsonNode valueNode;
+        if (root.isArray()) {
+            valueNode = root.size() > 0 ? root.get(root.size() - 1) : root;
+        } else if (root.path("Values").isArray() && root.path("Values").size() > 0) {
+            JsonNode vs = root.path("Values");
+            valueNode = vs.get(vs.size() - 1);
+        } else {
+            valueNode = root;
+        }
+
+        LocalDateTime ts = parseTimestamp(valueNode.path("Timestamp").asText(null));
+        JsonNode rawVal = valueNode.path("Value");
+        if (rawVal.isMissingNode() || rawVal.isNull()) rawVal = root.path("Value");
+        Double val = extractDouble(rawVal);
+        if (ts == null && val == null) {
+            log.debug("[EtaPro] API current: point={} — no value returned", pointId);
+            return null;
+        }
+        EtaProReading r = new EtaProReading();
+        r.setPointId(pointId);
+        r.setReadingTime(ts != null ? ts : nowLocal);
+        r.setReadingValue(val);
+        r.setQuality(valueNode.path("Quality").asInt(0) == 0 ? "Good" : "Bad");
+        r.setScrapeSessionId(sessionId);
+        log.debug("[EtaPro] API current: point={} value={} at={}", pointId, val, r.getReadingTime());
+        return r;
     }
 
     // ── EPLog (Event Log) ──────────────────────────────────────

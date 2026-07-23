@@ -29,6 +29,9 @@ public class OrderCatalogItemDto {
     private String blanketPoNumber;
     /** Quantity unit (LBS, Gallons); nullable. */
     private String unit;
+    /** QUANTITY (default — pick presets, enter qty) or FILL (top-off equipment: order = sum(capacity − current level) per product). */
+    @Builder.Default
+    private String orderMode = "QUANTITY";
     @Builder.Default
     private List<OrderPresetDto> defaultQtyPresets = new ArrayList<>();
     @Builder.Default

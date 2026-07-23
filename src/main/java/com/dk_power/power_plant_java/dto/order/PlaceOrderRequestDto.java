@@ -27,4 +27,9 @@ public class PlaceOrderRequestDto {
     private String sourceSuggestionId;
     @Builder.Default
     private List<OrderLineDto> lines = new ArrayList<>();
+
+    /** Test send: the exact email goes to {@code testRecipient}/{@code testCc} instead of the vendor, and is NOT recorded. */
+    private boolean testMode;
+    private String testRecipient;
+    private String testCc;
 }

@@ -251,7 +251,9 @@ public class PmAssignmentService {
     static LocalDate periodEndDate(LocalDate effectiveStart, RecurrenceCadence cadence) {
         if (effectiveStart == null) return null;
         if (cadence == RecurrenceCadence.WEEK) return effectiveStart.with(ChronoField.DAY_OF_WEEK, 7); // Sunday
+        if (cadence == RecurrenceCadence.BIWEEK) return effectiveStart.plusWeeks(2).minusDays(1);
         if (cadence == RecurrenceCadence.MONTH) return effectiveStart.with(TemporalAdjusters.lastDayOfMonth());
+        if (cadence == RecurrenceCadence.QUARTER) return effectiveStart.plusMonths(3).minusDays(1);
         return effectiveStart;
     }
 

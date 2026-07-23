@@ -19,6 +19,7 @@ public class MaximoFormSubmissionDto {
     private String templateFormKey;
     private String templateName;
     private String wonum;
+    private String pmnum;
     private String woHref;
     private String siteid;
     private String valuesJson;

@@ -372,7 +372,7 @@ export class MaximoWoDetailComponent implements OnInit {
     if (t) {
       this.store.saveDraft({
         wonum: this.wo.wonum, href: this.wo.href, mode: 'form',
-        templateFormKey: t.formKey, siteid: this.wo.siteid, formValues: this.formValues(),
+        templateFormKey: t.formKey, pmnum: this.wo.pmnum, siteid: this.wo.siteid, formValues: this.formValues(),
         status: 'draft', updatedAt: Date.now(),
       });
     } else {
@@ -429,7 +429,7 @@ export class MaximoWoDetailComponent implements OnInit {
     this.error.set(null);
     this.sync.submitOwned({
       wonum: this.wo.wonum, href: this.wo.href, mode: 'form',
-      templateFormKey: t.formKey, siteid: this.wo.siteid, formValues: this.formValues(),
+      templateFormKey: t.formKey, pmnum: this.wo.pmnum, siteid: this.wo.siteid, formValues: this.formValues(),
       status: 'pending', updatedAt: Date.now(),
     });
   }

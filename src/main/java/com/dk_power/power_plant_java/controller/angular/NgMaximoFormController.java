@@ -3,6 +3,9 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormSubmissionDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoFormTemplateDto;
+import com.dk_power.power_plant_java.dto.maximo.PmAuditCardDto;
+import com.dk_power.power_plant_java.dto.maximo.PmAuditRowDto;
+import com.dk_power.power_plant_java.dto.maximo.PmCompletionDetailDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderLineDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderResultDto;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
@@ -10,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.maximo.ChemInventoryReorderService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormSeeder;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoPmAuditService;
 import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -44,6 +49,7 @@ public class NgMaximoFormController {
     private final MaximoFormSeeder seeder;
     private final RecurringPmService recurringPms;
     private final ChemInventoryReorderService reorder;
+    private final MaximoPmAuditService audit;
 
     // ── Templates ─────────────────────────────────────────────────────────────
 
@@ -196,6 +202,63 @@ public class NgMaximoFormController {
             return ResponseEntity.badRequest()
                     .contentType(MediaType.TEXT_PLAIN)
                     .body(("Preview failed: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    // ── PM audit ────────────────────────────────────────────────────────────────
+
+    /** Audit list: every PM (or only recurring) with catalog facts (cadence, target, overdue) — for sort/filter. */
+    @GetMapping("/pm-audit")
+    public ResponseEntity<NgApiResponse<List<PmAuditRowDto>>> pmAudit(
+            @RequestParam(value = "recurringOnly", defaultValue = "false") boolean recurringOnly) {
+        return ResponseEntity.ok(new NgApiResponse<>(audit.audit(recurringOnly), "ok"));
+    }
+
+    /**
+     * Fully-populated audit CARDS (eager): every PM with its real last completed/closed WO (worklog comment +
+     * form), next scheduled WO, and colour-coding flags — all PMs fanned out to Maximo in parallel. One call,
+     * a few seconds for ~50-70 PMs; the cards then show everything with no per-card click.
+     */
+    @GetMapping("/pm-audit-cards")
+    public ResponseEntity<NgApiResponse<List<PmAuditCardDto>>> pmAuditCards(
+            @RequestParam(value = "recurringOnly", defaultValue = "false") boolean recurringOnly) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(audit.auditCards(recurringOnly), "ok"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] pm-audit-cards failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Completion detail for one WO (the last completed occurrence of a PM), loaded on expand: worklog comment,
+     * a "troubled" flag (keyword in the comment, or a failing form answer), and the attached form + PDF id.
+     */
+    @GetMapping("/completion-detail")
+    public ResponseEntity<NgApiResponse<PmCompletionDetailDto>> completionDetail(
+            @RequestParam("wonum") String wonum,
+            @RequestParam(value = "href", required = false) String href) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(audit.completionDetail(wonum, href), "ok"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] completion-detail {} failed: {}", wonum, e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** The completed-form PDF for a submission, re-rendered with its real completion date (for the audit thumbnail). */
+    @GetMapping("/submissions/{id}/pdf")
+    public ResponseEntity<byte[]> submissionPdf(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"completed-form.pdf\"")
+                    .body(completion.renderSubmissionPdf(id));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] submission pdf {} failed: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(("PDF failed: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
         }
     }
 }

@@ -4,12 +4,39 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult } from '../../models/maximo/maximo-form.models';
+import { PmAuditCard, PmAuditRow, PmCompletionDetail } from '../../models/maximo/pm.models';
 
 /** Client for the electronic Maximo task-forms API (/ng/maximo/forms). */
 @Injectable({ providedIn: 'root' })
 export class MaximoFormApiService {
   private http = inject(HttpClient);
   private base = `${environment.baseApiUrl}/ng/maximo/forms`;
+
+  // ── PM audit ────────────────────────────────────────────────────────────
+  /** Audit list: every PM (or only recurring) with catalog facts — for sorting/filtering. */
+  getPmAudit(recurringOnly: boolean): Observable<PmAuditRow[]> {
+    const p = new HttpParams().set('recurringOnly', String(recurringOnly));
+    return this.http.get<SpringApiResponse<PmAuditRow[]>>(`${this.base}/pm-audit`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Fully-populated audit cards (eager, parallel): every PM with its real last completion + next scheduled. */
+  getAuditCards(recurringOnly: boolean): Observable<PmAuditCard[]> {
+    const p = new HttpParams().set('recurringOnly', String(recurringOnly));
+    return this.http.get<SpringApiResponse<PmAuditCard[]>>(`${this.base}/pm-audit-cards`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Completion detail for one WO (worklog comment, troubled flag, attached form) — loaded on expand. */
+  getCompletionDetail(wonum: string, href?: string): Observable<PmCompletionDetail | null> {
+    let p = new HttpParams().set('wonum', wonum);
+    if (href) p = p.set('href', href);
+    return this.http.get<SpringApiResponse<PmCompletionDetail>>(`${this.base}/completion-detail`, { params: p })
+      .pipe(map(r => r.responseData ?? null));
+  }
+
+  /** URL of a submission's completed-form PDF (cookie-authed; embed in an iframe). */
+  submissionPdfUrl(id: number): string { return `${this.base}/submissions/${id}/pdf`; }
 
   // ── Templates ─────────────────────────────────────────────────────────────
   listTemplates(): Observable<MaximoFormTemplate[]> {

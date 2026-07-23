@@ -41,6 +41,18 @@ public class MaximoFormPdfService {
     public byte[] render(String formName, String wonum, String submittedBy,
                          List<Map<String, Object>> fields, Map<String, Object> values,
                          byte[] signaturePng) {
+        return render(formName, wonum, submittedBy, fields, values, signaturePng, null);
+    }
+
+    /**
+     * @param completedOn the completion date to stamp (header + watermark); null = today. Pass the submission's
+     *                    real date when RE-rendering an old submission (e.g. the audit thumbnail) so the
+     *                    watermark shows when it was actually completed, not today.
+     */
+    public byte[] render(String formName, String wonum, String submittedBy,
+                         List<Map<String, Object>> fields, Map<String, Object> values,
+                         byte[] signaturePng, LocalDate completedOn) {
+        LocalDate date = (completedOn != null) ? completedOn : LocalDate.now();
         try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Cursor c = new Cursor(doc);
             byte[] logo = logoBytes();
@@ -51,7 +63,7 @@ public class MaximoFormPdfService {
             c.line(nz(formName, "Task Form"), PDType1Font.HELVETICA_BOLD, TITLE_SIZE);
             c.gap(4);
             c.line("Work order: " + nz(wonum, "—"), PDType1Font.HELVETICA, BODY_SIZE);
-            c.line("Completed by: " + nz(submittedBy, "—") + "     Date: " + LocalDate.now(),
+            c.line("Completed by: " + nz(submittedBy, "—") + "     Date: " + date,
                     PDType1Font.HELVETICA, BODY_SIZE);
             c.gap(10);
 
@@ -83,13 +95,13 @@ public class MaximoFormPdfService {
                 catch (Exception imgEx) { log.warn("[MaximoForms] signature image draw failed: {}", imgEx.getMessage()); }
             }
             c.line(signed
-                            ? "Signed by: " + nz(submittedBy, "-") + "     Date: " + LocalDate.now()
-                            : "Signature: ______________________________     Date: " + LocalDate.now(),
+                            ? "Signed by: " + nz(submittedBy, "-") + "     Date: " + date
+                            : "Signature: ______________________________     Date: " + date,
                     PDType1Font.HELVETICA, BODY_SIZE);
             c.close();
 
             // Tamper-evident overlay drawn into every page's content (not an editable annotation).
-            stampWatermark(doc, "COMPLETED  " + LocalDate.now());
+            stampWatermark(doc, "COMPLETED  " + date);
 
             doc.save(out);
             return out.toByteArray();

@@ -52,6 +52,10 @@ public class MaximoFormSubmission extends BaseAuditEntity {
     @Column(name = "wonum", length = 64)
     private String wonum;
 
+    /** The recurring-PM id (pmnum) this WO belongs to — handy metadata for grouping completions by PM. */
+    @Column(name = "pmnum", length = 64)
+    private String pmnum;
+
     /** Maximo OSLC href of the WO (for attach/worklog/status write-back). */
     @Column(name = "wo_href", length = 512)
     private String woHref;

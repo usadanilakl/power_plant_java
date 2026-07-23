@@ -4,12 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
-import { TableComponent } from '../../../shared/table/table.component';
-import { Column } from '../../../models/column.model';
 import { OrderingService } from '../services/ordering.service';
 import {
   OrderCatalogItem,
   OrderLine,
+  OrderPreset,
+  OrderPreview,
   OrderRecord,
   PlaceOrderRequest,
   ReorderSuggestion,
@@ -17,10 +17,13 @@ import {
 
 type Tab = 'place' | 'history' | 'suggestions' | 'catalog';
 
+interface FillTank { key: string; label: string; capacity: number | null; level: number | null; needed: number | null; }
+interface FillGroup { product: string; tanks: FillTank[]; total: number; }
+
 @Component({
   selector: 'app-ordering-workbench',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, TableComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
   templateUrl: './ordering-workbench.component.html',
   styleUrl: './ordering-workbench.component.css',
 })
@@ -50,28 +53,67 @@ export class OrderingWorkbenchComponent implements OnInit {
 
   selectedItem = computed(() => this.catalog().find(c => c.itemKey === this.selectedItemKey()) || null);
 
+  isFill(): boolean {
+    return this.selectedItem()?.orderMode === 'FILL';
+  }
+
+  // FILL-mode current levels, keyed by equipment label.
+  levels = signal<Record<string, number | null>>({});
+
+  setLevel(key: string, v: number | null): void {
+    this.levels.update(m => ({ ...m, [key]: v }));
+    this.preview.set(null);
+  }
+
+  /** FILL: tanks grouped by product, with per-tank needed (capacity − level) and a per-product total.
+   *  Keyed by preset INDEX (not label) so two tanks that share a label never collide. The entered level is
+   *  clamped to [0, capacity] for the calc so a negative or over-full entry can't distort the order total. */
+  readonly fillGroups = computed<FillGroup[]>(() => {
+    const item = this.selectedItem();
+    if (!item || item.orderMode !== 'FILL') return [];
+    const lv = this.levels();
+    const groups = new Map<string, FillGroup>();
+    (item.defaultQtyPresets || []).forEach((p, idx) => {
+      const key = String(idx);
+      const product = p.product || 'Product';
+      const capacity = p.capacity ?? null;
+      const raw = lv[key] ?? null;
+      const clamped = raw == null ? null : Math.max(0, capacity != null ? Math.min(capacity, raw) : raw);
+      const needed = capacity != null && clamped != null ? Math.max(0, capacity - clamped) : null;
+      let g = groups.get(product);
+      if (!g) { g = { product, tanks: [], total: 0 }; groups.set(product, g); }
+      g.tanks.push({ key, label: p.label, capacity, level: raw, needed });
+      if (needed != null) g.total += needed;
+    });
+    return Array.from(groups.values());
+  });
+
+  private fillLines(): OrderLine[] {
+    const unit = this.selectedItem()?.unit || '';
+    return this.fillGroups()
+      .filter(g => g.total > 0)
+      .map(g => ({ description: g.product, qty: g.total, unit }));
+  }
+
+  private orderLines(): OrderLine[] {
+    return this.isFill()
+      ? this.fillLines()
+      : this.lines().filter(l => (l.description || '').trim() && l.qty != null);
+  }
+
   // ── Catalog Admin state ──
   editing = signal<OrderCatalogItem | null>(null);
 
-  /** TableComponent requires a clickCallback; history rows are non-interactive. */
-  rowNoop = (_item: unknown, _e: MouseEvent): void => {};
+  // ── Preview + test-send state ──
+  preview = signal<OrderPreview | null>(null);
+  previewing = signal(false);
+  testMode = signal(false);
+  testRecipient = signal('');
+  testCc = signal('');
 
-  historyColumns: Column[] = [
-    { id: 'orderDate', header: 'Date', accessorFn: (o: OrderRecord) => (o.orderDate || '').replace('T', ' ').slice(0, 16) },
-    { id: 'vendor', header: 'Vendor', accessorKey: 'vendor' },
-    { id: 'poNumber', header: 'PO#', accessorKey: 'poNumber' },
-    { id: 'items', header: 'Items', accessorFn: (o: OrderRecord) => String(o.lines?.length ?? 0) },
-    { id: 'sent', header: 'Sent', accessorFn: (o: OrderRecord) => (o.emailSent ? '✓' : '✗') },
-    { id: 'orderedBy', header: 'By', accessorKey: 'orderedBy' },
-  ];
-
-  catalogColumns: Column[] = [
-    { id: 'displayName', header: 'Item', accessorKey: 'displayName' },
-    { id: 'vendor', header: 'Vendor', accessorKey: 'vendor' },
-    { id: 'contactEmail', header: 'Contact', accessorFn: (c: OrderCatalogItem) => c.contactEmail || '—' },
-    { id: 'blanketPoNumber', header: 'PO#', accessorKey: 'blanketPoNumber' },
-    { id: 'active', header: 'Active', accessorFn: (c: OrderCatalogItem) => (c.active ? 'Yes' : 'No') },
-  ];
+  fmtDate(s?: string): string {
+    return (s || '').replace('T', ' ').slice(0, 16);
+  }
 
   async ngOnInit(): Promise<void> {
     await this.refreshCatalog();
@@ -126,27 +168,32 @@ export class OrderingWorkbenchComponent implements OnInit {
     this.selectedItemKey.set(key);
     this.chosenOptions.set({});
     this.freeNote.set('');
+    this.preview.set(null);
+    this.levels.set({});
+    this.sourceSuggestionId.set('');
     const item = this.catalog().find(c => c.itemKey === key);
-    const unit = item?.unit || '';
-    const lines: OrderLine[] = (item?.defaultQtyPresets || []).map(p => ({
-      description: p.label,
-      qty: p.defaultQty ?? null,
-      unit,
-    }));
-    if (!lines.length) lines.push({ description: '', qty: null, unit });
-    this.lines.set(lines);
+    this.lines.set([{ description: '', qty: null, unit: item?.unit || '' }]);
   }
 
   addLine(): void {
     this.lines.update(ls => [...ls, { description: '', qty: null, unit: this.selectedItem()?.unit || '' }]);
+    this.preview.set(null);
+  }
+
+  /** Quick-add a preset as a new order line (keeps large catalogs like lab reagents manageable). */
+  addPreset(p: OrderPreset): void {
+    this.lines.update(ls => [...ls, { description: p.label, qty: p.defaultQty ?? null, unit: this.selectedItem()?.unit || '' }]);
+    this.preview.set(null);
   }
 
   removeLine(i: number): void {
     this.lines.update(ls => ls.filter((_, idx) => idx !== i));
+    this.preview.set(null);
   }
 
   toggleOption(label: string, checked: boolean): void {
     this.chosenOptions.update(m => ({ ...m, [label]: checked }));
+    this.preview.set(null);
   }
 
   buildNote(): string {
@@ -164,48 +211,82 @@ export class OrderingWorkbenchComponent implements OnInit {
 
   canSend(): boolean {
     const item = this.selectedItem();
-    if (!item || !item.active || !item.contactEmail) return false;
-    return this.lines().some(l => (l.description || '').trim() && l.qty != null);
+    if (!item) return false;
+    if (!this.orderLines().length) return false;
+    if (this.testMode()) return !!this.testRecipient().trim();
+    return item.active && !!item.contactEmail;
+  }
+
+  onToggleTest(v: boolean): void {
+    this.testMode.set(v);
+    this.preview.set(null);
+  }
+
+  private buildPlaceReq(): PlaceOrderRequest {
+    const item = this.selectedItem()!;
+    const test = this.testMode();
+    return {
+      itemKey: item.itemKey,
+      orderedBy: this.orderedBy().trim() || undefined,
+      note: this.buildNote() || undefined,
+      sourceSuggestionId: test ? undefined : (this.sourceSuggestionId() || undefined),
+      lines: this.orderLines(),
+      testMode: test,
+      testRecipient: test ? (this.testRecipient().trim() || undefined) : undefined,
+      testCc: test ? (this.testCc().trim() || undefined) : undefined,
+    };
+  }
+
+  async doPreview(): Promise<void> {
+    const item = this.selectedItem();
+    if (!item) { this.error.set('Select an item first.'); return; }
+    this.previewing.set(true);
+    this.error.set('');
+    try {
+      this.preview.set(await firstValueFrom(this.api.previewOrder(this.buildPlaceReq())));
+    } catch (e) {
+      this.error.set(this.msg(e));
+    } finally {
+      this.previewing.set(false);
+    }
   }
 
   async sendOrder(): Promise<void> {
     const item = this.selectedItem();
-    if (!item) {
-      this.error.set('Select an item to order.');
-      return;
-    }
-    const lines = this.lines().filter(l => (l.description || '').trim() && l.qty != null);
+    if (!item) { this.error.set('Select an item to order.'); return; }
+    const lines = this.orderLines();
     if (!lines.length) {
-      this.error.set('Add at least one line with a description and quantity.');
+      this.error.set(this.isFill()
+        ? 'Enter current levels — nothing needs ordering yet.'
+        : 'Add at least one line with a description and quantity.');
       return;
     }
-    if (!item.contactEmail) {
-      this.error.set('No vendor email is set for ' + item.displayName + '.');
-      return;
-    }
-    if (!confirm(`Send this order to ${item.contactEmail}${item.ccEmails ? ' (cc ' + item.ccEmails + ')' : ''}?`)) return;
+
+    const test = this.testMode();
+    const target = test ? this.testRecipient().trim() : item.contactEmail;
+    if (test && !target) { this.error.set('Provide a test recipient email.'); return; }
+    if (!test && !item.contactEmail) { this.error.set('No vendor email is set for ' + item.displayName + '.'); return; }
+    const ccText = test ? this.testCc().trim() : (item.ccEmails || '');
+    if (!confirm(`${test ? 'Send a TEST copy' : 'Send this order'} to ${target}${ccText ? ' (cc ' + ccText + ')' : ''}?`)) return;
 
     this.sending.set(true);
     this.error.set('');
     this.toast.set('');
     try {
-      const req: PlaceOrderRequest = {
-        itemKey: item.itemKey,
-        orderedBy: this.orderedBy().trim() || undefined,
-        note: this.buildNote() || undefined,
-        sourceSuggestionId: this.sourceSuggestionId() || undefined,
-        lines,
-      };
+      const req = this.buildPlaceReq();
       const rec = await firstValueFrom(this.api.placeOrder(req));
       this.toast.set(
         rec.emailSent
-          ? `Order sent to ${rec.recipient}.`
-          : `Order recorded but the email did not send: ${rec.emailError || 'unknown error'}`,
+          ? (test ? `Test email sent to ${rec.recipient}.` : `Order sent to ${rec.recipient}.`)
+          : `Email did not send: ${rec.emailError || 'unknown error'}`,
       );
-      const hadSuggestion = !!req.sourceSuggestionId;
-      this.resetPlace();
-      await this.loadOrders();
-      if (hadSuggestion) await this.loadSuggestions();
+      this.preview.set(null);
+      if (!test && rec.emailSent) {
+        const hadSuggestion = !!req.sourceSuggestionId;
+        this.resetPlace();
+        await this.loadOrders();
+        if (hadSuggestion) await this.loadSuggestions();
+      }
     } catch (e) {
       this.error.set(this.msg(e));
     } finally {
@@ -219,13 +300,16 @@ export class OrderingWorkbenchComponent implements OnInit {
     this.chosenOptions.set({});
     this.freeNote.set('');
     this.sourceSuggestionId.set('');
+    this.preview.set(null);
+    this.levels.set({});
   }
 
   // ── Suggestions ──
   reorderFromSuggestion(s: ReorderSuggestion): void {
     this.tab.set('place');
-    this.sourceSuggestionId.set(s.sharepointId || '');
+    // onItemChange clears sourceSuggestionId, so set it AFTER selecting the item
     if (s.catalogItemKey) this.onItemChange(s.catalogItemKey);
+    this.sourceSuggestionId.set(s.sharepointId || '');
   }
 
   async dismissSuggestion(s: ReorderSuggestion): Promise<void> {
@@ -241,7 +325,11 @@ export class OrderingWorkbenchComponent implements OnInit {
 
   // ── Catalog Admin ──
   openEditor = (item: OrderCatalogItem): void => {
-    this.editing.set({ ...item, defaultQtyPresets: [...(item.defaultQtyPresets || [])], textOptions: [...(item.textOptions || [])] });
+    this.editing.set({
+      ...item,
+      defaultQtyPresets: (item.defaultQtyPresets || []).map(p => ({ ...p })),
+      textOptions: (item.textOptions || []).map(t => ({ ...t })),
+    });
   };
 
   newItem(): void {
@@ -250,8 +338,27 @@ export class OrderingWorkbenchComponent implements OnInit {
       displayName: '',
       vendor: '',
       active: true,
+      orderMode: 'QUANTITY',
       defaultQtyPresets: [],
       textOptions: [],
+    });
+  }
+
+  addEditPreset(): void {
+    const item = this.editing();
+    if (!item) return;
+    this.editing.set({
+      ...item,
+      defaultQtyPresets: [...(item.defaultQtyPresets || []), { label: '', defaultQty: null, capacity: null, product: '' }],
+    });
+  }
+
+  removeEditPreset(i: number): void {
+    const item = this.editing();
+    if (!item) return;
+    this.editing.set({
+      ...item,
+      defaultQtyPresets: (item.defaultQtyPresets || []).filter((_, idx) => idx !== i),
     });
   }
 

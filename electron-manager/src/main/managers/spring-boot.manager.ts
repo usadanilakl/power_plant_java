@@ -314,7 +314,7 @@ export class SpringBootManager {
       const workingDir = getWorkingDir();
       const dbBase = path.join(workingDir, 'db', 'proddb'); // h2-compact.ps1 expects path WITHOUT .mv.db
       const dbFile = dbBase + '.mv.db';
-      if (!fs.existsSync(dbFile)) return;
+      if (!fs.existsSync(dbFile)) { this.addLog(`[Compact] skip: no DB file at ${dbFile}`); return; }
 
       // Throttle: the dead-space check opens the DB (a few seconds on a big file). Do it at most
       // once/day so frequent restarts stay fast.
@@ -322,30 +322,38 @@ export class SpringBootManager {
       const DAY_MS = 24 * 60 * 60 * 1000;
       if (fs.existsSync(stampFile)) {
         const last = Number(fs.readFileSync(stampFile, 'utf-8')) || 0;
-        if (Date.now() - last < DAY_MS) return;
+        if (Date.now() - last < DAY_MS) {
+          this.addLog(`[Compact] skip: last checked ${Math.round((Date.now() - last) / 3600000)}h ago (24h throttle)`);
+          return;
+        }
       }
 
       // Cheap floor: a DB this small cannot hold >200MB of dead space.
-      const sizeMB = fs.statSync(dbFile).size / (1024 * 1024);
-      if (sizeMB < 250) { fs.writeFileSync(stampFile, String(Date.now())); return; }
+      const sizeMB = Math.round(fs.statSync(dbFile).size / (1024 * 1024));
+      if (sizeMB < 250) { this.addLog(`[Compact] skip: DB ${sizeMB}MB below 250MB floor`); fs.writeFileSync(stampFile, String(Date.now())); return; }
 
       const script = getCompactScriptPath();
-      if (!fs.existsSync(script)) { console.warn('[Compact] script not found, skipping:', script); return; }
+      if (!fs.existsSync(script)) { this.addLog(`[Compact] skip: compaction script NOT bundled at ${script}`); return; }
 
-      console.log(`[Compact] daily maintenance: DB ${Math.round(sizeMB)}MB — DEFRAG if >200MB dead space`);
-      this.addLog(`DB maintenance check (${Math.round(sizeMB)}MB)`);
-      await new Promise<void>((resolve) => {
-        const ps = spawn('powershell.exe',
-          ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-MinDeadMB', '200', '-Db', dbBase],
-          { windowsHide: true });
+      this.addLog(`[Compact] running maintenance on ${sizeMB}MB DB (DEFRAG only if >200MB dead)...`);
+      const psArgs = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-MinDeadMB', '200', '-Db', dbBase];
+      // Packaged clients have no system Java — hand the script the bundled JRE. getJavaPath() returns a
+      // real path when packaged; in dev it's the bare 'java', which the script resolves via PATH itself.
+      const javaPath = getJavaPath();
+      if (javaPath && javaPath !== 'java' && fs.existsSync(javaPath)) { psArgs.push('-Java', javaPath); }
+      const exitCode = await new Promise<number>((resolve) => {
+        const ps = spawn('powershell.exe', psArgs, { windowsHide: true });
         ps.stdout?.on('data', (d) => this.addLog(`[Compact] ${String(d).trim()}`));
         ps.stderr?.on('data', (d) => this.addLog(`[Compact] ${String(d).trim()}`));
-        ps.on('exit', () => resolve());
-        ps.on('error', (e) => { console.warn('[Compact] spawn failed:', e.message); resolve(); });
+        ps.on('exit', (code) => resolve(code ?? 0));
+        ps.on('error', (e) => { this.addLog(`[Compact] spawn failed: ${e.message}`); resolve(1); });
       });
-      fs.writeFileSync(stampFile, String(Date.now()));
+      this.addLog(`[Compact] finished (exit ${exitCode})`);
+      // Only throttle after a CLEAN run (exit 0 = defragged or legitimately skipped). A failure
+      // (missing Java, transient lock, etc.) must NOT set the stamp, so it retries next launch.
+      if (exitCode === 0) fs.writeFileSync(stampFile, String(Date.now()));
     } catch (e: any) {
-      console.warn('[Compact] skipped due to error:', e?.message); // never block startup
+      this.addLog(`[Compact] error: ${e?.message}`); // never block startup
     }
   }
 

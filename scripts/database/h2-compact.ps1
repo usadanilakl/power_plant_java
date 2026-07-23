@@ -21,6 +21,7 @@ param(
   [string]$User     = "sa",
   [string]$Password = "password",
   [string]$Jar      = "",              # optional: path to an h2-*.jar (auto-found if blank)
+  [string]$Java     = "",              # optional: path to java.exe (e.g. Electron-bundled JRE not on PATH)
   [int]$MinDeadMB   = 0,               # only compact if dead space exceeds this many MB (0 = always)
   [switch]$ReportOnly,                 # only inspect; make no changes
   [switch]$DropAudit                   # also drop leftover Envers *_AUD / REVINFO tables before shrinking
@@ -37,10 +38,16 @@ if (-not (Test-Path $mv)) { Fail "No database file found at: $mv" }
 $mvFull = (Resolve-Path $mv).Path
 $dbFull = $mvFull.Substring(0, $mvFull.Length - ".mv.db".Length)   # strip extension for JDBC url
 
-# --- locate java ---
-$java = (Get-Command java -ErrorAction SilentlyContinue).Source
-if (-not $java -and $env:JAVA_HOME) { $java = Join-Path $env:JAVA_HOME "bin\java.exe" }
-if (-not $java -or -not (Test-Path $java)) { Fail "Java not found on PATH or JAVA_HOME." }
+# --- locate java (prefer explicit -Java: the packaged Electron client's bundled JRE is NOT on PATH) ---
+$java = ""
+if ($Java) {
+  if (-not (Test-Path $Java)) { Fail "Java not found at -Java path: $Java" }
+  $java = $Java
+} else {
+  $java = (Get-Command java -ErrorAction SilentlyContinue).Source
+  if (-not $java -and $env:JAVA_HOME) { $java = Join-Path $env:JAVA_HOME "bin\java.exe" }
+}
+if (-not $java -or -not (Test-Path $java)) { Fail "Java not found. Pass -Java <path-to-java.exe>, or put java on PATH/JAVA_HOME." }
 
 # --- locate the H2 jar (prefer 2.2.x = the version the app uses; a NEWER one would upgrade the file format) ---
 if (-not $Jar) {

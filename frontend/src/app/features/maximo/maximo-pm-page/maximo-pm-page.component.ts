@@ -12,6 +12,9 @@ import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-deta
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoWorkOrder } from '../../../models/maximo/maximo.models';
 import {
+  PmAuditCard,
+  PmAuditRow,
+  PmCompletionDetail,
   PmOccurrence,
   PmPendingAssignment,
   RecurrenceCadence,
@@ -20,8 +23,19 @@ import {
   ShiftEntry,
   ShiftPreference
 } from '../../../models/maximo/pm.models';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-type Tab = 'catalog' | 'assignments' | 'schedule';
+type Tab = 'catalog' | 'assignments' | 'schedule' | 'audit' | 'audit-cards';
+type AuditSortCol = 'pmnum' | 'description' | 'cadence' | 'target' | 'overdue';
+type CardSortCol = 'pmnum' | 'description' | 'target' | 'lastCompleted' | 'status';
+/** Completion detail + the occurrence it came from + a pre-sanitized PDF url (stable so the iframe doesn't reload). */
+type CompletionVm = PmCompletionDetail & { occ: PmOccurrence; safeUrl?: SafeResourceUrl };
+/** Audit card + a pre-sanitized PDF url and precomputed day counters (so filtering/sorting stay cheap). */
+type AuditCardVm = PmAuditCard & {
+  safeUrl?: SafeResourceUrl;
+  daysUntil?: number | null;      // days until overdue: >0 = due in N, 0 = overdue today, <0 = overdue by |N|; null = unknown
+  targetStartPast?: boolean;      // the next scheduled WO's target start is in the past
+};
 
 /** Sortable columns of the Recurring PMs (catalog) table. */
 type CatalogSortCol = 'pmnum' | 'pmDescription' | 'occurrenceCount' | 'cadence' | 'shift' | 'preferredDayOfWeek' | 'lastWonum';
@@ -63,7 +77,7 @@ export class MaximoPmPageComponent implements OnInit {
   info = signal<string | null>(null);
 
   readonly shiftOptions: ShiftPreference[] = ['DAY', 'NIGHT', 'EITHER'];
-  readonly cadenceOptions: RecurrenceCadence[] = ['DAY', 'WEEK', 'MONTH', 'OTHER'];
+  readonly cadenceOptions: RecurrenceCadence[] = ['DAY', 'WEEK', 'BIWEEK', 'MONTH', 'QUARTER', 'OTHER'];
   readonly dowOptions = [
     { value: null, label: '—' }, { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' },
     { value: 3, label: 'Wed' }, { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' },
@@ -151,6 +165,251 @@ export class MaximoPmPageComponent implements OnInit {
     if (t === 'catalog' && !this.catalogLoaded()) await this.loadCatalog();
     if (t === 'assignments' && !this.pendingLoaded()) await this.loadPending();
     if (t === 'schedule' && this.schedule().length === 0) await this.loadSchedule();
+    if (t === 'audit' && !this.auditLoaded()) await this.loadAudit();
+    if (t === 'audit-cards' && !this.cardsLoaded()) await this.loadAuditCards();
+  }
+
+  // ── Auditing Cards (eager: full info per card, colour-coded, no click needed) ──
+  auditCards = signal<AuditCardVm[]>([]);
+  cardsLoading = signal(false);
+  cardsLoaded = signal(false);
+  cardsRecurringOnly = signal(true);
+  cardSearch = signal('');
+  cardOverdueOnly = signal(false);
+  cardIssuesOnly = signal(false);
+  cardCadence = signal('');           // '' = all cadences
+  cardTargetPast = signal(false);     // only items whose target start is already in the past
+  cardDueWithin = signal<number | null>(null);   // only items overdue or due within N days
+  cardSort = signal<{ col: CardSortCol; dir: 1 | -1 }>({ col: 'status', dir: 1 });
+  enlargedCard = signal<AuditCardVm | null>(null);
+
+  visibleCards = computed<AuditCardVm[]>(() => {
+    const q = this.cardSearch().trim().toLowerCase();
+    const { col, dir } = this.cardSort();
+    let rows = this.auditCards();
+    if (q) rows = rows.filter(c => (c.pmnum ?? '').toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q));
+    if (this.cardOverdueOnly()) rows = rows.filter(c => this.cardOverdue(c));
+    if (this.cardIssuesOnly()) rows = rows.filter(c => c.hasIssues);
+    const cad = this.cardCadence();
+    if (cad) rows = rows.filter(c => (c.cadence ?? '') === cad);
+    if (this.cardTargetPast()) rows = rows.filter(c => c.targetStartPast);
+    const within = this.cardDueWithin();
+    // "Due within N days" = about to expire: not yet overdue, coming due within N (today..+N). Already-overdue
+    // items belong to the "Overdue only" filter, not here. Unknown (null) excluded.
+    if (within != null) rows = rows.filter(c => c.daysUntil != null && c.daysUntil >= 0 && c.daysUntil <= within);
+    return [...rows].sort((a, b) => dir * this.cardCompare(a, b, col));
+  });
+
+  private cardCompare(a: AuditCardVm, b: AuditCardVm, col: CardSortCol): number {
+    switch (col) {
+      case 'pmnum': return (a.pmnum ?? '').localeCompare(b.pmnum ?? '');
+      case 'description': return (a.description ?? '').localeCompare(b.description ?? '');
+      case 'target': return (a.nextScheduledDate ?? a.targetDate ?? '').localeCompare(b.nextScheduledDate ?? b.targetDate ?? '');
+      case 'lastCompleted': return (a.lastCompletedDate ?? '').localeCompare(b.lastCompletedDate ?? '');
+      case 'status':
+      default: return this.cardRank(a) - this.cardRank(b);   // overdue → troubled → ok → none
+    }
+  }
+  /** Most-actionable first for the "status" sort. */
+  private cardRank(c: AuditCardVm): number {
+    if (this.cardOverdue(c)) return 0;
+    if (c.hasIssues) return 1;
+    if (c.lastCompletedDate) return 2;
+    return 3;
+  }
+
+  /**
+   * Overdue derived from the frontend day count (single browser clock), NOT the backend `overdue` flag — so the
+   * badge, card colour, counter chip and filters all agree. Using the server flag (a second clock) could show
+   * the OVERDUE badge while the chip reads "1d to overdue" at a timezone/midnight boundary.
+   */
+  cardOverdue(c: AuditCardVm): boolean { return c.daysUntil != null && c.daysUntil <= 0; }
+
+  /** Coerce the "due within" input: blank → no filter; negative clamped to 0 (avoids a confusing empty list). */
+  setDueWithin(v: any) { this.cardDueWithin.set(v == null || v === '' ? null : Math.max(0, +v)); }
+
+  async loadAuditCards() {
+    this.cardsLoading.set(true); this.error.set(null);
+    try {
+      const cards = await firstValueFrom(this.formApi.getAuditCards(this.cardsRecurringOnly()));
+      this.auditCards.set(cards.map(c => ({
+        ...c,
+        safeUrl: c.submissionId
+          ? this.sanitizer.bypassSecurityTrustResourceUrl(this.formApi.submissionPdfUrl(c.submissionId) + '#toolbar=0&navpanes=0&view=Fit')
+          : undefined,
+        daysUntil: this.daysFromToday(c.overdueOn),
+        targetStartPast: (this.daysFromToday(c.nextScheduledDate) ?? 1) < 0,
+      })));
+      this.cardsLoaded.set(true);
+    } catch (e: any) { this.error.set(this.msg(e)); }
+    finally { this.cardsLoading.set(false); }
+  }
+
+  /**
+   * Whole-day difference from today to a yyyy-MM-dd date: >0 future, 0 today, <0 past; null if unparseable.
+   * Both sides are pinned to LOCAL midnight so the result is a clean day count with no timezone/DST drift.
+   */
+  private daysFromToday(dateStr: string | null | undefined): number | null {
+    if (!dateStr || dateStr.length < 10) return null;
+    const [y, m, d] = dateStr.substring(0, 10).split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const target = new Date(y, m - 1, d).getTime();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return Math.round((target - today) / 86400000);
+  }
+
+  /** Small counter label for a card: "Nd to overdue" / "overdue today" / "overdue Nd". */
+  dueLabel(c: AuditCardVm): string {
+    const n = c.daysUntil;
+    if (n === null || n === undefined) return '';
+    if (n > 0) return n + 'd to overdue';
+    if (n === 0) return 'overdue today';
+    return 'overdue ' + (-n) + 'd';
+  }
+
+  toggleCardsRecurring() { this.cardsRecurringOnly.update(v => !v); this.loadAuditCards(); }
+  sortCards(col: CardSortCol) {
+    this.cardSort.update(s => s.col === col ? { col, dir: (s.dir === 1 ? -1 : 1) } : { col, dir: 1 });
+  }
+
+  auditCardClass(c: AuditCardVm): string {
+    if (this.cardOverdue(c)) return 'audit-overdue';
+    if (c.hasIssues) return 'audit-issue';
+    if (c.lastCompletedDate) return 'audit-ok';
+    return 'audit-none';
+  }
+
+  enlargedCardUrl(): SafeResourceUrl | null {
+    const c = this.enlargedCard();
+    return c?.submissionId ? this.sanitizer.bypassSecurityTrustResourceUrl(this.formApi.submissionPdfUrl(c.submissionId)) : null;
+  }
+
+  /** Full-history modal for a card: shows the PM's real WO occurrences (reuses the shared occurrence cache). */
+  historyCard = signal<AuditCardVm | null>(null);
+  async openCardHistory(card: AuditCardVm) {
+    this.historyCard.set(card);
+    if (this.occByPm()[card.pmId]) return;   // cached (shared with the Recurring PMs clock-icon)
+    const loading = new Set(this.occLoadingIds()); loading.add(card.pmId); this.occLoadingIds.set(loading);
+    try {
+      const occ = await firstValueFrom(this.api.getOccurrences(card.pmId));
+      this.occByPm.update(m => ({ ...m, [card.pmId]: occ }));
+    } catch (e: any) { this.error.set(this.msg(e)); }
+    finally { const l = new Set(this.occLoadingIds()); l.delete(card.pmId); this.occLoadingIds.set(l); }
+  }
+
+  // ── Auditing ────────────────────────────────────────────────────────────
+  // List = catalog facts (fast, sortable/filterable). Completion (last completed/closed WO + its form/comment,
+  // next scheduled) loads per PM on expand from the live occurrences — the same clock-icon history mechanism.
+  private sanitizer = inject(DomSanitizer);
+  auditRows = signal<PmAuditRow[]>([]);
+  auditLoading = signal(false);
+  auditLoaded = signal(false);
+  auditRecurringOnly = signal(true);
+  auditSearch = signal('');
+  auditOverdueOnly = signal(false);
+  auditSort = signal<{ col: AuditSortCol; dir: 1 | -1 }>({ col: 'target', dir: -1 });
+  /** Loaded completion detail per PM (undefined = not loaded, null = no completed WO). */
+  completionByPm = signal<Record<number, CompletionVm | null>>({});
+  enlarged = signal<CompletionVm | null>(null);
+
+  /** Filtered + sorted audit rows (recurring is applied server-side; search/overdue/sort are client-side). */
+  visibleAudit = computed<PmAuditRow[]>(() => {
+    const q = this.auditSearch().trim().toLowerCase();
+    const { col, dir } = this.auditSort();
+    let rows = this.auditRows();
+    if (q) rows = rows.filter(r => (r.pmnum ?? '').toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q));
+    if (this.auditOverdueOnly()) rows = rows.filter(r => r.overdue);
+    return [...rows].sort((a, b) => dir * this.auditCompare(a, b, col));
+  });
+
+  private auditCompare(a: PmAuditRow, b: PmAuditRow, col: AuditSortCol): number {
+    switch (col) {
+      case 'pmnum': return (a.pmnum ?? '').localeCompare(b.pmnum ?? '');
+      case 'description': return (a.description ?? '').localeCompare(b.description ?? '');
+      case 'cadence': return (a.cadence ?? '').localeCompare(b.cadence ?? '');
+      case 'overdue': return (a.overdue ? 1 : 0) - (b.overdue ? 1 : 0);
+      case 'target':
+      default: return (a.targetDate ?? '').localeCompare(b.targetDate ?? '');
+    }
+  }
+
+  sortAudit(col: AuditSortCol) {
+    this.auditSort.update(s => s.col === col ? { col, dir: (s.dir === 1 ? -1 : 1) } : { col, dir: 1 });
+  }
+  auditSortArrow(col: AuditSortCol): string {
+    const s = this.auditSort();
+    return s.col === col ? (s.dir === 1 ? ' ▲' : ' ▼') : '';
+  }
+
+  async loadAudit() {
+    this.auditLoading.set(true); this.error.set(null);
+    try {
+      this.auditRows.set(await firstValueFrom(this.formApi.getPmAudit(this.auditRecurringOnly())));
+      this.auditLoaded.set(true);
+    } catch (e: any) { this.error.set(this.msg(e)); }
+    finally { this.auditLoading.set(false); }
+  }
+
+  toggleAuditRecurring() { this.auditRecurringOnly.update(v => !v); this.loadAudit(); }
+
+  /** Expand/collapse a PM in the audit list: load its occurrences (shared cache), then its completion detail. */
+  async toggleAuditPm(row: PmAuditRow) {
+    const set = new Set(this.expandedPmIds());
+    if (set.has(row.pmId)) { set.delete(row.pmId); this.expandedPmIds.set(set); return; }
+    set.add(row.pmId); this.expandedPmIds.set(set);
+    if (!this.occByPm()[row.pmId]) {
+      const loading = new Set(this.occLoadingIds()); loading.add(row.pmId); this.occLoadingIds.set(loading);
+      try {
+        const occ = await firstValueFrom(this.api.getOccurrences(row.pmId));
+        this.occByPm.update(m => ({ ...m, [row.pmId]: occ }));
+      } catch (e: any) { this.error.set(this.msg(e)); }
+      finally { const l = new Set(this.occLoadingIds()); l.delete(row.pmId); this.occLoadingIds.set(l); }
+    }
+    await this.loadCompletion(row.pmId);
+  }
+
+  /** The newest completed/closed WO for a PM (from its occurrences). */
+  lastCompletedOcc(pmId: number): PmOccurrence | null {
+    return (this.occByPm()[pmId] ?? []).find(o => !o.open
+      && ['COMP', 'CLOSE', 'CLOSED'].includes((o.status ?? '').toUpperCase())) ?? null;
+  }
+  /** The soonest upcoming (open) WO for a PM. */
+  nextScheduledOcc(pmId: number): PmOccurrence | null { return this.occUpcoming(pmId)[0] ?? null; }
+
+  private async loadCompletion(pmId: number) {
+    if (this.completionByPm()[pmId] !== undefined) return;   // already loaded (incl. null)
+    const last = this.lastCompletedOcc(pmId);
+    if (!last) { this.completionByPm.update(m => ({ ...m, [pmId]: null })); return; }
+    try {
+      const d = await firstValueFrom(this.formApi.getCompletionDetail(last.wonum, last.href));
+      const vm: CompletionVm | null = d ? {
+        ...d,
+        occ: last,
+        safeUrl: d.submissionId
+          ? this.sanitizer.bypassSecurityTrustResourceUrl(this.formApi.submissionPdfUrl(d.submissionId) + '#toolbar=0&navpanes=0&view=Fit')
+          : undefined,
+      } : { wonum: last.wonum, submissionId: null, formName: null, comment: null, hasIssues: false, keywordHit: false, formIssues: false, occ: last };
+      this.completionByPm.update(m => ({ ...m, [pmId]: vm }));
+    } catch { this.completionByPm.update(m => ({ ...m, [pmId]: null })); }
+  }
+
+  completionOf(pmId: number): CompletionVm | null { return this.completionByPm()[pmId] ?? null; }
+
+  /** Enlarged PDF URL (full toolbar) for the lightbox. */
+  enlargedUrl(): SafeResourceUrl | null {
+    const c = this.enlarged();
+    return c?.submissionId ? this.sanitizer.bypassSecurityTrustResourceUrl(this.formApi.submissionPdfUrl(c.submissionId)) : null;
+  }
+
+  /** Row colour: overdue (eager) → red; once expanded, troubled → amber, else completed → green. */
+  auditRowClass(r: PmAuditRow): string {
+    if (r.overdue) return 'audit-overdue';
+    const c = this.completionByPm()[r.pmId];
+    if (c === undefined) return '';           // not expanded yet
+    if (c?.hasIssues) return 'audit-issue';
+    if (c) return 'audit-ok';
+    return 'audit-none';
   }
 
   // ── Catalog ─────────────────────────────────────────────────────────────
