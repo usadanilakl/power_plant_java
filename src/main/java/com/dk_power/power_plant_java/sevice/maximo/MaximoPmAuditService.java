@@ -151,6 +151,10 @@ public class MaximoPmAuditService {
                 .comment(comment)
                 .submissionId(submissionId)
                 .formName(formName)
+                .assignedTo(firstNonBlankStr(
+                        next == null ? null : next.getLeadCraft(),
+                        last == null ? null : last.getLeadCraft(),
+                        pm.getLead()))
                 .overdue(overdue)
                 .overdueOn(overdueOn)
                 .keywordHit(keywordHit)
@@ -348,6 +352,12 @@ public class MaximoPmAuditService {
             return out;
         }
         return List.of(v.toString());
+    }
+
+    /** First non-blank of the given strings, trimmed; null if all blank. */
+    private static String firstNonBlankStr(String... vals) {
+        for (String v : vals) if (v != null && !v.isBlank()) return v.trim();
+        return null;
     }
 
     private static String firstNonBlank(Map<String, Object> values, String... keys) {

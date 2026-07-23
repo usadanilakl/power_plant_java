@@ -61,6 +61,16 @@ const PERIODS: Period[] = [
             <button title="Forward one window" [disabled]="following()" (click)="pageForward()">▶</button>
             <button class="live-btn" [class.active]="following()" title="Jump to now / follow live"
                     (click)="goLive()">Live</button>
+            <select class="refresh-sel" title="Live refresh rate"
+                    [ngModel]="refreshMs()" (ngModelChange)="refreshMs.set($event)">
+              <option [ngValue]="null">Auto</option>
+              <option [ngValue]="1000">1s</option>
+              <option [ngValue]="3000">3s</option>
+              <option [ngValue]="5000">5s</option>
+              <option [ngValue]="10000">10s</option>
+              <option [ngValue]="30000">30s</option>
+              <option [ngValue]="60000">60s</option>
+            </select>
           </div>
         </div>
       </div>
@@ -139,6 +149,10 @@ const PERIODS: Period[] = [
     }
     .pager button:disabled { opacity: .4; cursor: not-allowed; }
     .pager .live-btn.active { background: #28a745; color: #fff; border-color: #28a745; }
+    .refresh-sel {
+      padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 4px;
+      background: var(--card-background); color: var(--primary-text); font-size: 12px; cursor: pointer;
+    }
 
     .points-bar {
       display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; flex-shrink: 0;
@@ -203,6 +217,8 @@ export class TrendWindowComponent implements OnInit {
   /** Window right edge (epoch ms). Kept synced to now while following. */
   private anchorEnd = signal<number>(Date.now());
   following = signal<boolean>(true);
+  /** Live refresh interval in ms; null = Auto (scaled to the window width). */
+  refreshMs = signal<number | null>(null);
 
   available = signal<Available[]>([]);
   addSearch = signal<string>('');
@@ -214,6 +230,7 @@ export class TrendWindowComponent implements OnInit {
   private loadedRange = signal<{ start: number; end: number }>({ start: Date.now() - 60 * MIN, end: Date.now() });
 
   private followTimer: any = null;
+  private inflight = false;
 
   isLive = computed(() => this.following());
 
@@ -298,7 +315,7 @@ export class TrendWindowComponent implements OnInit {
     return a && a.label && a.label !== id ? `${id}` : id;
   }
 
-  loadData(): void {
+  loadData(silent = false): void {
     const ids = this.pointIds();
     if (!ids.length) { this.series.set([]); return; }
 
@@ -307,7 +324,8 @@ export class TrendWindowComponent implements OnInit {
     const start = end - this.periodMs();
     this.loadedRange.set({ start, end });
 
-    this.loading.set(true);
+    this.inflight = true;
+    if (!silent) this.loading.set(true);   // live ticks are silent — no flashing indicator
     this.errorMessage.set(null);
 
     this.adapter().fetchSeries({
@@ -317,25 +335,31 @@ export class TrendWindowComponent implements OnInit {
     }).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: result => { this.series.set(result); this.loading.set(false); },
+      next: result => { this.series.set(result); this.loading.set(false); this.inflight = false; },
       error: err => {
         console.error('[TrendWindow] Failed to load data:', err);
         this.errorMessage.set('Failed to load trend data: ' + (err?.message || 'unknown error'));
-        this.loading.set(false);
+        this.loading.set(false); this.inflight = false;
       }
     });
   }
 
-  /** Poll cadence scales with the window: short windows refresh fast, long ones slowly. */
+  /**
+   * Live cadence: ~3s for short windows (10m–60m) so it genuinely ticks forward, scaling up for very
+   * wide windows so they poll gently (capped at 30s). Overlap on slow fetches is prevented by the
+   * inflight guard in the follow loop.
+   */
   private pollMs(): number {
-    return Math.max(8_000, Math.min(300_000, Math.round(this.periodMs() / 30)));
+    const chosen = this.refreshMs();
+    if (chosen != null) return chosen;               // user-selected fixed rate
+    return Math.max(3_000, Math.min(30_000, Math.round(this.periodMs() / 1200)));  // Auto
   }
 
   private startFollowLoop(): void {
     const tick = () => {
       this.followTimer = setTimeout(() => {
-        if (this.following() && !this.loading() && this.pointIds().length) {
-          this.loadData();  // following → recomputes end=now, window slides forward
+        if (this.following() && !this.inflight && this.pointIds().length) {
+          this.loadData(true);  // following → recomputes end=now, window slides forward (silent)
         }
         tick();
       }, this.pollMs());

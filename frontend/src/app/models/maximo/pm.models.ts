@@ -56,6 +56,7 @@ export interface PmAuditCard {
   comment: string | null;
   submissionId: number | null;       // completion-form PDF, if a form was filled
   formName: string | null;
+  assignedTo: string | null;         // lead of the next scheduled WO (else last completed, else the PM's lead)
   overdue: boolean;
   overdueOn: string | null;          // yyyy-MM-dd — first date it is overdue (period end + 1)
   hasIssues: boolean;

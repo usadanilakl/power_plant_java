@@ -482,6 +482,8 @@
                   {{ c.lastCompletedDate ? (c.lastCompletedDate | date:'MMM d, y') : 'never' }}
                   <button class="link small" *ngIf="c.lastWonum" (click)="openWoHref(c.lastHref || '', c.lastWonum || '')">WO {{ c.lastWonum }}</button>
                 </dd>
+                <dt>Assigned to</dt>
+                <dd>{{ c.assignedTo || '—' }}</dd>
               </dl>
               <div class="audit-comments" *ngIf="c.comment" [title]="c.comment">
                 💬 {{ c.comment }} <span class="kw-tag" *ngIf="c.keywordHit">flagged</span>

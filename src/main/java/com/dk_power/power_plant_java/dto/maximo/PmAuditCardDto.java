@@ -35,6 +35,7 @@ public class PmAuditCardDto {
     private String comment;               // the last completed WO's worklog note(s) (falls back to form findings)
     private Long submissionId;            // completion-form submission, if one was filled (for the PDF)
     private String formName;
+    private String assignedTo;            // lead of the next scheduled WO (else last completed, else the PM's lead)
 
     private boolean overdue;
     private LocalDate overdueOn;          // the first date it is overdue (period end + 1); null if not determinable
