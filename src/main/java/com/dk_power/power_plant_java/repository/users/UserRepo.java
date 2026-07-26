@@ -35,11 +35,33 @@ public interface UserRepo extends BaseRepository<User> {
 
     boolean existsByEmail(String email);
 
+    /** Case-insensitive email existence excluding a given user id — used by the reconciliation pull guard. */
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+
     User findFirstByWindowsUsernameOrderByIdAsc(String windowsUsername);
 
     User findFirstByRoleAndIsActiveTrue(String role);
 
     User findFirstByPwaUserUuidOrderByIdAsc(String pwaUserUuid);
+
+    // ── Dual-authority auth (Hub + Supabase) ──
+
+    User findFirstBySupabaseUuidOrderByIdAsc(String supabaseUuid);
+
+    /**
+     * Active users not yet mirrored into Supabase, restricted to those with a REAL email (an '@' and a
+     * dotted domain via {@code like '%@%.%'}) — this excludes internal desktop-SSO accounts such as
+     * {@code name@localhost}, which authenticate via Windows and would only be junk in Supabase. This is
+     * the provisioning work-list: pass a capped {@code PageRequest} for the 60s self-heal, or
+     * {@code Pageable.unpaged()} for the one-shot bulk job.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "select u from User u where u.isActive = true and u.supabaseUuid is null "
+            + "and u.email like '%@%.%' order by u.id asc")
+    java.util.List<User> findSupabaseMirrorCandidates(org.springframework.data.domain.Pageable pageable);
+
+    /** Users touched since the last reconciliation checkpoint (metadata sync delta walk). */
+    java.util.List<User> findByDateModifiedAfterOrderByDateModifiedAsc(LocalDateTime checkpoint);
 
     User findFirstByOnLocationMemberIdOrderByIdAsc(String onLocationMemberId);
 

@@ -178,6 +178,13 @@ localxpose.pid
 global.env
 /electron-manager/config-defaults/
 /data/certificate.pfx
+# SharePoint cert PEM — contains a PRIVATE KEY; provision out-of-band, never commit.
+/data/certificate.pem
+# Hub JWT signing keys (RS256) — NEVER commit the private key; public key is distributed separately.
+/data/jwt-private.pem
+/data/jwt-public.pem
+/data/supabase-jwt-public.pem
+/data/backups/
 /exports/**
 /electron-manager/release2/**
 

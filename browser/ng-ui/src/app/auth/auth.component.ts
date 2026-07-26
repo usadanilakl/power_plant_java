@@ -183,25 +183,46 @@ export class AuthComponent implements OnInit {
       return;
     }
 
-    this.serverApi.registerUser({ pwaUserUuid, name, email, phone, company, password }).pipe(
-      switchMap(result => {
-        if (!result.success && result.status !== 'already_exists') {
-          throw new Error(result.message);
+    // Dual-authority sign-up: hub first, Supabase fallback when the hub is unreachable.
+    this.authService.signUpDual({ pwaUserUuid, name, email, phone, company, password }).subscribe({
+      next: (outcome) => {
+        if (outcome.viaSupabase) {
+          // Hub was down — account created in Supabase, pending hub admin approval on reconnect.
+          this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
+          this.isLoading = false;
+          this.step = 'pending_approval';
+          this.successMessage = outcome.message;
+          return;
         }
+        if (!outcome.ok) {
+          this.isLoading = false;
+          this.errorMessage = outcome.message || 'Registration failed. Please try again.';
+          return;
+        }
+        // Hub success — mark registered, upload signature, then sign in + sync + navigate.
         this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
         if (signature) {
           this.serverApi.uploadSignatureByUuid(pwaUserUuid, signature).subscribe({
             error: (err: any) => console.error('[Auth] Signature upload failed:', err)
           });
         }
-        return this.authService.authenticate(email, password);
-      })
-    ).pipe(
-      switchMap(() => this.authService.syncLocalUserData())
-    ).subscribe({
-      next: () => {
-        this.isLoading = false;
-        this.router.navigate([this.returnUrl]);
+        this.authService.authenticate(email, password).pipe(
+          switchMap(() => this.authService.syncLocalUserData())
+        ).subscribe({
+          next: () => {
+            this.isLoading = false;
+            this.router.navigate([this.returnUrl]);
+          },
+          error: (err) => {
+            this.isLoading = false;
+            if (err?.message?.includes('not yet approved')) {
+              this.step = 'pending_approval';
+              this.errorMessage = null;
+            } else {
+              this.errorMessage = err?.message || 'Registration failed. Please try again.';
+            }
+          }
+        });
       },
       error: (err) => {
         this.isLoading = false;

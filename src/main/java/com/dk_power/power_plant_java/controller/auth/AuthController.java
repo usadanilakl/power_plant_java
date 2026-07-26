@@ -31,6 +31,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @RestController
@@ -47,6 +48,7 @@ public class AuthController {
     private final EmailFacadeService emailFacadeService;
     private final com.dk_power.power_plant_java.sevice.auth.StepUpAuthService stepUpAuthService;
     private final com.dk_power.power_plant_java.sevice.auth.PinManagementService pinManagementService;
+    private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
 
     @Value("${email.graph.from:}")
     private String emailFrom;
@@ -74,6 +76,10 @@ public class AuthController {
             // and lock contention with sync transactions on the USERS table
             userRepo.updateLastLoginById(LocalDateTime.now(), userDetails.getId());
             LoggingContext.setUserId(userDetails.getUsername());
+
+            // Dual-authority sync-at-login: the plaintext just verified against the hub is used to
+            // reconcile Supabase (async, non-blocking). See dual-auth.md.
+            syncAtLoginService.reconcileAfterHubLoginAsync(userDetails.getId(), loginRequest.password());
 
             log.info("security.login.success credential={} remoteIp={}",
                 loginRequest.credential(), NetworkUtils.getClientIp(request));
@@ -266,7 +272,10 @@ public class AuthController {
         }
 
         user.setPassword(passwordEncoder.encode(req.newPassword()));
+        user.setPasswordUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
         userRepo.save(user);
+        // Fire-and-forget mirror to Supabase; reconciliation catches up if it's down.
+        syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), req.newPassword());
         log.info("security.password.changed user={}", user.getEmail());
 
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
@@ -285,11 +294,16 @@ public class AuthController {
         if (req.firstName() != null || req.lastName() != null) {
             user.setName((user.getFirstName() + " " + user.getLastName()).trim());
         }
-        if (req.password() != null && !req.password().isBlank()) {
+        boolean passwordChanged = req.password() != null && !req.password().isBlank();
+        if (passwordChanged) {
             user.setPassword(passwordEncoder.encode(req.password()));
+            user.setPasswordUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
         }
 
         userRepo.save(user);
+        if (passwordChanged) {
+            syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), req.password());
+        }
         log.info("security.profile.updated user={}", user.getEmail());
 
         return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
@@ -409,7 +423,9 @@ public class AuthController {
 
         User user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(req.newPassword()));
+        user.setPasswordUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
         userRepo.save(user);
+        syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), req.newPassword());
 
         resetToken.setUsed(true);
         passwordResetTokenRepository.save(resetToken);

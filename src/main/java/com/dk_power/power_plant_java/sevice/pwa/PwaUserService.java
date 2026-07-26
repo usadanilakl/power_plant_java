@@ -19,6 +19,7 @@ public class PwaUserService {
 
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
+    private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
 
     public PwaRegistrationResult registerPwaUser(PwaUserRegistrationDto dto) {
         // Idempotent: check if already registered by pwaUserUuid
@@ -56,9 +57,14 @@ public class PwaUserService {
                 .isActive(false)
                 .pwaUserUuid(dto.getPwaUserUuid())
                 .permissionLevel(PermissionLevel.NONE)
+                .passwordUpdatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC))
                 .build();
 
         userRepo.save(user);
+        // Hub write succeeded — fire-and-forget the Supabase mirror (creates the Supabase user with
+        // this plaintext + metadata). If Supabase is down, the 60s reconciliation job / next login
+        // catches it up. See dual-auth.md.
+        syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), dto.getPassword());
         log.info("[PWA User] Registered new user: email={}, pwaUserUuid={}", dto.getEmail(), dto.getPwaUserUuid());
         return PwaRegistrationResult.success();
     }

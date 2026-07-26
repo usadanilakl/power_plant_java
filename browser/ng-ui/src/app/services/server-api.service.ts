@@ -466,6 +466,44 @@ export class ServerApiService {
     );
   }
 
+  // ── Dual-authority raw variants ──
+  // These deliberately do NOT run handleError, so the caller sees the real HttpErrorResponse
+  // (status code) and can decide whether the hub is DOWN (5xx/0/timeout → fall back to Supabase)
+  // or merely REJECTED the request (401 → try Supabase, then reconcile). See dual-auth.md.
+
+  /** Hub login, 5s timeout, error preserved. */
+  pwaLoginRaw(email: string, password: string): Observable<PwaLoginResponse> {
+    return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/login`, { email, password }).pipe(
+      timeout(5000)
+    );
+  }
+
+  /** Hub token refresh, error preserved. */
+  pwaRefreshRaw(token: string): Observable<PwaLoginResponse> {
+    return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/refresh`, { token }).pipe(
+      timeout(8000)
+    );
+  }
+
+  /** Hub registration, 10s timeout, error preserved (business failures still return 200 with result). */
+  registerUserRaw(dto: PwaUserRegistrationDto): Observable<PwaRegistrationResult> {
+    return this.http.post<{ responseData: PwaRegistrationResult }>(`${this.baseUrl}/api/pwa/user/register`, dto).pipe(
+      timeout(10000),
+      map(response => response.responseData)
+    );
+  }
+
+  /**
+   * Best-effort: ask the hub to converge from a Supabase-authenticated login. The hub re-verifies
+   * the password against Supabase itself (no bearer token is trusted). Never throws.
+   */
+  reconcileWithHub(email: string, password: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/pwa/auth/reconcile`, { email, password }).pipe(
+      timeout(8000),
+      catchError(() => of(null))
+    );
+  }
+
   // ============ PWA Secured Profile ============
 
   getProfile(): Observable<PwaServerProfile> {
@@ -488,6 +526,20 @@ export class ServerApiService {
     }).pipe(
       timeout(10000),
       catchError(this.handleError)
+    );
+  }
+
+  /** Error-preserving variant for the dual-authority change-password fallback (see dual-auth.md). */
+  changePasswordRaw(currentPassword: string, newPassword: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.baseUrl}/api/pwa/secured/change-password`, {
+      currentPassword, newPassword
+    }).pipe(timeout(10000));
+  }
+
+  /** Error-preserving variant for the dual-authority profile-update fallback. */
+  updateProfileRaw(data: { name?: string; email?: string; phone?: string; company?: string }): Observable<{ success: boolean; message: string }> {
+    return this.http.put<{ success: boolean; message: string }>(`${this.baseUrl}/api/pwa/secured/profile`, data).pipe(
+      timeout(10000)
     );
   }
 

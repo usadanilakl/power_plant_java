@@ -18,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,7 @@ public class NgUserController {
     private final PasswordEncoder passwordEncoder;
     private final NgUserService ngUserService;
     private final EntityManager entityManager;
+    private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
 
     /**
      * Lightweight directory of active users with an email address — used by the SDS gap-report
@@ -112,6 +115,7 @@ public class NgUserController {
                 .email(request.email())
                 .role(rolesStr)
                 .password(passwordEncoder.encode(request.password()))
+                .passwordUpdatedAt(LocalDateTime.now(ZoneOffset.UTC))
                 .isActive(true)
                 .windowsUsername(request.windowsUsername())
                 .maximoPersonidOverride(request.maximoPersonidOverride())
@@ -125,6 +129,9 @@ public class NgUserController {
                 .build();
 
             user = userRepo.save(user);
+            // Dual-authority: mirror the admin-set password to Supabase (creates the Supabase user if
+            // absent; converges LWW since passwordUpdatedAt is set above).
+            syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), request.password());
             UserDto dto = mapper.convert(user, UserDto.class);
             dto.setRoles(user.getRoles());
             log.info("User created: {} ({})", user.getEmail(), user.getRole());
@@ -154,8 +161,10 @@ public class NgUserController {
                 // falls back to the derived windowsUsername (see User.getMaximoPersonid()).
                 if (request.maximoPersonidOverride() != null) user.setMaximoPersonidOverride(request.maximoPersonidOverride());
                 if (request.scheduleName() != null) user.setScheduleName(request.scheduleName());
-                if (request.password() != null && !request.password().isBlank()) {
+                boolean passwordChanged = request.password() != null && !request.password().isBlank();
+                if (passwordChanged) {
                     user.setPassword(passwordEncoder.encode(request.password()));
+                    user.setPasswordUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
                 }
                 if (request.permissionLevel() != null) user.setPermissionLevel(request.permissionLevel());
                 if (request.phone() != null) user.setPhone(request.phone());
@@ -166,6 +175,10 @@ public class NgUserController {
                 if (request.signaturePath() != null) user.setSignaturePath(request.signaturePath());
 
                 user = userRepo.save(user);
+                if (passwordChanged) {
+                    // Dual-authority: mirror the admin-changed password to Supabase (LWW converges).
+                    syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), request.password());
+                }
                 UserDto dto = mapper.convert(user, UserDto.class);
                 dto.setRoles(user.getRoles());
                 log.info("User updated: {}", user.getEmail());

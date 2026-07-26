@@ -17,7 +17,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+        @Index(name = "idx_users_password_updated_at", columnList = "password_updated_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -90,6 +92,24 @@ public class User extends BaseAuditEntity {
 
     @Column(name = "pwa_user_uuid", unique = true)
     private String pwaUserUuid;
+
+    // ── Dual-authority auth (Hub + Supabase) — see project/features/users/dual-auth.md ──
+
+    /**
+     * This user's id in the Supabase secondary auth store (auth.users.id). Null until the user is
+     * provisioned/mirrored into Supabase. Populated by the bulk-provisioning job, by the Supabase
+     * mirror on registration, or by sync-at-login when Supabase first sees this user.
+     */
+    @Column(name = "supabase_uuid", unique = true)
+    private String supabaseUuid;
+
+    /**
+     * UTC timestamp of the most recent password change on the hub side. Compared against Supabase's
+     * {@code password_updated_at} to decide last-writer-wins direction during sync-at-login
+     * reconciliation. Set whenever {@link #password} changes.
+     */
+    @Column(name = "password_updated_at")
+    private LocalDateTime passwordUpdatedAt;
 
     /** OnLocation member id (sp/member.id) — stable key used to upsert contractor rows. */
     @Column(name = "on_location_member_id", unique = true)

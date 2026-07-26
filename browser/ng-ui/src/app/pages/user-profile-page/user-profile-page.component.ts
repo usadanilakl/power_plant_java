@@ -103,10 +103,15 @@ export class UserProfilePageComponent implements OnInit {
     });
     this.userData = this.userSetupService.getUserData();
 
-    // If logged in and server online, sync name/email to server
-    if (this.isLoggedIn && this.serverStatus.isOnline()) {
+    // Attempt a server push when we can plausibly reach a store: the hub is up, OR this is a
+    // Supabase-issued session and we have internet (updateProfileDual will fall over to Supabase).
+    // A hub-only session with the hub down stays local (no password to acquire a Supabase token).
+    const canReachAStore = this.serverStatus.isOnline()
+      || (this.authService.getAuthData()?.source === 'supabase' && navigator.onLine);
+    if (this.isLoggedIn && canReachAStore) {
       this.profileSaveStatus = 'saving';
-      this.serverApi.updateProfile({ name: formValue.name, email: formValue.email, phone: formValue.phone, company: formValue.company }).subscribe({
+      // Dual-authority: hub first, Supabase fallback when the hub is unreachable.
+      this.authService.updateProfileDual({ name: formValue.name, email: formValue.email, phone: formValue.phone, company: formValue.company }).subscribe({
         next: () => {
           this.profileSaveStatus = 'success';
           this.profileSaveMessage = 'Profile updated.';
@@ -145,14 +150,17 @@ export class UserProfilePageComponent implements OnInit {
       return;
     }
 
-    if (!this.serverStatus.isOnline()) {
+    // Gate on real connectivity, NOT hub reachability: changePasswordDual falls the hub over to
+    // Supabase (re-authenticating with the current password if needed), so a hub outage must not block it.
+    if (!navigator.onLine) {
       this.passwordStatus = 'error';
-      this.passwordMessage = 'Server is offline. Cannot change password.';
+      this.passwordMessage = 'You appear to be offline. Cannot change password.';
       return;
     }
 
     this.passwordStatus = 'saving';
-    this.serverApi.changePassword(currentPassword, newPassword).subscribe({
+    // Dual-authority: hub first, Supabase fallback when the hub is unreachable.
+    this.authService.changePasswordDual(currentPassword, newPassword).subscribe({
       next: () => {
         this.passwordStatus = 'success';
         this.passwordMessage = 'Password changed successfully.';

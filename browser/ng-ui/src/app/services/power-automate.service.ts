@@ -5,6 +5,7 @@ import { PowerAutomateRequest } from '../models/api/power-automate-request.model
 import { environment } from '../../environments/environment';
 import { IAttachment } from '../models/permits/attachment.model';
 import { ServerApiService } from './server-api.service';
+import { AuthService } from '../auth/auth.service';
 
 export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrumentLog' | 'instrument' | 'fieldList' | 'inventory' | 'sds' | 'qualifications';
 
@@ -31,7 +32,7 @@ export class PowerAutomateService {
 
   private permitsUrl = environment.powerAutomateUrl;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private authService: AuthService) { }
 
   /**
    * Submits form data to an old (V1) Power Automate workflow.
@@ -69,14 +70,32 @@ export class PowerAutomateService {
    * Submits to a V2 Power Automate flow using the new unified schema.
    */
   submitV2(entityType: PaEntityType, request: PaV2Request): Observable<PaV2Response> {
-    const flowUrl = this.getV2FlowUrl(entityType);
-    if (!flowUrl) {
-      return throwError(() => new Error(`No V2 flow URL configured for entity type: ${entityType}`));
+    const gatewayUrl = (environment as any).paGatewayUrl;
+    let url: string;
+    let body: any;
+
+    if (gatewayUrl) {
+      // Centralized auth: post to ONE gateway flow that verifies the JWT (via the verify-jwt edge
+      // function) and forwards to the real, URL-gated target flow. The target flow URLs then live only
+      // in the gateway (server-side), never in this bundle. Requires a signed-in user.
+      const token = this.authService.getToken();
+      if (!token) {
+        return throwError(() => new Error('Sign in required to submit'));
+      }
+      url = gatewayUrl;
+      body = { target: entityType, token, payload: request };
+      console.log(`[PA V2] Submitting ${entityType} via auth gateway:`, request.actionType);
+    } else {
+      const flowUrl = this.getV2FlowUrl(entityType);
+      if (!flowUrl) {
+        return throwError(() => new Error(`No V2 flow URL configured for entity type: ${entityType}`));
+      }
+      url = flowUrl;
+      body = request;
+      console.log(`[PA V2] Submitting ${entityType}:`, request.actionType);
     }
 
-    console.log(`[PA V2] Submitting ${entityType}:`, request.actionType);
-
-    return this.http.post<PaV2Response>(flowUrl, request).pipe(
+    return this.http.post<PaV2Response>(url, body).pipe(
       timeout(60000), // 60s for attachment uploads
       catchError((error: any) => {
         if (error.name === 'TimeoutError') {
@@ -116,7 +135,8 @@ export class PowerAutomateService {
   }
 
   isV2Configured(entityType: PaEntityType): boolean {
-    return !!this.getV2FlowUrl(entityType);
+    // When the gateway is configured it fronts all targets, so per-entity direct URLs are optional.
+    return !!(environment as any).paGatewayUrl || !!this.getV2FlowUrl(entityType);
   }
 
   private getV2FlowUrl(entityType: PaEntityType): string {

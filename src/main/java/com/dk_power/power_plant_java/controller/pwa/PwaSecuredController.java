@@ -40,6 +40,7 @@ public class PwaSecuredController {
     private final com.dk_power.power_plant_java.sevice.angular.inventory.NgInventoryItemService inventoryItemService;
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
+    private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
 
     @GetMapping("/my-permits")
     public ResponseEntity<?> getMyPermits() {
@@ -224,7 +225,10 @@ public class PwaSecuredController {
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordUpdatedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
         userRepo.save(user);
+        // Fire-and-forget mirror to Supabase; reconciliation catches up if it's down.
+        syncAtLoginService.mirrorPasswordChangeAsync(user.getId(), newPassword);
         log.info("[PWA Profile] Password changed for user: {}", user.getEmail());
         return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
     }

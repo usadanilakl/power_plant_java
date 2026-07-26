@@ -1,0 +1,145 @@
+# Supabase configuration for the Power Plant "secondary auth authority".
+# This project is ONLY an auth store — it mirrors hub Users so login/registration/
+# password-change keep working when the Spring hub is unreachable. See
+# project/features/users/dual-auth.md for the full architecture.
+#
+# For detailed configuration reference documentation, visit:
+# https://supabase.com/docs/guides/local-development/cli/config
+project_id = "power-plant-auth"
+
+[api]
+enabled = true
+port = 54321
+# Only the public schema (holds user_link + the sync-status RPC) is exposed.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.tls]
+enabled = false
+
+[db]
+port = 54322
+shadow_port = 54320
+health_timeout = "2m"
+# Must match the remote database major version (run `SHOW server_version;` on the
+# remote if `supabase db push` complains about a mismatch).
+major_version = 17
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+# Not used by the auth mirror — disabled to shrink the local stack.
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+# No file storage in the auth mirror.
+enabled = false
+
+[auth]
+enabled = true
+# Public URL of the PWA that Supabase auth issues redirects for. Update to the
+# real GitHub Pages / hub URL before `supabase db push`.
+site_url = "https://jacksongeneration.github.io"
+additional_redirect_urls = [
+  "https://dk-power.github.io",
+  "https://jacksongeneration.github.io",
+  "http://localhost:4200",
+  "http://127.0.0.1:4200"
+]
+# GoTrue caps the access-token JWT at 604800s (7 days) — 30-day sessions are NOT
+# possible on the access token. We set the max and rely on refresh-token rotation
+# (below) for continuity: the PWA silently refreshes, so the effective session is
+# indefinite as long as the device reconnects within the refresh window.
+# See dual-auth.md → "JWT expiry" for why 30 days from the spec became 7 here.
+jwt_expiry = 604800
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# PWA-direct registration (hub-down fallback) needs signup enabled.
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+# Match the hub's password policy (AuthController enforces >= 8 chars).
+minimum_password_length = 8
+password_requirements = ""
+
+[auth.rate_limit]
+email_sent = 2
+sms_sent = 30
+anonymous_users = 30
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+web3 = 30
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# No email server is wired up — the plant uses admin approval, not email
+# confirmation. Users can sign in immediately after Supabase-direct signup;
+# the hub still gates real access via isActive (admin approval).
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+template = "Your code is {{ .Code }}"
+max_frequency = "5s"
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = false
+verify_enabled = false
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+otp_length = 6
+template = "Your code is {{ .Code }}"
+max_frequency = "5s"
+
+# ── Edge Functions ──────────────────────────────────────────────────────────
+# verify-jwt is called server-to-server by Power Automate flows (no user JWT of
+# its own), so GoTrue must NOT gate it. Deploy with:
+#   supabase functions deploy verify-jwt --no-verify-jwt
+[functions.verify-jwt]
+verify_jwt = false
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+inspector_port = 8083
+deno_version = 2
+
+[analytics]
+enabled = false
+port = 54327
+backend = "postgres"

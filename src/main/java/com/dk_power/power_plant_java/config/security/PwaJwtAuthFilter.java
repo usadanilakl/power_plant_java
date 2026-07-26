@@ -29,6 +29,7 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepo userRepo;
     private final ObjectMapper objectMapper;
+    private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
 
     private static final Set<String> SECURED_PREFIXES = Set.of(
             "/api/pwa/secured/",
@@ -53,15 +54,26 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         try {
+            // validateToken reads iss and verifies with the matching key (hub RS256 or Supabase).
             var claims = jwtService.validateToken(token);
-            String email = claims.getSubject();
+            String email = jwtService.extractEmail(claims);
+            boolean hubIssued = jwtService.isHubIssued(claims);
 
             User user = userRepo.findFirstByEmailOrderByIdAsc(email);
             if (user == null) {
-                sendError(response, 401, "USER_NOT_FOUND", "User no longer exists");
-                return;
+                if (!hubIssued) {
+                    // Supabase-only user whose hub row doesn't exist yet: auto-provision it on this
+                    // request (inactive, pending admin approval). The isActive gate below then returns
+                    // 403 so the user knows they still need approval.
+                    user = syncAtLoginService.provisionHubUserFromSupabase(email, null, null);
+                    log.info("[PWA JWT] Auto-provisioned hub row for Supabase user {}", email);
+                } else {
+                    sendError(response, 401, "USER_NOT_FOUND", "User no longer exists");
+                    return;
+                }
             }
 
+            // isActive is a hub-authoritative field — enforced regardless of which store signed the token.
             if (!Boolean.TRUE.equals(user.getIsActive())) {
                 sendError(response, 403, "ACCOUNT_INACTIVE", "Account not yet approved by administrator");
                 return;

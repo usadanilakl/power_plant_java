@@ -29,6 +29,8 @@ public class PwaAuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepo userRepo;
+    private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
+    private final com.dk_power.power_plant_java.sevice.auth.SupabaseAdminClient supabaseAdminClient;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -52,6 +54,9 @@ public class PwaAuthController {
 
             // Update last login
             userRepo.updateLastLoginById(LocalDateTime.now(), user.getId());
+
+            // Dual-authority sync-at-login: reconcile Supabase with the just-verified plaintext (async).
+            syncAtLoginService.reconcileAfterHubLoginAsync(user.getId(), req.password());
 
             String token = jwtService.generateToken(user);
             log.info("[PWA Auth] Login successful: {}", user.getEmail());
@@ -143,7 +148,38 @@ public class PwaAuthController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Dual-authority convergence endpoint. Called by the PWA after it logged in via the Supabase
+     * fallback (hub was down / rejected a stale password) and the hub is now reachable. The hub
+     * independently verifies the email+password against Supabase (a password grant — proving
+     * KNOWLEDGE of the password, not mere possession of a stealable bearer token) before using the
+     * plaintext to converge the hub side (LWW): overwrite the hub password when Supabase's is newer,
+     * or auto-provision a hub row for a Supabase-only user.
+     */
+    @PostMapping("/reconcile")
+    public ResponseEntity<?> reconcile(@RequestBody ReconcileRequest req) {
+        if (req.email() == null || req.email().isBlank()
+                || req.password() == null || req.password().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "MISSING_FIELDS"));
+        }
+        String email = req.email().trim();
+        // Gate on password knowledge, verified against Supabase itself — NOT on a bearer token.
+        if (!supabaseAdminClient.verifyPassword(email, req.password())) {
+            return ResponseEntity.status(401).body(Map.of(
+                    "error", "SUPABASE_VERIFY_FAILED",
+                    "message", "Supabase could not verify these credentials"));
+        }
+
+        var result = syncAtLoginService.reconcileAfterSupabaseLogin(email, req.password());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("reconciled", result.hubPasswordUpdated() || result.hubUserProvisioned());
+        body.put("provisioned", result.hubUserProvisioned());
+        body.put("message", result.message());
+        return ResponseEntity.ok(body);
+    }
+
     public record LoginRequest(String email, String password) {}
     public record RefreshRequest(String token) {}
     public record LookupRequest(String credential) {}
+    public record ReconcileRequest(String email, String password) {}
 }

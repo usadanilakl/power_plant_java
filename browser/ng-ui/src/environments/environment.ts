@@ -2,6 +2,16 @@ export const environment = {
   production: false,
   // serverUrl: 'http://192.168.12.146:8085',
   serverUrl: 'http://localhost:8085',
+  // Supabase secondary auth authority. Leave blank to run hub-only (no fallback).
+  // Fill from Dashboard → Project Settings → API. anonKey is public (safe in the bundle).
+  supabase: {
+    url: 'https://xvrtgccxtsjjwznqkznv.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2cnRnY2N4dHNqand6bnFrem52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NjY2NzUsImV4cCI6MjA3NTU0MjY3NX0.NHdnsZll17e88i8pDSj1N2CLx4kCKzV8TfA0jKaaaGM',
+  },
+  // Optional PA "auth gateway": when set, ALL Power Automate submissions go through this single
+  // JWT-verifying flow instead of directly to paFlowUrls, so the real flow URLs can leave this bundle.
+  // Blank = current behavior (direct to paFlowUrls). See project/architecture/supabase/pa-gateway.md.
+  paGatewayUrl: '',
   powerAutomateUrl: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms',
   paFlowUrls: {
     workRequest: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0b5c62d6db654dffb887e4f6b81f1cf3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=UG09p5mlwthFNeQ_tndR4esVZctOfH0WHrIhYyl_lRM',

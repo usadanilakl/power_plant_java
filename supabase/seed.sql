@@ -1,0 +1,2 @@
+-- No seed data for the auth mirror. Real users are provisioned by the hub
+-- (bulk-provisioning job + sync-at-login). See README.md.
