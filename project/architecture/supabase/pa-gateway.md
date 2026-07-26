@@ -117,21 +117,66 @@ which by default aborts the run before this Condition. So:
 
 ### 4. Switch — on `@{triggerBody()?['target']}`
 
-Add one **Case** per target you want the gateway to front. For each case add an **HTTP** action that
-POSTs to that target flow's SAS URL:
+Add one **Case** per target. Every case's HTTP action is identical **except the URI**:
 
 - Method: **POST**
-- URI: copy the matching value from `browser/ng-ui/src/environments/environment.ts` → `paFlowUrls`
-  (these are the real `…cb.environment.api.powerplatform.com…&sig=…` URLs; the qualifications one has an
-  extra `/cu/18/` segment — keep it verbatim). **Do not** put these URLs anywhere client-visible again.
 - Headers: `Content-Type` = `application/json`
 - **Body — pass the object, not a string.** In the Body field use the **expression**
   `triggerBody()?['payload']` (add via *fx*), **not** `@{triggerBody()?['payload']}` in the text box —
   the `@{…}` string form would send the payload as a quoted JSON *string* and the target flow can't read
   its fields.
+- **URI** — the target flow's SAS URL, per the case below.
 
-**Cases to build now** (have a real target URL *and* actually flow through `submitV2`):
-`workRequest`, `jha`, `fieldList`, `inventory`, `sds`, `qualifications`.
+#### Cases to build now (Switch case value → HTTP action URI)
+
+These 6 targets flow through `submitV2` **and** have a real target URL.
+
+**Case `workRequest`:**
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0b5c62d6db654dffb887e4f6b81f1cf3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=UG09p5mlwthFNeQ_tndR4esVZctOfH0WHrIhYyl_lRM
+```
+
+**Case `jha`:**
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f5fd7de804c1461e82a22c274a4f4dac/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=M6uJ_xAu7gvpHYzxqmRRJvKZHpQvGNlMOY4jBY3O8kc
+```
+
+**Case `fieldList`:**
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e0bad99434cc416eb14e7f1e6049b18f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lpx4Wm2gB8rap8XYk3MwAD97LaZg52oTuDKjwHoEw5k
+```
+
+**Case `inventory`:**
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms
+```
+
+**Case `sds`:**
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/609426ab3c174235af5ade023ffee19c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=vzhAO-xxW7xXdWZ0CuolI5zRNzcUKV0uSXd9Rjn8dZU
+```
+
+**Case `qualifications`:** (note the extra `/cu/18/` segment — keep it verbatim)
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/18/workflows/fa8c206fc2d14bb49ee427ddceb4761e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Kcgp5jGtyk9ov8pee-Y96x9WfvHytldvg8QDKYQOO4w
+```
+
+> **These are SAS `sig=` secrets.** They already live in the repo (`environment.ts`), so keeping a copy
+> here is no extra exposure for a private repo — but the *authoritative* copy after cutover (Part C) is
+> inside the gateway flow. If you regenerate a flow's trigger URL, update it in the gateway flow **and**
+> here. These are the current values as of 2026-07-26.
+
+#### Cases you can't wire yet (documented for completeness)
+
+- **`instrumentLog`** — a URL exists, but the PWA sends it via the legacy V1 `submitForm`
+  (`tryPaInstrumentLog`), so it never reaches the gateway. Route it through `submitV2` first, then add:
+  ```
+  https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4
+  ```
+- **`instrument`** — flows through `submitV2` but has **no** target URL (blank in `paFlowUrls`). Nothing
+  to route to until a flow is created.
+- **`confinedSpace`** — blank URL; confined-space submissions use their own hard-coded flow in
+  `space-api.service.ts`, bypassing both `submitV2` and `paFlowUrls`.
 
 **Default case** → **Response** `400 { "success": false, "message": "Unknown target" }`.
 
