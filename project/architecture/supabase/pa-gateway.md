@@ -1,69 +1,197 @@
 # Power Automate auth gateway (centralized JWT verification)
 
 **Goal:** the PWA talks to **one** Power Automate flow (the *gateway*). The gateway verifies the user's
-JWT, then forwards the request to the real target flow (work-request, jha, …). The target flows stay
-URL-gated (SAS `sig=`), but their URLs live **only in the gateway**, never in the PWA bundle — so a
-leaked target URL is no longer possible, and every submission is tied to an authenticated user.
-
-This is the intended use of the [`verify-jwt`](../../../supabase/functions/verify-jwt/) edge function:
-it's the piece the gateway calls to check the token (works even when the hub is down, and accepts both
-hub- and Supabase-issued tokens).
+JWT (via the `verify-jwt` Supabase edge function), then forwards the request to the real target flow
+(work-request, jha, …). The target flow URLs live **only in the gateway** (server-side), never in the
+PWA bundle — so a leaked target URL is no longer possible, and every submission is tied to an
+authenticated user.
 
 ```
-PWA ──{target, token, payload}──▶ Gateway flow ──{token}──▶ verify-jwt edge fn ──▶ 200 {valid, claims}
-                                       │ valid?
-                                       └──{payload}──▶ target flow (work-request / jha / …) ──▶ SharePoint
+PWA ──{target, token, payload}──▶ Gateway flow ──{token}──▶ verify-jwt edge fn ──▶ 200 {valid, issuer, claims}
+                                       │ statusCode == 200 ?
+                                       │  yes └──Switch(target)──▶ target flow (payload) ──▶ SharePoint ──▶ Response
+                                       │  no  └──────────────────────────────────────────────▶ Response 401
 ```
 
-## Contract (already implemented on the PWA side)
+## Status — what is already done and verified
 
-`PowerAutomateService.submitV2()` posts to `environment.paGatewayUrl` when it's set, otherwise directly
-to `paFlowUrls[entityType]` as before (non-breaking — blank gateway = today's behavior). Gateway body:
+- The **PWA side is implemented**: `PowerAutomateService.submitV2()` posts `{ target, token, payload }`
+  to `environment.paGatewayUrl` when it is set, otherwise directly to `paFlowUrls[target]` (today's
+  behavior). Blank gateway URL = non-breaking. Token comes from `AuthService.getToken()`; with no token
+  it errors *"Sign in required to submit"*.
+- The **`verify-jwt` edge function is deployed and validated** on project `xvrtgccxtsjjwznqkznv`
+  (`manage.sh deploy`, with `--no-verify-jwt`). Secrets `HUB_JWT_PUBLIC_KEY` and `SB_JWT_SECRET` are set.
+  Live-tested `200 {valid:true}` for a hub RS256 token **and** a Supabase HS256 token.
+- **Not done yet (your part):** build the gateway flow in the Power Automate designer (below), then set
+  `environment.paGatewayUrl` and rebuild the PWA.
+
+## The request contract (this is what the gateway trigger receives)
+
+`submitV2` sends exactly this. `payload` is the flat object each target flow already accepts today
+(same shape the backend's `PaRequestDto` posts). **Note `payload` includes `id` and `entity`** — `id`
+is required for update/delete/getAttachments/changeStatus, `entity` routes multi-list flows (inventory
+`item`/`usage`, sds `chemical`/`audit`). Do not drop them.
+
+A **valid** JSON sample you can paste into the trigger's *"Use sample payload to generate schema"*
+(the old doc pasted `…` and `a | b | c` placeholders — that is not valid JSON and is why the designer
+rejected it):
 
 ```json
 {
-  "target":  "workRequest | jha | confinedSpace | instrumentLog | fieldList | inventory | sds | qualifications",
-  "token":   "<the user's JWT (hub- or Supabase-issued)>",
-  "payload": { "actionType": "create", "data": { … }, "attachments": [ … ] }
+  "target": "workRequest",
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwb3dlci1wbGFudC1odWIifQ.abc",
+  "payload": {
+    "actionType": "create",
+    "entity": "",
+    "id": "",
+    "data": { "Title": "Sample", "WorkScope": "Sample scope" },
+    "attachments": [ { "fileName": "a.pdf", "contentType": "application/pdf", "base64Content": "AAAA" } ]
+  }
 }
 ```
 
-Gateway response = the target flow's response (`{ success, id?, data?, message? }`), passed straight
-back.
+Gateway response = the target flow's response, passed straight back:
+`{ "success": true, "id": "123", "data": [ … ], "message": "" }` (`data` is an **array** of objects).
 
-## Build the gateway flow (Power Automate designer)
+---
 
-1. **Trigger:** *When an HTTP request is received* → gives you the gateway URL (put this in
-   `environment.paGatewayUrl`). Set the request-body JSON schema to the contract above.
-2. **Verify the token** — *HTTP* action:
-   - Method `POST`, URI `https://<ref>.supabase.co/functions/v1/verify-jwt`
-   - Header `Content-Type: application/json`
-   - Body `{ "token": @{triggerBody()?['token']} }`
-3. **Condition:** `@equals(body('Verify_the_token')?['valid'], true)`
-   - *If no* → **Response** `401` `{ "success": false, "message": "Unauthorized" }`. Stop.
-   - *(optional)* also check claims, e.g. require a role:
-     `@contains(string(body('Verify_the_token')?['claims']?['roles']), 'ROLE_PLANT')`.
-4. **If yes → Switch** on `@{triggerBody()?['target']}`. One case per entity type; each case is an
-   *HTTP* `POST` to that target flow's SAS URL with body `@{triggerBody()?['payload']}`.
-   - Store the target URLs as **environment variables** / secure inputs in the flow — **not** anywhere
-     client-visible.
-5. **Response:** return the target HTTP action's `@{body('...')}` and status code.
+## Part A — build the gateway flow (Power Automate designer)
 
-## Cutover (after the gateway works)
+### 1. Trigger — *When an HTTP request is received*
 
-1. Set `environment.paGatewayUrl` (dev + prod) to the gateway trigger URL and rebuild the PWA.
-2. Confirm submissions succeed end-to-end (they now carry the JWT and route through the gateway).
-3. **Remove the target URLs from the bundle**: blank out `paFlowUrls` in `environment*.ts` (the
-   gateway holds them now). This is the security payoff — the client no longer ships any target URL.
-4. Deploy the edge function if you haven't: `manage.sh deploy` + `manage.sh secret-hub-key`.
+- Method: **POST**.
+- **Request Body JSON Schema**: click *Use sample payload to generate schema* and paste the **valid**
+  sample above. (Saving the flow reveals the trigger URL → this becomes `environment.paGatewayUrl`.)
 
-## Caveats
+### 2. HTTP action — name it exactly **`Verify the token`**
 
-- **Submissions now require a signed-in user.** `submitV2` returns *"Sign in required to submit"* when
-  there's no token. If any flow today accepts **anonymous** submissions (e.g. a contractor work request
-  with no PWA account), either keep that one direct (leave its `paFlowUrls` entry and don't route it),
-  or have the gateway allow a tokenless path for that specific `target`.
-- **Two hops** (PWA → gateway → target) adds minor latency; fine for form submissions.
-- The gateway URL itself is in the bundle, but that's safe: it's useless without a valid JWT.
-- Other direct `paFlowUrls` callers (feature api services) should also go through `submitV2` to be fully
-  centralized; audit `grep -r paFlowUrls browser/ng-ui/src` before blanking the URLs.
+(The name matters: expressions below reference `outputs('Verify_the_token')`, i.e. the name with spaces
+turned into underscores. If you name it differently, adjust the expressions.)
+
+- Method: **POST**
+- URI (real value — the old doc left `<ref>` unresolved, which the designer rejects):
+  ```
+  https://xvrtgccxtsjjwznqkznv.supabase.co/functions/v1/verify-jwt
+  ```
+- Headers: `Content-Type` = `application/json`
+  - The function was deployed with `--no-verify-jwt`, so **no apikey is required**. If you ever
+    redeploy it *without* that flag, add header `apikey` = the Supabase **anon** key (public), otherwise
+    Supabase's gateway returns `401 Missing authorization header`.
+- Body (valid JSON — the expression **must be quoted**; the old doc left it unquoted):
+  ```json
+  { "token": "@{triggerBody()?['token']}" }
+  ```
+
+### 3. Condition — **`Token valid?`**  ⚠ set *Configure run after*
+
+`verify-jwt` returns **401/400 on an invalid token**, and PA treats a non-2xx HTTP action as *failed*,
+which by default aborts the run before this Condition. So:
+
+1. On the **Condition** step → **⋯ → Configure run after** → tick **both** *"is successful"* **and**
+   *"has failed"*. (Now the Condition runs whether the token was accepted or rejected.)
+2. Condition expression (Edit in advanced mode):
+   ```
+   @equals(outputs('Verify_the_token')?['statusCode'], 200)
+   ```
+   `statusCode == 200` already means `valid:true` (the function only returns 200 when the token is
+   genuine and unexpired), so you don't also need to test `body(...)?['valid']`.
+
+   *Optional role gate* — plant-only submissions. Roles live in **different** claims per issuer (hub:
+   top-level `roles`; Supabase: `user_metadata.roles`), so you must OR both. Wrap the condition as:
+   ```
+   @and(
+     equals(outputs('Verify_the_token')?['statusCode'], 200),
+     or(
+       contains(string(body('Verify_the_token')?['claims']?['roles']), 'ROLE_PLANT'),
+       contains(string(body('Verify_the_token')?['claims']?['user_metadata']?['roles']), 'ROLE_PLANT')
+     )
+   )
+   ```
+   (`roles` is a JSON array in both; `string()` + `contains` is a loose substring match — fine here.
+   There is **no** `authorities` claim, and Supabase's top-level `role` is `"authenticated"`, not an app
+   role — don't use those.)
+
+- **If no** → **Response** action: Status Code `401`, Body
+  `{ "success": false, "message": "Unauthorized" }`. Stop.
+- **If yes** → continue to the Switch (step 4).
+
+### 4. Switch — on `@{triggerBody()?['target']}`
+
+Add one **Case** per target you want the gateway to front. For each case add an **HTTP** action that
+POSTs to that target flow's SAS URL:
+
+- Method: **POST**
+- URI: copy the matching value from `browser/ng-ui/src/environments/environment.ts` → `paFlowUrls`
+  (these are the real `…cb.environment.api.powerplatform.com…&sig=…` URLs; the qualifications one has an
+  extra `/cu/18/` segment — keep it verbatim). **Do not** put these URLs anywhere client-visible again.
+- Headers: `Content-Type` = `application/json`
+- **Body — pass the object, not a string.** In the Body field use the **expression**
+  `triggerBody()?['payload']` (add via *fx*), **not** `@{triggerBody()?['payload']}` in the text box —
+  the `@{…}` string form would send the payload as a quoted JSON *string* and the target flow can't read
+  its fields.
+
+**Cases to build now** (have a real target URL *and* actually flow through `submitV2`):
+`workRequest`, `jha`, `fieldList`, `inventory`, `sds`, `qualifications`.
+
+**Default case** → **Response** `400 { "success": false, "message": "Unknown target" }`.
+
+### 5. Response — return the target flow's result
+
+After each target HTTP action (or once, shared via the Switch's after-branch), add a **Response**:
+
+- Status Code: `@{outputs('HTTP_<caseName>')?['statusCode']}` (or just `200`)
+- Body: expression `body('HTTP_<caseName>')` (the target flow's `{success,id,data,message}` passed
+  through unchanged).
+
+> Tip: if wiring a Response inside every case is tedious, have each case set a variable to the target
+> action name / body and put a single Response after the Switch — but the per-case Response is simplest
+> to get right first.
+
+---
+
+## Part B — gotchas the old guide missed
+
+- **4xx short-circuit** (step 3) — the single most common reason a gateway "does nothing" on bad
+  tokens. Must use *Configure run after* + `statusCode` check.
+- **Payload must be forwarded as an object** (step 4) — `@{…}` stringifies it; use the raw expression.
+- **`payload` carries `id` and `entity`** — the trigger schema must keep them (use the sample above).
+- **Role claim asymmetry** — hub vs Supabase store roles in different places (step 3 optional gate).
+- **Target coverage** — these still **bypass `submitV2`** today, so the gateway won't cover them until
+  the PWA is refactored to route them through `submitV2`:
+  - `instrumentLog` — sent via the legacy `submitForm` (V1) path (`tryPaInstrumentLog`).
+  - confined space — `space-api.service.ts` posts to its own hard-coded flow URL.
+  - `instrument` — goes through `submitV2` but has **no** `paFlowUrls` entry (blank), so there's no
+    target URL to route to yet.
+  Leave those on their current direct path for now (don't blank their URLs in step "cutover 3").
+- **Attachments** travel as inline base64 inside `payload`; the extra hop doubles the transfer. Large
+  files may hit PA/HTTP size limits — fine for typical form attachments.
+
+## Part C — cutover (after the flow works)
+
+1. Set `environment.paGatewayUrl` (and `environment.prod.ts`) to the gateway trigger URL from step 1;
+   rebuild the PWA (`npx ng build --configuration production`).
+2. Submit one of each wired type end-to-end; confirm it lands in SharePoint and the PWA gets `success`.
+3. **Blank the wired target URLs in the bundle** — set `paFlowUrls.workRequest/jha/fieldList/inventory/
+   sds/qualifications` to `''` in both `environment*.ts` and rebuild. This is the security payoff: the
+   client no longer ships those SAS URLs. (Leave `instrumentLog` and any still-bypassing entry until
+   they're routed through `submitV2`.)
+4. Redeploy the PWA to GitHub Pages.
+
+## Appendix — verify-jwt ops (already done; here to re-run / rotate)
+
+```bash
+project/architecture/supabase/manage.sh deploy          # deploy verify-jwt --no-verify-jwt
+project/architecture/supabase/manage.sh secret-hub-key  # HUB_JWT_PUBLIC_KEY (single-line) <- data/jwt-public.pem
+project/architecture/supabase/manage.sh secret-sb-jwt   # SB_JWT_SECRET <- supabase.jwt.secret
+```
+
+Smoke-test the deployed function (expects `200 {valid:true}` / `401 {valid:false,...}`):
+
+```bash
+curl -sS -X POST https://xvrtgccxtsjjwznqkznv.supabase.co/functions/v1/verify-jwt \
+  -H "Content-Type: application/json" -d '{"token":"<a real hub- or supabase-issued jwt>"}'
+```
+
+See `supabase/functions/verify-jwt/README.md` for the function contract and the
+`HUB_JWT_PUBLIC_KEY` single-line requirement (a multi-line PEM gets truncated by the CLI and yields
+`401 {reason:"verification error"}` on hub tokens).

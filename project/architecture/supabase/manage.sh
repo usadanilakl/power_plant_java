@@ -19,6 +19,7 @@
 #   diff [name]           diff remote schema vs migrations (into a new migration if <name>)
 #   deploy                deploy the verify-jwt edge function (--no-verify-jwt)
 #   secret-hub-key        publish data/jwt-public.pem as the HUB_JWT_PUBLIC_KEY function secret
+#   secret-sb-jwt         publish supabase.jwt.secret (from application-secrets.properties) as SB_JWT_SECRET
 #   start | stop          run/stop the local Supabase stack (Docker)
 #   reset                 reset the LOCAL db and re-run migrations (DESTRUCTIVE, local only)
 #   raw ...               pass args straight through to `supabase`
@@ -32,6 +33,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SUPA_DIR="$ROOT/supabase"
 PUB_KEY="$ROOT/data/jwt-public.pem"
+SECRETS_FILE="$ROOT/src/main/resources/application-secrets.properties"
 
 # Prefer an installed CLI; otherwise fall back to `npx supabase` (auto-downloads on first use).
 if command -v supabase >/dev/null 2>&1; then
@@ -63,7 +65,17 @@ case "$cmd" in
   deploy)  sb functions deploy verify-jwt --no-verify-jwt ;;
   secret-hub-key)
            [ -f "$PUB_KEY" ] || { echo "ERROR: $PUB_KEY not found — generate the hub keypair first."; exit 2; }
-           sb secrets set HUB_JWT_PUBLIC_KEY="$(cat "$PUB_KEY")" ;;
+           # Flatten the PEM to a SINGLE-LINE base64 body (strip -----BEGIN/END----- + all newlines).
+           # Multi-line secret values get mangled/truncated by the CLI; the edge fn's importRsaPublicKey
+           # strips headers+whitespace, so a header-less one-line base64 imports cleanly.
+           sb secrets set HUB_JWT_PUBLIC_KEY="$(grep -v -- '-----' "$PUB_KEY" | tr -d '\r\n')" ;;
+  secret-sb-jwt)
+           # The edge fn verifies Supabase HS256 tokens with the project JWT secret. Supabase does NOT
+           # auto-inject it and blocks SUPABASE_*-named secrets, so we publish it as SB_JWT_SECRET.
+           [ -f "$SECRETS_FILE" ] || { echo "ERROR: $SECRETS_FILE not found."; exit 2; }
+           SB_SECRET="$(grep -E '^supabase\.jwt\.secret=' "$SECRETS_FILE" | head -n1 | cut -d= -f2-)"
+           [ -n "$SB_SECRET" ] || { echo "ERROR: supabase.jwt.secret not found in $SECRETS_FILE"; exit 2; }
+           sb secrets set SB_JWT_SECRET="$SB_SECRET" ;;
   start)   sb start ;;
   stop)    sb stop ;;
   reset)   sb db reset ;;

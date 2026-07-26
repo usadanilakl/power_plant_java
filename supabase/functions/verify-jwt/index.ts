@@ -15,14 +15,18 @@
 //
 // Secrets:
 //   HUB_JWT_PUBLIC_KEY   – the hub's RS256 public key, PEM (-----BEGIN PUBLIC KEY-----). Set with:
-//                            supabase secrets set HUB_JWT_PUBLIC_KEY="$(cat data/jwt-public.pem)"
-//   SUPABASE_JWT_SECRET  – injected automatically by the platform (the project JWT secret).
+//                            manage.sh secret-hub-key   (supabase secrets set HUB_JWT_PUBLIC_KEY=…)
+//   SB_JWT_SECRET        – the project's HS256 JWT secret (Settings → API → JWT Settings). Set with:
+//                            manage.sh secret-sb-jwt    (supabase secrets set SB_JWT_SECRET=…)
+//                          NB: the platform does NOT auto-inject the JWT secret, and it REJECTS any
+//                          custom secret whose name starts with "SUPABASE_" — so we use SB_JWT_SECRET.
 // Optional:
 //   HUB_JWT_ISSUER       – defaults to "power-plant-hub".
 
 const HUB_ISSUER = Deno.env.get('HUB_JWT_ISSUER') ?? 'power-plant-hub';
 const HUB_PUBLIC_KEY_PEM = Deno.env.get('HUB_JWT_PUBLIC_KEY') ?? '';
-const SUPABASE_JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET') ?? '';
+// SB_JWT_SECRET is the one we set; fall back to SUPABASE_JWT_SECRET in case a future runtime exposes it.
+const SUPABASE_JWT_SECRET = Deno.env.get('SB_JWT_SECRET') ?? Deno.env.get('SUPABASE_JWT_SECRET') ?? '';
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',

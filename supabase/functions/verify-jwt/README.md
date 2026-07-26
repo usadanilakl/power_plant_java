@@ -28,25 +28,41 @@ The function reads the `iss` claim to choose the key:
 | `iss` | Verified with | Source |
 |-------|---------------|--------|
 | `power-plant-hub` | Hub RS256 **public** key | secret `HUB_JWT_PUBLIC_KEY` |
-| `…supabase.co…` / `…/auth/v1` | Supabase HS256 secret | env `SUPABASE_JWT_SECRET` (auto-injected) |
+| `…supabase.co…` / `…/auth/v1` / `supabase` | Supabase HS256 secret | secret `SB_JWT_SECRET` |
+
+> **The Supabase JWT secret is NOT auto-injected.** The platform never exposes the project JWT secret
+> to functions, and it *rejects* any custom secret whose name starts with `SUPABASE_`. So we set it
+> under `SB_JWT_SECRET` (the code falls back to `SUPABASE_JWT_SECRET` if a future runtime ever provides
+> it). Without it, Supabase-issued tokens return `401 {reason:"supabase secret not configured"}`.
 
 ## Secrets
 
-```bash
-# Hub public key (never the private one). After the hub has generated data/jwt-public.pem:
-supabase secrets set HUB_JWT_PUBLIC_KEY="$(cat ../../data/jwt-public.pem)"
+Use the wrapper (handles the single-line flattening + reads the value from the secrets file):
 
-# SUPABASE_JWT_SECRET is injected by the platform — nothing to set.
-# Optional: override the hub issuer string (defaults to power-plant-hub).
-supabase secrets set HUB_JWT_ISSUER="power-plant-hub"
+```bash
+project/architecture/supabase/manage.sh secret-hub-key   # HUB_JWT_PUBLIC_KEY  <- data/jwt-public.pem
+project/architecture/supabase/manage.sh secret-sb-jwt    # SB_JWT_SECRET       <- supabase.jwt.secret
+```
+
+Raw equivalents (note: `HUB_JWT_PUBLIC_KEY` must be a **single line** — a multi-line PEM gets
+truncated by the CLI, which yields `401 {reason:"verification error"}` on hub tokens):
+
+```bash
+supabase secrets set HUB_JWT_PUBLIC_KEY="$(grep -v -- '-----' data/jwt-public.pem | tr -d '\r\n')"
+supabase secrets set SB_JWT_SECRET="<project JWT secret from Settings → API → JWT Settings>"
+supabase secrets set HUB_JWT_ISSUER="power-plant-hub"   # optional; this is the default
 ```
 
 ## Deploy
 
 ```bash
+project/architecture/supabase/manage.sh deploy
+# = supabase functions deploy verify-jwt --no-verify-jwt
 # --no-verify-jwt: PA calls this server-to-server without a user token, so GoTrue must not gate it.
-supabase functions deploy verify-jwt --no-verify-jwt
 ```
+
+**Status:** deployed to project `xvrtgccxtsjjwznqkznv` and validated live for all three token kinds
+(real anon key, a minted Supabase user token, and a minted hub RS256 token — all `200 {valid:true}`).
 
 ## Power Automate usage
 
@@ -57,8 +73,13 @@ Add an **HTTP** action:
 - Headers: `Content-Type: application/json`
 - Body: `{ "token": "@{triggerBody()?['token']}" }`
 
-Then branch on `@{body('HTTP')?['valid']}`. CORS headers are returned so the function can also be
-called from a browser context if ever needed.
+**Branching gotcha:** this function returns a **non-2xx** status (400/401) whenever the token is
+invalid. Power Automate treats a non-2xx HTTP action as *failed* and stops the run, so a Condition
+placed after it never evaluates on a bad token unless you let it. Set the Condition's **Configure run
+after** to include both *is successful* and *has failed*, then gate on the status code:
+`@equals(outputs('Verify_the_token')?['statusCode'], 200)` (this already implies `valid:true`).
+CORS headers are returned so the function can also be called from a browser context if ever needed.
+See `project/architecture/supabase/pa-gateway.md` for the full gateway-flow build.
 
 ## Rotating the hub key
 
