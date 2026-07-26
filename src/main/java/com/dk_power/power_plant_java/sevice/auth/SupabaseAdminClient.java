@@ -358,6 +358,29 @@ public class SupabaseAdminClient {
                 .toBodilessEntity());
     }
 
+    // ── Reference-data failover snapshots ─────────────────────────────────────
+
+    /**
+     * Upserts a read-only reference dataset (LOTO points / work areas / locations) into
+     * public.reference_snapshot so the PWA can fall back to Supabase when the hub is down. Keyed by
+     * {@code key}; the whole dataset is stored as one jsonb payload. Service-role write (bypasses RLS).
+     */
+    public void upsertReferenceSnapshot(String key, Object payload, String contentHash) {
+        requireEnabled();
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("key", key);
+        row.put("payload", payload);
+        row.put("content_hash", contentHash);
+        row.put("updated_at", LocalDateTime.now(ZoneOffset.UTC).atOffset(ZoneOffset.UTC).toString());
+        withRetry(() -> client.post()
+                .uri("/rest/v1/reference_snapshot")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Prefer", "resolution=merge-duplicates,return=minimal") // upsert on primary key
+                .body(row)
+                .retrieve()
+                .toBodilessEntity());
+    }
+
     // ── Metadata mirror ──────────────────────────────────────────────────────
 
     /**

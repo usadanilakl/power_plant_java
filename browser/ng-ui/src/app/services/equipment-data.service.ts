@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ServerApiService } from './server-api.service';
+import { SupabaseDataService } from './supabase-data.service';
 
 export interface PwaLotoPointEntry {
   id: number;
@@ -27,6 +28,7 @@ export class EquipmentDataService {
 
   private http = inject(HttpClient);
   private serverApi = inject(ServerApiService);
+  private supabaseData = inject(SupabaseDataService);
 
   private lotoPoints = signal<PwaLotoPointEntry[]>([]);
   private workAreas = signal<PwaWorkAreaEntry[]>([]);
@@ -60,10 +62,10 @@ export class EquipmentDataService {
         }
       },
       error: () => {
-        // Only use fallbacks if we have no data yet
+        // Only use fallbacks if we have no data yet: Supabase (auth-gated) → static JSON → localStorage.
         if (this.lotoPoints().length === 0) {
-          this.loadFromFallback<PwaLotoPointEntry[]>('data/loto-points.json', 'pwa_loto_points',
-            points => this.lotoPoints.set(points));
+          this.loadWithSupabaseFallback<PwaLotoPointEntry[]>('loto_points',
+            'data/loto-points.json', 'pwa_loto_points', points => this.lotoPoints.set(points));
         }
       }
     });
@@ -84,8 +86,10 @@ export class EquipmentDataService {
       },
       error: () => {
         if (this.workAreas().length === 0) {
-          this.loadFromFallback<PwaWorkAreaEntry[]>('data/work-areas.json', 'pwa_work_areas_ext',
-            areas => this.workAreas.set(areas));
+          // Supabase stores the raw hub shape, so map it to PwaWorkAreaEntry (as the live path does).
+          this.loadWithSupabaseFallback<PwaWorkAreaEntry[]>('work_areas',
+            'data/work-areas.json', 'pwa_work_areas_ext', areas => this.workAreas.set(areas),
+            raw => raw.map(a => ({ id: a.id, name: a.name, locationIds: a.locationIds || [] })));
         }
       }
     });
@@ -101,10 +105,33 @@ export class EquipmentDataService {
       },
       error: () => {
         if (this.locations().length === 0) {
-          this.loadFromFallback<PwaLocationEntry[]>('data/locations.json', 'pwa_locations',
-            locations => this.locations.set(locations));
+          this.loadWithSupabaseFallback<PwaLocationEntry[]>('locations',
+            'data/locations.json', 'pwa_locations', locations => this.locations.set(locations));
         }
       }
+    });
+  }
+
+  /**
+   * Failover chain when the hub is unreachable: Supabase (auth-gated, fresh) → static JSON → localStorage.
+   * `mapFn` adapts the raw Supabase payload to the entry shape (needed only for work areas).
+   */
+  private loadWithSupabaseFallback<T>(
+    key: string, jsonPath: string, cacheKey: string,
+    setter: (data: T) => void, mapFn?: (raw: any[]) => T,
+  ): void {
+    const toStatic = () => this.loadFromFallback<T>(jsonPath, cacheKey, setter);
+    this.supabaseData.getSnapshot(key).subscribe({
+      next: raw => {
+        if (raw && raw.length) {
+          const data = mapFn ? mapFn(raw) : (raw as unknown as T);
+          setter(data);
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } else {
+          toStatic();
+        }
+      },
+      error: toStatic,
     });
   }
 

@@ -6,14 +6,12 @@ import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaFieldListItemService;
+import com.dk_power.power_plant_java.sevice.pwa.PwaReferenceDataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
-
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +24,7 @@ public class PwaFieldListItemController {
 
     private final PwaFieldListItemService pwaService;
     private final NgValueService valueService;
-    private final LotoPointRepo lotoPointRepo;
+    private final PwaReferenceDataService referenceDataService;
 
     @PostMapping("/submit")
     public ResponseEntity<NgApiResponse<PwaSubmissionResult>> submit(
@@ -89,19 +87,7 @@ public class PwaFieldListItemController {
     @GetMapping("/loto-points")
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getLotoPoints() {
         try {
-            List<Map<String, Object>> points = lotoPointRepo.findAll().stream()
-                    .map(lp -> {
-                        Map<String, Object> map = new LinkedHashMap<>();
-                        map.put("id", lp.getId());
-                        map.put("tagNumber", lp.getTagNumber() != null ? lp.getTagNumber() : "");
-                        map.put("description", lp.getDescription() != null ? lp.getDescription() : "");
-                        map.put("specificLocation", lp.getSpecificLocation() != null ? lp.getSpecificLocation() : "");
-                        map.put("eqType", lp.getEqType() != null ? lp.getEqType().getName() : "");
-                        map.put("locationId", lp.getLocation() != null ? lp.getLocation().getId() : null);
-                        return map;
-                    })
-                    .toList();
-            return ResponseEntity.ok(new NgApiResponse<>(points, "Loto points retrieved"));
+            return ResponseEntity.ok(new NgApiResponse<>(referenceDataService.getLotoPoints(), "Loto points retrieved"));
         } catch (Exception e) {
             return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed to get loto points"));
         }
@@ -110,11 +96,7 @@ public class PwaFieldListItemController {
     @GetMapping("/locations")
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getLocations() {
         try {
-            List<Map<String, Object>> locations = valueService.getValuesByCategory("Location")
-                    .stream()
-                    .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName()))
-                    .toList();
-            return ResponseEntity.ok(new NgApiResponse<>(locations, "Locations retrieved"));
+            return ResponseEntity.ok(new NgApiResponse<>(referenceDataService.getLocations(), "Locations retrieved"));
         } catch (Exception e) {
             return ResponseEntity.ok(new NgApiResponse<>(List.of(), "No locations found"));
         }

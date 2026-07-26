@@ -34,6 +34,7 @@ public class PwaWorkRequestController {
     private final ObjectMapper objectMapper;
     private final NgValueService valueService;
     private final WorkAreaRepo workAreaRepo;
+    private final com.dk_power.power_plant_java.sevice.pwa.PwaReferenceDataService referenceDataService;
     private final NgWorkAreaService workAreaService;
 
     @PostMapping("/submit")
@@ -162,36 +163,10 @@ public class PwaWorkRequestController {
     @GetMapping("/work-areas")
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getWorkAreas() {
         try {
-            List<Map<String, Object>> areas = workAreaRepo.findAllWithLocations().stream()
-                    .map(wa -> {
-                        Map<String, Object> map = new java.util.HashMap<>();
-                        map.put("id", wa.getId());
-                        map.put("name", wa.getName() != null ? wa.getName() : "");
-                        map.put("description", wa.getDescription() != null ? wa.getDescription() : "");
-                        map.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
-                        map.put("locationIds", wa.getLocations() != null
-                                ? wa.getLocations().stream()
-                                    .map(v -> v.getId())
-                                    .toList()
-                                : java.util.List.of());
-                        return map;
-                    })
-                    .toList();
-            return ResponseEntity.ok(new NgApiResponse<>(areas, "Work areas retrieved"));
+            return ResponseEntity.ok(new NgApiResponse<>(referenceDataService.getWorkAreas(), "Work areas retrieved"));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Failed to get work areas: " + e.getMessage()));
-        }
-    }
-
-    private boolean hasConfinedSpaceHazards(com.dk_power.power_plant_java.entities.permits.WorkArea wa) {
-        try {
-            var h = wa.getConstantConfinedSpaceHazards();
-            return h.isOxygenDeficiency() || h.isFlammableGas() || h.isCombustibleDust()
-                    || h.isToxicGas() || h.isRotatingEquipment() || h.isElectricalShock()
-                    || h.isEntrapment() || h.isEngulfment() || h.isHeatStress() || h.isOther();
-        } catch (Exception e) {
-            return false;
         }
     }
 
@@ -208,7 +183,7 @@ public class PwaWorkRequestController {
             hazards.put("constantHazards", wa.getConstantHazards());
             hazards.put("constantHotWorkMeasures", wa.getConstantHotWorkMeasures());
             hazards.put("constantConfinedSpaceHazards", wa.getConstantConfinedSpaceHazards());
-            hazards.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
+            hazards.put("isConfinedSpace", referenceDataService.hasConfinedSpaceHazards(wa));
             return ResponseEntity.ok(new NgApiResponse<>(hazards, "Work area hazards retrieved"));
         } catch (Exception e) {
             log.error("[PWA] Failed to get hazards for work area {}: {}", id, e.getMessage(), e);
