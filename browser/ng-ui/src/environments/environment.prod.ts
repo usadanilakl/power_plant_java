@@ -10,7 +10,7 @@ export const environment = {
   // Optional PA "auth gateway": when set, ALL Power Automate submissions go through this single
   // JWT-verifying flow instead of directly to paFlowUrls, so the real flow URLs can leave this bundle.
   // Blank = current behavior (direct to paFlowUrls). See project/architecture/supabase/pa-gateway.md.
-  paGatewayUrl: '',
+  paGatewayUrl: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/09/workflows/af10c7ab37e14c74a7856e2cb91bb554/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=UN51rtymZs8JpY8lKXvvo-9Xx8XB0gwOtKSWXmVnGLo',
   powerAutomateUrl:
     'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms',
   paFlowUrls: {
