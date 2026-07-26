@@ -11,6 +11,7 @@ import { ReactiveFormComponent } from '../../shared/forms/reactive-form/reactive
 import { FormField } from '../../models/inputs/form-field.model';
 import { fieldListFormFields } from '../../models/field-list/field-list-item.model';
 import { Option } from '../../models/inputs/option.model';
+import { SupabaseDataService } from '../../services/supabase-data.service';
 
 type ViewMode = 'select' | 'new' | 'edit' | 'open-items';
 
@@ -340,6 +341,7 @@ export class FieldListComponent implements OnInit {
   private orchestrator = inject(SubmissionOrchestratorService);
   private userSetup = inject(UserSetupService);
   private globalMessage = inject(GlobalMessageService);
+  private supabaseData = inject(SupabaseDataService);
   private http = inject(HttpClient);
 
   mode = signal<ViewMode>('select');
@@ -395,19 +397,19 @@ export class FieldListComponent implements OnInit {
       ]);
     }
 
+    const apply = (types: { id: number; name: string }[]) => {
+      this.setListTypeOptions(types);
+      localStorage.setItem('pwa_field_list_types', JSON.stringify(types));
+    };
+
     this.serverApi.getFieldListTypes().subscribe({
-      next: types => {
-        this.setListTypeOptions(types);
-        localStorage.setItem('pwa_field_list_types', JSON.stringify(types));
-      },
+      next: apply,
       error: () => {
-        this.http.get<{ id: number; name: string }[]>('data/field-list-types.json').subscribe({
-          next: types => {
-            this.setListTypeOptions(types);
-            localStorage.setItem('pwa_field_list_types', JSON.stringify(types));
-          },
+        const fromStatic = () => this.http.get<{ id: number; name: string }[]>('data/field-list-types.json').subscribe({
+          next: apply,
           error: () => {}
         });
+        this.supabaseData.snapshotOrElse('field_list_types', apply, fromStatic);
       }
     });
   }

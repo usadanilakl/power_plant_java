@@ -10,6 +10,7 @@ import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/react
 import { UserSetupService } from '../../../services/user-setup.service';
 import { environment } from '../../../../environments/environment';
 import { ServerApiService } from '../../../services/server-api.service';
+import { SupabaseDataService } from '../../../services/supabase-data.service';
 
 @Component({
   selector: 'app-work-request-form',
@@ -24,6 +25,7 @@ export class WorkRequestFormComponent implements OnInit {
   orchestrator = inject(SubmissionOrchestratorService);
   userSetupService = inject(UserSetupService);
   serverApi = inject(ServerApiService);
+  supabaseData = inject(SupabaseDataService);
   http = inject(HttpClient);
   destroyRef = inject(DestroyRef);
 
@@ -61,27 +63,36 @@ export class WorkRequestFormComponent implements OnInit {
     this.loadDropdownOptions();
   }
 
+  // Offline cold-start fallback (no cache, hub down, no Supabase session). Names only — matches the
+  // in-code defaults field-list/inventory carry. Static data/work-categories.json is now empty ([]),
+  // the real list comes from the hub or the Supabase snapshot.
+  private static readonly DEFAULT_CATEGORIES = [
+    'Mechanical', 'Electrical', 'Insulation', 'Inspection', 'Rigging', 'Cleaning',
+    'Energized', 'I&C', 'Welding / Hot Work', 'Civil', 'Operations', 'Scaffolding'
+  ].map(name => ({ id: 0, name }));
+
   private loadDropdownOptions() {
     const cachedCategories = localStorage.getItem('pwa_work_categories');
     if (cachedCategories) {
       this.workCategoryOptions.set(JSON.parse(cachedCategories));
+    } else if (this.workCategoryOptions().length === 0) {
+      this.workCategoryOptions.set(this.toWorkCategoryOptions(WorkRequestFormComponent.DEFAULT_CATEGORIES));
     }
 
+    const apply = (categories: { id: number; name: string }[]) => {
+      const options = this.toWorkCategoryOptions(categories);
+      this.workCategoryOptions.set(options);
+      localStorage.setItem('pwa_work_categories', JSON.stringify(options));
+    };
+
     this.serverApi.getWorkCategories().subscribe({
-      next: categories => {
-        const options = this.toWorkCategoryOptions(categories);
-        this.workCategoryOptions.set(options);
-        localStorage.setItem('pwa_work_categories', JSON.stringify(options));
-      },
+      next: apply,
       error: () => {
-        this.http.get<{ id: number; name: string }[]>('data/work-categories.json').subscribe({
-          next: categories => {
-            const options = this.toWorkCategoryOptions(categories);
-            this.workCategoryOptions.set(options);
-            localStorage.setItem('pwa_work_categories', JSON.stringify(options));
-          },
-          error: () => console.warn('[PWA] Failed to load work categories from server and static json, using cached values')
+        const fromStatic = () => this.http.get<{ id: number; name: string }[]>('data/work-categories.json').subscribe({
+          next: apply,
+          error: () => console.warn('[PWA] Failed to load work categories from server, Supabase, and static json, using cached values')
         });
+        this.supabaseData.snapshotOrElse('work_categories', apply, fromStatic);
       }
     });
   }

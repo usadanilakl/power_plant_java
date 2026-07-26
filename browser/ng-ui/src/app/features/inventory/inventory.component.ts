@@ -15,6 +15,7 @@ import { inventoryFormFields, inventoryUsageFormFields } from '../../models/inve
 import { Option } from '../../models/inputs/option.model';
 import { BradyPrinterModalService } from '../../shared/brady-printer-manager/brady-printer-modal.service';
 import { NativePrintService } from '../../shared/native-print/native-print.service';
+import { SupabaseDataService } from '../../services/supabase-data.service';
 
 type ViewMode = 'select' | 'new' | 'edit' | 'scan-result' | 'list';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -540,6 +541,7 @@ export class InventoryComponent implements OnInit {
   private orchestrator = inject(SubmissionOrchestratorService);
   private userSetup = inject(UserSetupService);
   private http = inject(HttpClient);
+  private supabaseData = inject(SupabaseDataService);
   private route = inject(ActivatedRoute);
   qrScannerService = inject(QrScannerService);
   private bradyModal = inject(BradyPrinterModalService);
@@ -608,24 +610,22 @@ export class InventoryComponent implements OnInit {
         { id: 0, name: 'Test Equipment' }
       ]);
     }
+    const apply = (types: { id: number; name: string }[]) => {
+      if (types && types.length > 0) {
+        this.setTypeOptions(types);
+        localStorage.setItem('pwa_inventory_types', JSON.stringify(types));
+      }
+    };
+
     this.serverApi.getInventoryTypes().subscribe({
-      next: types => {
-        if (types && types.length > 0) {
-          this.setTypeOptions(types);
-          localStorage.setItem('pwa_inventory_types', JSON.stringify(types));
-        }
-      },
+      next: apply,
       error: () => {
-        // Server offline — fall back to static JSON published to GitHub Pages
-        this.http.get<{ id: number; name: string }[]>('data/inventory-types.json').subscribe({
-          next: types => {
-            if (types && types.length > 0) {
-              this.setTypeOptions(types);
-              localStorage.setItem('pwa_inventory_types', JSON.stringify(types));
-            }
-          },
+        // Server offline — try auth-gated Supabase, then static JSON, then cached/defaults
+        const fromStatic = () => this.http.get<{ id: number; name: string }[]>('data/inventory-types.json').subscribe({
+          next: apply,
           error: () => { /* already showing cached/default values */ }
         });
+        this.supabaseData.snapshotOrElse('inventory_types', apply, fromStatic);
       }
     });
   }

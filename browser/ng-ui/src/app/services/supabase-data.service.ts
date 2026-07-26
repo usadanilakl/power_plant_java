@@ -22,6 +22,18 @@ export class SupabaseDataService {
   private readonly url: string = (this.cfg.url ?? '').replace(/\/+$/, '');
   private readonly anonKey: string = this.cfg.anonKey ?? '';
 
+  /**
+   * Try the Supabase snapshot for a key; if it has rows, hand them to {@code useData}, otherwise run
+   * {@code fallback} (the caller's existing static-JSON/localStorage path). Convenience for wiring a
+   * Supabase failover read between a component's hub call and its static fallback.
+   */
+  snapshotOrElse(key: string, useData: (rows: any[]) => void, fallback: () => void): void {
+    this.getSnapshot(key).subscribe({
+      next: rows => (rows && rows.length ? useData(rows) : fallback()),
+      error: fallback,
+    });
+  }
+
   /** Returns the dataset array for a key ('loto_points' | 'work_areas' | 'locations'), or [] if unavailable. */
   getSnapshot(key: string): Observable<any[]> {
     const auth = this.authService.getAuthData();

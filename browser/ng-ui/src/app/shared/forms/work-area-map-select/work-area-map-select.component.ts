@@ -6,6 +6,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ServerApiService } from '../../../services/server-api.service';
+import { SupabaseDataService } from '../../../services/supabase-data.service';
 
 interface WorkAreaEntry {
   id: number;
@@ -64,6 +65,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
   private http = inject(HttpClient);
   private serverApi = inject(ServerApiService);
+  private supabaseData = inject(SupabaseDataService);
   private destroyRef = inject(DestroyRef);
   private ngZone = inject(NgZone);
   private elementRef = inject(ElementRef);
@@ -272,12 +274,13 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
         next(areas);
       },
       error: () => {
-        this.http.get<WorkAreaEntry[]>('data/work-areas.json')
+        const fromStatic = () => this.http.get<WorkAreaEntry[]>('data/work-areas.json')
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next,
             error: fail,
           });
+        this.supabaseData.snapshotOrElse('work_areas', rows => next(rows as WorkAreaEntry[]), fromStatic);
       }
     });
   }
@@ -288,12 +291,13 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
         next(shapes as ShapeEntry[]);
       },
       error: () => {
-        this.http.get<ShapeEntry[]>('data/work-area-shapes.json')
+        const fromStatic = () => this.http.get<ShapeEntry[]>('data/work-area-shapes.json')
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next,
             error: fail,
           });
+        this.supabaseData.snapshotOrElse('work_area_shapes', rows => next(rows as ShapeEntry[]), fromStatic);
       }
     });
   }

@@ -8,6 +8,7 @@ import { UserSetupService } from '../../services/user-setup.service';
 import { ReactiveFormComponent } from '../../shared/forms/reactive-form/reactive-form.component';
 import { FormField } from '../../models/inputs/form-field.model';
 import { sdsChemicalFormFields } from '../../models/sds/sds-chemical.model';
+import { SupabaseDataService } from '../../services/supabase-data.service';
 
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
@@ -193,6 +194,7 @@ export class SdsComponent implements OnInit {
   private orchestrator = inject(SubmissionOrchestratorService);
   private serverApi = inject(ServerApiService);
   private userSetup = inject(UserSetupService);
+  private supabaseData = inject(SupabaseDataService);
   private http = inject(HttpClient);
 
   private static readonly CACHE_KEY = 'pwa_sds_chemicals';
@@ -235,7 +237,7 @@ export class SdsComponent implements OnInit {
     }
   }
 
-  /** Three-tier load: hub → GitHub Pages snapshot (data/sds-chemicals.json) → localStorage cache. */
+  /** Four-tier load: hub → Supabase snapshot → static JSON (data/sds-chemicals.json) → localStorage cache. */
   private loadExisting(): void {
     this.existingLoading.set(true);
     this.existingError.set(false);
@@ -249,8 +251,23 @@ export class SdsComponent implements OnInit {
         try { localStorage.setItem(SdsComponent.CACHE_KEY, JSON.stringify(chemicals || [])); }
         catch { /* quota / private mode — ignore */ }
       },
-      error: () => this.loadFromSnapshot()
+      error: () => this.loadFromSupabase()
     });
+  }
+
+  private loadFromSupabase(): void {
+    this.supabaseData.snapshotOrElse(
+      'sds_chemicals',
+      (snapshot) => {
+        this.existing.set(this.toRows(snapshot));
+        this.existingSource.set('snapshot');
+        this.existingLoaded.set(true);
+        this.existingLoading.set(false);
+        try { localStorage.setItem(SdsComponent.CACHE_KEY, JSON.stringify(snapshot)); }
+        catch { /* ignore */ }
+      },
+      () => this.loadFromSnapshot()
+    );
   }
 
   private loadFromSnapshot(): void {
