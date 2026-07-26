@@ -400,8 +400,8 @@ export class SubmissionOrchestratorService {
       fileName: a.fileName, contentType: a.contentType, base64Content: a.base64Content
     }));
 
-    if (!this.powerAutomate.isV2Configured('instrumentLog')) {
-      console.warn('[Orchestrator] No PA route configured for instrumentLog, skipping to email.');
+    if (!this.powerAutomate.isV2Configured('instrument')) {
+      console.warn('[Orchestrator] No PA route configured for instrument log, skipping to email.');
       return this.tryServerEmail(
         this.generateInstrumentLogEmailContent(entry),
         dtoAttachments,
@@ -411,9 +411,10 @@ export class SubmissionOrchestratorService {
     }
 
     // Route through the gateway/submitV2 plumbing (JWT-verified, target URL hidden) but forward the
-    // SAME body the instrument-log flow already expects — { instrumentationLog, actionType, localUuid,
-    // attachments } — so the Power Automate flow needs no changes.
-    return this.powerAutomate.submitV2Raw('instrumentLog', {
+    // SAME body the instrument flow already expects — { instrumentationLog, actionType, localUuid,
+    // attachments }. The register and the log share ONE flow (demuxed by actionType), so the log uses
+    // the same 'instrument' target; the flow needs no changes.
+    return this.powerAutomate.submitV2Raw('instrument', {
       instrumentationLog: entry,
       actionType: 'addInstrumentationLog',
       localUuid,

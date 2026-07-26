@@ -124,14 +124,13 @@ response `{ "success": true, "data": [ instrument… ] }`, each instrument:
 
 ## Gateway + PWA wiring (already done on the code side)
 
-- Both PWA targets **`instrument`** and **`instrumentLog`** route to this one flow (the flow demuxes on
-  `actionType`), so the gateway has a Switch case for each pointing at the **same** URL:
-  `…/automations/direct/cu/23/workflows/832a87fa…&sig=CskQ…1M4`. See
-  [pa-gateway.md](pa-gateway.md) step 4.
-- `paFlowUrls.instrument` and `paFlowUrls.instrumentLog` in `environment.ts` both point at that URL, so
-  the direct (pre-gateway) path also works.
-- `tryPaInstrumentLog` now routes through `submitV2Raw('instrumentLog', …)` (was legacy V1
-  `submitForm`), forwarding the identical body — so the `addInstrumentationLog` case is unchanged.
+- The PWA sends a single target **`instrument`** for the whole flow (register *and* log — it demuxes on
+  `actionType`), so the gateway needs just **one** `instrument` Switch case pointing at the flow URL
+  `…/automations/direct/cu/23/workflows/832a87fa…&sig=CskQ…1M4`. See [pa-gateway.md](pa-gateway.md) step 4.
+- `paFlowUrls.instrument` in `environment.ts` points at that URL, so the direct (pre-gateway) path also
+  works. (The old separate `instrumentLog` target/env entry was removed — it's all `instrument` now.)
+- `tryPaInstrumentLog` now routes through `submitV2Raw('instrument', …)` (was legacy V1 `submitForm`),
+  forwarding the identical body — so the `addInstrumentationLog` case is unchanged.
 
 ## PWA cleanup once the user cases are removed
 

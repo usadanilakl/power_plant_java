@@ -7,7 +7,9 @@ import { IAttachment } from '../models/permits/attachment.model';
 import { ServerApiService } from './server-api.service';
 import { AuthService } from '../auth/auth.service';
 
-export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrumentLog' | 'instrument' | 'fieldList' | 'inventory' | 'sds' | 'qualifications';
+// 'instrument' covers BOTH the instrument register (getState/getAllInstruments/addInstrument) and the
+// instrument log (addInstrumentationLog) — they share one Power Automate flow, demuxed by actionType.
+export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrument' | 'fieldList' | 'inventory' | 'sds' | 'qualifications';
 
 export interface PaV2Request {
   actionType: string;
@@ -76,8 +78,8 @@ export class PowerAutomateService {
   /**
    * Passthrough variant of {@link submitV2}: routes through the SAME gateway/direct + JWT plumbing but
    * forwards {@code body} verbatim as the payload. Use for targets whose Power Automate flow predates
-   * the V2 `{actionType,data,...}` schema and must receive their ORIGINAL body unchanged — e.g.
-   * instrumentLog's `{ instrumentationLog, actionType, localUuid, attachments }`. The flow needs no edits.
+   * the V2 `{actionType,data,...}` schema and must receive their ORIGINAL body unchanged — e.g. the
+   * instrument log's `{ instrumentationLog, actionType, localUuid, attachments }`. The flow needs no edits.
    */
   submitV2Raw(entityType: PaEntityType, body: Record<string, any>): Observable<PaV2Response> {
     return this.postToPa(entityType, body, body?.['actionType']);
