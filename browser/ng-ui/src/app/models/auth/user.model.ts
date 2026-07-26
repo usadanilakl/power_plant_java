@@ -1,7 +1,6 @@
 import { Column } from "../inputs/column.model";
 import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "../permits/base.model";
-import { UserPa } from "./user-pa.model";
 
 export interface IUser extends IBaseModel {
   firstName: string;
@@ -59,17 +58,5 @@ export class User extends BaseModel<IUser> implements IUser {
       },
       { id:'sharepointId', header: 'SharePoint ID', accessorKey:'sharepointId'  },
     ];
-  }
-
-  convertToPaModel(): UserPa {
-    return new UserPa({
-      ID: this.sharepointId ?? 0,
-      FirstName: this.firstName,
-      LastName: this.lastName,
-      Company: this.company,
-      Email: this.email,
-      Role: this.role,
-      Password: this.password
-    });
   }
 }
