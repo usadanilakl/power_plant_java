@@ -196,6 +196,38 @@ After each target HTTP action (or once, shared via the Switch's after-branch), a
 > action name / body and put a single Response after the Switch — but the per-case Response is simplest
 > to get right first.
 
+### 6. Error path — return the REAL error, not a hardcoded string
+
+The recommended shape wraps steps 2–4 in a **Scope**, then puts a single error **Response** *after* the
+Scope with **Configure run after** = *has failed* + *is skipped* + *has timed out* (and **not** *is
+successful*, so it never double-responds on the happy path). The Scope can fail for different reasons
+(bad token → `Verify the token` 401; target-flow error → `Trigger PA flow`), so surface the actual
+message rather than always saying "Unauthorized". A failed action's `outputs` are still readable.
+
+Error Response — **Status Code**:
+```
+@{if(equals(outputs('Verify_the_token')?['statusCode'], 200), coalesce(outputs('Trigger_PA_flow')?['statusCode'], 500), outputs('Verify_the_token')?['statusCode'])}
+```
+Error Response — **Body**:
+```json
+{
+  "success": false,
+  "message": "@{coalesce(outputs('Verify_the_token')?['body']?['reason'], outputs('Trigger_PA_flow')?['body']?['message'], 'Request failed')}"
+}
+```
+- `verify-jwt` returns `{ valid:false, reason }` → `body.reason` ("bad signature" / "token expired" / …).
+- a target flow returns `{ success:false, message }` → `body.message`.
+
+**Fully generic alternative** (surfaces whichever action failed, useful if the Scope grows): add a
+**Filter array** before the error Response — From `@{result('Scope')}`, keep items where
+`item()?['status']` **is equal to** `Failed` — then:
+```
+Status: @{coalesce(first(body('Filter_array'))?['outputs']?['statusCode'], 500)}
+Body message: @{coalesce(first(body('Filter_array'))?['outputs']?['body']?['reason'], first(body('Filter_array'))?['outputs']?['body']?['message'], first(body('Filter_array'))?['error']?['message'], 'Request failed')}
+```
+(`result('Scope')` returns the Scope's direct children; if you nest the target call inside a Condition,
+also union in `result('<ConditionName>')` to catch it.)
+
 ---
 
 ## Part B — gotchas the old guide missed
