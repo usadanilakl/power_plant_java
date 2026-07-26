@@ -13,10 +13,6 @@ import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.kohsuke.github.GHContent;
-import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GitHub;
-import org.kohsuke.github.HttpException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -25,12 +21,19 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+/**
+ * Publishes the PWA reference datasets. Builds each dataset's JSON once, then hands it to every active
+ * {@link PwaDataSink} — GitHub Pages and/or Supabase — selected by the {@code pwa.data-target} flag
+ * (default {@code supabase}). The debounce/coalesce state machine, the {@code @Async} entry points,
+ * and the {@code /ng/admin/pwa-sync} + on-entity-change triggers are unchanged; only the transport is
+ * now pluggable. (Name kept for its many callers; it no longer talks to GitHub directly — the
+ * {@link GitHubPagesSink} does.) See project/architecture/supabase/reference-data.md.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -55,13 +58,8 @@ public class WorkAreaGitHubPublisher {
     private final LotoPointRepo lotoPointRepo;
     private final SdsChemicalRepo sdsChemicalRepo;
     private final ObjectMapper objectMapper;
-    private final GitHub gitHub;
-
-    @Value("${pwa.data.path:${user.dir}/browser/ng-ui/public/data}")
-    private String pwaDataPath;
-
-    @Value("${pwa.github.repo:JacksonGeneration/permits}")
-    private String pwaGitHubRepo;
+    /** All configured transports; each decides via isActive() whether it receives this publish. */
+    private final List<PwaDataSink> sinks;
 
     @Value("${files.root.path}")
     private String filesRootPath;
@@ -135,66 +133,70 @@ public class WorkAreaGitHubPublisher {
                 pendingTarget = PublishTarget.NONE;
                 publishRequested.set(false);
 
-                // Write locally for dev builds
-                Path dataDir = Paths.get(pwaDataPath);
-                Files.createDirectories(dataDir);
+                List<PwaDataSink> active = sinks.stream().filter(PwaDataSink::isActive).toList();
+                if (active.isEmpty()) {
+                    log.warn("[PWA Publisher] No active data sink (pwa.data-target) — skipping publish of {}", targetToPublish);
+                    continue;
+                }
 
                 if (shouldPublishAreas(targetToPublish)) {
-                    String areasJson = buildAreasJson();
-                    String shapesJson = buildShapesJson();
-                    writeAreasLocally(dataDir, areasJson, shapesJson);
-                    pushAreasToGitHub(areasJson, shapesJson);
+                    publishText(active, "work_areas", "work-areas.json", buildAreasJson());
+                    publishText(active, "work_area_shapes", "work-area-shapes.json", buildShapesJson());
                 }
-
                 if (shouldPublishCategories(targetToPublish)) {
-                    String categoriesJson = buildCategoriesJson();
-                    writeCategoriesLocally(dataDir, categoriesJson);
-                    pushCategoriesToGitHub(categoriesJson);
+                    publishText(active, "work_categories", "work-categories.json", buildCategoriesJson());
                 }
-
                 if (shouldPublishFieldListTypes(targetToPublish)) {
-                    String fieldListTypesJson = buildFieldListTypesJson();
-                    writeFieldListTypesLocally(dataDir, fieldListTypesJson);
-                    pushFieldListTypesToGitHub(fieldListTypesJson);
+                    publishText(active, "field_list_types", "field-list-types.json", buildFieldListTypesJson());
                 }
-
                 if (shouldPublishInventoryTypes(targetToPublish)) {
-                    String inventoryTypesJson = buildInventoryTypesJson();
-                    writeInventoryTypesLocally(dataDir, inventoryTypesJson);
-                    pushInventoryTypesToGitHub(inventoryTypesJson);
+                    publishText(active, "inventory_types", "inventory-types.json", buildInventoryTypesJson());
                 }
-
                 if (shouldPublishLocations(targetToPublish)) {
-                    String locationsJson = buildLocationsJson();
-                    writeLocationsLocally(dataDir, locationsJson);
-                    pushLocationsToGitHub(locationsJson);
+                    publishText(active, "locations", "locations.json", buildLocationsJson());
                 }
-
                 if (shouldPublishLotoPoints(targetToPublish)) {
-                    String lotoPointsJson = buildLotoPointsJson();
-                    writeLotoPointsLocally(dataDir, lotoPointsJson);
-                    pushLotoPointsToGitHub(lotoPointsJson);
+                    publishText(active, "loto_points", "loto-points.json", buildLotoPointsJson());
                 }
-
                 if (shouldPublishSdsChemicals(targetToPublish)) {
-                    String sdsChemicalsJson = buildSdsChemicalsJson();
-                    writeSdsChemicalsLocally(dataDir, sdsChemicalsJson);
-                    pushSdsChemicalsToGitHub(sdsChemicalsJson);
+                    publishText(active, "sds_chemicals", "sds-chemicals.json", buildSdsChemicalsJson());
                 }
-
                 if (shouldPublishMap(targetToPublish)) {
                     byte[] imageBytes = readMapImage();
-                    writeMapLocally(dataDir, imageBytes);
-                    pushMapToGitHub(imageBytes);
+                    if (imageBytes != null) {
+                        publishBinary(active, "work_area_map", "work-area-map-image.jpg", imageBytes);
+                    }
                 }
 
-                log.info("[PWA Publisher] Publish complete for {} to {}", targetToPublish, dataDir);
+                log.info("[PWA Publisher] Publish complete for {} to {}", targetToPublish,
+                        active.stream().map(PwaDataSink::name).toList());
             } while (publishRequested.get());
 
         } catch (Exception e) {
             log.error("[PWA Publisher] Failed: {}", e.getMessage(), e);
         } finally {
             publishInProgress.set(false);
+        }
+    }
+
+    /** Sends one JSON dataset to every active sink; a single sink failure never blocks the others. */
+    private void publishText(List<PwaDataSink> active, String datasetKey, String fileBaseName, String json) {
+        for (PwaDataSink sink : active) {
+            try {
+                sink.publishText(datasetKey, fileBaseName, json);
+            } catch (Exception e) {
+                log.error("[PWA Publisher] {} sink failed for {}: {}", sink.name(), datasetKey, e.getMessage());
+            }
+        }
+    }
+
+    private void publishBinary(List<PwaDataSink> active, String datasetKey, String fileBaseName, byte[] content) {
+        for (PwaDataSink sink : active) {
+            try {
+                sink.publishBinary(datasetKey, fileBaseName, content);
+            } catch (Exception e) {
+                log.error("[PWA Publisher] {} sink failed for {}: {}", sink.name(), datasetKey, e.getMessage());
+            }
         }
     }
 
@@ -307,15 +309,6 @@ public class WorkAreaGitHubPublisher {
         return null;
     }
 
-    private void writeAreasLocally(Path dataDir, String areasJson, String shapesJson) throws IOException {
-        Files.writeString(dataDir.resolve("work-areas.json"), areasJson);
-        Files.writeString(dataDir.resolve("work-area-shapes.json"), shapesJson);
-    }
-
-    private void writeCategoriesLocally(Path dataDir, String categoriesJson) throws IOException {
-        Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
-    }
-
     private String buildFieldListTypesJson() throws IOException {
         List<com.dk_power.power_plant_java.entities.categories.Value> types;
         try {
@@ -330,10 +323,6 @@ public class WorkAreaGitHubPublisher {
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
     }
 
-    private void writeFieldListTypesLocally(Path dataDir, String json) throws IOException {
-        Files.writeString(dataDir.resolve("field-list-types.json"), json);
-    }
-
     private String buildInventoryTypesJson() throws IOException {
         List<com.dk_power.power_plant_java.entities.categories.Value> types;
         try {
@@ -346,10 +335,6 @@ public class WorkAreaGitHubPublisher {
                 .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName() != null ? v.getName() : ""))
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
-    }
-
-    private void writeInventoryTypesLocally(Path dataDir, String json) throws IOException {
-        Files.writeString(dataDir.resolve("inventory-types.json"), json);
     }
 
     private String buildLocationsJson() throws IOException {
@@ -383,14 +368,6 @@ public class WorkAreaGitHubPublisher {
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
     }
 
-    private void writeLocationsLocally(Path dataDir, String json) throws IOException {
-        Files.writeString(dataDir.resolve("locations.json"), json);
-    }
-
-    private void writeLotoPointsLocally(Path dataDir, String json) throws IOException {
-        Files.writeString(dataDir.resolve("loto-points.json"), json);
-    }
-
     /**
      * Snapshot of every active SDS chemical (Incoming + Pending + Filed) — the PWA's "Check existing
      * chemicals" panel reads this when the hub is unreachable. Removed/deleted chemicals are skipped
@@ -414,121 +391,5 @@ public class WorkAreaGitHubPublisher {
                 })
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
-    }
-
-    private void writeSdsChemicalsLocally(Path dataDir, String json) throws IOException {
-        Files.writeString(dataDir.resolve("sds-chemicals.json"), json);
-    }
-
-    private void writeMapLocally(Path dataDir, byte[] imageBytes) throws IOException {
-        if (imageBytes == null) {
-            return;
-        }
-        Files.copy(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg"),
-                dataDir.resolve("work-area-map-image.jpg"), StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    private void pushAreasToGitHub(String areasJson, String shapesJson) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/work-areas.json", areasJson);
-            pushTextFile(repo, "data/work-area-shapes.json", shapesJson);
-            log.info("[PWA Publisher] GitHub repo {} updated for work areas", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for work areas (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushCategoriesToGitHub(String categoriesJson) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/work-categories.json", categoriesJson);
-            log.info("[PWA Publisher] GitHub repo {} updated for work categories", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for work categories (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushFieldListTypesToGitHub(String json) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/field-list-types.json", json);
-            log.info("[PWA Publisher] GitHub repo {} updated for field list types", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for field list types (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushInventoryTypesToGitHub(String json) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/inventory-types.json", json);
-            log.info("[PWA Publisher] GitHub repo {} updated for inventory types", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for inventory types (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushLocationsToGitHub(String json) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/locations.json", json);
-            log.info("[PWA Publisher] GitHub repo {} updated for locations", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for locations (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushLotoPointsToGitHub(String json) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/loto-points.json", json);
-            log.info("[PWA Publisher] GitHub repo {} updated for loto points", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for loto points (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushSdsChemicalsToGitHub(String json) {
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushTextFile(repo, "data/sds-chemicals.json", json);
-            log.info("[PWA Publisher] GitHub repo {} updated for SDS chemicals", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for SDS chemicals (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushMapToGitHub(byte[] imageBytes) {
-        if (imageBytes == null) {
-            log.info("[PWA Publisher] No map image found, skipping GitHub map publish");
-            return;
-        }
-        try {
-            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-            pushBinaryFile(repo, "data/work-area-map-image.jpg", imageBytes);
-            log.info("[PWA Publisher] GitHub repo {} updated for work-area map", pwaGitHubRepo);
-        } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed for work-area map (local files still written): {}", e.getMessage(), e);
-        }
-    }
-
-    private void pushTextFile(GHRepository repo, String path, String content) throws IOException {
-        byte[] bytes = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        pushBinaryFile(repo, path, bytes);
-    }
-
-    private void pushBinaryFile(GHRepository repo, String path, byte[] content) throws IOException {
-        try {
-            GHContent existing = repo.getFileContent(path);
-            existing.update(content, "Update " + path);
-            log.info("[PWA Publisher] Updated {} on GitHub", path);
-        } catch (HttpException e) {
-            if (e.getResponseCode() != 404) {
-                throw e;
-            }
-            repo.createContent(content, "Create " + path, path);
-            log.info("[PWA Publisher] Created {} on GitHub", path);
-        }
     }
 }

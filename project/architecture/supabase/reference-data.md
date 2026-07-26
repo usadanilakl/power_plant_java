@@ -1,58 +1,71 @@
-# Reference-data failover (LOTO points / work areas / locations)
+# PWA reference data — publish target (GitHub Pages ↔ Supabase)
 
-The PWA needs a few read-only datasets available offline. They used to be shipped as **static JSON in
-the PWA bundle** and served **publicly on GitHub Pages** — but the hub gates the same data behind
-`ROLE_PLANT`, so the public copy was a data exposure (~12k LOTO points readable by anyone). This moves
-the failover to **auth-gated Supabase**, keeping the hub as the primary provider.
+The PWA needs several read-only datasets available offline. They used to be published as **public
+static JSON on GitHub Pages** — but the hub gates the same data behind `ROLE_PLANT`, so the public copy
+was a data exposure (~12k LOTO points readable by anyone). The publish pipeline can now target
+**auth-gated Supabase** instead, selected by a flag. The hub stays the primary provider.
 
-## Priority chain (per dataset)
+## The flag
 
-```
-1. Hub  (primary)   GET /api/pwa/field-list-item/loto-points | /locations, /api/pwa/work-request/work-areas
-2. Supabase (failover, auth-gated)   reference_snapshot table, read with the user's Supabase session
-3. localStorage (last resort)        whatever the device cached from a previous hub/Supabase load
-4. static /data/*.json               now EMPTY stubs — real data no longer ships publicly
-```
+`pwa.data-target` (in `application.properties`):
 
-`equipment-data.service.ts` implements this: on a hub error it calls `SupabaseDataService.getSnapshot(key)`,
-then falls through to the (now-empty) static JSON → localStorage.
+| value | behavior |
+|-------|----------|
+| **`supabase`** (default) | write datasets to the Supabase `reference_snapshot` table (auth-gated, secure) |
+| `github-pages` | legacy: write the local `public/data` mirror + push to the GitHub Pages repo |
+| `both` | write to both (transition/rollback safety net) |
 
-## Why the chain still works after removing the public data
+## Write side — one publisher, pluggable sinks
 
-The only case that needs the Supabase failover is a **fresh login while the hub is down** — and that
-login authenticates via the Supabase fallback, so the PWA holds a Supabase session and can read
-`reference_snapshot`. A device that loaded data while the hub was up already has it in **localStorage**.
-So no realistic case loses data; only the public exposure is removed. (Total outage — hub down, Supabase
-down, empty cache — has no data, which is acceptable.)
+`WorkAreaGitHubPublisher` builds each dataset's JSON once (its `build*Json` methods) and hands it to
+every **active** `PwaDataSink`. The debounce/coalesce state machine, the `@Async` entry points, the
+`POST /ng/admin/pwa-sync?target=…` admin control, and the on-entity-change triggers in the
+`Ng*Service` write methods are all **unchanged** — only the transport is pluggable.
 
-## Server side (hub)
+- `PwaDataSink` — interface (`publishText`, `publishBinary`, `isActive`, `name`).
+- `GitHubPagesSink` — local `public/data` mirror + GitHub push (the old behavior). Active for
+  `github-pages` / `both`.
+- `SupabasePwaDataSink` — upserts `reference_snapshot(key, payload, content_hash, updated_at)` via the
+  service-role client; per-key content-hash skip; the map image is stored base64. Active for
+  `supabase` / `both` (and only when Supabase is configured).
 
-- **`PwaReferenceDataService`** — the single source of truth for the three datasets. Both the live PWA
-  controllers and the mirror call it, so the failover payload is byte-identical to the live response.
-- **`SupabaseReferenceDataMirror`** — `@Scheduled` (every 10 min), hub/dev only (skips prod desktops).
-  Serializes each dataset, hashes it, and upserts to `reference_snapshot` only when it changed
-  (`SupabaseAdminClient.upsertReferenceSnapshot`, service-role write). Toggle:
-  `supabase.reference-mirror-enabled` (default true).
+**Datasets (9):** `work_areas`, `work_area_shapes`, `work_categories`, `field_list_types`,
+`inventory_types`, `locations`, `loto_points`, `sds_chemicals`, `work_area_map` (binary).
 
-## Supabase side
+> The standalone scheduled `SupabaseReferenceDataMirror` was **removed** — this publisher-sink (event-
+> driven, all 9 datasets) supersedes it.
 
-- Migration `20260726000000_reference_data.sql`: `reference_snapshot(key, payload jsonb, content_hash,
-  updated_at)`, RLS **enabled**.
-- Read policy: `authenticated` **and** `(auth.jwt() -> 'user_metadata' ->> 'is_active') = 'true'` — i.e.
-  approved users only (is_active is mirrored into the Supabase JWT). Not public; unapproved self-signups
-  are denied. The service role (hub) bypasses RLS to write.
+## Read side — PWA failover chain
+
+Per dataset: **hub (primary) → Supabase `reference_snapshot` → static JSON → localStorage**. The
+Supabase read (`SupabaseDataService.getSnapshot(key)`) requires a Supabase session, which the PWA holds
+exactly when it needs the failover (a fresh login while the hub is down authenticates via Supabase).
+
+- **Wired (3):** `loto_points`, `work_areas`, `locations` — in `equipment-data.service.ts`. Their
+  static files are emptied to `[]`.
+- **Pending (6):** `work_categories` (work-request-form), `field_list_types` (field-list),
+  `inventory_types` (inventory), `work_area_shapes` + `work_area_map` (work-area-map-select),
+  `sds_chemicals` (sds). Each currently still falls back to its (now-frozen) static JSON; wiring each to
+  `SupabaseDataService.getSnapshot` + emptying its static file completes the migration.
+  (`default-instruments.json` is a separate static seed the publisher does not manage — out of scope.)
+
+## RLS
+
+`reference_snapshot` reads are restricted to **approved** users:
+`(auth.jwt() -> 'user_metadata' ->> 'is_active') = 'true'`. Not public; unapproved self-signups are
+denied. The hub writes with the service role (bypasses RLS).
 
 ## Deploy / cutover
 
-1. `manage.sh push` (applies the reference_data migration).
-2. Restart the hub — the mirror populates `reference_snapshot` within ~10 min (or immediately on the
-   first cycle).
-3. **Rebuild + redeploy the PWA** so the empty static stubs replace the real data on GitHub Pages —
-   this is the step that actually closes the public exposure. Until redeployed, the old public JSON
-   remains live on Pages.
+1. `manage.sh push` (applies the `reference_data` migration — already done for project xvrtgccxtsjjwznqkznv).
+2. Keep `pwa.data-target=supabase` (default). Restart the hub.
+3. **Populate the snapshots once:** hit `POST /ng/admin/pwa-sync?target=all` (Admin → sync-to-PWA), or
+   just save any tracked entity — the on-change trigger publishes. (After this, ongoing entity changes
+   keep Supabase current automatically.)
+4. **Rebuild + redeploy the PWA** so the emptied static files replace the real data on GitHub Pages —
+   this is what actually closes the public exposure for the wired datasets.
 
-## Extending
+## Rollback
 
-Other bundled static datasets (`field-list-types`, `inventory-types`, `work-categories`,
-`work-area-shapes`) can follow the same pattern (add a producer to `PwaReferenceDataService`, a key to
-the mirror, and a `getSnapshot` call in the relevant service) if they also need to leave the public bundle.
+Set `pwa.data-target=both` (writes GitHub too) or `github-pages` (old behavior). The `GitHubPagesSink`
+and `git.token`/`pwa.github.repo` config are retained specifically for this.

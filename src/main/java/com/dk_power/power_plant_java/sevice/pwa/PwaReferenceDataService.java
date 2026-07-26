@@ -12,10 +12,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Single source of truth for the PWA "reference data" the app needs offline (LOTO points, locations,
- * work areas). Both the PWA controllers (primary path) and the Supabase failover mirror
- * ({@code SupabaseReferenceDataMirror}) call these methods, so the failover payload is byte-identical
- * to what the hub serves live — no drift. See project/architecture/supabase/reference-data.md.
+ * Shared producer for the PWA "reference data" the hub serves (LOTO points, locations, work areas),
+ * used by the PWA controllers ({@code PwaFieldListItemController}, {@code PwaWorkRequestController}) so
+ * those endpoints share one mapping. (The Supabase/GitHub failover copies of these datasets are built
+ * by {@code WorkAreaGitHubPublisher} and written through its configured {@code PwaDataSink}.)
+ * See project/architecture/supabase/reference-data.md.
  */
 @Service
 @RequiredArgsConstructor
