@@ -41,13 +41,22 @@ Per dataset: **hub (primary) → Supabase `reference_snapshot` → static JSON �
 Supabase read (`SupabaseDataService.getSnapshot(key)`) requires a Supabase session, which the PWA holds
 exactly when it needs the failover (a fresh login while the hub is down authenticates via Supabase).
 
-- **Wired (3):** `loto_points`, `work_areas`, `locations` — in `equipment-data.service.ts`. Their
-  static files are emptied to `[]`.
-- **Pending (6):** `work_categories` (work-request-form), `field_list_types` (field-list),
-  `inventory_types` (inventory), `work_area_shapes` + `work_area_map` (work-area-map-select),
-  `sds_chemicals` (sds). Each currently still falls back to its (now-frozen) static JSON; wiring each to
-  `SupabaseDataService.getSnapshot` + emptying its static file completes the migration.
-  (`default-instruments.json` is a separate static seed the publisher does not manage — out of scope.)
+All 8 JSON datasets are wired to the Supabase failover and their static files are emptied to `[]`:
+
+- **`loto_points`, `work_areas`, `locations`** — `equipment-data.service.ts`.
+- **`work_categories`** — `work-request-form.component.ts` (also keeps an in-code default category list
+  so an offline cold-start with no cache and no Supabase session still populates the dropdown).
+- **`field_list_types`** — `field-list.component.ts` (has an in-code default).
+- **`inventory_types`** — `inventory.component.ts` (has an in-code default).
+- **`work_area_shapes` + `work_areas`** — `work-area-map-select.component.ts`.
+- **`sds_chemicals`** — `sds.component.ts` (new `loadFromSupabase` tier before the static JSON).
+
+The wiring uses `SupabaseDataService.snapshotOrElse(key, useData, fallback)` — try the Supabase
+snapshot, else run the component's existing static-JSON/localStorage fallback.
+
+- **Deferred:** `work_area_map` (the binary map image, still read from `data/work-area-map-image.jpg` on
+  GitHub Pages). It's an image, not tabular plant data — less sensitive; move to Supabase Storage later.
+- **Out of scope:** `default-instruments.json` is a separate static seed the publisher does not manage.
 
 ## RLS
 
