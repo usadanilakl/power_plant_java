@@ -247,16 +247,25 @@ also union in `result('<ConditionName>')` to catch it.)
 - **Attachments** travel as inline base64 inside `payload`; the extra hop doubles the transfer. Large
   files may hit PA/HTTP size limits — fine for typical form attachments.
 
-## Part C — cutover (after the flow works)
+## Part C — cutover
 
-1. Set `environment.paGatewayUrl` (and `environment.prod.ts`) to the gateway trigger URL from step 1;
-   rebuild the PWA (`npx ng build --configuration production`).
-2. Submit one of each wired type end-to-end; confirm it lands in SharePoint and the PWA gets `success`.
-3. **Blank the wired target URLs in the bundle** — set `paFlowUrls.workRequest/jha/fieldList/inventory/
-   sds/qualifications/instrument` to `''` in both `environment*.ts` and rebuild. This is the
-   security payoff: the client no longer ships those SAS URLs. (Leave `confinedSpace` until it's routed
-   through `submitV2`.)
+**Status: DONE in code (2026-07-26).** `paGatewayUrl` is set (both env files); `powerAutomateUrl` + all
+`paFlowUrls` are blanked; the dead V1 direct-PA code was deleted (the confined-space feature, the
+work-request/jha api services, `PowerAutomateService.submitForm`, the `PowerAutomateRequest` model).
+Verified: the production bundle contains **only** the gateway URL — none of the 8 target SAS URLs.
+Gateway validated end-to-end via curl (auth failure modes → correct status/message; all 7 target cases
+route). **Remaining: redeploy `docs/` to GitHub Pages** so the public site drops the old URLs.
+
+The steps, for reference / rollback:
+1. Set `environment.paGatewayUrl` (both files) to the gateway trigger URL; rebuild.
+2. Submit one of each type end-to-end; confirm SharePoint + PWA `success`.
+3. Blank `powerAutomateUrl` + all `paFlowUrls` in both `environment*.ts`; rebuild. (Rollback = restore a
+   target URL and blank `paGatewayUrl` → `submitV2` reverts to that direct URL.)
 4. Redeploy the PWA to GitHub Pages.
+
+**Independent follow-ups (target-flow fixes, not blocking cutover):** the `instrument` flow's
+`getAllInstruments` Select must emit camelCase keys (see instrument-flow-refactor.md), and the
+`inventory` flow's `getAll` currently returns HTTP 400.
 
 ## Appendix — verify-jwt ops (already done; here to re-run / rotate)
 
