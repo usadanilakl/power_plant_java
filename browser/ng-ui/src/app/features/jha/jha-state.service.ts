@@ -1,5 +1,4 @@
 import { BehaviorSubject, combineLatest, from, map, Observable, startWith, switchMap, tap } from "rxjs";
-import { JhaApiService } from "./jha-api.service";
 import { JhaDbService } from "./jha-db.service";
 import { Jha } from "../../models/permits/jha.model";
 import { GlobalMessageService } from "../../services/global-message.service";
@@ -20,7 +19,6 @@ import { ServerApiService, PwaWorkCategoryProfileDto } from "../../services/serv
 })
 export class JhaStateService {
 
-    jhaApiService = inject(JhaApiService);
     jhaLocalStorageService = inject(JhaLocalStorageService);
     jhaDbService = inject(JhaDbService);
     globalMessageService = inject(GlobalMessageService);

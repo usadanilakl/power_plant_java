@@ -11,19 +11,18 @@ export const environment = {
   // JWT-verifying flow instead of directly to paFlowUrls, so the real flow URLs can leave this bundle.
   // Blank = current behavior (direct to paFlowUrls). See project/architecture/supabase/pa-gateway.md.
   paGatewayUrl: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/09/workflows/af10c7ab37e14c74a7856e2cb91bb554/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=UN51rtymZs8JpY8lKXvvo-9Xx8XB0gwOtKSWXmVnGLo',
-  powerAutomateUrl:
-    'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms',
+  // PA flow URLs removed from the client bundle — all Power Automate traffic goes through paGatewayUrl
+  // (the JWT-verifying gateway). Kept as empty strings so the now-unused direct-branch code compiles.
+  powerAutomateUrl: '',
   paFlowUrls: {
-    workRequest:
-      'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0b5c62d6db654dffb887e4f6b81f1cf3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=UG09p5mlwthFNeQ_tndR4esVZctOfH0WHrIhYyl_lRM',
-    jha: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f5fd7de804c1461e82a22c274a4f4dac/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=M6uJ_xAu7gvpHYzxqmRRJvKZHpQvGNlMOY4jBY3O8kc',
+    workRequest: '',
+    jha: '',
     confinedSpace: '',
-    // 'instrument' fronts both the instrument register and the instrument log (one flow, actionType demux).
-    instrument: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/23/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4',
-    fieldList: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e0bad99434cc416eb14e7f1e6049b18f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lpx4Wm2gB8rap8XYk3MwAD97LaZg52oTuDKjwHoEw5k',
-    inventory: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms',
-    sds: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/609426ab3c174235af5ade023ffee19c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=vzhAO-xxW7xXdWZ0CuolI5zRNzcUKV0uSXd9Rjn8dZU',
-    qualifications: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/18/workflows/fa8c206fc2d14bb49ee427ddceb4761e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Kcgp5jGtyk9ov8pee-Y96x9WfvHytldvg8QDKYQOO4w',
+    instrument: '',
+    fieldList: '',
+    inventory: '',
+    sds: '',
+    qualifications: ''
   },
   emailRecipient: 'jgportal@jpowerusa.com',
   emailCcRecipients: 'jgportal@jpowerusa.com',

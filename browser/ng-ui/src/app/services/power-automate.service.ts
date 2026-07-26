@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { timeout, catchError, Observable, throwError } from 'rxjs';
-import { PowerAutomateRequest } from '../models/api/power-automate-request.model';
 import { environment } from '../../environments/environment';
 import { IAttachment } from '../models/permits/attachment.model';
 import { ServerApiService } from './server-api.service';
@@ -32,41 +31,7 @@ export interface PaV2Response {
 })
 export class PowerAutomateService {
 
-  private permitsUrl = environment.powerAutomateUrl;
-
   constructor(private http: HttpClient, private authService: AuthService) { }
-
-  /**
-   * Submits form data to an old (V1) Power Automate workflow.
-   * Kept for backward compatibility with existing flows.
-   */
-  submitForm<T>(request: PowerAutomateRequest<T>): Observable<any> {
-
-    const paUrl  = request.url || this.permitsUrl;
-    const { url: requestUrl, ...requestBody } = request;
-
-    // Filter out null, undefined, and empty string values from the body
-    const body = Object.entries(requestBody).reduce((acc, [key, value]) => {
-      if (value !== null && value !== undefined && value !== '') {
-        (acc as any)[key] = value;
-      }
-      return acc;
-    }, {});
-
-    console.log('Submitting form data to Power Automate (V1):', body);
-
-    return this.http.post(paUrl, body).pipe(
-      timeout(15000),
-      catchError((error: any) => {
-        if (error.name === 'TimeoutError') {
-          console.error('Request timed out.');
-        } else {
-          console.error('Error submitting form to Power Automate:', error.message);
-        }
-        return throwError(() => error);
-      })
-    );
-  }
 
   /**
    * Submits to a V2 Power Automate flow using the new unified schema.

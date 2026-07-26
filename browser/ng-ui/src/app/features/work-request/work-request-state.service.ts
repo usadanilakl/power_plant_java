@@ -1,7 +1,6 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { BehaviorSubject, Observable, of, switchMap, tap } from 'rxjs';
 import { WorkRequest } from '../../models/permits/work-request.model';
-import { WorkRequestApiService } from './wokr-request-api.service';
 import { WorkRequestLocalStorageService } from './work-request-local-storage.service';
 import { WorkRequestDbService } from './work-request-db.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,7 +14,6 @@ import { UserSetupService } from '../../services/user-setup.service';
 })
 export class WorkRequestStateService {
 
-  workRequestApiService = inject(WorkRequestApiService);
   workRequestLocalStorageService = inject(WorkRequestLocalStorageService);
   workRequesDbService = inject(WorkRequestDbService);
   globalMessageService = inject(GlobalMessageService);
