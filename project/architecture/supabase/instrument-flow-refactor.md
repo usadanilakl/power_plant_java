@@ -78,13 +78,64 @@ lookups aside). If a case is shared, keep only the instrument behavior.
 - **`addInstrumentationLog`** — the existing `instrumentation log scope` (Get Inst By Tag → Create Log
   Item → attachments Apply-to-each). Unchanged.
 
-### Add
-- **`getState`** — lightweight change-detection for the PWA's cache. Read the Instruments list (just
-  the count + newest Modified), respond:
-  ```json
-  { "success": true, "data": [ { "itemCount": <n>, "lastModified": "<ISO8601 of newest Modified>", "version": "<n>:<lastModified>" } ] }
-  ```
-- **`addInstrument`** — create one item in the Instruments list from `data`, respond with its id.
+### Add — build steps
+
+> **Where the values live:** inside this flow `triggerBody()` **is the payload**. The register sends its
+> fields **under `data`**, so every field is `triggerBody()?['data']?['…']`. (The log case reads
+> `triggerBody()?['instrumentationLog']?['…']` instead.) Action references use the action name with spaces
+> as underscores — rename below if your actions are named differently.
+
+#### Case `addInstrument`
+
+1. On the Switch, **Add case** → **Equals** value `addInstrument` (must match the PWA's actionType exactly).
+2. Action **SharePoint → Create item**, pointed at the Instruments list. Set each field to the fx
+   expression below (replace any auto-picked dynamic-content chips with these exact expressions):
+
+   | Column | Expression |
+   |--------|-----------|
+   | Tag Number | `triggerBody()?['data']?['Tag_x0020_Number']` |
+   | Description | `triggerBody()?['data']?['Description']` |
+   | Vendor | `triggerBody()?['data']?['Vendor']` |
+   | Location | `triggerBody()?['data']?['Location']` |
+   | Type | `triggerBody()?['data']?['Type']` |
+   | CurrentStatus | `triggerBody()?['data']?['CurrentStatus']` |
+   | PwaId | `triggerBody()?['data']?['PwaId']` |
+   | LastUpdatedDate / LastUpdatedTime / LastUpdatedBy / LastComment | leave blank (the PWA doesn't send them on create; optionally set LastUpdatedDate to `utcNow()`) |
+
+3. Action **Request → Response** (or your flow's per-case Response): **Status Code** `200`, **Body**:
+   ```json
+   { "success": true, "id": "@{body('Create_item')?['ID']}" }
+   ```
+   (`createInstrument` reads `response.id` as the new SharePoint id. SharePoint returns the numeric `ID`.)
+
+#### Case `getState`
+
+Lightweight change-detector — the PWA stores `version` and refetches the list only when it changes.
+
+1. On the Switch, **Add case** → value `getState`.
+2. Action **SharePoint → Get items**, Instruments list. In the action:
+   - **Order By** = `Modified desc`
+   - **Top Count** = `5000` (or turn on pagination in *Settings*). Exact count isn't critical — a new or
+     edited item changes `Modified`, so `version` changes regardless of the cap.
+   - *(optional, faster)* **Limit Columns / $select** = `Id,Modified`.
+3. Action **Request → Response**: **Status Code** `200`, **Body**:
+   ```json
+   {
+     "success": true,
+     "data": [
+       {
+         "itemCount": @{length(outputs('Get_items')?['body/value'])},
+         "lastModified": "@{first(outputs('Get_items')?['body/value'])?['Modified']}",
+         "version": "@{concat(string(length(outputs('Get_items')?['body/value'])), ':', coalesce(first(outputs('Get_items')?['body/value'])?['Modified'], 'none'))}"
+       }
+     ]
+   }
+   ```
+   (`fetchInstrumentsState` reads `data[0].itemCount/lastModified/version`; it coerces types, so number-vs-string doesn't matter.)
+
+> Test each case from the flow's **Testing** tab (or the PWA) with a body like
+> `{ "actionType": "addInstrument", "data": { "Tag_x0020_Number": "PT-101", "Description": "x", "Vendor": "y", "Location": "Hall", "Type": "Pressure", "CurrentStatus": "Normal Operation", "PwaId": "test-uuid" } }`
+> and `{ "actionType": "getState", "data": {} }`.
 
 ## Per-action contracts (what the PWA sends / expects)
 
