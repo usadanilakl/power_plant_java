@@ -74,9 +74,17 @@ lookups aside). If a case is shared, keep only the instrument behavior.
 
 ### Keep (already built)
 - **`getAllInstruments`** — returns all instruments (the existing `instruments → Select → Response`
-  branch). Ensure the Response body is `{ "success": true, "data": [ …instruments… ] }` (see contract).
+  branch). The **Select must map to the PWA's camelCase keys** (`tagNumber`, `description`, `vendor`,
+  `location`, `type`, `currentStatus`, `lastUpdatedDate`, `lastUpdatedTime`, `lastUpdatedBy`,
+  `lastComment`, `sharepointId`) — NOT the raw SharePoint column names, or the list won't render. Response
+  body: `{ "success": true, "data": @{body('Select')} }`.
 - **`addInstrumentationLog`** — the existing `instrumentation log scope` (Get Inst By Tag → Create Log
   Item → attachments Apply-to-each). Unchanged.
+
+### Default case
+Add a **Response** (currently 0 actions): Status `400`, body
+`{ "success": false, "message": "Unknown action" }` — so an unexpected `actionType` returns an error
+instead of ending the run with no response (which would hang the caller).
 
 ### Add — build steps
 
