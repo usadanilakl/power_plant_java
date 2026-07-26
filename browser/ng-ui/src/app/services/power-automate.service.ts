@@ -70,6 +70,20 @@ export class PowerAutomateService {
    * Submits to a V2 Power Automate flow using the new unified schema.
    */
   submitV2(entityType: PaEntityType, request: PaV2Request): Observable<PaV2Response> {
+    return this.postToPa(entityType, request, request.actionType);
+  }
+
+  /**
+   * Passthrough variant of {@link submitV2}: routes through the SAME gateway/direct + JWT plumbing but
+   * forwards {@code body} verbatim as the payload. Use for targets whose Power Automate flow predates
+   * the V2 `{actionType,data,...}` schema and must receive their ORIGINAL body unchanged — e.g.
+   * instrumentLog's `{ instrumentationLog, actionType, localUuid, attachments }`. The flow needs no edits.
+   */
+  submitV2Raw(entityType: PaEntityType, body: Record<string, any>): Observable<PaV2Response> {
+    return this.postToPa(entityType, body, body?.['actionType']);
+  }
+
+  private postToPa(entityType: PaEntityType, payload: any, actionLabel?: string): Observable<PaV2Response> {
     const gatewayUrl = (environment as any).paGatewayUrl;
     let url: string;
     let body: any;
@@ -83,16 +97,16 @@ export class PowerAutomateService {
         return throwError(() => new Error('Sign in required to submit'));
       }
       url = gatewayUrl;
-      body = { target: entityType, token, payload: request };
-      console.log(`[PA V2] Submitting ${entityType} via auth gateway:`, request.actionType);
+      body = { target: entityType, token, payload };
+      console.log(`[PA V2] Submitting ${entityType} via auth gateway:`, actionLabel);
     } else {
       const flowUrl = this.getV2FlowUrl(entityType);
       if (!flowUrl) {
         return throwError(() => new Error(`No V2 flow URL configured for entity type: ${entityType}`));
       }
       url = flowUrl;
-      body = request;
-      console.log(`[PA V2] Submitting ${entityType}:`, request.actionType);
+      body = payload;
+      console.log(`[PA V2] Submitting ${entityType}:`, actionLabel);
     }
 
     return this.http.post<PaV2Response>(url, body).pipe(

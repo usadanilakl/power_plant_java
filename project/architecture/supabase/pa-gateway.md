@@ -129,7 +129,8 @@ Add one **Case** per target. Every case's HTTP action is identical **except the 
 
 #### Cases to build now (Switch case value → HTTP action URI)
 
-These 6 targets flow through `submitV2` **and** have a real target URL.
+These targets flow through `submitV2` **and** have a real target URL (`workRequest`, `jha`, `fieldList`,
+`inventory`, `sds`, `qualifications`, plus `instrumentLog` + `instrument` which share one flow).
 
 **Case `workRequest`:**
 ```
@@ -161,22 +162,24 @@ https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.c
 https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/18/workflows/fa8c206fc2d14bb49ee427ddceb4761e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Kcgp5jGtyk9ov8pee-Y96x9WfvHytldvg8QDKYQOO4w
 ```
 
+**Case `instrumentLog`** *and* **Case `instrument`** — both point at the **same** flow (it demuxes on
+`actionType`: `addInstrumentationLog` for the log; `getState`/`getAllInstruments`/`addInstrument` for the
+register). Add two Switch cases with the identical URI below. This flow is being refactored to be
+instrument-only — see [instrument-flow-refactor.md](instrument-flow-refactor.md).
+```
+https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/23/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4
+```
+
 > **These are SAS `sig=` secrets.** They already live in the repo (`environment.ts`), so keeping a copy
 > here is no extra exposure for a private repo — but the *authoritative* copy after cutover (Part C) is
 > inside the gateway flow. If you regenerate a flow's trigger URL, update it in the gateway flow **and**
 > here. These are the current values as of 2026-07-26.
 
-#### Cases you can't wire yet (documented for completeness)
+#### Case you can't wire yet (documented for completeness)
 
-- **`instrumentLog`** — a URL exists, but the PWA sends it via the legacy V1 `submitForm`
-  (`tryPaInstrumentLog`), so it never reaches the gateway. Route it through `submitV2` first, then add:
-  ```
-  https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4
-  ```
-- **`instrument`** — flows through `submitV2` but has **no** target URL (blank in `paFlowUrls`). Nothing
-  to route to until a flow is created.
 - **`confinedSpace`** — blank URL; confined-space submissions use their own hard-coded flow in
-  `space-api.service.ts`, bypassing both `submitV2` and `paFlowUrls`.
+  `space-api.service.ts`, bypassing both `submitV2` and `paFlowUrls`. Route it through `submitV2` and
+  give it a flow before adding a case.
 
 **Default case** → **Response** `400 { "success": false, "message": "Unknown target" }`.
 
@@ -217,9 +220,9 @@ After each target HTTP action (or once, shared via the Switch's after-branch), a
    rebuild the PWA (`npx ng build --configuration production`).
 2. Submit one of each wired type end-to-end; confirm it lands in SharePoint and the PWA gets `success`.
 3. **Blank the wired target URLs in the bundle** — set `paFlowUrls.workRequest/jha/fieldList/inventory/
-   sds/qualifications` to `''` in both `environment*.ts` and rebuild. This is the security payoff: the
-   client no longer ships those SAS URLs. (Leave `instrumentLog` and any still-bypassing entry until
-   they're routed through `submitV2`.)
+   sds/qualifications/instrumentLog/instrument` to `''` in both `environment*.ts` and rebuild. This is the
+   security payoff: the client no longer ships those SAS URLs. (Leave `confinedSpace` until it's routed
+   through `submitV2`.)
 4. Redeploy the PWA to GitHub Pages.
 
 ## Appendix — verify-jwt ops (already done; here to re-run / rotate)

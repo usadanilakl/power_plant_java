@@ -6,7 +6,6 @@ import { UserSetupService } from './user-setup.service';
 import { WorkRequest } from '../models/permits/work-request.model';
 import { Jha } from '../models/permits/jha.model';
 import { InstrumentLogEntry } from '../models/equipment/instrument-log.model';
-import { PowerAutomateRequest } from '../models/api/power-automate-request.model';
 import { environment } from '../../environments/environment';
 
 export interface SubmissionResult {
@@ -367,7 +366,7 @@ export class SubmissionOrchestratorService {
     return this.tryServerInstrumentLog(dto).pipe(
       switchMap(serverResult => {
         if (serverResult.success && serverResult.method === 'local') {
-          console.warn('[Orchestrator] Server stored instrument log locally only, trying PA V1 to reach SharePoint.');
+          console.warn('[Orchestrator] Server stored instrument log locally only, trying PA to reach SharePoint.');
           return this.tryPaInstrumentLog(entry, localUuid).pipe(
             // If PA also fails, keep the local-success result from server.
             catchError(() => of(serverResult))
@@ -376,7 +375,7 @@ export class SubmissionOrchestratorService {
         return of(serverResult);
       }),
       catchError(serverError => {
-        console.warn('[Orchestrator] Server failed for instrument log, trying PA V1:', serverError.message);
+        console.warn('[Orchestrator] Server failed for instrument log, trying PA:', serverError.message);
         return this.tryPaInstrumentLog(entry, localUuid);
       })
     );
@@ -397,13 +396,12 @@ export class SubmissionOrchestratorService {
   }
 
   private tryPaInstrumentLog(entry: InstrumentLogEntry, localUuid: string): Observable<SubmissionResult> {
-    const paUrl = (environment as any).paFlowUrls?.instrumentLog;
     const dtoAttachments = (entry.attachments || []).map(a => ({
       fileName: a.fileName, contentType: a.contentType, base64Content: a.base64Content
     }));
 
-    if (!paUrl) {
-      console.warn('[Orchestrator] No PA URL configured for instrumentLog, skipping to email.');
+    if (!this.powerAutomate.isV2Configured('instrumentLog')) {
+      console.warn('[Orchestrator] No PA route configured for instrumentLog, skipping to email.');
       return this.tryServerEmail(
         this.generateInstrumentLogEmailContent(entry),
         dtoAttachments,
@@ -412,15 +410,15 @@ export class SubmissionOrchestratorService {
       );
     }
 
-    const request: PowerAutomateRequest<InstrumentLogEntry> = {
-      url: paUrl,
+    // Route through the gateway/submitV2 plumbing (JWT-verified, target URL hidden) but forward the
+    // SAME body the instrument-log flow already expects — { instrumentationLog, actionType, localUuid,
+    // attachments } — so the Power Automate flow needs no changes.
+    return this.powerAutomate.submitV2Raw('instrumentLog', {
       instrumentationLog: entry,
       actionType: 'addInstrumentationLog',
       localUuid,
       attachments: dtoAttachments
-    };
-
-    return this.powerAutomate.submitForm(request).pipe(
+    }).pipe(
       map(() => ({
         success: true,
         method: 'powerAutomate' as const,
@@ -428,7 +426,7 @@ export class SubmissionOrchestratorService {
         message: 'Instrument log submitted via Power Automate.'
       })),
       catchError(paError => {
-        console.warn('[Orchestrator] PA V1 failed for instrument log:', paError.message);
+        console.warn('[Orchestrator] PA failed for instrument log:', paError.message);
         return this.tryServerEmail(
           this.generateInstrumentLogEmailContent(entry),
           dtoAttachments,
