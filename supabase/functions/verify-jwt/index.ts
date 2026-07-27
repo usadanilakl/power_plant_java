@@ -48,11 +48,20 @@ Deno.serve(async (req) => {
     if (parts.length !== 3) {
       return json(401, { valid: false, reason: 'malformed token' });
     }
+    const header = decodeJson(parts[0]);
     const payload = decodeJson(parts[1]);
     const iss: string | undefined = payload?.iss;
     const issuerKind = classifyIssuer(iss);
     if (!issuerKind) {
       return json(401, { valid: false, reason: `unknown issuer: ${iss ?? '(none)'}` });
+    }
+
+    // Bind the signing algorithm to the issuer (defense-in-depth vs algorithm-confusion / "alg":"none").
+    // Key selection is already issuer-based, but reject any header alg that doesn't match the expectation.
+    const alg: string | undefined = header?.alg;
+    const expectedAlg = issuerKind === 'hub' ? 'RS256' : 'HS256';
+    if (alg !== expectedAlg) {
+      return json(401, { valid: false, reason: `unexpected alg: ${alg ?? '(none)'}` });
     }
 
     const signingInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
@@ -72,12 +81,16 @@ Deno.serve(async (req) => {
       return json(401, { valid: false, reason: 'bad signature' });
     }
 
-    // Time-based claims (seconds since epoch).
+    // Time-based claims (seconds since epoch). Require a finite numeric exp so an authentically
+    // signed but non-expiring / malformed token can't be accepted indefinitely.
     const now = Math.floor(Date.now() / 1000);
-    if (typeof payload.exp === 'number' && now >= payload.exp) {
+    if (typeof payload.exp !== 'number' || !isFinite(payload.exp)) {
+      return json(401, { valid: false, reason: 'missing exp' });
+    }
+    if (now >= payload.exp) {
       return json(401, { valid: false, reason: 'token expired' });
     }
-    if (typeof payload.nbf === 'number' && now < payload.nbf) {
+    if (payload.nbf !== undefined && (typeof payload.nbf !== 'number' || now < payload.nbf)) {
       return json(401, { valid: false, reason: 'token not yet valid' });
     }
 

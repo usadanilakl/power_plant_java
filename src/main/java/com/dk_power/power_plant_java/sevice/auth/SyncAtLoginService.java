@@ -212,15 +212,17 @@ public class SyncAtLoginService {
         LocalDateTime hubTs = effective(user.getPasswordUpdatedAt());
         LocalDateTime sbTs = effective(sb == null ? null : sb.passwordUpdatedAt());
 
-        if (!sbTs.isBefore(hubTs)) {
-            // Supabase password is at least as new — overwrite hub with the just-verified plaintext.
+        // Deterministic tie-break: the HUB wins an exact timestamp tie (matches the hub-login direction,
+        // which also keeps the hub on a tie). So overwrite the hub only when Supabase is STRICTLY newer.
+        if (sbTs.isAfter(hubTs)) {
+            // Supabase password is strictly newer — overwrite hub with the just-verified plaintext.
             user.setPassword(passwordEncoder.encode(plaintextPassword));
             user.setPasswordUpdatedAt(sbTs.isAfter(EPOCH) ? sbTs : LocalDateTime.now(ZoneOffset.UTC));
             userRepo.save(user);
             log.info("[Supabase sync] Overwrote hub password from Supabase for {}", email);
             return new ReconcileResult(true, false, "Hub password updated from Supabase");
         }
-        log.info("[Supabase sync] Hub password newer for {} — no hub change", email);
+        log.info("[Supabase sync] Hub password newer or equal for {} — no hub change", email);
         return new ReconcileResult(false, false, "Hub password already newer");
     }
 
