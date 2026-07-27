@@ -21,12 +21,12 @@
           <app-theme-toggle></app-theme-toggle>
           <app-user-icon></app-user-icon>
 
-          @if (serverStatus.isOnline()) {
-            @if (authService.isLoggedIn()) {
-              <button class="auth-btn" (click)="logout()">Logout</button>
-            } @else {
-              <button class="auth-btn" (click)="login()">Sign In</button>
-            }
+          <!-- Auth controls are NOT gated on hub availability: login/logout work via the Supabase
+               fallback when the hub is down (auth.service.authenticate falls back automatically). -->
+          @if (authService.isLoggedIn()) {
+            <button class="auth-btn" (click)="logout()">Logout</button>
+          } @else {
+            <button class="auth-btn" (click)="login()">Sign In</button>
           }
       </div>
     </div>
@@ -35,7 +35,7 @@
     </div>
   </header>
 
-  @if (!isLoggedIn() && serverStatus.isOnline()) {
+  @if (!isLoggedIn()) {
     @if (needsRegistrationCompletion()) {
       <div class="login-banner">
         <span>Finish signing up to unlock permits, messages, and more.</span>
