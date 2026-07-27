@@ -43,6 +43,9 @@ export const IPC_GATE_LOG_GET_CONTRACTOR_DIRECTORY = 'gate-log:get-contractor-di
 // Gate Log broadcasts (send/on)
 export const IPC_GATE_LOG_PEOPLE_UPDATED = 'gate-log:people-updated';
 
+// Plant Chat (invoke/handle) — see project/features/users/communication/plant-chat.md
+export const IPC_CHAT_GET_SUPABASE_SESSION = 'chat:get-supabase-session';
+
 // Contractors (invoke/handle)
 export const IPC_CONTRACTORS_GET_LIVE = 'contractors:get-live';
 export const IPC_CONTRACTORS_PUSH_TO_BACKEND = 'contractors:push-to-backend';

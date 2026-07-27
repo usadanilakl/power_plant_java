@@ -2,7 +2,20 @@
 
 Shared plant-wide communication feature backed by **Supabase Postgres** with realtime subscriptions. Runs alongside — not replacing — the existing entity-scoped [Internal Messaging](messaging/internal-messaging.md) system that hangs off WorkRequest / JHA / etc. Plant Chat is a separate concept: a small set of open channels that any plant user can post into.
 
-Status: **Design only** as of 2026-07-24. Depends on the dual-authority auth work (see [dual-auth](../dual-auth.md)) being merged first — Supabase project scaffold, RS256 JWT signing, and `PwaJwtAuthFilter` accepting Supabase-signed tokens are prerequisites.
+Status: **In implementation** as of 2026-07-26. Dual-authority auth is merged and live-validated (see [dual-auth 2026-07-24](../dual-auth.md) in memory) — Supabase project scaffold, RS256 JWT signing, `SupabaseAdminClient`, `PwaJwtAuthFilter` accepting Supabase-signed tokens, and the verify-jwt Edge Function are all in place.
+
+## Architecture decision — Option C (Electron direct + opportunistic hub audit)
+
+The doc as originally written assumed hub relays all chat traffic (Option B). **Superseded 2026-07-26.** Now: **Electron and PWA talk to Supabase directly** for reads (Supabase Realtime) and writes (Supabase client SDK). Hub is **not in the hot path** for chat. Hub subscribes to Supabase Realtime **for audit only**, mirroring rows into H2 for long-term storage + a hub-side search UI. CRDT sync is deliberately NOT registered for chat entities — the audit is one-way, Supabase → hub H2.
+
+Rationale:
+- Chat UX matches user expectation of "chat needs the cloud" (like Slack). Internet outage → chat dark; acceptable.
+- Hub down → chat unaffected (whole point of the design).
+- Simpler code — no dedup between hub-write-loop-through-Supabase-back-to-hub, no dual subscription in Electron.
+- Audit trail + search still preserved via the hub-side H2 mirror.
+- "Internet down but LAN up" scenario is rare enough in a plant that already uses SharePoint / PA / OnLocation over internet; we accept it as an offline period for chat only.
+
+The rest of this doc still describes the model, RLS policies, and UX correctly — the change is only in the send/receive flow section.
 
 ## Why Supabase, not SharePoint
 
@@ -83,47 +96,41 @@ RLS policies (all `for select`, `for insert`, `for update` scoped by `auth.uid()
 
 RLS relies on the `roles` claim being present in the JWT payload. Both hub and Supabase issue JWTs carrying that claim (dual-auth work handles this). Supabase-native JWT users get the claim populated from `raw_user_meta_data.roles`, which the reconciliation job keeps in sync from the hub `User.role` field.
 
-## End-to-end flow
+## End-to-end flow (Option C)
 
-Legend: `P` = PWA, `D` = plant desktop (Electron + local Spring), `H` = hub, `S` = Supabase.
+Legend: `P` = PWA, `D` = plant desktop (Electron), `H` = hub, `S` = Supabase.
 
-### Send (happy path — hub up)
-
-```
-P/D  →  POST /api/pwa/secured/plant-chat/{conv}/send    →  H  →  writes to S (INSERT)
-                                                                  →  Supabase Realtime broadcasts
-                                                                  →  hub SSE broadcasts (H mirror already saved)
-```
-
-Both the Supabase realtime channel and hub's SSE fire on a successful hub write. Subscribers on either channel see the message.
-
-### Send (hub unreachable)
+### Send
 
 ```
-P/D  →  POST fails on hub  →  fallback: direct Supabase client INSERT
-                                          →  Supabase Realtime broadcasts
-                                          →  hub picks it up next time hub-drain runs
-                                             (writes to H2 with externalUuid dedup)
+P/D  →  Supabase client INSERT (direct)  →  RLS enforces sender/access
+                                          →  Supabase Realtime broadcasts to all subscribers
 ```
 
-No `mailto`, no PA, no Cloudflare Worker in the picture. Auth in this path uses the Supabase-signed JWT that the user already holds (dual-auth).
+No hub involvement in the write path. Auth uses the Supabase-signed JWT the user holds (or the hub-signed JWT verified by Supabase Edge Function equivalent — RLS accepts both).
 
 ### Receive
 
-- **Desktop with hub reachable:** existing hub SSE channel. Local Spring gets the message, saves to local H2, pushes IPC event → renderer toast.
-- **Desktop with hub unreachable:** local Spring's Supabase Realtime subscription (kept open in parallel with SSE). Same code path from the subscription callback onward.
-- **PWA:** subscribes to Supabase Realtime directly. Same shape.
+Every client (PWA and each Electron desktop) opens its own Supabase Realtime subscription on the `plant_chat_message` table filtered to conversations it can see. New rows arrive within ~100 ms.
 
-### Hub-drain (recovery)
+- **Electron:** Angular renderer subscribes directly via `@supabase/supabase-js`. On new-message event → local UI update + toast + important-message modal.
+- **PWA:** same client SDK, same subscription pattern. Persistent banner for important messages.
 
-When hub comes back online after being unreachable:
+### Hub audit (background)
 
-1. Query Supabase for messages with `sent_at > lastDrainedAt`.
-2. For each, upsert into H2 `PlantChatMessage` keyed on `externalUuid`.
-3. CRDT sync propagates to any desktops that were also offline.
-4. Advance `lastDrainedAt` checkpoint.
+Hub subscribes to Supabase Realtime **read-only** for `plant_chat_message` + `plant_chat_ack` (all conversations). On each new row:
 
-Runs on a `@Scheduled` every 30 s while hub is up. Idempotent — duplicates rejected by `externalUuid` unique constraint.
+1. Look up `sender_id` (Supabase UUID) → hub User via `user_link` table from dual-auth work. Fall back to `null` if not resolvable (rare).
+2. Insert into H2 `PlantChatMessage` (audit mirror), keyed on `externalUuid = Supabase row id` for dedup.
+3. Also mirror `plant_conversation` on first message to a conversation not yet in H2.
+
+Runs continuously while hub is up. On startup, backfills from `sent_at > lastAuditCheckpoint` before switching to Realtime.
+
+**Chat is NOT registered in `EntityTableRegistry` for CRDT sync.** The H2 mirror is per-hub audit only; desktops don't read chat from hub (they read from Supabase directly).
+
+### Hub search UI
+
+Read-only UI at `/ng/chat-audit` (admin-visible) — browse conversations, filter by sender/date/keyword, full-text search over `content` column via Postgres `LOWER(content) LIKE '%...%'` (JPA specification) or later `tsvector` if volume grows. Reads from H2 mirror, not Supabase — search stays fast and works even if Supabase is briefly unreachable.
 
 ## Important flag + acknowledgement UX
 
@@ -151,25 +158,26 @@ Popup overlay for incoming messages is a separate top-of-window component, not c
 
 New top-level "Personnel" section (PWA does not have one today) housing `Schedule` and `Conversations`. Contractors don't see this section (RLS + route guard both block).
 
-## Hub-side implementation summary
+## Hub-side implementation summary (Option C)
 
 New:
 
-- `PlantConversation`, `PlantChatMessage`, `PlantChatAck` JPA entities under `entities/messaging/plant/`.
+- `PlantConversation`, `PlantChatMessage`, `PlantChatAck` JPA entities under `entities/messaging/plant/` — **for audit mirror only**, populated by the Realtime subscriber, never edited via a hub REST write endpoint.
 - Repos.
-- `PlantChatService` — send / list / ack / edit.
-- `NgPlantChatController` for desktop UI at `/ng/plant-chat/*`.
-- `PwaPlantChatController` for PWA at `/api/pwa/secured/plant-chat/*` (JWT-gated).
-- `PlantChatSupabaseClient` — hub's write path to Supabase (uses service role key from dual-auth secrets).
-- `PlantChatSupabaseDrainer` — `@Scheduled` reconciler that pulls recent Supabase rows into H2.
-- `PlantChatRealtimeSubscriber` — keeps a Supabase Realtime WebSocket open on desktops. Bridges to local Spring via SSE.
-- Extend `EntityTableRegistry` with the three new entity names for CRDT sync.
+- `PlantChatAuditSubscriber` — Supabase Realtime WebSocket subscriber (runs while hub is up). Startup backfill from `sent_at > lastAuditCheckpoint`, then live tail. Idempotent by `externalUuid`.
+- `PlantChatAuditService` — search + browse queries over the H2 mirror.
+- `NgChatAuditController` at `/ng/chat-audit/*` — read-only browse/search UI for admin.
+
+**Not built (Option C):**
+
+- No `PlantChatService` write path on hub.
+- No `NgPlantChatController` for user writes.
+- No `PwaPlantChatController` — PWA writes go direct to Supabase.
+- No `EntityTableRegistry` registration for chat entities — the mirror is per-hub audit, not CRDT-synced.
 
 Reused:
 
-- `PwaJwtAuthFilter` (already accepts hub- and Supabase-signed JWTs after dual-auth work).
-- Existing SSE machinery for hub → desktop push.
-- CRDT sync for desktop-to-desktop mirroring.
+- `SupabaseAdminClient` config (Supabase URL / service role key) for the subscriber's connection.
 
 ## Configuration additions
 

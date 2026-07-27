@@ -239,6 +239,17 @@ export class IpcHandlers {
     this.registerVoskHandlers();
     this.registerPersonnelHandlers();
     this.registerContractorHandlers();
+    this.registerChatAuthHandlers();
+  }
+
+  private registerChatAuthHandlers(): void {
+    ipcMain.handle(events.IPC_CHAT_GET_SUPABASE_SESSION, async () => {
+      try {
+        return { success: true, data: await backendGet('/api/chat/supabase-session') };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
   }
 
   public getSpringBootManager(): SpringBootManager {

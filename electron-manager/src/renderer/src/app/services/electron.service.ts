@@ -508,6 +508,21 @@ export interface PersonnelContact {
   emergencyRelation?: string;
 }
 
+export interface ChatSupabaseSession {
+  /** Supabase-verifiable JWT (HS256, signed by hub with the project's JWT secret). */
+  token: string;
+  /** Seconds until the token expires. Client refreshes by re-calling the endpoint. */
+  expiresIn: number;
+  /** Current user's Supabase UUID — matches the JWT sub claim. */
+  supabaseUuid: string;
+  /** Denormalised display name for sender_display_name on new messages. */
+  displayName: string;
+  /** Supabase project URL (from hub secrets). Present when Supabase is configured. */
+  supabaseUrl?: string;
+  /** Supabase anon key (safe to expose to authenticated clients; RLS is the real gate). */
+  supabaseAnonKey?: string;
+}
+
 export interface ContractorEntry {
   onLocationMemberId: string;
   name: string;
@@ -691,6 +706,9 @@ interface ElectronAPI {
   gateLogPrint: () => Promise<IpcResult>;
   gateLogGetContractorDirectory: () => Promise<IpcResult<ContractorEntry[]>>;
   onGateLogPeopleUpdated: (callback: () => void) => () => void;
+
+  // Plant Chat
+  chatGetSupabaseSession: () => Promise<IpcResult<ChatSupabaseSession>>;
 
   // Contractors
   contractorsGetLive: () => Promise<IpcResult<ContractorEntry[]>>;
@@ -1166,6 +1184,13 @@ export class ElectronService implements OnDestroy {
   async gateLogGetContractorDirectory(): Promise<IpcResult<ContractorEntry[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.gateLogGetContractorDirectory();
+  }
+
+  // Plant Chat
+
+  async chatGetSupabaseSession(): Promise<IpcResult<ChatSupabaseSession>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.chatGetSupabaseSession();
   }
 
   // Contractors

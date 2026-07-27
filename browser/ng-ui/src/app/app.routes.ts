@@ -20,6 +20,7 @@ import { SdsAuditPageComponent } from './pages/sds-audit-page/sds-audit-page.com
 import { SdsAuditComponent } from './features/sds-audit/sds-audit.component';
 import { authGuard } from './auth/auth.guard';
 import { plantGuard } from './guards/plant.guard';
+import { plantGroupGuard } from './guards/plant-group.guard';
 
 export const routes: Routes = [
     {
@@ -80,6 +81,13 @@ export const routes: Routes = [
       path: 'messages',
       loadComponent: () => import('./pages/messages-page/messages-page.component').then(m => m.MessagesPageComponent),
       canActivate: [standaloneGuard, userSetupGuard, authGuard]
+    },
+    {
+      // Personnel section — schedule + contacts (chat sub-tab planned as Stage 3 of plant-chat).
+      // Gated to plant-affiliated groups (Admin/Plant/NAES/JPower); contractors redirected.
+      path: 'personnel',
+      loadComponent: () => import('./pages/personnel-page/personnel-page.component').then(m => m.PersonnelPageComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGroupGuard]
     },
     {
       path: 'field-lists',

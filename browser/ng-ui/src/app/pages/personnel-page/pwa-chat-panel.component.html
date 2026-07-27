@@ -1,0 +1,81 @@
+<div class="chat-panel">
+  <div *ngIf="chat.errorMessage() && !chat.ready()" class="error-banner">
+    <span class="material-icons">error_outline</span>
+    <div>
+      <strong>Chat unavailable.</strong>
+      {{ chat.errorMessage() }}
+      <button class="btn-link" (click)="chat.refreshSession()">Retry</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="chat.ready()">
+    <!-- Conversation list (shown when no thread selected) -->
+    <ng-container *ngIf="!activeConversationId()">
+      <div class="header">
+        <strong>Conversations</strong>
+        <button class="btn-icon" (click)="loadConversations()" [disabled]="loadingConversations()">
+          <span class="material-icons" [class.spin]="loadingConversations()">refresh</span>
+        </button>
+      </div>
+      <div *ngIf="conversations().length === 0 && !loadingConversations()" class="empty">
+        No conversations yet. An admin can create one from the desktop.
+      </div>
+      <div *ngFor="let c of conversations()" class="conv-row" (click)="selectConversation(c.id)">
+        <div class="conv-name">{{ c.name }}</div>
+        <div *ngIf="c.description" class="conv-desc">{{ c.description }}</div>
+        <span class="material-icons chev">chevron_right</span>
+      </div>
+    </ng-container>
+
+    <!-- Thread view -->
+    <ng-container *ngIf="activeConversationId()">
+      <div class="thread-header">
+        <button class="btn-icon" (click)="back()">
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <div>
+          <div class="thread-title">{{ activeConversation()?.name }}</div>
+          <div *ngIf="activeConversation()?.description" class="thread-desc">{{ activeConversation()?.description }}</div>
+        </div>
+      </div>
+
+      <div class="messages" *ngIf="!loadingMessages(); else loadingMsg">
+        <div *ngFor="let m of messages()"
+             class="msg"
+             [class.me]="senderClass(m) === 'me'"
+             [class.important]="m.is_important">
+          <div class="msg-meta">
+            <span class="msg-from">{{ m.sender_display_name }}</span>
+            <span class="msg-time">{{ m.sent_at | date:'shortTime' }}</span>
+            <span *ngIf="m.requires_ack" class="msg-badge ack">needs ack</span>
+            <span *ngIf="m.is_important && !m.requires_ack" class="msg-badge important">important</span>
+          </div>
+          <div class="msg-body">{{ m.content }}</div>
+        </div>
+        <div #threadBottom></div>
+      </div>
+      <ng-template #loadingMsg>
+        <div class="empty"><span class="material-icons spin">sync</span> Loading messages…</div>
+      </ng-template>
+
+      <div class="compose">
+        <textarea rows="2"
+                  placeholder="Type a message…"
+                  [(ngModel)]="composeText"
+                  (keydown)="onComposeKeydown($event)"></textarea>
+        <div class="compose-actions">
+          <label class="checkbox">
+            <input type="checkbox" [(ngModel)]="composeImportant" [disabled]="composeRequiresAck" />
+            Important
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" [(ngModel)]="composeRequiresAck" />
+            Needs ack
+          </label>
+          <span *ngIf="sendError()" class="error-inline">{{ sendError() }}</span>
+          <button class="btn-primary" (click)="send()" [disabled]="!composeText.trim()">Send</button>
+        </div>
+      </div>
+    </ng-container>
+  </ng-container>
+</div>

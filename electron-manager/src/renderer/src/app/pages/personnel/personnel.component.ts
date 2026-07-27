@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport } from '../../services/electron.service';
+import { ChatPanelComponent } from './chat-panel.component';
 
 const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BC2B8028F-8473-49EC-8B24-1FEBBB8D1584%7D&file=OPS%20Schedule%202026.xlsx&action=default&mobileredirect=true';
 const CONTACTS_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BE445C5F4-C235-45F7-8D29-F0613E875FA0%7D&file=EMERGENCY%20CONTACT%20LIST%20-%20EDITED%2011_2024.xlsx&action=default&mobileredirect=true';
@@ -13,7 +14,7 @@ const SHIFT_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-personnel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ChatPanelComponent],
   template: `
     <div class="page">
       <div class="page-header">
@@ -48,6 +49,9 @@ const SHIFT_LABELS: Record<string, string> = {
         </button>
         <button class="tab" [class.active]="activeTab === 'contractors'" (click)="activeTab = 'contractors'; loadContractors()">
           <span class="material-icons tab-icon">engineering</span> Contractors
+        </button>
+        <button class="tab" [class.active]="activeTab === 'conversations'" (click)="activeTab = 'conversations'">
+          <span class="material-icons tab-icon">chat</span> Conversations
         </button>
       </div>
 
@@ -327,6 +331,11 @@ const SHIFT_LABELS: Record<string, string> = {
           </div>
         </div>
       </div>
+
+      <!-- Conversations Tab -->
+      <div class="tab-content" *ngIf="activeTab === 'conversations'">
+        <app-chat-panel></app-chat-panel>
+      </div>
     </div>
   `,
   styles: [`
@@ -515,7 +524,7 @@ export class PersonnelComponent implements OnInit {
   loading = false;
   contactsLoading = false;
   contactsError = '';
-  activeTab: 'schedule' | 'contacts' | 'contractors' = 'schedule';
+  activeTab: 'schedule' | 'contacts' | 'contractors' | 'conversations' = 'schedule';
 
   // Header search — scoped to whichever tab is active. Lowercased + cached
   // so the per-row matcher doesn't re-lowercase on every change-detection pass.
@@ -822,6 +831,7 @@ export class PersonnelComponent implements OnInit {
       case 'schedule': return 'Search schedule by name…';
       case 'contacts': return 'Search contacts…';
       case 'contractors': return 'Search contractors…';
+      case 'conversations': return 'Search…'; // chat panel does its own filtering; header search unused here
     }
   }
 

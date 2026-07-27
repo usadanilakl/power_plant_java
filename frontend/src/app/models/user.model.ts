@@ -201,6 +201,9 @@ export class UserDto extends BaseDto implements UserModel {
       { value: 'ROLE_EMPLOYEE', label: 'Employee' },
       { value: 'ROLE_CONTRACTOR', label: 'Contractor' },
       { value: 'ROLE_PLANT', label: 'Plant' },
+      // Employer / group roles — gate access to schedule, contacts, chat.
+      { value: 'ROLE_NAES', label: 'NAES' },
+      { value: 'ROLE_JPOWER', label: 'JPower' },
       // Plant job roles (used by MaximoBundleService for WO aggregation)
       { value: 'LEAD_OPERATOR', label: 'Lead Operator' },
       // LOTO roles — gate LOTO permit + standard operations (see LotoRole.java).

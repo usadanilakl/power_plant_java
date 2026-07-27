@@ -203,6 +203,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub); };
   },
 
+  // Plant Chat
+  chatGetSupabaseSession: (): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_CHAT_GET_SUPABASE_SESSION),
+
   // Contractors
   contractorsGetLive: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_GET_LIVE),
   contractorsPushToBackend: (): Promise<IpcResult> =>

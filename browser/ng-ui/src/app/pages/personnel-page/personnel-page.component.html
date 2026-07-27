@@ -1,0 +1,149 @@
+<app-main-layout>
+  <ng-container header>
+    <app-router-menu></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="page">
+      <div class="page-header">
+        <h1 class="page-title">Personnel</h1>
+        <button class="btn btn-icon" (click)="activeTab() === 'schedule' ? refreshSchedule() : refreshContacts()"
+                [disabled]="scheduleLoading() || contactsLoading()"
+                title="Refresh">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab" [class.active]="activeTab() === 'schedule'" (click)="selectTab('schedule')">
+          <span class="material-icons tab-icon">calendar_month</span> Schedule
+        </button>
+        <button class="tab" [class.active]="activeTab() === 'contacts'" (click)="selectTab('contacts')">
+          <span class="material-icons tab-icon">contacts</span> Contacts
+        </button>
+        <button class="tab" [class.active]="activeTab() === 'chat'" (click)="selectTab('chat')">
+          <span class="material-icons tab-icon">chat</span> Chat
+        </button>
+      </div>
+
+      <!-- Schedule tab -->
+      @if (activeTab() === 'schedule') {
+        <div class="tab-content">
+          @if (scheduleError()) {
+            <div class="error-banner">{{ scheduleError() }}</div>
+          }
+
+          @if (onShiftNow().length > 0) {
+            <div class="section">
+              <h2 class="section-title">
+                <span class="material-icons">groups</span>
+                On shift now
+              </h2>
+              <div class="chip-row">
+                @for (p of onShiftNow(); track p.name) {
+                  <div class="chip">
+                    @if (p.group) { <span class="chip-group">{{ p.group }}</span> }
+                    <span class="chip-name">{{ p.name }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (scheduleToday()?.onCallManagerName) {
+            <div class="section">
+              <h2 class="section-title">
+                <span class="material-icons">support_agent</span>
+                On call manager
+              </h2>
+              <div class="chip-row">
+                <div class="chip">
+                  <span class="chip-group ocm">OCM</span>
+                  <span class="chip-name">{{ scheduleToday()!.onCallManagerName }}</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (!scheduleToday() && !scheduleLoading()) {
+            <div class="empty-state">
+              <span class="material-icons">event_busy</span>
+              <div>No schedule available for today</div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Contacts tab -->
+      @if (activeTab() === 'contacts') {
+        <div class="tab-content">
+          @if (contactsError()) {
+            <div class="error-banner">{{ contactsError() }}</div>
+          }
+
+          <div class="search-row">
+            <span class="material-icons search-icon">search</span>
+            <input type="search" placeholder="Search contacts…"
+                   [ngModel]="contactsSearch()"
+                   (ngModelChange)="contactsSearch.set($event)" />
+          </div>
+
+          @if (contacts().length === 0 && contactsLoading()) {
+            <div class="empty-state">
+              <span class="material-icons spin">sync</span>
+              <div>Loading contacts…</div>
+            </div>
+          } @else if (contacts().length === 0) {
+            <div class="empty-state">
+              <span class="material-icons">contact_phone</span>
+              <div>No contacts available</div>
+            </div>
+          } @else {
+            <div class="contact-list">
+              @for (c of filteredContacts(); track c.id) {
+                <div class="contact-card">
+                  <div class="contact-name">{{ c.name }}</div>
+                  @if (c.title) { <div class="contact-title">{{ c.title }}</div> }
+                  @if (c.phone) {
+                    <a class="contact-line" [attr.href]="'tel:' + c.phone">
+                      <span class="material-icons">call</span> {{ c.phone }}
+                    </a>
+                  }
+                  @if (c.secondaryPhone) {
+                    <a class="contact-line" [attr.href]="'tel:' + c.secondaryPhone">
+                      <span class="material-icons">call</span> {{ c.secondaryPhone }} <small>(secondary)</small>
+                    </a>
+                  }
+                  @if (c.email) {
+                    <a class="contact-line" [attr.href]="'mailto:' + c.email">
+                      <span class="material-icons">mail</span> {{ c.email }}
+                    </a>
+                  }
+                  @if (c.emergencyContact) {
+                    <div class="emergency-block">
+                      <div class="emergency-label">Emergency contact</div>
+                      <div>{{ c.emergencyContact }}
+                        @if (c.emergencyRelation) { <small>({{ c.emergencyRelation }})</small> }
+                      </div>
+                      @if (c.emergencyPhone) {
+                        <a class="contact-line" [attr.href]="'tel:' + c.emergencyPhone">
+                          <span class="material-icons">call</span> {{ c.emergencyPhone }}
+                        </a>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Chat tab -->
+      @if (activeTab() === 'chat') {
+        <div class="tab-content chat-tab">
+          <app-pwa-chat-panel></app-pwa-chat-panel>
+        </div>
+      }
+    </div>
+  </ng-container>
+</app-main-layout>

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Dual-authority JWT service.
@@ -155,6 +156,58 @@ public class JwtService {
                 .expiration(expiry)
                 .signWith(hubPrivateKey, Jwts.SIG.RS256)
                 .compact();
+    }
+
+    // ── Signing (Supabase-compatible, HS256 with the project's JWT secret) ──
+
+    /** How long a hub-minted Supabase session token stays valid — short by design; refresh cheap. */
+    private static final long SUPABASE_SESSION_TTL_MS = 60 * 60 * 1000L; // 1 hour
+
+    /**
+     * Mints a Supabase-verifiable JWT so an already-authenticated hub session (Electron desktop or
+     * PWA) can talk directly to Supabase Realtime + RLS-protected tables without going through the
+     * PWA Supabase-auth password flow. Signed with the Supabase project's JWT secret ({@code
+     * supabase.jwt.secret}) so Supabase's own verifier accepts it.
+     *
+     * <p>Claim shape matches what Supabase RLS + Realtime expect:
+     * {@code sub} = supabase user uuid, {@code aud} = {@code role} = "authenticated",
+     * {@code user_metadata.roles} = the user's hub roles so RLS policies (like
+     * {@code jwt_is_plant_group}) resolve. Used by the chat feature — see
+     * {@code project/features/users/communication/plant-chat.md}.
+     */
+    public String generateSupabaseSessionToken(User user) {
+        if (supabaseHmacKey == null) {
+            throw new IllegalStateException(
+                    "Cannot mint a Supabase session token: supabase.jwt.secret is not configured on this hub.");
+        }
+        if (user.getSupabaseUuid() == null || user.getSupabaseUuid().isBlank()) {
+            throw new IllegalStateException(
+                    "User " + user.getId() + " has no supabaseUuid — provision them in Supabase first "
+                    + "(SupabaseUserProvisioningJob or SyncAtLoginService).");
+        }
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + SUPABASE_SESSION_TTL_MS);
+        Map<String, Object> userMetadata = new java.util.HashMap<>();
+        userMetadata.put("roles", user.getRoles());
+        userMetadata.put("hub_user_id", user.getId());
+        if (user.getName() != null) userMetadata.put("name", user.getName());
+
+        return Jwts.builder()
+                .issuer(supabaseIssuer.isEmpty() ? "supabase" : supabaseIssuer)
+                .subject(user.getSupabaseUuid())
+                .audience().add("authenticated").and()
+                .claim("role", "authenticated")
+                .claim("email", user.getEmail())
+                .claim("user_metadata", userMetadata)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(supabaseHmacKey, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /** TTL (in seconds) advertised to clients — matches {@link #SUPABASE_SESSION_TTL_MS}. */
+    public long getSupabaseSessionTtlSeconds() {
+        return SUPABASE_SESSION_TTL_MS / 1000L;
     }
 
     // ── Verification (either issuer) ─────────────────────────────────────────
