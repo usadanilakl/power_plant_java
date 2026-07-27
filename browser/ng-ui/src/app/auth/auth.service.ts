@@ -23,6 +23,12 @@ export interface PwaAuthData {
   source?: 'hub' | 'supabase';
   /** Present only for Supabase sessions — needed to refresh. */
   refreshToken?: string;
+  /**
+   * For a HUB-primary session: a best-effort Supabase refresh token captured in the background at
+   * login. It lets hub-down fallbacks (profile update, and belt-and-suspenders password change) reach
+   * Supabase even though the primary token is hub-issued. Absent until the user is mirrored to Supabase.
+   */
+  supabaseRefreshToken?: string;
 }
 
 /** Outcome of a dual-authority sign-up. */
@@ -77,9 +83,28 @@ export class AuthService {
   authenticate(email: string, password: string): Observable<PwaAuthData> {
     return this.serverApi.pwaLoginRaw(email, password).pipe(
       map(response => this.toHubAuthData(response)),
-      tap(authData => this.storeAuth(authData)),
+      tap(authData => {
+        this.storeAuth(authData);
+        // Best-effort: also acquire a Supabase session so this hub-primary session can still write to
+        // Supabase (profile/password) if the hub later goes down. No-op if the user isn't mirrored yet.
+        this.establishBackgroundSupabaseSession(email, password);
+      }),
       catchError(err => this.loginFallback(email, password, err))
     );
+  }
+
+  /** After a HUB login, capture a Supabase refresh token in the background for hub-down fallbacks. */
+  private establishBackgroundSupabaseSession(email: string, password: string): void {
+    if (!this.supabase.configured) return;
+    this.supabase.signInWithPassword(email, password).subscribe({
+      next: session => {
+        const cur = this.getAuthData();
+        if (cur && cur.source === 'hub') {
+          this.storeAuth({ ...cur, supabaseRefreshToken: session.refresh_token });
+        }
+      },
+      error: () => { /* not mirrored to Supabase yet, or offline — fine, best-effort */ },
+    });
   }
 
   private loginFallback(email: string, password: string, err: any): Observable<PwaAuthData> {
@@ -187,22 +212,47 @@ export class AuthService {
       catchError(err => {
         const { hubDown } = this.classifyHubError(err);
         const auth = this.getAuthData();
-        // A profile edit carries no password, so — unlike changePasswordDual — a hub-originated
-        // session cannot acquire a Supabase token to push. We can only fall back for a session that is
-        // already Supabase-issued. For a hub session with the hub down, the change stays local and the
-        // hub picks it up on the next reachable save; the 60s job then mirrors it to Supabase.
-        if (hubDown && this.supabase.configured && auth?.source === 'supabase' && auth.token) {
-          const attrs: { email?: string; data?: Record<string, any> } = {
-            data: { name: data.name, phone: data.phone, company: data.company },
-          };
-          if (data.email) attrs.email = data.email;
+        if (!hubDown || !this.supabase.configured) {
+          return throwError(() => err);
+        }
+        const attrs: { email?: string; data?: Record<string, any> } = {
+          data: { name: data.name, phone: data.phone, company: data.company },
+        };
+        if (data.email) attrs.email = data.email;
+        // Supabase-primary session → use its access token directly.
+        if (auth?.source === 'supabase' && auth.token) {
           return this.supabase.updateUser(auth.token, attrs).pipe(
             map(() => ({ success: true, message: 'Profile updated' }))
           );
         }
+        // Hub-primary session → use the background Supabase session captured at login (refresh it for a
+        // fresh access token, persist the rotated refresh token, then update).
+        if (auth?.supabaseRefreshToken) {
+          return this.supabase.refreshSession(auth.supabaseRefreshToken).pipe(
+            switchMap(session => {
+              const cur = this.getAuthData();
+              if (cur) this.storeAuth({ ...cur, supabaseRefreshToken: session.refresh_token });
+              return this.supabase.updateUser(session.access_token, attrs).pipe(
+                map(() => ({ success: true, message: 'Profile updated' }))
+              );
+            })
+          );
+        }
+        // No Supabase fallback available (user not mirrored yet) — the local save persists and the hub
+        // picks it up on reconnect; the 60s reconciliation job then mirrors it to Supabase.
         return throwError(() => err);
       })
     );
+  }
+
+  /**
+   * True if a hub-down write can still reach Supabase for the current session: a Supabase-primary
+   * token, or a hub session that captured a background Supabase refresh token at login.
+   */
+  hasSupabaseFallback(): boolean {
+    const d = this.getAuthData();
+    if (!this.supabase.configured || !d) return false;
+    return (d.source === 'supabase' && !!d.token) || !!d.supabaseRefreshToken;
   }
 
   // ── Silent refresh ─────────────────────────────────────────────────────────
@@ -297,6 +347,19 @@ export class AuthService {
     if (!user) return false;
     const roles = (user.roles ?? []).map(r => (r ?? '').toUpperCase());
     return roles.some(r => r.includes('PLANT') || r.includes('ADMIN'));
+  }
+
+  /**
+   * True if the signed-in user belongs to any plant-affiliated group (Admin, Plant, NAES, JPower).
+   * These are the groups that see schedule + contacts + plant chat. Contractors are excluded.
+   * See {@code project/features/users/communication/pwa-step-5-wiring.md}.
+   */
+  isPlantGroup(): boolean {
+    const user = this.getAuthData()?.user;
+    if (!user) return false;
+    const roles = (user.roles ?? []).map(r => (r ?? '').toUpperCase());
+    return roles.some(r =>
+      r.includes('ADMIN') || r.includes('PLANT') || r.includes('NAES') || r.includes('JPOWER'));
   }
 
   /**

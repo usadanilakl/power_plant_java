@@ -150,13 +150,16 @@ export class AuthComponent implements OnInit {
     });
   }
 
-  /** Offline: basic info is enough (password is set later, online). Online: password required. */
+  /**
+   * Fully offline (no internet): basic info is enough — a real account is created later. With internet
+   * (hub OR Supabase reachable): a real account is created now, so a password is required.
+   */
   get canSubmitSignup(): boolean {
     const f = this.signupForm;
     const basicValid = !!f.get('name')?.valid && !!f.get('email')?.valid
       && !!f.get('phone')?.valid && !!f.get('company')?.valid;
     if (!basicValid) return false;
-    if (this.serverStatus.isOnline()) {
+    if (navigator.onLine) {
       const pw = f.get('password')?.value;
       return !!pw && pw.length >= 8;
     }
@@ -174,9 +177,9 @@ export class AuthComponent implements OnInit {
 
     this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: false });
 
-    if (!this.serverStatus.isOnline()) {
-      // Offline: keep basic info on the device; the user finishes signing up (sets a password)
-      // when the server is back. Survives app restarts — nothing sensitive is stored locally.
+    if (!navigator.onLine) {
+      // Truly offline (no hub AND no Supabase): keep basic info on the device; the user finishes signing
+      // up (sets a password) when connectivity returns. Survives restarts — nothing sensitive stored.
       this.isLoading = false;
       this.successMessage = 'Saved. You can use the app now — finish signing up to set a password when you\'re back online.';
       setTimeout(() => this.router.navigate([this.returnUrl]), 1500);
@@ -187,11 +190,19 @@ export class AuthComponent implements OnInit {
     this.authService.signUpDual({ pwaUserUuid, name, email, phone, company, password }).subscribe({
       next: (outcome) => {
         if (outcome.viaSupabase) {
-          // Hub was down — account created in Supabase, pending hub admin approval on reconnect.
+          // Hub was down — the account was created in Supabase. Sign the user in via Supabase so they
+          // can use the app right now; the hub provisions the row and admin-approves (for plant access)
+          // when it comes back, and full profile sync follows.
           this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
-          this.isLoading = false;
-          this.step = 'pending_approval';
-          this.successMessage = outcome.message;
+          this.authService.authenticate(email, password).subscribe({
+            next: () => { this.isLoading = false; this.router.navigate([this.returnUrl]); },
+            error: () => {
+              // Couldn't establish a session (rare) — account still exists; show the pending state.
+              this.isLoading = false;
+              this.step = 'pending_approval';
+              this.successMessage = outcome.message;
+            }
+          });
           return;
         }
         if (!outcome.ok) {

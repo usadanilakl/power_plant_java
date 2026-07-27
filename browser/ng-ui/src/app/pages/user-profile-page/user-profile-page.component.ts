@@ -107,7 +107,7 @@ export class UserProfilePageComponent implements OnInit {
     // Supabase-issued session and we have internet (updateProfileDual will fall over to Supabase).
     // A hub-only session with the hub down stays local (no password to acquire a Supabase token).
     const canReachAStore = this.serverStatus.isOnline()
-      || (this.authService.getAuthData()?.source === 'supabase' && navigator.onLine);
+      || (navigator.onLine && this.authService.hasSupabaseFallback());
     if (this.isLoggedIn && canReachAStore) {
       this.profileSaveStatus = 'saving';
       // Dual-authority: hub first, Supabase fallback when the hub is unreachable.
@@ -183,35 +183,40 @@ export class UserProfilePageComponent implements OnInit {
 
     if (!this.userData) return;
 
-    if (!this.serverStatus.isOnline()) {
+    if (!navigator.onLine) {
       this.registerStatus = 'offline';
-      this.registerMessage = 'Server is offline. Try again later.';
+      this.registerMessage = 'No connection. Try again when you\'re online.';
       return;
     }
 
     const password = this.registerForm.get('registerPassword')!.value;
+    const email = this.userData.email;
     this.registerStatus = 'saving';
 
-    this.serverApi.registerUser({
+    // Dual-path: hub first, Supabase fallback when the hub is unreachable — so a deferred user can
+    // finish signing up (and get a working account) even during a hub outage.
+    this.authService.signUpDual({
       pwaUserUuid: this.userData.uuid,
       name: this.userData.name,
-      email: this.userData.email,
+      email: email,
       phone: this.userData.phone,
       company: this.userData.company,
       password: password
     }).subscribe({
-      next: (result) => {
-        if (result.success) {
+      next: (outcome) => {
+        if (outcome.ok) {
           this.userSetupService.markRegistered();
           this.userData = this.userSetupService.getUserData();
           this.registerStatus = 'success';
-          this.registerMessage = result.status === 'already_exists'
-            ? 'Already registered on server.'
+          this.registerMessage = outcome.viaSupabase
+            ? 'Account created (hub offline). Awaiting admin approval when the hub reconnects.'
             : 'Registered! Awaiting admin approval. You can log in once approved.';
           this.registerForm.reset();
+          // Establish a live session now (hub-down → Supabase) so the user isn't forced to re-auth.
+          this.authService.authenticate(email, password).subscribe({ error: () => {} });
         } else {
           this.registerStatus = 'error';
-          this.registerMessage = result.message;
+          this.registerMessage = outcome.message;
         }
       },
       error: (err) => {
