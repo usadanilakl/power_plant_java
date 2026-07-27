@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, timeout } from 'rxjs';
+import { Observable, map, timeout } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 /**
@@ -47,6 +47,22 @@ export class SupabaseAuthService {
 
   private authHeaders(accessToken: string): Record<string, string> {
     return { ...this.baseHeaders(), Authorization: `Bearer ${accessToken}` };
+  }
+
+  /**
+   * Mirror of the hub's anonymous "does this account exist?" lookup, backed by the
+   * `lookup_user_by_email` RPC — lets the identify → register-vs-signin flow work unchanged when the
+   * hub is down. Returns { found, isActive, name }.
+   */
+  lookupUser(email: string): Observable<{ found: boolean; isActive: boolean; name: string }> {
+    return this.http.post<{ found: boolean; is_active: boolean; name: string | null }>(
+      `${this.url}/rest/v1/rpc/lookup_user_by_email`,
+      { p_email: email },
+      { headers: this.baseHeaders() },
+    ).pipe(
+      timeout(10000),
+      map(r => ({ found: !!r?.found, isActive: !!r?.is_active, name: r?.name ?? '' })),
+    );
   }
 
   signInWithPassword(email: string, password: string): Observable<SupabaseSession> {

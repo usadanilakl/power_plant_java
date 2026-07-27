@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ServerApiService } from '../services/server-api.service';
+import { SupabaseAuthService } from '../services/supabase-auth.service';
 import { UserSetupService } from '../services/user-setup.service';
 import { ServerStatusService } from '../services/server-status.service';
 import { CommonModule } from '@angular/common';
@@ -22,6 +23,7 @@ export class AuthComponent implements OnInit {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private serverApi = inject(ServerApiService);
+  private supabaseAuth = inject(SupabaseAuthService);
   private userSetupService = inject(UserSetupService);
   serverStatus = inject(ServerStatusService);
   private router = inject(Router);
@@ -97,35 +99,49 @@ export class AuthComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = null;
 
+    // Primary: the hub's lookup decides register-vs-signin. If the hub is down, mirror the SAME lookup
+    // via Supabase (full backup) so the flow is identical. If BOTH are unreachable (truly offline), we
+    // can't tell — fall back to the manual choice (sign in / create an account).
     this.serverApi.lookupUser(credential).subscribe({
       next: (result) => {
         this.isLoading = false;
-        if (result.status === 'FOUND') {
-          this.lookedUpEmail = result.email || credential;
-          this.lookedUpName = result.name || '';
-          this.loginForm.patchValue({ email: this.lookedUpEmail });
-          if (result.isActive) {
-            this.step = 'signin';
-          } else {
-            this.step = 'pending_approval';
-          }
-        } else {
-          this.signupForm.patchValue({ email: credential });
-          this.step = 'register';
-        }
+        this.routeAfterLookup(result.status === 'FOUND', !!result.isActive, result.name || '',
+          result.email || credential);
       },
       error: () => {
-        this.isLoading = false;
-        // Hub unreachable — we can't tell whether this account exists. Offer BOTH paths: sign in (works
-        // via the Supabase fallback for existing users) or create an account (Supabase signup for new
-        // users). Carry the typed email into both forms.
-        this.lookedUpEmail = credential;
-        this.loginForm.patchValue({ email: credential });
-        this.signupForm.patchValue({ email: credential });
-        this.offlineChoice = true;
-        this.step = 'signin';
+        if (!this.supabaseAuth.configured) { this.offlineFallback(credential); return; }
+        this.supabaseAuth.lookupUser(credential).subscribe({
+          next: (sb) => {
+            this.isLoading = false;
+            this.routeAfterLookup(sb.found, sb.isActive, sb.name, credential);
+          },
+          error: () => this.offlineFallback(credential),
+        });
       }
     });
+  }
+
+  /** Route to signin / pending-approval / register from a lookup result (hub OR Supabase). */
+  private routeAfterLookup(found: boolean, isActive: boolean, name: string, email: string): void {
+    if (found) {
+      this.lookedUpEmail = email;
+      this.lookedUpName = name;
+      this.loginForm.patchValue({ email });
+      this.step = isActive ? 'signin' : 'pending_approval';
+    } else {
+      this.signupForm.patchValue({ email });
+      this.step = 'register';
+    }
+  }
+
+  /** Neither hub nor Supabase reachable — can't determine the account; let the user choose. */
+  private offlineFallback(credential: string): void {
+    this.isLoading = false;
+    this.lookedUpEmail = credential;
+    this.loginForm.patchValue({ email: credential });
+    this.signupForm.patchValue({ email: credential });
+    this.offlineChoice = true;
+    this.step = 'signin';
   }
 
   onSignIn(): void {
