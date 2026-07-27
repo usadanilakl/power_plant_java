@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, effect, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdvisoryService, LightningState } from '../services/advisory.service';
 
@@ -6,15 +6,16 @@ import { AdvisoryService, LightningState } from '../services/advisory.service';
  * Large, flashing, full-width LIGHTNING STANDDOWN banner. Mounts in the app shell as a
  * flex-shrink:0 sibling so it DISPLACES content (app stays fully usable, nothing covered).
  * Shows only during an active lightning alarm/watch. Alarm = big + flashing + live all-clear
- * countdown; watch = calmer amber strip. The countdown ticks locally every second and re-syncs
- * to Perry's scraped `MM:SS` timer on each update.
+ * countdown; watch = calmer amber strip. The countdown and the "stop flashing" (silence) state
+ * are owned by AdvisoryService so this banner and the header pill stay in lock-step.
  */
 @Component({
   selector: 'app-lightning-standdown-banner',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="ls-banner" *ngIf="state() as st" [class.alarm]="st.level === 'alarm'" [class.watch]="st.level === 'watch'">
+    <div class="ls-banner" *ngIf="state() as st"
+         [class.alarm]="st.level === 'alarm'" [class.watch]="st.level === 'watch'" [class.silenced]="silenced()">
       <span class="material-icons ls-bolt">bolt</span>
 
       <div class="ls-main">
@@ -29,6 +30,11 @@ import { AdvisoryService, LightningState } from '../services/advisory.service';
         <span class="ls-cd-label">ALL CLEAR IN</span>
         <span class="ls-cd-time">{{ cd }}</span>
       </div>
+
+      <button class="ls-stop" *ngIf="st.level === 'alarm' && !silenced()" (click)="stopFlash()"
+              title="Acknowledge — stop the flashing (alert stays visible)">
+        <span class="material-icons">notifications_off</span> Stop flashing
+      </button>
     </div>
   `,
   styles: [`
@@ -40,21 +46,26 @@ import { AdvisoryService, LightningState } from '../services/advisory.service';
       color: #fff;
     }
 
-    /* ALARM — large + flashing */
+    /* ALARM — large + flashing. Crisp two-state flash (~1 Hz), kept even under reduced-motion:
+       a lightning standdown is safety-critical and must be noticed. 1 Hz is far below any
+       photosensitivity-strobe threshold. */
     .ls-banner.alarm {
       min-height: 64px;
-      background: #b91c1c;
+      background: #ef4444;
       border-bottom: 2px solid #7f1d1d;
-      animation: ls-flash 1s steps(1, end) infinite;
+      animation: ls-flash 1s infinite;
     }
+    /* Acknowledged: stop flashing but keep the banner fully visible. */
+    .ls-banner.alarm.silenced { animation: none; background: #b91c1c; }
+
     .ls-banner.alarm .ls-bolt { font-size: 40px; }
     .ls-banner.alarm .ls-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
     .ls-banner.alarm .ls-sub { font-size: 14px; }
     .ls-banner.alarm .ls-cd-time { font-size: 34px; }
 
     @keyframes ls-flash {
-      0%, 100% { background: #dc2626; box-shadow: inset 0 0 60px rgba(0,0,0,0); }
-      50%      { background: #7f1d1d; box-shadow: inset 0 0 60px rgba(0,0,0,0.35); }
+      0%, 49%   { background: #ef4444; }   /* bright red */
+      50%, 100% { background: #7f1d1d; }   /* dark red   */
     }
 
     /* WATCH — calmer amber strip */
@@ -83,53 +94,24 @@ import { AdvisoryService, LightningState } from '../services/advisory.service';
       font-feature-settings: 'tnum'; letter-spacing: 1px;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .ls-banner.alarm { animation: none; background: #b91c1c; }
+    .ls-stop {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 6px;
+      background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.55);
+      color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
     }
+    .ls-stop:hover { background: rgba(0,0,0,0.45); }
+    .ls-stop .material-icons { font-size: 17px; }
+    /* When the countdown isn't present, the stop button anchors to the right. */
+    .ls-banner .ls-countdown + .ls-stop { margin-left: 0; }
+    .ls-banner .ls-main + .ls-stop { margin-left: auto; }
   `],
 })
-export class LightningStanddownBannerComponent implements OnInit, OnDestroy {
-  private readonly remaining = signal<number | null>(null); // seconds
-  private lastTimer: string | undefined | null = undefined;
-  private tick: ReturnType<typeof setInterval> | null = null;
-
-  constructor(private advisoryService: AdvisoryService) {
-    // Re-seed the local countdown whenever Perry pushes a new timer (or lightning clears).
-    effect(() => {
-      const st = this.state();
-      const timer = st?.timer;
-      if (timer !== this.lastTimer) {
-        this.lastTimer = timer;
-        this.remaining.set(this.parseTimer(timer));
-      }
-      if (!st) this.remaining.set(null);
-    });
-  }
-
-  ngOnInit(): void {
-    this.tick = setInterval(() => {
-      this.remaining.update(r => (r == null ? null : Math.max(0, r - 1)));
-    }, 1000);
-  }
-
-  ngOnDestroy(): void {
-    if (this.tick) clearInterval(this.tick);
-  }
+export class LightningStanddownBannerComponent {
+  constructor(private advisoryService: AdvisoryService) {}
 
   state(): LightningState | null { return this.advisoryService.lightningState(); }
-
-  countdownText(): string | null {
-    const s = this.remaining();
-    if (s == null) return null;
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  }
-
-  private parseTimer(str?: string): number | null {
-    if (!str) return null;
-    const m = str.match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return null;
-    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-  }
+  countdownText(): string | null { return this.advisoryService.lightningCountdownText(); }
+  silenced(): boolean { return this.advisoryService.flashSilenced(); }
+  stopFlash(): void { this.advisoryService.silenceFlash(); }
 }

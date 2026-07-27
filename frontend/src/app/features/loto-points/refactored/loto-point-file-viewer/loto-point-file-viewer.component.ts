@@ -3,6 +3,7 @@ import {
   Input,
   signal,
   computed,
+  forwardRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
@@ -24,9 +25,12 @@ import {
 @Component({
   selector: 'app-loto-point-file-viewer',
   standalone: true,
+  // forwardRef breaks the ES-module cycle:
+  //   LotoPointFileViewer -> RfUnifiedImageViewer -> LotoPointDisplayTable
+  //     -> RfLotoPointTable -> LotoPointFileViewer
   imports: [
     CommonModule,
-    RfUnifiedImageViewerComponent,
+    forwardRef(() => RfUnifiedImageViewerComponent),
   ],
   templateUrl: './loto-point-file-viewer.component.html',
   styleUrls: ['./loto-point-file-viewer.component.css'],

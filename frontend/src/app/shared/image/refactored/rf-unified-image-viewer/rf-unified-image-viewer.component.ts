@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, effect, inject } from '@angular/core';
+import { Component, input, output, signal, computed, effect, inject, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
@@ -53,12 +53,19 @@ export interface ViewerConfig {
 @Component({
   selector: 'app-rf-unified-image-viewer',
   standalone: true,
+  // forwardRef on LotoPointDisplayTableComponent breaks the ES-module cycle:
+  //   RfUnifiedImageViewer → LotoPointDisplayTable → RfLotoPointTable
+  //     → LotoPointFileViewer → RfUnifiedImageViewer
+  // Without this, LotoPointDisplayTableComponent is `undefined` at the moment
+  // this @Component decorator evaluates (module still loading in cycle), and
+  // Angular throws "Cannot read properties of undefined (reading 'ɵcmp')"
+  // while resolving the imports array. Symptom: /file/edit renders blank.
   imports: [
     CommonModule,
     RfImageCarouselComponent,
     InteractiveImageComponent,
     RfFileViewerHostComponent,
-    LotoPointDisplayTableComponent,
+    forwardRef(() => LotoPointDisplayTableComponent),
   ],
   templateUrl: './rf-unified-image-viewer.component.html',
   styleUrls: ['./rf-unified-image-viewer.component.css'],

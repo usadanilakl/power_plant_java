@@ -43,7 +43,11 @@ import { DriftService, ThreeWayFieldEntry } from '../../../../services/drift.ser
     MultiTextInputComponent,
     RfFormInputComponent,
     FormArrayInputComponent,
-    FormGroupInputComponent,
+    // forwardRef breaks the ES-module bulk-edit cycle:
+    //   rf-reactive-form -> form-group-input -> equipment-list-manager
+    //     -> equipment-unified-dialog -> rf-loto-point-table
+    //     -> loto-point-bulk-edit-form -> bulk-edit-menu -> rf-reactive-form
+    forwardRef(() => FormGroupInputComponent),
     EquipmentBrowserInputComponent,
     EquipmentShapeDrawerInputComponent,
     // forwardRef on equipment-list-manager breaks the bulk-edit import cycle

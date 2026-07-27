@@ -26,7 +26,13 @@ interface DaPillStep {
         <span class="material-icons">{{ weatherIcon() }}</span>
         <span class="pill-main">{{ tempLabel() }}</span>
         <span class="pill-sub">{{ pillLabel() }}</span>
+        <span class="pill-cd" *ngIf="lightningCountdown() as cd">{{ cd }}</span>
         <span class="pill-count" *ngIf="advisories().length > 1">+{{ advisories().length - 1 }}</span>
+      </button>
+
+      <button class="hdr-stop" *ngIf="isFlashing()" (click)="stopFlash()"
+              title="Acknowledge — stop the flashing (alert stays visible)">
+        <span class="material-icons">notifications_off</span>
       </button>
 
       <button class="pill da" (click)="goPjm()" *ngIf="daSteps().length" [title]="daTitle()">
@@ -60,7 +66,20 @@ interface DaPillStep {
     .pill:hover { border-color: var(--text-muted); }
     .pill-main { font-weight: 700; color: var(--text-primary); }
     .pill-sub { color: inherit; overflow: hidden; text-overflow: ellipsis; }
+    .pill-cd {
+      font-weight: 800; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum';
+      letter-spacing: 0.5px; padding-left: 4px; border-left: 1px solid currentColor;
+    }
     .pill-count { font-size: 10px; opacity: 0.8; }
+
+    .hdr-stop {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
+      background: transparent; border: 1px solid rgba(239,68,68,0.6);
+      color: rgb(248,113,113); cursor: pointer;
+    }
+    .hdr-stop:hover { background: rgba(239,68,68,0.14); }
+    .hdr-stop .material-icons { font-size: 15px; }
 
     /* Weather severity colors */
     .pill.weather.green  { border-color: rgba(34,197,94,0.5);  color: rgb(34,197,94); }
@@ -70,11 +89,12 @@ interface DaPillStep {
     .pill.weather.red    { border-color: rgba(239,68,68,0.7);  color: rgb(248,113,113); background: rgba(239,68,68,0.14); }
     .pill.weather.red    .pill-main,
     .pill.weather.red    .material-icons { color: rgb(248,113,113); }
-    .pill.weather.flash  { animation: hdr-flash 1s ease-in-out infinite; }
+    /* Kept flashing even under reduced-motion — lightning standdown must be noticed. */
+    .pill.weather.flash  { animation: hdr-flash 1s infinite; }
 
     @keyframes hdr-flash {
-      0%, 100% { background: rgba(239,68,68,0.22); box-shadow: 0 0 0 1px rgba(239,68,68,0.6); }
-      50%      { background: rgba(239,68,68,0.02); box-shadow: 0 0 0 1px rgba(239,68,68,0.15); }
+      0%, 49%   { background: rgba(239,68,68,0.28); box-shadow: 0 0 0 1px rgba(239,68,68,0.7); }
+      50%, 100% { background: rgba(239,68,68,0.02); box-shadow: 0 0 0 1px rgba(239,68,68,0.15); }
     }
 
     /* Day-ahead pill */
@@ -84,10 +104,6 @@ interface DaPillStep {
     .da-item.agc { color: rgb(34,197,94); }
     .da-item.offline { color: rgb(248,113,113); }
     .da-item + .da-item { margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--border-color); }
-
-    @media (prefers-reduced-motion: reduce) {
-      .pill.weather.flash { animation: none; background: rgba(239,68,68,0.22); }
-    }
 
     .test-btn {
       display: inline-flex; align-items: center; justify-content: center;
@@ -130,13 +146,22 @@ export class HeaderStatusComponent implements OnInit, OnDestroy {
 
   /** green (clear) / yellow (caution) / red (warning-danger) / "red flash" (lightning standdown). */
   weatherClass(): string {
-    const adv = this.advisories();
-    if (adv.some(a => a.kind === 'lightning' && a.severity === 'danger')) return 'red flash';
+    if (this.isAlarm()) return this.advisoryService.flashSilenced() ? 'red' : 'red flash';
     const max = this.advisoryService.maxSeverity();
     if (max === 'danger' || max === 'warning') return 'red';
     if (max === 'caution' || max === 'info') return 'yellow';
     return 'green';
   }
+
+  private isAlarm(): boolean {
+    return this.advisories().some(a => a.kind === 'lightning' && a.severity === 'danger');
+  }
+
+  /** Flashing right now = active lightning standdown that hasn't been silenced. */
+  isFlashing(): boolean { return this.isAlarm() && !this.advisoryService.flashSilenced(); }
+  /** Perry all-clear countdown ("M:SS") shown in the pill, or null. */
+  lightningCountdown(): string | null { return this.advisoryService.lightningCountdownText(); }
+  stopFlash(): void { this.advisoryService.silenceFlash(); }
 
   weatherIcon(): string {
     const adv = this.advisories();

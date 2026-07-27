@@ -54,6 +54,11 @@ export const routes: Routes = [
   // Admin routes
   { path: 'admin/users', component: UserPageComponent, canActivate: [authGuard, adminGuard] },
   { path: 'admin/access-management', component: AdminAccessComponent, canActivate: [authGuard, adminGuard] },
+  {
+    path: 'admin/chat-audit',
+    loadComponent: () => import('./features/admin/chat-audit/chat-audit.component').then(m => m.ChatAuditComponent),
+    canActivate: [authGuard, adminGuard],
+  },
 
   // Full-access feature routes (restricted users redirected to /home)
   { path: 'permits-monitor', component: PermitsMonitorComponent, canActivate: [authGuard, fullAccessGuard] },

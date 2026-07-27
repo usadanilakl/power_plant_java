@@ -22,23 +22,37 @@ public interface PlantChatMessageRepo extends BaseRepository<PlantChatMessage> {
             String conversationSupabaseId, Pageable pageable);
 
     /**
-     * Case-insensitive full-text-ish search over {@code content}. Used by the hub-side search UI.
-     * Not a real tsvector index — plant chat volume doesn't warrant it yet.
+     * Case-insensitive audit search over {@code content}. Native SQL so it bypasses the entity's
+     * {@code @Where(deleted IS NOT TRUE)} clause — the audit view MUST show every row, including
+     * ones that might get soft-deleted via the JPA {@code deleted} boolean (durable evidence trail
+     * is the whole point of the audit). Also renders Supabase-side deleted messages (marked with
+     * {@code deleted_at_supabase}) so admins can see the pre-delete content.
+     *
+     * <p>Not a real tsvector index — plant chat volume doesn't warrant it yet.
      */
-    @Query("""
-        select m from PlantChatMessage m
-         where (:conversationSupabaseId is null or m.conversationSupabaseId = :conversationSupabaseId)
-           and (:senderSupabaseUuid is null or m.senderSupabaseUuid = :senderSupabaseUuid)
-           and (:from is null or m.sentAtSupabase >= :from)
-           and (:to is null or m.sentAtSupabase <= :to)
-           and (:q is null or lower(m.content) like concat('%', lower(:q), '%'))
-         order by m.sentAtSupabase desc
-        """)
+    @Query(value = """
+        select * from plant_chat_message m
+         where (cast(:conversationSupabaseId as varchar) is null or m.conversation_supabase_id = cast(:conversationSupabaseId as varchar))
+           and (cast(:senderSupabaseUuid as varchar) is null or m.sender_supabase_uuid = cast(:senderSupabaseUuid as varchar))
+           and (cast(:fromTs as timestamp) is null or m.sent_at_supabase >= cast(:fromTs as timestamp))
+           and (cast(:toTs as timestamp) is null or m.sent_at_supabase <= cast(:toTs as timestamp))
+           and (cast(:q as varchar) is null or lower(m.content) like concat('%', lower(cast(:q as varchar)), '%'))
+         order by m.sent_at_supabase desc
+        """,
+        countQuery = """
+        select count(*) from plant_chat_message m
+         where (cast(:conversationSupabaseId as varchar) is null or m.conversation_supabase_id = cast(:conversationSupabaseId as varchar))
+           and (cast(:senderSupabaseUuid as varchar) is null or m.sender_supabase_uuid = cast(:senderSupabaseUuid as varchar))
+           and (cast(:fromTs as timestamp) is null or m.sent_at_supabase >= cast(:fromTs as timestamp))
+           and (cast(:toTs as timestamp) is null or m.sent_at_supabase <= cast(:toTs as timestamp))
+           and (cast(:q as varchar) is null or lower(m.content) like concat('%', lower(cast(:q as varchar)), '%'))
+        """,
+        nativeQuery = true)
     Page<PlantChatMessage> search(
             @Param("conversationSupabaseId") String conversationSupabaseId,
             @Param("senderSupabaseUuid") String senderSupabaseUuid,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to,
+            @Param("fromTs") LocalDateTime from,
+            @Param("toTs") LocalDateTime to,
             @Param("q") String q,
             Pageable pageable);
 }

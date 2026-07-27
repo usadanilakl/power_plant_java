@@ -124,6 +124,26 @@ export class PwaChatService {
     this.refreshTimer = setTimeout(() => { this.refreshSession(); }, delay);
   }
 
+  /**
+   * Create a new plant chat conversation. Direct Supabase INSERT via {@code @supabase/supabase-js}
+   * — RLS ({@code plant_conv_eligible_insert}) enforces the caller must be chat-eligible AND
+   * ties {@code created_by} to {@code auth.uid()}. Returns the newly created row.
+   */
+  async createConversation(name: string, description?: string): Promise<PlantConversation> {
+    const c = await this.ensureReady();
+    const me = this.identity;
+    if (!me) throw new Error('No identity — refresh session first');
+    const row = {
+      name: name.trim(),
+      description: description && description.trim() ? description.trim() : null,
+      created_by: me.supabaseUuid,
+      is_editable: false,
+    };
+    const { data, error } = await c.from('plant_conversation').insert(row).select().single();
+    if (error) throw error;
+    return data as PlantConversation;
+  }
+
   async listConversations(): Promise<PlantConversation[]> {
     const c = await this.ensureReady();
     const { data, error } = await c.from('plant_conversation')
@@ -191,5 +211,30 @@ export class PwaChatService {
 
   async unsubscribe(channel: RealtimeChannel): Promise<void> {
     if (this.client) await this.client.removeChannel(channel);
+  }
+
+  /** Existing ack rows for one message — used to seed the sender-view "N acked" counter. */
+  async acksFor(messageId: string): Promise<Array<{ user_id: string; acked_at: string }>> {
+    const c = await this.ensureReady();
+    const { data, error } = await c.from('plant_chat_ack')
+      .select('user_id, acked_at')
+      .eq('message_id', messageId);
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  /** Live ack inserts — sender view uses this to keep the "N acked" line updating. */
+  async subscribeAcks(
+    conversationId: string,
+    onAck: (ack: { message_id: string; user_id: string; acked_at: string }) => void,
+  ): Promise<RealtimeChannel> {
+    const c = await this.ensureReady();
+    return c.channel(`plant_chat_ack:${conversationId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'plant_chat_ack',
+      }, payload => onAck(payload.new as { message_id: string; user_id: string; acked_at: string }))
+      .subscribe();
   }
 }

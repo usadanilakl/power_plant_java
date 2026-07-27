@@ -1,5 +1,5 @@
 
-import { Component, input, output, inject } from '@angular/core';
+import { Component, input, output, inject, forwardRef } from '@angular/core';
 import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
@@ -20,7 +20,10 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
 @Component({
   selector: 'app-loto-point-display-table',
   standalone: true,
-  imports: [RfLotoPointTableComponent],
+  // forwardRef breaks the ES-module cycle:
+  //   LotoPointDisplayTable -> RfLotoPointTable -> LotoPointFileViewer
+  //     -> RfUnifiedImageViewer -> LotoPointDisplayTable
+  imports: [forwardRef(() => RfLotoPointTableComponent)],
   providers: [
     TableSelectionService,
     TableStateService,

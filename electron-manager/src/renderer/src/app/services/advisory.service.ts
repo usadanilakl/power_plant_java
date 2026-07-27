@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, computed, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, effect, signal } from '@angular/core';
 import { ElectronService, WeatherForecast, WeatherStatus, PerryWeatherStatus } from './electron.service';
 
 /**
@@ -274,40 +274,17 @@ function iceAdvisory(f: WeatherForecast): Advisory | null {
   return null;
 }
 
-/** Lightning standdown — reuses the existing 8/20 mi thresholds; prefers Perry text when available. */
-function lightningAdvisory(bug: WeatherStatus | null, perry: PerryWeatherStatus | null): Advisory | null {
-  // Perry reports a textual status directly
-  if (perry && perry.status === 'available' && perry.lightningStatus) {
-    const s = perry.lightningStatus;
-    const timer = perry.lightningTimer ? ` — all-clear timer ${perry.lightningTimer}` : '';
-    if (s === 'Lightning Alarm') {
-      return { id: 'lightning', kind: 'lightning', severity: 'danger', icon: 'bolt', title: 'Lightning Alarm',
-        detail: `Lightning within 8 mi — suspend outdoor work; seek shelter${timer}.` };
-    }
-    if (s === 'Lightning Watch') {
-      return { id: 'lightning', kind: 'lightning', severity: 'caution', icon: 'bolt', title: 'Lightning Watch',
-        detail: `Lightning 8–20 mi — monitor; prepare to suspend outdoor work${timer}.` };
-    }
-    // 'All Clear' → no advisory
-    return null;
+/** Map the unified lightning standdown state to a header/pill advisory (keeps color+label+countdown
+ *  in lock-step with the banner, which reads the same LightningState). */
+function lightningAdvisoryFromState(ls: LightningState): Advisory {
+  const dist = ls.distance ? ` (${ls.distance})` : '';
+  const timer = ls.timer ? ` — all clear in ${ls.timer}` : '';
+  if (ls.level === 'alarm') {
+    return { id: 'lightning', kind: 'lightning', severity: 'danger', icon: 'bolt', title: 'Lightning Alarm',
+      detail: `Suspend outdoor work; seek shelter${dist}${timer}.` };
   }
-
-  // WeatherBug distance fallback
-  if (bug && bug.status === 'available' && bug.lightningDistance != null) {
-    const d = parseFloat(bug.lightningDistance);
-    const unit = bug.unit || 'mi';
-    if (!isNaN(d)) {
-      if (d <= 8) {
-        return { id: 'lightning', kind: 'lightning', severity: 'danger', icon: 'bolt', title: 'Lightning Alarm',
-          detail: `Strike ${d} ${unit} away — suspend outdoor work; seek shelter.` };
-      }
-      if (d <= 20) {
-        return { id: 'lightning', kind: 'lightning', severity: 'caution', icon: 'bolt', title: 'Lightning Watch',
-          detail: `Lightning ${d} ${unit} away — monitor; prepare to suspend outdoor work.` };
-      }
-    }
-  }
-  return null;
+  return { id: 'lightning', kind: 'lightning', severity: 'caution', icon: 'bolt', title: 'Lightning Watch',
+    detail: `Monitor; prepare to suspend outdoor work${dist}${timer}.` };
 }
 
 // ---- Demo / preview frames --------------------------------------------------
@@ -317,6 +294,13 @@ interface DemoFrame {
   lightning?: WeatherStatus | null;
   perry?: PerryWeatherStatus | null;
   ms?: number;
+}
+
+/** Parse Perry's "MM:SS" all-clear timer to seconds, or null. */
+function parseTimer(str?: string | null): number | null {
+  if (!str) return null;
+  const m = str.match(/^(\d{1,2}):(\d{2})$/);
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
 }
 
 /** Build a synthetic "available" forecast from a partial `current` (empty hourly/daily is fine). */
@@ -366,6 +350,14 @@ export class AdvisoryService implements OnDestroy {
   /** True while runDemo() is cycling — bind to disable the trigger UI. */
   readonly demoRunning = signal(false);
 
+  /** Live all-clear countdown (seconds), seeded/re-synced from Perry's MM:SS timer. Shared by the
+   *  header pill and the standdown banner so they stay in lock-step. */
+  private readonly countdownSec = signal<number | null>(null);
+  private lastTimer: string | undefined | null = undefined;
+  private countdownTicker: ReturnType<typeof setInterval> | null = null;
+  /** Operator acknowledged the standdown — stop flashing (stays visible). Resets on all-clear. */
+  readonly flashSilenced = signal(false);
+
   /** Active advisories, most-severe first. */
   readonly advisories = computed<Advisory[]>(() => this.build());
   /** Highest active severity, or null when all-clear. */
@@ -379,14 +371,23 @@ export class AdvisoryService implements OnDestroy {
   /** Lightning standdown state (alarm/watch) for the prominent banner, or null when all-clear. */
   readonly lightningState = computed<LightningState | null>(() => {
     const p = this.perry();
+    // A running Perry all-clear countdown means a standdown is IN PROGRESS — even when Perry didn't
+    // scrape the words "Lightning Alarm" (during an active alarm Perry shows the countdown widget,
+    // and its status text often reads "No data"/undefined). The timer alone is authoritative.
+    const perryTimer = (p && p.status === 'available' && parseTimer(p.lightningTimer) != null)
+      ? p.lightningTimer : undefined;
+
     if (p && p.status === 'available' && p.lightningStatus) {
       if (p.lightningStatus === 'Lightning Alarm') {
-        return { level: 'alarm', timer: p.lightningTimer || undefined, distance: p.lightningDistance || undefined, source: 'perry' };
+        return { level: 'alarm', timer: perryTimer, distance: p.lightningDistance || undefined, source: 'perry' };
       }
       if (p.lightningStatus === 'Lightning Watch') {
-        return { level: 'watch', timer: p.lightningTimer || undefined, distance: p.lightningDistance || undefined, source: 'perry' };
+        return { level: 'watch', timer: perryTimer, distance: p.lightningDistance || undefined, source: 'perry' };
       }
-      return null; // All Clear
+      if (p.lightningStatus === 'All Clear') return null;
+    }
+    if (perryTimer) {
+      return { level: 'alarm', timer: perryTimer, distance: (p && p.lightningDistance) || undefined, source: 'perry' };
     }
     const b = this.lightning();
     if (b && b.status === 'available' && b.lightningDistance != null) {
@@ -400,12 +401,45 @@ export class AdvisoryService implements OnDestroy {
     return null;
   });
 
+  /** Perry all-clear countdown as "M:SS", ticking down each second; null when unavailable. */
+  readonly lightningCountdownText = computed<string | null>(() => {
+    const s = this.countdownSec();
+    if (s == null) return null;
+    const m = Math.floor(s / 60);
+    return `${m}:${(s % 60).toString().padStart(2, '0')}`;
+  });
+
   constructor(private electron: ElectronService) {
     this.seed();
     this.unsubs.push(this.electron.onWeatherForecastChange(f => { if (!this.demoActive) this.forecast.set(f); }));
     this.unsubs.push(this.electron.onWeatherStatusChange(s => { if (!this.demoActive) this.lightning.set(s); }));
     this.unsubs.push(this.electron.onPerryStatusChange(s => { if (!this.demoActive) this.perry.set(s); }));
+
+    // Countdown lifecycle. Reseed ONLY when Perry sends a new, valid MM:SS timer; a scrape that
+    // momentarily lacks the timer must NOT wipe the running countdown (it keeps ticking locally).
+    // Everything resets on all-clear so the next standdown starts fresh.
+    effect(() => {
+      const st = this.lightningState();
+      if (!st) {
+        this.countdownSec.set(null);
+        this.flashSilenced.set(false);
+        this.lastTimer = undefined;
+        return;
+      }
+      const timer = st.timer;
+      if (timer !== this.lastTimer) {
+        this.lastTimer = timer;
+        const parsed = parseTimer(timer);
+        if (parsed != null) this.countdownSec.set(parsed);
+      }
+    });
+    this.countdownTicker = setInterval(() => {
+      this.countdownSec.update(r => (r == null ? null : Math.max(0, r - 1)));
+    }, 1000);
   }
+
+  /** Acknowledge the standdown: stop flashing (info stays visible). Auto-resets on all-clear. */
+  silenceFlash(): void { this.flashSilenced.set(true); }
 
   /**
    * Test/preview: cycle the header pill through every color state by feeding synthetic weather
@@ -436,6 +470,7 @@ export class AdvisoryService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.unsubs.forEach(u => { try { u(); } catch { /* ignore */ } });
+    if (this.countdownTicker) clearInterval(this.countdownTicker);
   }
 
   private async seed(): Promise<void> {
@@ -463,8 +498,8 @@ export class AdvisoryService implements OnDestroy {
       push(rainAdvisory(f));
       push(iceAdvisory(f));
     }
-    const lightning = lightningAdvisory(this.lightning(), this.perry());
-    if (lightning) out.push(lightning);
+    const ls = this.lightningState();
+    if (ls) out.push(lightningAdvisoryFromState(ls));
 
     return out.sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]);
   }

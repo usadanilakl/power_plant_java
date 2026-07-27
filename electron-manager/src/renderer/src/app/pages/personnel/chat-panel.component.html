@@ -15,12 +15,15 @@
     <div class="conv-list">
       <div class="conv-header">
         Conversations
-        <button class="btn-icon" (click)="loadConversations()" [disabled]="loadingConversations()" title="Refresh">
-          <span class="material-icons" [class.spin]="loadingConversations()">refresh</span>
-        </button>
+        <div class="conv-header-actions">
+          <button class="btn-mini" (click)="openNewConversationDialog()" title="New conversation">+ New</button>
+          <button class="btn-icon" (click)="loadConversations()" [disabled]="loadingConversations()" title="Refresh">
+            <span class="material-icons" [class.spin]="loadingConversations()">refresh</span>
+          </button>
+        </div>
       </div>
       <div *ngIf="conversations().length === 0 && !loadingConversations()" class="empty">
-        No conversations yet. An admin can create one from the hub.
+        No conversations yet. Click "+ New" to start one.
       </div>
       <div *ngFor="let c of conversations()"
            class="conv-row"
@@ -53,6 +56,10 @@
               <span *ngIf="m.is_important && !m.requires_ack" class="msg-badge important">important</span>
             </div>
             <div class="msg-body">{{ m.content }}</div>
+            <div *ngIf="m.is_important && senderClass(m) === 'me'" class="ack-line">
+              <span class="material-icons">done_all</span>
+              Acked by {{ ackCount(m.id) }}
+            </div>
           </div>
           <div #threadBottom></div>
         </div>
@@ -80,6 +87,26 @@
           </div>
         </div>
       </ng-container>
+    </div>
+  </div>
+
+  <!-- New conversation dialog -->
+  <div *ngIf="showNewConversation()" class="new-modal-backdrop" (click)="cancelNewConversation()">
+    <div class="new-modal" (click)="$event.stopPropagation()">
+      <h3>New conversation</h3>
+      <label>Name
+        <input type="text" [(ngModel)]="newConvName" placeholder="e.g. Boiler startup" [disabled]="newConvBusy()" autofocus />
+      </label>
+      <label>Description <small>(optional)</small>
+        <input type="text" [(ngModel)]="newConvDescription" placeholder="Short summary" [disabled]="newConvBusy()" />
+      </label>
+      <div *ngIf="newConvError()" class="new-modal-err">{{ newConvError() }}</div>
+      <div class="new-modal-actions">
+        <button class="btn-secondary" (click)="cancelNewConversation()" [disabled]="newConvBusy()">Cancel</button>
+        <button class="btn-primary" (click)="submitNewConversation()" [disabled]="newConvBusy() || !newConvName.trim()">
+          {{ newConvBusy() ? 'Creating…' : 'Create' }}
+        </button>
+      </div>
     </div>
   </div>
 </div>

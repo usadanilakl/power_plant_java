@@ -34,7 +34,18 @@ export class ChatPanelComponent implements OnInit, OnDestroy, AfterViewChecked {
   composeRequiresAck = false;
 
   private messageChannel: RealtimeChannel | null = null;
+  private ackChannel: RealtimeChannel | null = null;
   private scrollPending = false;
+
+  /** Per-message-id → set of user ids who have acked. Drives the sender-view "N acked" line. */
+  ackMap = signal<Map<string, Set<string>>>(new Map());
+
+  // New-conversation dialog state (creator = current user; RLS enforces created_by = auth.uid()).
+  showNewConversation = signal(false);
+  newConvName = '';
+  newConvDescription = '';
+  newConvBusy = signal(false);
+  newConvError = signal<string | null>(null);
 
   @ViewChild('threadBottom') threadBottom?: ElementRef<HTMLDivElement>;
 
@@ -46,6 +57,7 @@ export class ChatPanelComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   async ngOnDestroy(): Promise<void> {
     if (this.messageChannel) await this.chat.unsubscribe(this.messageChannel);
+    if (this.ackChannel) await this.chat.unsubscribe(this.ackChannel);
   }
 
   ngAfterViewChecked(): void {
@@ -76,11 +88,16 @@ export class ChatPanelComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.activeConversationId() === id) return;
     this.activeConversationId.set(id);
 
-    // Tear down previous subscription and open the new one.
+    // Tear down previous subscriptions and open the new ones.
     if (this.messageChannel) {
       await this.chat.unsubscribe(this.messageChannel);
       this.messageChannel = null;
     }
+    if (this.ackChannel) {
+      await this.chat.unsubscribe(this.ackChannel);
+      this.ackChannel = null;
+    }
+    this.ackMap.set(new Map());
 
     this.loadingMessages.set(true);
     this.messages.set([]);
@@ -89,16 +106,71 @@ export class ChatPanelComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.messages.set(rows);
       this.scrollPending = true;
 
+      // Seed ack sets for the messages we just loaded (parallel fetch per message).
+      await Promise.all(rows.filter(m => m.is_important).map(async m => {
+        try {
+          const acks = await this.chat.acksFor(m.id);
+          this.ackMap.update(map => {
+            const next = new Map(map);
+            next.set(m.id, new Set(acks.map(a => a.user_id)));
+            return next;
+          });
+        } catch { /* per-message ack fetch is non-fatal */ }
+      }));
+
       this.messageChannel = await this.chat.subscribeMessages(id, msg => {
-        // Dedup — the sender's own insert also fires Realtime; guard by id.
         if (this.messages().some(m => m.id === msg.id)) return;
         this.messages.update(rows2 => [...rows2, msg]);
         this.scrollPending = true;
+      });
+      this.ackChannel = await this.chat.subscribeAcks(id, ack => {
+        this.ackMap.update(map => {
+          const next = new Map(map);
+          const set = next.get(ack.message_id) ?? new Set<string>();
+          set.add(ack.user_id);
+          next.set(ack.message_id, set);
+          return next;
+        });
       });
     } catch (err: any) {
       console.error('[Chat] getMessages failed:', err);
     } finally {
       this.loadingMessages.set(false);
+    }
+  }
+
+  ackCount(messageId: string): number {
+    return this.ackMap().get(messageId)?.size ?? 0;
+  }
+
+  openNewConversationDialog(): void {
+    this.newConvName = '';
+    this.newConvDescription = '';
+    this.newConvError.set(null);
+    this.showNewConversation.set(true);
+  }
+
+  cancelNewConversation(): void {
+    this.showNewConversation.set(false);
+    this.newConvError.set(null);
+  }
+
+  async submitNewConversation(): Promise<void> {
+    if (!this.newConvName.trim()) {
+      this.newConvError.set('Name is required');
+      return;
+    }
+    this.newConvBusy.set(true);
+    this.newConvError.set(null);
+    try {
+      const created = await this.chat.createConversation(this.newConvName, this.newConvDescription);
+      this.conversations.update(list => [created, ...list.filter(c => c.id !== created.id)]);
+      this.showNewConversation.set(false);
+      await this.selectConversation(created.id);
+    } catch (err: any) {
+      this.newConvError.set(err?.message ?? 'Create failed');
+    } finally {
+      this.newConvBusy.set(false);
     }
   }
 

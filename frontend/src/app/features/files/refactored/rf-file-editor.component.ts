@@ -131,6 +131,7 @@ export class RfFileEditroComponent {
   hasCounterpart = computed(() => !!this.currentFile()?.counterpartId);
 
   constructor() {
+    console.log('[RfFileEditro] constructor fired at', Date.now());
     // Keep the counterpart pane in sync when the user navigates to a different
     // primary file. Without this, an open counterpart pane keeps showing the
     // OLD file's counterpart even after the user opens a new file.

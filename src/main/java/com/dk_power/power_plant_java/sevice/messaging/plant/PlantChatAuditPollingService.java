@@ -122,6 +122,19 @@ public class PlantChatAuditPollingService {
     @Scheduled(fixedDelayString = "${plant-chat.audit.interval-ms:30000}",
                initialDelayString = "${plant-chat.audit.initial-delay-ms:15000}")
     public void poll() {
+        pollOnce();
+    }
+
+    /**
+     * Trigger a poll cycle out-of-band. Called by the admin controller right after a
+     * SupabaseAdminClient write (create/rename/archive conversation) so the H2 mirror — and the
+     * admin UI reading from it — reflects the change immediately instead of waiting up to 30 s for
+     * the next scheduled tick.
+     *
+     * <p>Safe to call anywhere: honours the same enabled/hub-mode gates as the scheduled path and
+     * uses the same idempotent-by-supabase-id upsert logic.
+     */
+    public void pollOnce() {
         if (!enabled) return;
         if (!syncConfig.isHubMode()) return;
         try {

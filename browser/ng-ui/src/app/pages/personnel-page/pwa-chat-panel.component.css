@@ -5,6 +5,20 @@
 .btn-link { background: transparent; border: none; color: #1976d2; cursor: pointer; text-decoration: underline; padding: 0; margin-left: 8px; font-size: 13px; }
 
 .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; font-size: 14px; }
+.header-actions { display: flex; align-items: center; gap: 6px; }
+.btn-new { padding: 4px 10px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 16px; }
+.modal { background: #fff; border-radius: 8px; padding: 16px; width: 100%; max-width: 400px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+.modal h3 { margin: 0 0 12px 0; font-size: 16px; }
+.modal label { display: flex; flex-direction: column; margin-bottom: 10px; font-size: 12px; color: #666; }
+.modal label small { color: #999; font-weight: normal; }
+.modal label input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; margin-top: 3px; }
+.modal .err { color: #c95252; font-size: 12px; margin-bottom: 8px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.modal-actions .btn { padding: 8px 14px; background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.modal-actions .btn-primary { padding: 8px 14px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.modal-actions .btn:disabled, .modal-actions .btn-primary:disabled { opacity: 0.5; cursor: default; }
 .btn-icon { background: transparent; border: none; cursor: pointer; color: #666; padding: 6px; }
 .btn-icon:hover { color: #1976d2; }
 .btn-icon .material-icons { font-size: 20px; }
@@ -36,6 +50,16 @@
 .msg-badge { padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; }
 .msg-badge.important { background: rgba(255,191,0,0.25); color: #b3861a; }
 .msg-badge.ack { background: rgba(184,63,63,0.25); color: #a63333; }
+
+.ack-banner { background: #fff3cd; border: 1px solid #d4a017; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.ack-banner-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #7a5c0a; margin-bottom: 8px; }
+.ack-banner-title .material-icons { font-size: 18px; }
+.ack-banner-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px dashed #d4a017; }
+.ack-banner-body { flex: 1; font-size: 13px; line-height: 1.4; }
+.btn-ack { padding: 6px 12px; background: #d4a017; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
+
+.ack-line { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; color: #666; }
+.ack-line .material-icons { font-size: 14px; color: #3fb875; }
 
 .compose { border-top: 1px solid #eee; padding: 8px 0; }
 .compose textarea { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-family: inherit;

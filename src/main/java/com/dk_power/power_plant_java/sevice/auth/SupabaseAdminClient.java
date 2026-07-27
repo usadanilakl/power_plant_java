@@ -358,6 +358,83 @@ public class SupabaseAdminClient {
                 .toBodilessEntity());
     }
 
+    // ── Plant Chat admin ─────────────────────────────────────────────────────
+
+    /**
+     * Create a new plant chat conversation via PostgREST (service-role bypasses RLS). Returns the
+     * created row's Supabase UUID so the caller can immediately mirror it into the H2 audit table.
+     * See {@code project/features/users/communication/plant-chat.md}.
+     */
+    public String createPlantConversation(String name, String description, String createdBySupabaseUuid,
+                                          Boolean isEditable, String entityType, Long entityId) {
+        requireEnabled();
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("name", name);
+        if (description != null && !description.isBlank()) row.put("description", description);
+        row.put("created_by", createdBySupabaseUuid);
+        if (isEditable != null) row.put("is_editable", isEditable);
+        if (entityType != null && !entityType.isBlank()) row.put("entity_type", entityType);
+        if (entityId != null) row.put("entity_id", entityId);
+
+        JsonNode created = withRetry(() -> client.post()
+                .uri("/rest/v1/plant_conversation")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Prefer", "return=representation")
+                .body(row)
+                .retrieve()
+                .body(JsonNode.class));
+        if (created == null) {
+            throw new SupabaseUnavailableException("Supabase returned no body on conversation create", null);
+        }
+        // PostgREST returns an array of inserted rows.
+        JsonNode row0 = created.isArray() ? (created.size() > 0 ? created.get(0) : null) : created;
+        return row0 != null && row0.hasNonNull("id") ? row0.get("id").asText() : null;
+    }
+
+    /** Soft-archive a conversation by setting {@code archived_at}. Idempotent. */
+    public void archivePlantConversation(String supabaseId) {
+        requireEnabled();
+        String iso = LocalDateTime.now(ZoneOffset.UTC).atOffset(ZoneOffset.UTC).toString();
+        withRetry(() -> client.patch()
+                .uri(b -> b.path("/rest/v1/plant_conversation").queryParam("id", "eq." + supabaseId).build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Prefer", "return=minimal")
+                .body(Map.of("archived_at", iso))
+                .retrieve()
+                .toBodilessEntity());
+    }
+
+    /** Un-archive (clear {@code archived_at}). */
+    public void unarchivePlantConversation(String supabaseId) {
+        requireEnabled();
+        Map<String, Object> patch = new LinkedHashMap<>();
+        patch.put("archived_at", null);
+        withRetry(() -> client.patch()
+                .uri(b -> b.path("/rest/v1/plant_conversation").queryParam("id", "eq." + supabaseId).build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Prefer", "return=minimal")
+                .body(patch)
+                .retrieve()
+                .toBodilessEntity());
+    }
+
+    /** Rename / re-describe. */
+    public void updatePlantConversation(String supabaseId, String name, String description, Boolean isEditable) {
+        requireEnabled();
+        Map<String, Object> patch = new LinkedHashMap<>();
+        if (name != null) patch.put("name", name);
+        if (description != null) patch.put("description", description);
+        if (isEditable != null) patch.put("is_editable", isEditable);
+        if (patch.isEmpty()) return;
+        withRetry(() -> client.patch()
+                .uri(b -> b.path("/rest/v1/plant_conversation").queryParam("id", "eq." + supabaseId).build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Prefer", "return=minimal")
+                .body(patch)
+                .retrieve()
+                .toBodilessEntity());
+    }
+
     // ── Reference-data failover snapshots ─────────────────────────────────────
 
     /**

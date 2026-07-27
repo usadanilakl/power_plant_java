@@ -44,7 +44,15 @@ import { environment } from '../../../../../environments/environment';
   selector: 'app-rf-loto-point-table',
   standalone: true,
   // forwardRef on the bulk-edit form breaks the import cycle (see loto-point-bulk-edit-form).
-  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent, RfPopupProjectionComponent, LotoPointFileViewerComponent],
+  // forwardRef on LotoPointFileViewerComponent breaks the newer cycle:
+  //   LotoPointDisplayTable → RfLotoPointTable → LotoPointFileViewer
+  //     → RfUnifiedImageViewer → LotoPointDisplayTable
+  // Without this, one of the four modules resolves to `undefined` at load time
+  // and Angular throws `Cannot read properties of undefined (reading 'ɵcmp')`
+  // when it tries to read component metadata off the imports array. Symptom
+  // was the /file/edit route rendering blank because RfFileEditroComponent
+  // (which imports LotoPointDisplayTable) couldn't instantiate.
+  imports: [CommonModule, TableComponent, forwardRef(() => LotoPointBulkEditFormComponent), CommentCellComponent, RfPopupProjectionComponent, forwardRef(() => LotoPointFileViewerComponent)],
   // providers: [
   //   { provide: TableClickService, useClass: RfLotoPointClickService }
   // ],

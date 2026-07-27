@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -13,12 +13,16 @@ import { RfLotoPointApiService } from '../../../../../features/loto-points/refac
 @Component({
   selector: 'app-form-group-input',
   standalone: true,
+  // forwardRef on EquipmentListManagerComponent breaks the ES-module bulk-edit cycle:
+  //   form-group-input -> equipment-list-manager -> equipment-unified-dialog
+  //     -> rf-loto-point-table -> loto-point-bulk-edit-form -> bulk-edit-menu
+  //     -> rf-reactive-form -> form-group-input
   imports: [
     CommonModule,
     ReactiveFormsModule,
     SearchableSelectInputComponent,
     EquipmentBrowserInputComponent,
-    EquipmentListManagerComponent,
+    forwardRef(() => EquipmentListManagerComponent),
     RfValueSelectComponent,
     ZeroEnergyPhraseBuilderComponent
   ],

@@ -104,6 +104,26 @@ export class SupabaseChatService {
     this.refreshTimer = setTimeout(() => { this.refreshSession(); }, delay);
   }
 
+  /**
+   * Create a new plant chat conversation. Any chat-eligible user can create — RLS
+   * ({@code plant_conv_eligible_insert}) enforces {@code created_by = auth.uid()}. Returns the
+   * newly created row.
+   */
+  async createConversation(name: string, description?: string): Promise<PlantConversation> {
+    const c = await this.ensureReady();
+    const me = this.identity;
+    if (!me) throw new Error('No identity — refresh session first');
+    const row = {
+      name: name.trim(),
+      description: description && description.trim() ? description.trim() : null,
+      created_by: me.supabaseUuid,
+      is_editable: false,
+    };
+    const { data, error } = await c.from('plant_conversation').insert(row).select().single();
+    if (error) throw error;
+    return data as PlantConversation;
+  }
+
   async listConversations(): Promise<PlantConversation[]> {
     const c = await this.ensureReady();
     const { data, error } = await c.from('plant_conversation')
@@ -194,5 +214,129 @@ export class SupabaseChatService {
 
   async unsubscribe(channel: RealtimeChannel): Promise<void> {
     if (this.client) await this.client.removeChannel(channel);
+  }
+
+  /**
+   * Paginated fetch — repeatedly issues the caller's query with successive {@code .range()}
+   * windows until a short page returns. Works around PostgREST's default 1000-row cap so
+   * "give me all rows" is actually all rows. Caller supplies a builder that inserts the range.
+   */
+  private async fetchAllPaged<T>(
+    builder: (from: number) => PromiseLike<{ data: T[] | null; error: any }>,
+  ): Promise<T[]> {
+    const PAGE = 1000;
+    const out: T[] = [];
+    let offset = 0;
+    // Safety cap on total iterations (unreachable in practice; guards runaway loops).
+    for (let i = 0; i < 1000; i++) {
+      const { data, error } = await builder(offset);
+      if (error) throw error;
+      const rows = data ?? [];
+      out.push(...rows);
+      if (rows.length < PAGE) break;
+      offset += PAGE;
+    }
+    return out;
+  }
+
+  /**
+   * Load every message this user still needs to acknowledge — used by the global important-message
+   * modal at startup so restarts cannot bypass ack-required messages. Correct even when many
+   * required messages exist and most are already acked: the initial fetch is unbounded on the
+   * server side (the {@code requires_ack} population is small by design — it's the "must
+   * interrupt" set — so pulling the full id list is cheap).
+   *
+   * <p>Two-step anti-join keeps every query narrow:
+   * <ol>
+   *   <li>Fetch all requires_ack, undeleted, not-mine message ids (unbounded — small set).</li>
+   *   <li>Fetch all my ack rows (unbounded — small set).</li>
+   *   <li>Diff in memory. If any remain, fetch full rows via {@code .in('id', chunk)}, chunked
+   *       to stay under PostgREST's URL length limit.</li>
+   * </ol>
+   */
+  async unackedRequiredForMe(): Promise<PlantChatMessage[]> {
+    const c = await this.ensureReady();
+    const me = this.identity?.supabaseUuid;
+    if (!me) return [];
+
+    // 1. All candidate message ids (id only — cheap). PostgREST caps at 1000 rows/request
+    // even without .limit(), so page explicitly to catch installs where the requires_ack set
+    // has grown past 1000 (rare but possible). Ordering by id (uuid, unique) makes range()
+    // pages deterministic — without a stable order the same offset window can return
+    // overlapping / skipped rows across calls, letting an older message silently vanish.
+    const idRows = await this.fetchAllPaged<{ id: string }>(from =>
+      c.from('plant_chat_message')
+        .select('id')
+        .eq('requires_ack', true)
+        .is('deleted_at', null)
+        .neq('sender_id', me)
+        .order('id', { ascending: true })
+        .range(from, from + 999));
+    if (idRows.length === 0) return [];
+
+    // 2. My acks (all of them — same pagination concern for a very active user).
+    // Order by message_id (part of the composite PK, unique per user) for the same reason.
+    const ackRows = await this.fetchAllPaged<{ message_id: string }>(from =>
+      c.from('plant_chat_ack')
+        .select('message_id')
+        .eq('user_id', me)
+        .order('message_id', { ascending: true })
+        .range(from, from + 999));
+    const acked = new Set(ackRows.map(a => a.message_id));
+
+    // 3. Diff → the ids that need the modal.
+    const unackedIds = idRows.map(r => r.id).filter(id => !acked.has(id));
+    if (unackedIds.length === 0) return [];
+
+    // 4. Fetch full rows in chunks (PostgREST `.in()` becomes a query string; keep each
+    // request URL well under typical 8 KB header limits — 40 UUIDs per chunk is safe).
+    const CHUNK = 40;
+    const out: PlantChatMessage[] = [];
+    for (let i = 0; i < unackedIds.length; i += CHUNK) {
+      const chunk = unackedIds.slice(i, i + CHUNK);
+      const { data, error } = await c.from('plant_chat_message')
+        .select('*')
+        .in('id', chunk);
+      if (error) throw error;
+      if (data) out.push(...(data as PlantChatMessage[]));
+    }
+    // Oldest-first — the modal enqueues in call order, so the caller sees chronological queue.
+    out.sort((a, b) => a.sent_at.localeCompare(b.sent_at));
+    return out;
+  }
+
+  /**
+   * Fetch existing acks for a message (used to seed the sender-view "N acked" line before Realtime
+   * takes over for live updates).
+   */
+  async acksFor(messageId: string): Promise<Array<{ user_id: string; acked_at: string }>> {
+    const c = await this.ensureReady();
+    const { data, error } = await c.from('plant_chat_ack')
+      .select('user_id, acked_at')
+      .eq('message_id', messageId);
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  /**
+   * Live subscription to INSERTs on {@code plant_chat_ack} for one conversation's messages — the
+   * sender's chat view uses this to render an updating "acked by N of M" line under important
+   * messages.
+   */
+  async subscribeAcks(
+    conversationId: string,
+    onAck: (ack: { message_id: string; user_id: string; acked_at: string }) => void,
+  ): Promise<RealtimeChannel> {
+    const c = await this.ensureReady();
+    // plant_chat_ack has no conversation_id column, but message_id filter isn't possible without
+    // knowing the message ids up-front. Simpler: subscribe to all ack inserts and let the caller
+    // filter — the shape gives message_id so filtering by conversation is trivial in JS.
+    return c.channel(`plant_chat_ack:${conversationId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'plant_chat_ack',
+      }, payload => onAck(payload.new as { message_id: string; user_id: string; acked_at: string }))
+      .subscribe();
   }
 }

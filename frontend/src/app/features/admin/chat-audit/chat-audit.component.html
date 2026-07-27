@@ -1,0 +1,210 @@
+<app-main-layout>
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="page">
+      <div class="page-header">
+        <h1>Chat Audit</h1>
+        <div class="header-actions">
+          <button class="btn btn-primary" (click)="openCreateModal()">+ New Conversation</button>
+          <label class="checkbox">
+            <input type="checkbox" [checked]="includeArchived()" (change)="toggleIncludeArchived()" />
+            Show archived
+          </label>
+        </div>
+      </div>
+
+      <!-- Conversation list -->
+      <div class="section">
+        <h2>Conversations ({{ conversations().length }})</h2>
+        <table class="conv-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Created by</th>
+              <th>Created</th>
+              <th>Updated</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of conversations(); track c.id) {
+              <tr [class.archived]="c.archivedAt">
+                <td class="conv-name">{{ c.name }}</td>
+                <td>{{ c.description }}</td>
+                <td>{{ c.createdByName ?? '—' }}</td>
+                <td>{{ c.createdAt | date:'short' }}</td>
+                <td>{{ c.updatedAt | date:'short' }}</td>
+                <td>
+                  @if (c.archivedAt) {
+                    <span class="pill archived-pill">archived</span>
+                  } @else {
+                    <span class="pill active-pill">active</span>
+                  }
+                </td>
+                <td class="actions">
+                  @if (!c.archivedAt) {
+                    <button class="btn-link" (click)="archive(c)">Archive</button>
+                  } @else {
+                    <button class="btn-link" (click)="unarchive(c)">Unarchive</button>
+                  }
+                  <button class="btn-link" (click)="filterConversationId.set(c.supabaseId); runSearch(1)">Filter</button>
+                </td>
+              </tr>
+            }
+            @if (conversations().length === 0) {
+              <tr><td colspan="7" class="empty">No conversations yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Search -->
+      <div class="section">
+        <h2>Messages</h2>
+        <div class="filter-row">
+          <label>
+            Conversation
+            <select [ngModel]="filterConversationId()" (ngModelChange)="filterConversationId.set($event)">
+              <option value="">All</option>
+              @for (c of activeConversations(); track c.id) {
+                <option [value]="c.supabaseId">{{ c.name }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            From
+            <input type="date" [ngModel]="filterFrom()" (ngModelChange)="filterFrom.set($event)" />
+          </label>
+          <label>
+            To
+            <input type="date" [ngModel]="filterTo()" (ngModelChange)="filterTo.set($event)" />
+          </label>
+          <label class="grow">
+            Search text
+            <input type="text" placeholder="content contains…" [ngModel]="filterQ()" (ngModelChange)="filterQ.set($event)" />
+          </label>
+          <label>
+            Sender UUID
+            <input type="text" placeholder="optional" [ngModel]="filterSenderUuid()" (ngModelChange)="filterSenderUuid.set($event)" />
+          </label>
+          <div class="filter-actions">
+            <button class="btn btn-primary" (click)="runSearch(1)" [disabled]="loading()">
+              {{ loading() ? 'Searching…' : 'Search' }}
+            </button>
+            <button class="btn" (click)="clearFilters()">Clear</button>
+          </div>
+        </div>
+
+        @if (searchError()) {
+          <div class="error-banner">{{ searchError() }}</div>
+        }
+
+        <div class="results-meta">
+          {{ totalHits() }} match{{ totalHits() === 1 ? '' : 'es' }}
+          @if (lastPage() > 1) { — page {{ currentPage() }} of {{ lastPage() }} }
+        </div>
+
+        <table class="msg-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Conversation</th>
+              <th>Sender</th>
+              <th>Message</th>
+              <th>Flags</th>
+              <th>Acks</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of messages(); track m.id) {
+              <tr [class.deleted]="m.deletedAt">
+                <td class="nowrap">{{ m.sentAt | date:'short' }}</td>
+                <td>{{ conversationName(m.conversationSupabaseId) }}</td>
+                <td>
+                  {{ m.senderDisplayName }}
+                  @if (m.senderEmail) { <div class="sub">{{ m.senderEmail }}</div> }
+                </td>
+                <td class="content">
+                  {{ m.content }}
+                  @if (m.editedAt) { <span class="edited-marker">(edited)</span> }
+                  @if (m.deletedAt) { <span class="deleted-marker">(deleted)</span> }
+                </td>
+                <td class="nowrap">
+                  @if (m.requiresAck) { <span class="pill ack-pill">needs ack</span> }
+                  @if (m.isImportant && !m.requiresAck) { <span class="pill important-pill">important</span> }
+                </td>
+                <td>
+                  @if (m.ackCount > 0) {
+                    <button class="btn-link" (click)="viewAcks(m)">{{ m.ackCount }}</button>
+                  } @else {
+                    <span class="muted">0</span>
+                  }
+                </td>
+              </tr>
+            }
+            @if (messages().length === 0 && !loading()) {
+              <tr><td colspan="6" class="empty">No messages match those filters.</td></tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="pager" *ngIf="lastPage() > 1">
+          <button class="btn" (click)="goPrevPage()" [disabled]="currentPage() <= 1">&larr; Prev</button>
+          <span>Page {{ currentPage() }} of {{ lastPage() }}</span>
+          <button class="btn" (click)="goNextPage()" [disabled]="currentPage() >= lastPage()">Next &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create modal -->
+    @if (showCreateModal()) {
+      <div class="modal-backdrop" (click)="showCreateModal.set(false)">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <h3>New Conversation</h3>
+          <label>Name<input type="text" [(ngModel)]="newConvName" placeholder="e.g. Operations" /></label>
+          <label>Description<input type="text" [(ngModel)]="newConvDescription" /></label>
+          <label>Entity type <small>(optional)</small><input type="text" [(ngModel)]="newConvEntityType" placeholder="e.g. WorkRequest" /></label>
+          <label>Entity id <small>(optional)</small><input type="number" [(ngModel)]="newConvEntityId" /></label>
+          @if (createError()) { <div class="error-banner">{{ createError() }}</div> }
+          <div class="modal-actions">
+            <button class="btn" (click)="showCreateModal.set(false)">Cancel</button>
+            <button class="btn btn-primary" (click)="submitCreate()">Create</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Ack list modal -->
+    @if (showAckModal()) {
+      <div class="modal-backdrop" (click)="closeAckModal()">
+        <div class="modal wide" (click)="$event.stopPropagation()">
+          <h3>Acknowledgements</h3>
+          <div class="muted">"{{ ackMessage()?.content }}"</div>
+          @if (ackLoading()) {
+            <div class="empty">Loading…</div>
+          } @else if (ackList().length === 0) {
+            <div class="empty">No acks yet.</div>
+          } @else {
+            <table class="ack-table">
+              <thead><tr><th>User</th><th>Email</th><th>Acked at</th></tr></thead>
+              <tbody>
+                @for (a of ackList(); track a.userSupabaseUuid) {
+                  <tr>
+                    <td>{{ a.userName ?? a.userSupabaseUuid.substring(0, 8) }}</td>
+                    <td>{{ a.userEmail }}</td>
+                    <td>{{ a.ackedAt | date:'short' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+          <div class="modal-actions"><button class="btn" (click)="closeAckModal()">Close</button></div>
+        </div>
+      </div>
+    }
+  </ng-container>
+</app-main-layout>

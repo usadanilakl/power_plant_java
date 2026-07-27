@@ -155,6 +155,7 @@ public class SecurityConfigSpring {
                 .requestMatchers("/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
+                .requestMatchers("/ng/chat-audit/**").hasRole("ADMIN")
 
                 // Maximo — open to plant staff (ROLE_PLANT) and admins. Combined with @RestrictedAllowed on
                 // the Maximo controllers, a Plant-role user reaches Maximo without needing a FULL access grant

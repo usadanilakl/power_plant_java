@@ -6,15 +6,19 @@ import { HeaderComponent } from './components/header.component';
 import { SidebarComponent } from './layout/sidebar.component';
 import { AdvisoryBandComponent } from './components/advisory-band/advisory-band.component';
 import { LightningStanddownBannerComponent } from './components/lightning-standdown-banner.component';
+import { ImportantMessageModalComponent } from './pages/personnel/important-message-modal.component';
 import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent } from './services/electron.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, AdvisoryBandComponent, LightningStanddownBannerComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, AdvisoryBandComponent, LightningStanddownBannerComponent, ImportantMessageModalComponent],
   template: `
     <div class="app-container">
       <app-header></app-header>
+
+      <!-- Plant Chat: important-message modal — global, requires explicit ack -->
+      <app-important-message-modal></app-important-message-modal>
 
       <!-- Lightning standdown: highest-priority safety alert, shown on every page -->
       <app-lightning-standdown-banner></app-lightning-standdown-banner>
