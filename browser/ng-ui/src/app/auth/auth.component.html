@@ -27,7 +27,11 @@
 
     <!-- Step 2a: Sign In -->
     @if (step === 'signin') {
-      <p class="subtitle">Welcome back{{ lookedUpName ? ', ' + lookedUpName : '' }}</p>
+      @if (offlineChoice) {
+        <p class="subtitle">Couldn't reach the server to check your account. Sign in below, or create a new account.</p>
+      } @else {
+        <p class="subtitle">Welcome back{{ lookedUpName ? ', ' + lookedUpName : '' }}</p>
+      }
 
       <button class="email-login-btn" (click)="onForgotPassword()" [disabled]="isLoading">
         <span *ngIf="!isLoading">Email Me a Sign-In Link</span>
@@ -56,6 +60,9 @@
 
       <div class="auth-links">
         <a (click)="goBack()" class="link">Use a different account</a>
+        @if (offlineChoice) {
+          <a (click)="goToRegister()" class="link">New here? Create an account</a>
+        }
       </div>
     }
 
@@ -105,7 +112,7 @@
           </div>
         </div>
 
-        @if (serverStatus.isOnline()) {
+        @if (hasInternet) {
           <div class="form-group">
             <label for="signup-password">Password</label>
             <input id="signup-password" type="password" formControlName="password" placeholder="Min 8 characters">
@@ -127,7 +134,7 @@
         </div>
 
         <button type="submit" [disabled]="!canSubmitSignup || isLoading">
-          <span *ngIf="!isLoading">{{ serverStatus.isOnline() ? 'Create Account' : 'Save & Continue' }}</span>
+          <span *ngIf="!isLoading">{{ hasInternet ? 'Create Account' : 'Save & Continue' }}</span>
           <span *ngIf="isLoading" class="spinner"></span>
         </button>
       </form>

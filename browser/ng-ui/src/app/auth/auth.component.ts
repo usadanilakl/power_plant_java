@@ -34,6 +34,8 @@ export class AuthComponent implements OnInit {
   isLoading = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
+  /** Hub was unreachable at lookup, so we can't tell new-vs-existing — offer both sign-in and register. */
+  offlineChoice = false;
 
   lookedUpEmail = '';
   lookedUpName = '';
@@ -114,9 +116,13 @@ export class AuthComponent implements OnInit {
       },
       error: () => {
         this.isLoading = false;
-        // Server unreachable — fall back to signin with what they typed
+        // Hub unreachable — we can't tell whether this account exists. Offer BOTH paths: sign in (works
+        // via the Supabase fallback for existing users) or create an account (Supabase signup for new
+        // users). Carry the typed email into both forms.
         this.lookedUpEmail = credential;
         this.loginForm.patchValue({ email: credential });
+        this.signupForm.patchValue({ email: credential });
+        this.offlineChoice = true;
         this.step = 'signin';
       }
     });
@@ -272,5 +278,22 @@ export class AuthComponent implements OnInit {
     this.step = 'identify';
     this.errorMessage = null;
     this.successMessage = null;
+    this.offlineChoice = false;
+  }
+
+  /**
+   * Browser connectivity (hub AND/OR Supabase reachable). Distinct from serverStatus.isOnline(), which
+   * is HUB-only — registration/sign-in must work over Supabase when the hub is down but internet is up.
+   */
+  get hasInternet(): boolean {
+    return navigator.onLine;
+  }
+
+  /** From the hub-down sign-in screen, let a new user switch to registration (email carried over). */
+  goToRegister(): void {
+    this.errorMessage = null;
+    this.offlineChoice = false;
+    this.signupForm.patchValue({ email: this.lookedUpEmail || this.loginForm.value.email });
+    this.step = 'register';
   }
 }
