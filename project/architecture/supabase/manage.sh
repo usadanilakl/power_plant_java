@@ -52,6 +52,14 @@ fi
 # NOT the supabase/ folder itself — otherwise it looks for supabase/supabase/migrations and finds none.
 sb() { "${SUPA[@]}" --workdir "$ROOT" "$@"; }
 
+# `db push`/`diff` connect directly to Postgres and need the DB password. On this project the CLI's
+# default cli_login_postgres path is permission-denied, so it insists on SUPABASE_DB_PASSWORD. Auto-load
+# it from the gitignored secrets file (env var wins) so those commands are one command, no prompt.
+if [ -z "${SUPABASE_DB_PASSWORD:-}" ] && [ -f "$SECRETS_FILE" ]; then
+  _dbpw="$(grep -E '^supabase\.db\.password=' "$SECRETS_FILE" | head -n1 | cut -d= -f2- || true)"
+  [ -n "${_dbpw:-}" ] && export SUPABASE_DB_PASSWORD="$_dbpw"
+fi
+
 cmd="${1:-}"; shift || true
 case "$cmd" in
   login)   "${SUPA[@]}" login ;;
