@@ -79,6 +79,14 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
                 }
               </div>
             </section>
+          } @else if (isPendingApproval) {
+            <section class="card-section">
+              <h2 class="section-title">Plant Tools</h2>
+              <p class="pending-note">
+                <span class="pending-badge">Pending approval</span>
+                LOTO, Maximo and other plant tools unlock once an administrator approves your account.
+              </p>
+            </section>
           }
         </div>
       </ng-container>
@@ -134,6 +142,31 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
       color: var(--secondary-text, #888);
       margin: -0.4rem 0 0.75rem;
       text-align: left;
+    }
+
+    .pending-note {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--secondary-text, #888);
+      background: color-mix(in srgb, var(--primary-text, #888) 6%, transparent);
+      border: 1px solid color-mix(in srgb, var(--primary-text, #888) 12%, transparent);
+      border-radius: 8px;
+      padding: 0.7rem 0.9rem;
+      margin: 0;
+    }
+
+    .pending-badge {
+      flex: none;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #b26a00;
+      background: #ffe6b3;
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
     }
 
     .card-grid {
@@ -241,6 +274,11 @@ export class HomePageComponent {
 
   get showPlantTools(): boolean {
     return this.authService.isLoggedIn() && this.authService.isPlant();
+  }
+
+  /** Registered but awaiting admin approval — show a hint where Plant Tools would be. */
+  get isPendingApproval(): boolean {
+    return this.authService.isPendingApproval();
   }
 
   navigate(route: string): void {

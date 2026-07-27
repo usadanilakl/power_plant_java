@@ -13,6 +13,8 @@ export interface PwaAuthUser {
   role?: string;
   roles?: string[];
   permissionLevel: string;
+  /** Admin approval flag. false = registered but pending approval (tier-1 access only). */
+  isActive?: boolean;
 }
 
 export interface PwaAuthData {
@@ -350,6 +352,16 @@ export class AuthService {
   }
 
   /**
+   * True when the signed-in user is registered but still awaiting admin approval — they have a working
+   * tier-1 session but no plant role yet. Used to show a "pending approval" hint where plant tools would
+   * be. (A regular approved contractor is isActive=true, so this is false for them.)
+   */
+  isPendingApproval(): boolean {
+    const user = this.getAuthData()?.user;
+    return this.isLoggedIn() && !!user && user.isActive === false;
+  }
+
+  /**
    * True if the signed-in user belongs to any plant-affiliated group (Admin, Plant, NAES, JPower).
    * These are the groups that see schedule + contacts + plant chat. Contractors are excluded.
    * See {@code project/features/users/communication/pwa-step-5-wiring.md}.
@@ -423,6 +435,7 @@ export class AuthService {
       email: session.user?.email ?? '',
       roles,
       permissionLevel: md['permission_level'] ?? 'NONE',
+      isActive: md['is_active'] === true,
     };
     return {
       token: session.access_token,

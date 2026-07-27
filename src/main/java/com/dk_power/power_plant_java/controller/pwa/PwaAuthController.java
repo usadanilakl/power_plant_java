@@ -123,6 +123,7 @@ public class PwaAuthController {
         info.put("email", user.getEmail());
         info.put("roles", user.getRoles());
         info.put("permissionLevel", user.getPermissionLevel() != null ? user.getPermissionLevel() : PermissionLevel.NONE);
+        info.put("isActive", Boolean.TRUE.equals(user.getIsActive()));
         return info;
     }
 
