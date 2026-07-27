@@ -46,11 +46,10 @@ public class PwaAuthController {
                         "error", "USER_NOT_FOUND", "message", "User not found"));
             }
 
-            if (!Boolean.TRUE.equals(user.getIsActive())) {
-                return ResponseEntity.status(401).body(Map.of(
-                        "error", "ACCOUNT_INACTIVE",
-                        "message", "Account not yet approved. Please contact an administrator."));
-            }
+            // NOTE: a pending-approval (isActive=false) user CAN log in. They receive a token carrying
+            // their current roles (no ROLE_PLANT until an admin approves), which unlocks the OPEN tier-1
+            // features (work-request, JHA, field-list, inventory). Approval gates the /api/pwa/secured/**
+            // plant features — enforced by PwaJwtAuthFilter (isActive) + the role rules in SecurityConfig.
 
             // Update last login
             userRepo.updateLastLoginById(LocalDateTime.now(), user.getId());
@@ -81,10 +80,12 @@ public class PwaAuthController {
             String email = claims.getSubject();
 
             User user = userRepo.findFirstByEmailOrderByIdAsc(email);
-            if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            if (user == null) {
                 return ResponseEntity.status(401).body(Map.of(
                         "error", "INVALID_TOKEN", "message", "Token is no longer valid"));
             }
+            // isActive is NOT re-checked here — a pending-approval user keeps a working (tier-1) session;
+            // the secured/plant endpoints remain gated by PwaJwtAuthFilter + roles.
 
             String newToken = jwtService.generateToken(user);
             log.info("[PWA Auth] Token refreshed: {}", email);

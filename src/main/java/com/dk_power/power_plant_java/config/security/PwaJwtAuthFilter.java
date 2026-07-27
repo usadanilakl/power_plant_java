@@ -73,12 +73,7 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
                 }
             }
 
-            // isActive is a hub-authoritative field — enforced regardless of which store signed the token.
-            if (!Boolean.TRUE.equals(user.getIsActive())) {
-                sendError(response, 403, "ACCOUNT_INACTIVE", "Account not yet approved by administrator");
-                return;
-            }
-
+            // Build the security context first — roles drive access to the role-gated plant endpoints.
             var authorities = user.getRoles().stream()
                     .map(SimpleGrantedAuthority::new)
                     .collect(java.util.stream.Collectors.toSet());
@@ -86,6 +81,15 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authToken);
             LoggingContext.setUserId(user.getEmail());
+
+            // Approval gate: isActive (hub-authoritative) is required for the secured DATA endpoints
+            // (/api/pwa/secured/**), NOT for session maintenance (/auth/me, /auth/refresh). A pending-
+            // approval user therefore keeps a working session + full access to the OPEN tier-1 endpoints
+            // (work-request, JHA, field-list, inventory); only secured/plant features need approval.
+            if (path.startsWith("/api/pwa/secured/") && !Boolean.TRUE.equals(user.getIsActive())) {
+                sendError(response, 403, "ACCOUNT_INACTIVE", "Account not yet approved by administrator");
+                return;
+            }
 
             filterChain.doFilter(request, response);
         } catch (Exception e) {

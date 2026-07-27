@@ -121,13 +121,15 @@ export class AuthComponent implements OnInit {
     });
   }
 
-  /** Route to signin / pending-approval / register from a lookup result (hub OR Supabase). */
-  private routeAfterLookup(found: boolean, isActive: boolean, name: string, email: string): void {
+  /** Route to signin / register from a lookup result (hub OR Supabase). */
+  private routeAfterLookup(found: boolean, _isActive: boolean, name: string, email: string): void {
     if (found) {
       this.lookedUpEmail = email;
       this.lookedUpName = name;
       this.loginForm.patchValue({ email });
-      this.step = isActive ? 'signin' : 'pending_approval';
+      // Pending-approval users can now sign in (they get tier-1 access; plant stays gated), so a found
+      // account always goes to the sign-in step — no blocking "pending approval" screen.
+      this.step = 'signin';
     } else {
       this.signupForm.patchValue({ email });
       this.step = 'register';
