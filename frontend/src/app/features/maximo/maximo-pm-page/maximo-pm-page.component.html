@@ -178,6 +178,7 @@
               <th class="sortable" (click)="sortCatalog('shift')">Shift{{ sortIndicator('shift') }}</th>
               <th class="sortable" (click)="sortCatalog('preferredDayOfWeek')">Pref. day{{ sortIndicator('preferredDayOfWeek') }}</th>
               <th title="Electronic completion form the operator must fill out to close this PM's work orders">Completion form</th>
+              <th title="GenSuit confirmation phrase — when on, a GS button copies the phrase (with WO# and PM name) to the clipboard">GenSuit</th>
               <th class="sortable" (click)="sortCatalog('lastWonum')">Last WO{{ sortIndicator('lastWonum') }}</th>
             </tr>
           </thead>
@@ -212,6 +213,15 @@
                   </button>
                   <span class="form-count muted" *ngIf="pmFormKeys(pm).length > 1">operator picks one at completion</span>
                 </td>
+                <td class="gensuit-cell">
+                  <label class="gensuit-toggle" title="Enable the GenSuit confirmation phrase for this PM">
+                    <input type="checkbox" [checked]="pm.genSuitEnabled"
+                           (change)="toggleGenSuit(pm, $any($event.target).checked)" />
+                    GS
+                  </label>
+                  <button type="button" class="gensuit-edit" *ngIf="pm.genSuitEnabled" (click)="toggleGenSuitMenu(pm, $event)"
+                          [title]="'Edit the GenSuit phrase ({WO} and {PM} are substituted)'">✎</button>
+                </td>
                 <td class="row-actions">
                   <button class="link peek-toggle" [class.on]="isPmExpanded(pm.id)" (click)="togglePmHistory(pm)"
                           [title]="isPmExpanded(pm.id) ? 'Hide history' : 'Show history + upcoming WOs'">🕑</button>
@@ -222,7 +232,7 @@
               <!-- Occurrence timeline: real Maximo WOs (history + upcoming) for this PM -->
               <tr class="peek-row" *ngIf="isPmExpanded(pm.id)">
                 <td></td>
-                <td colspan="7">
+                <td colspan="8">
                   <div class="peek-note" *ngIf="isOccLoading(pm.id)"><span class="muted">Loading work orders…</span></div>
                   <div class="occ-wrap" *ngIf="!isOccLoading(pm.id) && occLoaded(pm.id)">
                     <div class="occ-col">
@@ -425,6 +435,7 @@
           <label class="audit-chk"><input type="checkbox" [checked]="cardsRecurringOnly()" (change)="toggleCardsRecurring()"> Recurring only</label>
           <label class="audit-chk"><input type="checkbox" [checked]="cardOverdueOnly()" (change)="cardOverdueOnly.set($any($event.target).checked)"> Overdue only</label>
           <label class="audit-chk"><input type="checkbox" [checked]="cardIssuesOnly()" (change)="cardIssuesOnly.set($any($event.target).checked)"> Troubled only</label>
+          <label class="audit-chk"><input type="checkbox" [checked]="cardGenSuitOnly()" (change)="cardGenSuitOnly.set($any($event.target).checked)"> GenSuit only</label>
           <label class="audit-chk">Cadence
             <select [ngModel]="cardCadence()" (ngModelChange)="cardCadence.set($event)">
               <option value="">All</option>
@@ -481,6 +492,11 @@
                 <dd>
                   {{ c.lastCompletedDate ? (c.lastCompletedDate | date:'MMM d, y') : 'never' }}
                   <button class="link small" *ngIf="c.lastWonum" (click)="openWoHref(c.lastHref || '', c.lastWonum || '')">WO {{ c.lastWonum }}</button>
+                  <button class="gs-btn" *ngIf="c.genSuitEnabled" [disabled]="!c.lastWonum"
+                          (click)="copyGenSuit(c.genSuitPhrase, c.lastWonum, c.description, 'card-' + c.pmId)"
+                          title="Copy GenSuit confirmation">
+                    {{ genSuitCopiedKey() === ('card-' + c.pmId) ? 'GS ✓' : 'GS' }}
+                  </button>
                 </dd>
                 <dt>Assigned to</dt>
                 <dd>{{ c.assignedTo || '—' }}</dd>
@@ -528,6 +544,11 @@
                   <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
                   <span class="occ-st st-open">{{ o.status }}</span>
                   <span class="occ-lead muted" *ngIf="o.lead">{{ o.lead }}</span>
+                  <button class="gs-btn" *ngIf="hc.genSuitEnabled" [disabled]="!o.wonum"
+                          (click)="copyGenSuit(hc.genSuitPhrase, o.wonum, hc.description, 'histU-' + o.wonum)"
+                          title="Copy GenSuit confirmation">
+                    {{ genSuitCopiedKey() === ('histU-' + o.wonum) ? 'GS ✓' : 'GS' }}
+                  </button>
                 </div>
                 <div class="muted" *ngIf="occUpcoming(hc.pmId).length === 0">None scheduled.</div>
               </div>
@@ -538,6 +559,11 @@
                   <button class="link" (click)="openWoHref(o.href, o.wonum)">{{ o.wonum }}</button>
                   <span class="occ-st st-done">{{ o.status }}</span>
                   <span class="occ-lead muted" *ngIf="o.lead">{{ o.lead }}</span>
+                  <button class="gs-btn" *ngIf="hc.genSuitEnabled" [disabled]="!o.wonum"
+                          (click)="copyGenSuit(hc.genSuitPhrase, o.wonum, hc.description, 'histH-' + o.wonum)"
+                          title="Copy GenSuit confirmation">
+                    {{ genSuitCopiedKey() === ('histH-' + o.wonum) ? 'GS ✓' : 'GS' }}
+                  </button>
                 </div>
                 <div class="muted" *ngIf="occHistory(hc.pmId).length === 0">No completed WOs in the last 2 years.</div>
               </div>
@@ -562,6 +588,22 @@
             <span>{{ t.formName }}</span>
           </label>
           <div class="form-dd-empty" *ngIf="formTemplates().length === 0">No forms yet — seed them in the Form Builder.</div>
+        </div>
+      </ng-container>
+
+      <!-- GenSuit phrase editor popover (fixed-positioned so the table's scroll box can't clip the textarea) -->
+      <ng-container *ngIf="openGenSuitPm() as pm">
+        <div class="form-dd-backdrop" (click)="closeGenSuitMenu()"></div>
+        <div class="form-dd-panel gensuit-panel"
+             [style.top.px]="genSuitMenuPos()?.top" [style.bottom.px]="genSuitMenuPos()?.bottom"
+             [style.left.px]="genSuitMenuPos()?.left" [style.min-width.px]="genSuitMenuPos()?.width">
+          <div class="gensuit-panel-head">GenSuit phrase — {{ pm.pmnum || pm.pmDescription }}</div>
+          <textarea class="gensuit-textarea" rows="3" [(ngModel)]="genSuitDraft"
+                    [placeholder]="'{PM} was completed see WO# {WO}'"></textarea>
+          <div class="gensuit-panel-hint muted">Tokens: <code>{{ '{WO}' }}</code> = work-order #, <code>{{ '{PM}' }}</code> = PM name.</div>
+          <div class="gensuit-panel-actions">
+            <button class="primary" (click)="closeGenSuitMenu()">Save &amp; close</button>
+          </div>
         </div>
       </ng-container>
     </div>

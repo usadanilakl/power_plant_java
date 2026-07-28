@@ -160,6 +160,8 @@ public class MaximoPmAuditService {
                 .keywordHit(keywordHit)
                 .formIssues(formIssues)
                 .hasIssues(keywordHit || formIssues)
+                .genSuitEnabled(pm.getGenSuitEnabled())
+                .genSuitPhrase(pm.getGenSuitPhrase())
                 .build();
     }
 

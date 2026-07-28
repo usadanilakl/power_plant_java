@@ -13,9 +13,17 @@
             <option *ngFor="let s of statusOptions" [value]="s">{{ s || 'Any status' }}</option>
           </select>
         </label>
-        <label>Location
-          <app-maximo-location-picker [(ngModel)]="filterLocation" placeholder="any"></app-maximo-location-picker>
+        <!-- Location filter: plant-tree picker by default (re-runs the search on pick); "type manually" reveals
+             the old free-text picker (escape hatch for codes not yet in the Maximo-seeded tree). -->
+        <label class="tree-filter">Location
+          <app-maximo-location-tree-picker *ngIf="!manualFilterEntry()" mode="location"
+            [location]="filterLocation" (selection)="filterLocation = $event.location; search()">
+          </app-maximo-location-tree-picker>
+          <app-maximo-location-picker *ngIf="manualFilterEntry()" [(ngModel)]="filterLocation" placeholder="any"></app-maximo-location-picker>
         </label>
+        <button type="button" class="link tree-toggle" (click)="manualFilterEntry.set(!manualFilterEntry())">
+          {{ manualFilterEntry() ? 'use plant tree' : 'type manually' }}
+        </button>
         <label>Site <input [(ngModel)]="searchSite" /></label>
         <label>Max <input type="number" [(ngModel)]="searchSize" min="1" max="200" /></label>
         <button (click)="search()" [disabled]="searching()">{{ searching() ? 'Searching…' : 'Search' }}</button>

@@ -1,13 +1,17 @@
-import { Component, EventEmitter, Input, Output, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoPmApiService } from '../../../services/maximo/maximo-pm-api.service';
 import { MaximoFormApiService } from '../../../services/maximo/maximo-form-api.service';
 import { AuthService } from '../../../services/auth.service';
+import { copyToOsClipboard, fillGenSuit } from '../../../services/util/os-clipboard';
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
+import { MaximoSchedulePeekComponent } from '../maximo-schedule-peek/maximo-schedule-peek.component';
 import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { FormField } from '../../../models/ui/form-field.model';
@@ -37,12 +41,13 @@ const EDITABLE_SR_STATUSES = ['NEW', 'QUEUED', 'INPROG', 'PENDING'];
 @Component({
   selector: 'app-maximo-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoAttachmentsComponent, SmartFormComponent],
+  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoSchedulePeekComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoLocationTreePickerComponent, MaximoAttachmentsComponent, SmartFormComponent],
   templateUrl: './maximo-detail-dialog.component.html',
   styleUrl: './maximo-detail-dialog.component.css'
 })
-export class MaximoDetailDialogComponent {
+export class MaximoDetailDialogComponent implements OnInit {
   private api = inject(MaximoApiService);
+  private pmApi = inject(MaximoPmApiService);
   private formApi = inject(MaximoFormApiService);
   private auth = inject(AuthService);
   @ViewChild(SmartFormComponent) smartForm?: SmartFormComponent;
@@ -51,8 +56,17 @@ export class MaximoDetailDialogComponent {
   @Input() sr: MaximoServiceRequest | null = null;
   @Input() wo: MaximoWorkOrder | null = null;
   @Output() closed = new EventEmitter<void>();
-  /** Emitted after a successful completion so the parent list can refresh the row. */
+  /** Emitted after a successful completion OR lead transfer so the parent list can refresh the row. */
   @Output() completed = new EventEmitter<MaximoWorkOrder>();
+
+  // ── Transfer lead (WO only) — writes spi:lead, does NOT change status ──────
+  showTransferLead = signal(false);
+  transferPersonid = '';
+  transferring = signal(false);
+
+  // ── GenSuit confirmation phrase (resolved for a WO by its pmnum) ──────────
+  genSuit = signal<{ enabled: boolean | null; phrase: string | null } | null>(null);
+  genSuitCopied = signal(false);
 
   tab = signal<Tab>('details');
   notes = signal<MaximoWorklog[]>([]);
@@ -68,6 +82,9 @@ export class MaximoDetailDialogComponent {
   // Edit an editable SR's fields (Details tab).
   editingSr = signal(false);
   savingSr = signal(false);
+  /** Escape hatch on the SR edit form: swap the plant-tree picker for the free-text asset/location pickers
+   *  (for codes not yet in the Maximo-seeded tree). Tree is the default. */
+  srManualEntry = signal(false);
   editDescription = '';
   editLongDescription = '';
   editPriority = '';
@@ -742,6 +759,17 @@ export class MaximoDetailDialogComponent {
     if (a?.location) this.editLocation = a.location;
   }
 
+  /**
+   * SR-edit tree pick. An equipment node sets the asset + its location; a LOCATION node updates only the
+   * location and KEEPS any existing asset. Rationale: the SR update path skips blank values (adapter
+   * putIfPresent), so an asset cannot be cleared via edit — blanking it here would be a silent no-op and
+   * leave the SR aimed at a stale asset. Keeping it makes the UI reflect what will actually persist.
+   */
+  onSrTreeSelect(sel: { assetnum: string; location: string }) {
+    if (sel.assetnum) this.editAssetnum = sel.assetnum;
+    this.editLocation = sel.location;
+  }
+
   /** Save the SR fields (blank = leave unchanged); on success swap in the refreshed record. */
   async saveSr() {
     if (!this.sr?.href || this.savingSr()) return;
@@ -765,6 +793,69 @@ export class MaximoDetailDialogComponent {
     } finally {
       this.savingSr.set(false);
     }
+  }
+
+  /** On open, resolve the WO's GenSuit setting (by pmnum) so the Details tab can offer the GS copy button. */
+  async ngOnInit() {
+    if (this.parent === 'wo' && this.wo?.pmnum) {
+      try {
+        this.genSuit.set(await firstValueFrom(this.pmApi.getGenSuitForWo(this.wo.pmnum)));
+      } catch { /* GenSuit is optional — leave null */ }
+    }
+  }
+
+  // ── Transfer lead (WO only) ───────────────────────────────────────────────
+  /** yyyy-MM-dd the schedule peek is centered on: the WO's target/sched start, else today (guidance only). */
+  get transferPeekDate(): string {
+    const t = (this.wo?.targetStart || this.wo?.schedstart || '').substring(0, 10);
+    if (t && t.length >= 10) return t;
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  startTransferLead() {
+    this.transferPersonid = '';
+    this.showTransferLead.set(true);
+    this.error.set(null);
+  }
+  cancelTransferLead() { this.showTransferLead.set(false); }
+
+  /** A schedule-peek click sets the chosen personid (any person is allowed). */
+  onPeekPick(personid: string) {
+    if (personid) this.transferPersonid = personid;
+  }
+
+  /** Transfer the WO's lead (writes spi:lead; no status change), then swap in the refreshed WO + notify the parent. */
+  async submitTransferLead() {
+    if (!this.wo?.href || this.transferring()) return;
+    const pid = this.transferPersonid.trim();
+    if (!pid) { this.error.set('Choose a person to transfer the lead to.'); return; }
+    if (!window.confirm(`Transfer the lead of WO ${this.wo.wonum} to ${pid.toUpperCase()}?`)) return;
+    this.transferring.set(true);
+    this.error.set(null);
+    try {
+      const updated = await firstValueFrom(this.api.transferLead(this.wo.href, pid));
+      if (updated) {
+        this.wo = updated;
+        this.completed.emit(updated);   // parents wire (completed) → refresh their list
+      }
+      this.showTransferLead.set(false);
+      this.transferPersonid = '';
+    } catch (e: any) {
+      this.error.set(this.errMsg(e));
+    } finally {
+      this.transferring.set(false);
+    }
+  }
+
+  // ── GenSuit confirmation copy (Details tab, WO only) ──────────────────────
+  async copyGenSuit() {
+    const gs = this.genSuit();
+    if (!gs?.enabled || !this.wo) return;
+    const text = fillGenSuit(gs.phrase, this.wo.wonum, this.wo.description);
+    if (!text) return;
+    const ok = await copyToOsClipboard(text);
+    if (ok) { this.genSuitCopied.set(true); setTimeout(() => this.genSuitCopied.set(false), 2000); }
   }
 
   close() { this.closed.emit(); }

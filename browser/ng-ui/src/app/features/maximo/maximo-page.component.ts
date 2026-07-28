@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoWoDetailComponent } from './maximo-wo-detail.component';
+import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
 import {
   MaximoServiceRequest, MaximoWorkOrder, SR_STATUSES, WO_STATUSES, WO_WORKTYPES, statusClass,
 } from './maximo.model';
@@ -16,7 +17,7 @@ type Tab = 'wo' | 'sr';
 @Component({
   selector: 'app-maximo-page',
   standalone: true,
-  imports: [MainLayoutComponent, RouterMenuComponent, DatePipe, MaximoWoDetailComponent],
+  imports: [MainLayoutComponent, RouterMenuComponent, DatePipe, MaximoWoDetailComponent, MaximoTreePickerComponent],
   template: `
     <app-main-layout [header]="'Maximo'">
       <ng-container header>
@@ -48,18 +49,26 @@ type Tab = 'wo' | 'sr';
                 @for (w of worktypes; track w) { <option [value]="w">{{ w || 'Any type' }}</option> }
               </select>
             }
+            <input class="mx-subby" type="text" placeholder="Submitted by…"
+                   [value]="submittedBy()" (input)="setSubmittedBy($any($event.target).value)">
+          </div>
+
+          <div class="mx-locfilter">
+            <span class="mx-locfilter-label">Location filter</span>
+            <app-maximo-tree-picker mode="location" [location]="locationFilter()"
+                                    (selection)="setLocationFilter($event.location)"></app-maximo-tree-picker>
           </div>
 
           @if (loading()) {
             <p class="mx-msg">Loading…</p>
           } @else if (error()) {
             <p class="mx-msg mx-err">{{ error() }}</p>
-          } @else if (items().length === 0) {
+          } @else if (visibleItems().length === 0) {
             <p class="mx-msg">Nothing found.</p>
           } @else {
             <div class="mx-list">
               @if (tab() === 'wo') {
-                @for (w of wos(); track w.href) {
+                @for (w of visibleWos(); track w.href) {
                   <button class="mx-item" (click)="openWo(w)">
                     <div class="mx-item-top">
                       <span class="mx-id">{{ w.wonum }}</span>
@@ -69,12 +78,13 @@ type Tab = 'wo' | 'sr';
                     <div class="mx-meta">
                       @if (w.worktype) { <span>{{ w.worktype }}</span> }
                       @if (w.assetnum || w.location) { <span>{{ w.assetnum || w.location }}</span> }
+                      @if (w.reportedby) { <span>👤 {{ w.reportedby }}</span> }
                       @if (w.targetStart || w.reportdate) { <span>{{ (w.targetStart || w.reportdate) | date:'MMM d' }}</span> }
                     </div>
                   </button>
                 }
               } @else {
-                @for (s of srs(); track s.href) {
+                @for (s of visibleSrs(); track s.href) {
                   <button class="mx-item" (click)="openSr(s)">
                     <div class="mx-item-top">
                       <span class="mx-id">{{ s.ticketid }}</span>
@@ -132,6 +142,9 @@ type Tab = 'wo' | 'sr';
     .mx-search { width: 100%; box-sizing: border-box; padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem; background: var(--card-bg, var(--secondary-background)); color: var(--primary-text); }
     .mx-filters { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
     .mx-filters select { flex: 1; padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; }
+    .mx-filters input.mx-subby { flex: 1.3; min-width: 8rem; padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; }
+    .mx-locfilter { margin-bottom: 0.8rem; }
+    .mx-locfilter-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.35rem; }
     .mx-msg { text-align: center; color: var(--secondary-text, #888); padding: 2rem 1rem; }
     .mx-err { color: #e74c3c; }
     .mx-list { display: flex; flex-direction: column; gap: 0.55rem; }
@@ -166,6 +179,10 @@ export class MaximoPageComponent implements OnInit {
   search = signal('');
   status = signal('');
   worktype = signal('');
+  /** Backend location filter (Maximo location code), picked from the plant tree. */
+  locationFilter = signal('');
+  /** Client-side "Submitted By" filter (substring, case-insensitive) over the loaded list. */
+  submittedBy = signal('');
   wos = signal<MaximoWorkOrder[]>([]);
   srs = signal<MaximoServiceRequest[]>([]);
   loading = signal(true);
@@ -176,6 +193,16 @@ export class MaximoPageComponent implements OnInit {
   items = computed(() => this.tab() === 'wo' ? this.wos() : this.srs());
   statusOptions = computed(() => this.tab() === 'wo' ? WO_STATUSES : SR_STATUSES);
 
+  /** Lists narrowed by the "Submitted By" substring (matches WO/SR reportedby). */
+  visibleWos = computed(() => this.bySubmitter(this.wos()));
+  visibleSrs = computed(() => this.bySubmitter(this.srs()));
+  visibleItems = computed(() => this.tab() === 'wo' ? this.visibleWos() : this.visibleSrs());
+
+  private bySubmitter<T extends { reportedby?: string }>(list: T[]): T[] {
+    const q = this.submittedBy().trim().toLowerCase();
+    return q ? list.filter(x => (x.reportedby || '').toLowerCase().includes(q)) : list;
+  }
+
   private reload$ = new Subject<void>();
 
   constructor() {
@@ -184,12 +211,12 @@ export class MaximoPageComponent implements OnInit {
       switchMap(() => {
         this.loading.set(true); this.error.set(null);
         if (this.tab() === 'wo') {
-          return this.api.listWorkOrders({ status: this.status(), worktype: this.worktype(), textContains: this.search() }).pipe(
+          return this.api.listWorkOrders({ status: this.status(), worktype: this.worktype(), location: this.locationFilter(), textContains: this.search() }).pipe(
             tap(list => { this.wos.set(list); this.loading.set(false); }),
             catchError(e => { this.fail(e); return of([]); })
           );
         }
-        return this.api.listServiceRequests({ status: this.status(), textContains: this.search() }).pipe(
+        return this.api.listServiceRequests({ status: this.status(), location: this.locationFilter(), textContains: this.search() }).pipe(
           tap(list => { this.srs.set(list); this.loading.set(false); }),
           catchError(e => { this.fail(e); return of([]); })
         );
@@ -199,9 +226,13 @@ export class MaximoPageComponent implements OnInit {
 
   ngOnInit(): void { this.reload$.next(); }
 
-  setTab(t: Tab): void { if (t === this.tab()) return; this.tab.set(t); this.status.set(''); this.reload$.next(); }
+  setTab(t: Tab): void { if (t === this.tab()) return; this.tab.set(t); this.status.set(''); this.locationFilter.set(''); this.submittedBy.set(''); this.reload$.next(); }
   setStatus(s: string): void { this.status.set(s); this.reload$.next(); }
   setWorktype(w: string): void { this.worktype.set(w); this.reload$.next(); }
+  /** Backend location filter (from the plant-tree picker; its chip "clear" emits '' to reset). */
+  setLocationFilter(code: string): void { this.locationFilter.set(code); this.reload$.next(); }
+  /** Client-side only — no backend reload; filters the already-loaded list. */
+  setSubmittedBy(v: string): void { this.submittedBy.set(v); }
   onSearch(e: Event): void { this.search.set((e.target as HTMLInputElement).value); this.reload$.next(); }
 
   chip(status: string | undefined): string { return statusClass(status); }

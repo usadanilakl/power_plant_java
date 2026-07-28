@@ -24,6 +24,7 @@ import {
   ShiftPreference
 } from '../../../models/maximo/pm.models';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { copyToOsClipboard, fillGenSuit, DEFAULT_GEN_SUIT_PHRASE } from '../../../services/util/os-clipboard';
 
 type Tab = 'catalog' | 'assignments' | 'schedule' | 'audit' | 'audit-cards';
 type AuditSortCol = 'pmnum' | 'description' | 'cadence' | 'target' | 'overdue';
@@ -177,6 +178,7 @@ export class MaximoPmPageComponent implements OnInit {
   cardSearch = signal('');
   cardOverdueOnly = signal(false);
   cardIssuesOnly = signal(false);
+  cardGenSuitOnly = signal(false);    // only PMs with GenSuit enabled
   cardCadence = signal('');           // '' = all cadences
   cardTargetPast = signal(false);     // only items whose target start is already in the past
   cardDueWithin = signal<number | null>(null);   // only items overdue or due within N days
@@ -190,6 +192,7 @@ export class MaximoPmPageComponent implements OnInit {
     if (q) rows = rows.filter(c => (c.pmnum ?? '').toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q));
     if (this.cardOverdueOnly()) rows = rows.filter(c => this.cardOverdue(c));
     if (this.cardIssuesOnly()) rows = rows.filter(c => c.hasIssues);
+    if (this.cardGenSuitOnly()) rows = rows.filter(c => c.genSuitEnabled);
     const cad = this.cardCadence();
     if (cad) rows = rows.filter(c => (c.cadence ?? '') === cad);
     if (this.cardTargetPast()) rows = rows.filter(c => c.targetStartPast);
@@ -483,6 +486,71 @@ export class MaximoPmPageComponent implements OnInit {
     return keys.map(k => this.formTemplates().find(t => t.formKey === k)?.formName ?? k).join(', ');
   }
 
+  // ── GenSuit confirmation phrase (per-PM toggle + editable phrase; GS button copies it) ──
+  /** Key of the GS button that just flashed "copied" (transient). */
+  genSuitCopiedKey = signal<string | null>(null);
+  /** Which PM's phrase-editor popover is open (only one at a time). */
+  genSuitMenuOpenId = signal<number | null>(null);
+  genSuitMenuPos = signal<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
+  /** The phrase being edited in the open popover (saved on close). */
+  genSuitDraft = '';
+
+  /** The PM whose GenSuit popover is open (looked up from the full catalog by id). */
+  openGenSuitPm = computed(() => {
+    const id = this.genSuitMenuOpenId();
+    return id == null ? null : (this.catalog().find(p => p.id === id) ?? null);
+  });
+
+  /** Toggle a PM's GenSuit on/off. Enabling with an empty phrase seeds the default first, then persists. */
+  async toggleGenSuit(pm: RecurringPm, checked: boolean) {
+    const phrase = (checked && !(pm.genSuitPhrase ?? '').trim())
+      ? DEFAULT_GEN_SUIT_PHRASE : (pm.genSuitPhrase ?? '');
+    try {
+      const updated = await firstValueFrom(this.api.saveGenSuit(pm.id, checked, phrase));
+      this.catalog.update(list => list.map(r => r.id === pm.id ? updated : r));
+    } catch (e: any) { this.error.set(this.msg(e)); }
+  }
+
+  /** Open/close the per-row phrase-editor popover (fixed-positioned so the table scroll box can't clip it). */
+  toggleGenSuitMenu(pm: RecurringPm, ev: MouseEvent): void {
+    if (this.genSuitMenuOpenId() === pm.id) { this.closeGenSuitMenu(); return; }
+    this.genSuitDraft = pm.genSuitPhrase ?? '';
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const spaceBelow = window.innerHeight - r.bottom;
+    const openUp = spaceBelow < 220 && r.top > spaceBelow;
+    const width = Math.max(r.width, 300);
+    this.genSuitMenuPos.set(openUp
+      ? { bottom: window.innerHeight - r.top + 2, left: r.left, width }
+      : { top: r.bottom + 2, left: r.left, width });
+    this.genSuitMenuOpenId.set(pm.id);
+  }
+
+  /** Persist the edited phrase (if changed) and close the popover. */
+  async closeGenSuitMenu(): Promise<void> {
+    const pm = this.openGenSuitPm();
+    this.genSuitMenuOpenId.set(null);
+    this.genSuitMenuPos.set(null);
+    if (!pm) return;
+    const next = this.genSuitDraft ?? '';
+    if (next === (pm.genSuitPhrase ?? '')) return;   // unchanged — no save
+    try {
+      const updated = await firstValueFrom(this.api.saveGenSuit(pm.id, pm.genSuitEnabled ?? false, next));
+      this.catalog.update(list => list.map(r => r.id === pm.id ? updated : r));
+    } catch (e: any) { this.error.set(this.msg(e)); }
+  }
+
+  /** Copy the GenSuit phrase ({WO}/{PM} substituted) to the OS clipboard, with a transient "copied" flash. */
+  async copyGenSuit(phrase: string | null | undefined, wonum: string | null | undefined,
+                    pmName: string | null | undefined, key: string) {
+    const text = fillGenSuit(phrase, wonum, pmName);
+    if (!text) return;
+    const ok = await copyToOsClipboard(text);
+    if (ok) {
+      this.genSuitCopiedKey.set(key);
+      setTimeout(() => this.genSuitCopiedKey.set(null), 2000);
+    }
+  }
+
   async refreshCatalog() {
     this.loading.set(true); this.error.set(null); this.info.set(null);
     try {
@@ -713,8 +781,8 @@ export class MaximoPmPageComponent implements OnInit {
   private blankWo(): MaximoWorkOrder {
     return {
       href: '', wonum: '', description: '', longDescription: '', status: '', worktype: '',
-      assetnum: '', location: '', siteid: '', reportdate: '', targetStart: '', schedstart: '',
-      schedfinish: '', leadCraft: '', supervisor: '', priority: '', pmnum: ''
+      assetnum: '', location: '', siteid: '', reportdate: '', targetStart: '', targetFinish: '',
+      schedstart: '', schedfinish: '', leadCraft: '', supervisor: '', reportedby: '', priority: '', pmnum: ''
     };
   }
 

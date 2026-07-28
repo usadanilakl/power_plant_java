@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport } from '../../services/electron.service';
+import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport, PersonnelConfig, PersonnelStatusMeta } from '../../services/electron.service';
 import { ChatPanelComponent } from './chat-panel.component';
 
 const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BC2B8028F-8473-49EC-8B24-1FEBBB8D1584%7D&file=OPS%20Schedule%202026.xlsx&action=default&mobileredirect=true';
@@ -33,9 +33,58 @@ const SHIFT_LABELS: Record<string, string> = {
           <button class="btn btn-icon" (click)="openSchedule()" title="Open full schedule on SharePoint">
             <span class="material-icons">open_in_new</span>
           </button>
+          <button class="btn btn-icon" (click)="toggleSettings()"
+                  [title]="personnelMeta?.autoRefreshEnabled ? ('Auto-refresh every ' + personnelMeta!.refreshIntervalMinutes + ' min') : 'Schedule refresh settings'">
+            <span class="material-icons" [class.settings-active]="personnelMeta?.autoRefreshEnabled">
+              {{ personnelMeta?.autoRefreshEnabled ? 'schedule' : 'settings' }}
+            </span>
+          </button>
           <button class="btn btn-primary" (click)="refresh()" [disabled]="loading">
             {{ loading ? 'Loading...' : 'Refresh' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Auto-refresh settings (per-client). Persisted to personnel-config.json in the working dir. -->
+      <div class="settings-panel" *ngIf="settingsOpen && personnelConfig">
+        <div class="settings-title">
+          <span class="material-icons">tune</span>
+          Schedule auto-refresh (this desktop only)
+        </div>
+        <div class="settings-help">
+          When enabled, this desktop periodically re-fetches the SharePoint schedule and pushes it
+          to the hub. Safe to enable on multiple desktops — writes are idempotent and only actually
+          changed rows sync.
+        </div>
+        <div class="settings-row">
+          <label class="settings-inline">
+            <input type="checkbox" [(ngModel)]="personnelConfig.autoRefresh" />
+            Auto-refresh enabled
+          </label>
+          <label class="settings-inline">
+            Every
+            <input type="number" min="5" max="1440" step="5"
+                   [(ngModel)]="personnelConfig.intervalMinutes"
+                   [disabled]="!personnelConfig.autoRefresh" />
+            minutes
+          </label>
+          <label class="settings-inline" title="Local HTTP port the hub uses to nudge a refresh when this desktop is picked (fallback path).">
+            Trigger port
+            <input type="number" min="1024" max="65535"
+                   [(ngModel)]="personnelConfig.refreshTriggerPort" />
+          </label>
+          <button class="btn btn-primary" (click)="savePersonnelConfig()" [disabled]="savingSettings">
+            {{ savingSettings ? 'Saving...' : 'Save' }}
+          </button>
+          <span class="settings-msg" *ngIf="settingsSaveMessage">{{ settingsSaveMessage }}</span>
+        </div>
+        <div class="settings-status" *ngIf="personnelMeta">
+          <span *ngIf="personnelMeta.isRefreshing" class="status-refreshing">
+            <span class="material-icons spin">autorenew</span> Refreshing…
+          </span>
+          <span *ngIf="personnelMeta.lastRefreshError" class="status-error" [title]="personnelMeta.lastRefreshError">
+            Last refresh error: {{ personnelMeta.lastRefreshError }}
+          </span>
         </div>
       </div>
 
@@ -516,6 +565,22 @@ const SHIFT_LABELS: Record<string, string> = {
       color: var(--text-muted); cursor: pointer; padding: 2px; display: inline-flex; }
     .search-clear:hover { color: var(--text-primary); }
     .search-clear .material-icons { font-size: 16px; }
+    .settings-active { color: var(--accent, #2f80ed); }
+    .settings-panel { background: var(--surface-alt, #f6f8fa); border: 1px solid var(--border-color, #d0d7de);
+      border-radius: 6px; padding: 12px 14px; margin: 8px 0 12px; }
+    .settings-title { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 4px; }
+    .settings-title .material-icons { font-size: 18px; }
+    .settings-help { font-size: 12px; color: var(--text-muted, #666); margin-bottom: 10px; }
+    .settings-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .settings-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+    .settings-inline input[type="number"] { width: 72px; padding: 3px 6px; font-size: 13px;
+      border: 1px solid var(--border-color, #d0d7de); border-radius: 4px; }
+    .settings-msg { font-size: 12px; color: var(--text-muted, #666); }
+    .settings-status { margin-top: 8px; font-size: 12px; display: flex; gap: 12px; align-items: center; }
+    .status-refreshing { display: inline-flex; align-items: center; gap: 4px; color: var(--accent, #2f80ed); }
+    .status-error { color: #c95252; }
+    .spin { animation: spin 1.4s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
 export class PersonnelComponent implements OnInit {
@@ -541,6 +606,16 @@ export class PersonnelComponent implements OnInit {
   contractorPushing = false;
   contractorActionMessage = '';
 
+  // Per-client auto-refresh config (persisted in personnel-config.json in the working dir).
+  // When enabled, this desktop periodically re-fetches the SharePoint schedule and pushes it
+  // to its local Spring Boot → CRDT sync → hub → Supabase mirror. Safe to enable on multiple
+  // desktops at different intervals — writes are idempotent.
+  personnelConfig: PersonnelConfig | null = null;
+  personnelMeta: PersonnelStatusMeta | null = null;
+  settingsOpen = false;
+  savingSettings = false;
+  settingsSaveMessage = '';
+
   selectedMonth: number = new Date().getMonth();
   monthOptions: { idx: number; label: string }[] = [];
 
@@ -558,6 +633,44 @@ export class PersonnelComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSchedule();
+    void this.loadPersonnelConfig();
+  }
+
+  async loadPersonnelConfig(): Promise<void> {
+    try {
+      const cfg = await this.electronService.personnelGetConfig();
+      if (cfg.success && cfg.data) this.personnelConfig = { ...cfg.data };
+      const meta = await this.electronService.personnelGetMeta();
+      if (meta.success && meta.data) this.personnelMeta = meta.data;
+    } catch (err) {
+      console.warn('Failed to load personnel config:', err);
+    }
+  }
+
+  toggleSettings(): void {
+    this.settingsOpen = !this.settingsOpen;
+    this.settingsSaveMessage = '';
+    if (this.settingsOpen) void this.loadPersonnelConfig();
+  }
+
+  async savePersonnelConfig(): Promise<void> {
+    if (!this.personnelConfig) return;
+    this.savingSettings = true;
+    this.settingsSaveMessage = '';
+    try {
+      const result = await this.electronService.personnelSaveConfig(this.personnelConfig);
+      if (result.success && result.data) {
+        this.personnelConfig = { ...result.data };
+        this.settingsSaveMessage = 'Saved';
+        void this.loadPersonnelConfig();
+      } else {
+        this.settingsSaveMessage = result.error || 'Save failed';
+      }
+    } catch (err: any) {
+      this.settingsSaveMessage = err?.message ?? 'Save failed';
+    } finally {
+      this.savingSettings = false;
+    }
   }
 
   selectMonth(idx: number): void {

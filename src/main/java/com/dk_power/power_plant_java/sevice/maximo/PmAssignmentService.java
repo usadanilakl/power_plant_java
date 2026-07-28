@@ -163,6 +163,25 @@ public class PmAssignmentService {
         return res;
     }
 
+    /**
+     * Transfer a work order's lead to another person WITHOUT changing status. Writes {@code spi:lead} (any
+     * person may be the target), then best-effort adds an audit worklog note ("Lead transferred to PERSONID").
+     * A failure to log the note must NOT fail the transfer. Returns the refreshed WO.
+     */
+    public MaximoWorkOrderDto transferLead(String href, String personid, String memo) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (personid == null || personid.isBlank()) throw new IllegalArgumentException("personid is required");
+        workOrders.setLead(href, personid);
+        try {
+            String note = "Lead transferred to " + personid.trim().toUpperCase()
+                    + (memo != null && !memo.isBlank() ? ": " + memo.trim() : "");
+            workOrders.reportActuals(href, null, note, null, "CLIENTNOTE");
+        } catch (Exception e) {
+            log.warn("[PM] transferLead audit note on {} failed (transfer still applied): {}", href, e.getMessage());
+        }
+        return workOrders.findByHref(href).orElse(null);
+    }
+
     /** Lead operators (id + Ops-Schedule alias + personid) so the UI can flag which roster people are leads. */
     public List<PmLeadDto> leads() {
         return bundles.leadOperators().stream()

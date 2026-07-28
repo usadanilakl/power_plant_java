@@ -4,11 +4,12 @@ import { Subject, debounceTime, switchMap, of, catchError, from, concatMap } fro
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { MaximoApiService } from './maximo-api.service';
 import { CreateMaximoServiceRequest, MaximoLocation } from './maximo.model';
+import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
 
 @Component({
   selector: 'app-maximo-sr-create',
   standalone: true,
-  imports: [MainLayoutComponent],
+  imports: [MainLayoutComponent, MaximoTreePickerComponent],
   template: `
     <app-main-layout [header]="'New Request'">
       <ng-container main-content>
@@ -46,26 +47,39 @@ import { CreateMaximoServiceRequest, MaximoLocation } from './maximo.model';
               </select>
             </label>
 
-            <label class="sc-field">Asset (optional)
-              <input type="text" [value]="assetnum()" (input)="assetnum.set($any($event.target).value)"
-                     placeholder="Asset / tag number">
-            </label>
+            <!-- Location / asset (optional): ONE tree pick fills both. Manual escape hatch for codes not yet seeded. -->
+            <div class="sc-la-head">
+              <span>Location / Asset (optional)</span>
+              <button type="button" class="sc-link" (click)="toggleManual()">
+                {{ manualEntry() ? 'use plant tree' : 'type manually' }}
+              </button>
+            </div>
 
-            <label class="sc-field">Location (optional)
-              <input type="text" [value]="locationQuery()" (input)="onLocationInput($event)"
-                     placeholder="Search a location">
-            </label>
-            @if (location()) { <p class="sc-picked">Location: <b>{{ location() }}</b> <button class="sc-clear" (click)="clearLocation()">clear</button></p> }
-            @if (locResults().length) {
-              <div class="sc-loc-results">
-                @for (l of locResults(); track l.location) {
-                  <button class="sc-loc" (click)="pickLocation(l)"><b>{{ l.location }}</b> {{ l.description }}</button>
-                }
-              </div>
+            @if (!manualEntry()) {
+              <app-maximo-tree-picker mode="both" [assetnum]="assetnum()" [location]="location()"
+                                      (selection)="onTreePick($event)"></app-maximo-tree-picker>
+            } @else {
+              <label class="sc-field">Asset
+                <input type="text" [value]="assetnum()" (input)="assetnum.set($any($event.target).value)"
+                       placeholder="Asset / tag number">
+              </label>
+
+              <label class="sc-field">Location
+                <input type="text" [value]="locationQuery()" (input)="onLocationInput($event)"
+                       placeholder="Search a location">
+              </label>
+              @if (location()) { <p class="sc-picked">Location: <b>{{ location() }}</b> <button class="sc-clear" (click)="clearLocation()">clear</button></p> }
+              @if (locResults().length) {
+                <div class="sc-loc-results">
+                  @for (l of locResults(); track l.location) {
+                    <button class="sc-loc" (click)="pickLocation(l)"><b>{{ l.location }}</b> {{ l.description }}</button>
+                  }
+                </div>
+              }
             }
 
             <label class="sc-field">Photos
-              <input type="file" accept="image/*" capture="environment" multiple (change)="onPhotos($event)">
+              <input type="file" accept="image/*" multiple (change)="onPhotos($event)">
             </label>
             @if (photos().length) {
               <div class="sc-thumbs">
@@ -96,6 +110,8 @@ import { CreateMaximoServiceRequest, MaximoLocation } from './maximo.model';
     .sc-clear { background: none; border: none; color: var(--accent-color); font-size: 0.78rem; cursor: pointer; }
     .sc-loc-results { display: flex; flex-direction: column; gap: 0.3rem; margin: -0.4rem 0 0.9rem; max-height: 220px; overflow-y: auto; }
     .sc-loc { text-align: left; background: var(--card-bg, var(--secondary-background)); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem 0.6rem; font-size: 0.82rem; color: var(--primary-text); cursor: pointer; font-family: inherit; }
+    .sc-la-head { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.5rem; }
+    .sc-link { background: none; border: none; color: var(--accent-color); font-size: 0.78rem; cursor: pointer; font-family: inherit; }
     .sc-thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: -0.4rem 0 0.9rem; }
     .sc-thumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
     .sc-thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -124,6 +140,9 @@ export class MaximoSrCreateComponent implements OnDestroy {
   location = signal('');
   locationQuery = signal('');
   locResults = signal<MaximoLocation[]>([]);
+  // The Maximo-seeded plant tree is the default SR-target picker (app-maximo-tree-picker); manual free-text is
+  // the escape hatch for a brand-new code not yet in the seeded tree.
+  manualEntry = signal(false);
   photos = signal<{ file: File; url: string }[]>([]);
   submitting = signal(false);
   uploadStatus = signal<string | null>(null);
@@ -159,6 +178,17 @@ export class MaximoSrCreateComponent implements OnDestroy {
     this.locResults.set([]);
   }
   clearLocation(): void { this.location.set(''); this.locationQuery.set(''); this.locResults.set([]); }
+
+  // ── Plant-tree SR-target picker ────────────────────────────────────────────
+
+  toggleManual(): void { this.manualEntry.update(v => !v); }
+
+  /** One tree pick fills the SR target: equipment → asset + its location; location node → location, no asset. */
+  onTreePick(sel: { assetnum: string; location: string }): void {
+    this.assetnum.set(sel.assetnum);
+    this.location.set(sel.location);
+    this.locationQuery.set(sel.location);
+  }
 
   onPhotos(e: Event): void {
     const files = Array.from((e.target as HTMLInputElement).files ?? []);

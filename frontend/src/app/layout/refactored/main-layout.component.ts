@@ -10,10 +10,11 @@ import { QaToggleComponent } from "../../shared/qa/qa-toggle/qa-toggle.component
 import { UserProfileComponent } from "../../shared/user-profile/user-profile.component";
 import { AgentToggleComponent } from "../../shared/agent/agent-toggle/agent-toggle.component";
 import { AgentChatPanelComponent } from "../../shared/agent/agent-chat-panel/agent-chat-panel.component";
+import { ImportantMessageModalComponent } from "../../shared/important-message-modal/important-message-modal.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent, UserProfileComponent, AgentToggleComponent, AgentChatPanelComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent, UserProfileComponent, AgentToggleComponent, AgentChatPanelComponent, ImportantMessageModalComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

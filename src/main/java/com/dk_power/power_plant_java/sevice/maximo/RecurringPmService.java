@@ -338,9 +338,40 @@ public class RecurringPmService {
                 .lastTargetDate(r.getLastTargetDate())
                 .catalogRefreshedAt(r.getCatalogRefreshedAt())
                 .manuallyAdded(r.getManuallyAdded())
+                .genSuitEnabled(r.getGenSuitEnabled())
+                .genSuitPhrase(r.getGenSuitPhrase())
                 .formKey(r.getFormKey())
                 .formKeys(r.getFormKeyList())
                 .build();
+    }
+
+    /** Enable/disable the GenSuit confirmation phrase for a PM and set its editable phrase. Returns the updated PM. */
+    public RecurringPmDto updateGenSuit(Long id, Boolean enabled, String phrase) {
+        RecurringPm row = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown recurring-PM id: " + id));
+        if (enabled != null) row.setGenSuitEnabled(enabled);
+        row.setGenSuitPhrase(phrase);
+        return toDto(repo.save(row));
+    }
+
+    /** Minimal GenSuit lookup result for the WO details dialog (both null when no catalog match). */
+    public record GenSuitInfo(Boolean enabled, String phrase) {}
+
+    /**
+     * Look up a PM's GenSuit setting by {@code pmnum} (for the WO details dialog to resolve by {@code wo.pmnum}).
+     * The catalog is keyed by pmnum but it's sparse, so this matches on a non-blank pmnum and ignores blanks;
+     * returns nulls when there's no match. Read-only.
+     */
+    @Transactional(readOnly = true)
+    public GenSuitInfo genSuitForPmnum(String pmnum) {
+        if (pmnum == null || pmnum.isBlank()) return new GenSuitInfo(null, null);
+        String target = pmnum.trim();
+        return repo.findAllByOrderByPmnumAsc().stream()
+                .filter(r -> r.getPmnum() != null && !r.getPmnum().isBlank()
+                        && r.getPmnum().trim().equalsIgnoreCase(target))
+                .findFirst()
+                .map(r -> new GenSuitInfo(r.getGenSuitEnabled(), r.getGenSuitPhrase()))
+                .orElse(new GenSuitInfo(null, null));
     }
 
     /** Assign (or clear, when blank) a SINGLE completion form. Back-compat wrapper over {@link #assignForms}. */

@@ -34,7 +34,15 @@ export class GlobalContextMenuComponent {
   selectedItem = computed(() => this.activeService()?.contextMenuSelectedItem() ?? null);
   isVisible = computed(() => this.activeService()?.contextMenuVisible() ?? false);
   position = computed(() => this.activeService()?.contextMenuPosition() ?? { x: 0, y: 0 });
-  actions = computed(() => this.activeService()?.contextMenuActions ?? []);
+  actions = computed(() => {
+    const svc = this.activeService();
+    // Depend on the per-open version tick so a subclass that mutates
+    // contextMenuActions on each showContextMenu (e.g. per-row disabled
+    // toggles) reaches the DOM even when the active service reference
+    // is the same as last open (registry.setActive dedupes on Object.is).
+    svc?.contextMenuVersionTick();
+    return svc?.contextMenuActions ?? [];
+  });
 
   closeMenu(): void {
     this.activeService()?.closeContextMenu();

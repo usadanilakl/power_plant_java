@@ -36,6 +36,14 @@
         <div class="kv-actions" *ngIf="canEditSr && !editingSr()">
           <button class="link" (click)="startEditSr()">✎ Edit description / notes</button>
         </div>
+        <!-- WO actions: GenSuit confirmation copy (only when enabled for this PM) + Transfer lead -->
+        <div class="kv-actions wo-actions" *ngIf="isWo">
+          <button class="gs-btn" *ngIf="genSuit()?.enabled" [disabled]="!wo?.wonum" (click)="copyGenSuit()"
+                  title="Copy GenSuit confirmation">
+            📋 {{ genSuitCopied() ? 'GS ✓ copied' : 'GS' }}
+          </button>
+          <button class="link" *ngIf="!showTransferLead()" (click)="startTransferLead()">⇄ Transfer lead</button>
+        </div>
         <table class="kv">
           <tr *ngFor="let pair of detailFields">
             <th>{{ pair[0] }}</th>
@@ -66,14 +74,31 @@
             <label>Affected person
               <app-maximo-person-picker [(ngModel)]="editAffectedperson" placeholder="personid"></app-maximo-person-picker>
             </label>
-            <label>Asset
-              <app-maximo-asset-picker [(ngModel)]="editAssetnum" [freeText]="true"
-                                       (picked)="onEditAssetPicked($event)" placeholder="tag / description"></app-maximo-asset-picker>
-            </label>
-            <label>Location
-              <app-maximo-location-picker [(ngModel)]="editLocation" [freeText]="true"
-                                          placeholder="code / description"></app-maximo-location-picker>
-            </label>
+          </div>
+
+          <!-- Location / asset: one plant-tree pick fills BOTH assetnum + location. "type manually" is the escape
+               hatch (the tree is Maximo-SEEDED, so a brand-new code won't be in it yet). -->
+          <div class="loc-asset">
+            <div class="la-head">
+              <span class="la-title">Location / Asset</span>
+              <button type="button" class="link" (click)="srManualEntry.set(!srManualEntry())">
+                {{ srManualEntry() ? 'use plant tree' : 'type manually' }}
+              </button>
+            </div>
+            <app-maximo-location-tree-picker *ngIf="!srManualEntry()" mode="both"
+                                             [assetnum]="editAssetnum" [location]="editLocation"
+                                             (selection)="onSrTreeSelect($event)">
+            </app-maximo-location-tree-picker>
+            <div class="sr-edit-grid" *ngIf="srManualEntry()">
+              <label>Asset
+                <app-maximo-asset-picker [(ngModel)]="editAssetnum" [freeText]="true"
+                                         (picked)="onEditAssetPicked($event)" placeholder="tag / description"></app-maximo-asset-picker>
+              </label>
+              <label>Location
+                <app-maximo-location-picker [(ngModel)]="editLocation" [freeText]="true"
+                                            placeholder="code / description"></app-maximo-location-picker>
+              </label>
+            </div>
           </div>
           <p class="muted sr-edit-note">Blank fields are left unchanged. Maximo may reject a field it locks in this status — the error will show above.</p>
           <div class="sr-edit-actions">
@@ -89,6 +114,23 @@
         <div class="long-desc" *ngIf="longDescription && !editingSr()">
           <h4>Long description</h4>
           <pre>{{ longDescription }}</pre>
+        </div>
+
+        <!-- Transfer lead panel (WO only): person picker (any person) + schedule peek for guidance -->
+        <div class="transfer-panel" *ngIf="isWo && showTransferLead()">
+          <h4>Transfer lead</h4>
+          <p class="muted">Writes the work order's lead (spi:lead). Does not change status. Any person may be
+            chosen; the shift schedule below is for guidance — clicking a name selects them.</p>
+          <label class="tl-picker">New lead (personid)
+            <app-maximo-person-picker [(ngModel)]="transferPersonid" placeholder="any person…"></app-maximo-person-picker>
+          </label>
+          <app-maximo-schedule-peek [date]="transferPeekDate" (pick)="onPeekPick($event)"></app-maximo-schedule-peek>
+          <div class="transfer-actions">
+            <button class="primary" (click)="submitTransferLead()" [disabled]="transferring() || !transferPersonid.trim()">
+              {{ transferring() ? 'Transferring…' : 'Transfer lead' }}
+            </button>
+            <button (click)="cancelTransferLead()" [disabled]="transferring()">Cancel</button>
+          </div>
         </div>
       </div>
 

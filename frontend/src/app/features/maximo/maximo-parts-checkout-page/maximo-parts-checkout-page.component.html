@@ -22,25 +22,38 @@
           <!-- Not a <label>: it contains the result list, and clicking a list item inside a label
                forwards the click to the input instead of selecting. -->
           <div class="fld">
-            <span class="fld-label">Location *</span>
+            <div class="fld-label-row">
+              <span class="fld-label">Location *</span>
+              <button type="button" class="link" (click)="manualLocationEntry.set(!manualLocationEntry())">
+                {{ manualLocationEntry() ? 'use plant tree' : 'type manually' }}
+              </button>
+            </div>
             <div class="selected" *ngIf="selectedLocation() as l; else locPicker">
-              <span><strong>{{ l.location }}</strong> — {{ l.description }}</span>
+              <span><strong>{{ l.location }}</strong><span *ngIf="l.description"> — {{ l.description }}</span></span>
               <button class="link" (click)="clearLocation()">change</button>
             </div>
             <ng-template #locPicker>
-              <div class="search-row">
-                <input [(ngModel)]="locQuery" (ngModelChange)="onLocQueryChange()" (keyup.enter)="searchLocations()"
-                       placeholder="type to search — words narrow (e.g. “02 acc”)" />
-                <span class="srch-status muted" *ngIf="locSearching()">…</span>
-              </div>
-              <ul class="pick-list" *ngIf="locResults().length">
-                <li *ngFor="let l of locResults()" (mousedown)="pickLocation(l)">
-                  <strong>{{ l.location }}</strong> — {{ l.description }}
-                </li>
-              </ul>
-              <div class="muted hint" *ngIf="locQuery.trim().length >= 2 && !locSearching() && locResults().length === 0">
-                No locations match “{{ locQuery }}”.
-              </div>
+              <!-- Primary: plant-tree location picker. Emits a code → build a minimal MaximoLocation (see onTreeLocation). -->
+              <app-maximo-location-tree-picker *ngIf="!manualLocationEntry()" mode="location"
+                [location]="selectedLocation()?.location ?? ''"
+                (selection)="onTreeLocation($event.location)">
+              </app-maximo-location-tree-picker>
+              <!-- Manual fallback: the typed search (escape hatch for codes not yet in the Maximo-seeded tree). -->
+              <ng-container *ngIf="manualLocationEntry()">
+                <div class="search-row">
+                  <input [(ngModel)]="locQuery" (ngModelChange)="onLocQueryChange()" (keyup.enter)="searchLocations()"
+                         placeholder="type to search — words narrow (e.g. “02 acc”)" />
+                  <span class="srch-status muted" *ngIf="locSearching()">…</span>
+                </div>
+                <ul class="pick-list" *ngIf="locResults().length">
+                  <li *ngFor="let l of locResults()" (mousedown)="pickLocation(l)">
+                    <strong>{{ l.location }}</strong> — {{ l.description }}
+                  </li>
+                </ul>
+                <div class="muted hint" *ngIf="locQuery.trim().length >= 2 && !locSearching() && locResults().length === 0">
+                  No locations match “{{ locQuery }}”.
+                </div>
+              </ng-container>
             </ng-template>
           </div>
 

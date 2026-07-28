@@ -298,6 +298,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   personnelGetStatus: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_STATUS),
   personnelRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_REFRESH),
   personnelGetContacts: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_CONTACTS),
+  personnelGetConfig: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_CONFIG),
+  personnelSaveConfig: (config: any): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_SAVE_CONFIG, config),
+  personnelGetMeta: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_META),
 
   // Sync entity updates (broadcast from main when sync applies changes)
   onSyncEntityUpdated: (callback: (entityType: string, entityId: number) => void) => {

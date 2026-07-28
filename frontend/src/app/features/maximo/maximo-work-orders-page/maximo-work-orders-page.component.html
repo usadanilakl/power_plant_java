@@ -20,12 +20,28 @@
           <label>Priority <input [(ngModel)]="criteria.priority" placeholder="numeric" /></label>
           <label>Page <input type="number" [(ngModel)]="pageSize" min="1" max="200" /></label>
         </div>
+        <!-- Assetnum + Location are INDEPENDENT filters. Each is a single-field tree picker whose (selection)
+             writes only its own field, so picking one never clears the other. "type manually" reveals the old
+             free-text pickers (escape hatch for codes not yet in the Maximo-seeded tree). -->
         <div class="row">
-          <label>Assetnum <app-maximo-asset-picker [(ngModel)]="criteria.assetnum" placeholder="tag / description"></app-maximo-asset-picker></label>
-          <label>Location <app-maximo-location-picker [(ngModel)]="criteria.location" placeholder="code / description"></app-maximo-location-picker></label>
+          <label class="tree-filter">Assetnum
+            <app-maximo-location-tree-picker *ngIf="!manualFilterEntry()" mode="asset"
+              [assetnum]="criteria.assetnum" (selection)="criteria.assetnum = $event.assetnum">
+            </app-maximo-location-tree-picker>
+            <app-maximo-asset-picker *ngIf="manualFilterEntry()" [(ngModel)]="criteria.assetnum" placeholder="tag / description"></app-maximo-asset-picker>
+          </label>
+          <label class="tree-filter">Location
+            <app-maximo-location-tree-picker *ngIf="!manualFilterEntry()" mode="location"
+              [location]="criteria.location" (selection)="criteria.location = $event.location">
+            </app-maximo-location-tree-picker>
+            <app-maximo-location-picker *ngIf="manualFilterEntry()" [(ngModel)]="criteria.location" placeholder="code / description"></app-maximo-location-picker>
+          </label>
           <label>Lead craft <app-maximo-person-picker [(ngModel)]="criteria.leadCraft" placeholder="RGARCIA"></app-maximo-person-picker></label>
           <label>Supervisor <app-maximo-person-picker [(ngModel)]="criteria.supervisor" placeholder="personid"></app-maximo-person-picker></label>
           <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>
+          <button type="button" class="link tree-toggle" (click)="manualFilterEntry.set(!manualFilterEntry())">
+            {{ manualFilterEntry() ? 'use plant tree' : 'type manually' }}
+          </button>
         </div>
         <div class="row">
           <label>Sched start ≥

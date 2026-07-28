@@ -70,6 +70,16 @@ export class ContextMenuService {
   contextMenuActions = this.contextDefaultMenuActions;
 
   /**
+   * Bumped on every showContextMenu so subclasses that mutate
+   * `contextMenuActions` per-open (e.g. DoubleLotoPointContextMenuService
+   * toggling disabled state by row-membership) reach the DOM. The reader
+   * (GlobalContextMenuComponent) treats this as a signal dependency so
+   * its `actions` computed re-runs even when the active service reference
+   * hasn't changed (registry.setActive dedupes on Object.is).
+   */
+  contextMenuVersionTick = signal(0);
+
+  /**
    * Context menu action handlers
    */
   public handleViewDetails(item: any): void {
@@ -120,6 +130,11 @@ export class ContextMenuService {
     }
     this.contextMenuSelectedItem.set(item);
     this.contextMenuVisible.set(true);
+    // Invalidate the GlobalContextMenuComponent.actions computed even when
+    // this instance was already active — subclasses may have just rewritten
+    // contextMenuActions and the computed's only other dependency
+    // (activeService) is deduped on Object.is.
+    this.contextMenuVersionTick.update(v => v + 1);
   }
 
   /**

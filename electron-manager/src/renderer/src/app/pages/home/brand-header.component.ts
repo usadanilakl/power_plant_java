@@ -1,0 +1,203 @@
+import { Component } from '@angular/core';
+
+/**
+ * Animated corporate branding masthead for the home page.
+ *
+ * Four self-contained CSS/SVG logos (no JS, no images) — J-POWER USA, Jackson
+ * Generation, DK Power, NAES — laid out as a slim, non-invasive header band.
+ * Each logo authored at full size; the header shrinks it with `zoom` (the same
+ * layout-aware technique the dashboard uses for widgets) so it packs tightly.
+ * DK Power drops its full network-hero in this context and shows the DK/POWER
+ * wordmark badge to stay consistent with the other three.
+ *
+ * Source art lives at repo-root /logos/*.html. Class prefixes jp-/jg-/dk-/na-
+ * are namespaced per logo; fonts (Space Grotesk / IBM Plex Mono) are loaded in
+ * the renderer index.html and degrade to sans-serif when offline.
+ */
+@Component({
+  selector: 'app-brand-header',
+  standalone: true,
+  template: `
+    <div class="bh" role="img" aria-label="J-POWER USA · Jackson Generation · DK Power · NAES">
+      <!-- J-POWER USA -->
+      <div class="bh-cell">
+        <div class="bh-zoom jp">
+          <div class="jp-logo">
+            <div class="jp-markwrap">
+              <div class="jp-glow"></div><div class="jp-ring"></div><div class="jp-ring jp-ring--b"></div>
+              <svg class="jp-mark" viewBox="0 0 160 150" width="168" height="158" fill="none" aria-hidden="true">
+                <defs><linearGradient id="jpGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3fae55"></stop><stop offset=".5" stop-color="#2f8f77"></stop><stop offset="1" stop-color="#2f6fb0"></stop></linearGradient></defs>
+                <path d="M22 26 L80 26 C104 26 118 44 106 66 L84 104 C79 112 68 112 63 104 L52 84 L74 84 L92 52 C96 44 91 38 82 38 L40 38 Z" fill="url(#jpGrad)"></path>
+                <path d="M64 70 L92 70 L74 102 C70 109 60 109 56 102 L44 80 Z" fill="url(#jpGrad)" opacity=".85"></path>
+              </svg>
+            </div>
+            <div class="jp-text">
+              <div class="jp-word">
+                <span class="jp-set"><span>J</span><span>-</span><span>P</span><span>O</span><span>W</span><span>E</span><span>R</span></span>
+                <span class="jp-set jp-set--usa"><span>U</span><span>S</span><span>A</span></span>
+              </div>
+              <div class="jp-rule"></div>
+              <div class="jp-tag">Independent&nbsp;Power&nbsp;Producer</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jackson Generation -->
+      <div class="bh-cell">
+        <div class="bh-zoom jg">
+          <div class="jg-logo">
+            <div class="jg-markwrap">
+              <svg class="jg-arrows" viewBox="0 0 120 120" width="160" height="160" fill="none" aria-hidden="true"><g stroke="#8dc63f" stroke-width="4" fill="none" stroke-linecap="butt" stroke-linejoin="round"><path d="M42.3 98.1 A42 42 0 0 1 56.3 18.2"></path><path d="M66.3 17.3 L56.8 24.2 L55.8 12.2 Z"></path><path d="M77.8 21.9 A42 42 0 0 1 63.7 101.8"></path><path d="M53.7 102.7 L63.2 95.8 L64.2 107.8 Z"></path></g></svg>
+              <svg class="jg-bolt" viewBox="0 0 120 120" width="160" height="160" fill="none" aria-hidden="true"><path d="M70 12 L40 66 L57 66 L50 110 L84 50 L64 50 Z" fill="#3d8fd1" stroke="#5aa7e0" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            </div>
+            <div class="jg-word"><div class="jg-word-a">JACKSON</div><div class="jg-word-b">Generation</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DK Power (wordmark badge) -->
+      <div class="bh-cell">
+        <div class="bh-zoom dk">
+          <div class="dk-logo">
+            <div class="dk-hub"><div class="dk-stack"><div class="dk-dk">DK</div><div class="dk-pw">POWER</div></div><div class="dk-tag">Unified&nbsp;Plant&nbsp;Hub</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NAES -->
+      <div class="bh-cell">
+        <div class="bh-zoom na">
+          <div class="na-logo">
+            <div class="na-markwrap">
+              <div class="na-glow"></div>
+              <svg class="na-mark" viewBox="0 0 120 120" width="150" height="150" aria-hidden="true">
+                <path class="na-arm" d="M117.5 60 L117.07 62.08 L116.56 64.12 L115.98 66.13 L115.33 68.11 L114.62 70.04 L113.83 71.93 L112.98 73.78 L112.07 75.59 L111.09 77.34 L110.06 79.05 L108.97 80.7 L107.83 82.3 L106.64 83.85 L105.4 85.34 L104.11 86.77 L102.78 88.13 L101.41 89.44 L99.99 90.69 L98.55 91.87 L97.07 92.99 L95.56 94.04 L94.03 95.03 L92.47 95.95 L90.89 96.81 L89.29 97.6 L87.67 98.32 L86.04 98.97 L84.4 99.56 L82.75 100.07 L81.1 100.53 L79.44 100.91 L77.78 101.23 L76.13 101.48 L74.48 101.67 L72.84 101.79 L71.21 101.85 L69.6 101.84 L68 101.78 L66.41 101.65 L64.85 101.47 L63.3 101.22 L61.79 100.92 L60.3 100.57 L58.83 100.16 L57.4 99.7 L56 99.18 L54.63 98.62 L53.3 98.01 L52 97.36 L50.75 96.66 L49.53 95.92 L48.35 95.15 L47.22 94.33 L46.13 93.48 L45.09 92.59 L44.09 91.68 L43.14 90.73 L42.23 89.76 L41.38 88.77 L40.57 87.75 L39.81 86.71 L39.1 85.65 L38.44 84.58 L37.83 83.49 L37.28 82.4 L36.77 81.29 L36.31 80.18 L35.9 79.06 L35.54 77.94 L35.23 76.81 L34.97 75.69 L34.76 74.58 L34.59 73.46 L34.47 72.36 L34.4 71.26 L34.37 70.18 L34.39 69.11 L34.45 68.06 L34.56 67.02 L34.7 66 L34.89 65 L35.11 64.02 L35.37 63.06 L35.67 62.13 L36 61.22 L36.37 60.34 L36.76 59.49 L37.19 58.67 L37.64 57.88 L38.13 57.12 L38.63 56.39 L39.16 55.7 L39.72 55.04 L40.29 54.41 L40.88 53.82 L41.49 53.26 L53.7 57.71 L53.25 57.82 L52.8 57.96 L52.34 58.13 L51.9 58.33 L51.45 58.56 L51.02 58.82 L50.59 59.11 L50.17 59.43 L49.76 59.78 L49.36 60.15 L48.98 60.56 L48.62 61 L48.27 61.46 L47.94 61.95 L47.64 62.46 L47.35 63 L47.09 63.56 L46.85 64.15 L46.64 64.75 L46.45 65.38 L46.3 66.03 L46.17 66.69 L46.08 67.38 L46.01 68.08 L45.98 68.79 L45.99 69.51 L46.02 70.25 L46.1 70.99 L46.21 71.75 L46.35 72.51 L46.53 73.27 L46.76 74.04 L47.02 74.81 L47.31 75.57 L47.65 76.34 L48.03 77.1 L48.44 77.85 L48.9 78.6 L49.39 79.34 L49.92 80.06 L50.5 80.77 L51.11 81.47 L51.76 82.15 L52.44 82.81 L53.17 83.44 L53.93 84.06 L54.72 84.65 L55.55 85.21 L56.42 85.75 L57.32 86.25 L58.25 86.72 L59.21 87.16 L60.2 87.57 L61.22 87.94 L62.27 88.27 L63.34 88.56 L64.43 88.8 L65.55 89.01 L66.69 89.17 L67.85 89.29 L69.02 89.36 L70.21 89.39 L71.42 89.36 L72.63 89.29 L73.86 89.17 L75.09 88.99 L76.33 88.77 L77.57 88.49 L78.82 88.16 L80.06 87.78 L81.3 87.34 L82.53 86.85 L83.75 86.31 L84.97 85.71 L86.17 85.05 L87.36 84.35 L88.53 83.59 L89.68 82.78 L90.81 81.91 L91.92 80.99 L92.99 80.02 L94.04 79 L95.06 77.93 L96.05 76.81 L97 75.64 L97.91 74.43 L98.78 73.16 L99.61 71.86 L100.4 70.51 L101.14 69.12 L101.83 67.69 L102.47 66.22 L103.06 64.72 L103.6 63.18 L104.08 61.6 L104.5 60 Z"></path>
+                <path class="na-arm" d="M60 117.5 L57.92 117.07 L55.88 116.56 L53.87 115.98 L51.89 115.33 L49.96 114.62 L48.07 113.83 L46.22 112.98 L44.41 112.07 L42.66 111.09 L40.95 110.06 L39.3 108.97 L37.7 107.83 L36.15 106.64 L34.66 105.4 L33.23 104.11 L31.87 102.78 L30.56 101.41 L29.31 99.99 L28.13 98.55 L27.01 97.07 L25.96 95.56 L24.97 94.03 L24.05 92.47 L23.19 90.89 L22.4 89.29 L21.68 87.67 L21.03 86.04 L20.44 84.4 L19.93 82.75 L19.47 81.1 L19.09 79.44 L18.77 77.78 L18.52 76.13 L18.33 74.48 L18.21 72.84 L18.15 71.21 L18.16 69.6 L18.22 68 L18.35 66.41 L18.53 64.85 L18.78 63.3 L19.08 61.79 L19.43 60.3 L19.84 58.83 L20.3 57.4 L20.82 56 L21.38 54.63 L21.99 53.3 L22.64 52 L23.34 50.75 L24.08 49.53 L24.85 48.35 L25.67 47.22 L26.52 46.13 L27.41 45.09 L28.32 44.09 L29.27 43.14 L30.24 42.23 L31.23 41.38 L32.25 40.57 L33.29 39.81 L34.35 39.1 L35.42 38.44 L36.51 37.83 L37.6 37.28 L38.71 36.77 L39.82 36.31 L40.94 35.9 L42.06 35.54 L43.19 35.23 L44.31 34.97 L45.43 34.76 L46.54 34.59 L47.64 34.47 L48.74 34.4 L49.82 34.37 L50.89 34.39 L51.94 34.45 L52.98 34.56 L54 34.7 L55 34.89 L55.98 35.11 L56.94 35.37 L57.87 35.67 L58.78 36 L59.66 36.37 L60.51 36.76 L61.33 37.19 L62.12 37.64 L62.88 38.13 L63.61 38.63 L64.3 39.16 L64.96 39.72 L65.59 40.29 L66.18 40.88 L66.74 41.49 L62.29 53.7 L62.18 53.25 L62.04 52.8 L61.87 52.34 L61.67 51.9 L61.44 51.45 L61.18 51.02 L60.89 50.59 L60.57 50.17 L60.22 49.76 L59.85 49.36 L59.44 48.98 L59 48.62 L58.54 48.27 L58.05 47.94 L57.54 47.64 L57 47.35 L56.44 47.09 L55.85 46.85 L55.25 46.64 L54.62 46.45 L53.97 46.3 L53.31 46.17 L52.62 46.08 L51.93 46.01 L51.21 45.98 L50.49 45.99 L49.75 46.02 L49.01 46.1 L48.25 46.21 L47.49 46.35 L46.73 46.53 L45.96 46.76 L45.19 47.02 L44.43 47.31 L43.66 47.65 L42.9 48.03 L42.15 48.44 L41.4 48.9 L40.66 49.39 L39.94 49.92 L39.23 50.5 L38.53 51.11 L37.85 51.76 L37.19 52.44 L36.56 53.17 L35.94 53.93 L35.35 54.72 L34.79 55.55 L34.25 56.42 L33.75 57.32 L33.28 58.25 L32.84 59.21 L32.43 60.2 L32.06 61.22 L31.73 62.27 L31.44 63.34 L31.2 64.43 L30.99 65.55 L30.83 66.69 L30.71 67.85 L30.64 69.02 L30.61 70.21 L30.64 71.42 L30.71 72.63 L30.83 73.86 L31.01 75.09 L31.23 76.33 L31.51 77.57 L31.84 78.82 L32.22 80.06 L32.66 81.3 L33.15 82.53 L33.69 83.75 L34.29 84.97 L34.95 86.17 L35.65 87.36 L36.41 88.53 L37.22 89.68 L38.09 90.81 L39.01 91.92 L39.98 92.99 L41 94.04 L42.07 95.06 L43.19 96.05 L44.36 97 L45.57 97.91 L46.84 98.78 L48.14 99.61 L49.49 100.4 L50.88 101.14 L52.31 101.83 L53.78 102.47 L55.28 103.06 L56.82 103.6 L58.4 104.08 L60 104.5 Z"></path>
+                <path class="na-arm" d="M2.5 60 L2.93 57.92 L3.44 55.88 L4.02 53.87 L4.67 51.89 L5.38 49.96 L6.17 48.07 L7.02 46.22 L7.93 44.41 L8.91 42.66 L9.94 40.95 L11.03 39.3 L12.17 37.7 L13.36 36.15 L14.6 34.66 L15.89 33.23 L17.22 31.87 L18.59 30.56 L20.01 29.31 L21.45 28.13 L22.93 27.01 L24.44 25.96 L25.97 24.97 L27.53 24.05 L29.11 23.19 L30.71 22.4 L32.33 21.68 L33.96 21.03 L35.6 20.44 L37.25 19.93 L38.9 19.47 L40.56 19.09 L42.22 18.77 L43.87 18.52 L45.52 18.33 L47.16 18.21 L48.79 18.15 L50.4 18.16 L52 18.22 L53.59 18.35 L55.15 18.53 L56.7 18.78 L58.21 19.08 L59.7 19.43 L61.17 19.84 L62.6 20.3 L64 20.82 L65.37 21.38 L66.7 21.99 L68 22.64 L69.25 23.34 L70.47 24.08 L71.65 24.85 L72.78 25.67 L73.87 26.52 L74.91 27.41 L75.91 28.32 L76.86 29.27 L77.77 30.24 L78.62 31.23 L79.43 32.25 L80.19 33.29 L80.9 34.35 L81.56 35.42 L82.17 36.51 L82.72 37.6 L83.23 38.71 L83.69 39.82 L84.1 40.94 L84.46 42.06 L84.77 43.19 L85.03 44.31 L85.24 45.43 L85.41 46.54 L85.53 47.64 L85.6 48.74 L85.63 49.82 L85.61 50.89 L85.55 51.94 L85.44 52.98 L85.3 54 L85.11 55 L84.89 55.98 L84.63 56.94 L84.33 57.87 L84 58.78 L83.63 59.66 L83.24 60.51 L82.81 61.33 L82.36 62.12 L81.87 62.88 L81.37 63.61 L80.84 64.3 L80.28 64.96 L79.71 65.59 L79.12 66.18 L78.51 66.74 L66.3 62.29 L66.75 62.18 L67.2 62.04 L67.66 61.87 L68.1 61.67 L68.55 61.44 L68.98 61.18 L69.41 60.89 L69.83 60.57 L70.24 60.22 L70.64 59.85 L71.02 59.44 L71.38 59 L71.73 58.54 L72.06 58.05 L72.36 57.54 L72.65 57 L72.91 56.44 L73.15 55.85 L73.36 55.25 L73.55 54.62 L73.7 53.97 L73.83 53.31 L73.92 52.62 L73.99 51.93 L74.02 51.21 L74.01 50.49 L73.98 49.75 L73.9 49.01 L73.79 48.25 L73.65 47.49 L73.47 46.73 L73.24 45.96 L72.98 45.19 L72.69 44.43 L72.35 43.66 L71.97 42.9 L71.56 42.15 L71.1 41.4 L70.61 40.66 L70.08 39.94 L69.5 39.23 L68.89 38.53 L68.24 37.85 L67.56 37.19 L66.83 36.56 L66.07 35.94 L65.28 35.35 L64.45 34.79 L63.58 34.25 L62.68 33.75 L61.75 33.28 L60.79 32.84 L59.8 32.43 L58.78 32.06 L57.73 31.73 L56.66 31.44 L55.57 31.2 L54.45 30.99 L53.31 30.83 L52.15 30.71 L50.98 30.64 L49.79 30.61 L48.58 30.64 L47.37 30.71 L46.14 30.83 L44.91 31.01 L43.67 31.23 L42.43 31.51 L41.18 31.84 L39.94 32.22 L38.7 32.66 L37.47 33.15 L36.25 33.69 L35.03 34.29 L33.83 34.95 L32.64 35.65 L31.47 36.41 L30.32 37.22 L29.19 38.09 L28.08 39.01 L27.01 39.98 L25.96 41 L24.94 42.07 L23.95 43.19 L23 44.36 L22.09 45.57 L21.22 46.84 L20.39 48.14 L19.6 49.49 L18.86 50.88 L18.17 52.31 L17.53 53.78 L16.94 55.28 L16.4 56.82 L15.92 58.4 L15.5 60 Z"></path>
+                <path class="na-arm" d="M60 2.5 L62.08 2.93 L64.12 3.44 L66.13 4.02 L68.11 4.67 L70.04 5.38 L71.93 6.17 L73.78 7.02 L75.59 7.93 L77.34 8.91 L79.05 9.94 L80.7 11.03 L82.3 12.17 L83.85 13.36 L85.34 14.6 L86.77 15.89 L88.13 17.22 L89.44 18.59 L90.69 20.01 L91.87 21.45 L92.99 22.93 L94.04 24.44 L95.03 25.97 L95.95 27.53 L96.81 29.11 L97.6 30.71 L98.32 32.33 L98.97 33.96 L99.56 35.6 L100.07 37.25 L100.53 38.9 L100.91 40.56 L101.23 42.22 L101.48 43.87 L101.67 45.52 L101.79 47.16 L101.85 48.79 L101.84 50.4 L101.78 52 L101.65 53.59 L101.47 55.15 L101.22 56.7 L100.92 58.21 L100.57 59.7 L100.16 61.17 L99.7 62.6 L99.18 64 L98.62 65.37 L98.01 66.7 L97.36 68 L96.66 69.25 L95.92 70.47 L95.15 71.65 L94.33 72.78 L93.48 73.87 L92.59 74.91 L91.68 75.91 L90.73 76.86 L89.76 77.77 L88.77 78.62 L87.75 79.43 L86.71 80.19 L85.65 80.9 L84.58 81.56 L83.49 82.17 L82.4 82.72 L81.29 83.23 L80.18 83.69 L79.06 84.1 L77.94 84.46 L76.81 84.77 L75.69 85.03 L74.57 85.24 L73.46 85.41 L72.36 85.53 L71.26 85.6 L70.18 85.63 L69.11 85.61 L68.06 85.55 L67.02 85.44 L66 85.3 L65 85.11 L64.02 84.89 L63.06 84.63 L62.13 84.33 L61.22 84 L60.34 83.63 L59.49 83.24 L58.67 82.81 L57.88 82.36 L57.12 81.87 L56.39 81.37 L55.7 80.84 L55.04 80.28 L54.41 79.71 L53.82 79.12 L53.26 78.51 L57.71 66.3 L57.82 66.75 L57.96 67.2 L58.13 67.66 L58.33 68.1 L58.56 68.55 L58.82 68.98 L59.11 69.41 L59.43 69.83 L59.78 70.24 L60.15 70.64 L60.56 71.02 L61 71.38 L61.46 71.73 L61.95 72.06 L62.46 72.36 L63 72.65 L63.56 72.91 L64.15 73.15 L64.75 73.36 L65.38 73.55 L66.03 73.7 L66.69 73.83 L67.38 73.92 L68.07 73.99 L68.79 74.02 L69.51 74.01 L70.25 73.98 L70.99 73.9 L71.75 73.79 L72.51 73.65 L73.27 73.47 L74.04 73.24 L74.81 72.98 L75.57 72.69 L76.34 72.35 L77.1 71.97 L77.85 71.56 L78.6 71.1 L79.34 70.61 L80.06 70.08 L80.77 69.5 L81.47 68.89 L82.15 68.24 L82.81 67.56 L83.44 66.83 L84.06 66.07 L84.65 65.28 L85.21 64.45 L85.75 63.58 L86.25 62.68 L86.72 61.75 L87.16 60.79 L87.57 59.8 L87.94 58.78 L88.27 57.73 L88.56 56.66 L88.8 55.57 L89.01 54.45 L89.17 53.31 L89.29 52.15 L89.36 50.98 L89.39 49.79 L89.36 48.58 L89.29 47.37 L89.17 46.14 L88.99 44.91 L88.77 43.67 L88.49 42.43 L88.16 41.18 L87.78 39.94 L87.34 38.7 L86.85 37.47 L86.31 36.25 L85.71 35.03 L85.05 33.83 L84.35 32.64 L83.59 31.47 L82.78 30.32 L81.91 29.19 L80.99 28.08 L80.02 27.01 L79 25.96 L77.93 24.94 L76.81 23.95 L75.64 23 L74.43 22.09 L73.16 21.22 L71.86 20.39 L70.51 19.6 L69.12 18.86 L67.69 18.17 L66.22 17.53 L64.72 16.94 L63.18 16.4 L61.6 15.92 L60 15.5 Z"></path>
+              </svg>
+            </div>
+            <div class="na-text">
+              <div class="na-word"><span>N</span><span>A</span><span>E</span><span>S</span></div>
+              <div class="na-rule"></div>
+              <div class="na-tag">Operations&nbsp;&amp;&nbsp;Maintenance</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [`
+    :host { display: block; margin-bottom: 16px; }
+
+    /* ---- masthead band ---- */
+    .bh {
+      position: relative;
+      display: flex; align-items: stretch; gap: 0;
+      border-radius: 14px; overflow: hidden;
+      background:
+        radial-gradient(120% 160% at 12% -40%, rgba(63,174,85,.10), transparent 45%),
+        radial-gradient(120% 160% at 50% -40%, rgba(79,195,232,.12), transparent 45%),
+        radial-gradient(120% 160% at 88% -40%, rgba(200,32,60,.10), transparent 45%),
+        linear-gradient(180deg,#0b101c 0%,#080b13 100%);
+      border: 1px solid #1b2740;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 6px 20px rgba(0,0,0,.35);
+    }
+    .bh::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: linear-gradient(90deg,transparent,rgba(79,195,232,.5),rgba(63,174,85,.4),rgba(200,32,60,.4),transparent);
+    }
+    .bh-cell {
+      flex: 1 1 0; min-width: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 14px 10px;
+    }
+    .bh-cell + .bh-cell { border-left: 1px solid rgba(255,255,255,.06); }
+    .bh-zoom { display: flex; align-items: center; justify-content: center; }
+    .bh-zoom.jp { zoom: .36; }
+    .bh-zoom.jg { zoom: .34; }
+    .bh-zoom.dk { zoom: .46; }
+    .bh-zoom.na { zoom: .42; }
+
+    /* DK Power in the header: wordmark badge only (drops the 400px network hero) */
+    .bh-zoom.dk .dk-logo { width: auto; height: auto; background: none; border: none; overflow: visible; }
+    .bh-zoom.dk .dk-hub {
+      position: static; transform: none; background: none; border: none;
+      backdrop-filter: none; padding: 10px 14px; border-radius: 16px;
+    }
+
+    /* ===== J-POWER USA ===== */
+    .jp-logo { display: flex; align-items: center; gap: 48px; font-family: 'Space Grotesk',sans-serif; }
+    .jp-markwrap { position: relative; display: grid; place-items: center; width: 200px; height: 200px; flex: none; }
+    .jp-glow { position: absolute; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle,rgba(63,174,85,.5),rgba(47,111,176,.15) 60%,transparent 72%); animation: jp-glowpulse 4s ease-in-out infinite; }
+    .jp-ring { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 1.5px solid rgba(79,236,192,.5); animation: jp-ringout 3.2s ease-out infinite; }
+    .jp-ring--b { border-color: rgba(61,143,209,.45); animation-delay: 1.6s; }
+    .jp-mark { position: relative; transform-origin: 50% 50%; animation: jp-markfloat 4.5s ease-in-out infinite; }
+    .jp-text { display: flex; flex-direction: column; gap: 12px; }
+    .jp-word { display: flex; align-items: baseline; gap: 12px; font-weight: 700; font-size: 58px; letter-spacing: -1.5px; }
+    .jp-set { display: flex; }
+    .jp-set span { background-image: linear-gradient(100deg,#2f6fb0 34%,#dff6ff 46%,#9fe8ff 50%,#2f6fb0 62%); background-size: 340% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: jp-shine 3.4s linear infinite; }
+    .jp-set span:nth-child(2){animation-delay:.09s}.jp-set span:nth-child(3){animation-delay:.18s}.jp-set span:nth-child(4){animation-delay:.27s}.jp-set span:nth-child(5){animation-delay:.36s}.jp-set span:nth-child(6){animation-delay:.45s}.jp-set span:nth-child(7){animation-delay:.54s}
+    .jp-set--usa span { background-image: linear-gradient(100deg,#3fae55 34%,#e6ffe9 46%,#a8f5b4 50%,#3fae55 62%); }
+    .jp-set--usa span:nth-child(1){animation-delay:.66s}.jp-set--usa span:nth-child(2){animation-delay:.75s}.jp-set--usa span:nth-child(3){animation-delay:.84s}
+    .jp-rule { height: 2px; width: 100%; opacity: .85; background: linear-gradient(90deg,#3fae55,#2f6fb0,transparent); }
+    .jp-tag { font-family: 'IBM Plex Mono',monospace; font-size: 12px; letter-spacing: 5px; color: #5f8a78; text-transform: uppercase; }
+    @keyframes jp-shine { 0%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    @keyframes jp-markfloat { 0%,100%{transform:translateY(0) rotate(0) scale(1)} 25%{transform:translateY(-12px) rotate(-5deg) scale(1.05)} 50%{transform:translateY(0) rotate(0) scale(1)} 75%{transform:translateY(-6px) rotate(4deg) scale(1.03)} }
+    @keyframes jp-glowpulse { 0%,100%{opacity:.3;transform:scale(.85)} 50%{opacity:.85;transform:scale(1.16)} }
+    @keyframes jp-ringout { 0%{transform:scale(.6);opacity:.65} 100%{transform:scale(1.5);opacity:0} }
+
+    /* ===== JACKSON GENERATION ===== */
+    .jg-logo { display: flex; flex-direction: column; align-items: center; gap: 22px; font-family: 'Space Grotesk',sans-serif; }
+    .jg-markwrap { position: relative; width: 160px; height: 160px; }
+    .jg-arrows { position: absolute; inset: 0; transform-origin: 50% 50%; animation: jg-spin 15s linear infinite; }
+    .jg-bolt { position: absolute; inset: 0; animation: jg-boltpulse 2.4s ease-in-out infinite; }
+    .jg-word { display: flex; flex-direction: column; align-items: center; line-height: .86; }
+    .jg-word-a { font-style: italic; font-weight: 700; font-size: 52px; letter-spacing: -1px; color: #3d8fd1; }
+    .jg-word-b { font-style: italic; font-weight: 500; font-size: 46px; color: #5aa7e0; margin-top: 2px; }
+    @keyframes jg-spin { to{transform:rotate(360deg)} }
+    @keyframes jg-boltpulse { 0%,100%{opacity:.88;filter:drop-shadow(0 0 3px #3d8fd1)} 50%{opacity:1;filter:drop-shadow(0 0 18px #4a90d9)} }
+
+    /* ===== DK POWER ===== */
+    .dk-logo { position: relative; width: 400px; height: 400px; font-family: 'Space Grotesk',sans-serif; background: radial-gradient(circle at 50% 50%,#0c1220 0%,#000 70%); border: 1px solid #161f2c; border-radius: 22px; overflow: hidden; }
+    .dk-hub { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; padding: 16px 22px; border-radius: 16px; background: rgba(8,13,22,.82); border: 1px solid #24384c; backdrop-filter: blur(3px); animation: dk-hubbeat 3.2s ease-in-out infinite; }
+    .dk-stack { display: inline-flex; flex-direction: column; line-height: .78; }
+    .dk-dk, .dk-pw { background-image: linear-gradient(90deg,#4fc3e8,#7b8cff,#4fecc0,#4fc3e8); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: dk-gradshift 4s linear infinite; }
+    .dk-dk { font-weight: 700; font-size: 88px; letter-spacing: -5px; }
+    .dk-pw { font-weight: 600; font-size: 26px; text-align: justify; text-align-last: justify; }
+    .dk-tag { margin-top: 8px; font-family: 'IBM Plex Mono',monospace; font-size: 8.5px; letter-spacing: 3px; color: #5f7192; text-transform: uppercase; }
+    @keyframes dk-gradshift { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+    @keyframes dk-hubbeat { 0%,100%{box-shadow:0 0 0 0 rgba(79,195,232,.35),0 0 26px rgba(79,195,232,.25)} 50%{box-shadow:0 0 0 8px rgba(79,195,232,0),0 0 40px rgba(123,140,255,.45)} }
+
+    /* ===== NAES ===== */
+    .na-logo { display: flex; align-items: center; gap: 28px; font-family: 'Space Grotesk',sans-serif; }
+    .na-markwrap { position: relative; display: grid; place-items: center; width: 160px; height: 160px; flex: none; }
+    .na-glow { position: absolute; width: 132px; height: 132px; border-radius: 50%; background: radial-gradient(circle,rgba(200,32,60,.42),rgba(181,18,47,.12) 58%,transparent 72%); animation: na-glowpulse 3.6s ease-in-out infinite; }
+    .na-mark { position: relative; transform-origin: 50% 50%; animation: na-spin 11s linear infinite; }
+    .na-arm { fill: #ac2c41; stroke: none; transform-box: view-box; transform-origin: 60px 60px; animation: na-unfurl 1.15s cubic-bezier(.2,.75,.25,1) both; }
+    .na-arm:nth-child(2){animation-delay:.1s}.na-arm:nth-child(3){animation-delay:.2s}.na-arm:nth-child(4){animation-delay:.3s}
+    .na-text { display: flex; flex-direction: column; gap: 9px; }
+    .na-word { display: flex; font-style: italic; font-weight: 700; font-size: 76px; letter-spacing: -3px; }
+    .na-word span { padding: 0 .2em; margin: 0 -.2em; background-image: linear-gradient(100deg,#e8ecf1 34%,#ff8195 46%,#c8203c 50%,#e8ecf1 62%); background-size: 340% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: na-shine 3.6s linear infinite; }
+    .na-word span:nth-child(2){animation-delay:.1s}.na-word span:nth-child(3){animation-delay:.2s}.na-word span:nth-child(4){animation-delay:.3s}
+    .na-rule { height: 2px; width: 100%; opacity: .85; background: linear-gradient(90deg,#c8203c,#6d1020,transparent); }
+    .na-tag { font-family: 'IBM Plex Mono',monospace; font-size: 12px; letter-spacing: 4.5px; color: #9a7480; text-transform: uppercase; }
+    @keyframes na-spin { to{transform:rotate(360deg)} }
+    @keyframes na-unfurl { from{transform:rotate(-70deg) scale(.55);opacity:0} to{transform:rotate(0) scale(1);opacity:1} }
+    @keyframes na-glowpulse { 0%,100%{opacity:.35;transform:scale(.9)} 50%{opacity:.8;transform:scale(1.1)} }
+    @keyframes na-shine { 0%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+    /* Accessibility: hold a clean static frame when motion is reduced */
+    @media (prefers-reduced-motion: reduce) {
+      .bh * { animation: none !important; }
+      .jp-set span { background: none; color: #2f6fb0; }
+      .jp-set--usa span { color: #3fae55; }
+      .jp-ring { display: none; }
+      .dk-dk, .dk-pw { background: none; color: #4fc3e8; }
+      .na-arm { transform: none; opacity: 1; }
+      .na-word span { background: none; color: #e8ecf1; }
+    }
+  `]
+})
+export class BrandHeaderComponent {}

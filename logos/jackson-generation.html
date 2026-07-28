@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jackson Generation — animated logo</title>
+
+<!-- ===== 1. FONT (put in your <head>) ===== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:ital,wght@1,500;1,700&display=swap" rel="stylesheet">
+
+<!-- ===== 2. CSS (put in your stylesheet) ===== -->
+<style>
+.jg-logo{
+  --jg-scale:1;                 /* change this one number to resize */
+  display:flex; flex-direction:column; align-items:center; gap:22px;
+  font-family:'Space Grotesk',sans-serif;
+  transform:scale(var(--jg-scale)); transform-origin:top center;
+}
+.jg-markwrap{position:relative;width:160px;height:160px}
+.jg-arrows{position:absolute;inset:0;transform-origin:50% 50%;animation:jg-spin 15s linear infinite}
+.jg-bolt{position:absolute;inset:0;animation:jg-boltpulse 2.4s ease-in-out infinite}
+
+.jg-word{display:flex;flex-direction:column;align-items:center;line-height:.86}
+.jg-word-a{font-style:italic;font-weight:700;font-size:52px;letter-spacing:-1px;color:#3d8fd1}
+.jg-word-b{font-style:italic;font-weight:500;font-size:46px;color:#5aa7e0;margin-top:2px}
+
+@keyframes jg-spin{to{transform:rotate(360deg)}}
+@keyframes jg-boltpulse{
+  0%,100%{opacity:.88;filter:drop-shadow(0 0 3px #3d8fd1)}
+  50%{opacity:1;filter:drop-shadow(0 0 18px #4a90d9)}
+}
+
+@media (prefers-reduced-motion:reduce){ .jg-logo *{animation:none !important} }
+@media print{ .jg-logo *{animation:none !important} }
+</style>
+
+<style>/* demo page only — not part of the logo */
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#000;padding:60px}</style>
+</head>
+<body>
+
+<!-- ===== 3. MARKUP (paste where you want the logo) ===== -->
+<div class="jg-logo" role="img" aria-label="Jackson Generation">
+  <div class="jg-markwrap">
+    <svg class="jg-arrows" viewBox="0 0 120 120" width="160" height="160" fill="none" aria-hidden="true">
+      <g stroke="#8dc63f" stroke-width="4" fill="none" stroke-linecap="butt" stroke-linejoin="round">
+        <path d="M42.3 98.1 A42 42 0 0 1 56.3 18.2"></path>
+        <path d="M66.3 17.3 L56.8 24.2 L55.8 12.2 Z"></path>
+        <path d="M77.8 21.9 A42 42 0 0 1 63.7 101.8"></path>
+        <path d="M53.7 102.7 L63.2 95.8 L64.2 107.8 Z"></path>
+      </g>
+    </svg>
+    <svg class="jg-bolt" viewBox="0 0 120 120" width="160" height="160" fill="none" aria-hidden="true">
+      <path d="M70 12 L40 66 L57 66 L50 110 L84 50 L64 50 Z" fill="#3d8fd1" stroke="#5aa7e0" stroke-width="1.5" stroke-linejoin="round"></path>
+    </svg>
+  </div>
+
+  <div class="jg-word">
+    <div class="jg-word-a">JACKSON</div>
+    <div class="jg-word-b">Generation</div>
+  </div>
+</div>
+
+</body>
+</html>

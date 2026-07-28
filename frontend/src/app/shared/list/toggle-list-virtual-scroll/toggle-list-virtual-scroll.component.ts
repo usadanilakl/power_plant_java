@@ -43,6 +43,12 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   trackLastClicked = input(false);
   trackAllClicked = input(false);
   colorLevels = input(false);
+  /**
+   * Opt-in "picker" interaction: the left caret expands/collapses a branch, and a click on the row BODY
+   * only emits {@code itemClicked} (it does NOT toggle). Default (false) keeps the legacy behavior where a
+   * row click both toggles the branch AND emits — every existing consumer relies on that, so leave it off.
+   */
+  caretToggleOnly = input(false);
 
   itemClicked = output<FlatItem>();
   itemDoubleClicked = output<FlatItem>();
@@ -185,7 +191,8 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   }
 
   private onItemClick(event: MouseEvent, item: FlatItem): void {
-    this.toggleItem(item);
+    // Picker mode: the row body selects only — expansion is the caret's job (see onCaretClick).
+    if (!this.caretToggleOnly()) this.toggleItem(item);
 
     if (this.trackLastClicked()) {
       this.lastClickedItemId.set(item.id);
@@ -198,6 +205,16 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
     }
 
     this.itemClicked.emit(item);
+  }
+
+  /**
+   * Caret click. In picker mode it expands/collapses the branch and stops the event so the row's select
+   * handler doesn't also fire. In legacy mode it's a no-op and the click bubbles to the row (unchanged behavior).
+   */
+  onCaretClick(event: MouseEvent, item: FlatItem): void {
+    if (!this.caretToggleOnly()) return;
+    event.stopPropagation();
+    this.toggleItem(item);
   }
 
   private toggleItem(item: FlatItem) {

@@ -281,6 +281,8 @@
           @if (entity().id) {
             <app-loto-standard-image-viewer
               [lotoStandard]="entity()"
+              (removeLotoPoint)="onLotoPointRemoved($event)"
+              (reorderLotoPoints)="onLotoPointsReordered($event)"
             ></app-loto-standard-image-viewer>
           } @else {
             <div class="empty-state">

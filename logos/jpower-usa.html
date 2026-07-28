@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>J-POWER USA — animated logo</title>
+
+<!-- ===== 1. FONT (put in your <head>) ===== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ===== 2. CSS (put in your stylesheet) ===== -->
+<style>
+.jp-logo{
+  --jp-scale:1;                 /* change this one number to resize */
+  display:flex; align-items:center; gap:48px;
+  font-family:'Space Grotesk',sans-serif;
+  transform:scale(var(--jp-scale)); transform-origin:left center;
+}
+.jp-markwrap{position:relative;display:grid;place-items:center;width:200px;height:200px;flex:none}
+.jp-glow{position:absolute;width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(63,174,85,.5),rgba(47,111,176,.15) 60%,transparent 72%);
+  animation:jp-glowpulse 4s ease-in-out infinite}
+.jp-ring{position:absolute;width:150px;height:150px;border-radius:50%;
+  border:1.5px solid rgba(79,236,192,.5);animation:jp-ringout 3.2s ease-out infinite}
+.jp-ring--b{border-color:rgba(61,143,209,.45);animation-delay:1.6s}
+.jp-mark{position:relative;transform-origin:50% 50%;animation:jp-markfloat 4.5s ease-in-out infinite}
+
+.jp-text{display:flex;flex-direction:column;gap:12px}
+.jp-word{display:flex;align-items:baseline;gap:12px;font-weight:700;font-size:58px;letter-spacing:-1.5px}
+.jp-set{display:flex}
+.jp-set span{
+  background-image:linear-gradient(100deg,#2f6fb0 34%,#dff6ff 46%,#9fe8ff 50%,#2f6fb0 62%);
+  background-size:340% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:jp-shine 3.4s linear infinite;
+}
+.jp-set span:nth-child(2){animation-delay:.09s}
+.jp-set span:nth-child(3){animation-delay:.18s}
+.jp-set span:nth-child(4){animation-delay:.27s}
+.jp-set span:nth-child(5){animation-delay:.36s}
+.jp-set span:nth-child(6){animation-delay:.45s}
+.jp-set span:nth-child(7){animation-delay:.54s}
+.jp-set--usa span{background-image:linear-gradient(100deg,#3fae55 34%,#e6ffe9 46%,#a8f5b4 50%,#3fae55 62%)}
+.jp-set--usa span:nth-child(1){animation-delay:.66s}
+.jp-set--usa span:nth-child(2){animation-delay:.75s}
+.jp-set--usa span:nth-child(3){animation-delay:.84s}
+
+.jp-rule{height:2px;width:100%;opacity:.85;background:linear-gradient(90deg,#3fae55,#2f6fb0,transparent)}
+.jp-tag{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:5px;color:#5f8a78;text-transform:uppercase}
+
+@keyframes jp-shine{0%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes jp-markfloat{
+  0%,100%{transform:translateY(0) rotate(0) scale(1)}
+  25%{transform:translateY(-12px) rotate(-5deg) scale(1.05)}
+  50%{transform:translateY(0) rotate(0) scale(1)}
+  75%{transform:translateY(-6px) rotate(4deg) scale(1.03)}
+}
+@keyframes jp-glowpulse{0%,100%{opacity:.3;transform:scale(.85)}50%{opacity:.85;transform:scale(1.16)}}
+@keyframes jp-ringout{0%{transform:scale(.6);opacity:.65}100%{transform:scale(1.5);opacity:0}}
+
+/* accessibility + print: hold a clean static frame */
+@media (prefers-reduced-motion:reduce){
+  .jp-logo *{animation:none !important}
+  .jp-set span{background:none;color:#2f6fb0}
+  .jp-set--usa span{color:#3fae55}
+  .jp-ring{display:none}
+}
+@media print{
+  .jp-logo *{animation:none !important}
+  .jp-ring{display:none}
+}
+</style>
+
+<style>/* demo page only — not part of the logo */
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#000;padding:60px}</style>
+</head>
+<body>
+
+<!-- ===== 3. MARKUP (paste where you want the logo) ===== -->
+<div class="jp-logo">
+  <div class="jp-markwrap">
+    <div class="jp-glow"></div>
+    <div class="jp-ring"></div>
+    <div class="jp-ring jp-ring--b"></div>
+    <svg class="jp-mark" viewBox="0 0 160 150" width="168" height="158" fill="none" role="img" aria-label="J-POWER USA">
+      <defs>
+        <linearGradient id="jpGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3fae55"></stop>
+          <stop offset=".5" stop-color="#2f8f77"></stop>
+          <stop offset="1" stop-color="#2f6fb0"></stop>
+        </linearGradient>
+      </defs>
+      <path d="M22 26 L80 26 C104 26 118 44 106 66 L84 104 C79 112 68 112 63 104 L52 84 L74 84 L92 52 C96 44 91 38 82 38 L40 38 Z" fill="url(#jpGrad)"></path>
+      <path d="M64 70 L92 70 L74 102 C70 109 60 109 56 102 L44 80 Z" fill="url(#jpGrad)" opacity=".85"></path>
+    </svg>
+  </div>
+
+  <div class="jp-text">
+    <div class="jp-word">
+      <span class="jp-set"><span>J</span><span>-</span><span>P</span><span>O</span><span>W</span><span>E</span><span>R</span></span>
+      <span class="jp-set jp-set--usa"><span>U</span><span>S</span><span>A</span></span>
+    </div>
+    <div class="jp-rule"></div>
+    <div class="jp-tag">Independent&nbsp;Power&nbsp;Producer</div>
+  </div>
+</div>
+
+</body>
+</html>

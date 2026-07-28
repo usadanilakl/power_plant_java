@@ -32,6 +32,8 @@ public class RecurringPmDto {
     private LocalDate lastTargetDate;
     private LocalDateTime catalogRefreshedAt;
     private Boolean manuallyAdded;        // true = operator manually converted a WO to a recurring task
+    private Boolean genSuitEnabled;       // GenSuit confirmation phrase enabled for this PM
+    private String genSuitPhrase;         // GenSuit phrase; {WO}/{PM} substituted at copy time
     private String formKey;               // legacy: first assigned form (mirrors formKeys[0]), or null
     private List<String> formKeys;        // all assigned completion forms (MaximoFormTemplate.formKey), order-preserving
 }

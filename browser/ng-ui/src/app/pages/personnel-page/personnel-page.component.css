@@ -1,44 +1,301 @@
-.page { max-width: 900px; margin: 0 auto; padding: 12px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.page-title { font-size: 22px; font-weight: 600; margin: 0; }
-.btn-icon { background: transparent; border: 1px solid #ccc; border-radius: 6px; padding: 6px; cursor: pointer; }
-.btn-icon:hover { background: rgba(0,0,0,0.04); }
-.btn-icon .material-icons { font-size: 18px; }
+/* Personnel page — themed with global CSS custom properties so it inherits light + dark modes.
+   Icons are emoji glyphs (matching home-page conventions) — the PWA does NOT bundle Material Icons. */
 
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid #ccc; margin-bottom: 12px; }
-.tab { background: transparent; border: none; padding: 10px 16px; cursor: pointer; font-size: 14px; color: #666;
-       display: flex; align-items: center; gap: 6px; border-bottom: 2px solid transparent; }
-.tab.active { color: #1976d2; border-bottom-color: #1976d2; font-weight: 500; }
-.tab-icon { font-size: 18px; }
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 12px;
+  color: var(--primary-text);
+}
 
-.tab-content { padding-top: 4px; }
-.error-banner { background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: #856404; }
+/* ── Compact toolbar (tabs + refresh) — replaces the old duplicate page-header block ────────── */
 
-.section { margin-bottom: 20px; }
-.section-title { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; margin: 0 0 8px 0; color: #333; }
-.section-title .material-icons { font-size: 18px; color: #666; }
+.toolbar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color, #d0d7de);
+  margin-bottom: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--secondary-text, #666);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.15s, background 0.15s;
+}
+.tab:hover:not(.active) {
+  background: var(--hover-color, rgba(0,0,0,0.04));
+  color: var(--primary-text);
+}
+.tab.active {
+  color: var(--accent-color, #1976d2);
+  border-bottom-color: var(--accent-color, #1976d2);
+  font-weight: 600;
+}
+.tab-glyph { font-size: 16px; line-height: 1; }
+.tab-label { font-size: 13px; }
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--border-color, #d0d7de);
+  color: var(--primary-text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  align-self: center;
+  margin-bottom: 4px;
+}
+.btn-icon:hover:not(:disabled) { background: var(--hover-color, rgba(0,0,0,0.04)); }
+.btn-icon:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Banners ────────────────────────────────────────────────────────────────────────────────── */
+
+.banner {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+.banner-warn {
+  background: var(--warning-background, rgba(255,193,7,0.12));
+  border-left: 3px solid #ffc107;
+  color: var(--primary-text);
+}
+
+/* ── Day picker ────────────────────────────────────────────────────────────────────────────── */
+
+.day-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--card-background, #fff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+.day-nav {
+  background: transparent;
+  border: 1px solid var(--border-color, #d0d7de);
+  color: var(--primary-text);
+  border-radius: 6px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  min-width: 40px;
+}
+.day-nav:hover { background: var(--hover-color, rgba(0,0,0,0.04)); }
+.day-label {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+.day-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-text);
+  line-height: 1.2;
+}
+.day-date {
+  font-size: 12px;
+  color: var(--secondary-text, #666);
+  margin-top: 2px;
+}
+.btn-today {
+  background: var(--accent-color, #1976d2);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-today:hover { background: var(--accent-color-hover, #145ca4); }
+
+/* ── Sections + chips ──────────────────────────────────────────────────────────────────────── */
+
+.section { margin-bottom: 16px; }
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--primary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.section-title.muted-title { color: var(--secondary-text, #666); }
+.section-count {
+  background: var(--secondary-background, #eef2f6);
+  color: var(--secondary-text, #666);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* "On shift NOW" section is highlighted to distinguish from the day breakdown */
+.on-shift-section .section-title { color: var(--accent-color, #1976d2); }
+.on-shift-section .section-count {
+  background: var(--accent-color, #1976d2);
+  color: #fff;
+}
 
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #e3f2fd; border-radius: 14px; font-size: 13px; }
-.chip-group { padding: 1px 6px; background: #1976d2; color: #fff; border-radius: 8px; font-size: 11px; font-weight: 600; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--card-background, #fff);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 14px;
+  font-size: 13px;
+}
+.chip.highlight {
+  border-color: var(--accent-color, #1976d2);
+  background: color-mix(in srgb, var(--accent-color, #1976d2) 8%, var(--card-background, #fff));
+}
+.chip.night {
+  background: color-mix(in srgb, #3f51b5 6%, var(--card-background, #fff));
+}
+.chip.muted {
+  opacity: 0.7;
+}
+.chip-group {
+  padding: 1px 6px;
+  background: var(--accent-color, #1976d2);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
 .chip-group.ocm { background: #f57c00; }
+.chip-group.night { background: #3f51b5; }
+.chip-group.muted { background: var(--secondary-text, #999); }
+.chip-name { color: var(--primary-text); }
 
-.empty-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 20px; color: #999; font-size: 14px; }
-.empty-state .material-icons { font-size: 40px; opacity: 0.3; }
-.spin { animation: spin 1s linear infinite; }
+/* ── Empty state ───────────────────────────────────────────────────────────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 20px;
+  color: var(--secondary-text, #999);
+  font-size: 14px;
+  text-align: center;
+}
+.empty-glyph { font-size: 40px; opacity: 0.6; }
+.empty-text { max-width: 300px; }
+
+.spin { display: inline-block; animation: spin 1.4s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Search + contacts ─────────────────────────────────────────────────────────────────────── */
+
 .search-row { position: relative; margin-bottom: 12px; }
-.search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #999; font-size: 18px; pointer-events: none; }
-.search-row input { width: 100%; padding: 8px 8px 8px 32px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.search-row input {
+  width: 100%;
+  padding: 9px 10px 9px 32px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: var(--card-background, #fff);
+  color: var(--primary-text);
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.search-row input:focus {
+  outline: none;
+  border-color: var(--accent-color, #1976d2);
+}
 
 .contact-list { display: flex; flex-direction: column; gap: 8px; }
-.contact-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fff; }
-.contact-name { font-weight: 600; font-size: 15px; }
-.contact-title { color: #666; font-size: 12px; margin-bottom: 6px; }
-.contact-line { display: flex; align-items: center; gap: 6px; text-decoration: none; color: #1976d2; padding: 4px 0; font-size: 13px; }
-.contact-line .material-icons { font-size: 16px; }
-.contact-line small { color: #999; }
-.emergency-block { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e0e0e0; font-size: 13px; }
-.emergency-label { color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.emergency-block small { color: #999; }
+
+.contact-card {
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--card-background, #fff);
+  box-shadow: var(--card-shadow, 0 1px 2px rgba(0,0,0,0.04));
+}
+.contact-name { font-weight: 600; font-size: 15px; color: var(--primary-text); }
+.contact-title { color: var(--secondary-text, #666); font-size: 12px; margin-bottom: 6px; }
+
+.contact-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--accent-color, #1976d2);
+  padding: 5px 0;
+  font-size: 13px;
+}
+.contact-line:hover { text-decoration: underline; }
+.line-glyph { font-size: 14px; line-height: 1; }
+.contact-line small { color: var(--secondary-text, #999); }
+
+.emergency-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color, #d0d7de);
+  font-size: 13px;
+}
+.emergency-label {
+  color: var(--secondary-text, #999);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.emergency-name { color: var(--primary-text); }
+.emergency-block small { color: var(--secondary-text, #999); }
+
+/* ── Chat tab: give the child panel a real height so its flex children work ────────────────── */
+
+.chat-tab {
+  display: flex;
+  flex-direction: column;
+  min-height: 60vh;
+  height: calc(100vh - 200px);
+}

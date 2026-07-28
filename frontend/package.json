@@ -25,6 +25,7 @@
     "@angular/router": "^19.2.0",
     "@angular/ssr": "^19.2.6",
     "@bradycorporation/brady-web-sdk": "^3.1.2",
+    "@supabase/supabase-js": "^2.45.0",
     "@types/qrcode": "^1.5.6",
     "@types/three": "^0.181.0",
     "@zxing/browser": "^0.1.5",

@@ -148,6 +148,64 @@ public class SyncUpdateController {
     }
 
     /**
+     * Send an SSE event to the FIRST healthy emitter (unicast). Returns the clientId that
+     * received it, or {@code null} if no client is connected or every attempt failed.
+     * Used for hub-initiated commands where at-most-one desktop should act (e.g. schedule
+     * refresh) instead of every online desktop stampeding SharePoint.
+     */
+    public String sendToAnyOne(String eventName, String json) {
+        for (Map.Entry<String, SseEmitter> e : emitters.entrySet()) {
+            String cid = e.getKey();
+            SseEmitter emitter = e.getValue();
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(json));
+                return cid;
+            } catch (IOException ex) {
+                log.debug("sendToAnyOne: emitter for clientId={} failed, dropping: {}", cid, ex.getMessage());
+                emitters.remove(cid, emitter);
+            }
+        }
+        return null;
+    }
+
+    /** Whether at least one desktop is currently subscribed to SSE. */
+    public boolean hasAnyClient() {
+        return !emitters.isEmpty();
+    }
+
+    /**
+     * Broadcast a "someone just verified SharePoint" heartbeat so peer desktops can update their
+     * in-memory freshness cache and skip their own SP round-trip on the next tick. Payload is a
+     * JSON string with {@code checkedAt} + {@code source} + {@code type}.
+     */
+    public void broadcastScheduleCheckHeartbeat(String json) {
+        if (emitters.isEmpty()) return;
+        broadcastEvent("schedule.check.heartbeat", json);
+    }
+
+    /**
+     * Ask any one online desktop to refresh the schedule from SharePoint. Consumed by that
+     * desktop's Spring Boot {@code ServerSseClient} which POSTs to the local Electron main
+     * process trigger endpoint. Returns the clientId picked, or {@code null} if none online.
+     */
+    public String broadcastScheduleRefreshRequested(String reason) {
+        try {
+            Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("type", "schedule.refresh.requested");
+            payload.put("reason", reason == null ? "hub-watchdog" : reason);
+            payload.put("timestamp", System.currentTimeMillis());
+            String json = objectMapper.writeValueAsString(payload);
+            String picked = sendToAnyOne("schedule.refresh.requested", json);
+            log.info("[Hub] schedule.refresh.requested -> {} (reason={})",
+                    picked == null ? "no-client-online" : picked, reason);
+            return picked;
+        } catch (Exception e) {
+            log.warn("[Hub] Failed to emit schedule.refresh.requested: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Broadcast entity update to all connected clients. Existing signature —
      * used by the receive-path callers in {@code FieldSyncService} when this
      * server applies a change RECEIVED from a peer machine (originClientId

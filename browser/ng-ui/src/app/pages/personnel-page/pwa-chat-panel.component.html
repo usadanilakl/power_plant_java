@@ -1,7 +1,7 @@
 <div class="chat-panel">
-  <div *ngIf="chat.errorMessage() && !chat.ready()" class="error-banner">
-    <span class="material-icons">error_outline</span>
-    <div>
+  <div *ngIf="chat.errorMessage() && !chat.ready()" class="banner banner-warn">
+    <span class="banner-glyph" aria-hidden="true">⚠️</span>
+    <div class="banner-body">
       <strong>Chat unavailable.</strong>
       {{ chat.errorMessage() }}
       <button class="btn-link" (click)="chat.refreshSession()">Retry</button>
@@ -9,50 +9,56 @@
   </div>
 
   <ng-container *ngIf="chat.ready()">
-    <!-- Conversation list (shown when no thread selected) -->
+    <!-- Conversation list -->
     <ng-container *ngIf="!activeConversationId()">
-      <div class="header">
+      <div class="list-header">
         <strong>Conversations</strong>
-        <div class="header-actions">
-          <button class="btn-primary btn-new" (click)="openNewConversationDialog()">+ New</button>
-          <button class="btn-icon" (click)="loadConversations()" [disabled]="loadingConversations()">
-            <span class="material-icons" [class.spin]="loadingConversations()">refresh</span>
+        <div class="list-header-actions">
+          <button class="btn btn-primary" (click)="openNewConversationDialog()">+ New</button>
+          <button class="btn-icon" (click)="loadConversations()" [disabled]="loadingConversations()"
+                  title="Refresh conversations">
+            <span [class.spin]="loadingConversations()">🔄</span>
           </button>
         </div>
       </div>
       <div *ngIf="conversations().length === 0 && !loadingConversations()" class="empty">
-        No conversations yet. An admin can create one from the desktop.
+        <div class="empty-glyph">💬</div>
+        <div>No conversations yet. Create one to get started.</div>
       </div>
       <div *ngFor="let c of conversations()" class="conv-row" (click)="selectConversation(c.id)">
-        <div class="conv-name">{{ c.name }}</div>
-        <div *ngIf="c.description" class="conv-desc">{{ c.description }}</div>
-        <span class="material-icons chev">chevron_right</span>
+        <div class="conv-body">
+          <div class="conv-name">{{ c.name }}</div>
+          <div *ngIf="c.description" class="conv-desc">{{ c.description }}</div>
+        </div>
+        <span class="chev" aria-hidden="true">›</span>
       </div>
     </ng-container>
 
     <!-- Thread view -->
     <ng-container *ngIf="activeConversationId()">
       <div class="thread-header">
-        <button class="btn-icon" (click)="back()">
-          <span class="material-icons">arrow_back</span>
+        <button class="btn-icon" (click)="back()" title="Back to list">
+          <span aria-hidden="true">←</span>
         </button>
-        <div>
+        <div class="thread-title-wrap">
           <div class="thread-title">{{ activeConversation()?.name }}</div>
-          <div *ngIf="activeConversation()?.description" class="thread-desc">{{ activeConversation()?.description }}</div>
+          <div *ngIf="activeConversation()?.description" class="thread-desc">
+            {{ activeConversation()?.description }}
+          </div>
         </div>
       </div>
 
-      <!-- Ack-required banner (persistent until every listed message is acked) -->
+      <!-- Ack-required banner -->
       <div *ngIf="pendingAckMessages().length > 0" class="ack-banner">
         <div class="ack-banner-title">
-          <span class="material-icons">notifications_active</span>
+          <span aria-hidden="true">🔔</span>
           {{ pendingAckMessages().length }} message{{ pendingAckMessages().length === 1 ? '' : 's' }} require acknowledgement
         </div>
         <div *ngFor="let m of pendingAckMessages()" class="ack-banner-row">
           <div class="ack-banner-body">
             <strong>{{ m.sender_display_name }}:</strong> {{ m.content }}
           </div>
-          <button class="btn-ack" (click)="ackFromBanner(m)">Acknowledge</button>
+          <button class="btn btn-ack" (click)="ackFromBanner(m)">Acknowledge</button>
         </div>
       </div>
 
@@ -69,14 +75,17 @@
           </div>
           <div class="msg-body">{{ m.content }}</div>
           <div *ngIf="m.is_important && senderClass(m) === 'me'" class="ack-line">
-            <span class="material-icons">done_all</span>
+            <span aria-hidden="true">✓</span>
             Acked by {{ ackCount(m.id) }}
           </div>
         </div>
         <div #threadBottom></div>
       </div>
       <ng-template #loadingMsg>
-        <div class="empty"><span class="material-icons spin">sync</span> Loading messages…</div>
+        <div class="empty">
+          <div class="empty-glyph spin">⏳</div>
+          <div>Loading messages…</div>
+        </div>
       </ng-template>
 
       <div class="compose">
@@ -94,7 +103,9 @@
             Needs ack
           </label>
           <span *ngIf="sendError()" class="error-inline">{{ sendError() }}</span>
-          <button class="btn-primary" (click)="send()" [disabled]="!composeText.trim()">Send</button>
+          <button class="btn btn-primary send-btn" (click)="send()" [disabled]="!composeText.trim()">
+            Send
+          </button>
         </div>
       </div>
     </ng-container>
@@ -103,16 +114,19 @@
     <div *ngIf="showNewConversation()" class="modal-backdrop" (click)="cancelNewConversation()">
       <div class="modal" (click)="$event.stopPropagation()">
         <h3>New Conversation</h3>
-        <label>Name
+        <label>
+          Name
           <input type="text" [(ngModel)]="newConvName" placeholder="e.g. Unit 1 startup" [disabled]="newConvBusy()" />
         </label>
-        <label>Description <small>(optional)</small>
+        <label>
+          Description <small>(optional)</small>
           <input type="text" [(ngModel)]="newConvDescription" placeholder="What is this thread about?" [disabled]="newConvBusy()" />
         </label>
         <div *ngIf="newConvError()" class="err">{{ newConvError() }}</div>
         <div class="modal-actions">
           <button class="btn" (click)="cancelNewConversation()" [disabled]="newConvBusy()">Cancel</button>
-          <button class="btn-primary" (click)="submitNewConversation()" [disabled]="newConvBusy() || !newConvName.trim()">
+          <button class="btn btn-primary" (click)="submitNewConversation()"
+                  [disabled]="newConvBusy() || !newConvName.trim()">
             {{ newConvBusy() ? 'Creating…' : 'Create' }}
           </button>
         </div>

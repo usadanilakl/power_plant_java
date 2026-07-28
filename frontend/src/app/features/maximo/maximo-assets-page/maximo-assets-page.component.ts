@@ -6,6 +6,7 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
 import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
@@ -24,7 +25,7 @@ type Tab = 'sr' | 'wo' | 'att';
   selector: 'app-maximo-assets-page',
   standalone: true,
   imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent,
-    MaximoLocationPickerComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoAttachmentsComponent],
+    MaximoLocationPickerComponent, MaximoLocationTreePickerComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoAttachmentsComponent],
   templateUrl: './maximo-assets-page.component.html',
   styleUrl: './maximo-assets-page.component.css'
 })
@@ -40,6 +41,8 @@ export class MaximoAssetsPageComponent {
   filterStatus = '';
   filterLocation = '';
   searchSize = 50;
+  /** Escape hatch: swap the plant-tree location picker for the free-text one (codes not yet seeded). */
+  manualFilterEntry = signal(false);
   searching = signal(false);
   searchError = signal<string | null>(null);
   results = signal<MaximoAsset[]>([]);

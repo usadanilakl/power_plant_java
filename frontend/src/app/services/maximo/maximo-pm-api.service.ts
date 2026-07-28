@@ -45,6 +45,21 @@ export class MaximoPmApiService {
       .pipe(map(r => r.responseData));
   }
 
+  /** Enable/disable + set a PM's GenSuit confirmation phrase; persists immediately. Returns the updated PM. */
+  saveGenSuit(id: number, enabled: boolean, phrase: string): Observable<RecurringPm> {
+    return this.http.put<SpringApiResponse<RecurringPm>>(
+      `${this.base}/catalog/${id}/gensuit`, { enabled, phrase })
+      .pipe(map(r => r.responseData));
+  }
+
+  /** GenSuit {enabled, phrase} for a WO's pmnum (for the WO details dialog to resolve by wo.pmnum). */
+  getGenSuitForWo(pmnum: string): Observable<{ enabled: boolean | null; phrase: string | null }> {
+    const p = new HttpParams().set('pmnum', pmnum);
+    return this.http.get<SpringApiResponse<{ enabled: boolean | null; phrase: string | null }>>(
+      `${this.base}/catalog/gensuit`, { params: p })
+      .pipe(map(r => r.responseData ?? { enabled: null, phrase: null }));
+  }
+
   /** A catalog PM's real Maximo WOs (history + upcoming), matched by pmnum or description. */
   getOccurrences(id: number): Observable<PmOccurrence[]> {
     return this.http.get<SpringApiResponse<PmOccurrence[]>>(`${this.base}/catalog/${id}/occurrences`)

@@ -20,6 +20,8 @@ export class RfToggleMenuComponent {
   menuItems = input<NestedItem[]>([]);
   enableSearch = input<boolean>(true);
   searchPlaceholder = input<string>('Search...');
+  /** Opt-in picker interaction: caret expands, row body selects (see ToggleListVirtualScrollComponent). */
+  caretToggleOnly = input<boolean>(false);
 
   // Outputs
   itemClick = output<NestedItem>();

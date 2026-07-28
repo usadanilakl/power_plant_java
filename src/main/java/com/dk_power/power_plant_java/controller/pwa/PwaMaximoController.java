@@ -83,6 +83,7 @@ public class PwaMaximoController {
             @RequestParam(value = "assetnum", required = false) String assetnum,
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "priority", required = false) String priority,
+            @RequestParam(value = "reportedby", required = false) String reportedby,
             @RequestParam(value = "textContains", required = false) String textContains,
             @RequestParam(value = "siteid", required = false) String siteid,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
@@ -93,6 +94,7 @@ public class PwaMaximoController {
             c.setAssetnum(assetnum);
             c.setLocation(location);
             c.setPriority(priority);
+            c.setReportedby(reportedby);
             c.setTextContains(textContains);
             c.setSiteid(siteid);
             List<MaximoWorkOrderDto> result = c.hasAnyFilter()

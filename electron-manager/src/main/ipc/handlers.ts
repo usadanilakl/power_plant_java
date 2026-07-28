@@ -1858,6 +1858,31 @@ export class IpcHandlers {
       }
     });
 
+    ipcMain.handle(events.IPC_PERSONNEL_GET_CONFIG, async () => {
+      try {
+        return { success: true, data: this.personnelManager.getConfig() };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_SAVE_CONFIG, async (_evt, config) => {
+      try {
+        this.personnelManager.saveConfig(config);
+        return { success: true, data: this.personnelManager.getConfig() };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_GET_META, async () => {
+      try {
+        return { success: true, data: this.personnelManager.getMeta() };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
     // TOI/TMOD file listing with metadata extraction
     ipcMain.handle(events.IPC_TOI_LIST_FILES, async () => {
       try {

@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import {
   MaximoInventoryItem,
   MaximoLocation,
@@ -45,7 +46,7 @@ interface CheckoutLine {
 @Component({
   selector: 'app-maximo-parts-checkout-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent, MaximoLocationTreePickerComponent],
   templateUrl: './maximo-parts-checkout-page.component.html',
   styleUrl: './maximo-parts-checkout-page.component.css'
 })
@@ -62,6 +63,8 @@ export class MaximoPartsCheckoutPageComponent {
   locResults = signal<MaximoLocation[]>([]);
   locSearching = signal(false);
   selectedLocation = signal<MaximoLocation | null>(null);
+  /** Escape hatch: swap the plant-tree location picker for the typed search (codes not yet seeded). Tree is primary. */
+  manualLocationEntry = signal(false);
 
   // inventory picker
   itemQuery = '';
@@ -169,8 +172,8 @@ export class MaximoPartsCheckoutPageComponent {
     return {
       href: rec.href, wonum: rec.wonum, description: rec.description, longDescription: '',
       status: rec.status, worktype: '', assetnum: '', location: rec.location, siteid: '',
-      reportdate: '', targetStart: '', schedstart: '', schedfinish: '', leadCraft: '',
-      supervisor: '', priority: '', pmnum: ''
+      reportdate: '', targetStart: '', targetFinish: '', schedstart: '', schedfinish: '', leadCraft: '',
+      supervisor: '', reportedby: '', priority: '', pmnum: ''
     };
   }
 
@@ -220,6 +223,18 @@ export class MaximoPartsCheckoutPageComponent {
     this.selectedLocation.set(l);
     this.locResults.set([]);
     this.locQuery = '';
+  }
+
+  /**
+   * A location chosen from the plant tree. The tree emits only the code, so build a minimal MaximoLocation
+   * around it — checkout() only reads loc.location, and canSubmit only checks that a location exists, so a
+   * blank description is fine. Keep locQuery in sync so switching to the typed fallback pre-fills the code.
+   */
+  onTreeLocation(code: string) {
+    if (!code) { this.clearLocation(); return; }
+    this.selectedLocation.set({ href: '', location: code, description: '', type: '', status: '', siteid: '' });
+    this.locResults.set([]);
+    this.locQuery = code;
   }
 
   clearLocation() { this.selectedLocation.set(null); }

@@ -39,10 +39,13 @@ export interface MaximoWorkOrder {
   siteid: string;
   reportdate: string;
   targetStart: string;
+  targetFinish: string;
   schedstart: string;
   schedfinish: string;
   leadCraft: string;
   supervisor: string;
+  /** Maximo personid of who reported/submitted the WO (spi:reportedby). */
+  reportedby: string;
   priority: string;
   /** PM-master id (e.g. "JG-1183") on PM-generated WOs; null/empty on one-off WOs. */
   pmnum: string;

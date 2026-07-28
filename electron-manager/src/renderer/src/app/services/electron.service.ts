@@ -508,6 +508,19 @@ export interface PersonnelContact {
   emergencyRelation?: string;
 }
 
+export interface PersonnelConfig {
+  autoRefresh: boolean;
+  intervalMinutes: number;
+  refreshTriggerPort: number;
+}
+
+export interface PersonnelStatusMeta {
+  autoRefreshEnabled: boolean;
+  refreshIntervalMinutes: number;
+  isRefreshing: boolean;
+  lastRefreshError?: string;
+}
+
 export interface ChatSupabaseSession {
   /** Supabase-verifiable JWT (HS256, signed by hub with the project's JWT secret). */
   token: string;
@@ -790,6 +803,9 @@ interface ElectronAPI {
   personnelGetStatus: () => Promise<IpcResult<PersonnelStatus>>;
   personnelRefresh: () => Promise<IpcResult<PersonnelStatus>>;
   personnelGetContacts: () => Promise<IpcResult<PersonnelContact[]>>;
+  personnelGetConfig: () => Promise<IpcResult<PersonnelConfig>>;
+  personnelSaveConfig: (config: PersonnelConfig) => Promise<IpcResult<PersonnelConfig>>;
+  personnelGetMeta: () => Promise<IpcResult<PersonnelStatusMeta>>;
 
   // TOI/TMOD
   toiListFiles: () => Promise<IpcResult<ToiFile[]>>;
@@ -1531,6 +1547,21 @@ export class ElectronService implements OnDestroy {
   async personnelGetContacts(): Promise<IpcResult<PersonnelContact[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.personnelGetContacts();
+  }
+
+  async personnelGetConfig(): Promise<IpcResult<PersonnelConfig>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelGetConfig();
+  }
+
+  async personnelSaveConfig(config: PersonnelConfig): Promise<IpcResult<PersonnelConfig>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelSaveConfig(config);
+  }
+
+  async personnelGetMeta(): Promise<IpcResult<PersonnelStatusMeta>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelGetMeta();
   }
 
   // TOI/TMOD

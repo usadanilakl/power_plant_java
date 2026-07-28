@@ -14,6 +14,10 @@
                 padding: 10px; margin-bottom: 12px; flex-shrink: 0; }
 .filter-panel .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .filter-panel .row.actions { margin-top: 6px; padding-top: 8px; border-top: 1px solid #333; }
+/* Tree-picker filters render as a full-width dropdown, so give their label a stacked, min-width column. */
+.tree-filter { display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-width: 260px; flex: 1 1 260px; }
+button.link.tree-toggle { background: none; border: 0; color: #7cc6ff; padding: 2px 4px; cursor: pointer; font: inherit; align-self: center; }
+button.link.tree-toggle:hover { background: none; text-decoration: underline; }
 label { color: #aaa; }
 input, select, textarea { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
                           border-radius: 3px; padding: 4px 6px; margin-left: 4px; font: inherit; }

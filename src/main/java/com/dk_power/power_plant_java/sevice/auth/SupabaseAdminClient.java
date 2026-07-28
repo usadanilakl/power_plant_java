@@ -435,6 +435,31 @@ public class SupabaseAdminClient {
                 .toBodilessEntity());
     }
 
+    // ── Plant Schedule mirror ─────────────────────────────────────────────────
+
+    /**
+     * Upsert a batch of schedule days into {@code public.plant_schedule_day} so the PWA can read
+     * schedule when the hub is unreachable. Called by the hub after the SharePoint schedule is
+     * parsed and written to H2 ShiftDay rows. Uses PostgREST's merge-duplicates upsert on the
+     * {@code shift_date} primary key. Service-role write (bypasses RLS).
+     *
+     * <p>Each row in {@code rows} must contain: {@code shift_date} (ISO date string),
+     * {@code shift_year} (int), plus the JSON columns as parsed maps/lists (Jackson will render
+     * them as jsonb). Optional {@code on_call_manager_name / _user_id} and {@code source}.
+     * See {@code project/features/users/communication/plant-chat.md} for the sibling chat pattern.
+     */
+    public void upsertPlantScheduleDays(List<Map<String, Object>> rows) {
+        requireEnabled();
+        if (rows == null || rows.isEmpty()) return;
+        withRetry(() -> client.post()
+                .uri("/rest/v1/plant_schedule_day")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Prefer", "resolution=merge-duplicates,return=minimal")
+                .body(rows)
+                .retrieve()
+                .toBodilessEntity());
+    }
+
     // ── Reference-data failover snapshots ─────────────────────────────────────
 
     /**

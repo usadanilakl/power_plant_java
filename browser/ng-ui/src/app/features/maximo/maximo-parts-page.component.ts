@@ -4,12 +4,13 @@ import { Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoBarcodeScannerComponent } from './maximo-barcode-scanner.component';
+import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
 import { MaximoInventoryItem, MaximoLocation, PartsCheckoutRequest, PartsCheckoutResult } from './maximo.model';
 
 @Component({
   selector: 'app-maximo-parts-page',
   standalone: true,
-  imports: [MainLayoutComponent, MaximoBarcodeScannerComponent],
+  imports: [MainLayoutComponent, MaximoBarcodeScannerComponent, MaximoTreePickerComponent],
   template: `
     <app-main-layout [header]="'Parts Checkout'">
       <ng-container main-content>
@@ -24,15 +25,26 @@ import { MaximoInventoryItem, MaximoLocation, PartsCheckoutRequest, PartsCheckou
               <button class="pc-btn" (click)="reset()">New checkout</button>
             </div>
           } @else {
-            <!-- Work order target -->
-            <label class="pc-field">Location <span class="pc-req">*</span>
-              <input type="text" [value]="locationQuery()" (input)="onLocationInput($event)" placeholder="Search a location">
-            </label>
-            @if (location()) { <p class="pc-picked">Location: <b>{{ location() }}</b> <button class="pc-clear" (click)="clearLocation()">clear</button></p> }
-            @if (locResults().length) {
-              <div class="pc-results">
-                @for (l of locResults(); track l.location) { <button class="pc-res" (click)="pickLocation(l)"><b>{{ l.location }}</b> {{ l.description }}</button> }
-              </div>
+            <!-- Work order target: pick the location from the plant tree, or type it manually. -->
+            <div class="pc-la-head">
+              <span>Location <span class="pc-req">*</span></span>
+              <button type="button" class="pc-link" (click)="toggleManual()">
+                {{ manualEntry() ? 'use plant tree' : 'type manually' }}
+              </button>
+            </div>
+            @if (!manualEntry()) {
+              <app-maximo-tree-picker mode="location" [location]="location()"
+                                      (selection)="onTreeLoc($event.location)"></app-maximo-tree-picker>
+            } @else {
+              <label class="pc-field">
+                <input type="text" [value]="locationQuery()" (input)="onLocationInput($event)" placeholder="Search a location">
+              </label>
+              @if (location()) { <p class="pc-picked">Location: <b>{{ location() }}</b> <button class="pc-clear" (click)="clearLocation()">clear</button></p> }
+              @if (locResults().length) {
+                <div class="pc-results">
+                  @for (l of locResults(); track l.location) { <button class="pc-res" (click)="pickLocation(l)"><b>{{ l.location }}</b> {{ l.description }}</button> }
+                </div>
+              }
             }
 
             <div class="pc-row">
@@ -101,6 +113,8 @@ import { MaximoInventoryItem, MaximoLocation, PartsCheckoutRequest, PartsCheckou
     .pc-field.grow { flex: 1; }
     .pc-field input, .pc-field select { padding: 0.55rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-weight: 400; box-sizing: border-box; }
     .pc-req { color: #e74c3c; }
+    .pc-la-head { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.5rem; }
+    .pc-link { background: none; border: none; color: var(--accent-color); font-size: 0.78rem; cursor: pointer; font-family: inherit; }
     .pc-row { display: flex; gap: 0.6rem; }
     .pc-picked { font-size: 0.85rem; color: var(--primary-text); margin: -0.4rem 0 0.8rem; }
     .pc-clear { background: none; border: none; color: var(--accent-color); font-size: 0.78rem; cursor: pointer; }
@@ -139,6 +153,8 @@ export class MaximoPartsPageComponent {
   location = signal('');
   locationQuery = signal('');
   locResults = signal<MaximoLocation[]>([]);
+  // Plant-tree location picker is primary; manual free-text typeahead is the escape hatch for un-seeded codes.
+  manualEntry = signal(false);
   worktype = signal('CM');
   description = signal('');
   partQuery = signal('');
@@ -166,6 +182,10 @@ export class MaximoPartsPageComponent {
       switchMap(q => q.trim().length < 2 ? of([]) : this.api.searchInventory(q.trim()).pipe(catchError(() => of([]))))
     ).subscribe(r => this.partResults.set(r));
   }
+
+  toggleManual(): void { this.manualEntry.update(v => !v); }
+  /** Tree pick (or its clear) → set the checkout location; keep locationQuery in sync so a manual-switch shows it. */
+  onTreeLoc(code: string): void { this.location.set(code); this.locationQuery.set(code); }
 
   onLocationInput(e: Event): void { const v = (e.target as HTMLInputElement).value; this.locationQuery.set(v); this.locSearch$.next(v); }
   pickLocation(l: MaximoLocation): void { this.location.set(l.location); this.locationQuery.set(l.location); this.locResults.set([]); }

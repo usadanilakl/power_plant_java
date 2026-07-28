@@ -24,6 +24,8 @@ public class MaximoWorkOrderDto {
     private String schedfinish;
     private String leadCraft;
     private String supervisor;
+    /** spi:reportedby — Maximo personid of who reported/submitted the WO. */
+    private String reportedby;
     private String priority;
     /** spi:pmnum — the PM-master id (e.g. "JG-1183") on PM-generated WOs; null on one-off WOs.
      *  Stable identity shared by every recurrence of a PM — the dedupe key for the recurring-PM catalog. */

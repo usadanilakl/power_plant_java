@@ -142,7 +142,7 @@ function getConfigDefaultsPath(): string {
   return path.resolve(__dirname, '..', '..', '..', 'config-defaults');
 }
 
-const CONFIG_FILES = ['pjm-config.json', 'gate-log-config.json', 'sharepoint-config.json', 'perry-config.json', 'webview-ams-config.json'];
+const CONFIG_FILES = ['pjm-config.json', 'gate-log-config.json', 'sharepoint-config.json', 'perry-config.json', 'webview-ams-config.json', 'personnel-config.json'];
 
 /**
  * Provision default config files into the working directory.

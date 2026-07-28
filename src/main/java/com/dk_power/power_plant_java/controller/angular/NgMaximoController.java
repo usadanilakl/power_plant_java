@@ -352,6 +352,29 @@ public class NgMaximoController {
     }
 
     /**
+     * Transfer a work order's lead to another person: writes {@code spi:lead} (any Maximo personid) and adds
+     * an audit worklog note. Does NOT change the WO status. Returns the refreshed WO. Mirrors the sibling
+     * work-order endpoints' {@code @PathVariable} href handling (encoded client-side with encodeURIComponent).
+     */
+    @PostMapping("/work-orders/{href}/lead")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> transferLead(
+            @PathVariable String href, @RequestBody LeadTransferRequest req) {
+        try {
+            if (req == null || req.personid() == null || req.personid().isBlank()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "personid is required"));
+            }
+            MaximoWorkOrderDto updated = pmAssignments.transferLead(href, req.personid(), req.memo());
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "lead transferred"));
+        } catch (Exception e) {
+            log.warn("[Maximo] transfer lead on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Body for {@link #transferLead}: the new lead's Maximo personid and an optional audit memo. */
+    public record LeadTransferRequest(String personid, String memo) {}
+
+    /**
      * Add a worklog note to a work order (no labor, no status change). Handy for adding a log to an
      * already-completed WO. Returns the refreshed worklog list.
      */
@@ -561,6 +584,26 @@ public class NgMaximoController {
         }
     }
 
+    /** Enable/disable + set the "GenSuit" confirmation phrase for a recurring PM. Returns the updated PM. */
+    @PutMapping("/pm/catalog/{id}/gensuit")
+    public ResponseEntity<NgApiResponse<RecurringPmDto>> pmGenSuit(
+            @PathVariable Long id, @RequestBody GenSuitRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    recurringPms.updateGenSuit(id, req.enabled(), req.phrase()), "updated"));
+        } catch (Exception e) {
+            log.warn("[Maximo] PM gensuit {} failed: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** GenSuit {enabled, phrase} for a WO's pmnum — lets the WO details dialog resolve by {@code wo.pmnum}. */
+    @GetMapping("/pm/catalog/gensuit")
+    public ResponseEntity<NgApiResponse<RecurringPmService.GenSuitInfo>> pmGenSuitForWo(
+            @RequestParam String pmnum) {
+        return ResponseEntity.ok(new NgApiResponse<>(recurringPms.genSuitForPmnum(pmnum), "ok"));
+    }
+
     /** Manually convert a work order into a recurring-PM catalog entry (auto-detection missed it). */
     @PostMapping("/pm/catalog/from-wo")
     public ResponseEntity<NgApiResponse<RecurringPmDto>> pmMakeRecurring(@RequestBody MakeRecurringRequest req) {
@@ -611,6 +654,9 @@ public class NgMaximoController {
 
     /** Body for assigning completion form(s) to a recurring PM. {@code formKeys} (empty clears); {@code formKey} is legacy. */
     public record FormAssignRequest(String formKey, List<String> formKeys) {}
+
+    /** Body for enabling + setting a recurring PM's GenSuit confirmation phrase. */
+    public record GenSuitRequest(Boolean enabled, String phrase) {}
 
     /** Body for manually converting a WO to a recurring task — the fields we already have on the pending row. */
     public record MakeRecurringRequest(String pmnum, String description, String lead, String wonum) {}

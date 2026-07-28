@@ -7,10 +7,12 @@ import com.dk_power.power_plant_java.entities.users.ShiftDay;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.ShiftDayRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.auth.SupabaseAdminClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,13 @@ public class ShiftDayService {
     private final UserRepo userRepo;
     private final UserMatchService matchService;
     private final ObjectMapper objectMapper;
+    /**
+     * Optional — used only on hub deployments where Supabase is configured, to mirror ShiftDay
+     * writes into {@code public.plant_schedule_day} so the PWA can read schedule when the hub is
+     * unreachable. Absent on desktop installs (SupabaseAdminClient not present); mirror silently
+     * skipped in that case.
+     */
+    private final ObjectProvider<SupabaseAdminClient> supabaseProvider;
 
     public int importSchedule(ScheduleImportRequest request) {
         if (request == null || request.getPersons() == null || request.getPersons().isEmpty()) return 0;
@@ -59,12 +68,53 @@ public class ShiftDayService {
 
         LocalDateTime now = LocalDateTime.now();
         int written = 0;
+        List<Map<String, Object>> supabaseRows = new ArrayList<>();
         for (Map.Entry<LocalDate, DayBucket> e : buckets.entrySet()) {
-            persistDay(e.getKey(), e.getValue(), request.getSource(), now);
-            written++;
+            if (persistDay(e.getKey(), e.getValue(), request.getSource(), now)) {
+                supabaseRows.add(toSupabaseRow(e.getKey(), e.getValue(), request.getSource(), now));
+                written++;
+            }
         }
-        log.info("[Schedule] Imported {} day rows from source={}", written, request.getSource());
+        log.info("[Schedule] Imported {} changed day rows from source={} ({} total in bucket)",
+                written, request.getSource(), buckets.size());
+        mirrorToSupabase(supabaseRows);
         return written;
+    }
+
+    /**
+     * Best-effort mirror to Supabase {@code plant_schedule_day} so the PWA can read schedule when
+     * the hub is unreachable. Runs after the H2 write; failures are logged but do NOT roll back
+     * the hub transaction — Supabase downtime shouldn't block plant operations.
+     */
+    private void mirrorToSupabase(List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        SupabaseAdminClient sb = supabaseProvider.getIfAvailable();
+        if (sb == null || !sb.isEnabled()) return;
+        try {
+            sb.upsertPlantScheduleDays(rows);
+            log.info("[Schedule] Mirrored {} day rows to Supabase", rows.size());
+        } catch (Exception e) {
+            log.warn("[Schedule] Supabase mirror failed (H2 write already committed): {}", e.getMessage());
+        }
+    }
+
+    private Map<String, Object> toSupabaseRow(LocalDate date, DayBucket bucket, String source, LocalDateTime now) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("shift_date", date.toString());
+        row.put("shift_year", date.getYear());
+        row.put("day_shift_json", bucket.day);
+        row.put("night_shift_json", bucket.night);
+        row.put("unscheduled_json", bucket.unscheduled);
+        row.put("pto_json", bucket.pto);
+        row.put("training_json", bucket.training);
+        if (!bucket.onCallManagers.isEmpty()) {
+            ShiftEntry ocm = bucket.onCallManagers.get(0);
+            row.put("on_call_manager_name", ocm.getName());
+            row.put("on_call_manager_user_id", ocm.getUserId());
+        }
+        row.put("source", source);
+        row.put("last_synced_at", now.atOffset(java.time.ZoneOffset.UTC).toString());
+        return row;
     }
 
     private ShiftEntry resolve(String name, String group, List<User> candidates) {
@@ -87,28 +137,86 @@ public class ShiftDayService {
                 .build();
     }
 
-    private void persistDay(LocalDate date, DayBucket bucket, String source, LocalDateTime now) {
-        ShiftDay row = shiftDayRepo.findFirstByDate(date).orElseGet(() -> ShiftDay.builder()
+    /** @return true if the row was written (dirty or new); false if it was a no-op (unchanged). */
+    private boolean persistDay(LocalDate date, DayBucket bucket, String source, LocalDateTime now) {
+        ShiftDay existing = shiftDayRepo.findFirstByDate(date).orElse(null);
+
+        String newDay = writeJson(bucket.day);
+        String newNight = writeJson(bucket.night);
+        String newUnscheduled = writeJson(bucket.unscheduled);
+        String newPto = writeJson(bucket.pto);
+        String newTraining = writeJson(bucket.training);
+        String newOcmName = bucket.onCallManagers.isEmpty() ? null : bucket.onCallManagers.get(0).getName();
+        Long newOcmId = bucket.onCallManagers.isEmpty() ? null : bucket.onCallManagers.get(0).getUserId();
+
+        // No-op refresh detection: if the row exists and every synced field matches, skip save()
+        // entirely so the @PostUpdate listener never fires. lastSyncedAt is @JsonIgnore (not
+        // tracked) so we don't count it as a change and don't need to bump it either.
+        if (existing != null
+                && Objects.equals(existing.getDayShiftJson(), newDay)
+                && Objects.equals(existing.getNightShiftJson(), newNight)
+                && Objects.equals(existing.getUnscheduledJson(), newUnscheduled)
+                && Objects.equals(existing.getPtoJson(), newPto)
+                && Objects.equals(existing.getTrainingJson(), newTraining)
+                && Objects.equals(existing.getOnCallManagerName(), newOcmName)
+                && Objects.equals(existing.getOnCallManagerUserId(), newOcmId)
+                && Objects.equals(existing.getSource(), source)) {
+            return false;
+        }
+
+        ShiftDay row = existing != null ? existing : ShiftDay.builder()
                 .date(date)
                 .year(date.getYear())
-                .build());
+                .build();
 
-        row.setDayShiftJson(writeJson(bucket.day));
-        row.setNightShiftJson(writeJson(bucket.night));
-        row.setUnscheduledJson(writeJson(bucket.unscheduled));
-        row.setPtoJson(writeJson(bucket.pto));
-        row.setTrainingJson(writeJson(bucket.training));
-        if (!bucket.onCallManagers.isEmpty()) {
-            ShiftEntry ocm = bucket.onCallManagers.get(0);
-            row.setOnCallManagerName(ocm.getName());
-            row.setOnCallManagerUserId(ocm.getUserId());
-        } else {
-            row.setOnCallManagerName(null);
-            row.setOnCallManagerUserId(null);
-        }
+        row.setDayShiftJson(newDay);
+        row.setNightShiftJson(newNight);
+        row.setUnscheduledJson(newUnscheduled);
+        row.setPtoJson(newPto);
+        row.setTrainingJson(newTraining);
+        row.setOnCallManagerName(newOcmName);
+        row.setOnCallManagerUserId(newOcmId);
         row.setSource(source);
         row.setLastSyncedAt(now);
         shiftDayRepo.save(row);
+        return true;
+    }
+
+    /**
+     * Build a Supabase-shaped row from a stored ShiftDay entity. Used by the hub-side scheduled
+     * mirror scanner ({@code HubScheduleSupabaseMirrorService}) to re-push rows that arrived via
+     * CRDT sync (which bypasses {@link #importSchedule}).
+     */
+    public Map<String, Object> toSupabaseRow(ShiftDay row) {
+        DayBucket bucket = new DayBucket(row.getDate());
+        bucket.day.addAll(readJson(row.getDayShiftJson()));
+        bucket.night.addAll(readJson(row.getNightShiftJson()));
+        bucket.unscheduled.addAll(readJson(row.getUnscheduledJson()));
+        bucket.pto.addAll(readJson(row.getPtoJson()));
+        bucket.training.addAll(readJson(row.getTrainingJson()));
+        if (row.getOnCallManagerName() != null) {
+            bucket.onCallManagers.add(ShiftEntry.builder()
+                    .name(row.getOnCallManagerName())
+                    .userId(row.getOnCallManagerUserId())
+                    .build());
+        }
+        LocalDateTime stamp = row.getLastSyncedAt() != null ? row.getLastSyncedAt() : LocalDateTime.now();
+        return toSupabaseRow(row.getDate(), bucket, row.getSource(), stamp);
+    }
+
+    /** Public wrapper so the hub-side scheduled mirror can push rows directly. */
+    public void mirrorRowsToSupabase(List<Map<String, Object>> rows) {
+        mirrorToSupabase(rows);
+    }
+
+    /**
+     * Latest {@code dateModified} across the whole {@code shift_days} table, or {@code null} if
+     * the table is empty. Used by Electron auto-refresh to skip a SharePoint round-trip when local
+     * data is already fresh (another desktop pushed and CRDT sync propagated it here).
+     */
+    @Transactional(readOnly = true)
+    public LocalDateTime getMaxDateModified() {
+        return shiftDayRepo.findMaxDateModified().orElse(null);
     }
 
     @Transactional(readOnly = true)

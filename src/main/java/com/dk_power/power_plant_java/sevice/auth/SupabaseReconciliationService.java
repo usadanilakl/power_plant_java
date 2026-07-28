@@ -122,12 +122,99 @@ public class SupabaseReconciliationService {
             } catch (SupabaseAdminClient.SupabaseUnavailableException unavailable) {
                 break; // transient — retry remaining users next cycle
             } catch (RuntimeException e) {
-                log.debug("[Supabase reconcile] auto-provision failed for {}: {}", u.getEmail(), e.getMessage());
+                // Elevated from DEBUG to WARN: previously the 60s loop retried problem users
+                // silently forever, so operators had no way to notice a chronically-stuck user
+                // without hitting the /api/chat/supabase-session 503 at chat time.
+                log.warn("[Supabase reconcile] auto-provision failed for user id={} email={}: {}",
+                        u.getId(), u.getEmail(), e.getMessage());
             }
         }
         if (created > 0) {
             log.info("[Supabase reconcile] auto-provisioned {} missing user(s) into Supabase", created);
         }
+    }
+
+    /**
+     * Force-provision one specific hub user, used by the admin panel to unstick users the
+     * scheduled reconciler skipped (no email, non-standard email domain, chronically failing
+     * Supabase call). Bypasses the {@code findSupabaseMirrorCandidates} filter, applies the
+     * caller-supplied overrides, and reports the exact failure back to the admin instead of
+     * swallowing it. Runs synchronously.
+     *
+     * @param userId hub User id to provision
+     * @param emailOverride if non-null, use this email instead of the User's stored email
+     *                      (useful when the stored email is null / {@code user@localhost} etc.)
+     * @param linkExistingUuid if non-null, skip create + link to this pre-existing Supabase uuid
+     *                         (useful when the user was already created in Supabase from another
+     *                         node and we just need to record the link)
+     * @return the uuid now stored on the User row (never null on success — throws otherwise)
+     */
+    public String provisionOneUser(Long userId, String emailOverride, String linkExistingUuid) {
+        User u = userRepo.findById(userId).orElseThrow(() ->
+                new IllegalArgumentException("User " + userId + " not found"));
+
+        if (u.getSupabaseUuid() != null && linkExistingUuid == null) {
+            log.info("[Supabase provision-one] User id={} already has supabaseUuid={} — no-op",
+                    userId, u.getSupabaseUuid());
+            return u.getSupabaseUuid();
+        }
+
+        String effectiveEmail = (emailOverride == null || emailOverride.isBlank())
+                ? u.getEmail() : emailOverride.trim();
+        if (effectiveEmail == null || effectiveEmail.isBlank()) {
+            throw new IllegalArgumentException(
+                    "User id=" + userId + " has no email and no override supplied");
+        }
+
+        if (!supabase.isEnabled()) {
+            throw new IllegalStateException(
+                    "Supabase is not configured on this hub — check supabase.url and "
+                    + "supabase.service.role.key in application-secrets.properties");
+        }
+
+        String uuid;
+        if (linkExistingUuid != null && !linkExistingUuid.isBlank()) {
+            uuid = linkExistingUuid.trim();
+        } else {
+            String tempPassword = "!admin-heal-" + UUID.randomUUID();
+            uuid = supabase.createUser(effectiveEmail, tempPassword, SupabaseAdminClient.metadataFor(u));
+            if (uuid == null) {
+                throw new IllegalStateException(
+                        "Supabase createUser returned no uuid for " + effectiveEmail);
+            }
+        }
+
+        u.setSupabaseUuid(uuid);
+        if (u.getPasswordUpdatedAt() == null) {
+            u.setPasswordUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+        }
+        // Persist the override email back on the user too, if it was supplied — otherwise the
+        // next reconcile cycle's push would ship the OLD email (or none) and clobber the good one
+        // we just registered with Supabase.
+        if (emailOverride != null && !emailOverride.isBlank() && !emailOverride.equals(u.getEmail())) {
+            u.setEmail(emailOverride.trim());
+        }
+        userRepo.save(u);
+
+        try {
+            supabase.linkHubUser(uuid, u.getId(), effectiveEmail);
+            supabase.setLinkPasswordUpdatedAt(uuid, EPOCH);
+        } catch (RuntimeException linkErr) {
+            log.warn("[Supabase provision-one] uuid stored but linkHubUser failed for user id={}: {}",
+                    userId, linkErr.getMessage());
+        }
+
+        log.info("[Supabase provision-one] Provisioned user id={} email={} uuid={} mode={}",
+                userId, effectiveEmail, uuid, linkExistingUuid != null ? "link-existing" : "create");
+        return uuid;
+    }
+
+    /**
+     * Fire the scheduled reconcile immediately, on the caller's thread. Same guard rails as the
+     * @Scheduled tick.
+     */
+    public void reconcileNow() {
+        reconcile();
     }
 
     // ── Hub → Supabase ────────────────────────────────────────────────────────

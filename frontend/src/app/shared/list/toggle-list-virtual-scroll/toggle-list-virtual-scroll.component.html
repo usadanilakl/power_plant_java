@@ -15,7 +15,9 @@
          (dblclick)="onDoubleClick(item)"
          (contextmenu)="onRightClick($event, item)"
          (mousedown)="onMiddleClick($event, item)">
-      <span class="toggle-icon" *ngIf="item.values && item.values.length > 0">
+      <span class="toggle-icon" [class.caret-btn]="caretToggleOnly()"
+            *ngIf="item.values && item.values.length > 0"
+            (click)="onCaretClick($event, item)">
         {{ item.isExpanded ? 'v' : '>' }}
       </span>
       <div class="item-text">

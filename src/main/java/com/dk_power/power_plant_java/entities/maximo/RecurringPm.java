@@ -108,6 +108,18 @@ public class RecurringPm extends BaseAuditEntity {
     private Boolean manuallyAdded = Boolean.FALSE;
 
     /**
+     * "GenSuit" confirmation feature: when enabled, a compact "GS" button is offered that copies the
+     * {@link #genSuitPhrase} (with the WO# and PM name substituted) to the OS clipboard.
+     */
+    @lombok.Builder.Default
+    @Column(name = "gen_suit_enabled")
+    private Boolean genSuitEnabled = Boolean.FALSE;
+
+    /** The GenSuit confirmation phrase; {@code {WO}} (work-order #) and {@code {PM}} (PM name) are substituted at copy time. */
+    @Column(name = "gen_suit_phrase", length = 1024)
+    private String genSuitPhrase;
+
+    /**
      * LEGACY single-form assignment — kept in sync as the FIRST of {@link #formKeys} so any old reader still
      * sees a valid key. New code should use {@link #getFormKeyList()} / {@link #setFormKeyList(List)}.
      */

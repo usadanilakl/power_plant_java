@@ -66,6 +66,21 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
             </section>
           }
 
+          @if (showPlantGroupCards) {
+            <section class="card-section">
+              <h2 class="section-title">Personnel</h2>
+              <div class="card-grid">
+                @for (card of plantGroupCards; track card.route) {
+                  <button class="home-card" (click)="navigate(card.route)">
+                    <span class="card-icon">{{ card.icon }}</span>
+                    <span class="card-title">{{ card.title }}</span>
+                    <span class="card-desc">{{ card.description }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
           @if (showPlantTools) {
             <section class="card-section">
               <h2 class="section-title">Plant Tools</h2>
@@ -258,6 +273,14 @@ export class HomePageComponent {
     { title: 'Messages', description: 'Conversations with operators', icon: '💬', route: '/messages' }
   ];
 
+  /**
+   * Tier 2b — Plant-affiliated groups only (Admin / Plant / NAES / JPower). Not visible to
+   * contractors or unaffiliated users. See {@code project/features/users/communication/pwa-step-5-wiring.md}.
+   */
+  plantGroupCards: HomeCard[] = [
+    { title: 'Personnel', description: 'Shift schedule, contacts, and plant chat', icon: '👥', route: '/personnel' },
+  ];
+
   /** Tier 3 — Plant staff only. Opens the full web app (jgportal) in a new tab. */
   plantTools: PlantTool[] = [
     { title: 'Rounds', description: 'Perform operator rounds, log out-of-range', icon: '🔁', route: '/rounds' },
@@ -270,6 +293,10 @@ export class HomePageComponent {
   get signedInCards(): HomeCard[] {
     if (!this.authService.isLoggedIn()) return [];
     return this.signedInCardsAll.filter(c => !c.requires || this.authService.hasPermission(c.requires));
+  }
+
+  get showPlantGroupCards(): boolean {
+    return this.authService.isLoggedIn() && this.authService.isPlantGroup();
   }
 
   get showPlantTools(): boolean {

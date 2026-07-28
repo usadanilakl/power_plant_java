@@ -359,6 +359,17 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData ?? []));
   }
 
+  /**
+   * Transfer a WO's lead to another person — writes spi:lead (any personid) and adds an audit worklog note.
+   * Does NOT change the WO status. Returns the refreshed WO.
+   */
+  transferLead(href: string, personid: string, memo?: string): Observable<MaximoWorkOrder | null> {
+    return this.http
+      .post<SpringApiResponse<MaximoWorkOrder>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/lead`, { personid, memo })
+      .pipe(map(r => r.responseData ?? null));
+  }
+
   /** Add a worklog note to a WO (works on a completed WO). Returns the refreshed worklog list. */
   addWoWorklog(href: string, body: { summary: string; details?: string; logtype?: string }): Observable<MaximoWorklog[]> {
     return this.http

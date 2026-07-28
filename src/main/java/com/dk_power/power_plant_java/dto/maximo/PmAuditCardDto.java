@@ -42,4 +42,7 @@ public class PmAuditCardDto {
     private boolean hasIssues;            // keyword in the comment OR a failing form answer
     private boolean keywordHit;
     private boolean formIssues;
+
+    private Boolean genSuitEnabled;       // GenSuit confirmation phrase enabled for this PM (boxed: nullable new column)
+    private String genSuitPhrase;         // GenSuit phrase; {WO}/{PM} substituted at copy time
 }

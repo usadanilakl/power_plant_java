@@ -9,6 +9,7 @@ import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-deta
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import { MaximoWorkOrder, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 import { WO_COLUMNS } from '../maximo-table-configs';
@@ -34,7 +35,7 @@ const emptyCriteria = (): MaximoWorkOrderCriteria => ({
 @Component({
   selector: 'app-maximo-work-orders-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoDetailDialogComponent, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoDetailDialogComponent, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoLocationTreePickerComponent],
   templateUrl: './maximo-work-orders-page.component.html',
   styleUrl: './maximo-work-orders-page.component.css'
 })
@@ -49,6 +50,9 @@ export class MaximoWorkOrdersPageComponent {
   error = signal<string | null>(null);
   list = signal<MaximoWorkOrder[]>([]);
   loaded = signal(false);
+
+  /** Escape hatch: swap the plant-tree pickers for the free-text asset/location pickers (codes not yet seeded). */
+  manualFilterEntry = signal(false);
 
   selectedWo = signal<MaximoWorkOrder | null>(null);
   openDetail(wo: MaximoWorkOrder) { this.selectedWo.set(wo); }

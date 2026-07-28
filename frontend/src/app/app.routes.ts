@@ -52,11 +52,21 @@ export const routes: Routes = [
   { path: 'qr/equipment/:tagNumber', component: QrEquipmentViewerComponent, canActivate: [authGuard] },
 
   // Admin routes
+  {
+    path: 'plant-chat',
+    loadComponent: () => import('./features/chat/plant-chat-page.component').then(m => m.PlantChatPageComponent),
+    canActivate: [authGuard],
+  },
   { path: 'admin/users', component: UserPageComponent, canActivate: [authGuard, adminGuard] },
   { path: 'admin/access-management', component: AdminAccessComponent, canActivate: [authGuard, adminGuard] },
   {
     path: 'admin/chat-audit',
     loadComponent: () => import('./features/admin/chat-audit/chat-audit.component').then(m => m.ChatAuditComponent),
+    canActivate: [authGuard, adminGuard],
+  },
+  {
+    path: 'admin/supabase',
+    loadComponent: () => import('./features/admin/supabase-admin/supabase-admin.component').then(m => m.SupabaseAdminComponent),
     canActivate: [authGuard, adminGuard],
   },
 

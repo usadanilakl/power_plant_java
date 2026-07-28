@@ -96,6 +96,16 @@ export const DEFAULT_WEBVIEW_AMS_CONFIG = {
   showScrapeWindow: false
 };
 
+// Personnel / Schedule defaults — controls per-client SharePoint schedule auto-refresh.
+// Multiple desktops can safely have autoRefresh enabled at different intervals; ShiftDayService
+// short-circuits when content matches existing rows so unchanged pushes emit no FieldChange rows.
+export const DEFAULT_PERSONNEL_CONFIG = {
+  autoRefresh: false,
+  intervalMinutes: 30,
+  // Local HTTP listener port for hub-initiated refresh triggers (via desktop Spring Boot SSE).
+  refreshTriggerPort: 8083,
+};
+
 // SDS eBinder scraper defaults (anonymous token link; overridable via sds-scraper-config.json).
 export const DEFAULT_SDS_SCRAPER_CONFIG = {
   url: 'https://chemmanagement.ehs.com/9/92a2f98a-0e59-4ba4-b8dd-7b45ad65d25d/ebinder/?nas=True',

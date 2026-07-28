@@ -5,11 +5,11 @@ import { environment } from '../../../environments/environment';
 import {
   CompleteWorkOrderRequest, CreateMaximoServiceRequest, MaximoDoclink, MaximoFormSubmission, MaximoFormTemplate,
   MaximoInventoryItem, MaximoLocation, MaximoOverview, MaximoServiceRequest, MaximoWorkOrder, MaximoWorklog,
-  PartsCheckoutRequest, PartsCheckoutResult,
+  PartsCheckoutRequest, PartsCheckoutResult, PhysicalObjectNode,
 } from './maximo.model';
 
-export interface WoQuery { status?: string; worktype?: string; textContains?: string; pageSize?: number; }
-export interface SrQuery { status?: string; textContains?: string; pageSize?: number; }
+export interface WoQuery { status?: string; worktype?: string; location?: string; textContains?: string; pageSize?: number; }
+export interface SrQuery { status?: string; location?: string; textContains?: string; pageSize?: number; }
 
 /**
  * Mobile Maximo API. Calls the Plant-gated PWA endpoints on the hub (`/api/pwa/secured/maximo`), which proxy
@@ -19,11 +19,13 @@ export interface SrQuery { status?: string; textContains?: string; pageSize?: nu
 export class MaximoApiService {
   private http = inject(HttpClient);
   private base = `${environment.serverUrl}/api/pwa/secured/maximo`;
+  private poBase = `${environment.serverUrl}/api/pwa/secured/physical-object`;
 
   listWorkOrders(q: WoQuery = {}): Observable<MaximoWorkOrder[]> {
     let params = new HttpParams().set('pageSize', String(q.pageSize ?? 50));
     if (q.status) params = params.set('status', q.status);
     if (q.worktype) params = params.set('worktype', q.worktype);
+    if (q.location) params = params.set('location', q.location);
     if (q.textContains) params = params.set('textContains', q.textContains);
     return this.http.get<{ responseData: MaximoWorkOrder[] }>(`${this.base}/work-orders`, { params }).pipe(
       timeout(30000),
@@ -34,6 +36,7 @@ export class MaximoApiService {
   listServiceRequests(q: SrQuery = {}): Observable<MaximoServiceRequest[]> {
     let params = new HttpParams().set('pageSize', String(q.pageSize ?? 50));
     if (q.status) params = params.set('status', q.status);
+    if (q.location) params = params.set('location', q.location);
     if (q.textContains) params = params.set('textContains', q.textContains);
     return this.http.get<{ responseData: MaximoServiceRequest[] }>(`${this.base}/service-requests`, { params }).pipe(
       timeout(30000),
@@ -67,6 +70,17 @@ export class MaximoApiService {
     const params = new HttpParams().set('q', q).set('pageSize', '25');
     return this.http.get<{ responseData: MaximoLocation[] }>(`${this.base}/locations`, { params }).pipe(
       timeout(20000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /**
+   * The whole Maximo-seeded PhysicalObject hierarchy as a flat list (id + parentId), for the SR target tree
+   * picker. Same payload as the desktop `/ng/physical-object/tree`; the caller assembles the tree client-side.
+   */
+  getPhysicalObjectTree(): Observable<PhysicalObjectNode[]> {
+    return this.http.get<{ responseData: PhysicalObjectNode[] }>(`${this.poBase}/tree`).pipe(
+      timeout(30000),
       map(r => r.responseData ?? [])
     );
   }

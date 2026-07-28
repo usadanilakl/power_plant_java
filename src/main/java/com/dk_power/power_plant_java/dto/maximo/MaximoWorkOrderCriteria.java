@@ -25,6 +25,7 @@ public class MaximoWorkOrderCriteria {
     private String leadCraft;            // Maximo field is "lead"; exact match
     private List<String> leadIn;         // Maximo field is "lead"; matches any of N personids (OSLC `in [...]`)
     private String supervisor;           // exact match
+    private String reportedby;           // Maximo personid of who reported/submitted the WO; exact match
     private String schedstartFrom;       // ISO 8601, applied as spi:schedstart >= value
     private String schedfinishTo;        // ISO 8601, applied as spi:schedfinish <= value
     private String reportdateFrom;       // ISO 8601, applied as spi:reportdate >= value
@@ -50,7 +51,7 @@ public class MaximoWorkOrderCriteria {
      * {@code listByCriteria} and the newest-first {@code listLatest} default.
      */
     public boolean hasAnyFilter() {
-        return anyText(status, worktype, pmnum, assetnum, location, priority, leadCraft, supervisor,
+        return anyText(status, worktype, pmnum, assetnum, location, priority, leadCraft, supervisor, reportedby,
                 schedstartFrom, schedfinishTo, reportdateFrom, reportdateTo, statusdateFrom, statusdateTo,
                 textContains, descriptionContains, descriptionPhrase, longDescriptionContains, wonumContains)
                 || (statusIn != null && !statusIn.isEmpty())

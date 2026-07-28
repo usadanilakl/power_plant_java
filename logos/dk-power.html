@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DK Power — animated logo</title>
+
+<!-- ===== 1. FONT (put in your <head>) ===== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ===== 2. CSS (put in your stylesheet) ===== -->
+<style>
+.dk-logo{
+  --dk-scale:1;                 /* change this one number to resize */
+  position:relative; width:400px; height:400px;
+  font-family:'Space Grotesk',sans-serif;
+  background:radial-gradient(circle at 50% 50%,#0c1220 0%,#000 70%);
+  border:1px solid #161f2c; border-radius:22px; overflow:hidden;
+  transform:scale(var(--dk-scale)); transform-origin:top left;
+}
+.dk-ring{position:absolute;inset:44px;border-radius:50%;border:1px dashed #1c3040;
+  animation:dk-ringspin 40s linear infinite}
+.dk-net{position:absolute;inset:0}
+
+.dk-pulse{stroke:#5fd0ff;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:14 200;
+  filter:drop-shadow(0 0 4px #4fc3e8)}
+.dk-pulse line{animation:dk-pulseflow 2.2s linear infinite}
+.dk-pulse line:nth-child(2){animation-delay:.4s}
+.dk-pulse line:nth-child(3){animation-delay:.8s}
+.dk-pulse line:nth-child(4){animation-delay:1.2s}
+.dk-pulse line:nth-child(5){animation-delay:1.6s}
+.dk-pulse line:nth-child(6){animation-delay:2s}
+
+.dk-nodes{fill:#4fc3e8;filter:drop-shadow(0 0 5px #4fc3e8)}
+.dk-nodes circle{animation:dk-nodeglow 2.2s ease-in-out infinite}
+.dk-nodes circle:nth-child(2){animation-delay:.4s}
+.dk-nodes circle:nth-child(3){animation-delay:.8s}
+.dk-nodes circle:nth-child(4){animation-delay:1.2s}
+.dk-nodes circle:nth-child(5){animation-delay:1.6s}
+.dk-nodes circle:nth-child(6){animation-delay:2s}
+
+.dk-hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;padding:16px 22px;border-radius:16px;
+  background:rgba(8,13,22,.82);border:1px solid #24384c;backdrop-filter:blur(3px);
+  animation:dk-hubbeat 3.2s ease-in-out infinite}
+.dk-stack{display:inline-flex;flex-direction:column;line-height:.78}
+.dk-dk,.dk-pw{
+  background-image:linear-gradient(90deg,#4fc3e8,#7b8cff,#4fecc0,#4fc3e8);
+  background-size:200% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:dk-gradshift 4s linear infinite;
+}
+.dk-dk{font-weight:700;font-size:88px;letter-spacing:-5px}
+.dk-pw{font-weight:600;font-size:26px;text-align:justify;text-align-last:justify}
+.dk-tag{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:3px;
+  color:#5f7192;text-transform:uppercase}
+
+@keyframes dk-ringspin{to{transform:rotate(-360deg)}}
+@keyframes dk-pulseflow{from{stroke-dashoffset:0}to{stroke-dashoffset:-168}}
+@keyframes dk-nodeglow{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes dk-gradshift{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes dk-hubbeat{
+  0%,100%{box-shadow:0 0 0 0 rgba(79,195,232,.35),0 0 26px rgba(79,195,232,.25)}
+  50%{box-shadow:0 0 0 8px rgba(79,195,232,0),0 0 40px rgba(123,140,255,.45)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .dk-logo *{animation:none !important}
+  .dk-dk,.dk-pw{background:none;color:#4fc3e8}
+}
+@media print{ .dk-logo *{animation:none !important} }
+</style>
+
+<style>/* demo page only — not part of the logo */
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#05070b;padding:60px}</style>
+</head>
+<body>
+
+<!-- ===== 3. MARKUP (paste where you want the logo) ===== -->
+<div class="dk-logo" role="img" aria-label="DK Power — unified plant hub">
+  <div class="dk-ring"></div>
+
+  <svg class="dk-net" viewBox="0 0 400 400" width="400" height="400" aria-hidden="true">
+    <g stroke="#16283a" stroke-width="1.5">
+      <line x1="200" y1="200" x2="200" y2="64"></line>
+      <line x1="200" y1="200" x2="312" y2="132"></line>
+      <line x1="200" y1="200" x2="312" y2="268"></line>
+      <line x1="200" y1="200" x2="200" y2="336"></line>
+      <line x1="200" y1="200" x2="88" y2="268"></line>
+      <line x1="200" y1="200" x2="88" y2="132"></line>
+    </g>
+    <g class="dk-pulse">
+      <line x1="200" y1="200" x2="200" y2="64"></line>
+      <line x1="200" y1="200" x2="312" y2="132"></line>
+      <line x1="200" y1="200" x2="312" y2="268"></line>
+      <line x1="200" y1="200" x2="200" y2="336"></line>
+      <line x1="200" y1="200" x2="88" y2="268"></line>
+      <line x1="200" y1="200" x2="88" y2="132"></line>
+    </g>
+    <g class="dk-nodes">
+      <circle cx="200" cy="64" r="5"></circle>
+      <circle cx="312" cy="132" r="5"></circle>
+      <circle cx="312" cy="268" r="5"></circle>
+      <circle cx="200" cy="336" r="5"></circle>
+      <circle cx="88" cy="268" r="5"></circle>
+      <circle cx="88" cy="132" r="5"></circle>
+    </g>
+    <g fill="#6f86a3" font-family="'IBM Plex Mono',monospace" font-size="9.5" letter-spacing="1" text-anchor="middle">
+      <text x="200" y="48">CONTROLS</text>
+      <text x="312" y="118">GRID</text>
+      <text x="312" y="290">STEAM</text>
+      <text x="200" y="356">GENERATOR</text>
+      <text x="88" y="290">HRSG</text>
+      <text x="88" y="118">GAS TURBINE</text>
+    </g>
+  </svg>
+
+  <div class="dk-hub">
+    <div class="dk-stack">
+      <div class="dk-dk">DK</div>
+      <div class="dk-pw">POWER</div>
+    </div>
+    <div class="dk-tag">Unified&nbsp;Plant&nbsp;Hub</div>
+  </div>
+</div>
+
+</body>
+</html>

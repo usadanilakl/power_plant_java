@@ -536,6 +536,28 @@ export interface PersonnelStatus {
   currentShiftLabel: string;     // "Day Shift" or "Night Shift"
 }
 
+/**
+ * Per-client Personnel/Schedule auto-refresh config. Persisted in personnel-config.json in the
+ * working directory. When {@code autoRefresh} is true, this Electron client periodically re-fetches
+ * the SharePoint schedule + pushes it to its local Spring Boot → CRDT sync → hub → Supabase mirror.
+ * Multiple desktops can safely have {@code autoRefresh} enabled at different intervals; writes are
+ * idempotent (short-circuits when parsed content matches existing rows).
+ */
+export interface PersonnelConfig {
+  autoRefresh: boolean;
+  intervalMinutes: number;
+  /** Local port for the Electron main-process HTTP listener that receives hub-initiated refresh
+   *  requests (via desktop Spring Boot's SSE receiver). Default 8083. */
+  refreshTriggerPort: number;
+}
+
+export interface PersonnelStatusMeta {
+  autoRefreshEnabled: boolean;
+  refreshIntervalMinutes: number;
+  isRefreshing: boolean;
+  lastRefreshError?: string;
+}
+
 export interface PersonnelContact {
   name: string;
   title?: string;

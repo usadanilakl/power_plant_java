@@ -26,6 +26,11 @@ input, textarea, select {
 
 .req { color: #ff7b72; }
 
+/* Location / asset block (tree picker + manual escape hatch) */
+.loc-asset { display: flex; flex-direction: column; gap: 6px; }
+.la-head { display: flex; align-items: center; justify-content: space-between; }
+.la-title { color: #aaa; }
+
 /* Inline asset search+select */
 .asset-field { position: relative; }
 .asset-status { font-size: 11px; margin-left: 6px; }

@@ -21,6 +21,7 @@ import { ToiWidgetComponent } from './widgets/toi-widget.component';
 import { WebViewAmsWidgetComponent } from './widgets/web-view-ams-widget.component';
 import { CorkBoardWidgetComponent } from './widgets/cork-board-widget.component';
 import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.component';
+import { BrandHeaderComponent } from './brand-header.component';
 
 interface DashboardGridsterItem extends GridsterItem {
   widgetId: WidgetId;
@@ -38,10 +39,12 @@ interface DashboardGridsterItem extends GridsterItem {
     ContactsWidgetComponent, PagingWidgetComponent, ClockWidgetComponent,
     NotesWidgetComponent, PersonnelWidgetComponent, ToiWidgetComponent,
     WebViewAmsWidgetComponent, CorkBoardWidgetComponent,
-    DashboardEditToolbarComponent,
+    DashboardEditToolbarComponent, BrandHeaderComponent,
   ],
   template: `
     <div class="home">
+      <app-brand-header></app-brand-header>
+
       <div class="dashboard-header">
         <h1 class="page-title">Dashboard</h1>
         <button class="btn btn-secondary btn-sm customize-btn" (click)="enterEditMode()" *ngIf="!editMode">

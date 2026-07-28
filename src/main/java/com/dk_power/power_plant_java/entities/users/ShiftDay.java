@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.users;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,6 +57,13 @@ public class ShiftDay extends BaseIdEntity {
     @Column(name = "source")
     private String source;
 
+    /**
+     * Local-only refresh timestamp. Excluded from field-level sync tracking so a no-op refresh
+     * doesn't emit FieldChange rows across the whole ShiftDay horizon every interval.
+     * {@link com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker} skips {@code @JsonIgnore}
+     * fields on non-ManyToOne columns.
+     */
+    @JsonIgnore
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
 }

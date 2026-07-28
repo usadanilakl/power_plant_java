@@ -1,0 +1,136 @@
+<app-main-layout>
+  <app-router-menu header [layout]="'row'"></app-router-menu>
+
+  <div main-content class="page admin-section">
+    <div class="page-header">
+      <h1>Supabase — Users</h1>
+      <div class="header-actions">
+        <span class="results-meta" *ngIf="!loading()">
+          Total orphans: <strong>{{ counts().total }}</strong>
+          &middot; Eligible: <strong>{{ counts().eligible }}</strong>
+          &middot; Blocked: <strong>{{ counts().blocked }}</strong>
+        </span>
+        <button class="btn" (click)="reload()" [disabled]="loading()">
+          {{ loading() ? 'Loading…' : 'Reload' }}
+        </button>
+        <button class="btn btn-primary" (click)="reconcileNow()" [disabled]="reconciling()"
+                title="Run SupabaseReconciliationService.reconcile() on the hub thread — same guard rails as the 60 s scheduled tick.">
+          {{ reconciling() ? 'Running…' : 'Reconcile now' }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="banner() as b" class="banner" [class.banner-ok]="b.kind === 'ok'" [class.banner-err]="b.kind === 'err'">
+      {{ b.text }}
+    </div>
+
+    <div class="explain">
+      Hub users without a Supabase link. Chat + PWA schedule fall back to hub-only mode for these
+      until they're provisioned. Rows marked <strong>eligible</strong> will be picked up by the next
+      scheduled reconcile tick; the others need manual intervention (usually because the User row has
+      no email, a non-dotted domain like <code>user&#64;localhost</code>, or is inactive).
+    </div>
+
+    <div class="filter-row">
+      <label>Filter
+        <select [ngModel]="filterReason()" (ngModelChange)="filterReason.set($event)">
+          <option value="all">All ({{ counts().total }})</option>
+          <option value="eligible">Eligible only ({{ counts().eligible }})</option>
+          <option value="blocked">Blocked only ({{ counts().blocked }})</option>
+        </select>
+      </label>
+      <div class="reason-chips" *ngIf="counts().total > 0">
+        <span class="chip" *ngFor="let entry of counts().byReason | keyvalue">
+          {{ reasonLabel(entry.key) }}: <strong>{{ entry.value }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="error-banner" *ngIf="loadError()">{{ loadError() }}</div>
+
+    <table class="conv-table">
+      <thead>
+        <tr>
+          <th>User ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Active</th>
+          <th>Reason</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of filtered()" [class.blocked]="!o.eligibleForAutoProvision">
+          <td class="nowrap">{{ o.id }}</td>
+          <td>{{ o.username || '—' }}</td>
+          <td>{{ o.email || '—' }}</td>
+          <td>
+            <span class="pill" [class.active-pill]="o.isActive" [class.archived-pill]="!o.isActive">
+              {{ o.isActive ? 'active' : 'inactive' }}
+            </span>
+          </td>
+          <td>
+            <span class="pill" [class.active-pill]="o.eligibleForAutoProvision" [class.warn-pill]="!o.eligibleForAutoProvision">
+              {{ reasonLabel(o.reason) }}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-primary" (click)="openProvision(o)">Provision…</button>
+          </td>
+        </tr>
+        <tr *ngIf="!loading() && filtered().length === 0">
+          <td class="empty" colspan="6">No orphaned users — everyone is linked. 🎉</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</app-main-layout>
+
+<!-- Provision modal -->
+<div class="modal-backdrop" *ngIf="showProvisionModal()" (click)="closeProvision()">
+  <div class="modal wide" (click)="$event.stopPropagation()">
+    <h3>Provision Supabase link — User {{ provisionTarget()?.id }}</h3>
+
+    <div class="modal-note" *ngIf="provisionTarget() as t">
+      <div><strong>Username:</strong> {{ t.username || '—' }}</div>
+      <div><strong>Stored email:</strong> {{ t.email || '—' }}</div>
+      <div><strong>Reason skipped:</strong> {{ reasonLabel(t.reason) }}</div>
+    </div>
+
+    <label>
+      Email to register with Supabase
+      <small>Leave as stored value if it's correct. Override if the User row has no email or a
+        non-standard domain.</small>
+      <input type="email" [(ngModel)]="provisionEmail" placeholder="user@company.com" />
+    </label>
+
+    <div class="lookup-row">
+      <button class="btn" (click)="lookup()" [disabled]="lookupBusy() || !provisionEmail">
+        {{ lookupBusy() ? 'Checking…' : 'Check if already in Supabase' }}
+      </button>
+      <span *ngIf="lookupResult() as r" class="lookup-result">
+        <span *ngIf="r.uuid" class="pill active-pill">
+          Exists: {{ r.uuid.substring(0, 8) }}…
+        </span>
+        <span *ngIf="!r.uuid" class="pill archived-pill">Not found in Supabase</span>
+        <button *ngIf="r.uuid" class="btn-link" (click)="useLookupUuid()">Use this uuid ↓</button>
+      </span>
+    </div>
+
+    <label>
+      Link to existing Supabase uuid
+      <small>Optional. If set, skip Supabase createUser and just record this uuid on the hub row.
+        Use when the user was already created in Supabase from another node.</small>
+      <input type="text" [(ngModel)]="provisionUuid" placeholder="uuid (blank = create new)" />
+    </label>
+
+    <div class="error-banner" *ngIf="provisionError()">{{ provisionError() }}</div>
+
+    <div class="modal-actions">
+      <button class="btn" (click)="closeProvision()">Cancel</button>
+      <button class="btn btn-primary" (click)="submitProvision()" [disabled]="provisionBusy()">
+        {{ provisionBusy() ? 'Provisioning…' : 'Provision' }}
+      </button>
+    </div>
+  </div>
+</div>

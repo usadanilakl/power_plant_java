@@ -7,6 +7,7 @@ import { MaximoAssetLocatorService } from '../../../services/maximo/maximo-asset
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoLocationTreePickerComponent, MaximoTreeSelection } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import {
   CreateMaximoServiceRequest,
   MaximoAsset,
@@ -52,7 +53,7 @@ type AssetMatchState =
 @Component({
   selector: 'app-maximo-sr-submit',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent],
+  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoLocationTreePickerComponent],
   templateUrl: './maximo-sr-submit.component.html',
   styleUrl: './maximo-sr-submit.component.css'
 })
@@ -78,6 +79,11 @@ export class MaximoSrSubmitComponent implements OnChanges {
    * deliberately broader location beats a precisely wrong asset.
    */
   filedAgainst = signal<'asset' | 'location'>('asset');
+  /**
+   * Escape hatch: the tree is Maximo-SEEDED, so a brand-new location/asset code won't be in it yet. Toggling this
+   * on swaps the tree picker for the original free-text asset + location pickers (and their ancestor ladder).
+   */
+  manualEntry = signal(false);
   /** The asset the chain was derived from — kept so the user can switch back after exploring parents. */
   anchorAsset = signal<MaximoAsset | null>(null);
   /** Leaf first: the asset's own location, then parent, grandparent… The site rung is excluded server-side. */
@@ -152,6 +158,22 @@ export class MaximoSrSubmitComponent implements OnChanges {
   pickLocation(l: MaximoLocation) {
     this.sr.location = l.location ?? '';
     this.loadLocationChain(l.location);
+  }
+
+  /** Flip between the plant-tree picker and the manual free-text pickers. */
+  setManual(v: boolean) { this.manualEntry.set(v); }
+
+  /**
+   * One tree pick fills BOTH assetnum + location. The asset→location ladder is a manual-mode aid (it climbs from a
+   * picked asset's location); the tree already exposes the whole hierarchy, so we clear the ladder here rather than
+   * rebuild it — the ladder stays wired to the manual pickers only (see maximo-sr-submit.component.html).
+   */
+  onTreeSelection(sel: MaximoTreeSelection) {
+    this.sr.assetnum = sel.assetnum;
+    this.sr.location = sel.location;
+    this.anchorAsset.set(null);
+    this.locationChain.set([]);
+    this.filedAgainst.set('asset');
   }
 
   private async loadLocationChain(location: string | null | undefined) {

@@ -31,7 +31,7 @@ public class MaximoWorkOrderAdapter {
     private static final String SELECT_FIELDS =
             "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
-            + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum,spi:statusdate";
+            + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum,spi:statusdate,spi:reportedby";
 
     /** Task fetch adds the child-WO fields; kept off the shared select so a bad field can't break every WO query. */
     private static final String TASK_SELECT_FIELDS = SELECT_FIELDS + ",spi:taskid,spi:parent,spi:istask";
@@ -145,6 +145,7 @@ public class MaximoWorkOrderAdapter {
         addStr(conds, "lead", c.getLeadCraft());
         addStrIn(conds, "lead", c.getLeadIn());
         addStr(conds, "supervisor", c.getSupervisor());
+        addStr(conds, "reportedby", c.getReportedby());
         addStrOp(conds, "schedstart", ">=", c.getSchedstartFrom());
         addStrOp(conds, "schedfinish", "<=", c.getSchedfinishTo());
         addStrOp(conds, "reportdate", ">=", c.getReportdateFrom());
@@ -534,6 +535,7 @@ public class MaximoWorkOrderAdapter {
         d.setSchedfinish(str(row, "schedfinish"));
         d.setLeadCraft(str(row, "lead"));
         d.setSupervisor(str(row, "supervisor"));
+        d.setReportedby(str(row, "reportedby"));
         d.setPriority(str(row, "wopriority"));
         d.setPmnum(str(row, "pmnum"));
         d.setStatusDate(str(row, "statusdate"));

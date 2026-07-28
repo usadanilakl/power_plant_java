@@ -50,6 +50,8 @@ public class RecurringPmSchemaFixer {
             "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS manually_added BOOLEAN DEFAULT FALSE",
             "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS form_key VARCHAR(128)",
             "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS form_keys VARCHAR(1024)",
+            "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS gen_suit_enabled BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE recurring_pm ADD COLUMN IF NOT EXISTS gen_suit_phrase VARCHAR(1024)",
             // Stale UNIQUE index on pmnum — pmnum is now nullable (description-keyed rows). Drop it.
             "DROP INDEX IF EXISTS idx_recurring_pm_pmnum",
         };

@@ -1,0 +1,125 @@
+<app-main-layout>
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="chat-page">
+      <div *ngIf="chat.errorMessage() && !chat.ready()" class="error-banner">
+        <span class="material-icons">error_outline</span>
+        <div>
+          <strong>Chat unavailable.</strong>
+          {{ chat.errorMessage() }}
+          <button class="btn-link" (click)="chat.refreshSession()">Retry</button>
+        </div>
+      </div>
+
+      <div class="split" *ngIf="chat.ready()">
+        <!-- Conversation list -->
+        <div class="conv-list">
+          <div class="conv-header">
+            <span>Conversations</span>
+            <div class="conv-header-actions">
+              <button class="btn-mini" (click)="openNewConversationDialog()" title="New conversation">+ New</button>
+              <button class="btn-icon" (click)="loadConversations()" [disabled]="loadingConversations()" title="Refresh">
+                <span class="material-icons" [class.spin]="loadingConversations()">refresh</span>
+              </button>
+            </div>
+          </div>
+          @if (conversations().length === 0 && !loadingConversations()) {
+            <div class="empty">No conversations yet. Click "+ New" to start one.</div>
+          }
+          @for (c of conversations(); track c.id) {
+            <div class="conv-row"
+                 [class.active]="c.id === activeConversationId()"
+                 (click)="selectConversation(c.id)">
+              <div class="conv-name">{{ c.name }}</div>
+              @if (c.description) { <div class="conv-desc">{{ c.description }}</div> }
+            </div>
+          }
+        </div>
+
+        <!-- Thread -->
+        <div class="thread">
+          @if (!activeConversationId()) {
+            <div class="empty">Pick a conversation to view messages.</div>
+          }
+          @if (activeConversationId()) {
+            <div class="thread-header">
+              <div class="thread-title">{{ activeConversation()?.name }}</div>
+              @if (activeConversation()?.description) {
+                <div class="thread-desc">{{ activeConversation()?.description }}</div>
+              }
+            </div>
+
+            @if (loadingMessages()) {
+              <div class="empty"><span class="material-icons spin">sync</span> Loading messages…</div>
+            } @else {
+              <div class="messages">
+                @for (m of messages(); track m.id) {
+                  <div class="msg"
+                       [class.me]="senderClass(m) === 'me'"
+                       [class.important]="m.is_important">
+                    <div class="msg-meta">
+                      <span class="msg-from">{{ m.sender_display_name }}</span>
+                      <span class="msg-time">{{ m.sent_at | date:'shortTime' }}</span>
+                      @if (m.requires_ack) { <span class="msg-badge ack">needs ack</span> }
+                      @if (m.is_important && !m.requires_ack) { <span class="msg-badge important">important</span> }
+                    </div>
+                    <div class="msg-body">{{ m.content }}</div>
+                    @if (m.is_important && senderClass(m) === 'me') {
+                      <div class="ack-line">
+                        <span class="material-icons">done_all</span> Acked by {{ ackCount(m.id) }}
+                      </div>
+                    }
+                  </div>
+                }
+                <div #threadBottom></div>
+              </div>
+            }
+
+            <div class="compose">
+              <textarea rows="2"
+                        placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+                        [(ngModel)]="composeText"
+                        (keydown)="onComposeKeydown($event)"></textarea>
+              <div class="compose-actions">
+                <label class="checkbox">
+                  <input type="checkbox" [(ngModel)]="composeImportant" [disabled]="composeRequiresAck" />
+                  Important
+                </label>
+                <label class="checkbox">
+                  <input type="checkbox" [(ngModel)]="composeRequiresAck" />
+                  Requires ack
+                </label>
+                @if (sendError()) { <span class="err-inline">{{ sendError() }}</span> }
+                <button class="btn-primary" (click)="send()" [disabled]="!composeText.trim()">Send</button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Create-conversation dialog -->
+      @if (showNewConversation()) {
+        <div class="modal-backdrop" (click)="cancelNewConversation()">
+          <div class="modal" (click)="$event.stopPropagation()">
+            <h3>New conversation</h3>
+            <label>Name
+              <input type="text" [(ngModel)]="newConvName" placeholder="e.g. Unit 1 startup" [disabled]="newConvBusy()" autofocus />
+            </label>
+            <label>Description <small>(optional)</small>
+              <input type="text" [(ngModel)]="newConvDescription" placeholder="Short summary" [disabled]="newConvBusy()" />
+            </label>
+            @if (newConvError()) { <div class="err">{{ newConvError() }}</div> }
+            <div class="modal-actions">
+              <button class="btn" (click)="cancelNewConversation()" [disabled]="newConvBusy()">Cancel</button>
+              <button class="btn-primary" (click)="submitNewConversation()" [disabled]="newConvBusy() || !newConvName.trim()">
+                {{ newConvBusy() ? 'Creating…' : 'Create' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </ng-container>
+</app-main-layout>

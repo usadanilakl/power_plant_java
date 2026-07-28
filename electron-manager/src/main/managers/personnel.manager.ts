@@ -16,9 +16,14 @@
  */
 
 import * as XLSX from 'xlsx';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as http from 'http';
 import { SharePointManager } from './sharepoint.manager';
-import { backendPost } from '../clients/backend-client';
-import type { PersonnelEntry, PersonnelStatus, PersonnelContact, ShiftCode } from '../../shared/types';
+import { backendGet, backendPost } from '../clients/backend-client';
+import { getWorkingDir } from '../paths';
+import { DEFAULT_PERSONNEL_CONFIG } from '../constants';
+import type { PersonnelEntry, PersonnelStatus, PersonnelContact, ShiftCode, PersonnelConfig, PersonnelStatusMeta } from '../../shared/types';
 
 function getSchedulePath(): string {
   const year = new Date().getFullYear();
@@ -79,8 +84,204 @@ export class PersonnelManager {
   private contactsCacheTime = 0;
   private loading = false;
 
+  // ── Auto-refresh + config ──────────────────────────────────────────────
+  private config: PersonnelConfig;
+  private configPath: string;
+  private autoRefreshTimer: NodeJS.Timeout | null = null;
+  private isAutoRefreshing = false;
+  private lastRefreshError: string | undefined;
+  private triggerServer: http.Server | null = null;
+
   constructor(sharepoint: SharePointManager) {
     this.sharepoint = sharepoint;
+    this.configPath = path.join(getWorkingDir(), 'personnel-config.json');
+    this.config = this.loadConfig();
+
+    if (this.config.autoRefresh) {
+      this.startAutoRefreshTimer();
+    }
+
+    // Start the HTTP listener that Spring Boot POSTs to when the hub SSE fires
+    // schedule.refresh.requested. This lets hub kick a refresh even if this
+    // client's own auto-refresh is off, so at least one online desktop covers
+    // the plant when the designated refresher is down.
+    this.startTriggerServer();
+  }
+
+  // ─── Configuration ────────────────────────────────────────────────────
+
+  public loadConfig(): PersonnelConfig {
+    try {
+      if (fs.existsSync(this.configPath)) {
+        const raw = fs.readFileSync(this.configPath, 'utf-8');
+        return { ...DEFAULT_PERSONNEL_CONFIG, ...JSON.parse(raw) };
+      }
+    } catch (err) {
+      console.warn('[Personnel] Failed to load personnel-config.json, using defaults:', err);
+    }
+    return { ...DEFAULT_PERSONNEL_CONFIG };
+  }
+
+  public getConfig(): PersonnelConfig {
+    return { ...this.config };
+  }
+
+  public saveConfig(config: PersonnelConfig): void {
+    // Sanitize inputs — reject nonsense values before writing.
+    const clean: PersonnelConfig = {
+      autoRefresh: !!config.autoRefresh,
+      intervalMinutes: Math.max(5, Math.min(1440, Math.floor(Number(config.intervalMinutes) || 30))),
+      refreshTriggerPort: Math.max(1024, Math.min(65535, Math.floor(Number(config.refreshTriggerPort) || 8083))),
+    };
+
+    const portChanged = clean.refreshTriggerPort !== this.config.refreshTriggerPort;
+    this.config = clean;
+
+    const dir = path.dirname(this.configPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(this.configPath, JSON.stringify(clean, null, 2), 'utf-8');
+    console.log('[Personnel] Config saved:', clean);
+
+    // Restart timer + trigger server to reflect new settings.
+    this.stopAutoRefreshTimer();
+    if (clean.autoRefresh) this.startAutoRefreshTimer();
+    if (portChanged) this.restartTriggerServer();
+  }
+
+  public getMeta(): PersonnelStatusMeta {
+    return {
+      autoRefreshEnabled: this.config.autoRefresh,
+      refreshIntervalMinutes: this.config.intervalMinutes,
+      isRefreshing: this.isAutoRefreshing,
+      lastRefreshError: this.lastRefreshError,
+    };
+  }
+
+  // ─── Auto-refresh timer ────────────────────────────────────────────────
+
+  private startAutoRefreshTimer(): void {
+    this.stopAutoRefreshTimer();
+    const ms = this.config.intervalMinutes * 60 * 1000;
+    console.log(`[Personnel] Auto-refresh started: every ${this.config.intervalMinutes} min`);
+    this.autoRefreshTimer = setInterval(() => { void this.tickAutoRefresh('timer'); }, ms);
+  }
+
+  private stopAutoRefreshTimer(): void {
+    if (this.autoRefreshTimer) {
+      clearInterval(this.autoRefreshTimer);
+      this.autoRefreshTimer = null;
+      console.log('[Personnel] Auto-refresh stopped');
+    }
+  }
+
+  /** Run a refresh cycle; guards against overlap and records the last error. */
+  private async tickAutoRefresh(reason: 'timer' | 'trigger'): Promise<void> {
+    if (this.isAutoRefreshing) {
+      console.log(`[Personnel] Skipping ${reason} refresh — already in progress`);
+      return;
+    }
+    this.isAutoRefreshing = true;
+    try {
+      // Freshness gate: if the local H2 already has schedule data younger than the configured
+      // interval, another desktop already refreshed and CRDT sync brought it here — skip the
+      // SharePoint round-trip. Manual "Refresh" (which calls PersonnelManager.refresh() directly)
+      // bypasses this gate because the user is explicitly asking for a pull.
+      if (await this.localIsFresh(reason)) {
+        this.lastRefreshError = undefined;
+        return;
+      }
+      console.log(`[Personnel] Auto-refresh tick (${reason})`);
+      await this.refresh();
+      this.lastRefreshError = undefined;
+    } catch (err: any) {
+      this.lastRefreshError = err?.message ?? String(err);
+      console.warn(`[Personnel] Auto-refresh (${reason}) failed:`, this.lastRefreshError);
+    } finally {
+      this.isAutoRefreshing = false;
+    }
+  }
+
+  /**
+   * Ask local Spring Boot when SharePoint was last verified by ANY desktop (heartbeat) or when
+   * the data actually last changed (dateModified). Prefers heartbeat because it fires even when
+   * the schedule is stable — otherwise every desktop would still pull every interval whenever
+   * the roster is stable, defeating the whole point of coordination.
+   *
+   * Fail-open: if the backend is down or the endpoint errors, treat as stale so we still attempt
+   * to refresh (better to over-refresh than to silently go stale).
+   */
+  private async localIsFresh(reason: 'timer' | 'trigger'): Promise<boolean> {
+    try {
+      const res: any = await backendGet('/ng/schedule/freshness', 5000);
+      const data = res?.data ?? {};
+      // Prefer the coordination heartbeat; fall back to the min of (heartbeat, dataAge).
+      const age = typeof data.ageSeconds === 'number' ? data.ageSeconds : null;
+      if (age == null) return false;
+
+      // For hub-triggered refreshes the hub already believes we're stale; still guard against
+      // races (another desktop refreshed between hub's decision and the SSE arriving here) by
+      // using a small buffer — anything younger than 5 min counts as fresh for triggers.
+      const thresholdSec = reason === 'trigger'
+        ? 5 * 60
+        : this.config.intervalMinutes * 60;
+
+      if (age < thresholdSec) {
+        const label = typeof data.heartbeatAgeSeconds === 'number' && data.heartbeatAgeSeconds === age
+          ? `heartbeat ${age}s old`
+          : `data ${age}s old`;
+        console.log(`[Personnel] ${reason} refresh skipped — ${label} (< ${thresholdSec}s threshold, source=${data.heartbeatSource ?? '?'})`);
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.warn('[Personnel] Freshness check failed (fail-open, will refresh):', err?.message ?? err);
+      return false;
+    }
+  }
+
+  // ─── Hub-initiated trigger HTTP listener ───────────────────────────────
+  //
+  // Small localhost HTTP server so desktop Spring Boot's SSE receiver can push
+  // a refresh request into Electron's main process. See
+  // SchedulePresenceCoordinator (hub) and ServerSseClient (desktop) for the
+  // upstream chain. Only listens on 127.0.0.1 — never exposed to LAN.
+
+  private startTriggerServer(): void {
+    if (this.triggerServer) return;
+    const port = this.config.refreshTriggerPort;
+    this.triggerServer = http.createServer((req, res) => {
+      if (req.method === 'POST' && req.url === '/trigger/personnel-refresh') {
+        res.writeHead(202, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ accepted: true }));
+        void this.tickAutoRefresh('trigger');
+        return;
+      }
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'not_found' }));
+    });
+    this.triggerServer.on('error', (err: any) => {
+      console.warn(`[Personnel] Trigger server error on port ${port}:`, err.message);
+      this.triggerServer = null;
+    });
+    this.triggerServer.listen(port, '127.0.0.1', () => {
+      console.log(`[Personnel] Trigger listener on 127.0.0.1:${port}/trigger/personnel-refresh`);
+    });
+  }
+
+  private restartTriggerServer(): void {
+    if (this.triggerServer) {
+      try { this.triggerServer.close(); } catch { /* ignore */ }
+      this.triggerServer = null;
+    }
+    this.startTriggerServer();
+  }
+
+  public stop(): void {
+    this.stopAutoRefreshTimer();
+    if (this.triggerServer) {
+      try { this.triggerServer.close(); } catch { /* ignore */ }
+      this.triggerServer = null;
+    }
   }
 
   public async getPersonnelStatus(): Promise<PersonnelStatus> {

@@ -1,27 +1,36 @@
 <app-main-layout>
   <ng-container header>
-    <app-router-menu></app-router-menu>
+    <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
   <ng-container main-content>
     <div class="page">
-      <div class="page-header">
-        <h1 class="page-title">Personnel</h1>
-        <button class="btn btn-icon" (click)="activeTab() === 'schedule' ? refreshSchedule() : refreshContacts()"
+      <!-- Compact toolbar: tabs + refresh side by side, no separate page-header taking vertical space. -->
+      <div class="toolbar">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab"
+                  [class.active]="activeTab() === 'schedule'"
+                  (click)="selectTab('schedule')">
+            <span class="tab-glyph" aria-hidden="true">📅</span>
+            <span class="tab-label">Schedule</span>
+          </button>
+          <button class="tab" role="tab"
+                  [class.active]="activeTab() === 'contacts'"
+                  (click)="selectTab('contacts')">
+            <span class="tab-glyph" aria-hidden="true">👥</span>
+            <span class="tab-label">Contacts</span>
+          </button>
+          <button class="tab" role="tab"
+                  [class.active]="activeTab() === 'chat'"
+                  (click)="selectTab('chat')">
+            <span class="tab-glyph" aria-hidden="true">💬</span>
+            <span class="tab-label">Chat</span>
+          </button>
+        </div>
+        <button class="btn-icon"
+                (click)="activeTab() === 'schedule' ? refreshSelectedDate() : refreshContacts()"
                 [disabled]="scheduleLoading() || contactsLoading()"
                 title="Refresh">
-          <span class="material-icons">refresh</span>
-        </button>
-      </div>
-
-      <div class="tabs">
-        <button class="tab" [class.active]="activeTab() === 'schedule'" (click)="selectTab('schedule')">
-          <span class="material-icons tab-icon">calendar_month</span> Schedule
-        </button>
-        <button class="tab" [class.active]="activeTab() === 'contacts'" (click)="selectTab('contacts')">
-          <span class="material-icons tab-icon">contacts</span> Contacts
-        </button>
-        <button class="tab" [class.active]="activeTab() === 'chat'" (click)="selectTab('chat')">
-          <span class="material-icons tab-icon">chat</span> Chat
+          <span [class.spin]="scheduleLoading() || contactsLoading()">🔄</span>
         </button>
       </div>
 
@@ -29,45 +38,146 @@
       @if (activeTab() === 'schedule') {
         <div class="tab-content">
           @if (scheduleError()) {
-            <div class="error-banner">{{ scheduleError() }}</div>
+            <div class="banner banner-warn">⚠️ {{ scheduleError() }}</div>
           }
 
-          @if (onShiftNow().length > 0) {
-            <div class="section">
+          <!-- Day picker: prev / [day label] / next + Today shortcut -->
+          <div class="day-picker">
+            <button class="day-nav" (click)="shiftDay(-1)" title="Previous day">‹</button>
+            <div class="day-label">
+              <div class="day-name">{{ selectedDateLabel() }}</div>
+              <div class="day-date">{{ selectedDate() | date:'EEE, MMM d' }}</div>
+            </div>
+            <button class="day-nav" (click)="shiftDay(1)" title="Next day">›</button>
+            @if (!isViewingToday()) {
+              <button class="btn-today" (click)="jumpToToday()">Today</button>
+            }
+          </div>
+
+          <!-- On shift RIGHT NOW (only meaningful when viewing today) -->
+          @if (isViewingToday() && onShiftNow().length > 0) {
+            <section class="section on-shift-section">
               <h2 class="section-title">
-                <span class="material-icons">groups</span>
                 On shift now
+                <span class="section-count">{{ onShiftNow().length }}</span>
               </h2>
               <div class="chip-row">
                 @for (p of onShiftNow(); track p.name) {
-                  <div class="chip">
+                  <div class="chip highlight">
                     @if (p.group) { <span class="chip-group">{{ p.group }}</span> }
                     <span class="chip-name">{{ p.name }}</span>
                   </div>
                 }
               </div>
-            </div>
+            </section>
           }
 
-          @if (scheduleToday()?.onCallManagerName) {
-            <div class="section">
-              <h2 class="section-title">
-                <span class="material-icons">support_agent</span>
-                On call manager
-              </h2>
-              <div class="chip-row">
-                <div class="chip">
-                  <span class="chip-group ocm">OCM</span>
-                  <span class="chip-name">{{ scheduleToday()!.onCallManagerName }}</span>
+          <!-- Full breakdown for the selected day -->
+          @if (selectedDay(); as day) {
+            @if (day.onCallManagerName) {
+              <section class="section">
+                <h2 class="section-title">
+                  On Call Manager
+                </h2>
+                <div class="chip-row">
+                  <div class="chip">
+                    <span class="chip-group ocm">OCM</span>
+                    <span class="chip-name">{{ day.onCallManagerName }}</span>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </section>
+            }
+
+            @if (day.dayShift && day.dayShift.length > 0) {
+              <section class="section">
+                <h2 class="section-title">
+                  Day Shift
+                  <span class="section-count">{{ day.dayShift.length }}</span>
+                </h2>
+                <div class="chip-row">
+                  @for (p of day.dayShift; track p.name) {
+                    <div class="chip">
+                      @if (p.group) { <span class="chip-group">{{ p.group }}</span> }
+                      <span class="chip-name">{{ p.name }}</span>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
+            @if (day.nightShift && day.nightShift.length > 0) {
+              <section class="section">
+                <h2 class="section-title">
+                  Night Shift
+                  <span class="section-count">{{ day.nightShift.length }}</span>
+                </h2>
+                <div class="chip-row">
+                  @for (p of day.nightShift; track p.name) {
+                    <div class="chip night">
+                      @if (p.group) { <span class="chip-group night">{{ p.group }}</span> }
+                      <span class="chip-name">{{ p.name }}</span>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
+            @if (day.pto && day.pto.length > 0) {
+              <section class="section">
+                <h2 class="section-title muted-title">
+                  PTO
+                  <span class="section-count">{{ day.pto.length }}</span>
+                </h2>
+                <div class="chip-row">
+                  @for (p of day.pto; track p.name) {
+                    <div class="chip muted">
+                      @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
+                      <span class="chip-name">{{ p.name }}</span>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
+            @if (day.training && day.training.length > 0) {
+              <section class="section">
+                <h2 class="section-title muted-title">
+                  Training
+                  <span class="section-count">{{ day.training.length }}</span>
+                </h2>
+                <div class="chip-row">
+                  @for (p of day.training; track p.name) {
+                    <div class="chip muted">
+                      @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
+                      <span class="chip-name">{{ p.name }}</span>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
+            @if (day.unscheduled && day.unscheduled.length > 0) {
+              <section class="section">
+                <h2 class="section-title muted-title">
+                  Unscheduled
+                  <span class="section-count">{{ day.unscheduled.length }}</span>
+                </h2>
+                <div class="chip-row">
+                  @for (p of day.unscheduled; track p.name) {
+                    <div class="chip muted">
+                      @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
+                      <span class="chip-name">{{ p.name }}</span>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
           }
 
-          @if (!scheduleToday() && !scheduleLoading()) {
+          @if (!selectedDay() && !scheduleLoading()) {
             <div class="empty-state">
-              <span class="material-icons">event_busy</span>
-              <div>No schedule available for today</div>
+              <div class="empty-glyph">📭</div>
+              <div class="empty-text">No schedule for {{ selectedDate() | date:'MMM d' }}</div>
             </div>
           }
         </div>
@@ -77,11 +187,11 @@
       @if (activeTab() === 'contacts') {
         <div class="tab-content">
           @if (contactsError()) {
-            <div class="error-banner">{{ contactsError() }}</div>
+            <div class="banner banner-warn">⚠️ {{ contactsError() }}</div>
           }
 
           <div class="search-row">
-            <span class="material-icons search-icon">search</span>
+            <span class="search-icon" aria-hidden="true">🔍</span>
             <input type="search" placeholder="Search contacts…"
                    [ngModel]="contactsSearch()"
                    (ngModelChange)="contactsSearch.set($event)" />
@@ -89,13 +199,13 @@
 
           @if (contacts().length === 0 && contactsLoading()) {
             <div class="empty-state">
-              <span class="material-icons spin">sync</span>
-              <div>Loading contacts…</div>
+              <div class="empty-glyph spin">⏳</div>
+              <div class="empty-text">Loading contacts…</div>
             </div>
           } @else if (contacts().length === 0) {
             <div class="empty-state">
-              <span class="material-icons">contact_phone</span>
-              <div>No contacts available</div>
+              <div class="empty-glyph">📇</div>
+              <div class="empty-text">No contacts available</div>
             </div>
           } @else {
             <div class="contact-list">
@@ -105,28 +215,33 @@
                   @if (c.title) { <div class="contact-title">{{ c.title }}</div> }
                   @if (c.phone) {
                     <a class="contact-line" [attr.href]="'tel:' + c.phone">
-                      <span class="material-icons">call</span> {{ c.phone }}
+                      <span class="line-glyph">📞</span>
+                      <span>{{ c.phone }}</span>
                     </a>
                   }
                   @if (c.secondaryPhone) {
                     <a class="contact-line" [attr.href]="'tel:' + c.secondaryPhone">
-                      <span class="material-icons">call</span> {{ c.secondaryPhone }} <small>(secondary)</small>
+                      <span class="line-glyph">📞</span>
+                      <span>{{ c.secondaryPhone }} <small>(secondary)</small></span>
                     </a>
                   }
                   @if (c.email) {
                     <a class="contact-line" [attr.href]="'mailto:' + c.email">
-                      <span class="material-icons">mail</span> {{ c.email }}
+                      <span class="line-glyph">✉️</span>
+                      <span>{{ c.email }}</span>
                     </a>
                   }
                   @if (c.emergencyContact) {
                     <div class="emergency-block">
                       <div class="emergency-label">Emergency contact</div>
-                      <div>{{ c.emergencyContact }}
+                      <div class="emergency-name">
+                        {{ c.emergencyContact }}
                         @if (c.emergencyRelation) { <small>({{ c.emergencyRelation }})</small> }
                       </div>
                       @if (c.emergencyPhone) {
                         <a class="contact-line" [attr.href]="'tel:' + c.emergencyPhone">
-                          <span class="material-icons">call</span> {{ c.emergencyPhone }}
+                          <span class="line-glyph">📞</span>
+                          <span>{{ c.emergencyPhone }}</span>
                         </a>
                       }
                     </div>

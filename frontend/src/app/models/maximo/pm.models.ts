@@ -17,6 +17,8 @@ export interface RecurringPm {
   lastTargetDate: string | null;
   catalogRefreshedAt: string | null;
   manuallyAdded?: boolean;              // operator manually converted a WO to a recurring task
+  genSuitEnabled?: boolean;            // GenSuit confirmation phrase enabled for this PM
+  genSuitPhrase?: string | null;       // GenSuit phrase; {WO}/{PM} substituted at copy time
   formKey?: string | null;             // legacy: first assigned form (mirrors formKeys[0]), or null
   formKeys?: string[];                 // all assigned completion forms; the operator picks one at completion
 }
@@ -62,6 +64,8 @@ export interface PmAuditCard {
   hasIssues: boolean;
   keywordHit: boolean;
   formIssues: boolean;
+  genSuitEnabled?: boolean;          // GenSuit confirmation phrase enabled for this PM
+  genSuitPhrase?: string | null;     // GenSuit phrase; {WO}/{PM} substituted at copy time
 }
 
 /** Completion detail for one WO (the last completed occurrence of a PM), loaded on expand. */

@@ -409,16 +409,19 @@ export class LotoPointMapperService {
       result.splice(idx, 0, pidsColumn);
     }
 
-    // Sticky arrow columns — used only in the LOTO Standard editor's
-    // dual-table. Narrow (40px), non-filterable, non-sortable, and pinned
-    // to the appropriate edge via Column.sticky. Real button template
-    // wires in RfLotoPointTableComponent.ngAfterViewInit.
+    // Sticky arrow columns for the LOTO Standard editor's dual-table +
+    // Images-tab table. Non-filterable, non-sortable. Width 52 = 26px
+    // button + 24px cell padding + 2px border. `sticky` tells the shared
+    // table to pin the cell to the viewport edge via JS-driven left/right
+    // offsets — native position:sticky is broken inside cdk-virtual-
+    // scroll-viewport's transformed content-wrapper, so TableSyncService
+    // computes the offset from viewport.scrollLeft on every scroll.
     if (fields.includes('addToStandard' as any)) {
       const col: Column = {
         id: 'addToStandard',
         header: '',
         accessorFn: () => '',
-        width: 40,
+        width: 52,
         filterable: false,
         sortable: false,
         sticky: 'right',
@@ -431,7 +434,7 @@ export class LotoPointMapperService {
         id: 'removeFromStandard',
         header: '',
         accessorFn: () => '',
-        width: 40,
+        width: 52,
         filterable: false,
         sortable: false,
         sticky: 'left',

@@ -198,6 +198,9 @@ export const IPC_CORK_BOARD_SUBMIT_ACTION = 'cork-board:submit-action';
 export const IPC_PERSONNEL_GET_STATUS = 'personnel:get-status';
 export const IPC_PERSONNEL_REFRESH = 'personnel:refresh';
 export const IPC_PERSONNEL_GET_CONTACTS = 'personnel:get-contacts';
+export const IPC_PERSONNEL_GET_CONFIG = 'personnel:get-config';
+export const IPC_PERSONNEL_SAVE_CONFIG = 'personnel:save-config';
+export const IPC_PERSONNEL_GET_META = 'personnel:get-meta';
 
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';

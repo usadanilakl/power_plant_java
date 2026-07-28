@@ -52,6 +52,7 @@ public class ServerSseClient {
     private final FileRepo fileRepo;
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final ApplicationContext applicationContext;
+    private final com.dk_power.power_plant_java.sevice.users.LocalScheduleHeartbeatCache scheduleHeartbeatCache;
 
     // Lazily fetched to avoid circular dependency with CentralSyncService
     private CentralSyncService centralSyncService;
@@ -302,6 +303,16 @@ public class ServerSseClient {
                 return;
             }
 
+            if ("schedule.refresh.requested".equals(eventType)) {
+                handleScheduleRefreshRequested(data);
+                return;
+            }
+
+            if ("schedule.check.heartbeat".equals(eventType)) {
+                handleScheduleCheckHeartbeat(data);
+                return;
+            }
+
             log.debug("SSE: Unknown event type '{}': {}", eventType, data);
 
         } catch (Exception e) {
@@ -446,6 +457,60 @@ public class ServerSseClient {
         } finally {
             syncContext.endSync();
         }
+    }
+
+    /**
+     * A peer desktop just verified SharePoint — bump our local heartbeat cache so our next
+     * freshness gate sees the fresh signal and skips a redundant SP round-trip.
+     */
+    private void handleScheduleCheckHeartbeat(String data) {
+        try {
+            Map<String, Object> eventData = objectMapper.readValue(data, new TypeReference<>() {});
+            Object at = eventData.get("checkedAt");
+            Object src = eventData.get("source");
+            if (!(at instanceof String s) || s.isBlank()) return;
+            java.time.Instant instant = java.time.Instant.parse(s);
+            String source = src instanceof String ss ? ss : null;
+            scheduleHeartbeatCache.recordFromSse(instant, source);
+            log.debug("[SSE] schedule.check.heartbeat cached checkedAt={} source={}", instant, source);
+        } catch (Exception e) {
+            log.debug("[SSE] Failed to parse schedule.check.heartbeat: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Handle hub-initiated schedule refresh request. Forwards to the local Electron main
+     * process's HTTP trigger endpoint ({@code POST http://127.0.0.1:<port>/trigger/personnel-refresh}),
+     * which invokes {@code PersonnelManager.refresh()} (SharePoint fetch → parse → local push →
+     * CRDT sync back to hub). Fire-and-forget: SSE dispatch mustn't block.
+     *
+     * <p>The port comes from {@code personnel.trigger-port} (default 8083) — must match the
+     * Electron side's {@code personnel-config.json refreshTriggerPort}. When Electron isn't
+     * running or the endpoint isn't listening yet, the request quietly fails and the hub
+     * watchdog will pick another client on its next tick.
+     */
+    private void handleScheduleRefreshRequested(String data) {
+        int port = Integer.parseInt(System.getProperty("personnel.trigger-port",
+                System.getenv().getOrDefault("PERSONNEL_TRIGGER_PORT", "8083")));
+        log.info("[SSE] schedule.refresh.requested received — POSTing to Electron trigger on 127.0.0.1:{}", port);
+
+        Thread.startVirtualThread(() -> {
+            try {
+                java.net.URL url = java.net.URI.create("http://127.0.0.1:" + port + "/trigger/personnel-refresh").toURL();
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setConnectTimeout(2_000);
+                conn.setReadTimeout(5_000);
+                conn.setDoOutput(true);
+                conn.getOutputStream().write(new byte[0]);
+                int status = conn.getResponseCode();
+                log.info("[SSE] Electron personnel-refresh trigger returned {}", status);
+                conn.disconnect();
+            } catch (Exception e) {
+                log.warn("[SSE] Failed to reach Electron trigger endpoint (Electron may not be running): {}",
+                        e.getMessage());
+            }
+        });
     }
 
     /**

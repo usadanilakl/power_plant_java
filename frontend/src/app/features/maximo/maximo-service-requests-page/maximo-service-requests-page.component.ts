@@ -9,6 +9,7 @@ import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-deta
 import { MaximoPersonPickerComponent } from '../maximo-person-picker/maximo-person-picker.component';
 import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-picker.component';
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
+import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
 import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import {
@@ -37,7 +38,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
   imports: [
     CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent,
     MaximoTableComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent, MaximoPersonPickerComponent,
-    MaximoAssetPickerComponent, MaximoLocationPickerComponent
+    MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoLocationTreePickerComponent
   ],
   templateUrl: './maximo-service-requests-page.component.html',
   styleUrl: './maximo-service-requests-page.component.css'
@@ -55,6 +56,8 @@ export class MaximoServiceRequestsPageComponent {
   loaded = signal(false);
 
   showForm = signal(false);
+  /** Escape hatch: swap the plant-tree pickers for the free-text asset/location pickers (codes not yet seeded). */
+  manualFilterEntry = signal(false);
 
   selectedSr = signal<MaximoServiceRequest | null>(null);
   openDetail(sr: MaximoServiceRequest) { this.selectedSr.set(sr); }

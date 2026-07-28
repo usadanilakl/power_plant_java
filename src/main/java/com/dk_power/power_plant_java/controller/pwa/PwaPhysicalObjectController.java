@@ -2,6 +2,9 @@ package com.dk_power.power_plant_java.controller.pwa;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.physical.PhysicalObjectAggregate;
+import com.dk_power.power_plant_java.dto.physical.PhysicalObjectDto;
+import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.dk_power.power_plant_java.sevice.physical.PhysicalObjectAggregateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Mobile (PWA) read/log access to the PhysicalObject informational binder — the "everything about this object" surface
@@ -24,6 +30,30 @@ import java.util.List;
 public class PwaPhysicalObjectController {
 
     private final PhysicalObjectAggregateService aggregateService;
+    private final PhysicalObjectRepo physicalObjectRepo;
+
+    /**
+     * Whole PhysicalObject hierarchy as a flat list (id + parentId + hasChildren) — the SAME payload the desktop
+     * {@code /ng/physical-object/tree} serves, so the PWA can assemble the location+asset tree client-side and
+     * offer it as an SR target picker. NOT gated on a Maximo key (the nodes are locally stored, Maximo-seeded).
+     */
+    @GetMapping("/tree")
+    public ResponseEntity<NgApiResponse<List<PhysicalObjectDto>>> tree() {
+        try {
+            List<PhysicalObject> all = physicalObjectRepo.findAll();
+            Set<Long> parents = all.stream()
+                    .map(p -> p.getParent() != null ? p.getParent().getId() : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            List<PhysicalObjectDto> dtos = all.stream()
+                    .map(p -> PhysicalObjectDto.from(p, parents.contains(p.getId())))
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(new NgApiResponse<>(dtos, dtos.size() + " nodes"));
+        } catch (Exception e) {
+            log.warn("[PWA-PhysicalObject] tree failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
 
     /** The full binder for one object in a single call. */
     @GetMapping("/{id}/aggregate")

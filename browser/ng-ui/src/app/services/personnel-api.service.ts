@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { catchError, from, Observable, of, switchMap } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { PwaChatService } from './pwa-chat.service';
 
 /**
  * Wire shape returned by {@code GET /api/pwa/secured/schedule/today}, {@code .../range},
@@ -47,18 +48,78 @@ export interface PersonnelContact {
 @Injectable({ providedIn: 'root' })
 export class PersonnelApiService {
   private http = inject(HttpClient);
+  private chat = inject(PwaChatService);       // reused for its Supabase client (schedule mirror is read-only)
   private base = `${environment.serverUrl}/api/pwa/secured`;
 
+  /** Try hub first; on any network/5xx failure, fall back to Supabase mirror. */
   getScheduleToday(): Observable<ShiftDay | null> {
-    return this.http.get<ShiftDay | null>(`${this.base}/schedule/today`);
+    return this.http.get<ShiftDay | null>(`${this.base}/schedule/today`).pipe(
+      catchError(() => from(this.getScheduleTodayFromSupabase())),
+    );
   }
 
-  getScheduleRange(from: string, to: string): Observable<ShiftDay[]> {
-    return this.http.get<ShiftDay[]>(`${this.base}/schedule/range?from=${from}&to=${to}`);
+  getScheduleRange(fromDate: string, toDate: string): Observable<ShiftDay[]> {
+    return this.http.get<ShiftDay[]>(`${this.base}/schedule/range?from=${fromDate}&to=${toDate}`).pipe(
+      catchError(() => from(this.getScheduleRangeFromSupabase(fromDate, toDate))),
+    );
   }
 
   getOnShiftNow(): Observable<ShiftEntry[]> {
-    return this.http.get<ShiftEntry[]>(`${this.base}/schedule/on-shift-now`);
+    return this.http.get<ShiftEntry[]>(`${this.base}/schedule/on-shift-now`).pipe(
+      catchError(() => from(this.getOnShiftNowFromSupabase())),
+    );
+  }
+
+  // ─── Supabase fallback reads ─────────────────────────────────────────
+  // Reused when the hub is unreachable. Table is populated by hub-side sync
+  // (see ShiftDayService.mirrorToSupabase + migration 20260727120000_plant_schedule.sql).
+
+  private async getScheduleTodayFromSupabase(): Promise<ShiftDay | null> {
+    const client = await this.chat.ensureReady();
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await client
+      .from('plant_schedule_day')
+      .select('*')
+      .eq('shift_date', today)
+      .maybeSingle();
+    if (error || !data) return null;
+    return this.mapSupabaseRow(data);
+  }
+
+  private async getScheduleRangeFromSupabase(fromDate: string, toDate: string): Promise<ShiftDay[]> {
+    const client = await this.chat.ensureReady();
+    const { data, error } = await client
+      .from('plant_schedule_day')
+      .select('*')
+      .gte('shift_date', fromDate)
+      .lte('shift_date', toDate)
+      .order('shift_date', { ascending: true });
+    if (error || !data) return [];
+    return data.map(row => this.mapSupabaseRow(row));
+  }
+
+  private async getOnShiftNowFromSupabase(): Promise<ShiftEntry[]> {
+    const today = await this.getScheduleTodayFromSupabase();
+    if (!today) return [];
+    const hour = new Date().getHours();
+    const isDay = hour >= 5 && hour < 17;      // matches hub's PwaScheduleController.onShiftNow
+    return isDay ? (today.dayShift ?? []) : (today.nightShift ?? []);
+  }
+
+  private mapSupabaseRow(row: any): ShiftDay {
+    return {
+      date: row.shift_date,
+      year: row.shift_year,
+      dayShift: row.day_shift_json ?? [],
+      nightShift: row.night_shift_json ?? [],
+      unscheduled: row.unscheduled_json ?? [],
+      pto: row.pto_json ?? [],
+      training: row.training_json ?? [],
+      onCallManagerName: row.on_call_manager_name,
+      onCallManagerUserId: row.on_call_manager_user_id,
+      source: row.source,
+      lastSyncedAt: row.last_synced_at,
+    };
   }
 
   getContacts(): Observable<PersonnelContact[]> {

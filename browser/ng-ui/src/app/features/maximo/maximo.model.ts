@@ -16,6 +16,7 @@ export interface MaximoWorkOrder {
   schedfinish: string;
   leadCraft: string;
   supervisor: string;
+  reportedby: string;
   priority: string;
   pmnum: string;
   statusDate?: string;
@@ -186,6 +187,23 @@ export interface MaximoLocation {
   status: string;
   siteid: string;
   parent?: string;
+}
+
+/**
+ * One node of the plant hierarchy — flat, with parentId (mirrors the backend PhysicalObjectDto / desktop
+ * `PhysicalObjectNode`, phone subset). The tree picker assembles the tree client-side from this flat list; an
+ * EQUIPMENT/asset node carries `maximoAssetnum` + `maximoLocation`, a location node carries `maximoLocation`.
+ */
+export interface PhysicalObjectNode {
+  id: number;
+  name: string;
+  type: string | null;          // PLANT | SECTION | SYSTEM | SKID | EQUIPMENT | LOCATION
+  tagNumber: string | null;
+  description: string | null;
+  maximoLocation: string | null;
+  maximoAssetnum: string | null;
+  parentId: number | null;
+  local: boolean;               // hand-built node (filtered out) vs Maximo-seeded hierarchy node
 }
 
 // ── Parts checkout ─────────────────────────────────────────────────────────
