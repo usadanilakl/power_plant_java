@@ -6,5 +6,24 @@
   <app-destination-loto-point-table></app-destination-loto-point-table>
 </div>
 
+<!-- Details popup — opens on double-click of any row in either table.
+     LotoPointDualForm handles the 01/02 counterpart pair case (if the
+     double-clicked point has a counterpart it shows both side-by-side).
+     Not modal-editable from add/remove perspective — the operator uses
+     the context menu or the sticky arrow buttons to change membership. -->
+<app-rf-popup-projection
+  [isOpen]="doubleTableService.viewingPoint() !== null"
+  [title]="'LOTO Point: ' + (doubleTableService.viewingPoint()?.tagNumber || doubleTableService.viewingPoint()?.description || '')"
+  [size]="'xlarge'"
+  [fullHeight]="true"
+  (close)="doubleTableService.closeViewingPoint()">
+  @if (doubleTableService.viewingPoint(); as p) {
+    <app-loto-point-dual-form
+      [primaryLotoPoint]="p"
+      (formClosed)="doubleTableService.closeViewingPoint()">
+    </app-loto-point-dual-form>
+  }
+</app-rf-popup-projection>
+
 
 

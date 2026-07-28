@@ -11,12 +11,19 @@ export class SourceLotoPointTableClickService extends RfLotoPointClickService {
     doubleClickedRow = signal<LotoPointDto | null>(null);
 
   /**
-   * Override: Handle row double click for LOTO points
+   * Double-click opens the details dialog (LotoPointDualForm in a popup).
+   * <p>
+   * Previously double-click added the item to the selected set — but the
+   * matching remove-on-double-click behavior on the destination table
+   * was reported as confusing (same gesture, opposite effects depending
+   * on which table). Add / remove now live on the context menu and on
+   * the sticky arrow columns. The dialog is view-only from the caller's
+   * perspective; edits to the point itself go through the dual form's
+   * own save flow.
    */
   protected override handleRowDoubleClick(item: any, event: MouseEvent): void {
-    console.log('Executing SourceLotoPointTableClickService.handleRowDoubleClick()');
     const normalizedItem = this.normalizeItem(item) as LotoPointDto;
-    this.doubleTableService.addItemToSelected(normalizedItem);
+    this.doubleTableService.viewPoint(normalizedItem);
   }
 
 }

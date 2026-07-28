@@ -409,6 +409,37 @@ export class LotoPointMapperService {
       result.splice(idx, 0, pidsColumn);
     }
 
+    // Sticky arrow columns — used only in the LOTO Standard editor's
+    // dual-table. Narrow (40px), non-filterable, non-sortable, and pinned
+    // to the appropriate edge via Column.sticky. Real button template
+    // wires in RfLotoPointTableComponent.ngAfterViewInit.
+    if (fields.includes('addToStandard' as any)) {
+      const col: Column = {
+        id: 'addToStandard',
+        header: '',
+        accessorFn: () => '',
+        width: 40,
+        filterable: false,
+        sortable: false,
+        sticky: 'right',
+      };
+      const idx = fields.indexOf('addToStandard' as any);
+      result.splice(idx, 0, col);
+    }
+    if (fields.includes('removeFromStandard' as any)) {
+      const col: Column = {
+        id: 'removeFromStandard',
+        header: '',
+        accessorFn: () => '',
+        width: 40,
+        filterable: false,
+        sortable: false,
+        sticky: 'left',
+      };
+      const idx = fields.indexOf('removeFromStandard' as any);
+      result.splice(idx, 0, col);
+    }
+
     return result;
   }
 

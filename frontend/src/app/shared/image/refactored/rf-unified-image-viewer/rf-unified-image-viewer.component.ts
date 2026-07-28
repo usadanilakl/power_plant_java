@@ -1,6 +1,6 @@
 import { Component, input, output, signal, computed, effect, inject, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName } from '../../../../models/loto/loto-point.model';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import {
   RfImageCarouselComponent,
@@ -37,6 +37,18 @@ export interface ViewerConfig {
   highlightMode?: 'clicked' | 'hovered' | 'both' | 'none';
   legend?: boolean;
   emptyStateMessage?: string;
+  /**
+   * When true, the embedded LotoPointDisplayTable renders a sticky-left
+   * "Remove from Standard" arrow column and emits {@code lotoPointRemoveFromStandard}
+   * on click. Off by default so the shared viewer's use elsewhere (file
+   * editor, equipment browser) is unaffected.
+   */
+  enableRemoveFromStandard?: boolean;
+  /**
+   * When true, the embedded LotoPointDisplayTable enables drag-drop
+   * reorder and emits {@code lotoPointsReordered} with the new order.
+   */
+  enableReorder?: boolean;
 }
 
 /**
@@ -146,6 +158,18 @@ export class RfUnifiedImageViewerComponent {
   lotoPointClicked = output<LotoPointDto>();
   lotoPointSelected = output<LotoPointDto[]>();
   lotoPointHovered = output<LotoPointDto | null>();
+  /**
+   * Emitted when the operator clicks the sticky-left "Remove from Standard"
+   * arrow on a row. Only fires when config.enableRemoveFromStandard = true.
+   * Consumers (LotoStandardImageViewerComponent) call the standard's
+   * removeLotoPointFromStandard API in response.
+   */
+  lotoPointRemoveFromStandard = output<LotoPointDto>();
+  /**
+   * Emitted when the operator drags rows into a new order. Only fires when
+   * config.enableReorder = true. Consumers call reorderLotoPoints on the API.
+   */
+  lotoPointsReordered = output<LotoPointDto[]>();
 
   // ==================== INTERNAL STATE ====================
 
@@ -511,6 +535,26 @@ export class RfUnifiedImageViewerComponent {
   shouldShowTable = computed(() => {
     const cfg = this.config();
     return cfg.showTable && cfg.tablePosition !== 'none' && this.lotoPointsForTable().length > 0;
+  });
+
+  /**
+   * Field-list passed to the embedded LotoPointDisplayTable. When the
+   * consumer opts into {@code enableRemoveFromStandard}, the synthetic
+   * {@code removeFromStandard} column is placed FIRST so the sticky-left
+   * arrow is pinned to the left edge of the horizontal-scroll viewport
+   * (same layout as the LOTO Standard editor's destination table).
+   * Undefined = the mapper's default set.
+   */
+  viewerFieldsToDisplay = computed<LotoPointFieldName[] | undefined>(() => {
+    const cfg = this.config();
+    if (!cfg.enableRemoveFromStandard) return undefined;
+    return [
+      'removeFromStandard',
+      'processingStatus', 'tagNumber', 'description', 'specificLocation',
+      'location', 'eqType', 'isoPos', 'normPos',
+      'isLabeled', 'isLockable', 'zeroEnergy', 'equipmentList',
+      'comment',
+    ];
   });
 
   /**

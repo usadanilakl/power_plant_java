@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RfLotoPointTableComponent } from "../../rf-loto-point-table/rf-loto-point-table.component";
 import { DoubleLotoPointTableService } from '../double-loto-point-table.service';
-import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName } from '../../../../../models/loto/loto-point.model';
 import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
 import { DestinationLotoPointTableClickService } from './destination-loto-point-table-click.service';
 import { TableSelectionService } from '../../../../../shared/table/refactored/services/table-selection.service';
@@ -16,6 +16,8 @@ import { TableSyncService } from '../../../../../shared/table/refactored/service
 import { DestinationLotoPointTableControlService } from './destination-loto-point-table-control.service';
 import { LotoPointBulkEditService } from '../../services/loto-point-bulk-edit.service';
 import { RfLotoPointTableDataService } from '../../rf-loto-point-table/rf-loto-point-table-data.service';
+import { LotoPointContextMenuService } from '../../services/loto-point-context-menu.service';
+import { DoubleLotoPointContextMenuService } from '../double-loto-point-context-menu.service';
 
 @Component({
   selector: 'app-destination-loto-point-table',
@@ -43,6 +45,8 @@ import { RfLotoPointTableDataService } from '../../rf-loto-point-table/rf-loto-p
       provide: TableDataService,
       useExisting: RfLotoPointTableDataService,
     },
+    // Scoped context menu with "Add to Standard" / "Remove from Standard".
+    { provide: LotoPointContextMenuService, useClass: DoubleLotoPointContextMenuService },
   ],
   templateUrl: './destination-loto-point-table.component.html',
   styleUrl: './destination-loto-point-table.component.css',
@@ -50,7 +54,24 @@ import { RfLotoPointTableDataService } from '../../rf-loto-point-table/rf-loto-p
 export class DestinationLotoPointTableComponent {
   doubleTableService = inject(DoubleLotoPointTableService);
 
+  /**
+   * Explicit field list — 'removeFromStandard' is FIRST so the arrow
+   * column is sticky-left (pinned to the left edge of the horizontal-
+   * scroll viewport). Symmetrical to source's 'addToStandard' at the end.
+   */
+  destinationFields: LotoPointFieldName[] = [
+    'removeFromStandard',
+    'processingStatus', 'tagNumber', 'description', 'specificLocation',
+    'location', 'eqType', 'isoPos', 'normPos',
+    'isLabeled', 'isLockable', 'zeroEnergy', 'equipmentList',
+    'comment',
+  ];
+
   onItemsReordered(items: LotoPointDto[]): void {
     this.doubleTableService.onSelectedItemsReordered(items);
+  }
+
+  onRemoveFromStandard(item: LotoPointDto): void {
+    this.doubleTableService.removeItemFromSelected(item);
   }
 }

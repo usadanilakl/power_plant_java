@@ -1,7 +1,7 @@
 
 import { Component, input, output, inject, forwardRef } from '@angular/core';
 import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName } from '../../../../models/loto/loto-point.model';
 import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
 import { TableDragService } from '../../../../shared/table/refactored/services/table-drag.service';
 import { TableStateService } from '../../../../shared/table/refactored/services/table-state.service';
@@ -65,12 +65,25 @@ export class LotoPointDisplayTableComponent {
   scrollToItemId = input<number | null>(null);
   /** ID of item externally "clicked" — highlights the row without a real click. */
   externalClickedItemId = input<number | null>(null);
+  /**
+   * Optional explicit field list. Pass-through to RfLotoPointTable so callers
+   * that render this table inside a standard-editing context can include the
+   * 'removeFromStandard' synthetic column at the front (sticky-left arrow).
+   * Undefined = the mapper's default set.
+   */
+  fieldsToDisplay = input<LotoPointFieldName[]>();
+  /** Enable drag-drop reorder on the underlying table. Off by default. */
+  enableDragDrop = input<boolean>(false);
 
   selectedItemsEvent = output<LotoPointDto[]>();
   rowHoveredEvent = output<LotoPointDto | null>();
   rowClickedEvent = output<LotoPointDto>();
   /** Emitted when bulk edit is applied - parent should refresh data */
   bulkEditAppliedEvent = output<LotoPointDto[]>();
+  /** Emitted when the user drags rows into a new order. */
+  itemsReorderedEvent = output<LotoPointDto[]>();
+  /** Emitted when the sticky "Remove from Standard" arrow is clicked. */
+  removeFromStandardClick = output<LotoPointDto>();
 
   constructor() {
     // Forward row clicked events from click service to output event

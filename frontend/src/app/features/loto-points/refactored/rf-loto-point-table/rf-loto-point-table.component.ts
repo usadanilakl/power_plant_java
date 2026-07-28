@@ -96,6 +96,29 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   commentCellTemplate = viewChild<TemplateRef<any>>('commentCellTemplate');
   photosCellTemplate = viewChild<TemplateRef<any>>('photosCellTemplate');
   pidsCellTemplate = viewChild<TemplateRef<any>>('pidsCellTemplate');
+  addToStandardCellTemplate = viewChild<TemplateRef<any>>('addToStandardCellTemplate');
+  removeFromStandardCellTemplate = viewChild<TemplateRef<any>>('removeFromStandardCellTemplate');
+
+  /**
+   * Sticky-arrow click outputs. Emitted only when the parent renders
+   * either the {@code addToStandard} or {@code removeFromStandard} column
+   * — otherwise the button template never renders. Source and destination
+   * tables in the LOTO Standard editor's dual-table subscribe to these to
+   * call {@code DoubleLotoPointTableService.addItemToSelected /
+   * removeItemFromSelected}; other consumers can ignore the outputs.
+   */
+  addToStandardClick = output<LotoPointDto>();
+  removeFromStandardClick = output<LotoPointDto>();
+
+  onAddToStandardClick(item: LotoPointDto, event: MouseEvent): void {
+    event.stopPropagation();
+    if (item?.id) this.addToStandardClick.emit(item);
+  }
+
+  onRemoveFromStandardClick(item: LotoPointDto, event: MouseEvent): void {
+    event.stopPropagation();
+    if (item?.id) this.removeFromStandardClick.emit(item);
+  }
 
   private lotoPointService = inject(LotoPointService);
 
@@ -255,6 +278,16 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         const col = cols.find(c => c.id === 'pids');
         if (col) col.template = pidsTpl;
       }
+      const addTpl = this.addToStandardCellTemplate();
+      if (addTpl) {
+        const col = cols.find(c => c.id === 'addToStandard');
+        if (col) col.template = addTpl;
+      }
+      const removeTpl = this.removeFromStandardCellTemplate();
+      if (removeTpl) {
+        const col = cols.find(c => c.id === 'removeFromStandard');
+        if (col) col.template = removeTpl;
+      }
       this.columns.set(cols);
     });
 
@@ -289,6 +322,16 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     if (pidsTpl) {
       const c = cols.find(x => x.id === 'pids');
       if (c && c.template !== pidsTpl) { c.template = pidsTpl; mutated = true; }
+    }
+    const addTpl = this.addToStandardCellTemplate();
+    if (addTpl) {
+      const c = cols.find(x => x.id === 'addToStandard');
+      if (c && c.template !== addTpl) { c.template = addTpl; mutated = true; }
+    }
+    const removeTpl = this.removeFromStandardCellTemplate();
+    if (removeTpl) {
+      const c = cols.find(x => x.id === 'removeFromStandard');
+      if (c && c.template !== removeTpl) { c.template = removeTpl; mutated = true; }
     }
     if (mutated) this.columns.set([...cols]);
   }

@@ -22,6 +22,27 @@ export class DoubleLotoPointTableService {
   lastReorderedItems = signal<LotoPointDto[] | null>(null);
 
   /**
+   * The LOTO point currently being viewed in the details dialog. Set by
+   * either source or destination click services on double-click; the
+   * parent DoubleLotoPointTableComponent renders a popup projection
+   * hosting a LotoPointDualForm bound to this signal.
+   * <p>
+   * null = popup closed.
+   */
+  viewingPoint = signal<LotoPointDto | null>(null);
+
+  /** Open the details dialog on this point. */
+  viewPoint(item: LotoPointDto): void {
+    if (!item) return;
+    this.viewingPoint.set(item);
+  }
+
+  /** Close the details dialog. */
+  closeViewingPoint(): void {
+    this.viewingPoint.set(null);
+  }
+
+  /**
    * Handle adding multiple items to selected items
    */
   onAddItemsToSelected(items: LotoPointDto[]): void {

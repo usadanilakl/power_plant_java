@@ -33,9 +33,13 @@
                 [hoverDebounceTime]="200"
                 [scrollToItemId]="scrollToLotoPointId()"
                 [externalClickedItemId]="clickedLotoPoint()?.id ?? null"
+                [fieldsToDisplay]="viewerFieldsToDisplay()"
+                [enableDragDrop]="config().enableReorder ?? false"
                 (selectedItemsEvent)="onLotoPointSelected($event)"
                 (rowClickedEvent)="onLotoPointClicked($event)"
                 (rowHoveredEvent)="onLotoPointHovered($event)"
+                (removeFromStandardClick)="lotoPointRemoveFromStandard.emit($event)"
+                (itemsReorderedEvent)="lotoPointsReordered.emit($event)"
               ></app-loto-point-display-table>
             </div>
           </div>
@@ -165,9 +169,13 @@
                 [hoverDebounceTime]="200"
                 [scrollToItemId]="scrollToLotoPointId()"
                 [externalClickedItemId]="clickedLotoPoint()?.id ?? null"
+                [fieldsToDisplay]="viewerFieldsToDisplay()"
+                [enableDragDrop]="config().enableReorder ?? false"
                 (selectedItemsEvent)="onLotoPointSelected($event)"
                 (rowClickedEvent)="onLotoPointClicked($event)"
                 (rowHoveredEvent)="onLotoPointHovered($event)"
+                (removeFromStandardClick)="lotoPointRemoveFromStandard.emit($event)"
+                (itemsReorderedEvent)="lotoPointsReordered.emit($event)"
               ></app-loto-point-display-table>
             </div>
           </div>

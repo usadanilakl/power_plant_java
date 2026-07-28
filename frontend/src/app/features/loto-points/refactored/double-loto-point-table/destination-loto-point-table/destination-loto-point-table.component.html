@@ -10,6 +10,8 @@
       [isTableIsolated]="true"
       [enableDragDrop]="true"
       [loadMoreEnabled]="false"
-      (itemsReorderedEvent)="onItemsReordered($event)">
+      [fieldsToDisplay]="destinationFields"
+      (itemsReorderedEvent)="onItemsReordered($event)"
+      (removeFromStandardClick)="onRemoveFromStandard($event)">
     </app-rf-loto-point-table>
   </div>

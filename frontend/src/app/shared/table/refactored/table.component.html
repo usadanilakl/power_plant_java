@@ -85,6 +85,8 @@
           }
           <th *ngFor="let column of columns()"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
+              [class.sticky-left]="column.sticky === 'left'"
+              [class.sticky-right]="column.sticky === 'right'"
               class="sortable-header">
             <div class="header-content" (click)="sortService.sortColumn(column, true)">
               <span>{{ column.header }}</span>
@@ -179,6 +181,8 @@
               (auxclick)="clickService.onRowMiddleClick(item, $event)"
               (mouseenter)="clickService.onCellHover(item, column)"
               (mouseleave)="clickService.onCellLeave()"
+              [class.sticky-left]="column.sticky === 'left'"
+              [class.sticky-right]="column.sticky === 'right'"
               class="table-cell"
             >
               <span *ngIf="!column.template">

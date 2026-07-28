@@ -247,3 +247,42 @@ app-table {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/*========== Sticky arrow buttons (LOTO Standard dual-table) ==========*/
+
+.sticky-arrow-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-text, #888);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease, transform 0.05s ease;
+}
+
+.sticky-arrow-btn.add:hover,
+.sticky-arrow-btn.remove:hover {
+  opacity: 1;
+  background: var(--accent-color, #2b7cff);
+  color: var(--header-text, #fff);
+  border-color: var(--accent-color, #2b7cff);
+}
+
+.sticky-arrow-btn:active {
+  transform: scale(0.94);
+}
+
+/* Row-hover brightens the arrow — subtle by default per user preference. */
+tr:hover .sticky-arrow-btn {
+  opacity: 1;
+  color: var(--accent-color, #2b7cff);
+  border-color: var(--accent-color, #2b7cff);
+}

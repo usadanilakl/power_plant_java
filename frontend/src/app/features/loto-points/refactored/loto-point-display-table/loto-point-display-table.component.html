@@ -7,7 +7,11 @@
   [hoveredItemId]="hoveredItemId()"
   [scrollToItemId]="scrollToItemId()"
   [externalClickedItemId]="externalClickedItemId()"
+  [fieldsToDisplay]="fieldsToDisplay()"
+  [enableDragDrop]="enableDragDrop()"
   (selectedItemsEvent)="selectedItemsEvent.emit($event)"
   (rowHoveredEvent)="rowHoveredEvent.emit($event)"
-  (bulkEditAppliedEvent)="bulkEditAppliedEvent.emit($event)">
+  (bulkEditAppliedEvent)="bulkEditAppliedEvent.emit($event)"
+  (itemsReorderedEvent)="itemsReorderedEvent.emit($event)"
+  (removeFromStandardClick)="removeFromStandardClick.emit($event)">
 </app-rf-loto-point-table>

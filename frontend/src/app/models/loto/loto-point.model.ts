@@ -19,11 +19,19 @@ export interface LotoPointCharacteristic {
  * Every real LotoPointModel field, plus synthetic-column keys used only by
  * {@link LotoPointDto.toTableColumns} and the mapper service. Synthetic
  * columns render derived data (e.g. "pids" fetches related P&ID files on
- * demand, "comment" is spliced in by LotoPointMapperService) — they have
- * no backing field on the DTO but must still appear in the exhaustive
- * {@code Record<LotoPointFieldName, Column>} shape below.
+ * demand, "comment" is spliced in by LotoPointMapperService) or per-row
+ * action buttons ("addToStandard" / "removeFromStandard" — sticky arrows
+ * used only in the LOTO Standard editor's LOTO Points tab).
+ * <p>
+ * Synthetic keys have no backing field on the DTO but must still appear in
+ * the exhaustive {@code Record<LotoPointFieldName, Column>} shape below.
  */
-export type LotoPointFieldName = keyof LotoPointModel | 'pids' | 'comment';
+export type LotoPointFieldName =
+  | keyof LotoPointModel
+  | 'pids'
+  | 'comment'
+  | 'addToStandard'
+  | 'removeFromStandard';
 
 export interface LotoPointModel extends BaseModel {
   unit: string | null;
@@ -551,6 +559,20 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: null,
       },
+      // Sticky-arrow synthetic keys — used only by the LOTO-Standard-editor
+      // dual-table; never a real form field. Stubs so the Record type-checks.
+      addToStandard: {
+        name: 'addToStandard',
+        label: 'Add to Standard',
+        type: 'text',
+        initialValue: null,
+      },
+      removeFromStandard: {
+        name: 'removeFromStandard',
+        label: 'Remove from Standard',
+        type: 'text',
+        initialValue: null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -768,6 +790,19 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         id: 'pidCount',
         header: 'P&ID Count',
         accessorFn: (item: LotoPointDto) => String(item.pidCount ?? 0),
+      },
+      // Sticky arrow columns — sit on the LOTO Standard editor's dual-table.
+      // The mapper service supplies the real Column definitions with sticky
+      // + template; these stubs only satisfy Record<LotoPointFieldName,Column>.
+      addToStandard: {
+        id: 'addToStandard',
+        header: '',
+        accessorFn: () => '',
+      },
+      removeFromStandard: {
+        id: 'removeFromStandard',
+        header: '',
+        accessorFn: () => '',
       },
     };
 

@@ -58,6 +58,27 @@
     }
   </ng-template>
 
+  <!-- Sticky per-row arrows for the LOTO Standard editor's dual-table.
+       Rendered only when the column is included in fieldsToDisplay — the
+       source table passes 'addToStandard' as its last field (sticky-right,
+       arrow points right → to the destination); the destination table
+       passes 'removeFromStandard' as its first field (sticky-left, arrow
+       points left ← back to the source pool). Subtle by default; the
+       CSS brightens on row hover per user preference. -->
+  <ng-template #addToStandardCellTemplate let-item>
+    <button type="button"
+            class="sticky-arrow-btn add"
+            title="Add to Standard"
+            (click)="onAddToStandardClick(item, $event)">➜</button>
+  </ng-template>
+
+  <ng-template #removeFromStandardCellTemplate let-item>
+    <button type="button"
+            class="sticky-arrow-btn remove"
+            title="Remove from Standard"
+            (click)="onRemoveFromStandardClick(item, $event)">←</button>
+  </ng-template>
+
   <!-- Table component -->
   <app-table
     #tableComponent

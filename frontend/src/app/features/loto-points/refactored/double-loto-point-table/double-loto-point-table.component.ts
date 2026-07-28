@@ -12,17 +12,21 @@ import { RfLotoPointStateService } from '../services/rf-loto-point-state.service
 import { SourceLotoPointTableComponent } from "./source-loto-point-table/source-loto-point-table.component";
 import { DestinationLotoPointTableComponent } from "./destination-loto-point-table/destination-loto-point-table.component";
 import { DoubleLotoPointTableService } from './double-loto-point-table.service';
+import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
+import { LotoPointDualFormComponent } from '../loto-point-dual-form/loto-point-dual-form.component';
 
 @Component({
   selector: 'app-double-loto-point-table',
   standalone: true,
-  imports: [CommonModule, SourceLotoPointTableComponent, DestinationLotoPointTableComponent],
+  imports: [CommonModule, SourceLotoPointTableComponent, DestinationLotoPointTableComponent, RfPopupProjectionComponent, LotoPointDualFormComponent],
   templateUrl: './double-loto-point-table.component.html',
   styleUrl: './double-loto-point-table.component.css',
 })
 export class DoubleLotoPointTableComponent implements OnInit {
   protected stateService = inject(RfLotoPointStateService);
-  private doubleTableService = inject(DoubleLotoPointTableService)
+  // Made protected so the template can bind to viewingPoint / closeViewingPoint
+  // for the double-click details popup added below.
+  protected doubleTableService = inject(DoubleLotoPointTableService);
 
   // Inputs
   selectedItems = input<LotoPointDto[]>([]);
