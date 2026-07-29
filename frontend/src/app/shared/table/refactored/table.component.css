@@ -487,73 +487,51 @@ td {
 
 /*========== Sticky columns (Column.sticky = 'left' | 'right') ==========*/
 
-/* Pin a column to the LEFT or RIGHT edge of the horizontal-scroll viewport.
- *
- * Headers (th.sticky-*) use native position:sticky — they live outside
- * cdk-virtual-scroll-viewport, so sticky works.
- *
- * Body cells (td.table-cell.sticky-*) use position:relative + a JS-driven
- * inline `left` offset applied by TableSyncService.applyStickyBodyOffsets
- * on every horizontal scroll. Native position:sticky on the body cells
- * is BROKEN inside cdk-virtual-scroll-viewport because its transformed
- * .cdk-virtual-scroll-content-wrapper becomes the sticky containing
- * block (which doesn't scroll relative to the viewport), so `left: 0`
- * resolves to the row's natural left edge and the cell scrolls with
- * the row instead of pinning.
- *
- * z-index bump keeps the pinned cell above other <td>s during scroll.
- * Background is opaque so cells passing behind it aren't visible through.
- */
-.table-cell.sticky-left,
-.table-cell.sticky-right {
-  position: relative;
-  z-index: 2;
-  background: var(--card-background, #fff);
+/* Hover-triggered floating action buttons — appear next to the currently
+ * hovered row, pinned to the viewport edge. Rendered OUTSIDE the
+ * cdk-virtual-scroll-viewport so nothing sticky-in-transformed-ancestor
+ * can drift or flicker. Visibility follows dataService.hoveredRow(). */
+.hover-action-overlay {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  overflow: visible;
 }
 
-.table-cell.sticky-left {
-  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.12);
+.hover-action-overlay.left { left: 0; }
+.hover-action-overlay.right { right: 0; }
+
+.hover-action-floating {
+  position: absolute;
+  pointer-events: auto;
+  transition: opacity 0.08s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
 }
 
-.table-cell.sticky-right {
-  box-shadow: -2px 0 4px -2px rgba(0, 0, 0, 0.12);
-}
+.hover-action-floating.left { left: 4px; }
+.hover-action-floating.right { right: 4px; }
 
-th.sticky-left {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  background: var(--card-background, #fff);
-  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.12);
+/* Row index column — narrow, non-clickable index shown in the first
+ * position when [showRowIndex]="true" (default). Subtle gray. */
+.row-index-cell, .row-index-header {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: right;
+  color: var(--muted-text, #98a2b3);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  user-select: none;
+  padding: 0 8px 0 6px;
 }
-
-th.sticky-right {
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  background: var(--card-background, #fff);
-  box-shadow: -2px 0 4px -2px rgba(0, 0, 0, 0.12);
-}
-
-/* When a row is selected / hovered / drag-hovered / drift-tinted, the
- * row-level color applied via a class rule or [ngStyle] sits on the <tr>,
- * but sticky <td>s override background above. Inherit so the tint shows
- * through — otherwise the sticky column stays flat white while the rest
- * of the row tints, which reads as a visual glitch on every hover. */
-tr:hover .table-cell.sticky-left,
-tr:hover .table-cell.sticky-right,
-tr.selected .table-cell.sticky-left,
-tr.selected .table-cell.sticky-right,
-tr.external-hover .table-cell.sticky-left,
-tr.external-hover .table-cell.sticky-right,
-tr.external-click .table-cell.sticky-left,
-tr.external-click .table-cell.sticky-right,
-tr.dragged .table-cell.sticky-left,
-tr.dragged .table-cell.sticky-right,
-tr.ghost-row .table-cell.sticky-left,
-tr.ghost-row .table-cell.sticky-right,
-tr.drag-hover-top .table-cell.sticky-left,
-tr.drag-hover-top .table-cell.sticky-right {
-  background: inherit;
+.row-index-header {
+  font-weight: 600;
+  color: var(--muted-text, #98a2b3);
 }
 

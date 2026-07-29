@@ -350,6 +350,24 @@ export interface IpcResult<T = void> {
   error?: string;
 }
 
+// One normalized entry in the "Updates / News" feed. Backend sources (work requests, plant
+// conversations, schedule) arrive via /ng/feed/recent; PJM day-ahead items are added client-side
+// with this same shape. Kept flat so the renderer can render every category uniformly.
+export type FeedCategory = 'WORK_REQUEST' | 'CONVERSATION' | 'SCHEDULE' | 'PJM' | 'CORK_BOARD';
+
+export interface FeedItem {
+  id: string;                 // stable identity for de-dup + read tracking, e.g. "WORK_REQUEST:123"
+  category: FeedCategory;
+  entityType?: string;
+  entityId?: number | null;
+  title: string;
+  summary?: string;
+  timestamp: string;          // ISO-8601; renderer sorts + relative-times it
+  changeType?: 'NEW' | 'UPDATED';
+  actor?: string | null;
+  severity?: 'info' | 'warning';
+}
+
 // Device Identity
 export interface DeviceConfig {
   deviceNumber: number;    // 0-99
@@ -513,7 +531,7 @@ export interface AppSettings {
 }
 
 // Personnel / Schedule
-export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | '';
+export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | 'L' | 'OFF' | '';
 
 export interface PersonnelEntry {
   name: string;

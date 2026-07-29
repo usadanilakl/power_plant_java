@@ -15,7 +15,8 @@ export type WidgetId =
   | 'personnel'
   | 'toi'
   | 'web-view-ams'
-  | 'cork-board';
+  | 'cork-board'
+  | 'updates';
 
 export interface WidgetDefinition {
   id: WidgetId;
@@ -68,6 +69,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'toi', title: 'TOI/TMOD', icon: 'description', iconColor: '#10b981', description: 'Active TOI/TMOD documents', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'web-view-ams', title: 'WebView AMS', icon: 'checklist', iconColor: '#14b8a6', description: 'Wired report values from WebView AMS', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 2, requiresSpringBoot: false },
   { id: 'cork-board', title: 'Cork-Board', icon: 'collections', iconColor: '#f59e0b', description: 'SharePoint Cork-Board PDFs and images', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 2, requiresSpringBoot: false },
+  { id: 'updates', title: 'Updates', icon: 'campaign', iconColor: '#f59e0b', description: 'Recent work requests, conversations, schedule & PJM changes', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 2, requiresSpringBoot: true },
 ];
 
 // 3-column grid, auto-placed top-to-bottom left-to-right
@@ -77,7 +79,7 @@ function buildDefaultPreset(): WidgetPlacement[] {
     'fire-impairment', 'gate-log', 'weather',
     'pjm', 'permits', 'maximo-lead-op',
     'external-links', 'contacts', 'paging-system',
-    'clock', 'notes', 'personnel', 'toi', 'web-view-ams', 'cork-board',
+    'clock', 'notes', 'personnel', 'toi', 'web-view-ams', 'cork-board', 'updates',
   ];
   return order.map((id, i) => ({
     widgetId: id,
@@ -85,7 +87,7 @@ function buildDefaultPreset(): WidgetPlacement[] {
     x: i % cols,
     y: Math.floor(i / cols),
     cols: 1,
-    rows: id === 'cork-board' ? 2 : 1,
+    rows: (id === 'cork-board' || id === 'updates') ? 2 : 1,
   }));
 }
 

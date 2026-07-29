@@ -1,4 +1,4 @@
-import { Component, input, signal, computed, output } from '@angular/core';
+import { Component, input, signal, computed, output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
@@ -7,6 +7,8 @@ import {
   ViewerDataSource,
   ViewerConfig,
 } from '../../../../shared/image/refactored/rf-unified-image-viewer/rf-unified-image-viewer.component';
+import { LotoPointContextMenuService } from '../../../loto-points/refactored/services/loto-point-context-menu.service';
+import { ImagesTabLotoPointContextMenuService } from './images-tab-loto-point-context-menu.service';
 
 /**
  * LOTO Standard Image Viewer Component
@@ -27,10 +29,22 @@ import {
     CommonModule,
     RfUnifiedImageViewerComponent,
   ],
+  providers: [
+    // Scope the LOTO Point context menu to include "Remove from Standard"
+    // only inside the Images tab. Angular's hierarchical DI means every
+    // descendant (RfUnifiedImageViewer → LotoPointDisplayTable →
+    // RfLotoPointTable) that injects LotoPointContextMenuService gets
+    // this subclass instead of the plant-wide singleton. Other pages
+    // (main /loto-points, tag generator, file editor's LOTO viewer) are
+    // untouched.
+    { provide: LotoPointContextMenuService, useClass: ImagesTabLotoPointContextMenuService },
+  ],
   templateUrl: './loto-standard-image-viewer.component.html',
   styleUrls: ['./loto-standard-image-viewer.component.css'],
 })
 export class LotoStandardImageViewerComponent {
+  private imagesTabContextMenu = inject(LotoPointContextMenuService) as ImagesTabLotoPointContextMenuService;
+
   lotoStandard = input<LotoStandardDto>(new LotoStandardDto());
 
   clickedLotoPoint = signal<LotoPointDto | null>(null);
@@ -75,6 +89,13 @@ export class LotoStandardImageViewerComponent {
 
   onRemoveFromStandard(point: LotoPointDto): void {
     if (point?.id != null) this.removeLotoPoint.emit(point);
+  }
+
+  constructor() {
+    // Right-click "Remove from Standard" fires through the same event
+    // as the floating-arrow overlay's click, so persistence flows via
+    // the parent form's onLotoPointRemoved handler (single code path).
+    this.imagesTabContextMenu.removeFromStandardCallback = (p) => this.onRemoveFromStandard(p);
   }
 
   onLotoPointsReordered(reordered: LotoPointDto[]): void {

@@ -64,6 +64,18 @@ export class PersonnelApiService {
     );
   }
 
+  /** Full calendar year of ShiftDay rows — for the year-at-a-glance view. Falls back to Supabase
+   *  full-year read when the hub is unreachable. */
+  getScheduleYear(year: number): Observable<ShiftDay[]> {
+    return this.http.get<ShiftDay[]>(`${this.base}/schedule/year/${year}`).pipe(
+      catchError(() => from(this.getScheduleYearFromSupabase(year))),
+    );
+  }
+
+  private async getScheduleYearFromSupabase(year: number): Promise<ShiftDay[]> {
+    return this.getScheduleRangeFromSupabase(`${year}-01-01`, `${year}-12-31`);
+  }
+
   getOnShiftNow(): Observable<ShiftEntry[]> {
     return this.http.get<ShiftEntry[]>(`${this.base}/schedule/on-shift-now`).pipe(
       catchError(() => from(this.getOnShiftNowFromSupabase())),
@@ -128,5 +140,15 @@ export class PersonnelApiService {
 
   getEmergencyContacts(): Observable<PersonnelContact[]> {
     return this.http.get<PersonnelContact[]>(`${this.base}/contacts/emergency`);
+  }
+
+  /**
+   * Fetch this user's calendar-app subscription URL (contains a signed 1-year token so third-party
+   * calendar apps can poll the .ics feed without Authorization headers). Backend endpoint is
+   * idempotent — repeat calls return the same URL.
+   */
+  getIcalUrl(): Observable<{ url: string; subscribeUrl: string; instructions?: string }> {
+    return this.http.get<{ url: string; subscribeUrl: string; instructions?: string }>(
+      `${this.base}/schedule/ical/url`);
   }
 }

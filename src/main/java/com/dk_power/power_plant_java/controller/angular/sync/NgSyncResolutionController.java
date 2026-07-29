@@ -498,34 +498,11 @@ public class NgSyncResolutionController {
     private List<FieldChange> buildFieldChangesFromData(String entityType, Long entityId,
                                                          Map<String, String> fieldData,
                                                          boolean existsLocally) {
-        List<FieldChange> changes = new ArrayList<>();
-        String hubMachineId = "HUB";
-        String hubMachineName = "Hub Server";
-        FieldChange.ChangeType changeType = existsLocally ? FieldChange.ChangeType.UPDATE : FieldChange.ChangeType.CREATE;
-
-        if (!existsLocally) {
-            // Add CREATE marker so FieldSyncService knows to create the entity
-            FieldChange createMarker = new FieldChange(
-                entityType, entityId, "_entity_",
-                null, "CREATED",
-                hubMachineId, hubMachineName,
-                FieldChange.ChangeType.CREATE
-            );
-            createMarker.setTimestamp(Instant.now());
-            changes.add(createMarker);
-        }
-
-        for (Map.Entry<String, String> entry : fieldData.entrySet()) {
-            FieldChange change = new FieldChange(
-                entityType, entityId, entry.getKey(),
-                null, entry.getValue(),
-                hubMachineId, hubMachineName,
-                changeType
-            );
-            change.setTimestamp(Instant.now());
-            changes.add(change);
-        }
-        return changes;
+        // Delegate to the single rel-type-aware builder. Building changes here WITHOUT stamping
+        // relationshipType made every accept-remote / per-field / bulk reconcile treat an
+        // @ManyToMany field (e.g. LotoPoint.pictures) as a scalar, so the join link was silently
+        // dropped — the dependency-aware pull path already used this builder, so unify on it.
+        return syncResolutionService.buildHubChangesWithRelTypes(entityType, entityId, fieldData, existsLocally);
     }
 
     /**

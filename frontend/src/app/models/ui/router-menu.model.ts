@@ -190,6 +190,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/admin/access-management', label: 'Access Management', icon: 'security', iconColor: '#EF5350' },
             { route: '/admin/supabase', label: 'Supabase Users', icon: 'cloud_sync', iconColor: '#00ACC1' },
             { route: '/admin/chat-audit', label: 'Chat Audit', icon: 'forum', iconColor: '#7E57C2' },
+            { route: '/admin/schedule-builder', label: 'Schedule Builder', icon: 'calendar_month', iconColor: '#26C6DA' },
             { route: '/backup', label: 'Backup', icon: 'backup', iconColor: '#66BB6A', separator: true },
             { route: '/sync', label: 'Sync Dashboard', icon: 'sync', iconColor: '#42A5F5' },
             { route: '/full-sync-to-server', label: 'Full Sync to Server', icon: 'cloud_upload', iconColor: '#26A69A' },

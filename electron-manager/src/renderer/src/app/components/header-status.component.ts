@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdvisoryService } from '../services/advisory.service';
 import { ElectronService, PjmStatus, PjmUnitStep } from '../services/electron.service';
+import { NewsService } from '../services/news.service';
 
 interface DaPillStep {
   label: string;
@@ -41,6 +42,12 @@ interface DaPillStep {
               [class.agc]="d.type === 'AGC'" [class.offline]="d.type === 'OFFLINE'">
           <b>{{ d.label }}</b>&nbsp;{{ d.type }}&nbsp;{{ d.time }}
         </span>
+      </button>
+
+      <button class="pill updates" *ngIf="unread() > 0" (click)="goUpdates()"
+              [title]="unread() + ' new update' + (unread() === 1 ? '' : 's')">
+        <span class="material-icons">campaign</span>
+        <span class="upd-count">{{ unread() }}</span>
       </button>
 
       <button class="test-btn" (click)="runDemo()" [disabled]="demoRunning()"
@@ -114,6 +121,11 @@ interface DaPillStep {
     .test-btn:hover:not(:disabled) { color: var(--text-primary); border-color: var(--text-muted); }
     .test-btn:disabled { opacity: 0.5; cursor: default; }
     .test-btn .material-icons { font-size: 15px; }
+
+    /* Updates bell pill */
+    .pill.updates { gap: 4px; border-color: rgba(245,158,11,0.6); color: rgb(245,158,11); background: rgba(245,158,11,0.10); }
+    .pill.updates .material-icons { color: rgb(245,158,11); }
+    .upd-count { font-weight: 800; font-variant-numeric: tabular-nums; }
   `],
 })
 export class HeaderStatusComponent implements OnInit, OnDestroy {
@@ -124,7 +136,12 @@ export class HeaderStatusComponent implements OnInit, OnDestroy {
     private advisoryService: AdvisoryService,
     private electron: ElectronService,
     private router: Router,
+    private news: NewsService,
   ) {}
+
+  /** Unread "Updates" count (signal-driven — reactive in the template). */
+  unread(): number { return this.news.unreadCount(); }
+  goUpdates(): void { this.router.navigate(['/updates']); }
 
   ngOnInit(): void {
     this.seedPjm();

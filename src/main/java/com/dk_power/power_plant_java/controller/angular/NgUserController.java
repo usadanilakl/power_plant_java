@@ -225,7 +225,7 @@ public class NgUserController {
         return ResponseEntity.ok(Map.of(
             "accessRoles", new String[]{
                 "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT",
-                "ROLE_NAES", "ROLE_JPOWER"
+                "ROLE_NAES", "ROLE_JPOWER", "ROLE_KIOSK"
             },
             "lotoRoles", new String[]{
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"

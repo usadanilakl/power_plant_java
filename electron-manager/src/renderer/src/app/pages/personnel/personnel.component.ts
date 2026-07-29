@@ -4,11 +4,29 @@ import { FormsModule } from '@angular/forms';
 import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport, PersonnelConfig, PersonnelStatusMeta } from '../../services/electron.service';
 import { ChatPanelComponent } from './chat-panel.component';
 
-const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BC2B8028F-8473-49EC-8B24-1FEBBB8D1584%7D&file=OPS%20Schedule%202026.xlsx&action=default&mobileredirect=true';
-const CONTACTS_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BE445C5F4-C235-45F7-8D29-F0613E875FA0%7D&file=EMERGENCY%20CONTACT%20LIST%20-%20EDITED%2011_2024.xlsx&action=default&mobileredirect=true';
+/**
+ * Build the SharePoint web-viewer URL for THIS year's Ops Schedule — the same file the parser
+ * reads (see electron-manager/src/main/managers/personnel.manager.ts::getSchedulePath). Path-based
+ * (`:x:/r/<path>?web=1`) so it's always current, not tied to a fragile SharePoint doc GUID that
+ * stales when the file is replaced (which is why the old hardcoded ...sourcedoc={GUID}... link
+ * opened the wrong / prior year's file).
+ */
+function getScheduleUrl(): string {
+  const year = new Date().getFullYear();
+  const path = `sites/JG/External/60 - Operations/60.05 Ops schedule/${year}/OPS Schedule ${year}.xlsx`;
+  return `https://jpowerusa.sharepoint.com/:x:/r/${encodeURI(path)}?web=1`;
+}
+
+/** Matches CONTACTS_PATH in personnel.manager.ts — kept as a helper so any future rename
+ *  updates in one place. */
+function getContactsUrl(): string {
+  const path = 'sites/JG/External/10 - Administration/PERSONNEL/EMERGENCY CONTACT LIST - EDITED 11_2024.xlsx';
+  return `https://jpowerusa.sharepoint.com/:x:/r/${encodeURI(path)}?web=1`;
+}
 
 const SHIFT_LABELS: Record<string, string> = {
-  'D': 'Day Shift', 'N': 'Night Shift', 'U': 'Off', 'P': 'PTO', 'T': 'Training', 'OCM': 'On Call Manager', '': 'Off',
+  'D': 'Day Shift', 'N': 'Night Shift', 'U': 'Unscheduled', 'P': 'PTO', 'T': 'Training',
+  'OCM': 'On Call Manager', 'L': 'Leads Meeting', 'OFF': 'Off', '': 'Off',
 };
 
 @Component({
@@ -67,11 +85,6 @@ const SHIFT_LABELS: Record<string, string> = {
                    [(ngModel)]="personnelConfig.intervalMinutes"
                    [disabled]="!personnelConfig.autoRefresh" />
             minutes
-          </label>
-          <label class="settings-inline" title="Local HTTP port the hub uses to nudge a refresh when this desktop is picked (fallback path).">
-            Trigger port
-            <input type="number" min="1024" max="65535"
-                   [(ngModel)]="personnelConfig.refreshTriggerPort" />
           </label>
           <button class="btn btn-primary" (click)="savePersonnelConfig()" [disabled]="savingSettings">
             {{ savingSettings ? 'Saving...' : 'Save' }}
@@ -134,14 +147,26 @@ const SHIFT_LABELS: Record<string, string> = {
           </div>
         </div>
 
-        <!-- Full schedule table -->
+        <!-- Full schedule -->
         <div class="section" *ngIf="status?.status === 'available'">
           <div class="schedule-header-row">
             <h2 class="section-title">
               <span class="material-icons section-icon">event_note</span>
               Schedule
             </h2>
-            <div class="month-selector">
+            <div class="schedule-view-toggle">
+              <button class="view-toggle-btn" [class.active]="scheduleView === 'month'"
+                      (click)="setScheduleView('month')">
+                <span class="material-icons view-toggle-icon">calendar_view_month</span>
+                Month
+              </button>
+              <button class="view-toggle-btn" [class.active]="scheduleView === 'year'"
+                      (click)="setScheduleView('year')">
+                <span class="material-icons view-toggle-icon">calendar_view_week</span>
+                Year
+              </button>
+            </div>
+            <div class="month-selector" *ngIf="scheduleView === 'month'">
               <button *ngFor="let m of monthOptions"
                       class="month-btn"
                       [class.active]="m.idx === selectedMonth"
@@ -150,7 +175,59 @@ const SHIFT_LABELS: Record<string, string> = {
               </button>
             </div>
           </div>
-          <div class="schedule-table-wrap">
+
+          <!-- Year-at-a-glance -->
+          <div class="year-view" *ngIf="scheduleView === 'year'">
+            <div class="year-controls">
+              <label class="year-filter">
+                <span class="year-filter-label">Show:</span>
+                <select [(ngModel)]="yearPersonFilter" (ngModelChange)="onYearFilterChange()">
+                  <option value="">Whole plant (dominant shift per day)</option>
+                  <option *ngFor="let p of yearPersonOptions()" [value]="p.name">
+                    {{ p.name }}{{ p.group ? ' (' + p.group + ')' : '' }}
+                  </option>
+                </select>
+              </label>
+              <div class="year-legend">
+                <span class="legend-item"><span class="legend-chip year-D">D</span> Day</span>
+                <span class="legend-item"><span class="legend-chip year-N">N</span> Night</span>
+                <span class="legend-item"><span class="legend-chip year-OCM">OCM</span> On Call</span>
+                <span class="legend-item"><span class="legend-chip year-P">P</span> PTO</span>
+                <span class="legend-item"><span class="legend-chip year-T">T</span> Training</span>
+                <span class="legend-item"><span class="legend-chip year-L">L</span> Leads</span>
+              </div>
+            </div>
+
+            <div class="year-grids">
+              <div class="mini-month" *ngFor="let g of yearMonthGrids">
+                <button class="mini-month-header" (click)="jumpFromYear(g.month)"
+                        title="Open month view">
+                  {{ g.label }}
+                </button>
+                <div class="mini-wd-row">
+                  <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                </div>
+                <div class="mini-cells">
+                  <ng-container *ngFor="let c of g.cells; let i = index">
+                    <span *ngIf="c.leadingBlank" class="mini-cell blank"></span>
+                    <span *ngIf="!c.leadingBlank"
+                          class="mini-cell"
+                          [class.today]="c.isToday"
+                          [class.has-chips]="c.chips.length > 0"
+                          [attr.data-shift]="c.shift"
+                          [title]="cellTitle(c)">
+                      <span class="mini-day">{{ c.day }}</span>
+                      <span class="mini-chips" *ngIf="c.chips.length > 0">
+                        <span class="mini-chip" *ngFor="let chip of c.chips"
+                              [attr.data-shift]="chip.shift">{{ chip.crew }}</span>
+                      </span>
+                    </span>
+                  </ng-container>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="schedule-table-wrap" *ngIf="scheduleView === 'month'">
             <table class="schedule-table">
               <thead>
                 <tr>
@@ -565,22 +642,186 @@ const SHIFT_LABELS: Record<string, string> = {
       color: var(--text-muted); cursor: pointer; padding: 2px; display: inline-flex; }
     .search-clear:hover { color: var(--text-primary); }
     .search-clear .material-icons { font-size: 16px; }
-    .settings-active { color: var(--accent, #2f80ed); }
-    .settings-panel { background: var(--surface-alt, #f6f8fa); border: 1px solid var(--border-color, #d0d7de);
-      border-radius: 6px; padding: 12px 14px; margin: 8px 0 12px; }
-    .settings-title { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 4px; }
-    .settings-title .material-icons { font-size: 18px; }
-    .settings-help { font-size: 12px; color: var(--text-muted, #666); margin-bottom: 10px; }
-    .settings-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .settings-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-    .settings-inline input[type="number"] { width: 72px; padding: 3px 6px; font-size: 13px;
-      border: 1px solid var(--border-color, #d0d7de); border-radius: 4px; }
-    .settings-msg { font-size: 12px; color: var(--text-muted, #666); }
-    .settings-status { margin-top: 8px; font-size: 12px; display: flex; gap: 12px; align-items: center; }
-    .status-refreshing { display: inline-flex; align-items: center; gap: 4px; color: var(--accent, #2f80ed); }
-    .status-error { color: #c95252; }
+    .settings-active { color: var(--accent-primary); }
+    .settings-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--border-radius, 8px);
+      padding: 14px 16px;
+      margin: 8px 0 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .settings-title {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 600; font-size: 14px;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .settings-title .material-icons { font-size: 18px; color: var(--accent-primary); }
+    .settings-help { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
+    .settings-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+    .settings-inline {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--text-primary);
+    }
+    .settings-inline input[type="number"] {
+      width: 72px; padding: 5px 8px; font-size: 13px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      outline: none;
+    }
+    .settings-inline input[type="number"]:focus { border-color: var(--accent-primary); }
+    .settings-inline input[type="checkbox"] { accent-color: var(--accent-primary); }
+    .settings-msg { font-size: 12px; color: var(--accent-success); }
+    .settings-status { margin-top: 10px; font-size: 12px; display: flex; gap: 12px; align-items: center; }
+    .status-refreshing { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-primary); }
+    .status-error { color: var(--accent-error); }
     .spin { animation: spin 1.4s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Year-at-a-glance view ────────────────────────────────────────── */
+    .schedule-view-toggle {
+      display: inline-flex;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-right: 12px;
+    }
+    .view-toggle-btn {
+      background: transparent;
+      border: none;
+      padding: 6px 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .view-toggle-btn:hover:not(.active) { background: var(--bg-card-hover); color: var(--text-primary); }
+    .view-toggle-btn.active { background: var(--accent-primary); color: #fff; }
+    .view-toggle-btn + .view-toggle-btn { border-left: 1px solid var(--border-color); }
+    .view-toggle-icon { font-size: 16px; }
+
+    .year-view { margin-top: 12px; }
+    .year-controls {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .year-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+    .year-filter select {
+      padding: 5px 10px; font-size: 13px;
+      background: var(--bg-secondary); color: var(--text-primary);
+      border: 1px solid var(--border-color); border-radius: 4px;
+      min-width: 240px;
+    }
+    .year-filter select:focus { outline: none; border-color: var(--accent-primary); }
+    .year-filter-label { font-weight: 600; color: var(--text-primary); }
+    .year-legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 11px; color: var(--text-secondary); }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 20px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+
+    .year-grids {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .mini-month {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .mini-month-header {
+      background: transparent; border: none;
+      font-size: 13px; font-weight: 700; color: var(--text-primary);
+      padding: 4px 6px; margin-bottom: 4px;
+      cursor: pointer; width: 100%; text-align: left; border-radius: 4px;
+    }
+    .mini-month-header:hover { background: var(--bg-card-hover); color: var(--accent-primary); }
+    .mini-wd-row {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+      margin-bottom: 3px; padding: 0 2px;
+    }
+    .mini-wd-row span {
+      text-align: center; font-size: 9px; color: var(--text-muted);
+      font-weight: 600; text-transform: uppercase;
+    }
+    .mini-cells {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 0 2px;
+    }
+    .mini-cell {
+      /* Wider than tall so crew chips fit in a horizontal row under the day number. */
+      min-height: 36px;
+      display: flex; flex-direction: column;
+      align-items: stretch; justify-content: flex-start;
+      font-size: 10px; color: var(--text-primary);
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      padding: 2px 3px;
+      gap: 1px;
+      overflow: hidden;
+    }
+    .mini-day {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: left;
+      line-height: 1;
+    }
+    .mini-cell.has-chips .mini-day { color: var(--text-secondary); }
+    .mini-cell.blank { background: transparent; padding: 0; }
+    .mini-cell.today { outline: 2px solid var(--accent-primary); font-weight: 700; }
+
+    /* Row of crew chips under the day number in whole-plant year mode. Wraps if more than
+       ~3 crews had work on that day. Each chip = crew letter, background = shift color. */
+    .mini-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      align-items: center;
+    }
+    .mini-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 12px;
+      height: 12px;
+      padding: 0 3px;
+      border-radius: 2px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      background: var(--text-muted);
+    }
+    .mini-chip[data-shift="D"]   { background: #1976d2; }
+    .mini-chip[data-shift="N"]   { background: #3f51b5; }
+    .mini-chip[data-shift="OCM"] { background: #f57c00; }
+    .mini-chip[data-shift="P"]   { background: #78909c; }
+    .mini-chip[data-shift="T"]   { background: #7e57c2; }
+    .mini-chip[data-shift="L"]   { background: #5c3317; }
+
+    /* Shift color palette on the mini cells (same hues as the JG portal + PWA legends). */
+    .mini-cell[data-shift="D"],   .legend-chip.year-D   { background: #1976d2; color: #fff; }
+    .mini-cell[data-shift="N"],   .legend-chip.year-N   { background: #3f51b5; color: #fff; }
+    .mini-cell[data-shift="OCM"], .legend-chip.year-OCM { background: #f57c00; color: #fff; }
+    .mini-cell[data-shift="P"],   .legend-chip.year-P   { background: #78909c; color: #fff; }
+    .mini-cell[data-shift="T"],   .legend-chip.year-T   { background: #7e57c2; color: #fff; }
+    .mini-cell[data-shift="L"],   .legend-chip.year-L   { background: #5c3317; color: #fff; }
+    .mini-cell[data-shift="U"]                          { background: #90a4ae; color: #fff; }
+    .mini-cell[data-shift="OFF"]                        { background: var(--bg-secondary); color: var(--text-muted); }
+    /* When crew chips are showing, the chips carry the shift colour — reset the cell background
+       so the day number + chip strip are readable. */
+    .mini-cell.has-chips[data-shift]                    { background: var(--bg-secondary); color: var(--text-primary); }
   `]
 })
 export class PersonnelComponent implements OnInit {
@@ -618,6 +859,24 @@ export class PersonnelComponent implements OnInit {
 
   selectedMonth: number = new Date().getMonth();
   monthOptions: { idx: number; label: string }[] = [];
+
+  // Year-at-a-glance view: 12 mini-month grids for the current schedule year, colored per shift.
+  scheduleView: 'month' | 'year' = 'month';
+  /** Optional person filter for year view. Empty string = "plant year" (colors by dominant shift
+   *  per day across the whole roster). Setting a name filters cells to that person only. */
+  yearPersonFilter: string = '';
+  yearMonthGrids: {
+    month: number;
+    label: string;
+    cells: {
+      iso: string;
+      day: number;
+      shift: string;             // legacy: dominant shift for filtered mode; used for whole-cell tint
+      chips: { crew: string; shift: string }[];  // whole-plant mode: which crew is on which shift
+      isToday: boolean;
+      leadingBlank: boolean;
+    }[];
+  }[] = [];
 
   // Pre-computed for the selected month to avoid recalculation on every change detection
   groups: string[] = [];
@@ -676,6 +935,134 @@ export class PersonnelComponent implements OnInit {
   selectMonth(idx: number): void {
     this.selectedMonth = idx;
     this.computeDerived();
+  }
+
+  /** Toggle Month/Year view. Building the year grid is cheap (12 × ~30 days) so we compute
+   *  eagerly on toggle rather than lazy in a getter. */
+  setScheduleView(view: 'month' | 'year'): void {
+    this.scheduleView = view;
+    if (view === 'year') this.buildYearGrids();
+  }
+
+  onYearFilterChange(): void {
+    // Person filter changed — rebuild the coloured cells.
+    if (this.scheduleView === 'year') this.buildYearGrids();
+  }
+
+  /** Everybody the year view can filter to — flat list of all people currently on the roster. */
+  yearPersonOptions(): PersonnelEntry[] {
+    return this.status?.allPersonnel ?? [];
+  }
+
+  /** Compute the 12 mini-month grid cells for the currently selected schedule year. */
+  private buildYearGrids(): void {
+    const people = this.status?.allPersonnel ?? [];
+    if (people.length === 0) {
+      this.yearMonthGrids = [];
+      return;
+    }
+    const year = new Date().getFullYear();
+    const todayIso = this.isoOfLocal(new Date());
+    const filter = this.yearPersonFilter?.trim();
+
+    // Two output maps:
+    //   dayShift  → cell background (dominant shift for filtered mode; blank in whole-plant mode)
+    //   dayChips  → whole-plant chips: which crew(s) worked which shift(s) each day
+    const dayShift = new Map<string, string>();
+    const dayChips = new Map<string, { crew: string; shift: string }[]>();
+
+    if (filter) {
+      const person = people.find(p => p.name === filter);
+      if (person) {
+        for (const s of person.schedule || []) {
+          if (!s?.date) continue;
+          const shift = (s.shift || '').toString().toUpperCase();
+          dayShift.set(s.date, shift);
+          // Single-person filter: still emit one chip so the crew letter is visible on the cell.
+          if (shift && person.group) {
+            dayChips.set(s.date, [{ crew: person.group, shift }]);
+          }
+        }
+      }
+    } else {
+      // Whole-plant mode: for each date, collect the (crew, shift) pairs where at least one
+      // person from that crew is on that shift. Skips 'OFF', 'U' and empty — those aren't
+      // interesting clips to draw. Deduped so we don't render the same crew-letter twice.
+      const seen = new Map<string, Set<string>>(); // iso → set of "crew|shift"
+      for (const p of people) {
+        if (!p.schedule) continue;
+        for (const s of p.schedule) {
+          if (!s?.date || !s.shift) continue;
+          const shift = s.shift.toString().toUpperCase();
+          if (shift === 'OFF' || shift === 'U' || shift === '') continue;
+          // Prefer per-month crew (rotation-aware) if we have it; fall back to person's default.
+          const monthIdx = new Date(s.date + 'T12:00:00').getMonth();
+          const crew = p.groupByMonth?.[String(monthIdx)] || p.group || '';
+          if (!crew) continue;
+          const key = crew + '|' + shift;
+          if (!seen.has(s.date)) seen.set(s.date, new Set());
+          if (seen.get(s.date)!.has(key)) continue;
+          seen.get(s.date)!.add(key);
+          if (!dayChips.has(s.date)) dayChips.set(s.date, []);
+          dayChips.get(s.date)!.push({ crew, shift });
+        }
+      }
+      // Sort chips within each day so the visual order is stable: D → N → OCM → T → L → others.
+      const shiftRank: Record<string, number> = { D: 0, N: 1, OCM: 2, T: 3, L: 4, P: 5 };
+      for (const chips of dayChips.values()) {
+        chips.sort((a, b) => {
+          const ra = shiftRank[a.shift] ?? 9;
+          const rb = shiftRank[b.shift] ?? 9;
+          if (ra !== rb) return ra - rb;
+          return a.crew.localeCompare(b.crew);
+        });
+      }
+    }
+
+    const grids: typeof this.yearMonthGrids = [];
+    const fmt = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (let m = 0; m < 12; m++) {
+      const first = new Date(year, m, 1);
+      const last = new Date(year, m + 1, 0);
+      const cells: typeof this.yearMonthGrids[0]['cells'] = [];
+      for (let b = 0; b < first.getDay(); b++) {
+        cells.push({ iso: '', day: 0, shift: '', chips: [], isToday: false, leadingBlank: true });
+      }
+      for (let d = 1; d <= last.getDate(); d++) {
+        const iso = this.isoOfLocal(new Date(year, m, d));
+        cells.push({
+          iso,
+          day: d,
+          shift: dayShift.get(iso) || '',
+          chips: dayChips.get(iso) || [],
+          isToday: iso === todayIso,
+          leadingBlank: false,
+        });
+      }
+      grids.push({ month: m, label: fmt[m], cells });
+    }
+    this.yearMonthGrids = grids;
+  }
+
+  jumpFromYear(monthIdx: number): void {
+    this.selectedMonth = monthIdx;
+    this.scheduleView = 'month';
+    this.computeDerived();
+  }
+
+  /** Tooltip for a year-view mini-cell — lists crew:shift pairs for whole-plant mode, or
+   *  falls back to the single dominant shift label for filtered mode / no chips. */
+  cellTitle(c: { iso: string; shift: string; chips: { crew: string; shift: string }[] }): string {
+    if (!c.iso) return '';
+    if (c.chips.length === 0) return `${c.iso} — ${c.shift || 'Off'}`;
+    return `${c.iso}\n` + c.chips.map(x => `${x.crew}: ${x.shift}`).join('\n');
+  }
+
+  private isoOfLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
   }
 
   private computeDerived(): void {
@@ -822,11 +1209,11 @@ export class PersonnelComponent implements OnInit {
   }
 
   openSchedule(): void {
-    this.electronService.openExternal(SCHEDULE_URL);
+    this.electronService.openExternal(getScheduleUrl());
   }
 
   openContacts(): void {
-    this.electronService.openExternal(CONTACTS_URL);
+    this.electronService.openExternal(getContactsUrl());
   }
 
   async loadContractors(forceRefresh = false): Promise<void> {

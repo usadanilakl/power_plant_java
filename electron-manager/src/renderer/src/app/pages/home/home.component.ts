@@ -20,6 +20,7 @@ import { PersonnelWidgetComponent } from './widgets/personnel-widget.component';
 import { ToiWidgetComponent } from './widgets/toi-widget.component';
 import { WebViewAmsWidgetComponent } from './widgets/web-view-ams-widget.component';
 import { CorkBoardWidgetComponent } from './widgets/cork-board-widget.component';
+import { UpdatesWidgetComponent } from './widgets/updates-widget.component';
 import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.component';
 import { BrandHeaderComponent } from './brand-header.component';
 
@@ -38,7 +39,7 @@ interface DashboardGridsterItem extends GridsterItem {
     PjmWidgetComponent, PermitsWidgetComponent, MaximoWidgetComponent, ExternalLinksWidgetComponent,
     ContactsWidgetComponent, PagingWidgetComponent, ClockWidgetComponent,
     NotesWidgetComponent, PersonnelWidgetComponent, ToiWidgetComponent,
-    WebViewAmsWidgetComponent, CorkBoardWidgetComponent,
+    WebViewAmsWidgetComponent, CorkBoardWidgetComponent, UpdatesWidgetComponent,
     DashboardEditToolbarComponent, BrandHeaderComponent,
   ],
   template: `
@@ -160,6 +161,8 @@ interface DashboardGridsterItem extends GridsterItem {
             <app-web-view-ams-widget *ngSwitchCase="'web-view-ams'"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
             <app-cork-board-widget *ngSwitchCase="'cork-board'"
+              [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
+            <app-updates-widget *ngSwitchCase="'updates'"
               [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
           </ng-container>
           </div>

@@ -44,28 +44,13 @@ export class TableSyncService {
       .viewport()!
       .scrolledIndexChange.subscribe(() => {
         this.syncHeaderScroll();
-        // Vertical virtualization: rows that were off-screen are freshly
-        // mounted without our transform → re-apply on every virtual scroll
-        // change so sticky cells stay pinned after a scroll-in.
-        this.applyStickyBodyOffsets();
         this.checkForLoadMore();
       });
 
-    // Body viewport scroll → move the header AND re-apply sticky-cell
-    // offsets. position:sticky on body <td>s is a no-op here because
-    // cdk-virtual-scroll injects a .cdk-virtual-scroll-content-wrapper
-    // with `transform: translateY(...)` as an ancestor, which becomes
-    // the containing block for sticky and pins the cell to the wrapper
-    // (not the viewport) — so sticky-left/right cells scroll with the
-    // row instead of pinning to the viewport edge. We compensate with a
-    // translateX derived from viewport.scrollLeft. Header <th>s are
-    // outside the CDK viewport, so their native sticky still works.
+    // Body viewport scroll → move the header.
     const viewportElement =
       this.dataService.viewport()!.elementRef.nativeElement;
-    const scrollHandler = () => {
-      this.syncHeaderScroll();
-      this.applyStickyBodyOffsets();
-    };
+    const scrollHandler = () => this.syncHeaderScroll();
     viewportElement.addEventListener('scroll', scrollHandler);
     this.viewportScrollEl = viewportElement;
     this.viewportScrollHandler = scrollHandler;
@@ -81,7 +66,6 @@ export class TableSyncService {
         this.isSyncingScroll = true;
         vp.scrollLeft = headerElement.scrollLeft;
         this.isSyncingScroll = false;
-        this.applyStickyBodyOffsets();
       };
       headerElement.addEventListener('scroll', headerScrollHandler);
       this.headerScrollEl = headerElement;
@@ -89,41 +73,6 @@ export class TableSyncService {
     }
 
     this.destroyRef.onDestroy(() => this.teardownScrollSync());
-  }
-
-  /**
-   * Manually pin body sticky-left/right cells to the viewport edges via
-   * position:relative + inline `left` offset. Required because cdk-
-   * virtual-scroll-viewport's transformed .cdk-virtual-scroll-content-
-   * wrapper breaks native position:sticky on <td> (spec: sticky pins to
-   * the containing block, and a transformed ancestor becomes the
-   * containing block — but that ancestor doesn't scroll horizontally
-   * relative to the viewport, so sticky effectively resolves to
-   * static-in-flow and the cell scrolls with the row).
-   * <p>
-   * Sticky-left cell natural position is at row's left edge. With
-   * position:relative + left:scrollLeft it shifts right to viewport's
-   * left edge. Sticky-right cell natural position is at row's right
-   * edge; left:(scrollLeft - overflow) shifts it left to viewport's
-   * right edge (overflow = tableWidth - viewportWidth = the amount by
-   * which the row extends beyond the visible viewport).
-   * <p>
-   * Called on every scroll (header or body sync) and after every
-   * vertical virtual-scroll change (new rows arrive with no inline left
-   * and would flash at their natural position for one frame otherwise).
-   */
-  applyStickyBodyOffsets(): void {
-    const viewport = this.dataService.viewport()?.elementRef.nativeElement;
-    const bodyTable = this.dataService.bodyTable()?.nativeElement;
-    if (!viewport || !bodyTable) return;
-    const scrollLeft = viewport.scrollLeft;
-    const overflow = Math.max(0, bodyTable.offsetWidth - viewport.clientWidth);
-    const leftPx = scrollLeft + 'px';
-    const rightPx = (scrollLeft - overflow) + 'px';
-    const leftCells = bodyTable.querySelectorAll<HTMLElement>('.table-cell.sticky-left');
-    const rightCells = bodyTable.querySelectorAll<HTMLElement>('.table-cell.sticky-right');
-    for (let i = 0; i < leftCells.length; i++) leftCells[i].style.left = leftPx;
-    for (let i = 0; i < rightCells.length; i++) rightCells[i].style.left = rightPx;
   }
 
   private teardownScrollSync(): void {
@@ -201,9 +150,6 @@ export class TableSyncService {
           (cell as HTMLElement).style.maxWidth = width + 'px';
         }
       });
-      // Column widths just changed → the row's total width and the
-      // sticky-right anchor shift with it.
-      this.applyStickyBodyOffsets();
     });
   }
 
@@ -290,9 +236,6 @@ export class TableSyncService {
         this.dataService.viewport()!.checkViewportSize();
       }
       this.synchronizeColumnWidths();
-      // Viewport width just changed → overflow amount changed → the
-      // sticky-right pin target shifted.
-      this.applyStickyBodyOffsets();
     });
 
     if (this.dataService.viewport()!.elementRef.nativeElement) {

@@ -5,7 +5,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import * as events from '../ipc/events';
-import type { AppStatus, IpcResult, DeviceConfig, DeviceRegistryResponse } from '../../shared/types';
+import type { AppStatus, IpcResult, DeviceConfig, DeviceRegistryResponse, FeedItem } from '../../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Identity
@@ -293,6 +293,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(events.IPC_CORK_BOARD_CREATE_ACTION, request),
   corkBoardSubmitAction: (request: any): Promise<any> =>
     ipcRenderer.invoke(events.IPC_CORK_BOARD_SUBMIT_ACTION, request),
+
+  // Updates / News feed
+  newsList: (): Promise<IpcResult<FeedItem[]>> => ipcRenderer.invoke(events.IPC_NEWS_LIST),
+  newsRefresh: (): Promise<IpcResult<FeedItem[]>> => ipcRenderer.invoke(events.IPC_NEWS_REFRESH),
+  onNewsUpdate: (callback: (items: FeedItem[]) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, items: FeedItem[]) => callback(items);
+    ipcRenderer.on(events.IPC_NEWS_UPDATE, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_NEWS_UPDATE, sub); };
+  },
 
   // Personnel / Schedule
   personnelGetStatus: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_STATUS),

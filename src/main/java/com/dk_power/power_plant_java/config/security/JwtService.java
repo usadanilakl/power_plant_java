@@ -210,6 +210,54 @@ public class JwtService {
         return SUPABASE_SESSION_TTL_MS / 1000L;
     }
 
+    // ── Signing (long-lived iCal subscription token) ────────────────────────
+    //
+    // Calendar subscription apps (Google Calendar, Apple Calendar, Outlook) can't send
+    // Authorization headers on their poll requests, so the schedule .ics URL has to be
+    // publicly accessible with the auth folded INTO the URL. We fold it in as a signed JWT.
+    //
+    // TTL = 1 year. Revocation is currently limited to hub-secret rotation (which invalidates all
+    // outstanding iCal tokens across all users) — good enough for the current threat model.
+
+    private static final long ICAL_TOKEN_TTL_MS = 365L * 24 * 60 * 60 * 1000L; // 1 year
+    private static final String ICAL_AUDIENCE = "schedule-ical";
+
+    /** Mint a long-lived JWT to embed in the user's iCal subscription URL. Signed with the same
+     *  hub key that mints session tokens, but tagged with {@code aud=schedule-ical} so the ical
+     *  endpoint won't accept a plain session token, and vice versa. */
+    public String generateIcalToken(User user) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + ICAL_TOKEN_TTL_MS);
+        return Jwts.builder()
+                .issuer(hubIssuer)
+                .subject(String.valueOf(user.getId()))
+                .audience().add(ICAL_AUDIENCE).and()
+                .claim("userId", user.getId())
+                .claim("purpose", "schedule-ical")
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(hubPrivateKey, Jwts.SIG.RS256)
+                .compact();
+    }
+
+    /**
+     * Verify an iCal subscription JWT and return the {@code userId}. Throws {@link JwtException}
+     * on bad signature / expired / wrong audience. The {@code aud=schedule-ical} check prevents a
+     * leaked session token from being reused as an ical URL and vice versa.
+     */
+    public Long verifyIcalToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(hubPublicKey)
+                .requireAudience(ICAL_AUDIENCE)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        Object uid = claims.get("userId");
+        if (uid instanceof Number n) return n.longValue();
+        if (uid instanceof String s) return Long.parseLong(s);
+        throw new IllegalArgumentException("iCal token has no userId claim");
+    }
+
     // ── Verification (either issuer) ─────────────────────────────────────────
 
     /**

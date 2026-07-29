@@ -58,6 +58,15 @@ public class ShiftDay extends BaseIdEntity {
     private String source;
 
     /**
+     * Schedule v2 — JSON array of {@link com.dk_power.power_plant_java.dto.schedule.ScheduleEventFlag}
+     * folded in by the materialiser from overlapping {@code ScheduleEvent} rows, so consumer surfaces
+     * can render day banners/icons without a second query. Null for v1 (SharePoint-parsed) rows.
+     * Synced (NOT {@code @JsonIgnore}) so all consumers and the Supabase mirror receive it.
+     */
+    @Column(name = "event_flags_json", columnDefinition = "TEXT")
+    private String eventFlagsJson;
+
+    /**
      * Local-only refresh timestamp. Excluded from field-level sync tracking so a no-op refresh
      * doesn't emit FieldChange rows across the whole ShiftDay horizon every interval.
      * {@link com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker} skips {@code @JsonIgnore}

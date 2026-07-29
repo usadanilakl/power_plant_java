@@ -58,6 +58,14 @@ public class EntityTableRegistry {
         Map.entry("User", "users"),                // @Table(name = "users")
         Map.entry("Role", "roles"),                // @Table(name = "roles")
         Map.entry("ShiftDay", "shift_days"),       // @Table(name = "shift_days")
+        // Schedule v2 (crew patterns, assignments, events, coverage, PTO, ad-hoc overrides)
+        Map.entry("CrewPattern", "crew_pattern"),
+        Map.entry("CrewAssignment", "crew_assignment"),
+        Map.entry("ScheduleEvent", "schedule_event"),
+        Map.entry("PtoRequest", "pto_request"),
+        Map.entry("CoverageRequest", "coverage_request"),
+        Map.entry("CoverageSignup", "coverage_signup"),
+        Map.entry("ScheduleDayOverride", "schedule_day_override"),
         Map.entry("RecurringPm", "recurring_pm"),  // @Table(name = "recurring_pm")
         Map.entry("MaximoTicketAsset", "maximo_ticket_asset"), // Maximo SR/WO → asset index
         Map.entry("MaximoFormTemplate", "maximo_form_template"),     // electronic task-form definitions
@@ -152,6 +160,15 @@ public class EntityTableRegistry {
         "Value",
         "User",
         "ShiftDay",
+        // Schedule v2 — CrewPattern before CrewAssignment (FK); PtoRequest before CoverageRequest
+        // (FK); CoverageRequest before CoverageSignup (FK). All also FK User (tier 1, above).
+        "CrewPattern",
+        "CrewAssignment",
+        "ScheduleEvent",
+        "PtoRequest",
+        "CoverageRequest",
+        "CoverageSignup",
+        "ScheduleDayOverride",
         "RecurringPm",
         "MaximoTicketAsset",
         "MaximoFormTemplate",

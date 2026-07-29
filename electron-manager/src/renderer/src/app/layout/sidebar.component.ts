@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ElectronService, AppStatus, AppState, APP_DISPLAY_NAME } from '../services/electron.service';
+import { NewsService } from '../services/news.service';
 
 interface NavItem {
   label: string;
@@ -352,6 +353,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   navItems: NavItem[] = [
     { label: 'Home', route: '/', icon: 'home', color: '#3b82f6' },
     { label: 'PID App', route: '/pid-app', icon: 'dashboard', color: '#8b5cf6' },
+    { label: 'Updates', route: '/updates', icon: 'campaign', color: '#f59e0b', badge: null },
     { label: 'Permits', route: '', icon: 'assignment', color: '#8b5cf6', action: 'open-permits-monitor' },
     // Lead Operator WOs — opens the Spring Boot bundle page via iframe (?path= deep link).
     // Reuses the existing SpringBootUiComponent route so we don't duplicate the table/dialog UI.
@@ -374,7 +376,16 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Settings', route: '/settings', icon: 'settings', color: '#a1a1aa' }
   ];
 
-  constructor(private electronService: ElectronService) {}
+  private news = inject(NewsService);
+
+  constructor(private electronService: ElectronService) {
+    // Keep the Updates nav badge in sync with the unread feed count (signal-driven).
+    effect(() => {
+      const n = this.news.unreadCount();
+      const item = this.navItems.find(i => i.route === '/updates');
+      if (item) item.badge = n > 0 ? n : null;
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     this.version = await this.electronService.getAppVersion();

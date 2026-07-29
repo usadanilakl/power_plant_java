@@ -105,6 +105,11 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "ADMIN")
+                // Read-only KIOSK role: an unattended display (e.g. a wall monitor whose own network can't
+                // reach Maximo) may GET Maximo data (the PM overview) but never write. Reads are @GetMapping
+                // and writes @PostMapping under this path, so a method-scoped matcher grants KIOSK read-only.
+                // Must precede the generic maximo rule below (first match wins), which still denies KIOSK on writes.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
                 .requestMatchers("/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/**").authenticated()
                 .requestMatchers("/api/pwa/auth/me", "/api/pwa/auth/refresh").authenticated()
@@ -156,6 +161,8 @@ public class SecurityConfigSpring {
                 .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/chat-audit/**").hasRole("ADMIN")
+                // Schedule v2 builder — manager/admin authoring of crew patterns, assignments, events.
+                .requestMatchers("/ng/admin/schedule-v2/**").hasRole("ADMIN")
 
                 // Maximo — open to plant staff (ROLE_PLANT) and admins. Combined with @RestrictedAllowed on
                 // the Maximo controllers, a Plant-role user reaches Maximo without needing a FULL access grant

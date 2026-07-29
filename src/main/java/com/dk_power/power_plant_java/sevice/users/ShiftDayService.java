@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.users;
 
+import com.dk_power.power_plant_java.dto.schedule.ScheduleEventFlag;
 import com.dk_power.power_plant_java.dto.users.ScheduleImportRequest;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
@@ -32,6 +33,7 @@ import java.util.*;
 public class ShiftDayService {
 
     private static final TypeReference<List<ShiftEntry>> ENTRY_LIST = new TypeReference<>() {};
+    private static final TypeReference<List<ScheduleEventFlag>> EVENT_FLAG_LIST = new TypeReference<>() {};
 
     private final ShiftDayRepo shiftDayRepo;
     private final UserRepo userRepo;
@@ -71,7 +73,7 @@ public class ShiftDayService {
         List<Map<String, Object>> supabaseRows = new ArrayList<>();
         for (Map.Entry<LocalDate, DayBucket> e : buckets.entrySet()) {
             if (persistDay(e.getKey(), e.getValue(), request.getSource(), now)) {
-                supabaseRows.add(toSupabaseRow(e.getKey(), e.getValue(), request.getSource(), now));
+                supabaseRows.add(toSupabaseRow(e.getKey(), e.getValue(), request.getSource(), now, null));
                 written++;
             }
         }
@@ -98,7 +100,8 @@ public class ShiftDayService {
         }
     }
 
-    private Map<String, Object> toSupabaseRow(LocalDate date, DayBucket bucket, String source, LocalDateTime now) {
+    private Map<String, Object> toSupabaseRow(LocalDate date, DayBucket bucket, String source,
+                                              LocalDateTime now, String eventFlagsJson) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("shift_date", date.toString());
         row.put("shift_year", date.getYear());
@@ -113,6 +116,12 @@ public class ShiftDayService {
             row.put("on_call_manager_user_id", ocm.getUserId());
         }
         row.put("source", source);
+        // Only send event_flags when present: v1 rows (null) must NOT reference the column so the
+        // mirror keeps working on Supabase instances where the v2 migration hasn't been applied yet.
+        // Pass the PARSED list (not the raw string) so it lands as a jsonb array like the other columns.
+        if (eventFlagsJson != null && !eventFlagsJson.isBlank()) {
+            row.put("event_flags_json", readEventFlags(eventFlagsJson));
+        }
         row.put("last_synced_at", now.atOffset(java.time.ZoneOffset.UTC).toString());
         return row;
     }
@@ -183,6 +192,65 @@ public class ShiftDayService {
     }
 
     /**
+     * Schedule v2 materialiser entry point: upsert one fully-computed day. Mirrors {@link
+     * #persistDay}'s no-op short-circuit — if the row exists and every synced field (including
+     * {@code eventFlagsJson}) already matches, {@code save()} is skipped so the {@code @PostUpdate}
+     * sync listener never fires and no FieldChange is emitted.
+     *
+     * <p>Supabase mirroring is intentionally NOT done here: the write flows through CRDT sync to the
+     * hub, whose scheduled scanner ({@code HubScheduleSupabaseMirrorService}) picks up the dirty row
+     * and mirrors it (that scanner is also the mirror trigger for rows that arrive purely via sync).
+     *
+     * @return true if the row was written (dirty or new); false if it was a no-op (unchanged).
+     */
+    public boolean applyMaterializedDay(LocalDate date,
+                                        List<ShiftEntry> day, List<ShiftEntry> night,
+                                        List<ShiftEntry> unscheduled, List<ShiftEntry> pto,
+                                        List<ShiftEntry> training,
+                                        String ocmName, Long ocmId,
+                                        String eventFlagsJson, String source) {
+        ShiftDay existing = shiftDayRepo.findFirstByDate(date).orElse(null);
+
+        String newDay = writeJson(day);
+        String newNight = writeJson(night);
+        String newUnscheduled = writeJson(unscheduled);
+        String newPto = writeJson(pto);
+        String newTraining = writeJson(training);
+        String newEventFlags = (eventFlagsJson == null || eventFlagsJson.isBlank()) ? null : eventFlagsJson;
+
+        if (existing != null
+                && Objects.equals(existing.getDayShiftJson(), newDay)
+                && Objects.equals(existing.getNightShiftJson(), newNight)
+                && Objects.equals(existing.getUnscheduledJson(), newUnscheduled)
+                && Objects.equals(existing.getPtoJson(), newPto)
+                && Objects.equals(existing.getTrainingJson(), newTraining)
+                && Objects.equals(existing.getOnCallManagerName(), ocmName)
+                && Objects.equals(existing.getOnCallManagerUserId(), ocmId)
+                && Objects.equals(existing.getEventFlagsJson(), newEventFlags)
+                && Objects.equals(existing.getSource(), source)) {
+            return false;
+        }
+
+        ShiftDay row = existing != null ? existing : ShiftDay.builder()
+                .date(date)
+                .year(date.getYear())
+                .build();
+
+        row.setDayShiftJson(newDay);
+        row.setNightShiftJson(newNight);
+        row.setUnscheduledJson(newUnscheduled);
+        row.setPtoJson(newPto);
+        row.setTrainingJson(newTraining);
+        row.setOnCallManagerName(ocmName);
+        row.setOnCallManagerUserId(ocmId);
+        row.setEventFlagsJson(newEventFlags);
+        row.setSource(source);
+        row.setLastSyncedAt(LocalDateTime.now());
+        shiftDayRepo.save(row);
+        return true;
+    }
+
+    /**
      * Build a Supabase-shaped row from a stored ShiftDay entity. Used by the hub-side scheduled
      * mirror scanner ({@code HubScheduleSupabaseMirrorService}) to re-push rows that arrived via
      * CRDT sync (which bypasses {@link #importSchedule}).
@@ -201,7 +269,7 @@ public class ShiftDayService {
                     .build());
         }
         LocalDateTime stamp = row.getLastSyncedAt() != null ? row.getLastSyncedAt() : LocalDateTime.now();
-        return toSupabaseRow(row.getDate(), bucket, row.getSource(), stamp);
+        return toSupabaseRow(row.getDate(), bucket, row.getSource(), stamp, row.getEventFlagsJson());
     }
 
     /** Public wrapper so the hub-side scheduled mirror can push rows directly. */
@@ -274,8 +342,19 @@ public class ShiftDayService {
                 .onCallManagerName(row.getOnCallManagerName())
                 .onCallManagerUserId(row.getOnCallManagerUserId())
                 .source(row.getSource())
+                .eventFlags(readEventFlags(row.getEventFlagsJson()))
                 .lastSyncedAt(row.getLastSyncedAt())
                 .build();
+    }
+
+    private List<ScheduleEventFlag> readEventFlags(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyList();
+        try {
+            return objectMapper.readValue(json, EVENT_FLAG_LIST);
+        } catch (Exception e) {
+            log.warn("[Schedule] Failed to parse event flags JSON: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private String writeJson(List<ShiftEntry> entries) {

@@ -176,7 +176,15 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.angular.sim_equipment.NgSimEquipmentService ngSimEquipmentService,
             @Lazy com.dk_power.power_plant_java.sevice.angular.etapro.NgEtaProReportService ngEtaProReportService,
             @Lazy com.dk_power.power_plant_java.sevice.esp.EspDeviceSyncService espDeviceSyncService,
-            @Lazy com.dk_power.power_plant_java.sevice.esp.LedStripSyncService ledStripSyncService
+            @Lazy com.dk_power.power_plant_java.sevice.esp.LedStripSyncService ledStripSyncService,
+            // Schedule v2 (crew patterns, assignments, events, coverage, PTO, ad-hoc overrides — all synced)
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewPatternSyncService crewPatternSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewAssignmentSyncService crewAssignmentSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.ScheduleEventSyncService scheduleEventSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.PtoRequestSyncService ptoRequestSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CoverageRequestSyncService coverageRequestSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CoverageSignupSyncService coverageSignupSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.ScheduleDayOverrideSyncService scheduleDayOverrideSyncService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -276,6 +284,14 @@ public class ServiceFacade {
         serviceMap.put(com.dk_power.power_plant_java.entities.etapro.EtaProReport.class.getSimpleName(), ngEtaProReportService);
         serviceMap.put(com.dk_power.power_plant_java.entities.esp.EspDevice.class.getSimpleName(), espDeviceSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.esp.LedStrip.class.getSimpleName(), ledStripSyncService);
+        // Schedule v2
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewPattern.class.getSimpleName(), crewPatternSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewAssignment.class.getSimpleName(), crewAssignmentSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.ScheduleEvent.class.getSimpleName(), scheduleEventSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.PtoRequest.class.getSimpleName(), ptoRequestSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CoverageRequest.class.getSimpleName(), coverageRequestSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CoverageSignup.class.getSimpleName(), coverageSignupSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride.class.getSimpleName(), scheduleDayOverrideSyncService);
     }
 
     public SyncableService getService(String entityClass) {

@@ -167,6 +167,38 @@ export class TableComponent implements OnInit, AfterViewInit {
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
+  /**
+   * Optional hover-triggered floating action templates. Rendered outside
+   * cdk-virtual-scroll-viewport, positioned next to whichever row is
+   * currently hovered — pinned to the container's left / right edge so
+   * horizontal scroll doesn't move them. Bypasses the position:sticky-
+   * inside-transformed-ancestor fragility (arrows never drift, never
+   * flicker, no z-index conflict with row cells). Template receives the
+   * hovered row via $implicit context.
+   */
+  hoverActionLeftTemplate = input<TemplateRef<{ $implicit: any }> | undefined>(undefined);
+  hoverActionRightTemplate = input<TemplateRef<{ $implicit: any }> | undefined>(undefined);
+  /**
+   * Show a 1-based row-index column at the far left (before the drift
+   * column). Default true — every table gets numbers unless opted out.
+   * Non-invasive: existing tables just gain a narrow index column;
+   * anything that already worked continues to work.
+   */
+  showRowIndex = input<boolean>(true);
+
+  /** Y-offset (in .table-container coords) of the currently hovered row.
+   *  Updated on mouseenter; drives the hover-action overlay's `top`. */
+  hoveredRowTop = signal<number>(0);
+  hoveredRowHeight = signal<number>(0);
+  /** True while the pointer is over one of the floating action buttons —
+   *  so the overlay stays visible when the pointer transits from the row
+   *  cell into the floating button. */
+  private overlayHovered = signal<boolean>(false);
+  /** Combined visibility: overlay shows if we have a template AND either
+   *  a row is hovered OR the floating action itself is hovered. */
+  hoverOverlayVisible = computed(() =>
+    (this.dataService.hoveredRow() != null || this.overlayHovered())
+  );
   // OPT-IN drift badge: set to a synced entity type (e.g. "LotoPoint") to show a per-row hub/SharePoint
   // drift indicator in the first cell + a "Scan drift" control. Unset (every existing table) → no change.
   driftEntityType = input<string | undefined>(undefined);
@@ -219,6 +251,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   filterInputs = viewChildren(ColumnFilterInputComponent);
   headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
+  tableContainerRef = viewChild<ElementRef<HTMLDivElement>>('tableContainer');
   headerTable = viewChild<ElementRef<HTMLTableElement>>('headerTable');
   bodyTable = viewChild<ElementRef<HTMLTableElement>>('bodyTable');
   tableBody = viewChild<ElementRef<HTMLDivElement>>('tableBody');
@@ -398,6 +431,28 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {}
+
+  /** Row mouseenter handler: capture the row's Y (in container coords)
+   *  so the hover-action overlay pins next to the correct row. Also
+   *  forwards to the click service so existing hover state (highlight
+   *  linking, etc.) keeps working. */
+  onRowMouseEnter(item: any, event: MouseEvent): void {
+    this.clickService.onRowHover(item);
+    const tr = event.currentTarget as HTMLElement | null;
+    const container = this.tableContainerRef()?.nativeElement;
+    if (tr && container) {
+      const rowRect = tr.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      this.hoveredRowTop.set(rowRect.top - containerRect.top);
+      this.hoveredRowHeight.set(rowRect.height);
+    }
+  }
+
+  /** Overlay button mouseenter/leave — keeps the overlay visible while
+   *  the pointer is on the floating action even after the row's own
+   *  mouseleave fires (mouse transiting from cell to button). */
+  onOverlayEnter(): void { this.overlayHovered.set(true); }
+  onOverlayLeave(): void { this.overlayHovered.set(false); }
 
   // ==================== Drift badge (opt-in via driftEntityType) ====================
 

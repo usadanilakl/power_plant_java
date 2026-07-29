@@ -13,10 +13,12 @@ import { ToiComponent } from './pages/toi/toi.component';
 import { WebViewAmsComponent } from './pages/web-view-ams/web-view-ams.component';
 import { SdsImportComponent } from './pages/sds-import/sds-import.component';
 import { CorkBoardComponent } from './pages/cork-board/cork-board.component';
+import { UpdatesComponent } from './pages/updates/updates.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'pid-app', component: SpringBootUiComponent },
+  { path: 'updates', component: UpdatesComponent },
   { path: 'fire-impairment', component: FireImpairmentComponent },
   { path: 'gate-log', component: GateLogComponent },
   { path: 'web-view-ams', component: WebViewAmsComponent },

@@ -409,39 +409,12 @@ export class LotoPointMapperService {
       result.splice(idx, 0, pidsColumn);
     }
 
-    // Sticky arrow columns for the LOTO Standard editor's dual-table +
-    // Images-tab table. Non-filterable, non-sortable. Width 52 = 26px
-    // button + 24px cell padding + 2px border. `sticky` tells the shared
-    // table to pin the cell to the viewport edge via JS-driven left/right
-    // offsets — native position:sticky is broken inside cdk-virtual-
-    // scroll-viewport's transformed content-wrapper, so TableSyncService
-    // computes the offset from viewport.scrollLeft on every scroll.
-    if (fields.includes('addToStandard' as any)) {
-      const col: Column = {
-        id: 'addToStandard',
-        header: '',
-        accessorFn: () => '',
-        width: 52,
-        filterable: false,
-        sortable: false,
-        sticky: 'right',
-      };
-      const idx = fields.indexOf('addToStandard' as any);
-      result.splice(idx, 0, col);
-    }
-    if (fields.includes('removeFromStandard' as any)) {
-      const col: Column = {
-        id: 'removeFromStandard',
-        header: '',
-        accessorFn: () => '',
-        width: 52,
-        filterable: false,
-        sortable: false,
-        sticky: 'left',
-      };
-      const idx = fields.indexOf('removeFromStandard' as any);
-      result.splice(idx, 0, col);
-    }
+    // NOTE: 'addToStandard' and 'removeFromStandard' are surfaced via the
+    // shared table's hover-triggered floating action overlay (see
+    // hoverActionLeftTemplate / hoverActionRightTemplate inputs), NOT as
+    // columns in the row. The arrow only appears next to the row the
+    // operator is hovering, pinned to the viewport edge — bypasses the
+    // sticky-inside-cdk-virtual-scroll fragility entirely.
 
     return result;
   }

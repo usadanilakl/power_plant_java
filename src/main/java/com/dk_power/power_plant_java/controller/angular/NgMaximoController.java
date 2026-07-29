@@ -46,7 +46,7 @@ import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.dk_power.power_plant_java.sevice.physical.PhysicalObjectMaximoSeeder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,7 +81,10 @@ import java.util.Map;
 @RequestMapping("/ng/maximo")
 @RequiredArgsConstructor
 @RestrictedAllowed  // access is gated on ROLE_PLANT/ROLE_ADMIN (SecurityConfig); no separate FULL grant required
-@ConditionalOnProperty(name = "maximo.api-key")
+// Active on any Maximo-configured node EXCEPT a kiosk. A kiosk runs the SAME shared jar, so maximo.api-key is
+// still baked in — but maximo.source=hub disables this direct controller and lets KioskMaximoOverviewController
+// serve /bundle/overview via the hub proxy instead (no path collision; the baked-in api-key is simply unused).
+@ConditionalOnExpression("'${maximo.api-key:}'.length() > 0 and !'hub'.equals('${maximo.source:local}')")
 public class NgMaximoController {
 
     private final MaximoAssetAdapter assets;

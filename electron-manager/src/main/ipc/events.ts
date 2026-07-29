@@ -194,6 +194,11 @@ export const IPC_CORK_BOARD_LIST_ACTIONS = 'cork-board:list-actions';
 export const IPC_CORK_BOARD_CREATE_ACTION = 'cork-board:create-action';
 export const IPC_CORK_BOARD_SUBMIT_ACTION = 'cork-board:submit-action';
 
+// Updates / News feed (invoke/handle + send/on)
+export const IPC_NEWS_LIST = 'news:list';
+export const IPC_NEWS_REFRESH = 'news:refresh';
+export const IPC_NEWS_UPDATE = 'news:update';   // send/on broadcast (main -> renderer)
+
 // Personnel / Schedule (invoke/handle)
 export const IPC_PERSONNEL_GET_STATUS = 'personnel:get-status';
 export const IPC_PERSONNEL_REFRESH = 'personnel:refresh';

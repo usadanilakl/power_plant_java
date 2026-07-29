@@ -268,7 +268,14 @@ public class SyncResolutionService {
 
     /** Build FieldChanges from hub data, tagging relationship fields with their type so the apply dispatches
      *  through the M2O/M2M branches (a plain scalar change would never set an FK). */
-    private List<FieldChange> buildHubChangesWithRelTypes(String entityType, Long entityId,
+    /**
+     * Build FieldChanges from a hub field-value map, stamping {@code relationshipType} on every
+     * relationship field (via reflected entity metadata) so the apply path routes M2M/O2M/M2O
+     * through their relationship handlers instead of treating them as scalars. This is the single
+     * rel-type-aware builder; the resolution controller delegates here so no reconcile path can
+     * silently drop an @ManyToMany link (which a rel-type-less builder would).
+     */
+    public List<FieldChange> buildHubChangesWithRelTypes(String entityType, Long entityId,
                                                           Map<String, String> hubData, boolean existsLocally) {
         Class<?> clazz = entityClassFor(entityType);
         Map<String, String> relTypes = new HashMap<>();

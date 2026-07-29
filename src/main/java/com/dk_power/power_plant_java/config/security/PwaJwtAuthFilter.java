@@ -34,7 +34,12 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
     private static final Set<String> SECURED_PREFIXES = Set.of(
             "/api/pwa/secured/",
             "/api/pwa/auth/me",
-            "/api/pwa/auth/refresh"
+            "/api/pwa/auth/refresh",
+            // ChatAuthController lives at a generic /api/chat/ path so both Electron (via
+            // localhost auto-auth) AND the PWA (via JWT) can reach it. Without this prefix, PWA
+            // calls to /api/chat/supabase-session hit the endpoint unauthenticated and the
+            // controller returns 401 "Not authenticated" — even for legit plant-group users.
+            "/api/chat/"
     );
 
     @Override

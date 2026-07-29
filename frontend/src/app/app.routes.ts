@@ -69,6 +69,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/supabase-admin/supabase-admin.component').then(m => m.SupabaseAdminComponent),
     canActivate: [authGuard, adminGuard],
   },
+  {
+    path: 'admin/schedule-builder',
+    loadComponent: () => import('./features/admin/schedule-builder/schedule-builder.component').then(m => m.ScheduleBuilderComponent),
+    canActivate: [authGuard, adminGuard],
+  },
 
   // Full-access feature routes (restricted users redirected to /home)
   { path: 'permits-monitor', component: PermitsMonitorComponent, canActivate: [authGuard, fullAccessGuard] },

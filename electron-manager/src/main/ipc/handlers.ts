@@ -28,6 +28,7 @@ import { backendGet, backendPost } from '../clients/backend-client';
 import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
+import { NewsManager } from '../managers/news.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
 import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, MaximoOverviewConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult, WebViewAmsConfig, SdsScraperConfig, CorkBoardItem, CorkBoardAction, CorkBoardActionCreateRequest, CorkBoardActionResponse, CorkBoardActionSubmitRequest, CorkBoardActionSummary, CorkBoardActionType } from '../../shared/types';
 
@@ -77,6 +78,7 @@ export class IpcHandlers {
   private syncUpdateManager: SyncUpdateManager;
   private sharepointManager: SharePointManager;
   private personnelManager: PersonnelManager;
+  private newsManager: NewsManager;
   private mainWindow: BrowserWindow;
   private permitsMonitorWindow: BrowserWindow | null = null;
   private lastAssessment: StartupAssessment | null = null;
@@ -150,6 +152,14 @@ export class IpcHandlers {
         this.mainWindow.webContents.send(events.IPC_SYNC_ENTITY_UPDATED, entityType, entityId);
       }
     });
+    // Updates/News feed — polls the local backend and pushes the merged list to the renderer.
+    // Constructed before springBoot so the health callback below can prompt an immediate refresh.
+    this.newsManager = new NewsManager((items) => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(events.IPC_NEWS_UPDATE, items);
+      }
+    });
+    this.newsManager.start();
     this.springBoot = new SpringBootManager(
       (status) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -158,6 +168,8 @@ export class IpcHandlers {
         // Connect/disconnect SSE sync updates based on Spring Boot state
         if (status.state === 'running' && status.healthStatus === 'healthy') {
           this.syncUpdateManager.connect(DEFAULT_SPRING_BOOT_CONFIG.port);
+          // Backend just came up — pull a fresh feed now instead of waiting for the next poll tick.
+          void this.newsManager.refresh();
         } else if (status.state === 'stopped' || status.state === 'error') {
           this.syncUpdateManager.disconnect();
         }
@@ -237,6 +249,7 @@ export class IpcHandlers {
     this.registerPrintHandlers();
     this.registerLayoutHandlers();
     this.registerVoskHandlers();
+    this.registerNewsHandlers();
     this.registerPersonnelHandlers();
     this.registerContractorHandlers();
     this.registerChatAuthHandlers();
@@ -1825,9 +1838,31 @@ export class IpcHandlers {
     this.perryWeatherManager.cleanup();
     this.pjmManager.cleanup();
     this.voskManager.cleanup();
+    this.newsManager.cleanup();
     this.syncUpdateManager.disconnect();
     this.webview.closeAll();
     await this.springBoot.stop();
+  }
+
+  private registerNewsHandlers(): void {
+    ipcMain.handle(events.IPC_NEWS_LIST, async () => {
+      try {
+        // Serve cache immediately; if empty (first open before the first poll completes), fetch once.
+        const cached = this.newsManager.getFeed();
+        const data = cached.length ? cached : await this.newsManager.refresh();
+        return { success: true, data };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_NEWS_REFRESH, async () => {
+      try {
+        return { success: true, data: await this.newsManager.refresh() };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
   }
 
   private registerPersonnelHandlers(): void {

@@ -77,9 +77,12 @@
   }
 
   <div #headerContainer class="header-container">
-    <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0)">
+    <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0) + (showRowIndex() ? 44 : 0)">
       <thead>
         <tr>
+          @if (showRowIndex()) {
+            <th class="row-index-header" title="Row number">#</th>
+          }
           @if (driftEntityType()) {
             <th class="sync-col-h" [style.width.px]="56" title="Hub / SharePoint sync status">Sync</th>
           }
@@ -129,10 +132,10 @@
       [itemSize]="dataService.rowHeight"
       class="viewport"
     >
-      <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0)">
+      <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0) + (showRowIndex() ? 44 : 0)">
         <tbody #tableBody>
           <tr
-            *cdkVirtualFor="let item of dataService.filteredItems(); trackBy: utilService.trackByItemId"
+            *cdkVirtualFor="let item of dataService.filteredItems(); let i = index; trackBy: utilService.trackByItemId"
             [class.drag-hover-top]="item === dataService.hoveredRow() && dragService.dragState().isDragging"
             [class.selected]="selectionService.isItemSelected(item)"
             [class.dragged]="dragService.isItemDragged(item)"
@@ -146,9 +149,12 @@
             (click)="clickService.onRowClick(item, $event)"
             (auxclick)="$event.preventDefault(); $event.stopPropagation()"
             (contextmenu)="clickService.onRowRightClick(item, $event)"
-            (mouseenter)="clickService.onRowHover(item)"
+            (mouseenter)="onRowMouseEnter(item, $event)"
             (mouseleave)="clickService.onRowLeave()"
           >
+            @if (showRowIndex()) {
+              <td class="row-index-cell" (mousedown)="$event.stopPropagation()">{{ i + 1 }}</td>
+            }
             @if (driftEntityType()) {
               <td class="sync-col" [style.width.px]="56"
                   (mousedown)="$event.stopPropagation()"
@@ -196,6 +202,35 @@
         </tbody>
       </table>
     </cdk-virtual-scroll-viewport>
+
+    <!-- Hover-triggered floating action overlays. Positioned OUTSIDE the
+         cdk-virtual-scroll-viewport so nothing sticky-in-transformed-
+         ancestor can drift or flicker; pinned to the container's left /
+         right edge, Y-aligned to the currently hovered row. Visibility
+         follows dataService.hoveredRow() + overlayHovered() so mousing
+         from the row into the floating button doesn't hide it. -->
+    @if (hoverActionLeftTemplate() && hoverOverlayVisible() && dataService.hoveredRow(); as hovered) {
+      <div class="hover-action-overlay left">
+        <div class="hover-action-floating left"
+             [style.top.px]="hoveredRowTop()"
+             [style.height.px]="hoveredRowHeight()"
+             (mouseenter)="onOverlayEnter()"
+             (mouseleave)="onOverlayLeave()">
+          <ng-container *ngTemplateOutlet="hoverActionLeftTemplate()!; context: { $implicit: hovered }"></ng-container>
+        </div>
+      </div>
+    }
+    @if (hoverActionRightTemplate() && hoverOverlayVisible() && dataService.hoveredRow(); as hovered) {
+      <div class="hover-action-overlay right">
+        <div class="hover-action-floating right"
+             [style.top.px]="hoveredRowTop()"
+             [style.height.px]="hoveredRowHeight()"
+             (mouseenter)="onOverlayEnter()"
+             (mouseleave)="onOverlayLeave()">
+          <ng-container *ngTemplateOutlet="hoverActionRightTemplate()!; context: { $implicit: hovered }"></ng-container>
+        </div>
+      </div>
+    }
   </div>
 
   <div *ngIf="dataService.filteredItems().length === 0" class="empty-state">

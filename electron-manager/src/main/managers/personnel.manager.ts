@@ -32,7 +32,13 @@ function getSchedulePath(): string {
 const CONTACTS_PATH = '/sites/JG/External/10 - Administration/PERSONNEL/EMERGENCY CONTACT LIST - EDITED 11_2024.xlsx';
 
 const CACHE_TTL = 30 * 60_000;
-const VALID_SHIFTS: Set<string> = new Set(['D', 'N', 'U', 'P', 'T', 'OCM']);
+/**
+ * Shift codes recognised in the Ops Schedule Excel:
+ *   D = Day, N = Night, U = Unscheduled, P = PTO, T = Training, OCM = On Call Manager,
+ *   L = Leads Meeting (05:00-06:00 window), OFF = Explicit off (blank cell also means off,
+ *   but the schedule sometimes writes "Off" for clarity — the parser was silently discarding it).
+ */
+const VALID_SHIFTS: Set<string> = new Set(['D', 'N', 'U', 'P', 'T', 'OCM', 'L', 'OFF']);
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 

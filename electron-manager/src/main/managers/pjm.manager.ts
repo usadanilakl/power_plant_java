@@ -12,6 +12,7 @@
 
 import { BrowserWindow } from 'electron';
 import * as https from 'https';
+import * as zlib from 'zlib';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { PjmStatus, PjmUnitLmp, PjmUnitEvolution, PjmUnitStep, PjmConfig, PjmUnitConfig, PjmDaAward, PjmDaHourEntry } from '../../shared/types';
@@ -535,14 +536,27 @@ export class PjmManager {
       headers: {
         'Ocp-Apim-Subscription-Key': this.config.apiKey,
         'Accept': 'application/json',
+        // Prefer an uncompressed body. PJM's CDN may still force gzip regardless
+        // (see decodeResponseBody), so this is a hint, not a guarantee.
+        'Accept-Encoding': 'identity',
       },
       timeout: 15_000,
     };
 
     const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', (chunk) => body += chunk);
+      // Collect raw bytes — the body may be gzip/deflate/br compressed, so we
+      // cannot accumulate it as a UTF-8 string until after decompression.
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
       res.on('end', () => {
+        let body: string;
+        try {
+          body = this.decodeResponseBody(Buffer.concat(chunks), res.headers['content-encoding']);
+        } catch (err: any) {
+          console.error(`[PJM] ${unitKey} Failed to decode response body (content-encoding=${res.headers['content-encoding']}): ${err.message}`);
+          this.updateUnitStatus(unitKey, { status: 'error', error: 'Failed to decode response', pnodeId });
+          return;
+        }
         if (res.statusCode !== 200) {
           console.error(`[PJM] ${unitKey} API returned ${res.statusCode}: ${body.substring(0, 300)}`);
           this.updateUnitStatus(unitKey, { status: 'error', error: `API returned ${res.statusCode}`, pnodeId });
@@ -564,6 +578,20 @@ export class PjmManager {
     });
 
     req.end();
+  }
+
+  /**
+   * Decode an HTTP response body, transparently decompressing per the
+   * Content-Encoding header. PJM's CDN began gzipping responses even when the
+   * request asks for `identity`; without this, gzip bytes reach JSON.parse as
+   * binary garbage and the parse throws ("Failed to parse response").
+   */
+  private decodeResponseBody(raw: Buffer, contentEncoding?: string | string[]): string {
+    const enc = String(contentEncoding || '').toLowerCase();
+    if (enc.includes('gzip')) return zlib.gunzipSync(raw).toString('utf-8');
+    if (enc.includes('br')) return zlib.brotliDecompressSync(raw).toString('utf-8');
+    if (enc.includes('deflate')) return zlib.inflateSync(raw).toString('utf-8');
+    return raw.toString('utf-8');
   }
 
   private parseLmpResponseForUnit(body: string, unitKey: 'unit1' | 'unit2', pnodeId: number, defaultPnodeName: string): void {

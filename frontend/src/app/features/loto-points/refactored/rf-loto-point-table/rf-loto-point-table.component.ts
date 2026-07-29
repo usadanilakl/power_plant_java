@@ -120,6 +120,26 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     if (item?.id) this.removeFromStandardClick.emit(item);
   }
 
+  /** True when the parent asked for the "Add to Standard" arrow — i.e.
+   *  the fieldsToDisplay list contains the synthetic 'addToStandard' key. */
+  hasAddArrow = computed(() => {
+    const fields = this.fieldsToDisplay();
+    return Array.isArray(fields) && fields.includes('addToStandard' as any);
+  });
+  hasRemoveArrow = computed(() => {
+    const fields = this.fieldsToDisplay();
+    return Array.isArray(fields) && fields.includes('removeFromStandard' as any);
+  });
+  /** Template getters piped to <app-table>'s hover-action-{left,right}
+   *  inputs. Undefined when the arrow isn't requested so the shared
+   *  table doesn't render an empty overlay. */
+  leftHoverTemplate = computed<TemplateRef<any> | undefined>(() =>
+    this.hasRemoveArrow() ? this.removeFromStandardCellTemplate() : undefined
+  );
+  rightHoverTemplate = computed<TemplateRef<any> | undefined>(() =>
+    this.hasAddArrow() ? this.addToStandardCellTemplate() : undefined
+  );
+
   private lotoPointService = inject(LotoPointService);
 
   //===== P&IDs on-demand fetch state =====

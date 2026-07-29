@@ -300,77 +300,106 @@ export class RfLotoStandardFormComponent {
   }
 
   /**
-   * Handle loto points reordered from double table
+   * Handle loto points reordered from double table.
+   * <p>
+   * On an APPROVED standard the backend does NOT mutate the entity — it
+   * captures a LotoStandardPendingChange proposal awaiting CA review
+   * (see NgLotoStandardService.reorderLotoPoints). Skipping the local
+   * optimistic update in that case is what stops the "snap-back" the
+   * user was seeing: LotoStandardPendingChange creation triggers an SSE
+   * echo that refetches the (still-unmodified) standard, which would
+   * otherwise clobber the optimistic re-order.
    */
   onLotoPointsReordered(reorderedLotoPoints: LotoPointDto[]): void {
     const currentEntity = this.entity();
-
-    // Update the entity with new loto points order
-    const updatedEntity = new LotoStandardDto({
-      ...currentEntity,
-      lotoPoints: reorderedLotoPoints
-    });
-
-    // Update state
-    this.stateService.setSelectedItem(updatedEntity);
-
-    // If entity is saved (has ID), immediately persist to server
-    if (currentEntity.id) {
-      const lotoPointIds = reorderedLotoPoints.map(lp => lp.id!);
-      this.apiService.reorderLotoPoints(currentEntity.id, lotoPointIds)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          error: (err) => console.error('Failed to reorder LOTO points:', err)
-        });
+    if (!currentEntity.id) return;
+    const approved = this.isApprovedStandard(currentEntity);
+    if (!approved) {
+      const updatedEntity = new LotoStandardDto({
+        ...currentEntity,
+        lotoPoints: reorderedLotoPoints
+      });
+      this.stateService.setSelectedItem(updatedEntity);
     }
+    const lotoPointIds = reorderedLotoPoints.map(lp => lp.id!);
+    this.apiService.reorderLotoPoints(currentEntity.id, lotoPointIds)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (approved) this.notifyProposalCaptured('Reorder');
+        },
+        error: (err) => {
+          console.error('Failed to reorder LOTO points:', err);
+          this.messageService.showError(err?.error?.message ?? err?.message ?? 'Failed to reorder LOTO points');
+        }
+      });
   }
 
   /**
-   * Handle loto point added from double table
+   * Handle loto point added from double table (see onLotoPointsReordered
+   * for the APPROVED-vs-not distinction).
    */
   onLotoPointAdded(addedPoint: LotoPointDto): void {
     const currentEntity = this.entity();
-
-    // Update local state
-    const currentPoints = currentEntity.lotoPoints || [];
-    const updatedEntity = new LotoStandardDto({
-      ...currentEntity,
-      lotoPoints: [...currentPoints, addedPoint]
-    });
-    this.stateService.setSelectedItem(updatedEntity);
-
-    // If entity is saved (has ID), immediately persist to server
-    if (currentEntity.id && addedPoint.id) {
-      this.apiService.addLotoPointToStandard(currentEntity.id, addedPoint.id)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          error: (err) => console.error('Failed to add LOTO point:', err)
-        });
+    if (!currentEntity.id || !addedPoint.id) return;
+    const approved = this.isApprovedStandard(currentEntity);
+    if (!approved) {
+      const currentPoints = currentEntity.lotoPoints || [];
+      const updatedEntity = new LotoStandardDto({
+        ...currentEntity,
+        lotoPoints: [...currentPoints, addedPoint]
+      });
+      this.stateService.setSelectedItem(updatedEntity);
     }
+    this.apiService.addLotoPointToStandard(currentEntity.id, addedPoint.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (approved) this.notifyProposalCaptured('Add');
+        },
+        error: (err) => {
+          console.error('Failed to add LOTO point:', err);
+          this.messageService.showError(err?.error?.message ?? err?.message ?? 'Failed to add LOTO point');
+        }
+      });
   }
 
   /**
-   * Handle loto point removed from double table
+   * Handle loto point removed from double table (see onLotoPointsReordered).
    */
   onLotoPointRemoved(removedPoint: LotoPointDto): void {
     const currentEntity = this.entity();
-
-    // Update local state
-    const currentPoints = currentEntity.lotoPoints || [];
-    const updatedEntity = new LotoStandardDto({
-      ...currentEntity,
-      lotoPoints: currentPoints.filter(lp => lp.id !== removedPoint.id)
-    });
-    this.stateService.setSelectedItem(updatedEntity);
-
-    // If entity is saved (has ID), immediately persist to server
-    if (currentEntity.id && removedPoint.id) {
-      this.apiService.removeLotoPointFromStandard(currentEntity.id, removedPoint.id)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          error: (err) => console.error('Failed to remove LOTO point:', err)
-        });
+    if (!currentEntity.id || !removedPoint.id) return;
+    const approved = this.isApprovedStandard(currentEntity);
+    if (!approved) {
+      const currentPoints = currentEntity.lotoPoints || [];
+      const updatedEntity = new LotoStandardDto({
+        ...currentEntity,
+        lotoPoints: currentPoints.filter(lp => lp.id !== removedPoint.id)
+      });
+      this.stateService.setSelectedItem(updatedEntity);
     }
+    this.apiService.removeLotoPointFromStandard(currentEntity.id, removedPoint.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (approved) this.notifyProposalCaptured('Remove');
+        },
+        error: (err) => {
+          console.error('Failed to remove LOTO point:', err);
+          this.messageService.showError(err?.error?.message ?? err?.message ?? 'Failed to remove LOTO point');
+        }
+      });
+  }
+
+  /** Toast shown when an add/remove/reorder on an APPROVED standard was
+   *  captured as a pending-review proposal instead of being applied. */
+  private notifyProposalCaptured(action: string): void {
+    this.messageService.showInfo(
+      `${action} proposed — awaiting Control Authority review. See the Pending Changes panel.`,
+      'orange',
+      6000
+    );
   }
 
   /**

@@ -4,7 +4,7 @@
   </ng-container>
   <ng-container main-content>
     <div class="page">
-      <!-- Compact toolbar: tabs + refresh side by side, no separate page-header taking vertical space. -->
+      <!-- Compact toolbar: tabs + refresh -->
       <div class="toolbar">
         <div class="tabs" role="tablist">
           <button class="tab" role="tab"
@@ -27,76 +27,63 @@
           </button>
         </div>
         <button class="btn-icon"
-                (click)="activeTab() === 'schedule' ? refreshSelectedDate() : refreshContacts()"
-                [disabled]="scheduleLoading() || contactsLoading()"
+                (click)="activeTab() === 'schedule' ? (scheduleView() === 'day' ? refreshSelectedDate() : refreshMonth()) : refreshContacts()"
+                [disabled]="scheduleLoading() || monthLoading() || contactsLoading()"
                 title="Refresh">
-          <span [class.spin]="scheduleLoading() || contactsLoading()">🔄</span>
+          <span [class.spin]="scheduleLoading() || monthLoading() || contactsLoading()">🔄</span>
         </button>
       </div>
 
       <!-- Schedule tab -->
       @if (activeTab() === 'schedule') {
-        <div class="tab-content">
-          @if (scheduleError()) {
-            <div class="banner banner-warn">⚠️ {{ scheduleError() }}</div>
-          }
+        <!-- View toggle: Day / Month / Me / Year -->
+        <div class="view-toggle">
+          <button class="view-btn" [class.active]="scheduleView() === 'day'"
+                  (click)="setScheduleView('day')">
+            <span aria-hidden="true">🗓️</span> Day
+          </button>
+          <button class="view-btn" [class.active]="scheduleView() === 'month'"
+                  (click)="setScheduleView('month')">
+            <span aria-hidden="true">📆</span> Month
+          </button>
+          <button class="view-btn" [class.active]="scheduleView() === 'me'"
+                  (click)="setScheduleView('me')">
+            <span aria-hidden="true">👤</span> Mine
+          </button>
+          <button class="view-btn" [class.active]="scheduleView() === 'year'"
+                  (click)="setScheduleView('year')">
+            <span aria-hidden="true">🗂️</span> Year
+          </button>
+        </div>
 
-          <!-- Day picker: prev / [day label] / next + Today shortcut -->
-          <div class="day-picker">
-            <button class="day-nav" (click)="shiftDay(-1)" title="Previous day">‹</button>
-            <div class="day-label">
-              <div class="day-name">{{ selectedDateLabel() }}</div>
-              <div class="day-date">{{ selectedDate() | date:'EEE, MMM d' }}</div>
-            </div>
-            <button class="day-nav" (click)="shiftDay(1)" title="Next day">›</button>
-            @if (!isViewingToday()) {
-              <button class="btn-today" (click)="jumpToToday()">Today</button>
+        <!-- ═════ DAY VIEW ═════ -->
+        @if (scheduleView() === 'day') {
+          <div class="tab-content">
+            @if (scheduleError()) {
+              <div class="banner banner-warn">⚠️ {{ scheduleError() }}</div>
             }
-          </div>
 
-          <!-- On shift RIGHT NOW (only meaningful when viewing today) -->
-          @if (isViewingToday() && onShiftNow().length > 0) {
-            <section class="section on-shift-section">
-              <h2 class="section-title">
-                On shift now
-                <span class="section-count">{{ onShiftNow().length }}</span>
-              </h2>
-              <div class="chip-row">
-                @for (p of onShiftNow(); track p.name) {
-                  <div class="chip highlight">
-                    @if (p.group) { <span class="chip-group">{{ p.group }}</span> }
-                    <span class="chip-name">{{ p.name }}</span>
-                  </div>
-                }
+            <div class="day-picker">
+              <button class="day-nav" (click)="shiftDay(-1)" title="Previous day">‹</button>
+              <div class="day-label">
+                <div class="day-name">{{ selectedDateLabel() }}</div>
+                <div class="day-date">{{ selectedDate() | date:'EEE, MMM d' }}</div>
               </div>
-            </section>
-          }
+              <button class="day-nav" (click)="shiftDay(1)" title="Next day">›</button>
+              @if (!isViewingToday()) {
+                <button class="btn-today" (click)="jumpToToday()">Today</button>
+              }
+            </div>
 
-          <!-- Full breakdown for the selected day -->
-          @if (selectedDay(); as day) {
-            @if (day.onCallManagerName) {
-              <section class="section">
+            @if (isViewingToday() && onShiftNow().length > 0) {
+              <section class="section on-shift-section">
                 <h2 class="section-title">
-                  On Call Manager
+                  On shift now
+                  <span class="section-count">{{ onShiftNow().length }}</span>
                 </h2>
                 <div class="chip-row">
-                  <div class="chip">
-                    <span class="chip-group ocm">OCM</span>
-                    <span class="chip-name">{{ day.onCallManagerName }}</span>
-                  </div>
-                </div>
-              </section>
-            }
-
-            @if (day.dayShift && day.dayShift.length > 0) {
-              <section class="section">
-                <h2 class="section-title">
-                  Day Shift
-                  <span class="section-count">{{ day.dayShift.length }}</span>
-                </h2>
-                <div class="chip-row">
-                  @for (p of day.dayShift; track p.name) {
-                    <div class="chip">
+                  @for (p of onShiftNow(); track p.name) {
+                    <div class="chip highlight">
                       @if (p.group) { <span class="chip-group">{{ p.group }}</span> }
                       <span class="chip-name">{{ p.name }}</span>
                     </div>
@@ -105,83 +92,407 @@
               </section>
             }
 
-            @if (day.nightShift && day.nightShift.length > 0) {
+            @if (selectedDay(); as day) {
+              @if (day.onCallManagerName) {
+                <section class="section">
+                  <h2 class="section-title">On Call Manager</h2>
+                  <div class="chip-row">
+                    <div class="chip">
+                      <span class="chip-group ocm">OCM</span>
+                      <span class="chip-name">{{ day.onCallManagerName }}</span>
+                    </div>
+                  </div>
+                </section>
+              }
+
+              @if (day.dayShift && day.dayShift.length > 0) {
+                <section class="section">
+                  <h2 class="section-title">
+                    Day Shift <span class="section-count">{{ day.dayShift.length }}</span>
+                  </h2>
+                  <div class="chip-row">
+                    @for (p of day.dayShift; track p.name) {
+                      <div class="chip">
+                        @if (p.group) { <span class="chip-group">{{ p.group }}</span> }
+                        <span class="chip-name">{{ p.name }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+
+              @if (day.nightShift && day.nightShift.length > 0) {
+                <section class="section">
+                  <h2 class="section-title">
+                    Night Shift <span class="section-count">{{ day.nightShift.length }}</span>
+                  </h2>
+                  <div class="chip-row">
+                    @for (p of day.nightShift; track p.name) {
+                      <div class="chip night">
+                        @if (p.group) { <span class="chip-group night">{{ p.group }}</span> }
+                        <span class="chip-name">{{ p.name }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+
+              @if (day.pto && day.pto.length > 0) {
+                <section class="section">
+                  <h2 class="section-title muted-title">
+                    PTO <span class="section-count">{{ day.pto.length }}</span>
+                  </h2>
+                  <div class="chip-row">
+                    @for (p of day.pto; track p.name) {
+                      <div class="chip muted">
+                        @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
+                        <span class="chip-name">{{ p.name }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+
+              @if (day.training && day.training.length > 0) {
+                <section class="section">
+                  <h2 class="section-title muted-title">
+                    Training <span class="section-count">{{ day.training.length }}</span>
+                  </h2>
+                  <div class="chip-row">
+                    @for (p of day.training; track p.name) {
+                      <div class="chip muted">
+                        @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
+                        <span class="chip-name">{{ p.name }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+
+              @if (day.unscheduled && day.unscheduled.length > 0) {
+                <section class="section">
+                  <h2 class="section-title muted-title">
+                    Unscheduled <span class="section-count">{{ day.unscheduled.length }}</span>
+                  </h2>
+                  <div class="chip-row">
+                    @for (p of day.unscheduled; track p.name) {
+                      <div class="chip muted">
+                        @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
+                        <span class="chip-name">{{ p.name }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+            }
+
+            @if (!selectedDay() && !scheduleLoading()) {
+              <div class="empty-state">
+                <div class="empty-glyph">📭</div>
+                <div class="empty-text">No schedule for {{ selectedDate() | date:'MMM d' }}</div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- ═════ MONTH VIEW ═════ -->
+        @if (scheduleView() === 'month') {
+          <div class="tab-content">
+            @if (monthError()) {
+              <div class="banner banner-warn">⚠️ {{ monthError() }}</div>
+            }
+
+            <!-- Month picker -->
+            <div class="day-picker">
+              <button class="day-nav" (click)="shiftMonth(-1)" title="Previous month">‹</button>
+              <div class="day-label">
+                <div class="day-name">{{ monthLabel() }}</div>
+                <div class="day-date">{{ monthDayHeaders().length }} days</div>
+              </div>
+              <button class="day-nav" (click)="shiftMonth(1)" title="Next month">›</button>
+              <button class="btn-today" (click)="jumpToCurrentMonth()">This month</button>
+            </div>
+
+            <!-- Filters: group chips + name search -->
+            <div class="filter-row">
+              <div class="group-chips" role="tablist">
+                <button class="group-chip" [class.active]="groupFilter() === 'all'"
+                        (click)="groupFilter.set('all')">
+                  All <span class="chip-count">{{ groupCounts()['all'] }}</span>
+                </button>
+                @for (g of groupTabs; track g) {
+                  <button class="group-chip" [class.active]="groupFilter() === g"
+                          [attr.data-group]="g"
+                          (click)="groupFilter.set(g)">
+                    {{ g }} <span class="chip-count">{{ groupCounts()[g] }}</span>
+                  </button>
+                }
+              </div>
+              <div class="search-row inline">
+                <span class="search-icon" aria-hidden="true">🔍</span>
+                <input type="search" placeholder="Search person…"
+                       [ngModel]="personSearch()"
+                       (ngModelChange)="personSearch.set($event)" />
+              </div>
+            </div>
+
+            @if (monthLoading() && filteredMonthRows().length === 0) {
+              <div class="empty-state">
+                <div class="empty-glyph spin">⏳</div>
+                <div class="empty-text">Loading month schedule…</div>
+              </div>
+            } @else if (filteredMonthRows().length === 0) {
+              <div class="empty-state">
+                <div class="empty-glyph">📭</div>
+                <div class="empty-text">No people match the current filter</div>
+              </div>
+            } @else {
+              <!-- Legend for shift codes -->
+              <div class="legend">
+                <span class="legend-cell cell-D">D</span> Day
+                <span class="legend-cell cell-N">N</span> Night
+                <span class="legend-cell cell-OCM">OCM</span> On Call
+                <span class="legend-cell cell-P">P</span> PTO
+                <span class="legend-cell cell-T">T</span> Training
+                <span class="legend-cell cell-U">U</span> Unscheduled
+              </div>
+
+              <!-- Scrollable grid: sticky name column + horizontal day columns -->
+              <div class="grid-scroll">
+                <table class="month-grid">
+                  <thead>
+                    <tr>
+                      <th class="name-col" scope="col">Name</th>
+                      @for (h of monthDayHeaders(); track h.iso) {
+                        <th class="day-col"
+                            [class.weekend]="h.isWeekend"
+                            [class.today]="h.isToday"
+                            scope="col"
+                            (click)="jumpToDate(h.iso)"
+                            [title]="'Jump to ' + (h.iso | date:'EEE, MMM d')">
+                          <div class="day-num">{{ h.day }}</div>
+                          <div class="day-wd">{{ h.weekday }}</div>
+                        </th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of filteredMonthRows(); track row.name) {
+                      <tr>
+                        <th class="name-col" scope="row">
+                          <span class="row-name">{{ row.name }}</span>
+                          @if (row.group) {
+                            <span class="chip-group row-group"
+                                  [class.ocm]="row.group === 'OCM'">{{ row.group }}</span>
+                          }
+                        </th>
+                        @for (c of row.cells; track c.date) {
+                          <td class="cell"
+                              [class.weekend]="c.isWeekend"
+                              [class.today]="c.isToday"
+                              (click)="jumpToDate(c.date)"
+                              [title]="row.name + ' — ' + shiftLabel(c.shift) + ' (' + (c.date | date:'MMM d') + ')'">
+                            @if (c.shift) {
+                              <span class="cell-code" [attr.data-shift]="c.shift">{{ c.shift }}</span>
+                            }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="row-count">
+                Showing {{ filteredMonthRows().length }} of {{ monthPersonRows().length }} people
+              </div>
+            }
+          </div>
+        }
+      }
+
+        <!-- ═════ MY SCHEDULE ═════ -->
+        @if (scheduleView() === 'me') {
+          <div class="tab-content">
+            @if (!currentUserName()) {
+              <div class="banner banner-warn">
+                Sign in to see your personal schedule and subscribe to your shifts as a calendar.
+              </div>
+            } @else {
+              @if (myError()) {
+                <div class="banner banner-warn">⚠️ {{ myError() }}</div>
+              }
+
+              <div class="me-header">
+                <div>
+                  <div class="me-hi">Hi, {{ currentUserName() }}</div>
+                  <div class="me-sub">Your shifts + how to subscribe from your phone's Calendar app</div>
+                </div>
+              </div>
+
+              <!-- Month stats -->
+              @if (myMonthStats(); as s) {
+                <section class="section stats-row">
+                  <div class="stat"><div class="stat-num">{{ s.day }}</div><div class="stat-label">Day</div></div>
+                  <div class="stat"><div class="stat-num">{{ s.night }}</div><div class="stat-label">Night</div></div>
+                  <div class="stat"><div class="stat-num">{{ s.ocm }}</div><div class="stat-label">On Call</div></div>
+                  <div class="stat"><div class="stat-num">{{ s.pto }}</div><div class="stat-label">PTO</div></div>
+                  <div class="stat"><div class="stat-num">{{ s.training }}</div><div class="stat-label">Training</div></div>
+                  <div class="stat"><div class="stat-num">{{ s.off }}</div><div class="stat-label">Off</div></div>
+                </section>
+              }
+
+              <!-- Upcoming shifts -->
               <section class="section">
                 <h2 class="section-title">
-                  Night Shift
-                  <span class="section-count">{{ day.nightShift.length }}</span>
+                  Upcoming shifts <span class="section-count">{{ myUpcomingShifts().length }}</span>
                 </h2>
-                <div class="chip-row">
-                  @for (p of day.nightShift; track p.name) {
-                    <div class="chip night">
-                      @if (p.group) { <span class="chip-group night">{{ p.group }}</span> }
-                      <span class="chip-name">{{ p.name }}</span>
+                @if (myUpcomingShifts().length === 0 && !myLoading()) {
+                  <div class="empty-mini">No upcoming shifts in the next 60 days.</div>
+                } @else {
+                  <div class="shift-list">
+                    @for (r of myUpcomingShifts(); track r.iso) {
+                      <button class="shift-row" (click)="jumpToDateFromYear(r.iso)"
+                              [title]="'Open day view for ' + r.label">
+                        <span class="shift-badge cell-code" [attr.data-shift]="r.shift">{{ r.shift }}</span>
+                        <div class="shift-info">
+                          <div class="shift-when">{{ r.isToday ? 'Today' : (r.isTomorrow ? 'Tomorrow' : r.label) }}</div>
+                          <div class="shift-kind">{{ shiftLabel(r.shift) }}</div>
+                        </div>
+                        <span class="shift-arrow" aria-hidden="true">›</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </section>
+
+              <!-- Days off -->
+              @if (myNextDaysOff().length > 0) {
+                <section class="section">
+                  <h2 class="section-title muted-title">
+                    Next days off <span class="section-count">{{ myNextDaysOff().length }}</span>
+                  </h2>
+                  <div class="chip-row">
+                    @for (r of myNextDaysOff(); track r.iso) {
+                      <div class="chip muted">
+                        <span class="chip-name">{{ r.isToday ? 'Today' : (r.isTomorrow ? 'Tomorrow' : r.label) }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+
+              <!-- Calendar subscribe -->
+              <section class="section subscribe-section">
+                <h2 class="section-title">
+                  📲 Subscribe to your shifts
+                </h2>
+                <div class="subscribe-body">
+                  @if (!icalUrl() && !icalLoading()) {
+                    <p class="explain">
+                      Get your shifts on your phone's Calendar app (Google Calendar, Apple Calendar,
+                      Outlook). One-time setup — the calendar auto-updates as the schedule changes.
+                    </p>
+                    <button class="btn-primary" (click)="loadIcalUrl()">Get my subscribe link</button>
+                  }
+
+                  @if (icalLoading()) {
+                    <div class="empty-mini">Generating your link…</div>
+                  }
+
+                  @if (icalUrl()) {
+                    <p class="explain">
+                      Copy this URL and add it to your Calendar app:
+                      <br><em>Google Calendar → "From URL" · Apple Calendar → File → New Calendar Subscription · Outlook → "Add from web".</em>
+                    </p>
+                    <div class="url-row">
+                      <input type="text" readonly [value]="icalUrl()!" class="url-input"
+                             (click)="$any($event.target).select()" />
+                      <button class="btn-primary" (click)="copyIcalUrl()">
+                        {{ icalCopied() ? '✓ Copied' : 'Copy' }}
+                      </button>
                     </div>
+                    @if (icalWebcalUrl(); as webcal) {
+                      <a class="btn-link" [attr.href]="webcal">
+                        Or tap here to subscribe now (opens your Calendar app)
+                      </a>
+                    }
                   }
                 </div>
               </section>
             }
+          </div>
+        }
 
-            @if (day.pto && day.pto.length > 0) {
-              <section class="section">
-                <h2 class="section-title muted-title">
-                  PTO
-                  <span class="section-count">{{ day.pto.length }}</span>
-                </h2>
-                <div class="chip-row">
-                  @for (p of day.pto; track p.name) {
-                    <div class="chip muted">
-                      @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
-                      <span class="chip-name">{{ p.name }}</span>
-                    </div>
-                  }
-                </div>
-              </section>
+        <!-- ═════ YEAR VIEW ═════ -->
+        @if (scheduleView() === 'year') {
+          <div class="tab-content">
+            @if (yearError()) {
+              <div class="banner banner-warn">⚠️ {{ yearError() }}</div>
             }
 
-            @if (day.training && day.training.length > 0) {
-              <section class="section">
-                <h2 class="section-title muted-title">
-                  Training
-                  <span class="section-count">{{ day.training.length }}</span>
-                </h2>
-                <div class="chip-row">
-                  @for (p of day.training; track p.name) {
-                    <div class="chip muted">
-                      @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
-                      <span class="chip-name">{{ p.name }}</span>
-                    </div>
+            <div class="day-picker">
+              <button class="day-nav" (click)="shiftYear(-1)" title="Previous year">‹</button>
+              <div class="day-label">
+                <div class="day-name">{{ yearAnchor() }}</div>
+                <div class="day-date">
+                  @if (currentUserName()) {
+                    Your year — colored by shift type
+                  } @else {
+                    Plant year — colored by dominant shift per day
                   }
                 </div>
-              </section>
-            }
-
-            @if (day.unscheduled && day.unscheduled.length > 0) {
-              <section class="section">
-                <h2 class="section-title muted-title">
-                  Unscheduled
-                  <span class="section-count">{{ day.unscheduled.length }}</span>
-                </h2>
-                <div class="chip-row">
-                  @for (p of day.unscheduled; track p.name) {
-                    <div class="chip muted">
-                      @if (p.group) { <span class="chip-group muted">{{ p.group }}</span> }
-                      <span class="chip-name">{{ p.name }}</span>
-                    </div>
-                  }
-                </div>
-              </section>
-            }
-          }
-
-          @if (!selectedDay() && !scheduleLoading()) {
-            <div class="empty-state">
-              <div class="empty-glyph">📭</div>
-              <div class="empty-text">No schedule for {{ selectedDate() | date:'MMM d' }}</div>
+              </div>
+              <button class="day-nav" (click)="shiftYear(1)" title="Next year">›</button>
+              <button class="btn-today" (click)="jumpToCurrentYear()">This year</button>
             </div>
-          }
-        </div>
-      }
+
+            @if (yearLoading() && yearDays().length === 0) {
+              <div class="empty-state">
+                <div class="empty-glyph spin">⏳</div>
+                <div class="empty-text">Loading year…</div>
+              </div>
+            } @else {
+              <div class="legend">
+                <span class="legend-cell cell-D">D</span> Day
+                <span class="legend-cell cell-N">N</span> Night
+                <span class="legend-cell cell-OCM">OCM</span> On Call
+                <span class="legend-cell cell-P">P</span> PTO
+                <span class="legend-cell cell-T">T</span> Training
+                <span class="legend-cell cell-L">L</span> Leads Meeting
+              </div>
+
+              <div class="year-grids">
+                @for (g of yearMonthGrids(); track g.month) {
+                  <div class="mini-month">
+                    <button class="mini-month-header" (click)="jumpToMonthFromYear(g.month)"
+                            title="Open month view">
+                      {{ g.label }}
+                    </button>
+                    <div class="mini-wd-row">
+                      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                    </div>
+                    <div class="mini-cells">
+                      @for (c of g.cells; track $index) {
+                        @if (c.leadingBlank) {
+                          <span class="mini-cell blank"></span>
+                        } @else {
+                          <button class="mini-cell"
+                                  [class.today]="c.isToday"
+                                  [attr.data-shift]="c.shift"
+                                  (click)="jumpToDateFromYear(c.iso)"
+                                  [title]="c.iso + ' — ' + shiftLabel(c.shift)">
+                            {{ c.day }}
+                          </button>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
 
       <!-- Contacts tab -->
       @if (activeTab() === 'contacts') {

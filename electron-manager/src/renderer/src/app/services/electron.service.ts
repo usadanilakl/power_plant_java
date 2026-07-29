@@ -26,6 +26,22 @@ export interface IpcResult<T = void> {
   error?: string;
 }
 
+/** Mirrors src/shared/types.ts FeedItem — one normalized "Updates / News" entry. */
+export type FeedCategory = 'WORK_REQUEST' | 'CONVERSATION' | 'SCHEDULE' | 'PJM' | 'CORK_BOARD';
+
+export interface FeedItem {
+  id: string;
+  category: FeedCategory;
+  entityType?: string;
+  entityId?: number | null;
+  title: string;
+  summary?: string;
+  timestamp: string;          // ISO-8601
+  changeType?: 'NEW' | 'UPDATED';
+  actor?: string | null;
+  severity?: 'info' | 'warning';
+}
+
 export interface DeviceConfig {
   deviceNumber: number;
   deviceName: string;
@@ -478,7 +494,7 @@ export interface PjmDaAward {
   processedAt?: string;
 }
 
-export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | '';
+export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | 'L' | 'OFF' | '';
 
 export interface PersonnelEntry {
   name: string;
@@ -798,6 +814,11 @@ interface ElectronAPI {
   // PJM Day-Ahead Awards (read-only — data from SharePoint)
   pjmDaFetch: () => Promise<IpcResult<PjmDaAward[]>>;
   pjmDaRefresh: () => Promise<IpcResult<PjmDaAward[]>>;
+
+  // Updates / News feed
+  newsList: () => Promise<IpcResult<FeedItem[]>>;
+  newsRefresh: () => Promise<IpcResult<FeedItem[]>>;
+  onNewsUpdate: (callback: (items: FeedItem[]) => void) => () => void;
 
   // Personnel
   personnelGetStatus: () => Promise<IpcResult<PersonnelStatus>>;
@@ -1530,6 +1551,25 @@ export class ElectronService implements OnDestroy {
   async pjmDaRefresh(): Promise<IpcResult<PjmDaAward[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.pjmDaRefresh();
+  }
+
+  // Updates / News feed
+
+  async newsList(): Promise<IpcResult<FeedItem[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.newsList();
+  }
+
+  async newsRefresh(): Promise<IpcResult<FeedItem[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.newsRefresh();
+  }
+
+  onNewsUpdate(callback: (items: FeedItem[]) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onNewsUpdate((items) => {
+      this.ngZone.run(() => callback(items));
+    });
   }
 
   // Personnel
