@@ -72,6 +72,29 @@ cdk-virtual-scroll-viewport.toggle-list {
   font-size: 12px;
 }
 
+/* Picker mode (caretToggleOnly): the caret is the expand/collapse control while the row body selects.
+   A bare 12px glyph is far too small to aim at — give it a generous ~30px hit box with a hover affordance
+   so users stop mis-clicking into a selection when they mean to expand. */
+.toggle-icon.caret-btn {
+  margin-right: 4px;
+  min-width: 30px;
+  height: 30px;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.toggle-icon.caret-btn:hover {
+  background-color: var(--hover-color);
+  color: var(--primary-text);
+}
+.toggle-icon.caret-btn:active {
+  background-color: var(--border-color);
+}
+
 .item-text {
   display: flex;
   flex-direction: column;

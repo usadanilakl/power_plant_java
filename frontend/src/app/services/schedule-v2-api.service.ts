@@ -48,6 +48,34 @@ export interface AssignableUser {
   name: string;
 }
 
+export interface CoverageRequest {
+  id?: number;
+  startDate?: string;
+  endDate?: string;
+  shift: string;          // DAY | NIGHT
+  requiredCount?: number;
+  reason?: string;        // OUTAGE | PTO_COVERAGE | MANUAL
+  status?: string;        // OPEN | FULFILLED | CANCELLED
+  approvedCount?: number;
+  ptoRequestId?: number;
+  date?: string;
+  openForDate?: number;
+}
+
+export interface CoverageSignup {
+  id?: number;
+  coverageRequestId?: number;
+  userId?: number;
+  userName?: string;
+  date?: string;
+  shift?: string;
+  status?: string;        // PENDING | APPROVED | REJECTED | WITHDRAWN
+  signedUpVia?: string;
+  approvedByUserId?: number;
+  approvedByName?: string;
+  approvedAt?: string;
+}
+
 /**
  * Client for the schedule v2 admin CRUD (`/ng/admin/schedule-v2/*`). Admin-gated server-side; the
  * route is also behind adminGuard. Every mutation re-materialises server-side (no-op when the
@@ -112,5 +140,28 @@ export class ScheduleV2ApiService {
   materialize(from: string, to: string): Observable<SpringApiResponse<{ rowsWritten: number }>> {
     const params = new HttpParams().set('from', from).set('to', to);
     return this.http.post<SpringApiResponse<{ rowsWritten: number }>>(`${this.base}/materialize`, {}, { params });
+  }
+
+  // Coverage
+  listCoverage(from?: string, to?: string): Observable<SpringApiResponse<CoverageRequest[]>> {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http.get<SpringApiResponse<CoverageRequest[]>>(`${this.base}/coverage`, { params });
+  }
+  createCoverage(c: CoverageRequest): Observable<SpringApiResponse<CoverageRequest>> {
+    return this.http.post<SpringApiResponse<CoverageRequest>>(`${this.base}/coverage`, c);
+  }
+  cancelCoverage(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/coverage/${id}`);
+  }
+  listSignups(requestId: number): Observable<SpringApiResponse<CoverageSignup[]>> {
+    return this.http.get<SpringApiResponse<CoverageSignup[]>>(`${this.base}/coverage/${requestId}/signups`);
+  }
+  approveSignup(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.post<SpringApiResponse<boolean>>(`${this.base}/coverage/signups/${id}/approve`, {});
+  }
+  rejectSignup(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.post<SpringApiResponse<boolean>>(`${this.base}/coverage/signups/${id}/reject`, {});
   }
 }

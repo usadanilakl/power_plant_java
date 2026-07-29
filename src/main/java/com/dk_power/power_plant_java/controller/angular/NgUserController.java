@@ -232,7 +232,7 @@ public class NgUserController {
             },
             // Combined list for back-compat with the existing /roles consumer.
             "roles", new String[]{
-                "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT",
+                "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT", "ROLE_KIOSK",
                 "ROLE_NAES", "ROLE_JPOWER",
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
             }

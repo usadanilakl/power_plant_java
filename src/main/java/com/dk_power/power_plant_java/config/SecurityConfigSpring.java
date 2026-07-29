@@ -111,6 +111,10 @@ public class SecurityConfigSpring {
                 // Must precede the generic maximo rule below (first match wins), which still denies KIOSK on writes.
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
                 .requestMatchers("/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN")
+                // Coverage signup: a kiosk (otherwise read-only) may GET open coverage and POST a
+                // signup. Method-scoped so KIOSK write access is confined to this one path.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
                 .requestMatchers("/api/pwa/secured/**").authenticated()
                 .requestMatchers("/api/pwa/auth/me", "/api/pwa/auth/refresh").authenticated()
 

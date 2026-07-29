@@ -1,8 +1,12 @@
 package com.dk_power.power_plant_java.controller.angular;
 
+import com.dk_power.power_plant_java.dto.schedule.CoverageRequestDto;
+import com.dk_power.power_plant_java.dto.schedule.CoverageSeatSummaryDto;
+import com.dk_power.power_plant_java.dto.schedule.CoverageSignupDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewAssignmentDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewPatternDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
+import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
 import com.dk_power.power_plant_java.sevice.schedule.NgScheduleV2Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +33,7 @@ import java.util.Map;
 public class NgScheduleV2AdminController {
 
     private final NgScheduleV2Service service;
+    private final NgCoverageService coverageService;
 
     // ---- Crew patterns ------------------------------------------------------
 
@@ -138,5 +143,55 @@ public class NgScheduleV2AdminController {
         int written = service.materializeNow(from, to);
         return ResponseEntity.ok(new NgApiResponse<>(
                 Map.of("rowsWritten", written), "Materialised " + written + " day rows"));
+    }
+
+    // ---- Coverage -----------------------------------------------------------
+
+    @GetMapping("/coverage")
+    public ResponseEntity<NgApiResponse<List<CoverageRequestDto>>> listCoverage(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(new NgApiResponse<>(coverageService.listCoverage(from, to), "Coverage requests"));
+    }
+
+    @PostMapping("/coverage")
+    public ResponseEntity<NgApiResponse<CoverageRequestDto>> createCoverage(@RequestBody CoverageRequestDto dto) {
+        return ResponseEntity.ok(new NgApiResponse<>(coverageService.createCoverage(dto), "Coverage created"));
+    }
+
+    @DeleteMapping("/coverage/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> cancelCoverage(@PathVariable Long id) {
+        boolean ok = coverageService.cancelCoverage(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Cancelled" : "Not found"));
+    }
+
+    @GetMapping("/coverage/summary")
+    public ResponseEntity<NgApiResponse<List<CoverageSeatSummaryDto>>> coverageSummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(new NgApiResponse<>(coverageService.seatSummary(from, to), "Coverage seat summary"));
+    }
+
+    @GetMapping("/coverage/{id}/signups")
+    public ResponseEntity<NgApiResponse<List<CoverageSignupDto>>> listSignups(@PathVariable Long id) {
+        return ResponseEntity.ok(new NgApiResponse<>(coverageService.listSignups(id), "Coverage signups"));
+    }
+
+    @PostMapping("/coverage/signups/{id}/approve")
+    public ResponseEntity<NgApiResponse<Boolean>> approveSignup(@PathVariable Long id) {
+        boolean ok = coverageService.approveSignup(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Approved" : "Not found"));
+    }
+
+    @PostMapping("/coverage/signups/{id}/reject")
+    public ResponseEntity<NgApiResponse<Boolean>> rejectSignup(@PathVariable Long id) {
+        boolean ok = coverageService.rejectSignup(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Rejected" : "Not found"));
+    }
+
+    /** Surface validation failures (invalid dates, seat full, …) as 400 with a message, not 500. */
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<NgApiResponse<Object>> handleBadRequest(RuntimeException e) {
+        return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
     }
 }

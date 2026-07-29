@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,8 +48,27 @@ public class ShiftDayService {
      */
     private final ObjectProvider<SupabaseAdminClient> supabaseProvider;
 
+    /**
+     * When schedule v2 owns ShiftDay (see {@code ScheduleMaterialisationService}), the v1 SharePoint
+     * import stands down. Read directly (not via that service) to avoid a bean cycle.
+     */
+    @Value("${schedule.v2.enabled:false}")
+    private boolean scheduleV2Enabled;
+    @Value("${schedule.v2.rollback:false}")
+    private boolean scheduleV2Rollback;
+
     public int importSchedule(ScheduleImportRequest request) {
         if (request == null || request.getPersons() == null || request.getPersons().isEmpty()) return 0;
+
+        // Coexistence: when schedule v2 is authoritative (flag on, not rolled back), the v1 SharePoint
+        // import does NOT write ShiftDay — the materialiser owns it. This prevents v1 and v2 from
+        // clobbering the same shift_days row. (A fleet-wide flag flip handles peer nodes; a single
+        // flag-off desktop could still push SP rows via CRDT, which is the normal cutover model.)
+        if (scheduleV2Enabled && !scheduleV2Rollback) {
+            log.info("[Schedule] schedule.v2 active — v1 SharePoint import standing down (not writing "
+                    + "ShiftDay); {} person(s) in payload ignored.", request.getPersons().size());
+            return 0;
+        }
 
         List<User> candidates = userRepo.findByIsActiveTrue();
         Map<String, ShiftEntry> resolvedNames = new HashMap<>();

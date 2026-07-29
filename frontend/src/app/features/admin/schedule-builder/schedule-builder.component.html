@@ -27,6 +27,7 @@
         <button [class.active]="activeTab()==='patterns'" (click)="setTab('patterns')">Crew Patterns</button>
         <button [class.active]="activeTab()==='assignments'" (click)="setTab('assignments')">Assignments</button>
         <button [class.active]="activeTab()==='events'" (click)="setTab('events')">Events</button>
+        <button [class.active]="activeTab()==='coverage'" (click)="setTab('coverage')">Coverage</button>
       </nav>
 
       <!-- ============================ PATTERNS ============================ -->
@@ -209,6 +210,84 @@
               </td>
             </tr>
             <tr *ngIf="events().length===0"><td colspan="6" class="muted">No events yet.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ============================= COVERAGE ============================= -->
+      <section *ngIf="activeTab()==='coverage'">
+        <div class="sb-toolbar" *ngIf="!editingCoverage">
+          <button class="btn btn-primary" (click)="newCoverage()">+ New coverage request</button>
+        </div>
+
+        <div class="sb-editor" *ngIf="editingCoverage">
+          <div class="sb-field-row">
+            <label>Shift
+              <select [(ngModel)]="editingCoverage.shift">
+                <option *ngFor="let s of COVERAGE_SHIFTS" [value]="s">{{ s }}</option>
+              </select>
+            </label>
+            <label>Start <input type="date" [(ngModel)]="editingCoverage.startDate" /></label>
+            <label>End <input type="date" [(ngModel)]="editingCoverage.endDate" /></label>
+            <label>Seats needed <input type="number" min="1" [(ngModel)]="editingCoverage.requiredCount" /></label>
+            <label>Reason
+              <select [(ngModel)]="editingCoverage.reason">
+                <option *ngFor="let r of COVERAGE_REASONS" [value]="r">{{ r }}</option>
+              </select>
+            </label>
+          </div>
+          <div class="sb-editor-actions">
+            <button class="btn btn-primary" (click)="saveCoverage()"
+                    [disabled]="loading() || !editingCoverage.shift || !editingCoverage.startDate">Create request</button>
+            <button class="btn" (click)="cancelCoverageEdit()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="sb-editor" *ngIf="selectedCoverage">
+          <div class="sb-signups-head">
+            <h3>
+              Signups — {{ selectedCoverage.shift }} · {{ selectedCoverage.startDate }}<span
+                *ngIf="selectedCoverage.endDate && selectedCoverage.endDate !== selectedCoverage.startDate">
+                → {{ selectedCoverage.endDate }}</span>
+            </h3>
+            <button class="btn sm" (click)="closeSignups()">Close</button>
+          </div>
+          <table class="sb-table">
+            <thead><tr><th>Person</th><th>Day</th><th>Via</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let s of signups()">
+                <td>{{ s.userName }}</td>
+                <td>{{ s.date }}</td>
+                <td>{{ s.signedUpVia }}</td>
+                <td><span class="pill" [attr.data-status]="s.status">{{ s.status }}</span></td>
+                <td class="ta-r">
+                  <button class="btn sm" *ngIf="s.status !== 'APPROVED'" (click)="approveSignup(s)">Approve</button>
+                  <button class="btn sm danger" *ngIf="s.status !== 'REJECTED'" (click)="rejectSignup(s)">Reject</button>
+                </td>
+              </tr>
+              <tr *ngIf="signups().length===0"><td colspan="5" class="muted">No signups yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <table class="sb-table" *ngIf="!editingCoverage">
+          <thead>
+            <tr><th>Shift</th><th>Dates</th><th>Seats</th><th>Approved</th><th>Reason</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of coverage()">
+              <td><span class="pill" [attr.data-shift]="c.shift">{{ c.shift }}</span></td>
+              <td>{{ c.startDate }}<span *ngIf="c.endDate && c.endDate !== c.startDate"> → {{ c.endDate }}</span></td>
+              <td>{{ c.requiredCount }}</td>
+              <td>{{ c.approvedCount ?? 0 }}</td>
+              <td>{{ c.reason }}</td>
+              <td><span class="pill" [attr.data-status]="c.status">{{ c.status }}</span></td>
+              <td class="ta-r">
+                <button class="btn sm" (click)="viewSignups(c)">Signups</button>
+                <button class="btn sm danger" *ngIf="c.status !== 'CANCELLED'" (click)="cancelCoverageReq(c)">Cancel</button>
+              </td>
+            </tr>
+            <tr *ngIf="coverage().length===0"><td colspan="7" class="muted">No coverage requests yet.</td></tr>
           </tbody>
         </table>
       </section>

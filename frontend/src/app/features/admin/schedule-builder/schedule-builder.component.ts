@@ -5,9 +5,10 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import {
   ScheduleV2ApiService, CrewPattern, CrewAssignment, ScheduleEvent, AssignableUser,
+  CoverageRequest, CoverageSignup,
 } from '../../../services/schedule-v2-api.service';
 
-type Tab = 'patterns' | 'assignments' | 'events';
+type Tab = 'patterns' | 'assignments' | 'events' | 'coverage';
 
 /**
  * Schedule v2 manager build tools (admin-gated). Three tabs — crew rotation patterns (role × day
@@ -29,6 +30,8 @@ export class ScheduleBuilderComponent implements OnInit {
   readonly SHIFTS = ['', 'D', 'N', 'O', 'R'];
   readonly EVENT_TYPES = ['HOLIDAY', 'MEETING', 'PAY_PERIOD_START', 'OUTAGE', 'TRAINING_MANDATORY', 'LEADS_MEETING'];
   readonly SHIFT_AFFINITY = ['BOTH', 'DAY', 'NIGHT'];
+  readonly COVERAGE_SHIFTS = ['DAY', 'NIGHT'];
+  readonly COVERAGE_REASONS = ['MANUAL', 'OUTAGE', 'PTO_COVERAGE'];
 
   activeTab = signal<Tab>('patterns');
   active = signal<boolean>(false);
@@ -39,10 +42,14 @@ export class ScheduleBuilderComponent implements OnInit {
   assignments = signal<CrewAssignment[]>([]);
   events = signal<ScheduleEvent[]>([]);
   users = signal<AssignableUser[]>([]);
+  coverage = signal<CoverageRequest[]>([]);
+  signups = signal<CoverageSignup[]>([]);
 
   editingPattern: CrewPattern | null = null;
   editingAssignment: CrewAssignment | null = null;
   editingEvent: ScheduleEvent | null = null;
+  editingCoverage: CoverageRequest | null = null;
+  selectedCoverage: CoverageRequest | null = null;
 
   ngOnInit(): void {
     this.reloadAll();
@@ -54,6 +61,7 @@ export class ScheduleBuilderComponent implements OnInit {
     this.api.listAssignments().subscribe(r => this.assignments.set(r.responseData ?? []));
     this.api.listEvents().subscribe(r => this.events.set(r.responseData ?? []));
     this.api.assignableUsers().subscribe(r => this.users.set(r.responseData ?? []));
+    this.api.listCoverage().subscribe(r => this.coverage.set(r.responseData ?? []));
   }
 
   setTab(t: Tab): void { this.activeTab.set(t); }
@@ -140,6 +148,53 @@ export class ScheduleBuilderComponent implements OnInit {
   deleteEvent(e: ScheduleEvent): void {
     if (!e.id || !confirm('Delete this event?')) return;
     this.api.deleteEvent(e.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+  }
+
+  // ---- coverage ----
+  newCoverage(): void {
+    this.editingCoverage = { shift: 'DAY', requiredCount: 1, reason: 'MANUAL' };
+    this.selectedCoverage = null;
+  }
+  cancelCoverageEdit(): void { this.editingCoverage = null; }
+  saveCoverage(): void {
+    if (!this.editingCoverage) return;
+    this.loading.set(true);
+    this.api.createCoverage(this.editingCoverage).subscribe({
+      next: () => { this.editingCoverage = null; this.loading.set(false); this.flash('Coverage created'); this.reloadAll(); },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+  cancelCoverageReq(c: CoverageRequest): void {
+    if (!c.id || !confirm('Cancel this coverage request?')) return;
+    this.api.cancelCoverage(c.id).subscribe(() => {
+      this.flash('Cancelled');
+      if (this.selectedCoverage?.id === c.id) this.closeSignups();
+      this.reloadAll();
+    });
+  }
+  viewSignups(c: CoverageRequest): void {
+    this.selectedCoverage = c;
+    this.editingCoverage = null;
+    this.refreshSignups();
+  }
+  closeSignups(): void { this.selectedCoverage = null; this.signups.set([]); }
+  approveSignup(s: CoverageSignup): void {
+    if (!s.id) return;
+    this.api.approveSignup(s.id).subscribe({
+      next: () => { this.flash('Approved'); this.refreshSignups(); this.reloadAll(); },
+      error: e => this.flash('Approve failed: ' + this.errText(e)),
+    });
+  }
+  rejectSignup(s: CoverageSignup): void {
+    if (!s.id) return;
+    this.api.rejectSignup(s.id).subscribe({
+      next: () => { this.flash('Rejected'); this.refreshSignups(); this.reloadAll(); },
+      error: e => this.flash('Reject failed: ' + this.errText(e)),
+    });
+  }
+  private refreshSignups(): void {
+    const id = this.selectedCoverage?.id;
+    if (id) this.api.listSignups(id).subscribe(r => this.signups.set(r.responseData ?? []));
   }
 
   // ---- materialize ----

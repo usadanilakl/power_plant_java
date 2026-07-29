@@ -201,6 +201,8 @@ export class UserDto extends BaseDto implements UserModel {
       { value: 'ROLE_EMPLOYEE', label: 'Employee' },
       { value: 'ROLE_CONTRACTOR', label: 'Contractor' },
       { value: 'ROLE_PLANT', label: 'Plant' },
+      // Read-only kiosk/display account (e.g. a wall monitor proxying the Maximo PM overview via the hub).
+      { value: 'ROLE_KIOSK', label: 'Kiosk (read-only display)' },
       // Employer / group roles — gate access to schedule, contacts, chat.
       { value: 'ROLE_NAES', label: 'NAES' },
       { value: 'ROLE_JPOWER', label: 'JPower' },
