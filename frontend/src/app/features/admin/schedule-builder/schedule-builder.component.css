@@ -262,3 +262,30 @@
 .pill[data-status="REJECTED"] { background: rgba(239, 83, 80, 0.18); color: #ef5350; border-color: rgba(239, 83, 80, 0.4); }
 .pill[data-status="CANCELLED"]{ background: rgba(158, 158, 158, 0.18); color: var(--secondary-text, #9e9e9e); border-color: rgba(158, 158, 158, 0.4); }
 .pill[data-status="FULFILLED"]{ background: rgba(38, 198, 218, 0.18); color: #26c6da; border-color: rgba(38, 198, 218, 0.4); }
+
+/* Schedule preview */
+.nowrap { white-space: nowrap; }
+.sb-sched-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.sb-sched-head h3 { margin: 0; font-size: 1.05rem; min-width: 150px; }
+.chip {
+  display: inline-block; font-size: 0.76rem; padding: 2px 7px; margin: 1px 3px 1px 0;
+  border-radius: 999px; border: 1px solid transparent;
+}
+.chip.day   { background: rgba(102, 187, 106, 0.18); color: #66bb6a; border-color: rgba(102, 187, 106, 0.4); }
+.chip.night { background: rgba(66, 165, 245, 0.18); color: #42a5f5; border-color: rgba(66, 165, 245, 0.4); }
+
+/* Offset picker */
+.offset-block { margin: 6px 0 4px; }
+.offset-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--secondary-text, #5f6b76); margin-bottom: 6px; }
+.offset-picker { display: flex; gap: 3px; }
+.offset-day {
+  display: flex; flex-direction: column; align-items: center; min-width: 30px;
+  border: 1px solid var(--border-color, #d0d7de); border-radius: 5px; padding: 3px 2px;
+  background: var(--card-background, #fff); color: var(--primary-text, #1a2027); cursor: pointer;
+}
+.offset-day .od-num { font-size: 0.66rem; color: var(--secondary-text, #90a4ae); }
+.offset-day .od-shift { font-size: 0.8rem; font-weight: 700; }
+.offset-day[data-shift="D"] { background: rgba(102, 187, 106, 0.2); }
+.offset-day[data-shift="N"] { background: rgba(66, 165, 245, 0.2); }
+.offset-day[data-shift="O"] { background: rgba(128, 128, 128, 0.12); }
+.offset-day.sel { outline: 2px solid var(--accent-color, #1976d2); border-color: var(--accent-color, #1976d2); }

@@ -166,6 +166,10 @@ export class PjmManager {
         nodeIntegration: false,
         contextIsolation: true,
         partition: 'persist:pjm',
+        // Interactive window, so a single dialog stays allowed — but Chromium's consecutive-dialog
+        // protection breaks the endless "call this number" loop a locker page relies on.
+        safeDialogs: true,
+        safeDialogsMessage: 'This page is repeatedly showing dialogs and has been muted.',
       },
     });
 

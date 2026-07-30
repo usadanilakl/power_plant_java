@@ -176,8 +176,8 @@ localxpose.pid
 /src/main/resources/application-secrets.properties
 /src/main/resources/private_key.pem
 global.env
-# Kiosk deployment override — holds the hub kiosk credential
-/deploy/kiosk/config/application-secrets.properties
+# Kiosk device profile (baked into the jar, selected by DEVICE_CONFIG=kiosk) — holds the hub kiosk credential
+/src/main/resources/device-configs/kiosk.properties
 /electron-manager/config-defaults/
 /data/certificate.pfx
 # SharePoint cert PEM — contains a PRIVATE KEY; provision out-of-band, never commit.

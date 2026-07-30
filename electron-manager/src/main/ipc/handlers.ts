@@ -438,7 +438,22 @@ export class IpcHandlers {
     });
 
     ipcMain.handle(events.IPC_OPEN_EXTERNAL, async (_event, url: string) => {
+      // shell.openExternal hands the string to the OS shell. On Windows that makes non-web
+      // schemes (ms-msdt:, search-ms:, file: UNC paths, ...) a code-execution vector, so only
+      // real web/mail links are forwarded. Every in-app caller already passes http(s).
+      let scheme: string;
+      try {
+        scheme = new URL(url).protocol;
+      } catch {
+        console.warn(`[OpenExternal] refused unparseable url: ${url}`);
+        return { success: false, error: 'Invalid URL' };
+      }
+      if (scheme !== 'http:' && scheme !== 'https:' && scheme !== 'mailto:') {
+        console.warn(`[OpenExternal] refused scheme ${scheme}: ${url}`);
+        return { success: false, error: `Refused to open ${scheme} link` };
+      }
       await shell.openExternal(url);
+      return { success: true };
     });
   }
 
@@ -1307,6 +1322,15 @@ export class IpcHandlers {
     ipcMain.handle(events.IPC_WEATHER_SET_INTERVAL, (_event, seconds: number) => {
       this.weatherManager.setScrapeInterval(seconds);
       return { success: true, intervalSeconds: this.weatherManager.getIntervalSeconds() };
+    });
+
+    ipcMain.handle(events.IPC_WEATHER_GET_ENABLED, () => {
+      return { success: true, enabled: this.weatherManager.isEnabled() };
+    });
+
+    ipcMain.handle(events.IPC_WEATHER_SET_ENABLED, (_event, enabled: boolean) => {
+      this.weatherManager.setEnabled(enabled === true);
+      return { success: true, enabled: this.weatherManager.isEnabled() };
     });
 
     ipcMain.handle(events.IPC_WEATHER_GET_FORECAST, () => {

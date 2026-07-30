@@ -1,0 +1,5 @@
+# Collected evidence contains real browsing data (cookie domains, cached URLs) from
+# whichever machine it ran on. Keep the tools in git, never the output.
+electron-evidence-*.txt
+electron-evidence-*.json
+.writeprobe

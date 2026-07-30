@@ -40,6 +40,14 @@ public interface UserRepo extends BaseRepository<User> {
 
     User findFirstByWindowsUsernameOrderByIdAsc(String windowsUsername);
 
+    /**
+     * Case-insensitive windowsUsername lookup — used by desktop auto-auth. Windows has been observed
+     * reporting the same account with different casing between logons, and the rest of the stack already
+     * treats this field case-insensitively (see {@code DedupKeyResolver} natural keys and
+     * {@code UserMergeService}), so the OS-name match must not be case-sensitive either.
+     */
+    User findFirstByWindowsUsernameIgnoreCaseOrderByIdAsc(String windowsUsername);
+
     User findFirstByRoleAndIsActiveTrue(String role);
 
     User findFirstByPwaUserUuidOrderByIdAsc(String pwaUserUuid);

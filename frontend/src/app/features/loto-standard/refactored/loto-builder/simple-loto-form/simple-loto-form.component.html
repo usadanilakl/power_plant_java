@@ -45,8 +45,12 @@
           </div>
         } @else {
           @for (point of lotoPoints(); track point.id; let i = $index) {
-            <div class="point-item" cdkDrag>
-              <div class="drag-handle" cdkDragHandle title="Drag to reorder">
+            <div class="point-item clickable"
+                 cdkDrag
+                 title="Click to open P&IDs in the right panel"
+                 (click)="onPointClick(point)"
+                 (contextmenu)="onPointContextMenu(point, $event)">
+              <div class="drag-handle" cdkDragHandle title="Drag to reorder" (click)="$event.stopPropagation()">
                 <span class="drag-icon">⋮⋮</span>
                 <span class="point-number">{{ i + 1 }}</span>
               </div>
@@ -57,7 +61,7 @@
               <button
                 type="button"
                 class="remove-button"
-                (click)="onRemovePoint(point)"
+                (click)="onRemovePoint(point); $event.stopPropagation()"
                 title="Remove point"
               >
                 ✕

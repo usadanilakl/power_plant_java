@@ -24,18 +24,18 @@
              writes only its own field, so picking one never clears the other. "type manually" reveals the old
              free-text pickers (escape hatch for codes not yet in the Maximo-seeded tree). -->
         <div class="row">
-          <label class="tree-filter">Assetnum
+          <div class="tree-filter"><span class="tf-cap">Assetnum</span>
             <app-maximo-location-tree-picker *ngIf="!manualFilterEntry()" mode="asset"
               [assetnum]="criteria.assetnum" (selection)="criteria.assetnum = $event.assetnum">
             </app-maximo-location-tree-picker>
             <app-maximo-asset-picker *ngIf="manualFilterEntry()" [(ngModel)]="criteria.assetnum" placeholder="tag / description"></app-maximo-asset-picker>
-          </label>
-          <label class="tree-filter">Location
+          </div>
+          <div class="tree-filter"><span class="tf-cap">Location</span>
             <app-maximo-location-tree-picker *ngIf="!manualFilterEntry()" mode="location"
               [location]="criteria.location" (selection)="criteria.location = $event.location">
             </app-maximo-location-tree-picker>
             <app-maximo-location-picker *ngIf="manualFilterEntry()" [(ngModel)]="criteria.location" placeholder="code / description"></app-maximo-location-picker>
-          </label>
+          </div>
           <label>Lead craft <app-maximo-person-picker [(ngModel)]="criteria.leadCraft" placeholder="RGARCIA"></app-maximo-person-picker></label>
           <label>Supervisor <app-maximo-person-picker [(ngModel)]="criteria.supervisor" placeholder="personid"></app-maximo-person-picker></label>
           <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>

@@ -16,6 +16,7 @@
 .filter-panel .row.actions { margin-top: 6px; padding-top: 8px; border-top: 1px solid #333; }
 /* Tree-picker filters render as a full-width dropdown, so give their label a stacked, min-width column. */
 .tree-filter { display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-width: 260px; flex: 1 1 260px; }
+.tree-filter .tf-cap { color: #aaa; }
 button.link.tree-toggle { background: none; border: 0; color: #7cc6ff; padding: 2px 4px; cursor: pointer; font: inherit; align-self: center; }
 button.link.tree-toggle:hover { background: none; text-decoration: underline; }
 label { color: #aaa; }

@@ -197,6 +197,16 @@
   border-color: var(--primary-color, #2196F3);
 }
 
+/* Clickable point-item (row-click opens P&IDs in the right panel).
+ * Cursor stays `grab` on the drag handle only; the row body reads as
+ * an actionable link/button. */
+.point-item.clickable {
+  cursor: pointer;
+}
+.point-item.clickable .drag-handle {
+  cursor: grab;
+}
+
 /* Drag handle */
 .drag-handle {
   display: flex;

@@ -214,6 +214,26 @@ import {
           </select>
         </div>
 
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">WeatherBug Lightning</span>
+            <span class="setting-desc">
+              Scrapes lightning distance from an ad-funded page in a hidden window. Ads on that page
+              delivered a scam popup on 2026-07-30 — leave off unless this machine needs lightning.
+              Temperature and forecast come from a separate source and keep working either way.
+            </span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="weatherBugEnabled" (ngModelChange)="saveWeatherBugEnabled()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="polling-status" *ngIf="weatherBugSaved">
+          <span class="material-icons" style="font-size: 14px; color: var(--accent-success)">check</span>
+          {{ weatherBugEnabled ? 'WeatherBug lightning enabled — starting now.' : 'WeatherBug lightning disabled — window closed.' }}
+        </div>
+
         <div class="polling-status" *ngIf="pollingSaved">
           <span class="material-icons" style="font-size: 14px; color: var(--accent-success)">check</span>
           Settings saved. Will apply on next app launch.
@@ -579,6 +599,12 @@ export class SettingsComponent implements OnInit {
   gateLogIntervalMinutes = 15;
   pollingSaved = false;
 
+  // WeatherBug lives in the MAIN process (weather-config.json in the working dir), not localStorage
+  // like the toggles above — the scraper window is created before the renderer exists, so a
+  // renderer-side flag could not stop the ad-funded page from loading on launch.
+  weatherBugEnabled = false;
+  weatherBugSaved = false;
+
   private static readonly POLLING_STORAGE_KEY = 'dk-polling-settings';
 
   constructor(private electronService: ElectronService) {}
@@ -592,6 +618,22 @@ export class SettingsComponent implements OnInit {
       this.setupProfile = this.deviceConfig.springProfile || 'prod';
     }
     this.loadPollingSettings();
+
+    const weather = await this.electronService.getWeatherEnabled();
+    if (weather.success) {
+      this.weatherBugEnabled = weather.enabled === true;
+    }
+  }
+
+  async saveWeatherBugEnabled(): Promise<void> {
+    const result = await this.electronService.setWeatherEnabled(this.weatherBugEnabled);
+    // Trust the main process's answer over the checkbox — if the write failed, the UI should
+    // show what is actually running, not what was clicked.
+    if (result.success) {
+      this.weatherBugEnabled = result.enabled === true;
+    }
+    this.weatherBugSaved = true;
+    setTimeout(() => this.weatherBugSaved = false, 3000);
   }
 
   private loadPollingSettings(): void {

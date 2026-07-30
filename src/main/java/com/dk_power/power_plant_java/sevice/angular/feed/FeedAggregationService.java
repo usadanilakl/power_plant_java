@@ -2,7 +2,16 @@ package com.dk_power.power_plant_java.sevice.angular.feed;
 
 import com.dk_power.power_plant_java.dto.feed.FeedItemDto;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
+import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.messaging.Conversation;
+import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
+import com.dk_power.power_plant_java.entities.permits.EnergizedWorkPermit;
+import com.dk_power.power_plant_java.entities.permits.ExcavationPermit;
+import com.dk_power.power_plant_java.entities.permits.HotWork;
+import com.dk_power.power_plant_java.entities.permits.Jha;
+import com.dk_power.power_plant_java.entities.permits.SafeWork;
+import com.dk_power.power_plant_java.entities.permits.VentingPermit;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.users.ShiftDay;
@@ -12,6 +21,7 @@ import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.repository.users.ShiftDayRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -32,9 +42,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
@@ -60,35 +69,41 @@ public class FeedAggregationService {
     private final ShiftDayRepo shiftDayRepo;
     private final FieldChangeRepository fieldChangeRepository;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     private static final TypeReference<List<ShiftEntry>> SHIFT_ENTRY_LIST = new TypeReference<>() {};
 
-    /** How many rows to pull per list source before the global merge/cap. */
+    /** How many rows to keep per list source after filtering. */
     private static final int PER_SOURCE_LIMIT = 15;
     /** Fallback total cap when the caller doesn't specify one. */
     private static final int DEFAULT_TOTAL_LIMIT = 60;
     /** created ≈ modified within this window ⇒ treat the item as NEW rather than UPDATED. */
     private static final Duration NEW_WINDOW = Duration.ofSeconds(5);
 
-    /** Work-request statuses that are done — excluded from the "active only" feed. */
-    private static final Set<String> TERMINAL_WR_STATUSES = Set.of(
+    /** Permit statuses that are done — excluded wherever we filter to "active". */
+    private static final Set<String> TERMINAL_STATUSES = Set.of(
             "closed", "cancelled", "canceled", "revoked", "completed", "complete",
             "archived", "rejected", "denied", "void", "voided", "done");
 
-    /** How far back schedule *changes* are surfaced, and the cap on schedule items. */
-    private static final int SCHEDULE_WINDOW_DAYS = 5;
-    private static final int SCHEDULE_MAX_ITEMS = 30;
-    /** ShiftDay roster fields (property names, per FieldChange.fieldName) → human label, in display order. */
-    private static final Map<String, String> ROSTER_FIELDS = new LinkedHashMap<>();
-    static {
-        ROSTER_FIELDS.put("dayShiftJson", "Day");
-        ROSTER_FIELDS.put("nightShiftJson", "Night");
-        ROSTER_FIELDS.put("unscheduledJson", "Unscheduled");
-        ROSTER_FIELDS.put("ptoJson", "PTO");
-        ROSTER_FIELDS.put("trainingJson", "Training");
-    }
-    private static final DateTimeFormatter SCHEDULE_DATE_FMT =
-            DateTimeFormatter.ofPattern("MMM d (EEE)", Locale.US);
+    /** Conversation {@code entityType} → permit entity class. Only these count as "permits". */
+    private static final Map<String, Class<?>> PERMIT_TYPES = Map.of(
+            "WorkRequest", WorkRequest.class,
+            "Loto", Loto.class,
+            "HotWork", HotWork.class,
+            "SafeWork", SafeWork.class,
+            "ConfinedSpace", ConfinedSpace.class,
+            "Jha", Jha.class,
+            "EnergizedWorkPermit", EnergizedWorkPermit.class,
+            "ExcavationPermit", ExcavationPermit.class,
+            "VentingPermit", VentingPermit.class);
+
+    /** How far back schedule *changes* are surfaced, and the cap on affected-user items. */
+    private static final int SCHEDULE_WINDOW_DAYS = 14;
+    private static final int SCHEDULE_MAX_USERS = 30;
+    /** ShiftDay roster fields whose changes count as a person being scheduled/unscheduled (property names). */
+    private static final Set<String> ROSTER_FIELDS = Set.of(
+            "dayShiftJson", "nightShiftJson", "unscheduledJson", "ptoJson", "trainingJson");
+    private static final DateTimeFormatter SCHEDULE_DAY_FMT = DateTimeFormatter.ofPattern("MMM d", Locale.US);
 
     /**
      * Merged, newest-first feed.
@@ -162,20 +177,25 @@ public class FeedAggregationService {
         return out;
     }
 
-    /** True when the status marks a finished request (null / unknown statuses are treated as active). */
+    /** True when the status marks a finished permit (null / unknown statuses are treated as active). */
     private static boolean isTerminalStatus(String status) {
-        return status != null && TERMINAL_WR_STATUSES.contains(status.trim().toLowerCase(Locale.US));
+        return status != null && TERMINAL_STATUSES.contains(status.trim().toLowerCase(Locale.US));
     }
 
-    // ---------------------------------------------------------------- Plant Conversations
+    // ---------------------------------------------------------------- Plant Conversations (active permits only)
 
     private List<ScoredItem> conversationItems(LocalDateTime since) {
+        // Over-fetch: many recent conversations may hang off closed/non-permit entities, which we drop.
         List<Conversation> rows = conversationRepo.findAll(
-                PageRequest.of(0, PER_SOURCE_LIMIT, Sort.by(Sort.Direction.DESC, "lastMessageAt"))
+                PageRequest.of(0, PER_SOURCE_LIMIT * 3, Sort.by(Sort.Direction.DESC, "lastMessageAt"))
         ).getContent();
 
+        Map<String, Boolean> permitCache = new HashMap<>();
         List<ScoredItem> out = new ArrayList<>();
         for (Conversation c : rows) {
+            if (out.size() >= PER_SOURCE_LIMIT) break;
+            if (!isActivePermit(c.getEntityType(), c.getEntityId(), permitCache)) continue;
+
             LocalDateTime ts = c.getLastMessageAt() != null ? c.getLastMessageAt() : c.getDateModified();
             if (ts == null || (since != null && ts.isBefore(since))) continue;
 
@@ -198,97 +218,109 @@ public class FeedAggregationService {
         return out;
     }
 
-    // ---------------------------------------------------------------- Schedule changes (per-day deltas, 5 days)
+    /**
+     * True iff the conversation target is a permit that is currently active. Non-permit targets
+     * (e.g. LotoPoint, Equipment) and closed/deleted permits are excluded. Results are cached per call.
+     */
+    private boolean isActivePermit(String entityType, Long entityId, Map<String, Boolean> cache) {
+        if (entityType == null || entityId == null) return false;
+        Class<?> clazz = PERMIT_TYPES.get(entityType);
+        if (clazz == null) return false; // not a permit type
+        return cache.computeIfAbsent(entityType + "#" + entityId, k -> {
+            try {
+                Object e = entityManager.find(clazz, entityId); // @Where hides soft-deleted → null
+                if (e instanceof BasePermitEntity p) {
+                    String status = p.getPermitStatus() != null ? p.getPermitStatus().getName() : null;
+                    return !isTerminalStatus(status);
+                }
+            } catch (Exception ex) {
+                log.debug("[Feed] permit status lookup failed for {}#{}: {}", entityType, entityId, ex.getMessage());
+            }
+            return false;
+        });
+    }
+
+    // ---------------------------------------------------------------- Schedule changes (per affected user, 2 weeks)
 
     /**
-     * One item per schedule-change event in the last {@value #SCHEDULE_WINDOW_DAYS} days, reconstructed
-     * from the {@link FieldChange} log so we can show <em>who</em> changed on <em>which day</em>.
+     * One item per <em>person</em> affected by any schedule change in the last {@value #SCHEDULE_WINDOW_DAYS}
+     * days, reconstructed from the {@link FieldChange} log. Each item lists the calendar days that person was
+     * scheduled/unscheduled on, timestamped with their most recent change (so the card shows "when last
+     * changed" as a relative time).
      *
-     * <p>Each roster field ({@code dayShiftJson} etc.) records the old/new JSON roster; diffing them by
-     * person name yields "+added / −removed" per shift. FieldChanges from the same save share a
-     * timestamp, so we group by (ShiftDay, timestamp) to combine Day/Night/… deltas into one item.
-     *
-     * <p>Note: brand-new ShiftDay rows emit only a {@code _entity_} CREATE marker (no per-field deltas),
-     * so a first-ever import of a date shows nothing here — the common case (edits to already-seeded
-     * days) is fully covered. Also bounded by FieldChange retention, which may prune very old changes.
+     * <p>Roster fields ({@code dayShiftJson} etc.) store the old/new JSON roster; diffing them by person name
+     * yields who was added/removed. FieldChange retention is 30 days (desktop), so the 2-week window is fully
+     * covered. Brand-new ShiftDay rows emit only a {@code _entity_} CREATE marker (no per-field delta), so a
+     * first-ever import of a date isn't reflected — edits to already-seeded days (the common case) are.
      */
     private List<ScoredItem> scheduleItems() {
         Instant windowStart = Instant.now().minus(Duration.ofDays(SCHEDULE_WINDOW_DAYS));
-        List<FieldChange> changes =
-                fieldChangeRepository.findByEntityTypeAndTimestampAfterOrderByTimestampAsc("ShiftDay", windowStart);
+        List<FieldChange> roster = fieldChangeRepository
+                .findByEntityTypeAndTimestampAfterOrderByTimestampAsc("ShiftDay", windowStart).stream()
+                .filter(fc -> fc.getFieldName() != null && ROSTER_FIELDS.contains(fc.getFieldName()))
+                .filter(fc -> fc.getEntityId() != null && fc.getTimestamp() != null)
+                .toList();
+        if (roster.isEmpty()) return List.of();
 
-        // Group roster-field changes by (entityId, timestamp) = one save event on one day.
-        Map<String, List<FieldChange>> groups = new LinkedHashMap<>();
-        for (FieldChange fc : changes) {
-            if (fc.getFieldName() == null || !ROSTER_FIELDS.containsKey(fc.getFieldName())) continue;
-            if (fc.getEntityId() == null || fc.getTimestamp() == null) continue;
-            groups.computeIfAbsent(fc.getEntityId() + "|" + fc.getTimestamp(), k -> new ArrayList<>()).add(fc);
-        }
-        if (groups.isEmpty()) return List.of();
-
-        // Resolve each ShiftDay's calendar date in one batch.
-        Set<Long> ids = groups.values().stream()
-                .map(g -> g.get(0).getEntityId()).filter(Objects::nonNull).collect(Collectors.toSet());
+        // Resolve each affected ShiftDay's calendar date in one batch.
+        Set<Long> ids = roster.stream().map(FieldChange::getEntityId).collect(Collectors.toSet());
         Map<Long, LocalDate> dateById = new HashMap<>();
         for (ShiftDay sd : shiftDayRepo.findAllById(ids)) {
             if (sd.getDate() != null) dateById.put(sd.getId(), sd.getDate());
         }
 
-        List<ScoredItem> out = new ArrayList<>();
-        for (List<FieldChange> group : groups.values()) {
-            FieldChange first = group.get(0);
-            LocalDate date = dateById.get(first.getEntityId());
-            if (date == null) continue; // day was deleted since — skip
-
-            // Combine per-shift deltas in canonical field order.
-            List<String> parts = new ArrayList<>();
-            Map<String, FieldChange> byField = new TreeMap<>();
-            for (FieldChange fc : group) byField.put(fc.getFieldName(), fc);
-            for (Map.Entry<String, String> rf : ROSTER_FIELDS.entrySet()) {
-                FieldChange fc = byField.get(rf.getKey());
-                if (fc == null) continue;
-                String delta = describeDelta(rf.getValue(), fc.getOldValue(), fc.getNewValue());
-                if (delta != null) parts.add(delta);
+        // Accumulate per person: which days they were affected on + their most recent change time.
+        Map<String, UserAgg> byUser = new HashMap<>();
+        for (FieldChange fc : roster) {
+            LocalDate date = dateById.get(fc.getEntityId());
+            if (date == null) continue; // day deleted since — skip
+            for (Map.Entry<String, String> person : affectedNames(fc.getOldValue(), fc.getNewValue()).entrySet()) {
+                UserAgg agg = byUser.computeIfAbsent(person.getKey(), k -> new UserAgg(person.getValue()));
+                agg.days.add(date);
+                if (agg.lastChange == null || fc.getTimestamp().isAfter(agg.lastChange)) agg.lastChange = fc.getTimestamp();
+                if ((agg.display == null || agg.display.isBlank()) && person.getValue() != null) agg.display = person.getValue();
             }
-            if (parts.isEmpty()) continue; // e.g. only a reorder — no person actually moved
+        }
+        if (byUser.isEmpty()) return List.of();
 
-            LocalDateTime ts = LocalDateTime.ofInstant(first.getTimestamp(), ZoneId.systemDefault());
+        List<ScoredItem> out = new ArrayList<>();
+        for (Map.Entry<String, UserAgg> e : byUser.entrySet()) {
+            UserAgg agg = e.getValue();
+            if (agg.lastChange == null || agg.days.isEmpty()) continue;
+
+            LocalDateTime ts = LocalDateTime.ofInstant(agg.lastChange, ZoneId.systemDefault());
+            String days = agg.days.stream().map(d -> d.format(SCHEDULE_DAY_FMT)).collect(Collectors.joining(", "));
+
             out.add(new ScoredItem(ts, FeedItemDto.builder()
-                    .id("SCHEDULE:" + first.getEntityId() + ":" + first.getTimestamp())
+                    .id("SCHEDULE_USER:" + e.getKey())
                     .category("SCHEDULE")
                     .entityType("ShiftDay")
-                    .entityId(first.getEntityId())
-                    .title("Schedule — " + date.format(SCHEDULE_DATE_FMT))
-                    .summary(truncate(String.join(" · ", parts), 240))
+                    .title(firstNonBlank(agg.display, e.getKey()))
+                    .summary(truncate(days, 240))
                     .timestamp(ts.toString())
                     .changeType("UPDATED")
-                    .actor(first.getOriginMachineName())
                     .severity("info")
                     .build()));
         }
 
-        // Newest-first, capped so a big revision can't crowd out the rest of the feed.
+        // Newest-first (by each user's last change), capped.
         return out.stream()
                 .sorted(Comparator.comparing(ScoredItem::ts).reversed())
-                .limit(SCHEDULE_MAX_ITEMS)
+                .limit(SCHEDULE_MAX_USERS)
                 .toList();
     }
 
-    /** "Day: +Smith, −Jones" for a roster field, or null if no person was added/removed. */
-    private String describeDelta(String label, String oldJson, String newJson) {
+    /** Persons added or removed between two roster JSON blobs, as normalizedName → displayName. */
+    private Map<String, String> affectedNames(String oldJson, String newJson) {
         List<String> oldNames = names(oldJson);
         List<String> newNames = names(newJson);
         Set<String> oldLc = oldNames.stream().map(this::norm).collect(Collectors.toSet());
         Set<String> newLc = newNames.stream().map(this::norm).collect(Collectors.toSet());
 
-        List<String> added = newNames.stream().filter(n -> !oldLc.contains(norm(n))).toList();
-        List<String> removed = oldNames.stream().filter(n -> !newLc.contains(norm(n))).toList();
-        if (added.isEmpty() && removed.isEmpty()) return null;
-
-        List<String> tokens = new ArrayList<>();
-        added.forEach(n -> tokens.add("+" + n));
-        removed.forEach(n -> tokens.add("−" + n)); // − minus sign
-        return label + ": " + String.join(", ", tokens);
+        Map<String, String> affected = new LinkedHashMap<>();
+        for (String n : newNames) if (!oldLc.contains(norm(n))) affected.putIfAbsent(norm(n), n); // added
+        for (String n : oldNames) if (!newLc.contains(norm(n))) affected.putIfAbsent(norm(n), n); // removed
+        return affected;
     }
 
     /** Person names in a roster JSON blob (the raw String value stored on the FieldChange). */
@@ -305,6 +337,14 @@ public class FeedAggregationService {
     }
 
     private String norm(String name) { return name == null ? "" : name.trim().toLowerCase(Locale.US); }
+
+    /** Per-person schedule-change accumulator over the window. */
+    private static final class UserAgg {
+        String display;
+        final TreeSet<LocalDate> days = new TreeSet<>();
+        Instant lastChange;
+        UserAgg(String display) { this.display = display; }
+    }
 
     // ---------------------------------------------------------------- helpers
 

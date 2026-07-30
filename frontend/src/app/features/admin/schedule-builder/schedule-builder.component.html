@@ -32,6 +32,7 @@
         <button [class.active]="activeTab()==='staffing'" (click)="setTab('staffing')">Staffing</button>
         <button [class.active]="activeTab()==='events'" (click)="setTab('events')">Events</button>
         <button [class.active]="activeTab()==='coverage'" (click)="setTab('coverage')">Coverage</button>
+        <button [class.active]="activeTab()==='schedule'" (click)="setTab('schedule')">Schedule</button>
       </nav>
 
       <!-- ============================ POSITIONS ============================ -->
@@ -138,11 +139,24 @@
                 <option *ngFor="let r of rotations()" [ngValue]="r.id">{{ r.name }}</option>
               </select>
             </label>
-            <label>Offset (days) <input type="number" min="0" [(ngModel)]="editingCrew.offsetDays" /></label>
             <label>Colour <input type="color" [(ngModel)]="editingCrew.color" /></label>
             <label class="chk"><input type="checkbox" [(ngModel)]="editingCrew.isActive" /> Active</label>
           </div>
-          <p class="muted">Offset phases this crew into the rotation so the crews cover 24/7 (e.g. A=0, B=7, C=14, D=21).</p>
+          <div class="offset-block" *ngIf="editingCrew.rotationId">
+            <span class="offset-label">Rotation start — click where this crew sits in the cycle (offset {{ editingCrew.offsetDays ?? 0 }}):</span>
+            <div class="grid-scroll">
+              <div class="offset-picker">
+                <button type="button" class="offset-day" *ngFor="let k of offsetRange()"
+                        [class.sel]="(editingCrew.offsetDays ?? 0) === k" [attr.data-shift]="rotationShiftAt(k)"
+                        (click)="pickOffset(k)" [title]="'Day ' + (k+1) + ' · ' + (rotationShiftAt(k) || 'off')">
+                  <span class="od-num">{{ k + 1 }}</span>
+                  <span class="od-shift">{{ rotationShiftAt(k) || '·' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <p class="muted" *ngIf="!editingCrew.rotationId">Pick a rotation above to choose the crew's start day.</p>
+          <p class="muted" *ngIf="editingCrew.rotationId">Each crew gets a different start day so together they cover 24/7 (e.g. A/B/C/D at 0/7/14/21).</p>
           <div class="sb-editor-actions">
             <button class="btn btn-primary" (click)="saveCrew()" [disabled]="loading() || !editingCrew.name">Save crew</button>
             <button class="btn" (click)="cancelCrew()">Cancel</button>
@@ -171,6 +185,7 @@
       <section *ngIf="activeTab()==='staffing'">
         <div class="sb-toolbar" *ngIf="!editingAssignment">
           <button class="btn btn-primary" (click)="newAssignment()">+ New assignment</button>
+          <button class="btn" (click)="seedFromSchedule()" [disabled]="loading()">Seed from current schedule</button>
         </div>
         <datalist id="sb-positions">
           <option *ngFor="let n of activePositionNames()" [value]="n"></option>
@@ -357,6 +372,34 @@
               </td>
             </tr>
             <tr *ngIf="coverage().length===0"><td colspan="7" class="muted">No coverage requests yet.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ============================= SCHEDULE ============================= -->
+      <section *ngIf="activeTab()==='schedule'">
+        <div class="sb-sched-head">
+          <button class="btn sm" (click)="prevMonth()">‹ Prev</button>
+          <h3>{{ monthLabel() }}</h3>
+          <button class="btn sm" (click)="nextMonth()">Next ›</button>
+          <button class="btn" (click)="regenerate()" [disabled]="loading()">Regenerate</button>
+        </div>
+        <p class="sb-hint" *ngIf="previewDays().length===0">
+          No materialised days this month yet. Check the flag is on (badge = "v2 LIVE"), that crews have
+          people (Staffing) and a rotation, then click <b>Regenerate</b>.
+        </p>
+        <table class="sb-table" *ngIf="previewDays().length">
+          <thead><tr><th>Date</th><th>Day shift</th><th>Night shift</th><th>Events / OCM</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let d of previewDays()">
+              <td class="nowrap">{{ weekday(d.date) }} {{ d.date }}</td>
+              <td><span class="chip day" *ngFor="let e of d.dayShift">{{ entryLabel(e) }}</span></td>
+              <td><span class="chip night" *ngFor="let e of d.nightShift">{{ entryLabel(e) }}</span></td>
+              <td>
+                <span class="pill" *ngFor="let f of d.eventFlags">{{ f.title || f.eventType }}</span>
+                <span class="muted" *ngIf="d.onCallManagerName">OCM: {{ d.onCallManagerName }}</span>
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>

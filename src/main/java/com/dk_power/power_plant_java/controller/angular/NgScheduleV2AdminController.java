@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.dto.schedule.CrewDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
+import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
 import com.dk_power.power_plant_java.sevice.schedule.NgScheduleV2Service;
 import lombok.RequiredArgsConstructor;
@@ -185,6 +186,14 @@ public class NgScheduleV2AdminController {
     @PostMapping("/seed-initial")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> seedInitial() {
         return ResponseEntity.ok(new NgApiResponse<>(service.seedInitial(), "Seeded staffing from current schedule"));
+    }
+
+    /** Materialised schedule for a range — powers the builder's Schedule tab. */
+    @GetMapping("/preview")
+    public ResponseEntity<NgApiResponse<List<ShiftDayDto>>> preview(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(new NgApiResponse<>(service.schedulePreview(from, to), "Schedule preview"));
     }
 
     // ---- Coverage -----------------------------------------------------------

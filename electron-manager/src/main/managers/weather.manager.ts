@@ -1,12 +1,26 @@
 /**
- * WeatherManager - Scrapes lightning distance from WeatherBug via a hidden BrowserWindow.
+ * WeatherManager - two independent sources, deliberately separated:
+ *
+ *   1. Open-Meteo forecast  - a plain HTTPS API call. No browser window, no third-party content,
+ *                             no ads. Always runs.
+ *   2. WeatherBug lightning - scraped from an ad-funded page in a hidden BrowserWindow. This is
+ *                             the surface that delivered the 2026-07-30 malvertising locker, so it
+ *                             is OFF by default and enabled per machine in
+ *                             Settings > Data Polling. Enable it on as few machines as possible.
+ *
  * Runs in the Electron main process, broadcasts updates to renderer via callback.
  */
 
-import { BrowserWindow, net } from 'electron';
+import { BrowserWindow, net, session } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
 import type { WeatherStatus, WeatherForecast } from '../../shared/types';
+import { pinWindowToHosts } from './window-guards';
+import { getWorkingDir } from '../paths';
 
 const WEATHER_URL = 'https://www.weatherbug.com/alerts/lightning/elwood-il-60421/';
+const WEATHER_PARTITION = 'persist:weatherbug';
+const WEATHER_CONFIG_FILE = 'weather-config.json';
 const DEFAULT_SCRAPE_INTERVAL_MS = 10_000;  // 10 seconds
 const PAGE_REFRESH_INTERVAL_MS = 600_000;   // 10 minutes
 
@@ -42,10 +56,79 @@ export class WeatherManager {
     this.onForecastUpdate = onForecastUpdate || null;
   }
 
+  /**
+   * Starts the forecast unconditionally; starts the WeatherBug lightning scraper only if this
+   * machine has it enabled. Safe to call more than once.
+   */
   public start(): void {
+    this.startForecastPolling();
+
+    if (!this.readEnabled()) {
+      console.log('[Weather] WeatherBug lightning scraper is DISABLED on this machine '
+        + `(enable in Settings > Data Polling, or set lightningEnabled:true in ${WEATHER_CONFIG_FILE})`);
+      this.publishDisabledStatus();
+      return;
+    }
+
+    console.log('[Weather] WeatherBug lightning scraper ENABLED — starting...');
+    this.startLightningScraper();
+  }
+
+  /** Is the WeatherBug scraper enabled on this machine? */
+  public isEnabled(): boolean {
+    return this.readEnabled();
+  }
+
+  /** Turn the WeatherBug scraper on/off for this machine, persist it, and apply immediately. */
+  public setEnabled(enabled: boolean): void {
+    this.writeEnabled(enabled);
+    if (enabled) {
+      console.log('[Weather] WeatherBug lightning scraper enabled');
+      this.startLightningScraper();
+    } else {
+      console.log('[Weather] WeatherBug lightning scraper disabled — tearing down window');
+      this.stopLightningScraper();
+      this.publishDisabledStatus();
+    }
+  }
+
+  private publishDisabledStatus(): void {
+    this.cachedStatus = { status: 'unavailable', lastUpdate: new Date().toLocaleTimeString() };
+    this.onStatusUpdate(this.cachedStatus);
+  }
+
+  private readEnabled(): boolean {
+    try {
+      const configPath = path.join(getWorkingDir(), WEATHER_CONFIG_FILE);
+      if (fs.existsSync(configPath)) {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        return cfg.lightningEnabled === true;
+      }
+    } catch (err: any) {
+      console.warn(`[Weather] Could not read ${WEATHER_CONFIG_FILE}: ${err.message}`);
+    }
+    // Default OFF. A machine only renders the ad-funded page if someone deliberately opted in.
+    return false;
+  }
+
+  private writeEnabled(enabled: boolean): void {
+    try {
+      const configPath = path.join(getWorkingDir(), WEATHER_CONFIG_FILE);
+      fs.writeFileSync(configPath, JSON.stringify({ lightningEnabled: enabled }, null, 2), 'utf-8');
+    } catch (err: any) {
+      console.error(`[Weather] Could not write ${WEATHER_CONFIG_FILE}: ${err.message}`);
+    }
+  }
+
+  private startLightningScraper(): void {
     if (this.window) return;
 
-    console.log('[Weather] Starting weather monitor...');
+    // WeatherBug is an ad-funded page: its third-party ad frames get their own session so their
+    // cookies/storage/service workers never touch the session the app's own windows run in, and
+    // every permission request (notifications, geolocation, pointer lock, ...) is refused — a
+    // scraper needs none of them.
+    const scrapeSession = session.fromPartition(WEATHER_PARTITION);
+    scrapeSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
 
     this.window = new BrowserWindow({
       show: false,
@@ -54,8 +137,14 @@ export class WeatherManager {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        partition: WEATHER_PARTITION,
+        disableDialogs: true,   // headless scraper: alert()/confirm() loops can never reach an operator
       },
     });
+
+    // Ads on this page can call window.open() and can redirect the top frame. Both are blocked:
+    // see window-guards.ts for the incident this prevents.
+    pinWindowToHosts(this.window, ['weatherbug.com'], 'Weather');
 
     this.window.webContents.loadURL(WEATHER_URL);
 
@@ -80,8 +169,31 @@ export class WeatherManager {
     this.window.on('closed', () => {
       this.window = null;
     });
+  }
 
-    // Start Open-Meteo forecast polling
+  /** Tear down the WeatherBug window and its timers. Leaves forecast polling running. */
+  private stopLightningScraper(): void {
+    if (this.scrapingInterval) {
+      clearInterval(this.scrapingInterval);
+      this.scrapingInterval = null;
+    }
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.destroy();
+    }
+    this.window = null;
+  }
+
+  /**
+   * Open-Meteo is a plain API call — no browser window, no third-party scripts — so it runs on
+   * every machine regardless of the WeatherBug toggle. Temperature/wind/forecast keep working
+   * even where the lightning scraper is off.
+   */
+  private startForecastPolling(): void {
+    if (this.forecastInterval) return;
     this.fetchForecast();
     this.forecastInterval = setInterval(() => this.fetchForecast(), FORECAST_POLL_INTERVAL_MS);
   }
@@ -123,21 +235,10 @@ export class WeatherManager {
   }
 
   public cleanup(): void {
-    if (this.scrapingInterval) {
-      clearInterval(this.scrapingInterval);
-      this.scrapingInterval = null;
-    }
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = null;
-    }
+    this.stopLightningScraper();
     if (this.forecastInterval) {
       clearInterval(this.forecastInterval);
       this.forecastInterval = null;
-    }
-    if (this.window && !this.window.isDestroyed()) {
-      this.window.destroy();
-      this.window = null;
     }
     console.log('[Weather] Cleaned up');
   }

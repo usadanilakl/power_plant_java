@@ -39,7 +39,10 @@ export class WebViewManager {
         contextIsolation: true,
         nodeIntegration: false,
         // Separate session partition per target to avoid cookie conflicts
-        partition: `persist:${target}`
+        partition: `persist:${target}`,
+        // Interactive window: one dialog is fine, an endless loop of them is a locker page.
+        safeDialogs: true,
+        safeDialogsMessage: 'This page is repeatedly showing dialogs and has been muted.'
       }
     });
 

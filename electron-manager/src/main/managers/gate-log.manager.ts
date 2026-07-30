@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { DEFAULT_GATE_LOG_CONFIG } from '../constants';
 import { getWorkingDir } from '../paths';
 import type { GateLogEntry, GateLogStatus, GateLogConfig } from '../../shared/types';
+import { denyPopups } from './window-guards';
 
 export class GateLogManager {
   private config: GateLogConfig;
@@ -492,9 +493,13 @@ export class GateLogManager {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        partition: 'persist:gate-scraper'
+        partition: 'persist:gate-scraper',
+        disableDialogs: true   // headless scraper: a JS dialog would block it invisibly, forever
       }
     });
+
+    // Headless scraper — a popup is never legitimate here.
+    denyPopups(win, 'GateLog');
 
     try {
       // Allow self-signed cert for gate website

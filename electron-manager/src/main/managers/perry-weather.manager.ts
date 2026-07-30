@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { PerryWeatherStatus } from '../../shared/types';
 import { getWorkingDir } from '../paths';
+import { denyPopups } from './window-guards';
 
 const PERRY_URL = 'https://app.perryweather.com/';
 const DEFAULT_SCRAPE_INTERVAL_MS = 10_000;  // 10 seconds
@@ -39,8 +40,13 @@ export class PerryWeatherManager {
         nodeIntegration: false,
         contextIsolation: true,
         partition: 'persist:perry-weather',
+        disableDialogs: true,   // headless scraper: a JS dialog would block it invisibly, forever
       },
     });
+
+    // Headless scraper — a popup is never legitimate here (navigation is left alone so the
+    // login redirect chain keeps working).
+    denyPopups(this.window, 'Perry');
 
     this.window.webContents.on('did-finish-load', () => {
       const url = this.window?.webContents.getURL() || '';

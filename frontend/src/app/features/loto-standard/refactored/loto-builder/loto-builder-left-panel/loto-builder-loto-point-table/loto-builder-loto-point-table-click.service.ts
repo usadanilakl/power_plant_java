@@ -1,205 +1,44 @@
-import { inject, Injectable, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
-import { CurrentFileService } from '../../../../../../services/current-file.service';
-import { LotoBuilderStateService } from '../../services/loto-builder-state.service';
-import { RfLotoPointApiService } from '../../../../../loto-points/refactored/services/rf-loto-point-api.service';
+import { inject, Injectable } from '@angular/core';
 import { LotoPointDto } from '../../../../../../models/loto/loto-point.model';
-import { FileDto } from '../../../../../../models/file/file.model';
 import { RfLotoPointClickService } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-click.service';
 import { LotoBuilderLotoPointContextMenuService } from './loto-builder-loto-point-context-menu.service';
+import { LotoBuilderPointOpenerService } from '../../services/loto-builder-point-opener.service';
 
 /**
- * Custom click service for LOTO point table in LOTO builder.
- * Finds the equipment containing the LOTO point, gets its file,
- * opens that file, and highlights the clicked point.
+ * Click service for the LOTO Builder left-panel LOTO point table.
+ * <p>
+ * Delegates the "open point + highlight + populate related files"
+ * flow to {@link LotoBuilderPointOpenerService} so the same behavior
+ * fires from other trigger points (currently: the Build-LOTO floating
+ * window's per-loto point list in {@code SimpleLotoFormComponent}).
+ * The class stays thin — it only maps table-specific click events
+ * onto the shared opener + wires the scoped context menu.
  */
 @Injectable()
 export class LotoBuilderLotoPointTableClickService extends RfLotoPointClickService {
-  private currentFileService = inject(CurrentFileService);
-  private builderState = inject(LotoBuilderStateService);
-  private lotoPointApiService = inject(RfLotoPointApiService);
-  private localDestroyRef = inject(DestroyRef);
   private builderContextMenuService = inject(LotoBuilderLotoPointContextMenuService);
+  private pointOpener = inject(LotoBuilderPointOpenerService);
 
-  /**
-   * Override double click to find equipment's file and highlight the loto point
-   */
+  /** Single click on a row: open the point (same behavior as double
+   *  click) after the base selection handling. */
+  protected override handleRowLeftClick(item: any, event: MouseEvent): void {
+    super.handleRowLeftClick(item, event);
+    const normalizedItem = this.normalizeItem(item);
+    if (!(normalizedItem instanceof LotoPointDto) && !normalizedItem?.id) return;
+    this.pointOpener.openPoint(normalizedItem as LotoPointDto);
+  }
+
+  /** Double click: same as single click — kept in sync so users who
+   *  double-click habitually don't get a different result. */
   protected override handleRowDoubleClick(item: any, event: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('[LotoBuilderLotoPointTable] Double clicked LOTO point:', normalizedItem);
-
-    if (!(normalizedItem instanceof LotoPointDto) && !normalizedItem.id) {
-      console.warn('[LotoBuilderLotoPointTable] Invalid item:', normalizedItem);
-      return;
-    }
-
-    const lotoPoint = normalizedItem as LotoPointDto;
-
-    // Try to find the file from equipment list
-    const file = this.findFileFromLotoPoint(lotoPoint);
-
-    if (file) {
-      this.openFileAndHighlightPoint(file, lotoPoint);
-    } else {
-      // Equipment list might be missing in partial DTO - fetch full data from server
-      console.log('[LotoBuilderLotoPointTable] No equipment list, fetching full LOTO point data...');
-      this.fetchFullLotoPointAndOpenFile(lotoPoint);
-    }
+    if (!(normalizedItem instanceof LotoPointDto) && !normalizedItem?.id) return;
+    this.pointOpener.openPoint(normalizedItem as LotoPointDto);
   }
 
-  /**
-   * Open the file and highlight the loto point
-   */
-  private openFileAndHighlightPoint(file: FileDto, lotoPoint: LotoPointDto): void {
-    console.log('[LotoBuilderLotoPointTable] Opening file:', file.id, 'and highlighting point:', lotoPoint.tagNumber);
-
-    const currentFileId = this.builderState.currentFile()?.id;
-    const isSameFile = currentFileId === file.id;
-
-    // Clear any previous selection before switching files
-    this.builderState.selectedShapeId.set(null);
-    this.builderState.hoveredShapeId.set(null);
-
-    // IMPORTANT: Set the loto point BEFORE setCurrentFile so it's available when equipment loads
-    this.builderState.setCurrentLotoPoint(lotoPoint);
-    this.builderState.showLotoPointInfoWindow(lotoPoint);
-    this.builderState.setRelatedFiles(lotoPoint);
-
-    // Set active index to match the file we're opening
-    const relatedFiles = this.builderState.relatedFiles();
-    const openedIndex = relatedFiles.findIndex(rf => rf.file.id === file.id);
-    if (openedIndex >= 0) {
-      this.builderState.activeRelatedFileIndex.set(openedIndex);
-    }
-
-    if (isSameFile) {
-      // File is already loaded - directly highlight the equipment
-      console.log('[LotoBuilderLotoPointTable] Same file already loaded, highlighting directly');
-      this.highlightLotoPointEquipment(lotoPoint);
-    } else {
-      // Different file - set it and let the subscription handle highlighting
-      this.currentFileService.setCurrentFile(file);
-    }
-  }
-
-  /**
-   * Highlight equipment associated with selected LOTO point (when file is already loaded)
-   */
-  private highlightLotoPointEquipment(lotoPoint: LotoPointDto): void {
-    const equipment = this.builderState.currentEquipment();
-    console.log('[LotoBuilderLotoPointTable] Looking for equipment with lotoPoint:', lotoPoint.id);
-
-    const matchingEquipment = equipment.find(eq =>
-      eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === lotoPoint.id)
-    );
-
-    if (matchingEquipment) {
-      console.log('[LotoBuilderLotoPointTable] Found matching equipment:', matchingEquipment.id);
-      this.builderState.hoveredShapeId.set(matchingEquipment.id);
-      this.builderState.selectedShapeId.set(matchingEquipment.id);
-      this.builderState.hoveredLotoPoint.set(lotoPoint);
-    } else {
-      console.log('[LotoBuilderLotoPointTable] No equipment found for LOTO point:', lotoPoint.tagNumber);
-    }
-  }
-
-  /**
-   * Fetch full LOTO point data from server and try to open associated file
-   */
-  private fetchFullLotoPointAndOpenFile(partialLotoPoint: LotoPointDto): void {
-    this.lotoPointApiService.getLotoPointById(partialLotoPoint.id.toString())
-      .pipe(takeUntilDestroyed(this.localDestroyRef))
-      .subscribe({
-        next: (response) => {
-          const fullLotoPoint = LotoPointDto.fromJson(response.responseData);
-          console.log('[LotoBuilderLotoPointTable] Fetched full LOTO point:', fullLotoPoint);
-
-          const file = this.findFileFromLotoPoint(fullLotoPoint);
-
-          if (file) {
-            this.openFileAndHighlightPoint(file, fullLotoPoint);
-          } else {
-            console.warn('[LotoBuilderLotoPointTable] No file found even after fetching full data:', fullLotoPoint.tagNumber);
-            // Still show the info window even if no file is found
-            this.builderState.setCurrentLotoPoint(fullLotoPoint);
-            this.builderState.showLotoPointInfoWindow(fullLotoPoint);
-            this.builderState.setRelatedFiles(fullLotoPoint);
-          }
-        },
-        error: (error) => {
-          console.error('[LotoBuilderLotoPointTable] Error fetching LOTO point:', error);
-          // Fall back to showing info window with partial data
-          this.builderState.setCurrentLotoPoint(partialLotoPoint);
-          this.builderState.showLotoPointInfoWindow(partialLotoPoint);
-        }
-      });
-  }
-
-  /**
-   * Find the file from the LOTO point's equipment list
-   */
-  private findFileFromLotoPoint(lotoPoint: LotoPointDto): FileDto | null {
-    // Check if the loto point has an equipment list
-    if (!lotoPoint.equipmentList || lotoPoint.equipmentList.length === 0) {
-      console.log('[LotoBuilderLotoPointTable] No equipment list on loto point');
-      return null;
-    }
-
-    // Find the first equipment with a mainFileObject or mainFileId
-    for (const equipment of lotoPoint.equipmentList) {
-      if (equipment.mainFileObject) {
-        console.log('[LotoBuilderLotoPointTable] Found file from equipment.mainFileObject:', equipment.mainFileObject.id);
-        return equipment.mainFileObject as FileDto;
-      }
-
-      if (equipment.mainFileId) {
-        console.log('[LotoBuilderLotoPointTable] Found file ID from equipment.mainFileId:', equipment.mainFileId);
-        // Return a partial FileDto with just the ID - CurrentFileService will fetch the full data
-        return new FileDto({ id: equipment.mainFileId } as any);
-      }
-    }
-
-    console.log('[LotoBuilderLotoPointTable] No file found in any equipment');
-    return null;
-  }
-
-  /**
-   * Override single click to open the file and highlight the point
-   * (same behavior as double-click for consistency with file mode)
-   */
-  protected override handleRowLeftClick(item: any, event: MouseEvent): void {
-    // Call base implementation for selection handling
-    super.handleRowLeftClick(item, event);
-
-    const normalizedItem = this.normalizeItem(item);
-    console.log('[LotoBuilderLotoPointTable] Left clicked LOTO point:', normalizedItem);
-
-    if (!(normalizedItem instanceof LotoPointDto) && !normalizedItem.id) {
-      console.warn('[LotoBuilderLotoPointTable] Invalid item:', normalizedItem);
-      return;
-    }
-
-    const lotoPoint = normalizedItem as LotoPointDto;
-
-    // Try to find the file from equipment list
-    const file = this.findFileFromLotoPoint(lotoPoint);
-
-    if (file) {
-      this.openFileAndHighlightPoint(file, lotoPoint);
-    } else {
-      // Equipment list might be missing in partial DTO - fetch full data from server
-      console.log('[LotoBuilderLotoPointTable] No equipment list, fetching full LOTO point data...');
-      this.fetchFullLotoPointAndOpenFile(lotoPoint);
-    }
-  }
-
-  /**
-   * Override right click to use builder's context menu service
-   */
+  /** Right click: builder-scoped context menu (existing behavior). */
   protected override handleRowRightClick(item: any, event: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item) as LotoPointDto;
-
     this.builderContextMenuService.showContextMenu(normalizedItem, event);
     this.builderContextMenuService.positionContextMenu(event, 220, 320);
   }

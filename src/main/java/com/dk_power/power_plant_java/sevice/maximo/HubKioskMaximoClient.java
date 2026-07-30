@@ -57,6 +57,15 @@ public class HubKioskMaximoClient {
     private volatile String token;
     private volatile Instant tokenExpiry = Instant.EPOCH;
 
+    /** Startup breadcrumb: if this line appears in the kiosk's log, maximo.source=hub is in effect and the
+     *  overview is being proxied to the hub (not called directly). Absence => still running the direct path. */
+    @jakarta.annotation.PostConstruct
+    void logActive() {
+        String url = !isBlank(hubUrlConfig) ? hubUrlConfig : syncConfig.getSyncServerUrl();
+        log.info("[Kiosk] Maximo HUB-proxy ACTIVE (maximo.source=hub) — /ng/maximo/bundle/overview -> {} as {} (credential {})",
+                url, kioskEmail, isBlank(kioskPassword) ? "MISSING" : "set");
+    }
+
     /**
      * The PM overview, fetched live from the hub. {@code mode} is coerced to the hub's lead-scoped PM view.
      * Throws on hub failure / auth failure — the controller turns that into a blank widget (never stale data).

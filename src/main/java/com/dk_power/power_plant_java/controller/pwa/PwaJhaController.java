@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.Base64;
 
@@ -46,22 +47,38 @@ public class PwaJhaController {
             PwaSubmissionResult result = pwaJhaService.submitJha(dto);
 
             if ("duplicate".equals(result.getMethod())) {
-                return ResponseEntity.ok(buildHtmlPage("Already Submitted",
+                return htmlResponse("Already Submitted",
                         "This JHA was already submitted (SharePoint ID: " + result.getSharepointId() + ").",
-                        "#fff3cd", "#856404"));
+                        "#fff3cd", "#856404");
             }
 
-            return ResponseEntity.ok(buildHtmlPage("JHA Submitted",
+            return htmlResponse("JHA Submitted",
                     "Successfully submitted via " + result.getMethod()
                             + (result.getSharepointId() != null ? " (SharePoint ID: " + result.getSharepointId() + ")" : "")
                             + ".",
-                    "#d4edda", "#155724"));
+                    "#d4edda", "#155724");
         } catch (Exception e) {
             log.error("[PWA JHA Email Link] Submission failed: {}", e.getMessage(), e);
-            return ResponseEntity.ok(buildHtmlPage("JHA Submission Failed",
+            return htmlResponse("JHA Submission Failed",
                     "Error: " + e.getMessage(),
-                    "#f8d7da", "#721c24"));
+                    "#f8d7da", "#721c24");
         }
+    }
+
+    /**
+     * These pages are entirely self-contained — one inline &lt;style&gt;, no scripts, no images, no
+     * network calls — so the tightest possible policy fits. It is a second, independent lock on the
+     * same door as the HtmlUtils escaping below: if an unescaped value is ever reintroduced here,
+     * injected markup still lands in the DOM but the browser refuses to execute it.
+     */
+    private static final String HTML_PAGE_CSP =
+            "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; "
+                    + "base-uri 'none'; form-action 'none'";
+
+    private ResponseEntity<String> htmlResponse(String title, String message, String bgColor, String textColor) {
+        return ResponseEntity.ok()
+                .header("Content-Security-Policy", HTML_PAGE_CSP)
+                .body(buildHtmlPage(title, message, bgColor, textColor));
     }
 
     private String buildHtmlPage(String title, String message, String bgColor, String textColor) {
@@ -78,7 +95,8 @@ public class PwaJhaController {
                   p { margin: 0; font-size: 1.1rem; }
                 </style></head>
                 <body><div class="card"><h1>%s</h1><p>%s</p></div></body></html>
-                """.formatted(title, bgColor, textColor, title, message);
+                """.formatted(HtmlUtils.htmlEscape(title), bgColor, textColor,
+                        HtmlUtils.htmlEscape(title), HtmlUtils.htmlEscape(message));
     }
 
     @PostMapping("/revoke")

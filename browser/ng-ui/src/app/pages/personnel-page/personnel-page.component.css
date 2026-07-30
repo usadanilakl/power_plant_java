@@ -186,7 +186,7 @@
   background: color-mix(in srgb, var(--accent-color, #1976d2) 8%, var(--card-background, #fff));
 }
 .chip.night {
-  background: color-mix(in srgb, #3f51b5 6%, var(--card-background, #fff));
+  background: color-mix(in srgb, #1976d2 6%, var(--card-background, #fff));
 }
 .chip.muted {
   opacity: 0.7;
@@ -200,7 +200,7 @@
   font-weight: 600;
 }
 .chip-group.ocm { background: #f57c00; }
-.chip-group.night { background: #3f51b5; }
+.chip-group.night { background: #1976d2; }
 .chip-group.muted { background: var(--secondary-text, #999); }
 .chip-name { color: var(--primary-text); }
 
@@ -392,9 +392,12 @@
   color: #fff;
 }
 
-/* Shift color palette (shared with the grid cells) */
-.cell-D, .cell-code[data-shift="D"] { background: #1976d2; }        /* Day = accent blue */
-.cell-N, .cell-code[data-shift="N"] { background: #3f51b5; }        /* Night = deeper blue */
+/* Shift color palette (shared with the grid cells + PWA/Electron year mini-cells + coverage
+   chips). Convention: Day = GREEN, Night = BLUE. Day and Night are the primary rotation and
+   need to be distinguishable at a glance — earlier shared-blue palette made them look identical
+   in the year overview. */
+.cell-D, .cell-code[data-shift="D"] { background: #2e7d32; }        /* Day = green */
+.cell-N, .cell-code[data-shift="N"] { background: #1976d2; }        /* Night = blue */
 .cell-OCM, .cell-code[data-shift="OCM"] { background: #f57c00; }    /* OCM = orange */
 .cell-P, .cell-code[data-shift="P"] { background: #78909c; }        /* PTO = slate */
 .cell-T, .cell-code[data-shift="T"] { background: #7e57c2; }        /* Training = purple */
@@ -685,8 +688,8 @@
 
 /* Shift color tinting — reuse the palette from the month grid, but as backgrounds only (text is
    the day number, kept dark or white depending on contrast). */
-.mini-cell[data-shift="D"]   { background: #1976d2; color: #fff; }
-.mini-cell[data-shift="N"]   { background: #3f51b5; color: #fff; }
+.mini-cell[data-shift="D"]   { background: #2e7d32; color: #fff; }
+.mini-cell[data-shift="N"]   { background: #1976d2; color: #fff; }
 .mini-cell[data-shift="OCM"] { background: #f57c00; color: #fff; }
 .mini-cell[data-shift="P"]   { background: #78909c; color: #fff; }
 .mini-cell[data-shift="T"]   { background: #7e57c2; color: #fff; }

@@ -13,8 +13,9 @@ public interface CrewAssignmentRepo extends BaseRepository<CrewAssignment> {
 
     List<CrewAssignment> findByCrew_Id(Long crewId);
 
-    /** Active assignments whose [startDate, endDate] window overlaps [from, to] (endDate null = open-ended). */
+    /** Active assignments whose window overlaps [from, to]. Null startDate/endDate = open-ended (always active). */
     @Query("select a from CrewAssignment a where a.isActive = true "
-            + "and a.startDate <= :to and (a.endDate is null or a.endDate >= :from)")
+            + "and (a.startDate is null or a.startDate <= :to) "
+            + "and (a.endDate is null or a.endDate >= :from)")
     List<CrewAssignment> findActiveOverlapping(LocalDate from, LocalDate to);
 }

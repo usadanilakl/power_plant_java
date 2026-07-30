@@ -210,6 +210,12 @@ export class TableComponent implements OnInit, AfterViewInit {
   overlayItem = signal<any | null>(null);
   private overlayHideTimer: ReturnType<typeof setTimeout> | null = null;
   private overlayHovered = signal<boolean>(false);
+  /** Currently anchored row DOM element. Kept so the scroll listener
+   *  can re-read its screen rect after any ancestor scrolls — position:
+   *  fixed alone isn't enough because captured coords go stale the
+   *  moment the row moves under scroll. */
+  private trackedRowEl: HTMLElement | null = null;
+  private overlayScrollListener: (() => void) | null = null;
   // OPT-IN drift badge: set to a synced entity type (e.g. "LotoPoint") to show a per-row hub/SharePoint
   // drift indicator in the first cell + a "Scan drift" control. Unset (every existing table) → no change.
   driftEntityType = input<string | undefined>(undefined);
@@ -455,20 +461,58 @@ export class TableComponent implements OnInit, AfterViewInit {
     const hasOverlay = this.hoverActionLeftTemplate() != null || this.hoverActionRightTemplate() != null;
     if (!hasOverlay) return;
     const tr = event.currentTarget as HTMLElement | null;
-    const container = this.tableContainerRef()?.nativeElement;
-    if (tr && container) {
-      const rowRect = tr.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      this.hoverOverlayTop.set(rowRect.top);
-      this.hoverOverlayHeight.set(rowRect.height);
-      this.hoverOverlayLeftX.set(containerRect.left);
-      this.hoverOverlayRightX.set(containerRect.right);
+    if (tr) {
+      this.trackedRowEl = tr;
+      this.updateOverlayFromTrackedRow();
+      this.ensureOverlayScrollListener();
     }
     this.overlayItem.set(item);
     if (this.overlayHideTimer != null) {
       clearTimeout(this.overlayHideTimer);
       this.overlayHideTimer = null;
     }
+  }
+
+  /** Re-read the tracked row's screen rect and push it into the overlay
+   *  position signals. Called on mouseenter (initial anchor) and on any
+   *  ancestor scroll (row + container may have moved). If the row has
+   *  been virtualized out or removed, hide the overlay instead. */
+  private updateOverlayFromTrackedRow(): void {
+    const row = this.trackedRowEl;
+    const container = this.tableContainerRef()?.nativeElement;
+    if (!row || !container) return;
+    const rowRect = row.getBoundingClientRect();
+    if (rowRect.width === 0 && rowRect.height === 0) {
+      this.overlayItem.set(null);
+      this.detachOverlayScrollListener();
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    this.hoverOverlayTop.set(rowRect.top);
+    this.hoverOverlayHeight.set(rowRect.height);
+    this.hoverOverlayLeftX.set(containerRect.left);
+    this.hoverOverlayRightX.set(containerRect.right);
+  }
+
+  /** Global {capture:true} scroll listener — a non-bubbling scroll on
+   *  any ancestor (window, .cdk-virtual-scroll-viewport, a wrapping
+   *  panel, etc.) still passes through window during the capture phase,
+   *  so a single listener covers every scroll container above us
+   *  without knowing which is scrollable. Recomputes the overlay's
+   *  position from the still-anchored row. */
+  private ensureOverlayScrollListener(): void {
+    if (this.overlayScrollListener) return;
+    const handler = () => this.updateOverlayFromTrackedRow();
+    this.overlayScrollListener = handler;
+    window.addEventListener('scroll', handler, { passive: true, capture: true });
+  }
+
+  private detachOverlayScrollListener(): void {
+    if (this.overlayScrollListener) {
+      window.removeEventListener('scroll', this.overlayScrollListener, true);
+      this.overlayScrollListener = null;
+    }
+    this.trackedRowEl = null;
   }
 
   /** Row mouseleave — clear hover state in the click service (existing
@@ -506,6 +550,7 @@ export class TableComponent implements OnInit, AfterViewInit {
       // set overlayHovered).
       if (this.dataService.hoveredRow() == null && !this.overlayHovered()) {
         this.overlayItem.set(null);
+        this.detachOverlayScrollListener();
       }
     }, 150);
   }
@@ -709,5 +754,6 @@ export class TableComponent implements OnInit, AfterViewInit {
       clearTimeout(this.overlayHideTimer);
       this.overlayHideTimer = null;
     }
+    this.detachOverlayScrollListener();
   }
 }

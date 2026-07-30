@@ -18,13 +18,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Auto-authenticates requests from localhost using the OS username.
  * Only activates for loopback requests (127.0.0.1, ::1) when no session exists.
- * Reads System.getProperty("user.name") and matches against User.windowsUsername.
+ * Reads System.getProperty("user.name") and matches against User.windowsUsername,
+ * case-insensitively — Windows can report the same account with different casing
+ * between logons, which would otherwise silently break auto-auth for that user.
  */
 @Component
 @RequiredArgsConstructor
@@ -61,6 +64,7 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        windowsUser = windowsUser.trim();
 
         // Look up user by windowsUsername (with TTL cache to avoid DB hit every request)
         User user;
@@ -113,17 +117,20 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
     }
 
     private synchronized User resolveUser(String windowsUsername) {
+        // Cache key is case-folded so a casing flip from Windows stays a cache hit rather than
+        // forcing a re-query on the first request after every logon.
+        String cacheKey = windowsUsername.toLowerCase(Locale.ROOT);
         long now = System.currentTimeMillis();
-        if (windowsUsername.equals(cachedWindowsUsername)
+        if (cacheKey.equals(cachedWindowsUsername)
                 && cachedUser != null
                 && (now - cacheTimestamp) < CACHE_TTL_MS) {
             return cachedUser;
         }
-        cachedUser = userRepo.findFirstByWindowsUsernameOrderByIdAsc(windowsUsername);
+        cachedUser = userRepo.findFirstByWindowsUsernameIgnoreCaseOrderByIdAsc(windowsUsername);
         if (cachedUser == null) {
-            log.debug("Desktop auto-auth: no user with windowsUsername='{}'", windowsUsername);
+            log.debug("Desktop auto-auth: no user with windowsUsername='{}' (case-insensitive)", windowsUsername);
         }
-        cachedWindowsUsername = windowsUsername;
+        cachedWindowsUsername = cacheKey;
         cacheTimestamp = now;
         return cachedUser;
     }

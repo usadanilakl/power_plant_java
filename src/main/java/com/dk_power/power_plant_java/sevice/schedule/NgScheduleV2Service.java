@@ -18,6 +18,8 @@ import com.dk_power.power_plant_java.repository.schedule.CrewRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.SchedulePositionRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
+import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +54,7 @@ public class NgScheduleV2Service {
     private final ScheduleEventRepo eventRepo;
     private final UserRepo userRepo;
     private final ScheduleMaterialisationService materialisation;
+    private final ShiftDayService shiftDayService;
     private final ObjectMapper objectMapper;
 
     // ---- Positions ----------------------------------------------------------
@@ -217,18 +220,39 @@ public class NgScheduleV2Service {
     private record Seed(long userId, String crew, String role) {}
 
     /**
+     * The two 28-day rotation grids (one shift per cycle-day). CD is the COMPLEMENT of AB — CD works
+     * exactly when AB is off — which gives gap-free, overlap-free 24/7 with crews A/B on AB and C/D
+     * on CD (day crew offset 0, night crew offset 14).
+     */
+    private static final String GRID_AB = "DDOODDDDDOOOOONNOONNNNNOOOOO"; // 2 on 2 off 5 on 5 off (+night half)
+    private static final String GRID_CD = "OODDOOOOODDDDDOONNOOOOONNNNN"; // 2 off 2 on 5 off 5 on (+night half)
+
+    /**
      * One-time curated seed of staffing from the current SharePoint-derived roster (baked from the
      * 2026-07-29 shift_days analysis): ROTATING assignments A/B/C/D with position by in-crew order
      * (Lead/CRO/AO), plus RELIEF for the relief operators. Goes through JPA so it syncs. Idempotent —
      * skips any user who already has an active assignment, so it's safe to re-run.
      */
     public Map<String, Object> seedInitial() {
+        // Ensure the canonical 24/7 structure exists (idempotent): positions, the two complementary
+        // rotations (AB + CD), and the 4 crews wired to them — A/B on AB, C/D on CD, day=offset 0,
+        // night=offset 14. Re-running also corrects crews that were pointed at the wrong rotation/offset.
+        ensurePosition("Lead", "Lead", 1);
+        ensurePosition("Control Room Operator", "CRO", 2);
+        ensurePosition("Auxiliary Operator", "AO", 3);
+        CrewRotation rotAB = ensureRotation("2 on 2 off 5 on 5 off", GRID_AB, "#42A5F5");
+        CrewRotation rotCD = ensureRotation("2 off 2 on 5 off 5 on", GRID_CD, "#66BB6A");
+        ensureCrew("Crew A", rotAB, 0, "#42A5F5");
+        ensureCrew("Crew B", rotAB, 14, "#26C6DA");
+        ensureCrew("Crew C", rotCD, 0, "#FFA726");
+        ensureCrew("Crew D", rotCD, 14, "#AB47BC");
+
         List<Seed> roster = List.of(
                 new Seed(1702L, "A", "LEAD"), new Seed(2000042243L, "A", "CRO"), new Seed(2000042226L, "A", "AO"),
                 new Seed(2000042234L, "B", "LEAD"), new Seed(2000042236L, "B", "CRO"), new Seed(2000042235L, "B", "AO"),
-                new Seed(102L, "C", "LEAD"), new Seed(2000042230L, "C", "CRO"), new Seed(2000042225L, "C", "AO"),
+                new Seed(102L, "C", "LEAD"), new Seed(2000042225L, "C", "CRO"), new Seed(2000042230L, "C", "AO"),
                 new Seed(1L, "D", "LEAD"), new Seed(2000042231L, "D", "CRO"), new Seed(2000042232L, "D", "AO"),
-                new Seed(2L, "REL", "RELIEF"), new Seed(2000042227L, "REL", "RELIEF"));
+                new Seed(2L, "REL", "LEAD"), new Seed(2000042227L, "REL", "AO"));
 
         java.util.Map<String, com.dk_power.power_plant_java.entities.schedule.Crew> crewByLetter = new java.util.HashMap<>();
         for (var c : crewRepo.findAll()) {
@@ -252,7 +276,10 @@ public class NgScheduleV2Service {
             a.setUser(u);
             a.setIsActive(true);
             if ("REL".equals(s.crew())) {
-                a.setAssignmentType(CrewAssignment.Type.RELIEF);
+                // Relief operators work a fixed DAY shift (non-rotating): one Lead + one AO.
+                a.setAssignmentType(CrewAssignment.Type.FIXED);
+                a.setFixedShift(CrewRotation.Shift.DAY);
+                a.setPosition("LEAD".equals(s.role()) ? leadPos : aoPos);
             } else {
                 var crew = crewByLetter.get(s.crew());
                 if (crew == null) { notes.add("crew " + s.crew() + " not found — skipped " + s.userId()); skipped++; continue; }
@@ -286,8 +313,64 @@ public class NgScheduleV2Service {
         return idx < ps.size() ? ps.get(idx).getName() : role;
     }
 
+    private SchedulePosition ensurePosition(String name, String abbr, int sortOrder) {
+        SchedulePosition p = positionRepo.findAll().stream()
+                .filter(x -> name.equalsIgnoreCase(x.getName())).findFirst().orElseGet(SchedulePosition::new);
+        p.setName(name);
+        p.setAbbreviation(abbr);
+        p.setSortOrder(sortOrder);
+        p.setIsActive(true);
+        return positionRepo.save(p);
+    }
+
+    private CrewRotation ensureRotation(String name, String grid, String color) {
+        CrewRotation r = rotationRepo.findAll().stream()
+                .filter(x -> name.equalsIgnoreCase(x.getName())).findFirst().orElseGet(CrewRotation::new);
+        r.setName(name);
+        if (r.getColor() == null) r.setColor(color);
+        r.setPatternLengthDays(grid.length());
+        r.setRotationCells(gridToCells(grid));
+        r.setIsActive(true);
+        return rotationRepo.save(r);
+    }
+
+    /** Find a crew by exact name or trailing letter, then wire it to the rotation/offset. */
+    private Crew ensureCrew(String name, CrewRotation rot, int offset, String color) {
+        String letter = name.substring(name.length() - 1).toUpperCase();
+        Crew c = crewRepo.findAll().stream().filter(x -> {
+            String n = x.getName() == null ? "" : x.getName().trim();
+            return name.equalsIgnoreCase(n)
+                    || (!n.isEmpty() && n.substring(n.length() - 1).equalsIgnoreCase(letter));
+        }).findFirst().orElseGet(Crew::new);
+        c.setName(name);
+        c.setRotation(rot);
+        c.setOffsetDays(offset);
+        if (c.getColor() == null) c.setColor(color);
+        c.setIsActive(true);
+        return crewRepo.save(c);
+    }
+
+    private String gridToCells(String grid) {
+        List<PatternCell> cells = new ArrayList<>();
+        for (int i = 0; i < grid.length(); i++) {
+            cells.add(PatternCell.builder().dayIndex(i).shift(String.valueOf(grid.charAt(i))).build());
+        }
+        try {
+            return objectMapper.writeValueAsString(cells);
+        } catch (Exception e) {
+            log.error("[ScheduleV2] Failed to serialize rotation grid: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public int materializeNow(LocalDate from, LocalDate to) {
         return materialisation.materializeRange(from, to);
+    }
+
+    /** The materialised schedule for a range — the rendered ShiftDay rows the Schedule tab shows. */
+    @Transactional(readOnly = true)
+    public List<ShiftDayDto> schedulePreview(LocalDate from, LocalDate to) {
+        return shiftDayService.getRange(from, to);
     }
 
     private void rematerialize() {

@@ -263,14 +263,30 @@ export class WebViewAmsManager {
         // timers throttled to ~1Hz — which stalls webviewams' heavy DHTMLX
         // login/bootstrap. Disable throttling so headless runs full-speed.
         backgroundThrottling: false,
-        partition: 'persist:webview-ams'
+        partition: 'persist:webview-ams',
+        disableDialogs: true   // headless scraper: a JS dialog would block it invisibly, forever
       }
     });
 
     const ses = win.webContents.session;
-    // Run Report may open the export in a popup — allow it (download still
-    // fires on the shared session's will-download event either way).
-    win.webContents.setWindowOpenHandler(() => ({ action: 'allow' }));
+    // Run Report may open the export in a popup, so popups stay enabled here — but scoped to the
+    // AMS host and to the blank/blob targets an export actually uses. An unconditional
+    // `{action:'allow'}` overrides the app-wide default-deny in window-guards.ts and re-opens the
+    // malvertising popup vector on a remote, headless, unattended window.
+    const amsHost = (() => {
+      try { return new URL(this.config.url).hostname.toLowerCase(); } catch { return ''; }
+    })();
+    win.webContents.setWindowOpenHandler(({ url }) => {
+      if (url === 'about:blank' || url.startsWith('blob:') || url.startsWith('data:')) {
+        return { action: 'allow' };   // export popups the page fills in itself
+      }
+      try {
+        const host = new URL(url).hostname.toLowerCase();
+        if (amsHost && (host === amsHost || host.endsWith(`.${amsHost}`))) return { action: 'allow' };
+      } catch { /* unparseable — deny below */ }
+      console.warn(`[WebViewAms] blocked popup: ${url}`);
+      return { action: 'deny' };
+    });
 
     const results: Record<string, WebViewAmsReport> = {};
     const errors: string[] = [];
@@ -940,7 +956,7 @@ export class WebViewAmsManager {
     const groups = new Map<string, WebViewAmsWiredItem[]>();
     for (const it of this.wiredItems) {
       if (it.mode !== 'column') continue;
-      const g = `${it.reportKey} ${this.stripColumnOrdinal(it.key)}`;
+      const g = `${it.reportKey}\u0000${this.stripColumnOrdinal(it.key)}`;
       (groups.get(g) ?? groups.set(g, []).get(g)!).push(it);
     }
     for (const arr of groups.values()) {

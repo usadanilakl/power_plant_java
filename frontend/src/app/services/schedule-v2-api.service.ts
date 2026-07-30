@@ -93,6 +93,24 @@ export interface CoverageSignup {
   approvedAt?: string;
 }
 
+export interface ShiftEntryView {
+  name?: string;
+  group?: string;
+  position?: string;
+  userId?: number;
+}
+
+export interface ShiftDayView {
+  date?: string;
+  dayShift?: ShiftEntryView[];
+  nightShift?: ShiftEntryView[];
+  unscheduled?: ShiftEntryView[];
+  pto?: ShiftEntryView[];
+  training?: ShiftEntryView[];
+  onCallManagerName?: string;
+  eventFlags?: { eventType?: string; title?: string; color?: string; appliesToShift?: string }[];
+}
+
 /** Client for the schedule v2 admin CRUD (`/ng/admin/schedule-v2/*`). Admin-gated. */
 @Injectable({ providedIn: 'root' })
 export class ScheduleV2ApiService {
@@ -179,6 +197,13 @@ export class ScheduleV2ApiService {
   materialize(from: string, to: string): Observable<SpringApiResponse<{ rowsWritten: number }>> {
     const params = new HttpParams().set('from', from).set('to', to);
     return this.http.post<SpringApiResponse<{ rowsWritten: number }>>(`${this.base}/materialize`, {}, { params });
+  }
+  seedInitial(): Observable<SpringApiResponse<{ created: number; skipped: number; notes: string[] }>> {
+    return this.http.post<SpringApiResponse<{ created: number; skipped: number; notes: string[] }>>(`${this.base}/seed-initial`, {});
+  }
+  schedulePreview(from: string, to: string): Observable<SpringApiResponse<ShiftDayView[]>> {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<SpringApiResponse<ShiftDayView[]>>(`${this.base}/preview`, { params });
   }
 
   // Coverage

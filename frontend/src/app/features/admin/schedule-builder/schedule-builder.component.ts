@@ -5,10 +5,10 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import {
   ScheduleV2ApiService, SchedulePosition, CrewRotation, Crew, CrewAssignment,
-  ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup,
+  ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup, ShiftDayView, ShiftEntryView,
 } from '../../../services/schedule-v2-api.service';
 
-type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage';
+type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule';
 
 /**
  * Schedule v2 manager build tools (admin-gated). Positions → Rotations → Crews → Staffing, plus
@@ -48,6 +48,9 @@ export class ScheduleBuilderComponent implements OnInit {
   users = signal<AssignableUser[]>([]);
   coverage = signal<CoverageRequest[]>([]);
   signups = signal<CoverageSignup[]>([]);
+  previewDays = signal<ShiftDayView[]>([]);
+  previewYear = new Date().getFullYear();
+  previewMonth = new Date().getMonth();
 
   editingPosition: SchedulePosition | null = null;
   editingRotation: CrewRotation | null = null;
@@ -72,7 +75,7 @@ export class ScheduleBuilderComponent implements OnInit {
     this.api.listCoverage().subscribe(r => this.coverage.set(r.responseData ?? []));
   }
 
-  setTab(t: Tab): void { this.activeTab.set(t); }
+  setTab(t: Tab): void { this.activeTab.set(t); if (t === 'schedule') this.loadPreview(); }
   private flash(m: string): void { this.message.set(m); setTimeout(() => this.message.set(null), 3500); }
   private errText(e: any): string { return e?.error?.message ?? e?.message ?? 'error'; }
   activePositionNames(): string[] { return this.positions().filter(p => p.isActive !== false).map(p => p.name); }
@@ -141,6 +144,18 @@ export class ScheduleBuilderComponent implements OnInit {
     if (!c.id || !confirm(`Delete crew "${c.name}"?`)) return;
     this.api.deleteCrew(c.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
   }
+  // crew rotation offset picker (click a rotation day instead of typing a number)
+  selectedRotation(): CrewRotation | undefined {
+    return this.rotations().find(r => r.id === this.editingCrew?.rotationId);
+  }
+  offsetRange(): number[] {
+    const n = this.selectedRotation()?.patternLengthDays ?? 0;
+    return Array.from({ length: Math.max(0, Math.min(60, n)) }, (_, i) => i);
+  }
+  rotationShiftAt(dayIndex: number): string {
+    return this.selectedRotation()?.cells.find(c => c.dayIndex === dayIndex)?.shift ?? '';
+  }
+  pickOffset(k: number): void { if (this.editingCrew) this.editingCrew.offsetDays = k; }
 
   // ---- staffing ----
   newAssignment(): void { this.editingAssignment = { assignmentType: 'ROTATING', position: '', isActive: true }; }
@@ -168,6 +183,23 @@ export class ScheduleBuilderComponent implements OnInit {
   deleteAssignment(a: CrewAssignment): void {
     if (!a.id || !confirm('Delete this assignment?')) return;
     this.api.deleteAssignment(a.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+  }
+  seedFromSchedule(): void {
+    if (!confirm('Seed staffing (crews A–D + relief) from the current schedule?\nSafe to run — users who already have an active assignment are skipped.')) return;
+    this.loading.set(true);
+    this.api.seedInitial().subscribe({
+      next: r => {
+        this.loading.set(false);
+        const d = r.responseData;
+        const notes = d?.notes?.length ? ` — ${d.notes.join('; ')}` : '';
+        const msg = (d?.created ?? 0) === 0
+          ? `Already staffed — nothing added (${d?.skipped ?? 0} skipped)${notes}`
+          : `Seeded: ${d?.created} created, ${d?.skipped ?? 0} skipped${notes}`;
+        this.flash(msg);
+        this.reloadAll();
+      },
+      error: e => { this.loading.set(false); this.flash('Seed failed: ' + this.errText(e)); },
+    });
   }
 
   // ---- events ----
@@ -239,4 +271,26 @@ export class ScheduleBuilderComponent implements OnInit {
     });
   }
   private iso(d: Date): string { return d.toISOString().slice(0, 10); }
+
+  // ---- schedule preview ----
+  loadPreview(): void {
+    const from = this.ymd(this.previewYear, this.previewMonth, 1);
+    const lastDay = new Date(this.previewYear, this.previewMonth + 1, 0).getDate();
+    const to = this.ymd(this.previewYear, this.previewMonth, lastDay);
+    this.api.schedulePreview(from, to).subscribe(r => this.previewDays.set(r.responseData ?? []));
+  }
+  prevMonth(): void { if (--this.previewMonth < 0) { this.previewMonth = 11; this.previewYear--; } this.loadPreview(); }
+  nextMonth(): void { if (++this.previewMonth > 11) { this.previewMonth = 0; this.previewYear++; } this.loadPreview(); }
+  monthLabel(): string {
+    return new Date(this.previewYear, this.previewMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  }
+  weekday(dateStr?: string): string {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleString(undefined, { weekday: 'short' });
+  }
+  entryLabel(e: ShiftEntryView): string { return e.position ? `${e.name} · ${e.position}` : (e.name ?? ''); }
+  private ymd(y: number, m0: number, d: number): string {
+    return `${y}-${String(m0 + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
 }

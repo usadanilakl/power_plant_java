@@ -162,7 +162,7 @@ export class PersonnelPageComponent implements OnInit {
     for (const [name, group] of groupByName) {
       const cells = headers.map(h => ({
         date: h.iso,
-        shift: this.resolveShift(dayByIso.get(h.iso), name),
+        shift: this.resolveShift(dayByIso.get(h.iso), name, null),
         isWeekend: h.isWeekend,
         isToday: h.isToday,
       }));
@@ -195,16 +195,23 @@ export class PersonnelPageComponent implements OnInit {
    *  back to a sign-in banner rather than showing an empty list. */
   currentUserName = computed(() => this.auth.currentUser()?.name ?? null);
 
+  /** Current user's hub id. Used as the PRIMARY match key against ShiftEntry.userId so a name
+   *  format mismatch (e.g. "Danil Kolakov" vs roster's "Kolakov, Danil W") doesn't drop every
+   *  cell in the Mine and Year views. The push side (UserMatchService) resolves names to userIds
+   *  at parse time, so if the person is on the roster their id is on every ShiftEntry. */
+  currentUserId = computed(() => this.auth.currentUser()?.id ?? null);
+
   /** For My Schedule — walk the loaded days, extract THIS user's shift on each. */
   mySchedule = computed<{ date: string; iso: string; label: string; shift: ShiftCode; isToday: boolean; isTomorrow: boolean }[]>(() => {
     const name = this.currentUserName();
-    if (!name) return [];
+    const id = this.currentUserId();
+    if (!name && id == null) return [];
     const today = this.todayIso();
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowIso = this.isoOf(tomorrow);
     const rows: { date: string; iso: string; label: string; shift: ShiftCode; isToday: boolean; isTomorrow: boolean }[] = [];
     for (const d of this.myDays()) {
-      const shift = this.resolveShift(d, name);
+      const shift = this.resolveShift(d, name, id);
       const dt = new Date(d.date + 'T12:00:00');
       rows.push({
         date: d.date,
@@ -249,6 +256,8 @@ export class PersonnelPageComponent implements OnInit {
    *  If not signed in, the year view shows a picker for "just show me D/N counts per day". */
   yearGrid = computed(() => {
     const name = this.currentUserName();
+    const id = this.currentUserId();
+    const signedIn = name != null || id != null;
     const year = this.yearAnchor();
     const days = this.yearDays();
     const map: Record<number, Record<string, ShiftCode>> = {};
@@ -256,7 +265,7 @@ export class PersonnelPageComponent implements OnInit {
     for (const d of days) {
       const dt = new Date(d.date + 'T12:00:00');
       if (dt.getFullYear() !== year) continue;
-      const shift: ShiftCode = name ? this.resolveShift(d, name) : this.dominantShift(d);
+      const shift: ShiftCode = signedIn ? this.resolveShift(d, name, id) : this.dominantShift(d);
       map[dt.getMonth()][d.date] = shift;
     }
     return map;
@@ -329,10 +338,11 @@ export class PersonnelPageComponent implements OnInit {
   refreshMySchedule(): void {
     this.myLoading.set(true);
     this.myError.set(null);
-    // Pull a rolling window: 7 days back (for "you finished a shift Y hours ago" context) +
-    // 60 forward. Server caps range at 60 days, so we split the request.
+    // Rolling window: 7 days back for "you finished a shift Y hours ago" context + 52 forward.
+    // Server caps a single range call at 60 days (PwaScheduleController.MAX_RANGE_DAYS) so keep
+    // the total ≤ 60 — 7 back + 52 forward + today = 60 inclusive.
     const back = new Date(); back.setDate(back.getDate() - 7);
-    const fwd  = new Date(); fwd.setDate(fwd.getDate() + 53);
+    const fwd  = new Date(); fwd.setDate(fwd.getDate() + 52);
     this.api.getScheduleRange(this.isoOf(back), this.isoOf(fwd)).subscribe({
       next: rows => {
         this.myDays.set(rows.slice().sort((a, b) => a.date.localeCompare(b.date)));
@@ -519,17 +529,54 @@ export class PersonnelPageComponent implements OnInit {
     this.refreshSelectedDate();
   }
 
-  /** Find the shift code for a given person on a given ShiftDay by walking each bucket. */
-  private resolveShift(day: ShiftDay | undefined, personName: string): ShiftCode {
+  /** Find the shift code for a given person on a given ShiftDay by walking each bucket. Matches
+   *  on userId FIRST (exact, guaranteed by UserMatchService on the push side), then falls back
+   *  to a normalised name match — the roster stores "Kolakov, Danil W" but AuthService returns
+   *  "Danil Kolakov", so raw string equality would drop every cell. */
+  private resolveShift(day: ShiftDay | undefined, personName: string | null, userId: number | null): ShiftCode {
     if (!day) return '';
-    if (day.onCallManagerName === personName) return 'OCM';
-    const hit = (list: ShiftEntry[] | undefined) => list?.some(e => e?.name === personName);
+    const targetName = this.normalizeName(personName);
+    const hit = (list: ShiftEntry[] | undefined) => list?.some(e => this.entryMatchesMe(e, targetName, userId));
+    if (this.ocmMatchesMe(day, targetName, userId)) return 'OCM';
     if (hit(day.dayShift)) return 'D';
     if (hit(day.nightShift)) return 'N';
     if (hit(day.training)) return 'T';
     if (hit(day.pto)) return 'P';
     if (hit(day.unscheduled)) return 'U';
     return '';
+  }
+
+  private entryMatchesMe(e: ShiftEntry | undefined, targetName: string, userId: number | null): boolean {
+    if (!e) return false;
+    if (userId != null && e.userId != null && e.userId === userId) return true;
+    if (targetName && e.name && this.normalizeName(e.name) === targetName) return true;
+    return false;
+  }
+
+  private ocmMatchesMe(day: ShiftDay, targetName: string, userId: number | null): boolean {
+    if (userId != null && day.onCallManagerUserId != null && day.onCallManagerUserId === userId) return true;
+    if (targetName && day.onCallManagerName && this.normalizeName(day.onCallManagerName) === targetName) return true;
+    return false;
+  }
+
+  /** Normalise a name for cross-format matching: strip case, punctuation, middle initials, and
+   *  reorder "Last, First" → "First Last" so it lines up with app-side display names. Returns a
+   *  space-collapsed lowercase key like "danil kolakov". Empty string on null/blank input. */
+  private normalizeName(raw: string | null | undefined): string {
+    if (!raw) return '';
+    let s = raw.trim().toLowerCase();
+    // "Kolakov, Danil W" → "Danil W Kolakov"
+    const comma = s.indexOf(',');
+    if (comma > 0) {
+      const last = s.substring(0, comma).trim();
+      const rest = s.substring(comma + 1).trim();
+      s = rest + ' ' + last;
+    }
+    // Strip standalone single-letter tokens (middle initials — with or without trailing period).
+    s = s.replace(/\b[a-z]\.?(?=\s|$)/g, '');
+    // Collapse whitespace + drop remaining punctuation.
+    s = s.replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+    return s;
   }
 
   shiftLabel(code: ShiftCode): string {

@@ -53,6 +53,19 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // If an earlier filter already authenticated the caller (typically DesktopAutoAuthFilter
+        // for localhost), do NOT demand a JWT — otherwise Electron desktops that call the shared
+        // /api/chat/* endpoints without an Authorization header would be rejected here even
+        // though the desktop is already trusted. PWA callers arrive with no prior auth and still
+        // hit the token branch below.
+        org.springframework.security.core.Authentication existing =
+                SecurityContextHolder.getContext().getAuthentication();
+        if (existing != null && existing.isAuthenticated()
+                && !(existing instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String token = extractToken(request);
         if (token == null) {
             sendError(response, 401, "MISSING_TOKEN", "Authorization header with Bearer token required");

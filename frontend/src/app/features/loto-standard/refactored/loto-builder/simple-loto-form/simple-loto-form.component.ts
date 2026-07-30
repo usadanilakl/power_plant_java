@@ -1,4 +1,4 @@
-import { Component, input, output, computed, signal } from '@angular/core';
+import { Component, input, output, computed, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -6,6 +6,7 @@ import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model'
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { BulkSearchDialogComponent } from '../../../../loto-points/refactored/bulk-search-dialog/bulk-search-dialog.component';
 import { LotoPointDtoLight } from '../../../../../models/loto/bulk-search-result.model';
+import { LotoBuilderPointOpenerService } from '../services/loto-builder-point-opener.service';
 
 @Component({
   selector: 'app-simple-loto-form',
@@ -52,11 +53,35 @@ export class SimpleLotoFormComponent {
     this.descriptionChanged.emit(value);
   }
 
+  private pointOpener = inject(LotoBuilderPointOpenerService);
+
   /**
    * Remove a LOTO point from the list
    */
   onRemovePoint(point: LotoPointDto): void {
     this.removePoint.emit(point);
+  }
+
+  /**
+   * Click a point-item row: open the point in the LOTO Builder's right
+   * panel (P&ID + highlighted equipment shape), and show the info window
+   * with the multi-file chip strip if the point references >1 file. Same
+   * flow the left-panel table's row click uses — both go through
+   * {@link LotoBuilderPointOpenerService} so behavior stays consistent.
+   */
+  onPointClick(point: LotoPointDto): void {
+    this.pointOpener.openPoint(point);
+  }
+
+  /**
+   * Right-click a point-item row: same open behavior as left-click for
+   * now. Native browser context menu is suppressed so the click alone
+   * triggers the open. If we add a per-point context menu (e.g. quick
+   * per-file switch, "reveal in table"), it plugs in here.
+   */
+  onPointContextMenu(point: LotoPointDto, event: MouseEvent): void {
+    event.preventDefault();
+    this.pointOpener.openPoint(point);
   }
 
   /**

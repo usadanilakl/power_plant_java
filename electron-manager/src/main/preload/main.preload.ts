@@ -251,6 +251,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(events.IPC_WEATHER_STATUS, sub);
     return () => { ipcRenderer.removeListener(events.IPC_WEATHER_STATUS, sub); };
   },
+  getWeatherEnabled: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_GET_ENABLED),
+  setWeatherEnabled: (enabled: boolean): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_SET_ENABLED, enabled),
   getWeatherForecast: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_GET_FORECAST),
   weatherRefreshForecast: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_REFRESH_FORECAST),
   onWeatherForecastChange: (callback: (forecast: any) => void) => {

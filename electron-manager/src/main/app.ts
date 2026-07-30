@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import { MainWindowManager } from './managers/main-window.manager';
+import { installGlobalWindowGuards } from './managers/window-guards';
 import { WindowLayoutManager } from './managers/window-layout.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
@@ -38,6 +39,10 @@ export default class App {
   }
 
   private static async onReady(): Promise<void> {
+    // MUST run before any window exists — it hooks 'web-contents-created' to default-deny
+    // popups from remote pages (see window-guards.ts).
+    installGlobalWindowGuards();
+
     // Ensure working dir and config files exist BEFORE managers are created
     // (managers read configs in their constructors)
     ensureWorkingDir();

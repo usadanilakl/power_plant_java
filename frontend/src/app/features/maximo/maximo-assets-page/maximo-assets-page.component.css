@@ -10,6 +10,7 @@
 .search-bar app-maximo-location-picker { display: inline-block; width: 200px; margin-left: 4px; vertical-align: middle; }
 /* Tree-picker filter renders as a full-width dropdown, so give its label a stacked, min-width column. */
 .search-bar .tree-filter { display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-width: 240px; }
+.search-bar .tree-filter .tf-cap { color: #aaa; }
 .search-bar button.link.tree-toggle { background: none; border: 0; color: #7cc6ff; padding: 2px 4px; cursor: pointer; font: inherit; }
 .search-bar button.link.tree-toggle:hover { background: none; text-decoration: underline; }
 /* clickable history rows → open detail dialog */

@@ -803,16 +803,18 @@ const SHIFT_LABELS: Record<string, string> = {
       line-height: 1;
       background: var(--text-muted);
     }
-    .mini-chip[data-shift="D"]   { background: #1976d2; }
-    .mini-chip[data-shift="N"]   { background: #3f51b5; }
+    /* Shift-color convention: Day = GREEN, Night = BLUE. Kept distinct so they're readable
+       at a glance across dozens of tiny chips in the year view. */
+    .mini-chip[data-shift="D"]   { background: #2e7d32; }
+    .mini-chip[data-shift="N"]   { background: #1976d2; }
     .mini-chip[data-shift="OCM"] { background: #f57c00; }
     .mini-chip[data-shift="P"]   { background: #78909c; }
     .mini-chip[data-shift="T"]   { background: #7e57c2; }
     .mini-chip[data-shift="L"]   { background: #5c3317; }
 
     /* Shift color palette on the mini cells (same hues as the JG portal + PWA legends). */
-    .mini-cell[data-shift="D"],   .legend-chip.year-D   { background: #1976d2; color: #fff; }
-    .mini-cell[data-shift="N"],   .legend-chip.year-N   { background: #3f51b5; color: #fff; }
+    .mini-cell[data-shift="D"],   .legend-chip.year-D   { background: #2e7d32; color: #fff; }
+    .mini-cell[data-shift="N"],   .legend-chip.year-N   { background: #1976d2; color: #fff; }
     .mini-cell[data-shift="OCM"], .legend-chip.year-OCM { background: #f57c00; color: #fff; }
     .mini-cell[data-shift="P"],   .legend-chip.year-P   { background: #78909c; color: #fff; }
     .mini-cell[data-shift="T"],   .legend-chip.year-T   { background: #7e57c2; color: #fff; }

@@ -793,6 +793,8 @@ interface ElectronAPI {
   weatherRefresh: () => Promise<IpcResult>;
   weatherSetInterval: (seconds: number) => Promise<IpcResult & { intervalSeconds?: number }>;
   onWeatherStatusChange: (callback: (status: WeatherStatus) => void) => () => void;
+  getWeatherEnabled: () => Promise<IpcResult & { enabled?: boolean }>;
+  setWeatherEnabled: (enabled: boolean) => Promise<IpcResult & { enabled?: boolean }>;
   getWeatherForecast: () => Promise<IpcResult<WeatherForecast>>;
   weatherRefreshForecast: () => Promise<IpcResult>;
   onWeatherForecastChange: (callback: (forecast: WeatherForecast) => void) => () => void;
@@ -1461,6 +1463,17 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.onWeatherStatusChange((status) => {
       this.ngZone.run(() => callback(status));
     });
+  }
+
+  /** Is the WeatherBug lightning scraper enabled on this machine? (Open-Meteo forecast is unaffected.) */
+  async getWeatherEnabled(): Promise<IpcResult & { enabled?: boolean }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getWeatherEnabled();
+  }
+
+  async setWeatherEnabled(enabled: boolean): Promise<IpcResult & { enabled?: boolean }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.setWeatherEnabled(enabled);
   }
 
   async getWeatherForecast(): Promise<IpcResult<WeatherForecast>> {
