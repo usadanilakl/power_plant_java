@@ -196,3 +196,9 @@ backend-port.txt
 /.m2repo/**
 # Maximo inventory catalog snapshot — a rebuildable cache, not data
 /data/cache/
+
+# Local DB backups / snapshots (never commit — GitHub 100MB limit)
+db/*.bak
+db/*.mv.db
+db/*.trace.db
+db/*.old

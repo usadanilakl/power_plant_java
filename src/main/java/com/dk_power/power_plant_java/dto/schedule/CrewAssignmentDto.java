@@ -8,9 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 
 /**
- * Admin-facing view of a {@link com.dk_power.power_plant_java.entities.schedule.CrewAssignment}.
- * {@code userName}/{@code crewName} are read-only display fields; writes resolve by
- * {@code userId}/{@code crewId}.
+ * Admin view of a {@link com.dk_power.power_plant_java.entities.schedule.CrewAssignment} (staffing).
+ * {@code userName}/{@code crewName} are read-only display; writes resolve by {@code userId}/{@code crewId}.
+ * {@code assignmentType} = ROTATING | FIXED | RELIEF; {@code fixedShift}/{@code fixedDaysOfWeek} apply
+ * only to FIXED.
  */
 @Data
 @NoArgsConstructor
@@ -22,9 +23,11 @@ public class CrewAssignmentDto {
     private String userName;
     private Long crewId;
     private String crewName;
-    private String role;
+    private String position;
+    private String assignmentType;
+    private String fixedShift;
+    private String fixedDaysOfWeek;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Integer patternOffsetDays;
     private Boolean isActive;
 }

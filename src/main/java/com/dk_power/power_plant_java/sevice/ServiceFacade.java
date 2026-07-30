@@ -177,8 +177,10 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.angular.etapro.NgEtaProReportService ngEtaProReportService,
             @Lazy com.dk_power.power_plant_java.sevice.esp.EspDeviceSyncService espDeviceSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.esp.LedStripSyncService ledStripSyncService,
-            // Schedule v2 (crew patterns, assignments, events, coverage, PTO, ad-hoc overrides — all synced)
-            @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewPatternSyncService crewPatternSyncService,
+            // Schedule v2 (positions, rotations, crews, assignments, events, coverage, PTO, overrides — synced)
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.SchedulePositionSyncService schedulePositionSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewRotationSyncService crewRotationSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewSyncService crewSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewAssignmentSyncService crewAssignmentSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.ScheduleEventSyncService scheduleEventSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.PtoRequestSyncService ptoRequestSyncService,
@@ -285,7 +287,9 @@ public class ServiceFacade {
         serviceMap.put(com.dk_power.power_plant_java.entities.esp.EspDevice.class.getSimpleName(), espDeviceSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.esp.LedStrip.class.getSimpleName(), ledStripSyncService);
         // Schedule v2
-        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewPattern.class.getSimpleName(), crewPatternSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.SchedulePosition.class.getSimpleName(), schedulePositionSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewRotation.class.getSimpleName(), crewRotationSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.Crew.class.getSimpleName(), crewSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewAssignment.class.getSimpleName(), crewAssignmentSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.ScheduleEvent.class.getSimpleName(), scheduleEventSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.PtoRequest.class.getSimpleName(), ptoRequestSyncService);

@@ -312,15 +312,17 @@ export class RfLotoStandardFormComponent {
    */
   onLotoPointsReordered(reorderedLotoPoints: LotoPointDto[]): void {
     const currentEntity = this.entity();
-    if (!currentEntity.id) return;
     const approved = this.isApprovedStandard(currentEntity);
     if (!approved) {
+      // Optimistic update runs even for unsaved (id=0) standards — pre-
+      // existing behavior. Only the server persist is gated on id.
       const updatedEntity = new LotoStandardDto({
         ...currentEntity,
         lotoPoints: reorderedLotoPoints
       });
       this.stateService.setSelectedItem(updatedEntity);
     }
+    if (!currentEntity.id) return;
     const lotoPointIds = reorderedLotoPoints.map(lp => lp.id!);
     this.apiService.reorderLotoPoints(currentEntity.id, lotoPointIds)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -341,7 +343,7 @@ export class RfLotoStandardFormComponent {
    */
   onLotoPointAdded(addedPoint: LotoPointDto): void {
     const currentEntity = this.entity();
-    if (!currentEntity.id || !addedPoint.id) return;
+    if (!addedPoint.id) return;
     const approved = this.isApprovedStandard(currentEntity);
     if (!approved) {
       const currentPoints = currentEntity.lotoPoints || [];
@@ -351,6 +353,7 @@ export class RfLotoStandardFormComponent {
       });
       this.stateService.setSelectedItem(updatedEntity);
     }
+    if (!currentEntity.id) return;
     this.apiService.addLotoPointToStandard(currentEntity.id, addedPoint.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -369,7 +372,7 @@ export class RfLotoStandardFormComponent {
    */
   onLotoPointRemoved(removedPoint: LotoPointDto): void {
     const currentEntity = this.entity();
-    if (!currentEntity.id || !removedPoint.id) return;
+    if (!removedPoint.id) return;
     const approved = this.isApprovedStandard(currentEntity);
     if (!approved) {
       const currentPoints = currentEntity.lotoPoints || [];
@@ -379,6 +382,7 @@ export class RfLotoStandardFormComponent {
       });
       this.stateService.setSelectedItem(updatedEntity);
     }
+    if (!currentEntity.id) return;
     this.apiService.removeLotoPointFromStandard(currentEntity.id, removedPoint.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

@@ -1,8 +1,11 @@
+/* Uses the app's real theme tokens (frontend/src/theme-styles.css) so it works in light + .dark-theme:
+   --primary-text, --secondary-text, --card-background, --secondary-background, --border-color,
+   --accent-color, --primary-background, --hover-color. */
 .sb-page {
   padding: 16px 20px 40px;
   max-width: 1200px;
   margin: 0 auto;
-  color: var(--text-color, #1a2027);
+  color: var(--primary-text, #212529);
 }
 
 .sb-head {
@@ -26,31 +29,31 @@
   text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #9e9e9e22;
-  color: #757575;
-  border: 1px solid #9e9e9e55;
+  background: rgba(158, 158, 158, 0.18);
+  color: var(--secondary-text, #757575);
+  border: 1px solid var(--border-color, #9e9e9e55);
 }
 .sb-badge.on {
-  background: #43a04722;
-  color: #2e7d32;
-  border-color: #43a04766;
+  background: rgba(67, 160, 71, 0.18);
+  color: #4caf50;
+  border-color: rgba(67, 160, 71, 0.5);
 }
 
 .sb-hint {
-  background: var(--card-background, #f6f8fa);
+  background: var(--secondary-background, #f6f8fa);
   border: 1px solid var(--border-color, #e0e0e0);
   border-left: 3px solid #ffa726;
   border-radius: 6px;
   padding: 10px 14px;
   font-size: 0.85rem;
-  color: var(--muted-color, #5f6b76);
+  color: var(--secondary-text, #5f6b76);
 }
-.sb-hint code { background: #00000010; padding: 1px 5px; border-radius: 4px; }
+.sb-hint code { background: rgba(128, 128, 128, 0.2); padding: 1px 5px; border-radius: 4px; }
 
 .sb-msg {
-  background: #42a5f51a;
-  border: 1px solid #42a5f555;
-  color: #1565c0;
+  background: rgba(66, 165, 245, 0.15);
+  border: 1px solid rgba(66, 165, 245, 0.4);
+  color: var(--accent-color, #1565c0);
   border-radius: 6px;
   padding: 8px 14px;
   margin: 10px 0;
@@ -69,7 +72,7 @@
   padding: 9px 16px;
   font-size: 0.92rem;
   cursor: pointer;
-  color: var(--muted-color, #5f6b76);
+  color: var(--secondary-text, #5f6b76);
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
 }
@@ -85,23 +88,23 @@
 .btn {
   border: 1px solid var(--border-color, #d0d7de);
   background: var(--card-background, #fff);
-  color: var(--text-color, #1a2027);
+  color: var(--primary-text, #1a2027);
   padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
 }
-.btn:hover { background: #00000008; }
+.btn:hover { background: var(--hover-color, rgba(0, 0, 0, 0.05)); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn.sm { padding: 3px 9px; font-size: 0.78rem; margin-left: 4px; }
-.btn.danger { color: #c62828; border-color: #c6282855; }
-.btn.danger:hover { background: #c628281a; }
+.btn.danger { color: #ef5350; border-color: rgba(239, 83, 80, 0.4); }
+.btn.danger:hover { background: rgba(239, 83, 80, 0.12); }
 .btn-primary {
   background: var(--accent-color, #1976d2);
   border-color: var(--accent-color, #1976d2);
   color: #fff;
 }
-.btn-primary:hover { filter: brightness(0.95); background: var(--accent-color, #1976d2); }
+.btn-primary:hover { filter: brightness(1.05); background: var(--accent-color, #1976d2); }
 
 /* Tables */
 .sb-table {
@@ -117,18 +120,19 @@
   text-align: left;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color, #eceff1);
+  color: var(--primary-text, #1a2027);
 }
 .sb-table thead th {
-  background: var(--card-header-background, #f6f8fa);
+  background: var(--secondary-background, #f6f8fa);
   font-weight: 600;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--muted-color, #5f6b76);
+  color: var(--secondary-text, #5f6b76);
 }
 .sb-table tbody tr:last-child td { border-bottom: none; }
 .ta-r { text-align: right; white-space: nowrap; }
-.muted { color: var(--muted-color, #90a4ae); font-style: italic; }
+.muted { color: var(--secondary-text, #90a4ae); font-style: italic; }
 
 .swatch {
   display: inline-block;
@@ -136,7 +140,7 @@
   border-radius: 3px;
   vertical-align: middle;
   margin-right: 4px;
-  border: 1px solid #00000022;
+  border: 1px solid rgba(128, 128, 128, 0.3);
 }
 
 /* Editors */
@@ -158,7 +162,7 @@
   gap: 4px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--muted-color, #5f6b76);
+  color: var(--secondary-text, #5f6b76);
 }
 .sb-editor label.full { margin-top: 12px; }
 .sb-field-row label.chk {
@@ -172,8 +176,8 @@
   padding: 5px 8px;
   border: 1px solid var(--border-color, #d0d7de);
   border-radius: 6px;
-  background: var(--input-background, #fff);
-  color: var(--text-color, #1a2027);
+  background: var(--primary-background, #fff);
+  color: var(--primary-text, #1a2027);
   font-weight: 400;
 }
 .sb-field-row input[type="color"] { padding: 2px; width: 44px; height: 32px; }
@@ -181,6 +185,13 @@
 .sb-editor textarea { width: 100%; font-family: inherit; resize: vertical; }
 
 .sb-editor-actions { margin-top: 16px; display: flex; gap: 8px; }
+
+.dow-label {
+  align-self: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--secondary-text, #5f6b76);
+}
 
 /* Rotation grid */
 .grid-scroll { overflow-x: auto; margin: 8px 0 4px; }
@@ -194,18 +205,19 @@
   text-align: center;
 }
 .grid thead th {
-  background: var(--card-header-background, #f6f8fa);
+  background: var(--secondary-background, #f6f8fa);
   min-width: 30px;
   font-weight: 600;
-  color: var(--muted-color, #5f6b76);
+  color: var(--secondary-text, #5f6b76);
 }
 .grid .role-col {
   position: sticky;
   left: 0;
-  background: var(--card-header-background, #f6f8fa);
+  background: var(--secondary-background, #f6f8fa);
   text-align: left;
   padding: 4px 10px;
   font-weight: 700;
+  color: var(--primary-text, #1a2027);
   z-index: 1;
 }
 .grid select {
@@ -215,13 +227,13 @@
   padding: 3px 2px;
   text-align: center;
   cursor: pointer;
-  color: var(--text-color, #1a2027);
+  color: var(--primary-text, #1a2027);
   width: 34px;
 }
-.grid select[data-shift="D"] { background: #66bb6a33; }
-.grid select[data-shift="N"] { background: #42a5f533; }
-.grid select[data-shift="O"] { background: #eceff1; color: #90a4ae; }
-.grid select[data-shift="R"] { background: #ffa72633; }
+.grid select[data-shift="D"] { background: rgba(102, 187, 106, 0.28); }
+.grid select[data-shift="N"] { background: rgba(66, 165, 245, 0.28); }
+.grid select[data-shift="O"] { background: rgba(128, 128, 128, 0.18); }
+.grid select[data-shift="R"] { background: rgba(255, 167, 38, 0.28); }
 
 /* Coverage */
 .sb-signups-head {
@@ -230,7 +242,7 @@
   justify-content: space-between;
   margin-bottom: 10px;
 }
-.sb-signups-head h3 { margin: 0; font-size: 1rem; }
+.sb-signups-head h3 { margin: 0; font-size: 1rem; color: var(--primary-text, #1a2027); }
 
 .pill {
   display: inline-block;
@@ -238,15 +250,15 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #9e9e9e22;
-  color: #616161;
-  border: 1px solid #9e9e9e44;
+  background: rgba(158, 158, 158, 0.18);
+  color: var(--secondary-text, #616161);
+  border: 1px solid rgba(158, 158, 158, 0.35);
 }
-.pill[data-shift="DAY"]      { background: #66bb6a22; color: #2e7d32; border-color: #66bb6a55; }
-.pill[data-shift="NIGHT"]    { background: #42a5f522; color: #1565c0; border-color: #42a5f555; }
-.pill[data-status="OPEN"]     { background: #42a5f522; color: #1565c0; border-color: #42a5f555; }
-.pill[data-status="PENDING"]  { background: #ffa72622; color: #e65100; border-color: #ffa72655; }
-.pill[data-status="APPROVED"] { background: #66bb6a22; color: #2e7d32; border-color: #66bb6a55; }
-.pill[data-status="REJECTED"] { background: #ef535022; color: #c62828; border-color: #ef535055; }
-.pill[data-status="CANCELLED"]{ background: #9e9e9e22; color: #616161; border-color: #9e9e9e55; }
-.pill[data-status="FULFILLED"]{ background: #26c6da22; color: #00838f; border-color: #26c6da55; }
+.pill[data-shift="DAY"]      { background: rgba(102, 187, 106, 0.18); color: #66bb6a; border-color: rgba(102, 187, 106, 0.4); }
+.pill[data-shift="NIGHT"]    { background: rgba(66, 165, 245, 0.18); color: #42a5f5; border-color: rgba(66, 165, 245, 0.4); }
+.pill[data-status="OPEN"]     { background: rgba(66, 165, 245, 0.18); color: #42a5f5; border-color: rgba(66, 165, 245, 0.4); }
+.pill[data-status="PENDING"]  { background: rgba(255, 167, 38, 0.18); color: #ffa726; border-color: rgba(255, 167, 38, 0.4); }
+.pill[data-status="APPROVED"] { background: rgba(102, 187, 106, 0.18); color: #66bb6a; border-color: rgba(102, 187, 106, 0.4); }
+.pill[data-status="REJECTED"] { background: rgba(239, 83, 80, 0.18); color: #ef5350; border-color: rgba(239, 83, 80, 0.4); }
+.pill[data-status="CANCELLED"]{ background: rgba(158, 158, 158, 0.18); color: var(--secondary-text, #9e9e9e); border-color: rgba(158, 158, 158, 0.4); }
+.pill[data-status="FULFILLED"]{ background: rgba(38, 198, 218, 0.18); color: #26c6da; border-color: rgba(38, 198, 218, 0.4); }

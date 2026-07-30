@@ -10,25 +10,21 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The rotation math is the load-bearing part of schedule v2 — every materialised day depends on it
- * landing the right person on the right shift. These tests pin the two guarantees that matter:
- * the cycle index is stable + wraps correctly, and the role × day grid lets LEAD and AO rotate
- * between shift and relief independently within one crew.
+ * Crew-level rotation math: the cycle index must be stable + wrap correctly, and a rotation resolves
+ * one shift per cycle day for the whole crew (no role dimension).
  */
 @DisplayName("SchedulePatternMath rotation")
 class SchedulePatternMathTest {
 
-    /** Example crew: cycle 8, LEAD = D D N N O O D D, AO differs at day 5 (R vs O). */
-    private static List<PatternCell> exampleGrid() {
+    /** Example crew rotation, cycle 8: D D N N O O D D. */
+    private static List<PatternCell> cycle() {
         return List.of(
-                cell(0, "LEAD", "D"), cell(1, "LEAD", "D"), cell(2, "LEAD", "N"), cell(3, "LEAD", "N"),
-                cell(4, "LEAD", "O"), cell(5, "LEAD", "O"), cell(6, "LEAD", "D"), cell(7, "LEAD", "D"),
-                cell(0, "AO", "D"), cell(1, "AO", "D"), cell(2, "AO", "N"), cell(3, "AO", "N"),
-                cell(4, "AO", "O"), cell(5, "AO", "R"), cell(6, "AO", "D"), cell(7, "AO", "D"));
+                cell(0, "D"), cell(1, "D"), cell(2, "N"), cell(3, "N"),
+                cell(4, "O"), cell(5, "O"), cell(6, "D"), cell(7, "D"));
     }
 
-    private static PatternCell cell(int dayIndex, String role, String shift) {
-        return PatternCell.builder().dayIndex(dayIndex).role(role).shift(shift).build();
+    private static PatternCell cell(int dayIndex, String shift) {
+        return PatternCell.builder().dayIndex(dayIndex).shift(shift).build();
     }
 
     @Test
@@ -36,21 +32,19 @@ class SchedulePatternMathTest {
     void cycleDayWrapsAndIsStable() {
         assertThat(SchedulePatternMath.cycleDay(0, 0, 8)).isZero();
         assertThat(SchedulePatternMath.cycleDay(7, 0, 8)).isEqualTo(7);
-        assertThat(SchedulePatternMath.cycleDay(8, 0, 8)).isZero();        // wraps
+        assertThat(SchedulePatternMath.cycleDay(8, 0, 8)).isZero();
         assertThat(SchedulePatternMath.cycleDay(9, 0, 8)).isEqualTo(1);
 
-        // Advancing exactly one cycle returns the same index (stable rotation).
         long e = LocalDate.of(2026, 7, 29).toEpochDay();
         assertThat(SchedulePatternMath.cycleDay(e, 0, 28))
                 .isEqualTo(SchedulePatternMath.cycleDay(e + 28, 0, 28));
     }
 
     @Test
-    @DisplayName("patternOffsetDays phases the rotation, incl. negative via floorMod")
+    @DisplayName("offsetDays phases the rotation, incl. negative via floorMod")
     void offsetPhasesTheCycle() {
         assertThat(SchedulePatternMath.cycleDay(0, 4, 8)).isEqualTo(4);
-        assertThat(SchedulePatternMath.cycleDay(0, -1, 8)).isEqualTo(7);   // floorMod, not %
-        // Two crews on the same date, 4 apart, are 4 apart in the cycle.
+        assertThat(SchedulePatternMath.cycleDay(0, -1, 8)).isEqualTo(7);
         long e = LocalDate.of(2026, 7, 29).toEpochDay();
         int crewA = SchedulePatternMath.cycleDay(e, 0, 8);
         int crewB = SchedulePatternMath.cycleDay(e, 4, 8);
@@ -65,23 +59,18 @@ class SchedulePatternMathTest {
     }
 
     @Test
-    @DisplayName("shiftFor resolves per (cycleDay, role) so LEAD and AO can differ on the same day")
-    void shiftForIsRoleAware() {
-        List<PatternCell> grid = exampleGrid();
-        assertThat(SchedulePatternMath.shiftFor(grid, 2, "LEAD")).isEqualTo("N");
-        assertThat(SchedulePatternMath.shiftFor(grid, 0, "LEAD")).isEqualTo("D");
-        // Day 5: LEAD is off, AO is on relief — the whole point of the role × day grid.
-        assertThat(SchedulePatternMath.shiftFor(grid, 5, "LEAD")).isEqualTo("O");
-        assertThat(SchedulePatternMath.shiftFor(grid, 5, "AO")).isEqualTo("R");
+    @DisplayName("shiftFor resolves the crew's single shift for a cycle day")
+    void shiftForResolvesCrewShift() {
+        List<PatternCell> c = cycle();
+        assertThat(SchedulePatternMath.shiftFor(c, 0)).isEqualTo("D");
+        assertThat(SchedulePatternMath.shiftFor(c, 2)).isEqualTo("N");
+        assertThat(SchedulePatternMath.shiftFor(c, 4)).isEqualTo("O");
     }
 
     @Test
-    @DisplayName("shiftFor returns null for absent cells, unknown roles, and null input")
+    @DisplayName("shiftFor returns null for absent cells and null input")
     void shiftForMisses() {
-        List<PatternCell> grid = exampleGrid();
-        assertThat(SchedulePatternMath.shiftFor(grid, 99, "LEAD")).isNull();
-        assertThat(SchedulePatternMath.shiftFor(grid, 0, "RELIEF")).isNull();
-        assertThat(SchedulePatternMath.shiftFor(null, 0, "LEAD")).isNull();
-        assertThat(SchedulePatternMath.shiftFor(grid, 0, null)).isNull();
+        assertThat(SchedulePatternMath.shiftFor(cycle(), 99)).isNull();
+        assertThat(SchedulePatternMath.shiftFor(null, 0)).isNull();
     }
 }

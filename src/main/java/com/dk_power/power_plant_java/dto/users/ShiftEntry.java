@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 public class ShiftEntry {
     private String name;
     private String group;
+    /** Schedule v2 — operator position label (Lead, CRO, AO, …). Null for v1 rows. */
+    private String position;
     private Long userId;
     private Double matchConfidence;
 }

@@ -4,17 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import {
-  ScheduleV2ApiService, CrewPattern, CrewAssignment, ScheduleEvent, AssignableUser,
-  CoverageRequest, CoverageSignup,
+  ScheduleV2ApiService, SchedulePosition, CrewRotation, Crew, CrewAssignment,
+  ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup,
 } from '../../../services/schedule-v2-api.service';
 
-type Tab = 'patterns' | 'assignments' | 'events' | 'coverage';
+type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage';
 
 /**
- * Schedule v2 manager build tools (admin-gated). Three tabs — crew rotation patterns (role × day
- * grid), crew assignments (person → crew → role → range → offset), and schedule events. Every save
- * re-materialises the ShiftDay rows server-side; while the schedule.v2.enabled flag is off this is
- * a no-op, so the page doubles as a staging surface before cutover.
+ * Schedule v2 manager build tools (admin-gated). Positions → Rotations → Crews → Staffing, plus
+ * Events and Coverage. Crew-level rotation (whole crew shares a shift per day); positions are
+ * configurable labels; non-rotating day staff + Relief are FIXED/RELIEF staffing assignments.
+ * Every save re-materialises ShiftDay server-side (no-op while the flag is off).
  */
 @Component({
   selector: 'app-schedule-builder',
@@ -26,26 +26,32 @@ type Tab = 'patterns' | 'assignments' | 'events' | 'coverage';
 export class ScheduleBuilderComponent implements OnInit {
   private api = inject(ScheduleV2ApiService);
 
-  readonly ROLES = ['LEAD', 'AO', 'RELIEF'];
-  readonly SHIFTS = ['', 'D', 'N', 'O', 'R'];
+  readonly SHIFTS = ['', 'D', 'N', 'O'];
   readonly EVENT_TYPES = ['HOLIDAY', 'MEETING', 'PAY_PERIOD_START', 'OUTAGE', 'TRAINING_MANDATORY', 'LEADS_MEETING'];
   readonly SHIFT_AFFINITY = ['BOTH', 'DAY', 'NIGHT'];
+  readonly ASSIGNMENT_TYPES = ['ROTATING', 'FIXED', 'RELIEF'];
+  readonly FIXED_SHIFTS = ['D', 'N'];
+  readonly DOW = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   readonly COVERAGE_SHIFTS = ['DAY', 'NIGHT'];
   readonly COVERAGE_REASONS = ['MANUAL', 'OUTAGE', 'PTO_COVERAGE'];
 
-  activeTab = signal<Tab>('patterns');
+  activeTab = signal<Tab>('positions');
   active = signal<boolean>(false);
   message = signal<string | null>(null);
   loading = signal(false);
 
-  patterns = signal<CrewPattern[]>([]);
+  positions = signal<SchedulePosition[]>([]);
+  rotations = signal<CrewRotation[]>([]);
+  crews = signal<Crew[]>([]);
   assignments = signal<CrewAssignment[]>([]);
   events = signal<ScheduleEvent[]>([]);
   users = signal<AssignableUser[]>([]);
   coverage = signal<CoverageRequest[]>([]);
   signups = signal<CoverageSignup[]>([]);
 
-  editingPattern: CrewPattern | null = null;
+  editingPosition: SchedulePosition | null = null;
+  editingRotation: CrewRotation | null = null;
+  editingCrew: Crew | null = null;
   editingAssignment: CrewAssignment | null = null;
   editingEvent: ScheduleEvent | null = null;
   editingCoverage: CoverageRequest | null = null;
@@ -57,7 +63,9 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   reloadAll(): void {
-    this.api.listPatterns().subscribe(r => this.patterns.set(r.responseData ?? []));
+    this.api.listPositions().subscribe(r => this.positions.set(r.responseData ?? []));
+    this.api.listRotations().subscribe(r => this.rotations.set(r.responseData ?? []));
+    this.api.listCrews().subscribe(r => this.crews.set(r.responseData ?? []));
     this.api.listAssignments().subscribe(r => this.assignments.set(r.responseData ?? []));
     this.api.listEvents().subscribe(r => this.events.set(r.responseData ?? []));
     this.api.assignableUsers().subscribe(r => this.users.set(r.responseData ?? []));
@@ -65,59 +73,90 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   setTab(t: Tab): void { this.activeTab.set(t); }
-
-  private flash(msg: string): void {
-    this.message.set(msg);
-    setTimeout(() => this.message.set(null), 3500);
-  }
-
+  private flash(m: string): void { this.message.set(m); setTimeout(() => this.message.set(null), 3500); }
   private errText(e: any): string { return e?.error?.message ?? e?.message ?? 'error'; }
+  activePositionNames(): string[] { return this.positions().filter(p => p.isActive !== false).map(p => p.name); }
 
-  // ---- patterns ----
-  newPattern(): void {
-    this.editingPattern = { name: '', color: '#42A5F5', patternLengthDays: 28, cells: [], isActive: true };
-  }
-  editPattern(p: CrewPattern): void {
-    this.editingPattern = { ...p, cells: (p.cells ?? []).map(c => ({ ...c })) };
-  }
-  cancelPattern(): void { this.editingPattern = null; }
-
-  dayRange(): number[] {
-    const n = this.editingPattern?.patternLengthDays ?? 0;
-    return Array.from({ length: Math.max(0, Math.min(60, n)) }, (_, i) => i);
-  }
-  cellShift(role: string, day: number): string {
-    return this.editingPattern?.cells.find(x => x.role === role && x.dayIndex === day)?.shift ?? '';
-  }
-  setCell(role: string, day: number, shift: string): void {
-    if (!this.editingPattern) return;
-    const cells = this.editingPattern.cells;
-    const idx = cells.findIndex(x => x.role === role && x.dayIndex === day);
-    if (!shift) { if (idx >= 0) cells.splice(idx, 1); return; }
-    if (idx >= 0) cells[idx].shift = shift;
-    else cells.push({ role, dayIndex: day, shift });
-  }
-  savePattern(): void {
-    if (!this.editingPattern) return;
-    const n = this.editingPattern.patternLengthDays ?? 0;
-    this.editingPattern.cells = this.editingPattern.cells.filter(c => c.dayIndex < n);
+  // ---- positions ----
+  newPosition(): void { this.editingPosition = { name: '', color: '#42A5F5', isActive: true }; }
+  editPosition(p: SchedulePosition): void { this.editingPosition = { ...p }; }
+  cancelPosition(): void { this.editingPosition = null; }
+  savePosition(): void {
+    if (!this.editingPosition) return;
     this.loading.set(true);
-    this.api.savePattern(this.editingPattern).subscribe({
-      next: () => { this.editingPattern = null; this.loading.set(false); this.flash('Pattern saved'); this.reloadAll(); },
+    this.api.savePosition(this.editingPosition).subscribe({
+      next: () => { this.editingPosition = null; this.loading.set(false); this.flash('Position saved'); this.reloadAll(); },
       error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
     });
   }
-  deletePattern(p: CrewPattern): void {
-    if (!p.id || !confirm(`Delete pattern "${p.name}"?`)) return;
-    this.api.deletePattern(p.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+  deletePosition(p: SchedulePosition): void {
+    if (!p.id || !confirm(`Delete position "${p.name}"?`)) return;
+    this.api.deletePosition(p.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
   }
 
-  // ---- assignments ----
-  newAssignment(): void {
-    this.editingAssignment = { role: 'AO', patternOffsetDays: 0, isActive: true };
+  // ---- rotations ----
+  newRotation(): void { this.editingRotation = { name: '', color: '#42A5F5', patternLengthDays: 28, cells: [], isActive: true }; }
+  editRotation(r: CrewRotation): void { this.editingRotation = { ...r, cells: (r.cells ?? []).map(c => ({ ...c })) }; }
+  cancelRotation(): void { this.editingRotation = null; }
+  dayRange(): number[] {
+    const n = this.editingRotation?.patternLengthDays ?? 0;
+    return Array.from({ length: Math.max(0, Math.min(60, n)) }, (_, i) => i);
   }
+  cellShift(day: number): string { return this.editingRotation?.cells.find(c => c.dayIndex === day)?.shift ?? ''; }
+  setCell(day: number, shift: string): void {
+    if (!this.editingRotation) return;
+    const cells = this.editingRotation.cells;
+    const idx = cells.findIndex(c => c.dayIndex === day);
+    if (!shift) { if (idx >= 0) cells.splice(idx, 1); return; }
+    if (idx >= 0) cells[idx].shift = shift; else cells.push({ dayIndex: day, shift });
+  }
+  saveRotation(): void {
+    if (!this.editingRotation) return;
+    const n = this.editingRotation.patternLengthDays ?? 0;
+    this.editingRotation.cells = this.editingRotation.cells.filter(c => c.dayIndex < n);
+    this.loading.set(true);
+    this.api.saveRotation(this.editingRotation).subscribe({
+      next: () => { this.editingRotation = null; this.loading.set(false); this.flash('Rotation saved'); this.reloadAll(); },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+  deleteRotation(r: CrewRotation): void {
+    if (!r.id || !confirm(`Delete rotation "${r.name}"?`)) return;
+    this.api.deleteRotation(r.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+  }
+
+  // ---- crews ----
+  newCrew(): void { this.editingCrew = { name: '', offsetDays: 0, color: '#42A5F5', isActive: true }; }
+  editCrew(c: Crew): void { this.editingCrew = { ...c }; }
+  cancelCrew(): void { this.editingCrew = null; }
+  saveCrew(): void {
+    if (!this.editingCrew) return;
+    this.loading.set(true);
+    this.api.saveCrew(this.editingCrew).subscribe({
+      next: () => { this.editingCrew = null; this.loading.set(false); this.flash('Crew saved'); this.reloadAll(); },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+  deleteCrew(c: Crew): void {
+    if (!c.id || !confirm(`Delete crew "${c.name}"?`)) return;
+    this.api.deleteCrew(c.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+  }
+
+  // ---- staffing ----
+  newAssignment(): void { this.editingAssignment = { assignmentType: 'ROTATING', position: '', isActive: true }; }
   editAssignment(a: CrewAssignment): void { this.editingAssignment = { ...a }; }
   cancelAssignment(): void { this.editingAssignment = null; }
+  hasDow(day: string): boolean {
+    const csv = this.editingAssignment?.fixedDaysOfWeek ?? '';
+    return csv.split(',').map(s => s.trim()).includes(day);
+  }
+  toggleDow(day: string): void {
+    if (!this.editingAssignment) return;
+    const set = (this.editingAssignment.fixedDaysOfWeek ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    const i = set.indexOf(day);
+    if (i >= 0) set.splice(i, 1); else set.push(day);
+    this.editingAssignment.fixedDaysOfWeek = this.DOW.filter(d => set.includes(d)).join(',');
+  }
   saveAssignment(): void {
     if (!this.editingAssignment) return;
     this.loading.set(true);
@@ -132,9 +171,7 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   // ---- events ----
-  newEvent(): void {
-    this.editingEvent = { eventType: 'HOLIDAY', appliesToShift: 'BOTH', color: '#EF5350' };
-  }
+  newEvent(): void { this.editingEvent = { eventType: 'HOLIDAY', appliesToShift: 'BOTH', color: '#EF5350' }; }
   editEvent(e: ScheduleEvent): void { this.editingEvent = { ...e }; }
   cancelEvent(): void { this.editingEvent = null; }
   saveEvent(): void {
@@ -151,10 +188,7 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   // ---- coverage ----
-  newCoverage(): void {
-    this.editingCoverage = { shift: 'DAY', requiredCount: 1, reason: 'MANUAL' };
-    this.selectedCoverage = null;
-  }
+  newCoverage(): void { this.editingCoverage = { shift: 'DAY', requiredCount: 1, reason: 'MANUAL' }; this.selectedCoverage = null; }
   cancelCoverageEdit(): void { this.editingCoverage = null; }
   saveCoverage(): void {
     if (!this.editingCoverage) return;
@@ -172,11 +206,7 @@ export class ScheduleBuilderComponent implements OnInit {
       this.reloadAll();
     });
   }
-  viewSignups(c: CoverageRequest): void {
-    this.selectedCoverage = c;
-    this.editingCoverage = null;
-    this.refreshSignups();
-  }
+  viewSignups(c: CoverageRequest): void { this.selectedCoverage = c; this.editingCoverage = null; this.refreshSignups(); }
   closeSignups(): void { this.selectedCoverage = null; this.signups.set([]); }
   approveSignup(s: CoverageSignup): void {
     if (!s.id) return;

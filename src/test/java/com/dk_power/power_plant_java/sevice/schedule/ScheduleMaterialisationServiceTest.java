@@ -2,8 +2,9 @@ package com.dk_power.power_plant_java.sevice.schedule;
 
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
+import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
-import com.dk_power.power_plant_java.entities.schedule.CrewPattern;
+import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
 import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
@@ -35,15 +36,14 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Exercises the full per-day chain (pattern placement → coverage → PTO → override → event flags)
- * through the real service with mocked repos, so the wiring — not just the isolated math — is
- * verified. {@link SchedulePatternMathTest} covers the rotation arithmetic on its own.
+ * Exercises the crew-level placement chain through the real service with mocked repos: ROTATING
+ * (crew rotation), FIXED (non-rotating), RELIEF (not scheduled), PTO, and event flags.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScheduleMaterialisationService")
 class ScheduleMaterialisationServiceTest {
 
-    /** Epoch day 0 → cycleDay 0 with offset 0, so grid day-0 cells apply. */
+    /** Epoch day 0 → cycleDay 0 with offset 0. */
     private static final LocalDate DAY0 = LocalDate.ofEpochDay(0);
 
     @Mock private CrewAssignmentRepo assignmentRepo;
@@ -75,26 +75,33 @@ class ScheduleMaterialisationServiceTest {
     }
 
     @Test
-    @DisplayName("places a LEAD onto the day shift per the grid's day-0 cell")
-    void leadPlacedOnDayShift() {
+    @DisplayName("ROTATING assignment places the person on the crew rotation's shift, with position")
+    void rotatingPlacesWholeCrewShift() {
         User u = user(1L, "Kody Ziegler");
         when(assignmentRepo.findActiveOverlapping(any(), any()))
-                .thenReturn(List.of(assignment(u, crewA(), "LEAD")));
+                .thenReturn(List.of(rotating(u, crewA(), "LEAD")));
 
         service.materializeRange(DAY0, DAY0);
 
         ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
         verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(),
                 any(), any(), any(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
-        assertThat(dayCap.getValue()).extracting(ShiftEntry::getUserId).containsExactly(1L);
+        assertThat(dayCap.getValue()).hasSize(1);
+        assertThat(dayCap.getValue().get(0).getUserId()).isEqualTo(1L);
+        assertThat(dayCap.getValue().get(0).getPosition()).isEqualTo("LEAD");
     }
 
     @Test
-    @DisplayName("places an AO onto the night shift per the grid's day-0 cell (role-differentiated)")
-    void aoPlacedOnNightShift() {
-        User u = user(2L, "Jane Doe");
-        when(assignmentRepo.findActiveOverlapping(any(), any()))
-                .thenReturn(List.of(assignment(u, crewA(), "AO")));
+    @DisplayName("FIXED (non-rotating) assignment places the person on its fixed shift")
+    void fixedPlacesOnFixedShift() {
+        User u = user(2L, "Day Lead");
+        CrewAssignment a = new CrewAssignment();
+        a.setUser(u);
+        a.setAssignmentType(CrewAssignment.Type.FIXED);
+        a.setFixedShift(CrewRotation.Shift.NIGHT);
+        a.setPosition("AO");
+        a.setIsActive(true);
+        when(assignmentRepo.findActiveOverlapping(any(), any())).thenReturn(List.of(a));
 
         service.materializeRange(DAY0, DAY0);
 
@@ -107,11 +114,27 @@ class ScheduleMaterialisationServiceTest {
     }
 
     @Test
-    @DisplayName("approved PTO moves the person out of their shift and into the PTO bucket")
+    @DisplayName("RELIEF assignment is never auto-scheduled onto a shift")
+    void reliefIsNotScheduled() {
+        User u = user(3L, "Relief Op");
+        CrewAssignment a = new CrewAssignment();
+        a.setUser(u);
+        a.setAssignmentType(CrewAssignment.Type.RELIEF);
+        a.setIsActive(true);
+        when(assignmentRepo.findActiveOverlapping(any(), any())).thenReturn(List.of(a));
+
+        service.materializeRange(DAY0, DAY0);
+
+        verify(shiftDayService, never()).applyMaterializedDay(any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("approved PTO moves a rostered person into the PTO bucket")
     void approvedPtoMovesToPtoBucket() {
         User u = user(1L, "Kody Ziegler");
         when(assignmentRepo.findActiveOverlapping(any(), any()))
-                .thenReturn(List.of(assignment(u, crewA(), "LEAD")));   // would be on DAY
+                .thenReturn(List.of(rotating(u, crewA(), "LEAD")));
         PtoRequest pto = new PtoRequest();
         pto.setUser(u);
         pto.setStartDate(DAY0.minusDays(1));
@@ -148,9 +171,8 @@ class ScheduleMaterialisationServiceTest {
     }
 
     @Test
-    @DisplayName("leaves a day with no v2 opinion untouched (never blanks a ShiftDay)")
+    @DisplayName("leaves a day with no v2 opinion untouched")
     void emptyDayIsNotWritten() {
-        // All repos return empty (Mockito default for collections); no events.
         service.materializeRange(DAY0, DAY0);
         verify(shiftDayService, never()).applyMaterializedDay(any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), any());
@@ -165,30 +187,34 @@ class ScheduleMaterialisationServiceTest {
         return u;
     }
 
-    /** Crew A: cycle 8, day-0 LEAD=D and AO=N (only day-0 cells needed for DAY0 tests). */
-    private CrewPattern crewA() {
-        CrewPattern c = new CrewPattern();
-        c.setId(10L);
-        c.setName("Crew A");
-        c.setPatternLengthDays(8);
-        c.setIsActive(true);
-        List<PatternCell> cells = List.of(
-                PatternCell.builder().dayIndex(0).role("LEAD").shift("D").build(),
-                PatternCell.builder().dayIndex(0).role("AO").shift("N").build());
+    /** Crew A: rotation with day-0 = Day, offset 0. */
+    private Crew crewA() {
+        CrewRotation rot = new CrewRotation();
+        rot.setId(10L);
+        rot.setName("2-2-3");
+        rot.setPatternLengthDays(8);
+        rot.setIsActive(true);
         try {
-            c.setPatternCells(objectMapper.writeValueAsString(cells));
+            rot.setRotationCells(objectMapper.writeValueAsString(
+                    List.of(PatternCell.builder().dayIndex(0).shift("D").build())));
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+        Crew c = new Crew();
+        c.setId(20L);
+        c.setName("Crew A");
+        c.setRotation(rot);
+        c.setOffsetDays(0);
+        c.setIsActive(true);
         return c;
     }
 
-    private CrewAssignment assignment(User u, CrewPattern crew, String role) {
+    private CrewAssignment rotating(User u, Crew crew, String position) {
         CrewAssignment a = new CrewAssignment();
         a.setUser(u);
         a.setCrew(crew);
-        a.setRole(role);
-        a.setPatternOffsetDays(0);
+        a.setPosition(position);
+        a.setAssignmentType(CrewAssignment.Type.ROTATING);
         a.setIsActive(true);
         return a;
     }

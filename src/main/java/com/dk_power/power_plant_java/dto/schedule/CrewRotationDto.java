@@ -8,15 +8,15 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Admin-facing view of a {@link com.dk_power.power_plant_java.entities.schedule.CrewPattern}. The
- * role × day grid is exposed as a parsed {@link PatternCell} list ({@code cells}); the service
- * serializes it to/from the entity's {@code patternCells} JSON column.
+ * Admin view of a {@link com.dk_power.power_plant_java.entities.schedule.CrewRotation}. The cycle is
+ * exposed as a parsed {@link PatternCell} list ({@code cells}); the service serializes it to/from the
+ * entity's {@code rotationCells} JSON.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CrewPatternDto {
+public class CrewRotationDto {
     private Long id;
     private String name;
     private String color;

@@ -487,35 +487,35 @@ td {
 
 /*========== Sticky columns (Column.sticky = 'left' | 'right') ==========*/
 
-/* Hover-triggered floating action buttons — appear next to the currently
- * hovered row, pinned to the viewport edge. Rendered OUTSIDE the
- * cdk-virtual-scroll-viewport so nothing sticky-in-transformed-ancestor
- * can drift or flicker. Visibility follows dataService.hoveredRow(). */
-.hover-action-overlay {
-  position: absolute;
-  z-index: 5;
+/* Hover-triggered floating action wrapper — position:fixed, anchored
+ * to the hovered row's SCREEN rect (via getBoundingClientRect).
+ * Fixed positioning sidesteps every containing-block / stacking-
+ * context / overflow-clipping trap that broke earlier attempts.
+ * Wrapper is pointer-events:none so it doesn't block clicks on the
+ * table content it sits above; the child buttons re-enable pointer
+ * events. Flex layout with justify-content:space-between pushes the
+ * left button to the left edge and the right button to the right edge
+ * of the wrapper (which spans the container's visible width). */
+.hover-action-wrapper {
+  position: fixed;
+  z-index: 100;
   pointer-events: none;
-  top: 0;
-  bottom: 0;
-  width: 0;
-  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  box-sizing: border-box;
 }
 
-.hover-action-overlay.left { left: 0; }
-.hover-action-overlay.right { right: 0; }
-
 .hover-action-floating {
-  position: absolute;
   pointer-events: auto;
-  transition: opacity 0.08s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
 }
 
-.hover-action-floating.left { left: 4px; }
-.hover-action-floating.right { right: 4px; }
+.hover-action-floating.left { margin-right: auto; }
+.hover-action-floating.right { margin-left: auto; }
 
 /* Row index column — narrow, non-clickable index shown in the first
  * position when [showRowIndex]="true" (default). Subtle gray. */

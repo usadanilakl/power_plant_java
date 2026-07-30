@@ -186,19 +186,30 @@ export class TableComponent implements OnInit, AfterViewInit {
    */
   showRowIndex = input<boolean>(true);
 
-  /** Y-offset (in .table-container coords) of the currently hovered row.
-   *  Updated on mouseenter; drives the hover-action overlay's `top`. */
-  hoveredRowTop = signal<number>(0);
-  hoveredRowHeight = signal<number>(0);
-  /** True while the pointer is over one of the floating action buttons —
-   *  so the overlay stays visible when the pointer transits from the row
-   *  cell into the floating button. */
+  /**
+   * Screen-coordinate rect (getBoundingClientRect) of the currently
+   * hovered row + its host .table-container. Fed to a position:fixed
+   * hover-action wrapper — fixed positioning bypasses ALL container-
+   * overflow / stacking-context / transformed-ancestor traps that
+   * broke every earlier attempt (position:sticky drifted with the row
+   * inside cdk-virtual-scroll-viewport's transformed wrapper;
+   * position:absolute inside .table-container was somehow only visible
+   * when the row was scrolled fully into view).
+   */
+  hoverOverlayTop = signal<number>(0);
+  hoverOverlayHeight = signal<number>(0);
+  hoverOverlayLeftX = signal<number>(0);
+  hoverOverlayRightX = signal<number>(0);
+  /** Item the overlay is currently anchored to. Separate from
+   *  dataService.hoveredRow() so we can DELAY clearing it — otherwise the
+   *  mouse-transit from row → floating button fires row.mouseleave
+   *  (dataService.hoveredRow=null → overlay unmounts) BEFORE the button's
+   *  own mouseenter fires (overlayHovered=true), and the overlay flashes
+   *  off/on. The 150ms grace window is short enough not to feel laggy
+   *  but long enough for the OS-level pointerleave/enter pair to land. */
+  overlayItem = signal<any | null>(null);
+  private overlayHideTimer: ReturnType<typeof setTimeout> | null = null;
   private overlayHovered = signal<boolean>(false);
-  /** Combined visibility: overlay shows if we have a template AND either
-   *  a row is hovered OR the floating action itself is hovered. */
-  hoverOverlayVisible = computed(() =>
-    (this.dataService.hoveredRow() != null || this.overlayHovered())
-  );
   // OPT-IN drift badge: set to a synced entity type (e.g. "LotoPoint") to show a per-row hub/SharePoint
   // drift indicator in the first cell + a "Scan drift" control. Unset (every existing table) → no change.
   driftEntityType = input<string | undefined>(undefined);
@@ -432,27 +443,72 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {}
 
-  /** Row mouseenter handler: capture the row's Y (in container coords)
-   *  so the hover-action overlay pins next to the correct row. Also
-   *  forwards to the click service so existing hover state (highlight
-   *  linking, etc.) keeps working. */
+  /** Row mouseenter — capture the row's SCREEN rect so the fixed-
+   *  positioned hover-action wrapper anchors next to it. Cancels any
+   *  pending hide timer from the previous row's mouseleave so the
+   *  overlay doesn't flash when the pointer moves row-to-row. */
   onRowMouseEnter(item: any, event: MouseEvent): void {
     this.clickService.onRowHover(item);
+    // Skip the getBoundingClientRect calls when no overlay is configured
+    // — every table in the app fires mouseenter; only the LOTO Standard
+    // editor's opted-in tables need the rect math.
+    const hasOverlay = this.hoverActionLeftTemplate() != null || this.hoverActionRightTemplate() != null;
+    if (!hasOverlay) return;
     const tr = event.currentTarget as HTMLElement | null;
     const container = this.tableContainerRef()?.nativeElement;
     if (tr && container) {
       const rowRect = tr.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
-      this.hoveredRowTop.set(rowRect.top - containerRect.top);
-      this.hoveredRowHeight.set(rowRect.height);
+      this.hoverOverlayTop.set(rowRect.top);
+      this.hoverOverlayHeight.set(rowRect.height);
+      this.hoverOverlayLeftX.set(containerRect.left);
+      this.hoverOverlayRightX.set(containerRect.right);
+    }
+    this.overlayItem.set(item);
+    if (this.overlayHideTimer != null) {
+      clearTimeout(this.overlayHideTimer);
+      this.overlayHideTimer = null;
     }
   }
 
-  /** Overlay button mouseenter/leave — keeps the overlay visible while
-   *  the pointer is on the floating action even after the row's own
-   *  mouseleave fires (mouse transiting from cell to button). */
-  onOverlayEnter(): void { this.overlayHovered.set(true); }
-  onOverlayLeave(): void { this.overlayHovered.set(false); }
+  /** Row mouseleave — clear hover state in the click service (existing
+   *  behavior) AND schedule the overlay hide. Delayed so the pointer's
+   *  transit from cell to floating button has time to fire the button's
+   *  mouseenter (which cancels the timer). */
+  onRowMouseLeave(): void {
+    this.clickService.onRowLeave();
+    this.scheduleOverlayHide();
+  }
+
+  /** Overlay button mouseenter — cancel any pending hide so moving from
+   *  cell → button (a common gesture that fires row.mouseleave right
+   *  before button.mouseenter) doesn't collapse the overlay. */
+  onOverlayEnter(): void {
+    this.overlayHovered.set(true);
+    if (this.overlayHideTimer != null) {
+      clearTimeout(this.overlayHideTimer);
+      this.overlayHideTimer = null;
+    }
+  }
+  /** Overlay button mouseleave — schedule hide (unless pointer moves
+   *  back onto a row within the grace window). */
+  onOverlayLeave(): void {
+    this.overlayHovered.set(false);
+    this.scheduleOverlayHide();
+  }
+
+  private scheduleOverlayHide(): void {
+    if (this.overlayHideTimer != null) clearTimeout(this.overlayHideTimer);
+    this.overlayHideTimer = setTimeout(() => {
+      this.overlayHideTimer = null;
+      // Cancel the hide if the pointer landed on a row or on the overlay
+      // itself in the meantime (either would have re-set overlayItem or
+      // set overlayHovered).
+      if (this.dataService.hoveredRow() == null && !this.overlayHovered()) {
+        this.overlayItem.set(null);
+      }
+    }, 150);
+  }
 
   // ==================== Drift badge (opt-in via driftEntityType) ====================
 
@@ -649,5 +705,9 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   ngOnDestroy(): void {
     this.clickService.onDestroy();
+    if (this.overlayHideTimer != null) {
+      clearTimeout(this.overlayHideTimer);
+      this.overlayHideTimer = null;
+    }
   }
 }

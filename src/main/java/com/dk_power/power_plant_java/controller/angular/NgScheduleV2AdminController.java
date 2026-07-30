@@ -4,7 +4,9 @@ import com.dk_power.power_plant_java.dto.schedule.CoverageRequestDto;
 import com.dk_power.power_plant_java.dto.schedule.CoverageSeatSummaryDto;
 import com.dk_power.power_plant_java.dto.schedule.CoverageSignupDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewAssignmentDto;
-import com.dk_power.power_plant_java.dto.schedule.CrewPatternDto;
+import com.dk_power.power_plant_java.dto.schedule.CrewDto;
+import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
+import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
 import com.dk_power.power_plant_java.sevice.schedule.NgScheduleV2Service;
@@ -19,12 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Admin-gated CRUD for the schedule v2 authoring model (crew patterns, assignments, events) plus a
- * manual materialise trigger. Secured to {@code ROLE_ADMIN} in {@code SecurityConfigSpring} at
- * {@code /ng/admin/schedule-v2/**}. All responses use the standard {@link NgApiResponse} wrapper.
- *
- * <p>Every mutating endpoint re-materialises the default horizon inside the service — a no-op while
- * {@code schedule.v2.enabled=false}, so this UI is safe to use for staging before cutover.
+ * Admin-gated CRUD for the schedule v2 authoring model — positions, crew rotations, crews, staffing
+ * assignments, events — plus coverage management and a manual materialise trigger. Secured to
+ * {@code ROLE_ADMIN} at {@code /ng/admin/schedule-v2/**}. Responses use {@link NgApiResponse}.
  */
 @RestController
 @RequestMapping("/ng/admin/schedule-v2")
@@ -35,46 +34,86 @@ public class NgScheduleV2AdminController {
     private final NgScheduleV2Service service;
     private final NgCoverageService coverageService;
 
-    // ---- Crew patterns ------------------------------------------------------
+    // ---- Positions ----------------------------------------------------------
 
-    @GetMapping("/patterns")
-    public ResponseEntity<NgApiResponse<List<CrewPatternDto>>> listPatterns() {
-        return ResponseEntity.ok(new NgApiResponse<>(service.listPatterns(), "Crew patterns"));
+    @GetMapping("/positions")
+    public ResponseEntity<NgApiResponse<List<SchedulePositionDto>>> listPositions() {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listPositions(), "Positions"));
     }
 
-    @GetMapping("/patterns/{id}")
-    public ResponseEntity<NgApiResponse<CrewPatternDto>> getPattern(@PathVariable Long id) {
-        CrewPatternDto dto = service.getPattern(id);
-        return dto == null
-                ? ResponseEntity.ok(new NgApiResponse<>(null, "Not found"))
-                : ResponseEntity.ok(new NgApiResponse<>(dto, "Crew pattern"));
-    }
-
-    @PostMapping("/patterns")
-    public ResponseEntity<NgApiResponse<CrewPatternDto>> createPattern(@RequestBody CrewPatternDto dto) {
+    @PostMapping("/positions")
+    public ResponseEntity<NgApiResponse<SchedulePositionDto>> createPosition(@RequestBody SchedulePositionDto dto) {
         dto.setId(null);
-        return ResponseEntity.ok(new NgApiResponse<>(service.savePattern(dto), "Crew pattern saved"));
+        return ResponseEntity.ok(new NgApiResponse<>(service.savePosition(dto), "Position saved"));
     }
 
-    @PutMapping("/patterns/{id}")
-    public ResponseEntity<NgApiResponse<CrewPatternDto>> updatePattern(
-            @PathVariable Long id, @RequestBody CrewPatternDto dto) {
+    @PutMapping("/positions/{id}")
+    public ResponseEntity<NgApiResponse<SchedulePositionDto>> updatePosition(@PathVariable Long id, @RequestBody SchedulePositionDto dto) {
         dto.setId(id);
-        return ResponseEntity.ok(new NgApiResponse<>(service.savePattern(dto), "Crew pattern saved"));
+        return ResponseEntity.ok(new NgApiResponse<>(service.savePosition(dto), "Position saved"));
     }
 
-    @DeleteMapping("/patterns/{id}")
-    public ResponseEntity<NgApiResponse<Boolean>> deletePattern(@PathVariable Long id) {
-        boolean ok = service.deletePattern(id);
+    @DeleteMapping("/positions/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deletePosition(@PathVariable Long id) {
+        boolean ok = service.deletePosition(id);
         return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
     }
 
-    // ---- Crew assignments ---------------------------------------------------
+    // ---- Rotations ----------------------------------------------------------
+
+    @GetMapping("/rotations")
+    public ResponseEntity<NgApiResponse<List<CrewRotationDto>>> listRotations() {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listRotations(), "Rotations"));
+    }
+
+    @PostMapping("/rotations")
+    public ResponseEntity<NgApiResponse<CrewRotationDto>> createRotation(@RequestBody CrewRotationDto dto) {
+        dto.setId(null);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveRotation(dto), "Rotation saved"));
+    }
+
+    @PutMapping("/rotations/{id}")
+    public ResponseEntity<NgApiResponse<CrewRotationDto>> updateRotation(@PathVariable Long id, @RequestBody CrewRotationDto dto) {
+        dto.setId(id);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveRotation(dto), "Rotation saved"));
+    }
+
+    @DeleteMapping("/rotations/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deleteRotation(@PathVariable Long id) {
+        boolean ok = service.deleteRotation(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
+    }
+
+    // ---- Crews --------------------------------------------------------------
+
+    @GetMapping("/crews")
+    public ResponseEntity<NgApiResponse<List<CrewDto>>> listCrews() {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listCrews(), "Crews"));
+    }
+
+    @PostMapping("/crews")
+    public ResponseEntity<NgApiResponse<CrewDto>> createCrew(@RequestBody CrewDto dto) {
+        dto.setId(null);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveCrew(dto), "Crew saved"));
+    }
+
+    @PutMapping("/crews/{id}")
+    public ResponseEntity<NgApiResponse<CrewDto>> updateCrew(@PathVariable Long id, @RequestBody CrewDto dto) {
+        dto.setId(id);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveCrew(dto), "Crew saved"));
+    }
+
+    @DeleteMapping("/crews/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deleteCrew(@PathVariable Long id) {
+        boolean ok = service.deleteCrew(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
+    }
+
+    // ---- Staffing (assignments) ---------------------------------------------
 
     @GetMapping("/assignments")
-    public ResponseEntity<NgApiResponse<List<CrewAssignmentDto>>> listAssignments(
-            @RequestParam(required = false) Long crewId) {
-        return ResponseEntity.ok(new NgApiResponse<>(service.listAssignments(crewId), "Crew assignments"));
+    public ResponseEntity<NgApiResponse<List<CrewAssignmentDto>>> listAssignments(@RequestParam(required = false) Long crewId) {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listAssignments(crewId), "Assignments"));
     }
 
     @PostMapping("/assignments")
@@ -84,8 +123,7 @@ public class NgScheduleV2AdminController {
     }
 
     @PutMapping("/assignments/{id}")
-    public ResponseEntity<NgApiResponse<CrewAssignmentDto>> updateAssignment(
-            @PathVariable Long id, @RequestBody CrewAssignmentDto dto) {
+    public ResponseEntity<NgApiResponse<CrewAssignmentDto>> updateAssignment(@PathVariable Long id, @RequestBody CrewAssignmentDto dto) {
         dto.setId(id);
         return ResponseEntity.ok(new NgApiResponse<>(service.saveAssignment(dto), "Assignment saved"));
     }
@@ -102,7 +140,7 @@ public class NgScheduleV2AdminController {
     public ResponseEntity<NgApiResponse<List<ScheduleEventDto>>> listEvents(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(new NgApiResponse<>(service.listEvents(from, to), "Schedule events"));
+        return ResponseEntity.ok(new NgApiResponse<>(service.listEvents(from, to), "Events"));
     }
 
     @PostMapping("/events")
@@ -112,8 +150,7 @@ public class NgScheduleV2AdminController {
     }
 
     @PutMapping("/events/{id}")
-    public ResponseEntity<NgApiResponse<ScheduleEventDto>> updateEvent(
-            @PathVariable Long id, @RequestBody ScheduleEventDto dto) {
+    public ResponseEntity<NgApiResponse<ScheduleEventDto>> updateEvent(@PathVariable Long id, @RequestBody ScheduleEventDto dto) {
         dto.setId(id);
         return ResponseEntity.ok(new NgApiResponse<>(service.saveEvent(dto), "Event saved"));
     }
@@ -141,8 +178,13 @@ public class NgScheduleV2AdminController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         int written = service.materializeNow(from, to);
-        return ResponseEntity.ok(new NgApiResponse<>(
-                Map.of("rowsWritten", written), "Materialised " + written + " day rows"));
+        return ResponseEntity.ok(new NgApiResponse<>(Map.of("rowsWritten", written), "Materialised " + written + " day rows"));
+    }
+
+    /** One-time curated seed of staffing from the current SharePoint-derived roster (see service javadoc). */
+    @PostMapping("/seed-initial")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> seedInitial() {
+        return ResponseEntity.ok(new NgApiResponse<>(service.seedInitial(), "Seeded staffing from current schedule"));
     }
 
     // ---- Coverage -----------------------------------------------------------

@@ -5,8 +5,9 @@ import com.dk_power.power_plant_java.dto.schedule.ScheduleEventFlag;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
 import com.dk_power.power_plant_java.entities.schedule.CoverageRequest;
 import com.dk_power.power_plant_java.entities.schedule.CoverageSignup;
+import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
-import com.dk_power.power_plant_java.entities.schedule.CrewPattern;
+import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
 import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
@@ -37,35 +38,26 @@ import java.util.Set;
 
 /**
  * Schedule v2 — regenerates the materialised {@code ShiftDay} rows (the surface all consumers read)
- * from the v2 authoring model: {@link CrewPattern} + {@link CrewAssignment} rotations, approved
- * {@link CoverageSignup}s, approved {@link PtoRequest}s, ad-hoc {@link ScheduleDayOverride}s, and
- * {@link ScheduleEvent} day annotations.
+ * from the v2 authoring model: {@link CrewAssignment} staffing (ROTATING via {@link Crew} +
+ * {@link CrewRotation}, FIXED non-rotating, RELIEF coverage-only), approved {@link CoverageSignup}s,
+ * approved {@link PtoRequest}s, ad-hoc {@link ScheduleDayOverride}s, and {@link ScheduleEvent}
+ * annotations.
  *
- * <p><b>Application order per day</b> (later stages win): (1) crew pattern places each assigned
- * person into a shift from the role × day grid; (2) approved coverage signups pull the coverer into
- * the covered shift; (3) approved PTO moves the person to the PTO bucket; (4) ad-hoc overrides have
- * the final say. Overlapping events are folded into {@code eventFlagsJson}.
+ * <p><b>Placement order per day</b> (later wins): (1) staffing places each person from their
+ * assignment; (2) approved coverage signups pull the coverer into the covered shift; (3) approved
+ * PTO moves the person to the PTO bucket; (4) overrides have the final say. Events fold into
+ * {@code eventFlagsJson}.
  *
- * <p><b>Coexistence-safe:</b> a day for which v2 computes nothing (no assignments/events/etc.) is
- * left <i>untouched</i> — the materialiser never blanks a ShiftDay it has no opinion on, so any v1
- * (SharePoint-parsed) row survives until real v2 data covers that date. Writes are idempotent:
- * {@link ShiftDayService#applyMaterializedDay} short-circuits unchanged rows so no FieldChange is
- * emitted.
- *
- * <p><b>Gated:</b> no-ops entirely unless {@code schedule.v2.enabled=true} and
- * {@code schedule.v2.rollback=false}. With the flag off, v1 keeps owning ShiftDay.
+ * <p><b>Coexistence-safe:</b> a day with no v2 opinion is left untouched. Writes are idempotent.
+ * <b>Gated:</b> no-ops unless {@code schedule.v2.enabled=true} and {@code schedule.v2.rollback=false}.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScheduleMaterialisationService {
 
-    /** {@code ShiftDay.source} stamped on materialised rows — distinguishes them from v1 imports. */
     public static final String SOURCE = "v2-materializer";
-
-    /** Hard cap on a single materialise call to bound the transaction; larger ranges are clamped. */
     private static final int MAX_RANGE_DAYS = 800;
-
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
 
     private final CrewAssignmentRepo assignmentRepo;
@@ -85,26 +77,16 @@ public class ScheduleMaterialisationService {
     @Value("${schedule.v2.backfill-days:7}")
     private int backfillDays;
 
-    /** True when v2 owns ShiftDay materialisation (flag on and not rolled back). */
     public boolean isActive() {
         return v2Enabled && !v2Rollback;
     }
 
-    /**
-     * Materialise a rolling window around today ({@code -backfillDays .. +horizonDays}). The default
-     * trigger for admin CRUD, which usually can't cheaply compute the exact affected range.
-     */
     @Transactional
     public int materializeDefaultHorizon() {
         LocalDate today = LocalDate.now();
         return materializeRange(today.minusDays(backfillDays), today.plusDays(horizonDays));
     }
 
-    /**
-     * Regenerate every {@code ShiftDay} in {@code [from, to]} from the v2 model.
-     *
-     * @return the number of day rows actually written (dirty/new); unchanged rows are skipped.
-     */
     @Transactional
     public int materializeRange(LocalDate from, LocalDate to) {
         if (!isActive()) {
@@ -119,7 +101,6 @@ public class ScheduleMaterialisationService {
             to = from.plusDays(MAX_RANGE_DAYS - 1);
         }
 
-        // Preload every input across the whole range so per-day work is in-memory (no N queries).
         List<CrewAssignment> assignments = assignmentRepo.findActiveOverlapping(from, to);
         List<ScheduleEvent> events = eventRepo.findOverlapping(from, to);
         List<PtoRequest> ptos = ptoRepo.findApprovedOverlapping(from, to);
@@ -160,20 +141,9 @@ public class ScheduleMaterialisationService {
                                    Map<Long, List<PatternCell>> cellCache) {
         DayBuckets b = new DayBuckets();
 
-        // 1) Crew pattern → base placement.
+        // 1) Staffing — place each person from their assignment.
         for (CrewAssignment a : assignments) {
-            if (!assignmentCovers(a, date)) continue;
-            CrewPattern crew = a.getCrew();
-            User u = a.getUser();
-            if (crew == null || u == null || Boolean.FALSE.equals(crew.getIsActive())) continue;
-            Integer len = crew.getPatternLengthDays();
-            if (len == null || len <= 0) continue;
-            List<PatternCell> cells = cellCache.computeIfAbsent(
-                    crew.getId() == null ? -1L : crew.getId(), k -> parseCells(crew.getPatternCells()));
-            int offset = a.getPatternOffsetDays() == null ? 0 : a.getPatternOffsetDays();
-            int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay(), offset, len);
-            String shift = SchedulePatternMath.shiftFor(cells, cycleDay, a.getRole());
-            placeByPatternShift(b, shift, entryFor(u, crew.getName()));
+            if (assignmentCovers(a, date)) placeAssignment(b, a, date, cellCache);
         }
 
         // 2) Approved coverage signups → pull the coverer into the covered shift.
@@ -181,18 +151,18 @@ public class ScheduleMaterialisationService {
             User u = s.getUser();
             if (u == null) continue;
             ShiftEntry existing = b.extractUser(u.getId());
-            ShiftEntry entry = existing != null ? existing : entryFor(u, "Cover");
+            ShiftEntry entry = existing != null ? existing : entryFor(u, "Cover", null);
             if (CoverageRequest.ShiftType.NIGHT.equals(s.getShift())) b.night.add(entry);
             else b.day.add(entry);
         }
 
-        // 3) Approved PTO → move the person to the PTO bucket (preserving their crew group if placed).
+        // 3) Approved PTO → move the person to the PTO bucket.
         for (PtoRequest p : ptos) {
             User u = p.getUser();
             if (u == null || p.getStartDate() == null || p.getEndDate() == null) continue;
             if (date.isBefore(p.getStartDate()) || date.isAfter(p.getEndDate())) continue;
             ShiftEntry existing = b.extractUser(u.getId());
-            b.pto.add(existing != null ? existing : entryFor(u, null));
+            b.pto.add(existing != null ? existing : entryFor(u, null, null));
         }
 
         // 4) Ad-hoc overrides → final say.
@@ -202,23 +172,49 @@ public class ScheduleMaterialisationService {
 
         String eventFlagsJson = buildEventFlags(events, date);
 
-        if (b.isEmpty() && eventFlagsJson == null) {
-            // No v2 opinion for this day — leave any existing (v1 or prior-v2) row untouched.
-            return false;
-        }
+        if (b.isEmpty() && eventFlagsJson == null) return false;
 
         return shiftDayService.applyMaterializedDay(date,
                 b.day, b.night, b.unscheduled, b.pto, b.training,
                 b.ocmName, b.ocmId, eventFlagsJson, SOURCE);
     }
 
-    private void placeByPatternShift(DayBuckets b, String shift, ShiftEntry entry) {
+    private void placeAssignment(DayBuckets b, CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
+        User u = a.getUser();
+        if (u == null) return;
+        String type = a.getAssignmentType();
+        if (CrewAssignment.Type.RELIEF.equals(type)) return;   // coverage-only, never auto-scheduled
+
+        String shift;
+        String group;
+        if (CrewAssignment.Type.FIXED.equals(type)) {
+            if (a.getFixedShift() == null || !fixedDayMatches(a.getFixedDaysOfWeek(), date)) return;
+            shift = a.getFixedShift();
+            group = null;
+        } else {
+            // ROTATING (default): the whole crew shares the rotation's shift for this cycle day.
+            Crew crew = a.getCrew();
+            if (crew == null || Boolean.FALSE.equals(crew.getIsActive())) return;
+            CrewRotation rot = crew.getRotation();
+            if (rot == null) return;
+            Integer len = rot.getPatternLengthDays();
+            if (len == null || len <= 0) return;
+            List<PatternCell> cells = cellCache.computeIfAbsent(
+                    rot.getId() == null ? -1L : rot.getId(), k -> parseCells(rot.getRotationCells()));
+            int offset = crew.getOffsetDays() == null ? 0 : crew.getOffsetDays();
+            int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay(), offset, len);
+            shift = SchedulePatternMath.shiftFor(cells, cycleDay);
+            group = crew.getName();
+        }
+        placeByShift(b, shift, entryFor(u, group, a.getPosition()));
+    }
+
+    private void placeByShift(DayBuckets b, String shift, ShiftEntry entry) {
         if (shift == null) return;
         switch (shift) {
-            case CrewPattern.Shift.DAY -> b.day.add(entry);
-            case CrewPattern.Shift.NIGHT -> b.night.add(entry);
-            case CrewPattern.Shift.RELIEF -> b.unscheduled.add(entry); // relief = available/floating pool
-            case CrewPattern.Shift.OFF -> { /* off — place nowhere */ }
+            case CrewRotation.Shift.DAY -> b.day.add(entry);
+            case CrewRotation.Shift.NIGHT -> b.night.add(entry);
+            case CrewRotation.Shift.OFF -> { /* off — place nowhere */ }
             default -> { /* unknown code — skip */ }
         }
     }
@@ -228,7 +224,7 @@ public class ScheduleMaterialisationService {
         String code = o.getShift();
         if (u == null || code == null) return;
         ShiftEntry existing = b.extractUser(u.getId());
-        ShiftEntry entry = existing != null ? existing : entryFor(u, null);
+        ShiftEntry entry = existing != null ? existing : entryFor(u, null, null);
         switch (code) {
             case ScheduleDayOverride.Code.DAY -> b.day.add(entry);
             case ScheduleDayOverride.Code.NIGHT -> b.night.add(entry);
@@ -241,10 +237,11 @@ public class ScheduleMaterialisationService {
         }
     }
 
-    private ShiftEntry entryFor(User u, String group) {
+    private ShiftEntry entryFor(User u, String group, String position) {
         return ShiftEntry.builder()
                 .name(displayName(u))
                 .group(group)
+                .position(position)
                 .userId(u.getId())
                 .build();
     }
@@ -278,9 +275,21 @@ public class ScheduleMaterialisationService {
     }
 
     private static boolean assignmentCovers(CrewAssignment a, LocalDate date) {
+        if (Boolean.FALSE.equals(a.getIsActive())) return false;
         if (a.getStartDate() != null && date.isBefore(a.getStartDate())) return false;
         if (a.getEndDate() != null && date.isAfter(a.getEndDate())) return false;
         return true;
+    }
+
+    /** Whether a FIXED assignment works on this date's weekday (empty CSV = every day). */
+    private static boolean fixedDayMatches(String csv, LocalDate date) {
+        if (csv == null || csv.isBlank()) return true;
+        String dow = date.getDayOfWeek().name().substring(0, 3); // MON..SUN
+        for (String tok : csv.split(",")) {
+            String t = tok.trim();
+            if (t.length() >= 3 && t.substring(0, 3).equalsIgnoreCase(dow)) return true;
+        }
+        return false;
     }
 
     private static boolean eventCovers(ScheduleEvent e, LocalDate date) {
@@ -312,7 +321,7 @@ public class ScheduleMaterialisationService {
         try {
             return objectMapper.readValue(json, CELL_LIST);
         } catch (Exception e) {
-            log.warn("[ScheduleV2] Bad patternCells JSON: {}", e.getMessage());
+            log.warn("[ScheduleV2] Bad rotationCells JSON: {}", e.getMessage());
             return List.of();
         }
     }
@@ -331,7 +340,6 @@ public class ScheduleMaterialisationService {
             return List.of(day, night, unscheduled, pto, training);
         }
 
-        /** Remove and return the entry for a user across all shift lists (first match), or null. */
         ShiftEntry extractUser(Long userId) {
             if (userId == null) return null;
             for (List<ShiftEntry> list : shiftLists()) {

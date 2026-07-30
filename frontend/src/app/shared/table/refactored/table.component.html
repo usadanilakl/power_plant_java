@@ -88,8 +88,6 @@
           }
           <th *ngFor="let column of columns()"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
-              [class.sticky-left]="column.sticky === 'left'"
-              [class.sticky-right]="column.sticky === 'right'"
               class="sortable-header">
             <div class="header-content" (click)="sortService.sortColumn(column, true)">
               <span>{{ column.header }}</span>
@@ -150,7 +148,7 @@
             (auxclick)="$event.preventDefault(); $event.stopPropagation()"
             (contextmenu)="clickService.onRowRightClick(item, $event)"
             (mouseenter)="onRowMouseEnter(item, $event)"
-            (mouseleave)="clickService.onRowLeave()"
+            (mouseleave)="onRowMouseLeave()"
           >
             @if (showRowIndex()) {
               <td class="row-index-cell" (mousedown)="$event.stopPropagation()">{{ i + 1 }}</td>
@@ -187,8 +185,6 @@
               (auxclick)="clickService.onRowMiddleClick(item, $event)"
               (mouseenter)="clickService.onCellHover(item, column)"
               (mouseleave)="clickService.onCellLeave()"
-              [class.sticky-left]="column.sticky === 'left'"
-              [class.sticky-right]="column.sticky === 'right'"
               class="table-cell"
             >
               <span *ngIf="!column.template">
@@ -203,35 +199,40 @@
       </table>
     </cdk-virtual-scroll-viewport>
 
-    <!-- Hover-triggered floating action overlays. Positioned OUTSIDE the
-         cdk-virtual-scroll-viewport so nothing sticky-in-transformed-
-         ancestor can drift or flicker; pinned to the container's left /
-         right edge, Y-aligned to the currently hovered row. Visibility
-         follows dataService.hoveredRow() + overlayHovered() so mousing
-         from the row into the floating button doesn't hide it. -->
-    @if (hoverActionLeftTemplate() && hoverOverlayVisible() && dataService.hoveredRow(); as hovered) {
-      <div class="hover-action-overlay left">
+  </div>
+
+  <!-- Hover-triggered floating action wrapper. position:FIXED so its
+       coordinates resolve against the browser viewport, not any
+       ancestor — this dodges the entire family of failure modes tried
+       earlier (sticky inside cdk-virtual-scroll's transformed wrapper
+       drifted with the row; absolute inside .table-container was only
+       visible when the row was scrolled fully into view). Anchored
+       every mouseenter to the row's screen rect via
+       getBoundingClientRect. Visibility is driven by overlayItem, which
+       has a 150ms hide grace window so the pointer transit from row
+       cell → floating button doesn't fire off-then-on. -->
+  @if ((hoverActionLeftTemplate() || hoverActionRightTemplate()) && overlayItem(); as hovered) {
+    <div class="hover-action-wrapper"
+         [style.top.px]="hoverOverlayTop()"
+         [style.left.px]="hoverOverlayLeftX()"
+         [style.width.px]="hoverOverlayRightX() - hoverOverlayLeftX()"
+         [style.height.px]="hoverOverlayHeight()">
+      @if (hoverActionLeftTemplate()) {
         <div class="hover-action-floating left"
-             [style.top.px]="hoveredRowTop()"
-             [style.height.px]="hoveredRowHeight()"
              (mouseenter)="onOverlayEnter()"
              (mouseleave)="onOverlayLeave()">
           <ng-container *ngTemplateOutlet="hoverActionLeftTemplate()!; context: { $implicit: hovered }"></ng-container>
         </div>
-      </div>
-    }
-    @if (hoverActionRightTemplate() && hoverOverlayVisible() && dataService.hoveredRow(); as hovered) {
-      <div class="hover-action-overlay right">
+      }
+      @if (hoverActionRightTemplate()) {
         <div class="hover-action-floating right"
-             [style.top.px]="hoveredRowTop()"
-             [style.height.px]="hoveredRowHeight()"
              (mouseenter)="onOverlayEnter()"
              (mouseleave)="onOverlayLeave()">
           <ng-container *ngTemplateOutlet="hoverActionRightTemplate()!; context: { $implicit: hovered }"></ng-container>
         </div>
-      </div>
-    }
-  </div>
+      }
+    </div>
+  }
 
   <div *ngIf="dataService.filteredItems().length === 0" class="empty-state">
     <p>No items found</p>

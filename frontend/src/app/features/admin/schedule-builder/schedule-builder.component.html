@@ -16,74 +16,84 @@
       </header>
 
       <p class="sb-hint" *ngIf="!active()">
-        Schedule v2 is disabled (<code>schedule.v2.enabled=false</code>). You can author and stage crew
-        patterns, assignments and events here now — they won't touch the live schedule until the flag
-        is turned on.
+        Schedule v2 is disabled (<code>schedule.v2.enabled=false</code>). Author and stage here; nothing
+        touches the live schedule until the flag is on.
+      </p>
+      <p class="sb-hint" *ngIf="activeTab()==='staffing' && positions().length===0">
+        Tip: define <b>Positions</b> and a <b>Crew</b> first, then staff people here.
       </p>
 
       <div class="sb-msg" *ngIf="message()">{{ message() }}</div>
 
       <nav class="sb-tabs">
-        <button [class.active]="activeTab()==='patterns'" (click)="setTab('patterns')">Crew Patterns</button>
-        <button [class.active]="activeTab()==='assignments'" (click)="setTab('assignments')">Assignments</button>
+        <button [class.active]="activeTab()==='positions'" (click)="setTab('positions')">Positions</button>
+        <button [class.active]="activeTab()==='rotations'" (click)="setTab('rotations')">Rotations</button>
+        <button [class.active]="activeTab()==='crews'" (click)="setTab('crews')">Crews</button>
+        <button [class.active]="activeTab()==='staffing'" (click)="setTab('staffing')">Staffing</button>
         <button [class.active]="activeTab()==='events'" (click)="setTab('events')">Events</button>
         <button [class.active]="activeTab()==='coverage'" (click)="setTab('coverage')">Coverage</button>
       </nav>
 
-      <!-- ============================ PATTERNS ============================ -->
-      <section *ngIf="activeTab()==='patterns'">
-        <div class="sb-toolbar" *ngIf="!editingPattern">
-          <button class="btn btn-primary" (click)="newPattern()">+ New pattern</button>
+      <!-- ============================ POSITIONS ============================ -->
+      <section *ngIf="activeTab()==='positions'">
+        <div class="sb-toolbar" *ngIf="!editingPosition">
+          <button class="btn btn-primary" (click)="newPosition()">+ New position</button>
         </div>
-
-        <table class="sb-table" *ngIf="!editingPattern">
-          <thead>
-            <tr><th>Name</th><th>Colour</th><th>Cycle</th><th>Active</th><th></th></tr>
-          </thead>
+        <div class="sb-editor" *ngIf="editingPosition">
+          <div class="sb-field-row">
+            <label>Name <input [(ngModel)]="editingPosition.name" placeholder="Lead / CRO / AO / Mechanic" /></label>
+            <label>Abbrev <input [(ngModel)]="editingPosition.abbreviation" placeholder="CRO" /></label>
+            <label>Colour <input type="color" [(ngModel)]="editingPosition.color" /></label>
+            <label>Order <input type="number" [(ngModel)]="editingPosition.sortOrder" /></label>
+            <label class="chk"><input type="checkbox" [(ngModel)]="editingPosition.isActive" /> Active</label>
+          </div>
+          <div class="sb-editor-actions">
+            <button class="btn btn-primary" (click)="savePosition()" [disabled]="loading() || !editingPosition.name">Save</button>
+            <button class="btn" (click)="cancelPosition()">Cancel</button>
+          </div>
+        </div>
+        <table class="sb-table" *ngIf="!editingPosition">
+          <thead><tr><th>Name</th><th>Abbrev</th><th>Colour</th><th>Order</th><th>Active</th><th></th></tr></thead>
           <tbody>
-            <tr *ngFor="let p of patterns()">
+            <tr *ngFor="let p of positions()">
               <td>{{ p.name }}</td>
+              <td>{{ p.abbreviation }}</td>
               <td><span class="swatch" [style.background]="p.color"></span> {{ p.color }}</td>
-              <td>{{ p.patternLengthDays }} days</td>
+              <td>{{ p.sortOrder }}</td>
               <td>{{ p.isActive ? 'Yes' : 'No' }}</td>
               <td class="ta-r">
-                <button class="btn sm" (click)="editPattern(p)">Edit</button>
-                <button class="btn sm danger" (click)="deletePattern(p)">Delete</button>
+                <button class="btn sm" (click)="editPosition(p)">Edit</button>
+                <button class="btn sm danger" (click)="deletePosition(p)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="patterns().length===0"><td colspan="5" class="muted">No patterns yet.</td></tr>
+            <tr *ngIf="positions().length===0"><td colspan="6" class="muted">No positions yet.</td></tr>
           </tbody>
         </table>
+      </section>
 
-        <div class="sb-editor" *ngIf="editingPattern">
+      <!-- ============================ ROTATIONS ============================ -->
+      <section *ngIf="activeTab()==='rotations'">
+        <div class="sb-toolbar" *ngIf="!editingRotation">
+          <button class="btn btn-primary" (click)="newRotation()">+ New rotation</button>
+        </div>
+        <div class="sb-editor" *ngIf="editingRotation">
           <div class="sb-field-row">
-            <label>Name <input [(ngModel)]="editingPattern.name" placeholder="Crew A" /></label>
-            <label>Colour <input type="color" [(ngModel)]="editingPattern.color" /></label>
-            <label>Cycle length (days)
-              <input type="number" min="1" max="60" [(ngModel)]="editingPattern.patternLengthDays" />
-            </label>
-            <label class="chk"><input type="checkbox" [(ngModel)]="editingPattern.isActive" /> Active</label>
+            <label>Name <input [(ngModel)]="editingRotation.name" placeholder="2-2-3" /></label>
+            <label>Colour <input type="color" [(ngModel)]="editingRotation.color" /></label>
+            <label>Cycle length (days) <input type="number" min="1" max="60" [(ngModel)]="editingRotation.patternLengthDays" /></label>
+            <label class="chk"><input type="checkbox" [(ngModel)]="editingRotation.isActive" /> Active</label>
           </div>
-
-          <p class="muted">
-            Set each role's shift for every day of the rotation.
-            <b>D</b>=day, <b>N</b>=night, <b>O</b>=off, <b>R</b>=relief (available to cover). Blank = no cell.
-          </p>
-
+          <p class="muted">One shift per day for the whole crew. <b>D</b>=day, <b>N</b>=night, <b>O</b>=off. Blank = off.</p>
           <div class="grid-scroll">
             <table class="grid">
               <thead>
-                <tr>
-                  <th class="role-col">Role \ Day</th>
-                  <th *ngFor="let d of dayRange()">{{ d + 1 }}</th>
-                </tr>
+                <tr><th class="role-col">Day #</th><th *ngFor="let d of dayRange()">{{ d + 1 }}</th></tr>
               </thead>
               <tbody>
-                <tr *ngFor="let role of ROLES">
-                  <th class="role-col">{{ role }}</th>
+                <tr>
+                  <th class="role-col">Shift</th>
                   <td *ngFor="let d of dayRange()">
-                    <select [ngModel]="cellShift(role, d)" (ngModelChange)="setCell(role, d, $event)"
-                            [attr.data-shift]="cellShift(role, d)">
+                    <select [ngModel]="cellShift(d)" (ngModelChange)="setCell(d, $event)" [attr.data-shift]="cellShift(d)">
                       <option *ngFor="let s of SHIFTS" [value]="s">{{ s || '·' }}</option>
                     </select>
                   </td>
@@ -91,21 +101,80 @@
               </tbody>
             </table>
           </div>
-
           <div class="sb-editor-actions">
-            <button class="btn btn-primary" (click)="savePattern()"
-                    [disabled]="loading() || !editingPattern.name">Save pattern</button>
-            <button class="btn" (click)="cancelPattern()">Cancel</button>
+            <button class="btn btn-primary" (click)="saveRotation()" [disabled]="loading() || !editingRotation.name">Save rotation</button>
+            <button class="btn" (click)="cancelRotation()">Cancel</button>
           </div>
         </div>
+        <table class="sb-table" *ngIf="!editingRotation">
+          <thead><tr><th>Name</th><th>Colour</th><th>Cycle</th><th>Active</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of rotations()">
+              <td>{{ r.name }}</td>
+              <td><span class="swatch" [style.background]="r.color"></span> {{ r.color }}</td>
+              <td>{{ r.patternLengthDays }} days</td>
+              <td>{{ r.isActive ? 'Yes' : 'No' }}</td>
+              <td class="ta-r">
+                <button class="btn sm" (click)="editRotation(r)">Edit</button>
+                <button class="btn sm danger" (click)="deleteRotation(r)">Delete</button>
+              </td>
+            </tr>
+            <tr *ngIf="rotations().length===0"><td colspan="5" class="muted">No rotations yet.</td></tr>
+          </tbody>
+        </table>
       </section>
 
-      <!-- =========================== ASSIGNMENTS =========================== -->
-      <section *ngIf="activeTab()==='assignments'">
+      <!-- ============================== CREWS ============================== -->
+      <section *ngIf="activeTab()==='crews'">
+        <div class="sb-toolbar" *ngIf="!editingCrew">
+          <button class="btn btn-primary" (click)="newCrew()">+ New crew</button>
+        </div>
+        <div class="sb-editor" *ngIf="editingCrew">
+          <div class="sb-field-row">
+            <label>Name <input [(ngModel)]="editingCrew.name" placeholder="Crew A" /></label>
+            <label>Rotation
+              <select [(ngModel)]="editingCrew.rotationId">
+                <option [ngValue]="undefined">— none —</option>
+                <option *ngFor="let r of rotations()" [ngValue]="r.id">{{ r.name }}</option>
+              </select>
+            </label>
+            <label>Offset (days) <input type="number" min="0" [(ngModel)]="editingCrew.offsetDays" /></label>
+            <label>Colour <input type="color" [(ngModel)]="editingCrew.color" /></label>
+            <label class="chk"><input type="checkbox" [(ngModel)]="editingCrew.isActive" /> Active</label>
+          </div>
+          <p class="muted">Offset phases this crew into the rotation so the crews cover 24/7 (e.g. A=0, B=7, C=14, D=21).</p>
+          <div class="sb-editor-actions">
+            <button class="btn btn-primary" (click)="saveCrew()" [disabled]="loading() || !editingCrew.name">Save crew</button>
+            <button class="btn" (click)="cancelCrew()">Cancel</button>
+          </div>
+        </div>
+        <table class="sb-table" *ngIf="!editingCrew">
+          <thead><tr><th>Name</th><th>Rotation</th><th>Offset</th><th>Colour</th><th>Active</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let c of crews()">
+              <td>{{ c.name }}</td>
+              <td>{{ c.rotationName || '—' }}</td>
+              <td>{{ c.offsetDays ?? 0 }}</td>
+              <td><span class="swatch" [style.background]="c.color"></span></td>
+              <td>{{ c.isActive ? 'Yes' : 'No' }}</td>
+              <td class="ta-r">
+                <button class="btn sm" (click)="editCrew(c)">Edit</button>
+                <button class="btn sm danger" (click)="deleteCrew(c)">Delete</button>
+              </td>
+            </tr>
+            <tr *ngIf="crews().length===0"><td colspan="6" class="muted">No crews yet.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ============================= STAFFING ============================= -->
+      <section *ngIf="activeTab()==='staffing'">
         <div class="sb-toolbar" *ngIf="!editingAssignment">
           <button class="btn btn-primary" (click)="newAssignment()">+ New assignment</button>
         </div>
-
+        <datalist id="sb-positions">
+          <option *ngFor="let n of activePositionNames()" [value]="n"></option>
+        </datalist>
         <div class="sb-editor" *ngIf="editingAssignment">
           <div class="sb-field-row">
             <label>Person
@@ -114,48 +183,63 @@
                 <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.name }}</option>
               </select>
             </label>
-            <label>Crew
-              <select [(ngModel)]="editingAssignment.crewId">
-                <option [ngValue]="undefined">— select —</option>
-                <option *ngFor="let p of patterns()" [ngValue]="p.id">{{ p.name }}</option>
+            <label>Position <input list="sb-positions" [(ngModel)]="editingAssignment.position" placeholder="Lead / CRO / AO" /></label>
+            <label>Type
+              <select [(ngModel)]="editingAssignment.assignmentType">
+                <option *ngFor="let t of ASSIGNMENT_TYPES" [value]="t">{{ t }}</option>
               </select>
             </label>
-            <label>Role
-              <select [(ngModel)]="editingAssignment.role">
-                <option *ngFor="let r of ROLES" [value]="r">{{ r }}</option>
+            <label *ngIf="editingAssignment.assignmentType==='ROTATING'">Crew
+              <select [(ngModel)]="editingAssignment.crewId">
+                <option [ngValue]="undefined">— select —</option>
+                <option *ngFor="let c of crews()" [ngValue]="c.id">{{ c.name }}</option>
+              </select>
+            </label>
+            <label *ngIf="editingAssignment.assignmentType==='FIXED'">Fixed shift
+              <select [(ngModel)]="editingAssignment.fixedShift">
+                <option [ngValue]="undefined">—</option>
+                <option *ngFor="let s of FIXED_SHIFTS" [value]="s">{{ s === 'D' ? 'Day' : 'Night' }}</option>
               </select>
             </label>
             <label>Start <input type="date" [(ngModel)]="editingAssignment.startDate" /></label>
             <label>End <input type="date" [(ngModel)]="editingAssignment.endDate" /></label>
-            <label>Offset (days) <input type="number" min="0" [(ngModel)]="editingAssignment.patternOffsetDays" /></label>
             <label class="chk"><input type="checkbox" [(ngModel)]="editingAssignment.isActive" /> Active</label>
           </div>
+          <div class="sb-field-row" *ngIf="editingAssignment.assignmentType==='FIXED'">
+            <span class="dow-label">Days (blank = every day):</span>
+            <label class="chk" *ngFor="let d of DOW">
+              <input type="checkbox" [checked]="hasDow(d)" (change)="toggleDow(d)" /> {{ d }}
+            </label>
+          </div>
+          <p class="muted" *ngIf="editingAssignment.assignmentType==='RELIEF'">
+            Relief operators are not auto-scheduled onto a shift — they appear only when they take a coverage signup.
+          </p>
           <div class="sb-editor-actions">
             <button class="btn btn-primary" (click)="saveAssignment()"
-                    [disabled]="loading() || !editingAssignment.userId || !editingAssignment.crewId">Save assignment</button>
+                    [disabled]="loading() || !editingAssignment.userId">Save assignment</button>
             <button class="btn" (click)="cancelAssignment()">Cancel</button>
           </div>
         </div>
-
-        <table class="sb-table">
-          <thead>
-            <tr><th>Person</th><th>Crew</th><th>Role</th><th>Start</th><th>End</th><th>Offset</th><th>Active</th><th></th></tr>
-          </thead>
+        <table class="sb-table" *ngIf="!editingAssignment">
+          <thead><tr><th>Person</th><th>Position</th><th>Type</th><th>Crew / Shift</th><th>Dates</th><th>Active</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let a of assignments()">
               <td>{{ a.userName }}</td>
-              <td>{{ a.crewName }}</td>
-              <td>{{ a.role }}</td>
-              <td>{{ a.startDate || '—' }}</td>
-              <td>{{ a.endDate || '—' }}</td>
-              <td>{{ a.patternOffsetDays ?? 0 }}</td>
+              <td>{{ a.position }}</td>
+              <td><span class="pill">{{ a.assignmentType }}</span></td>
+              <td>
+                <span *ngIf="a.assignmentType==='ROTATING'">{{ a.crewName || '—' }}</span>
+                <span *ngIf="a.assignmentType==='FIXED'">{{ a.fixedShift === 'N' ? 'Night' : 'Day' }}<span *ngIf="a.fixedDaysOfWeek"> · {{ a.fixedDaysOfWeek }}</span></span>
+                <span *ngIf="a.assignmentType==='RELIEF'" class="muted">coverage-only</span>
+              </td>
+              <td>{{ a.startDate || '—' }}<span *ngIf="a.endDate"> → {{ a.endDate }}</span></td>
               <td>{{ a.isActive ? 'Yes' : 'No' }}</td>
               <td class="ta-r">
                 <button class="btn sm" (click)="editAssignment(a)">Edit</button>
                 <button class="btn sm danger" (click)="deleteAssignment(a)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="assignments().length===0"><td colspan="8" class="muted">No assignments yet.</td></tr>
+            <tr *ngIf="assignments().length===0"><td colspan="7" class="muted">No assignments yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -165,7 +249,6 @@
         <div class="sb-toolbar" *ngIf="!editingEvent">
           <button class="btn btn-primary" (click)="newEvent()">+ New event</button>
         </div>
-
         <div class="sb-editor" *ngIf="editingEvent">
           <div class="sb-field-row">
             <label>Type
@@ -183,20 +266,14 @@
             </label>
             <label>Colour <input type="color" [(ngModel)]="editingEvent.color" /></label>
           </div>
-          <label class="full">Description
-            <textarea [(ngModel)]="editingEvent.description" rows="2"></textarea>
-          </label>
+          <label class="full">Description <textarea [(ngModel)]="editingEvent.description" rows="2"></textarea></label>
           <div class="sb-editor-actions">
-            <button class="btn btn-primary" (click)="saveEvent()"
-                    [disabled]="loading() || !editingEvent.startDate">Save event</button>
+            <button class="btn btn-primary" (click)="saveEvent()" [disabled]="loading() || !editingEvent.startDate">Save event</button>
             <button class="btn" (click)="cancelEvent()">Cancel</button>
           </div>
         </div>
-
-        <table class="sb-table">
-          <thead>
-            <tr><th>Type</th><th>Title</th><th>Start</th><th>End</th><th>Shift</th><th></th></tr>
-          </thead>
+        <table class="sb-table" *ngIf="!editingEvent">
+          <thead><tr><th>Type</th><th>Title</th><th>Start</th><th>End</th><th>Shift</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let e of events()">
               <td><span class="swatch" [style.background]="e.color || '#90A4AE'"></span> {{ e.eventType }}</td>
@@ -219,7 +296,6 @@
         <div class="sb-toolbar" *ngIf="!editingCoverage">
           <button class="btn btn-primary" (click)="newCoverage()">+ New coverage request</button>
         </div>
-
         <div class="sb-editor" *ngIf="editingCoverage">
           <div class="sb-field-row">
             <label>Shift
@@ -242,14 +318,10 @@
             <button class="btn" (click)="cancelCoverageEdit()">Cancel</button>
           </div>
         </div>
-
         <div class="sb-editor" *ngIf="selectedCoverage">
           <div class="sb-signups-head">
-            <h3>
-              Signups — {{ selectedCoverage.shift }} · {{ selectedCoverage.startDate }}<span
-                *ngIf="selectedCoverage.endDate && selectedCoverage.endDate !== selectedCoverage.startDate">
-                → {{ selectedCoverage.endDate }}</span>
-            </h3>
+            <h3>Signups — {{ selectedCoverage.shift }} · {{ selectedCoverage.startDate }}<span
+                *ngIf="selectedCoverage.endDate && selectedCoverage.endDate !== selectedCoverage.startDate"> → {{ selectedCoverage.endDate }}</span></h3>
             <button class="btn sm" (click)="closeSignups()">Close</button>
           </div>
           <table class="sb-table">
@@ -269,11 +341,8 @@
             </tbody>
           </table>
         </div>
-
         <table class="sb-table" *ngIf="!editingCoverage">
-          <thead>
-            <tr><th>Shift</th><th>Dates</th><th>Seats</th><th>Approved</th><th>Reason</th><th>Status</th><th></th></tr>
-          </thead>
+          <thead><tr><th>Shift</th><th>Dates</th><th>Seats</th><th>Approved</th><th>Reason</th><th>Status</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let c of coverage()">
               <td><span class="pill" [attr.data-shift]="c.shift">{{ c.shift }}</span></td>

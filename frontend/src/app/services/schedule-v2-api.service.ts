@@ -4,18 +4,36 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 
-export interface PatternCell {
-  dayIndex: number;
-  role: string;   // LEAD | AO | RELIEF
-  shift: string;  // D | N | O | R
+export interface SchedulePosition {
+  id?: number;
+  name: string;
+  abbreviation?: string;
+  color?: string;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
-export interface CrewPattern {
+export interface RotationCell {
+  dayIndex: number;
+  shift: string;   // D | N | O
+}
+
+export interface CrewRotation {
   id?: number;
   name: string;
   color?: string;
   patternLengthDays: number;
-  cells: PatternCell[];
+  cells: RotationCell[];
+  isActive?: boolean;
+}
+
+export interface Crew {
+  id?: number;
+  name: string;
+  rotationId?: number;
+  rotationName?: string;
+  offsetDays?: number;
+  color?: string;
   isActive?: boolean;
 }
 
@@ -25,28 +43,27 @@ export interface CrewAssignment {
   userName?: string;
   crewId?: number;
   crewName?: string;
-  role: string;              // LEAD | AO | RELIEF
-  startDate?: string;        // ISO yyyy-MM-dd
+  position?: string;
+  assignmentType?: string;   // ROTATING | FIXED | RELIEF
+  fixedShift?: string;       // D | N (FIXED only)
+  fixedDaysOfWeek?: string;  // CSV MON,TUE,… (FIXED only; empty = every day)
+  startDate?: string;
   endDate?: string;
-  patternOffsetDays?: number;
   isActive?: boolean;
 }
 
 export interface ScheduleEvent {
   id?: number;
-  eventType: string;         // HOLIDAY | MEETING | PAY_PERIOD_START | OUTAGE | TRAINING_MANDATORY | LEADS_MEETING
+  eventType: string;
   startDate?: string;
   endDate?: string;
   title?: string;
   description?: string;
   color?: string;
-  appliesToShift?: string;   // DAY | NIGHT | BOTH
+  appliesToShift?: string;
 }
 
-export interface AssignableUser {
-  id: number;
-  name: string;
-}
+export interface AssignableUser { id: number; name: string; }
 
 export interface CoverageRequest {
   id?: number;
@@ -54,8 +71,8 @@ export interface CoverageRequest {
   endDate?: string;
   shift: string;          // DAY | NIGHT
   requiredCount?: number;
-  reason?: string;        // OUTAGE | PTO_COVERAGE | MANUAL
-  status?: string;        // OPEN | FULFILLED | CANCELLED
+  reason?: string;
+  status?: string;
   approvedCount?: number;
   ptoRequestId?: number;
   date?: string;
@@ -69,37 +86,59 @@ export interface CoverageSignup {
   userName?: string;
   date?: string;
   shift?: string;
-  status?: string;        // PENDING | APPROVED | REJECTED | WITHDRAWN
+  status?: string;
   signedUpVia?: string;
   approvedByUserId?: number;
   approvedByName?: string;
   approvedAt?: string;
 }
 
-/**
- * Client for the schedule v2 admin CRUD (`/ng/admin/schedule-v2/*`). Admin-gated server-side; the
- * route is also behind adminGuard. Every mutation re-materialises server-side (no-op when the
- * schedule.v2.enabled flag is off).
- */
+/** Client for the schedule v2 admin CRUD (`/ng/admin/schedule-v2/*`). Admin-gated. */
 @Injectable({ providedIn: 'root' })
 export class ScheduleV2ApiService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/admin/schedule-v2`;
 
-  // Patterns
-  listPatterns(): Observable<SpringApiResponse<CrewPattern[]>> {
-    return this.http.get<SpringApiResponse<CrewPattern[]>>(`${this.base}/patterns`);
+  // Positions
+  listPositions(): Observable<SpringApiResponse<SchedulePosition[]>> {
+    return this.http.get<SpringApiResponse<SchedulePosition[]>>(`${this.base}/positions`);
   }
-  savePattern(p: CrewPattern): Observable<SpringApiResponse<CrewPattern>> {
+  savePosition(p: SchedulePosition): Observable<SpringApiResponse<SchedulePosition>> {
     return p.id
-      ? this.http.put<SpringApiResponse<CrewPattern>>(`${this.base}/patterns/${p.id}`, p)
-      : this.http.post<SpringApiResponse<CrewPattern>>(`${this.base}/patterns`, p);
+      ? this.http.put<SpringApiResponse<SchedulePosition>>(`${this.base}/positions/${p.id}`, p)
+      : this.http.post<SpringApiResponse<SchedulePosition>>(`${this.base}/positions`, p);
   }
-  deletePattern(id: number): Observable<SpringApiResponse<boolean>> {
-    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/patterns/${id}`);
+  deletePosition(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/positions/${id}`);
   }
 
-  // Assignments
+  // Rotations
+  listRotations(): Observable<SpringApiResponse<CrewRotation[]>> {
+    return this.http.get<SpringApiResponse<CrewRotation[]>>(`${this.base}/rotations`);
+  }
+  saveRotation(r: CrewRotation): Observable<SpringApiResponse<CrewRotation>> {
+    return r.id
+      ? this.http.put<SpringApiResponse<CrewRotation>>(`${this.base}/rotations/${r.id}`, r)
+      : this.http.post<SpringApiResponse<CrewRotation>>(`${this.base}/rotations`, r);
+  }
+  deleteRotation(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/rotations/${id}`);
+  }
+
+  // Crews
+  listCrews(): Observable<SpringApiResponse<Crew[]>> {
+    return this.http.get<SpringApiResponse<Crew[]>>(`${this.base}/crews`);
+  }
+  saveCrew(c: Crew): Observable<SpringApiResponse<Crew>> {
+    return c.id
+      ? this.http.put<SpringApiResponse<Crew>>(`${this.base}/crews/${c.id}`, c)
+      : this.http.post<SpringApiResponse<Crew>>(`${this.base}/crews`, c);
+  }
+  deleteCrew(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/crews/${id}`);
+  }
+
+  // Staffing
   listAssignments(crewId?: number): Observable<SpringApiResponse<CrewAssignment[]>> {
     let params = new HttpParams();
     if (crewId != null) params = params.set('crewId', String(crewId));

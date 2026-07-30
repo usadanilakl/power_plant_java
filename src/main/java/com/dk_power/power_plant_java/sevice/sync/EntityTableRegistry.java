@@ -58,8 +58,10 @@ public class EntityTableRegistry {
         Map.entry("User", "users"),                // @Table(name = "users")
         Map.entry("Role", "roles"),                // @Table(name = "roles")
         Map.entry("ShiftDay", "shift_days"),       // @Table(name = "shift_days")
-        // Schedule v2 (crew patterns, assignments, events, coverage, PTO, ad-hoc overrides)
-        Map.entry("CrewPattern", "crew_pattern"),
+        // Schedule v2 (positions, rotations, crews, assignments, events, coverage, PTO, overrides)
+        Map.entry("SchedulePosition", "schedule_position"),
+        Map.entry("CrewRotation", "crew_rotation"),
+        Map.entry("Crew", "crew"),
         Map.entry("CrewAssignment", "crew_assignment"),
         Map.entry("ScheduleEvent", "schedule_event"),
         Map.entry("PtoRequest", "pto_request"),
@@ -160,9 +162,11 @@ public class EntityTableRegistry {
         "Value",
         "User",
         "ShiftDay",
-        // Schedule v2 — CrewPattern before CrewAssignment (FK); PtoRequest before CoverageRequest
-        // (FK); CoverageRequest before CoverageSignup (FK). All also FK User (tier 1, above).
-        "CrewPattern",
+        // Schedule v2 — SchedulePosition/CrewRotation (no deps) → Crew (FK CrewRotation) →
+        // CrewAssignment (FK Crew + User). PtoRequest → CoverageRequest → CoverageSignup.
+        "SchedulePosition",
+        "CrewRotation",
+        "Crew",
         "CrewAssignment",
         "ScheduleEvent",
         "PtoRequest",

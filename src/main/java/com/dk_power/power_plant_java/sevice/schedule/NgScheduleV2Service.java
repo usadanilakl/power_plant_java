@@ -1,15 +1,21 @@
 package com.dk_power.power_plant_java.sevice.schedule;
 
 import com.dk_power.power_plant_java.dto.schedule.CrewAssignmentDto;
-import com.dk_power.power_plant_java.dto.schedule.CrewPatternDto;
+import com.dk_power.power_plant_java.dto.schedule.CrewDto;
+import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
+import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
+import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
-import com.dk_power.power_plant_java.entities.schedule.CrewPattern;
+import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
+import com.dk_power.power_plant_java.entities.schedule.SchedulePosition;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
-import com.dk_power.power_plant_java.repository.schedule.CrewPatternRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewRotationRepo;
+import com.dk_power.power_plant_java.repository.schedule.SchedulePositionRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -27,10 +33,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Schedule v2 admin CRUD for crew patterns, assignments, and events. Every mutation re-runs the
- * {@link ScheduleMaterialisationService} over the default horizon so materialised {@code ShiftDay}
- * rows track the authoring model — a no-op when the {@code schedule.v2.enabled} flag is off, so
- * managers can author/stage patterns without disturbing the live v1 schedule.
+ * Schedule v2 admin CRUD for positions, crew rotations, crews, staffing assignments, and events.
+ * Every mutation re-runs the {@link ScheduleMaterialisationService} over the default horizon (a
+ * no-op while {@code schedule.v2.enabled} is off, so managers can stage without disturbing v1).
  */
 @Slf4j
 @Service
@@ -40,49 +45,90 @@ public class NgScheduleV2Service {
 
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
 
-    private final CrewPatternRepo patternRepo;
+    private final SchedulePositionRepo positionRepo;
+    private final CrewRotationRepo rotationRepo;
+    private final CrewRepo crewRepo;
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
     private final UserRepo userRepo;
     private final ScheduleMaterialisationService materialisation;
     private final ObjectMapper objectMapper;
 
-    // ---- Crew patterns ------------------------------------------------------
+    // ---- Positions ----------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public List<CrewPatternDto> listPatterns() {
-        return patternRepo.findAll().stream().map(this::toDto).toList();
+    public List<SchedulePositionDto> listPositions() {
+        return positionRepo.findAllByOrderBySortOrderAscNameAsc().stream().map(this::toDto).toList();
     }
 
-    @Transactional(readOnly = true)
-    public CrewPatternDto getPattern(Long id) {
-        return patternRepo.findById(id).map(this::toDto).orElse(null);
-    }
-
-    public CrewPatternDto savePattern(CrewPatternDto dto) {
-        CrewPattern p = dto.getId() != null
-                ? patternRepo.findById(dto.getId()).orElseGet(CrewPattern::new)
-                : new CrewPattern();
+    public SchedulePositionDto savePosition(SchedulePositionDto dto) {
+        SchedulePosition p = dto.getId() != null
+                ? positionRepo.findById(dto.getId()).orElseGet(SchedulePosition::new)
+                : new SchedulePosition();
         p.setName(dto.getName());
+        p.setAbbreviation(dto.getAbbreviation());
         p.setColor(dto.getColor());
-        p.setPatternLengthDays(dto.getPatternLengthDays());
-        p.setPatternCells(writeCells(dto.getCells()));
+        p.setSortOrder(dto.getSortOrder());
         p.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
-        CrewPattern saved = patternRepo.save(p);
+        return toDto(positionRepo.save(p));
+    }
+
+    public boolean deletePosition(Long id) {
+        return positionRepo.findById(id).map(p -> { p.setDeleted(true); positionRepo.save(p); return true; }).orElse(false);
+    }
+
+    // ---- Rotations ----------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<CrewRotationDto> listRotations() {
+        return rotationRepo.findAll().stream().map(this::toDto).toList();
+    }
+
+    public CrewRotationDto saveRotation(CrewRotationDto dto) {
+        CrewRotation r = dto.getId() != null
+                ? rotationRepo.findById(dto.getId()).orElseGet(CrewRotation::new)
+                : new CrewRotation();
+        r.setName(dto.getName());
+        r.setColor(dto.getColor());
+        r.setPatternLengthDays(dto.getPatternLengthDays());
+        r.setRotationCells(writeCells(dto.getCells(), dto.getPatternLengthDays()));
+        r.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
+        CrewRotation saved = rotationRepo.save(r);
         rematerialize();
         return toDto(saved);
     }
 
-    public boolean deletePattern(Long id) {
-        return patternRepo.findById(id).map(p -> {
-            p.setDeleted(true);
-            patternRepo.save(p);
-            rematerialize();
-            return true;
-        }).orElse(false);
+    public boolean deleteRotation(Long id) {
+        return rotationRepo.findById(id).map(r -> { r.setDeleted(true); rotationRepo.save(r); rematerialize(); return true; }).orElse(false);
     }
 
-    // ---- Crew assignments ---------------------------------------------------
+    // ---- Crews --------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<CrewDto> listCrews() {
+        return crewRepo.findAll().stream().map(this::toDto).toList();
+    }
+
+    public CrewDto saveCrew(CrewDto dto) {
+        Crew c = dto.getId() != null
+                ? crewRepo.findById(dto.getId()).orElseGet(Crew::new)
+                : new Crew();
+        c.setName(dto.getName());
+        c.setOffsetDays(dto.getOffsetDays() == null ? 0 : dto.getOffsetDays());
+        c.setColor(dto.getColor());
+        c.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
+        if (dto.getRotationId() != null) rotationRepo.findById(dto.getRotationId()).ifPresent(c::setRotation);
+        else c.setRotation(null);
+        CrewDto out = toDto(crewRepo.save(c));
+        rematerialize();
+        return out;
+    }
+
+    public boolean deleteCrew(Long id) {
+        return crewRepo.findById(id).map(c -> { c.setDeleted(true); crewRepo.save(c); rematerialize(); return true; }).orElse(false);
+    }
+
+    // ---- Staffing (assignments) ---------------------------------------------
 
     @Transactional(readOnly = true)
     public List<CrewAssignmentDto> listAssignments(Long crewId) {
@@ -95,33 +141,34 @@ public class NgScheduleV2Service {
                 ? assignmentRepo.findById(dto.getId()).orElseGet(CrewAssignment::new)
                 : new CrewAssignment();
         if (dto.getUserId() != null) userRepo.findById(dto.getUserId()).ifPresent(a::setUser);
-        if (dto.getCrewId() != null) patternRepo.findById(dto.getCrewId()).ifPresent(a::setCrew);
-        a.setRole(dto.getRole());
+        String type = dto.getAssignmentType() == null ? CrewAssignment.Type.ROTATING : dto.getAssignmentType();
+        a.setAssignmentType(type);
+        // A crew only makes sense for ROTATING; clear it otherwise so it can't linger.
+        if (CrewAssignment.Type.ROTATING.equals(type) && dto.getCrewId() != null) {
+            crewRepo.findById(dto.getCrewId()).ifPresent(a::setCrew);
+        } else {
+            a.setCrew(null);
+        }
+        a.setPosition(dto.getPosition());
+        a.setFixedShift(dto.getFixedShift());
+        a.setFixedDaysOfWeek(dto.getFixedDaysOfWeek());
         a.setStartDate(dto.getStartDate());
         a.setEndDate(dto.getEndDate());
-        a.setPatternOffsetDays(dto.getPatternOffsetDays() == null ? 0 : dto.getPatternOffsetDays());
         a.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
-        CrewAssignment saved = assignmentRepo.save(a);
+        CrewAssignmentDto out = toDto(assignmentRepo.save(a));
         rematerialize();
-        return toDto(saved);
+        return out;
     }
 
     public boolean deleteAssignment(Long id) {
-        return assignmentRepo.findById(id).map(a -> {
-            a.setDeleted(true);
-            assignmentRepo.save(a);
-            rematerialize();
-            return true;
-        }).orElse(false);
+        return assignmentRepo.findById(id).map(a -> { a.setDeleted(true); assignmentRepo.save(a); rematerialize(); return true; }).orElse(false);
     }
 
     // ---- Events -------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public List<ScheduleEventDto> listEvents(LocalDate from, LocalDate to) {
-        List<ScheduleEvent> rows = (from != null && to != null)
-                ? eventRepo.findOverlapping(from, to)
-                : eventRepo.findAll();
+        List<ScheduleEvent> rows = (from != null && to != null) ? eventRepo.findOverlapping(from, to) : eventRepo.findAll();
         return rows.stream().map(this::toDto).toList();
     }
 
@@ -136,23 +183,17 @@ public class NgScheduleV2Service {
         e.setDescription(dto.getDescription());
         e.setColor(dto.getColor());
         e.setAppliesToShift(dto.getAppliesToShift());
-        ScheduleEvent saved = eventRepo.save(e);
+        ScheduleEventDto out = toDto(eventRepo.save(e));
         rematerialize();
-        return toDto(saved);
+        return out;
     }
 
     public boolean deleteEvent(Long id) {
-        return eventRepo.findById(id).map(e -> {
-            e.setDeleted(true);
-            eventRepo.save(e);
-            rematerialize();
-            return true;
-        }).orElse(false);
+        return eventRepo.findById(id).map(e -> { e.setDeleted(true); eventRepo.save(e); rematerialize(); return true; }).orElse(false);
     }
 
     // ---- Misc ---------------------------------------------------------------
 
-    /** Minimal [{id, name}] list of active users for the assignment picker. */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> assignableUsers() {
         List<Map<String, Object>> out = new ArrayList<>();
@@ -165,7 +206,6 @@ public class NgScheduleV2Service {
         return out;
     }
 
-    /** Materialiser feature-flag state for the admin UI to surface (enabled / rollback / active). */
     @Transactional(readOnly = true)
     public Map<String, Object> status() {
         Map<String, Object> m = new LinkedHashMap<>();
@@ -173,7 +213,79 @@ public class NgScheduleV2Service {
         return m;
     }
 
-    /** Manual materialise trigger for the admin "regenerate" action. */
+    /** One baked staffing row: userId + crew letter (or "REL") + role. */
+    private record Seed(long userId, String crew, String role) {}
+
+    /**
+     * One-time curated seed of staffing from the current SharePoint-derived roster (baked from the
+     * 2026-07-29 shift_days analysis): ROTATING assignments A/B/C/D with position by in-crew order
+     * (Lead/CRO/AO), plus RELIEF for the relief operators. Goes through JPA so it syncs. Idempotent —
+     * skips any user who already has an active assignment, so it's safe to re-run.
+     */
+    public Map<String, Object> seedInitial() {
+        List<Seed> roster = List.of(
+                new Seed(1702L, "A", "LEAD"), new Seed(2000042243L, "A", "CRO"), new Seed(2000042226L, "A", "AO"),
+                new Seed(2000042234L, "B", "LEAD"), new Seed(2000042236L, "B", "CRO"), new Seed(2000042235L, "B", "AO"),
+                new Seed(102L, "C", "LEAD"), new Seed(2000042230L, "C", "CRO"), new Seed(2000042225L, "C", "AO"),
+                new Seed(1L, "D", "LEAD"), new Seed(2000042231L, "D", "CRO"), new Seed(2000042232L, "D", "AO"),
+                new Seed(2L, "REL", "RELIEF"), new Seed(2000042227L, "REL", "RELIEF"));
+
+        java.util.Map<String, com.dk_power.power_plant_java.entities.schedule.Crew> crewByLetter = new java.util.HashMap<>();
+        for (var c : crewRepo.findAll()) {
+            String n = c.getName() == null ? "" : c.getName().trim();
+            if (!n.isEmpty()) crewByLetter.putIfAbsent(n.substring(n.length() - 1).toUpperCase(), c);
+        }
+        String leadPos = resolvePositionName("LEAD"), croPos = resolvePositionName("CRO"), aoPos = resolvePositionName("AO");
+        List<CrewAssignment> existing = assignmentRepo.findAll();
+
+        int created = 0, skipped = 0;
+        List<String> notes = new ArrayList<>();
+        for (Seed s : roster) {
+            User u = userRepo.findById(s.userId()).orElse(null);
+            if (u == null) { notes.add("user " + s.userId() + " not found — skipped"); skipped++; continue; }
+            boolean already = existing.stream().anyMatch(a -> a.getUser() != null
+                    && a.getUser().getId() != null && a.getUser().getId() == s.userId()
+                    && Boolean.TRUE.equals(a.getIsActive()));
+            if (already) { skipped++; continue; }
+
+            CrewAssignment a = new CrewAssignment();
+            a.setUser(u);
+            a.setIsActive(true);
+            if ("REL".equals(s.crew())) {
+                a.setAssignmentType(CrewAssignment.Type.RELIEF);
+            } else {
+                var crew = crewByLetter.get(s.crew());
+                if (crew == null) { notes.add("crew " + s.crew() + " not found — skipped " + s.userId()); skipped++; continue; }
+                a.setAssignmentType(CrewAssignment.Type.ROTATING);
+                a.setCrew(crew);
+                a.setPosition("LEAD".equals(s.role()) ? leadPos : "CRO".equals(s.role()) ? croPos : aoPos);
+            }
+            assignmentRepo.save(a);
+            created++;
+        }
+        rematerialize();
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("created", created);
+        res.put("skipped", skipped);
+        res.put("notes", notes);
+        return res;
+    }
+
+    /** Resolve a stored position name for a role from the configured positions (by name/abbrev, then sortOrder). */
+    private String resolvePositionName(String role) {
+        List<SchedulePosition> ps = positionRepo.findAll();
+        for (SchedulePosition p : ps) {
+            String nm = (p.getName() == null ? "" : p.getName()).toLowerCase();
+            String ab = (p.getAbbreviation() == null ? "" : p.getAbbreviation()).toUpperCase();
+            if ("LEAD".equals(role) && (nm.contains("lead") || "LEAD".equals(ab))) return p.getName();
+            if ("CRO".equals(role) && (nm.contains("control room") || "CRO".equals(ab))) return p.getName();
+            if ("AO".equals(role) && (nm.contains("auxiliary") || "AO".equals(ab))) return p.getName();
+        }
+        ps.sort(java.util.Comparator.comparing(p -> p.getSortOrder() == null ? 99 : p.getSortOrder()));
+        int idx = "LEAD".equals(role) ? 0 : "CRO".equals(role) ? 1 : 2;
+        return idx < ps.size() ? ps.get(idx).getName() : role;
+    }
+
     public int materializeNow(LocalDate from, LocalDate to) {
         return materialisation.materializeRange(from, to);
     }
@@ -182,61 +294,78 @@ public class NgScheduleV2Service {
         try {
             materialisation.materializeDefaultHorizon();
         } catch (Exception e) {
-            // Authoring must succeed even if materialisation hiccups; the next edit (or manual
-            // "regenerate") re-runs it. Log loud so it isn't silently lost.
             log.warn("[ScheduleV2] Materialisation after edit failed (authoring committed): {}", e.getMessage());
         }
     }
 
     // ---- mappers ------------------------------------------------------------
 
-    private CrewPatternDto toDto(CrewPattern p) {
-        return CrewPatternDto.builder()
-                .id(p.getId())
-                .name(p.getName())
-                .color(p.getColor())
-                .patternLengthDays(p.getPatternLengthDays())
-                .cells(readCells(p.getPatternCells()))
-                .isActive(p.getIsActive())
+    private SchedulePositionDto toDto(SchedulePosition p) {
+        return SchedulePositionDto.builder()
+                .id(p.getId()).name(p.getName()).abbreviation(p.getAbbreviation())
+                .color(p.getColor()).sortOrder(p.getSortOrder()).isActive(p.getIsActive())
+                .build();
+    }
+
+    private CrewRotationDto toDto(CrewRotation r) {
+        return CrewRotationDto.builder()
+                .id(r.getId()).name(r.getName()).color(r.getColor())
+                .patternLengthDays(r.getPatternLengthDays())
+                .cells(readCells(r.getRotationCells()))
+                .isActive(r.getIsActive())
+                .build();
+    }
+
+    private CrewDto toDto(Crew c) {
+        CrewRotation rot = c.getRotation();
+        return CrewDto.builder()
+                .id(c.getId()).name(c.getName())
+                .rotationId(rot != null ? rot.getId() : null)
+                .rotationName(rot != null ? rot.getName() : null)
+                .offsetDays(c.getOffsetDays()).color(c.getColor()).isActive(c.getIsActive())
                 .build();
     }
 
     private CrewAssignmentDto toDto(CrewAssignment a) {
         User u = a.getUser();
-        CrewPattern c = a.getCrew();
+        Crew c = a.getCrew();
         return CrewAssignmentDto.builder()
                 .id(a.getId())
                 .userId(u != null ? u.getId() : null)
                 .userName(u != null ? displayName(u) : null)
                 .crewId(c != null ? c.getId() : null)
                 .crewName(c != null ? c.getName() : null)
-                .role(a.getRole())
+                .position(a.getPosition())
+                .assignmentType(a.getAssignmentType())
+                .fixedShift(a.getFixedShift())
+                .fixedDaysOfWeek(a.getFixedDaysOfWeek())
                 .startDate(a.getStartDate())
                 .endDate(a.getEndDate())
-                .patternOffsetDays(a.getPatternOffsetDays())
                 .isActive(a.getIsActive())
                 .build();
     }
 
     private ScheduleEventDto toDto(ScheduleEvent e) {
         return ScheduleEventDto.builder()
-                .id(e.getId())
-                .eventType(e.getEventType())
-                .startDate(e.getStartDate())
-                .endDate(e.getEndDate())
-                .title(e.getTitle())
-                .description(e.getDescription())
-                .color(e.getColor())
-                .appliesToShift(e.getAppliesToShift())
+                .id(e.getId()).eventType(e.getEventType())
+                .startDate(e.getStartDate()).endDate(e.getEndDate())
+                .title(e.getTitle()).description(e.getDescription())
+                .color(e.getColor()).appliesToShift(e.getAppliesToShift())
                 .build();
     }
 
-    private String writeCells(List<PatternCell> cells) {
+    private String writeCells(List<PatternCell> cells, Integer length) {
         if (cells == null || cells.isEmpty()) return null;
+        int max = length == null ? Integer.MAX_VALUE : length;
+        List<PatternCell> kept = cells.stream()
+                .filter(c -> c.getDayIndex() != null && c.getDayIndex() >= 0 && c.getDayIndex() < max
+                        && c.getShift() != null && !c.getShift().isBlank())
+                .toList();
+        if (kept.isEmpty()) return null;
         try {
-            return objectMapper.writeValueAsString(cells);
+            return objectMapper.writeValueAsString(kept);
         } catch (Exception e) {
-            log.error("[ScheduleV2] Failed to serialize pattern cells: {}", e.getMessage());
+            log.error("[ScheduleV2] Failed to serialize rotation cells: {}", e.getMessage());
             return null;
         }
     }
@@ -246,7 +375,7 @@ public class NgScheduleV2Service {
         try {
             return objectMapper.readValue(json, CELL_LIST);
         } catch (Exception e) {
-            log.warn("[ScheduleV2] Failed to parse pattern cells: {}", e.getMessage());
+            log.warn("[ScheduleV2] Failed to parse rotation cells: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
