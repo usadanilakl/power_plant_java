@@ -31,6 +31,36 @@ export interface ShiftEntry {
   matchConfidence?: number;
 }
 
+/** Per-day open-seat counts — the coverage chip data. GET /coverage-signup/open. */
+export interface CoverageSeatSummary {
+  date: string;
+  dayRequired: number;
+  dayOpen: number;
+  nightRequired: number;
+  nightOpen: number;
+}
+
+/** An open coverage request on a specific day — the sign-up target. GET /coverage-signup/day. */
+export interface CoverageOpening {
+  id: number;
+  shift: string;              // DAY | NIGHT
+  reason?: string;            // PTO_COVERAGE | OUTAGE | MANUAL
+  status?: string;
+  requiredCount?: number;
+  approvedCount?: number;
+  date?: string;
+  openForDate?: number;       // seats still open on this date
+}
+
+/** Result of POST /coverage-signup — the signup, PENDING until a manager approves. */
+export interface CoverageSignupResult {
+  id?: number;
+  coverageRequestId?: number;
+  date?: string;
+  shift?: string;
+  status?: string;
+}
+
 /** Wire shape from {@code /api/pwa/secured/contacts} — flat, PWA-friendly. */
 export interface PersonnelContact {
   id: number;
@@ -80,6 +110,24 @@ export class PersonnelApiService {
     return this.http.get<ShiftEntry[]>(`${this.base}/schedule/on-shift-now`).pipe(
       catchError(() => from(this.getOnShiftNowFromSupabase())),
     );
+  }
+
+  // ─── Coverage signup (hub-only, live — no Supabase fallback) ─────────
+  // Open seats + per-day detail feed the "help cover a shift" section; the POST signs the
+  // authenticated user up for one seat (PENDING until a manager approves). Gated PLANT/ADMIN/KIOSK.
+
+  getOpenCoverage(fromDate: string, toDate: string): Observable<CoverageSeatSummary[]> {
+    return this.http.get<CoverageSeatSummary[]>(
+      `${this.base}/coverage-signup/open?from=${fromDate}&to=${toDate}`);
+  }
+
+  getCoverageForDay(date: string): Observable<CoverageOpening[]> {
+    return this.http.get<CoverageOpening[]>(`${this.base}/coverage-signup/day?date=${date}`);
+  }
+
+  signUpForCoverage(coverageRequestId: number, date: string): Observable<CoverageSignupResult> {
+    return this.http.post<CoverageSignupResult>(
+      `${this.base}/coverage-signup`, { coverageRequestId, date, via: 'PWA' });
   }
 
   // ─── Supabase fallback reads ─────────────────────────────────────────

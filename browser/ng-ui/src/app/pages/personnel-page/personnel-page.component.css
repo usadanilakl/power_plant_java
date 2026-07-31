@@ -403,6 +403,71 @@
 .cell-T, .cell-code[data-shift="T"] { background: #7e57c2; }        /* Training = purple */
 .cell-U, .cell-code[data-shift="U"] { background: #90a4ae; }        /* Unscheduled = mid grey */
 
+/* ── Coverage: help cover a shift (day view section + month strip) ─────────────────────────── */
+
+.coverage-section {
+  border: 1px solid var(--accent-color, #1976d2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--accent-color, #1976d2) 5%, var(--card-background, #fff));
+}
+.coverage-title { color: var(--accent-color, #1976d2); }
+.cov-count { background: var(--accent-color, #1976d2); }
+.coverage-list { display: flex; flex-direction: column; gap: 8px; }
+.coverage-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 8px;
+  background: var(--card-background, #fff);
+}
+.cov-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cov-shift { font-weight: 600; color: #2e7d32; }        /* Day = green */
+.cov-shift.night { color: #1976d2; }                    /* Night = blue */
+.cov-meta { font-size: 12px; color: var(--secondary-text, #666); }
+.cov-btn {
+  flex-shrink: 0;
+  background: var(--accent-color, #1976d2);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cov-btn:hover { background: var(--accent-color-hover, #145ca4); }
+.cov-done { flex-shrink: 0; color: #2e7d32; font-weight: 600; font-size: 13px; }
+.cov-hint { margin: 8px 0 0; font-size: 12px; color: var(--secondary-text, #666); }
+
+.month-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.mc-label { font-size: 12px; color: var(--secondary-text, #666); font-weight: 600; }
+.mc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--accent-color, #1976d2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-color, #1976d2) 8%, var(--card-background, #fff));
+  color: var(--primary-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mc-chip:hover { background: color-mix(in srgb, var(--accent-color, #1976d2) 16%, var(--card-background, #fff)); }
+.mc-seat { font-weight: 700; font-size: 11px; border-radius: 4px; padding: 0 4px; }
+.mc-day { background: rgba(46, 125, 50, 0.2); color: #2e7d32; }
+.mc-night { background: rgba(25, 118, 210, 0.2); color: #1565c0; }
+
 /* ── Month grid ────────────────────────────────────────────────────────────────────────────── */
 
 .grid-scroll {

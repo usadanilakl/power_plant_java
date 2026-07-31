@@ -470,13 +470,17 @@
           <button class="btn sm" (click)="prevMonth()">‹ Prev</button>
           <h3>{{ monthLabel() }}</h3>
           <button class="btn sm" (click)="nextMonth()">Next ›</button>
+          <span class="sb-viewtoggle">
+            <button class="btn sm" [class.active]="scheduleView()==='grid'" (click)="scheduleView.set('grid')">Grid</button>
+            <button class="btn sm" [class.active]="scheduleView()==='table'" (click)="scheduleView.set('table')">Table</button>
+          </span>
           <button class="btn" (click)="regenerate()" [disabled]="loading()">Regenerate</button>
         </div>
         <p class="sb-hint" *ngIf="previewDays().length===0">
           No materialised days this month yet. Check the flag is on (badge = "v2 LIVE"), that crews have
           people (Staffing) and a rotation, then click <b>Regenerate</b>.
         </p>
-        <table class="sb-table" *ngIf="previewDays().length">
+        <table class="sb-table" *ngIf="scheduleView()==='table' && previewDays().length">
           <thead><tr><th>Date</th><th>Day shift</th><th>Night shift</th><th>Events / OCM</th></tr></thead>
           <tbody>
             <tr *ngFor="let d of previewDays()">
@@ -490,6 +494,49 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Grid: person rows × day columns — the same roster shape operators see in the PWA/Electron -->
+        <ng-container *ngIf="scheduleView()==='grid' && previewDays().length">
+          <div class="sb-grid-filter">
+            <button class="btn sm" [class.active]="gridGroup()===null" (click)="gridGroup.set(null)">
+              All ({{ monthGrid().rows.length }})
+            </button>
+            <button class="btn sm" *ngFor="let g of gridGroups()"
+                    [class.active]="gridGroup()===g.group" (click)="gridGroup.set(g.group)">
+              {{ g.group || 'No crew' }} ({{ g.count }})
+            </button>
+            <input class="sb-grid-search" [ngModel]="gridSearch()" (ngModelChange)="gridSearch.set($event)"
+                   placeholder="Search name…" />
+          </div>
+          <div class="grid-scroll">
+            <table class="mgrid">
+              <thead>
+                <tr>
+                  <th class="mgrid-name">Person</th>
+                  <th *ngFor="let h of monthGrid().headers" class="mgrid-day"
+                      [class.wknd]="h.weekend" [class.today]="h.today">
+                    <div class="md-dom">{{ h.dom }}</div><div class="md-dow">{{ h.dow }}</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of gridRows()">
+                  <th class="mgrid-name">
+                    <span class="mg-nm">{{ r.name }}</span>
+                    <span class="mg-grp" *ngIf="r.group">{{ r.group }}</span>
+                  </th>
+                  <td *ngFor="let c of r.cells" class="mgrid-cell" [attr.data-code]="c">{{ c }}</td>
+                </tr>
+                <tr *ngIf="gridRows().length===0">
+                  <td class="muted" [attr.colspan]="monthGrid().headers.length + 1">No one matches this filter.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="mgrid-legend">
+            <b>D</b> Day · <b>N</b> Night · <b>OCM</b> On-call mgr · <b>P</b> PTO · <b>T</b> Training · <b>U</b> Unscheduled
+          </p>
+        </ng-container>
       </section>
     </div>
   </ng-container>

@@ -289,3 +289,31 @@
 .offset-day[data-shift="N"] { background: rgba(66, 165, 245, 0.2); }
 .offset-day[data-shift="O"] { background: rgba(128, 128, 128, 0.12); }
 .offset-day.sel { outline: 2px solid var(--accent-color, #1976d2); border-color: var(--accent-color, #1976d2); }
+
+/* Schedule GRID view (person rows × day columns) */
+.sb-viewtoggle { margin-left: 8px; display: inline-flex; gap: 2px; }
+.sb-grid-filter { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 10px; }
+.sb-grid-search {
+  padding: 4px 8px; border: 1px solid var(--border-color, #d0d7de); border-radius: 6px;
+  background: var(--primary-background, #fff); color: var(--primary-text, #1a2027); font-size: 0.8rem;
+}
+.mgrid { border-collapse: collapse; font-size: 0.72rem; }
+.mgrid th, .mgrid td { border: 1px solid var(--border-color, #e0e0e0); text-align: center; padding: 0; }
+.mgrid-name {
+  position: sticky; left: 0; z-index: 1; text-align: left; padding: 3px 8px; min-width: 130px;
+  white-space: nowrap; background: var(--secondary-background, #f6f8fa); color: var(--primary-text, #1a2027);
+}
+.mgrid-name .mg-grp { font-size: 0.64rem; color: var(--secondary-text, #90a4ae); margin-left: 6px; }
+.mgrid-day { min-width: 24px; padding: 2px 0; background: var(--secondary-background, #f6f8fa); }
+.mgrid-day.wknd { background: rgba(128, 128, 128, 0.14); }
+.mgrid-day.today { outline: 2px solid var(--accent-color, #1976d2); outline-offset: -2px; }
+.md-dom { font-weight: 700; font-size: 0.72rem; color: var(--primary-text, #1a2027); }
+.md-dow { font-size: 0.58rem; color: var(--secondary-text, #90a4ae); }
+.mgrid-cell { width: 24px; height: 22px; font-weight: 700; font-size: 0.66rem; color: var(--primary-text, #1a2027); }
+.mgrid-cell[data-code="D"]   { background: rgba(102, 187, 106, 0.28); }
+.mgrid-cell[data-code="N"]   { background: rgba(66, 165, 245, 0.30); }
+.mgrid-cell[data-code="OCM"] { background: rgba(171, 71, 188, 0.28); font-size: 0.52rem; }
+.mgrid-cell[data-code="P"]   { background: rgba(255, 167, 38, 0.24); }
+.mgrid-cell[data-code="T"]   { background: rgba(38, 198, 218, 0.24); }
+.mgrid-cell[data-code="U"]   { background: rgba(128, 128, 128, 0.18); }
+.mgrid-legend { margin-top: 8px; font-size: 0.74rem; color: var(--secondary-text, #90a4ae); }

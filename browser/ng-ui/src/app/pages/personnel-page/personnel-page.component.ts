@@ -5,9 +5,11 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
 import {
   PersonnelApiService, PersonnelContact, ShiftDay, ShiftEntry,
+  CoverageOpening, CoverageSeatSummary,
 } from '../../services/personnel-api.service';
 import { PersonnelCacheService } from '../../services/personnel-cache.service';
 import { AuthService } from '../../auth/auth.service';
+import { GlobalMessageService } from '../../services/global-message.service';
 import { PwaChatPanelComponent } from './pwa-chat-panel.component';
 
 type ShiftCode = 'D' | 'N' | 'OCM' | 'P' | 'T' | 'U' | 'L' | 'OFF' | '';
@@ -45,6 +47,7 @@ export class PersonnelPageComponent implements OnInit {
   scheduleView = signal<'day' | 'month' | 'me' | 'year'>('day');
 
   private auth = inject(AuthService);
+  private msg = inject(GlobalMessageService);
 
   // ── Day view state ────────────────────────────────────────────────────
   selectedDate = signal<string>(this.todayIso());
@@ -52,6 +55,11 @@ export class PersonnelPageComponent implements OnInit {
   onShiftNow = signal<ShiftEntry[]>([]);
   scheduleLoading = signal(false);
   scheduleError = signal<string | null>(null);
+
+  // ── Coverage (help cover a shift) ─────────────────────────────────────
+  dayCoverage = signal<CoverageOpening[]>([]);      // open requests on the selected day
+  monthCoverage = signal<CoverageSeatSummary[]>([]); // days-with-open-seats across the month
+  private mySignups = signal<Set<number>>(new Set()); // coverageRequestIds signed up this session
 
   // ── Month view state ──────────────────────────────────────────────────
   monthAnchor = signal<string>(this.firstOfMonth(new Date())); // yyyy-MM-01
@@ -487,6 +495,56 @@ export class PersonnelPageComponent implements OnInit {
         },
       });
     }
+    this.refreshDayCoverage();
+  }
+
+  // ── Coverage: help cover a shift ──────────────────────────────────────
+
+  /** Coverage read/signup is gated PLANT/ADMIN/KIOSK server-side; only surface it to plant users. */
+  coverageEnabled(): boolean { return this.auth.isPlant(); }
+
+  /** Load the open coverage requests for the currently-selected day. */
+  refreshDayCoverage(): void {
+    if (!this.coverageEnabled()) { this.dayCoverage.set([]); return; }
+    this.api.getCoverageForDay(this.selectedDate()).subscribe({
+      next: rows => this.dayCoverage.set(rows.filter(r => (r.openForDate ?? 0) > 0)),
+      error: () => this.dayCoverage.set([]),   // hub unreachable / not permitted → just hide the section
+    });
+  }
+
+  /** Load which days in the current month have open seats — the month-view discovery strip. */
+  refreshMonthCoverage(): void {
+    if (!this.coverageEnabled()) { this.monthCoverage.set([]); return; }
+    const anchor = new Date(this.monthAnchor() + 'T12:00:00');
+    const first = this.isoOf(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+    const last = this.isoOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
+    this.api.getOpenCoverage(first, last).subscribe({
+      next: rows => this.monthCoverage.set(rows.filter(r => r.dayOpen > 0 || r.nightOpen > 0)),
+      error: () => this.monthCoverage.set([]),
+    });
+  }
+
+  signUpForCoverage(c: CoverageOpening): void {
+    if (c.id == null) return;
+    this.msg.showLoading('Signing you up…');
+    this.api.signUpForCoverage(c.id, this.selectedDate()).subscribe({
+      next: () => {
+        this.mySignups.update(s => new Set(s).add(c.id));
+        this.msg.showSuccess("You're signed up — a manager will approve it.");
+        this.refreshDayCoverage();
+      },
+      error: err => this.msg.showError(err?.error?.error ?? 'Could not sign up. Try again.'),
+    });
+  }
+
+  alreadyRequested(c: CoverageOpening): boolean { return c.id != null && this.mySignups().has(c.id); }
+  coverageShiftLabel(c: CoverageOpening): string { return c.shift === 'NIGHT' ? 'Night' : 'Day'; }
+  coverageReasonLabel(c: CoverageOpening): string {
+    switch (c.reason) {
+      case 'PTO_COVERAGE': return 'PTO coverage';
+      case 'OUTAGE': return 'Outage';
+      default: return 'Extra coverage';
+    }
   }
 
   // ── Month view ────────────────────────────────────────────────────────
@@ -520,6 +578,7 @@ export class PersonnelPageComponent implements OnInit {
         this.monthLoading.set(false);
       },
     });
+    this.refreshMonthCoverage();
   }
 
   /** Jump from a cell in the month grid back to the day-detail view for that date. */

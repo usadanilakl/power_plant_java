@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
@@ -50,6 +50,9 @@ export class ScheduleBuilderComponent implements OnInit {
   coverage = signal<CoverageRequest[]>([]);
   signups = signal<CoverageSignup[]>([]);
   previewDays = signal<ShiftDayView[]>([]);
+  scheduleView = signal<'grid' | 'table'>('grid');
+  gridGroup = signal<string | null>(null);     // null = all crews
+  gridSearch = signal<string>('');
   previewYear = new Date().getFullYear();
   previewMonth = new Date().getMonth();
   editingOnCall: OnCallRotation | null = null;
@@ -337,6 +340,61 @@ export class ScheduleBuilderComponent implements OnInit {
   private ymd(y: number, m0: number, d: number): string {
     return `${y}-${String(m0 + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
+
+  // ---- schedule GRID view (person rows × day columns — same shape operators see in the PWA) ----
+  private todayIso(): string { const d = new Date(); return this.ymd(d.getFullYear(), d.getMonth(), d.getDate()); }
+  private static readonly DOW1 = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  /** Reshape the day-row ShiftDay list into { day headers, person rows with a per-day shift code }. */
+  monthGrid = computed(() => {
+    const days = this.previewDays();
+    const today = this.todayIso();
+    const headers = days.map(d => {
+      const [y, m, dd] = (d.date ?? '').split('-').map(Number);
+      const js = new Date(y || 2000, (m || 1) - 1, dd || 1);
+      return { date: d.date ?? '', dom: dd || 0, dow: ScheduleBuilderComponent.DOW1[js.getDay()],
+               weekend: js.getDay() === 0 || js.getDay() === 6, today: d.date === today };
+    });
+
+    const persons = new Map<string, { name: string; group: string }>();
+    const codes = new Map<string, Map<string, string>>();   // personKey → (date → code)
+    const keyOf = (e: ShiftEntryView) => e.userId != null ? 'u' + e.userId : 'n' + (e.name ?? '').toLowerCase().trim();
+    const put = (key: string, name: string, group: string, date: string, code: string) => {
+      if (!persons.has(key)) persons.set(key, { name, group });
+      let byDate = codes.get(key);
+      if (!byDate) { byDate = new Map(); codes.set(key, byDate); }
+      byDate.set(date, code);
+    };
+    for (const d of days) {
+      const date = d.date ?? '';
+      (d.dayShift ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'D'));
+      (d.nightShift ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'N'));
+      (d.unscheduled ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'U'));
+      (d.pto ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'P'));
+      (d.training ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'T'));
+      if (d.onCallManagerName) put('ocm:' + d.onCallManagerName.toLowerCase(), d.onCallManagerName, 'OCM', date, 'OCM');
+    }
+
+    const rank = (g: string) => g === 'OCM' ? 'zzy' : (g && g.trim() ? g.toLowerCase() : 'zzz');
+    const rows = Array.from(persons.entries())
+      .map(([key, p]) => ({ name: p.name, group: p.group, cells: headers.map(h => codes.get(key)?.get(h.date) ?? '') }))
+      .sort((a, b) => rank(a.group).localeCompare(rank(b.group)) || a.name.localeCompare(b.name));
+    return { headers, rows };
+  });
+
+  /** Distinct crew groups present in the grid + their headcount (drives the filter chips). */
+  gridGroups = computed(() => {
+    const counts = new Map<string, number>();
+    for (const r of this.monthGrid().rows) counts.set(r.group, (counts.get(r.group) ?? 0) + 1);
+    return Array.from(counts.entries()).map(([group, count]) => ({ group, count }));
+  });
+
+  /** Rows after the group filter + name search. */
+  gridRows = computed(() => {
+    const g = this.gridGroup();
+    const s = this.gridSearch().toLowerCase().trim();
+    return this.monthGrid().rows.filter(r => (g === null || r.group === g) && (!s || r.name.toLowerCase().includes(s)));
+  });
 
   // ---- PTO intake review ----
   loadPto(): void {

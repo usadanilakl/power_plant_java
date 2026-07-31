@@ -75,6 +75,30 @@
               }
             </div>
 
+            @if (coverageEnabled() && dayCoverage().length > 0) {
+              <section class="section coverage-section">
+                <h2 class="section-title coverage-title">
+                  Help cover a shift <span class="section-count cov-count">{{ dayCoverage().length }}</span>
+                </h2>
+                <div class="coverage-list">
+                  @for (c of dayCoverage(); track c.id) {
+                    <div class="coverage-card">
+                      <div class="cov-info">
+                        <span class="cov-shift" [class.night]="c.shift === 'NIGHT'">{{ coverageShiftLabel(c) }} shift</span>
+                        <span class="cov-meta">{{ c.openForDate }} open · {{ coverageReasonLabel(c) }}</span>
+                      </div>
+                      @if (alreadyRequested(c)) {
+                        <span class="cov-done">Requested ✓</span>
+                      } @else {
+                        <button class="cov-btn" (click)="signUpForCoverage(c)">Sign up</button>
+                      }
+                    </div>
+                  }
+                </div>
+                <p class="cov-hint">Signing up requests the shift — a manager approves it before it's confirmed.</p>
+              </section>
+            }
+
             @if (isViewingToday() && onShiftNow().length > 0) {
               <section class="section on-shift-section">
                 <h2 class="section-title">
@@ -235,6 +259,19 @@
                        (ngModelChange)="personSearch.set($event)" />
               </div>
             </div>
+
+            @if (coverageEnabled() && monthCoverage().length > 0) {
+              <div class="month-coverage">
+                <span class="mc-label">Open coverage — tap a day to sign up:</span>
+                @for (c of monthCoverage(); track c.date) {
+                  <button class="mc-chip" (click)="jumpToDate(c.date)">
+                    {{ c.date | date:'EEE M/d' }}
+                    @if (c.dayOpen > 0) { <span class="mc-seat mc-day">D×{{ c.dayOpen }}</span> }
+                    @if (c.nightOpen > 0) { <span class="mc-seat mc-night">N×{{ c.nightOpen }}</span> }
+                  </button>
+                }
+              </div>
+            }
 
             @if (monthLoading() && filteredMonthRows().length === 0) {
               <div class="empty-state">
