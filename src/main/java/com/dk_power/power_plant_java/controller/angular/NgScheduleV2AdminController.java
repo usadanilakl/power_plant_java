@@ -7,10 +7,13 @@ import com.dk_power.power_plant_java.dto.schedule.CrewAssignmentDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
+import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
+import com.dk_power.power_plant_java.dto.schedule.PtoRequestDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
 import com.dk_power.power_plant_java.sevice.schedule.NgScheduleV2Service;
+import com.dk_power.power_plant_java.sevice.schedule.PtoEmailIntakeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -34,6 +37,7 @@ public class NgScheduleV2AdminController {
 
     private final NgScheduleV2Service service;
     private final NgCoverageService coverageService;
+    private final PtoEmailIntakeService ptoIntakeService;
 
     // ---- Positions ----------------------------------------------------------
 
@@ -162,6 +166,31 @@ public class NgScheduleV2AdminController {
         return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
     }
 
+    // ---- On-call rotation ---------------------------------------------------
+
+    @GetMapping("/on-call")
+    public ResponseEntity<NgApiResponse<List<OnCallRotationDto>>> listOnCall() {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listOnCall(), "On-call rotations"));
+    }
+
+    @PostMapping("/on-call")
+    public ResponseEntity<NgApiResponse<OnCallRotationDto>> createOnCall(@RequestBody OnCallRotationDto dto) {
+        dto.setId(null);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveOnCall(dto), "On-call saved"));
+    }
+
+    @PutMapping("/on-call/{id}")
+    public ResponseEntity<NgApiResponse<OnCallRotationDto>> updateOnCall(@PathVariable Long id, @RequestBody OnCallRotationDto dto) {
+        dto.setId(id);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveOnCall(dto), "On-call saved"));
+    }
+
+    @DeleteMapping("/on-call/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deleteOnCall(@PathVariable Long id) {
+        boolean ok = service.deleteOnCall(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
+    }
+
     // ---- Misc ---------------------------------------------------------------
 
     @GetMapping("/assignable-users")
@@ -238,6 +267,31 @@ public class NgScheduleV2AdminController {
     public ResponseEntity<NgApiResponse<Boolean>> rejectSignup(@PathVariable Long id) {
         boolean ok = coverageService.rejectSignup(id);
         return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Rejected" : "Not found"));
+    }
+
+    // ---- PTO intake (Phase 4) -----------------------------------------------
+
+    /** PTO requests, optionally filtered by status (e.g. {@code PENDING_MANUAL_REVIEW} for the review queue). */
+    @GetMapping("/pto")
+    public ResponseEntity<NgApiResponse<List<PtoRequestDto>>> listPto(@RequestParam(required = false) String status) {
+        return ResponseEntity.ok(new NgApiResponse<>(ptoIntakeService.listByStatus(status), "PTO requests"));
+    }
+
+    /** Map an unresolved PTO to a user (then it can be approved). */
+    @PostMapping("/pto/{id}/assign")
+    public ResponseEntity<NgApiResponse<PtoRequestDto>> assignPto(@PathVariable Long id, @RequestParam Long userId) {
+        return ResponseEntity.ok(new NgApiResponse<>(ptoIntakeService.assignUser(id, userId), "User assigned"));
+    }
+
+    /** Approve a PTO → auto-create coverage for the vacated shifts, notify, re-materialise. */
+    @PostMapping("/pto/{id}/approve")
+    public ResponseEntity<NgApiResponse<PtoRequestDto>> approvePto(@PathVariable Long id) {
+        return ResponseEntity.ok(new NgApiResponse<>(ptoIntakeService.approve(id), "PTO approved"));
+    }
+
+    @PostMapping("/pto/{id}/reject")
+    public ResponseEntity<NgApiResponse<PtoRequestDto>> rejectPto(@PathVariable Long id) {
+        return ResponseEntity.ok(new NgApiResponse<>(ptoIntakeService.reject(id), "PTO rejected"));
     }
 
     /** Surface validation failures (invalid dates, seat full, …) as 400 with a message, not 500. */

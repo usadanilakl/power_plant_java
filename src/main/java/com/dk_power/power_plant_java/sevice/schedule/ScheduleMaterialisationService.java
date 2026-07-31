@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.schedule.CoverageSignup;
 import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
 import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
+import com.dk_power.power_plant_java.entities.schedule.OnCallRotation;
 import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
@@ -16,7 +17,9 @@ import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleDayOverrideRepo;
+import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
+import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,12 +62,15 @@ public class ScheduleMaterialisationService {
     public static final String SOURCE = "v2-materializer";
     private static final int MAX_RANGE_DAYS = 800;
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
+    private static final TypeReference<List<Long>> LONG_LIST = new TypeReference<>() {};
 
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
     private final PtoRequestRepo ptoRepo;
     private final CoverageSignupRepo signupRepo;
     private final ScheduleDayOverrideRepo overrideRepo;
+    private final OnCallRotationRepo onCallRepo;
+    private final UserRepo userRepo;
     private final ShiftDayService shiftDayService;
     private final ObjectMapper objectMapper;
 
@@ -116,13 +122,14 @@ public class ScheduleMaterialisationService {
             if (s.getDate() != null) signupsByDate.computeIfAbsent(s.getDate(), k -> new ArrayList<>()).add(s);
         }
         Map<Long, List<PatternCell>> cellCache = new HashMap<>();
+        OnCallCtx onCall = loadOnCall();
 
         int written = 0;
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             if (materializeDay(d, assignments, events, ptos,
                     overridesByDate.getOrDefault(d, List.of()),
                     signupsByDate.getOrDefault(d, List.of()),
-                    cellCache)) {
+                    cellCache, onCall)) {
                 written++;
             }
         }
@@ -138,8 +145,12 @@ public class ScheduleMaterialisationService {
                                    List<PtoRequest> ptos,
                                    List<ScheduleDayOverride> dayOverrides,
                                    List<CoverageSignup> daySignups,
-                                   Map<Long, List<PatternCell>> cellCache) {
+                                   Map<Long, List<PatternCell>> cellCache,
+                                   OnCallCtx onCall) {
         DayBuckets b = new DayBuckets();
+
+        // 0) On-call manager for the day (an override with code OCM can still replace it below).
+        applyOnCall(b, date, onCall);
 
         // 1) Staffing — place each person from their assignment.
         for (CrewAssignment a : assignments) {
@@ -182,31 +193,56 @@ public class ScheduleMaterialisationService {
     private void placeAssignment(DayBuckets b, CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
         User u = a.getUser();
         if (u == null) return;
-        String type = a.getAssignmentType();
-        if (CrewAssignment.Type.RELIEF.equals(type)) return;   // coverage-only, never auto-scheduled
-
-        String shift;
-        String group;
-        if (CrewAssignment.Type.FIXED.equals(type)) {
-            if (a.getFixedShift() == null || !fixedDayMatches(a.getFixedDaysOfWeek(), date)) return;
-            shift = a.getFixedShift();
-            group = null;
-        } else {
-            // ROTATING (default): the whole crew shares the rotation's shift for this cycle day.
-            Crew crew = a.getCrew();
-            if (crew == null || Boolean.FALSE.equals(crew.getIsActive())) return;
-            CrewRotation rot = crew.getRotation();
-            if (rot == null) return;
-            Integer len = rot.getPatternLengthDays();
-            if (len == null || len <= 0) return;
-            List<PatternCell> cells = cellCache.computeIfAbsent(
-                    rot.getId() == null ? -1L : rot.getId(), k -> parseCells(rot.getRotationCells()));
-            int offset = crew.getOffsetDays() == null ? 0 : crew.getOffsetDays();
-            int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay(), offset, len);
-            shift = SchedulePatternMath.shiftFor(cells, cycleDay);
-            group = crew.getName();
-        }
+        String shift = resolveShift(a, date, cellCache);
+        if (shift == null) return;
+        String group = CrewAssignment.Type.FIXED.equals(a.getAssignmentType())
+                ? null
+                : (a.getCrew() != null ? a.getCrew().getName() : null);
         placeByShift(b, shift, entryFor(u, group, a.getPosition()));
+    }
+
+    /**
+     * The shift code a single assignment yields on a date: {@code DAY}/{@code NIGHT}/{@code OFF} for
+     * ROTATING (via crew rotation) and FIXED, or {@code null} for RELIEF / inactive / unschedulable.
+     */
+    private String resolveShift(CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
+        String type = a.getAssignmentType();
+        if (CrewAssignment.Type.RELIEF.equals(type)) return null;   // coverage-only, never auto-scheduled
+        if (CrewAssignment.Type.FIXED.equals(type)) {
+            if (a.getFixedShift() == null || !fixedDayMatches(a.getFixedDaysOfWeek(), date)) return null;
+            return a.getFixedShift();
+        }
+        // ROTATING (default): the whole crew shares the rotation's shift for this cycle day.
+        Crew crew = a.getCrew();
+        if (crew == null || Boolean.FALSE.equals(crew.getIsActive())) return null;
+        CrewRotation rot = crew.getRotation();
+        if (rot == null) return null;
+        Integer len = rot.getPatternLengthDays();
+        if (len == null || len <= 0) return null;
+        List<PatternCell> cells = cellCache.computeIfAbsent(
+                rot.getId() == null ? -1L : rot.getId(), k -> parseCells(rot.getRotationCells()));
+        int offset = crew.getOffsetDays() == null ? 0 : crew.getOffsetDays();
+        int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay(), offset, len);
+        return SchedulePatternMath.shiftFor(cells, cycleDay);
+    }
+
+    /**
+     * The working shift ({@code DAY}/{@code NIGHT}) a user is scheduled for on a date via their active
+     * crew assignment(s), or {@code null} if off / unassigned. Used by PTO intake to target coverage
+     * only at the shifts actually being vacated. Ignores coverage/PTO/overrides — this is the base
+     * rotation placement, which is exactly what a PTO leaves to be covered.
+     */
+    @Transactional(readOnly = true)
+    public String scheduledShiftForUser(Long userId, LocalDate date) {
+        if (userId == null || date == null) return null;
+        Map<Long, List<PatternCell>> cache = new HashMap<>();
+        for (CrewAssignment a : assignmentRepo.findActiveOverlapping(date, date)) {
+            User u = a.getUser();
+            if (u == null || !userId.equals(u.getId()) || !assignmentCovers(a, date)) continue;
+            String shift = resolveShift(a, date, cache);
+            if (CrewRotation.Shift.DAY.equals(shift) || CrewRotation.Shift.NIGHT.equals(shift)) return shift;
+        }
+        return null;
     }
 
     private void placeByShift(DayBuckets b, String shift, ShiftEntry entry) {
@@ -325,6 +361,47 @@ public class ScheduleMaterialisationService {
             return List.of();
         }
     }
+
+    /** Load the active on-call rotation + resolve its members' display names once per run. */
+    private OnCallCtx loadOnCall() {
+        OnCallRotation rot = onCallRepo.findByIsActiveTrue().stream().findFirst().orElse(null);
+        if (rot == null) return new OnCallCtx(null, List.of(), Map.of());
+        List<Long> members = parseLongs(rot.getMemberUserIdsJson());
+        Map<Long, String> names = new HashMap<>();
+        for (Long id : members) {
+            if (id != null && !names.containsKey(id)) {
+                userRepo.findById(id).ifPresent(u -> names.put(id, displayName(u)));
+            }
+        }
+        return new OnCallCtx(rot, members, names);
+    }
+
+    /** Set the day's on-call manager: member index = floor((date-anchor)/daysPerTurn) mod size. */
+    private void applyOnCall(DayBuckets b, LocalDate date, OnCallCtx onCall) {
+        if (onCall == null || onCall.rot() == null || onCall.members().isEmpty()) return;
+        Integer dpt = onCall.rot().getDaysPerTurn();
+        LocalDate anchor = onCall.rot().getAnchorDate();
+        if (dpt == null || dpt <= 0 || anchor == null) return;
+        long turn = Math.floorDiv(date.toEpochDay() - anchor.toEpochDay(), (long) dpt);
+        int idx = (int) Math.floorMod(turn, (long) onCall.members().size());
+        Long uid = onCall.members().get(idx);
+        if (uid == null) return;
+        b.ocmId = uid;
+        b.ocmName = onCall.names().getOrDefault(uid, "User " + uid);
+    }
+
+    private List<Long> parseLongs(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, LONG_LIST);
+        } catch (Exception e) {
+            log.warn("[ScheduleV2] Bad on-call member JSON: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** Preloaded on-call context for a run: the active rotation + ordered member ids + display names. */
+    private record OnCallCtx(OnCallRotation rot, List<Long> members, Map<Long, String> names) {}
 
     /** Per-day working set. Each person appears at most once per bucket after {@link #dedupe()}. */
     private static final class DayBuckets {

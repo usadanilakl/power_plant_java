@@ -53,6 +53,12 @@ public class AccessGrantFilter extends OncePerRequestFilter {
     private static final Set<String> EXEMPT_PREFIXES = Set.of(
             "/api/auth/",
             "/api/pwa/",
+            // Chat auth endpoint is shared between Electron (localhost auto-auth) and PWA
+            // (JWT via PwaJwtAuthFilter). Off-LAN PWA callers otherwise hit this filter's
+            // ACCESS_TOKEN cookie check and get 403 FULL_ACCESS_REQUIRED even though the JWT is
+            // valid. PwaJwtAuthFilter is now the auth gate for /api/chat/**; the cookie check
+            // here would just double-gate it and lock out PWA users.
+            "/api/chat/",
             "/api/sharepoint-sync/",
             "/power-automate/",
             "/actuator/",

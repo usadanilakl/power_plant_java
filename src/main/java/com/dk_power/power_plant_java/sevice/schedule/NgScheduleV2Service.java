@@ -5,17 +5,20 @@ import com.dk_power.power_plant_java.dto.schedule.CrewDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
 import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
+import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
 import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
 import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
 import com.dk_power.power_plant_java.entities.schedule.SchedulePosition;
+import com.dk_power.power_plant_java.entities.schedule.OnCallRotation;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.SchedulePositionRepo;
+import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
@@ -46,12 +49,14 @@ import java.util.Map;
 public class NgScheduleV2Service {
 
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
+    private static final TypeReference<List<Long>> LONG_LIST = new TypeReference<>() {};
 
     private final SchedulePositionRepo positionRepo;
     private final CrewRotationRepo rotationRepo;
     private final CrewRepo crewRepo;
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
+    private final OnCallRotationRepo onCallRepo;
     private final UserRepo userRepo;
     private final ScheduleMaterialisationService materialisation;
     private final ShiftDayService shiftDayService;
@@ -195,6 +200,31 @@ public class NgScheduleV2Service {
         return eventRepo.findById(id).map(e -> { e.setDeleted(true); eventRepo.save(e); rematerialize(); return true; }).orElse(false);
     }
 
+    // ---- On-call rotation ---------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<OnCallRotationDto> listOnCall() {
+        return onCallRepo.findAll().stream().map(this::toDto).toList();
+    }
+
+    public OnCallRotationDto saveOnCall(OnCallRotationDto dto) {
+        OnCallRotation r = dto.getId() != null
+                ? onCallRepo.findById(dto.getId()).orElseGet(OnCallRotation::new)
+                : new OnCallRotation();
+        r.setName(dto.getName() == null || dto.getName().isBlank() ? "On-Call Managers" : dto.getName());
+        r.setDaysPerTurn(dto.getDaysPerTurn() == null || dto.getDaysPerTurn() < 1 ? 7 : dto.getDaysPerTurn());
+        r.setAnchorDate(dto.getAnchorDate());
+        r.setMemberUserIdsJson(writeLongs(dto.getMemberUserIds()));
+        r.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
+        OnCallRotationDto out = toDto(onCallRepo.save(r));
+        rematerialize();
+        return out;
+    }
+
+    public boolean deleteOnCall(Long id) {
+        return onCallRepo.findById(id).map(r -> { r.setDeleted(true); onCallRepo.save(r); rematerialize(); return true; }).orElse(false);
+    }
+
     // ---- Misc ---------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -246,6 +276,9 @@ public class NgScheduleV2Service {
         ensureCrew("Crew B", rotAB, 14, "#26C6DA");
         ensureCrew("Crew C", rotCD, 0, "#FFA726");
         ensureCrew("Crew D", rotCD, 14, "#AB47BC");
+        // On-call manager rotation — weekly, anchored 2026-05-01: Ken, Scott, Matt, Heather, Ryan, Austin.
+        ensureOnCall("On-Call Managers", 7, LocalDate.of(2026, 5, 1),
+                List.of(2000042237L, 2000042241L, 2000042239L, 2000042233L, 2000042240L, 52L));
 
         List<Seed> roster = List.of(
                 new Seed(1702L, "A", "LEAD"), new Seed(2000042243L, "A", "CRO"), new Seed(2000042226L, "A", "AO"),
@@ -363,6 +396,17 @@ public class NgScheduleV2Service {
         }
     }
 
+    private void ensureOnCall(String name, int daysPerTurn, LocalDate anchor, List<Long> members) {
+        OnCallRotation r = onCallRepo.findAll().stream()
+                .filter(x -> name.equalsIgnoreCase(x.getName())).findFirst().orElseGet(OnCallRotation::new);
+        r.setName(name);
+        r.setDaysPerTurn(daysPerTurn);
+        r.setAnchorDate(anchor);
+        r.setMemberUserIdsJson(writeLongs(members));
+        r.setIsActive(true);
+        onCallRepo.save(r);
+    }
+
     public int materializeNow(LocalDate from, LocalDate to) {
         return materialisation.materializeRange(from, to);
     }
@@ -459,6 +503,38 @@ public class NgScheduleV2Service {
             return objectMapper.readValue(json, CELL_LIST);
         } catch (Exception e) {
             log.warn("[ScheduleV2] Failed to parse rotation cells: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private OnCallRotationDto toDto(OnCallRotation r) {
+        List<Long> ids = readLongs(r.getMemberUserIdsJson());
+        List<String> names = ids.stream()
+                .map(id -> userRepo.findById(id).map(this::displayName).orElse("User " + id))
+                .toList();
+        return OnCallRotationDto.builder()
+                .id(r.getId()).name(r.getName()).daysPerTurn(r.getDaysPerTurn())
+                .anchorDate(r.getAnchorDate()).memberUserIds(ids).memberNames(names)
+                .isActive(r.getIsActive())
+                .build();
+    }
+
+    private String writeLongs(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(ids);
+        } catch (Exception e) {
+            log.error("[ScheduleV2] Failed to serialize on-call members: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private List<Long> readLongs(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyList();
+        try {
+            return objectMapper.readValue(json, LONG_LIST);
+        } catch (Exception e) {
+            log.warn("[ScheduleV2] Failed to parse on-call members: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

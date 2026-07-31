@@ -5,10 +5,11 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import {
   ScheduleV2ApiService, SchedulePosition, CrewRotation, Crew, CrewAssignment,
-  ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup, ShiftDayView, ShiftEntryView,
+  ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup, ShiftDayView, ShiftEntryView, OnCallRotation,
+  PtoRequest,
 } from '../../../services/schedule-v2-api.service';
 
-type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule';
+type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule' | 'oncall' | 'pto';
 
 /**
  * Schedule v2 manager build tools (admin-gated). Positions → Rotations → Crews → Staffing, plus
@@ -51,6 +52,13 @@ export class ScheduleBuilderComponent implements OnInit {
   previewDays = signal<ShiftDayView[]>([]);
   previewYear = new Date().getFullYear();
   previewMonth = new Date().getMonth();
+  editingOnCall: OnCallRotation | null = null;
+  newManagerId?: number;
+
+  readonly PTO_STATUSES = ['PENDING_MANUAL_REVIEW', 'PENDING', 'APPROVED', 'REJECTED', ''];
+  ptoRequests = signal<PtoRequest[]>([]);
+  ptoStatusFilter = signal<string>('PENDING_MANUAL_REVIEW');
+  ptoAssign: Record<number, number> = {};   // ptoId → user id chosen in the assign dropdown
 
   editingPosition: SchedulePosition | null = null;
   editingRotation: CrewRotation | null = null;
@@ -75,7 +83,12 @@ export class ScheduleBuilderComponent implements OnInit {
     this.api.listCoverage().subscribe(r => this.coverage.set(r.responseData ?? []));
   }
 
-  setTab(t: Tab): void { this.activeTab.set(t); if (t === 'schedule') this.loadPreview(); }
+  setTab(t: Tab): void {
+    this.activeTab.set(t);
+    if (t === 'schedule') this.loadPreview();
+    if (t === 'oncall') this.loadOnCall();
+    if (t === 'pto') this.loadPto();
+  }
   private flash(m: string): void { this.message.set(m); setTimeout(() => this.message.set(null), 3500); }
   private errText(e: any): string { return e?.error?.message ?? e?.message ?? 'error'; }
   activePositionNames(): string[] { return this.positions().filter(p => p.isActive !== false).map(p => p.name); }
@@ -259,6 +272,37 @@ export class ScheduleBuilderComponent implements OnInit {
     if (id) this.api.listSignups(id).subscribe(r => this.signups.set(r.responseData ?? []));
   }
 
+  // ---- on-call ----
+  loadOnCall(): void {
+    this.api.listOnCall().subscribe(r => {
+      const list = r.responseData ?? [];
+      this.editingOnCall = list.length
+        ? { ...list[0], memberUserIds: [...(list[0].memberUserIds ?? [])] }
+        : { name: 'On-Call Managers', daysPerTurn: 7, memberUserIds: [], isActive: true };
+    });
+  }
+  addManager(id?: number): void {
+    if (!this.editingOnCall || id == null) return;
+    this.editingOnCall.memberUserIds = [...(this.editingOnCall.memberUserIds ?? []), id];
+  }
+  removeManager(i: number): void { this.editingOnCall?.memberUserIds?.splice(i, 1); }
+  moveManager(i: number, dir: number): void {
+    const arr = this.editingOnCall?.memberUserIds;
+    if (!arr) return;
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  userName(id: number): string { return this.users().find(u => u.id === id)?.name ?? ('User ' + id); }
+  saveOnCall(): void {
+    if (!this.editingOnCall) return;
+    this.loading.set(true);
+    this.api.saveOnCall(this.editingOnCall).subscribe({
+      next: () => { this.loading.set(false); this.flash('On-call rotation saved'); this.loadOnCall(); },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+
   // ---- materialize ----
   regenerate(): void {
     const today = new Date();
@@ -292,5 +336,40 @@ export class ScheduleBuilderComponent implements OnInit {
   entryLabel(e: ShiftEntryView): string { return e.position ? `${e.name} · ${e.position}` : (e.name ?? ''); }
   private ymd(y: number, m0: number, d: number): string {
     return `${y}-${String(m0 + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  // ---- PTO intake review ----
+  loadPto(): void {
+    this.api.listPto(this.ptoStatusFilter() || undefined).subscribe(r => this.ptoRequests.set(r.responseData ?? []));
+  }
+  setPtoFilter(s: string): void { this.ptoStatusFilter.set(s); this.loadPto(); }
+  ptoRange(p: PtoRequest): string {
+    if (!p.startDate) return '—';
+    return p.startDate === p.endDate ? p.startDate : `${p.startDate} → ${p.endDate ?? '?'}`;
+  }
+  assignPto(p: PtoRequest): void {
+    const userId = p.id != null ? this.ptoAssign[p.id] : undefined;
+    if (p.id == null || userId == null) return;
+    this.loading.set(true);
+    this.api.assignPto(p.id, userId).subscribe({
+      next: () => { this.loading.set(false); this.flash('User assigned'); this.loadPto(); },
+      error: e => { this.loading.set(false); this.flash('Assign failed: ' + this.errText(e)); },
+    });
+  }
+  approvePto(p: PtoRequest): void {
+    if (p.id == null) return;
+    this.loading.set(true);
+    this.api.approvePto(p.id).subscribe({
+      next: () => { this.loading.set(false); this.flash('PTO approved — coverage requested'); this.loadPto(); },
+      error: e => { this.loading.set(false); this.flash('Approve failed: ' + this.errText(e)); },
+    });
+  }
+  rejectPto(p: PtoRequest): void {
+    if (p.id == null || !confirm(`Reject PTO for ${p.userName ?? p.rawName ?? 'this request'}?`)) return;
+    this.loading.set(true);
+    this.api.rejectPto(p.id).subscribe({
+      next: () => { this.loading.set(false); this.flash('PTO rejected'); this.loadPto(); },
+      error: e => { this.loading.set(false); this.flash('Reject failed: ' + this.errText(e)); },
+    });
   }
 }

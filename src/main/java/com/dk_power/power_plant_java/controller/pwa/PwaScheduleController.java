@@ -42,12 +42,13 @@ public class PwaScheduleController {
     private final UserRepo userRepo;
 
     /**
-     * Public base URL a calendar app will use to poll the ics feed. Defaults to the hub's own URL
-     * ({@code sync.server.url}) since ical clients need a stable public host — see
-     * {@code reference_hub_public_url.md}. If unset, we fall back to a relative path so the URL
-     * still works when opened from a browser tab on the hub.
+     * Public base URL that Google Calendar / Apple Calendar / Outlook will poll. MUST be the
+     * publicly-routable hostname (typically {@code https://jgportal.jpowerusa.com}) — NOT the LAN
+     * IP in {@code sync.server.url}, which off-network calendar apps can't reach. Falls back to
+     * {@code app.external-url} (set in application-server.properties on the hub) so a fresh hub
+     * install works without extra config.
      */
-    @Value("${schedule.ical.public-base-url:${sync.server.url:}}")
+    @Value("${schedule.ical.public-base-url:${app.external-url:}}")
     private String icalPublicBaseUrl;
 
     @GetMapping("/today")

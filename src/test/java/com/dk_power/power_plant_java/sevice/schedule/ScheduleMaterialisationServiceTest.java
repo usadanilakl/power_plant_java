@@ -10,9 +10,11 @@ import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
+import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleDayOverrideRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
+import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +53,8 @@ class ScheduleMaterialisationServiceTest {
     @Mock private PtoRequestRepo ptoRepo;
     @Mock private CoverageSignupRepo signupRepo;
     @Mock private ScheduleDayOverrideRepo overrideRepo;
+    @Mock private OnCallRotationRepo onCallRepo;
+    @Mock private UserRepo userRepo;
     @Mock private ShiftDayService shiftDayService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -59,7 +63,8 @@ class ScheduleMaterialisationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ScheduleMaterialisationService(
-                assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo, shiftDayService, objectMapper);
+                assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo,
+                onCallRepo, userRepo, shiftDayService, objectMapper);
         ReflectionTestUtils.setField(service, "v2Enabled", true);
         ReflectionTestUtils.setField(service, "v2Rollback", false);
         ReflectionTestUtils.setField(service, "horizonDays", 180);

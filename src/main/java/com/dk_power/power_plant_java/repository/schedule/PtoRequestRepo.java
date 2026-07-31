@@ -14,6 +14,9 @@ public interface PtoRequestRepo extends BaseRepository<PtoRequest> {
 
     boolean existsByDedupHash(String dedupHash);
 
+    /** Graph {@code internetMessageId} dedup — cheapest guard, skips re-parsing an already-seen email. */
+    boolean existsByEmailMessageId(String emailMessageId);
+
     Optional<PtoRequest> findFirstBySourceRequestId(String sourceRequestId);
 
     List<PtoRequest> findByStatus(String status);

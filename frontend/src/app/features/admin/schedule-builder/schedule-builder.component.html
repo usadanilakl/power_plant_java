@@ -32,6 +32,8 @@
         <button [class.active]="activeTab()==='staffing'" (click)="setTab('staffing')">Staffing</button>
         <button [class.active]="activeTab()==='events'" (click)="setTab('events')">Events</button>
         <button [class.active]="activeTab()==='coverage'" (click)="setTab('coverage')">Coverage</button>
+        <button [class.active]="activeTab()==='pto'" (click)="setTab('pto')">PTO</button>
+        <button [class.active]="activeTab()==='oncall'" (click)="setTab('oncall')">On-Call</button>
         <button [class.active]="activeTab()==='schedule'" (click)="setTab('schedule')">Schedule</button>
       </nav>
 
@@ -374,6 +376,92 @@
             <tr *ngIf="coverage().length===0"><td colspan="7" class="muted">No coverage requests yet.</td></tr>
           </tbody>
         </table>
+      </section>
+
+      <!-- =============================== PTO =============================== -->
+      <section *ngIf="activeTab()==='pto'">
+        <div class="sb-toolbar">
+          <span class="muted">Status:</span>
+          <button *ngFor="let s of PTO_STATUSES" class="btn sm" [class.active]="ptoStatusFilter()===s"
+                  (click)="setPtoFilter(s)">{{ s || 'All' }}</button>
+        </div>
+        <table class="sb-table">
+          <thead><tr><th>Requester</th><th>Dates</th><th>Status</th><th>Source</th><th>Via</th><th>Resolve</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of ptoRequests()">
+              <td>
+                <span *ngIf="p.userId">{{ p.userName }}</span>
+                <span *ngIf="!p.userId" class="muted">{{ p.rawName || '(name not parsed)' }} · unresolved</span>
+              </td>
+              <td>{{ ptoRange(p) }}</td>
+              <td>{{ p.status }}</td>
+              <td>{{ p.sourceRequestId || '—' }}</td>
+              <td>{{ p.submittedVia }}</td>
+              <td class="ta-r">
+                <ng-container *ngIf="!p.userId">
+                  <select [(ngModel)]="ptoAssign[p.id!]">
+                    <option [ngValue]="undefined">— assign user —</option>
+                    <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.name }}</option>
+                  </select>
+                  <button class="btn sm" (click)="assignPto(p)" [disabled]="ptoAssign[p.id!]==null">Assign</button>
+                </ng-container>
+                <button class="btn sm" (click)="approvePto(p)"
+                        [disabled]="loading() || !p.userId || !p.startDate || p.status==='APPROVED'">Approve</button>
+                <button class="btn sm danger" (click)="rejectPto(p)"
+                        [disabled]="loading() || p.status==='REJECTED'">Reject</button>
+              </td>
+            </tr>
+            <tr *ngIf="ptoRequests().length===0"><td colspan="6" class="muted">No PTO requests for this status.</td></tr>
+          </tbody>
+        </table>
+        <p class="sb-hint">
+          Forwarded time-off emails land here. Confident name matches auto-approve; others wait as
+          <code>PENDING_MANUAL_REVIEW</code> — pick the right user, <b>Assign</b>, then <b>Approve</b> to
+          record the time off and request coverage for the shifts they'd have worked.
+        </p>
+      </section>
+
+      <!-- ============================= ON-CALL ============================= -->
+      <section *ngIf="activeTab()==='oncall'">
+        <div class="sb-editor" *ngIf="editingOnCall">
+          <div class="sb-field-row">
+            <label>Name <input [(ngModel)]="editingOnCall.name" /></label>
+            <label>Days per turn <input type="number" min="1" [(ngModel)]="editingOnCall.daysPerTurn" /></label>
+            <label>Anchor date <input type="date" [(ngModel)]="editingOnCall.anchorDate" /></label>
+            <label class="chk"><input type="checkbox" [(ngModel)]="editingOnCall.isActive" /> Active</label>
+          </div>
+          <p class="muted">
+            Managers take turns being on-call in this order, {{ editingOnCall.daysPerTurn || 7 }} days each,
+            cycling from the anchor date.
+          </p>
+          <table class="sb-table">
+            <thead><tr><th>#</th><th>Manager</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let id of editingOnCall.memberUserIds; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>{{ userName(id) }}</td>
+                <td class="ta-r">
+                  <button class="btn sm" (click)="moveManager(i,-1)" [disabled]="i===0">↑</button>
+                  <button class="btn sm" (click)="moveManager(i,1)" [disabled]="i===(editingOnCall.memberUserIds?.length || 0)-1">↓</button>
+                  <button class="btn sm danger" (click)="removeManager(i)">Remove</button>
+                </td>
+              </tr>
+              <tr *ngIf="!(editingOnCall.memberUserIds?.length)"><td colspan="3" class="muted">No managers yet.</td></tr>
+            </tbody>
+          </table>
+          <div class="sb-field-row" style="margin-top: 10px">
+            <label>Add manager
+              <select [(ngModel)]="newManagerId">
+                <option [ngValue]="undefined">— select —</option>
+                <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.name }}</option>
+              </select>
+            </label>
+            <button class="btn" (click)="addManager(newManagerId); newManagerId = undefined" [disabled]="newManagerId == null">+ Add</button>
+          </div>
+          <div class="sb-editor-actions">
+            <button class="btn btn-primary" (click)="saveOnCall()" [disabled]="loading()">Save on-call rotation</button>
+          </div>
+        </div>
       </section>
 
       <!-- ============================= SCHEDULE ============================= -->

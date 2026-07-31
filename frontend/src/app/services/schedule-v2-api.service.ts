@@ -65,6 +65,16 @@ export interface ScheduleEvent {
 
 export interface AssignableUser { id: number; name: string; }
 
+export interface OnCallRotation {
+  id?: number;
+  name?: string;
+  daysPerTurn?: number;
+  anchorDate?: string;
+  memberUserIds?: number[];
+  memberNames?: string[];
+  isActive?: boolean;
+}
+
 export interface CoverageRequest {
   id?: number;
   startDate?: string;
@@ -91,6 +101,20 @@ export interface CoverageSignup {
   approvedByUserId?: number;
   approvedByName?: string;
   approvedAt?: string;
+}
+
+export interface PtoRequest {
+  id?: number;
+  userId?: number;
+  userName?: string;
+  rawName?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;            // PENDING | APPROVED | REJECTED | PENDING_MANUAL_REVIEW
+  submittedVia?: string;      // EMAIL | APP
+  sourceRequestId?: string;
+  emailMessageId?: string;
+  coverageEmailSentAt?: string;
 }
 
 export interface ShiftEntryView {
@@ -187,6 +211,16 @@ export class ScheduleV2ApiService {
     return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/events/${id}`);
   }
 
+  // On-call rotation
+  listOnCall(): Observable<SpringApiResponse<OnCallRotation[]>> {
+    return this.http.get<SpringApiResponse<OnCallRotation[]>>(`${this.base}/on-call`);
+  }
+  saveOnCall(r: OnCallRotation): Observable<SpringApiResponse<OnCallRotation>> {
+    return r.id
+      ? this.http.put<SpringApiResponse<OnCallRotation>>(`${this.base}/on-call/${r.id}`, r)
+      : this.http.post<SpringApiResponse<OnCallRotation>>(`${this.base}/on-call`, r);
+  }
+
   // Misc
   assignableUsers(): Observable<SpringApiResponse<AssignableUser[]>> {
     return this.http.get<SpringApiResponse<AssignableUser[]>>(`${this.base}/assignable-users`);
@@ -227,5 +261,22 @@ export class ScheduleV2ApiService {
   }
   rejectSignup(id: number): Observable<SpringApiResponse<boolean>> {
     return this.http.post<SpringApiResponse<boolean>>(`${this.base}/coverage/signups/${id}/reject`, {});
+  }
+
+  // PTO intake (Phase 4)
+  listPto(status?: string): Observable<SpringApiResponse<PtoRequest[]>> {
+    let params = new HttpParams();
+    if (status) params = params.set('status', status);
+    return this.http.get<SpringApiResponse<PtoRequest[]>>(`${this.base}/pto`, { params });
+  }
+  assignPto(id: number, userId: number): Observable<SpringApiResponse<PtoRequest>> {
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http.post<SpringApiResponse<PtoRequest>>(`${this.base}/pto/${id}/assign`, {}, { params });
+  }
+  approvePto(id: number): Observable<SpringApiResponse<PtoRequest>> {
+    return this.http.post<SpringApiResponse<PtoRequest>>(`${this.base}/pto/${id}/approve`, {});
+  }
+  rejectPto(id: number): Observable<SpringApiResponse<PtoRequest>> {
+    return this.http.post<SpringApiResponse<PtoRequest>>(`${this.base}/pto/${id}/reject`, {});
   }
 }
