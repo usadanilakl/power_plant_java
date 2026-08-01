@@ -309,6 +309,11 @@
                             [title]="'Jump to ' + (h.iso | date:'EEE, MMM d')">
                           <div class="day-num">{{ h.day }}</div>
                           <div class="day-wd">{{ h.weekday }}</div>
+                          @if (coverageEnabled() && monthCoverageByDate().get(h.iso); as cov) {
+                            @if (cov.dayOpen + cov.nightOpen > 0) {
+                              <div class="day-cov" title="Coverage open — tap to sign up">🆘 {{ cov.dayOpen + cov.nightOpen }}</div>
+                            }
+                          }
                         </th>
                       }
                     </tr>

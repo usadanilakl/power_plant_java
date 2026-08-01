@@ -10,8 +10,10 @@ import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
 import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
+import com.dk_power.power_plant_java.repository.schedule.ReliefRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleDayOverrideRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
@@ -54,6 +56,8 @@ class ScheduleMaterialisationServiceTest {
     @Mock private CoverageSignupRepo signupRepo;
     @Mock private ScheduleDayOverrideRepo overrideRepo;
     @Mock private OnCallRotationRepo onCallRepo;
+    @Mock private ReliefRotationRepo reliefRepo;
+    @Mock private CrewRepo crewRepo;
     @Mock private UserRepo userRepo;
     @Mock private ShiftDayService shiftDayService;
 
@@ -64,7 +68,7 @@ class ScheduleMaterialisationServiceTest {
     void setUp() {
         service = new ScheduleMaterialisationService(
                 assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo,
-                onCallRepo, userRepo, shiftDayService, objectMapper);
+                onCallRepo, reliefRepo, crewRepo, userRepo, shiftDayService, objectMapper);
         ReflectionTestUtils.setField(service, "v2Enabled", true);
         ReflectionTestUtils.setField(service, "v2Rollback", false);
         ReflectionTestUtils.setField(service, "horizonDays", 180);
@@ -183,6 +187,37 @@ class ScheduleMaterialisationServiceTest {
                 any(), any(), any(), any(), any());
     }
 
+    @Test
+    @DisplayName("holiday week: a 4×10 (Mon–Thu) worker gains Friday (Mon–Fri that week)")
+    void holidayWeekAddsFriday() {
+        User u = user(5L, "Mechanic");
+        when(assignmentRepo.findActiveOverlapping(any(), any())).thenReturn(List.of(fixedDay(u, "MON,TUE,WED,THU")));
+        when(eventRepo.findOverlapping(any(), any())).thenReturn(List.of(holidayOn(DAY0)));  // Thu holiday
+
+        LocalDate friday = DAY0.plusDays(1);   // DAY0 (epoch 0) is a Thursday
+        service.materializeRange(friday, friday);
+
+        ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
+        verify(shiftDayService).applyMaterializedDay(eq(friday), dayCap.capture(), any(), any(), any(),
+                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+        assertThat(dayCap.getValue()).extracting(ShiftEntry::getUserId).containsExactly(5L);
+    }
+
+    @Test
+    @DisplayName("holiday itself is off for fixed day staff (paid holiday), even on a normal work day")
+    void holidayDayIsOff() {
+        User u = user(5L, "Mechanic");
+        when(assignmentRepo.findActiveOverlapping(any(), any())).thenReturn(List.of(fixedDay(u, "MON,TUE,WED,THU")));
+        when(eventRepo.findOverlapping(any(), any())).thenReturn(List.of(holidayOn(DAY0)));  // Thu holiday
+
+        service.materializeRange(DAY0, DAY0);   // Thursday — normally worked by a Mon–Thu person
+
+        ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
+        verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(), any(), any(), any(),
+                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+        assertThat(dayCap.getValue()).isEmpty();
+    }
+
     // ---- fixtures -----------------------------------------------------------
 
     private User user(long id, String name) {
@@ -190,6 +225,26 @@ class ScheduleMaterialisationServiceTest {
         u.setId(id);
         u.setName(name);
         return u;
+    }
+
+    private CrewAssignment fixedDay(User u, String daysCsv) {
+        CrewAssignment a = new CrewAssignment();
+        a.setUser(u);
+        a.setAssignmentType(CrewAssignment.Type.FIXED);
+        a.setFixedShift(CrewRotation.Shift.DAY);
+        a.setFixedDaysOfWeek(daysCsv);
+        a.setGroupLabel("Maintenance");
+        a.setIsActive(true);
+        return a;
+    }
+
+    private ScheduleEvent holidayOn(LocalDate date) {
+        ScheduleEvent e = new ScheduleEvent();
+        e.setEventType(ScheduleEvent.Type.HOLIDAY);
+        e.setTitle("Holiday");
+        e.setStartDate(date);
+        e.setEndDate(date);
+        return e;
     }
 
     /** Crew A: rotation with day-0 = Day, offset 0. */

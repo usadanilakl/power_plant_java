@@ -6,10 +6,10 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import {
   ScheduleV2ApiService, SchedulePosition, CrewRotation, Crew, CrewAssignment,
   ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup, ShiftDayView, ShiftEntryView, OnCallRotation,
-  PtoRequest,
+  PtoRequest, ReliefRotation,
 } from '../../../services/schedule-v2-api.service';
 
-type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule' | 'oncall' | 'pto';
+type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule' | 'oncall' | 'pto' | 'relief';
 
 /**
  * Schedule v2 manager build tools (admin-gated). Positions → Rotations → Crews → Staffing, plus
@@ -51,12 +51,27 @@ export class ScheduleBuilderComponent implements OnInit {
   signups = signal<CoverageSignup[]>([]);
   previewDays = signal<ShiftDayView[]>([]);
   scheduleView = signal<'grid' | 'table'>('grid');
-  gridGroup = signal<string | null>(null);     // null = all crews
+  gridSelectedGroups = signal<Set<string>>(new Set());   // empty = show all groups; else the toggled-on set
   gridSearch = signal<string>('');
+
+  readonly COVERAGE_DISCIPLINES = [
+    { key: 'OPS', label: 'Ops' },
+    { key: 'MECHANIC', label: 'Mechanic' },
+    { key: 'IC', label: 'I&C' },
+    { key: 'MANAGER', label: 'Manager' },
+  ];
+  showCoverageNeeds = signal(false);
+  private coverageNeeds = signal<Record<string, number>>({});    // TOTAL required per cell (menu ranges + inline)
+  private coverageInline = signal<Record<string, number>>({});   // the editable single-day MANUAL portion per cell
   previewYear = new Date().getFullYear();
   previewMonth = new Date().getMonth();
   editingOnCall: OnCallRotation | null = null;
   newManagerId?: number;
+
+  readonly RELIEF_SLOTS = ['REL', 'A', 'B', 'C', 'D'];
+  reliefRotations = signal<ReliefRotation[]>([]);
+  editingRelief: ReliefRotation | null = null;
+  newReliefMemberId?: number;
 
   readonly PTO_STATUSES = ['PENDING_MANUAL_REVIEW', 'PENDING', 'APPROVED', 'REJECTED', ''];
   ptoRequests = signal<PtoRequest[]>([]);
@@ -91,6 +106,7 @@ export class ScheduleBuilderComponent implements OnInit {
     if (t === 'schedule') this.loadPreview();
     if (t === 'oncall') this.loadOnCall();
     if (t === 'pto') this.loadPto();
+    if (t === 'relief') this.loadRelief();
   }
   private flash(m: string): void { this.message.set(m); setTimeout(() => this.message.set(null), 3500); }
   private errText(e: any): string { return e?.error?.message ?? e?.message ?? 'error'; }
@@ -306,6 +322,54 @@ export class ScheduleBuilderComponent implements OnInit {
     });
   }
 
+  // ---- relief-swap rotation ----
+  loadRelief(): void {
+    this.api.listRelief().subscribe(r => this.reliefRotations.set(r.responseData ?? []));
+  }
+  newRelief(): void {
+    this.editingRelief = {
+      name: 'Relief', position: 'Lead', periodMonths: 3,
+      anchorDate: this.iso(new Date()), reliefDaysOfWeek: 'MON,TUE,WED,THU,FRI',
+      lineOrder: [], initialSlots: {}, isActive: true,
+    };
+  }
+  editRelief(r: ReliefRotation): void {
+    this.editingRelief = { ...r, lineOrder: [...(r.lineOrder ?? [])], initialSlots: { ...(r.initialSlots ?? {}) } };
+  }
+  cancelRelief(): void { this.editingRelief = null; }
+  addReliefMember(id?: number): void {
+    if (!this.editingRelief || id == null) return;
+    this.editingRelief.lineOrder = this.editingRelief.lineOrder ?? [];
+    if (!this.editingRelief.lineOrder.includes(id)) this.editingRelief.lineOrder.push(id);
+  }
+  removeReliefMember(i: number): void { this.editingRelief?.lineOrder?.splice(i, 1); }
+  moveReliefMember(i: number, dir: number): void {
+    const arr = this.editingRelief?.lineOrder;
+    if (!arr) return;
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  reliefSlot(slot: string): number | undefined { return this.editingRelief?.initialSlots?.[slot]; }
+  setReliefSlot(slot: string, id: any): void {
+    if (!this.editingRelief) return;
+    this.editingRelief.initialSlots = this.editingRelief.initialSlots ?? {};
+    if (id == null || id === '') delete this.editingRelief.initialSlots[slot];
+    else this.editingRelief.initialSlots[slot] = Number(id);
+  }
+  saveRelief(): void {
+    if (!this.editingRelief) return;
+    this.loading.set(true);
+    this.api.saveRelief(this.editingRelief).subscribe({
+      next: () => { this.loading.set(false); this.editingRelief = null; this.flash('Relief rotation saved'); this.loadRelief(); },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+  deleteRelief(r: ReliefRotation): void {
+    if (r.id == null || !confirm(`Delete "${r.name}"?`)) return;
+    this.api.deleteRelief(r.id).subscribe(() => { this.flash('Deleted'); this.loadRelief(); });
+  }
+
   // ---- materialize ----
   regenerate(): void {
     const today = new Date();
@@ -325,6 +389,71 @@ export class ScheduleBuilderComponent implements OnInit {
     const lastDay = new Date(this.previewYear, this.previewMonth + 1, 0).getDate();
     const to = this.ymd(this.previewYear, this.previewMonth, lastDay);
     this.api.schedulePreview(from, to).subscribe(r => this.previewDays.set(r.responseData ?? []));
+    this.loadCoverageNeeds();
+  }
+
+  // ---- inline coverage needs (grid header row) ----
+  private needKey(date: string, shift: string, disc: string): string { return `${date}|${shift}|${disc}`; }
+
+  private eachDay(start: string, end: string): string[] {
+    const out: string[] = [];
+    const e = new Date(end + 'T12:00:00');
+    for (let d = new Date(start + 'T12:00:00'); d <= e; d.setDate(d.getDate() + 1)) {
+      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    return out;
+  }
+
+  private loadCoverageNeeds(): void {
+    const from = this.ymd(this.previewYear, this.previewMonth, 1);
+    const lastDay = new Date(this.previewYear, this.previewMonth + 1, 0).getDate();
+    const to = this.ymd(this.previewYear, this.previewMonth, lastDay);
+    this.api.listCoverage(from, to).subscribe(r => {
+      const total: Record<string, number> = {};
+      const inline: Record<string, number> = {};
+      for (const c of (r.responseData ?? [])) {
+        if (!c.startDate || c.status === 'CANCELLED') continue;
+        const disc = c.discipline || 'OPS';
+        const req = c.requiredCount ?? 0;
+        // Expand the request across its date range (clamped to the month) into the per-cell TOTAL —
+        // this is what makes multi-day coverage from the Coverage menu show up in the grid.
+        for (const d of this.eachDay(c.startDate, c.endDate || c.startDate)) {
+          if (d < from || d > to) continue;
+          const k = this.needKey(d, c.shift, disc);
+          total[k] = (total[k] ?? 0) + req;
+        }
+        // A single-day MANUAL request is the editable inline portion for that cell.
+        if (c.startDate === c.endDate && c.reason === 'MANUAL') {
+          inline[this.needKey(c.startDate, c.shift, disc)] = req;
+        }
+      }
+      this.coverageNeeds.set(total);
+      this.coverageInline.set(inline);
+    });
+  }
+
+  needCount(date: string | undefined, shift: string, disc: string): number {
+    return date ? (this.coverageNeeds()[this.needKey(date, shift, disc)] ?? 0) : 0;
+  }
+
+  /** Set the TOTAL needed for a cell. Multi-day (menu) + PTO coverage is a floor we can't reduce here —
+   *  we move only the editable single-day part, so total = rangeFloor + max(0, desired − rangeFloor). */
+  setNeed(date: string | undefined, shift: string, disc: string, value: any): void {
+    if (!date) return;
+    const desired = Math.max(0, Math.floor(Number(value) || 0));
+    const key = this.needKey(date, shift, disc);
+    const rangeFloor = Math.max(0, (this.coverageNeeds()[key] ?? 0) - (this.coverageInline()[key] ?? 0));
+    const inlineNew = Math.max(0, desired - rangeFloor);
+    this.coverageInline.update(m => ({ ...m, [key]: inlineNew }));
+    this.coverageNeeds.update(m => ({ ...m, [key]: rangeFloor + inlineNew }));
+    this.api.coverageDayNeed(date, disc, shift, inlineNew).subscribe({
+      error: e => this.flash('Coverage save failed: ' + this.errText(e)),
+    });
+  }
+
+  bumpNeed(date: string | undefined, shift: string, disc: string, delta: number): void {
+    if (!date) return;
+    this.setNeed(date, shift, disc, (this.coverageNeeds()[this.needKey(date, shift, disc)] ?? 0) + delta);
   }
   prevMonth(): void { if (--this.previewMonth < 0) { this.previewMonth = 11; this.previewYear--; } this.loadPreview(); }
   nextMonth(): void { if (++this.previewMonth > 11) { this.previewMonth = 0; this.previewYear++; } this.loadPreview(); }
@@ -389,12 +518,23 @@ export class ScheduleBuilderComponent implements OnInit {
     return Array.from(counts.entries()).map(([group, count]) => ({ group, count }));
   });
 
-  /** Rows after the group filter + name search. */
+  /** Rows after the (multi-select) group filter + name search. Empty selection = all groups. */
   gridRows = computed(() => {
-    const g = this.gridGroup();
+    const sel = this.gridSelectedGroups();
     const s = this.gridSearch().toLowerCase().trim();
-    return this.monthGrid().rows.filter(r => (g === null || r.group === g) && (!s || r.name.toLowerCase().includes(s)));
+    return this.monthGrid().rows.filter(r =>
+      (sel.size === 0 || sel.has(r.group)) && (!s || r.name.toLowerCase().includes(s)));
   });
+
+  /** Toggle a single group on/off — any combination of groups can be shown at once. */
+  toggleGridGroup(g: string): void {
+    this.gridSelectedGroups.update(set => {
+      const next = new Set(set);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  }
+  showAllGroups(): void { this.gridSelectedGroups.set(new Set()); }
 
   // ---- PTO intake review ----
   loadPto(): void {

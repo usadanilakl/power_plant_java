@@ -23,6 +23,7 @@ export interface CrewRotation {
   name: string;
   color?: string;
   patternLengthDays: number;
+  anchorDate?: string;    // date that = dayIndex 0 (rotation start); phases the whole schedule
   cells: RotationCell[];
   isActive?: boolean;
 }
@@ -75,11 +76,25 @@ export interface OnCallRotation {
   isActive?: boolean;
 }
 
+export interface ReliefRotation {
+  id?: number;
+  name?: string;
+  position?: string;            // placed position label (Lead / Auxiliary Operator)
+  periodMonths?: number;        // months per relief turn (3 = quarterly)
+  anchorDate?: string;
+  lineOrder?: number[];         // succession order (user ids)
+  lineNames?: string[];         // read-only display
+  initialSlots?: { [slot: string]: number };  // REL/A/B/C/D -> user id at anchor
+  reliefDaysOfWeek?: string;
+  isActive?: boolean;
+}
+
 export interface CoverageRequest {
   id?: number;
   startDate?: string;
   endDate?: string;
   shift: string;          // DAY | NIGHT
+  discipline?: string;    // OPS | MECHANIC | IC | MANAGER
   requiredCount?: number;
   reason?: string;
   status?: string;
@@ -221,6 +236,19 @@ export class ScheduleV2ApiService {
       : this.http.post<SpringApiResponse<OnCallRotation>>(`${this.base}/on-call`, r);
   }
 
+  // Relief-swap rotation
+  listRelief(): Observable<SpringApiResponse<ReliefRotation[]>> {
+    return this.http.get<SpringApiResponse<ReliefRotation[]>>(`${this.base}/relief`);
+  }
+  saveRelief(r: ReliefRotation): Observable<SpringApiResponse<ReliefRotation>> {
+    return r.id
+      ? this.http.put<SpringApiResponse<ReliefRotation>>(`${this.base}/relief/${r.id}`, r)
+      : this.http.post<SpringApiResponse<ReliefRotation>>(`${this.base}/relief`, r);
+  }
+  deleteRelief(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/relief/${id}`);
+  }
+
   // Misc
   assignableUsers(): Observable<SpringApiResponse<AssignableUser[]>> {
     return this.http.get<SpringApiResponse<AssignableUser[]>>(`${this.base}/assignable-users`);
@@ -249,6 +277,11 @@ export class ScheduleV2ApiService {
   }
   createCoverage(c: CoverageRequest): Observable<SpringApiResponse<CoverageRequest>> {
     return this.http.post<SpringApiResponse<CoverageRequest>>(`${this.base}/coverage`, c);
+  }
+  /** Inline per-day coverage need: (date, discipline, shift) → count (0 clears). */
+  coverageDayNeed(date: string, discipline: string, shift: string, count: number): Observable<SpringApiResponse<CoverageRequest>> {
+    const params = new HttpParams().set('date', date).set('discipline', discipline).set('shift', shift).set('count', String(count));
+    return this.http.post<SpringApiResponse<CoverageRequest>>(`${this.base}/coverage/day-need`, {}, { params });
   }
   cancelCoverage(id: number): Observable<SpringApiResponse<boolean>> {
     return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/coverage/${id}`);

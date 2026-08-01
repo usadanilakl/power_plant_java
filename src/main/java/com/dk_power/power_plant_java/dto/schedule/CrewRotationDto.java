@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -21,6 +22,7 @@ public class CrewRotationDto {
     private String name;
     private String color;
     private Integer patternLengthDays;
+    private LocalDate anchorDate;   // the date that = dayIndex 0 (rotation start); null = epoch-anchored
     private List<PatternCell> cells;
     private Boolean isActive;
 }

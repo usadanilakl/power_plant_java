@@ -34,6 +34,7 @@
         <button [class.active]="activeTab()==='coverage'" (click)="setTab('coverage')">Coverage</button>
         <button [class.active]="activeTab()==='pto'" (click)="setTab('pto')">PTO</button>
         <button [class.active]="activeTab()==='oncall'" (click)="setTab('oncall')">On-Call</button>
+        <button [class.active]="activeTab()==='relief'" (click)="setTab('relief')">Relief</button>
         <button [class.active]="activeTab()==='schedule'" (click)="setTab('schedule')">Schedule</button>
       </nav>
 
@@ -84,9 +85,14 @@
             <label>Name <input [(ngModel)]="editingRotation.name" placeholder="2-2-3" /></label>
             <label>Colour <input type="color" [(ngModel)]="editingRotation.color" /></label>
             <label>Cycle length (days) <input type="number" min="1" max="60" [(ngModel)]="editingRotation.patternLengthDays" /></label>
+            <label>Start date <input type="date" [(ngModel)]="editingRotation.anchorDate" /></label>
             <label class="chk"><input type="checkbox" [(ngModel)]="editingRotation.isActive" /> Active</label>
           </div>
-          <p class="muted">One shift per day for the whole crew. <b>D</b>=day, <b>N</b>=night, <b>O</b>=off. Blank = off.</p>
+          <p class="muted">
+            One shift per day for the whole crew. <b>D</b>=day, <b>N</b>=night, <b>O</b>=off. Blank = off.
+            <b>Start date</b> = the calendar date that maps to <b>day 1</b> of the pattern (crew offset 0) — set it
+            to phase-align the whole rotation to the real schedule. Leave blank to anchor to the epoch.
+          </p>
           <div class="grid-scroll">
             <table class="grid">
               <thead>
@@ -464,6 +470,99 @@
         </div>
       </section>
 
+      <!-- ============================== RELIEF ============================== -->
+      <section *ngIf="activeTab()==='relief'">
+        <div class="sb-toolbar" *ngIf="!editingRelief">
+          <button class="btn btn-primary" (click)="newRelief()">+ New relief lane</button>
+        </div>
+
+        <div class="sb-editor" *ngIf="editingRelief">
+          <div class="sb-field-row">
+            <label>Name <input [(ngModel)]="editingRelief.name" placeholder="Lead relief" /></label>
+            <label>Position <input [(ngModel)]="editingRelief.position" placeholder="Lead" /></label>
+            <label>Every (months) <input type="number" min="1" [(ngModel)]="editingRelief.periodMonths" /></label>
+            <label>Block start (anchor) <input type="date" [(ngModel)]="editingRelief.anchorDate" /></label>
+            <label>Relief work days <input [(ngModel)]="editingRelief.reliefDaysOfWeek" placeholder="MON,TUE,WED,THU,FRI" /></label>
+            <label class="chk"><input type="checkbox" [(ngModel)]="editingRelief.isActive" /> Active</label>
+          </div>
+          <p class="muted">Each period the relief person swaps with the <b>next in the succession order</b>, taking their crew.</p>
+
+          <div class="relief-cols">
+            <div class="relief-col">
+              <h4>Succession order</h4>
+              <table class="sb-table">
+                <thead><tr><th>#</th><th>Person</th><th></th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let id of editingRelief.lineOrder; let i = index">
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ userName(id) }}</td>
+                    <td class="ta-r">
+                      <button class="btn sm" (click)="moveReliefMember(i,-1)" [disabled]="i===0">↑</button>
+                      <button class="btn sm" (click)="moveReliefMember(i,1)" [disabled]="i===(editingRelief.lineOrder?.length || 0)-1">↓</button>
+                      <button class="btn sm danger" (click)="removeReliefMember(i)">✕</button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="!(editingRelief.lineOrder?.length)"><td colspan="3" class="muted">No one yet.</td></tr>
+                </tbody>
+              </table>
+              <div class="sb-field-row" style="margin-top:8px">
+                <label>Add
+                  <select [(ngModel)]="newReliefMemberId">
+                    <option [ngValue]="undefined">— select —</option>
+                    <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.name }}</option>
+                  </select>
+                </label>
+                <button class="btn" (click)="addReliefMember(newReliefMemberId); newReliefMemberId = undefined"
+                        [disabled]="newReliefMemberId == null">+ Add</button>
+              </div>
+            </div>
+
+            <div class="relief-col">
+              <h4>Crews at the anchor</h4>
+              <p class="muted">Who's on relief + which crew each person is on at the block-start date.</p>
+              <table class="sb-table">
+                <thead><tr><th>Slot</th><th>Person</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let s of RELIEF_SLOTS">
+                    <td>{{ s === 'REL' ? 'Relief' : 'Crew ' + s }}</td>
+                    <td>
+                      <select [ngModel]="reliefSlot(s)" (ngModelChange)="setReliefSlot(s, $event)">
+                        <option [ngValue]="undefined">—</option>
+                        <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.name }}</option>
+                      </select>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="sb-editor-actions">
+            <button class="btn btn-primary" (click)="saveRelief()" [disabled]="loading() || !editingRelief.name">Save relief lane</button>
+            <button class="btn" (click)="cancelRelief()">Cancel</button>
+          </div>
+        </div>
+
+        <table class="sb-table" *ngIf="!editingRelief">
+          <thead><tr><th>Name</th><th>Position</th><th>Every</th><th>Anchor</th><th>Succession</th><th>Active</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of reliefRotations()">
+              <td>{{ r.name }}</td>
+              <td>{{ r.position }}</td>
+              <td>{{ r.periodMonths }} mo</td>
+              <td>{{ r.anchorDate }}</td>
+              <td class="muted">{{ r.lineNames?.join(' → ') }}</td>
+              <td>{{ r.isActive ? 'Yes' : 'No' }}</td>
+              <td class="ta-r">
+                <button class="btn sm" (click)="editRelief(r)">Edit</button>
+                <button class="btn sm danger" (click)="deleteRelief(r)">Delete</button>
+              </td>
+            </tr>
+            <tr *ngIf="reliefRotations().length===0"><td colspan="7" class="muted">No relief lanes yet — run Seed, or add one.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
       <!-- ============================= SCHEDULE ============================= -->
       <section *ngIf="activeTab()==='schedule'">
         <div class="sb-sched-head">
@@ -498,15 +597,17 @@
         <!-- Grid: person rows × day columns — the same roster shape operators see in the PWA/Electron -->
         <ng-container *ngIf="scheduleView()==='grid' && previewDays().length">
           <div class="sb-grid-filter">
-            <button class="btn sm" [class.active]="gridGroup()===null" (click)="gridGroup.set(null)">
+            <button class="btn sm" [class.active]="gridSelectedGroups().size===0" (click)="showAllGroups()">
               All ({{ monthGrid().rows.length }})
             </button>
             <button class="btn sm" *ngFor="let g of gridGroups()"
-                    [class.active]="gridGroup()===g.group" (click)="gridGroup.set(g.group)">
+                    [class.active]="gridSelectedGroups().has(g.group)" (click)="toggleGridGroup(g.group)">
               {{ g.group || 'No crew' }} ({{ g.count }})
             </button>
             <input class="sb-grid-search" [ngModel]="gridSearch()" (ngModelChange)="gridSearch.set($event)"
                    placeholder="Search name…" />
+            <button class="btn sm" [class.active]="showCoverageNeeds()"
+                    (click)="showCoverageNeeds.set(!showCoverageNeeds())">🆘 Coverage needs</button>
           </div>
           <div class="grid-scroll">
             <table class="mgrid">
@@ -519,6 +620,24 @@
                   </th>
                 </tr>
               </thead>
+              <!-- Inline coverage needs: type required counts per day, per type × shift. -->
+              <tbody *ngIf="showCoverageNeeds()" class="cov-needs">
+                <ng-container *ngFor="let sh of ['DAY','NIGHT']">
+                  <tr *ngFor="let disc of COVERAGE_DISCIPLINES">
+                    <th class="mgrid-name cov-need-label">{{ sh==='NIGHT' ? 'Ngt' : 'Day' }} · {{ disc.label }}</th>
+                    <td *ngFor="let h of monthGrid().headers" class="cov-need-cell"
+                        [class.wknd]="h.weekend" [class.today]="h.today">
+                      <div class="cov-stepper">
+                        <button type="button" class="cov-step" title="Add one" (click)="bumpNeed(h.date, sh, disc.key, 1)">▲</button>
+                        <input type="number" min="0" class="cov-need-input"
+                               [value]="needCount(h.date, sh, disc.key)"
+                               (change)="setNeed(h.date, sh, disc.key, $any($event.target).value)" />
+                        <button type="button" class="cov-step" title="Remove one" (click)="bumpNeed(h.date, sh, disc.key, -1)">▼</button>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
               <tbody>
                 <tr *ngFor="let r of gridRows()">
                   <th class="mgrid-name">

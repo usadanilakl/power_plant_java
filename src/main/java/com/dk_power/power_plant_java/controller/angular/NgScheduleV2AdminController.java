@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
 import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.PtoRequestDto;
+import com.dk_power.power_plant_java.dto.schedule.ReliefRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
@@ -191,6 +192,31 @@ public class NgScheduleV2AdminController {
         return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
     }
 
+    // ---- Relief-swap rotation ----------------------------------------------
+
+    @GetMapping("/relief")
+    public ResponseEntity<NgApiResponse<List<ReliefRotationDto>>> listRelief() {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listRelief(), "Relief rotations"));
+    }
+
+    @PostMapping("/relief")
+    public ResponseEntity<NgApiResponse<ReliefRotationDto>> createRelief(@RequestBody ReliefRotationDto dto) {
+        dto.setId(null);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveRelief(dto), "Relief saved"));
+    }
+
+    @PutMapping("/relief/{id}")
+    public ResponseEntity<NgApiResponse<ReliefRotationDto>> updateRelief(@PathVariable Long id, @RequestBody ReliefRotationDto dto) {
+        dto.setId(id);
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveRelief(dto), "Relief saved"));
+    }
+
+    @DeleteMapping("/relief/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deleteRelief(@PathVariable Long id) {
+        boolean ok = service.deleteRelief(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
+    }
+
     // ---- Misc ---------------------------------------------------------------
 
     @GetMapping("/assignable-users")
@@ -237,6 +263,18 @@ public class NgScheduleV2AdminController {
     @PostMapping("/coverage")
     public ResponseEntity<NgApiResponse<CoverageRequestDto>> createCoverage(@RequestBody CoverageRequestDto dto) {
         return ResponseEntity.ok(new NgApiResponse<>(coverageService.createCoverage(dto), "Coverage created"));
+    }
+
+    /** Inline per-day coverage need: (date, discipline, shift) → count (0 clears). From the grid header. */
+    @PostMapping("/coverage/day-need")
+    public ResponseEntity<NgApiResponse<CoverageRequestDto>> setDayNeed(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam String discipline,
+            @RequestParam(required = false) String position,
+            @RequestParam String shift,
+            @RequestParam int count) {
+        return ResponseEntity.ok(new NgApiResponse<>(
+                coverageService.setDayNeed(date, discipline, position, shift, count), "Coverage need saved"));
     }
 
     @DeleteMapping("/coverage/{id}")

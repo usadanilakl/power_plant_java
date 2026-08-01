@@ -10,12 +10,15 @@ import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
 import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
 import com.dk_power.power_plant_java.entities.schedule.OnCallRotation;
 import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
+import com.dk_power.power_plant_java.entities.schedule.ReliefRotation;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
+import com.dk_power.power_plant_java.repository.schedule.ReliefRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleDayOverrideRepo;
 import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
@@ -63,6 +66,7 @@ public class ScheduleMaterialisationService {
     private static final int MAX_RANGE_DAYS = 800;
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
     private static final TypeReference<List<Long>> LONG_LIST = new TypeReference<>() {};
+    private static final TypeReference<Map<String, Long>> SLOT_MAP = new TypeReference<>() {};
 
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
@@ -70,6 +74,8 @@ public class ScheduleMaterialisationService {
     private final CoverageSignupRepo signupRepo;
     private final ScheduleDayOverrideRepo overrideRepo;
     private final OnCallRotationRepo onCallRepo;
+    private final ReliefRotationRepo reliefRepo;
+    private final CrewRepo crewRepo;
     private final UserRepo userRepo;
     private final ShiftDayService shiftDayService;
     private final ObjectMapper objectMapper;
@@ -123,13 +129,15 @@ public class ScheduleMaterialisationService {
         }
         Map<Long, List<PatternCell>> cellCache = new HashMap<>();
         OnCallCtx onCall = loadOnCall();
+        ReliefCtx relief = loadRelief();
+        Set<LocalDate> holidays = collectHolidays(events);
 
         int written = 0;
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             if (materializeDay(d, assignments, events, ptos,
                     overridesByDate.getOrDefault(d, List.of()),
                     signupsByDate.getOrDefault(d, List.of()),
-                    cellCache, onCall)) {
+                    cellCache, onCall, relief, holidays)) {
                 written++;
             }
         }
@@ -146,15 +154,23 @@ public class ScheduleMaterialisationService {
                                    List<ScheduleDayOverride> dayOverrides,
                                    List<CoverageSignup> daySignups,
                                    Map<Long, List<PatternCell>> cellCache,
-                                   OnCallCtx onCall) {
+                                   OnCallCtx onCall,
+                                   ReliefCtx relief,
+                                   Set<LocalDate> holidays) {
         DayBuckets b = new DayBuckets();
 
         // 0) On-call manager for the day (an override with code OCM can still replace it below).
         applyOnCall(b, date, onCall);
 
-        // 1) Staffing — place each person from their assignment.
+        // 0.5) Relief-swap rotation — place each lane's members on their current crew (or day-relief).
+        applyRelief(b, date, relief, cellCache, holidays);
+
+        // 1) Staffing — place each person from their assignment, EXCEPT anyone the relief rotation owns
+        //     (placed above; their static crew assignment is overridden while the rotation is active).
         for (CrewAssignment a : assignments) {
-            if (assignmentCovers(a, date)) placeAssignment(b, a, date, cellCache);
+            User au = a.getUser();
+            if (au != null && au.getId() != null && relief.memberIds().contains(au.getId())) continue;
+            if (assignmentCovers(a, date)) placeAssignment(b, a, date, cellCache, holidays);
         }
 
         // 2) Approved coverage signups → pull the coverer into the covered shift.
@@ -190,30 +206,79 @@ public class ScheduleMaterialisationService {
                 b.ocmName, b.ocmId, eventFlagsJson, SOURCE);
     }
 
-    private void placeAssignment(DayBuckets b, CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
+    private void placeAssignment(DayBuckets b, CrewAssignment a, LocalDate date,
+                                 Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays) {
         User u = a.getUser();
         if (u == null) return;
-        String shift = resolveShift(a, date, cellCache);
+        String shift = resolveShift(a, date, cellCache, holidays);
         if (shift == null) return;
         String group = CrewAssignment.Type.FIXED.equals(a.getAssignmentType())
-                ? null
-                : (a.getCrew() != null ? a.getCrew().getName() : null);
+                ? a.getGroupLabel()
+                : crewGroupCode(a.getCrew());
         placeByShift(b, shift, entryFor(u, group, a.getPosition()));
+    }
+
+    /**
+     * Short group code for a crew ("Crew A" → "A"). Consumers order the roster by this code (the PWA
+     * month view + the v1-era A/B/C/D/Rel/OCM convention), so emit the code, not the full crew label —
+     * otherwise "Crew A" doesn't match "A" and rows fall through to an alphabetical sort.
+     */
+    private static String crewGroupCode(Crew crew) {
+        if (crew == null || crew.getName() == null) return null;
+        String n = crew.getName().trim();
+        return n.regionMatches(true, 0, "Crew ", 0, 5) ? n.substring(5).trim() : n;
     }
 
     /**
      * The shift code a single assignment yields on a date: {@code DAY}/{@code NIGHT}/{@code OFF} for
      * ROTATING (via crew rotation) and FIXED, or {@code null} for RELIEF / inactive / unschedulable.
      */
-    private String resolveShift(CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
+    private String resolveShift(CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache,
+                                Set<LocalDate> holidays) {
         String type = a.getAssignmentType();
         if (CrewAssignment.Type.RELIEF.equals(type)) return null;   // coverage-only, never auto-scheduled
         if (CrewAssignment.Type.FIXED.equals(type)) {
-            if (a.getFixedShift() == null || !fixedDayMatches(a.getFixedDaysOfWeek(), date)) return null;
-            return a.getFixedShift();
+            if (a.getFixedShift() == null) return null;
+            return fixedDayWorked(a.getFixedDaysOfWeek(), date, holidays) ? a.getFixedShift() : null;
         }
         // ROTATING (default): the whole crew shares the rotation's shift for this cycle day.
-        Crew crew = a.getCrew();
+        return crewShiftFor(a.getCrew(), date, cellCache);
+    }
+
+    /**
+     * Whether a fixed day-staff member works on this date. Normally follows their {@code fixedDaysOfWeek}
+     * (4×10). But during a <b>holiday week</b> (any HOLIDAY event falls in the Mon–Sun week) they switch
+     * to 8-hour Mon–Fri, minus the holiday itself (paid off). The holiday date is always off.
+     */
+    private static boolean fixedDayWorked(String daysCsv, LocalDate date, Set<LocalDate> holidays) {
+        if (holidays != null && holidays.contains(date)) return false;   // paid holiday off
+        if (isHolidayWeek(date, holidays)) {
+            return date.getDayOfWeek().getValue() <= 5;                  // Mon–Fri (8h) that week
+        }
+        return fixedDayMatches(daysCsv, date);
+    }
+
+    /** Does the Mon–Sun week containing {@code date} include any holiday? */
+    private static boolean isHolidayWeek(LocalDate date, Set<LocalDate> holidays) {
+        if (holidays == null || holidays.isEmpty()) return false;
+        LocalDate monday = date.minusDays(date.getDayOfWeek().getValue() - 1);
+        for (int i = 0; i < 7; i++) if (holidays.contains(monday.plusDays(i))) return true;
+        return false;
+    }
+
+    /** All dates covered by HOLIDAY events in the range (drives the holiday-week 8×5 switch). */
+    private static Set<LocalDate> collectHolidays(List<ScheduleEvent> events) {
+        Set<LocalDate> out = new HashSet<>();
+        for (ScheduleEvent e : events) {
+            if (!ScheduleEvent.Type.HOLIDAY.equals(e.getEventType()) || e.getStartDate() == null) continue;
+            LocalDate end = e.getEndDate() != null ? e.getEndDate() : e.getStartDate();
+            for (LocalDate d = e.getStartDate(); !d.isAfter(end); d = d.plusDays(1)) out.add(d);
+        }
+        return out;
+    }
+
+    /** The shift code (D/N/O or null) a crew yields on a date from its rotation cells at its offset. */
+    private String crewShiftFor(Crew crew, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
         if (crew == null || Boolean.FALSE.equals(crew.getIsActive())) return null;
         CrewRotation rot = crew.getRotation();
         if (rot == null) return null;
@@ -222,7 +287,9 @@ public class ScheduleMaterialisationService {
         List<PatternCell> cells = cellCache.computeIfAbsent(
                 rot.getId() == null ? -1L : rot.getId(), k -> parseCells(rot.getRotationCells()));
         int offset = crew.getOffsetDays() == null ? 0 : crew.getOffsetDays();
-        int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay(), offset, len);
+        // Phase the cycle to the rotation's start date (dayIndex 0 = anchorDate); null = epoch day 0.
+        long anchor = rot.getAnchorDate() != null ? rot.getAnchorDate().toEpochDay() : 0L;
+        int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay() - anchor, offset, len);
         return SchedulePatternMath.shiftFor(cells, cycleDay);
     }
 
@@ -239,7 +306,7 @@ public class ScheduleMaterialisationService {
         for (CrewAssignment a : assignmentRepo.findActiveOverlapping(date, date)) {
             User u = a.getUser();
             if (u == null || !userId.equals(u.getId()) || !assignmentCovers(a, date)) continue;
-            String shift = resolveShift(a, date, cache);
+            String shift = resolveShift(a, date, cache, Set.of());   // base placement; holidays irrelevant for coverage
             if (CrewRotation.Shift.DAY.equals(shift) || CrewRotation.Shift.NIGHT.equals(shift)) return shift;
         }
         return null;
@@ -402,6 +469,92 @@ public class ScheduleMaterialisationService {
 
     /** Preloaded on-call context for a run: the active rotation + ordered member ids + display names. */
     private record OnCallCtx(OnCallRotation rot, List<Long> members, Map<Long, String> names) {}
+
+    // ---- relief-swap rotation ----------------------------------------------
+
+    /** Preload active relief-swap lanes (parsed succession + anchor slot map), member Users, crews by letter. */
+    private ReliefCtx loadRelief() {
+        List<ReliefRotation> active = reliefRepo.findByIsActiveTrue();
+        List<ReliefLane> lanes = new ArrayList<>();
+        Set<Long> memberIds = new HashSet<>();
+        for (ReliefRotation r : active) {
+            List<Long> line = parseLongs(r.getLineOrderJson());
+            Map<String, Long> slots = parseSlotMap(r.getInitialSlotsJson());
+            if (line.isEmpty() || slots.isEmpty() || r.getAnchorDate() == null) continue;
+            int pm = r.getPeriodMonths() == null || r.getPeriodMonths() < 1 ? 3 : r.getPeriodMonths();
+            String pos = r.getPosition() == null ? "" : r.getPosition();
+            lanes.add(new ReliefLane(pos, r.getAnchorDate(), pm, r.getReliefDaysOfWeek(), line, slots));
+            memberIds.addAll(line);
+            memberIds.addAll(slots.values());
+        }
+        memberIds.remove(null);
+        Map<String, Crew> crewsByLetter = new HashMap<>();
+        if (!lanes.isEmpty()) {
+            for (Crew c : crewRepo.findAll()) {
+                String n = c.getName() == null ? "" : c.getName().trim();
+                if (!n.isEmpty()) crewsByLetter.putIfAbsent(n.substring(n.length() - 1).toUpperCase(), c);
+            }
+        }
+        Map<Long, User> members = new HashMap<>();
+        for (Long id : memberIds) userRepo.findById(id).ifPresent(u -> members.put(id, u));
+        return new ReliefCtx(lanes, crewsByLetter, members, memberIds);
+    }
+
+    /** Place each relief-lane member for the date: the current relief person on day-relief, everyone
+     *  else on their current crew's shift (group = crew letter). */
+    private void applyRelief(DayBuckets b, LocalDate date, ReliefCtx ctx,
+                             Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays) {
+        if (ctx == null || ctx.lanes().isEmpty()) return;
+        for (ReliefLane lane : ctx.lanes()) {
+            Map<Long, String> state = reliefStateAt(lane, date);
+            for (Map.Entry<Long, String> e : state.entrySet()) {
+                User u = ctx.members().get(e.getKey());
+                if (u == null) continue;
+                String slot = e.getValue();
+                if ("REL".equals(slot)) {
+                    // Relief works its day pattern; holiday-week rule applies (off on the holiday itself).
+                    if (fixedDayWorked(lane.reliefDays(), date, holidays)) b.day.add(entryFor(u, "Rel", lane.position()));
+                } else {
+                    placeByShift(b, crewShiftFor(ctx.crewsByLetter().get(slot), date, cellCache),
+                            entryFor(u, slot, lane.position()));
+                }
+            }
+        }
+    }
+
+    /**
+     * Simulate the swaps from the anchor to {@code date}: each period the relief person swaps places
+     * with the next person in the succession line (the incoming relief leaves their crew slot, the
+     * outgoing relief takes it). Returns the current {@code userId -> slot} (REL / A / B / C / D).
+     */
+    private Map<Long, String> reliefStateAt(ReliefLane lane, LocalDate date) {
+        int q = quartersBetween(lane.anchor(), date, lane.periodMonths());
+        return SchedulePatternMath.reliefSlots(lane.lineOrder(), lane.initialSlots(), q);
+    }
+
+    /** Whole periods elapsed from anchor to date (clamped to 0 before the first boundary / anchor). */
+    private static int quartersBetween(LocalDate anchor, LocalDate date, int periodMonths) {
+        int months = (date.getYear() * 12 + date.getMonthValue()) - (anchor.getYear() * 12 + anchor.getMonthValue());
+        return Math.max(0, Math.floorDiv(months, Math.max(1, periodMonths)));
+    }
+
+    private Map<String, Long> parseSlotMap(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try {
+            return objectMapper.readValue(json, SLOT_MAP);
+        } catch (Exception e) {
+            log.warn("[ScheduleV2] Bad relief slot JSON: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    /** A preloaded relief lane: position label + anchor/period + succession line + anchor slot map. */
+    private record ReliefLane(String position, LocalDate anchor, int periodMonths, String reliefDays,
+                              List<Long> lineOrder, Map<String, Long> initialSlots) {}
+
+    /** Preloaded relief context for a run: the active lanes + crews-by-letter + member Users + ids. */
+    private record ReliefCtx(List<ReliefLane> lanes, Map<String, Crew> crewsByLetter,
+                             Map<Long, User> members, Set<Long> memberIds) {}
 
     /** Per-day working set. Each person appears at most once per bucket after {@link #dedupe()}. */
     private static final class DayBuckets {

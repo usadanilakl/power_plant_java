@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,5 +73,32 @@ class SchedulePatternMathTest {
     void shiftForMisses() {
         assertThat(SchedulePatternMath.shiftFor(cycle(), 99)).isNull();
         assertThat(SchedulePatternMath.shiftFor(null, 0)).isNull();
+    }
+
+    /**
+     * Relief swap: succession John→Rigo→Danil→Andrew→Stu; anchor slots REL=Danil, A=Stu, B=John,
+     * C=Rigo, D=Andrew. Each period the relief person swaps with the next in line, taking their crew.
+     */
+    @Test
+    @DisplayName("relief swap: relief trades places with the next in line each period")
+    void reliefSwap() {
+        long JOHN = 2000042234L, RIGO = 102L, DANIL = 2L, ANDREW = 1L, STU = 1702L;
+        List<Long> line = List.of(JOHN, RIGO, DANIL, ANDREW, STU);
+        Map<String, Long> init = Map.of("REL", DANIL, "A", STU, "B", JOHN, "C", RIGO, "D", ANDREW);
+
+        Map<Long, String> p0 = SchedulePatternMath.reliefSlots(line, init, 0);
+        assertThat(p0).containsEntry(DANIL, "REL").containsEntry(STU, "A").containsEntry(ANDREW, "D");
+
+        // Period 1 (Oct): Danil ↔ next-in-line Andrew → Andrew relief, Danil takes crew D; Stu untouched.
+        Map<Long, String> p1 = SchedulePatternMath.reliefSlots(line, init, 1);
+        assertThat(p1).containsEntry(ANDREW, "REL").containsEntry(DANIL, "D").containsEntry(STU, "A");
+
+        // Period 3 (Apr): … → John on relief, Stu shifted to crew B.
+        Map<Long, String> p3 = SchedulePatternMath.reliefSlots(line, init, 3);
+        assertThat(p3).containsEntry(JOHN, "REL").containsEntry(STU, "B");
+
+        // Period 5 (Oct+1yr): a full lap — Danil back on relief, with the crews reshuffled.
+        Map<Long, String> p5 = SchedulePatternMath.reliefSlots(line, init, 5);
+        assertThat(p5).containsEntry(DANIL, "REL").containsEntry(RIGO, "D").containsEntry(JOHN, "C");
     }
 }

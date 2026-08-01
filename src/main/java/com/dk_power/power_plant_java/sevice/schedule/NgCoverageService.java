@@ -54,12 +54,58 @@ public class NgCoverageService {
         r.setStartDate(dto.getStartDate());
         r.setEndDate(end);
         r.setShift(dto.getShift());
+        String cd = dto.getDiscipline() == null ? CoverageRequest.Discipline.OPS : dto.getDiscipline();
+        r.setDiscipline(cd);
+        r.setPosition(CoverageRequest.Discipline.OPS.equals(cd) ? dto.getPosition() : null);
         r.setRequiredCount(dto.getRequiredCount() == null || dto.getRequiredCount() < 1 ? 1 : dto.getRequiredCount());
         r.setReason(dto.getReason() == null ? CoverageRequest.Reason.MANUAL : dto.getReason());
         r.setStatus(CoverageRequest.Status.OPEN);
         r.setFilledCount(0);
         if (dto.getPtoRequestId() != null) ptoRepo.findById(dto.getPtoRequestId()).ifPresent(r::setPtoRequest);
         return toDto(requestRepo.save(r));
+    }
+
+    /**
+     * Upsert one coverage "need" cell for a single day — {@code (date, discipline, shift) → count} —
+     * the fast inline entry from the admin grid header. Reuses one MANUAL single-day request per cell;
+     * {@code count <= 0} clears it. Defining a need doesn't place anyone (only approved signups do), so
+     * no re-materialise.
+     */
+    public CoverageRequestDto setDayNeed(LocalDate date, String discipline, String position, String shift, int count) {
+        if (date == null) throw new IllegalArgumentException("date is required");
+        String disc = discipline == null ? CoverageRequest.Discipline.OPS : discipline;
+        String pos = CoverageRequest.Discipline.OPS.equals(disc) ? position : null;
+        String sh = CoverageRequest.ShiftType.NIGHT.equals(shift)
+                ? CoverageRequest.ShiftType.NIGHT : CoverageRequest.ShiftType.DAY;
+        CoverageRequest existing = requestRepo.findOverlapping(date, date).stream()
+                .filter(r -> date.equals(r.getStartDate()) && date.equals(r.getEndDate())
+                        && CoverageRequest.Reason.MANUAL.equals(r.getReason())
+                        && sh.equals(r.getShift()) && disc.equals(nz(r.getDiscipline()))
+                        && java.util.Objects.equals(pos, r.getPosition()))
+                .findFirst().orElse(null);
+        if (count <= 0) {
+            if (existing != null) {
+                existing.setStatus(CoverageRequest.Status.CANCELLED);
+                existing.setDeleted(true);
+                requestRepo.save(existing);
+            }
+            return null;
+        }
+        CoverageRequest r = existing != null ? existing : new CoverageRequest();
+        r.setStartDate(date);
+        r.setEndDate(date);
+        r.setShift(sh);
+        r.setDiscipline(disc);
+        r.setPosition(pos);
+        r.setReason(CoverageRequest.Reason.MANUAL);
+        r.setRequiredCount(count);
+        if (r.getStatus() == null) r.setStatus(CoverageRequest.Status.OPEN);
+        if (r.getFilledCount() == null) r.setFilledCount(0);
+        return toDto(requestRepo.save(r));
+    }
+
+    private static String nz(String discipline) {
+        return discipline == null ? CoverageRequest.Discipline.OPS : discipline;
     }
 
     @Transactional(readOnly = true)
@@ -258,6 +304,8 @@ public class NgCoverageService {
                 .startDate(r.getStartDate())
                 .endDate(r.getEndDate())
                 .shift(r.getShift())
+                .discipline(r.getDiscipline())
+                .position(r.getPosition())
                 .requiredCount(r.getRequiredCount())
                 .reason(r.getReason())
                 .status(r.getStatus())

@@ -24,6 +24,7 @@ public class CrewAssignmentDto {
     private Long crewId;
     private String crewName;
     private String position;
+    private String groupLabel;      // section heading for FIXED staff (Management / Maintenance / Relief)
     private String assignmentType;
     private String fixedShift;
     private String fixedDaysOfWeek;

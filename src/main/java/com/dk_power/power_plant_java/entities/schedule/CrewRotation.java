@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
 
+import java.time.LocalDate;
+
 /**
  * Schedule v2 — a crew-level rotation cycle (the "on/on/off/off/on/on/on…" pattern). One shift code
  * per day; the WHOLE crew assigned this rotation shares that shift. Reusable across crews (the four
@@ -40,6 +42,11 @@ public class CrewRotation extends BaseAuditEntity {
     /** Rotation cycle length in days (e.g. 28). Cells repeat every {@code patternLengthDays}. */
     @Column(name = "pattern_length_days")
     private Integer patternLengthDays;
+
+    /** The calendar date that maps to {@code dayIndex 0} of the cycle (crew offset 0) — i.e. when the
+     *  rotation "started". Lets managers phase-align the whole schedule. Null = anchored to epoch day 0. */
+    @Column(name = "anchor_date")
+    private LocalDate anchorDate;
 
     /** JSON array of {@code {dayIndex, shift}} — the crew-level rotation cycle (one shift per day). */
     @Column(name = "rotation_cells", columnDefinition = "TEXT")

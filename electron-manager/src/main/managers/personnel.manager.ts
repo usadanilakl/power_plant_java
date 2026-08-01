@@ -345,20 +345,103 @@ export class PersonnelManager {
 
     this.loading = true;
     try {
-      console.log('[Personnel] Downloading schedule from SharePoint...');
-      const schedulePath = getSchedulePath();
-      console.log(`[Personnel] Schedule path: ${schedulePath}`);
-      const buffer = await this.sharepoint.downloadFile(schedulePath);
-      this.cachedPersonnel = this.parseSchedule(buffer);
+      // Source of truth = the local backend's ShiftDay. When schedule.v2.enabled the materialiser
+      // owns those rows; when it's off, the v1 SharePoint push owns them. Reading ShiftDay makes the
+      // Electron widget follow the same flag automatically (no v2 awareness needed here). Fast + local.
+      try {
+        const year = new Date().getFullYear();
+        const body: any = await backendGet(`/ng/schedule/year/${year}`, 8000);
+        const days: any[] = Array.isArray(body) ? body : (body?.responseData ?? []);
+        const fromBackend = this.convertShiftDaysToPersonnel(days);
+        if (fromBackend.length) {
+          this.cachedPersonnel = fromBackend;
+          this.cacheTime = Date.now();
+          console.log(`[Personnel] Loaded ${fromBackend.length} entries from backend ShiftDay`);
+          // Keep ShiftDay fresh from SharePoint in the background (matters only when v2 is off; the
+          // backend discards the push when v2 is on). Non-blocking — display already came from ShiftDay.
+          void this.refreshFromSharePoint();
+          return fromBackend;
+        }
+        console.log('[Personnel] Backend ShiftDay empty — falling back to the SharePoint parse');
+      } catch (err: any) {
+        console.warn('[Personnel] Backend ShiftDay unavailable (H2 down?) — SharePoint fallback:', err?.message ?? err);
+      }
+
+      // Fallback: parse SharePoint directly (backend/H2 unavailable, or no rows yet).
+      const parsed = await this.refreshFromSharePoint();
+      this.cachedPersonnel = (parsed && parsed.length) ? parsed : (this.cachedPersonnel || []);
       this.cacheTime = Date.now();
-      console.log(`[Personnel] Parsed ${this.cachedPersonnel.length} personnel entries`);
-      // Mirror the parsed schedule into the local backend (ShiftDay) so the app + sync can use it.
-      // Fire-and-forget: a backend hiccup must not break the personnel widget.
-      void this.pushToBackend(this.cachedPersonnel);
       return this.cachedPersonnel;
     } finally {
       this.loading = false;
     }
+  }
+
+  /**
+   * Download + parse the SharePoint OPS Schedule and mirror it into the backend ShiftDay. Returns the
+   * parsed entries (the offline fallback + the v1 source when schedule.v2 is off), or null if
+   * SharePoint is unavailable.
+   */
+  private async refreshFromSharePoint(): Promise<PersonnelEntry[] | null> {
+    try {
+      const schedulePath = getSchedulePath();
+      const buffer = await this.sharepoint.downloadFile(schedulePath);
+      const parsed = this.parseSchedule(buffer);
+      void this.pushToBackend(parsed);
+      return parsed;
+    } catch (err: any) {
+      console.warn('[Personnel] SharePoint schedule parse failed:', err?.message ?? err);
+      return null;
+    }
+  }
+
+  /**
+   * Reshape backend ShiftDay rows (one per day, people grouped by shift bucket) into per-person
+   * {@link PersonnelEntry} rows for the widget — the inverse of {@link parseSchedule}.
+   */
+  private convertShiftDaysToPersonnel(days: any[]): PersonnelEntry[] {
+    const byPerson = new Map<string, { name: string; group: string; schedule: { date: string; shift: ShiftCode }[] }>();
+    const keyOf = (e: any) => (e && e.userId != null) ? 'u' + e.userId : 'n' + String(e?.name ?? '').toLowerCase().trim();
+    const put = (key: string, name: string, group: string, date: string, shift: ShiftCode) => {
+      let p = byPerson.get(key);
+      if (!p) { p = { name, group: group || '', schedule: [] }; byPerson.set(key, p); }
+      if (!p.group && group) p.group = group;
+      p.schedule.push({ date, shift });
+    };
+    const sorted = (days || []).filter(d => d && d.date).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    for (const d of sorted) {
+      const date: string = d.date;
+      (d.dayShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'D'));
+      (d.nightShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'N'));
+      (d.unscheduled || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'U'));
+      (d.pto || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'P'));
+      (d.training || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'T'));
+      if (d.onCallManagerName) {
+        put('ocm:' + String(d.onCallManagerName).toLowerCase(), d.onCallManagerName, 'OCM', date, 'OCM');
+      }
+    }
+    const now = new Date();
+    const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const allDates = sorted.map(d => d.date as string);
+    const out: PersonnelEntry[] = [];
+    for (const p of byPerson.values()) {
+      const placed = new Map(p.schedule.map(s => [s.date, s.shift]));
+      // The renderer derives the month's day columns from allPersonnel[0].schedule, so EVERY person
+      // needs an entry for EVERY materialised date (blank shift = off) — a sparse schedule blanks the grid.
+      const schedule = allDates.map(date => ({ date, shift: (placed.get(date) ?? '') as ShiftCode }));
+      const groupByMonth: Record<string, string> = {};
+      for (const s of p.schedule) {
+        if (p.group) groupByMonth[String(new Date(s.date + 'T12:00:00').getMonth())] = p.group;
+      }
+      out.push({
+        name: p.name,
+        group: p.group,
+        todayShift: (placed.get(todayIso) ?? '') as ShiftCode,
+        schedule,
+        groupByMonth,
+      });
+    }
+    return out;
   }
 
   /**

@@ -61,6 +61,13 @@ export class PersonnelPageComponent implements OnInit {
   monthCoverage = signal<CoverageSeatSummary[]>([]); // days-with-open-seats across the month
   private mySignups = signal<Set<number>>(new Set()); // coverageRequestIds signed up this session
 
+  /** date → open-seat summary, so the month-grid day headers can badge days that need coverage. */
+  monthCoverageByDate = computed(() => {
+    const m = new Map<string, CoverageSeatSummary>();
+    for (const c of this.monthCoverage()) m.set(c.date, c);
+    return m;
+  });
+
   // ── Month view state ──────────────────────────────────────────────────
   monthAnchor = signal<string>(this.firstOfMonth(new Date())); // yyyy-MM-01
   monthDays = signal<ShiftDay[]>([]);

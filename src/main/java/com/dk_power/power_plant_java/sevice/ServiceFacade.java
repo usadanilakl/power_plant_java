@@ -183,6 +183,7 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewSyncService crewSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewAssignmentSyncService crewAssignmentSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.OnCallRotationSyncService onCallRotationSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.ReliefRotationSyncService reliefRotationSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.ScheduleEventSyncService scheduleEventSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.PtoRequestSyncService ptoRequestSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.CoverageRequestSyncService coverageRequestSyncService,
@@ -293,6 +294,7 @@ public class ServiceFacade {
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.Crew.class.getSimpleName(), crewSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewAssignment.class.getSimpleName(), crewAssignmentSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.OnCallRotation.class.getSimpleName(), onCallRotationSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.ReliefRotation.class.getSimpleName(), reliefRotationSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.ScheduleEvent.class.getSimpleName(), scheduleEventSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.PtoRequest.class.getSimpleName(), ptoRequestSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CoverageRequest.class.getSimpleName(), coverageRequestSyncService);

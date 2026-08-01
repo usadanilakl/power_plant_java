@@ -56,6 +56,11 @@ public class CrewAssignment extends BaseAuditEntity {
     @Column(name = "position")
     private String position;
 
+    /** Optional section heading for non-crew FIXED staff ("Management", "Maintenance", "Relief") so
+     *  they render under their own group instead of blank. ROTATING assignments use the crew name. */
+    @Column(name = "group_label")
+    private String groupLabel;
+
     /** One of {@link Type}: ROTATING | FIXED | RELIEF. */
     @Column(name = "assignment_type")
     private String assignmentType;

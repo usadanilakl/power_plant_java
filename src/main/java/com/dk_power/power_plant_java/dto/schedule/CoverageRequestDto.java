@@ -22,6 +22,8 @@ public class CoverageRequestDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private String shift;          // DAY | NIGHT
+    private String discipline;     // OPS | MECHANIC | IC | MANAGER
+    private String position;       // LEAD | CRO | AO (OPS only)
     private Integer requiredCount;
     private String reason;         // OUTAGE | PTO_COVERAGE | MANUAL
     private String status;         // OPEN | FULFILLED | CANCELLED

@@ -6,12 +6,14 @@ import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
 import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
 import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
+import com.dk_power.power_plant_java.dto.schedule.ReliefRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
 import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
 import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
 import com.dk_power.power_plant_java.entities.schedule.SchedulePosition;
 import com.dk_power.power_plant_java.entities.schedule.OnCallRotation;
+import com.dk_power.power_plant_java.entities.schedule.ReliefRotation;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
@@ -19,6 +21,7 @@ import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.SchedulePositionRepo;
 import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
+import com.dk_power.power_plant_java.repository.schedule.ReliefRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
@@ -50,6 +53,7 @@ public class NgScheduleV2Service {
 
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
     private static final TypeReference<List<Long>> LONG_LIST = new TypeReference<>() {};
+    private static final TypeReference<Map<String, Long>> SLOT_MAP = new TypeReference<>() {};
 
     private final SchedulePositionRepo positionRepo;
     private final CrewRotationRepo rotationRepo;
@@ -57,6 +61,7 @@ public class NgScheduleV2Service {
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
     private final OnCallRotationRepo onCallRepo;
+    private final ReliefRotationRepo reliefRepo;
     private final UserRepo userRepo;
     private final ScheduleMaterialisationService materialisation;
     private final ShiftDayService shiftDayService;
@@ -99,6 +104,7 @@ public class NgScheduleV2Service {
         r.setName(dto.getName());
         r.setColor(dto.getColor());
         r.setPatternLengthDays(dto.getPatternLengthDays());
+        r.setAnchorDate(dto.getAnchorDate());
         r.setRotationCells(writeCells(dto.getCells(), dto.getPatternLengthDays()));
         r.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
         CrewRotation saved = rotationRepo.save(r);
@@ -158,6 +164,7 @@ public class NgScheduleV2Service {
             a.setCrew(null);
         }
         a.setPosition(dto.getPosition());
+        a.setGroupLabel(dto.getGroupLabel());
         a.setFixedShift(dto.getFixedShift());
         a.setFixedDaysOfWeek(dto.getFixedDaysOfWeek());
         a.setStartDate(dto.getStartDate());
@@ -225,6 +232,34 @@ public class NgScheduleV2Service {
         return onCallRepo.findById(id).map(r -> { r.setDeleted(true); onCallRepo.save(r); rematerialize(); return true; }).orElse(false);
     }
 
+    // ---- Relief-swap rotation -----------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<ReliefRotationDto> listRelief() {
+        return reliefRepo.findAll().stream().map(this::toDto).toList();
+    }
+
+    public ReliefRotationDto saveRelief(ReliefRotationDto dto) {
+        ReliefRotation r = dto.getId() != null
+                ? reliefRepo.findById(dto.getId()).orElseGet(ReliefRotation::new)
+                : new ReliefRotation();
+        r.setName(dto.getName() == null || dto.getName().isBlank() ? "Relief rotation" : dto.getName());
+        r.setPosition(dto.getPosition());
+        r.setPeriodMonths(dto.getPeriodMonths() == null || dto.getPeriodMonths() < 1 ? 3 : dto.getPeriodMonths());
+        r.setAnchorDate(dto.getAnchorDate());
+        r.setLineOrderJson(writeLongs(dto.getLineOrder()));
+        r.setInitialSlotsJson(writeSlotMap(dto.getInitialSlots()));
+        r.setReliefDaysOfWeek(dto.getReliefDaysOfWeek());
+        r.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
+        ReliefRotationDto out = toDto(reliefRepo.save(r));
+        rematerialize();
+        return out;
+    }
+
+    public boolean deleteRelief(Long id) {
+        return reliefRepo.findById(id).map(r -> { r.setDeleted(true); reliefRepo.save(r); rematerialize(); return true; }).orElse(false);
+    }
+
     // ---- Misc ---------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -248,6 +283,9 @@ public class NgScheduleV2Service {
 
     /** One baked staffing row: userId + crew letter (or "REL") + role. */
     private record Seed(long userId, String crew, String role) {}
+
+    /** One baked non-operator staff row: userId + group heading + position (from the personnel titles). */
+    private record Support(long userId, String group, String position) {}
 
     /**
      * The two 28-day rotation grids (one shift per cycle-day). CD is the COMPLEMENT of AB — CD works
@@ -279,6 +317,17 @@ public class NgScheduleV2Service {
         // On-call manager rotation — weekly, anchored 2026-05-01: Ken, Scott, Matt, Heather, Ryan, Austin.
         ensureOnCall("On-Call Managers", 7, LocalDate.of(2026, 5, 1),
                 List.of(2000042237L, 2000042241L, 2000042239L, 2000042233L, 2000042240L, 52L));
+        // Lead relief-swap (quarterly): succession John→Rigo→Danil→Andrew→Stu; current block Jul–Sep 2026
+        // with Danil on relief. Crews at the Jul-1 anchor: A=Stu, B=John, C=Rigo, D=Andrew.
+        // (AO lane is added once its succession order is confirmed.)
+        ensureRelief("Lead relief", "Lead", 3, LocalDate.of(2026, 7, 1), "MON,TUE,WED,THU,FRI",
+                List.of(2000042234L, 102L, 2L, 1L, 1702L),
+                Map.of("REL", 2L, "A", 1702L, "B", 2000042234L, "C", 102L, "D", 1L));
+        // AO relief-swap: succession Geo→Stroud→Anthony→Dustin L→(Juan, appended pending confirmation);
+        // current block Jul–Sep 2026 with Anthony on relief. Crews at anchor: A=Stroud, B=Juan, C=Dustin L, D=Geo.
+        ensureRelief("AO relief", resolvePositionName("AO"), 3, LocalDate.of(2026, 7, 1), "MON,TUE,WED,THU,FRI",
+                List.of(2000042232L, 2000042226L, 2000042227L, 2000042230L, 2000042235L),
+                Map.of("REL", 2000042227L, "A", 2000042226L, "B", 2000042235L, "C", 2000042230L, "D", 2000042232L));
 
         List<Seed> roster = List.of(
                 new Seed(1702L, "A", "LEAD"), new Seed(2000042243L, "A", "CRO"), new Seed(2000042226L, "A", "AO"),
@@ -323,6 +372,79 @@ public class NgScheduleV2Service {
             assignmentRepo.save(a);
             created++;
         }
+
+        // ── Non-operator staff, from the SharePoint personnel titles ──────────────────────────
+        // Correct the earlier fuzzy mis-match: schedule "Eugene" = Yevhen Mykhailenko (a CRO), NOT
+        // Dustin Sero (a Mechanic). Move the Crew D CRO seat to Yevhen so Dustin can join Maintenance.
+        // Re-read so this also fires on a fresh seed (where the operator loop just created the row).
+        for (CrewAssignment a : assignmentRepo.findAll()) {
+            if (a.getUser() != null && a.getUser().getId() != null && a.getUser().getId() == 2000042231L
+                    && CrewAssignment.Type.ROTATING.equals(a.getAssignmentType())
+                    && Boolean.TRUE.equals(a.getIsActive())) {
+                userRepo.findById(2000042246L).ifPresent(a::setUser);
+                assignmentRepo.save(a);
+                notes.add("Crew D CRO corrected: Dustin Sero → Eugene Mykhailenko");
+            }
+        }
+
+        // Yevhen Mykhailenko now goes by the American form "Eugene" — reflect it so the schedule shows
+        // the name he uses. (A future SharePoint personnel re-sync re-asserts whatever the sheet says.)
+        userRepo.findById(2000042246L).ifPresent(e -> {
+            e.setFirstName("Eugene");
+            e.setName("Eugene Mykhailenko");
+            e.setScheduleName("Eugene");
+            userRepo.save(e);
+        });
+
+        // Positions for the support crafts / staff titles.
+        ensurePosition("Mechanic", "Mech", 4);
+        ensurePosition("I&C", "I&C", 5);
+        ensurePosition("Admin", "Admin", 8);
+        ensurePosition("Operations Manager", "OpsM", 9);
+        ensurePosition("Plant Manager", "PM", 10);
+        ensurePosition("Maintenance Manager", "MntM", 11);
+        ensurePosition("Maintenance Planner", "MntP", 12);
+        ensurePosition("Plant Engineer", "PE", 13);
+        ensurePosition("EH&S", "EHS", 14);
+
+        // Fixed day-shift staff, 4×10 (Mon–Thu default; flip a person to Tue–Fri in Staffing for a
+        // Monday off). Maintenance = mechanics + I&C; Management = the salaried day staff. Vacations
+        // flow in as PTO; a HOLIDAY-week rule (Mon–Fri minus the holiday) is a follow-on.
+        List<Support> support = List.of(
+                new Support(2000042231L, "Maintenance", "Mechanic"),      // Dustin Sero
+                new Support(2000042238L, "Maintenance", "Mechanic"),      // Kody Ziegler
+                new Support(2000042228L, "Maintenance", "I&C"),           // Brandon Barrow
+                new Support(2000042229L, "Maintenance", "I&C"),           // Cory Fuhrmann
+                new Support(2000042244L, "Maintenance", "I&C"),           // Tyler Johnson
+                new Support(2000042245L, "Maintenance", "I&C"),           // William Genz
+                new Support(52L, "Management", "Operations Manager"),         // Austin Ouellette (now Ops Mgr)
+                new Support(2000042241L, "Management", "Plant Manager"),      // Scott Freese
+                new Support(2000042240L, "Management", "Maintenance Manager"), // Ryan Sedler
+                new Support(2000042237L, "Management", "Maintenance Planner"), // Ken Bassett
+                new Support(2000042239L, "Management", "Plant Engineer"),      // Matt Wrightsman
+                new Support(2000042233L, "Management", "EH&S"),              // Heather Sincak
+                new Support(2000042242L, "Management", "Admin"));            // Sherrie Geslak
+
+        List<CrewAssignment> after = assignmentRepo.findAll();   // re-read: the CRO fix moved a row
+        for (Support s : support) {
+            User u = userRepo.findById(s.userId()).orElse(null);
+            if (u == null) { notes.add("user " + s.userId() + " not found — skipped"); skipped++; continue; }
+            boolean already = after.stream().anyMatch(a -> a.getUser() != null
+                    && a.getUser().getId() != null && a.getUser().getId() == s.userId()
+                    && Boolean.TRUE.equals(a.getIsActive()));
+            if (already) { skipped++; continue; }
+            CrewAssignment a = new CrewAssignment();
+            a.setUser(u);
+            a.setIsActive(true);
+            a.setAssignmentType(CrewAssignment.Type.FIXED);
+            a.setFixedShift(CrewRotation.Shift.DAY);
+            a.setFixedDaysOfWeek("MON,TUE,WED,THU");
+            a.setGroupLabel(s.group());
+            a.setPosition(s.position());
+            assignmentRepo.save(a);
+            created++;
+        }
+
         rematerialize();
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("created", created);
@@ -407,6 +529,22 @@ public class NgScheduleV2Service {
         onCallRepo.save(r);
     }
 
+    /** Idempotent seed of a relief-swap lane by name. */
+    private void ensureRelief(String name, String position, int periodMonths, LocalDate anchor,
+                              String reliefDays, List<Long> lineOrder, Map<String, Long> initialSlots) {
+        ReliefRotation r = reliefRepo.findAll().stream()
+                .filter(x -> name.equalsIgnoreCase(x.getName())).findFirst().orElseGet(ReliefRotation::new);
+        r.setName(name);
+        r.setPosition(position);
+        r.setPeriodMonths(periodMonths);
+        r.setAnchorDate(anchor);
+        r.setReliefDaysOfWeek(reliefDays);
+        r.setLineOrderJson(writeLongs(lineOrder));
+        r.setInitialSlotsJson(writeSlotMap(initialSlots));
+        r.setIsActive(true);
+        reliefRepo.save(r);
+    }
+
     public int materializeNow(LocalDate from, LocalDate to) {
         return materialisation.materializeRange(from, to);
     }
@@ -438,6 +576,7 @@ public class NgScheduleV2Service {
         return CrewRotationDto.builder()
                 .id(r.getId()).name(r.getName()).color(r.getColor())
                 .patternLengthDays(r.getPatternLengthDays())
+                .anchorDate(r.getAnchorDate())
                 .cells(readCells(r.getRotationCells()))
                 .isActive(r.getIsActive())
                 .build();
@@ -463,6 +602,7 @@ public class NgScheduleV2Service {
                 .crewId(c != null ? c.getId() : null)
                 .crewName(c != null ? c.getName() : null)
                 .position(a.getPosition())
+                .groupLabel(a.getGroupLabel())
                 .assignmentType(a.getAssignmentType())
                 .fixedShift(a.getFixedShift())
                 .fixedDaysOfWeek(a.getFixedDaysOfWeek())
@@ -536,6 +676,39 @@ public class NgScheduleV2Service {
         } catch (Exception e) {
             log.warn("[ScheduleV2] Failed to parse on-call members: {}", e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    private ReliefRotationDto toDto(ReliefRotation r) {
+        List<Long> line = readLongs(r.getLineOrderJson());
+        Map<String, Long> slots = readSlotMap(r.getInitialSlotsJson());
+        List<String> lineNames = line.stream()
+                .map(id -> userRepo.findById(id).map(this::displayName).orElse("User " + id)).toList();
+        return ReliefRotationDto.builder()
+                .id(r.getId()).name(r.getName()).position(r.getPosition())
+                .periodMonths(r.getPeriodMonths()).anchorDate(r.getAnchorDate())
+                .lineOrder(line).lineNames(lineNames).initialSlots(slots)
+                .reliefDaysOfWeek(r.getReliefDaysOfWeek()).isActive(r.getIsActive())
+                .build();
+    }
+
+    private String writeSlotMap(Map<String, Long> slots) {
+        if (slots == null || slots.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(slots);
+        } catch (Exception e) {
+            log.error("[ScheduleV2] Failed to serialize relief slots: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, Long> readSlotMap(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyMap();
+        try {
+            return objectMapper.readValue(json, SLOT_MAP);
+        } catch (Exception e) {
+            log.warn("[ScheduleV2] Failed to parse relief slots: {}", e.getMessage());
+            return Collections.emptyMap();
         }
     }
 
