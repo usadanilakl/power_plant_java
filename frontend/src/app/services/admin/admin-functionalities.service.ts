@@ -701,6 +701,16 @@ export class AdminFunctionalitiesService {
     );
   }
 
+  /**
+   * One-shot data migration: fix LED strip totalLeds/sequence rows to match
+   * WLED hardware. See NgLotoBoxController#healStrips. Idempotent.
+   */
+  healLedStrips(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${environment.apiUrl}/loto-boxes/heal-strips`, null
+    );
+  }
+
   getLotoBoxWledQueueStatus(): Observable<SpringApiResponse<{pending: number, expired: number}>> {
     return this.http.get<SpringApiResponse<{pending: number, expired: number}>>(
       `${environment.apiUrl}/loto-boxes/wled-queue-status`

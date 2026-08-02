@@ -71,6 +71,21 @@ public class PtoNotificationService {
         send(coverageDistro, null, "Coverage needed: " + who + " off " + range(pto), body.toString());
     }
 
+    /**
+     * Best-effort notice to a PENDING signer whose seat was filled by another coworker before their
+     * signup could be reviewed (auto-rejected on approval of the seat-filling signup).
+     */
+    public void sendSignupAutoRejected(User user, LocalDate date, String shift) {
+        if (!notifyEnabled) return;
+        if (user == null || isBlank(user.getEmail())) return;
+        String sh = CoverageRequest.ShiftType.NIGHT.equals(shift) ? "Night" : "Day";
+        String when = date != null ? date.format(D) : "the requested date";
+        String body = "Hi " + firstName(user) + ",\n\n"
+                + "The " + sh + " shift coverage seat for " + when + " you signed up for has already been "
+                + "filled by another coworker. No action is needed on your part.\n\n— Plant Schedule";
+        send(user.getEmail(), null, "Coverage seat filled: " + when, body);
+    }
+
     // ---- helpers ------------------------------------------------------------
 
     private void send(String to, String cc, String subject, String body) {

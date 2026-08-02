@@ -64,6 +64,11 @@ export class LotoStandardImageViewerComponent {
     emptyStateMessage: 'No images are associated with the LOTO points in this standard',
     enableRemoveFromStandard: true,
     enableReorder: true,
+    // Numbered badges on each shape matching the point-list order —
+    // makes scanning "which shape is point 4?" a glance instead of a
+    // hunt. Off by default in the shared viewer for other consumers
+    // (file editor, equipment browser) — opt in only where it matters.
+    showPointIndexLabels: true,
   };
 
   lotoPointClickedOutput = output<LotoPointDto>({ alias: 'lotoPointClicked' });

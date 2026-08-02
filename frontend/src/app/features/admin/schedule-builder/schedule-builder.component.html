@@ -11,7 +11,8 @@
           <span class="sb-badge" [class.on]="active()">{{ active() ? 'v2 LIVE' : 'staging · flag off' }}</span>
         </h1>
         <div class="sb-actions">
-          <button class="btn" (click)="regenerate()" [disabled]="loading()">Regenerate schedule</button>
+          <button class="btn" (click)="regenerate()" [disabled]="loading() || !active()"
+                  [title]="!active() ? 'Schedule v2 is disabled (flag off) — nothing to materialise' : ''">Regenerate schedule</button>
         </div>
       </header>
 
@@ -70,7 +71,8 @@
                 <button class="btn sm danger" (click)="deletePosition(p)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="positions().length===0"><td colspan="6" class="muted">No positions yet.</td></tr>
+            <tr *ngIf="fetching() && positions().length===0"><td colspan="6" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && positions().length===0"><td colspan="6" class="muted">No positions yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -128,7 +130,8 @@
                 <button class="btn sm danger" (click)="deleteRotation(r)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="rotations().length===0"><td colspan="5" class="muted">No rotations yet.</td></tr>
+            <tr *ngIf="fetching() && rotations().length===0"><td colspan="5" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && rotations().length===0"><td colspan="5" class="muted">No rotations yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -184,7 +187,8 @@
                 <button class="btn sm danger" (click)="deleteCrew(c)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="crews().length===0"><td colspan="6" class="muted">No crews yet.</td></tr>
+            <tr *ngIf="fetching() && crews().length===0"><td colspan="6" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && crews().length===0"><td colspan="6" class="muted">No crews yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -262,7 +266,8 @@
                 <button class="btn sm danger" (click)="deleteAssignment(a)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="assignments().length===0"><td colspan="7" class="muted">No assignments yet.</td></tr>
+            <tr *ngIf="fetching() && assignments().length===0"><td colspan="7" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && assignments().length===0"><td colspan="7" class="muted">No assignments yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -309,7 +314,8 @@
                 <button class="btn sm danger" (click)="deleteEvent(e)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="events().length===0"><td colspan="6" class="muted">No events yet.</td></tr>
+            <tr *ngIf="fetching() && events().length===0"><td colspan="6" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && events().length===0"><td colspan="6" class="muted">No events yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -379,7 +385,8 @@
                 <button class="btn sm danger" *ngIf="c.status !== 'CANCELLED'" (click)="cancelCoverageReq(c)">Cancel</button>
               </td>
             </tr>
-            <tr *ngIf="coverage().length===0"><td colspan="7" class="muted">No coverage requests yet.</td></tr>
+            <tr *ngIf="fetching() && coverage().length===0"><td colspan="7" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && coverage().length===0"><td colspan="7" class="muted">No coverage requests yet.</td></tr>
           </tbody>
         </table>
       </section>
@@ -417,7 +424,8 @@
                         [disabled]="loading() || p.status==='REJECTED'">Reject</button>
               </td>
             </tr>
-            <tr *ngIf="ptoRequests().length===0"><td colspan="6" class="muted">No PTO requests for this status.</td></tr>
+            <tr *ngIf="fetching() && ptoRequests().length===0"><td colspan="6" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && ptoRequests().length===0"><td colspan="6" class="muted">No PTO requests for this status.</td></tr>
           </tbody>
         </table>
         <p class="sb-hint">
@@ -558,7 +566,8 @@
                 <button class="btn sm danger" (click)="deleteRelief(r)">Delete</button>
               </td>
             </tr>
-            <tr *ngIf="reliefRotations().length===0"><td colspan="7" class="muted">No relief lanes yet — run Seed, or add one.</td></tr>
+            <tr *ngIf="fetching() && reliefRotations().length===0"><td colspan="7" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && reliefRotations().length===0"><td colspan="7" class="muted">No relief lanes yet — run Seed, or add one.</td></tr>
           </tbody>
         </table>
       </section>
@@ -573,11 +582,19 @@
             <button class="btn sm" [class.active]="scheduleView()==='grid'" (click)="scheduleView.set('grid')">Grid</button>
             <button class="btn sm" [class.active]="scheduleView()==='table'" (click)="scheduleView.set('table')">Table</button>
           </span>
-          <button class="btn" (click)="regenerate()" [disabled]="loading()">Regenerate</button>
+          <button class="btn" (click)="regenerateThisMonth()" [disabled]="loading() || !active()"
+                  [title]="!active() ? 'Schedule v2 is disabled (flag off) — nothing to materialise' : ''">Materialise this month</button>
+          <button class="btn" (click)="regenerate()" [disabled]="loading() || !active()"
+                  [title]="!active() ? 'Schedule v2 is disabled (flag off) — nothing to materialise' : ''">Regenerate</button>
         </div>
-        <p class="sb-hint" *ngIf="previewDays().length===0">
+        <p class="sb-hint" *ngIf="!fetching() && previewDays().length===0 && !monthOutsideHorizon()">
           No materialised days this month yet. Check the flag is on (badge = "v2 LIVE"), that crews have
           people (Staffing) and a rotation, then click <b>Regenerate</b>.
+        </p>
+        <p class="sb-hint" *ngIf="!fetching() && previewDays().length===0 && monthOutsideHorizon()">
+          {{ monthLabel() }} is outside the generated range (today − 7 to today + 180 days), so it's empty —
+          not a sign anything's wrong. Click <b>Materialise this month</b> to generate it, or navigate back
+          into the default window.
         </p>
         <table class="sb-table" *ngIf="scheduleView()==='table' && previewDays().length">
           <thead><tr><th>Date</th><th>Day shift</th><th>Night shift</th><th>Events / OCM</th></tr></thead>
@@ -606,46 +623,108 @@
             </button>
             <input class="sb-grid-search" [ngModel]="gridSearch()" (ngModelChange)="gridSearch.set($event)"
                    placeholder="Search name…" />
-            <button class="btn sm" [class.active]="showCoverageNeeds()"
-                    (click)="showCoverageNeeds.set(!showCoverageNeeds())">🆘 Coverage needs</button>
+            <span class="sb-overlay-sel" title="Overlay a band on top of the roster">
+              <button class="btn sm" *ngFor="let o of GRID_OVERLAYS"
+                      [class.active]="gridOverlay()===o.key" (click)="gridOverlay.set(o.key)">{{ o.icon }} {{ o.label }}</button>
+            </span>
           </div>
+          <p class="sb-hint sb-ovr-hint">Tip: click any <b>date header</b> to set a manual override for that day.</p>
           <div class="grid-scroll">
             <table class="mgrid">
               <thead>
                 <tr>
                   <th class="mgrid-name">Person</th>
-                  <th *ngFor="let h of monthGrid().headers" class="mgrid-day"
-                      [class.wknd]="h.weekend" [class.today]="h.today">
+                  <th *ngFor="let h of monthGrid().headers; trackBy: trackByDate" class="mgrid-day mgrid-day-btn"
+                      [class.wknd]="h.weekend" [class.today]="h.today"
+                      [class.has-ovr]="(overridesByDate().get(h.date) ?? []).length"
+                      (click)="openDayOverride(h.date)"
+                      title="Click to set a manual override for this day">
                     <div class="md-dom">{{ h.dom }}</div><div class="md-dow">{{ h.dow }}</div>
+                    <div class="md-ovr" *ngIf="(overridesByDate().get(h.date) ?? []).length">●</div>
                   </th>
                 </tr>
               </thead>
               <!-- Inline coverage needs: type required counts per day, per type × shift. -->
-              <tbody *ngIf="showCoverageNeeds()" class="cov-needs">
+              <tbody *ngIf="gridOverlay()==='coverage'" class="cov-needs">
                 <ng-container *ngFor="let sh of ['DAY','NIGHT']">
-                  <tr *ngFor="let disc of COVERAGE_DISCIPLINES">
-                    <th class="mgrid-name cov-need-label">{{ sh==='NIGHT' ? 'Ngt' : 'Day' }} · {{ disc.label }}</th>
-                    <td *ngFor="let h of monthGrid().headers" class="cov-need-cell"
+                  <tr *ngFor="let row of COVERAGE_ROWS">
+                    <th class="mgrid-name cov-need-label">{{ sh==='NIGHT' ? 'Ngt' : 'Day' }} · {{ row.label }}</th>
+                    <td *ngFor="let h of monthGrid().headers; trackBy: trackByDate" class="cov-need-cell"
                         [class.wknd]="h.weekend" [class.today]="h.today">
                       <div class="cov-stepper">
-                        <button type="button" class="cov-step" title="Add one" (click)="bumpNeed(h.date, sh, disc.key, 1)">▲</button>
+                        <button type="button" class="cov-step" title="Add one" (click)="bumpNeed(h.date, sh, row.disc, row.pos, 1)">▲</button>
                         <input type="number" min="0" class="cov-need-input"
-                               [value]="needCount(h.date, sh, disc.key)"
-                               (change)="setNeed(h.date, sh, disc.key, $any($event.target).value)" />
-                        <button type="button" class="cov-step" title="Remove one" (click)="bumpNeed(h.date, sh, disc.key, -1)">▼</button>
+                               [value]="needCount(h.date, sh, row.disc, row.pos)"
+                               (change)="setNeed(h.date, sh, row.disc, row.pos, $any($event.target).value)" />
+                        <button type="button" class="cov-step"
+                                [disabled]="atCoverageFloor(h.date, sh, row.disc, row.pos)"
+                                [title]="atCoverageFloor(h.date, sh, row.disc, row.pos) ? 'Locked by a multi-day/PTO request — edit it on the Coverage tab' : 'Remove one'"
+                                (click)="bumpNeed(h.date, sh, row.disc, row.pos, -1)">▼</button>
                       </div>
                     </td>
                   </tr>
                 </ng-container>
               </tbody>
-              <tbody>
-                <tr *ngFor="let r of gridRows()">
-                  <th class="mgrid-name">
-                    <span class="mg-nm">{{ r.name }}</span>
-                    <span class="mg-grp" *ngIf="r.group">{{ r.group }}</span>
-                  </th>
-                  <td *ngFor="let c of r.cells" class="mgrid-cell" [attr.data-code]="c">{{ c }}</td>
+              <!-- Sign-ups overlay: who signed up to cover, per day × shift. -->
+              <tbody *ngIf="gridOverlay()==='signups'" class="ov-band">
+                <tr *ngFor="let sh of ['DAY','NIGHT']">
+                  <th class="mgrid-name ov-label">{{ sh==='NIGHT' ? 'Ngt' : 'Day' }} · Sign-ups</th>
+                  <td *ngFor="let h of monthGrid().headers; trackBy: trackByDate" class="ov-cell"
+                      [class.wknd]="h.weekend" [class.today]="h.today">
+                    <span class="ov-chip" *ngFor="let s of signupsByCell().get(h.date + '|' + sh) ?? []"
+                          [class.pending]="s.status==='PENDING'" [class.approved]="s.status==='APPROVED'"
+                          [title]="(s.userName||'') + ' — ' + (s.status||'')">{{ s.userName }}</span>
+                  </td>
                 </tr>
+              </tbody>
+              <!-- Events overlay: materialised event flags per day. -->
+              <tbody *ngIf="gridOverlay()==='events'" class="ov-band">
+                <tr>
+                  <th class="mgrid-name ov-label">Events</th>
+                  <td *ngFor="let h of monthGrid().headers; trackBy: trackByDate" class="ov-cell"
+                      [class.wknd]="h.weekend" [class.today]="h.today">
+                    <span class="ov-evt" *ngFor="let e of eventsByDate().get(h.date) ?? []"
+                          [style.background]="e.color || null"
+                          [title]="e.title || e.eventType">{{ e.title || e.eventType }}</span>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody>
+                <ng-container *ngFor="let r of gridRows(); trackBy: trackByRowKey">
+                  <tr *ngIf="r.firstInGroup" class="mgrid-group-sep">
+                    <td [attr.colspan]="monthGrid().headers.length + 1">{{ r.group || 'Unassigned' }}</td>
+                  </tr>
+                  <tr>
+                    <th class="mgrid-name">
+                      <span class="mg-nm">{{ r.name }}</span>
+                      <span class="mg-grp" *ngIf="r.position">{{ r.position }}</span>
+                    </th>
+                    <td *ngFor="let c of r.cells; trackBy: trackByIndex" class="mgrid-cell"
+                        [attr.data-code]="(c.cov || c.seat) ? '' : c.code"
+                        [class.cov-approved]="c.cov?.status === 'APPROVED'"
+                        [class.cov-pending]="c.cov?.status === 'PENDING'"
+                        [class.seat-split]="!c.cov && c.seat && c.seat.day > 0 && c.seat.night > 0"
+                        [class.seat-day-only]="!c.cov && c.seat && c.seat.day > 0 && !(c.seat.night > 0)"
+                        [class.seat-night-only]="!c.cov && c.seat && c.seat.night > 0 && !(c.seat.day > 0)"
+                        [title]="c.cov
+                          ? (c.cov.status === 'APPROVED' ? 'Approved coverage' : 'Pending approval — coverage')
+                          : (c.seat ? (c.seat.day + ' day / ' + c.seat.night + ' night open') : '')"
+                        (click)="c.cov?.status === 'PENDING' && toggleCovAction(r.key, c.date)">
+                      <ng-container *ngIf="c.cov; else seatOrCode">{{ c.cov.shift === 'NIGHT' ? 'N' : 'D' }}</ng-container>
+                      <ng-template #seatOrCode>
+                        <ng-container *ngIf="c.seat && c.seat.day > 0 && c.seat.night > 0; else singleSeatOrCode">
+                          <span class="seat-half seat-day">{{ c.seat.day }}</span><span class="seat-half seat-night">{{ c.seat.night }}</span>
+                        </ng-container>
+                        <ng-template #singleSeatOrCode>{{ c.seat ? (c.seat.day > 0 ? c.seat.day : c.seat.night) : c.code }}</ng-template>
+                      </ng-template>
+                      <div class="cov-popover" *ngIf="c.cov?.status === 'PENDING' && covActionKey() === (r.key + '|' + c.date)"
+                           (click)="$event.stopPropagation()">
+                        <button type="button" class="cov-act ok" title="Approve" (click)="approveCovSignup(c.cov!.id)">✓</button>
+                        <button type="button" class="cov-act no" title="Decline" (click)="rejectCovSignup(c.cov!.id)">✗</button>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
                 <tr *ngIf="gridRows().length===0">
                   <td class="muted" [attr.colspan]="monthGrid().headers.length + 1">No one matches this filter.</td>
                 </tr>
@@ -654,8 +733,60 @@
           </div>
           <p class="mgrid-legend">
             <b>D</b> Day · <b>N</b> Night · <b>OCM</b> On-call mgr · <b>P</b> PTO · <b>T</b> Training · <b>U</b> Unscheduled
+            <span class="legend-swatch seat-day-sw"></span> day seats open
+            <span class="legend-swatch seat-night-sw"></span> night seats open
+            <span class="legend-swatch cov-pending-sw"></span> pending coverage
+            <span class="legend-swatch cov-approved-sw"></span> approved coverage
           </p>
         </ng-container>
+
+        <!-- Per-day manual override dialog -->
+        <div class="sb-modal-backdrop" *ngIf="overrideModalDate() as od" (click)="closeDayOverride()">
+          <div class="sb-modal" (click)="$event.stopPropagation()">
+            <div class="sb-modal-head">
+              <h3>Manual override — {{ weekday(od) }} {{ od }}</h3>
+              <button class="btn sm" (click)="closeDayOverride()">✕</button>
+            </div>
+
+            <!-- Current roster for context -->
+            <div class="ovr-roster" *ngIf="dayRosterFor(od) as d">
+              <div><span class="ovr-lbl">Day:</span>
+                <span class="chip day" *ngFor="let e of d.dayShift">{{ entryLabel(e) }}</span>
+                <span class="muted" *ngIf="!d.dayShift?.length">—</span>
+              </div>
+              <div><span class="ovr-lbl">Night:</span>
+                <span class="chip night" *ngFor="let e of d.nightShift">{{ entryLabel(e) }}</span>
+                <span class="muted" *ngIf="!d.nightShift?.length">—</span>
+              </div>
+              <div *ngIf="d.onCallManagerName"><span class="ovr-lbl">OCM:</span> {{ d.onCallManagerName }}</div>
+            </div>
+
+            <!-- Existing overrides -->
+            <div class="ovr-existing" *ngIf="(overridesByDate().get(od) ?? []).length">
+              <div class="ovr-row" *ngFor="let o of overridesByDate().get(od) ?? []">
+                <span class="ovr-who">{{ o.userName }}</span>
+                <span class="ovr-code" [attr.data-code]="o.shift">{{ overrideCodeLabel(o.shift) }}</span>
+                <span class="ovr-reason muted" *ngIf="o.reason">{{ o.reason }}</span>
+                <button class="btn sm danger" (click)="removeOverride(o)">Remove</button>
+              </div>
+            </div>
+            <p class="muted" *ngIf="!(overridesByDate().get(od) ?? []).length">No overrides on this day yet.</p>
+
+            <!-- Add override -->
+            <div class="ovr-add">
+              <select [(ngModel)]="overrideForm.userId">
+                <option [ngValue]="undefined">Select person…</option>
+                <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.name }}</option>
+              </select>
+              <select [(ngModel)]="overrideForm.shift">
+                <option *ngFor="let c of OVERRIDE_CODES" [value]="c.code">{{ c.label }}</option>
+              </select>
+              <input type="text" [(ngModel)]="overrideForm.reason" placeholder="Reason (optional)" />
+              <button class="btn" (click)="addOverride()" [disabled]="loading() || !overrideForm.userId">Apply</button>
+            </div>
+            <p class="sb-hint">Overrides win over the pattern and re-materialise this day immediately.</p>
+          </div>
+        </div>
       </section>
     </div>
   </ng-container>

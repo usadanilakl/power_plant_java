@@ -92,6 +92,86 @@ export class CanvasRenderService {
         }
         break;
     }
+
+    // Optional point-index badge on top of the shape — used by the LOTO
+    // Standard / LOTO permit viewers to make the mapping from a shape on
+    // the P&ID to a numbered row in the point list scan-able at a
+    // glance. Drawn after the shape body + highlight overlay so it sits
+    // on top of everything. Only applies to bounded shapes (rectangle
+    // / image / svg-symbol / file-connector) — text/line/circle skip.
+    if (shape.pointIndex != null && (
+      scaledShape.type === 'rectangle' ||
+      scaledShape.type === 'image' ||
+      scaledShape.type === 'svg-symbol' ||
+      scaledShape.type === 'file-connector'
+    )) {
+      this.drawIndexBadge(ctx, scaledShape as (RfRectangleShape | RfImageShape | SVGSymbolShape | FileConnectorShape), String(shape.pointIndex), scale);
+    }
+  }
+
+  /**
+   * Draw a small circular badge with the point index (or short label)
+   * anchored to the top-right corner of the shape's bounding box.
+   * White fill + dark stroke keeps it legible on any P&ID background;
+   * bold text sits on top. Scales with the canvas — same code path
+   * serves the live Images tab (zooms with the viewport) and the print
+   * rasterizer (drawn at native resolution).
+   *
+   * @param shape - already-scaled shape (returned by scaleShape)
+   * @param label - the badge text (typically "1", "2", …)
+   * @param scale - current canvas zoom factor, used to keep the badge
+   *   size visually consistent at any zoom level
+   */
+  private drawIndexBadge(
+    ctx: CanvasRenderingContext2D,
+    shape: RfRectangleShape | RfImageShape | SVGSymbolShape | FileConnectorShape,
+    label: string,
+    scale: number
+  ): void {
+    if (!label) return;
+    // Anchor OUTSIDE the top-right corner of the bounding box so the
+    // badge doesn't cover on-drawing text (equipment tag numbers on
+    // P&IDs typically sit next to the symbol). Rotation-agnostic on
+    // purpose — the badge sits at the un-rotated corner even when
+    // the shape is rotated, so scanning "which shape is point 4?"
+    // stays consistent regardless of symbol orientation.
+    const anchorX = shape.x + shape.width;
+    const anchorY = shape.y;
+
+    // Radius: viewport-scale default (so badges are legible at any
+    // zoom) but capped by ~35% of the shape's smaller dimension so
+    // tiny shapes (valves, switches) don't get badges that dominate
+    // them. Floor kept at 6px for readability on very small shapes.
+    const defaultR = Math.min(18, Math.max(9, 11 * scale));
+    const shapeCappedR = Math.max(6, Math.min(shape.width, shape.height) * 0.35);
+    const radius = Math.min(defaultR, shapeCappedR);
+    const fontSize = Math.max(8, radius * 1.05);
+
+    // Diagonally OUT of the top-right corner: ~15% of the badge past
+    // the outline, ~85% overlapping the corner. Never fully inside
+    // (would cover the drawing's own text) and never fully floating
+    // (would look detached from the shape).
+    const cx = anchorX + radius * 0.15;
+    const cy = anchorY - radius * 0.15;
+
+    ctx.save();
+    // Filled white circle with dark stroke — high contrast against
+    // both light and dark P&ID backgrounds.
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#1f2933';
+    ctx.lineWidth = Math.max(1, 1.5 * Math.min(scale, 1.5));
+    ctx.fill();
+    ctx.stroke();
+
+    // Centered bold label.
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#1f2933';
+    ctx.fillText(label, cx, cy);
+    ctx.restore();
   }
 
   /**

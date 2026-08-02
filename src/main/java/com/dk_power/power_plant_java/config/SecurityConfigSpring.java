@@ -111,10 +111,15 @@ public class SecurityConfigSpring {
                 // Must precede the generic maximo rule below (first match wins), which still denies KIOSK on writes.
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
                 .requestMatchers("/api/pwa/secured/maximo/**").hasAnyRole("PLANT", "ADMIN")
-                // Coverage signup: a kiosk (otherwise read-only) may GET open coverage and POST a
-                // signup. Method-scoped so KIOSK write access is confined to this one path.
+                // Coverage signup: a kiosk (otherwise read-only) may GET open coverage so a wall
+                // display can show open seats. POST (signup) is deliberately NOT granted to KIOSK —
+                // the shared kiosk JWT identifies the display, not the individual signing up, so a
+                // KIOSK POST would be misattributed (or simply dead, since nobody can drive it
+                // meaningfully). Kiosk PIN step-up (identify the individual via the
+                // X-Sign-As-Token / StepUpAuthFilter path, see PwaCoverageController javadoc) is the
+                // planned Phase 3B route back to kiosk signup — wire it there, not here.
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/**").authenticated()
                 .requestMatchers("/api/pwa/auth/me", "/api/pwa/auth/refresh").authenticated()
 
@@ -167,6 +172,17 @@ public class SecurityConfigSpring {
                 .requestMatchers("/ng/chat-audit/**").hasRole("ADMIN")
                 // Schedule v2 builder — manager/admin authoring of crew patterns, assignments, events.
                 .requestMatchers("/ng/admin/schedule-v2/**").hasRole("ADMIN")
+
+                // Schedule sync — writes ShiftDay rows via CRDT (importSchedule). Only the Electron
+                // desktop's local scraper (personnel.manager.ts, loopback — mirrors the /ng/rounds/
+                // rule below) or an admin should be able to trigger it; any other authenticated
+                // principal could otherwise overwrite the roster. Must precede the /ng/schedule/**
+                // read rule and the generic catch-all (first match wins).
+                .requestMatchers(localhostMatcher("/ng/schedule/sync")).permitAll()
+                .requestMatchers("/ng/schedule/sync").hasRole("ADMIN")
+                // Schedule reads (roster, coverage-eligibility, freshness, unresolved) — plant staff
+                // only, same role set used for Maximo/ical below.
+                .requestMatchers("/ng/schedule/**").hasAnyRole("PLANT", "ADMIN")
 
                 // Maximo — open to plant staff (ROLE_PLANT) and admins. Combined with @RestrictedAllowed on
                 // the Maximo controllers, a Plant-role user reaches Maximo without needing a FULL access grant

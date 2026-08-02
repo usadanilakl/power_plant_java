@@ -223,6 +223,43 @@ public class NgLotoBoxController {
         }
     }
 
+    /**
+     * One-shot data migration: fix LED strip totalLeds and sequence rows to the
+     * per-strip [240,237,237,245,245,260] layout. Historical bug seeded 260 for
+     * every strip, which made WLED return HTTP 400 on any actuation.
+     * Idempotent — no-op once every row is correct. Does NOT touch box or LOTO
+     * state (unlike {@code /seed-inventory}). Run once per node after upgrade.
+     */
+    @PostMapping("/heal-strips")
+    public ResponseEntity<NgApiResponse<String>> healStrips() {
+        try {
+            String result = lotoBoxInitializationService.healLedStrips();
+            return ResponseEntity.ok(new NgApiResponse<>("OK", result));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Hub-side trigger endpoint used by desktops' {@link com.dk_power.power_plant_java.sevice.esp.EspRefreshDispatcher}.
+     * A desktop that just updated a box's color calls this after saving locally;
+     * the hub enqueues a refresh for the target ESP so its (hub-side) leader loop
+     * writes the final state to the WLED controller. On the hub the queue always
+     * processes; on a desktop this endpoint is reachable but conceptually intended
+     * for the hub role — enqueue-only, no side-effect on box state.
+     */
+    @PostMapping("/esp/{espDeviceId}/refresh")
+    public ResponseEntity<NgApiResponse<String>> refreshEsp(@PathVariable Long espDeviceId) {
+        try {
+            wledCommandQueueService.enqueueEspRefresh(espDeviceId);
+            return ResponseEntity.ok(new NgApiResponse<>("OK", "ESP refresh enqueued"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     @PostMapping("/reconcile")
     public ResponseEntity<NgApiResponse<String>> reconcile() {
         try {

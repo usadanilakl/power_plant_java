@@ -25,9 +25,13 @@ export class RfLotoPointClickService extends TableClickService {
   protected override handleRowDoubleClick(item: any, _event: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item) as LotoPointDto;
 
-    // Fetch full entity from server instead of using incomplete table data
+    // Fetch full entity from server AND open the form popup — loadItemById
+    // alone only sets selectedItem, leaving the page-level
+    // isLotoPointFormOpen popup closed (was the bug behind "double-click
+    // does nothing" in both the LOTO Standard editor's Points tab and
+    // the Images tab, since LotoPointDisplayTable inherits this class).
     if (normalizedItem?.id) {
-      this.lotoStateService.loadItemById(normalizedItem.id);
+      this.lotoStateService.loadAndOpenItem(normalizedItem.id);
     }
   }
 

@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.dto.schedule.CoverageRequestDto;
 import com.dk_power.power_plant_java.dto.schedule.CoverageSeatSummaryDto;
 import com.dk_power.power_plant_java.dto.schedule.CoverageSignupDto;
+import com.dk_power.power_plant_java.dto.schedule.EligibilityCellDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewAssignmentDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
@@ -11,6 +12,7 @@ import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.PtoRequestDto;
 import com.dk_power.power_plant_java.dto.schedule.ReliefRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
+import com.dk_power.power_plant_java.dto.schedule.ScheduleDayOverrideDto;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
 import com.dk_power.power_plant_java.sevice.schedule.NgScheduleV2Service;
@@ -22,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -36,9 +39,26 @@ import java.util.Map;
 @Slf4j
 public class NgScheduleV2AdminController {
 
+    /** Server-enforced maximum range width for materialize/preview/coverage-summary/coverage-signups.
+     *  Mirrors {@code PwaCoverageController.MAX_RANGE_DAYS} intent — prevents an accidental
+     *  unbounded materialise/scan from a builder UI bug or a bad admin request. */
+    private static final int MAX_RANGE_DAYS = 180;
+
     private final NgScheduleV2Service service;
     private final NgCoverageService coverageService;
     private final PtoEmailIntakeService ptoIntakeService;
+
+    /** Throws {@link IllegalArgumentException} (→ 400 via {@link #handleBadRequest}) when the range
+     *  is inverted or wider than {@link #MAX_RANGE_DAYS}. */
+    private static void validateRange(LocalDate from, LocalDate to) {
+        if (to.isBefore(from)) {
+            throw new IllegalArgumentException("'to' must be on or after 'from'");
+        }
+        long span = ChronoUnit.DAYS.between(from, to) + 1;
+        if (span > MAX_RANGE_DAYS) {
+            throw new IllegalArgumentException("Range exceeds " + MAX_RANGE_DAYS + " days (requested " + span + ")");
+        }
+    }
 
     // ---- Positions ----------------------------------------------------------
 
@@ -167,6 +187,26 @@ public class NgScheduleV2AdminController {
         return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
     }
 
+    // ---- Day overrides (per-day manual adjustments) -------------------------
+
+    @GetMapping("/overrides")
+    public ResponseEntity<NgApiResponse<List<ScheduleDayOverrideDto>>> listOverrides(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listOverrides(from, to), "Day overrides"));
+    }
+
+    @PostMapping("/overrides")
+    public ResponseEntity<NgApiResponse<ScheduleDayOverrideDto>> saveOverride(@RequestBody ScheduleDayOverrideDto dto) {
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveOverride(dto), "Override saved"));
+    }
+
+    @DeleteMapping("/overrides/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deleteOverride(@PathVariable Long id) {
+        boolean ok = service.deleteOverride(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
+    }
+
     // ---- On-call rotation ---------------------------------------------------
 
     @GetMapping("/on-call")
@@ -233,6 +273,7 @@ public class NgScheduleV2AdminController {
     public ResponseEntity<NgApiResponse<Map<String, Object>>> materialize(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        validateRange(from, to);
         int written = service.materializeNow(from, to);
         return ResponseEntity.ok(new NgApiResponse<>(Map.of("rowsWritten", written), "Materialised " + written + " day rows"));
     }
@@ -248,6 +289,7 @@ public class NgScheduleV2AdminController {
     public ResponseEntity<NgApiResponse<List<ShiftDayDto>>> preview(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        validateRange(from, to);
         return ResponseEntity.ok(new NgApiResponse<>(service.schedulePreview(from, to), "Schedule preview"));
     }
 
@@ -287,12 +329,32 @@ public class NgScheduleV2AdminController {
     public ResponseEntity<NgApiResponse<List<CoverageSeatSummaryDto>>> coverageSummary(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        validateRange(from, to);
         return ResponseEntity.ok(new NgApiResponse<>(coverageService.seatSummary(from, to), "Coverage seat summary"));
     }
 
     @GetMapping("/coverage/{id}/signups")
     public ResponseEntity<NgApiResponse<List<CoverageSignupDto>>> listSignups(@PathVariable Long id) {
         return ResponseEntity.ok(new NgApiResponse<>(coverageService.listSignups(id), "Coverage signups"));
+    }
+
+    /** All signups over a date range (any status) — the admin grid "Sign-ups" overlay. */
+    @GetMapping("/coverage/signups")
+    public ResponseEntity<NgApiResponse<List<CoverageSignupDto>>> listSignupsRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        validateRange(from, to);
+        return ResponseEntity.ok(new NgApiResponse<>(coverageService.listSignups(from, to), "Coverage signups"));
+    }
+
+    /** Per-person day/night open-seat counts across a range — the grid seat marker (green day count /
+     *  blue night count). Same data the operator grids use, so the manager sees the same demand. */
+    @GetMapping("/coverage/eligibility-detail")
+    public ResponseEntity<NgApiResponse<List<EligibilityCellDto>>> eligibilityDetail(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        validateRange(from, to);
+        return ResponseEntity.ok(new NgApiResponse<>(coverageService.eligibilityDetail(from, to), "Seat eligibility"));
     }
 
     @PostMapping("/coverage/signups/{id}/approve")

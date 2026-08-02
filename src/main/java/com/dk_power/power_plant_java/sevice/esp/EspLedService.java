@@ -4,15 +4,15 @@ import com.dk_power.power_plant_java.entities.esp.EspDevice;
 import com.dk_power.power_plant_java.entities.esp.LedStrip;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -35,11 +35,13 @@ import java.util.Map;
  * assigned to a box gets the default "closed" color, so gaps between box
  * ranges don't produce random pixels.
  * <p>
- * Full-refresh semantics are intentional: the queue coalesces box changes into
- * a per-ESP "please refresh" marker (see {@link WledCommandQueueService}), and
- * this method rebuilds the entire array from the current DB snapshot on each
- * call. That makes retries safe (idempotent), and prevents drift between the
- * DB state and the physical LEDs when a write races with a status change.
+ * <b>HTTP client choice:</b> uses {@link HttpClient} (JDK 11+ built-in), NOT
+ * Spring's {@code RestTemplate}. WLED's embedded AsyncWebServer 400s
+ * RestTemplate + SimpleClientHttpRequestFactory posts even when the JSON body
+ * is byte-identical to a working {@code curl} call — some quirk in
+ * HttpURLConnection framing that WLED's parser rejects. The JDK's built-in
+ * HttpClient behaves like curl for these tiny embedded servers and works. Same
+ * Java runtime, different HTTP client class — no dependency changes.
  */
 @Service
 @RequiredArgsConstructor
@@ -49,22 +51,23 @@ public class EspLedService {
     /** Default color for unassigned LEDs — matches the "closed" box color. */
     private static final int[] DEFAULT_RGB = {0, 0, 32};
 
-    // Dedicated short-timeout client for ESP boxes. The shared RestTemplate bean
-    // (WebConfigurer) has a 5-minute response timeout, which would pin a scheduler
-    // thread for minutes on a half-alive box. A box on the LAN answers in well under
-    // a second, so fail fast instead. (WledLeadershipService hand-rolls the same 2s
-    // timeout for its hub probe for exactly this reason.)
-    private final RestTemplate restTemplate = buildEspRestTemplate();
+    /**
+     * JDK HttpClient tuned for LAN calls to WLED boxes. HTTP/1.1 forced —
+     * WLED does not speak HTTP/2 and negotiating it is wasted round-trips.
+     * Short connect timeout so a half-alive box fails fast instead of pinning
+     * a scheduler thread.
+     */
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(2))
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
+
+    /** Reused mapper — thread-safe. */
+    private final ObjectMapper mapper = new ObjectMapper();
+
     private final EspDeviceService espDeviceService;
     private final LotoBoxRepo lotoBoxRepo;
     private final LedStripService ledStripService;
-
-    private static RestTemplate buildEspRestTemplate() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(2));
-        factory.setReadTimeout(Duration.ofSeconds(3));
-        return new RestTemplate(factory);
-    }
 
     /**
      * Rebuild the full LED array for one ESP from current DB state and POST
@@ -139,12 +142,54 @@ public class EspLedService {
         state.put("seg", seg);
 
         String url = "http://" + espDevice.getIpAddress() + "/json/state";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(state, headers);
+        postJson(url, state, totalLeds, strips, espDevice);
+    }
 
-        log.debug("[EspLedService] Syncing {} LEDs to ESP {} ({})", totalLeds, espDevice.getName(), espDevice.getIpAddress());
-        restTemplate.postForObject(url, request, String.class);
+    /**
+     * POST JSON to a WLED endpoint via {@link HttpClient}. Throws on non-2xx
+     * or transport failure so the queue's retry counter increments.
+     */
+    private void postJson(String url, Map<String, Object> body, int totalLeds,
+                          List<LedStrip> strips, EspDevice espDevice) {
+        String bodyJson;
+        try {
+            bodyJson = mapper.writeValueAsString(body);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize WLED body", e);
+        }
+
+        StringBuilder stripInfo = new StringBuilder();
+        if (strips != null) {
+            for (LedStrip s : strips) {
+                if (stripInfo.length() > 0) stripInfo.append(",");
+                stripInfo.append(s.getStripNumber()).append(":").append(s.getTotalLeds());
+            }
+        }
+        log.info("[EspLedService] POST {} — {} LEDs, strips=[{}], bodyLen={}",
+                url, totalLeds, stripInfo, bodyJson.length());
+
+        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(3))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+                .build();
+
+        HttpResponse<String> resp;
+        try {
+            resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            throw new RuntimeException("WLED POST transport error: " + e.getMessage(), e);
+        }
+
+        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+            log.warn("[EspLedService] WLED {} rejected: status={} respBody={} reqBodyLen={} reqBodyTail={}",
+                    espDevice == null ? url : espDevice.getIpAddress(),
+                    resp.statusCode(),
+                    resp.body(),
+                    bodyJson.length(),
+                    bodyJson.length() > 200 ? "…" + bodyJson.substring(bodyJson.length() - 200) : bodyJson);
+            throw new RuntimeException("WLED HTTP " + resp.statusCode() + ": " + resp.body());
+        }
     }
 
     /**
@@ -155,10 +200,7 @@ public class EspLedService {
         try {
             Map<String, Object> state = new HashMap<>();
             state.put("on", false);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(state, headers);
-            restTemplate.postForObject("http://" + espDevice.getIpAddress() + "/json/state", request, String.class);
+            postJson("http://" + espDevice.getIpAddress() + "/json/state", state, 0, null, espDevice);
             log.info("[EspLedService] Turned off ESP {}", espDevice.getName());
         } catch (Exception e) {
             log.error("[EspLedService] Failed to turn off ESP {}: {}", espDevice.getName(), e.getMessage());
@@ -168,8 +210,11 @@ public class EspLedService {
     public boolean isEspDeviceReachable(EspDevice espDevice) {
         if (espDevice == null || espDevice.getIpAddress() == null) return false;
         try {
-            restTemplate.getForObject("http://" + espDevice.getIpAddress() + "/json/info", String.class);
-            return true;
+            HttpRequest req = HttpRequest.newBuilder(URI.create("http://" + espDevice.getIpAddress() + "/json/info"))
+                    .timeout(Duration.ofSeconds(2))
+                    .GET().build();
+            HttpResponse<Void> resp = http.send(req, HttpResponse.BodyHandlers.discarding());
+            return resp.statusCode() >= 200 && resp.statusCode() < 300;
         } catch (Exception e) {
             return false;
         }
@@ -178,7 +223,10 @@ public class EspLedService {
     public String getEspDeviceStatus(EspDevice espDevice) {
         if (espDevice == null || espDevice.getIpAddress() == null) return "Device or IP is null";
         try {
-            return restTemplate.getForObject("http://" + espDevice.getIpAddress() + "/json/info", String.class);
+            HttpRequest req = HttpRequest.newBuilder(URI.create("http://" + espDevice.getIpAddress() + "/json/info"))
+                    .timeout(Duration.ofSeconds(2))
+                    .GET().build();
+            return http.send(req, HttpResponse.BodyHandlers.ofString()).body();
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

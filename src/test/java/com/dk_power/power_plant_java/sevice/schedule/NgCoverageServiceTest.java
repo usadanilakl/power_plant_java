@@ -7,8 +7,10 @@ import com.dk_power.power_plant_java.entities.schedule.CoverageSignup;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageRequestRepo;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,13 +43,17 @@ class NgCoverageServiceTest {
     @Mock private CoverageSignupRepo signupRepo;
     @Mock private PtoRequestRepo ptoRepo;
     @Mock private UserRepo userRepo;
+    @Mock private CrewAssignmentRepo assignmentRepo;
+    @Mock private ShiftDayService shiftDayService;
     @Mock private ScheduleMaterialisationService materialisation;
+    @Mock private PtoNotificationService notificationService;
 
     private NgCoverageService service;
 
     @BeforeEach
     void setUp() {
-        service = new NgCoverageService(requestRepo, signupRepo, ptoRepo, userRepo, materialisation);
+        service = new NgCoverageService(requestRepo, signupRepo, ptoRepo, userRepo,
+                assignmentRepo, shiftDayService, materialisation, notificationService);
     }
 
     @Test
@@ -102,7 +108,8 @@ class NgCoverageServiceTest {
         existing.setUser(u);
         existing.setDate(D0);
         existing.setStatus("PENDING");
-        when(signupRepo.findByCoverageRequest_Id(7L)).thenReturn(List.of(existing));
+        // One seat per person per day is now enforced across ALL requests via findByUser_IdAndDate.
+        when(signupRepo.findByUser_IdAndDate(9L, D0)).thenReturn(List.of(existing));
 
         assertThatThrownBy(() -> service.signUp(7L, D0, u, "PWA"))
                 .isInstanceOf(IllegalStateException.class);

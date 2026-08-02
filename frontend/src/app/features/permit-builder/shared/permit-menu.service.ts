@@ -58,15 +58,19 @@ export class PermitMenuService {
   }
 
   private getItemDisplayName(item: any): string {
-    if (item.date) {
-      const location = item.location || item.space || '';
-      return location ? `${item.date} - ${location}` : item.date;
+    // Prefer permit number + a human-readable qualifier. The date-first fallback
+    // was showing "2026-07-30 - <blank>" for LOTOs, which is what the user
+    // called "random creation time".
+    const qualifier = item.workScope || item.equipmentSystem || item.location || item.space || '';
+    if (item.permitNumber) {
+      return qualifier ? `${item.permitNumber} — ${qualifier}` : item.permitNumber;
     }
     if (item.name) return item.name;
-    // LOTO-friendly fallbacks (LOTO has no name field)
-    if (item.permitNumber) return item.permitNumber;
+    if (item.date) {
+      return qualifier ? `${item.date} - ${qualifier}` : item.date;
+    }
     if (item.docNum) return `#${item.docNum}`;
-    if (item.equipmentSystem) return item.equipmentSystem;
+    if (qualifier) return qualifier;
     if (item.id) return `LOTO #${item.id}`;
     return 'Unnamed Permit';
   }

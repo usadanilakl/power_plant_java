@@ -11,8 +11,11 @@ import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -23,6 +26,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/ng/excel")
 public class ExcelController {
+    private static final Logger log = LoggerFactory.getLogger(ExcelController.class);
+
     private final ExcelWriterService excelWriterService;
     private final NgLotoPointService lotoPointService;
     private final NgFileService fileService;
@@ -72,6 +77,16 @@ public class ExcelController {
 
     // ==================== LOTO POINT ====================
 
+    /**
+     * @Transactional(readOnly=true) keeps the Hibernate session open across
+     * the whole write so lazy collections on the streamed LotoPoints
+     * (equipmentList → mainFile → fileLink, used by writeStandardLotoPointRows
+     * / writeLotoPointsToExcelTableWithLinks to build the file-link column)
+     * initialise on demand instead of throwing
+     * LazyInitializationException. Read-only + no propagation change so
+     * this only affects the export path.
+     */
+    @Transactional(readOnly = true)
     @GetMapping("/loto-point/export-all")
     public ResponseEntity<NgApiResponse<String>> exportLotoPointAll() {
         try {
@@ -79,10 +94,12 @@ public class ExcelController {
             excelWriterService.writeLotoPointsToExcelTableWithLinks(buildExportPath("loto_points"), all);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + all.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
 
+    @Transactional(readOnly = true)
     @PostMapping("/loto-point/export-by-query")
     public ResponseEntity<NgApiResponse<String>> exportLotoPointByQuery(@RequestBody SearchCriteria criteria) {
         try {
@@ -90,10 +107,12 @@ public class ExcelController {
             excelWriterService.writeLotoPointsToExcelTableWithLinks(buildExportPath("loto_points_queried"), queriedPoints);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + queriedPoints.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
 
+    @Transactional(readOnly = true)
     @PostMapping("/loto-point/export-by-ids")
     public ResponseEntity<NgApiResponse<String>> exportLotoPointByIds(@RequestBody List<Long> ids) {
         try {
@@ -101,6 +120,7 @@ public class ExcelController {
             excelWriterService.writeLotoPointsToExcelTableWithLinks(buildExportPath("loto_points_selected"), selectedPoints);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + selectedPoints.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
@@ -114,6 +134,7 @@ public class ExcelController {
             excelWriterService.writeFilesToExcel(buildExportPath("files"), all);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + all.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
@@ -125,6 +146,7 @@ public class ExcelController {
             excelWriterService.writeFilesToExcel(buildExportPath("files_queried"), queriedFiles);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + queriedFiles.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
@@ -136,12 +158,14 @@ public class ExcelController {
             excelWriterService.writeFilesToExcel(buildExportPath("files_selected"), selectedFiles);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + selectedFiles.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
 
     // ==================== LOTO STANDARD ====================
 
+    @Transactional(readOnly = true)
     @GetMapping("/loto-standard/export-all")
     public ResponseEntity<NgApiResponse<String>> exportLotoStandardAll(
             @RequestParam(defaultValue = "compact") String format) {
@@ -150,10 +174,12 @@ public class ExcelController {
             writeLotoStandards(buildExportPath("loto_standards"), all, format);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + all.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
 
+    @Transactional(readOnly = true)
     @PostMapping("/loto-standard/export-by-query")
     public ResponseEntity<NgApiResponse<String>> exportLotoStandardByQuery(
             @RequestBody SearchCriteria criteria,
@@ -163,10 +189,12 @@ public class ExcelController {
             writeLotoStandards(buildExportPath("loto_standards_queried"), queriedStandards, format);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + queriedStandards.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
 
+    @Transactional(readOnly = true)
     @PostMapping("/loto-standard/export-by-ids")
     public ResponseEntity<NgApiResponse<String>> exportLotoStandardByIds(
             @RequestBody List<Long> ids,
@@ -176,6 +204,7 @@ public class ExcelController {
             writeLotoStandards(buildExportPath("loto_standards_selected"), selectedStandards, format);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + selectedStandards.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
@@ -197,6 +226,7 @@ public class ExcelController {
             excelWriterService.writeWorkRequestsToExcel(buildExportPath("work_requests"), all);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + all.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
@@ -208,6 +238,7 @@ public class ExcelController {
             excelWriterService.writeWorkRequestsToExcel(buildExportPath("work_requests_queried"), queriedItems);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + queriedItems.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }
@@ -219,6 +250,7 @@ public class ExcelController {
             excelWriterService.writeWorkRequestsToExcel(buildExportPath("work_requests_selected"), selectedItems);
             return ResponseEntity.ok(new NgApiResponse<>("Data exported successfully", "Success - " + selectedItems.size() + " items exported"));
         } catch (Exception e) {
+            log.error("Excel export failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(e.getMessage(), "Error exporting data"));
         }
     }

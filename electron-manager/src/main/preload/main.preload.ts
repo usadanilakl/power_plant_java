@@ -312,6 +312,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   personnelGetConfig: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_CONFIG),
   personnelSaveConfig: (config: any): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_SAVE_CONFIG, config),
   personnelGetMeta: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_META),
+  personnelCoverageDay: (date: string): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_DAY, date),
+  personnelCoverageSignup: (coverageRequestId: number, date: string, signAsToken?: string): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_SIGNUP, coverageRequestId, date, signAsToken),
+  personnelCoverageSignups: (from: string, to: string): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_SIGNUPS, from, to),
+  personnelCoverageEligibility: (from: string, to: string): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_ELIGIBILITY, from, to),
+  personnelCoverageEligibilityDetail: (from: string, to: string): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_ELIGIBILITY_DETAIL, from, to),
+  personnelCoverageQuickSignup: (date: string, shift?: 'DAY' | 'NIGHT', signAsToken?: string): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_QUICK_SIGNUP, date, shift, signAsToken),
+  personnelCoverageWithdraw: (signupId: number, signAsToken?: string): Promise<any> =>
+    ipcRenderer.invoke(events.IPC_PERSONNEL_COVERAGE_WITHDRAW, signupId, signAsToken),
+  authStepUp: (code: string): Promise<any> => ipcRenderer.invoke(events.IPC_AUTH_STEP_UP, code),
 
   // Sync entity updates (broadcast from main when sync applies changes)
   onSyncEntityUpdated: (callback: (entityType: string, entityId: number) => void) => {

@@ -304,19 +304,74 @@
   white-space: nowrap; background: var(--secondary-background, #f6f8fa); color: var(--primary-text, #1a2027);
 }
 .mgrid-name .mg-grp { font-size: 0.64rem; color: var(--secondary-text, #90a4ae); margin-left: 6px; }
+.mgrid-group-sep td {
+  position: sticky; left: 0;
+  background: var(--secondary-background, #eef2f6);
+  color: var(--primary-text, #1a2027);
+  font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 4px 10px; border-top: 2px solid var(--border-color, #cfd8dc);
+}
 .mgrid-day { min-width: 24px; padding: 2px 0; background: var(--secondary-background, #f6f8fa); }
 .mgrid-day.wknd { background: rgba(128, 128, 128, 0.14); }
 .mgrid-day.today { outline: 2px solid var(--accent-color, #1976d2); outline-offset: -2px; }
 .md-dom { font-weight: 700; font-size: 0.72rem; color: var(--primary-text, #1a2027); }
 .md-dow { font-size: 0.58rem; color: var(--secondary-text, #90a4ae); }
-.mgrid-cell { width: 24px; height: 22px; font-weight: 700; font-size: 0.66rem; color: var(--primary-text, #1a2027); }
+.mgrid-cell { width: 24px; height: 22px; font-weight: 700; font-size: 0.66rem; color: var(--primary-text, #1a2027); position: relative; }
 .mgrid-cell[data-code="D"]   { background: rgba(102, 187, 106, 0.28); }
 .mgrid-cell[data-code="N"]   { background: rgba(66, 165, 245, 0.30); }
 .mgrid-cell[data-code="OCM"] { background: rgba(171, 71, 188, 0.28); font-size: 0.52rem; }
 .mgrid-cell[data-code="P"]   { background: rgba(255, 167, 38, 0.24); }
 .mgrid-cell[data-code="T"]   { background: rgba(38, 198, 218, 0.24); }
 .mgrid-cell[data-code="U"]   { background: rgba(128, 128, 128, 0.18); }
+/* Open-seat marker — off + qualified to cover an open shift that day. Fixed hex (not theme tokens),
+   same rationale as the coverage-signup overlay below: must read identically light + dark. */
+.mgrid-cell.seat-day-only   { background: #22c55e; color: #06210f; }
+.mgrid-cell.seat-night-only { background: #3b82f6; color: #ffffff; }
+.mgrid-cell.seat-split { padding: 0; }
+.seat-half {
+  position: absolute; top: 0; bottom: 0; width: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.66rem;
+}
+.seat-half.seat-day   { left: 0; background: #22c55e; color: #06210f; }
+.seat-half.seat-night { right: 0; background: #3b82f6; color: #ffffff; }
+
+/* Coverage-signup status overlay on roster cells — recolors the D/N letter to flag it as coverage.
+   Fixed hex (not theme tokens) so PENDING/APPROVED read identically light + dark and stay visually
+   distinct from the normal Day=green / Night=blue shift colours above. */
+.mgrid-cell.cov-pending {
+  background: #f59e0b;
+  color: #1a1a1a;
+  border: 1px dashed #b45309;
+  cursor: pointer;
+}
+.mgrid-cell.cov-approved {
+  background: #14b8a6;
+  color: #ffffff;
+}
+.cov-popover {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px;
+  display: flex; gap: 2px; background: var(--card-background, #fff);
+  border: 1px solid var(--border-color, #d0d7de); border-radius: 6px;
+  padding: 2px 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28); z-index: 6;
+}
+.cov-act {
+  border: none; background: transparent; cursor: pointer; font-size: 0.78rem; font-weight: 700;
+  padding: 2px 5px; border-radius: 4px; line-height: 1.4;
+}
+.cov-act.ok { color: #14b8a6; }
+.cov-act.ok:hover { background: rgba(20, 184, 166, 0.18); }
+.cov-act.no { color: #ef5350; }
+.cov-act.no:hover { background: rgba(239, 83, 80, 0.18); }
+
 .mgrid-legend { margin-top: 8px; font-size: 0.74rem; color: var(--secondary-text, #90a4ae); }
+.legend-swatch {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+  vertical-align: middle; margin: 0 3px 0 8px;
+}
+.legend-swatch.cov-pending-sw { background: #f59e0b; border: 1px dashed #b45309; }
+.legend-swatch.cov-approved-sw { background: #14b8a6; }
+.legend-swatch.seat-day-sw { background: #22c55e; }
+.legend-swatch.seat-night-sw { background: #3b82f6; }
 
 /* Inline coverage-needs rows in the grid */
 .cov-needs .cov-need-label {
@@ -340,6 +395,64 @@
 }
 .cov-need-cell:hover .cov-step { opacity: 1; }
 .cov-step:hover { color: var(--accent-color, #1976d2); }
+.cov-step:disabled { cursor: not-allowed; color: rgba(239, 83, 80, 0.7); }
+.cov-need-cell:hover .cov-step:disabled { opacity: 0.6; }
+
+/* Grid overlay selector + clickable date headers */
+.sb-overlay-sel { margin-left: auto; display: inline-flex; gap: 2px; }
+.sb-ovr-hint { margin: 4px 0 8px; }
+.mgrid-day-btn { cursor: pointer; position: relative; }
+.mgrid-day-btn:hover { background: var(--hover-color, rgba(0,0,0,0.06)); }
+.mgrid-day.has-ovr { outline: 1px dashed var(--accent-color, #1976d2); outline-offset: -1px; }
+.md-ovr { position: absolute; top: 0; right: 1px; font-size: 7px; color: var(--accent-color, #1976d2); line-height: 1; }
+
+/* Overlay bands (sign-ups / events) under the date headers */
+.ov-band .ov-label { font-size: 0.66rem; font-weight: 700; color: var(--secondary-text, #5f6b76); text-align: right; padding-right: 6px; white-space: nowrap; }
+.ov-band .ov-cell { vertical-align: top; padding: 1px; min-width: 24px; }
+.ov-band .ov-cell.wknd { background: rgba(128, 128, 128, 0.10); }
+.ov-band .ov-cell.today { outline: 2px solid var(--accent-color, #1976d2); outline-offset: -2px; }
+.ov-chip, .ov-evt {
+  display: block; font-size: 0.56rem; line-height: 1.25; padding: 1px 3px; margin: 1px 0;
+  border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 64px;
+}
+.ov-chip { background: var(--secondary-background, #eef2f6); color: var(--primary-text, #1a2027); }
+.ov-chip.pending { background: rgba(255, 167, 38, 0.22); color: #b26a00; }
+.ov-chip.approved { background: rgba(102, 187, 106, 0.24); color: #2e7d32; }
+.ov-evt { background: rgba(171, 71, 188, 0.20); color: #7b1fa2; }
+
+/* Per-day override modal */
+.sb-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.sb-modal {
+  background: var(--card-background, #fff); border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 10px; padding: 16px 18px; width: 460px; max-width: 92vw; max-height: 86vh; overflow: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+.sb-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sb-modal-head h3 { margin: 0; font-size: 1rem; color: var(--primary-text, #1a2027); }
+.ovr-roster { font-size: 0.78rem; color: var(--secondary-text, #5f6b76); display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.ovr-lbl { font-weight: 700; margin-right: 4px; }
+.ovr-existing { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.ovr-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+.ovr-who { font-weight: 600; color: var(--primary-text, #1a2027); min-width: 120px; }
+.ovr-code {
+  font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 5px;
+  background: var(--secondary-background, #eef2f6); color: var(--primary-text, #1a2027);
+}
+.ovr-code[data-code="D"]   { background: rgba(102, 187, 106, 0.28); }
+.ovr-code[data-code="N"]   { background: rgba(66, 165, 245, 0.30); }
+.ovr-code[data-code="OCM"] { background: rgba(171, 71, 188, 0.28); }
+.ovr-code[data-code="P"]   { background: rgba(255, 167, 38, 0.24); }
+.ovr-code[data-code="T"]   { background: rgba(38, 198, 218, 0.24); }
+.ovr-code[data-code="OFF"], .ovr-code[data-code="L"] { background: rgba(128, 128, 128, 0.20); }
+.ovr-reason { flex: 1; }
+.ovr-add { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 10px 0 4px; }
+.ovr-add select, .ovr-add input { padding: 4px 6px; border: 1px solid var(--border-color, #d0d7de); border-radius: 6px; background: var(--primary-background, #fff); color: var(--primary-text, #1a2027); font-size: 0.82rem; }
+.ovr-add input { flex: 1; min-width: 120px; }
+.btn.danger { color: #c62828; border-color: rgba(198, 40, 40, 0.4); }
+.btn.danger:hover { background: rgba(198, 40, 40, 0.1); }
 
 /* Relief lane editor: succession order + anchor slots side by side */
 .relief-cols { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }

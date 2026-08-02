@@ -27,12 +27,16 @@
           </button>
         </div>
         <button class="btn-icon"
-                (click)="activeTab() === 'schedule' ? (scheduleView() === 'day' ? refreshSelectedDate() : refreshMonth()) : refreshContacts()"
-                [disabled]="scheduleLoading() || monthLoading() || contactsLoading()"
+                (click)="refreshCurrentView()"
+                [disabled]="scheduleLoading() || monthLoading() || myLoading() || yearLoading() || contactsLoading()"
                 title="Refresh">
-          <span [class.spin]="scheduleLoading() || monthLoading() || contactsLoading()">🔄</span>
+          <span [class.spin]="scheduleLoading() || monthLoading() || myLoading() || yearLoading() || contactsLoading()">🔄</span>
         </button>
       </div>
+
+      @if (offline()) {
+        <div class="banner banner-offline">📡 Offline — showing mirror data, may be stale</div>
+      }
 
       <!-- Schedule tab -->
       @if (activeTab() === 'schedule') {
@@ -84,8 +88,8 @@
                   @for (c of dayCoverage(); track c.id) {
                     <div class="coverage-card">
                       <div class="cov-info">
-                        <span class="cov-shift" [class.night]="c.shift === 'NIGHT'">{{ coverageShiftLabel(c) }} shift</span>
-                        <span class="cov-meta">{{ c.openForDate }} open · {{ coverageReasonLabel(c) }}</span>
+                        <span class="cov-shift" [class.night]="c.shift === 'NIGHT'">{{ coverageRoleLabel(c) }}</span>
+                        <span class="cov-meta">{{ coverageShiftLabel(c) }} shift · {{ c.openForDate }} open · {{ coverageReasonLabel(c) }}</span>
                       </div>
                       @if (alreadyRequested(c)) {
                         <span class="cov-done">Requested ✓</span>
@@ -273,6 +277,15 @@
               </div>
             }
 
+            @if (coverageEnabled() && myEligibleDates().length > 0) {
+              <div class="month-coverage my-eligible">
+                <span class="mc-label">✋ You can pick up — you're off + qualified:</span>
+                @for (d of myEligibleDates(); track d) {
+                  <button class="mc-chip mc-mine" (click)="jumpToDate(d)">{{ d | date:'EEE M/d' }}</button>
+                }
+              </div>
+            }
+
             @if (monthLoading() && filteredMonthRows().length === 0) {
               <div class="empty-state">
                 <div class="empty-glyph spin">⏳</div>
@@ -319,22 +332,43 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (row of filteredMonthRows(); track row.name) {
+                    @for (row of filteredMonthRows(); track row.name; let i = $index) {
+                      @if (i === 0 || filteredMonthRows()[i - 1].group !== row.group) {
+                        <tr class="grp-sep">
+                          <td class="grp-sep-cell" [attr.colspan]="monthDayHeaders().length + 1">
+                            {{ groupLabel(row.group) }}
+                          </td>
+                        </tr>
+                      }
                       <tr>
                         <th class="name-col" scope="row">
                           <span class="row-name">{{ row.name }}</span>
-                          @if (row.group) {
-                            <span class="chip-group row-group"
-                                  [class.ocm]="row.group === 'OCM'">{{ row.group }}</span>
+                          @if (posLabel(row.position); as pl) {
+                            <span class="chip-group row-pos">{{ pl }}</span>
                           }
                         </th>
                         @for (c of row.cells; track c.date) {
                           <td class="cell"
                               [class.weekend]="c.isWeekend"
                               [class.today]="c.isToday"
-                              (click)="jumpToDate(c.date)"
-                              [title]="row.name + ' — ' + shiftLabel(c.shift) + ' (' + (c.date | date:'MMM d') + ')'">
-                            @if (c.shift) {
+                              [class.can-cover]="isMyRow(row) && c.seat && !c.signup"
+                              [class.can-manage]="isMyRow(row) && c.signup?.status === 'PENDING'"
+                              (click)="onSeatCellClick($event, row, c)"
+                              [title]="cellTitle(row, c)">
+                            @if (c.signup?.status === 'APPROVED') {
+                              <span class="cell-code cov-approved">{{ c.signup!.shift === 'NIGHT' ? 'N' : 'D' }}</span>
+                            } @else if (c.signup?.status === 'PENDING') {
+                              <span class="cell-code cov-pending">{{ c.signup!.shift === 'NIGHT' ? 'N' : 'D' }}</span>
+                            } @else if (c.seat && c.seat.day > 0 && c.seat.night > 0) {
+                              <span class="seat-split">
+                                <span class="seat-half seat-day">{{ c.seat.day }}</span>
+                                <span class="seat-half seat-night">{{ c.seat.night }}</span>
+                              </span>
+                            } @else if (c.seat && c.seat.day > 0) {
+                              <span class="seat-mark seat-day-only">{{ c.seat.day }}</span>
+                            } @else if (c.seat && c.seat.night > 0) {
+                              <span class="seat-mark seat-night-only">{{ c.seat.night }}</span>
+                            } @else if (c.shift) {
                               <span class="cell-code" [attr.data-shift]="c.shift">{{ c.shift }}</span>
                             }
                           </td>
@@ -347,6 +381,35 @@
 
               <div class="row-count">
                 Showing {{ filteredMonthRows().length }} of {{ monthPersonRows().length }} people
+              </div>
+            }
+
+            <!-- Sign-up chooser / manage popover — anchored to the clicked cell's own row only. -->
+            @if (coveragePopover(); as p) {
+              <div class="cov-popover-backdrop" (click)="closeCoveragePopover()"></div>
+              <div class="cov-popover" [style.left.px]="p.x" [style.top.px]="p.y" role="dialog" aria-label="Coverage sign-up">
+                <div class="cov-popover-title">{{ p.date | date:'EEE, MMM d' }}</div>
+                @if (p.mode === 'choose') {
+                  <button class="cov-pop-btn cov-pop-day" [disabled]="signupBusy()" (click)="chooseCoverageShift('DAY')">
+                    Day ({{ p.seat?.day }})
+                  </button>
+                  <button class="cov-pop-btn cov-pop-night" [disabled]="signupBusy()" (click)="chooseCoverageShift('NIGHT')">
+                    Night ({{ p.seat?.night }})
+                  </button>
+                } @else {
+                  <div class="cov-popover-sub">
+                    {{ p.pendingSignup?.shift === 'NIGHT' ? 'Night' : 'Day' }} shift — pending approval
+                  </div>
+                  @if (p.otherShiftOpen) {
+                    <button class="cov-pop-btn cov-pop-switch" [disabled]="signupBusy()" (click)="switchCoverageShift()">
+                      Switch to {{ p.otherShiftOpen === 'NIGHT' ? 'Night' : 'Day' }}
+                    </button>
+                  }
+                  <button class="cov-pop-btn cov-pop-remove" [disabled]="signupBusy()" (click)="removeCoverageSignup()">
+                    Remove sign-up
+                  </button>
+                }
+                <button class="cov-pop-cancel" (click)="closeCoveragePopover()">Cancel</button>
               </div>
             }
           </div>
@@ -480,7 +543,7 @@
                   @if (currentUserName()) {
                     Your year — colored by shift type
                   } @else {
-                    Plant year — colored by dominant shift per day
+                    Plant year — which crew covers days vs nights each day
                   }
                 </div>
               </div>
@@ -520,10 +583,17 @@
                         } @else {
                           <button class="mini-cell"
                                   [class.today]="c.isToday"
+                                  [class.has-crew]="c.dayCrew || c.nightCrew"
                                   [attr.data-shift]="c.shift"
                                   (click)="jumpToDateFromYear(c.iso)"
-                                  [title]="c.iso + ' — ' + shiftLabel(c.shift)">
-                            {{ c.day }}
+                                  [attr.aria-label]="yearCellAriaLabel(c)"
+                                  [title]="yearCellAriaLabel(c)">
+                            <span class="mini-cell-day">{{ c.day }}</span>
+                            @if (c.dayCrew || c.nightCrew) {
+                              <span class="mini-cell-crew" aria-hidden="true">{{ c.dayCrew || '–' }}{{ c.nightCrew ? '/' + c.nightCrew : '' }}</span>
+                            } @else if (c.shift) {
+                              <span class="mini-cell-glyph" aria-hidden="true">{{ shiftGlyph(c.shift) }}</span>
+                            }
                           </button>
                         }
                       }

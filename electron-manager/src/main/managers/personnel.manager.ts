@@ -32,6 +32,10 @@ function getSchedulePath(): string {
 const CONTACTS_PATH = '/sites/JG/External/10 - Administration/PERSONNEL/EMERGENCY CONTACT LIST - EDITED 11_2024.xlsx';
 
 const CACHE_TTL = 30 * 60_000;
+/** Re-verify the schedule.v2-discard signal periodically in case v2 gets rolled back to v1. */
+const V2_RECHECK_COOLDOWN = 6 * 60 * 60_000;
+/** Cooldown for the "backend reachable but empty" SharePoint fallback parse — see getPersonnel(). */
+const EMPTY_FALLBACK_COOLDOWN = 60_000;
 /**
  * Shift codes recognised in the Ops Schedule Excel:
  *   D = Day, N = Night, U = Unscheduled, P = PTO, T = Training, OCM = On Call Manager,
@@ -80,6 +84,14 @@ interface MonthMaps {
   /** All row indices that hold a person. Used to tell an override row
    *  (followed-by no person) from the next person's row. */
   personRows: Set<number>;
+  /**
+   * Ordinal position of each person within their group for this month (0-based, top-to-bottom).
+   * The Excel sheet doesn't label positions explicitly, but rows are laid out top=lead, middle=CRO,
+   * bottom=AO within each crew block — this ordinal is the SharePoint-parse path's stand-in for the
+   * backend/ShiftDay path's posRank, so both monthOrder sources sit on the same small-integer,
+   * position-rank-like basis (see convertShiftDaysToPersonnel / renderer computeDerived).
+   */
+  groupOrdinal: Map<string, number>;
 }
 
 export class PersonnelManager {
@@ -89,6 +101,25 @@ export class PersonnelManager {
   private cacheTime = 0;
   private contactsCacheTime = 0;
   private loading = false;
+
+  // Coverage-eligibility cache — scoped to the current month (see getPersonnelStatus()) and cached
+  // alongside the ShiftDay cache so repeated status calls within the TTL window don't re-hit the hub.
+  private cachedCoverageEligibility: Record<string, number[]> | null = null;
+  private coverageEligibilityCacheKey = '';
+  private coverageEligibilityCacheTime = 0;
+  private cachedCurrentUserId: number | null = null;
+  private currentUserIdCacheTime = 0;
+
+  // schedule.v2 discard detection — once a SharePoint push comes back with rowsWritten: 0 for a
+  // non-empty payload, the v1 write stood down because schedule.v2 owns ShiftDay (see
+  // ShiftDayService.importSchedule). Skip the background SharePoint round-trip until re-verified.
+  private v2ActiveSuspected = false;
+  private v2LastCheckedAt = 0;
+
+  // Cooldown for the "backend reachable but empty" SharePoint fallback parse, so a burst of quick
+  // retries (e.g. loadSchedule()'s backoff loop against a fresh install's still-empty H2) doesn't
+  // each trigger a full xlsx download + parse + push.
+  private lastEmptyFallbackAt = 0;
 
   // ── Auto-refresh + config ──────────────────────────────────────────────
   private config: PersonnelConfig;
@@ -291,12 +322,14 @@ export class PersonnelManager {
   }
 
   public async getPersonnelStatus(): Promise<PersonnelStatus> {
-    if (!this.sharepoint.isConfigured()) {
-      return { status: 'error', error: 'SharePoint not configured', onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
-    }
-
     try {
+      // Option A: the local backend's ShiftDay is the source of truth, so try it first regardless of
+      // SharePoint config. Only surface the "not configured" error when there's genuinely no data AND
+      // SharePoint (the offline fallback) isn't set up either.
       const personnel = await this.getPersonnel();
+      if (personnel.length === 0 && !this.sharepoint.isConfigured()) {
+        return { status: 'error', error: 'SharePoint not configured', onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
+      }
       const now = new Date();
       const hour = now.getHours();
       // Shift change at 05:00 and 17:00 CT (machines are on-site in CT)
@@ -306,17 +339,157 @@ export class PersonnelManager {
 
       const onShiftNow = personnel.filter(p => p.todayShift === currentShiftCode);
 
+      // Coverage eligibility (off + qualified) per day — for the "can cover" markers. Best-effort.
+      // Scoped to the currently-visible month (the widget/page render one month at a time, not the
+      // whole year) and cached alongside the ShiftDay cache so repeated status calls within the TTL
+      // window don't re-hit the hub.
+      let coverageEligibility: Record<string, number[]> | undefined;
+      try {
+        const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        const cacheKey = `${from}..${to}`;
+        if (this.cachedCoverageEligibility && this.coverageEligibilityCacheKey === cacheKey
+            && Date.now() - this.coverageEligibilityCacheTime < CACHE_TTL) {
+          coverageEligibility = this.cachedCoverageEligibility;
+        } else {
+          const body: any = await backendGet(`/ng/schedule/coverage-eligibility?from=${from}&to=${to}`, 8000);
+          coverageEligibility = (body?.responseData ?? body) as Record<string, number[]>;
+          this.cachedCoverageEligibility = coverageEligibility;
+          this.coverageEligibilityCacheKey = cacheKey;
+          this.coverageEligibilityCacheTime = Date.now();
+        }
+      } catch { /* no coverage / backend down — markers simply won't show */ }
+
+      // The signed-in OS user's id (cached) — lets the renderer route "my seat" vs "someone else's".
+      // On a transient /api/auth/me failure KEEP the last known-good value (don't wipe it to null),
+      // so the self-vs-PIN routing stays correct instead of falling back to "unknown" for 30 min.
+      if (this.cachedCurrentUserId == null || Date.now() - this.currentUserIdCacheTime > CACHE_TTL) {
+        const id = await this.getCurrentUserId();
+        if (id != null) {
+          this.cachedCurrentUserId = id;
+          this.currentUserIdCacheTime = Date.now();
+        }
+      }
+
       return {
         status: 'available',
         lastUpdate: new Date(this.cacheTime).toISOString(),
         onShiftNow,
         allPersonnel: personnel,
         currentShiftLabel,
+        coverageEligibility,
+        currentUserId: this.cachedCurrentUserId ?? undefined,
       };
     } catch (err: any) {
       console.error('[Personnel] Error:', err.message);
       return { status: 'error', error: err.message, onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
     }
+  }
+
+  /**
+   * Open coverage requests on a specific day, each with remaining open seats + discipline/position for
+   * labelling. Each is also tagged `selfEligible`: whether the signed-in OS user (DesktopAutoAuth) is
+   * off + qualified to cover it, so the renderer can show "Sign up (me)" only where it's valid while
+   * still listing every need for the PIN ("someone else") path.
+   */
+  public async getCoverageForDay(date: string): Promise<any[]> {
+    const q = `date=${encodeURIComponent(date)}`;
+    const allBody: any = await backendGet(`/api/pwa/secured/coverage-signup/day?${q}`, 8000);
+    const all: any[] = Array.isArray(allBody) ? allBody : (allBody?.responseData ?? allBody ?? []);
+    // Which of these the OS user can personally cover (best-effort; empty if not a rostered operator).
+    let mineIds = new Set<number>();
+    try {
+      const mineBody: any = await backendGet(`/api/pwa/secured/coverage-signup/day-eligible?${q}`, 8000);
+      const mine: any[] = Array.isArray(mineBody) ? mineBody : (mineBody?.responseData ?? mineBody ?? []);
+      mineIds = new Set(mine.map(m => m?.id).filter((id: any) => id != null));
+    } catch { /* eligibility unavailable — leave "Sign up (me)" off; PIN path still works */ }
+    return all
+      .filter(o => (o?.openForDate ?? 0) > 0)
+      .map(o => ({ ...o, selfEligible: o?.id != null && mineIds.has(o.id) }));
+  }
+
+  /**
+   * Sign up for a coverage seat. Without a step-up token the signed-in OS user (DesktopAutoAuthFilter)
+   * is attributed; with one, the signup is attributed to the PIN-verified operator via X-Sign-As-Token
+   * (StepUpAuthFilter swaps the security context for that single request).
+   */
+  public async coverageSignup(coverageRequestId: number, date: string, signAsToken?: string): Promise<any> {
+    const headers = signAsToken ? { 'X-Sign-As-Token': signAsToken } : undefined;
+    return backendPost('/api/pwa/secured/coverage-signup',
+      { coverageRequestId, date, via: 'ELECTRON' }, 10_000, headers);
+  }
+
+  /**
+   * Coverage signups (any status) across a date range — feeds the month-grid overlay that
+   * re-colours a person's cell to mark PENDING/APPROVED coverage (see CoverageSignupDto).
+   */
+  public async getCoverageSignups(from: string, to: string): Promise<any[]> {
+    const q = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const body: any = await backendGet(`/api/pwa/secured/coverage-signup/signups?${q}`, 8000);
+    return Array.isArray(body) ? body : (body?.responseData ?? body ?? []);
+  }
+
+  /**
+   * Roster-wide coverage eligibility (date -> userIds off + qualified) for an explicit range — drives
+   * the green ＋ marker. Scoped to the month the renderer is actually viewing (the cached blob on
+   * PersonnelStatus only ever covers the current calendar month), so ＋ works on every month.
+   */
+  public async getCoverageEligibility(from: string, to: string): Promise<Record<string, number[]>> {
+    const q = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const body: any = await backendGet(`/ng/schedule/coverage-eligibility?${q}`, 8000);
+    return (body?.responseData ?? body ?? {}) as Record<string, number[]>;
+  }
+
+  /**
+   * One-click sign-up: without a step-up token the signed-in OS user (DesktopAutoAuthFilter) is
+   * signed up; with one, a DIFFERENT operator (who entered their initials+PIN) is signed up via the
+   * X-Sign-As-Token swap. `shift` picks DAY/NIGHT explicitly when the person has both open (see
+   * seat-count marker); omitted, the backend auto-picks the best need that person is off + qualified for.
+   */
+  public async quickSignUp(date: string, shift?: 'DAY' | 'NIGHT', signAsToken?: string): Promise<any> {
+    let q = `date=${encodeURIComponent(date)}&via=ELECTRON`;
+    if (shift) q += `&shift=${encodeURIComponent(shift)}`;
+    const headers = signAsToken ? { 'X-Sign-As-Token': signAsToken } : undefined;
+    return backendPost(`/api/pwa/secured/coverage-signup/quick?${q}`, undefined, 10_000, headers);
+  }
+
+  /**
+   * Withdraw a not-yet-approved coverage sign-up. Without a step-up token this withdraws the
+   * signed-in OS user's OWN sign-up; with one, a DIFFERENT operator's sign-up (PIN step-up gate —
+   * the backend still enforces that the token's identity owns the signup and it isn't APPROVED yet).
+   */
+  public async withdrawSignup(signupId: number, signAsToken?: string): Promise<any> {
+    const headers = signAsToken ? { 'X-Sign-As-Token': signAsToken } : undefined;
+    return backendPost(`/api/pwa/secured/coverage-signup/${signupId}/withdraw`, undefined, 10_000, headers);
+  }
+
+  /**
+   * Per-person, per-shift OPEN SEAT COUNTS for a date range — one row per (date, userId) with
+   * day/night = number of open seats that person is off + qualified to cover on that shift (0 = none).
+   * Drives the seat-count marker on the month grid (replaces the old plain ＋ "can cover" marker).
+   */
+  public async getEligibilityDetail(from: string, to: string): Promise<{ date: string; userId: number; day: number; night: number }[]> {
+    const q = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const body: any = await backendGet(`/api/pwa/secured/coverage-signup/eligibility-detail?${q}`, 8000);
+    return Array.isArray(body) ? body : (body?.responseData ?? body ?? []);
+  }
+
+  /** The signed-in OS user's id (DesktopAutoAuthFilter), so the renderer can tell "my ＋" (sign up
+   *  directly) from "someone else's ＋" (require their PIN). Null if not resolvable. */
+  public async getCurrentUserId(): Promise<number | null> {
+    try {
+      const body: any = await backendGet('/api/auth/me', 6000);
+      const id = body?.id;
+      return typeof id === 'number' ? id : (id != null ? Number(id) : null);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Exchange an operator's initials+PIN for a single-use step-up token so they can sign up here. */
+  public async stepUpAuthorize(code: string): Promise<{ token: string; expiresAt?: string }> {
+    return backendPost('/api/auth/step-up', { code }, 8000);
   }
 
   public async getContacts(): Promise<PersonnelContact[]> {
@@ -357,9 +530,16 @@ export class PersonnelManager {
           this.cachedPersonnel = fromBackend;
           this.cacheTime = Date.now();
           console.log(`[Personnel] Loaded ${fromBackend.length} entries from backend ShiftDay`);
-          // Keep ShiftDay fresh from SharePoint in the background (matters only when v2 is off; the
-          // backend discards the push when v2 is on). Non-blocking — display already came from ShiftDay.
-          void this.refreshFromSharePoint();
+          // Keep ShiftDay fresh from SharePoint in the background — but only when v1 is actually the
+          // owner. Under schedule.v2 the backend discards this push (ShiftDayService.importSchedule
+          // reports rowsWritten: 0), so once pushToBackend() has confirmed that, skip the round-trip
+          // (xlsx download + parse + POST) entirely. Re-verified periodically in case v2 rolls back.
+          const dueForRecheck = Date.now() - this.v2LastCheckedAt > V2_RECHECK_COOLDOWN;
+          if (!this.v2ActiveSuspected || dueForRecheck) {
+            void this.refreshFromSharePoint();
+          } else {
+            console.log('[Personnel] Skipping SharePoint background refresh — schedule.v2 owns ShiftDay (push is discarded)');
+          }
           return fromBackend;
         }
         console.log('[Personnel] Backend ShiftDay empty — falling back to the SharePoint parse');
@@ -367,7 +547,17 @@ export class PersonnelManager {
         console.warn('[Personnel] Backend ShiftDay unavailable (H2 down?) — SharePoint fallback:', err?.message ?? err);
       }
 
-      // Fallback: parse SharePoint directly (backend/H2 unavailable, or no rows yet).
+      // Fallback: parse SharePoint directly (backend/H2 unavailable, or no rows yet). Cooldown-gated
+      // so a burst of quick retries (unreachable backend, or reachable-but-empty on a fresh install)
+      // doesn't each trigger a full xlsx download + parse + push — only the first one in the window does.
+      const now = Date.now();
+      if (this.lastEmptyFallbackAt && now - this.lastEmptyFallbackAt < EMPTY_FALLBACK_COOLDOWN) {
+        console.log('[Personnel] Skipping repeat SharePoint fallback parse (cooldown)');
+        this.cachedPersonnel = this.cachedPersonnel || [];
+        this.cacheTime = now;
+        return this.cachedPersonnel;
+      }
+      this.lastEmptyFallbackAt = now;
       const parsed = await this.refreshFromSharePoint();
       this.cachedPersonnel = (parsed && parsed.length) ? parsed : (this.cachedPersonnel || []);
       this.cacheTime = Date.now();
@@ -400,26 +590,55 @@ export class PersonnelManager {
    * {@link PersonnelEntry} rows for the widget — the inverse of {@link parseSchedule}.
    */
   private convertShiftDaysToPersonnel(days: any[]): PersonnelEntry[] {
-    const byPerson = new Map<string, { name: string; group: string; schedule: { date: string; shift: ShiftCode }[] }>();
+    const byPerson = new Map<string, { name: string; group: string; userId?: number; position: string; schedule: { date: string; shift: ShiftCode }[] }>();
     const keyOf = (e: any) => (e && e.userId != null) ? 'u' + e.userId : 'n' + String(e?.name ?? '').toLowerCase().trim();
-    const put = (key: string, name: string, group: string, date: string, shift: ShiftCode) => {
+    const put = (key: string, name: string, group: string, userId: number | undefined, position: string, date: string, shift: ShiftCode) => {
       let p = byPerson.get(key);
-      if (!p) { p = { name, group: group || '', schedule: [] }; byPerson.set(key, p); }
+      if (!p) { p = { name, group: group || '', userId, position: position || '', schedule: [] }; byPerson.set(key, p); }
       if (!p.group && group) p.group = group;
+      if (p.userId == null && userId != null) p.userId = userId;
+      if (!p.position && position) p.position = position;
       p.schedule.push({ date, shift });
     };
     const sorted = (days || []).filter(d => d && d.date).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+    // Pass 1: real shift buckets → per-person rows.
     for (const d of sorted) {
       const date: string = d.date;
-      (d.dayShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'D'));
-      (d.nightShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'N'));
-      (d.unscheduled || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'U'));
-      (d.pto || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'P'));
-      (d.training || []).forEach((e: any) => put(keyOf(e), e.name, e.group, date, 'T'));
-      if (d.onCallManagerName) {
-        put('ocm:' + String(d.onCallManagerName).toLowerCase(), d.onCallManagerName, 'OCM', date, 'OCM');
+      (d.dayShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'D'));
+      (d.nightShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'N'));
+      (d.unscheduled || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'U'));
+      (d.pto || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'P'));
+      (d.training || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'T'));
+    }
+
+    // Pass 2: overlay the On-Call Manager onto that manager's OWN row (they're day staff who are also
+    // on call this week). Emitting a separate 'ocm:' person would collide with their real row in the
+    // name-keyed renderer and hide their working schedule — so overlay instead, and only fall back to a
+    // standalone OCM row when the manager isn't otherwise on the roster.
+    for (const d of sorted) {
+      if (!d.onCallManagerName) continue;
+      const date: string = d.date;
+      const id = d.onCallManagerUserId;
+      const nm = String(d.onCallManagerName).toLowerCase().trim();
+      let target = (id != null && byPerson.has('u' + id)) ? byPerson.get('u' + id) : undefined;
+      if (!target) {
+        for (const p of byPerson.values()) { if (p.name.toLowerCase().trim() === nm) { target = p; break; } }
+      }
+      if (target) {
+        const cell = target.schedule.find(s => s.date === date);
+        if (cell) cell.shift = 'OCM'; else target.schedule.push({ date, shift: 'OCM' });
+      } else {
+        put('ocm:' + nm, d.onCallManagerName, 'OCM', id, 'Manager', date, 'OCM');
       }
     }
+    const posRank = (pos: string): number => {
+      const p = (pos || '').toLowerCase();
+      if (p.includes('lead')) return 0;
+      if (p.includes('control room') || p === 'cro') return 1;
+      if (p.includes('auxiliary') || p === 'ao') return 2;
+      return 9;   // non-ops sort after operators
+    };
     const now = new Date();
     const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const allDates = sorted.map(d => d.date as string);
@@ -430,18 +649,43 @@ export class PersonnelManager {
       // needs an entry for EVERY materialised date (blank shift = off) — a sparse schedule blanks the grid.
       const schedule = allDates.map(date => ({ date, shift: (placed.get(date) ?? '') as ShiftCode }));
       const groupByMonth: Record<string, string> = {};
+      const monthOrder: Record<string, number> = {};
       for (const s of p.schedule) {
-        if (p.group) groupByMonth[String(new Date(s.date + 'T12:00:00').getMonth())] = p.group;
+        const m = String(new Date(s.date + 'T12:00:00').getMonth());
+        if (p.group) groupByMonth[m] = p.group;
+        monthOrder[m] = posRank(p.position);   // Lead→CRO→AO within the group (non-ops after)
       }
       out.push({
         name: p.name,
         group: p.group,
+        userId: p.userId,
         todayShift: (placed.get(todayIso) ?? '') as ShiftCode,
         schedule,
         groupByMonth,
+        monthOrder,
       });
     }
-    return out;
+
+    // Collapse duplicate people that share a display name (e.g. a stale row or a second user record).
+    // The renderer keys grid rows by name, so two rows with one name fight over a single row and one
+    // vanishes — merge them: keep a userId, fill blank shifts from the duplicate, union the month maps.
+    const merged = new Map<string, PersonnelEntry>();
+    for (const e of out) {
+      const key = e.name.toLowerCase().trim();
+      const ex = merged.get(key);
+      if (!ex) { merged.set(key, e); continue; }
+      if (ex.userId == null && e.userId != null) ex.userId = e.userId;
+      const byDate = new Map(ex.schedule.map(s => [s.date, s]));
+      for (const s of e.schedule) {
+        const cur = byDate.get(s.date);
+        if (!cur) { ex.schedule.push(s); byDate.set(s.date, s); }
+        else if (!cur.shift && s.shift) cur.shift = s.shift;
+      }
+      if (!ex.todayShift && e.todayShift) ex.todayShift = e.todayShift;
+      ex.groupByMonth = { ...(e.groupByMonth || {}), ...(ex.groupByMonth || {}) };
+      ex.monthOrder = { ...(e.monthOrder || {}), ...(ex.monthOrder || {}) };
+    }
+    return Array.from(merged.values());
   }
 
   /**
@@ -457,8 +701,14 @@ export class PersonnelManager {
         group: p.group,
         schedule: (p.schedule || []).map(s => ({ date: s.date, shift: s.shift })),
       }));
-      await backendPost('/ng/schedule/sync', { year, source: 'electron', persons });
+      const res: any = await backendPost('/ng/schedule/sync', { year, source: 'electron', persons });
       console.log(`[Personnel] Pushed ${persons.length} person schedules to backend`);
+      // Under schedule.v2, ShiftDayService.importSchedule short-circuits and writes nothing — the
+      // response reports rowsWritten: 0 even though we sent a non-empty payload. That's the signal
+      // getPersonnel() uses to skip future background SharePoint round-trips (see there).
+      const rowsWritten = res?.responseData?.rowsWritten;
+      this.v2ActiveSuspected = persons.length > 0 && rowsWritten === 0;
+      this.v2LastCheckedAt = Date.now();
     } catch (err: any) {
       console.warn('[Personnel] Backend schedule push failed:', err?.message ?? err);
     }
@@ -467,6 +717,11 @@ export class PersonnelManager {
   public async refresh(): Promise<PersonnelStatus> {
     this.cachedPersonnel = null;
     this.cacheTime = 0;
+    this.cachedCoverageEligibility = null;
+    this.coverageEligibilityCacheTime = 0;
+    // Note: v2ActiveSuspected/lastEmptyFallbackAt are intentionally NOT reset here — refresh() is
+    // called both by the user's Refresh button and by loadSchedule()'s retry loop, and clearing
+    // them on every call would re-open the SharePoint-storm window this cache exists to close.
     return this.getPersonnelStatus();
   }
 
@@ -583,8 +838,8 @@ export class PersonnelManager {
         if (mRow !== undefined) {
           const grp = mMap.rowToGroup.get(mRow);
           if (grp) groupByMonth[String(mIdx)] = grp;
-          const idx = mMap.namesInOrder.indexOf(name);
-          if (idx >= 0) monthOrder[String(mIdx)] = idx;
+          const ord = mMap.groupOrdinal.get(name);
+          if (ord !== undefined) monthOrder[String(mIdx)] = ord;
         }
       }
 
@@ -628,7 +883,17 @@ export class PersonnelManager {
       personRows.add(r);
     }
 
-    return { nameToRow, rowToGroup, namesInOrder, personRows };
+    // Group-relative ordinal (0-based, top-to-bottom within each crew block) — see MonthMaps.groupOrdinal.
+    const groupOrdinal = new Map<string, number>();
+    const counters = new Map<string, number>();
+    for (const name of namesInOrder) {
+      const grp = rowToGroup.get(nameToRow.get(name)!) || '';
+      const c = counters.get(grp) ?? 0;
+      groupOrdinal.set(name, c);
+      counters.set(grp, c + 1);
+    }
+
+    return { nameToRow, rowToGroup, namesInOrder, personRows, groupOrdinal };
   }
 
   /**

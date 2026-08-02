@@ -83,6 +83,11 @@
   border-left: 3px solid #ffc107;
   color: var(--primary-text);
 }
+.banner-offline {
+  background: var(--secondary-background, rgba(120,144,156,0.12));
+  border-left: 3px solid #78909c;
+  color: var(--secondary-text, #666);
+}
 
 /* ── Day picker ────────────────────────────────────────────────────────────────────────────── */
 
@@ -467,6 +472,7 @@
 .mc-seat { font-weight: 700; font-size: 11px; border-radius: 4px; padding: 0 4px; }
 .mc-day { background: rgba(46, 125, 50, 0.2); color: #2e7d32; }
 .mc-night { background: rgba(25, 118, 210, 0.2); color: #1565c0; }
+.mc-chip.mc-mine { border-color: #2e7d32; background: rgba(46, 125, 50, 0.12); color: #2e7d32; font-weight: 600; }
 
 /* Per-day coverage badge on the month-grid day headers */
 .day-cov {
@@ -585,6 +591,145 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
+}
+
+/* Position badge under the name (Lead/CRO/AO) — muted so it reads secondary to the name */
+.row-pos {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  border-radius: 6px;
+  background: var(--secondary-background, #eef2f6);
+  color: var(--secondary-text, #555);
+  font-weight: 700;
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+/* Group separator band spanning the full grid width */
+.grp-sep .grp-sep-cell {
+  position: sticky;
+  left: 0;
+  background: var(--secondary-background, #eef2f6);
+  color: var(--primary-text);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 5px 12px;
+  border-top: 1px solid var(--border-color, #d0d7de);
+  border-bottom: 1px solid var(--border-color, #d0d7de);
+}
+
+/* A day this person is off + qualified to pick up (no signup yet) — the seat-count marker is the
+   sign-up affordance on the CURRENT USER's own row, so it gets a subtle highlight beyond the
+   cell's own hover. can-manage marks the current user's own PENDING cell (tap to manage). */
+.cell.can-cover { background: rgba(46, 125, 50, 0.10); }
+.cell.can-manage { background: rgba(245, 158, 11, 0.10); }
+
+/* Open-seats markers — replace the old plain ＋ "can cover" marker with per-shift open-seat
+   COUNTS. Fixed hex (not theme tokens), matching the coverage-signup palette convention: Day =
+   GREEN, Night = BLUE, distinct from both the shift-code palette above and the PENDING/APPROVED
+   coverage-signup colors, so "open seat" never reads as "already scheduled" or "signed up". */
+.seat-mark,
+.seat-split {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+}
+.seat-mark.seat-day-only { background: #22c55e; }   /* day-only open = green */
+.seat-mark.seat-night-only { background: #3b82f6; } /* night-only open = blue */
+.seat-split { padding: 0; gap: 1px; }
+.seat-half {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 9px;
+  font-weight: 700;
+}
+.seat-half.seat-day { background: #22c55e; }
+.seat-half.seat-night { background: #3b82f6; }
+
+/* ── Coverage sign-up chooser / manage popover ─────────────────────────────────────────────── */
+
+.cov-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: transparent;
+}
+.cov-popover {
+  position: fixed;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 220px;
+  padding: 10px;
+  background: var(--card-background, #fff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.22);
+}
+.cov-popover-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-text);
+  margin-bottom: 2px;
+}
+.cov-popover-sub {
+  font-size: 12px;
+  color: var(--secondary-text, #666);
+  margin-bottom: 2px;
+}
+.cov-pop-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.cov-pop-btn:disabled { opacity: 0.6; cursor: default; }
+.cov-pop-day { background: #22c55e; }
+.cov-pop-night { background: #3b82f6; }
+.cov-pop-switch { background: var(--accent-color, #1976d2); }
+.cov-pop-remove { background: #dc2626; }
+.cov-pop-cancel {
+  background: transparent;
+  border: 1px solid var(--border-color, #d0d7de);
+  color: var(--secondary-text, #666);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cov-pop-cancel:hover { background: var(--hover-color, rgba(0,0,0,0.04)); }
+
+/* Coverage signup overlay — re-colors a person's cell to mark PENDING/APPROVED coverage.
+   Deliberately distinct from the normal Day (green) / Night (blue) shift colors so a covered
+   shift never reads as an ordinary scheduled shift. Fixed hex (not theme tokens) so the meaning
+   stays identical across light/dark. */
+.cov-pending {
+  background: #f59e0b;
+  color: #1a1a1a;
+  border: 1px dashed #b45309;
+}
+.cov-approved {
+  background: #14b8a6;
+  color: #ffffff;
 }
 
 .row-count {
@@ -745,11 +890,14 @@
   padding: 0 2px;
 }
 .mini-cell {
+  position: relative;
   aspect-ratio: 1;
-  min-height: 20px;
-  display: inline-flex;
+  min-height: 26px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   font-size: 10px;
   color: var(--primary-text);
   background: var(--secondary-background, #f5f7fa);
@@ -762,6 +910,25 @@
 .mini-cell:hover:not(.blank) { outline: 1.5px solid var(--accent-color, #1976d2); }
 .mini-cell.blank { background: transparent; cursor: default; }
 .mini-cell.today { outline: 2px solid var(--accent-color, #1976d2); font-weight: 700; }
+
+/* Day number stays the primary glyph; the shift/crew indicator rides underneath or in the corner
+   so shift is never encoded by background color alone (WCAG 1.4.1). */
+.mini-cell-day { font-size: 10px; line-height: 1; font-weight: 600; }
+.mini-cell-crew {
+  font-size: 7px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.mini-cell-glyph {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  font-size: 6px;
+  line-height: 1;
+  font-weight: 800;
+  opacity: 0.9;
+}
 
 /* Shift color tinting — reuse the palette from the month grid, but as backgrounds only (text is
    the day number, kept dark or white depending on contrast). */

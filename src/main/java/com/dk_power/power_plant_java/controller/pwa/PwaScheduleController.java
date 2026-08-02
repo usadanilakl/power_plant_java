@@ -22,9 +22,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PWA-facing read-only schedule endpoints. Gated to plant-group roles via {@code @PreAuthorize}
- * — contractors deliberately do not see the plant schedule. Range queries are capped server-side
- * to prevent runaway pulls when the PWA is offline-caching aggressively.
+ * PWA-facing read-only schedule endpoints. Gated to plant-group roles ({@code ADMIN}, {@code
+ * PLANT}, {@code NAES}, {@code JPOWER}) — contractors deliberately do not see the plant schedule.
+ * The real gate is the URL matcher in {@code SecurityConfigSpring}
+ * ({@code /api/pwa/secured/schedule/**} → {@code hasAnyRole(...)}), not a {@code @PreAuthorize}
+ * annotation on this class — there is none here; Spring Security's filter chain does the work
+ * before a request ever reaches these methods. Range queries are capped server-side to prevent
+ * runaway pulls when the PWA is offline-caching aggressively.
  *
  * See {@code project/features/users/communication/pwa-step-5-wiring.md}.
  */
@@ -101,19 +105,40 @@ public ResponseEntity<List<ShiftEntry>> onShiftNow() {
     }
 
     /**
-     * Return this user's personal iCal subscription URL. The URL contains a long-lived signed JWT
-     * ({@code aud=schedule-ical}) so third-party calendar apps (Google Calendar / Apple Calendar /
-     * Outlook) can poll it without sending Authorization headers.
+     * Return this user's personal iCal subscription URL. The URL contains a signed JWT
+     * ({@code aud=schedule-ical}, 90-day TTL) so third-party calendar apps (Google Calendar /
+     * Apple Calendar / Outlook) can poll it without sending Authorization headers.
      *
-     * <p>Idempotent — the JWT is deterministically derived from the user id + the hub's private
-     * key, so hitting this endpoint again just returns the same URL. To rotate a link, the hub
-     * admin rotates the hub JWT key.
+     * <p>Repeated calls return a URL that still resolves to the same subscription (same user,
+     * same current {@code icalTokenVersion}) but each token is freshly minted (new issued-at /
+     * expiry), so the URL string itself is not guaranteed identical call to call. To revoke a
+     * previously-shared link, use {@link #icalRegenerate()} instead of waiting on a hub-wide JWT
+     * key rotation.
      */
     @GetMapping("/ical/url")
     public ResponseEntity<?> icalSubscribeUrl() {
         User me = currentUser();
         if (me == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
-        String token = jwtService.generateIcalToken(me);
+        return icalUrlResponse(me);
+    }
+
+    /**
+     * Invalidate every calendar URL previously issued to this user (bumps {@code
+     * icalTokenVersion} — see {@code JwtService#generateIcalToken}/{@code verifyIcalTokenClaims})
+     * and mint + return a fresh one. Use when a link was shared somewhere it shouldn't have been.
+     */
+    @PostMapping("/ical/regenerate")
+    public ResponseEntity<?> icalRegenerate() {
+        User me = currentUser();
+        if (me == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+        int nextVersion = (me.getIcalTokenVersion() == null ? 0 : me.getIcalTokenVersion()) + 1;
+        me.setIcalTokenVersion(nextVersion);
+        me = userRepo.save(me);
+        return icalUrlResponse(me);
+    }
+
+    private ResponseEntity<?> icalUrlResponse(User user) {
+        String token = jwtService.generateIcalToken(user);
         String base = (icalPublicBaseUrl == null || icalPublicBaseUrl.isBlank())
                 ? "" : icalPublicBaseUrl.replaceAll("/$", "");
         String url = base + "/api/pwa/public/schedule/ical/" + token + ".ics";

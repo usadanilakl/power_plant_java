@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.schedule;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
 import com.dk_power.power_plant_java.entities.schedule.Crew;
@@ -7,6 +8,7 @@ import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
 import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
 import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
+import com.dk_power.power_plant_java.entities.users.ShiftDay;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
@@ -30,6 +32,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,6 +63,7 @@ class ScheduleMaterialisationServiceTest {
     @Mock private CrewRepo crewRepo;
     @Mock private UserRepo userRepo;
     @Mock private ShiftDayService shiftDayService;
+    @Mock private SyncConfig syncConfig;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private ScheduleMaterialisationService service;
@@ -68,11 +72,14 @@ class ScheduleMaterialisationServiceTest {
     void setUp() {
         service = new ScheduleMaterialisationService(
                 assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo,
-                onCallRepo, reliefRepo, crewRepo, userRepo, shiftDayService, objectMapper);
+                onCallRepo, reliefRepo, crewRepo, userRepo, shiftDayService, objectMapper, syncConfig);
         ReflectionTestUtils.setField(service, "v2Enabled", true);
         ReflectionTestUtils.setField(service, "v2Rollback", false);
         ReflectionTestUtils.setField(service, "horizonDays", 180);
         ReflectionTestUtils.setField(service, "backfillDays", 7);
+        // Default mock booleans (isHubMode=false, isServerSyncEnabled=false) already satisfy the
+        // "standalone / no configured upstream hub" branch, so materialisation runs normally in every
+        // test below unless a test explicitly overrides these to exercise the gate itself.
     }
 
     @Test
@@ -81,6 +88,39 @@ class ScheduleMaterialisationServiceTest {
         ReflectionTestUtils.setField(service, "v2Enabled", false);
         assertThat(service.materializeRange(DAY0, DAY0)).isZero();
         verifyNoInteractions(assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo, shiftDayService);
+    }
+
+    @Test
+    @DisplayName("skips materialisation on a subordinate desktop with a configured upstream hub")
+    void skipsOnSubordinateDesktopWithUpstreamHub() {
+        when(syncConfig.isHubMode()).thenReturn(false);
+        when(syncConfig.isServerSyncEnabled()).thenReturn(true);
+
+        assertThat(service.materializeRange(DAY0, DAY0)).isZero();
+        verifyNoInteractions(assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo, shiftDayService);
+    }
+
+    @Test
+    @DisplayName("still materialises on the hub (isHubMode short-circuits the upstream check)")
+    void runsOnHubRegardlessOfUpstreamConfig() {
+        when(syncConfig.isHubMode()).thenReturn(true);
+        // isServerSyncEnabled() is deliberately NOT stubbed: isHubMode()==true short-circuits
+        // shouldMaterialiseOnThisNode() before it is read, so the hub always materialises.
+
+        service.materializeRange(DAY0, DAY0);
+
+        verify(assignmentRepo).findActiveOverlapping(DAY0, DAY0);
+    }
+
+    @Test
+    @DisplayName("still materialises standalone (no hub role, no configured upstream)")
+    void runsStandaloneWithNoUpstreamConfigured() {
+        when(syncConfig.isHubMode()).thenReturn(false);
+        when(syncConfig.isServerSyncEnabled()).thenReturn(false);
+
+        service.materializeRange(DAY0, DAY0);
+
+        verify(assignmentRepo).findActiveOverlapping(DAY0, DAY0);
     }
 
     @Test
@@ -94,7 +134,7 @@ class ScheduleMaterialisationServiceTest {
 
         ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
         verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(),
-                any(), any(), any(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+                any(), any(), any(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), any());
         assertThat(dayCap.getValue()).hasSize(1);
         assertThat(dayCap.getValue().get(0).getUserId()).isEqualTo(1L);
         assertThat(dayCap.getValue().get(0).getPosition()).isEqualTo("LEAD");
@@ -117,7 +157,7 @@ class ScheduleMaterialisationServiceTest {
         ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
         ArgumentCaptor<List<ShiftEntry>> nightCap = listCaptor();
         verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(), nightCap.capture(),
-                any(), any(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+                any(), any(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), any());
         assertThat(dayCap.getValue()).isEmpty();
         assertThat(nightCap.getValue()).extracting(ShiftEntry::getUserId).containsExactly(2L);
     }
@@ -135,7 +175,7 @@ class ScheduleMaterialisationServiceTest {
         service.materializeRange(DAY0, DAY0);
 
         verify(shiftDayService, never()).applyMaterializedDay(any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -156,7 +196,7 @@ class ScheduleMaterialisationServiceTest {
         ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
         ArgumentCaptor<List<ShiftEntry>> ptoCap = listCaptor();
         verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(), any(), any(),
-                ptoCap.capture(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+                ptoCap.capture(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), any());
         assertThat(dayCap.getValue()).isEmpty();
         assertThat(ptoCap.getValue()).extracting(ShiftEntry::getUserId).containsExactly(1L);
     }
@@ -175,7 +215,7 @@ class ScheduleMaterialisationServiceTest {
 
         ArgumentCaptor<String> flagsCap = ArgumentCaptor.forClass(String.class);
         verify(shiftDayService).applyMaterializedDay(eq(DAY0), any(), any(), any(), any(), any(),
-                any(), any(), flagsCap.capture(), eq(ScheduleMaterialisationService.SOURCE));
+                any(), any(), flagsCap.capture(), eq(ScheduleMaterialisationService.SOURCE), any());
         assertThat(flagsCap.getValue()).contains("HOLIDAY").contains("Independence Day");
     }
 
@@ -184,7 +224,61 @@ class ScheduleMaterialisationServiceTest {
     void emptyDayIsNotWritten() {
         service.materializeRange(DAY0, DAY0);
         verify(shiftDayService, never()).applyMaterializedDay(any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("clears a previously v2-owned row that now computes empty (assignment/coverage removed)")
+    void clearsEmptiedV2OwnedDay() {
+        // No assignments/events/PTO/overrides/signups this run — the day computes fully empty. But a
+        // v2-materializer-owned row already exists for it (preloaded), so the clear must be written
+        // through (propagates via CRDT sync + the Supabase mirror) instead of being left stranded.
+        ShiftDay existingRow = ShiftDay.builder()
+                .date(DAY0)
+                .year(DAY0.getYear())
+                .dayShiftJson("[{\"userId\":1}]")
+                .source(ScheduleMaterialisationService.SOURCE)
+                .build();
+        when(shiftDayService.preloadRange(any(), any())).thenReturn(Map.of(DAY0, existingRow));
+
+        service.materializeRange(DAY0, DAY0);
+
+        ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
+        verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(), any(), any(), any(),
+                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), eq(existingRow));
+        assertThat(dayCap.getValue()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("leaves a day with no v2 opinion and no existing v2-owned row untouched (not preloaded)")
+    void emptyDayWithNoExistingRowIsNotWritten() {
+        when(shiftDayService.preloadRange(any(), any())).thenReturn(Map.of());
+        service.materializeRange(DAY0, DAY0);
+        verify(shiftDayService, never()).applyMaterializedDay(any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("a user double-booked by two active assignments lands in exactly one bucket (latest wins)")
+    void doubleBookedUserLandsInOneBucketOnly() {
+        User u = user(1L, "Double Booked");
+        CrewAssignment rotatingDay = rotating(u, crewA(), "LEAD");   // crewA resolves to DAY on DAY0
+        CrewAssignment fixedNight = new CrewAssignment();
+        fixedNight.setUser(u);
+        fixedNight.setAssignmentType(CrewAssignment.Type.FIXED);
+        fixedNight.setFixedShift(CrewRotation.Shift.NIGHT);
+        fixedNight.setIsActive(true);
+        // fixedNight is processed second (list order) so it should win.
+        when(assignmentRepo.findActiveOverlapping(any(), any())).thenReturn(List.of(rotatingDay, fixedNight));
+
+        service.materializeRange(DAY0, DAY0);
+
+        ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
+        ArgumentCaptor<List<ShiftEntry>> nightCap = listCaptor();
+        verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(), nightCap.capture(),
+                any(), any(), any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), any());
+        assertThat(dayCap.getValue()).isEmpty();
+        assertThat(nightCap.getValue()).extracting(ShiftEntry::getUserId).containsExactly(1L);
     }
 
     @Test
@@ -199,7 +293,7 @@ class ScheduleMaterialisationServiceTest {
 
         ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
         verify(shiftDayService).applyMaterializedDay(eq(friday), dayCap.capture(), any(), any(), any(),
-                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), any());
         assertThat(dayCap.getValue()).extracting(ShiftEntry::getUserId).containsExactly(5L);
     }
 
@@ -214,7 +308,7 @@ class ScheduleMaterialisationServiceTest {
 
         ArgumentCaptor<List<ShiftEntry>> dayCap = listCaptor();
         verify(shiftDayService).applyMaterializedDay(eq(DAY0), dayCap.capture(), any(), any(), any(),
-                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE));
+                any(), any(), any(), any(), eq(ScheduleMaterialisationService.SOURCE), any());
         assertThat(dayCap.getValue()).isEmpty();
     }
 

@@ -163,6 +163,18 @@ public class User extends BaseAuditEntity {
     @Column(name = "pin_must_change")
     private Boolean pinMustChange = Boolean.FALSE;
 
+    /**
+     * Per-user revocation nonce for the long-lived iCal subscription token (see
+     * {@code JwtService#generateIcalToken}/{@code verifyIcalTokenClaims}). Bumping this value
+     * invalidates every calendar URL issued to this user so far ("regenerate my calendar link")
+     * without a fleet-wide hub JWT key rotation. Tokens minted before this field existed carry no
+     * {@code tokenVersion} claim — treated as version 0, matching this default, so existing live
+     * subscription links keep working.
+     */
+    @lombok.Builder.Default
+    @Column(name = "ical_token_version")
+    private Integer icalTokenVersion = 0;
+
     /** Most recent safety-training completion timestamp. */
     @Column(name = "training_completed_at")
     private LocalDateTime trainingCompletedAt;

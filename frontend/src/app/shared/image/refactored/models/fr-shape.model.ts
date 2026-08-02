@@ -18,6 +18,17 @@ export interface RfBaseShape {
   currentImgWidth: number;
   currentImgHeigth: number;
   scaleToCurrentImage: number;
+  /**
+   * Optional 1-based ordinal (or arbitrary short text) to render as a
+   * small badge on top of the shape — used to match a P&ID equipment
+   * shape to its position in the LOTO Standard's / LOTO permit's
+   * ordered point list at a glance. Rendered by
+   * {@code CanvasRenderService.drawIndexBadge}. Undefined = no badge
+   * (default; shape draws normally). Callers set this in
+   * {@code EquipmentMapperService.mapToRfShape}'s {@code pointIndex}
+   * option.
+   */
+  pointIndex?: number | string;
 }
 
 export interface RfRectangleShape extends RfBaseShape {

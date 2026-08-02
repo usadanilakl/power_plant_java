@@ -34,6 +34,7 @@ import { LotoStandardWorkflowPanelComponent } from '../loto-builder/loto-standar
 import { LotoStandardPendingChangesPanelComponent } from '../loto-builder/loto-standard-pending-changes-panel/loto-standard-pending-changes-panel.component';
 import { LotoStandardCloseReviewDialogComponent } from '../loto-builder/loto-standard-close-review-dialog/loto-standard-close-review-dialog.component';
 import { PointPrerequisitesEditorComponent } from '../loto-builder/point-prerequisites-editor/point-prerequisites-editor.component';
+import { RfLotoPrintService } from '../../../../services/ui/rf-loto-print.service';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -68,6 +69,7 @@ export class RfLotoStandardFormComponent {
   private messageService = inject(GlobalMessageService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private printService = inject(RfLotoPrintService);
 
   /** Read the tab-bar's Duplicate button visibility from the template. */
   canDuplicate = computed(() => !!this.entity().id && this.authService.isControlAuthority());
@@ -534,6 +536,36 @@ export class RfLotoStandardFormComponent {
         this.messageService.showError(msg);
       },
     });
+  }
+
+  /** Guards the Print P&IDs button against a double-click while the
+   *  rasterization + window-open is in flight. */
+  isPrintingPids = signal(false);
+
+  /**
+   * Rasterize every P&ID referenced by this standard's LOTO points
+   * with numbered highlighted shapes, then open a new tab and invoke
+   * the browser print dialog. Client-side only — same code path
+   * driving the live Images tab's overlay, so the printout matches
+   * what the operator sees on screen. See
+   * {@link ../../../../services/ui/rf-loto-print.service.ts}.
+   */
+  async onPrintPids(): Promise<void> {
+    const entity = this.entity();
+    if (!entity?.id) {
+      alert('Save the LOTO standard before printing its P&IDs.');
+      return;
+    }
+    if (this.isPrintingPids()) return;
+    this.isPrintingPids.set(true);
+    try {
+      await this.printService.print(entity);
+    } catch (err) {
+      console.error('Print P&IDs failed:', err);
+      alert(`Print P&IDs failed: ${(err as any)?.message ?? 'Unknown error'}`);
+    } finally {
+      this.isPrintingPids.set(false);
+    }
   }
 
   flipToPermit(): void {

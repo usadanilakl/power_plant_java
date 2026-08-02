@@ -888,6 +888,15 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       location: this.location?.id || null,
       eqType: this.eqType?.id || null,
       counterpartId: this.counterpartId || null,
+      // Boolean flags — omitting them here silently drops the value on
+      // the wire: LotoPointIdDto's constructor coerces `undefined` to
+      // `null`, HttpClient omits `null` from the JSON body, and the
+      // backend mapper's `if (dto.getIsLockable() != null) ...` guard
+      // then skips the entity update, so a checkbox toggle appeared
+      // "not to persist". Explicitly pass them through.
+      isLabeled: this.isLabeled,
+      isLockable: this.isLockable,
+      isProcessed: this.isProcessed,
       processingStatus: this.processingStatus?.id || null,
       modelFileId: this.modelFile?.id || 0,
     });

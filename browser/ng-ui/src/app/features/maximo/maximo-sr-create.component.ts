@@ -78,13 +78,20 @@ import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
               }
             }
 
-            <label class="sc-field">Photos
-              <input type="file" accept="image/*" multiple (change)="onPhotos($event)">
+            <label class="sc-field">Attachments <span class="sc-cap-hint">images · video · PDF · Word · Excel</span>
+              <input type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" multiple (change)="onPhotos($event)">
             </label>
             @if (photos().length) {
               <div class="sc-thumbs">
                 @for (p of photos(); track p.url; let i = $index) {
-                  <div class="sc-thumb"><img [src]="p.url" alt="photo"><button class="sc-thumb-x" (click)="removePhoto(i)">✕</button></div>
+                  <div class="sc-thumb" [class.sc-file]="fileKind(p.file) === 'other'">
+                    @switch (fileKind(p.file)) {
+                      @case ('image') { <img [src]="p.url" alt="attachment"> }
+                      @case ('video') { <video [src]="p.url" muted playsinline></video> }
+                      @default { <span class="sc-fileic">{{ fileIcon(p.file) }}</span><span class="sc-filename">{{ p.file.name }}</span> }
+                    }
+                    <button class="sc-thumb-x" (click)="removePhoto(i)">✕</button>
+                  </div>
                 }
               </div>
             }
@@ -114,7 +121,11 @@ import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
     .sc-link { background: none; border: none; color: var(--accent-color); font-size: 0.78rem; cursor: pointer; font-family: inherit; }
     .sc-thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: -0.4rem 0 0.9rem; }
     .sc-thumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
-    .sc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .sc-thumb img, .sc-thumb video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+    .sc-thumb.sc-file { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--secondary-background); padding: 3px; box-sizing: border-box; }
+    .sc-fileic { font-size: 1.7rem; line-height: 1; }
+    .sc-filename { font-size: 0.52rem; color: var(--secondary-text, #888); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sc-cap-hint { font-weight: 400; font-size: 0.7rem; color: var(--secondary-text, #888); }
     .sc-thumb-x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.7rem; cursor: pointer; line-height: 1; }
     .sc-err { color: #e74c3c; font-size: 0.85rem; margin: 0 0 0.8rem; }
     .sc-submit { width: 100%; background: #27ae60; color: #fff; border: none; border-radius: 10px; padding: 0.85rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; }
@@ -204,6 +215,22 @@ export class MaximoSrCreateComponent implements OnDestroy {
     this.photos.set(list);
   }
 
+  /** Classify a picked file for preview: images get a thumbnail, videos a frame, everything else a doc chip. */
+  fileKind(f: File): 'image' | 'video' | 'other' {
+    const t = (f.type || '').toLowerCase();
+    if (t.startsWith('image/')) return 'image';
+    if (t.startsWith('video/')) return 'video';
+    return 'other';
+  }
+  /** Emoji for a non-media attachment, by extension (pdf / word / excel / other). */
+  fileIcon(f: File): string {
+    const n = (f.name || '').toLowerCase();
+    if (n.endsWith('.pdf')) return '📄';
+    if (n.endsWith('.xls') || n.endsWith('.xlsx') || n.endsWith('.csv')) return '📊';
+    if (n.endsWith('.doc') || n.endsWith('.docx')) return '📝';
+    return '📎';
+  }
+
   submit(): void {
     if (!this.canSubmit()) return;
     const body: CreateMaximoServiceRequest = {
@@ -225,11 +252,11 @@ export class MaximoSrCreateComponent implements OnDestroy {
         if (!photos.length) { this.finish(sr.ticketid); return; }
         // SR is created — upload photos best-effort (a failure doesn't undo the SR).
         let done = 0;
-        this.uploadStatus.set(`Uploading photo 1/${photos.length}…`);
+        this.uploadStatus.set(`Uploading attachment 1/${photos.length}…`);
         from(photos).pipe(
           concatMap(p => this.api.uploadSrAttachment(sr.href, p.file))
         ).subscribe({
-          next: () => { done++; if (done < photos.length) this.uploadStatus.set(`Uploading photo ${done + 1}/${photos.length}…`); },
+          next: () => { done++; if (done < photos.length) this.uploadStatus.set(`Uploading attachment ${done + 1}/${photos.length}…`); },
           complete: () => this.finish(sr.ticketid),
         });
       },

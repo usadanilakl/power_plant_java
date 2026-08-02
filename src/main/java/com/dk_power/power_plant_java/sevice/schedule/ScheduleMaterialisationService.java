@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.schedule;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventFlag;
 import com.dk_power.power_plant_java.dto.users.ShiftEntry;
@@ -13,6 +14,7 @@ import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
 import com.dk_power.power_plant_java.entities.schedule.ReliefRotation;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride;
 import com.dk_power.power_plant_java.entities.schedule.ScheduleEvent;
+import com.dk_power.power_plant_java.entities.users.ShiftDay;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
@@ -29,10 +31,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,6 +68,8 @@ public class ScheduleMaterialisationService {
 
     public static final String SOURCE = "v2-materializer";
     private static final int MAX_RANGE_DAYS = 800;
+    /** Plant-local timezone — "today"/holiday-week boundaries must match plant time, not the hub JVM's zone. */
+    private static final ZoneId PLANT_ZONE = ZoneId.of("America/Chicago");
     private static final TypeReference<List<PatternCell>> CELL_LIST = new TypeReference<>() {};
     private static final TypeReference<List<Long>> LONG_LIST = new TypeReference<>() {};
     private static final TypeReference<Map<String, Long>> SLOT_MAP = new TypeReference<>() {};
@@ -79,6 +85,7 @@ public class ScheduleMaterialisationService {
     private final UserRepo userRepo;
     private final ShiftDayService shiftDayService;
     private final ObjectMapper objectMapper;
+    private final SyncConfig syncConfig;
 
     @Value("${schedule.v2.enabled:false}")
     private boolean v2Enabled;
@@ -93,16 +100,50 @@ public class ScheduleMaterialisationService {
         return v2Enabled && !v2Rollback;
     }
 
+    /**
+     * Whether this node should run materialisation at all: the hub always does; a standalone/dev
+     * instance that is NOT actively syncing up to a hub also does (so single-node dev/testing — and a
+     * box with sync toggled off — keeps working); a subordinate desktop that is actively syncing to a
+     * hub does NOT — the hub is authoritative and pushes ShiftDay down via CRDT, so a desktop
+     * re-materialising the same range would just fight the hub's version.
+     *
+     * <p>Uses {@code isServerSyncEnabled()} (actively syncing = configured AND enabled), not merely
+     * {@code isServerSyncConfigured()} (URL present), so turning sync off makes a node standalone again.
+     */
+    private boolean shouldMaterialiseOnThisNode() {
+        return syncConfig.isHubMode() || !syncConfig.isServerSyncEnabled();
+    }
+
     @Transactional
     public int materializeDefaultHorizon() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(PLANT_ZONE);
         return materializeRange(today.minusDays(backfillDays), today.plusDays(horizonDays));
+    }
+
+    /**
+     * Daily roll-forward so the far horizon edge and holiday-week detection stay fresh without
+     * requiring a user-triggered edit or a restart. Hub-gated the same way as every other entry
+     * point — {@link #materializeRange} itself no-ops on a subordinate desktop with a configured
+     * upstream hub, so this is safe to schedule everywhere.
+     */
+    @Scheduled(cron = "${schedule.v2.daily-refresh-cron:0 15 4 * * *}", zone = "America/Chicago")
+    public void dailyRollForward() {
+        int written = materializeDefaultHorizon();
+        if (written > 0) {
+            log.info("[ScheduleV2] Daily roll-forward materialised {} day row(s) changed", written);
+        }
     }
 
     @Transactional
     public int materializeRange(LocalDate from, LocalDate to) {
         if (!isActive()) {
             log.debug("[ScheduleV2] Materialisation skipped (enabled={}, rollback={})", v2Enabled, v2Rollback);
+            return 0;
+        }
+        if (!shouldMaterialiseOnThisNode()) {
+            log.info("[ScheduleV2] Materialisation skipped — subordinate desktop with a configured "
+                    + "upstream hub owns this range ({}..{}); the hub materialises and pushes down via sync.",
+                    from, to);
             return 0;
         }
         if (from == null || to == null || to.isBefore(from)) return 0;
@@ -130,14 +171,20 @@ public class ScheduleMaterialisationService {
         Map<Long, List<PatternCell>> cellCache = new HashMap<>();
         OnCallCtx onCall = loadOnCall();
         ReliefCtx relief = loadRelief();
-        Set<LocalDate> holidays = collectHolidays(events);
+        // Holidays drive the holiday-week (4x10 -> 8x5) switch for a whole Mon-Sun week, which can
+        // start before `from` or end after `to` — widen the fetch so a boundary day still sees it.
+        List<ScheduleEvent> holidayWindowEvents = eventRepo.findOverlapping(from.minusDays(6), to.plusDays(6));
+        Set<LocalDate> holidays = collectHolidays(holidayWindowEvents);
+
+        // Preload the whole range's existing rows once so the per-day apply issues zero SELECTs.
+        Map<LocalDate, ShiftDay> existingByDate = shiftDayService.preloadRange(from, to);
 
         int written = 0;
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             if (materializeDay(d, assignments, events, ptos,
                     overridesByDate.getOrDefault(d, List.of()),
                     signupsByDate.getOrDefault(d, List.of()),
-                    cellCache, onCall, relief, holidays)) {
+                    cellCache, onCall, relief, holidays, existingByDate)) {
                 written++;
             }
         }
@@ -156,20 +203,24 @@ public class ScheduleMaterialisationService {
                                    Map<Long, List<PatternCell>> cellCache,
                                    OnCallCtx onCall,
                                    ReliefCtx relief,
-                                   Set<LocalDate> holidays) {
+                                   Set<LocalDate> holidays,
+                                   Map<LocalDate, ShiftDay> existingByDate) {
         DayBuckets b = new DayBuckets();
 
         // 0) On-call manager for the day (an override with code OCM can still replace it below).
         applyOnCall(b, date, onCall);
 
         // 0.5) Relief-swap rotation — place each lane's members on their current crew (or day-relief).
-        applyRelief(b, date, relief, cellCache, holidays);
+        //      Returns only the ids relief ACTUALLY placed today (current slot occupants), not the
+        //      whole succession line — a lineOrder member waiting for their turn must still fall
+        //      through to their normal crew placement below.
+        Set<Long> reliefPlacedToday = applyRelief(b, date, relief, cellCache, holidays);
 
-        // 1) Staffing — place each person from their assignment, EXCEPT anyone the relief rotation owns
-        //     (placed above; their static crew assignment is overridden while the rotation is active).
+        // 1) Staffing — place each person from their assignment, EXCEPT anyone the relief rotation
+        //    actually placed above (their static crew assignment is overridden while active).
         for (CrewAssignment a : assignments) {
             User au = a.getUser();
-            if (au != null && au.getId() != null && relief.memberIds().contains(au.getId())) continue;
+            if (au != null && au.getId() != null && reliefPlacedToday.contains(au.getId())) continue;
             if (assignmentCovers(a, date)) placeAssignment(b, a, date, cellCache, holidays);
         }
 
@@ -198,12 +249,27 @@ public class ScheduleMaterialisationService {
         b.dedupe();
 
         String eventFlagsJson = buildEventFlags(events, date);
+        ShiftDay existing = existingByDate.get(date);
 
-        if (b.isEmpty() && eventFlagsJson == null) return false;
+        boolean clearingV2OwnedDay = false;
+        if (b.isEmpty() && eventFlagsJson == null) {
+            // Coexistence-safe: a day with no v2 opinion AND no v2-owned row is left untouched. But a
+            // day that USED to have v2-placed staffing (source==SOURCE) and now computes to nothing
+            // (assignment ended, coverage/PTO/override removed, etc.) must still be written empty so
+            // the removal propagates via CRDT sync + the Supabase mirror instead of stranding stale
+            // data on that row.
+            if (existing == null || !SOURCE.equals(existing.getSource())) return false;
+            clearingV2OwnedDay = true;
+        }
 
-        return shiftDayService.applyMaterializedDay(date,
+        boolean wrote = shiftDayService.applyMaterializedDay(date,
                 b.day, b.night, b.unscheduled, b.pto, b.training,
-                b.ocmName, b.ocmId, eventFlagsJson, SOURCE);
+                b.ocmName, b.ocmId, eventFlagsJson, SOURCE, existing);
+        // Log only on the actual clear transition, not every horizon pass over an already-empty row.
+        if (wrote && clearingV2OwnedDay) {
+            log.info("[ScheduleV2] {}: v2-owned row cleared (now computes empty)", date);
+        }
+        return wrote;
     }
 
     private void placeAssignment(DayBuckets b, CrewAssignment a, LocalDate date,
@@ -215,6 +281,16 @@ public class ScheduleMaterialisationService {
         String group = CrewAssignment.Type.FIXED.equals(a.getAssignmentType())
                 ? a.getGroupLabel()
                 : crewGroupCode(a.getCrew());
+        // Extract-then-place: a user with two active assignments resolving to different shifts (e.g.
+        // ROTATING on crew A = DAY today + FIXED = NIGHT today) must land in exactly one bucket, not
+        // both. Whichever assignment is processed last in this day's loop wins; log the conflict so
+        // it's visible (it almost always means overlapping/duplicate assignments need cleanup).
+        ShiftEntry displaced = b.extractUser(u.getId());
+        if (displaced != null) {
+            log.warn("[ScheduleV2] {}: user {} double-booked by assignment #{} (was placed as group={}) — "
+                            + "keeping the later placement (group={}, shift={})",
+                    date, u.getId(), a.getId(), displaced.getGroup(), group, shift);
+        }
         placeByShift(b, shift, entryFor(u, group, a.getPosition()));
     }
 
@@ -434,11 +510,10 @@ public class ScheduleMaterialisationService {
         OnCallRotation rot = onCallRepo.findByIsActiveTrue().stream().findFirst().orElse(null);
         if (rot == null) return new OnCallCtx(null, List.of(), Map.of());
         List<Long> members = parseLongs(rot.getMemberUserIdsJson());
+        List<Long> distinctIds = members.stream().filter(java.util.Objects::nonNull).distinct().toList();
         Map<Long, String> names = new HashMap<>();
-        for (Long id : members) {
-            if (id != null && !names.containsKey(id)) {
-                userRepo.findById(id).ifPresent(u -> names.put(id, displayName(u)));
-            }
+        for (User u : userRepo.findAllById(distinctIds)) {
+            names.put(u.getId(), displayName(u));
         }
         return new OnCallCtx(rot, members, names);
     }
@@ -496,15 +571,23 @@ public class ScheduleMaterialisationService {
             }
         }
         Map<Long, User> members = new HashMap<>();
-        for (Long id : memberIds) userRepo.findById(id).ifPresent(u -> members.put(id, u));
-        return new ReliefCtx(lanes, crewsByLetter, members, memberIds);
+        for (User u : userRepo.findAllById(memberIds)) members.put(u.getId(), u);
+        return new ReliefCtx(lanes, crewsByLetter, members);
     }
 
-    /** Place each relief-lane member for the date: the current relief person on day-relief, everyone
-     *  else on their current crew's shift (group = crew letter). */
-    private void applyRelief(DayBuckets b, LocalDate date, ReliefCtx ctx,
-                             Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays) {
-        if (ctx == null || ctx.lanes().isEmpty()) return;
+    /**
+     * Place each relief-lane member for the date: the current relief person on day-relief, everyone
+     * else on their current crew's shift (group = crew letter).
+     *
+     * @return the ids relief ACTUALLY placed today (current slot occupants only) — used by the caller
+     *         to suppress just those users' normal crew-assignment placement. A lineOrder member who
+     *         hasn't rotated into a tracked slot yet is NOT in this set, so they fall through to their
+     *         normal crew placement instead of vanishing from the schedule entirely.
+     */
+    private Set<Long> applyRelief(DayBuckets b, LocalDate date, ReliefCtx ctx,
+                                  Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays) {
+        if (ctx == null || ctx.lanes().isEmpty()) return Set.of();
+        Set<Long> placedToday = new HashSet<>();
         for (ReliefLane lane : ctx.lanes()) {
             Map<Long, String> state = reliefStateAt(lane, date);
             for (Map.Entry<Long, String> e : state.entrySet()) {
@@ -512,14 +595,22 @@ public class ScheduleMaterialisationService {
                 if (u == null) continue;
                 String slot = e.getValue();
                 if ("REL".equals(slot)) {
+                    placedToday.add(e.getKey());
                     // Relief works its day pattern; holiday-week rule applies (off on the holiday itself).
                     if (fixedDayWorked(lane.reliefDays(), date, holidays)) b.day.add(entryFor(u, "Rel", lane.position()));
                 } else {
-                    placeByShift(b, crewShiftFor(ctx.crewsByLetter().get(slot), date, cellCache),
-                            entryFor(u, slot, lane.position()));
+                    Crew crew = ctx.crewsByLetter().get(slot);
+                    if (crew == null) {
+                        log.warn("[ScheduleV2] {}: relief lane '{}' slot '{}' has no matching crew — "
+                                + "user {} left to their normal crew assignment", date, lane.position(), slot, e.getKey());
+                        continue;   // not placed by relief — let them fall through to their own assignment
+                    }
+                    placedToday.add(e.getKey());
+                    placeByShift(b, crewShiftFor(crew, date, cellCache), entryFor(u, slot, lane.position()));
                 }
             }
         }
+        return placedToday;
     }
 
     /**
@@ -532,10 +623,24 @@ public class ScheduleMaterialisationService {
         return SchedulePatternMath.reliefSlots(lane.lineOrder(), lane.initialSlots(), q);
     }
 
-    /** Whole periods elapsed from anchor to date (clamped to 0 before the first boundary / anchor). */
+    /**
+     * Whole periods elapsed from anchor to date, counted as the number of {@code k} for which
+     * {@code anchor.plusMonths(k * periodMonths)} does not fall after {@code date} — i.e. the swap
+     * boundary lands on the anchor's day-of-month each period, not on the 1st of the boundary month.
+     * A pure year*12+month diff (the previous implementation) ignores the anchor's day-of-month
+     * entirely, so it flips the swap up to a whole period early for any anchor day after the 1st.
+     * Clamped to 0 before the anchor.
+     */
     private static int quartersBetween(LocalDate anchor, LocalDate date, int periodMonths) {
-        int months = (date.getYear() * 12 + date.getMonthValue()) - (anchor.getYear() * 12 + anchor.getMonthValue());
-        return Math.max(0, Math.floorDiv(months, Math.max(1, periodMonths)));
+        int pm = Math.max(1, periodMonths);
+        if (date.isBefore(anchor)) return 0;
+        // Cheap starting estimate from the month diff, then correct to the exact boundary — plusMonths
+        // clamps at short month-ends (e.g. anchor on the 31st), so the estimate can be off by one.
+        int monthsDiff = (date.getYear() * 12 + date.getMonthValue()) - (anchor.getYear() * 12 + anchor.getMonthValue());
+        int k = Math.max(0, monthsDiff / pm);
+        while (!anchor.plusMonths((long) (k + 1) * pm).isAfter(date)) k++;
+        while (k > 0 && anchor.plusMonths((long) k * pm).isAfter(date)) k--;
+        return k;
     }
 
     private Map<String, Long> parseSlotMap(String json) {
@@ -552,9 +657,9 @@ public class ScheduleMaterialisationService {
     private record ReliefLane(String position, LocalDate anchor, int periodMonths, String reliefDays,
                               List<Long> lineOrder, Map<String, Long> initialSlots) {}
 
-    /** Preloaded relief context for a run: the active lanes + crews-by-letter + member Users + ids. */
+    /** Preloaded relief context for a run: the active lanes + crews-by-letter + member Users. */
     private record ReliefCtx(List<ReliefLane> lanes, Map<String, Crew> crewsByLetter,
-                             Map<Long, User> members, Set<Long> memberIds) {}
+                             Map<Long, User> members) {}
 
     /** Per-day working set. Each person appears at most once per bucket after {@link #dedupe()}. */
     private static final class DayBuckets {

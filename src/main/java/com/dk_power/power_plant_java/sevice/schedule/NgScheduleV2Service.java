@@ -23,6 +23,9 @@ import com.dk_power.power_plant_java.repository.schedule.SchedulePositionRepo;
 import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ReliefRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleEventRepo;
+import com.dk_power.power_plant_java.repository.schedule.ScheduleDayOverrideRepo;
+import com.dk_power.power_plant_java.dto.schedule.ScheduleDayOverrideDto;
+import com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
@@ -60,6 +63,7 @@ public class NgScheduleV2Service {
     private final CrewRepo crewRepo;
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
+    private final ScheduleDayOverrideRepo overrideRepo;
     private final OnCallRotationRepo onCallRepo;
     private final ReliefRotationRepo reliefRepo;
     private final UserRepo userRepo;
@@ -205,6 +209,52 @@ public class NgScheduleV2Service {
 
     public boolean deleteEvent(Long id) {
         return eventRepo.findById(id).map(e -> { e.setDeleted(true); eventRepo.save(e); rematerialize(); return true; }).orElse(false);
+    }
+
+    // ---- Day overrides (per-day manual adjustments) -------------------------
+
+    @Transactional(readOnly = true)
+    public List<ScheduleDayOverrideDto> listOverrides(LocalDate from, LocalDate to) {
+        List<ScheduleDayOverride> rows = (from != null && to != null)
+                ? overrideRepo.findByDateBetween(from, to) : overrideRepo.findAll();
+        return rows.stream().map(this::toDto).toList();
+    }
+
+    public ScheduleDayOverrideDto saveOverride(ScheduleDayOverrideDto dto) {
+        ScheduleDayOverride o = null;
+        if (dto.getId() != null) {
+            o = overrideRepo.findById(dto.getId()).orElse(null);
+        } else if (dto.getDate() != null && dto.getUserId() != null) {
+            // Upsert by (date, user) so re-setting a person's override replaces rather than piling up rows.
+            o = overrideRepo.findByDate(dto.getDate()).stream()
+                    .filter(x -> x.getUser() != null && dto.getUserId().equals(x.getUser().getId()))
+                    .findFirst().orElse(null);
+        }
+        if (o == null) o = new ScheduleDayOverride();
+        o.setDate(dto.getDate());
+        if (dto.getUserId() != null) userRepo.findById(dto.getUserId()).ifPresent(o::setUser);
+        o.setShift(dto.getShift());
+        o.setReason(dto.getReason());
+        ScheduleDayOverrideDto out = toDto(overrideRepo.save(o));
+        rematerialize();
+        return out;
+    }
+
+    public boolean deleteOverride(Long id) {
+        return overrideRepo.findById(id)
+                .map(o -> { o.setDeleted(true); overrideRepo.save(o); rematerialize(); return true; })
+                .orElse(false);
+    }
+
+    private ScheduleDayOverrideDto toDto(ScheduleDayOverride o) {
+        return ScheduleDayOverrideDto.builder()
+                .id(o.getId())
+                .date(o.getDate())
+                .userId(o.getUser() != null ? o.getUser().getId() : null)
+                .userName(o.getUser() != null ? displayName(o.getUser()) : null)
+                .shift(o.getShift())
+                .reason(o.getReason())
+                .build();
     }
 
     // ---- On-call rotation ---------------------------------------------------

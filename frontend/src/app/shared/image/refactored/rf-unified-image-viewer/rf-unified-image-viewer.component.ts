@@ -49,6 +49,19 @@ export interface ViewerConfig {
    * reorder and emits {@code lotoPointsReordered} with the new order.
    */
   enableReorder?: boolean;
+  /**
+   * When true, shapes on the P&ID are rendered with a small numbered
+   * badge matching their position in the standard's ordered LOTO
+   * points list — makes cross-referencing a shape on the drawing to a
+   * row in the points table a glance-check instead of a hunt.
+   * Consumed by {@code CanvasRenderService.drawIndexBadge} on the
+   * canvas layer. Only meaningful when the data source is
+   * {@code 'loto-standard'} (or a future {@code 'loto'} case) whose
+   * shape list is derived from an ordered lotoPoints array. Default
+   * undefined = off for legacy consumers (file editor, equipment
+   * browser); opt in per-caller.
+   */
+  showPointIndexLabels?: boolean;
 }
 
 /**
@@ -443,7 +456,8 @@ export class RfUnifiedImageViewerComponent {
 
       case 'loto-standard':
         if (source.lotoStandard?.lotoPoints) {
-          source.lotoStandard.lotoPoints.forEach((lotoPoint) => {
+          const showLabels = this.config().showPointIndexLabels === true;
+          source.lotoStandard.lotoPoints.forEach((lotoPoint, i) => {
             if (lotoPoint.equipmentList) {
               lotoPoint.equipmentList.forEach((equipment) => {
                 if (equipment.mainFileObject?.id === fileId &&
@@ -454,6 +468,10 @@ export class RfUnifiedImageViewerComponent {
                     shouldHighlight: shouldHighlight,
                     highlightColor: '#ff0000',
                     defaultColor: '#0000ff',
+                    // 1-based ordinal — matches how the point list is
+                    // presented (row 1, row 2, …); only wired when the
+                    // consumer opted in via config.showPointIndexLabels.
+                    pointIndex: showLabels ? i + 1 : undefined,
                   });
                   if (shape) shapes.push(shape);
                 }

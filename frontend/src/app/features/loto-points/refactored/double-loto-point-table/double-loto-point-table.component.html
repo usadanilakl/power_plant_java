@@ -6,24 +6,11 @@
   <app-destination-loto-point-table></app-destination-loto-point-table>
 </div>
 
-<!-- Details popup — opens on double-click of any row in either table.
-     LotoPointDualForm handles the 01/02 counterpart pair case (if the
-     double-clicked point has a counterpart it shows both side-by-side).
-     Not modal-editable from add/remove perspective — the operator uses
-     the context menu or the sticky arrow buttons to change membership. -->
-<app-rf-popup-projection
-  [isOpen]="doubleTableService.viewingPoint() !== null"
-  [title]="'LOTO Point: ' + (doubleTableService.viewingPoint()?.tagNumber || doubleTableService.viewingPoint()?.description || '')"
-  [size]="'xlarge'"
-  [fullHeight]="true"
-  (close)="doubleTableService.closeViewingPoint()">
-  @if (doubleTableService.viewingPoint(); as p) {
-    <app-loto-point-dual-form
-      [primaryLotoPoint]="p"
-      (formClosed)="doubleTableService.closeViewingPoint()">
-    </app-loto-point-dual-form>
-  }
-</app-rf-popup-projection>
-
-
-
+<!-- Details popup on double-click of either dual-table row is rendered
+     by the page-level popup on rf-loto-standard-page.component.html —
+     doubleTableService.viewPoint() delegates to
+     RfLotoPointStateService.loadItemById + openForm, and that popup
+     picks dual-form vs single form based on counterpart-eligibility.
+     Reusing the shared popup means points without a counterpart still
+     get a proper form (same as the context-menu "View Details" action)
+     instead of the dual-form template rendering nothing. -->

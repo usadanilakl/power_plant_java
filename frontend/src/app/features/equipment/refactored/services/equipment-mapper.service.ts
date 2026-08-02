@@ -19,6 +19,14 @@ export class EquipmentMapperService{
         shouldHighlight?: boolean;
         highlightColor?: string;
         defaultColor?: string;
+        /**
+         * When provided, {@code CanvasRenderService.drawShape} paints a
+         * small circular badge with this value on top of the shape —
+         * used to match an equipment shape to the LOTO Standard /
+         * LOTO permit's ordered point list at a glance. Undefined =
+         * no badge.
+         */
+        pointIndex?: number | string;
     }): RfShape | null {
         if (!equipment.coordinates || !equipment.originalPictureSize) {
             return null;
@@ -110,7 +118,8 @@ export class EquipmentMapperService{
                     y: y,
                     width: width,
                     height: height,
-                    rotation: rotation
+                    rotation: rotation,
+                    pointIndex: options?.pointIndex,
                 };
                 return symbolShape;
             }
@@ -134,7 +143,8 @@ export class EquipmentMapperService{
                 y: y,
                 width: width,
                 height: height,
-                rotation: rotation
+                rotation: rotation,
+                pointIndex: options?.pointIndex,
             };
 
             return shape;

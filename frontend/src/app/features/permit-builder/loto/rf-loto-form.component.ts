@@ -21,6 +21,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
+import { RfLotoPrintService } from '../../../services/ui/rf-loto-print.service';
 
 @Component({
   selector: 'app-rf-loto-form',
@@ -85,6 +86,19 @@ import { MatIconModule } from '@angular/material/icon';
               <button mat-stroked-button data-testid="status-close" (click)="changeStatus('Closed')">Close</button>
             }
           }
+
+          <!-- Print P&IDs — available to everyone once a permit is loaded.
+               Rasterizes each P&ID with numbered highlighted shapes and
+               opens the browser print dialog in a new tab. Same code
+               path the LOTO Standard editor uses. -->
+          <button mat-stroked-button
+                  data-testid="print-pids"
+                  (click)="onPrintPids()"
+                  [disabled]="isPrintingPids()"
+                  [title]="'Print every P&ID for this permit with equipment shapes highlighted and numbered by point order'">
+            <mat-icon>print</mat-icon>
+            {{ isPrintingPids() ? 'Preparing…' : 'Print P&IDs' }}
+          </button>
         }
       </div>
 
@@ -715,8 +729,34 @@ export class RfLotoFormComponent {
   private userOptionService = inject(RfUserOptionService);
   private router = inject(Router);
   private messageService = inject(GlobalMessageService);
+  private printService = inject(RfLotoPrintService);
 
   showStandardSelector = signal(false);
+  isPrintingPids = signal(false);
+
+  /**
+   * Print all P&IDs for this permit with numbered highlighted shapes.
+   * Delegates to the shared client-side print service so the output
+   * matches the LOTO Standard printout for the same set of points.
+   * See {@link ../../../services/ui/rf-loto-print.service.ts}.
+   */
+  async onPrintPids(): Promise<void> {
+    const entity = this.entity();
+    if (!entity?.id) {
+      alert('Select a LOTO permit before printing its P&IDs.');
+      return;
+    }
+    if (this.isPrintingPids()) return;
+    this.isPrintingPids.set(true);
+    try {
+      await this.printService.print(entity);
+    } catch (err) {
+      console.error('Print P&IDs failed:', err);
+      alert(`Print P&IDs failed: ${(err as any)?.message ?? 'Unknown error'}`);
+    } finally {
+      this.isPrintingPids.set(false);
+    }
+  }
   showSignOnForm = signal(false);
   showTransferDialog = signal(false);
   transferTo = signal('');

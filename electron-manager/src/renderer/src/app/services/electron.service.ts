@@ -499,6 +499,7 @@ export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | 'L' | 'OFF' | '';
 export interface PersonnelEntry {
   name: string;
   group: string;
+  userId?: number;
   todayShift: ShiftCode;
   schedule: { date: string; shift: ShiftCode }[];
   groupByMonth?: Record<string, string>;
@@ -512,6 +513,49 @@ export interface PersonnelStatus {
   onShiftNow: PersonnelEntry[];
   allPersonnel: PersonnelEntry[];
   currentShiftLabel: string;
+  /** ISO-date → userIds of people off + qualified to cover an open need (coverage "can cover" markers). */
+  coverageEligibility?: Record<string, number[]>;
+  /** The signed-in OS user's id — lets the grid tell "my ＋" (self signup) from "someone else's ＋" (PIN). */
+  currentUserId?: number;
+}
+
+/** An open coverage request on a specific day — the sign-up target (mirrors the PWA CoverageOpening). */
+export interface CoverageOpening {
+  id: number;
+  shift: string;              // DAY | NIGHT
+  reason?: string;            // PTO_COVERAGE | OUTAGE | MANUAL
+  status?: string;
+  requiredCount?: number;
+  approvedCount?: number;
+  date?: string;
+  openForDate?: number;       // seats still open on this date
+  discipline?: string;        // OPS | MECHANIC | IC | MANAGER
+  position?: string;          // LEAD | CRO | AO (OPS only) — labels the card
+  selfEligible?: boolean;     // OS user is off + qualified to cover this (gates "Sign up (me)")
+}
+
+/** A coverage signup record (any status) — mirrors the backend CoverageSignupDto. Used to overlay
+ *  PENDING/APPROVED coverage badges onto the month grid (see CoverageSignupController). */
+export interface CoverageSignup {
+  id: number;
+  coverageRequestId: number;
+  userId: number;
+  userName?: string;
+  date: string;               // YYYY-MM-DD
+  shift: string;               // DAY | NIGHT
+  status: string;               // PENDING | APPROVED | REJECTED | WITHDRAWN
+  signedUpVia?: string;
+  approvedByName?: string;
+  approvedAt?: string;
+}
+
+/** One (date, userId) row of per-shift OPEN SEAT COUNTS — how many open seats this person is off +
+ *  qualified to cover on that shift (0 = none). Drives the month-grid seat-count marker. */
+export interface CoverageEligibilityDetail {
+  date: string;   // YYYY-MM-DD
+  userId: number;
+  day: number;
+  night: number;
 }
 
 export interface PersonnelContact {
@@ -829,6 +873,14 @@ interface ElectronAPI {
   personnelGetConfig: () => Promise<IpcResult<PersonnelConfig>>;
   personnelSaveConfig: (config: PersonnelConfig) => Promise<IpcResult<PersonnelConfig>>;
   personnelGetMeta: () => Promise<IpcResult<PersonnelStatusMeta>>;
+  personnelCoverageDay: (date: string) => Promise<IpcResult<CoverageOpening[]>>;
+  personnelCoverageSignup: (coverageRequestId: number, date: string, signAsToken?: string) => Promise<IpcResult<any>>;
+  personnelCoverageSignups: (from: string, to: string) => Promise<IpcResult<CoverageSignup[]>>;
+  personnelCoverageEligibility: (from: string, to: string) => Promise<IpcResult<Record<string, number[]>>>;
+  personnelCoverageEligibilityDetail: (from: string, to: string) => Promise<IpcResult<CoverageEligibilityDetail[]>>;
+  personnelCoverageQuickSignup: (date: string, shift?: 'DAY' | 'NIGHT', signAsToken?: string) => Promise<IpcResult<CoverageSignup>>;
+  personnelCoverageWithdraw: (signupId: number, signAsToken?: string) => Promise<IpcResult<{ ok: boolean }>>;
+  authStepUp: (code: string) => Promise<IpcResult<{ token: string; expiresAt?: string }>>;
 
   // TOI/TMOD
   toiListFiles: () => Promise<IpcResult<ToiFile[]>>;
@@ -1615,6 +1667,46 @@ export class ElectronService implements OnDestroy {
   async personnelGetMeta(): Promise<IpcResult<PersonnelStatusMeta>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.personnelGetMeta();
+  }
+
+  async personnelCoverageDay(date: string): Promise<IpcResult<CoverageOpening[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageDay(date);
+  }
+
+  async personnelCoverageSignup(coverageRequestId: number, date: string, signAsToken?: string): Promise<IpcResult<any>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageSignup(coverageRequestId, date, signAsToken);
+  }
+
+  async personnelCoverageSignups(from: string, to: string): Promise<IpcResult<CoverageSignup[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageSignups(from, to);
+  }
+
+  async personnelCoverageEligibility(from: string, to: string): Promise<IpcResult<Record<string, number[]>>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageEligibility(from, to);
+  }
+
+  async personnelCoverageEligibilityDetail(from: string, to: string): Promise<IpcResult<CoverageEligibilityDetail[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageEligibilityDetail(from, to);
+  }
+
+  async personnelCoverageQuickSignup(date: string, shift?: 'DAY' | 'NIGHT', signAsToken?: string): Promise<IpcResult<CoverageSignup>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageQuickSignup(date, shift, signAsToken);
+  }
+
+  async personnelCoverageWithdraw(signupId: number, signAsToken?: string): Promise<IpcResult<{ ok: boolean }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelCoverageWithdraw(signupId, signAsToken);
+  }
+
+  async authStepUp(code: string): Promise<IpcResult<{ token: string; expiresAt?: string }>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.authStepUp(code);
   }
 
   // TOI/TMOD

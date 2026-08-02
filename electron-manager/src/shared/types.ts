@@ -536,6 +536,7 @@ export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | 'L' | 'OFF' | '';
 export interface PersonnelEntry {
   name: string;
   group: string;        // "A", "B", "C", "D", "Rel", "OCM"
+  userId?: number;      // backend User id (present when sourced from ShiftDay; drives coverage eligibility)
   todayShift: ShiftCode;
   schedule: { date: string; shift: ShiftCode }[];
   /** Group assignment per month index (0-11). Some people rotate groups across months. */
@@ -552,6 +553,10 @@ export interface PersonnelStatus {
   onShiftNow: PersonnelEntry[];  // people working today (D or N based on current time)
   allPersonnel: PersonnelEntry[];
   currentShiftLabel: string;     // "Day Shift" or "Night Shift"
+  /** Coverage eligibility: ISO-date → userIds of people off + qualified to cover an open need. */
+  coverageEligibility?: Record<string, number[]>;
+  /** The signed-in OS user's id — lets the grid tell "my ＋" (self signup) from "someone else's ＋" (PIN). */
+  currentUserId?: number;
 }
 
 /**

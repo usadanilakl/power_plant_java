@@ -1,7 +1,4 @@
-<app-main-layout
-  [isBottomMenuEnabled]="true"
-  [isSideMenuEnabled]="true"
->
+<app-main-layout [isSideMenuEnabled]="true">
   <ng-container header>
     <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
@@ -19,9 +16,6 @@
         </div>
       </div>
     }
-  </ng-container>
-  <ng-container bottom-menu>
-    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
   </ng-container>
 </app-main-layout>
 

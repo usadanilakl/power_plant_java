@@ -208,6 +208,14 @@ export const IPC_PERSONNEL_GET_CONTACTS = 'personnel:get-contacts';
 export const IPC_PERSONNEL_GET_CONFIG = 'personnel:get-config';
 export const IPC_PERSONNEL_SAVE_CONFIG = 'personnel:save-config';
 export const IPC_PERSONNEL_GET_META = 'personnel:get-meta';
+export const IPC_PERSONNEL_COVERAGE_DAY = 'personnel:coverage-day';
+export const IPC_PERSONNEL_COVERAGE_SIGNUP = 'personnel:coverage-signup';
+export const IPC_PERSONNEL_COVERAGE_SIGNUPS = 'personnel:coverage-signups';
+export const IPC_PERSONNEL_COVERAGE_ELIGIBILITY = 'personnel:coverage-eligibility';
+export const IPC_PERSONNEL_COVERAGE_ELIGIBILITY_DETAIL = 'personnel:coverage-eligibility-detail';
+export const IPC_PERSONNEL_COVERAGE_QUICK_SIGNUP = 'personnel:coverage-quick-signup';
+export const IPC_PERSONNEL_COVERAGE_WITHDRAW = 'personnel:coverage-withdraw';
+export const IPC_AUTH_STEP_UP = 'auth:step-up';
 
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';

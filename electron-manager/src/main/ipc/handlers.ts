@@ -1942,6 +1942,72 @@ export class IpcHandlers {
       }
     });
 
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_DAY, async (_evt, date: string) => {
+      try {
+        return { success: true, data: await this.personnelManager.getCoverageForDay(date) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_SIGNUP,
+      async (_evt, coverageRequestId: number, date: string, signAsToken?: string) => {
+        try {
+          return { success: true, data: await this.personnelManager.coverageSignup(coverageRequestId, date, signAsToken) };
+        } catch (err: any) {
+          return { success: false, error: err.message };
+        }
+      });
+
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_SIGNUPS, async (_evt, from: string, to: string) => {
+      try {
+        return { success: true, data: await this.personnelManager.getCoverageSignups(from, to) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_ELIGIBILITY, async (_evt, from: string, to: string) => {
+      try {
+        return { success: true, data: await this.personnelManager.getCoverageEligibility(from, to) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_ELIGIBILITY_DETAIL, async (_evt, from: string, to: string) => {
+      try {
+        return { success: true, data: await this.personnelManager.getEligibilityDetail(from, to) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_QUICK_SIGNUP,
+      async (_evt, date: string, shift?: 'DAY' | 'NIGHT', signAsToken?: string) => {
+        try {
+          return { success: true, data: await this.personnelManager.quickSignUp(date, shift, signAsToken) };
+        } catch (err: any) {
+          return { success: false, error: err.message };
+        }
+      });
+
+    ipcMain.handle(events.IPC_PERSONNEL_COVERAGE_WITHDRAW, async (_evt, signupId: number, signAsToken?: string) => {
+      try {
+        return { success: true, data: await this.personnelManager.withdrawSignup(signupId, signAsToken) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_AUTH_STEP_UP, async (_evt, code: string) => {
+      try {
+        return { success: true, data: await this.personnelManager.stepUpAuthorize(code) };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
     // TOI/TMOD file listing with metadata extraction
     ipcMain.handle(events.IPC_TOI_LIST_FILES, async () => {
       try {

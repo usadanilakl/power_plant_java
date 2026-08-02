@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.pwa;
 import com.dk_power.power_plant_java.dto.schedule.CoverageRequestDto;
 import com.dk_power.power_plant_java.dto.schedule.CoverageSeatSummaryDto;
 import com.dk_power.power_plant_java.dto.schedule.CoverageSignupDto;
+import com.dk_power.power_plant_java.dto.schedule.EligibilityCellDto;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
@@ -23,11 +24,15 @@ import java.util.Map;
 /**
  * Operator-facing coverage endpoints (PWA / Electron / kiosk). Reads expose the open-seat chips and
  * per-day detail; the POST signs the authenticated user up for a seat. Gated in
- * {@code SecurityConfigSpring} to PLANT/ADMIN/KIOSK so a kiosk (read-only elsewhere) may sign up.
+ * {@code SecurityConfigSpring} — GET is PLANT/ADMIN/KIOSK (a kiosk wall display may show open
+ * seats); POST (signup) is PLANT/ADMIN only. KIOSK is deliberately excluded from the POST: the
+ * shared kiosk JWT identifies the display, not the individual, so a kiosk signup today would be
+ * misattributed.
  *
  * <p>Kiosk PIN-based signup (identifying the individual by initials+PIN via {@code StepUpAuthService}
- * rather than the shared kiosk JWT) is a Phase 3B addition; today the POST attributes the signup to
- * the authenticated principal.
+ * / the {@code X-Sign-As-Token} step-up path rather than the shared kiosk JWT) is the planned
+ * Phase 3B route back to kiosk signup; until it's built, the POST attributes the signup to the
+ * authenticated (non-kiosk) principal only.
  */
 @RestController
 @RequestMapping("/api/pwa/secured/coverage-signup")
@@ -56,6 +61,107 @@ public class PwaCoverageController {
     public ResponseEntity<List<CoverageRequestDto>> day(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(coverageService.openForDate(date));
+    }
+
+    /**
+     * Open needs on a day that the SIGNED-IN operator may actually pick up — off that day AND qualified
+     * by the cover-up hierarchy (Lead>CRO>AO; same-discipline for Mechanic/I&C/Manager). The self-service
+     * "help cover a shift" list, so an operator only sees seats they can fill; each carries the
+     * discipline/position so the card can be labelled.
+     */
+    @GetMapping("/day-eligible")
+    public ResponseEntity<List<CoverageRequestDto>> dayEligible(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        User me = currentUser();
+        if (me == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(coverageService.openForDateForUser(date, me));
+    }
+
+    /**
+     * One-click sign-up from the schedule grid: sign the current operator up for the best open need
+     * they can cover on {@code date} (auto-picks the seat matching their position). Drives clicking the
+     * ＋ next to their name. Returns the PENDING signup, or 400 with an error if nothing is coverable.
+     */
+    @PostMapping("/quick")
+    public ResponseEntity<?> quick(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String shift,
+            @RequestParam(required = false) String via) {
+        User me = currentUser();
+        if (me == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+        try {
+            return ResponseEntity.ok(coverageService.quickSignUp(date, shift, me, via == null ? "PWA" : via));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** Withdraw the current operator's own not-yet-approved sign-up (change/remove a pending pick-up). */
+    @PostMapping("/{id}/withdraw")
+    public ResponseEntity<?> withdraw(@PathVariable Long id) {
+        User me = currentUser();
+        if (me == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+        try {
+            boolean ok = coverageService.withdrawSignup(id, me);
+            return ResponseEntity.ok(Map.of("ok", ok));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** All coverage signups over a range (any status) — drives the grid status colouring
+     *  (pending vs approved letter on each person's cell). */
+    @GetMapping("/signups")
+    public ResponseEntity<List<CoverageSignupDto>> signups(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(coverageService.listSignups(from, to));
+    }
+
+    /** Per-person day/night open-seat counts across a range — the grid seat marker (green day count /
+     *  blue night count / half-and-half when both). Replaces the old boolean ＋ eligibility. */
+    @GetMapping("/eligibility-detail")
+    public ResponseEntity<List<EligibilityCellDto>> eligibilityDetail(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(coverageService.eligibilityDetail(from, to));
+    }
+
+    /** Dates in the range the signed-in operator can cover (off that day + qualified by the hierarchy). */
+    @GetMapping("/my-eligible")
+    public ResponseEntity<List<String>> myEligible(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        User me = currentUser();
+        if (me == null) return ResponseEntity.status(401).build();
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(coverageService.eligibleDatesForUser(me.getId(), from, to)
+                .stream().map(LocalDate::toString).toList());
+    }
+
+    /**
+     * Roster-wide eligibility: date -> user ids who are off that day and qualified to cover.
+     * Drives the per-person "can pick up" markers in the month grid (every operator, not just self).
+     */
+    @GetMapping("/eligibility")
+    public ResponseEntity<Map<String, List<Long>>> eligibility(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
+            return ResponseEntity.badRequest().build();
+        }
+        Map<String, List<Long>> out = new java.util.LinkedHashMap<>();
+        coverageService.eligibleCoverersByDate(from, to)
+                .forEach((d, ids) -> out.put(d.toString(), new java.util.ArrayList<>(ids)));
+        return ResponseEntity.ok(out);
     }
 
     @PostMapping

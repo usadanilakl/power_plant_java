@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.users.ScheduleImportRequest;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
+import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
 import com.dk_power.power_plant_java.sevice.users.LocalScheduleHeartbeatCache;
 import com.dk_power.power_plant_java.sevice.users.ShiftDayService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ public class NgScheduleController {
     private final ShiftDayService shiftDayService;
     private final LocalScheduleHeartbeatCache heartbeatCache;
     private final SyncConfig syncConfig;
+    private final NgCoverageService coverageService;
 
     /**
      * Receives the parsed Ops Schedule from the Electron desktop app (the single, battle-tested
@@ -111,6 +114,20 @@ public class NgScheduleController {
     public ResponseEntity<NgApiResponse<List<ShiftDayDto>>> year(@PathVariable int year) {
         List<ShiftDayDto> rows = shiftDayService.getYear(year);
         return ResponseEntity.ok(new NgApiResponse<>(rows, "Schedule year retrieved"));
+    }
+
+    /**
+     * Coverage eligibility per day: {@code date → userIds} of people off + qualified to cover an open
+     * need (Lead→CRO→AO hierarchy). Reachable by the Electron desktop widget (same /ng/schedule auth).
+     */
+    @GetMapping("/coverage-eligibility")
+    public ResponseEntity<NgApiResponse<Map<String, List<Long>>>> coverageEligibility(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        Map<String, List<Long>> out = new HashMap<>();
+        coverageService.eligibleCoverersByDate(from, to)
+                .forEach((d, ids) -> out.put(d.toString(), new ArrayList<>(ids)));
+        return ResponseEntity.ok(new NgApiResponse<>(out, "Coverage eligibility"));
     }
 
     /**

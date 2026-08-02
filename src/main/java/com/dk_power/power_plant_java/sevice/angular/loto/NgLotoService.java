@@ -15,6 +15,7 @@ import com.dk_power.power_plant_java.repository.loto.LotoSnapshotRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.angular.permits.PermitNumberGenerator;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     private final LotoStandardRepo lotoStandardRepo;
     private final com.dk_power.power_plant_java.sevice.loto.loto_box.LotoAssignmentService lotoAssignmentService;
     private final com.dk_power.power_plant_java.repository.permits.JobLogRepo jobLogRepo;
+    private final PermitNumberGenerator permitNumberGenerator;
 
     @Override
     public LotoRepo getRepo() {
@@ -324,6 +326,13 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (permitData != null) mapper.updateLotoFromDto(permitData, loto);
         loto.setSourceStandard(standard);
         loto.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        // Generate permit number BEFORE the first repo.save so we don't need a
+        // second save that would call merge() — merge returns a new managed
+        // instance and orphans the snapshot's loto reference, producing a
+        // snapshot row with loto_id=null and an NPE at DTO conversion time.
+        if (loto.getPermitNumber() == null || loto.getPermitNumber().isEmpty()) {
+            loto.setPermitNumber(permitNumberGenerator.generate(loto.getDate()));
+        }
 
         LotoSnapshot snapshot = loto.createNewSnapshot();
         snapshot.setSnapshotReason("Created from standard: " + standard.getName());
@@ -372,6 +381,12 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         Loto loto = new Loto();
         if (permitData != null) mapper.updateLotoFromDto(permitData, loto);
         loto.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        // See createFromStandard: number generation must precede the first
+        // save so we only save the Loto once. Two saves detach the snapshot's
+        // loto reference and produce loto_id=null on insert.
+        if (loto.getPermitNumber() == null || loto.getPermitNumber().isEmpty()) {
+            loto.setPermitNumber(permitNumberGenerator.generate(loto.getDate()));
+        }
 
         LotoSnapshot snapshot = loto.createNewSnapshot();
         snapshot.setSnapshotReason("Created from scratch");

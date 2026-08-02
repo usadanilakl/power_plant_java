@@ -10,10 +10,9 @@ import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
-import com.dk_power.power_plant_java.sevice.esp.EspLedService;
+import com.dk_power.power_plant_java.sevice.esp.EspRefreshDispatcher;
 import com.dk_power.power_plant_java.sevice.esp.LedStripService;
 import com.dk_power.power_plant_java.sevice.esp.LotoStatusColorMapping;
-import com.dk_power.power_plant_java.sevice.esp.WledCommandQueueService;
 
 import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
@@ -30,22 +29,20 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final LotoBoxMapper lotoBoxMapper;
-    private final EspLedService espLedService;
     private final LedStripService ledStripService;
-    private final WledCommandQueueService wledCommandQueueService;
+    private final EspRefreshDispatcher espRefreshDispatcher;
     private final LotoRepo lotoRepo;
 
     public NgLotoBoxService(LotoBoxRepo lotoBoxRepo, SessionFactory sessionFactory,
                            EntityManager entityManager, LotoBoxMapper lotoBoxMapper,
-                           EspLedService espLedService, LedStripService ledStripService,
-                           WledCommandQueueService wledCommandQueueService, LotoRepo lotoRepo) {
+                           LedStripService ledStripService,
+                           EspRefreshDispatcher espRefreshDispatcher, LotoRepo lotoRepo) {
         this.lotoBoxRepo = lotoBoxRepo;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
         this.lotoBoxMapper = lotoBoxMapper;
-        this.espLedService = espLedService;
         this.ledStripService = ledStripService;
-        this.wledCommandQueueService = wledCommandQueueService;
+        this.espRefreshDispatcher = espRefreshDispatcher;
         this.lotoRepo = lotoRepo;
     }
 
@@ -165,20 +162,17 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     }
 
     /**
-     * Enqueue a full-array refresh for the ESP that owns this box.
+     * Route a full-array refresh for the ESP that owns this box through
+     * {@link EspRefreshDispatcher} — hub-first with local fallback. See its
+     * javadoc for the flow; the short version is that user clicks don't have
+     * to wait for the leader-based queue to promote a desktop.
      * <p>
-     * All ESP writes go through the queue → leader → EspLedService.syncFullLedArray
-     * path. Never a direct synchronous HTTP write from here — that path used to
-     * exist but it (a) bypassed retries so a momentarily-offline ESP silently
-     * lost the update, and (b) caused multi-writer races when several desktops
-     * had the same box up on-screen.
-     * <p>
-     * The queue dedupes per ESP, so calling this in a tight loop (e.g. from
-     * {@link #syncAllBoxesToEsp}) enqueues at most one refresh per ESP.
+     * The dispatcher (and the queue it may enqueue into) dedupes per ESP, so
+     * calling this in a tight loop (e.g. from {@link #syncAllBoxesToEsp})
+     * doesn't produce a burst of ESP posts.
      */
     private void updateEspDevice(LotoBox box) {
-        if (box == null || box.getLedStrip() == null || box.getLedStrip().getEspDevice() == null) return;
-        wledCommandQueueService.enqueueEspRefresh(box.getLedStrip().getEspDevice().getId());
+        espRefreshDispatcher.dispatch(box);
     }
 
     /**

@@ -1,11 +1,13 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { FilterOutRules } from '../../../../shared/table/refactored/table.component';
+import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DoubleLotoPointTableService {
+  private lotoPointStateService = inject(RfLotoPointStateService);
 
   selectedItems = signal<LotoPointDto[]>([]);
   currentSelectedItems = signal<LotoPointDto[]>([]);
@@ -22,24 +24,22 @@ export class DoubleLotoPointTableService {
   lastReorderedItems = signal<LotoPointDto[] | null>(null);
 
   /**
-   * The LOTO point currently being viewed in the details dialog. Set by
-   * either source or destination click services on double-click; the
-   * parent DoubleLotoPointTableComponent renders a popup projection
-   * hosting a LotoPointDualForm bound to this signal.
-   * <p>
-   * null = popup closed.
+   * Open the details dialog on this point. Delegates to
+   * RfLotoPointStateService.loadItemById which fetches the full DTO from
+   * the server, sets selectedItem, and flips isLotoPointFormOpen — the
+   * page-level popup on {@code rf-loto-standard-page.component.html}
+   * then renders either the dual form (for unit-specific 01/02 points)
+   * or the single {@code app-rf-loto-point-form} (for everything else).
+   * Reusing that popup means points without a counterpart get a form
+   * too — the same behavior the "View Details" context-menu action
+   * provides — instead of the dual form template rendering nothing.
    */
-  viewingPoint = signal<LotoPointDto | null>(null);
-
-  /** Open the details dialog on this point. */
   viewPoint(item: LotoPointDto): void {
-    if (!item) return;
-    this.viewingPoint.set(item);
-  }
-
-  /** Close the details dialog. */
-  closeViewingPoint(): void {
-    this.viewingPoint.set(null);
+    if (!item?.id) return;
+    // loadAndOpenItem (not loadItemById): also calls openForm() → flips
+    // isLotoPointFormOpen so the page-level popup renders. Plain
+    // loadItemById only sets selectedItem and leaves the popup closed.
+    this.lotoPointStateService.loadAndOpenItem(item.id);
   }
 
   /**

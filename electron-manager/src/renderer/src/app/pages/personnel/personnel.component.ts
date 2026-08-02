@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport, PersonnelConfig, PersonnelStatusMeta } from '../../services/electron.service';
+import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport, PersonnelConfig, PersonnelStatusMeta, CoverageOpening, CoverageSignup, CoverageEligibilityDetail } from '../../services/electron.service';
 import { ChatPanelComponent } from './chat-panel.component';
 
 /**
@@ -27,6 +27,12 @@ function getContactsUrl(): string {
 const SHIFT_LABELS: Record<string, string> = {
   'D': 'Day Shift', 'N': 'Night Shift', 'U': 'Unscheduled', 'P': 'PTO', 'T': 'Training',
   'OCM': 'On Call Manager', 'L': 'Leads Meeting', 'OFF': 'Off', '': 'Off',
+};
+
+/** Canonical group display labels — must match the PWA exactly. */
+const GROUP_LABELS: Record<string, string> = {
+  'A': 'Crew A', 'B': 'Crew B', 'C': 'Crew C', 'D': 'Crew D',
+  'Rel': 'Relief', 'OCM': 'On-Call Manager',
 };
 
 @Component({
@@ -147,6 +153,50 @@ const SHIFT_LABELS: Record<string, string> = {
           </div>
         </div>
 
+        <!-- Coverage sign-up -->
+        <div class="section" *ngIf="status?.status === 'available' && !coverageUnavailable">
+          <h2 class="section-title">
+            <span class="material-icons section-icon">volunteer_activism</span>
+            Coverage Sign-Up
+          </h2>
+          <div class="coverage-bar">
+            <label class="cov-date-lbl">Date
+              <input type="date" class="cov-date" [(ngModel)]="coverageDate" (ngModelChange)="loadCoverage()" />
+            </label>
+            <button class="btn btn-secondary btn-sm" (click)="loadCoverage()" [disabled]="coverageLoading">
+              <span class="material-icons" style="font-size:15px">refresh</span> Refresh
+            </button>
+          </div>
+          <div class="cov-msg ok" *ngIf="coverageMsg">{{ coverageMsg }}</div>
+          <div class="cov-msg err" *ngIf="coverageError">{{ coverageError }}</div>
+          <div class="cov-empty" *ngIf="!coverageLoading && coverageOpenings.length === 0">
+            No open coverage seats for this day.
+          </div>
+          <div class="cov-list" *ngIf="coverageOpenings.length > 0">
+            <div class="cov-item" *ngFor="let o of coverageOpenings">
+              <div class="cov-info">
+                <span class="cov-role">{{ coverageRoleLabel(o) }}</span>
+                <span class="cov-shift" [class.night]="o.shift === 'NIGHT'">{{ o.shift === 'NIGHT' ? 'Night' : 'Day' }}</span>
+                <span class="cov-seats">{{ o.openForDate }} open</span>
+                <span class="cov-reason" *ngIf="o.reason">{{ o.reason }}</span>
+              </div>
+              <div class="cov-actions">
+                <button class="btn btn-primary btn-sm" *ngIf="o.selfEligible" (click)="signUpSelf(o)">Sign up (me)</button>
+                <button class="btn btn-secondary btn-sm" (click)="openPinModal(o)">Someone else (PIN)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coverage sign-up unavailable (403 — OS user lacks Plant access): neutral, no raw HTTP error -->
+        <div class="section" *ngIf="status?.status === 'available' && coverageUnavailable">
+          <h2 class="section-title">
+            <span class="material-icons section-icon">volunteer_activism</span>
+            Coverage Sign-Up
+          </h2>
+          <div class="cov-empty">Coverage sign-up unavailable on this desktop.</div>
+        </div>
+
         <!-- Full schedule -->
         <div class="section" *ngIf="status?.status === 'available'">
           <div class="schedule-header-row">
@@ -243,19 +293,25 @@ const SHIFT_LABELS: Record<string, string> = {
                 <ng-container *ngFor="let group of groups">
                   <tr class="group-separator">
                     <td [attr.colspan]="2 + scheduleDays.length">
-                      <span class="group-label" [class]="'group-' + group.toLowerCase()">{{ group }}</span>
+                      <span class="group-label" [class]="'group-' + group.toLowerCase()">{{ groupLabel(group) }}</span>
                     </td>
                   </tr>
                   <tr *ngFor="let p of filteredGroupMembers(group)" class="person-row">
                     <td class="td-group">
                       <span class="group-badge" [class]="'group-' + group.toLowerCase()">{{ groupBadge(group) }}</span>
                     </td>
-                    <td class="td-name">{{ p.name }}</td>
+                    <td class="td-name" [title]="p.name">{{ p.name }}</td>
                     <td *ngFor="let s of getMonthSchedule(p); let i = index"
-                        class="td-shift" [class]="getShiftClass(s.shift)"
+                        class="td-shift" [class]="cellView(p, s).cssClass"
                         [class.today]="scheduleDays[i] && scheduleDays[i].isToday"
-                        [title]="getShiftLabel(s.shift)">
-                      {{ s.shift || '-' }}
+                        [class.clickable]="cellView(p, s).clickable"
+                        [title]="cellView(p, s).title"
+                        (click)="onCellClick(p, s)">
+                      <ng-container *ngIf="cellView(p, s).kind === 'seat'; else plainCellText">
+                        <span class="seat-day-part" *ngIf="cellView(p, s).seat!.day > 0">{{ cellView(p, s).seat!.day }}</span>
+                        <span class="seat-night-part" *ngIf="cellView(p, s).seat!.night > 0">{{ cellView(p, s).seat!.night }}</span>
+                      </ng-container>
+                      <ng-template #plainCellText>{{ cellView(p, s).text }}</ng-template>
                     </td>
                   </tr>
                 </ng-container>
@@ -295,6 +351,90 @@ const SHIFT_LABELS: Record<string, string> = {
           <span class="material-icons">groups</span>
           <span>Click Refresh to load the schedule from SharePoint</span>
           <button class="btn btn-primary" (click)="refresh()">Load Schedule</button>
+        </div>
+      </div>
+
+      <!-- Floating coverage result popup — visible no matter how far the grid is scrolled -->
+      <div class="cov-toast" *ngIf="covToast" [class.err]="covToast.kind === 'err'" (click)="dismissCovToast()">
+        <span class="material-icons">{{ covToast.kind === 'err' ? 'error_outline' : 'check_circle' }}</span>
+        <span class="cov-toast-text">{{ covToast.text }}</span>
+        <button class="cov-toast-x" title="Dismiss" (click)="$event.stopPropagation(); dismissCovToast()">✕</button>
+      </div>
+
+      <!-- PIN step-up modal: sign up / change / remove a DIFFERENT operator's coverage -->
+      <div class="pin-overlay" *ngIf="pinModalOpen" (click)="closePinModal()">
+        <div class="pin-modal" (click)="$event.stopPropagation()">
+          <h3 class="pin-title">
+            {{ pinPendingAction
+                ? (pinPendingAction.kind === 'withdraw' ? 'Remove sign-up' : 'Switch shift')
+                : (pinQuickTarget ? ('Sign up ' + pinQuickTarget.name) : 'Sign up another operator') }}
+          </h3>
+          <p class="pin-sub" *ngIf="pinQuickTarget">
+            Enter <strong>{{ pinQuickTarget.name }}</strong>'s initials + PIN (e.g. <strong>DK1234</strong>)
+            to pick up coverage on <strong>{{ pinQuickTarget.date }}</strong>.
+          </p>
+          <div class="pin-shift-choice" *ngIf="pinQuickTarget && (pinQuickTarget.day || 0) > 0 && (pinQuickTarget.night || 0) > 0">
+            <span class="pin-shift-label">Shift:</span>
+            <button type="button" class="shift-choice-btn shift-choice-day" [class.active]="pinQuickShift === 'DAY'"
+                    (click)="pinQuickShift = 'DAY'">Day ({{ pinQuickTarget.day }})</button>
+            <button type="button" class="shift-choice-btn shift-choice-night" [class.active]="pinQuickShift === 'NIGHT'"
+                    (click)="pinQuickShift = 'NIGHT'">Night ({{ pinQuickTarget.night }})</button>
+          </div>
+          <p class="pin-sub" *ngIf="pinTarget">
+            Enter your initials + PIN (e.g. <strong>DK1234</strong>) to sign up for the
+            <strong>{{ coverageRoleLabel(pinTarget) }}</strong> ·
+            <strong>{{ pinTarget.shift === 'NIGHT' ? 'Night' : 'Day' }}</strong> seat on
+            <strong>{{ coverageDate }}</strong>.
+          </p>
+          <p class="pin-sub" *ngIf="pinPendingAction">
+            Enter their initials + PIN (e.g. <strong>DK1234</strong>) to
+            {{ pinPendingAction.kind === 'withdraw' ? 'remove' : ('switch to ' + (pinPendingAction.switchToShift === 'NIGHT' ? 'Night' : 'Day')) }}
+            the sign-up on <strong>{{ pinPendingAction.date }}</strong>.
+          </p>
+          <input class="pin-input" type="password" [(ngModel)]="pinCode" (keyup.enter)="submitPin()"
+                 placeholder="Initials + PIN" autocomplete="off" />
+          <div class="cov-msg err" *ngIf="pinError">{{ pinError }}</div>
+          <div class="pin-buttons">
+            <button class="btn btn-secondary" (click)="closePinModal()" [disabled]="pinBusy">Cancel</button>
+            <button class="btn btn-primary" (click)="submitPin()" [disabled]="pinBusy">
+              {{ pinBusy ? 'Verifying…' : (pinPendingAction ? (pinPendingAction.kind === 'withdraw' ? 'Remove' : 'Switch') : 'Sign up') }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending sign-up: change/remove popup (own not-yet-approved sign-up, or someone else's via PIN) -->
+      <div class="pin-overlay" *ngIf="pendingActionOpen" (click)="closePendingAction()">
+        <div class="pin-modal pending-action-modal" (click)="$event.stopPropagation()">
+          <h3 class="pin-title">
+            {{ pendingActionTarget?.isMine ? 'Your pending sign-up' : (pendingActionTarget?.personName + ' — pending sign-up') }}
+          </h3>
+          <p class="pin-sub" *ngIf="pendingActionTarget">
+            <strong>{{ pendingActionTarget.shift === 'NIGHT' ? 'Night' : 'Day' }}</strong> shift on
+            <strong>{{ pendingActionTarget.date }}</strong> — pending approval.
+          </p>
+          <div class="pending-action-buttons">
+            <button class="btn btn-secondary" (click)="closePendingAction()">Cancel</button>
+            <button class="btn btn-danger" (click)="removePendingSignup()">Remove</button>
+            <button class="btn btn-primary" *ngIf="pendingActionTarget?.otherOpen" (click)="switchPendingSignup()">
+              Switch to {{ pendingActionTarget?.otherShift === 'NIGHT' ? 'Night' : 'Day' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seat-count marker: SELF shift chooser when both Day and Night are open on that date -->
+      <div class="pin-overlay" *ngIf="seatChooserOpen" (click)="closeSeatChooser()">
+        <div class="pin-modal seat-chooser-modal" (click)="$event.stopPropagation()">
+          <h3 class="pin-title">Sign up — pick a shift</h3>
+          <p class="pin-sub" *ngIf="seatChooserTarget">
+            Open seats on <strong>{{ seatChooserTarget.date }}</strong>:
+          </p>
+          <div class="pending-action-buttons" *ngIf="seatChooserTarget">
+            <button class="btn btn-secondary" (click)="closeSeatChooser()">Cancel</button>
+            <button class="btn btn-seat-day" (click)="chooseSeatShift('DAY')">Day ({{ seatChooserTarget.day }})</button>
+            <button class="btn btn-seat-night" (click)="chooseSeatShift('NIGHT')">Night ({{ seatChooserTarget.night }})</button>
+          </div>
         </div>
       </div>
 
@@ -475,6 +615,66 @@ const SHIFT_LABELS: Record<string, string> = {
     .btn-icon { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; padding: 6px; cursor: pointer; }
     .btn-icon:hover { color: var(--text-primary); border-color: var(--text-muted); }
     .btn-icon .material-icons { font-size: 18px; }
+    .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .btn-secondary:disabled { opacity: 0.5; cursor: default; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
+
+    /* Coverage sign-up */
+    .coverage-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .cov-date-lbl { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+    .cov-date { padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; }
+    .cov-msg { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
+    .cov-msg.ok { background: rgba(34,197,94,0.14); color: #16a34a; }
+    .cov-msg.err { background: rgba(239,68,68,0.14); color: #dc2626; }
+    .cov-empty { font-size: 12px; color: var(--text-muted); padding: 4px 0; }
+    .cov-list { display: flex; flex-direction: column; gap: 8px; }
+    .cov-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); }
+    .cov-info { display: flex; align-items: center; gap: 10px; }
+    .cov-role { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .cov-shift { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #22c55e; color: #fff; }
+    .cov-shift.night { background: #6366f1; }
+    .cov-seats { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .cov-reason { font-size: 11px; color: var(--text-muted); }
+    .cov-actions { display: flex; gap: 6px; }
+
+    /* Floating coverage result popup — fixed to the viewport so it's seen regardless of grid scroll */
+    .cov-toast {
+      position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 2000;
+      display: flex; align-items: center; gap: 10px; max-width: 90vw;
+      background: #14532d; color: #fff; padding: 12px 16px; border-radius: 10px;
+      box-shadow: 0 10px 34px rgba(0,0,0,0.4); font-size: 14px; cursor: pointer;
+      animation: covToastIn 0.18s ease-out;
+    }
+    .cov-toast.err { background: #7f1d1d; }
+    .cov-toast .material-icons { font-size: 20px; flex: none; }
+    .cov-toast-text { line-height: 1.35; }
+    .cov-toast-x { background: transparent; border: none; color: #fff; cursor: pointer; font-size: 13px; opacity: 0.75; padding: 0 0 0 4px; }
+    .cov-toast-x:hover { opacity: 1; }
+    @keyframes covToastIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+    /* PIN step-up modal */
+    .pin-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .pin-modal { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 340px; max-width: 90vw; box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+    .pin-title { margin: 0 0 8px; font-size: 16px; color: var(--text-primary); }
+    .pin-sub { margin: 0 0 14px; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .pin-input { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 16px; letter-spacing: 2px; text-align: center; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); margin-bottom: 10px; }
+    .pin-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-seat-day { background: #22c55e; color: #fff; }
+    .btn-seat-night { background: #3b82f6; color: #fff; }
+
+    /* Shift chooser inside the PIN modal (quick sign-up when both Day and Night are open) */
+    .pin-shift-choice { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .pin-shift-label { font-size: 12px; color: var(--text-muted); }
+    .shift-choice-btn {
+      flex: 1; padding: 8px 10px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);
+    }
+    .shift-choice-btn.shift-choice-day.active { background: #22c55e; border-color: #22c55e; color: #fff; }
+    .shift-choice-btn.shift-choice-night.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+    /* Pending sign-up change/remove + seat chooser popups (reuse .pin-modal shell) */
+    .pending-action-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
     /* Tabs */
     .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); }
@@ -520,13 +720,17 @@ const SHIFT_LABELS: Record<string, string> = {
 
     /* Schedule table */
     .schedule-table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 10px; }
-    .schedule-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    /* Fixed layout + slim day columns so a whole month fits the page width without
+       horizontal scroll (cells hold a single letter / count — 60px/day was wasted).
+       min-width is a floor: only very narrow windows fall back to scrolling. */
+    .schedule-table { width: 100%; min-width: 940px; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
     .schedule-table thead { background: var(--bg-secondary); }
     .schedule-table th {
-      padding: 8px 6px; font-weight: 600; color: var(--text-muted);
+      padding: 8px 2px; font-weight: 600; color: var(--text-muted);
       text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;
       border-bottom: 1px solid var(--border-color); white-space: nowrap;
     }
+    .schedule-table th.th-name { padding-left: 8px; }
     .schedule-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
     .schedule-header-row .section-title { margin-bottom: 0; }
     .month-selector {
@@ -540,9 +744,9 @@ const SHIFT_LABELS: Record<string, string> = {
     .month-btn:hover { color: var(--text-primary); background: var(--bg-secondary); }
     .month-btn.active { background: var(--accent-primary); color: #fff; }
 
-    .th-group { width: 50px; text-align: center; position: sticky; left: 0; z-index: 2; background: var(--bg-secondary); }
-    .th-name { text-align: left; min-width: 100px; position: sticky; left: 50px; z-index: 2; background: var(--bg-secondary); }
-    .th-day { text-align: center; min-width: 60px; }
+    .th-group { width: 40px; text-align: center; position: sticky; left: 0; z-index: 2; background: var(--bg-secondary); }
+    .th-name { text-align: left; width: 116px; position: sticky; left: 40px; z-index: 2; background: var(--bg-secondary); }
+    .th-day { text-align: center; }
     .th-day.today { background: rgba(59, 130, 246, 0.1); }
     .day-name { display: block; font-size: 10px; }
     .day-num { display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); }
@@ -554,7 +758,8 @@ const SHIFT_LABELS: Record<string, string> = {
     }
     .group-label { padding: 2px 8px; border-radius: 4px; color: #fff; font-size: 11px; }
 
-    .person-row td { padding: 6px; border-bottom: 1px solid rgba(39,39,42,0.3); }
+    .person-row td { padding: 6px 2px; border-bottom: 1px solid rgba(39,39,42,0.3); }
+    .person-row td.td-name { padding-left: 8px; }
     .person-row:hover td { background: var(--bg-card); }
     .td-group { text-align: center; position: sticky; left: 0; z-index: 1; background: var(--bg-primary); }
     .person-row:hover .td-group { background: var(--bg-card); }
@@ -562,12 +767,32 @@ const SHIFT_LABELS: Record<string, string> = {
       display: inline-flex; align-items: center; justify-content: center;
       width: 20px; height: 20px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #fff;
     }
-    .td-name { font-weight: 500; color: var(--text-primary); position: sticky; left: 50px; z-index: 1; background: var(--bg-primary); }
+    .td-name { font-weight: 500; color: var(--text-primary); position: sticky; left: 40px; z-index: 1; background: var(--bg-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .person-row:hover .td-name { background: var(--bg-card); }
     .td-shift {
       text-align: center; font-weight: 700; font-size: 12px; border-radius: 4px;
     }
     .td-shift.today { background: rgba(59, 130, 246, 0.08); }
+    .td-shift.clickable { cursor: pointer; }
+    .td-shift.clickable:hover { filter: brightness(1.15); }
+    /* Coverage-signup overlay — EXACT hex values (contract-fixed) so every surface (Electron/PWA/desktop) matches.
+       Placed after .today so the coverage colour always wins over the plain "today" background tint.
+       PENDING is clickable (change/remove); APPROVED stays locked (cursor default via base .td-shift). */
+    .td-shift.cov-pending { background: #f59e0b; color: #1a1a1a; border: 1px dashed #b45309; }
+    .td-shift.cov-approved { background: #14b8a6; color: #ffffff; cursor: default; }
+
+    /* Open-seat-count marker — EXACT hex values (contract-fixed): Day = green, Night = blue.
+       Single-shift cells fill the whole cell; both-open cells split into a day (left) / night (right) half. */
+    .td-shift.seat-day { background: #22c55e; color: #ffffff; }
+    .td-shift.seat-night { background: #3b82f6; color: #ffffff; }
+    .td-shift.seat-split { padding: 0; overflow: hidden; }
+    .td-shift.seat-split .seat-day-part,
+    .td-shift.seat-split .seat-night-part {
+      display: block; float: left; width: 50%; box-sizing: border-box;
+      padding: 6px 0; color: #ffffff; font-weight: 700; font-size: 11px; text-align: center;
+    }
+    .td-shift.seat-split .seat-day-part { background: #22c55e; }
+    .td-shift.seat-split .seat-night-part { background: #3b82f6; }
     .shift-day { color: #22c55e; }
     .shift-night { color: #6366f1; }
     .shift-off { color: var(--text-muted); }
@@ -862,6 +1087,47 @@ export class PersonnelComponent implements OnInit {
   selectedMonth: number = new Date().getMonth();
   monthOptions: { idx: number; label: string }[] = [];
 
+  // ── Coverage sign-up ─────────────────────────────────────────────────
+  // The signed-in OS user (DesktopAutoAuthFilter) signs up for themselves; the PIN modal signs up a
+  // DIFFERENT operator via a step-up token so anyone standing at this station can grab a seat.
+  coverageDate: string = this.isoOfLocal(new Date());
+  coverageOpenings: CoverageOpening[] = [];
+  coverageLoading = false;
+  coverageMsg = '';
+  coverageError = '';
+  coverageQuickBusy = false;   // guards the ＋ quick-signup POST against a double-click double-submit
+  /** Set when loadCoverage() gets a 401/403 (OS user lacks Plant access) — suppresses the raw error
+   *  and swaps the Coverage Sign-Up section for a neutral "unavailable" state instead. */
+  coverageUnavailable = false;
+  pinModalOpen = false;
+  pinTarget: CoverageOpening | null = null;
+  // Seat-count marker for a DIFFERENT operator — day/night carry the open-seat counts so the PIN
+  // modal can offer a shift choice when both are open (see the pin-shift-choice block in the template).
+  pinQuickTarget: { name: string; date: string; day?: number; night?: number } | null = null;
+  pinQuickShift: 'DAY' | 'NIGHT' | null = null;
+  // Set when the PIN modal is being used to step up for a change/remove on someone else's PENDING
+  // sign-up (see openPendingAction()/submitPin()) rather than a fresh sign-up.
+  pinPendingAction: { kind: 'withdraw' | 'switch'; signupId: number; date: string; switchToShift?: 'DAY' | 'NIGHT' } | null = null;
+  pinCode = '';
+  pinBusy = false;
+  pinError = '';
+  // Fixed popup for coverage results — the grid can be scrolled far from the section header, so an
+  // above-the-table message would land off-screen; this floats over the viewport instead.
+  covToast: { text: string; kind: 'ok' | 'err' } | null = null;
+  private covToastTimer: any = null;
+
+  // Change/remove a not-yet-approved (PENDING) sign-up — clicking a PENDING cell opens this popup.
+  // Own sign-up acts immediately; someone else's routes through the PIN modal first (pinPendingAction).
+  pendingActionOpen = false;
+  pendingActionTarget: {
+    id: number; date: string; shift: 'DAY' | 'NIGHT'; otherShift: 'DAY' | 'NIGHT';
+    otherOpen: boolean; isMine: boolean; personName: string;
+  } | null = null;
+
+  // Seat-count marker: SELF shift chooser, shown when both Day AND Night are open for that person/date.
+  seatChooserOpen = false;
+  seatChooserTarget: { date: string; day: number; night: number } | null = null;
+
   // Year-at-a-glance view: 12 mini-month grids for the current schedule year, colored per shift.
   scheduleView: 'month' | 'year' = 'month';
   /** Optional person filter for year view. Empty string = "plant year" (colors by dominant shift
@@ -887,6 +1153,17 @@ export class PersonnelComponent implements OnInit {
   /** Per-person, schedule slice that matches scheduleDays for the selected month. */
   private personMonthSchedule: Map<string, { date: string; shift: any }[]> = new Map();
 
+  // ── Coverage-signup month overlay ───────────────────────────────────────
+  // `${userId}|${date}` -> the PENDING/APPROVED signup for that person/date (REJECTED/WITHDRAWN
+  // dropped; APPROVED preferred over PENDING when both exist — see loadMonthSignups()). Drives the
+  // month-grid cell overlay (cellView()) so coverage status is visible directly in the schedule.
+  private signupsByKey: Map<string, { id: number; shift: string; status: 'PENDING' | 'APPROVED' }> = new Map();
+
+  // `${userId}|${date}` -> per-shift OPEN SEAT COUNTS for that person/date (day/night = seats they're
+  // off + qualified to cover; 0 = none). Drives the open-seats marker (cellView()) that replaces the
+  // old plain ＋ "can cover" marker. Fetched alongside signupsByKey in loadMonthSignups().
+  private seatByKey: Map<string, { day: number; night: number }> = new Map();
+
   constructor(private electronService: ElectronService) {
     const fmt = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     this.monthOptions = fmt.map((label, idx) => ({ idx, label }));
@@ -895,6 +1172,8 @@ export class PersonnelComponent implements OnInit {
   ngOnInit(): void {
     this.loadSchedule();
     void this.loadPersonnelConfig();
+    void this.loadCoverage();
+    void this.loadMonthSignups();
   }
 
   async loadPersonnelConfig(): Promise<void> {
@@ -937,6 +1216,7 @@ export class PersonnelComponent implements OnInit {
   selectMonth(idx: number): void {
     this.selectedMonth = idx;
     this.computeDerived();
+    void this.loadMonthSignups();
   }
 
   /** Toggle Month/Year view. Building the year grid is cheap (12 × ~30 days) so we compute
@@ -1050,6 +1330,7 @@ export class PersonnelComponent implements OnInit {
     this.selectedMonth = monthIdx;
     this.scheduleView = 'month';
     this.computeDerived();
+    void this.loadMonthSignups();
   }
 
   /** Tooltip for a year-view mini-cell — lists crew:shift pairs for whole-plant mode, or
@@ -1065,6 +1346,163 @@ export class PersonnelComponent implements OnInit {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
+  }
+
+  // ── Coverage sign-up ─────────────────────────────────────────────────
+
+  /** backend-client throws "Backend POST <path> -> HTTP <code>: <json>"; surface just the body message. */
+  private cleanErr(msg: string | undefined): string {
+    if (!msg) return 'Something went wrong';
+    const m = msg.match(/HTTP\s+\d+:\s*(.+)$/s);
+    if (m) {
+      try { const o = JSON.parse(m[1]); return o.message || o.error || m[1]; } catch { return m[1]; }
+    }
+    return msg;
+  }
+
+  async loadCoverage(): Promise<void> {
+    this.coverageLoading = true;
+    this.coverageError = '';
+    this.coverageMsg = '';
+    this.coverageUnavailable = false;
+    try {
+      const res = await this.electronService.personnelCoverageDay(this.coverageDate);
+      if (res.success && res.data) {
+        this.coverageOpenings = (res.data || []).filter(o => (o.openForDate ?? 0) > 0);
+      } else {
+        this.coverageOpenings = [];
+        if (this.isForbidden(res.error)) {
+          this.coverageUnavailable = true;   // OS user lacks Plant access → go quiet, not raw HTTP 403
+        } else {
+          this.coverageError = this.cleanErr(res.error);
+        }
+      }
+    } catch (e: any) {
+      this.coverageOpenings = [];
+      if (this.isForbidden(e?.message)) {
+        this.coverageUnavailable = true;
+      } else {
+        this.coverageError = this.cleanErr(e?.message) || 'Failed to load coverage';
+      }
+    } finally {
+      this.coverageLoading = false;
+    }
+  }
+
+  /** Backend-client throws "Backend GET <path> -> HTTP 401/403: ..." for an unauthorized/forbidden
+   *  desktop (OS user lacks Plant access). Used to route those into the neutral unavailable state
+   *  instead of surfacing a raw HTTP error to someone the feature doesn't apply to. */
+  private isForbidden(msg: string | undefined): boolean {
+    if (!msg) return false;
+    return /HTTP\s+(401|403)\b/.test(msg);
+  }
+
+  /** The role a coverage need is for — headlines the card so Lead/CRO/AO/Mechanic/I&C/Manager seats
+   *  are distinguishable (they were all rendering a bare shift code). */
+  coverageRoleLabel(o: CoverageOpening): string {
+    const disc = (o.discipline || 'OPS').toUpperCase();
+    if (disc === 'MECHANIC') return 'Mechanic';
+    if (disc === 'IC') return 'I&C';
+    if (disc === 'MANAGER') return 'Manager';
+    const p = (o.position || '').toLowerCase();
+    if (p.includes('lead')) return 'Lead';
+    if (p.includes('control room') || p === 'cro') return 'Control Room Operator';
+    if (p.includes('auxiliary') || p === 'ao') return 'Auxiliary Operator';
+    return 'Operator';
+  }
+
+  /** Sign the signed-in OS user up for this seat (DesktopAutoAuthFilter attributes it to them). */
+  async signUpSelf(o: CoverageOpening): Promise<void> {
+    if (o.id == null) return;
+    this.coverageMsg = '';
+    this.coverageError = '';
+    const res = await this.electronService.personnelCoverageSignup(o.id, this.coverageDate);
+    if (res.success) {
+      this.coverageMsg = "You're signed up — a manager will approve it.";
+      await this.loadCoverage();
+    } else {
+      this.coverageError = this.cleanErr(res.error);
+    }
+  }
+
+  openPinModal(o: CoverageOpening): void {
+    this.pinTarget = o;
+    this.pinCode = '';
+    this.pinError = '';
+    this.pinModalOpen = true;
+  }
+
+  closePinModal(): void {
+    this.pinModalOpen = false;
+    this.pinTarget = null;
+    this.pinQuickTarget = null;
+    this.pinQuickShift = null;
+    this.pinPendingAction = null;
+    this.pinCode = '';
+    this.pinError = '';
+  }
+
+  /** Sign up / change / remove for a DIFFERENT operator: exchange their initials+PIN for a step-up
+   *  token, then act with it. Three flows share this modal — see the mutually-exclusive state:
+   *   - pinPendingAction: step-up change/remove on their PENDING sign-up (openPendingAction()).
+   *   - pinQuickTarget: seat-count marker quick sign-up (openQuickPin()) — day/night carry the open
+   *     counts so a shift choice is offered inline when both are open.
+   *   - pinTarget: the older day-view "sign up for one specific need" path.
+   */
+  async submitPin(): Promise<void> {
+    const quick = this.pinQuickTarget;
+    const pendingAction = this.pinPendingAction;
+    if (!quick && !pendingAction && (!this.pinTarget || this.pinTarget.id == null)) return;
+    if (quick && (quick.day || 0) > 0 && (quick.night || 0) > 0 && !this.pinQuickShift) {
+      this.pinError = 'Pick a shift';
+      return;
+    }
+    const code = (this.pinCode || '').trim().toUpperCase();
+    if (!code) { this.pinError = 'Enter your initials + PIN'; return; }
+    this.pinBusy = true;
+    this.pinError = '';
+    try {
+      const auth = await this.electronService.authStepUp(code);
+      if (!auth.success || !auth.data?.token) {
+        this.pinError = this.pinErrMessage(auth.error);
+        return;
+      }
+      const token = auth.data.token;
+      let res: any;
+      let successMsg = 'Signed up on their behalf — pending approval.';
+      if (pendingAction) {
+        res = await this.electronService.personnelCoverageWithdraw(pendingAction.signupId, token);
+        if (res.success && pendingAction.kind === 'switch' && pendingAction.switchToShift) {
+          res = await this.electronService.personnelCoverageQuickSignup(pendingAction.date, pendingAction.switchToShift, token);
+        }
+        successMsg = pendingAction.kind === 'withdraw' ? 'Sign-up removed.' : 'Switched shift — pending approval.';
+      } else if (quick) {
+        // Seat-count marker: let the backend auto-pick when only one shift was open (pinQuickShift
+        // unset), or pass the shift the PIN'd person chose when both were open.
+        res = await this.electronService.personnelCoverageQuickSignup(quick.date, this.pinQuickShift ?? undefined, token);
+      } else {
+        res = await this.electronService.personnelCoverageSignup(this.pinTarget!.id, this.coverageDate, token);
+      }
+      if (res.success) {
+        this.closePinModal();
+        this.showCovToast(successMsg, 'ok');
+        await Promise.all([this.loadCoverage(), this.loadMonthSignups()]);
+      } else {
+        this.pinError = this.cleanErr(res.error);
+      }
+    } catch (e: any) {
+      this.pinError = this.cleanErr(e?.message);
+    } finally {
+      this.pinBusy = false;
+    }
+  }
+
+  /** Friendlier step-up failure text — a bad code and a not-yet-set PIN both surface as "Invalid code". */
+  private pinErrMessage(err: string | undefined): string {
+    const m = this.cleanErr(err) || 'Invalid code';
+    return /invalid code/i.test(m)
+      ? "Invalid initials + PIN — or this operator hasn't set up a PIN yet."
+      : m;
   }
 
   private computeDerived(): void {
@@ -1127,7 +1565,11 @@ export class PersonnelComponent implements OnInit {
         .sort((a, b) => {
           const aIdx = a.monthOrder?.[monthKey] ?? Number.MAX_SAFE_INTEGER;
           const bIdx = b.monthOrder?.[monthKey] ?? Number.MAX_SAFE_INTEGER;
-          return aIdx - bIdx;
+          // Position rank primary, name secondary — matches the PWA's canonical ordering
+          // (group -> positionRank -> name) and keeps same-rank people (e.g. all AOs) deterministic
+          // instead of whatever arbitrary order they happened to land in.
+          if (aIdx !== bIdx) return aIdx - bIdx;
+          return a.name.localeCompare(b.name);
         });
       this.groupMembersMap.set(group, members);
     }
@@ -1147,6 +1589,11 @@ export class PersonnelComponent implements OnInit {
     return group.charAt(0);
   }
 
+  /** Canonical full display label for a group code — matches the PWA (A->Crew A, Rel->Relief, etc). */
+  groupLabel(group: string): string {
+    return GROUP_LABELS[group] || group;
+  }
+
   get onCallManagerToday(): PersonnelEntry[] {
     return this.status?.allPersonnel?.filter(p => p.todayShift === 'OCM') || [];
   }
@@ -1160,15 +1607,310 @@ export class PersonnelComponent implements OnInit {
     return SHIFT_LABELS[code] || code || 'Off';
   }
 
-  async loadSchedule(): Promise<void> {
+  /** Range (YYYY-MM-DD) covering the currently-selected schedule month. Schedule data (and hence
+   *  the coverage signups overlaid onto it) only ever spans the current year — see
+   *  personnel.manager.ts::getSchedulePath(). */
+  private selectedMonthRange(): { from: string; to: string } {
+    const year = new Date().getFullYear();
+    const mm = String(this.selectedMonth + 1).padStart(2, '0');
+    const lastDay = new Date(year, this.selectedMonth + 1, 0).getDate();
+    return { from: `${year}-${mm}-01`, to: `${year}-${mm}-${String(lastDay).padStart(2, '0')}` };
+  }
+
+  /** Load coverage signups + seat counts for the visible month and rebuild the `${userId}|${date}`
+   *  overlay lookups. Signups: PENDING/APPROVED only (REJECTED/WITHDRAWN dropped); APPROVED wins when
+   *  a person has both on the same date — sorting PENDING first means the later `.set()` for APPROVED
+   *  overwrites it. */
+  async loadMonthSignups(): Promise<void> {
+    const { from, to } = this.selectedMonthRange();
+    try {
+      const res = await this.electronService.personnelCoverageSignups(from, to);
+      const list: CoverageSignup[] = (res.success && res.data) ? res.data : [];
+      const relevant = list
+        .filter(s => (s.status === 'PENDING' || s.status === 'APPROVED') && s.userId != null && !!s.date)
+        .sort((a, b) => (a.status === 'APPROVED' ? 1 : 0) - (b.status === 'APPROVED' ? 1 : 0));
+      const map = new Map<string, { id: number; shift: string; status: 'PENDING' | 'APPROVED' }>();
+      for (const s of relevant) {
+        map.set(`${s.userId}|${s.date}`, { id: s.id, shift: s.shift, status: s.status as 'PENDING' | 'APPROVED' });
+      }
+      this.signupsByKey = map;
+    } catch {
+      this.signupsByKey = new Map();
+    }
+    // Per-person, per-shift OPEN SEAT COUNTS for the SAME (selected) month — drives the open-seats
+    // marker (day green / night blue / split when both) that replaces the old plain ＋.
+    try {
+      const detail = await this.electronService.personnelCoverageEligibilityDetail(from, to);
+      const seatMap = new Map<string, { day: number; night: number }>();
+      if (detail.success && detail.data) {
+        for (const row of detail.data as CoverageEligibilityDetail[]) {
+          if (row?.userId == null || !row?.date) continue;
+          seatMap.set(`${row.userId}|${row.date}`, { day: row.day || 0, night: row.night || 0 });
+        }
+      }
+      this.seatByKey = seatMap;
+    } catch {
+      this.seatByKey = new Map();
+    }
+  }
+
+  /** The PENDING/APPROVED signup for this person's cell, if any. */
+  private signupFor(p: PersonnelEntry, s: { date: string; shift: any }): { id: number; shift: string; status: 'PENDING' | 'APPROVED' } | undefined {
+    if (p.userId == null) return undefined;
+    return this.signupsByKey.get(`${p.userId}|${s.date}`);
+  }
+
+  /** Open-seat counts for this person's cell, if any (0/0 rows are kept out of the map upstream). */
+  private seatFor(p: PersonnelEntry, s: { date: string; shift: any }): { day: number; night: number } | undefined {
+    if (p.userId == null) return undefined;
+    return this.seatByKey.get(`${p.userId}|${s.date}`);
+  }
+
+  /** Single-letter shift code for the coverage overlay: D for DAY, N for NIGHT. */
+  private coverageLetter(shift: string): string {
+    return String(shift || '').toUpperCase().startsWith('N') ? 'N' : 'D';
+  }
+
+  /** Everything the template needs to render + interact with one month-grid cell, in contract
+   *  precedence: APPROVED coverage (locked) > PENDING coverage (clickable — change/remove) >
+   *  open-seat count marker (clickable — sign up) > normal shift / blank. */
+  cellView(p: PersonnelEntry, s: { date: string; shift: any }): {
+    text: string; cssClass: string; title: string; clickable: boolean;
+    kind: 'approved' | 'pending' | 'seat' | 'normal';
+    signup?: { id: number; shift: string; status: 'PENDING' | 'APPROVED' };
+    seat?: { day: number; night: number };
+  } {
+    const signup = this.signupFor(p, s);
+    if (signup?.status === 'APPROVED') {
+      return { text: this.coverageLetter(signup.shift), cssClass: 'cov-approved', title: 'Approved coverage', clickable: false, kind: 'approved', signup };
+    }
+    if (signup?.status === 'PENDING') {
+      return {
+        text: this.coverageLetter(signup.shift), cssClass: 'cov-pending',
+        title: 'Pending approval — click to change or remove', clickable: true, kind: 'pending', signup,
+      };
+    }
+    const seat = this.seatFor(p, s);
+    if (seat && (seat.day > 0 || seat.night > 0)) {
+      const both = seat.day > 0 && seat.night > 0;
+      const cssClass = both ? 'seat-split' : (seat.day > 0 ? 'seat-day' : 'seat-night');
+      const title = both
+        ? `${seat.day} day / ${seat.night} night open — click to sign up`
+        : (seat.day > 0 ? `${seat.day} day open — click to sign up` : `${seat.night} night open — click to sign up`);
+      return { text: '', cssClass, title, clickable: true, kind: 'seat', seat };
+    }
+    return { text: s.shift || '-', cssClass: this.getShiftClass(s.shift), title: this.getShiftLabel(s.shift), clickable: false, kind: 'normal' };
+  }
+
+  /** Route a click on a clickable cell: PENDING → change/remove popup; open-seats marker → sign up
+   *  (self one-click, or PIN for someone else — with a shift chooser when both Day and Night are open). */
+  async onCellClick(p: PersonnelEntry, s: { date: string; shift: any }): Promise<void> {
+    const cv = this.cellView(p, s);
+    if (!cv.clickable || this.coverageQuickBusy) return;
+    const meId = this.status?.currentUserId;
+    const isMine = p.userId != null && meId != null && p.userId === meId;
+
+    if (cv.kind === 'pending' && cv.signup) {
+      this.openPendingAction(p, s.date, cv.signup, isMine);
+      return;
+    }
+
+    if (cv.kind === 'seat' && cv.seat) {
+      const seat = cv.seat;
+      const bothOpen = seat.day > 0 && seat.night > 0;
+      // Fail CLOSED: require the PIN unless we've POSITIVELY confirmed this row is the signed-in OS
+      // user (meId known AND matches). Someone else's row → PIN; an unresolved identity → PIN too, so
+      // a transient /api/auth/me hiccup can never silently sign the OS user up for a coworker's seat.
+      // (Matches the change/remove path.) A row with no userId at all can't be PIN'd → self is the
+      // only option (rare SharePoint-parse fallback).
+      const confirmedMine = p.userId != null && meId != null && p.userId === meId;
+      if (!confirmedMine && p.userId != null) {
+        this.openQuickPin(p, s.date, seat);
+        return;
+      }
+      if (bothOpen) {
+        this.openSeatChooser(s.date, seat);
+        return;
+      }
+      await this.quickSignSelf(s.date, seat.day > 0 ? 'DAY' : 'NIGHT');
+    }
+  }
+
+  /** One-click self signup for the signed-in OS user; result shown in the floating toast. */
+  private async quickSignSelf(date: string, shift?: 'DAY' | 'NIGHT'): Promise<void> {
+    this.coverageQuickBusy = true;
+    try {
+      const res = await this.electronService.personnelCoverageQuickSignup(date, shift);
+      if (res.success) {
+        this.showCovToast("You're signed up — a manager will approve it.", 'ok');
+        await Promise.all([this.loadCoverage(), this.loadMonthSignups()]);
+      } else {
+        this.showCovToast(this.cleanErr(res.error), 'err');
+      }
+    } finally {
+      this.coverageQuickBusy = false;
+    }
+  }
+
+  /** Open the PIN modal to sign up a DIFFERENT operator (open-seats marker on someone else's row).
+   *  `seat` carries the open counts so the modal can offer a Day/Night choice when both are open. */
+  openQuickPin(p: PersonnelEntry, date: string, seat?: { day: number; night: number }): void {
+    this.pinQuickTarget = { name: p.name, date, day: seat?.day, night: seat?.night };
+    // Pre-pick the shift when only one is open; leave unset (forces an explicit choice) when both are.
+    this.pinQuickShift = seat && seat.day > 0 && !(seat.night > 0) ? 'DAY'
+      : (seat && seat.night > 0 && !(seat.day > 0) ? 'NIGHT' : null);
+    this.pinPendingAction = null;
+    this.pinTarget = null;
+    this.pinCode = '';
+    this.pinError = '';
+    this.pinModalOpen = true;
+  }
+
+  /** Open the SELF shift chooser (open-seats marker, both Day and Night open on that date). */
+  openSeatChooser(date: string, seat: { day: number; night: number }): void {
+    this.seatChooserTarget = { date, day: seat.day, night: seat.night };
+    this.seatChooserOpen = true;
+  }
+
+  closeSeatChooser(): void {
+    this.seatChooserOpen = false;
+    this.seatChooserTarget = null;
+  }
+
+  async chooseSeatShift(shift: 'DAY' | 'NIGHT'): Promise<void> {
+    const target = this.seatChooserTarget;
+    this.closeSeatChooser();
+    if (!target) return;
+    await this.quickSignSelf(target.date, shift);
+  }
+
+  /** Open the change/remove popup for a PENDING cell. Own sign-up acts immediately (removePendingSignup/
+   *  switchPendingSignup below); someone else's routes those same actions through the PIN modal first. */
+  openPendingAction(
+    p: PersonnelEntry, date: string,
+    signup: { id: number; shift: string; status: 'PENDING' | 'APPROVED' }, isMine: boolean
+  ): void {
+    if (p.userId == null) return;
+    const currentShift: 'DAY' | 'NIGHT' = this.coverageLetter(signup.shift) === 'N' ? 'NIGHT' : 'DAY';
+    const otherShift: 'DAY' | 'NIGHT' = currentShift === 'DAY' ? 'NIGHT' : 'DAY';
+    const seat = this.seatByKey.get(`${p.userId}|${date}`);
+    const otherOpen = !!seat && (otherShift === 'DAY' ? seat.day > 0 : seat.night > 0);
+    this.pendingActionTarget = { id: signup.id, date, shift: currentShift, otherShift, otherOpen, isMine, personName: p.name };
+    this.pendingActionOpen = true;
+  }
+
+  closePendingAction(): void {
+    this.pendingActionOpen = false;
+    this.pendingActionTarget = null;
+  }
+
+  /** Remove a not-yet-approved sign-up. Own → withdraw directly; someone else's → PIN step-up first. */
+  async removePendingSignup(): Promise<void> {
+    const t = this.pendingActionTarget;
+    if (!t) return;
+    this.closePendingAction();
+    if (t.isMine) {
+      this.coverageQuickBusy = true;
+      try {
+        const res = await this.electronService.personnelCoverageWithdraw(t.id);
+        if (res.success) {
+          this.showCovToast('Sign-up removed.', 'ok');
+          await Promise.all([this.loadCoverage(), this.loadMonthSignups()]);
+        } else {
+          this.showCovToast(this.cleanErr(res.error), 'err');
+        }
+      } finally {
+        this.coverageQuickBusy = false;
+      }
+    } else {
+      this.pinPendingAction = { kind: 'withdraw', signupId: t.id, date: t.date };
+      this.pinQuickTarget = null;
+      this.pinTarget = null;
+      this.pinCode = '';
+      this.pinError = '';
+      this.pinModalOpen = true;
+    }
+  }
+
+  /** Switch a not-yet-approved sign-up to the other (currently open) shift: withdraw, then re-quick-sign
+   *  for that shift. Own → both calls fire directly; someone else's → PIN step-up gates both. */
+  async switchPendingSignup(): Promise<void> {
+    const t = this.pendingActionTarget;
+    if (!t || !t.otherOpen) return;
+    this.closePendingAction();
+    if (t.isMine) {
+      this.coverageQuickBusy = true;
+      try {
+        const wd = await this.electronService.personnelCoverageWithdraw(t.id);
+        if (!wd.success) {
+          this.showCovToast(this.cleanErr(wd.error), 'err');
+          return;
+        }
+        const res = await this.electronService.personnelCoverageQuickSignup(t.date, t.otherShift);
+        this.showCovToast(
+          res.success ? `Switched to ${t.otherShift === 'NIGHT' ? 'Night' : 'Day'} — pending approval.` : this.cleanErr(res.error),
+          res.success ? 'ok' : 'err'
+        );
+        await Promise.all([this.loadCoverage(), this.loadMonthSignups()]);
+      } finally {
+        this.coverageQuickBusy = false;
+      }
+    } else {
+      this.pinPendingAction = { kind: 'switch', signupId: t.id, date: t.date, switchToShift: t.otherShift };
+      this.pinQuickTarget = null;
+      this.pinTarget = null;
+      this.pinCode = '';
+      this.pinError = '';
+      this.pinModalOpen = true;
+    }
+  }
+
+  private showCovToast(text: string, kind: 'ok' | 'err'): void {
+    this.covToast = { text, kind };
+    if (this.covToastTimer) clearTimeout(this.covToastTimer);
+    this.covToastTimer = setTimeout(() => { this.covToast = null; }, kind === 'err' ? 6500 : 4000);
+  }
+  dismissCovToast(): void {
+    this.covToast = null;
+    if (this.covToastTimer) clearTimeout(this.covToastTimer);
+  }
+
+  async loadSchedule(attempt = 0): Promise<void> {
     this.loading = true;
     try {
-      const result = await this.electronService.personnelGetStatus();
-      if (result.success && result.data) {
-        this.status = result.data;
+      // Fresh fetch (bypasses the cache) so a backend that isn't ready on first paint doesn't stick an
+      // empty result. Retry a few times with backoff — the local Spring Boot may still be starting.
+      const result = await this.electronService.personnelRefresh();
+      const data = result.data;
+      const ok = !!(result.success && data && data.status === 'available' && data.allPersonnel.length > 0);
+      if (ok) {
+        this.status = data!;
+        this.computeDerived();
+        void this.loadMonthSignups();
+      } else if (result.success && data && data.status === 'available') {
+        // Backend was reached fine but genuinely has no schedule rows yet (fresh install / pre-sync).
+        // The manager already parses SharePoint once as a fallback — retrying here would just repeat
+        // that (already cooldown-gated) round-trip for no benefit. Stop and show the empty state.
+        this.status = data;
+        this.computeDerived();
+        void this.loadMonthSignups();
+      } else if (attempt < 3) {
+        // Backend unreachable / errored — cheap to retry, the local Spring Boot may still be starting.
+        setTimeout(() => this.loadSchedule(attempt + 1), 2000);
+      } else {
+        this.status = data ?? { status: 'error', error: result.error || 'Could not load schedule',
+          onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
         this.computeDerived();
       }
-    } catch {} finally {
+    } catch (err: any) {
+      if (attempt < 3) {
+        setTimeout(() => this.loadSchedule(attempt + 1), 2000);
+      } else {
+        this.status = { status: 'error', error: err?.message || 'Could not load schedule',
+          onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
+        this.computeDerived();
+      }
+    } finally {
       this.loading = false;
     }
   }
@@ -1180,6 +1922,7 @@ export class PersonnelComponent implements OnInit {
       if (result.success && result.data) {
         this.status = result.data;
         this.computeDerived();
+        void this.loadMonthSignups();
       } else {
         this.status = { status: 'error', error: result.error || 'Unknown error', onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
         this.computeDerived();

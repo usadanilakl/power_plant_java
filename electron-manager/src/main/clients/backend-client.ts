@@ -20,15 +20,19 @@ export async function backendGet<T = any>(path: string, timeoutMs = DEFAULT_TIME
   return request('GET', path, undefined, timeoutMs);
 }
 
-export async function backendPost<T = any>(path: string, body: unknown, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
-  return request('POST', path, body, timeoutMs);
+export async function backendPost<T = any>(
+  path: string, body: unknown, timeoutMs = DEFAULT_TIMEOUT_MS, extraHeaders?: Record<string, string>
+): Promise<T> {
+  return request('POST', path, body, timeoutMs, extraHeaders);
 }
 
-function request<T>(method: 'GET' | 'POST', path: string, body: unknown, timeoutMs: number): Promise<T> {
+function request<T>(
+  method: 'GET' | 'POST', path: string, body: unknown, timeoutMs: number, extraHeaders?: Record<string, string>
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const url = new URL(backendBaseUrl() + path);
     const payload = body !== undefined ? JSON.stringify(body) : undefined;
-    const headers: Record<string, string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: 'application/json', ...(extraHeaders || {}) };
     if (payload !== undefined) {
       headers['Content-Type'] = 'application/json';
       headers['Content-Length'] = Buffer.byteLength(payload).toString();

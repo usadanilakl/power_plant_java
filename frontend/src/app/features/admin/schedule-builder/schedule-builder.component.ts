@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import {
   ScheduleV2ApiService, SchedulePosition, CrewRotation, Crew, CrewAssignment,
   ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup, ShiftDayView, ShiftEntryView, OnCallRotation,
-  PtoRequest, ReliefRotation,
+  PtoRequest, ReliefRotation, ScheduleDayOverride, EligibilityDetail,
 } from '../../../services/schedule-v2-api.service';
 
 type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule' | 'oncall' | 'pto' | 'relief';
@@ -40,6 +41,10 @@ export class ScheduleBuilderComponent implements OnInit {
   active = signal<boolean>(false);
   message = signal<string | null>(null);
   loading = signal(false);
+  /** Set around read-only list/preview fetches (reloadAll/loadPreview/loadOnCall/loadRelief/loadPto) —
+   *  distinct from `loading`, which gates mutation buttons. Lets empty-state text tell "still loading"
+   *  from "genuinely nothing here". */
+  fetching = signal(false);
 
   positions = signal<SchedulePosition[]>([]);
   rotations = signal<CrewRotation[]>([]);
@@ -54,15 +59,40 @@ export class ScheduleBuilderComponent implements OnInit {
   gridSelectedGroups = signal<Set<string>>(new Set());   // empty = show all groups; else the toggled-on set
   gridSearch = signal<string>('');
 
-  readonly COVERAGE_DISCIPLINES = [
-    { key: 'OPS', label: 'Ops' },
-    { key: 'MECHANIC', label: 'Mechanic' },
-    { key: 'IC', label: 'I&C' },
-    { key: 'MANAGER', label: 'Manager' },
+  // Coverage-needs rows: Ops is split by position (Lead/CRO/AO) with the cover-up hierarchy; others single.
+  readonly COVERAGE_ROWS = [
+    { disc: 'OPS', pos: 'LEAD', label: 'Ops · Lead' },
+    { disc: 'OPS', pos: 'CRO', label: 'Ops · CRO' },
+    { disc: 'OPS', pos: 'AO', label: 'Ops · AO' },
+    { disc: 'MECHANIC', pos: null as string | null, label: 'Mechanic' },
+    { disc: 'IC', pos: null as string | null, label: 'I&C' },
+    { disc: 'MANAGER', pos: null as string | null, label: 'Manager' },
   ];
-  showCoverageNeeds = signal(false);
+  // Grid overlays: one selectable band under the date headers on top of the always-visible roster.
+  // Extensible — add a key here + a <tbody> in the template to introduce a new view later.
+  readonly GRID_OVERLAYS = [
+    { key: 'none', label: 'Schedule', icon: '📅' },
+    { key: 'coverage', label: 'Coverage needed', icon: '🆘' },
+    { key: 'signups', label: 'Sign-ups', icon: '✋' },
+    { key: 'events', label: 'Events', icon: '📌' },
+  ] as const;
+  gridOverlay = signal<'none' | 'coverage' | 'signups' | 'events'>('none');
   private coverageNeeds = signal<Record<string, number>>({});    // TOTAL required per cell (menu ranges + inline)
   private coverageInline = signal<Record<string, number>>({});   // the editable single-day MANUAL portion per cell
+
+  // Sign-ups overlay: all signups across the visible month, filtered per cell.
+  monthSignups = signal<CoverageSignup[]>([]);
+  // Per-person/per-shift open-seat counts across the visible month — the roster grid's seat marker.
+  monthSeats = signal<EligibilityDetail[]>([]);
+  // Manual per-day overrides (per-day dialog).
+  monthOverrides = signal<ScheduleDayOverride[]>([]);
+  overrideModalDate = signal<string | null>(null);
+  overrideForm: { userId?: number; shift: string; reason: string } = { userId: undefined, shift: 'OFF', reason: '' };
+  readonly OVERRIDE_CODES = [
+    { code: 'D', label: 'Day' }, { code: 'N', label: 'Night' }, { code: 'OCM', label: 'On-call mgr' },
+    { code: 'P', label: 'PTO' }, { code: 'T', label: 'Training' }, { code: 'L', label: 'Light duty' },
+    { code: 'OFF', label: 'Off' },
+  ];
   previewYear = new Date().getFullYear();
   previewMonth = new Date().getMonth();
   editingOnCall: OnCallRotation | null = null;
@@ -92,13 +122,28 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   reloadAll(): void {
-    this.api.listPositions().subscribe(r => this.positions.set(r.responseData ?? []));
-    this.api.listRotations().subscribe(r => this.rotations.set(r.responseData ?? []));
-    this.api.listCrews().subscribe(r => this.crews.set(r.responseData ?? []));
-    this.api.listAssignments().subscribe(r => this.assignments.set(r.responseData ?? []));
-    this.api.listEvents().subscribe(r => this.events.set(r.responseData ?? []));
-    this.api.assignableUsers().subscribe(r => this.users.set(r.responseData ?? []));
-    this.api.listCoverage().subscribe(r => this.coverage.set(r.responseData ?? []));
+    this.fetching.set(true);
+    forkJoin({
+      positions: this.api.listPositions(),
+      rotations: this.api.listRotations(),
+      crews: this.api.listCrews(),
+      assignments: this.api.listAssignments(),
+      events: this.api.listEvents(),
+      users: this.api.assignableUsers(),
+      coverage: this.api.listCoverage(),
+    }).subscribe({
+      next: r => {
+        this.positions.set(r.positions.responseData ?? []);
+        this.rotations.set(r.rotations.responseData ?? []);
+        this.crews.set(r.crews.responseData ?? []);
+        this.assignments.set(r.assignments.responseData ?? []);
+        this.events.set(r.events.responseData ?? []);
+        this.users.set(r.users.responseData ?? []);
+        this.coverage.set(r.coverage.responseData ?? []);
+        this.fetching.set(false);
+      },
+      error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
+    });
   }
 
   setTab(t: Tab): void {
@@ -126,7 +171,10 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   deletePosition(p: SchedulePosition): void {
     if (!p.id || !confirm(`Delete position "${p.name}"?`)) return;
-    this.api.deletePosition(p.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+    this.api.deletePosition(p.id).subscribe({
+      next: () => { this.flash('Deleted'); this.reloadAll(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
   }
 
   // ---- rotations ----
@@ -157,7 +205,10 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   deleteRotation(r: CrewRotation): void {
     if (!r.id || !confirm(`Delete rotation "${r.name}"?`)) return;
-    this.api.deleteRotation(r.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+    this.api.deleteRotation(r.id).subscribe({
+      next: () => { this.flash('Deleted'); this.reloadAll(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
   }
 
   // ---- crews ----
@@ -174,7 +225,10 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   deleteCrew(c: Crew): void {
     if (!c.id || !confirm(`Delete crew "${c.name}"?`)) return;
-    this.api.deleteCrew(c.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+    this.api.deleteCrew(c.id).subscribe({
+      next: () => { this.flash('Deleted'); this.reloadAll(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
   }
   // crew rotation offset picker (click a rotation day instead of typing a number)
   selectedRotation(): CrewRotation | undefined {
@@ -214,7 +268,10 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   deleteAssignment(a: CrewAssignment): void {
     if (!a.id || !confirm('Delete this assignment?')) return;
-    this.api.deleteAssignment(a.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+    this.api.deleteAssignment(a.id).subscribe({
+      next: () => { this.flash('Deleted'); this.reloadAll(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
   }
   seedFromSchedule(): void {
     if (!confirm('Seed staffing (crews A–D + relief) from the current schedule?\nSafe to run — users who already have an active assignment are skipped.')) return;
@@ -248,7 +305,10 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   deleteEvent(e: ScheduleEvent): void {
     if (!e.id || !confirm('Delete this event?')) return;
-    this.api.deleteEvent(e.id).subscribe(() => { this.flash('Deleted'); this.reloadAll(); });
+    this.api.deleteEvent(e.id).subscribe({
+      next: () => { this.flash('Deleted'); this.reloadAll(); },
+      error: e2 => this.flash('Delete failed: ' + this.errText(e2)),
+    });
   }
 
   // ---- coverage ----
@@ -264,10 +324,13 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   cancelCoverageReq(c: CoverageRequest): void {
     if (!c.id || !confirm('Cancel this coverage request?')) return;
-    this.api.cancelCoverage(c.id).subscribe(() => {
-      this.flash('Cancelled');
-      if (this.selectedCoverage?.id === c.id) this.closeSignups();
-      this.reloadAll();
+    this.api.cancelCoverage(c.id).subscribe({
+      next: () => {
+        this.flash('Cancelled');
+        if (this.selectedCoverage?.id === c.id) this.closeSignups();
+        this.reloadAll();
+      },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
     });
   }
   viewSignups(c: CoverageRequest): void { this.selectedCoverage = c; this.editingCoverage = null; this.refreshSignups(); }
@@ -293,16 +356,22 @@ export class ScheduleBuilderComponent implements OnInit {
 
   // ---- on-call ----
   loadOnCall(): void {
-    this.api.listOnCall().subscribe(r => {
-      const list = r.responseData ?? [];
-      this.editingOnCall = list.length
-        ? { ...list[0], memberUserIds: [...(list[0].memberUserIds ?? [])] }
-        : { name: 'On-Call Managers', daysPerTurn: 7, memberUserIds: [], isActive: true };
+    this.fetching.set(true);
+    this.api.listOnCall().subscribe({
+      next: r => {
+        const list = r.responseData ?? [];
+        this.editingOnCall = list.length
+          ? { ...list[0], memberUserIds: [...(list[0].memberUserIds ?? [])] }
+          : { name: 'On-Call Managers', daysPerTurn: 7, memberUserIds: [], isActive: true };
+        this.fetching.set(false);
+      },
+      error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
     });
   }
   addManager(id?: number): void {
     if (!this.editingOnCall || id == null) return;
-    this.editingOnCall.memberUserIds = [...(this.editingOnCall.memberUserIds ?? []), id];
+    this.editingOnCall.memberUserIds = this.editingOnCall.memberUserIds ?? [];
+    if (!this.editingOnCall.memberUserIds.includes(id)) this.editingOnCall.memberUserIds.push(id);
   }
   removeManager(i: number): void { this.editingOnCall?.memberUserIds?.splice(i, 1); }
   moveManager(i: number, dir: number): void {
@@ -324,12 +393,16 @@ export class ScheduleBuilderComponent implements OnInit {
 
   // ---- relief-swap rotation ----
   loadRelief(): void {
-    this.api.listRelief().subscribe(r => this.reliefRotations.set(r.responseData ?? []));
+    this.fetching.set(true);
+    this.api.listRelief().subscribe({
+      next: r => { this.reliefRotations.set(r.responseData ?? []); this.fetching.set(false); },
+      error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
+    });
   }
   newRelief(): void {
     this.editingRelief = {
       name: 'Relief', position: 'Lead', periodMonths: 3,
-      anchorDate: this.iso(new Date()), reliefDaysOfWeek: 'MON,TUE,WED,THU,FRI',
+      anchorDate: this.todayIso(), reliefDaysOfWeek: 'MON,TUE,WED,THU,FRI',
       lineOrder: [], initialSlots: {}, isActive: true,
     };
   }
@@ -367,33 +440,188 @@ export class ScheduleBuilderComponent implements OnInit {
   }
   deleteRelief(r: ReliefRotation): void {
     if (r.id == null || !confirm(`Delete "${r.name}"?`)) return;
-    this.api.deleteRelief(r.id).subscribe(() => { this.flash('Deleted'); this.loadRelief(); });
+    this.api.deleteRelief(r.id).subscribe({
+      next: () => { this.flash('Deleted'); this.loadRelief(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
   }
 
   // ---- materialize ----
-  regenerate(): void {
+  /** today−7 .. today+180 — the fixed window Regenerate rebuilds. Local-time, matches ymd()/todayIso(). */
+  private defaultHorizon(): { from: string; to: string } {
     const today = new Date();
-    const from = this.iso(new Date(today.getTime() - 7 * 86400000));
-    const to = this.iso(new Date(today.getTime() + 180 * 86400000));
+    const fromD = new Date(today.getTime() - 7 * 86400000);
+    const toD = new Date(today.getTime() + 180 * 86400000);
+    return {
+      from: this.ymd(fromD.getFullYear(), fromD.getMonth(), fromD.getDate()),
+      to: this.ymd(toD.getFullYear(), toD.getMonth(), toD.getDate()),
+    };
+  }
+  regenerate(): void {
+    if (!this.active()) { this.flash('Schedule v2 is staged (flag off) — nothing materialised.'); return; }
+    const { from, to } = this.defaultHorizon();
     this.loading.set(true);
     this.api.materialize(from, to).subscribe({
       next: r => { this.loading.set(false); this.flash(`Regenerated ${r.responseData?.rowsWritten ?? 0} day rows`); },
       error: e => { this.loading.set(false); this.flash('Regenerate failed: ' + this.errText(e)); },
     });
   }
-  private iso(d: Date): string { return d.toISOString().slice(0, 10); }
+  /** Materialise just the viewed month — for navigating outside the default today−7..today+180 window. */
+  regenerateThisMonth(): void {
+    if (!this.active()) { this.flash('Schedule v2 is staged (flag off) — nothing materialised.'); return; }
+    const { from, to } = this.previewRange();
+    this.loading.set(true);
+    this.api.materialize(from, to).subscribe({
+      next: r => {
+        this.loading.set(false);
+        this.flash(`Materialised ${r.responseData?.rowsWritten ?? 0} day rows for ${this.monthLabel()}`);
+        this.loadPreview();
+      },
+      error: e => { this.loading.set(false); this.flash('Materialise failed: ' + this.errText(e)); },
+    });
+  }
+  /** True when the viewed month doesn't overlap Regenerate's fixed window — Regenerate won't touch it. */
+  monthOutsideHorizon(): boolean {
+    const { from, to } = this.previewRange();
+    const h = this.defaultHorizon();
+    return to < h.from || from > h.to;
+  }
 
   // ---- schedule preview ----
   loadPreview(): void {
+    const { from, to } = this.previewRange();
+    this.fetching.set(true);
+    forkJoin({
+      preview: this.api.schedulePreview(from, to),
+      coverage: this.api.listCoverage(from, to),
+      signups: this.api.listSignupsRange(from, to),
+      overrides: this.api.listOverrides(from, to),
+      seats: this.api.listEligibilityDetail(from, to),
+    }).subscribe({
+      next: r => {
+        this.previewDays.set(r.preview.responseData ?? []);
+        this.applyCoverageNeeds(r.coverage.responseData ?? [], from, to);
+        this.monthSignups.set(r.signups.responseData ?? []);
+        this.monthOverrides.set(r.overrides.responseData ?? []);
+        this.monthSeats.set(r.seats.responseData ?? []);
+        this.fetching.set(false);
+      },
+      error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
+    });
+  }
+
+  private previewRange(): { from: string; to: string } {
     const from = this.ymd(this.previewYear, this.previewMonth, 1);
     const lastDay = new Date(this.previewYear, this.previewMonth + 1, 0).getDate();
-    const to = this.ymd(this.previewYear, this.previewMonth, lastDay);
-    this.api.schedulePreview(from, to).subscribe(r => this.previewDays.set(r.responseData ?? []));
-    this.loadCoverageNeeds();
+    return { from, to: this.ymd(this.previewYear, this.previewMonth, lastDay) };
+  }
+
+  // ---- grid overlays (coverage / sign-ups / events) — memoised Map lookups, rebuilt only when the
+  // underlying signal changes, so per-cell template bindings are O(1) instead of a filter/find per cell. ----
+  /** Active (not rejected/withdrawn) signups keyed "date|shift" — the "Sign-ups" overlay cells. */
+  signupsByCell = computed(() => {
+    const m = new Map<string, CoverageSignup[]>();
+    for (const s of this.monthSignups()) {
+      if (s.status === 'REJECTED' || s.status === 'WITHDRAWN') continue;
+      const key = `${s.date}|${s.shift || ''}`;
+      const arr = m.get(key);
+      if (arr) arr.push(s); else m.set(key, [s]);
+    }
+    return m;
+  });
+
+  /** Best per-person-per-day coverage-signup status keyed "userId|date" — PENDING/APPROVED only,
+   *  APPROVED wins if both exist for the same user+date. Drives the roster grid's status overlay
+   *  (recolor the D/N cell to mark coverage) + the inline approve/decline popover. */
+  covByUserDate = computed(() => {
+    const m = new Map<string, { id: number; shift: string; status: string }>();
+    for (const s of this.monthSignups()) {
+      if (s.userId == null || !s.date || s.id == null) continue;
+      if (s.status !== 'PENDING' && s.status !== 'APPROVED') continue;
+      const key = `${s.userId}|${s.date}`;
+      const existing = m.get(key);
+      if (!existing || s.status === 'APPROVED') {
+        m.set(key, { id: s.id, shift: s.shift || '', status: s.status });
+      }
+    }
+    return m;
+  });
+
+  /** Open-seat counts keyed "userId|date" — {day,night} open seats this person is off + qualified to
+   *  cover on that shift (0 = none). Drives the roster grid's seat marker (precedence below signups). */
+  seatByUserDate = computed(() => {
+    const m = new Map<string, { day: number; night: number }>();
+    for (const s of this.monthSeats()) {
+      if (s.userId == null || !s.date) continue;
+      m.set(`${s.userId}|${s.date}`, { day: s.day ?? 0, night: s.night ?? 0 });
+    }
+    return m;
+  });
+
+  /** Event flags already materialised onto each day, keyed by date — the "Events" overlay cells. */
+  eventsByDate = computed(() => {
+    const m = new Map<string, { title?: string; eventType?: string; color?: string }[]>();
+    for (const d of this.previewDays()) {
+      if (d.date) m.set(d.date, d.eventFlags ?? []);
+    }
+    return m;
+  });
+
+  // ---- per-day manual override dialog ----
+  openDayOverride(date: string): void {
+    this.overrideModalDate.set(date);
+    this.overrideForm = { userId: undefined, shift: 'OFF', reason: '' };
+  }
+  closeDayOverride(): void { this.overrideModalDate.set(null); }
+
+  /** Manual overrides keyed by date — bound via `.get(date) ?? []` in the template (date header + modal). */
+  overridesByDate = computed(() => {
+    const m = new Map<string, ScheduleDayOverride[]>();
+    for (const o of this.monthOverrides()) {
+      if (!o.date) continue;
+      const arr = m.get(o.date);
+      if (arr) arr.push(o); else m.set(o.date, [o]);
+    }
+    return m;
+  });
+  dayRosterFor(date: string): ShiftDayView | undefined {
+    return this.previewDays().find(d => d.date === date);
+  }
+  overrideCodeLabel(code?: string): string {
+    return this.OVERRIDE_CODES.find(c => c.code === code)?.label ?? (code ?? '');
+  }
+
+  addOverride(): void {
+    const date = this.overrideModalDate();
+    if (!date) return;
+    if (!this.overrideForm.userId) { this.flash('Pick a person'); return; }
+    this.loading.set(true);
+    this.api.saveOverride({
+      date, userId: this.overrideForm.userId, shift: this.overrideForm.shift,
+      reason: this.overrideForm.reason || undefined,
+    }).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.flash('Override applied');
+        this.overrideForm = { userId: undefined, shift: 'OFF', reason: '' };
+        this.loadPreview();   // reloads preview + overrides (materialiser already re-ran server-side)
+      },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+
+  removeOverride(o: ScheduleDayOverride): void {
+    if (!o.id) return;
+    this.api.deleteOverride(o.id).subscribe({
+      next: () => { this.flash('Override removed'); this.loadPreview(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
   }
 
   // ---- inline coverage needs (grid header row) ----
-  private needKey(date: string, shift: string, disc: string): string { return `${date}|${shift}|${disc}`; }
+  private needKey(date: string, shift: string, disc: string, pos: string | null): string {
+    return `${date}|${shift}|${disc}|${pos ?? ''}`;
+  }
 
   private eachDay(start: string, end: string): string[] {
     const out: string[] = [];
@@ -404,56 +632,91 @@ export class ScheduleBuilderComponent implements OnInit {
     return out;
   }
 
-  private loadCoverageNeeds(): void {
-    const from = this.ymd(this.previewYear, this.previewMonth, 1);
-    const lastDay = new Date(this.previewYear, this.previewMonth + 1, 0).getDate();
-    const to = this.ymd(this.previewYear, this.previewMonth, lastDay);
-    this.api.listCoverage(from, to).subscribe(r => {
-      const total: Record<string, number> = {};
-      const inline: Record<string, number> = {};
-      for (const c of (r.responseData ?? [])) {
-        if (!c.startDate || c.status === 'CANCELLED') continue;
-        const disc = c.discipline || 'OPS';
-        const req = c.requiredCount ?? 0;
-        // Expand the request across its date range (clamped to the month) into the per-cell TOTAL —
-        // this is what makes multi-day coverage from the Coverage menu show up in the grid.
-        for (const d of this.eachDay(c.startDate, c.endDate || c.startDate)) {
-          if (d < from || d > to) continue;
-          const k = this.needKey(d, c.shift, disc);
-          total[k] = (total[k] ?? 0) + req;
-        }
-        // A single-day MANUAL request is the editable inline portion for that cell.
-        if (c.startDate === c.endDate && c.reason === 'MANUAL') {
-          inline[this.needKey(c.startDate, c.shift, disc)] = req;
-        }
+  /** Rebuild the per-cell coverage-needs maps from a coverage-request list (used by loadPreview's
+   *  forkJoin, and by reloadCoverageNeeds() to re-sync after a failed/floor-clamped inline edit). */
+  private applyCoverageNeeds(list: CoverageRequest[], from: string, to: string): void {
+    const total: Record<string, number> = {};
+    const inline: Record<string, number> = {};
+    for (const c of list) {
+      if (!c.startDate || c.status === 'CANCELLED') continue;
+      const disc = c.discipline || 'OPS';
+      const pos = disc === 'OPS' ? (c.position || null) : null;
+      const req = c.requiredCount ?? 0;
+      // Expand the request across its date range (clamped to the month) into the per-cell TOTAL —
+      // this is what makes multi-day coverage from the Coverage menu show up in the grid.
+      for (const d of this.eachDay(c.startDate, c.endDate || c.startDate)) {
+        if (d < from || d > to) continue;
+        const k = this.needKey(d, c.shift, disc, pos);
+        total[k] = (total[k] ?? 0) + req;
       }
-      this.coverageNeeds.set(total);
-      this.coverageInline.set(inline);
+      // A single-day MANUAL request is the editable inline portion for that cell.
+      if (c.startDate === c.endDate && c.reason === 'MANUAL') {
+        inline[this.needKey(c.startDate, c.shift, disc, pos)] = req;
+      }
+    }
+    this.coverageNeeds.set(total);
+    this.coverageInline.set(inline);
+  }
+
+  /** Re-fetch coverage needs for the viewed month — used to discard an optimistic setNeed() edit
+   *  after the server rejects it (or to reconcile a floor that shifted server-side). */
+  private reloadCoverageNeeds(): void {
+    const { from, to } = this.previewRange();
+    this.api.listCoverage(from, to).subscribe({
+      next: r => this.applyCoverageNeeds(r.responseData ?? [], from, to),
+      error: e => this.flash('Coverage reload failed: ' + this.errText(e)),
     });
   }
 
-  needCount(date: string | undefined, shift: string, disc: string): number {
-    return date ? (this.coverageNeeds()[this.needKey(date, shift, disc)] ?? 0) : 0;
+  needCount(date: string | undefined, shift: string, disc: string, pos: string | null): number {
+    return date ? (this.coverageNeeds()[this.needKey(date, shift, disc, pos)] ?? 0) : 0;
+  }
+
+  /** The multi-day/PTO-locked portion of a cell's need — the floor the inline ▼ stepper can't go below. */
+  private rangeFloor(date: string, shift: string, disc: string, pos: string | null): number {
+    const key = this.needKey(date, shift, disc, pos);
+    return Math.max(0, (this.coverageNeeds()[key] ?? 0) - (this.coverageInline()[key] ?? 0));
+  }
+
+  /** True once the inline portion is fully spent — the ▼ stepper is at the multi-day/PTO floor. */
+  atCoverageFloor(date: string | undefined, shift: string, disc: string, pos: string | null): boolean {
+    if (!date) return true;
+    const key = this.needKey(date, shift, disc, pos);
+    return (this.coverageInline()[key] ?? 0) <= 0;
   }
 
   /** Set the TOTAL needed for a cell. Multi-day (menu) + PTO coverage is a floor we can't reduce here —
    *  we move only the editable single-day part, so total = rangeFloor + max(0, desired − rangeFloor). */
-  setNeed(date: string | undefined, shift: string, disc: string, value: any): void {
+  setNeed(date: string | undefined, shift: string, disc: string, pos: string | null, value: any): void {
     if (!date) return;
     const desired = Math.max(0, Math.floor(Number(value) || 0));
-    const key = this.needKey(date, shift, disc);
-    const rangeFloor = Math.max(0, (this.coverageNeeds()[key] ?? 0) - (this.coverageInline()[key] ?? 0));
+    const key = this.needKey(date, shift, disc, pos);
+    const rangeFloor = this.rangeFloor(date, shift, disc, pos);
+    if (desired < rangeFloor) {
+      this.flash(`${rangeFloor} seat${rangeFloor === 1 ? '' : 's'} locked by a multi-day/PTO request — edit it on the Coverage tab`);
+      return;
+    }
     const inlineNew = Math.max(0, desired - rangeFloor);
     this.coverageInline.update(m => ({ ...m, [key]: inlineNew }));
     this.coverageNeeds.update(m => ({ ...m, [key]: rangeFloor + inlineNew }));
-    this.api.coverageDayNeed(date, disc, shift, inlineNew).subscribe({
-      error: e => this.flash('Coverage save failed: ' + this.errText(e)),
+    this.api.coverageDayNeed(date, disc, pos, shift, inlineNew).subscribe({
+      next: r => {
+        // Reconcile with what the server actually stored (e.g. status flipped to CANCELLED at 0).
+        const cr = r.responseData;
+        const actualInline = cr ? (cr.status === 'CANCELLED' ? 0 : (cr.requiredCount ?? inlineNew)) : inlineNew;
+        this.coverageInline.update(m => ({ ...m, [key]: actualInline }));
+        this.coverageNeeds.update(m => ({ ...m, [key]: rangeFloor + actualInline }));
+      },
+      error: e => {
+        this.flash('Coverage save failed: ' + this.errText(e));
+        this.reloadCoverageNeeds();   // discard the optimistic value
+      },
     });
   }
 
-  bumpNeed(date: string | undefined, shift: string, disc: string, delta: number): void {
+  bumpNeed(date: string | undefined, shift: string, disc: string, pos: string | null, delta: number): void {
     if (!date) return;
-    this.setNeed(date, shift, disc, (this.coverageNeeds()[this.needKey(date, shift, disc)] ?? 0) + delta);
+    this.setNeed(date, shift, disc, pos, (this.coverageNeeds()[this.needKey(date, shift, disc, pos)] ?? 0) + delta);
   }
   prevMonth(): void { if (--this.previewMonth < 0) { this.previewMonth = 11; this.previewYear--; } this.loadPreview(); }
   nextMonth(): void { if (++this.previewMonth > 11) { this.previewMonth = 0; this.previewYear++; } this.loadPreview(); }
@@ -485,31 +748,49 @@ export class ScheduleBuilderComponent implements OnInit {
                weekend: js.getDay() === 0 || js.getDay() === 6, today: d.date === today };
     });
 
-    const persons = new Map<string, { name: string; group: string }>();
+    const persons = new Map<string, { name: string; group: string; position: string; userId?: number }>();
     const codes = new Map<string, Map<string, string>>();   // personKey → (date → code)
     const keyOf = (e: ShiftEntryView) => e.userId != null ? 'u' + e.userId : 'n' + (e.name ?? '').toLowerCase().trim();
-    const put = (key: string, name: string, group: string, date: string, code: string) => {
-      if (!persons.has(key)) persons.set(key, { name, group });
+    const put = (key: string, name: string, group: string, position: string, date: string, code: string, userId?: number) => {
+      let p = persons.get(key);
+      if (!p) { p = { name, group, position: position || '', userId }; persons.set(key, p); }
+      if (!p.position && position) p.position = position;
       let byDate = codes.get(key);
       if (!byDate) { byDate = new Map(); codes.set(key, byDate); }
       byDate.set(date, code);
     };
     for (const d of days) {
       const date = d.date ?? '';
-      (d.dayShift ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'D'));
-      (d.nightShift ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'N'));
-      (d.unscheduled ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'U'));
-      (d.pto ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'P'));
-      (d.training ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', date, 'T'));
-      if (d.onCallManagerName) put('ocm:' + d.onCallManagerName.toLowerCase(), d.onCallManagerName, 'OCM', date, 'OCM');
+      (d.dayShift ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', e.position ?? '', date, 'D', e.userId));
+      (d.nightShift ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', e.position ?? '', date, 'N', e.userId));
+      (d.unscheduled ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', e.position ?? '', date, 'U', e.userId));
+      (d.pto ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', e.position ?? '', date, 'P', e.userId));
+      (d.training ?? []).forEach(e => put(keyOf(e), e.name ?? '', e.group ?? '', e.position ?? '', date, 'T', e.userId));
+      if (d.onCallManagerName) put('ocm:' + d.onCallManagerName.toLowerCase(), d.onCallManagerName, 'OCM', 'Manager', date, 'OCM');
     }
 
     const rank = (g: string) => g === 'OCM' ? 'zzy' : (g && g.trim() ? g.toLowerCase() : 'zzz');
+    const posRank = (pos: string) => {
+      const p = (pos || '').toLowerCase();
+      if (p.includes('lead')) return 0;
+      if (p.includes('control room') || p === 'cro') return 1;
+      if (p.includes('auxiliary') || p === 'ao') return 2;
+      return 9;   // non-ops (mechanic/manager/…) sort by name after the operators
+    };
     const rows = Array.from(persons.entries())
-      .map(([key, p]) => ({ name: p.name, group: p.group, cells: headers.map(h => codes.get(key)?.get(h.date) ?? '') }))
-      .sort((a, b) => rank(a.group).localeCompare(rank(b.group)) || a.name.localeCompare(b.name));
+      .map(([key, p]) => ({ key, name: p.name, group: p.group, position: p.position, userId: p.userId,
+                            cells: headers.map(h => ({ code: codes.get(key)?.get(h.date) ?? '', date: h.date })) }))
+      .sort((a, b) => rank(a.group).localeCompare(rank(b.group))
+                   || (posRank(a.position) - posRank(b.position))
+                   || a.name.localeCompare(b.name));
     return { headers, rows };
   });
+
+  // trackBy fns for the grid's *ngFor loops — gridRows() returns fresh object identities every CD pass,
+  // so without these the ~30x31 grid is destroyed/rebuilt on every keystroke in the search box.
+  trackByRowKey = (_: number, r: { key: string }): string => r.key;
+  trackByIndex = (i: number): number => i;
+  trackByDate = (_: number, h: { date: string }): string => h.date;
 
   /** Distinct crew groups present in the grid + their headcount (drives the filter chips). */
   gridGroups = computed(() => {
@@ -518,13 +799,58 @@ export class ScheduleBuilderComponent implements OnInit {
     return Array.from(counts.entries()).map(([group, count]) => ({ group, count }));
   });
 
-  /** Rows after the (multi-select) group filter + name search. Empty selection = all groups. */
+  /** Rows after the (multi-select) group filter + name search, with per-cell coverage-signup status
+   *  and open-seat counts. Cell render precedence (template): APPROVED signup > PENDING signup >
+   *  open-seat marker (seat) > normal scheduled code/blank. */
   gridRows = computed(() => {
     const sel = this.gridSelectedGroups();
     const s = this.gridSearch().toLowerCase().trim();
-    return this.monthGrid().rows.filter(r =>
-      (sel.size === 0 || sel.has(r.group)) && (!s || r.name.toLowerCase().includes(s)));
+    const cov = this.covByUserDate();
+    const seats = this.seatByUserDate();
+    let prevGroup: string | null = null;
+    return this.monthGrid().rows
+      .filter(r => (sel.size === 0 || sel.has(r.group)) && (!s || r.name.toLowerCase().includes(s)))
+      .map(r => {
+        const firstInGroup = r.group !== prevGroup;
+        prevGroup = r.group;
+        return {
+          key: r.key, name: r.name, group: r.group, position: r.position, userId: r.userId, firstInGroup,
+          cells: r.cells.map(c => {
+            const cs = r.userId != null ? cov.get(`${r.userId}|${c.date}`) : undefined;
+            const seat = r.userId != null ? seats.get(`${r.userId}|${c.date}`) : undefined;
+            return {
+              date: c.date,
+              code: c.code,
+              cov: cs ?? null,
+              seat: seat && (seat.day > 0 || seat.night > 0) ? seat : null,
+            };
+          }),
+        };
+      });
   });
+
+  // ---- inline coverage-signup approve/decline (roster grid cells, keyed "rowKey|date") ----
+  covActionKey = signal<string | null>(null);
+  toggleCovAction(rowKey: string, date: string): void {
+    const key = `${rowKey}|${date}`;
+    this.covActionKey.update(k => k === key ? null : key);
+  }
+  approveCovSignup(id: number | null | undefined): void {
+    if (id == null) return;
+    this.covActionKey.set(null);
+    this.api.approveSignup(id).subscribe({
+      next: () => { this.flash('Signup approved'); this.loadPreview(); },
+      error: e => this.flash('Approve failed: ' + this.errText(e)),
+    });
+  }
+  rejectCovSignup(id: number | null | undefined): void {
+    if (id == null) return;
+    this.covActionKey.set(null);
+    this.api.rejectSignup(id).subscribe({
+      next: () => { this.flash('Signup declined'); this.loadPreview(); },
+      error: e => this.flash('Decline failed: ' + this.errText(e)),
+    });
+  }
 
   /** Toggle a single group on/off — any combination of groups can be shown at once. */
   toggleGridGroup(g: string): void {
@@ -538,7 +864,11 @@ export class ScheduleBuilderComponent implements OnInit {
 
   // ---- PTO intake review ----
   loadPto(): void {
-    this.api.listPto(this.ptoStatusFilter() || undefined).subscribe(r => this.ptoRequests.set(r.responseData ?? []));
+    this.fetching.set(true);
+    this.api.listPto(this.ptoStatusFilter() || undefined).subscribe({
+      next: r => { this.ptoRequests.set(r.responseData ?? []); this.fetching.set(false); },
+      error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
+    });
   }
   setPtoFilter(s: string): void { this.ptoStatusFilter.set(s); this.loadPto(); }
   ptoRange(p: PtoRequest): string {

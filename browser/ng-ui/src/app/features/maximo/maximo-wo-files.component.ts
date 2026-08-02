@@ -33,7 +33,7 @@ import { MaximoDoclink } from './maximo.model';
 
     <label class="wf-add" [class.busy]="uploading()">
       {{ uploading() ? 'Uploading…' : '＋ Add photo / file' }}
-      <input type="file" accept="image/*,application/pdf" (change)="pick($event)" [disabled]="uploading()" hidden>
+      <input type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" (change)="pick($event)" [disabled]="uploading()" hidden>
     </label>
     @if (uploadError()) { <p class="wf-err">{{ uploadError() }}</p> }
   `,
@@ -109,8 +109,12 @@ export class MaximoWoFilesComponent implements OnInit {
 
   icon(f: MaximoDoclink): string {
     const m = (f.mimeType || '').toLowerCase();
+    const n = (f.urlname || f.title || '').toLowerCase();
     if (m.startsWith('image/')) return '🖼️';
-    if (m.includes('pdf')) return '📄';
+    if (m.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|m4v)$/.test(n)) return '🎬';
+    if (m.includes('pdf') || n.endsWith('.pdf')) return '📄';
+    if (/\.(xls|xlsx|csv)$/.test(n)) return '📊';
+    if (/\.(doc|docx)$/.test(n)) return '📝';
     return '📎';
   }
   size(bytes: number): string {

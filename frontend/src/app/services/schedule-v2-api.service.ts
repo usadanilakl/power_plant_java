@@ -95,6 +95,7 @@ export interface CoverageRequest {
   endDate?: string;
   shift: string;          // DAY | NIGHT
   discipline?: string;    // OPS | MECHANIC | IC | MANAGER
+  position?: string;      // LEAD | CRO | AO (OPS only)
   requiredCount?: number;
   reason?: string;
   status?: string;
@@ -116,6 +117,24 @@ export interface CoverageSignup {
   approvedByUserId?: number;
   approvedByName?: string;
   approvedAt?: string;
+}
+
+/** Per-person, per-shift OPEN-SEAT count for a day — from the coverage eligibility-detail endpoint.
+ *  day/night = number of open seats this person is off + qualified to cover that shift (0 = none). */
+export interface EligibilityDetail {
+  date?: string;
+  userId?: number;
+  day?: number;
+  night?: number;
+}
+
+export interface ScheduleDayOverride {
+  id?: number;
+  date?: string;
+  userId?: number;
+  userName?: string;
+  shift?: string;          // D | N | OCM | P | T | L | OFF
+  reason?: string;
 }
 
 export interface PtoRequest {
@@ -226,6 +245,18 @@ export class ScheduleV2ApiService {
     return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/events/${id}`);
   }
 
+  // Day overrides (per-day manual adjustments)
+  listOverrides(from: string, to: string): Observable<SpringApiResponse<ScheduleDayOverride[]>> {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<SpringApiResponse<ScheduleDayOverride[]>>(`${this.base}/overrides`, { params });
+  }
+  saveOverride(o: ScheduleDayOverride): Observable<SpringApiResponse<ScheduleDayOverride>> {
+    return this.http.post<SpringApiResponse<ScheduleDayOverride>>(`${this.base}/overrides`, o);
+  }
+  deleteOverride(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/overrides/${id}`);
+  }
+
   // On-call rotation
   listOnCall(): Observable<SpringApiResponse<OnCallRotation[]>> {
     return this.http.get<SpringApiResponse<OnCallRotation[]>>(`${this.base}/on-call`);
@@ -278,9 +309,10 @@ export class ScheduleV2ApiService {
   createCoverage(c: CoverageRequest): Observable<SpringApiResponse<CoverageRequest>> {
     return this.http.post<SpringApiResponse<CoverageRequest>>(`${this.base}/coverage`, c);
   }
-  /** Inline per-day coverage need: (date, discipline, shift) → count (0 clears). */
-  coverageDayNeed(date: string, discipline: string, shift: string, count: number): Observable<SpringApiResponse<CoverageRequest>> {
-    const params = new HttpParams().set('date', date).set('discipline', discipline).set('shift', shift).set('count', String(count));
+  /** Inline per-day coverage need: (date, discipline, position, shift) → count (0 clears). */
+  coverageDayNeed(date: string, discipline: string, position: string | null, shift: string, count: number): Observable<SpringApiResponse<CoverageRequest>> {
+    let params = new HttpParams().set('date', date).set('discipline', discipline).set('shift', shift).set('count', String(count));
+    if (position) params = params.set('position', position);
     return this.http.post<SpringApiResponse<CoverageRequest>>(`${this.base}/coverage/day-need`, {}, { params });
   }
   cancelCoverage(id: number): Observable<SpringApiResponse<boolean>> {
@@ -289,11 +321,21 @@ export class ScheduleV2ApiService {
   listSignups(requestId: number): Observable<SpringApiResponse<CoverageSignup[]>> {
     return this.http.get<SpringApiResponse<CoverageSignup[]>>(`${this.base}/coverage/${requestId}/signups`);
   }
+  /** All signups over a range (any status) — the grid "Sign-ups" overlay. */
+  listSignupsRange(from: string, to: string): Observable<SpringApiResponse<CoverageSignup[]>> {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<SpringApiResponse<CoverageSignup[]>>(`${this.base}/coverage/signups`, { params });
+  }
   approveSignup(id: number): Observable<SpringApiResponse<boolean>> {
     return this.http.post<SpringApiResponse<boolean>>(`${this.base}/coverage/signups/${id}/approve`, {});
   }
   rejectSignup(id: number): Observable<SpringApiResponse<boolean>> {
     return this.http.post<SpringApiResponse<boolean>>(`${this.base}/coverage/signups/${id}/reject`, {});
+  }
+  /** Per-person/per-shift open-seat counts over a range — the roster grid's OPEN-SEATS marker. */
+  listEligibilityDetail(from: string, to: string): Observable<SpringApiResponse<EligibilityDetail[]>> {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<SpringApiResponse<EligibilityDetail[]>>(`${this.base}/coverage/eligibility-detail`, { params });
   }
 
   // PTO intake (Phase 4)

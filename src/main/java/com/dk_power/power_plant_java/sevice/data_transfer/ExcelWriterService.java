@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +32,47 @@ public class ExcelWriterService {
 
     @Value("${project.root}")
     private String projectRoot;
+
+    /**
+     * Absolute filesystem root under which uploaded files live —
+     * repo-launched hub resolves to something like
+     * {@code C:/repo/uploads-prod}; Electron desktop to
+     * {@code C:/ProgramData/DK Power Manager/managed_apps/pid/uploads-prod}.
+     * Same property every other file-serving service reads
+     * ({@code NgFileService.filesRootPath} etc.) so an Excel
+     * hyperlink built here points at the SAME file the running
+     * backend serves, regardless of which profile/launcher created
+     * the export.
+     */
+    @Value("${files.root.path}")
+    private String filesRootPath;
+
+    /**
+     * Resolve a DB {@code fileLink} (e.g. {@code "uploads/jpg/PID/x.jpg"})
+     * to a {@code file:///} URI that Excel opens via the Windows shell
+     * in the recipient's default app. Mirrors {@link
+     * com.dk_power.power_plant_java.sevice.angular.file.NgFileService#resolveToFileSystem}
+     * for the filesystem-resolution half — the first path segment is
+     * a LOGICAL prefix (the URL-side "/uploads/") that must be stripped
+     * before resolving against the profile-specific storage root, or
+     * links point at non-existent paths under launchers whose
+     * working-dir isn't the repo root (Electron, standalone JAR).
+     * <p>
+     * URI form (not the raw Windows path): Apache POI's
+     * {@code XSSFHyperlink.setAddress()} calls {@code new URI(...)}
+     * to validate. A backslash-containing Windows path throws
+     * URISyntaxException ("illegal character in opaque part at index
+     * 2"). {@link java.nio.file.Path#toUri()} produces a properly
+     * escaped {@code file:///C:/...} URI that POI accepts and Excel
+     * opens the same way the previous FILE hyperlinks did.
+     */
+    private String resolveFileUri(String fileLink) {
+        if (fileLink == null || fileLink.isBlank()) return "";
+        String normalized = fileLink.replace("\\", "/");
+        int firstSlash = normalized.indexOf('/');
+        String relative = firstSlash >= 0 ? normalized.substring(firstSlash + 1) : normalized;
+        return Paths.get(filesRootPath).resolve(relative).toAbsolutePath().toUri().toString();
+    }
 
     public void writeMapToExcel(String filePath, List<Map<String, String>> data) {
         Workbook workbook = new XSSFWorkbook();
@@ -392,7 +432,7 @@ private void writeDataToSheet(XSSFWorkbook workbook, XSSFSheet sheet, List<LotoP
         row.createCell(5).setCellValue(p.getNormPos() != null ? p.getNormPos().getName() : "Norm Pos Undefined");
 
         List<String> fileLinks = p.getFileLinks().stream()
-                .map(l -> Paths.get(projectRoot, l).toUri().toString())
+                .map(this::resolveFileUri)
                 .toList();
 
         for (int i = 0; i < maxFileLinkColumns; i++) {
@@ -453,10 +493,22 @@ private void writeDataToSheet(XSSFWorkbook workbook, XSSFSheet sheet, List<LotoP
     }
 }
 
-    private void addSingleHyperlink(XSSFWorkbook workbook, XSSFCell cell, String fileLink, String linkText) {
+    /**
+     * Add a local-file hyperlink to a cell. Type FILE with a
+     * {@code file:///} URI — POI's {@code XSSFHyperlink.setAddress}
+     * runs the address through {@code new URI(...)}, which rejects
+     * raw Windows paths ("Illegal character in opaque part" on the
+     * first backslash). Compose the URI via
+     * {@link #resolveFileUri(String)} first — it strips the logical
+     * "uploads/" prefix, resolves against the profile-specific
+     * storage root, and URI-encodes properly. Excel then opens the
+     * link via the Windows shell in the recipient's default app
+     * (browser for HTML, Acrobat for PDF, etc.).
+     */
+    private void addSingleHyperlink(XSSFWorkbook workbook, XSSFCell cell, String uri, String linkText) {
         XSSFCreationHelper createHelper = workbook.getCreationHelper();
         XSSFHyperlink link = createHelper.createHyperlink(HyperlinkType.FILE);
-        link.setAddress(fileLink);
+        link.setAddress(uri);
 
         cell.setCellValue(linkText);
         cell.setHyperlink(link);
@@ -491,8 +543,8 @@ private void writeDataToSheet(XSSFWorkbook workbook, XSSFSheet sheet, List<LotoP
                 // Add file link as hyperlink
                 Cell linkCell = row.createCell(6);
                 if (file.getFileLink() != null && !file.getFileLink().isEmpty()) {
-                    String fullPath = Paths.get(projectRoot, file.getFileLink()).toUri().toString();
-                    addSingleHyperlink(workbook, (XSSFCell) linkCell, fullPath, "Open File");
+                    String url = resolveFileUri(file.getFileLink());
+                    addSingleHyperlink(workbook, (XSSFCell) linkCell, url, "Open File");
                 } else {
                     linkCell.setCellValue("");
                 }
@@ -675,7 +727,8 @@ private void writeDataToSheet(XSSFWorkbook workbook, XSSFSheet sheet, List<LotoP
 
             // Fixed headers with standard reference columns
             String[] fixedHeaders = {"Standard ID", "Standard Description",
-                    "Tag Number", "Description", "General Location", "Specific Location", "Iso Pos", "Norm Pos"};
+                    "Tag Number", "Description", "General Location", "Specific Location", "Iso Pos", "Norm Pos",
+                    "Zero Energy"};
             int totalColumns = fixedHeaders.length + maxFileLinks;
 
             // Write header row
@@ -846,9 +899,27 @@ private void writeDataToSheet(XSSFWorkbook workbook, XSSFSheet sheet, List<LotoP
             row.createCell(5).setCellValue(p.getSpecificLocation() != null ? p.getSpecificLocation() : "");
             row.createCell(6).setCellValue(p.getIsoPos() != null ? p.getIsoPos().getName() : "");
             row.createCell(7).setCellValue(p.getNormPos() != null ? p.getNormPos().getName() : "");
+            // Zero Energy: built phrase with equipment tag substitutions already resolved.
+            // ZeroEnergy.getMethod() is the built phrase; falls back to the denormalized
+            // LotoPoint.zeroEnergyMethod copy if the join isn't loaded.
+            String zeroEnergy = "";
+            if (p.getZeroEnergy() != null && p.getZeroEnergy().getMethod() != null) {
+                zeroEnergy = p.getZeroEnergy().getMethod();
+            } else if (p.getZeroEnergyMethod() != null) {
+                zeroEnergy = p.getZeroEnergyMethod();
+            }
+            row.createCell(8).setCellValue(zeroEnergy);
 
+            // File hyperlinks: HTTP URL to the file served by this
+            // backend (via {@link #toFileHttpUrl}). Excel treats these
+            // as URL hyperlinks — they open in the default browser
+            // without a security prompt and work from ANY machine that
+            // can reach the hub, not just the one that ran the export.
+            // The earlier file:// / local-path attempts either got
+            // blocked by Excel security or only worked when the
+            // recipient had a local copy at the same path.
             List<String> fileLinks = p.getFileLinks().stream()
-                    .map(l -> Paths.get(projectRoot, l).toUri().toString())
+                    .map(this::resolveFileUri)
                     .toList();
 
             for (int i = 0; i < maxFileLinks; i++) {

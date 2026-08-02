@@ -130,11 +130,14 @@ public class ShiftDayService {
         row.put("unscheduled_json", bucket.unscheduled);
         row.put("pto_json", bucket.pto);
         row.put("training_json", bucket.training);
-        if (!bucket.onCallManagers.isEmpty()) {
-            ShiftEntry ocm = bucket.onCallManagers.get(0);
-            row.put("on_call_manager_name", ocm.getName());
-            row.put("on_call_manager_user_id", ocm.getUserId());
-        }
+        // Always send on_call_manager_* — even null — unlike the JSON bucket columns above which are
+        // always-present arrays anyway. PostgREST's merge-duplicates upsert only touches columns
+        // present in the request body, so omitting the key when there's no OCM (as this used to do)
+        // left a STALE on_call_manager_name/_user_id in Supabase after the day's OCM was cleared —
+        // the row never actually tombstoned. Sending explicit nulls fixes that.
+        ShiftEntry ocm = bucket.onCallManagers.isEmpty() ? null : bucket.onCallManagers.get(0);
+        row.put("on_call_manager_name", ocm != null ? ocm.getName() : null);
+        row.put("on_call_manager_user_id", ocm != null ? ocm.getUserId() : null);
         row.put("source", source);
         // Only send event_flags when present: v1 rows (null) must NOT reference the column so the
         // mirror keeps working on Supabase instances where the v2 migration hasn't been applied yet.
@@ -221,6 +224,10 @@ public class ShiftDayService {
      * hub, whose scheduled scanner ({@code HubScheduleSupabaseMirrorService}) picks up the dirty row
      * and mirrors it (that scanner is also the mirror trigger for rows that arrive purely via sync).
      *
+     * <p>Looks up the existing row itself (one SELECT per call) — callers materialising a whole range
+     * should use {@link #preloadRange} + the {@link #applyMaterializedDay(LocalDate, List, List, List,
+     * List, List, String, Long, String, String, ShiftDay)} overload instead, to avoid a per-day query.
+     *
      * @return true if the row was written (dirty or new); false if it was a no-op (unchanged).
      */
     public boolean applyMaterializedDay(LocalDate date,
@@ -229,8 +236,25 @@ public class ShiftDayService {
                                         List<ShiftEntry> training,
                                         String ocmName, Long ocmId,
                                         String eventFlagsJson, String source) {
-        ShiftDay existing = shiftDayRepo.findFirstByDate(date).orElse(null);
+        return applyMaterializedDay(date, day, night, unscheduled, pto, training, ocmName, ocmId,
+                eventFlagsJson, source, shiftDayRepo.findFirstByDate(date).orElse(null));
+    }
 
+    /**
+     * Batch-aware variant of {@link #applyMaterializedDay(LocalDate, List, List, List, List, List,
+     * String, Long, String, String)}: takes the existing row (or {@code null} if none) instead of
+     * looking it up, so a caller materialising a whole date range can preload every existing row once
+     * via {@link #preloadRange} and issue zero per-day SELECTs.
+     *
+     * @return true if the row was written (dirty or new); false if it was a no-op (unchanged).
+     */
+    public boolean applyMaterializedDay(LocalDate date,
+                                        List<ShiftEntry> day, List<ShiftEntry> night,
+                                        List<ShiftEntry> unscheduled, List<ShiftEntry> pto,
+                                        List<ShiftEntry> training,
+                                        String ocmName, Long ocmId,
+                                        String eventFlagsJson, String source,
+                                        ShiftDay existing) {
         String newDay = writeJson(day);
         String newNight = writeJson(night);
         String newUnscheduled = writeJson(unscheduled);
@@ -268,6 +292,20 @@ public class ShiftDayService {
         row.setLastSyncedAt(LocalDateTime.now());
         shiftDayRepo.save(row);
         return true;
+    }
+
+    /**
+     * Preloads every existing {@code ShiftDay} row in {@code [from, to]} keyed by date, for a batch
+     * materialisation run to pass into the {@code ShiftDay}-accepting {@link #applyMaterializedDay}
+     * overload — replacing what would otherwise be one {@code findFirstByDate} SELECT per day.
+     */
+    @Transactional(readOnly = true)
+    public Map<LocalDate, ShiftDay> preloadRange(LocalDate from, LocalDate to) {
+        Map<LocalDate, ShiftDay> byDate = new HashMap<>();
+        for (ShiftDay row : shiftDayRepo.findByDateBetweenOrderByDateAsc(from, to)) {
+            byDate.put(row.getDate(), row);
+        }
+        return byDate;
     }
 
     /**

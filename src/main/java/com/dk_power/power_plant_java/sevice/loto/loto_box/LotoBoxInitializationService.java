@@ -124,6 +124,41 @@ public class LotoBoxInitializationService {
         System.out.println("Pushing initial LED array to ESP devices...");
         espLedService.syncAllEspDevices();
     }
+
+    /**
+     * Admin-triggered heal for ESP device rows and LED strip rows. Fixes:
+     * <ul>
+     *   <li>Missing ESP devices (creates the two known ESPs).</li>
+     *   <li>Existing LedStrip rows whose {@code totalLeds} is the historical
+     *       wrong value (260 for every strip) instead of the per-strip
+     *       [240,237,237,245,245,260] that matches WLED hardware. Sending more
+     *       indices than WLED expects returns HTTP 400 and stalls actuation.</li>
+     *   <li>{@code sequence} = null on existing rows, which makes the strip-offset
+     *       chaining in {@code EspLedService.syncFullLedArray} non-deterministic.</li>
+     * </ul>
+     * Scoped to strips only: does NOT run the box cleanup or the LOTO reconcile
+     * in {@link #seedLotoBoxData}, both of which would reset live LED colors.
+     * Exposed via {@code POST /ng/loto-boxes/heal-strips} and driven from the
+     * LOTO admin page; run once per node after upgrade.
+     */
+    @Transactional
+    public String healLedStrips() {
+        Map<Integer, EspDevice> espDevices = initializeEspDevices();
+        Map<String, LedStrip> strips = initializeLedStrips(espDevices);
+        StringBuilder summary = new StringBuilder("Heal complete. Strips: ");
+        strips.values().stream()
+                .sorted((a, b) -> {
+                    int c = a.getEspDevice().getName().compareTo(b.getEspDevice().getName());
+                    return c != 0 ? c : Integer.compare(a.getStripNumber(), b.getStripNumber());
+                })
+                .forEach(s -> summary.append(s.getEspDevice().getName())
+                        .append("/strip").append(s.getStripNumber())
+                        .append("=").append(s.getTotalLeds())
+                        .append(" "));
+        String msg = summary.toString().trim();
+        System.out.println("[LotoBoxInit] " + msg);
+        return msg;
+    }
     
     /**
      * Initialize ESP devices (2 devices with specific IPs)
@@ -159,12 +194,26 @@ public class LotoBoxInitializationService {
     }
     
     /**
-     * Initialize LED strips (6 strips total, 3 per ESP on pins 4, 12, 16)
+     * Initialize LED strips (6 strips total, 3 per ESP on pins 4, 12, 16).
+     * <p>
+     * <b>LED counts are per-strip, NOT uniform.</b> WLED on the actual boxes is
+     * configured for 714 LEDs on ESP-1 (240+237+237) and 750 LEDs on ESP-2
+     * (245+245+260). Sending more indices than that in one {@code seg.i} payload
+     * makes WLED return HTTP 400. Historical bug: this method used to hardcode
+     * 260 per strip → 780/ESP → 400 on every actuation. Values here MUST match
+     * the reference {@code loto-boxes} project's {@code CONTROLLER_LED_COUNTS}.
+     * <p>
+     * The self-heal branch below fixes existing DB rows whose totalLeds or
+     * sequence are wrong. Without the sequence fix the offset chaining in
+     * {@link com.dk_power.power_plant_java.sevice.esp.EspLedService#syncFullLedArray}
+     * is non-deterministic across restarts.
      */
     private Map<String, LedStrip> initializeLedStrips(Map<Integer, EspDevice> espDevices) {
         Map<String, LedStrip> ledStrips = new HashMap<>();
         int[] pins = {4, 12, 16};
-        
+        int[] esp1LedCounts = {240, 237, 237}; // total 714
+        int[] esp2LedCounts = {245, 245, 260}; // total 750
+
         // ESP-1 strips (0, 1, 2)
         EspDevice esp1 = espDevices.get(0);
         for (int i = 0; i < 3; i++) {
@@ -178,13 +227,15 @@ public class LotoBoxInitializationService {
                         newStrip.setEspDevice(esp1);
                         newStrip.setStripNumber(stripIndex);
                         newStrip.setGpioPin(pins[stripIndex]);
-                        newStrip.setTotalLeds(260);
+                        newStrip.setTotalLeds(esp1LedCounts[stripIndex]);
+                        newStrip.setSequence(stripIndex);
                         newStrip.setDescription("ESP-1 Strip " + stripIndex + " on GPIO " + pins[stripIndex]);
                         return ledStripRepo.save(newStrip);
                     });
+            healStrip(strip, esp1LedCounts[stripIndex], stripIndex);
             ledStrips.put(key, strip);
         }
-        
+
         // ESP-2 strips (3, 4, 5)
         EspDevice esp2 = espDevices.get(1);
         for (int i = 0; i < 3; i++) {
@@ -199,14 +250,31 @@ public class LotoBoxInitializationService {
                         newStrip.setEspDevice(esp2);
                         newStrip.setStripNumber(stripIndex);
                         newStrip.setGpioPin(pins[stripIndex]);
-                        newStrip.setTotalLeds(260);
+                        newStrip.setTotalLeds(esp2LedCounts[stripIndex]);
+                        newStrip.setSequence(stripIndex);
                         newStrip.setDescription("ESP-2 Strip " + stripIndex + " on GPIO " + pins[stripIndex]);
                         return ledStripRepo.save(newStrip);
                     });
+            healStrip(strip, esp2LedCounts[stripIndex], stripIndex);
             ledStrips.put(key, strip);
         }
-        
+
         return ledStrips;
+    }
+
+    private void healStrip(LedStrip strip, int expectedTotalLeds, int expectedSequence) {
+        boolean changed = false;
+        if (strip.getTotalLeds() == null || strip.getTotalLeds() != expectedTotalLeds) {
+            System.out.println("LED strip " + strip.getId() + " totalLeds " + strip.getTotalLeds()
+                    + " → " + expectedTotalLeds + " (heal)");
+            strip.setTotalLeds(expectedTotalLeds);
+            changed = true;
+        }
+        if (strip.getSequence() == null || strip.getSequence() != expectedSequence) {
+            strip.setSequence(expectedSequence);
+            changed = true;
+        }
+        if (changed) ledStripRepo.save(strip);
     }
     
     /**

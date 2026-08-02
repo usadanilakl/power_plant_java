@@ -216,36 +216,51 @@ public class JwtService {
     // Authorization headers on their poll requests, so the schedule .ics URL has to be
     // publicly accessible with the auth folded INTO the URL. We fold it in as a signed JWT.
     //
-    // TTL = 1 year. Revocation is currently limited to hub-secret rotation (which invalidates all
-    // outstanding iCal tokens across all users) — good enough for the current threat model.
+    // TTL = 90 days. Revocation has two layers: (1) hub-secret rotation invalidates every
+    // outstanding iCal token for every user (blunt, fleet-wide); (2) the per-user
+    // `tokenVersion` claim vs. User.icalTokenVersion lets a single user's link be revoked
+    // ("regenerate my calendar link") by bumping their own version, without touching anyone
+    // else's token or the hub key.
 
-    private static final long ICAL_TOKEN_TTL_MS = 365L * 24 * 60 * 60 * 1000L; // 1 year
+    private static final long ICAL_TOKEN_TTL_MS = 90L * 24 * 60 * 60 * 1000L; // 90 days
     private static final String ICAL_AUDIENCE = "schedule-ical";
 
     /** Mint a long-lived JWT to embed in the user's iCal subscription URL. Signed with the same
      *  hub key that mints session tokens, but tagged with {@code aud=schedule-ical} so the ical
-     *  endpoint won't accept a plain session token, and vice versa. */
+     *  endpoint won't accept a plain session token, and vice versa. Stamps the user's current
+     *  {@code icalTokenVersion} so a later bump (regenerate) invalidates this token. */
     public String generateIcalToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + ICAL_TOKEN_TTL_MS);
+        int tokenVersion = user.getIcalTokenVersion() == null ? 0 : user.getIcalTokenVersion();
         return Jwts.builder()
                 .issuer(hubIssuer)
                 .subject(String.valueOf(user.getId()))
                 .audience().add(ICAL_AUDIENCE).and()
                 .claim("userId", user.getId())
                 .claim("purpose", "schedule-ical")
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(hubPrivateKey, Jwts.SIG.RS256)
                 .compact();
     }
 
+    /** {@code userId} + {@code tokenVersion} claim extracted from a verified iCal JWT. {@code
+     *  tokenVersion} defaults to 0 when the claim is absent (tokens minted before the per-user
+     *  revocation nonce existed) — callers should treat a user's default/null
+     *  {@code icalTokenVersion} the same way so those pre-existing links keep working. */
+    public record IcalTokenClaims(Long userId, int tokenVersion) {}
+
     /**
-     * Verify an iCal subscription JWT and return the {@code userId}. Throws {@link JwtException}
-     * on bad signature / expired / wrong audience. The {@code aud=schedule-ical} check prevents a
-     * leaked session token from being reused as an ical URL and vice versa.
+     * Verify an iCal subscription JWT and return its claims. Throws {@link JwtException} on bad
+     * signature / expired / wrong audience. The {@code aud=schedule-ical} check prevents a leaked
+     * session token from being reused as an ical URL and vice versa. Does NOT check the
+     * per-user revocation nonce itself (that requires loading the {@link User} row) — callers
+     * must compare {@link IcalTokenClaims#tokenVersion()} against the user's current
+     * {@code icalTokenVersion}.
      */
-    public Long verifyIcalToken(String token) {
+    public IcalTokenClaims verifyIcalTokenClaims(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(hubPublicKey)
                 .requireAudience(ICAL_AUDIENCE)
@@ -253,9 +268,20 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
         Object uid = claims.get("userId");
-        if (uid instanceof Number n) return n.longValue();
-        if (uid instanceof String s) return Long.parseLong(s);
-        throw new IllegalArgumentException("iCal token has no userId claim");
+        Long userId;
+        if (uid instanceof Number n) userId = n.longValue();
+        else if (uid instanceof String s) userId = Long.parseLong(s);
+        else throw new IllegalArgumentException("iCal token has no userId claim");
+        Object v = claims.get("tokenVersion");
+        int tokenVersion = (v instanceof Number n) ? n.intValue() : 0;
+        return new IcalTokenClaims(userId, tokenVersion);
+    }
+
+    /** @deprecated use {@link #verifyIcalTokenClaims(String)} — this overload only returns the
+     *  {@code userId} and does not let the caller enforce the per-user revocation nonce. */
+    @Deprecated
+    public Long verifyIcalToken(String token) {
+        return verifyIcalTokenClaims(token).userId();
     }
 
     // ── Verification (either issuer) ─────────────────────────────────────────

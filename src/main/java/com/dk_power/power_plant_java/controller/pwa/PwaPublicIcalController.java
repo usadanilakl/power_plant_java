@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 /**
  * Public ics feed used by third-party calendar apps (Google Calendar / Apple Calendar / Outlook).
@@ -36,6 +37,10 @@ public class PwaPublicIcalController {
     /** Rolling forward window. 180 days = ~6 months. Enough for planning; small enough that a poll
      *  returns quickly. */
     private static final int DAYS_FORWARD = 180;
+    /** Plant-local zone — matches {@code IcalScheduleService}, which hard-pins the same zone when
+     *  rendering event times. Using the server's default zone here would drift the from/to window
+     *  (and thus which days are included) if the hub ever runs somewhere other than Central. */
+    private static final ZoneId PLANT_ZONE = ZoneId.of("America/Chicago");
 
     private final JwtService jwtService;
     private final UserRepo userRepo;
@@ -47,21 +52,33 @@ public class PwaPublicIcalController {
      */
     @GetMapping(value = "/{token:.+}.ics", produces = "text/calendar; charset=utf-8")
     public ResponseEntity<?> feed(@PathVariable String token) {
-        Long userId;
+        JwtService.IcalTokenClaims claims;
         try {
-            userId = jwtService.verifyIcalToken(token);
+            claims = jwtService.verifyIcalTokenClaims(token);
         } catch (Exception e) {
             log.debug("[Ical] token verification failed: {}", e.getMessage());
             return ResponseEntity.status(401).body("iCal token invalid or expired.");
         }
 
-        User user = userRepo.findById(userId).orElse(null);
+        User user = userRepo.findById(claims.userId()).orElse(null);
         if (user == null || Boolean.FALSE.equals(user.getIsActive())) {
             return ResponseEntity.status(404).body("User not found or inactive.");
         }
 
-        LocalDate from = LocalDate.now().minusDays(DAYS_BACK);
-        LocalDate to = LocalDate.now().plusDays(DAYS_FORWARD);
+        // Per-user revocation nonce: a token minted before the user's last "regenerate my
+        // calendar link" carries a stale (or absent, i.e. 0) tokenVersion and is rejected here —
+        // no fleet-wide key rotation needed. Missing user value defaults to 0, matching a token
+        // minted before this field existed, so pre-existing live subscriptions keep working.
+        int currentVersion = user.getIcalTokenVersion() == null ? 0 : user.getIcalTokenVersion();
+        if (claims.tokenVersion() != currentVersion) {
+            log.debug("[Ical] token version mismatch for user {} (token={}, current={}) — revoked",
+                    user.getId(), claims.tokenVersion(), currentVersion);
+            return ResponseEntity.status(401).body("iCal link has been regenerated; request a new subscription URL.");
+        }
+
+        LocalDate today = LocalDate.now(PLANT_ZONE);
+        LocalDate from = today.minusDays(DAYS_BACK);
+        LocalDate to = today.plusDays(DAYS_FORWARD);
         String body = icalScheduleService.buildFeed(user, from, to);
 
         return ResponseEntity.ok()

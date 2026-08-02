@@ -213,6 +213,27 @@ import {
           </div>
         </div>
 
+        <!-- Heal LED Strips (one-shot migration) -->
+        <div class="sub-section">
+          <h4>Heal LED Strips</h4>
+          <p class="description">
+            One-shot data migration: fix LED strip <code>totalLeds</code> and <code>sequence</code>
+            rows to match WLED hardware ([240,237,237] for ESP-1, [245,245,260] for ESP-2).
+            Historical seed used 260 for every strip, which made WLED return HTTP 400 on any
+            actuation. Idempotent — run once per node after upgrade; safe to run again.
+            Does NOT touch box or LOTO state.
+          </p>
+          <div class="button-group">
+            <button (click)="healLedStrips()" [disabled]="lotoLoading.heal">
+              {{ lotoLoading.heal ? 'Healing...' : 'Heal LED Strips' }}
+            </button>
+          </div>
+          <div class="error" *ngIf="lotoErrors.heal">{{ lotoErrors.heal }}</div>
+          <div class="result" *ngIf="lotoMessages.heal">
+            <span class="badge success">{{ lotoMessages.heal }}</span>
+          </div>
+        </div>
+
         <!-- Sync to ESP Controllers -->
         <div class="sub-section">
           <h4>Sync All Boxes to ESP</h4>
@@ -296,9 +317,9 @@ export class AdminLotoComponent {
   assignAttributesResult: AssignAttributesResult | null = null;
   counterpartResult: CounterpartAssociationResult | null = null;
 
-  lotoLoading = { seed: false, reconcile: false, espSync: false, queue: false };
-  lotoMessages = { seed: '', reconcile: '', espSync: '', queue: '' };
-  lotoErrors = { seed: '', reconcile: '', espSync: '', queue: '' };
+  lotoLoading = { seed: false, reconcile: false, espSync: false, queue: false, heal: false };
+  lotoMessages = { seed: '', reconcile: '', espSync: '', queue: '', heal: '' };
+  lotoErrors = { seed: '', reconcile: '', espSync: '', queue: '', heal: '' };
   wledQueueStatus: { pending: number; expired: number } | null = null;
 
   expandedSections: { [key: string]: boolean } = {
@@ -406,6 +427,23 @@ export class AdminLotoComponent {
       error: (err) => {
         this.lotoErrors.reconcile = err.error?.message || err.message || 'Failed';
         this.lotoLoading.reconcile = false;
+      }
+    });
+  }
+
+  healLedStrips() {
+    this.lotoLoading.heal = true;
+    this.lotoErrors.heal = '';
+    this.lotoMessages.heal = '';
+
+    this.adminService.healLedStrips().subscribe({
+      next: (res) => {
+        this.lotoMessages.heal = res.message || 'LED strips healed';
+        this.lotoLoading.heal = false;
+      },
+      error: (err) => {
+        this.lotoErrors.heal = err.error?.message || err.message || 'Failed';
+        this.lotoLoading.heal = false;
       }
     });
   }

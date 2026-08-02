@@ -5,7 +5,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
 import {
   PersonnelApiService, PersonnelContact, ShiftDay, ShiftEntry,
-  CoverageOpening, CoverageSeatSummary,
+  CoverageOpening, CoverageSeatSummary, CoverageSignup, CoverageEligibilityDetailRow,
 } from '../../services/personnel-api.service';
 import { PersonnelCacheService } from '../../services/personnel-cache.service';
 import { AuthService } from '../../auth/auth.service';
@@ -14,11 +14,49 @@ import { PwaChatPanelComponent } from './pwa-chat-panel.component';
 
 type ShiftCode = 'D' | 'N' | 'OCM' | 'P' | 'T' | 'U' | 'L' | 'OFF' | '';
 
+/** Per-cell coverage signup overlay — PENDING/APPROVED only (REJECTED/WITHDRAWN are dropped),
+ *  APPROVED preferred over PENDING when a user has both on the same date. */
+interface CellSignup { id: number; shift: 'DAY' | 'NIGHT'; status: 'PENDING' | 'APPROVED' }
+
+/** Per-person, per-shift OPEN-SEAT counts for one cell — 0 means no open seat on that shift. */
+interface CellSeat { day: number; night: number }
+
 interface MonthPersonRow {
   name: string;
   group: string;                 // canonical group (from first day they appear)
-  cells: { date: string; shift: ShiftCode; isWeekend: boolean; isToday: boolean }[];
+  position: string;              // Lead / CRO / AO (ops) — drives within-group ordering + markers
+  userId?: number;
+  firstInGroup: boolean;         // renders a group-separator header above this row
+  cells: { date: string; shift: ShiftCode; isWeekend: boolean; isToday: boolean; seat: CellSeat | null; signup: CellSignup | null }[];
 }
+
+/** State for the small sign-up chooser / manage popover anchored to a clicked seat/pending cell.
+ *  'choose' = pick Day vs Night when both are open. 'manage' = Remove / Switch for the current
+ *  user's own PENDING sign-up. Position is the click point (viewport px), clamped on open. */
+interface CoveragePopoverState {
+  date: string;
+  x: number;
+  y: number;
+  mode: 'choose' | 'manage';
+  seat?: CellSeat;
+  pendingSignup?: CellSignup;
+  otherShiftOpen?: 'DAY' | 'NIGHT' | null;
+}
+
+interface YearCell {
+  iso: string;
+  day: number;
+  shift: ShiftCode;
+  dayCrew: string;                // plant (not-signed-in) view only: majority group on days
+  nightCrew: string;              // plant (not-signed-in) view only: majority group on nights
+  isToday: boolean;
+  leadingBlank: boolean;
+}
+
+/** Revisit TTL for Month / Mine / Year views: setScheduleView only skipped a re-fetch when the
+ *  view's data was empty, so switching tabs never picked up changes made elsewhere. Re-fetch on
+ *  revisit once cached data is older than this, in addition to always re-fetching via Refresh. */
+const VIEW_REVISIT_TTL_MS = 60_000;
 
 /**
  * PWA Personnel section — Schedule (day + month views), Contacts, and Chat.
@@ -59,7 +97,33 @@ export class PersonnelPageComponent implements OnInit {
   // ── Coverage (help cover a shift) ─────────────────────────────────────
   dayCoverage = signal<CoverageOpening[]>([]);      // open requests on the selected day
   monthCoverage = signal<CoverageSeatSummary[]>([]); // days-with-open-seats across the month
+  myEligibleDates = signal<string[]>([]);            // days THIS operator can pick up (off + qualified)
+  /** `${userId}|${date}` -> per-shift open-seat counts, from eligibility-detail. Replaces the old
+   *  roster-wide boolean eligibility map — drives the month-grid's open-seat count markers. */
+  seatByKey = signal<Map<string, CellSeat>>(new Map());
   private mySignups = signal<Set<number>>(new Set()); // coverageRequestIds signed up this session
+  monthSignups = signal<CoverageSignup[]>([]);         // all coverage signups across the current month (every status)
+  signupBusy = signal(false);                          // true while a quick-signup/withdraw POST is in flight
+  /** The open sign-up chooser / manage popover, or null when closed. Only ever opened from the
+   *  CURRENT USER's own row — see onSeatCellClick(). */
+  coveragePopover = signal<CoveragePopoverState | null>(null);
+
+  /** `${userId}|${date}` -> { id, shift, status } for the month grid's coverage overlay. Only
+   *  PENDING and APPROVED survive (REJECTED/WITHDRAWN are dropped); when a user has both on the
+   *  same date APPROVED wins. */
+  monthSignupByUserDate = computed<Map<string, CellSignup>>(() => {
+    const map = new Map<string, CellSignup>();
+    for (const s of this.monthSignups()) {
+      if (s.status !== 'PENDING' && s.status !== 'APPROVED') continue;
+      const key = `${s.userId}|${s.date}`;
+      const existing = map.get(key);
+      if (existing && existing.status === 'APPROVED' && s.status !== 'APPROVED') continue; // keep APPROVED
+      if (!existing || s.status === 'APPROVED') {
+        map.set(key, { id: s.id, shift: s.shift, status: s.status });
+      }
+    }
+    return map;
+  });
 
   /** date → open-seat summary, so the month-grid day headers can badge days that need coverage. */
   monthCoverageByDate = computed(() => {
@@ -93,6 +157,18 @@ export class PersonnelPageComponent implements OnInit {
   yearDays = signal<ShiftDay[]>([]);
   yearLoading = signal(false);
   yearError = signal<string | null>(null);
+
+  // ── Offline indicator ────────────────────────────────────────────────
+  /** True whenever the most recent hub read fell back to the Supabase mirror. Every read pipes
+   *  catchError → Supabase, and the fallback itself resolves to null/[] rather than erroring, so
+   *  without this the page would silently render "no schedule" with no clue the hub is down. */
+  offline = computed(() => this.api.usedFallback());
+
+  // Timestamps (Date.now()) of the last fetch kicked off for each revisit-cached view — lets
+  // setScheduleView re-fetch stale data on revisit instead of only fetching when empty.
+  private monthFetchedAt = 0;
+  private myFetchedAt = 0;
+  private yearFetchedAt = 0;
 
   // ── Contacts ──────────────────────────────────────────────────────────
   contacts = signal<PersonnelContact[]>([]);
@@ -151,49 +227,101 @@ export class PersonnelPageComponent implements OnInit {
     const dayByIso = new Map<string, ShiftDay>();
     for (const d of days) dayByIso.set(d.date, d);
 
-    // First pass: collect every person + their canonical group.
-    const groupByName = new Map<string, string>();
-    const rememberGroup = (list: ShiftEntry[] | undefined) => {
+    // First pass: collect every person + their canonical group / position / userId.
+    const meta = new Map<string, { group: string; position: string; userId?: number }>();
+    const remember = (list: ShiftEntry[] | undefined) => {
       if (!list) return;
       for (const e of list) {
         if (!e?.name) continue;
-        if (!groupByName.has(e.name) && e.group) groupByName.set(e.name, e.group);
-        else if (!groupByName.has(e.name)) groupByName.set(e.name, '');
+        const m = meta.get(e.name) ?? { group: '', position: '', userId: undefined };
+        if (!m.group && e.group) m.group = e.group;
+        if (!m.position && e.position) m.position = e.position;
+        if (m.userId == null && e.userId != null) m.userId = e.userId;
+        meta.set(e.name, m);
       }
     };
     for (const d of days) {
-      rememberGroup(d.dayShift);
-      rememberGroup(d.nightShift);
-      rememberGroup(d.pto);
-      rememberGroup(d.training);
-      rememberGroup(d.unscheduled);
+      remember(d.dayShift);
+      remember(d.nightShift);
+      remember(d.pto);
+      remember(d.training);
+      remember(d.unscheduled);
       if (d.onCallManagerName) {
-        if (!groupByName.has(d.onCallManagerName)) groupByName.set(d.onCallManagerName, 'OCM');
+        const m = meta.get(d.onCallManagerName) ?? { group: 'OCM', position: '', userId: undefined };
+        if (!m.group) m.group = 'OCM';
+        if (m.userId == null && d.onCallManagerUserId != null) m.userId = d.onCallManagerUserId;
+        meta.set(d.onCallManagerName, m);
       }
     }
 
-    // Second pass: for each person, walk each day header, resolve their shift code.
+    const seats = this.seatByKey();
+    const signups = this.monthSignupByUserDate();
+
+    // Second pass: for each person, walk each day header, resolve their shift code + open seats.
     const rows: MonthPersonRow[] = [];
-    for (const [name, group] of groupByName) {
-      const cells = headers.map(h => ({
-        date: h.iso,
-        shift: this.resolveShift(dayByIso.get(h.iso), name, null),
-        isWeekend: h.isWeekend,
-        isToday: h.isToday,
-      }));
-      rows.push({ name, group, cells });
+    for (const [name, m] of meta) {
+      const cells = headers.map(h => {
+        const shift = this.resolveShift(dayByIso.get(h.iso), name, null);
+        const signup = m.userId != null ? (signups.get(`${m.userId}|${h.iso}`) ?? null) : null;
+        const seat = m.userId != null ? (seats.get(`${m.userId}|${h.iso}`) ?? null) : null;
+        return {
+          date: h.iso,
+          shift,
+          isWeekend: h.isWeekend,
+          isToday: h.isToday,
+          seat: seat && (seat.day > 0 || seat.night > 0) ? seat : null,
+          signup,
+        };
+      });
+      rows.push({ name, group: m.group, position: m.position, userId: m.userId, firstInGroup: false, cells });
     }
 
-    // Sort: group order A,B,C,D,Rel,OCM,other; then by name.
+    // Sort: group order A,B,C,D,Rel,OCM,other; then Lead→CRO→AO within group; then by name.
     const groupOrder: Record<string, number> = { A: 0, B: 1, C: 2, D: 3, Rel: 4, OCM: 5 };
     rows.sort((a, b) => {
       const ga = groupOrder[a.group] ?? 99;
       const gb = groupOrder[b.group] ?? 99;
       if (ga !== gb) return ga - gb;
+      const pr = this.positionRank(a.position) - this.positionRank(b.position);
+      if (pr !== 0) return pr;
       return a.name.localeCompare(b.name);
     });
+    // Flag the first row of each group so the template can inject a separator header.
+    let prevGroup: string | null = null;
+    for (const r of rows) {
+      r.firstInGroup = r.group !== prevGroup;
+      prevGroup = r.group;
+    }
     return rows;
   });
+
+  /** Lead→CRO→AO ordering weight; non-ops positions sort after operators. */
+  private positionRank(pos: string): number {
+    const p = (pos || '').toLowerCase();
+    if (p.includes('lead')) return 0;
+    if (p.includes('control room') || p === 'cro') return 1;
+    if (p.includes('auxiliary') || p === 'ao') return 2;
+    return 9;
+  }
+
+  /** Display label for a group-separator header row. */
+  groupLabel(group: string): string {
+    switch (group) {
+      case 'A': case 'B': case 'C': case 'D': return `Crew ${group}`;
+      case 'Rel': return 'Relief';
+      case 'OCM': return 'On-Call Manager';
+      default: return group || 'Other';
+    }
+  }
+
+  /** Short position badge (Lead / CRO / AO); blank for non-ops so the chip is hidden. */
+  posLabel(pos: string): string {
+    const p = (pos || '').toLowerCase();
+    if (p.includes('lead')) return 'Lead';
+    if (p.includes('control room') || p === 'cro') return 'CRO';
+    if (p.includes('auxiliary') || p === 'ao') return 'AO';
+    return '';
+  }
 
   /** Group filter + name search applied to monthPersonRows. */
   filteredMonthRows = computed<MonthPersonRow[]>(() => {
@@ -286,25 +414,67 @@ export class PersonnelPageComponent implements OnInit {
     return map;
   });
 
+  /** Majority group among a shift-entry list — a whole crew is normally assigned per shift/day,
+   *  so this resolves to that crew's letter (A/B/C/D/Rel). Used by the plant (not-signed-in) year
+   *  view to show WHICH crew is on days vs nights, instead of a uniform "always D" grid. */
+  private crewOnShift(entries: ShiftEntry[] | undefined): string {
+    if (!entries || entries.length === 0) return '';
+    const counts = new Map<string, number>();
+    for (const e of entries) {
+      const g = e.group || '';
+      if (!g) continue;
+      counts.set(g, (counts.get(g) ?? 0) + 1);
+    }
+    let best = '';
+    let bestCount = 0;
+    for (const [g, c] of counts) {
+      if (c > bestCount) { best = g; bestCount = c; }
+    }
+    return best;
+  }
+
+  /** date → { dayCrew, nightCrew } for the current yearAnchor. Powers the plant year view's crew
+   *  text — see crewOnShift() above. */
+  private yearCrewGrid = computed(() => {
+    const year = this.yearAnchor();
+    const map = new Map<string, { dayCrew: string; nightCrew: string }>();
+    for (const d of this.yearDays()) {
+      const dt = new Date(d.date + 'T12:00:00');
+      if (dt.getFullYear() !== year) continue;
+      map.set(d.date, { dayCrew: this.crewOnShift(d.dayShift), nightCrew: this.crewOnShift(d.nightShift) });
+    }
+    return map;
+  });
+
   yearMonthGrids = computed(() => {
     // Precompute all 12 month cell arrays so ngFor can be flat.
     const grid = this.yearGrid();
+    const crewGrid = this.yearCrewGrid();
+    const signedIn = this.currentUserName() != null || this.currentUserId() != null;
     const year = this.yearAnchor();
     const today = this.todayIso();
-    const out: { month: number; label: string; cells: ({ iso: string; day: number; shift: ShiftCode; isToday: boolean; leadingBlank: boolean; }[]) }[] = [];
+    const out: { month: number; label: string; cells: YearCell[] }[] = [];
     for (let m = 0; m < 12; m++) {
       const first = new Date(year, m, 1);
       const last = new Date(year, m + 1, 0);
       const label = first.toLocaleDateString(undefined, { month: 'short' });
-      const cells: { iso: string; day: number; shift: ShiftCode; isToday: boolean; leadingBlank: boolean; }[] = [];
+      const cells: YearCell[] = [];
       // Leading blank cells for weekday alignment (0=Sun starts week).
       for (let b = 0; b < first.getDay(); b++) {
-        cells.push({ iso: '', day: 0, shift: '', isToday: false, leadingBlank: true });
+        cells.push({ iso: '', day: 0, shift: '', dayCrew: '', nightCrew: '', isToday: false, leadingBlank: true });
       }
       for (let d = 1; d <= last.getDate(); d++) {
         const iso = this.isoOf(new Date(year, m, d));
         const shift = (grid[m][iso] ?? '') as ShiftCode;
-        cells.push({ iso, day: d, shift, isToday: iso === today, leadingBlank: false });
+        // Crew text only makes sense for the plant (not-signed-in) view — for a signed-in user's
+        // personal year, dayCrew/nightCrew stay blank and the cell just shows their own shift code.
+        const crew = signedIn ? undefined : crewGrid.get(iso);
+        cells.push({
+          iso, day: d, shift,
+          dayCrew: crew?.dayCrew ?? '',
+          nightCrew: crew?.nightCrew ?? '',
+          isToday: iso === today, leadingBlank: false,
+        });
       }
       out.push({ month: m, label, cells });
     }
@@ -339,18 +509,35 @@ export class PersonnelPageComponent implements OnInit {
 
   setScheduleView(view: 'day' | 'month' | 'me' | 'year'): void {
     this.scheduleView.set(view);
-    if (view === 'month' && this.monthDays().length === 0) {
+    const now = Date.now();
+    if (view === 'month' && (this.monthDays().length === 0 || now - this.monthFetchedAt > VIEW_REVISIT_TTL_MS)) {
       this.refreshMonth();
-    } else if (view === 'me' && this.myDays().length === 0) {
+    } else if (view === 'me' && (this.myDays().length === 0 || now - this.myFetchedAt > VIEW_REVISIT_TTL_MS)) {
       this.refreshMySchedule();
-    } else if (view === 'year' && this.yearDays().length === 0) {
+    } else if (view === 'year' && (this.yearDays().length === 0 || now - this.yearFetchedAt > VIEW_REVISIT_TTL_MS)) {
       this.refreshYear();
+    }
+  }
+
+  /** Toolbar Refresh — dispatches to the currently-active tab/view's own refresh method so Year
+   *  and Mine actually re-fetch (they used to fall through to refreshMonth() and never refresh). */
+  refreshCurrentView(): void {
+    if (this.activeTab() !== 'schedule') {
+      this.refreshContacts();
+      return;
+    }
+    switch (this.scheduleView()) {
+      case 'day': this.refreshSelectedDate(); break;
+      case 'month': this.refreshMonth(); break;
+      case 'me': this.refreshMySchedule(); break;
+      case 'year': this.refreshYear(); break;
     }
   }
 
   // ── My Schedule ───────────────────────────────────────────────────────
 
   refreshMySchedule(): void {
+    this.myFetchedAt = Date.now();
     this.myLoading.set(true);
     this.myError.set(null);
     // Rolling window: 7 days back for "you finished a shift Y hours ago" context + 52 forward.
@@ -411,6 +598,7 @@ export class PersonnelPageComponent implements OnInit {
   }
 
   refreshYear(): void {
+    this.yearFetchedAt = Date.now();
     const y = this.yearAnchor();
     this.yearLoading.set(true);
     this.yearError.set(null);
@@ -475,6 +663,14 @@ export class PersonnelPageComponent implements OnInit {
     if (date === this.todayIso()) {
       this.api.getScheduleToday().subscribe({
         next: dto => {
+          // Offline fallback resolved to null (nothing in the Supabase mirror for today, or the
+          // mirror read itself failed) — if we already have a cached/rendered day, keep it rather
+          // than wiping the screen to "No schedule". Only ever applies to the fallback path; a
+          // genuine hub-confirmed "no schedule today" still clears via the normal set below.
+          if (dto == null && this.api.todayUsedFallback() && this.selectedDay() != null) {
+            this.scheduleLoading.set(false);
+            return;
+          }
           this.selectedDay.set(dto);
           if (dto) this.cache.writeScheduleToday(dto);
           this.scheduleLoading.set(false);
@@ -513,7 +709,9 @@ export class PersonnelPageComponent implements OnInit {
   /** Load the open coverage requests for the currently-selected day. */
   refreshDayCoverage(): void {
     if (!this.coverageEnabled()) { this.dayCoverage.set([]); return; }
-    this.api.getCoverageForDay(this.selectedDate()).subscribe({
+    // Only the needs THIS operator can cover (off that day + qualified by the cover-up hierarchy),
+    // labelled by position/discipline — server enforces the same rule the manager grid uses.
+    this.api.getMyCoverageForDay(this.selectedDate()).subscribe({
       next: rows => this.dayCoverage.set(rows.filter(r => (r.openForDate ?? 0) > 0)),
       error: () => this.dayCoverage.set([]),   // hub unreachable / not permitted → just hide the section
     });
@@ -521,7 +719,11 @@ export class PersonnelPageComponent implements OnInit {
 
   /** Load which days in the current month have open seats — the month-view discovery strip. */
   refreshMonthCoverage(): void {
-    if (!this.coverageEnabled()) { this.monthCoverage.set([]); return; }
+    if (!this.coverageEnabled()) {
+      this.monthCoverage.set([]); this.myEligibleDates.set([]); this.seatByKey.set(new Map());
+      this.monthSignups.set([]);
+      return;
+    }
     const anchor = new Date(this.monthAnchor() + 'T12:00:00');
     const first = this.isoOf(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
     const last = this.isoOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
@@ -529,6 +731,190 @@ export class PersonnelPageComponent implements OnInit {
       next: rows => this.monthCoverage.set(rows.filter(r => r.dayOpen > 0 || r.nightOpen > 0)),
       error: () => this.monthCoverage.set([]),
     });
+    // Days THIS operator can pick up (off + qualified) — their personal "you can cover" list.
+    this.api.getMyEligibleCoverage(first, last).subscribe({
+      next: d => this.myEligibleDates.set(d ?? []),
+      error: () => this.myEligibleDates.set([]),
+    });
+    // Per-person, per-shift open-seat counts — powers the month grid's open-seats markers
+    // (split green/blue day/night counts) — see seatByKey.
+    this.api.getEligibilityDetail(first, last).subscribe({
+      next: rows => {
+        const m = new Map<string, CellSeat>();
+        for (const r of (rows ?? []) as CoverageEligibilityDetailRow[]) {
+          m.set(`${r.userId}|${r.date}`, { day: r.day ?? 0, night: r.night ?? 0 });
+        }
+        this.seatByKey.set(m);
+      },
+      error: () => this.seatByKey.set(new Map()),
+    });
+    // All coverage signups (every status) across the month — colors PENDING/APPROVED coverage
+    // onto the person's cell in the grid (see monthSignupByUserDate).
+    this.api.getCoverageSignups(first, last).subscribe({
+      next: rows => this.monthSignups.set(rows ?? []),
+      error: () => this.monthSignups.set([]),
+    });
+  }
+
+  /** Is this month-grid row the currently signed-in operator's own row? Only own-row cells are
+   *  clickable for sign-up/manage — other rows are informational (roster view), not actionable:
+   *  the PWA is a personal device and an operator only signs THEMSELVES up. */
+  isMyRow(row: MonthPersonRow): boolean {
+    const id = this.currentUserId();
+    return id != null && row.userId != null && row.userId === id;
+  }
+
+  /** Cell click dispatcher for the month grid.
+   *  - Not the signed-in user's own row: always just jump to that day (informational/view-only).
+   *  - Own row, APPROVED signup: jump to that day (not changeable).
+   *  - Own row, PENDING signup: open the manage popover (Remove / Switch).
+   *  - Own row, open seats (no signup): one shift open -> quick sign-up directly; both open ->
+   *    open the Day/Night chooser popover.
+   *  - Otherwise: normal shift/blank cell -> jump to that day. */
+  onSeatCellClick(event: MouseEvent, row: MonthPersonRow, cell: { date: string; seat: CellSeat | null; signup: CellSignup | null }): void {
+    if (!this.isMyRow(row)) { this.jumpToDate(cell.date); return; }
+
+    if (cell.signup?.status === 'APPROVED') { this.jumpToDate(cell.date); return; }
+
+    if (cell.signup?.status === 'PENDING') {
+      event.stopPropagation();
+      this.openManagePopover(event, cell);
+      return;
+    }
+
+    if (cell.seat && (cell.seat.day > 0 || cell.seat.night > 0)) {
+      event.stopPropagation();
+      if (cell.seat.day > 0 && cell.seat.night > 0) {
+        this.openChoosePopover(event, cell.date, cell.seat);
+      } else {
+        this.quickSignUp(cell.date, cell.seat.day > 0 ? 'DAY' : 'NIGHT');
+      }
+      return;
+    }
+
+    this.jumpToDate(cell.date);
+  }
+
+  private openChoosePopover(event: MouseEvent, date: string, seat: CellSeat): void {
+    const { x, y } = this.popoverPos(event);
+    this.coveragePopover.set({ date, x, y, mode: 'choose', seat });
+  }
+
+  private openManagePopover(event: MouseEvent, cell: { date: string; seat: CellSeat | null; signup: CellSignup | null }): void {
+    if (!cell.signup) return;
+    // Offer "Switch" only when the OTHER shift still has an open seat that day.
+    const otherShiftOpen: 'DAY' | 'NIGHT' | null = cell.signup.shift === 'DAY'
+      ? (cell.seat && cell.seat.night > 0 ? 'NIGHT' : null)
+      : (cell.seat && cell.seat.day > 0 ? 'DAY' : null);
+    const { x, y } = this.popoverPos(event);
+    this.coveragePopover.set({ date: cell.date, x, y, mode: 'manage', pendingSignup: cell.signup, otherShiftOpen });
+  }
+
+  /** Click point clamped inside the viewport so the popover never renders off-screen. */
+  private popoverPos(event: MouseEvent): { x: number; y: number } {
+    const w = 220, h = 130;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const x = Math.min(Math.max(8, event.clientX), vw - w - 8);
+    const y = Math.min(Math.max(8, event.clientY), vh - h - 8);
+    return { x, y };
+  }
+
+  closeCoveragePopover(): void { this.coveragePopover.set(null); }
+
+  /** Chooser popover action — sign up for the picked shift. */
+  chooseCoverageShift(shift: 'DAY' | 'NIGHT'): void {
+    const p = this.coveragePopover();
+    if (!p) return;
+    this.closeCoveragePopover();
+    this.quickSignUp(p.date, shift);
+  }
+
+  /** Manage popover action — withdraw the current user's own PENDING sign-up. */
+  removeCoverageSignup(): void {
+    const p = this.coveragePopover();
+    if (!p?.pendingSignup) return;
+    const id = p.pendingSignup.id;
+    this.closeCoveragePopover();
+    if (this.signupBusy()) return;
+    this.signupBusy.set(true);
+    this.api.withdrawSignup(id).subscribe({
+      next: () => {
+        this.signupBusy.set(false);
+        this.msg.showSuccess('Sign-up removed');
+        this.refreshMonthCoverage();
+      },
+      error: err => {
+        this.signupBusy.set(false);
+        this.msg.showError(err?.error?.error ?? 'Could not remove sign-up. Try again.');
+      },
+    });
+  }
+
+  /** Manage popover action — withdraw the PENDING sign-up then sign up for the other open shift. */
+  switchCoverageShift(): void {
+    const p = this.coveragePopover();
+    if (!p?.pendingSignup || !p.otherShiftOpen) return;
+    const id = p.pendingSignup.id;
+    const otherShift = p.otherShiftOpen;
+    const date = p.date;
+    this.closeCoveragePopover();
+    if (this.signupBusy()) return;
+    this.signupBusy.set(true);
+    this.api.withdrawSignup(id).subscribe({
+      next: () => {
+        this.api.quickSignUp(date, otherShift).subscribe({
+          next: () => {
+            this.signupBusy.set(false);
+            this.msg.showSuccess(`Switched to ${otherShift === 'NIGHT' ? 'Night' : 'Day'} — pending approval`);
+            this.refreshMonthCoverage();
+          },
+          error: err => {
+            this.signupBusy.set(false);
+            this.msg.showError(err?.error?.error ?? 'Removed, but could not sign up for the other shift. Try again.');
+            this.refreshMonthCoverage(); // withdraw already succeeded — reflect that
+          },
+        });
+      },
+      error: err => {
+        this.signupBusy.set(false);
+        this.msg.showError(err?.error?.error ?? 'Could not switch shift. Try again.');
+      },
+    });
+  }
+
+  /** One-click coverage sign-up. Omit `shift` to let the server auto-pick the best open need. */
+  private quickSignUp(date: string, shift?: 'DAY' | 'NIGHT'): void {
+    if (this.signupBusy()) return;
+    this.signupBusy.set(true);
+    this.api.quickSignUp(date, shift).subscribe({
+      next: dto => {
+        this.signupBusy.set(false);
+        const shiftLabel = dto?.shift === 'NIGHT' ? 'N' : 'D';
+        this.msg.showSuccess(`Requested ${shiftLabel} coverage — pending approval`);
+        this.refreshMonthCoverage();
+      },
+      error: err => {
+        this.signupBusy.set(false);
+        this.msg.showError(err?.error?.error ?? 'Could not sign up. Try again.');
+      },
+    });
+  }
+
+  /** Cell tooltip for the month grid, applying the signup-status precedence: APPROVED coverage,
+   *  then PENDING coverage, then the open-seats marker, then the normal shift label. */
+  cellTitle(row: MonthPersonRow, cell: { date: string; shift: ShiftCode; seat: CellSeat | null; signup: CellSignup | null }): string {
+    const dateLabel = new Date(cell.date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const mine = this.isMyRow(row);
+    let status: string;
+    if (cell.signup?.status === 'APPROVED') status = 'Approved coverage';
+    else if (cell.signup?.status === 'PENDING') status = mine ? 'Pending approval — tap to manage' : 'Pending approval — coverage';
+    else if (cell.seat && (cell.seat.day > 0 || cell.seat.night > 0)) {
+      const parts: string[] = [];
+      if (cell.seat.day > 0) parts.push(`${cell.seat.day} day`);
+      if (cell.seat.night > 0) parts.push(`${cell.seat.night} night`);
+      status = `${parts.join(' / ')} open` + (mine ? ' — click to sign up' : '');
+    } else status = this.shiftLabel(cell.shift);
+    return `${row.name} — ${status} (${dateLabel})`;
   }
 
   signUpForCoverage(c: CoverageOpening): void {
@@ -546,6 +932,19 @@ export class PersonnelPageComponent implements OnInit {
 
   alreadyRequested(c: CoverageOpening): boolean { return c.id != null && this.mySignups().has(c.id); }
   coverageShiftLabel(c: CoverageOpening): string { return c.shift === 'NIGHT' ? 'Night' : 'Day'; }
+  /** The role a coverage need is for — headlines the card so Lead/CRO/AO/Mechanic/I&C/Manager seats
+   *  are distinguishable (they were all rendering a bare "Day shift"). */
+  coverageRoleLabel(c: CoverageOpening): string {
+    const disc = (c.discipline || 'OPS').toUpperCase();
+    if (disc === 'MECHANIC') return 'Mechanic';
+    if (disc === 'IC') return 'I&C';
+    if (disc === 'MANAGER') return 'Manager';
+    const p = (c.position || '').toLowerCase();
+    if (p.includes('lead')) return 'Lead';
+    if (p.includes('control room') || p === 'cro') return 'Control Room Operator';
+    if (p.includes('auxiliary') || p === 'ao') return 'Auxiliary Operator';
+    return 'Operator';
+  }
   coverageReasonLabel(c: CoverageOpening): string {
     switch (c.reason) {
       case 'PTO_COVERAGE': return 'PTO coverage';
@@ -569,6 +968,7 @@ export class PersonnelPageComponent implements OnInit {
   }
 
   refreshMonth(): void {
+    this.monthFetchedAt = Date.now();
     const anchor = new Date(this.monthAnchor() + 'T12:00:00');
     const first = this.isoOf(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
     const last = this.isoOf(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
@@ -657,6 +1057,32 @@ export class PersonnelPageComponent implements OnInit {
       case 'OFF': return 'Off';
       default: return 'Off';
     }
+  }
+
+  /** Short text glyph for a shift code — rendered alongside (not instead of) the year mini-cell's
+   *  background color so shift is legible without relying on color alone (WCAG 1.4.1). */
+  shiftGlyph(code: ShiftCode): string {
+    switch (code) {
+      case 'D': return 'D';
+      case 'N': return 'N';
+      case 'OCM': return 'O';
+      case 'P': return 'P';
+      case 'T': return 'T';
+      case 'L': return 'L';
+      case 'U': return 'U';
+      default: return '';
+    }
+  }
+
+  /** Full aria-label / title for a year mini-cell — date plus shift (or, for the plant view, the
+   *  day/night crew) so the year grid is legible to screen readers and without color. */
+  yearCellAriaLabel(c: YearCell): string {
+    const dateLabel = new Date(c.iso + 'T12:00:00')
+      .toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    if (c.dayCrew || c.nightCrew) {
+      return `${dateLabel} — Day crew ${c.dayCrew || 'none'}, Night crew ${c.nightCrew || 'none'}`;
+    }
+    return `${dateLabel} — ${this.shiftLabel(c.shift)}`;
   }
 
   // ── Contacts ──────────────────────────────────────────────────────────

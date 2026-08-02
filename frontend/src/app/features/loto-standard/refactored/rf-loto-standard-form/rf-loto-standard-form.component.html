@@ -87,6 +87,12 @@
                   </button>
                 }
                 <button type="button" class="counterpart-btn" (click)="flipToPermit()">Flip to Permit</button>
+                <button type="button" class="counterpart-btn"
+                        (click)="onPrintPids()"
+                        [disabled]="isPrintingPids()"
+                        [title]="'Print every P&ID for this standard with equipment shapes highlighted and numbered by point order'">
+                  {{ isPrintingPids() ? 'Preparing…' : '🖨️ Print P&IDs' }}
+                </button>
                 @if (canDelete()) {
                   <button
                     type="button"

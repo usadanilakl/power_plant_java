@@ -49,6 +49,9 @@ public class PtoEmailIntakeService {
 
     /** Only auto-approve (auto-move the person + email coworkers) on a very confident name match. */
     private static final double AUTO_MATCH_CONFIDENCE = 0.90;
+    /** Overlap subtracted from the poll-start watermark so mail arriving mid-poll isn't skipped next
+     *  time; safe because ingest() dedups by message id / source request id / user+dates hash. */
+    private static final long POLL_OVERLAP_SECONDS = 30;
 
     private final ApiEmailService apiEmailService;
     private final SyncConfig syncConfig;
@@ -89,6 +92,9 @@ public class PtoEmailIntakeService {
             log.warn("[PtoIntake] Enabled but no mailbox configured (schedule.pto.intake.mailbox / email.graph.from)");
             return;
         }
+        // Captured before the fetch (not after) so mail that arrives while this poll is processing
+        // isn't skipped by the next poll's "since" filter — dedup absorbs the resulting overlap.
+        LocalDateTime pollStart = LocalDateTime.now();
         try {
             List<GraphEmailMessage> messages = apiEmailService.getMessagesSince(mailbox, lastPollTime, 100);
             int approved = 0;
@@ -98,8 +104,7 @@ public class PtoEmailIntakeService {
                 if (o == Outcome.APPROVED) approved++;
                 else if (o == Outcome.STAGED) staged++;
             }
-            lastPollTime = LocalDateTime.now();
-            if (approved > 0) materialisation.materializeDefaultHorizon();
+            lastPollTime = pollStart.minusSeconds(POLL_OVERLAP_SECONDS);
             if (approved > 0 || staged > 0) {
                 log.info("[PtoIntake] Polled {} messages: {} approved, {} staged for review",
                         messages.size(), approved, staged);
@@ -192,11 +197,22 @@ public class PtoEmailIntakeService {
         return toDto(ptoRepo.save(pto));
     }
 
-    /** Approve a PTO (auto or manual): create coverage, notify, re-materialise. */
+    /**
+     * Approve a PTO (auto or manual): create coverage, notify, re-materialise.
+     *
+     * <p>Idempotent — a PTO already APPROVED is a no-op (returns as-is) so a duplicate call (retried
+     * webhook, double click) can't create duplicate coverage. Any call that DOES proceed first cancels
+     * whatever coverage is already attached to this PTO (harmless no-op the first time; reconciles a
+     * reject→re-approve cycle or a retried partial failure into a clean recreate instead of stacking
+     * duplicates on top).
+     */
     @Transactional
     public PtoRequestDto approve(Long ptoId) {
         PtoRequest pto = ptoRepo.findById(ptoId)
                 .orElseThrow(() -> new IllegalArgumentException("PTO not found: " + ptoId));
+        if (PtoRequest.Status.APPROVED.equals(pto.getStatus())) {
+            return toDto(pto);   // already approved — idempotent no-op
+        }
         if (pto.getUser() == null) {
             throw new IllegalStateException("Assign a user before approving PTO #" + ptoId);
         }
@@ -205,17 +221,28 @@ public class PtoEmailIntakeService {
         }
         pto.setStatus(PtoRequest.Status.APPROVED);
         ptoRepo.save(pto);
+        coverageService.cancelCoverageForPto(pto.getId());
         applyApproval(pto, pto.getUser());
-        materialisation.materializeDefaultHorizon();
         return toDto(pto);
     }
 
+    /** Reject a PTO: cancel any coverage already created for it (withdrawing non-terminal signups)
+     *  and re-materialise its date range so the P cell and any phantom open seats clear. */
     @Transactional
     public PtoRequestDto reject(Long ptoId) {
         PtoRequest pto = ptoRepo.findById(ptoId)
                 .orElseThrow(() -> new IllegalArgumentException("PTO not found: " + ptoId));
         pto.setStatus(PtoRequest.Status.REJECTED);
-        return toDto(ptoRepo.save(pto));
+        ptoRepo.save(pto);
+        coverageService.cancelCoverageForPto(pto.getId());
+        if (pto.getStartDate() != null && pto.getEndDate() != null) {
+            try {
+                materialisation.materializeRange(pto.getStartDate(), pto.getEndDate());
+            } catch (Exception e) {
+                log.warn("[PtoIntake] Re-materialisation after reject of PTO #{} failed: {}", ptoId, e.getMessage());
+            }
+        }
+        return toDto(pto);
     }
 
     private PtoRequestDto toDto(PtoRequest p) {
@@ -237,16 +264,39 @@ public class PtoEmailIntakeService {
 
     // ---- internals ----------------------------------------------------------
 
-    /** Create coverage for the shifts the person was scheduled to work, then send notifications. */
+    /**
+     * Create coverage for the shifts the person was scheduled to work, notify, and re-materialise just
+     * the PTO's own range (not the whole horizon — the narrow window is the perf fix here).
+     *
+     * <p>If an APPROVED PTO with a resolved user produces zero coverage runs (e.g. the user isn't on a
+     * tracked crew rotation), that's surprising rather than routine — log a WARN and leave
+     * {@code coverageEmailSentAt} null as a "needs review" marker instead of silently marking it done.
+     */
     private void applyApproval(PtoRequest pto, User user) {
         List<CoverageRequestDto> coverage = createCoverageForPto(pto, user);
+        boolean needsReview = coverage.isEmpty() && user != null;
+        if (needsReview) {
+            log.warn("[PtoIntake] PTO #{} approved for {} ({}..{}) produced zero coverage runs — user may "
+                            + "not be on a tracked crew rotation; flagging for review",
+                    pto.getId(), displayName(user), pto.getStartDate(), pto.getEndDate());
+        }
         try {
             notificationService.sendRequesterConfirmation(user, pto, coverage);
             notificationService.sendCoverageNeeded(user, pto, coverage);
         } catch (Exception e) {
             log.warn("[PtoIntake] Notifications for PTO #{} failed (non-fatal): {}", pto.getId(), e.getMessage());
         }
-        pto.setCoverageEmailSentAt(LocalDateTime.now());
+        if (pto.getStartDate() != null && pto.getEndDate() != null) {
+            try {
+                materialisation.materializeRange(pto.getStartDate(), pto.getEndDate());
+            } catch (Exception e) {
+                log.warn("[PtoIntake] Re-materialisation for PTO #{} failed (change committed): {}",
+                        pto.getId(), e.getMessage());
+            }
+        }
+        if (!needsReview) {
+            pto.setCoverageEmailSentAt(LocalDateTime.now());
+        }
         ptoRepo.save(pto);
     }
 
