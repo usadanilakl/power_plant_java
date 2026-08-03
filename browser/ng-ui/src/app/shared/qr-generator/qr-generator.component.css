@@ -4,8 +4,8 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background-color: #ffffff;
-  color: #111111;
+  background-color: var(--card-background);
+  color: var(--primary-text);
   border-radius: 8px;
   box-shadow: var(--card-shadow);
   border: 1px solid var(--border-color);
@@ -33,7 +33,7 @@
 .qr-label {
   font-size: 1rem;
   font-weight: 500;
-  color: #111111;
+  color: var(--primary-text);
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -42,8 +42,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f3f4f6;
-  color: #4b5563;
+  background-color: var(--secondary-background);
+  color: var(--secondary-text);
   text-align: center;
   border-radius: 4px;
 }

@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -39,8 +38,7 @@ import java.util.List;
 public class IcalScheduleService {
 
     private static final ZoneId PLANT_ZONE = ZoneId.of("America/Chicago");
-    private static final DateTimeFormatter LOCAL_FMT =
-            DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+    private static final ZoneId UTC_ZONE = ZoneId.of("UTC");
     private static final DateTimeFormatter UTC_FMT =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
     private static final DateTimeFormatter DATE_FMT =
@@ -65,7 +63,10 @@ public class IcalScheduleService {
         appendLine(sb, "PRODID:-//JGPower//Schedule//EN");
         appendLine(sb, "CALSCALE:GREGORIAN");
         appendLine(sb, "METHOD:PUBLISH");
-        appendLine(sb, "X-WR-CALNAME:" + safe((userName == null ? "My" : userName) + " — Plant Schedule"));
+        // Plain ASCII hyphen in the calendar name — some clients trip on non-ASCII in header
+        // fields even though UTF-8 is declared. Event times are all UTC (Z-suffixed) below so no
+        // VTIMEZONE block is needed.
+        appendLine(sb, "X-WR-CALNAME:" + safe((userName == null ? "My" : userName) + " - Plant Schedule"));
         appendLine(sb, "X-WR-TIMEZONE:America/Chicago");
         appendLine(sb, "REFRESH-INTERVAL;VALUE=DURATION:PT1H");
         appendLine(sb, "X-PUBLISHED-TTL:PT1H");
@@ -80,7 +81,7 @@ public class IcalScheduleService {
             emitIfMatch(sb, day.getTraining(), userName, userId, date, stamp, ShiftKind.TRAINING);
             emitIfMatch(sb, day.getUnscheduled(), userName, userId, date, stamp, ShiftKind.UNSCHEDULED);
             if (matchesOcm(day, userName, userId)) {
-                emitEvent(sb, ShiftKind.OCM, date, stamp);
+                emitEvent(sb, ShiftKind.OCM, date, stamp, userId);
             }
         }
 
@@ -95,7 +96,7 @@ public class IcalScheduleService {
         if (pool == null) return;
         for (ShiftEntry e : pool) {
             if (matches(e, userName, userId)) {
-                emitEvent(sb, kind, date, stamp);
+                emitEvent(sb, kind, date, stamp, userId);
                 return; // one event per day per kind is enough — no dupes if roster lists twice
             }
         }
@@ -116,9 +117,13 @@ public class IcalScheduleService {
                 && userName.equalsIgnoreCase(day.getOnCallManagerName());
     }
 
-    private void emitEvent(StringBuilder sb, ShiftKind kind, LocalDate date, String stamp) {
+    private void emitEvent(StringBuilder sb, ShiftKind kind, LocalDate date, String stamp,
+                           Long userId) {
         appendLine(sb, "BEGIN:VEVENT");
-        appendLine(sb, "UID:" + kind.name() + "-" + date + "@jgportal-schedule");
+        // UID: (kind, date, userId) globally unique. Including userId prevents Google Calendar
+        // from de-duping across multiple users' feeds sharing the same account.
+        appendLine(sb, "UID:" + kind.name() + "-" + date + "-u" + (userId == null ? "x" : userId)
+                + "@jgportal-schedule");
         appendLine(sb, "DTSTAMP:" + stamp);
         appendLine(sb, "SUMMARY:" + kind.summary);
         if (kind.category != null) appendLine(sb, "CATEGORIES:" + kind.category);
@@ -127,12 +132,16 @@ public class IcalScheduleService {
             appendLine(sb, "DTSTART;VALUE=DATE:" + date.format(DATE_FMT));
             appendLine(sb, "DTEND;VALUE=DATE:" + date.plusDays(1).format(DATE_FMT));
         } else {
-            LocalDateTime start = date.atTime(kind.startHour, 0);
-            LocalDateTime end = kind.endsNextDay
+            // Emit UTC (Z-suffixed) instead of TZID=America/Chicago. Google Calendar rejects TZID
+            // references without a matching VTIMEZONE block in the feed — the events silently
+            // disappear. UTC with Z is universally understood, DST-safe (via ZonedDateTime
+            // conversion), and doesn't require us to embed a full VTIMEZONE definition.
+            ZonedDateTime start = date.atTime(kind.startHour, 0).atZone(PLANT_ZONE);
+            ZonedDateTime end = (kind.endsNextDay
                     ? date.plusDays(1).atTime(kind.endHour, 0)
-                    : date.atTime(kind.endHour, 0);
-            appendLine(sb, "DTSTART;TZID=America/Chicago:" + start.format(LOCAL_FMT));
-            appendLine(sb, "DTEND;TZID=America/Chicago:" + end.format(LOCAL_FMT));
+                    : date.atTime(kind.endHour, 0)).atZone(PLANT_ZONE);
+            appendLine(sb, "DTSTART:" + start.withZoneSameInstant(UTC_ZONE).format(UTC_FMT));
+            appendLine(sb, "DTEND:" + end.withZoneSameInstant(UTC_ZONE).format(UTC_FMT));
         }
         appendLine(sb, "END:VEVENT");
     }

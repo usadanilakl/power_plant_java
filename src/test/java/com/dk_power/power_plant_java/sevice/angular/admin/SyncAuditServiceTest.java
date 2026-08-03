@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -18,7 +19,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+// Without @ActiveProfiles this inherits spring.profiles.active=prod,hub,server from
+// application.properties — this test writes FieldChange rows and deletes in @AfterEach,
+// so it was operating on the production H2 file.
 @SpringBootTest
+@ActiveProfiles("test")
 @Transactional
 class SyncAuditServiceTest {
 

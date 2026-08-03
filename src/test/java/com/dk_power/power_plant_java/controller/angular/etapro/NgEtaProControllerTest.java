@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,8 +32,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * history job submission/listing/cancellation, live start/stop/status, and readings
  * queries. Does NOT exercise actual scraping (would require Excel COM automation).
  */
+// Without @ActiveProfiles this inherits spring.profiles.active=prod,hub,server from
+// application.properties and boots against the production H2 file and the live hub.
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 @TestPropertySource(properties = {
         "etapro.enabled=true",
         "etapro.live.template.path=${java.io.tmpdir}/etapro-test-live.xlsm",

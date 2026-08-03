@@ -14,6 +14,33 @@ import {
 } from '../../services/server-api.service';
 import { PowerAutomateService } from '../../services/power-automate.service';
 
+interface QualificationReportRow {
+  trackKey: string;
+  personName: string;
+  personEmail?: string;
+  windowsUsername?: string;
+  role?: string;
+  qualificationName: string;
+  qualificationCode?: string;
+  qualificationType?: string;
+  issuedDate?: string;
+  expirationDate?: string;
+  credentialNumber?: string;
+  issuer?: string;
+  notes?: string;
+  daysRemaining: number | null;
+  statusKey: 'overdue' | 'due-soon' | 'valid' | 'no-expiration';
+  statusLabel: string;
+}
+
+interface QualificationReportSummary {
+  total: number;
+  overdue: number;
+  dueSoon: number;
+  valid: number;
+  noExpiration: number;
+}
+
 @Component({
   selector: 'app-qualification-management',
   standalone: true,
@@ -60,6 +87,14 @@ import { PowerAutomateService } from '../../services/power-automate.service';
               (click)="setTab('catalog')">
               <span class="tab-glyph" aria-hidden="true">🏷️</span>
               <span class="tab-label">Quals</span>
+            </button>
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              [class.active]="activeTab() === 'report'"
+              (click)="setTab('report')">
+              <span class="tab-label">Reports</span>
             </button>
           </div>
 
@@ -272,6 +307,125 @@ import { PowerAutomateService } from '../../services/power-automate.service';
                       </div>
                     </div>
                   </section>
+                </section>
+              </div>
+            </section>
+          }
+
+          @if (activeTab() === 'report') {
+            <section class="tab-panel report-panel">
+              <p class="tab-note">
+                Use Reports to choose one qualification and see who has it, when it was issued, when it expires, and whether it is overdue or due soon. Due soon means within 30 days.
+              </p>
+
+              <div class="report-layout">
+                <aside class="list-panel report-list-panel">
+                  <div class="list-header">
+                    <div>
+                      <div class="panel-title">Qualifications</div>
+                      <p class="panel-note">Select a qualification on the left to build the report on the right. The list includes active and inactive catalog items.</p>
+                    </div>
+                  </div>
+
+                  <div class="report-list">
+                    @if (definitions().length === 0) {
+                      <div class="empty">No qualifications available.</div>
+                    }
+                    @for (definition of definitions(); track definition.sharepointId || definition.localUuid || $index) {
+                      <button
+                        type="button"
+                        class="catalog-row report-row"
+                        [class.selected]="selectedReportKey() === reportDefinitionKey(definition)"
+                        [class.inactive]="definition.active === false"
+                        (click)="selectReportDefinition(definition)">
+                        <div>
+                          <h3>{{ definition.qualificationName || 'Qualification' }}</h3>
+                          <p>
+                            @if (definition.qualificationCode) { <span>{{ definition.qualificationCode }}</span> }
+                            @if (definition.qualificationType) { <span>{{ definition.qualificationType }}</span> }
+                          </p>
+                        </div>
+                        <div class="report-row-summary">
+                          <span class="report-row-meta">{{ reportDefinitionSummaryText(definition) }}</span>
+                          @if (definition.active === false) {
+                            <span class="status" data-status="inactive">Inactive</span>
+                          }
+                        </div>
+                      </button>
+                    }
+                  </div>
+                </aside>
+
+                <section class="report-detail">
+                  @if (selectedReportDefinition()) {
+                    <header class="report-header">
+                      <div>
+                        <span class="eyebrow">Selected qualification</span>
+                        <h2>{{ selectedReportDefinition()!.qualificationName }}</h2>
+                        <p>
+                          @if (selectedReportDefinition()!.qualificationCode) { <span>{{ selectedReportDefinition()!.qualificationCode }}</span> }
+                          @if (selectedReportDefinition()!.qualificationType) { <span>{{ selectedReportDefinition()!.qualificationType }}</span> }
+                          @if (selectedReportDefinition()!.requiresExpiration) { <span>Expiration tracked</span> }
+                          @else { <span>No expiration required</span> }
+                        </p>
+                        <p class="report-hint">Rows are sorted by urgency. Overdue is red, due soon is amber, valid is green, and non-expiring rows are gray.</p>
+                      </div>
+                      <div class="report-summary-stats">
+                        <div class="summary-stat">
+                          <span>Assigned</span>
+                          <strong>{{ selectedReportSummary().total }}</strong>
+                        </div>
+                        <div class="summary-stat">
+                          <span>Overdue</span>
+                          <strong>{{ selectedReportSummary().overdue }}</strong>
+                        </div>
+                        <div class="summary-stat">
+                          <span>Due soon</span>
+                          <strong>{{ selectedReportSummary().dueSoon }}</strong>
+                        </div>
+                        <div class="summary-stat">
+                          <span>No expiration</span>
+                          <strong>{{ selectedReportSummary().noExpiration }}</strong>
+                        </div>
+                      </div>
+                    </header>
+
+                    <div class="report-table-wrap">
+                      <table class="report-table">
+                        <thead>
+                          <tr>
+                            <th>Employee</th>
+                            <th>Issued</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @if (selectedReportRows().length === 0) {
+                            <tr>
+                              <td colspan="4">
+                                <div class="empty report-empty">No employees currently have this qualification.</div>
+                              </td>
+                            </tr>
+                          }
+                          @for (row of selectedReportRows(); track row.trackKey) {
+                            <tr class="report-row" [class.overdue]="row.statusKey === 'overdue'" [class.due-soon]="row.statusKey === 'due-soon'" [class.valid]="row.statusKey === 'valid'" [class.no-expiration]="row.statusKey === 'no-expiration'">
+                              <td>
+                                <div class="report-person">{{ row.personName }}</div>
+                                @if (row.personEmail) { <div class="report-person-meta">{{ row.personEmail }}</div> }
+                                @if (row.windowsUsername) { <div class="report-person-meta">{{ row.windowsUsername }}</div> }
+                              </td>
+                              <td>{{ row.issuedDate || '-' }}</td>
+                              <td>{{ row.expirationDate || 'No expiration' }}</td>
+                              <td><span class="status" [attr.data-status]="row.statusKey">{{ row.statusLabel }}</span></td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <div class="empty large detail-empty">Select a qualification from the list to build the report.</div>
+                  }
                 </section>
               </div>
             </section>
@@ -556,7 +710,56 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     </app-main-layout>
   `,
   styles: [`
-    :host { display: block; height: 100%; }
+    :host {
+      display: block;
+      height: 100%;
+      --report-overdue-surface: color-mix(in srgb, #ef4444 12%, var(--secondary-background));
+      --report-due-soon-surface: color-mix(in srgb, #f59e0b 12%, var(--secondary-background));
+      --report-valid-surface: color-mix(in srgb, #22c55e 10%, var(--secondary-background));
+      --report-neutral-surface: color-mix(in srgb, var(--secondary-text) 8%, var(--secondary-background));
+      --report-overdue-text: #b42318;
+      --report-due-soon-text: #9a3412;
+      --report-valid-text: #166534;
+      --report-neutral-text: var(--secondary-text);
+      --report-table-header-bg: var(--secondary-background);
+      --report-qr-surface: var(--secondary-background);
+      --status-overdue-bg: color-mix(in srgb, #ef4444 15%, var(--secondary-background));
+      --status-overdue-fg: #7f1d1d;
+      --status-overdue-border: color-mix(in srgb, #ef4444 28%, var(--border-color));
+      --status-due-soon-bg: color-mix(in srgb, #f59e0b 16%, var(--secondary-background));
+      --status-due-soon-fg: #92400e;
+      --status-due-soon-border: color-mix(in srgb, #f59e0b 30%, var(--border-color));
+      --status-valid-bg: color-mix(in srgb, #22c55e 14%, var(--secondary-background));
+      --status-valid-fg: #166534;
+      --status-valid-border: color-mix(in srgb, #22c55e 28%, var(--border-color));
+      --status-neutral-bg: color-mix(in srgb, var(--secondary-text) 10%, var(--secondary-background));
+      --status-neutral-fg: var(--secondary-text);
+      --status-neutral-border: var(--border-color);
+    }
+    :host-context(body.dark-theme) {
+      --report-overdue-surface: color-mix(in srgb, #ef4444 18%, var(--card-background));
+      --report-due-soon-surface: color-mix(in srgb, #f59e0b 18%, var(--card-background));
+      --report-valid-surface: color-mix(in srgb, #22c55e 14%, var(--card-background));
+      --report-neutral-surface: color-mix(in srgb, var(--secondary-text) 12%, var(--card-background));
+      --report-overdue-text: #fecaca;
+      --report-due-soon-text: #fde68a;
+      --report-valid-text: #bbf7d0;
+      --report-neutral-text: var(--secondary-text);
+      --report-table-header-bg: color-mix(in srgb, var(--secondary-background) 72%, var(--card-background));
+      --report-qr-surface: color-mix(in srgb, var(--secondary-background) 82%, var(--card-background));
+      --status-overdue-bg: color-mix(in srgb, #ef4444 24%, var(--secondary-background));
+      --status-overdue-fg: #fecaca;
+      --status-overdue-border: color-mix(in srgb, #ef4444 38%, var(--border-color));
+      --status-due-soon-bg: color-mix(in srgb, #f59e0b 24%, var(--secondary-background));
+      --status-due-soon-fg: #fde68a;
+      --status-due-soon-border: color-mix(in srgb, #f59e0b 38%, var(--border-color));
+      --status-valid-bg: color-mix(in srgb, #22c55e 22%, var(--secondary-background));
+      --status-valid-fg: #bbf7d0;
+      --status-valid-border: color-mix(in srgb, #22c55e 38%, var(--border-color));
+      --status-neutral-bg: color-mix(in srgb, var(--secondary-text) 18%, var(--card-background));
+      --status-neutral-fg: var(--primary-text);
+      --status-neutral-border: var(--border-color);
+    }
     .manager-shell { height: 100%; padding: 16px; overflow: auto; box-sizing: border-box; }
     .toolbar, .workspace-header, .catalog-header { display: flex; justify-content: space-between; gap: 12px; }
     .toolbar { align-items: flex-end; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
@@ -598,7 +801,7 @@ import { PowerAutomateService } from '../../services/power-automate.service';
       padding: 10px 12px;
       white-space: nowrap;
     }
-    .tab:hover:not(.active) { color: var(--primary-text); background: var(--hover-color); }
+    .tab:hover:not(.active) { color: var(--primary-text); background: var(--hover-background); }
     .tab.active {
       color: var(--accent-color);
       border-bottom-color: var(--accent-color);
@@ -727,6 +930,144 @@ import { PowerAutomateService } from '../../services/power-automate.service';
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
+    .report-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+      padding-top: 4px;
+    }
+    .report-list-panel {
+      position: sticky;
+      top: 0;
+      align-self: start;
+    }
+    .report-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: calc(100vh - 280px);
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .report-row {
+      width: 100%;
+      align-items: center;
+    }
+    .report-row-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+      justify-content: center;
+      min-width: 0;
+    }
+    .report-row-meta {
+      color: var(--secondary-text);
+      font-size: .78rem;
+      line-height: 1.4;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+    .report-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .report-header h2 {
+      margin: 2px 0;
+      font-size: 1.2rem;
+    }
+    .report-header p {
+      margin: 0;
+      color: var(--secondary-text);
+    }
+    .report-hint {
+      margin-top: 6px !important;
+      font-size: .82rem;
+      line-height: 1.45;
+    }
+    .report-summary-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      min-width: min(100%, 460px);
+    }
+    .report-table-wrap {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: auto;
+      background: var(--card-background);
+    }
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    .report-table th,
+    .report-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: top;
+      text-align: left;
+    }
+    .report-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--report-table-header-bg);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--secondary-text);
+    }
+    .report-row.overdue > td {
+      background: var(--report-overdue-surface);
+    }
+    .report-row.due-soon > td {
+      background: var(--report-due-soon-surface);
+    }
+    .report-row.valid > td {
+      background: var(--report-valid-surface);
+    }
+    .report-row.no-expiration > td {
+      background: var(--report-neutral-surface);
+    }
+    .report-table .report-row.overdue > td:first-child {
+      box-shadow: inset 4px 0 0 var(--report-overdue-text);
+    }
+    .report-table .report-row.due-soon > td:first-child {
+      box-shadow: inset 4px 0 0 var(--report-due-soon-text);
+    }
+    .report-table .report-row.valid > td:first-child {
+      box-shadow: inset 4px 0 0 var(--report-valid-text);
+    }
+    .report-table .report-row.no-expiration > td:first-child {
+      box-shadow: inset 4px 0 0 var(--report-neutral-text);
+    }
+    .report-person {
+      font-weight: 700;
+      color: var(--primary-text);
+      overflow-wrap: anywhere;
+    }
+    .report-person-meta {
+      color: var(--secondary-text);
+      font-size: .76rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .report-empty {
+      padding: 18px 0;
+    }
     .qr-card {
       align-items: center;
       text-align: center;
@@ -818,8 +1159,8 @@ import { PowerAutomateService } from '../../services/power-automate.service';
       margin-bottom: 12px;
     }
     .person-dialog-qr {
-      background: #fff;
-      color: #111;
+      background: var(--report-qr-surface);
+      color: var(--primary-text);
       align-items: center;
       text-align: center;
     }
@@ -865,7 +1206,7 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .seed-select { display: flex; flex-direction: column; gap: 5px; min-width: min(100%, 380px); font-size: .85rem; font-weight: 650; }
     button, .qr-actions a { border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-background); color: var(--primary-text); padding: 8px 12px; font: inherit; cursor: pointer; text-decoration: none; }
     button:disabled { opacity: .55; }
-    button.danger { color: #b42318; }
+    button.danger { color: var(--error-text); }
     .busy-row { color: var(--secondary-text); padding: 12px 0; }
     .manager-grid { display: grid; grid-template-columns: minmax(190px, 250px) minmax(0, 1fr) minmax(270px, 340px); gap: 18px; padding-top: 16px; align-items: start; }
     .people-list, .side-tools { position: sticky; top: 0; align-self: start; }
@@ -887,7 +1228,42 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .catalog-row.selected { border-color: var(--accent-color); background: var(--selected-background); }
     .assignment-row h3, .catalog-row h3 { margin: 0 0 4px; font-size: 1rem; }
     .assignment-row p, .catalog-row p { font-size: .86rem; display: flex; gap: 8px; flex-wrap: wrap; }
-    .status { border-radius: 999px; padding: 4px 9px; font-size: .75rem; font-weight: 700; background: var(--secondary-background); }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: .75rem;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: 0;
+      background: var(--status-neutral-bg);
+      color: var(--status-neutral-fg);
+      border: 1px solid var(--status-neutral-border);
+      white-space: nowrap;
+    }
+    .status[data-status='overdue'] {
+      color: var(--status-overdue-fg);
+      background: var(--status-overdue-bg);
+      border-color: var(--status-overdue-border);
+    }
+    .status[data-status='due-soon'] {
+      color: var(--status-due-soon-fg);
+      background: var(--status-due-soon-bg);
+      border-color: var(--status-due-soon-border);
+    }
+    .status[data-status='valid'] {
+      color: var(--status-valid-fg);
+      background: var(--status-valid-bg);
+      border-color: var(--status-valid-border);
+    }
+    .status[data-status='no-expiration'],
+    .status[data-status='inactive'] {
+      color: var(--status-neutral-fg);
+      background: var(--status-neutral-bg);
+      border-color: var(--status-neutral-border);
+    }
     .editor { border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; background: var(--card-background); }
     .editor h3 { margin: 0 0 12px; font-size: 1rem; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -906,6 +1282,10 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .empty { padding: 16px 0; }
     @media (max-width: 1100px) {
       .master-detail { grid-template-columns: 1fr; }
+      .report-layout { grid-template-columns: 1fr; }
+      .report-list-panel { position: static; }
+      .report-header { flex-direction: column; }
+      .report-summary-stats { min-width: 0; }
       .detail-top { grid-template-columns: 1fr; }
       .person-dialog-grid { grid-template-columns: 1fr; }
     }
@@ -913,6 +1293,8 @@ import { PowerAutomateService } from '../../services/power-automate.service';
       .form-grid, .assignment-row, .catalog-row { grid-template-columns: 1fr; }
       .summary-stats { grid-template-columns: 1fr; }
       .catalog-summary-stats { grid-template-columns: 1fr; }
+      .report-summary-stats { grid-template-columns: 1fr; }
+      .report-row-summary { align-items: flex-start; }
       .toolbar, .workspace-header, .list-header, .detail-header, .modal-header { flex-direction: column; align-items: stretch; }
       .row-actions, .catalog-actions { justify-content: flex-start; }
     }
@@ -936,22 +1318,31 @@ export class QualificationManagementComponent implements OnInit {
   editingDefinitionSharepointId = signal<string | null>(null);
   assignmentDraft = signal<PwaQualificationDto>(this.blankAssignmentDraft());
   definitionDraft = signal<PwaQualificationDefinitionDto>(this.blankDefinitionDraft());
-  activeTab = signal<'people' | 'catalog'>('people');
+  activeTab = signal<'people' | 'catalog' | 'report'>('people');
+  reportSelectionKey = signal<string>('');
   personSeedDialogOpen = signal(false);
   assignmentEditorOpen = signal(false);
   definitionEditorOpen = signal(false);
   assignmentsDialogOpen = signal(false);
+  private readonly reportDueSoonDays = 30;
 
   selectedPerson = computed(() => this.people().find(p => p.userId === this.selectedUserId()) || null);
   selectedQualifications = computed(() => this.selectedPerson()?.qualifications || []);
   activeDefinitions = computed(() => this.definitions().filter(def => def.active !== false));
+  selectedReportKey = computed(() => this.reportSelectionKey());
+  selectedReportDefinition = computed(() => this.definitions().find(def => this.reportDefinitionKey(def) === this.reportSelectionKey()) || null);
+  selectedReportRows = computed(() => this.buildReportRows(this.selectedReportDefinition()));
+  selectedReportSummary = computed(() => this.buildReportSummary(this.selectedReportRows()));
 
   ngOnInit(): void {
     this.load();
   }
 
-  setTab(tab: 'people' | 'catalog'): void {
+  setTab(tab: 'people' | 'catalog' | 'report'): void {
     this.activeTab.set(tab);
+    if (tab === 'report') {
+      this.ensureReportSelection();
+    }
   }
 
   openAssignmentsDialog(): void {
@@ -978,6 +1369,28 @@ export class QualificationManagementComponent implements OnInit {
     this.assignmentsDialogOpen.set(false);
   }
 
+  selectReportDefinition(definition: PwaQualificationDefinitionDto): void {
+    this.reportSelectionKey.set(this.reportDefinitionKey(definition));
+  }
+
+  private ensureReportSelection(
+    _people: PwaQualificationPersonDto[] = this.people(),
+    definitions: PwaQualificationDefinitionDto[] = this.definitions()
+  ): void {
+    if (!definitions || definitions.length === 0) {
+      this.reportSelectionKey.set('');
+      return;
+    }
+
+    const currentKey = this.reportSelectionKey();
+    if (currentKey && definitions.some(def => this.reportDefinitionKey(def) === currentKey)) {
+      return;
+    }
+
+    const next = definitions.find(def => def.active !== false) || definitions[0];
+    this.reportSelectionKey.set(next ? this.reportDefinitionKey(next) : '');
+  }
+
   load(): void {
     this.busy.set(true);
     forkJoin({
@@ -988,6 +1401,7 @@ export class QualificationManagementComponent implements OnInit {
         this.paFallbackActive.set(false);
         this.people.set(people || []);
         this.definitions.set(definitions || []);
+        this.ensureReportSelection(people, definitions);
         if (!this.selectedUserId() || !people.some(p => p.userId === this.selectedUserId())) {
           this.selectedUserId.set(people[0]?.userId || '');
         }
@@ -1000,6 +1414,175 @@ export class QualificationManagementComponent implements OnInit {
         this.loadViaPowerAutomate(err);
       }
     });
+  }
+
+  reportDefinitionSummaryText(definition: PwaQualificationDefinitionDto): string {
+    const summary = this.buildReportSummary(this.buildReportRows(definition));
+    if (summary.total === 0) {
+      return 'No assignments';
+    }
+
+    const parts = [`${summary.total} assigned`];
+    if (summary.overdue > 0) parts.push(`${summary.overdue} overdue`);
+    if (summary.dueSoon > 0) parts.push(`${summary.dueSoon} due soon`);
+    if (summary.noExpiration > 0) parts.push(`${summary.noExpiration} no expiration`);
+    return parts.join(' · ');
+  }
+
+  reportDefinitionKey(definition: PwaQualificationDefinitionDto): string {
+    return this.normalizeComparable(
+      definition.localUuid || definition.sharepointId || definition.qualificationCode || definition.qualificationName
+    );
+  }
+
+  private buildReportRows(definition: PwaQualificationDefinitionDto | null): QualificationReportRow[] {
+    if (!definition) {
+      return [];
+    }
+
+    const rows: QualificationReportRow[] = [];
+    for (const person of this.people()) {
+      for (const qualification of person.qualifications || []) {
+        if (!this.qualificationMatchesDefinition(qualification, definition)) {
+          continue;
+        }
+
+        const status = this.reportStatusForQualification(qualification);
+        rows.push({
+          trackKey: qualification.sharepointId
+            || qualification.localUuid
+            || `${person.userId}:${qualification.qualificationId || qualification.qualificationName || qualification.qualificationCode || rows.length}`,
+          personName: qualification.userName || person.userName || `User ${person.userId}`,
+          personEmail: qualification.userEmail || person.userEmail,
+          windowsUsername: qualification.windowsUsername || person.windowsUsername,
+          role: qualification.role || person.role,
+          qualificationName: qualification.qualificationName || definition.qualificationName || 'Qualification',
+          qualificationCode: qualification.qualificationCode || definition.qualificationCode || '',
+          qualificationType: qualification.qualificationType || definition.qualificationType || '',
+          issuedDate: qualification.issuedDate || '',
+          expirationDate: qualification.expirationDate || '',
+          credentialNumber: qualification.credentialNumber || '',
+          issuer: qualification.issuer || '',
+          notes: qualification.notes || '',
+          daysRemaining: status.daysRemaining,
+          statusKey: status.statusKey,
+          statusLabel: status.statusLabel
+        });
+      }
+    }
+
+    return rows.sort((left, right) => {
+      const leftWeight = this.reportStatusWeight(left.statusKey);
+      const rightWeight = this.reportStatusWeight(right.statusKey);
+      if (leftWeight !== rightWeight) {
+        return leftWeight - rightWeight;
+      }
+
+      const leftDate = left.expirationDate ? new Date(`${left.expirationDate}T00:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightDate = right.expirationDate ? new Date(`${right.expirationDate}T00:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
+      if (leftDate !== rightDate) {
+        return leftDate - rightDate;
+      }
+
+      return (left.personName || '').localeCompare(right.personName || '');
+    });
+  }
+
+  private buildReportSummary(rows: QualificationReportRow[]): QualificationReportSummary {
+    return rows.reduce<QualificationReportSummary>((summary, row) => {
+      summary.total += 1;
+      if (row.statusKey === 'overdue') summary.overdue += 1;
+      else if (row.statusKey === 'due-soon') summary.dueSoon += 1;
+      else if (row.statusKey === 'valid') summary.valid += 1;
+      else summary.noExpiration += 1;
+      return summary;
+    }, {
+      total: 0,
+      overdue: 0,
+      dueSoon: 0,
+      valid: 0,
+      noExpiration: 0
+    });
+  }
+
+  private reportStatusForQualification(qualification: PwaQualificationDto): {
+    statusKey: QualificationReportRow['statusKey'];
+    statusLabel: string;
+    daysRemaining: number | null;
+  } {
+    if (!qualification.expirationDate) {
+      return { statusKey: 'no-expiration', statusLabel: 'No expiration', daysRemaining: null };
+    }
+
+    const expiration = new Date(`${qualification.expirationDate}T00:00:00`);
+    if (Number.isNaN(expiration.getTime())) {
+      return { statusKey: 'no-expiration', statusLabel: 'No expiration', daysRemaining: null };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysRemaining = Math.floor((expiration.getTime() - today.getTime()) / 86400000);
+
+    if (daysRemaining < 0) {
+      const overdueDays = Math.abs(daysRemaining);
+      return {
+        statusKey: 'overdue',
+        statusLabel: overdueDays === 1 ? 'Overdue 1 day' : `Overdue ${overdueDays} days`,
+        daysRemaining
+      };
+    }
+
+    if (daysRemaining <= this.reportDueSoonDays) {
+      if (daysRemaining === 0) {
+        return { statusKey: 'due-soon', statusLabel: 'Due today', daysRemaining };
+      }
+      return {
+        statusKey: 'due-soon',
+        statusLabel: daysRemaining === 1 ? 'Due in 1 day' : `Due in ${daysRemaining} days`,
+        daysRemaining
+      };
+    }
+
+    return {
+      statusKey: 'valid',
+      statusLabel: daysRemaining === 1 ? 'Valid 1 day' : `Valid ${daysRemaining} days`,
+      daysRemaining
+    };
+  }
+
+  private reportStatusWeight(statusKey: QualificationReportRow['statusKey']): number {
+    switch (statusKey) {
+      case 'overdue': return 0;
+      case 'due-soon': return 1;
+      case 'valid': return 2;
+      default: return 3;
+    }
+  }
+
+  private qualificationMatchesDefinition(
+    qualification: PwaQualificationDto,
+    definition: PwaQualificationDefinitionDto
+  ): boolean {
+    const qualificationId = this.normalizeComparable(qualification.qualificationId);
+    const definitionUuid = this.normalizeComparable(definition.localUuid);
+    const definitionSharepointId = this.normalizeComparable(definition.sharepointId);
+    if (qualificationId && (qualificationId === definitionUuid || qualificationId === definitionSharepointId)) {
+      return true;
+    }
+
+    const qualificationCode = this.normalizeComparable(qualification.qualificationCode);
+    const definitionCode = this.normalizeComparable(definition.qualificationCode);
+    if (qualificationCode && definitionCode && qualificationCode === definitionCode) {
+      return true;
+    }
+
+    const qualificationName = this.normalizeComparable(qualification.qualificationName);
+    const definitionName = this.normalizeComparable(definition.qualificationName);
+    return !!qualificationName && !!definitionName && qualificationName === definitionName;
+  }
+
+  private normalizeComparable(value?: string | null): string {
+    return (value || '').trim().toLowerCase();
   }
 
   provision(): void {
@@ -1477,6 +2060,7 @@ export class QualificationManagementComponent implements OnInit {
         this.paFallbackActive.set(true);
         this.people.set(people);
         this.definitions.set(this.sortDefinitions(definitionRows));
+        this.ensureReportSelection(people, this.definitions());
         if (!this.selectedUserId() || !people.some(p => p.userId === this.selectedUserId())) {
           this.selectedUserId.set(people[0]?.userId || '');
         }
