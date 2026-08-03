@@ -287,7 +287,7 @@ export class HomePageComponent {
     { title: 'Maximo', description: 'Work orders, requests, PMs, parts', icon: '🏭', route: '/maximo' },
     { title: 'LOTO', description: 'Hang, verify, and walk down LOTO permits', icon: '🔒', route: '/loto' },
     { title: 'LOTO Standards', description: 'View, verify, and walk down standards', icon: '📚', route: '/loto-standards' },
-    { title: 'Qualifications', description: 'Manage personnel qualifications and QR codes', icon: 'ID', route: '/qualification-management' }
+    { title: 'Qualifications', description: 'Manage personnel qualifications and QR codes', icon: '🏷️', route: '/qualification-management' }
   ];
 
   get signedInCards(): HomeCard[] {

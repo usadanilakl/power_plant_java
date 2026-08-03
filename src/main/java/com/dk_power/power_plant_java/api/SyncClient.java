@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SyncClient {
 
     private final RestTemplate restTemplate;
@@ -26,33 +28,34 @@ public class SyncClient {
     public <T extends BaseIdEntity> void sendChangesToServer(String entityName, List<T> changes) {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName;
         ResponseEntity<Void> voidResponseEntity = executePost(url, changes, Void.class);
-        System.out.println("Sent changes to server: " + voidResponseEntity);
+        log.debug("sync.client.send.complete entityType={} status={}", entityName,
+                voidResponseEntity != null ? voidResponseEntity.getStatusCode() : null);
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since) {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName + "?since=" + since;
-        System.out.println("getting data from: " + url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
         });
-        System.out.println(response);
+        log.debug("sync.client.receive.complete entityType={} status={}", entityName,
+                response != null ? response.getStatusCode() : null);
         return response != null ? response.getBody() : null;
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit) {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit;
-        System.out.println("Getting data from: " + url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
         });
-        System.out.println("Response status: " + (response != null ? response.getStatusCode() : "N/A"));
+        log.debug("sync.client.receive.complete entityType={} status={}", entityName,
+                response != null ? response.getStatusCode() : null);
         return response != null ? response.getBody() : null;
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit, LocalDateTime until) {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit + "&until=" + until;
-        System.out.println("Getting data from: " + url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
         });
-        System.out.println("Response status: " + (response != null ? response.getStatusCode() : "N/A"));
+        log.debug("sync.client.receive.complete entityType={} status={}", entityName,
+                response != null ? response.getStatusCode() : null);
         return response != null ? response.getBody() : null;
     }
 
@@ -68,11 +71,10 @@ public class SyncClient {
         try {
             return restTemplate.exchange(url, HttpMethod.GET, requestEntity, responseType);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("Error executing GET request: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            log.warn("sync.client.get.rejected status={}", e.getStatusCode());
             return null;
         } catch (Exception e) {
-            System.out.println("Unexpected error executing GET request: " + e.getMessage());
-            e.printStackTrace();
+            log.error("sync.client.get.failed exception={}", e.getClass().getSimpleName(), e);
             return null;
         }
     }
@@ -86,11 +88,10 @@ public class SyncClient {
         try {
             return restTemplate.exchange(url, HttpMethod.GET, requestEntity, responseType);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("Error executing GET request: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            log.warn("sync.client.get.rejected status={}", e.getStatusCode());
             return null;
         } catch (Exception e) {
-            System.out.println("Unexpected error executing GET request: " + e.getMessage());
-            e.printStackTrace();
+            log.error("sync.client.get.failed exception={}", e.getClass().getSimpleName(), e);
             return null;
         }
     }
@@ -104,11 +105,10 @@ public class SyncClient {
         try {
             return restTemplate.exchange(url, HttpMethod.POST, requestEntity, responseType);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("Error executing request: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            log.warn("sync.client.post.rejected status={}", e.getStatusCode());
             return null;
         } catch (Exception e) {
-            System.out.println("Unexpected error executing request: " + e.getMessage());
-            e.printStackTrace();
+            log.error("sync.client.post.failed exception={}", e.getClass().getSimpleName(), e);
             return null;
         }
     }

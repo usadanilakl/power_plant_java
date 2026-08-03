@@ -850,7 +850,9 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
         for (DailyPermitPackage pkg : allPackages) {
             String status = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
-            if (!"Active".equals(status) && !"Test".equals(status)) continue;
+            // Building is included so LOTOs still being prepared show up on the board — operators
+            // often want visibility into what's in the pipeline, not just what's currently hung.
+            if (!"Active".equals(status) && !"Test".equals(status) && !"Building".equals(status)) continue;
             if (pkg.getLotos() == null || pkg.getLotos().isEmpty()) continue;
 
             for (Loto loto : pkg.getLotos()) {

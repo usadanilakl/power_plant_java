@@ -58,13 +58,16 @@ export class PowerAutomateService {
     if (gatewayUrl) {
       // Centralized auth: post to ONE gateway flow that verifies the JWT (via the verify-jwt edge
       // function) and forwards to the real, URL-gated target flow. The target flow URLs then live only
-      // in the gateway (server-side), never in this bundle. Requires a signed-in user.
+      // in the gateway (server-side), never in this bundle.
+      //
+      // Authorization policy lives ONLY in the gateway flow: it decides which target+actionType combos
+      // are public (e.g. workRequest/create, qualifications/getByUser) vs. which require a valid token.
+      // So we always forward — no client-side gate to keep in sync. A signed-out user hitting a
+      // protected op simply gets a 401 back from the gateway. token:'' for anonymous keeps the
+      // {target,token,payload} contract stable (the gateway treats empty/invalid as "not authenticated").
       const token = this.authService.getToken();
-      if (!token) {
-        return throwError(() => new Error('Sign in required to submit'));
-      }
       url = gatewayUrl;
-      body = { target: entityType, token, payload };
+      body = { target: entityType, token: token ?? '', payload };
       console.log(`[PA V2] Submitting ${entityType} via auth gateway:`, actionLabel);
     } else {
       const flowUrl = this.getV2FlowUrl(entityType);

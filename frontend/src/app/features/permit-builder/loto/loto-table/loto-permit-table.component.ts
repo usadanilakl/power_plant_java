@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CurrentLotoService } from '../../../../services/current-items-services/current-loto.service';
@@ -38,6 +38,7 @@ import { LotoPermitTableClickService } from './loto-permit-table-click.service';
   ],
   templateUrl: './loto-permit-table.component.html',
   styleUrl: './loto-permit-table.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LotoPermitTableComponent {
   private currentLotoService = inject(CurrentLotoService);

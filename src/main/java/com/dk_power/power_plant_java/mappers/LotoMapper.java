@@ -78,8 +78,23 @@ public LotoDto convertToDto(Loto loto){
     if(loto.getTemp()!=null) dto.setTemp(loto.getTemp());
     if(loto.getLotoPoints()!=null) dto.setLotoPoints(new ArrayList(loto.getLotoPoints()));
     if(loto.getSystem()!=null) dto.setEquipmentSystem(loto.getSystem().getName());
-    if(loto.getRequestor()!=null) dto.setLotoRequestor(loto.getRequestor().getName());
-    if(loto.getDateCreated()!=null) dto.setDate(loto.getDateCreated().toString());
+    // Read the raw lotoRequestor column so a user-typed value round-trips
+    // unchanged. Fall back to the requestor user's name only when the column
+    // is blank (older rows). Overwriting with requestor.getName() unconditionally
+    // caused the field to "snap back" to the user's canonical name on save.
+    String lr = loto.getLotoRequestor();
+    if (lr == null || lr.isBlank()) {
+        if (loto.getRequestor() != null) lr = loto.getRequestor().getName();
+    }
+    if (lr != null) dto.setLotoRequestor(lr);
+    // Read the user-edited `date` column, not the row's creation timestamp.
+    // The `date` field is the operator-picked planned work date and PermitNumberGenerator
+    // buckets by it. Returning dateCreated.toString() clobbered it on every save round-trip.
+    if (loto.getDate() != null && !loto.getDate().isBlank()) {
+        dto.setDate(loto.getDate());
+    } else if (loto.getDateCreated() != null) {
+        dto.setDate(loto.getDateCreated().toLocalDate().toString());
+    }
     if(loto.getBoxNumber()!=null && loto.getBoxNumber()!=0) dto.setBoxNumber(loto.getBoxNumber() );
     dto.setWasModifiedDuringActive(loto.getWasModifiedDuringActive());
     dto.setCloseDisposition(loto.getCloseDisposition());
@@ -261,9 +276,11 @@ public void updateLotoFromDto(LotoIdDto dto, Loto loto) {
     if (dto.getSystem() != null) {
         loto.setSystem(valueService.findById(dto.getSystem()).orElse(null));
     }
-    if (dto.getPermitStatus() != null) {
-        loto.setPermitStatus(valueService.findById(dto.getPermitStatus()).orElse(null));
-    }
+    // permitStatus is server-owned and must ONLY change through NgLotoService.changeStatus,
+    // which enforces the FSM (validateStatusTransition), clones snapshots, checks caActivatedBy,
+    // computes closeDisposition, and releases locks/box. Silently accepting dto.permitStatus here
+    // let stale-cache clients revert Closed → Active with no invariants — see NgLotoService.update
+    // for the paired defensive guard that rejects any mismatched status id.
     if (dto.getPermitType() != null) {
         loto.setPermitType(valueService.findById(dto.getPermitType()).orElse(null));
     }

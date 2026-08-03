@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
-import { LogEventsResponse } from './log-diagnostics.models';
+import { LogEventsQuery, LogEventsResponse } from './log-diagnostics.models';
 
 @Injectable({
   providedIn: 'root',
@@ -13,18 +13,7 @@ export class LogDiagnosticsApiService {
 
   constructor(private http: HttpClient) {}
 
-  getEvents(filters: {
-    windowMinutes: number;
-    limit: number;
-    level?: string;
-    text?: string;
-    sourceFile?: string;
-    subsystem?: string;
-    eventCode?: string;
-    requestId?: string;
-    syncRunId?: string;
-    machineId?: string;
-  }): Observable<SpringApiResponse<LogEventsResponse>> {
+  getEvents(filters: LogEventsQuery): Observable<SpringApiResponse<LogEventsResponse>> {
     let params = new HttpParams()
       .set('windowMinutes', filters.windowMinutes.toString())
       .set('limit', filters.limit.toString());
@@ -38,6 +27,10 @@ export class LogDiagnosticsApiService {
       requestId: filters.requestId,
       syncRunId: filters.syncRunId,
       machineId: filters.machineId,
+      from: filters.from,
+      to: filters.to,
+      cursor: filters.cursor,
+      sort: filters.sort,
     };
 
     Object.entries(optionalFilters).forEach(([key, value]) => {

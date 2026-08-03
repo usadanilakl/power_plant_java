@@ -6,6 +6,8 @@ export interface RouterMenuItem {
     guideId?: string;
     guideMessage?: string;
     requiresFullAccess?: boolean;
+    /** Item is visible only when the user holds at least one listed role. */
+    requiresAnyRole?: string[];
     separator?: boolean;
     /** Only visible when test mode is enabled on backend */
     testOnly?: boolean;
@@ -111,7 +113,13 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/log',
         requiresFullAccess: true,
         items: [
-            { route: '/log/diagnostics', label: 'Diagnostics', icon: 'monitoring', iconColor: '#EF5350' },
+            {
+                route: '/log/diagnostics',
+                label: 'Diagnostics',
+                icon: 'monitoring',
+                iconColor: '#EF5350',
+                requiresAnyRole: ['ROLE_ADMIN', 'ROLE_LOG_DIAGNOSTICS']
+            },
             { route: '/log/table', label: 'System Log', icon: 'list_alt', iconColor: '#42A5F5' },
             { route: '/log/correspondence', label: 'Correspondence', icon: 'mail', iconColor: '#FFA726' },
             { route: '/log/messaging', label: 'Messages', icon: 'chat', iconColor: '#66BB6A' },

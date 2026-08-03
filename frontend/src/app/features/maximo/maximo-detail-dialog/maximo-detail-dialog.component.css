@@ -223,3 +223,10 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 .transfer-panel h4 { margin: 0 0 6px; color: #7cc6ff; }
 .transfer-panel .tl-picker { display: flex; flex-direction: column; gap: 4px; color: #aaa; font-size: 12px; max-width: 320px; }
 .transfer-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* "Not due yet" — blocks the Complete tab before a PM's Target Start (mirrors the backend). */
+.notdue-banner { display: flex; gap: 12px; align-items: flex-start; margin: 6px 0 4px;
+  padding: 14px 16px; background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 6px; }
+.notdue-i { font-size: 22px; line-height: 1; }
+.notdue-t { font-weight: 700; color: #e67e22; margin-bottom: 3px; }
+.notdue-d { color: #ddd; font-size: 13px; line-height: 1.45; }

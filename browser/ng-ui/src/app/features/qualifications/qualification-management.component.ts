@@ -38,55 +38,415 @@ import { PowerAutomateService } from '../../services/power-automate.service';
             </div>
           </section>
 
-          @if (seedUsers().length > 0) {
-            <section class="seed-strip">
-              <label class="seed-select">
-                <span>Add Employee</span>
-                <select name="seedUserId" [ngModel]="seedUserId()" (ngModelChange)="seedUserId.set($event)">
-                  <option value="">Select user</option>
-                  @for (user of seedUsers(); track user.id) {
-                    <option [value]="user.id.toString()">{{ seedUserLabel(user) }}</option>
-                  }
-                </select>
-              </label>
-              <button type="button" (click)="seedSelectedUser()" [disabled]="busy() || !seedUserId()">Add Employee</button>
-            </section>
-          }
+          <p class="page-note">
+            Provision Lists creates or refreshes the SharePoint lists, Seed Plant Users copies active Plant employees into the employee list, and Refresh reloads the current server or Power Automate data.
+          </p>
+
+          <div class="tabs" role="tablist" aria-label="Qualification management sections">
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              [class.active]="activeTab() === 'people'"
+              (click)="setTab('people')">
+              <span class="tab-glyph" aria-hidden="true">👥</span>
+              <span class="tab-label">People</span>
+            </button>
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              [class.active]="activeTab() === 'catalog'"
+              (click)="setTab('catalog')">
+              <span class="tab-glyph" aria-hidden="true">🏷️</span>
+              <span class="tab-label">Quals</span>
+            </button>
+          </div>
 
           @if (busy()) {
             <div class="busy-row">Working...</div>
           }
 
-          <div class="manager-grid">
-            <aside class="people-list">
-              <div class="panel-title">People</div>
-              @if (people().length === 0 && !busy()) {
-                <div class="empty">No plant users found.</div>
-              }
-              @for (person of people(); track person.userId) {
-                <button
-                  type="button"
-                  class="person-row"
-                  [class.selected]="selectedUserId() === person.userId"
-                  (click)="selectPerson(person)">
-                  <span class="person-name">{{ person.userName || ('User ' + person.userId) }}</span>
-                  <span class="person-meta">{{ person.qualificationCount }} assigned</span>
-                </button>
-              }
-            </aside>
+          @if (activeTab() === 'people') {
+            <section class="tab-panel">
+              <p class="tab-note">
+                Use People to review active Plant employees. Click a row to open a dialog with the person's QR and qualifications. New opens a blank seeding form that adds an existing Plant user to SharePoint.
+              </p>
 
-            <section class="assignment-workspace">
-              @if (selectedPerson()) {
-                <header class="workspace-header">
-                  <div>
-                    <span class="eyebrow">Selected</span>
-                    <h2>{{ selectedPerson()!.userName }}</h2>
-                    @if (selectedPerson()!.userEmail) { <p>{{ selectedPerson()!.userEmail }}</p> }
+              <div class="master-detail">
+                <aside class="list-panel">
+                  <div class="list-header">
+                    <div>
+                      <div class="panel-title">People</div>
+                      <p class="panel-note">This SharePoint-backed list is the employee menu. Pick one person to open the details dialog and manage their qualifications there.</p>
+                    </div>
+                    <button type="button" (click)="openPersonSeedDialog()" [disabled]="busy()">New</button>
                   </div>
-                  <button type="button" (click)="startAssign()">Assign</button>
+
+                  @if (seedUsers().length > 0) {
+                    <section class="seed-strip">
+                      <label class="seed-select">
+                        <span>Add Employee</span>
+                        <span class="field-help">Pick an active Plant user from the directory. This creates the employee row in SharePoint and makes them show up in this manager.</span>
+                        <select name="seedUserId" [ngModel]="seedUserId()" (ngModelChange)="seedUserId.set($event)">
+                          <option value="">Select user</option>
+                          @for (user of seedUsers(); track user.id) {
+                            <option [value]="user.id.toString()">{{ seedUserLabel(user) }}</option>
+                          }
+                        </select>
+                      </label>
+                      <button type="button" (click)="seedSelectedUser()" [disabled]="busy() || !seedUserId()">Add Employee</button>
+                    </section>
+                  }
+
+                  @if (people().length === 0 && !busy()) {
+                    <div class="empty">No plant users found.</div>
+                  }
+                  @for (person of people(); track person.userId) {
+                    <button
+                      type="button"
+                      class="person-row"
+                      [class.selected]="selectedUserId() === person.userId"
+                      (click)="selectPerson(person)">
+                      <span class="person-name">{{ person.userName || ('User ' + person.userId) }}</span>
+                      <span class="person-meta">{{ person.qualificationCount }} assigned</span>
+                    </button>
+                  }
+                </aside>
+
+                <section class="detail-panel">
+                  @if (selectedPerson()) {
+                    <header class="detail-header">
+                      <div>
+                        <span class="eyebrow">Selected person</span>
+                        <h2>{{ selectedPerson()!.userName }}</h2>
+                        @if (selectedPerson()!.userEmail) { <p>{{ selectedPerson()!.userEmail }}</p> }
+                        @if (selectedPerson()!.windowsUsername) { <p>{{ selectedPerson()!.windowsUsername }}</p> }
+                      </div>
+                      <div class="detail-actions">
+                        <button type="button" (click)="openAssignmentsDialog()" [disabled]="!selectedPerson()">View Qualifications</button>
+                        <button type="button" (click)="startAssign()" [disabled]="!selectedPerson()">New Assignment</button>
+                      </div>
+                    </header>
+
+                    <div class="detail-top">
+                      <section class="detail-card summary-card">
+                        <div class="panel-title">Summary</div>
+                        <p class="panel-note">Visible here: the employee row, login name, role, and how many qualifications are assigned. The QR below points to the public read-only lookup page.</p>
+                        <div class="summary-stats">
+                          <div class="summary-stat">
+                            <span>Assigned</span>
+                            <strong>{{ selectedQualifications().length }}</strong>
+                          </div>
+                          <div class="summary-stat">
+                            <span>Role</span>
+                            <strong>{{ selectedPerson()!.role || '-' }}</strong>
+                          </div>
+                          <div class="summary-stat">
+                            <span>User ID</span>
+                            <strong>{{ selectedPerson()!.userId }}</strong>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section class="detail-card qr-card" #qrPanel>
+                        <div class="panel-title">QR Code</div>
+                        <p class="panel-note">This QR opens the public lookup page for the selected person. Anyone can scan it, but only authorized admins can change the data behind it. Print it for a badge, card, or label.</p>
+                        <app-qr-generator [data]="qualificationLink(selectedPerson()!)" [size]="220" [label]="selectedPerson()!.userName"></app-qr-generator>
+                        <input class="link-output" readonly [value]="qualificationLink(selectedPerson()!)">
+                        <div class="qr-actions">
+                          <button type="button" (click)="copyLink(selectedPerson()!)">Copy Link</button>
+                          <button type="button" (click)="printQr(selectedPerson()!)">Print QR</button>
+                          <a [href]="qualificationLink(selectedPerson()!)" target="_blank" rel="noopener">Open</a>
+                        </div>
+                      </section>
+                    </div>
+
+                    <section class="detail-card assignments-card">
+                      <div class="panel-title">Assigned Qualifications</div>
+                      <p class="panel-note">These rows are the person’s current qualifications. Edit opens a dialog so you do not have to scroll. Delete removes it from the SharePoint list or fallback flow.</p>
+                      <div class="assignment-rows">
+                        @if (selectedQualifications().length === 0) {
+                          <div class="empty">No qualifications assigned.</div>
+                        }
+                        @for (qualification of selectedQualifications(); track qualification.sharepointId || qualification.localUuid || $index) {
+                          <article class="assignment-row" [class.expired]="isExpired(qualification)">
+                            <div>
+                              <h3>{{ qualification.qualificationName || 'Qualification' }}</h3>
+                              <p>
+                                @if (qualification.qualificationCode) { <span>{{ qualification.qualificationCode }}</span> }
+                                @if (qualification.qualificationType) { <span>{{ qualification.qualificationType }}</span> }
+                                @if (qualification.expirationDate) { <span>Expires {{ qualification.expirationDate }}</span> }
+                                @else { <span>No expiration</span> }
+                              </p>
+                            </div>
+                            <div class="row-actions">
+                              <span class="status" [attr.data-status]="normalizedStatus(qualification)">
+                                {{ isExpired(qualification) ? 'Expired' : (qualification.status || 'Active') }}
+                              </span>
+                              <button type="button" (click)="editQualification(qualification)">Edit</button>
+                              <button type="button" class="danger" (click)="deleteQualification(qualification)">Delete</button>
+                            </div>
+                          </article>
+                        }
+                      </div>
+                    </section>
+                  } @else {
+                    <div class="empty large detail-empty">Select a person from the list to see their QR, qualifications, and edit form.</div>
+                  }
+                </section>
+              </div>
+            </section>
+          }
+
+          @if (activeTab() === 'catalog') {
+            <section class="tab-panel">
+              <p class="tab-note">
+                Use Quals to define reusable qualification templates. Editing a catalog item updates the assignment dropdown and every person already using that qualification.
+              </p>
+
+              <div class="master-detail">
+                <aside class="list-panel">
+                  <div class="list-header">
+                    <div>
+                      <div class="panel-title">Catalog</div>
+                      <p class="panel-note">This list is the source of truth for the qualification name, code, expiration rules, and sort order used everywhere else.</p>
+                    </div>
+                    <button type="button" (click)="startDefinitionCreate()">New</button>
+                  </div>
+
+                  <div class="catalog-list">
+                    @if (definitions().length === 0) {
+                      <div class="empty">No catalog items.</div>
+                    }
+                    @for (definition of definitions(); track definition.sharepointId || definition.localUuid || $index) {
+                      <article
+                        class="catalog-row"
+                        [class.inactive]="definition.active === false"
+                        [class.selected]="editingDefinitionSharepointId() === (definition.sharepointId || null)"
+                        (click)="editDefinition(definition)">
+                        <div>
+                          <h3>{{ definition.qualificationName || 'Qualification' }}</h3>
+                          <p>
+                            @if (definition.qualificationCode) { <span>{{ definition.qualificationCode }}</span> }
+                            @if (definition.qualificationType) { <span>{{ definition.qualificationType }}</span> }
+                            @if (definition.requiresExpiration) { <span>Expires</span> }
+                          </p>
+                        </div>
+                        <div class="catalog-actions">
+                          <button type="button" (click)="$event.stopPropagation(); editDefinition(definition)">Edit</button>
+                          <button type="button" class="danger" (click)="$event.stopPropagation(); deleteDefinition(definition)">Delete</button>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                </aside>
+
+                <section class="detail-panel">
+                  <header class="detail-header">
+                    <div>
+                      <span class="eyebrow">{{ editingDefinitionSharepointId() ? 'Editing catalog item' : 'New catalog item' }}</span>
+                      <h2>{{ editingDefinitionSharepointId() ? (definitionDraft().qualificationName || 'Catalog item') : 'Create a qualification' }}</h2>
+                      <p>
+                        @if (editingDefinitionSharepointId()) {
+                          Changes here update the assignment dropdown and every person already using this qualification.
+                        } @else {
+                          Add a reusable qualification template that admins can assign to employees later.
+                        }
+                      </p>
+                    </div>
+                    <button type="button" (click)="startDefinitionCreate()">New</button>
+                  </header>
+
+                  <section class="detail-card catalog-summary">
+                    <div class="panel-title">Catalog Editor</div>
+                    <p class="panel-note">Open an item from the left or click New to edit it in a dialog. That keeps the list visible and avoids the long scroll that was getting in the way.</p>
+                    <div class="catalog-summary-stats">
+                      <div class="summary-stat">
+                        <span>Items</span>
+                        <strong>{{ definitions().length }}</strong>
+                      </div>
+                      <div class="summary-stat">
+                        <span>Active</span>
+                        <strong>{{ activeDefinitions().length }}</strong>
+                      </div>
+                    </div>
+                  </section>
+                </section>
+              </div>
+            </section>
+          }
+
+          @if (personSeedDialogOpen()) {
+            <div class="modal-backdrop" (click)="closePersonSeedDialog()"></div>
+            <section class="modal-shell" role="dialog" aria-modal="true" aria-label="Add employee">
+              <div class="modal-card" (click)="$event.stopPropagation()">
+                <header class="modal-header">
+                  <div>
+                    <span class="eyebrow">New employee</span>
+                    <h2>Add Plant user to qualifications</h2>
+                    <p>Select an active Plant user and seed them into SharePoint. This does not create the login account; it copies the existing user into the employee list and creates the baseline Plant Role row.</p>
+                  </div>
+                  <button type="button" (click)="closePersonSeedDialog()">Close</button>
                 </header>
 
-                <div class="assignment-rows">
+                <form class="editor modal-form" (ngSubmit)="seedSelectedUser()">
+                  <p class="section-note">
+                    Choose one of the active Plant users loaded from the directory. After save, the employee appears in the People tab and gets a QR.
+                  </p>
+                  <div class="form-grid single">
+                    <label>
+                      <span>Employee</span>
+                      <span class="field-help">Pick the directory user to seed into SharePoint. This becomes the person shown in the People tab and on the public QR lookup page.</span>
+                      <select name="seedUserId" [ngModel]="seedUserId()" (ngModelChange)="seedUserId.set($event)" required>
+                        <option value="">Select user</option>
+                        @for (user of seedUsers(); track user.id) {
+                          <option [value]="user.id.toString()">{{ seedUserLabel(user) }}</option>
+                        }
+                      </select>
+                    </label>
+                    <p class="dialog-note">Only active Plant users are shown here. Use the top toolbar if you need to rebuild the SharePoint lists first.</p>
+                  </div>
+                  <div class="editor-actions">
+                    <button type="submit" [disabled]="busy() || !seedUserId()">Save</button>
+                    <button type="button" (click)="closePersonSeedDialog()" [disabled]="busy()">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </section>
+          }
+
+          @if (assignmentEditorOpen()) {
+            <div class="modal-backdrop" (click)="closeAssignmentEditor()"></div>
+            <section class="modal-shell" role="dialog" aria-modal="true" aria-label="Assignment editor">
+              <div class="modal-card" (click)="$event.stopPropagation()">
+                <header class="modal-header">
+                  <div>
+                    <span class="eyebrow">{{ editingSharepointId() ? 'Edit assignment' : 'New assignment' }}</span>
+                    <h2>{{ selectedPerson()?.userName || 'Employee' }}</h2>
+                    <p>This assignment is visible on the public QR page and in the employee record inside SharePoint.</p>
+                  </div>
+                  <button type="button" (click)="closeAssignmentEditor()">Close</button>
+                </header>
+
+                <form class="editor modal-form" (ngSubmit)="saveAssignment()">
+                  <p class="section-note">
+                    Choose a catalog item and fill out any supporting details. Save writes to SharePoint and the Power Automate fallback.
+                  </p>
+                  <div class="form-grid">
+                    <label class="full">
+                      <span>Qualification</span>
+                      <span class="field-help">Choose a catalog item. Its name, code, and type are copied onto this assignment and shown on the public QR page.</span>
+                      <select
+                        name="qualificationId"
+                        [ngModel]="assignmentDraft().qualificationId"
+                        (ngModelChange)="onDefinitionSelected($event)"
+                        required>
+                        <option value="">Select qualification</option>
+                        @for (definition of activeDefinitions(); track definition.localUuid || definition.sharepointId || $index) {
+                          <option [value]="definition.localUuid">{{ catalogLabel(definition) }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label>
+                      <span>Status</span>
+                      <span class="field-help">Shown on the public lookup page and in this manager. Use Active for a live credential.</span>
+                      <select name="status" [ngModel]="assignmentDraft().status" (ngModelChange)="updateAssignmentDraft('status', $event)">
+                        <option value="Active">Active</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Expired">Expired</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Issued</span>
+                      <span class="field-help">Shown on the public QR page. If the catalog item has default months, this helps calculate the expiration date.</span>
+                      <input name="issuedDate" type="date" [ngModel]="assignmentDraft().issuedDate" (ngModelChange)="updateAssignmentDraft('issuedDate', $event)">
+                    </label>
+                    <label>
+                      <span>Expires</span>
+                      <span class="field-help">Shown on the public QR page and printed QR. Leave blank if the qualification does not expire.</span>
+                      <input name="expirationDate" type="date" [ngModel]="assignmentDraft().expirationDate" (ngModelChange)="updateAssignmentDraft('expirationDate', $event)">
+                    </label>
+                    <label>
+                      <span>Credential</span>
+                      <span class="field-help">Optional certificate, card, or license number. Visible on the public QR page and in this manager.</span>
+                      <input name="credentialNumber" [ngModel]="assignmentDraft().credentialNumber" (ngModelChange)="updateAssignmentDraft('credentialNumber', $event)">
+                    </label>
+                    <label>
+                      <span>Issuer</span>
+                      <span class="field-help">Optional trainer, instructor, or organization name. Visible on the public QR page and in this manager.</span>
+                      <input name="issuer" [ngModel]="assignmentDraft().issuer" (ngModelChange)="updateAssignmentDraft('issuer', $event)">
+                    </label>
+                    <label class="full">
+                      <span>Notes</span>
+                      <span class="field-help">Use this for admin notes or audit context. Visible on the public QR lookup page and in this manager.</span>
+                      <textarea name="assignmentNotes" rows="3" [ngModel]="assignmentDraft().notes" (ngModelChange)="updateAssignmentDraft('notes', $event)"></textarea>
+                    </label>
+                  </div>
+                  <div class="editor-actions">
+                    <button type="submit" [disabled]="busy() || !assignmentDraft().qualificationId">Save</button>
+                    <button type="button" (click)="closeAssignmentEditor()" [disabled]="busy()">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </section>
+          }
+
+          @if (assignmentsDialogOpen()) {
+            <div class="modal-backdrop" (click)="closeAssignmentsDialog()"></div>
+            <section class="modal-shell" role="dialog" aria-modal="true" aria-label="Assigned qualifications">
+              <div class="modal-card" (click)="$event.stopPropagation()">
+                <header class="modal-header">
+                  <div>
+                    <span class="eyebrow">Qualifications for {{ selectedPerson()?.userName || 'Employee' }}</span>
+                    <h2>Assigned Qualifications</h2>
+                    <p>These rows are the current qualifications attached to the selected employee.</p>
+                  </div>
+                  <button type="button" (click)="closeAssignmentsDialog()">Close</button>
+                </header>
+
+                <div class="person-dialog-grid">
+                  <section class="detail-card person-dialog-summary">
+                    <div class="panel-title">Employee</div>
+                    <p class="panel-note">This person row, their QR, and their current qualifications are all read from SharePoint or the Power Automate fallback. The dialog stays inside the viewport and scrolls on its own.</p>
+                    <div class="summary-stats">
+                      <div class="summary-stat">
+                        <span>Assigned</span>
+                        <strong>{{ selectedQualifications().length }}</strong>
+                      </div>
+                      <div class="summary-stat">
+                        <span>Role</span>
+                        <strong>{{ selectedPerson()?.role || '-' }}</strong>
+                      </div>
+                      <div class="summary-stat">
+                        <span>User ID</span>
+                        <strong>{{ selectedPerson()?.userId || '-' }}</strong>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="detail-card person-dialog-qr" #qrPanel>
+                    <div class="panel-title">QR Code</div>
+                    <p class="panel-note">Anyone can scan this link to open the public, read-only qualification page for the selected person. Use Print QR for a badge or label.</p>
+                    <app-qr-generator [data]="qualificationLink(selectedPerson()!)" [size]="220" [label]="selectedPerson()!.userName"></app-qr-generator>
+                    <input class="link-output" readonly [value]="qualificationLink(selectedPerson()!)">
+                    <div class="qr-actions">
+                      <button type="button" (click)="copyLink(selectedPerson()!)">Copy Link</button>
+                      <button type="button" (click)="printQr(selectedPerson()!)">Print QR</button>
+                      <a [href]="qualificationLink(selectedPerson()!)" target="_blank" rel="noopener">Open</a>
+                    </div>
+                  </section>
+                </div>
+
+                <div class="assignments-modal-toolbar">
+                  <div class="assignments-modal-note">
+                    Edit opens the assignment editor. Delete removes the row from SharePoint or the Power Automate fallback.
+                  </div>
+                  <button type="button" (click)="startAssign()">Add Qualification</button>
+                </div>
+
+                <div class="assignment-rows assignments-modal-list">
                   @if (selectedQualifications().length === 0) {
                     <div class="empty">No qualifications assigned.</div>
                   }
@@ -111,120 +471,41 @@ import { PowerAutomateService } from '../../services/power-automate.service';
                     </article>
                   }
                 </div>
-
-                <form class="editor" (ngSubmit)="saveAssignment()">
-                  <h3>{{ editingSharepointId() ? 'Edit Assignment' : 'Assign Qualification' }}</h3>
-                  <div class="form-grid">
-                    <label class="full">
-                      <span>Qualification</span>
-                      <select
-                        name="qualificationId"
-                        [ngModel]="assignmentDraft().qualificationId"
-                        (ngModelChange)="onDefinitionSelected($event)"
-                        required>
-                        <option value="">Select qualification</option>
-                        @for (definition of activeDefinitions(); track definition.localUuid || definition.sharepointId || $index) {
-                          <option [value]="definition.localUuid">{{ catalogLabel(definition) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <label>
-                      <span>Status</span>
-                      <select name="status" [ngModel]="assignmentDraft().status" (ngModelChange)="updateAssignmentDraft('status', $event)">
-                        <option value="Active">Active</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Inactive">Inactive</option>
-                        <option value="Expired">Expired</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Issued</span>
-                      <input name="issuedDate" type="date" [ngModel]="assignmentDraft().issuedDate" (ngModelChange)="updateAssignmentDraft('issuedDate', $event)">
-                    </label>
-                    <label>
-                      <span>Expires</span>
-                      <input name="expirationDate" type="date" [ngModel]="assignmentDraft().expirationDate" (ngModelChange)="updateAssignmentDraft('expirationDate', $event)">
-                    </label>
-                    <label>
-                      <span>Credential</span>
-                      <input name="credentialNumber" [ngModel]="assignmentDraft().credentialNumber" (ngModelChange)="updateAssignmentDraft('credentialNumber', $event)">
-                    </label>
-                    <label>
-                      <span>Issuer</span>
-                      <input name="issuer" [ngModel]="assignmentDraft().issuer" (ngModelChange)="updateAssignmentDraft('issuer', $event)">
-                    </label>
-                    <label class="full">
-                      <span>Notes</span>
-                      <textarea name="assignmentNotes" rows="3" [ngModel]="assignmentDraft().notes" (ngModelChange)="updateAssignmentDraft('notes', $event)"></textarea>
-                    </label>
-                  </div>
-                  <div class="editor-actions">
-                    <button type="submit" [disabled]="busy() || !assignmentDraft().qualificationId">Save</button>
-                    <button type="button" (click)="startAssign()" [disabled]="busy()">Clear</button>
-                  </div>
-                </form>
-              } @else {
-                <div class="empty large">Select a person.</div>
-              }
+              </div>
             </section>
+          }
 
-            <aside class="side-tools">
-              <section class="qr-panel" #qrPanel>
-                @if (selectedPerson()) {
-                  <div class="panel-title">QR Code</div>
-                  <app-qr-generator [data]="qualificationLink(selectedPerson()!)" [size]="220" [label]="selectedPerson()!.userName"></app-qr-generator>
-                  <input class="link-output" readonly [value]="qualificationLink(selectedPerson()!)">
-                  <div class="qr-actions">
-                    <button type="button" (click)="copyLink(selectedPerson()!)">Copy Link</button>
-                    <button type="button" (click)="printQr(selectedPerson()!)">Print</button>
-                    <a [href]="qualificationLink(selectedPerson()!)" target="_blank" rel="noopener">Open</a>
+          @if (definitionEditorOpen()) {
+            <div class="modal-backdrop" (click)="closeDefinitionEditor()"></div>
+            <section class="modal-shell" role="dialog" aria-modal="true" aria-label="Catalog editor">
+              <div class="modal-card" (click)="$event.stopPropagation()">
+                <header class="modal-header">
+                  <div>
+                    <span class="eyebrow">{{ editingDefinitionSharepointId() ? 'Edit catalog item' : 'New catalog item' }}</span>
+                    <h2>{{ definitionDraft().qualificationName || 'Qualification' }}</h2>
+                    <p>The catalog is the source of truth for the assignment dropdown and the public QR display.</p>
                   </div>
-                } @else {
-                  <div class="empty">No QR selected.</div>
-                }
-              </section>
-
-              <section class="catalog-panel">
-                <header class="catalog-header">
-                  <div class="panel-title">Catalog</div>
-                  <button type="button" (click)="startDefinitionCreate()">New</button>
+                  <button type="button" (click)="closeDefinitionEditor()">Close</button>
                 </header>
 
-                <div class="catalog-list">
-                  @if (definitions().length === 0) {
-                    <div class="empty">No catalog items.</div>
-                  }
-                  @for (definition of definitions(); track definition.sharepointId || definition.localUuid || $index) {
-                    <article class="catalog-row" [class.inactive]="definition.active === false">
-                      <div>
-                        <h3>{{ definition.qualificationName || 'Qualification' }}</h3>
-                        <p>
-                          @if (definition.qualificationCode) { <span>{{ definition.qualificationCode }}</span> }
-                          @if (definition.qualificationType) { <span>{{ definition.qualificationType }}</span> }
-                          @if (definition.requiresExpiration) { <span>Expires</span> }
-                        </p>
-                      </div>
-                      <div class="catalog-actions">
-                        <button type="button" (click)="editDefinition(definition)">Edit</button>
-                        <button type="button" class="danger" (click)="deleteDefinition(definition)">Delete</button>
-                      </div>
-                    </article>
-                  }
-                </div>
-
-                <form class="editor catalog-editor" (ngSubmit)="saveDefinition()">
-                  <h3>{{ editingDefinitionSharepointId() ? 'Edit Catalog Item' : 'New Catalog Item' }}</h3>
+                <form class="editor modal-form" (ngSubmit)="saveDefinition()">
+                  <p class="section-note">
+                    This is the template behind the assignment dropdown. Fields here decide what can be assigned and what gets copied into a person's record.
+                  </p>
                   <div class="form-grid single">
                     <label>
                       <span>Name</span>
+                      <span class="field-help">Required. Visible on the public QR page, the qualification list, and the assignment dropdown.</span>
                       <input name="definitionName" [ngModel]="definitionDraft().qualificationName" (ngModelChange)="updateDefinitionDraft('qualificationName', $event)" required>
                     </label>
                     <label>
                       <span>Code</span>
+                      <span class="field-help">Optional short code for shorthand lookup. Visible on the public QR page, the catalog list, and the assignment dropdown.</span>
                       <input name="definitionCode" [ngModel]="definitionDraft().qualificationCode" (ngModelChange)="updateDefinitionDraft('qualificationCode', $event)">
                     </label>
                     <label>
                       <span>Type</span>
+                      <span class="field-help">Optional grouping or category. Visible on the public QR page and in catalog views.</span>
                       <input name="definitionType" [ngModel]="definitionDraft().qualificationType" (ngModelChange)="updateDefinitionDraft('qualificationType', $event)">
                     </label>
                     <div class="check-row">
@@ -237,31 +518,39 @@ import { PowerAutomateService } from '../../services/power-automate.service';
                         <span>Active</span>
                       </label>
                     </div>
+                    <div class="field-hint-row">
+                      <span class="field-help">When enabled, the assignment form can auto-fill expiration from the issued date and default months.</span>
+                      <span class="field-help">Inactive catalog items stay in SharePoint but are hidden from the assignment dropdown.</span>
+                    </div>
                     <label>
                       <span>Default Months</span>
+                      <span class="field-help">Used to calculate expiration from the issued date when expiration is required. Leave blank for non-expiring qualifications.</span>
                       <input name="defaultValidityMonths" type="number" min="0" [ngModel]="definitionDraft().defaultValidityMonths" (ngModelChange)="updateDefinitionDraft('defaultValidityMonths', $event)">
                     </label>
                     <label>
                       <span>Sort</span>
+                      <span class="field-help">Lower numbers appear first in the catalog list and the assignment dropdown.</span>
                       <input name="sortOrder" type="number" [ngModel]="definitionDraft().sortOrder" (ngModelChange)="updateDefinitionDraft('sortOrder', $event)">
                     </label>
                     <label>
                       <span>Description</span>
+                      <span class="field-help">Long-form admin description. Visible in SharePoint and this catalog editor, not on the public QR page.</span>
                       <textarea name="definitionDescription" rows="2" [ngModel]="definitionDraft().description" (ngModelChange)="updateDefinitionDraft('description', $event)"></textarea>
                     </label>
                     <label>
                       <span>Notes</span>
+                      <span class="field-help">Private admin notes for the catalog item. Visible in SharePoint and this manager, not on the public QR page.</span>
                       <textarea name="definitionNotes" rows="2" [ngModel]="definitionDraft().notes" (ngModelChange)="updateDefinitionDraft('notes', $event)"></textarea>
                     </label>
                   </div>
                   <div class="editor-actions">
                     <button type="submit" [disabled]="busy() || !definitionDraft().qualificationName">Save</button>
-                    <button type="button" (click)="startDefinitionCreate()" [disabled]="busy()">Clear</button>
+                    <button type="button" (click)="closeDefinitionEditor()" [disabled]="busy()">Cancel</button>
                   </div>
                 </form>
-              </section>
-            </aside>
-          </div>
+              </div>
+            </section>
+          }
         </main>
       </ng-container>
     </app-main-layout>
@@ -274,8 +563,305 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .toolbar h1 { margin: 0; font-size: 1.45rem; }
     .toolbar p, .person-meta, .workspace-header p, .assignment-row p, .catalog-row p, .empty { color: var(--secondary-text); }
     .toolbar p, .workspace-header p, .assignment-row p, .catalog-row p { margin: 0; }
+    .page-note {
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--accent-color);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--accent-color) 6%, var(--card-background));
+      color: var(--secondary-text);
+      font-size: .84rem;
+      line-height: 1.45;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      overflow-x: auto;
+      padding-top: 14px;
+      border-bottom: 1px solid var(--border-color);
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--secondary-text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: inherit;
+      font-size: .93rem;
+      font-weight: 600;
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+    .tab:hover:not(.active) { color: var(--primary-text); background: var(--hover-color); }
+    .tab.active {
+      color: var(--accent-color);
+      border-bottom-color: var(--accent-color);
+    }
+    .tab-glyph { font-size: 1rem; line-height: 1; }
+    .tab-label { font-size: .9rem; }
+    .tab-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-top: 14px;
+    }
+    .tab-note {
+      margin: 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--accent-color);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--accent-color) 6%, var(--card-background));
+      color: var(--primary-text);
+      font-size: .88rem;
+      line-height: 1.5;
+    }
+    .panel-note, .section-note, .field-help {
+      color: var(--secondary-text);
+      line-height: 1.45;
+    }
+    .panel-note {
+      margin: 4px 0 0;
+      font-size: .8rem;
+    }
+    .section-note {
+      margin: 0 0 2px;
+      font-size: .82rem;
+    }
+    .field-help {
+      display: block;
+      font-size: .75rem;
+      font-weight: 500;
+    }
+    .field-hint-row {
+      display: grid;
+      gap: 6px;
+    }
+    .master-detail {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+      padding-top: 4px;
+    }
+    .list-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .detail-panel,
+    .seed-strip {
+      display: none;
+    }
+    .list-header,
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .detail-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+    .detail-header h2 {
+      margin: 2px 0;
+      font-size: 1.2rem;
+    }
+    .detail-header p,
+    .detail-summary {
+      margin: 0;
+      color: var(--secondary-text);
+    }
+    .detail-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .detail-card {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--card-background);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .summary-stat {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: var(--secondary-background);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .summary-stat span {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--secondary-text);
+    }
+    .summary-stat strong {
+      font-size: .95rem;
+      color: var(--primary-text);
+      overflow-wrap: anywhere;
+    }
+    .catalog-summary-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .qr-card {
+      align-items: center;
+      text-align: center;
+    }
+    .qr-card .panel-title,
+    .qr-card .panel-note,
+    .summary-card .panel-title,
+    .summary-card .panel-note {
+      align-self: stretch;
+      text-align: left;
+    }
+    .qr-card app-qr-generator {
+      align-self: center;
+    }
+    .detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .assignments-card {
+      display: none;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .modal-shell {
+      position: fixed;
+      inset: 0;
+      z-index: 5001;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 16px;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+    .modal-card {
+      pointer-events: auto;
+      width: min(940px, calc(100vw - 32px));
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--card-background);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-header h2 {
+      margin: 2px 0;
+      font-size: 1.25rem;
+    }
+    .modal-header p {
+      margin: 0;
+      color: var(--secondary-text);
+      font-size: .86rem;
+      line-height: 1.45;
+    }
+    .modal-form.editor {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+    .assignments-modal-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .person-dialog-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+      gap: 12px;
+      align-items: stretch;
+      margin-bottom: 12px;
+    }
+    .person-dialog-qr {
+      background: #fff;
+      color: #111;
+      align-items: center;
+      text-align: center;
+    }
+    .person-dialog-qr .panel-title,
+    .person-dialog-qr .panel-note {
+      align-self: stretch;
+      text-align: left;
+    }
+    .person-dialog-summary .summary-stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .dialog-note {
+      margin: 0;
+      font-size: .8rem;
+      color: var(--secondary-text);
+      line-height: 1.45;
+    }
+    .assignments-modal-note {
+      color: var(--secondary-text);
+      font-size: .82rem;
+      line-height: 1.45;
+      max-width: 64ch;
+    }
+    .assignments-modal-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: min(60vh, 640px);
+      overflow: auto;
+      padding-right: 2px;
+    }
     .toolbar-actions, .editor-actions, .qr-actions, .row-actions, .catalog-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .seed-strip { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; padding: 12px 0 4px; }
+    .seed-strip {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--card-background);
+    }
     .seed-select { display: flex; flex-direction: column; gap: 5px; min-width: min(100%, 380px); font-size: .85rem; font-weight: 650; }
     button, .qr-actions a { border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-background); color: var(--primary-text); padding: 8px 12px; font: inherit; cursor: pointer; text-decoration: none; }
     button:disabled { opacity: .55; }
@@ -283,6 +869,7 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .busy-row { color: var(--secondary-text); padding: 12px 0; }
     .manager-grid { display: grid; grid-template-columns: minmax(190px, 250px) minmax(0, 1fr) minmax(270px, 340px); gap: 18px; padding-top: 16px; align-items: start; }
     .people-list, .side-tools { position: sticky; top: 0; align-self: start; }
+    .people-list, .catalog-panel { display: flex; flex-direction: column; gap: 10px; }
     .side-tools, .assignment-rows, .qr-panel { display: flex; flex-direction: column; gap: 10px; }
     .panel-title, .person-name { font-weight: 700; }
     .panel-title { margin-bottom: 8px; }
@@ -295,7 +882,9 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .workspace-header h2 { margin: 2px 0; font-size: 1.2rem; }
     .assignment-rows, .catalog-list { margin-bottom: 16px; }
     .assignment-row, .catalog-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; border-bottom: 1px solid var(--border-color); padding: 10px 0; }
+    .catalog-row { cursor: pointer; }
     .assignment-row.expired, .catalog-row.inactive { opacity: .7; }
+    .catalog-row.selected { border-color: var(--accent-color); background: var(--selected-background); }
     .assignment-row h3, .catalog-row h3 { margin: 0 0 4px; font-size: 1rem; }
     .assignment-row p, .catalog-row p { font-size: .86rem; display: flex; gap: 8px; flex-wrap: wrap; }
     .status { border-radius: 999px; padding: 4px 9px; font-size: .75rem; font-weight: 700; background: var(--secondary-background); }
@@ -316,13 +905,15 @@ import { PowerAutomateService } from '../../services/power-automate.service';
     .catalog-header { align-items: center; }
     .empty { padding: 16px 0; }
     @media (max-width: 1100px) {
-      .manager-grid { grid-template-columns: minmax(190px, 250px) minmax(0, 1fr); }
-      .side-tools { position: static; grid-column: 1 / -1; display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); }
+      .master-detail { grid-template-columns: 1fr; }
+      .detail-top { grid-template-columns: 1fr; }
+      .person-dialog-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 760px) {
-      .manager-grid, .side-tools, .form-grid, .assignment-row, .catalog-row { grid-template-columns: 1fr; }
-      .people-list { position: static; }
-      .toolbar, .workspace-header { flex-direction: column; align-items: stretch; }
+      .form-grid, .assignment-row, .catalog-row { grid-template-columns: 1fr; }
+      .summary-stats { grid-template-columns: 1fr; }
+      .catalog-summary-stats { grid-template-columns: 1fr; }
+      .toolbar, .workspace-header, .list-header, .detail-header, .modal-header { flex-direction: column; align-items: stretch; }
       .row-actions, .catalog-actions { justify-content: flex-start; }
     }
   `]
@@ -345,6 +936,11 @@ export class QualificationManagementComponent implements OnInit {
   editingDefinitionSharepointId = signal<string | null>(null);
   assignmentDraft = signal<PwaQualificationDto>(this.blankAssignmentDraft());
   definitionDraft = signal<PwaQualificationDefinitionDto>(this.blankDefinitionDraft());
+  activeTab = signal<'people' | 'catalog'>('people');
+  personSeedDialogOpen = signal(false);
+  assignmentEditorOpen = signal(false);
+  definitionEditorOpen = signal(false);
+  assignmentsDialogOpen = signal(false);
 
   selectedPerson = computed(() => this.people().find(p => p.userId === this.selectedUserId()) || null);
   selectedQualifications = computed(() => this.selectedPerson()?.qualifications || []);
@@ -352,6 +948,34 @@ export class QualificationManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  setTab(tab: 'people' | 'catalog'): void {
+    this.activeTab.set(tab);
+  }
+
+  openAssignmentsDialog(): void {
+    if (this.selectedPerson()) {
+      this.assignmentsDialogOpen.set(true);
+    }
+  }
+
+  openPersonSeedDialog(): void {
+    if (this.paFallbackActive()) {
+      this.statusMessage.set('Adding employees requires the server.');
+      return;
+    }
+    this.seedUserId.set('');
+    this.personSeedDialogOpen.set(true);
+  }
+
+  closePersonSeedDialog(): void {
+    this.personSeedDialogOpen.set(false);
+    this.seedUserId.set('');
+  }
+
+  closeAssignmentsDialog(): void {
+    this.assignmentsDialogOpen.set(false);
   }
 
   load(): void {
@@ -367,7 +991,7 @@ export class QualificationManagementComponent implements OnInit {
         if (!this.selectedUserId() || !people.some(p => p.userId === this.selectedUserId())) {
           this.selectedUserId.set(people[0]?.userId || '');
         }
-        this.startAssign();
+        this.resetAssignmentDraft();
         this.loadSeedUsers();
         this.busy.set(false);
       },
@@ -418,16 +1042,29 @@ export class QualificationManagementComponent implements OnInit {
 
   selectPerson(person: PwaQualificationPersonDto): void {
     this.selectedUserId.set(person.userId);
-    this.startAssign();
+    this.resetAssignmentDraft();
+    this.assignmentsDialogOpen.set(true);
+  }
+
+  private resetAssignmentDraft(): void {
+    this.editingSharepointId.set(null);
+    this.assignmentDraft.set(this.blankAssignmentDraft(this.selectedPerson() || undefined));
   }
 
   startAssign(): void {
-    const person = this.selectedPerson();
+    this.assignmentsDialogOpen.set(false);
+    this.resetAssignmentDraft();
+    this.assignmentEditorOpen.set(true);
+  }
+
+  closeAssignmentEditor(): void {
+    this.assignmentEditorOpen.set(false);
     this.editingSharepointId.set(null);
-    this.assignmentDraft.set(this.blankAssignmentDraft(person || undefined));
+    this.resetAssignmentDraft();
   }
 
   editQualification(qualification: PwaQualificationDto): void {
+    this.assignmentsDialogOpen.set(false);
     const definition = qualification.qualificationId
       ? this.definitions().find(def => def.localUuid === qualification.qualificationId)
       : this.definitions().find(def => def.qualificationName === qualification.qualificationName);
@@ -436,6 +1073,7 @@ export class QualificationManagementComponent implements OnInit {
       ...qualification,
       qualificationId: qualification.qualificationId || definition?.localUuid || ''
     });
+    this.assignmentEditorOpen.set(true);
   }
 
   onDefinitionSelected(qualificationId: string): void {
@@ -474,6 +1112,7 @@ export class QualificationManagementComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.statusMessage.set('Qualification assignment saved.');
+        this.closeAssignmentEditor();
         this.busy.set(false);
         this.load();
       },
@@ -507,6 +1146,16 @@ export class QualificationManagementComponent implements OnInit {
   }
 
   startDefinitionCreate(): void {
+    this.resetDefinitionDraft();
+    this.definitionEditorOpen.set(true);
+  }
+
+  closeDefinitionEditor(): void {
+    this.definitionEditorOpen.set(false);
+    this.resetDefinitionDraft();
+  }
+
+  private resetDefinitionDraft(): void {
     this.editingDefinitionSharepointId.set(null);
     this.definitionDraft.set(this.blankDefinitionDraft());
   }
@@ -514,6 +1163,7 @@ export class QualificationManagementComponent implements OnInit {
   editDefinition(definition: PwaQualificationDefinitionDto): void {
     this.editingDefinitionSharepointId.set(definition.sharepointId || null);
     this.definitionDraft.set({ ...definition });
+    this.definitionEditorOpen.set(true);
   }
 
   updateDefinitionDraft(field: keyof PwaQualificationDefinitionDto, value: string | boolean): void {
@@ -535,7 +1185,7 @@ export class QualificationManagementComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.statusMessage.set('Catalog item saved.');
-        this.startDefinitionCreate();
+        this.closeDefinitionEditor();
         this.busy.set(false);
         this.load();
       },
@@ -612,6 +1262,7 @@ export class QualificationManagementComponent implements OnInit {
         );
         this.seedUserId.set(userId);
         this.selectedUserId.set(String(user.id));
+        this.closePersonSeedDialog();
         this.busy.set(false);
         this.load();
       },
@@ -768,8 +1419,8 @@ export class QualificationManagementComponent implements OnInit {
           .filter(user => this.isPlantSeedUser(user))
           .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         this.seedUsers.set(plantUsers);
-        if (!this.seedUserId() || !plantUsers.some(user => String(user.id) === this.seedUserId())) {
-          this.seedUserId.set(plantUsers[0] ? String(plantUsers[0].id) : '');
+        if (this.seedUserId() && !plantUsers.some(user => String(user.id) === this.seedUserId())) {
+          this.seedUserId.set('');
         }
       },
       error: () => {
@@ -829,7 +1480,7 @@ export class QualificationManagementComponent implements OnInit {
         if (!this.selectedUserId() || !people.some(p => p.userId === this.selectedUserId())) {
           this.selectedUserId.set(people[0]?.userId || '');
         }
-        this.startAssign();
+        this.resetAssignmentDraft();
         this.statusMessage.set(warnings ? `Loaded from Power Automate. ${warnings}` : 'Server is unreachable; loaded from Power Automate.');
         this.busy.set(false);
       },
@@ -855,6 +1506,7 @@ export class QualificationManagementComponent implements OnInit {
           return;
         }
         this.statusMessage.set('Qualification assignment saved through Power Automate.');
+        this.closeAssignmentEditor();
         this.busy.set(false);
         this.load();
       },
@@ -879,6 +1531,9 @@ export class QualificationManagementComponent implements OnInit {
           return;
         }
         this.statusMessage.set('Qualification assignment deleted through Power Automate.');
+        if (this.editingSharepointId() === qualification.sharepointId) {
+          this.closeAssignmentEditor();
+        }
         this.busy.set(false);
         this.load();
       },
@@ -904,7 +1559,7 @@ export class QualificationManagementComponent implements OnInit {
           return;
         }
         this.statusMessage.set('Catalog item saved through Power Automate.');
-        this.startDefinitionCreate();
+        this.closeDefinitionEditor();
         this.busy.set(false);
         this.load();
       },
@@ -929,6 +1584,9 @@ export class QualificationManagementComponent implements OnInit {
           return;
         }
         this.statusMessage.set('Catalog item deleted through Power Automate.');
+        if (this.editingDefinitionSharepointId() === definition.sharepointId) {
+          this.closeDefinitionEditor();
+        }
         this.busy.set(false);
         this.load();
       },

@@ -225,7 +225,7 @@ public class NgUserController {
         return ResponseEntity.ok(Map.of(
             "accessRoles", new String[]{
                 "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT",
-                "ROLE_NAES", "ROLE_JPOWER", "ROLE_KIOSK"
+                "ROLE_NAES", "ROLE_JPOWER", "ROLE_KIOSK", "ROLE_LOG_DIAGNOSTICS"
             },
             "lotoRoles", new String[]{
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
@@ -233,7 +233,7 @@ public class NgUserController {
             // Combined list for back-compat with the existing /roles consumer.
             "roles", new String[]{
                 "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT", "ROLE_KIOSK",
-                "ROLE_NAES", "ROLE_JPOWER",
+                "ROLE_NAES", "ROLE_JPOWER", "ROLE_LOG_DIAGNOSTICS",
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
             }
         ));

@@ -71,3 +71,10 @@
 .reorder-table th { color: #9fb0c0; font-weight: 500; }
 .reorder-table td.num, .reorder-table th.num { text-align: right; white-space: nowrap; }
 .reorder-table td.order { color: #ffd34d; font-weight: 600; }
+
+/* "Not due yet" — mirrors the backend block; Complete is disabled until the WO's Target Start. */
+.notdue-banner { display: flex; gap: 12px; align-items: flex-start; margin: 10px 0; max-width: 880px;
+  padding: 14px 16px; background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 6px; }
+.notdue-i { font-size: 22px; line-height: 1; }
+.notdue-t { font-weight: 700; color: #e67e22; margin-bottom: 3px; }
+.notdue-d { color: #ddd; font-size: 13px; line-height: 1.45; }

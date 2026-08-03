@@ -5,18 +5,31 @@ import { LotoBoxGridComponent } from '../../loto/loto-boxes/loto-box-grid/loto-b
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
 
 @Component({
   selector: 'app-loto-board',
   standalone: true,
-  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule, LotoBoxGridComponent],
+  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule, MatTooltipModule, LotoBoxGridComponent],
   template: `
         <div class="board-container">
           <div class="board-toolbar">
             <mat-button-toggle-group [value]="viewMode()" (change)="viewMode.set($event.value)">
-              <mat-button-toggle value="table"><mat-icon>table_rows</mat-icon> Table</mat-button-toggle>
               <mat-button-toggle value="grid"><mat-icon>grid_view</mat-icon> Box Grid</mat-button-toggle>
+              <mat-button-toggle value="table"><mat-icon>table_rows</mat-icon> Table</mat-button-toggle>
             </mat-button-toggle-group>
+
+            @if (viewMode() === 'grid') {
+              <button mat-stroked-button color="primary"
+                      [disabled]="resyncing()"
+                      (click)="resyncLightsToLotoStatus()"
+                      matTooltip="Overwrites every box's LED color from the current LOTO permit status in the database. Use when the physical box lights are out of sync with the DB."
+                      class="resync-btn">
+                <mat-icon>sync</mat-icon>
+                {{ resyncing() ? 'Syncing…' : 'Sync Lights to LOTO Status' }}
+              </button>
+            }
           </div>
 
           @if (viewMode() === 'table') {
@@ -24,10 +37,10 @@ import { MatIconModule } from '@angular/material/icon';
             @if (loading()) {
               <div class="loading">Loading active LOTOs...</div>
             } @else if (lotos().length === 0) {
-              <div class="empty">No active LOTOs at this time.</div>
+              <div class="empty">No LOTOs in Building/Active/Test at this time.</div>
             } @else {
               <div class="board-header">
-                <span class="count">{{ lotos().length }} Active LOTO(s)</span>
+                <span class="count">{{ lotos().length }} LOTO(s) — Building/Active/Test</span>
               </div>
               <table class="loto-table">
                 <thead>
@@ -70,7 +83,8 @@ import { MatIconModule } from '@angular/material/icon';
   `,
   styles: [`
     .board-container { padding: 16px; }
-    .board-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .board-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .resync-btn { margin-left: auto; }
     .loading, .empty { text-align: center; padding: 3rem; color: #888; font-style: italic; }
     .board-header { margin-bottom: 12px; }
     .count { font-size: 1rem; font-weight: 600; color: #ddd; }
@@ -110,6 +124,7 @@ import { MatIconModule } from '@angular/material/icon';
     }
     .status-badge[data-status="Active"] { background: rgba(76,175,80,0.2); color: #81c784; }
     .status-badge[data-status="Test"] { background: rgba(255,152,0,0.2); color: #ffb74d; }
+    .status-badge[data-status="Building"] { background: rgba(158,158,158,0.2); color: #bdbdbd; }
 
     .box-grid {
       display: grid;
@@ -136,10 +151,14 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class LotoBoardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private messageService = inject(GlobalMessageService);
 
   lotos = signal<any[]>([]);
   loading = signal(true);
-  viewMode = signal<'table' | 'grid'>('table');
+  // Grid is the primary at-a-glance view of the LOTO board — the physical box wall the ops team
+  // reads. The table is a secondary flat listing kept behind the toggle.
+  viewMode = signal<'table' | 'grid'>('grid');
+  resyncing = signal(false);
   private refreshInterval: any;
 
   ngOnInit(): void {
@@ -158,6 +177,31 @@ export class LotoBoardComponent implements OnInit, OnDestroy {
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
+    });
+  }
+
+  /**
+   * Rebuild every box's LED color from current LOTO state in the database and push to the
+   * physical WLED controllers. Uses the existing /ng/loto-boxes/reconcile endpoint which:
+   *   1. Clears every box→loto link,
+   *   2. Re-links each open LOTO (by boxNumber) to its box,
+   *   3. Repaints via updateBoxColorForStatus → queues a WLED full-array push per ESP.
+   * This is the recovery path when physical lights drift from DB reality.
+   */
+  resyncLightsToLotoStatus(): void {
+    if (this.resyncing()) return;
+    if (!confirm('Overwrite every box\'s LED color from current LOTO state in the DB? Manual-override boxes are preserved.')) return;
+    this.resyncing.set(true);
+    this.messageService.showLoading('Syncing lights to LOTO status…');
+    this.http.post<any>('/ng/loto-boxes/reconcile', {}).subscribe({
+      next: (res) => {
+        this.resyncing.set(false);
+        this.messageService.showSuccess(res?.message ?? 'Lights synced');
+      },
+      error: (err) => {
+        this.resyncing.set(false);
+        this.messageService.showError(err?.error?.message ?? err?.message ?? 'Failed to sync lights');
+      },
     });
   }
 }

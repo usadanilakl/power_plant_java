@@ -93,18 +93,21 @@ public class AccessGrantFilter extends OncePerRequestFilter {
 
         // Skip for exempt endpoints
         if (isExempt(path)) {
+            setAuthenticatedUserContext();
             filterChain.doFilter(request, response);
             return;
         }
 
         // Skip for localhost requests (desktop auto-auth has full access)
         if (NetworkUtils.isLoopbackRequest(request)) {
+            setAuthenticatedUserContext();
             filterChain.doFilter(request, response);
             return;
         }
 
         // Skip for LAN requests (internal network has full access)
         if (NetworkUtils.isInternalRequest(request)) {
+            setAuthenticatedUserContext();
             filterChain.doFilter(request, response);
             return;
         }
@@ -117,6 +120,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        LoggingContext.setUserId(auth.getName());
 
         // Check if the target handler is annotated with @RestrictedAllowed
         // (restricted external users can access these without a grant)
@@ -175,6 +179,14 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         log.debug("security.access.allowed path={} grantId={}", path, grant.getId());
 
         filterChain.doFilter(request, response);
+    }
+
+    private void setAuthenticatedUserContext() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+            && !"anonymousUser".equals(authentication.getPrincipal())) {
+            LoggingContext.setUserId(authentication.getName());
+        }
     }
 
     private boolean isExempt(String path) {

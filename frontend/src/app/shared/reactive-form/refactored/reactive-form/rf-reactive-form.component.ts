@@ -97,6 +97,11 @@ export class RfReactiveFormComponent {
   form: FormGroup = new FormGroup({});
   private isCreatingForm = false;
   private lastPatchedEntity: any = null;
+  // Structural signature of the last-built form (names/types/nested shape).
+  // Guards the createForm effect so entity-only re-emissions (SSE echoes,
+  // reconnect, lifecycle button responses) do NOT wipe user edits — see the
+  // paired dirty-check in the patch effect below.
+  private lastFieldsSignature = '';
 
   // ===== Drift on the form (OPT-IN via driftEntityType) — mirrors SmartFormComponent. =====
   driftEntityType = input<string | undefined>(undefined);
@@ -119,17 +124,24 @@ export class RfReactiveFormComponent {
   groupedFields = computed(() => this.dataService.groupFields(this.fields()));
 
   constructor() {
-    // Create form when fields change
+    // Rebuild the FormGroup only when the field STRUCTURE actually changes
+    // (names, types, nested shape) — NOT on every entity re-emission. Without
+    // this guard a background SSE echo would recompute fields() (initialValues
+    // are entity-derived) and wipe controls the user is mid-editing.
     effect(() => {
       const fields = this.fields();
-      if (fields && fields.length > 0) {
-        this.isCreatingForm = true;
-        this.createForm();
-        this.isCreatingForm = false;
-      }
+      if (!fields || fields.length === 0) return;
+      const sig = this.fieldStructureSignature(fields);
+      if (sig === this.lastFieldsSignature) return;
+      this.lastFieldsSignature = sig;
+      this.isCreatingForm = true;
+      this.createForm();
+      this.isCreatingForm = false;
     });
 
-    // Patch form when entity changes
+    // Patch form when entity changes — but skip any control the user has
+    // actively dirtied since the last save, so a background entity re-emission
+    // (SSE echo, reconnect) never overwrites a mid-typed value.
     effect(() => {
       const data = this.entity();
       // Skip patching if we're currently creating the form (initial values are already set)
@@ -148,12 +160,40 @@ export class RfReactiveFormComponent {
         const normalizedData = this.normalizeEntityForPatch(data);
         // Use setTimeout to break synchronous update chain and prevent loops
         setTimeout(() => {
-          if (this.form) {
-            this.form.patchValue(normalizedData, { emitEvent: false });
+          if (!this.form) return;
+          for (const [name, value] of Object.entries(normalizedData)) {
+            const ctrl = this.form.get(name);
+            // Missing control: patch (may be a dynamic field the form doesn't own).
+            // Present + dirty: user is editing — do NOT clobber.
+            // Present + pristine: patch with new server value.
+            if (!ctrl) {
+              this.form.patchValue({ [name]: value }, { emitEvent: false });
+            } else if (!ctrl.dirty) {
+              ctrl.setValue(value, { emitEvent: false });
+            }
           }
         }, 0);
       }
     });
+  }
+
+  /**
+   * Deterministic signature of the field STRUCTURE — excludes initialValue and
+   * options because those change with every entity refresh but do not warrant a
+   * FormGroup rebuild. Includes readonly/disabled because those are structural
+   * (a status-driven read-only flip must rebuild).
+   */
+  private fieldStructureSignature(fields: RfFormField[]): string {
+    const shape = (fs: any[]): any =>
+      fs.map(f => ({
+        n: f.name,
+        t: f.type,
+        r: !!f.readonly,
+        d: !!f.disabled,
+        rq: !!f.required,
+        sub: Array.isArray(f.fields) ? shape(f.fields) : undefined,
+      }));
+    return JSON.stringify(shape(fields));
   }
 
   private createForm(): void {

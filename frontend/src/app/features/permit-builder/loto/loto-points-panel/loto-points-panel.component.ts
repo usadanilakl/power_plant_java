@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -13,6 +13,7 @@ import { map } from 'rxjs';
   imports: [CommonModule, FormsModule],
   templateUrl: './loto-points-panel.component.html',
   styleUrl: './loto-points-panel.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LotoPointsPanelComponent {
   private currentLotoService = inject(CurrentLotoService);
@@ -56,6 +57,9 @@ export class LotoPointsPanelComponent {
   }
 
   removePoint(pointId: number): void {
+    const point = this.lotoPoints().find(p => (p as any).id === pointId);
+    const tag = (point as any)?.tagNumber ? `tag ${(point as any).tagNumber}` : `point #${pointId}`;
+    if (!confirm(`Remove ${tag} from this permit?`)) return;
     this.currentLotoService.removeLotoPointFromCurrentLoto(pointId);
   }
 

@@ -228,13 +228,19 @@ public class MaximoFormCompletionService {
         String templateStatus = (t == null) ? null : t.getCompleteWoStatus();
         String targetStatus = (templateStatus != null && !templateStatus.isBlank()) ? templateStatus
                 : (forceCompleteWo ? "COMP" : null);
+        // woClosed: TRUE = reached target status, FALSE = attempted-but-rejected (form still attached), null = not attempted.
+        Boolean woClosed = null;
+        String woCloseError = null;
         if (targetStatus != null && !targetStatus.isBlank()) {
             try {
                 workOrders.changeStatus(href, targetStatus, summary);
                 notes.add("status → " + targetStatus.trim().toUpperCase());
+                woClosed = true;
             } catch (Exception e) {
                 notes.add("status change failed: " + e.getMessage());
                 log.warn("[MaximoForms] status change failed for {}: {}", s.getWonum(), e.getMessage());
+                woClosed = false;
+                woCloseError = e.getMessage();
             }
         }
 
@@ -246,7 +252,12 @@ public class MaximoFormCompletionService {
         s.setWriteBackNote(String.join("; ", notes));
         submissionRepo.save(s);
         log.info("[MaximoForms] completed {} on WO {} — {}", s.getSubmissionKey(), s.getWonum(), notes);
-        return formService.getSubmission(s.getId());
+        // Transient fields (not persisted): tell the caller whether the WO actually closed so the PWA can
+        // reflect COMP only when true, and surface a close-only retry when false.
+        MaximoFormSubmissionDto out = formService.getSubmission(s.getId());
+        out.setWoClosed(woClosed);
+        out.setWoCloseError(woCloseError);
+        return out;
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

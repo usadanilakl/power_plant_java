@@ -39,6 +39,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(electricFirePumpTest()));
         out.add(formService.saveTemplate(pivAndDelugeValveInspection()));
         out.add(formService.saveTemplate(emergencyDieselGeneratorTest()));
+        out.add(formService.saveTemplate(sdiTest()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -192,6 +193,15 @@ public class MaximoFormSeeder {
                     .text("unit" + n + "_comments", n + ". Comments");
         }
 
+        // Portable (non-plumbed) eyewashes — no flow test; just confirm solution level and cleanliness.
+        f.section("Portable eyewashes — TCP battery rooms (not plumbed: check solution level & cleanliness only)")
+                .radio("pe_u1_tcp_level", "Unit 1 TCP battery room — solution level", false, "Full", "Low / refill")
+                .radio("pe_u1_tcp_clean", "Unit 1 TCP battery room — clean, sealed & uncontaminated", false, "OK", "Not OK")
+                .text("pe_u1_tcp_comments", "Unit 1 TCP battery room — comments")
+                .radio("pe_u2_tcp_level", "Unit 2 TCP battery room — solution level", false, "Full", "Low / refill")
+                .radio("pe_u2_tcp_clean", "Unit 2 TCP battery room — clean, sealed & uncontaminated", false, "OK", "Not OK")
+                .text("pe_u2_tcp_comments", "Unit 2 TCP battery room — comments");
+
         f.section("Sign-off")
                 .textarea("discrepancies", "Discrepancies & corrective action taken", "worklog")
                 .number("time_on_task", "Time on task", "hrs", "laborhours")
@@ -201,9 +211,10 @@ public class MaximoFormSeeder {
                 .formKey("EMERGENCY_EYEWASH_SAFETY_SHOWER")
                 .formName("Emergency Eyewash & Safety Shower Inspection (SMP-06)")
                 .description("Weekly (steps 1-9) / Annual (steps 1-10) inspection per ANSI Z358.1-1998. Verify each of the "
-                        + "17 units. Shower: flushing-pattern dia >= 20 in and delivery >= 20 gpm (75.7 L/min). "
-                        + "Eyewash: flow >= 0.4 gpm (1.5 L/min). Document discrepancies and notify the shift supervisor "
-                        + "to generate work orders for needed corrections.")
+                        + "17 fixed units plus the 2 portable eyewashes in the Unit 1 / Unit 2 TCP battery rooms (portable "
+                        + "units aren't flow-tested — just confirm solution level & cleanliness). Shower: flushing-pattern "
+                        + "dia >= 20 in and delivery >= 20 gpm (75.7 L/min). Eyewash: flow >= 0.4 gpm (1.5 L/min). Document "
+                        + "discrepancies and notify the shift supervisor to generate work orders for needed corrections.")
                 .matchDescriptionContains("safety shower")
                 .active(true)
                 .fieldsJson(toJson(f.build()))
@@ -645,6 +656,69 @@ public class MaximoFormSeeder {
     }
 
     /** Small builder for the JSON field-definition list (matches the frontend MaximoFormFieldDef shape). */
+    /**
+     * SDI (Silt Density Index, ASTM D4189) test with the portable filter kit. The operator confirms the setup,
+     * then times how long it takes to collect the sample volume at the start (Tᵢ, clean filter) and again after
+     * the test interval T (typically 15 min) once the membrane has fouled (T_f). The app calculates the plugging
+     * factor and SDI — the formula is shown on the form for reference. Pressure is held at 30 psi throughout.
+     */
+    private MaximoFormTemplateDto sdiTest() {
+        Fields f = new Fields();
+
+        f.section("Before you start — you'll run the test TWICE (before and after the Sand Filter)")
+                .checkbox("sdi_pressure_set", "Feed pressure regulator set to 30 psi (2.1 bar) — hold constant through BOTH tests", true)
+                .checkbox("sdi_cylinder", "Graduated cylinder ready; a FRESH 0.45 µm / 47 mm membrane will be used for EACH of the two tests", true)
+                .number("sdi_volume_ml", "Volume collected each sample (same for all samples, usually 500)", "mL", "reading");
+
+        // ── TEST 1 — before the sand filter (inlet) ──
+        f.section("TEST 1 — BEFORE the Sand Filter (inlet sample)")
+                .checkbox("sdi_pre_filter", "Fresh membrane installed (grid side up, no wrinkles, handled with tweezers)", true)
+                .checkbox("sdi_pre_point", "Sampling the Sand Filter INLET (upstream); all air bled; 30 psi held", true)
+                .timer("sdi_pre_ti", "Initial sample Tᵢ — tap Start as it begins filling, Stop at the volume", true)
+                .timerWait("sdi_pre_tf", "Final sample T_f — Start/Stop after the 15-min prompt", true, "sdi_pre_ti", 15, "sdi_pre_t")
+                .numberReq("sdi_pre_t", "Test time T (min) — auto-filled when you start the final sample; edit if needed", "min", "reading");
+        f.computed("sdi_pre_plugging", "Plugging factor %P (before)", "(1 - sdi_pre_ti / sdi_pre_tf) * 100", "%",
+                        "%P = (1 − Tᵢ / T_f) × 100   —  should be ≤ 75% for a valid test.")
+                .computed("sdi_pre_value", "SDI — before the Sand Filter", "(1 - sdi_pre_ti / sdi_pre_tf) * 100 / sdi_pre_t", null,
+                        "SDI = (1 − Tᵢ / T_f) × 100 ÷ T   (Tᵢ, T_f in seconds; T in minutes).");
+
+        // ── TEST 2 — after the sand filter (outlet) ──
+        f.section("TEST 2 — AFTER the Sand Filter (outlet sample) · install a NEW membrane")
+                .checkbox("sdi_post_filter", "Fresh membrane installed (grid side up, no wrinkles, handled with tweezers)", true)
+                .checkbox("sdi_post_point", "Sampling the Sand Filter OUTLET (downstream); all air bled; 30 psi held", true)
+                .timer("sdi_post_ti", "Initial sample Tᵢ — tap Start as it begins filling, Stop at the volume", true)
+                .timerWait("sdi_post_tf", "Final sample T_f — Start/Stop after the 15-min prompt", true, "sdi_post_ti", 15, "sdi_post_t")
+                .numberReq("sdi_post_t", "Test time T (min) — auto-filled when you start the final sample; edit if needed", "min", "reading");
+        f.computed("sdi_post_plugging", "Plugging factor %P (after)", "(1 - sdi_post_ti / sdi_post_tf) * 100", "%",
+                        "%P = (1 − Tᵢ / T_f) × 100   —  should be ≤ 75% for a valid test.")
+                .computed("sdi_post_value", "SDI — after the Sand Filter", "(1 - sdi_post_ti / sdi_post_tf) * 100 / sdi_post_t", null,
+                        "SDI = (1 − Tᵢ / T_f) × 100 ÷ T. Typical RO-feed target: SDI ≤ 3–5.");
+
+        f.section("Result — Sand Filter performance")
+                .computed("sdi_reduction", "SDI removed by the Sand Filter (before − after)",
+                        "(1 - sdi_pre_ti / sdi_pre_tf) * 100 / sdi_pre_t - (1 - sdi_post_ti / sdi_post_tf) * 100 / sdi_post_t", null,
+                        "= SDI(before) − SDI(after). Positive = the sand filter lowered the fouling potential; "
+                        + "near-zero or negative means the filter isn't helping — note it below.");
+
+        f.section("Sign-off")
+                .number("sdi_time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("sdi_notes", "Notes / observations (membrane lot #s, sample points, any anomalies)", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("SDI_TEST")
+                .formName("SDI (Silt Density Index) Test — Sand Filter (before & after)")
+                .description("Silt Density Index (ASTM D4189) run TWICE with the portable filter kit — once on the Sand "
+                        + "Filter inlet (before) and once on the outlet (after) — to measure how much silt the sand filter "
+                        + "removes. For each test install a FRESH 0.45 µm / 47 mm membrane, hold 30 psi, and time how long "
+                        + "it takes to collect the sample volume at the start (Tᵢ) and again after the interval T (usually "
+                        + "15 min) once the membrane has fouled (T_f). The app calculates each SDI = (1 − Tᵢ/T_f) × 100 ÷ T "
+                        + "and the before−after reduction. Hold 30 psi throughout both tests.")
+                .matchDescriptionContains("sdi")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
     private static final class Fields {
         private final List<Map<String, Object>> list = new ArrayList<>();
         private String section;
@@ -655,6 +729,44 @@ public class MaximoFormSeeder {
         Fields text(String name, String label) { return add(name, label, "text", null, null, false); }
         Fields textarea(String name, String label, String target) { return add(name, label, "textarea", null, target, false); }
         Fields number(String name, String label, String unit, String target) { return add(name, label, "number", unit, target, false); }
+        Fields numberReq(String name, String label, String unit, String target) { return add(name, label, "number", unit, target, true); }
+
+        /** Built-in stopwatch: Start/Stop records the elapsed SECONDS into the field value (fed to computed
+         *  fields). Timestamp-based in the app, so it survives the screen locking / the app backgrounding. */
+        Fields timer(String name, String label, boolean required) {
+            Map<String, Object> m = base(name, label, "timer");
+            m.put("unit", "sec");
+            if (required) m.put("required", true);
+            list.add(m);
+            return this;
+        }
+
+        /** A stopwatch that also shows a "time since {@code afterField} started → take the sample at N min" prompt,
+         *  and (optionally) auto-fills the measured interval MINUTES into {@code fillInto} when this timer starts. */
+        Fields timerWait(String name, String label, boolean required, String afterField, int minutes, String fillInto) {
+            Map<String, Object> m = base(name, label, "timer");
+            m.put("unit", "sec");
+            if (required) m.put("required", true);
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("field", afterField);
+            w.put("minutes", minutes);
+            if (fillInto != null) w.put("fillInto", fillInto);
+            m.put("waitAfter", w);
+            list.add(m);
+            return this;
+        }
+
+        /** Read-only calculated field. {@code formula} is an arithmetic expression over other field names,
+         *  evaluated in the app (the computed result is written back into the submission); {@code note} is the
+         *  human-readable formula shown on the form for the operator's reference. */
+        Fields computed(String name, String label, String formula, String unit, String note) {
+            Map<String, Object> m = base(name, label, "computed");
+            m.put("formula", formula);
+            if (unit != null) m.put("unit", unit);
+            if (note != null) m.put("note", note);
+            list.add(m);
+            return this;
+        }
 
         Fields radio(String name, String label, boolean required, String... options) {
             Map<String, Object> m = base(name, label, "radio-group");

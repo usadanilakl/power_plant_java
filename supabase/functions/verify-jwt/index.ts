@@ -10,6 +10,10 @@
 // Response: 200 { "valid": true,  "issuer": "hub|supabase", "claims": {...} }
 //           401 { "valid": false, "reason": "..." }
 //
+// Authorization note: a genuinely-signed Supabase token is only accepted when it represents a real
+// signed-in user (role "authenticated"). The public *anon* key (and service_role) are rejected — they
+// are not users and the anon key is shipped publicly in the client bundle.
+//
 // Deploy (PA calls it server-to-server with no user JWT of its own):
 //   supabase functions deploy verify-jwt --no-verify-jwt
 //
@@ -92,6 +96,15 @@ Deno.serve(async (req) => {
     }
     if (payload.nbf !== undefined && (typeof payload.nbf !== 'number' || now < payload.nbf)) {
       return json(401, { valid: false, reason: 'token not yet valid' });
+    }
+
+    // Reject Supabase *service* tokens (role "anon" / "service_role"). These are NOT users: the anon key
+    // ships publicly in the PWA bundle (inlined by the Angular build), so accepting it would let anyone
+    // with the public bundle authenticate to callers that trust this function (e.g. the PA gateway's
+    // protected ops). Only real signed-in Supabase users — role "authenticated" — are genuine principals.
+    // Hub tokens are unaffected (they carry `roles: [...]`, not a top-level GoTrue `role`).
+    if (issuerKind === 'supabase' && payload.role !== 'authenticated') {
+      return json(401, { valid: false, reason: `not a user token (role: ${payload.role ?? 'none'})` });
     }
 
     return json(200, { valid: true, issuer: issuerKind, claims: payload });

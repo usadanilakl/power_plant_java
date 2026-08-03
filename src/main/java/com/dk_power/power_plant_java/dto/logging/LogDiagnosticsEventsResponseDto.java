@@ -8,6 +8,19 @@ public record LogDiagnosticsEventsResponseDto(
     List<String> sourceFiles,
     List<String> subsystems,
     List<String> eventCodes,
-    List<LogDiagnosticsEventDto> events
+    List<LogDiagnosticsEventDto> events,
+    String nextCursor,
+    boolean hasMore,
+    boolean truncated
 ) {
+    public LogDiagnosticsEventsResponseDto(
+        int totalMatched,
+        LogDiagnosticsSummaryDto summary,
+        List<String> sourceFiles,
+        List<String> subsystems,
+        List<String> eventCodes,
+        List<LogDiagnosticsEventDto> events
+    ) {
+        this(totalMatched, summary, sourceFiles, subsystems, eventCodes, events, null, false, false);
+    }
 }

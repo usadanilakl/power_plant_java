@@ -18,6 +18,11 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Entity
+@Table(name = "loto_snapshot", indexes = {
+        // getLatestSnapshot picks max(snapshotSeq) per permit — composite index on the parent FK
+        // plus the sequence column serves both the max-by and the group-by-parent access paths.
+        @Index(name = "idx_loto_snapshot_loto_seq", columnList = "loto_id, snapshot_seq"),
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -347,6 +352,30 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         java.util.Map<Long, String> by = getPointRemovedBy(); by.remove(pointId); pointRemovedByJson = writeJsonMap(by);
         java.util.Map<Long, String> at = getPointRemovedAt(); at.remove(pointId); pointRemovedAtJson = writeJsonMap(at);
         java.util.Map<Long, String> nt = getPointRemovedNotes(); nt.remove(pointId); pointRemovedNotesJson = writeJsonMap(nt);
+    }
+
+    /**
+     * Purge all references to a point from this snapshot's per-point state — used when
+     * the operator structurally removes the point from the permit (Building/Modification).
+     * Without this, orphan entries linger in pointHungBy / pointPrerequisites and trip
+     * enforcePrerequisitesForHang or unmark-* predecessor checks against a point that
+     * no longer exists on the LOTO.
+     */
+    public void forgetPoint(Long pointId) {
+        if (pointId == null) return;
+        clearPointHung(pointId);
+        clearPointVerified(pointId);
+        clearPointWalkdown(pointId);
+        clearPointRemoved(pointId);
+        clearNeedsRehang(pointId);
+        java.util.Map<Long, PointPrerequisite> prereqs = getPointPrerequisites();
+        boolean touched = prereqs.remove(pointId) != null;
+        for (PointPrerequisite p : prereqs.values()) {
+            if (p == null) continue;
+            if (p.getInstallRequiredPointIds() != null && p.getInstallRequiredPointIds().remove(pointId)) touched = true;
+            if (p.getRemovalRequiredPointIds() != null && p.getRemovalRequiredPointIds().remove(pointId)) touched = true;
+        }
+        if (touched) setPointPrerequisites(prereqs);
     }
 
     /**

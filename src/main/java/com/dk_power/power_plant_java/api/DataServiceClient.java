@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_File
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.formula.functions.T;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.FileSystemResource;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DataServiceClient {
 
     private final RestTemplate restTemplate;
@@ -116,7 +118,7 @@ public class DataServiceClient {
             }
             throw new RuntimeException("Error creating file. Status: " + response.getStatusCode());
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            throw new RuntimeException("Error during file transfer: " + e.getStatusCode() + " " + e.getResponseBodyAsString(), e);
+            throw new RuntimeException("Error during file transfer: " + e.getStatusCode(), e);
         } catch (Exception e) {
             throw new RuntimeException("Unexpected error during file transfer: " + e.getMessage(), e);
         }
@@ -133,11 +135,10 @@ public class DataServiceClient {
         try {
             return restTemplate.exchange(url, HttpMethod.GET, requestEntity, responseType);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("Error executing GET request: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            log.warn("data_service.get.rejected status={}", e.getStatusCode());
             return null;
         } catch (Exception e) {
-            System.out.println("Unexpected error executing GET request: " + e.getMessage());
-            e.printStackTrace();
+            log.error("data_service.get.failed exception={}", e.getClass().getSimpleName(), e);
             return null;
         }
     }
@@ -151,11 +152,10 @@ public class DataServiceClient {
         try {
             return restTemplate.exchange(url, HttpMethod.GET, requestEntity, responseType);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("Error executing GET request: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            log.warn("data_service.get.rejected status={}", e.getStatusCode());
             return null;
         } catch (Exception e) {
-            System.out.println("Unexpected error executing GET request: " + e.getMessage());
-            e.printStackTrace();
+            log.error("data_service.get.failed exception={}", e.getClass().getSimpleName(), e);
             return null;
         }
     }
@@ -169,11 +169,10 @@ public class DataServiceClient {
         try {
             return restTemplate.exchange(url, HttpMethod.POST, requestEntity, responseType);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("Error executing request: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            log.warn("data_service.post.rejected status={}", e.getStatusCode());
             return null;
         } catch (Exception e) {
-            System.out.println("Unexpected error executing request: " + e.getMessage());
-            e.printStackTrace();
+            log.error("data_service.post.failed exception={}", e.getClass().getSimpleName(), e);
             return null;
         }
     }

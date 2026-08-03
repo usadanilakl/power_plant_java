@@ -469,7 +469,13 @@ export class UserManagementComponent implements OnInit {
         this.lotoRoles = res.lotoRoles ?? this.roles.filter(r => !r.startsWith('ROLE_'));
       },
       error: () => {
-        this.accessRoles = ['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_CONTRACTOR', 'ROLE_PLANT'];
+        this.accessRoles = [
+          'ROLE_ADMIN',
+          'ROLE_EMPLOYEE',
+          'ROLE_CONTRACTOR',
+          'ROLE_PLANT',
+          'ROLE_LOG_DIAGNOSTICS',
+        ];
         this.lotoRoles = ['CONTROL_AUTHORITY', 'LOTO_QUALIFIED', 'REQUESTOR', 'MANAGER'];
         this.roles = [...this.accessRoles, ...this.lotoRoles];
       }
@@ -504,6 +510,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   formatRole(role: string): string {
+    if (role === 'ROLE_LOG_DIAGNOSTICS') return 'Log diagnostics';
     return role.replace('ROLE_', '').charAt(0) + role.replace('ROLE_', '').slice(1).toLowerCase();
   }
 

@@ -6,8 +6,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -15,11 +17,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class RequestCorrelationFilter extends OncePerRequestFilter {
+
+    private static final int MAX_REQUEST_ID_LENGTH = 128;
+    private static final Pattern SAFE_REQUEST_ID = Pattern.compile("[A-Za-z0-9._:-]{1," + MAX_REQUEST_ID_LENGTH + "}");
+
+    @Value("${logging.http.slow-request-ms:3000}")
+    private long slowRequestMs;
+
+    @Value("${logging.http.include-client-errors:true}")
+    private boolean includeClientErrors;
 
     private static final Set<String> STATIC_PREFIXES = Set.of(
         "/angular/", "/app/", "/assets/", "/bootstrap-", "/functions/",
@@ -42,17 +54,16 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
         throws ServletException, IOException {
 
-        long start = System.currentTimeMillis();
-        String requestId = request.getHeader("X-Request-Id");
-        if (requestId == null || requestId.isBlank()) {
-            requestId = LoggingContext.shortId("req");
-        }
+        long startNanos = System.nanoTime();
+        String requestId = normalizeRequestId(request.getHeader("X-Request-Id"));
+        String remoteIp = NetworkUtils.getClientIp(request);
 
         LoggingContext.put(LoggingContext.REQUEST_ID, requestId);
         LoggingContext.put(LoggingContext.METHOD, request.getMethod());
         LoggingContext.put(LoggingContext.PATH, request.getRequestURI());
-        LoggingContext.put(LoggingContext.REMOTE_IP, NetworkUtils.getClientIp(request));
-        LoggingContext.put(LoggingContext.MACHINE_ID, request.getHeader("X-Machine-Id"));
+        LoggingContext.put(LoggingContext.REMOTE_IP, remoteIp);
+        LoggingContext.put(LoggingContext.MACHINE_ID, normalizeContextId(request.getHeader("X-Machine-Id")));
+        response.setHeader("X-Request-Id", requestId);
 
         boolean tracedRequest = isTracedRequest(request.getRequestURI());
         if (tracedRequest) {
@@ -62,21 +73,21 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } catch (Exception e) {
-            long durationMs = System.currentTimeMillis() - start;
+            long durationMs = elapsedMillis(startNanos);
             String userId = resolveUserId();
             LoggingContext.setUserId(userId);
-            log.error("http.request.failed method={} path={} status=500 durationMs={} userId={} remoteIp={} exception={} error={}",
+            log.error("http.request.failed method={} path={} status=500 durationMs={} userId={} remoteIp={} exception={}",
                 request.getMethod(),
                 request.getRequestURI(),
                 durationMs,
                 userId,
-                NetworkUtils.getClientIp(request),
+                remoteIp,
                 e.getClass().getSimpleName(),
-                e.getMessage());
+                e);
             throw e;
         } finally {
             if (tracedRequest) {
-                long durationMs = System.currentTimeMillis() - start;
+                long durationMs = elapsedMillis(startNanos);
                 int status = response.getStatus();
                 String userId = resolveUserId();
                 LoggingContext.setUserId(userId);
@@ -84,7 +95,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
                 if (status >= 500) {
                     log.warn("http.request.complete method={} path={} status={} durationMs={} userId={}",
                         request.getMethod(), request.getRequestURI(), status, durationMs, userId);
-                } else if (status >= 400 || durationMs >= 3000) {
+                } else if ((includeClientErrors && status >= 400) || durationMs >= slowRequestMs) {
                     log.info("http.request.complete method={} path={} status={} durationMs={} userId={}",
                         request.getMethod(), request.getRequestURI(), status, durationMs, userId);
                 } else {
@@ -102,19 +113,51 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         }
     }
 
+    private String normalizeRequestId(String candidate) {
+        if (candidate == null) {
+            return LoggingContext.shortId("req");
+        }
+        String trimmed = candidate.trim();
+        if (!SAFE_REQUEST_ID.matcher(trimmed).matches()) {
+            return LoggingContext.shortId("req");
+        }
+        return trimmed;
+    }
+
+    private String normalizeContextId(String candidate) {
+        if (candidate == null) {
+            return null;
+        }
+        String trimmed = candidate.trim();
+        return SAFE_REQUEST_ID.matcher(trimmed).matches() ? trimmed : null;
+    }
+
+    private long elapsedMillis(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000L;
+    }
+
     private boolean isTracedRequest(String path) {
-        return path.startsWith("/api/") || path.startsWith("/actuator/") || path.startsWith("/h2-console/");
+        // Diagnostics polling/streaming has its own access audit. Excluding it here avoids a
+        // self-observing feedback loop where reading the log continuously creates more log events.
+        if (path.equals("/ng/log-diagnostics") || path.startsWith("/ng/log-diagnostics/")
+            || path.equals("/ng/ai-diagnostics") || path.startsWith("/ng/ai-diagnostics/")) {
+            return false;
+        }
+        return path.startsWith("/api/") || path.startsWith("/ng/")
+            || path.startsWith("/actuator/") || path.startsWith("/h2-console/");
     }
 
     private String resolveUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            return null;
+            return MDC.get(LoggingContext.USER_ID);
         }
         Object principal = authentication.getPrincipal();
         if (principal == null) {
-            return null;
+            return MDC.get(LoggingContext.USER_ID);
         }
-        return "anonymousUser".equals(principal) ? null : principal.toString();
+        return "anonymousUser".equals(principal)
+            ? MDC.get(LoggingContext.USER_ID)
+            : authentication.getName();
     }
 }

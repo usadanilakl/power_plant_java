@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, EventEmitter, HostListener, Input, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoOfflineStore } from './maximo-offline.service';
 import { MaximoSyncService } from './maximo-sync.service';
@@ -22,7 +22,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
   imports: [DatePipe, MaximoWoFilesComponent, MaximoWoNotesComponent],
   template: `
     <div class="wd-backdrop" (click)="close.emit()">
-      <div class="wd-modal" (click)="$event.stopPropagation()">
+      <div class="wd-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Work order ' + wo.wonum" (click)="$event.stopPropagation()">
         <div class="wd-head">
           <span class="wd-id">{{ wo.wonum }}</span>
           <span class="wd-chip" [class]="chip(status())">{{ status() }}</span>
@@ -100,6 +100,14 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
             <div class="wd-success"><span class="wd-success-i">⏳</span> Saved on this device — it submits to Maximo when you reconnect.</div>
           } @else if (formLoading()) {
             <p class="wd-msg">Checking for a PM form…</p>
+          } @else if (tooEarly()) {
+            <div class="wd-notdue">
+              <span class="wd-notdue-i">⏳</span>
+              <div>
+                <p class="wd-notdue-t">Not due yet</p>
+                <p class="wd-notdue-d">Scheduled for <b>{{ wo.targetStart | date:'mediumDate' }}</b> — this PM can't be completed before its period. Come back on or after that date.</p>
+              </div>
+            </div>
           } @else if (formTemplate()) {
             <div class="wd-formhead">
               <p class="wd-formname">{{ formTemplate()?.formName }}</p>
@@ -155,6 +163,37 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
                     <input type="date" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)">
                   </label>
                 }
+                @case ('computed') {
+                  <div class="wd-field wd-computed">
+                    <span class="wd-computed-head">{{ row.f.label }}</span>
+                    @if (computeFormula(row.f) === null) {
+                      <span class="wd-computed-val wd-computed-empty">— <em>fill in the values above</em></span>
+                    } @else {
+                      <span class="wd-computed-val">{{ computeFormula(row.f) }}{{ row.f.unit ? ' ' + row.f.unit : '' }}</span>
+                    }
+                    @if (row.f.note) { <span class="wd-computed-note">{{ row.f.note }}</span> }
+                  </div>
+                }
+                @case ('timer') {
+                  <div class="wd-field wd-timer">
+                    <span class="wd-timer-label">{{ row.f.label }}{{ req(row.f) }}</span>
+                    @if (timerStopped(row.f)) {
+                      <div class="wd-timer-row">
+                        <span class="wd-timer-val">✓ {{ fmtSeconds(timerElapsed(row.f)) }}</span>
+                        <button type="button" class="wd-timer-reset" (click)="resetTimer(row.f)">↺ redo</button>
+                      </div>
+                    } @else if (timerRunning(row.f)) {
+                      <button type="button" class="wd-timer-go stop" (click)="stopTimer(row.f)">■ Stop · {{ fmtElapsed(timerElapsed(row.f)) }}</button>
+                    } @else {
+                      @if (waitInfo(row.f); as w) { <div class="wd-timer-wait" [class.ready]="w.ready">{{ w.text }}</div> }
+                      <div class="wd-timer-row">
+                        <button type="button" class="wd-timer-go start" (click)="startTimer(row.f)">▶ Start timing</button>
+                        <input class="wd-timer-manual" type="number" step="0.1" placeholder="or type sec"
+                               (input)="setVal(row.f.name, $any($event.target).value)">
+                      </div>
+                    }
+                  </div>
+                }
                 @default {
                   <label class="wd-field">{{ row.f.label }}{{ req(row.f) }}
                     <input type="text" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)" [placeholder]="row.f.placeholder || ''">
@@ -165,6 +204,12 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
             @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
             <button class="wd-complete" [disabled]="completing()" (click)="submitForm()">
               {{ completing() ? 'Submitting…' : 'Submit &amp; complete' }}
+            </button>
+            @if (woCloseFailed()) {
+              <p class="wd-warn"><b>Form attached ✓</b> — but the work order didn't close: {{ woCloseErr() || 'Maximo rejected the status change.' }} Fix the cause in Maximo (e.g. complete any open tasks), then close it below. The form won't be attached again.</p>
+            }
+            <button class="wd-close-only" [disabled]="completing() || !canComplete()" (click)="completeWo()">
+              {{ completing() ? 'Closing…' : 'Complete work order (close only — no form)' }}
             </button>
           } @else if (availableForms().length > 1) {
             <p class="wd-msg">This PM has several forms — choose the one you performed:</p>
@@ -195,12 +240,17 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
     </div>
   `,
   styles: [`
-    .wd-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: flex-end; justify-content: center; z-index: 950; }
-    .wd-modal { background: var(--secondary-background, #1e1e1e); border-radius: 14px 14px 0 0; width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; padding: 1rem 1.1rem 2rem; }
-    .wd-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+    .wd-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: stretch; justify-content: center; z-index: 10000; }
+    /* Full-screen sheet: uses the whole viewport (dvh handles the mobile address bar), body scrolls, header stays put. */
+    .wd-modal { background: var(--secondary-background, #1e1e1e); width: 100%; max-width: 720px;
+      height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh;
+      overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 1.1rem 2rem; }
+    .wd-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 0.5rem;
+      margin: 0 -1.1rem 0.5rem; padding: 0.9rem 1.1rem 0.6rem; background: var(--secondary-background, #1e1e1e); border-bottom: 1px solid var(--border-color); }
+    .wd-x { margin-left: auto; background: none; border: none; color: var(--secondary-text, #888); font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 0.25rem 0.4rem; border-radius: 8px; }
+    .wd-x:hover, .wd-x:active { background: rgba(127,127,127,0.15); color: var(--primary-text); }
     .wd-id { font-weight: 700; color: var(--primary-text); }
-    .wd-x { margin-left: auto; background: none; border: none; color: var(--secondary-text, #888); font-size: 1.1rem; cursor: pointer; }
-    .wd-title { font-size: 1.1rem; font-weight: 700; color: var(--primary-text); margin: 0 0 0.6rem; }
+    .wd-title { font-size: 1.1rem; font-weight: 700; color: var(--primary-text); margin: 0.6rem 0; }
     .wd-grab { width: 100%; background: #e67e22; color: #fff; border: none; border-radius: 10px; padding: 0.6rem; font-size: 0.92rem; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 0.7rem; }
     .wd-grab:disabled { opacity: 0.6; }
     .wd-grabbed { background: rgba(230,126,34,0.15); color: #e67e22; border: 1px solid #e67e22; border-radius: 10px; padding: 0.45rem; text-align: center; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.7rem; }
@@ -213,6 +263,29 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
     .wd-facts dt { font-size: 0.75rem; font-weight: 700; color: var(--secondary-text, #888); }
     .wd-facts dd { margin: 0; font-size: 0.88rem; color: var(--primary-text); }
     .wd-chip { font-size: 0.66rem; font-weight: 700; padding: 0.12rem 0.45rem; border-radius: 999px; color: #fff; }
+    .wd-warn { background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 10px; padding: 0.6rem 0.7rem; color: var(--primary-text); font-size: 0.82rem; line-height: 1.35; margin: 0.6rem 0 0.2rem; }
+    .wd-close-only { width: 100%; background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); border-radius: 10px; padding: 0.6rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 0.5rem; }
+    .wd-close-only:disabled { opacity: 0.45; cursor: default; }
+    .wd-computed { background: var(--secondary-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.55rem 0.7rem; display: flex; flex-direction: column; gap: 0.15rem; }
+    .wd-computed-head { font-size: 0.8rem; font-weight: 700; color: var(--secondary-text, #888); }
+    .wd-computed-val { font-size: 1.25rem; font-weight: 800; color: var(--accent-color); }
+    .wd-computed-val.wd-computed-empty { font-size: 0.95rem; font-weight: 600; color: var(--secondary-text, #888); }
+    .wd-computed-note { font-size: 0.72rem; color: var(--secondary-text, #888); line-height: 1.3; }
+    .wd-timer { display: flex; flex-direction: column; gap: 0.35rem; }
+    .wd-timer-label { font-size: 0.9rem; color: var(--primary-text); }
+    .wd-timer-row { display: flex; align-items: center; gap: 0.5rem; }
+    .wd-timer-go { flex: 1; border: none; border-radius: 10px; padding: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit; color: #fff; }
+    .wd-timer-go.start { background: #27ae60; }
+    .wd-timer-go.stop { background: #e74c3c; font-variant-numeric: tabular-nums; }
+    .wd-timer-val { flex: 1; font-size: 1.2rem; font-weight: 800; color: var(--accent-color); }
+    .wd-timer-reset { background: transparent; color: var(--secondary-text, #888); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem 0.7rem; font-size: 0.82rem; cursor: pointer; font-family: inherit; }
+    .wd-timer-manual { width: 6.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-size: 0.9rem; box-sizing: border-box; }
+    .wd-timer-wait { font-size: 0.85rem; font-weight: 700; color: var(--secondary-text, #888); padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--secondary-background); font-variant-numeric: tabular-nums; }
+    .wd-timer-wait.ready { color: #fff; background: #e67e22; }
+    .wd-notdue { display: flex; gap: 0.7rem; align-items: flex-start; background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 12px; padding: 1rem 1.1rem; margin-top: 0.5rem; }
+    .wd-notdue-i { font-size: 1.6rem; line-height: 1; }
+    .wd-notdue-t { font-weight: 800; color: #e67e22; margin: 0 0 0.25rem; }
+    .wd-notdue-d { color: var(--primary-text); font-size: 0.9rem; margin: 0; line-height: 1.4; }
     .wd-chip.sm { font-size: 0.6rem; padding: 0.05rem 0.35rem; }
     .st-done { background: #27ae60; } .st-active { background: #2980b9; } .st-wait { background: #e67e22; }
     .st-cancel { background: #95a5a6; } .st-open { background: #7f8c8d; }
@@ -258,6 +331,10 @@ export class MaximoWoDetailComponent implements OnInit {
   private api = inject(MaximoApiService);
   private store = inject(MaximoOfflineStore);
   private sync = inject(MaximoSyncService);
+  private host = inject(ElementRef<HTMLElement>);
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void { this.close.emit(); }
 
   tab = signal<Tab>('details');
   status = signal('');
@@ -282,6 +359,12 @@ export class MaximoWoDetailComponent implements OnInit {
   queued = computed(() => this.submitState()?.phase === 'queued');
   submitError = computed(() => this.submitState()?.phase === 'failed' ? (this.submitState()?.error ?? 'Could not complete.') : null);
   bannerError = computed(() => this.error() ?? this.submitError());
+  /** Form attached but Maximo rejected the WO close (the previously-silent case): surface it + offer a close-only retry. */
+  woCloseFailed = computed(() => this.done() && this.submitState()?.woClosed === false);
+  woCloseErr = computed(() => this.submitState()?.woCloseError ?? null);
+  /** Ticks (~2×/sec while the sheet is open) so running timers + the wait countdown update live. */
+  now = signal(Date.now());
+  private destroyRef = inject(DestroyRef);
   private emittedDone = false;
 
   constructor() {
@@ -289,10 +372,14 @@ export class MaximoWoDetailComponent implements OnInit {
     effect(() => {
       if (this.done() && !this.emittedDone) {
         this.emittedDone = true;
-        this.status.set('COMP');
+        // Reflect COMP only if the WO actually closed (manual complete, or a form submit that also closed it).
+        // If the form attached but Maximo rejected the close, keep the real status so the close-only retry stays live.
+        if (this.submitState()?.woClosed !== false) this.status.set('COMP');
         this.completed.emit();
       }
     });
+    const tick = setInterval(() => this.now.set(Date.now()), 500);
+    this.destroyRef.onDestroy(() => clearInterval(tick));
   }
 
   // Dynamic PM completion form(s). A PM can assign several forms; the operator picks one to perform.
@@ -316,6 +403,17 @@ export class MaximoWoDetailComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Render at <body> level so the fixed overlay can't be trapped (mis-positioned / pushed off-screen) by a
+    // transformed/scrolling ancestor — the cause of the "opens at the top/bottom/outside the view" bug. Lock
+    // the page behind it so background scroll doesn't bleed through. Both undone on destroy.
+    document.body.appendChild(this.host.nativeElement);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.destroyRef.onDestroy(() => {
+      document.body.style.overflow = prevOverflow;
+      this.host.nativeElement.remove();
+    });
+
     this.status.set(this.wo.status);
     const grab = this.store.getGrab(this.wo.wonum);
     if (grab) {
@@ -403,6 +501,105 @@ export class MaximoWoDetailComponent implements OnInit {
   val(name: string): any { return this.formValues()[name] ?? ''; }
   setVal(name: string, value: any): void { this.formValues.set({ ...this.formValues(), [name]: value }); this.autosave(); }
   req(f: MaximoFormFieldDef): string { return f.required ? ' *' : ''; }
+
+  /** Evaluate a computed field's formula over the current numeric field values; null until every referenced
+   *  input is present (so the result reads "—" rather than a wrong partial value). Rounded to 2 decimals. */
+  computeFormula(f: MaximoFormFieldDef): number | null {
+    if (!f.formula) return null;
+    const vals = this.formValues();
+    const vars: Record<string, number> = {};
+    for (const k of Object.keys(vals)) {
+      const raw = vals[k];
+      const n = Number(raw);
+      if (raw !== '' && raw != null && !isNaN(n)) vars[k] = n;
+    }
+    const r = this.evalExpr(f.formula, vars);
+    return r == null ? null : Math.round(r * 100) / 100;
+  }
+
+  /** Tiny safe arithmetic evaluator: + - * / ( ), unary +/-, decimals, and variable names — NO eval/Function
+   *  (CSP-safe). Returns null if a referenced variable is missing/non-numeric or the expression is malformed. */
+  private evalExpr(expr: string, vars: Record<string, number>): number | null {
+    const toks = expr.match(/\d+\.?\d*|[a-zA-Z_]\w*|[()+\-*/]/g);
+    if (!toks) return null;
+    let i = 0;
+    const peek = () => toks[i];
+    const factor = (): number => {
+      const t = toks[i++];
+      if (t === '(') { const v = add(); if (toks[i] === ')') i++; return v; }
+      if (t === '-') return -factor();
+      if (t === '+') return factor();
+      if (/^\d/.test(t)) return parseFloat(t);
+      const v = vars[t];
+      if (v === undefined || v === null || isNaN(v)) throw new Error('missing ' + t);
+      return v;
+    };
+    const mul = (): number => {
+      let v = factor();
+      while (peek() === '*' || peek() === '/') { const op = toks[i++]; const r = factor(); v = op === '*' ? v * r : v / r; }
+      return v;
+    };
+    const add = (): number => {
+      let v = mul();
+      while (peek() === '+' || peek() === '-') { const op = toks[i++]; const r = mul(); v = op === '+' ? v + r : v - r; }
+      return v;
+    };
+    try {
+      const result = add();
+      return (i === toks.length && isFinite(result)) ? result : null;
+    } catch { return null; }
+  }
+
+  // ── Built-in stopwatch (timer field type) — timestamp-based, so it survives the app locking/backgrounding ──
+  private startKey(f: MaximoFormFieldDef): string { return f.name + '__start'; }
+  timerStopped(f: MaximoFormFieldDef): boolean { const v = this.formValues()[f.name]; return v != null && v !== ''; }
+  timerRunning(f: MaximoFormFieldDef): boolean {
+    const v = this.formValues(); const s = v[this.startKey(f)];
+    return s != null && s !== '' && (v[f.name] == null || v[f.name] === '');
+  }
+  /** Live elapsed seconds: clock-based (now − start) while running, the recorded value once stopped. */
+  timerElapsed(f: MaximoFormFieldDef): number {
+    if (this.timerStopped(f)) return Number(this.formValues()[f.name]) || 0;
+    const start = Number(this.formValues()[this.startKey(f)]);
+    return start ? Math.max(0, (this.now() - start) / 1000) : 0;
+  }
+  startTimer(f: MaximoFormFieldDef): void {
+    const now = Date.now();
+    const patch: Record<string, any> = { [this.startKey(f)]: now, [f.name]: '' };
+    // Auto-fill a measured interval (e.g. SDI's T) from the anchor timer's start → now, in minutes.
+    const w = f.waitAfter;
+    if (w?.fillInto) {
+      const anchor = Number(this.formValues()[w.field + '__start']);
+      if (anchor) patch[w.fillInto] = Math.round((now - anchor) / 6000) / 10;
+    }
+    this.formValues.set({ ...this.formValues(), ...patch });
+    this.autosave();
+  }
+  stopTimer(f: MaximoFormFieldDef): void {
+    const start = Number(this.formValues()[this.startKey(f)]);
+    if (!start) return;
+    this.setVal(f.name, Math.round((Date.now() - start) / 100) / 10);   // seconds, 0.1 s precision
+  }
+  resetTimer(f: MaximoFormFieldDef): void {
+    this.formValues.set({ ...this.formValues(), [f.name]: '', [this.startKey(f)]: '' });
+    this.autosave();
+  }
+  /** waitAfter timer: the "time since the anchor sample → take the sample at N min" prompt (null unless waiting). */
+  waitInfo(f: MaximoFormFieldDef): { text: string; ready: boolean } | null {
+    const w = f.waitAfter;
+    if (!w) return null;
+    const start = Number(this.formValues()[w.field + '__start']);
+    const anchorDone = this.formValues()[w.field] != null && this.formValues()[w.field] !== '';
+    if (!start || !anchorDone || this.timerStopped(f) || this.timerRunning(f)) return null;
+    const elapsedMin = (this.now() - start) / 60000;
+    if (elapsedMin >= w.minutes) return { text: `✓ ${w.minutes} min elapsed — take the final sample now`, ready: true };
+    return { text: `Waiting… ${this.fmtElapsed((w.minutes - elapsedMin) * 60)} until the ${w.minutes}-min mark`, ready: false };
+  }
+  fmtElapsed(secs: number): string {
+    const s = Math.max(0, Math.floor(secs));
+    return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  }
+  fmtSeconds(secs: number): string { return (Math.round(secs * 10) / 10).toFixed(1) + ' s'; }
   hasGroupVal(name: string, opt: string): boolean {
     const v = this.formValues()[name];
     return Array.isArray(v) && v.includes(opt);
@@ -418,6 +615,7 @@ export class MaximoWoDetailComponent implements OnInit {
 
   submitForm(): void {
     if (this.completing()) return;   // guard within this sheet; the sync state guards across reopen
+    if (this.tooEarly()) { this.error.set(this.notDueMsg()); this.tab.set('complete'); return; }
     const t = this.formTemplate();
     if (!t) return;
     for (const { f } of this.formRows()) {
@@ -427,6 +625,13 @@ export class MaximoWoDetailComponent implements OnInit {
       if (empty) { this.error.set(`"${f.label}" is required.`); this.tab.set('complete'); return; }
     }
     this.error.set(null);
+    // Write computed-field results into the submitted values so they land in valuesJson + the PDF.
+    const computedPatch: Record<string, any> = {};
+    for (const { f } of this.formRows()) {
+      if (f.type === 'computed') { const c = this.computeFormula(f); if (c !== null) computedPatch[f.name] = c; }
+    }
+    if (Object.keys(computedPatch).length) this.formValues.set({ ...this.formValues(), ...computedPatch });
+    this.emittedDone = false;   // let the done-effect fire again on a later close-only retry so it can flip to COMP
     this.sync.submitOwned({
       wonum: this.wo.wonum, href: this.wo.href, mode: 'form',
       templateFormKey: t.formKey, pmnum: this.wo.pmnum, siteid: this.wo.siteid, formValues: this.formValues(),
@@ -437,6 +642,25 @@ export class MaximoWoDetailComponent implements OnInit {
   chip(s: string | undefined): string { return statusClass(s); }
   completable(s: string | undefined): boolean { return COMPLETABLE_WO_STATUSES.includes((s || '').toUpperCase()); }
   canComplete(): boolean { return this.completable(this.status()); }
+
+  /** Mirrors the backend's assertDueForCompletion: a PM WO can't be completed before its Target Start (date-only;
+   *  unset/unparseable = allowed). Keeps the operator from filling a whole form only to be rejected at submit, and
+   *  warns offline before the completion is even queued. The server block stays the source of truth. */
+  tooEarly(): boolean {
+    const ts = this.wo?.targetStart;
+    if (!ts) return false;
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return false;
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return target > today;
+  }
+  private notDueMsg(): string {
+    const d = this.wo?.targetStart ? new Date(this.wo.targetStart) : null;
+    const when = d && !isNaN(d.getTime()) ? d.toLocaleDateString() : 'its scheduled date';
+    return `This PM isn't due yet — it's scheduled for ${when} and can't be completed before its period.`;
+  }
 
   openTasks(): void {
     this.tab.set('tasks');
@@ -462,7 +686,9 @@ export class MaximoWoDetailComponent implements OnInit {
 
   completeWo(): void {
     if (this.completing()) return;
+    if (this.tooEarly()) { this.error.set(this.notDueMsg()); this.tab.set('complete'); return; }
     this.error.set(null);
+    this.emittedDone = false;
     this.sync.submitOwned({
       wonum: this.wo.wonum, href: this.wo.href, mode: 'manual',
       hours: this.hours(), summary: this.summary(), details: this.details(),

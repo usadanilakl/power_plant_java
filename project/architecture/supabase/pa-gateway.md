@@ -17,13 +17,23 @@ PWA ──{target, token, payload}──▶ Gateway flow ──{token}──▶ 
 
 - The **PWA side is implemented**: `PowerAutomateService.submitV2()` posts `{ target, token, payload }`
   to `environment.paGatewayUrl` when it is set, otherwise directly to `paFlowUrls[target]` (today's
-  behavior). Blank gateway URL = non-breaking. Token comes from `AuthService.getToken()`; with no token
-  it errors *"Sign in required to submit"*.
+  behavior). Blank gateway URL = non-breaking. Token comes from `AuthService.getToken()`; when there is
+  no token it forwards `token:""` (no client-side gate) — the gateway's public allowlist decides whether
+  the anonymous request is allowed. See **Part A2 — public (no-auth) access**.
 - The **`verify-jwt` edge function is deployed and validated** on project `xvrtgccxtsjjwznqkznv`
   (`manage.sh deploy`, with `--no-verify-jwt`). Secrets `HUB_JWT_PUBLIC_KEY` and `SB_JWT_SECRET` are set.
   Live-tested `200 {valid:true}` for a hub RS256 token **and** a Supabase HS256 token.
 - **Not done yet (your part):** build the gateway flow in the Power Automate designer (below), then set
   `environment.paGatewayUrl` and rebuild the PWA.
+
+> ⚠️ **Anon-key hardening — REDEPLOY REQUIRED.** `verify-jwt` now rejects Supabase *service* tokens
+> (role `anon` / `service_role`), accepting only real users (`role: "authenticated"`) and hub tokens.
+> This closes a bypass: the Supabase **anon key is inlined into the public PWA bundle**
+> (`docs/browser/chunk-*.js`), and previously it verified as a valid token — so anyone could use it as a
+> skeleton key for the gateway's *protected* ops. The code fix is in `supabase/functions/verify-jwt/`
+> but **is not live until you `manage.sh deploy`**. After deploying, a request carrying the anon key on a
+> *protected* op must return `401`; a real signed-in user (and any *public* op) still returns `200`.
+> The smoke tests below must use a **real signed-in user token**, not the anon key.
 
 ## The request contract (this is what the gateway trigger receives)
 
@@ -114,6 +124,9 @@ which by default aborts the run before this Condition. So:
 - **If no** → **Response** action: Status Code `401`, Body
   `{ "success": false, "message": "Unauthorized" }`. Stop.
 - **If yes** → continue to the Switch (step 4).
+
+> To let a **few specific operations through without a token** (e.g. WR submission, Qual QR scan),
+> this Condition is amended — see **Part A2** below. Wire the base flow first, then apply Part A2.
 
 ### 4. Switch — on `@{triggerBody()?['target']}`
 
@@ -227,6 +240,86 @@ Body message: @{coalesce(first(body('Filter_array'))?['outputs']?['body']?['reas
 ```
 (`result('Scope')` returns the Scope's direct children; if you nest the target call inside a Condition,
 also union in `result('<ConditionName>')` to catch it.)
+
+---
+
+## Part A2 — public (no-auth) access for specific target + action combos
+
+**Goal:** let a *few* specific operations run without a signed-in user. Currently:
+
+| Public op | `target` | `payload.actionType` |
+|---|---|---|
+| Work-request submission | `workRequest` | `create` |
+| Qualification QR-scan lookup | `qualifications` | `getByUser` |
+
+Everything else on those same targets still requires a valid token — `qualifications` also carries
+`create`/`update`/`delete`/`catalog*`/`getAll` (writes + full dumps) and `workRequest` also carries
+`update`; those must stay gated. That's why the allowlist is keyed on **`target` + `actionType`**, never
+on `target` alone.
+
+**The entire policy lives here, in the gateway** (one place). The PWA does **not** gate — `submitV2`
+always forwards, sending `token:""` when signed out, so a signed-out user hitting a *protected* op simply
+gets the gateway's 401. Three edits to the Part A flow:
+
+### A2.1 — Add an `isPublic` boolean (*Initialize variable*)
+
+Add an **Initialize variable** action anywhere **before** the `Token valid?` Condition (simplest: right
+after the trigger). Initialize-variable actions must be at the flow's root scope.
+
+- **Name:** `isPublic`  **Type:** `Boolean`
+- **Value** (switch the value box to the expression editor / *fx*):
+  ```
+  @or(
+    and(equals(triggerBody()?['target'], 'workRequest'),   equals(triggerBody()?['payload']?['actionType'], 'create')),
+    and(equals(triggerBody()?['target'], 'qualifications'), equals(triggerBody()?['payload']?['actionType'], 'getByUser'))
+  )
+  ```
+  This expression **is** the public allowlist. To make another op public later, append one `and(...)`
+  line here — nothing else in the flow changes.
+
+### A2.2 — Amend the `Token valid?` Condition to "public OR authenticated"
+
+Replace the Condition expression (Part A step 3) with:
+```
+@or(variables('isPublic'), equals(outputs('Verify_the_token')?['statusCode'], 200))
+```
+- **Keep** the Condition's *Configure run after* = **is successful** + **has failed** (unchanged, and
+  still required): an anonymous/empty token makes `Verify the token` return 400/401, which PA marks as a
+  *failed* action; without run-after-failed the run aborts before reaching this Condition.
+- **True** branch (public request **or** valid token) → Switch — unchanged.
+- **False** branch → 401 Response — unchanged.
+
+### A2.3 — Nothing else changes
+
+`Verify the token` still runs for every request — public ones call it too; it fails harmlessly on the
+empty token and the `isPublic` OR lets them through. **Expect red `Verify the token` steps in run history
+for anonymous traffic; that is normal, not a failure.** The Switch, per-case HTTP actions, and Response
+paths are untouched.
+
+> **Trigger schema:** no change required. `isPublic` only reads `payload.actionType`, already in the
+> schema. The `qualifications/getByUser` request also carries `id` + `data.UserId`; PA forwards the raw
+> `triggerBody()?['payload']` object regardless of whether the schema declares those fields, so the
+> lookup still works even though the current sample schema only lists work-request `data` fields.
+
+### Security note
+
+`workRequest/create` and `qualifications/getByUser` become callable by **anyone who has the gateway URL**
+— and that URL ships in the public PWA bundle. WR intake is meant to be public. The qualifications lookup
+will return a person's qualifications to any anonymous caller; that's acceptable for a QR badge scan, but
+do **not** add higher-sensitivity reads (or any write) to the allowlist without a second factor. There is
+no native rate-limit on the flow — if abuse is a concern, reject payloads missing required fields early
+in the public branches.
+
+### Verify it (after wiring)
+
+| Request | Token | Expect |
+|---|---|---|
+| `workRequest` / `create` | none | **200**, item created |
+| `qualifications` / `getByUser` | none | **200**, quals returned |
+| `qualifications` / `create` (or `delete`) | none | **401** |
+| `workRequest` / `update` | none | **401** |
+| any op | valid | **200** |
+| protected op | expired / garbage | **401** |
 
 ---
 

@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { MaximoFormApiService } from '../../../services/maximo/maximo-form-api.service';
+import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, computeReorderLines, isInventoryForm } from '../../../models/maximo/maximo-form.models';
 import { FormField } from '../../../models/ui/form-field.model';
 
@@ -25,6 +26,7 @@ import { FormField } from '../../../models/ui/form-field.model';
 })
 export class MaximoFormFillPageComponent implements OnInit {
   private api = inject(MaximoFormApiService);
+  private wos = inject(MaximoApiService);
   private route = inject(ActivatedRoute);
   @ViewChild(SmartFormComponent) smartForm?: SmartFormComponent;
 
@@ -44,6 +46,19 @@ export class MaximoFormFillPageComponent implements OnInit {
   reorderSummary = computed<ReorderLine[]>(() =>
     computeReorderLines(this.formDefs(), { ...(this.valuesSig() ?? {}), ...(this.currentValues() ?? {}) }));
 
+  /** WO Target Start (fetched when launched with an href) — drives the "not due yet" guard, mirroring the backend. */
+  woTargetStart = signal<string | null>(null);
+  tooEarly = computed(() => {
+    const ts = this.woTargetStart();
+    if (!ts) return false;
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return false;
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return target > today;
+  });
+
   loading = signal(false);
   saving = signal(false);
   completing = signal(false);
@@ -55,6 +70,11 @@ export class MaximoFormFillPageComponent implements OnInit {
     const q = this.route.snapshot.queryParamMap;
     this.wonum = q.get('wonum') ?? '';
     this.woHref = q.get('href') ?? '';
+    if (this.woHref) {
+      // Best-effort: fetch the WO so we can block early completion up front (backend still enforces it regardless).
+      try { this.woTargetStart.set((await firstValueFrom(this.wos.getWorkOrder(this.woHref)))?.targetStart ?? null); }
+      catch { /* no header → rely on the backend block */ }
+    }
     await this.loadTemplates();
     const formKey = q.get('formKey');
     if (formKey) {
@@ -102,10 +122,18 @@ export class MaximoFormFillPageComponent implements OnInit {
     await this.persist(values, false);
   }
 
+  notDueMsg(): string {
+    const ts = this.woTargetStart();
+    const d = ts ? new Date(ts) : null;
+    const when = d && !isNaN(d.getTime()) ? d.toLocaleDateString() : 'its scheduled date';
+    return `This work order isn't due yet — it's scheduled for ${when} and can't be completed before its period.`;
+  }
+
   /** Complete: render the PDF, attach to the WO, worklog + write-back + status. */
   async complete() {
     const t = this.selectedTemplate();
     if (!t) return;
+    if (this.tooEarly()) { this.error.set(this.notDueMsg()); return; }
     if (!this.wonum.trim()) { this.error.set('Enter the work order number first.'); return; }
     if (this.existing()?.status === 'COMPLETED') { this.info.set('This form is already completed for this work order.'); return; }
     // Read the LIVE form value — SmartForm's change output is debounced (1s), so don't push a stale/partial

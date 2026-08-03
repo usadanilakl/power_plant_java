@@ -13,7 +13,7 @@ import { MaximoCompletionDraft } from './maximo.model';
  * server is reachable again (same pattern as the LOTO walkdown sync).
  */
 export type MaximoSubmitPhase = 'submitting' | 'done' | 'queued' | 'failed';
-export interface MaximoSubmitState { phase: MaximoSubmitPhase; error?: string; }
+export interface MaximoSubmitState { phase: MaximoSubmitPhase; error?: string; woClosed?: boolean | null; woCloseError?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class MaximoSyncService {
@@ -96,7 +96,15 @@ export class MaximoSyncService {
     return call.pipe(
       // Drive the durable submit state here (not just in submitOwned) so a reconnect flush also flips any open
       // sheet from "Saved on this device" to "completed".
-      tap(() => { this.store.clearGrab(draft.wonum); this.setState(draft.wonum, 'done'); this.refreshPendingCount(); }),
+      tap((res: any) => {
+        this.store.clearGrab(draft.wonum);
+        // A form submit reports whether the WO actually closed; a manual complete reaching here (it throws on
+        // failure) DID close it. So the sheet reflects COMP only when the WO truly closed — not on attach alone.
+        const woClosed = draft.mode === 'form' ? (res?.woClosed ?? null) : true;
+        const woCloseError = draft.mode === 'form' ? (res?.woCloseError ?? undefined) : undefined;
+        this.submitStates.set({ ...this.submitStates(), [draft.wonum]: { phase: 'done', woClosed, woCloseError } });
+        this.refreshPendingCount();
+      }),
       catchError(err => {
         const status = err?.status;
         const failed = status === 400 || status === 409;

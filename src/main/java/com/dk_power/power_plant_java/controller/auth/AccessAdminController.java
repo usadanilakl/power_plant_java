@@ -105,10 +105,10 @@ public class AccessAdminController {
         grant.setApprovedBy(approver);
         accessGrantRepository.save(grant);
 
-        log.info("Access approved: user={}, approvedBy={}, token={}...",
+        log.info("security.access.approved user={} approvedBy={} grantId={}",
             grant.getUser().getEmail(),
             approver != null ? approver.getEmail() : "unknown",
-            accessToken.substring(0, 8));
+            grant.getId());
 
         return ResponseEntity.ok(Map.of(
             "success", true,

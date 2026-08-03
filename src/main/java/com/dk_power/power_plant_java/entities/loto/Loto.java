@@ -17,6 +17,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
+@Table(name = "loto", indexes = {
+        // SharePoint poll fires every 30s on the hub, hitting findFirstBySharepointIdOrderByIdAsc
+        // once per row — full table scan without this index.
+        @Index(name = "idx_loto_sharepoint_id", columnList = "sharepoint_id"),
+        // findActiveWithBox filters on permit_status.name (Building/Active/Test); the join uses
+        // the FK column.
+        @Index(name = "idx_loto_permit_status_id", columnList = "permit_status_id"),
+        // findByPermitNumber-style lookups (SharePoint dedup, log linking) — cheap unique index
+        // also functions as a soft "should be unique" backstop for the permit_number generator.
+        @Index(name = "idx_loto_permit_number", columnList = "permit_number"),
+        // Assignment / box-swap paths query by box number.
+        @Index(name = "idx_loto_box_number", columnList = "box_number"),
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -235,6 +248,9 @@ public class Loto extends BasePermitEntity {
         });
 
         currentSnapshot.setLotoPointDtos(lotoPointDtos);
+        // Also purge the point from every per-point map + prereq graph so orphan entries
+        // don't survive to trip enforcePrerequisitesForHang / unmark-* predecessor checks.
+        currentSnapshot.forgetPoint(pointId);
         touchForSync(currentSnapshot);
         return currentSnapshot;
     }

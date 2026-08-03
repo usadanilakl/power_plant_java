@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { LotoService } from "../loto/loto.service";
-import { BehaviorSubject, catchError, debounceTime, EMPTY, map, Observable, of, Subject, tap } from "rxjs";
+import { BehaviorSubject, catchError, debounceTime, EMPTY, filter, map, merge, Observable, of, Subject, tap, throttleTime } from "rxjs";
 import { EntityUpdateEvent, SyncUpdateService } from "../sync/sync-update.service";
 import { LotoDto } from "../../models/loto/loto.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
@@ -50,8 +50,19 @@ export class CurrentLotoService{
     private syncUpdateService = inject(SyncUpdateService);
     /** Coalesces the burst of field-changes one remote transition produces into a single refetch. */
     private lotoChanged$ = new Subject<number>();
+    /** Per-id fetch coalescer — one hang/verify emits ~3 events for the same id; we want ONE GET. */
+    private pendingResolvedIds = new Set<number>();
+    private flushResolvedTimer: any = null;
+    /** snapshotId → owning lotoId, rebuilt on every list mutation. Turns resolveLotoIdFromSnapshot
+     *  from O(lotos × snapshots-per-loto) per SSE event into O(1). */
+    private snapshotToLotoId = new Map<number, number>();
 
     constructor() {
+        // Keep the snapshotId → lotoId lookup in sync with allLotos so SSE events
+        // resolve in O(1) instead of walking every cached permit's snapshots list.
+        this.allLotos$.pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => this.rebuildSnapshotIndex());
+
         this.loadLotosFromServer();
         this.loadPaperForm();
 
@@ -71,25 +82,73 @@ export class CurrentLotoService{
                 const lotoId = this.resolveLotoIdFromSnapshot(e);
                 // null = a lifecycle-only snapshot change (hungBy/caApprovedForHangingBy…, no 'loto' FK)
                 // for a permit not yet in the cached list, or whose snapshots[] predates this snapshot.
-                // Do NOT drop it (that was the "lifecycle updates don't show until the next permit"
-                // symptom) — emit a sentinel so it still triggers a debounced list refresh.
+                // Do NOT drop it — emit a sentinel so the throttled full-refresh channel catches it.
                 this.lotoChanged$.next(lotoId ?? CurrentLotoService.UNRESOLVED_LOTO);
             });
 
-        // A single hang/verify emits several snapshot field-changes (pointHungByJson + hungBy + hungAt …) — debounce
-        // so we issue one GET instead of one per change.
+        // Resolved-id path — targeted per-loto GET, coalesced by id (a hang/verify emits ~3 events
+        // for the same permit; we only want one GET). Cheap: one full-list refetch of 200 fat DTOs
+        // per SSE event was the dominant cost of the tab under multi-user activity.
         this.lotoChanged$
-            .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
-            .subscribe(lotoId => this.applyRemoteLotoChange(lotoId));
+            .pipe(
+                filter(id => id !== CurrentLotoService.UNRESOLVED_LOTO),
+                takeUntilDestroyed(this.destroyRef),
+            )
+            .subscribe(lotoId => this.queueResolvedLotoFetch(lotoId));
 
-        // Refetch on SSE reconnect. SSE is at-most-once — any Loto /
-        // LotoSnapshot broadcasts that landed during the abort window
-        // were dropped, so we don't know what we missed. Reuse
-        // applyRemoteLotoChange with UNRESOLVED_LOTO which reloads the
-        // full permit list AND re-feeds the currently open permit.
-        this.syncUpdateService.reconnected$
-            .pipe(takeUntilDestroyed(this.destroyRef))
+        // Unresolved snapshot + SSE reconnect share the same shape: we don't know what we missed,
+        // so a full list refresh is the only option. Throttle so a reconnect storm (network blip,
+        // JWT refresh, sleep/resume) or an unresolved burst collapses to ≤1 refresh per 5s.
+        merge(
+            this.lotoChanged$.pipe(filter(id => id === CurrentLotoService.UNRESOLVED_LOTO)),
+            this.syncUpdateService.reconnected$.pipe(map(() => CurrentLotoService.UNRESOLVED_LOTO)),
+        )
+            .pipe(
+                throttleTime(5000, undefined, { leading: true, trailing: true }),
+                takeUntilDestroyed(this.destroyRef),
+            )
             .subscribe(() => this.applyRemoteLotoChange(CurrentLotoService.UNRESOLVED_LOTO));
+    }
+
+    /**
+     * Queue a resolved-id fetch and flush the batch after 300ms so a hang/verify's ~3 events
+     * per permit collapse into one GET. Multiple IDs in the batch each get their own GET —
+     * we don't coalesce ACROSS ids (using debounceTime like this used to would drop non-final ids).
+     */
+    private queueResolvedLotoFetch(id: number): void {
+        this.pendingResolvedIds.add(id);
+        if (this.flushResolvedTimer) return;
+        this.flushResolvedTimer = setTimeout(() => {
+            const ids = Array.from(this.pendingResolvedIds);
+            this.pendingResolvedIds.clear();
+            this.flushResolvedTimer = null;
+            for (const lotoId of ids) this.applyResolvedLotoChange(lotoId);
+        }, 300);
+    }
+
+    /**
+     * Fetch ONE loto by id and merge into the cached list — no full-list refetch, no fat-DTO
+     * multiplication across 200 rows per event. If the permit is currently open, re-feed the
+     * subject so the form re-renders (form no longer wipes user edits thanks to
+     * RfReactiveFormComponent's fields-signature guard + dirty-check).
+     */
+    private applyResolvedLotoChange(lotoId: number): void {
+        this.lotoService.getLotoById(String(lotoId)).pipe(
+            takeUntilDestroyed(this.destroyRef),
+            map(res => this.normalizeLoto(res?.responseData)),
+            catchError(err => {
+                console.error('[CurrentLotoService] targeted GET failed for loto', lotoId, err);
+                return of(null);
+            }),
+        ).subscribe(loto => {
+            if (!loto || !loto.id) return;
+            const exists = this.allLotosSubject.value.some(l => l.id === loto.id);
+            if (exists) this.updateLotoInList(loto);
+            else this.addLotoToList(loto);
+            if (this.currentLotoSubject.value?.id === loto.id) {
+                this.currentLotoSubject.next(loto);
+            }
+        });
     }
 
     /** A LotoSnapshot event carries the SNAPSHOT id — map it back to the permit that owns it. */
@@ -100,8 +159,20 @@ export class CurrentLotoService{
             const n = Number(fk);
             if (!Number.isNaN(n)) return n;
         }
-        // An existing snapshot: find the permit whose snapshots[] contains it.
-        return this.allLotosSubject.value.find(l => l.snapshots?.some(s => s.id === e.entityId))?.id ?? null;
+        // Existing snapshot: O(1) via the pre-built index instead of walking every cached loto.
+        return this.snapshotToLotoId.get(e.entityId) ?? null;
+    }
+
+    /** Rebuild snapshotId → lotoId map from the current allLotos list. Cheap (linear once per list write). */
+    private rebuildSnapshotIndex(): void {
+        const map = new Map<number, number>();
+        for (const l of this.allLotosSubject.value) {
+            if (!l?.id || !l.snapshots) continue;
+            for (const s of l.snapshots) {
+                if (s?.id != null) map.set(s.id, l.id);
+            }
+        }
+        this.snapshotToLotoId = map;
     }
 
     private applyRemoteLotoChange(lotoId: number): void {
@@ -255,7 +326,7 @@ export class CurrentLotoService{
       this.allLotosSubject.next(updatedLotos);
     }
 
-    processLotoChanges(lotoDto: LotoDto, onSuccess?: () => void) {
+    processLotoChanges(lotoDto: LotoDto, onSuccess?: () => void, onError?: (err: any) => void) {
       if(!lotoDto) return;
       // Force-include id on the source so new LotoDto(...) doesn't reset it
       // to 0 (which the backend then treats as a CREATE).
@@ -272,6 +343,7 @@ export class CurrentLotoService{
           console.log('[CurrentLotoService] update OK — server returned:', response?.responseData);
           if(!response){
               console.error('Error updating Loto: empty response');
+              onError?.(new Error('Empty server response'));
               return;
           }
           const receivedLoto = this.normalizeLoto(response.responseData);
@@ -288,6 +360,7 @@ export class CurrentLotoService{
         },
         error: err => {
           console.error('[CurrentLotoService] update FAILED:', err);
+          onError?.(err);
         }
       });
     }

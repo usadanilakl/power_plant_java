@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <property name="LOGS" value="./logs" />
+    <springProperty scope="context" name="LOGS" source="logging.file.path" defaultValue="./logs" />
     <property name="CONSOLE_LOG_PATTERN"
               value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{32} - %msg%n%throwable" />
     <property name="LOG_PATTERN"
@@ -79,7 +79,8 @@
 
     <logger name="com.dk_power.power_plant_java" level="info" />
 
-    <logger name="com.dk_power.power_plant_java.config.logging.RequestCorrelationFilter" level="warn" />
+    <!-- Normal fast requests remain DEBUG in the filter; INFO retains slow/4xx boundaries. -->
+    <logger name="com.dk_power.power_plant_java.config.logging.RequestCorrelationFilter" level="info" />
 
     <logger name="com.dk_power.power_plant_java.config.security" level="info" additivity="false">
         <appender-ref ref="SecurityFile" />

@@ -132,6 +132,80 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 .orElse(Collections.emptySet());
     }
 
+    /**
+     * Paginated LOTO list projected down to what the left-menu / permit browser actually renders:
+     * id, docNum, permitNumber, permitStatus (id+name), equipmentSystem, lotoRequestor, date,
+     * boxNumber, dateCreated, dateModified, sharepointId, closeDisposition, wasModifiedDuringActive,
+     * and a stub {@code snapshots[{id}]} so the frontend can keep an O(1) snapshotId→lotoId index.
+     *
+     * <p>Skips: locks, equipment M2M, lotoBox, controlAuthority, requestor, permitType,
+     * personnelJson, workScope, sourceStandard, lotoPoints, and every per-point map on snapshots —
+     * i.e. the full-fat DTO's expensive-to-hydrate relations. This was the dominant cost of the
+     * tab under multi-user activity (200 rows × M2M+snapshots+per-point JSON parses per SSE event).
+     *
+     * <p>Batches snapshot id lookup with ONE query instead of triggering lazy-load per row.
+     */
+    public Page<LotoDto> findAllLightPaginated(int page, int size) {
+        Page<Loto> lotoPage = repo.findAll(org.springframework.data.domain.PageRequest.of(page, size));
+        List<Loto> lotos = lotoPage.getContent();
+        if (lotos.isEmpty()) return lotoPage.map(l -> new LotoDto());
+
+        // ONE query for all snapshot ids in the page, grouped by lotoId — avoids N+1 lazy loads.
+        List<Long> lotoIds = lotos.stream().map(Loto::getId).filter(Objects::nonNull).toList();
+        Map<Long, List<Long>> snapshotIdsByLoto = new HashMap<>();
+        if (!lotoIds.isEmpty()) {
+            List<Object[]> rows = entityManager.createQuery(
+                    "SELECT s.id, s.loto.id FROM LotoSnapshot s WHERE s.loto.id IN :ids",
+                    Object[].class)
+                    .setParameter("ids", lotoIds)
+                    .getResultList();
+            for (Object[] row : rows) {
+                Long snapId = (Long) row[0];
+                Long ownerId = (Long) row[1];
+                snapshotIdsByLoto.computeIfAbsent(ownerId, k -> new ArrayList<>()).add(snapId);
+            }
+        }
+
+        return lotoPage.map(loto -> toLightDto(loto, snapshotIdsByLoto.getOrDefault(loto.getId(), List.of())));
+    }
+
+    private LotoDto toLightDto(Loto loto, List<Long> snapshotIds) {
+        LotoDto dto = new LotoDto();
+        dto.setId(loto.getId());
+        dto.setDocNum(loto.getDocNum());
+        dto.setPermitNumber(loto.getPermitNumber());
+        dto.setEquipmentSystem(loto.getEquipmentSystem());
+        dto.setLotoRequestor(loto.getLotoRequestor());
+        // Match the (fixed) LotoMapper.convertToDto date semantics — real column, fallback to
+        // dateCreated.toLocalDate() so PermitNumberGenerator's bucket parsing stays consistent.
+        if (loto.getDate() != null && !loto.getDate().isBlank()) {
+            dto.setDate(loto.getDate());
+        } else if (loto.getDateCreated() != null) {
+            dto.setDate(loto.getDateCreated().toLocalDate().toString());
+        }
+        if (loto.getBoxNumber() != null && loto.getBoxNumber() != 0) dto.setBoxNumber(loto.getBoxNumber());
+        dto.setDateCreated(loto.getDateCreated());
+        dto.setDateModified(loto.getDateModified());
+        dto.setSharepointId(loto.getSharepointId());
+        dto.setCloseDisposition(loto.getCloseDisposition());
+        dto.setWasModifiedDuringActive(loto.getWasModifiedDuringActive());
+        if (loto.getPermitStatus() != null) {
+            dto.setPermitStatus(ngValueService.valueToDto(loto.getPermitStatus()));
+        }
+        if (loto.getSystem() != null) dto.setEquipmentSystem(loto.getSystem().getName());
+        // Stub snapshots — only id populated so frontend can maintain snapshotId→lotoId index.
+        if (!snapshotIds.isEmpty()) {
+            List<com.dk_power.power_plant_java.dto.permits.LotoSnapshotDto> stubs = new ArrayList<>(snapshotIds.size());
+            for (Long sid : snapshotIds) {
+                com.dk_power.power_plant_java.dto.permits.LotoSnapshotDto s = new com.dk_power.power_plant_java.dto.permits.LotoSnapshotDto();
+                s.setId(sid);
+                stubs.add(s);
+            }
+            dto.setSnapshots(stubs);
+        }
+        return dto;
+    }
+
     @Override
     public Loto toEntity(LotoDto dto) {
         return mapper.convertToEntity(dto);
@@ -163,6 +237,24 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         } else {
             loto = repo.findById(dto.getId())
                     .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + dto.getId()));
+
+            // Closed permits are immutable — save(Loto) enforces this, but repo.save() below
+            // bypasses that check, so we assert it up front. Prevents silent field mutations
+            // on Closed permits via the ordinary PUT autosave path.
+            if (loto.isArchived()) {
+                throw new IllegalStateException("Archived (Closed) LOTO cannot be modified");
+            }
+
+            // Defensive guard against stale-cache clients: the mapper no longer touches
+            // permitStatus, but if a client also sends a mismatched status id we reject
+            // rather than accept-and-ignore, so the client's cache repair is loud.
+            // All legitimate status changes go through NgLotoService.changeStatus.
+            if (dto.getPermitStatus() != null
+                    && loto.getPermitStatus() != null
+                    && !dto.getPermitStatus().equals(loto.getPermitStatus().getId())) {
+                throw new IllegalStateException(
+                        "Status changes must go through /ng/lotos/{id}/status — refresh and retry");
+            }
         }
 
         // Update Loto with new data
@@ -1339,7 +1431,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                         .findFirst().orElse(null)
                     : null;
 
-            if (lock == null) {
+            boolean isNewLock = (lock == null);
+            if (isNewLock) {
                 lock = new Lock();
                 lock.setLoto(loto);
             }
@@ -1347,7 +1440,15 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             lock.setTagLabel(tagLabel);
             lock.setLockType(lockType);
             if (lockNumber != null) lock.setNumber(lockNumber);
-            lockService.save(lock);
+            Lock saved = lockService.save(lock);
+            // Loto.locks is mappedBy="loto" — the FK writes on Lock but Hibernate does NOT
+            // auto-refresh the inverse collection. Without appending, the subsequent findById
+            // hits the first-level cache and returns a stale collection missing every new lock,
+            // so the DTO response says "no new locks" and the client re-submits duplicates.
+            if (isNewLock) {
+                if (loto.getLocks() == null) loto.setLocks(new ArrayList<>());
+                if (!loto.getLocks().contains(saved)) loto.getLocks().add(saved);
+            }
         }
 
         flagIfModificationStructuralEdit(loto);

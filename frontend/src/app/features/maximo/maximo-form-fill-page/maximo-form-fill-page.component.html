@@ -25,6 +25,15 @@
         </span>
       </div>
 
+      <!-- Not due yet: mirrors the backend block. Drafts still save (local, harmless); only Complete is disabled. -->
+      <div class="notdue-banner" *ngIf="tooEarly()">
+        <span class="notdue-i">⏳</span>
+        <div>
+          <div class="notdue-t">Not due yet</div>
+          <div class="notdue-d">Scheduled for <strong>{{ woTargetStart() | date:'mediumDate' }}</strong> — this PM can't be completed before its period. You can save a draft, but “Complete” stays disabled until it's due.</div>
+        </div>
+      </div>
+
       <div class="form-wrap" *ngIf="selectedTemplate() && smartFields().length; else noForm">
         <app-smart-form
           [fields]="smartFields()"
@@ -60,8 +69,9 @@
             {{ previewing() ? 'Rendering…' : 'Preview PDF' }}
           </button>
           <button class="primary" (click)="complete()"
-                  [disabled]="completing() || saving() || existing()?.status === 'COMPLETED'">
-            {{ completing() ? 'Submitting to Maximo…' : (existing()?.status === 'COMPLETED' ? 'Completed ✓' : 'Complete & submit to Maximo') }}
+                  [disabled]="completing() || saving() || tooEarly() || existing()?.status === 'COMPLETED'"
+                  [title]="tooEarly() ? notDueMsg() : ''">
+            {{ completing() ? 'Submitting to Maximo…' : (existing()?.status === 'COMPLETED' ? 'Completed ✓' : (tooEarly() ? 'Not due yet' : 'Complete & submit to Maximo')) }}
           </button>
           <span class="muted" *ngIf="existing()?.status !== 'COMPLETED'">Renders a PDF, attaches it to the work order, adds a worklog + any mapped write-backs, and advances the WO status.</span>
           <span class="muted" *ngIf="existing()?.status === 'COMPLETED'">Already submitted to Maximo{{ existing()?.pdfDoclinkId ? ' · PDF #' + existing()?.pdfDoclinkId : '' }}.</span>

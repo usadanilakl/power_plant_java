@@ -34,4 +34,14 @@ public class MaximoFormSubmissionDto {
      * desktop leaves it false (its Complete tab drives the status change separately). Default false.
      */
     private boolean completeWo;
+    /**
+     * Outcome of the WO status change attempted during completion (only when {@code completeWo}/{@code
+     * completeWoStatus} applied): {@code TRUE} = the work order reached its target status; {@code FALSE} = the
+     * change was attempted but Maximo rejected it (see {@link #woCloseError}); {@code null} = no status change was
+     * attempted. Lets the PWA reflect COMP only when the WO truly closed instead of optimistically, and offer a
+     * close-only retry (which does NOT re-attach the already-attached form) when it didn't.
+     */
+    private Boolean woClosed;
+    /** Maximo's rejection message when {@link #woClosed} is {@code FALSE} — the form still attached; only the close failed. */
+    private String woCloseError;
 }

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -59,6 +60,13 @@ public class LogDiagnosticsParserService {
         return events;
     }
 
+    boolean startsEvent(String line) {
+        if (line == null) {
+            return false;
+        }
+        return STRUCTURED_LINE.matcher(line).matches() || LEGACY_LINE.matcher(line).matches();
+    }
+
     private ParsedEventBuilder parseEventStart(String sourceFile, String line) {
         Matcher matcher = STRUCTURED_LINE.matcher(line);
         if (matcher.matches()) {
@@ -91,9 +99,13 @@ public class LogDiagnosticsParserService {
     }
 
     private Instant parseTimestamp(String timestamp) {
-        return LocalDateTime.parse(timestamp, TS_FORMATTER)
-            .atZone(ZoneId.systemDefault())
-            .toInstant();
+        try {
+            return LocalDateTime.parse(timestamp, TS_FORMATTER)
+                .atZone(ZoneId.systemDefault())
+                .toInstant();
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
     }
 
     private Map<String, String> parseMdc(String mdcText) {

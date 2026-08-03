@@ -80,11 +80,10 @@ public class PowerAutomateV2Client {
 
         try {
             String jsonBody = mapper.writeValueAsString(request);
-            log.info("[PA-V2] Sending to flow: actionType={}, url={}...{}",
-                    request.getActionType(),
-                    flowUrl.substring(0, Math.min(60, flowUrl.length())),
-                    flowUrl.length() > 60 ? "..." : "");
-            log.debug("[PA-V2] Request body: {}", jsonBody);
+            // Power Automate callback URLs contain a signature in their query string. Never log
+            // the URL or serialized body; both may contain credentials or operational data.
+            log.info("power_automate.request.start actionType={} endpointHost={}",
+                    request.getActionType(), safeEndpointHost(flowUrl));
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(30))
@@ -99,20 +98,21 @@ public class PowerAutomateV2Client {
 
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-            log.info("[PA-V2] Response: status={}", response.statusCode());
-            log.debug("[PA-V2] Response body: {}", response.body());
+            log.info("power_automate.request.complete actionType={} status={}",
+                    request.getActionType(), response.statusCode());
 
             if (response.statusCode() == 200 || response.statusCode() == 201 || response.statusCode() == 202) {
                 return mapper.readValue(response.body(), PaResponseDto.class);
             } else {
                 PaResponseDto errorResponse = new PaResponseDto();
                 errorResponse.setSuccess(false);
-                errorResponse.setMessage("PA flow returned status " + response.statusCode() + ": " + response.body());
+                errorResponse.setMessage("PA flow returned status " + response.statusCode());
                 return errorResponse;
             }
 
         } catch (IOException | InterruptedException e) {
-            log.error("[PA-V2] Request failed: {}", e.getMessage());
+            log.error("power_automate.request.failed actionType={} exception={}",
+                    request.getActionType(), e.getClass().getSimpleName(), e);
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -239,6 +239,14 @@ public class PowerAutomateV2Client {
 
     public boolean isSdsConfigured() {
         return sdsFlowUrl != null && !sdsFlowUrl.isBlank();
+    }
+
+    private String safeEndpointHost(String flowUrl) {
+        try {
+            return URI.create(flowUrl).getHost();
+        } catch (IllegalArgumentException ignored) {
+            return "invalid";
+        }
     }
 
     public PaResponseDto qualifications(PaRequestDto request) {

@@ -153,7 +153,7 @@ import { RfLotoPrintService } from '../../../services/ui/rf-loto-print.service';
           }
 
           @if (showStandardSelector()) {
-            <div class="standard-selector">
+            <div class="standard-selector" (keydown.escape)="showStandardSelector.set(false)">
               <div class="selector-header">
                 <h4>Select a LOTO Standard</h4>
                 <button mat-icon-button (click)="showStandardSelector.set(false)">
@@ -163,19 +163,33 @@ import { RfLotoPrintService } from '../../../services/ui/rf-loto-print.service';
               @if (loadingStandards()) {
                 <p class="loading-text">Loading standards...</p>
               } @else if (standards().length === 0) {
-                <p class="loading-text">No LOTO standards found.</p>
-              } @else {
-                <div class="standard-list">
-                  @for (std of standards(); track std.id) {
-                    <div class="standard-item" [attr.data-testid]="'standard-item-' + std.id" (click)="createFromStandard(std.id)">
-                      <mat-icon>checklist</mat-icon>
-                      <div class="standard-info">
-                        <span class="standard-name">{{ std.name || 'Standard #' + std.id }}</span>
-                        <span class="standard-desc">{{ std.description || '' }} — {{ std.lotoPoints?.length || 0 }} points</span>
-                      </div>
-                    </div>
-                  }
+                <div class="empty-standards">
+                  <p class="loading-text">No LOTO standards found.</p>
+                  <p class="empty-standards-hint">A LOTO Standard defines the reusable set of points for a piece of equipment. Create one first, then come back here.</p>
+                  <button mat-stroked-button color="primary" (click)="openLotoStandardsPage()">
+                    <mat-icon>library_books</mat-icon> Manage LOTO Standards
+                  </button>
                 </div>
+              } @else {
+                <input class="standard-search" type="text" placeholder="Filter by name or description…"
+                       autofocus
+                       [value]="stdSearch()"
+                       (input)="stdSearch.set(($any($event.target)).value)">
+                @if (filteredStandards().length === 0) {
+                  <p class="loading-text">No standards match “{{ stdSearch() }}”.</p>
+                } @else {
+                  <div class="standard-list">
+                    @for (std of filteredStandards(); track std.id) {
+                      <div class="standard-item" [attr.data-testid]="'standard-item-' + std.id" (click)="createFromStandard(std.id)">
+                        <mat-icon>checklist</mat-icon>
+                        <div class="standard-info">
+                          <span class="standard-name">{{ std.name || 'Standard #' + std.id }}</span>
+                          <span class="standard-desc">{{ $any(std).description || '' }} — {{ std.lotoPoints?.length || 0 }} points</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
               }
             </div>
           }
@@ -612,6 +626,15 @@ import { RfLotoPrintService } from '../../../services/ui/rf-loto-print.service';
     .selector-header { display: flex; align-items: center; justify-content: space-between; }
     .selector-header h4 { margin: 0; color: #ccc; }
     .loading-text { color: #888; font-style: italic; padding: 12px 0; }
+    .standard-search {
+      width: 100%; box-sizing: border-box;
+      padding: 8px 12px; margin: 8px 0 4px;
+      background: #1a1a1a; color: #ddd; border: 1px solid #444; border-radius: 6px;
+      font-size: 14px;
+    }
+    .standard-search:focus { outline: none; border-color: #4a90e2; }
+    .empty-standards { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; align-items: flex-start; }
+    .empty-standards-hint { color: #999; font-size: 13px; margin: 0; }
     .standard-list { display: flex; flex-direction: column; gap: 4px; max-height: 400px; overflow-y: auto; margin-top: 8px; }
     .standard-item {
       display: flex; align-items: center; gap: 12px; padding: 10px 14px;
@@ -762,6 +785,15 @@ export class RfLotoFormComponent {
   transferTo = signal('');
   standards = signal<LotoStandardDto[]>([]);
   loadingStandards = signal(false);
+  stdSearch = signal('');
+  filteredStandards = computed(() => {
+    const term = this.stdSearch().trim().toLowerCase();
+    const list = this.standards();
+    if (!term) return list;
+    return list.filter(s =>
+      (s.name || '').toLowerCase().includes(term) ||
+      ((s as any).description || '').toLowerCase().includes(term));
+  });
 
   sortedSnapshots = computed(() => {
     const list = this.entity().snapshots ?? [];
@@ -820,7 +852,18 @@ export class RfLotoFormComponent {
     if (sig === this.lastAutoSaveSignature) return;
     this.lastAutoSaveSignature = sig;
     this.autoSaveStatus.set('Saving…');
-    this.currentService.processLotoChanges(payload, () => this.autoSaveStatus.set('Saved'));
+    this.currentService.processLotoChanges(
+      payload,
+      () => this.autoSaveStatus.set('Saved'),
+      err => {
+        // Reset the signature so the next identical-looking change still fires (the
+        // failed save didn't actually persist, so the client and server are out of sync).
+        this.lastAutoSaveSignature = '';
+        const msg = err?.error?.message ?? err?.message ?? 'Auto-save failed';
+        this.autoSaveStatus.set('Save failed');
+        this.messageService.showError(msg);
+      },
+    );
     setTimeout(() => {
       if (this.autoSaveStatus() === 'Saved') this.autoSaveStatus.set('');
     }, 1500);
@@ -847,9 +890,10 @@ export class RfLotoFormComponent {
 
   onDelete(): void {
     const entity = this.entity();
-    if (entity?.id) {
-      this.currentService.deleteLoto(entity.id);
-    }
+    if (!entity?.id) return;
+    const label = (entity as any).permitNumber || `#${entity.id}`;
+    if (!confirm(`Delete permit ${label}? This cannot be undone.`)) return;
+    this.currentService.deleteLoto(entity.id);
   }
 
   changeStatus(status: string): void {
@@ -870,30 +914,55 @@ export class RfLotoFormComponent {
   loadStandardsAndShow(): void {
     this.loadingStandards.set(true);
     this.showStandardSelector.set(true);
-    this.lotoStandardService.getAllLotoStandards().subscribe(res => {
-      this.standards.set((res.responseData ?? []).map((s: any) => LotoStandardDto.fromJson(s)));
-      this.loadingStandards.set(false);
+    this.stdSearch.set('');
+    this.lotoStandardService.getAllLotoStandards().subscribe({
+      next: res => {
+        const list = (res.responseData ?? [])
+          .map((s: any) => LotoStandardDto.fromJson(s))
+          .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+        this.standards.set(list);
+        this.loadingStandards.set(false);
+      },
+      error: err => {
+        this.loadingStandards.set(false);
+        this.messageService.showError(err?.error?.message ?? err?.message ?? 'Could not load LOTO standards.');
+      },
     });
   }
 
+  openLotoStandardsPage(): void {
+    this.showStandardSelector.set(false);
+    this.router.navigateByUrl('/loto/loto-standard');
+  }
+
   createFromStandard(standardId: number): void {
-    this.lotoService.createFromStandard(standardId).subscribe(res => {
-      if (res.responseData) {
-        const newLoto = LotoDto.fromJson(res.responseData);
-        this.currentService.addLotoToList(newLoto);
-        this.currentService.setCurrentLoto(newLoto);
-        this.showStandardSelector.set(false);
-      }
+    this.lotoService.createFromStandard(standardId).subscribe({
+      next: res => {
+        if (res.responseData) {
+          const newLoto = LotoDto.fromJson(res.responseData);
+          this.currentService.addLotoToList(newLoto);
+          this.currentService.setCurrentLoto(newLoto);
+          this.showStandardSelector.set(false);
+        }
+      },
+      error: err => this.messageService.showError(
+        err?.error?.message ?? err?.message ??
+        'Could not create permit — Control Authority permission may be required.'),
     });
   }
 
   createFromScratch(): void {
-    this.lotoService.createFromScratch().subscribe(res => {
-      if (res.responseData) {
-        const newLoto = LotoDto.fromJson(res.responseData);
-        this.currentService.addLotoToList(newLoto);
-        this.currentService.setCurrentLoto(newLoto);
-      }
+    this.lotoService.createFromScratch().subscribe({
+      next: res => {
+        if (res.responseData) {
+          const newLoto = LotoDto.fromJson(res.responseData);
+          this.currentService.addLotoToList(newLoto);
+          this.currentService.setCurrentLoto(newLoto);
+        }
+      },
+      error: err => this.messageService.showError(
+        err?.error?.message ?? err?.message ??
+        'Could not create permit — Control Authority permission may be required.'),
     });
   }
 

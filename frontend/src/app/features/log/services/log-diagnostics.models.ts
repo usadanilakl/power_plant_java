@@ -1,4 +1,8 @@
 export interface LogEvent {
+  /** Stable identifier supplied by the diagnostics API. */
+  eventId?: string;
+  /** Stable identity shared by successive versions of the active tail event. */
+  logicalEventId?: string;
   timestamp: string;
   level: string;
   subsystem: string;
@@ -24,6 +28,25 @@ export interface LogEvent {
   durationMs: number | null;
 }
 
+export type LogSortDirection = 'asc' | 'desc';
+
+export interface LogEventsQuery {
+  windowMinutes: number;
+  limit: number;
+  level?: string;
+  text?: string;
+  sourceFile?: string;
+  subsystem?: string;
+  eventCode?: string;
+  requestId?: string;
+  syncRunId?: string;
+  machineId?: string;
+  from?: string;
+  to?: string;
+  cursor?: string;
+  sort?: LogSortDirection;
+}
+
 export interface LogSummary {
   totalEvents: number;
   infoEvents: number;
@@ -38,4 +61,7 @@ export interface LogEventsResponse {
   subsystems: string[];
   eventCodes: string[];
   events: LogEvent[];
+  nextCursor?: string | null;
+  hasMore?: boolean;
+  truncated?: boolean;
 }

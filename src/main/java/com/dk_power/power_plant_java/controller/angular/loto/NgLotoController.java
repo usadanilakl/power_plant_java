@@ -36,14 +36,15 @@ public class NgLotoController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
-//            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
-//            Page<LotoDto> paginatedLotos = ngLotoService.findAllWithProjectionPaginated(
-//                    Loto.lightDtoFields,
-//                    PageRequest.of(page - 1, pageSize)).map(ngLotoService::toDto);
-            Page<LotoDto> paginatedLotos = ngLotoService.getAll(page-1,pageSize);
+            // Light projection — only fields the LOTO list/left-menu renders (id, permitNumber,
+            // permitStatus, equipmentSystem, lotoRequestor, date, boxNumber, dateCreated,
+            // dateModified, sharepointId, closeDisposition, wasModifiedDuringActive) plus stub
+            // snapshot IDs so the frontend keeps its snapshotId→lotoId O(1) index warm.
+            // The heavy full-fat DTO (locks, equipment M2M, snapshots with per-point JSON) is
+            // only fetched on demand when the user opens a permit — that path uses /{id}.
+            Page<LotoDto> paginatedLotos = ngLotoService.findAllLightPaginated(page - 1, pageSize);
             NgApiResponse<Page<LotoDto>> response = new NgApiResponse<>(paginatedLotos, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-//            return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));

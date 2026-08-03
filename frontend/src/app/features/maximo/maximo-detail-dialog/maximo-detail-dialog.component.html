@@ -261,6 +261,15 @@
           ✓ {{ completeSummary() || 'Done.' }}
         </div>
 
+        <!-- Not due yet: mirrors the backend block so no one fills a form only to be rejected at submit. -->
+        <div *ngIf="!completeDone() && tooEarly" class="notdue-banner">
+          <span class="notdue-i">⏳</span>
+          <div>
+            <div class="notdue-t">Not due yet</div>
+            <div class="notdue-d">Scheduled for <strong>{{ wo?.targetStart | date:'mediumDate' }}</strong> — this PM can't be completed before its period. Come back on or after that date.</div>
+          </div>
+        </div>
+
         <!-- Reorder offer (inventory forms): reagents below target — email the vendor. Shown independently of
              the form area so it survives closing the WO, and stays until the order is sent. -->
         <div class="reorder-panel" *ngIf="formFinalized() && reorderLines().length">
@@ -287,9 +296,9 @@
           ✓ {{ reorderResult()?.message }}
         </div>
 
-        <div class="muted" *ngIf="!completeDone() && resolvingForm()">Loading completion form…</div>
+        <div class="muted" *ngIf="!completeDone() && !tooEarly && resolvingForm()">Loading completion form…</div>
 
-        <ng-container *ngIf="!completeDone() && !resolvingForm()">
+        <ng-container *ngIf="!completeDone() && !resolvingForm() && !tooEarly">
           <!-- Assigned electronic form → complete by filling it out (PDF + attach + write-back) -->
           <ng-container *ngIf="completionForm() as t; else noActiveForm">
             <p class="muted">

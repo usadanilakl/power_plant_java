@@ -50,18 +50,41 @@ export class RouterMenuComponent {
 
     // A Plant-gated group (e.g. Maximo) is shown iff the user has the Plant role — matching its route
     // guard, so a FULL-but-non-Plant user never sees a Maximo menu that would bounce them at the route.
-    const groupVisible = (g: RouterMenuGroup) =>
-      g.requiresPlant ? hasPlant : (hasFullAccess || !g.requiresFullAccess);
+    const hasAnyRequiredRole = (requiredRoles?: string[]) =>
+      !requiredRoles?.length || requiredRoles.some(role => roles.includes(role));
+
+    const groupVisible = (g: RouterMenuGroup) => {
+      if (g.requiresPlant) return hasPlant;
+      if (!g.requiresFullAccess || hasFullAccess) return true;
+
+      // A restricted user may still enter an explicitly role-gated child,
+      // such as the sanitized diagnostics viewer.
+      return g.items.some(item =>
+        !!item.requiresAnyRole?.length && hasAnyRequiredRole(item.requiresAnyRole)
+      );
+    };
 
     return groups
       .filter(group => groupVisible(group))
-      .map(group => ({
-        ...group,
-        items: group.items.filter(item =>
-          (group.requiresPlant ? hasPlant : (hasFullAccess || !item.requiresFullAccess)) &&
-          (!item.testOnly || testMode)
-        )
-      }))
+      .map(group => {
+        const usingRestrictedRoleException = !!group.requiresFullAccess && !hasFullAccess;
+        const items = group.items.filter(item => {
+          if (group.requiresPlant && !hasPlant) return false;
+          if (item.requiresFullAccess && !hasFullAccess) return false;
+          if (!hasAnyRequiredRole(item.requiresAnyRole)) return false;
+          if (usingRestrictedRoleException && !item.requiresAnyRole?.length) return false;
+          return !item.testOnly || testMode;
+        });
+
+        return {
+          ...group,
+          // Restricted role exceptions must land on the one child they can use.
+          defaultRoute: usingRestrictedRoleException && items.length > 0
+            ? items[0].route
+            : group.defaultRoute,
+          items,
+        };
+      })
       .filter(group => group.items.length > 0);
   });
 

@@ -18,10 +18,16 @@ Responses:
 
 ```json
 200  { "valid": true,  "issuer": "hub",      "claims": { "sub": "...", "email": "...", ... } }
-200  { "valid": true,  "issuer": "supabase", "claims": { "sub": "...", "email": "...", ... } }
-401  { "valid": false, "reason": "bad signature" }        // also: expired, unknown issuer, malformed
+200  { "valid": true,  "issuer": "supabase", "claims": { "sub": "...", "role": "authenticated", ... } }
+401  { "valid": false, "reason": "bad signature" }              // also: expired, unknown issuer, malformed
+401  { "valid": false, "reason": "not a user token (role: anon)" } // Supabase anon / service_role rejected
 400  { "valid": false, "reason": "missing token" }
 ```
+
+> **Only real users pass.** A genuinely-signed Supabase token is accepted **only** when it represents a
+> signed-in user (`role: "authenticated"`). The **anon key** (and `service_role`) are rejected: the anon
+> key is inlined into the public PWA bundle, so accepting it would let anyone authenticate to callers
+> that trust this function. Hub tokens are unaffected (they carry `roles: [...]`, not a GoTrue `role`).
 
 The function reads the `iss` claim to choose the key:
 
@@ -61,8 +67,9 @@ project/architecture/supabase/manage.sh deploy
 # --no-verify-jwt: PA calls this server-to-server without a user token, so GoTrue must not gate it.
 ```
 
-**Status:** deployed to project `xvrtgccxtsjjwznqkznv` and validated live for all three token kinds
-(real anon key, a minted Supabase user token, and a minted hub RS256 token — all `200 {valid:true}`).
+**Status:** deployed to project `xvrtgccxtsjjwznqkznv` and validated live for a minted Supabase user
+token and a minted hub RS256 token (both `200 {valid:true}`). **Redeploy needed** for the anon-key
+rejection added since (the anon key must now return `401 {reason:"not a user token (role: anon)"}`).
 
 ## Power Automate usage
 

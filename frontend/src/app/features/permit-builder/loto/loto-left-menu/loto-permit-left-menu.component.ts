@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NestedItem } from '../../../../models/ui/nested-item.model';
@@ -12,6 +12,7 @@ import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-tog
   imports: [CommonModule, RfToggleMenuComponent],
   templateUrl: './loto-permit-left-menu.component.html',
   styleUrl: './loto-permit-left-menu.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LotoPermitLeftMenuComponent implements OnInit {
   private currentLotoService = inject(CurrentLotoService);

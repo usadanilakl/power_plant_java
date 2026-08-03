@@ -175,6 +175,28 @@ export class MaximoDetailDialogComponent implements OnInit {
       && COMPLETABLE_WO_STATUSES.includes((this.wo.status ?? '').toUpperCase());
   }
 
+  /**
+   * Mirrors the backend's assertDueForCompletion: a PM WO can't be completed before its Target Start (date-only;
+   * unset/unparseable = allowed). Blocks the whole Complete tab so no one fills a form only to be rejected at
+   * submit. The server block remains the source of truth.
+   */
+  get tooEarly(): boolean {
+    const ts = this.wo?.targetStart;
+    if (this.parent !== 'wo' || !ts) return false;
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return false;
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return target > today;
+  }
+  get notDueMsg(): string {
+    const ts = this.wo?.targetStart;
+    const d = ts ? new Date(ts) : null;
+    const when = d && !isNaN(d.getTime()) ? d.toLocaleDateString() : 'its scheduled date';
+    return `This PM isn't due yet — it's scheduled for ${when} and can't be completed before its period.`;
+  }
+
   /** Only SRs in an open status can be edited (description / notes / attachments). */
   get canEditSr(): boolean {
     return this.parent === 'sr' && !!this.sr
@@ -478,6 +500,7 @@ export class MaximoDetailDialogComponent implements OnInit {
 
   async submitComplete() {
     if (!this.wo?.href || this.completing()) return;
+    if (this.tooEarly) { this.error.set(this.notDueMsg); return; }
     this.completing.set(true);
     this.error.set(null);
     try {
@@ -513,6 +536,7 @@ export class MaximoDetailDialogComponent implements OnInit {
    */
   async completeWoAfterForm() {
     if (!this.wo?.href || this.completing()) return;
+    if (this.tooEarly) { this.error.set(this.notDueMsg); return; }
     if (this.isCompletedStatus(this.wo.status)) { this.completeDone.set(true); return; }
     if (!this.formFinalized()) { this.error.set('Finalize & attach the form first, then complete the work order.'); return; }
     this.completing.set(true);
@@ -544,6 +568,7 @@ export class MaximoDetailDialogComponent implements OnInit {
   async submitCompleteForm() {
     const t = this.completionForm();
     if (!t || !this.wo || this.completing()) return;
+    if (this.tooEarly) { this.error.set(this.notDueMsg); return; }
     const wonum = this.wo.wonum?.trim();
     if (!wonum) { this.error.set('This work order has no number — cannot attach the form.'); return; }
     if (this.formSubmission()?.status === 'COMPLETED') { this.completeDone.set(true); return; }

@@ -36,6 +36,7 @@ public class SecurityConfigSpring {
     private final AccessGrantFilter accessGrantFilter;
     private final PwaJwtAuthFilter pwaJwtAuthFilter;
     private final com.dk_power.power_plant_java.config.security.StepUpAuthFilter stepUpAuthFilter;
+    private final com.dk_power.power_plant_java.config.diagnostics.AiDiagnosticsApiKeyFilter aiDiagnosticsApiKeyFilter;
 
     @Value("${security.cors.allowed-origins:http://localhost:*,https://dk-power.github.io,https://*.loclx.io}")
     private String allowedOrigins;
@@ -95,6 +96,13 @@ public class SecurityConfigSpring {
 
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
+                // Isolated, read-only service credentials for AI troubleshooting.
+                .requestMatchers("/ng/ai-diagnostics/v1/events/stream").hasAuthority("SCOPE_logs:stream")
+                .requestMatchers("/ng/ai-diagnostics/v1/events", "/ng/ai-diagnostics/v1/events/**")
+                    .hasAuthority("SCOPE_logs:read")
+                .requestMatchers("/ng/ai-diagnostics/v1/bundles", "/ng/ai-diagnostics/v1/bundles/**")
+                    .hasAuthority("SCOPE_diagnostics:bundle")
+                .requestMatchers("/ng/ai-diagnostics/v1/**").denyAll()
                 // PWA secured endpoints — JWT auth handled by PwaJwtAuthFilter
                 // Mobile LOTO Standards (Plant-only). The PWA JWT principal carries ROLE_PLANT from the DB,
                 // so hasAnyRole works reliably here (must precede the generic /secured/** authenticated rule).
@@ -170,6 +178,9 @@ public class SecurityConfigSpring {
                 .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/chat-audit/**").hasRole("ADMIN")
+                // Sanitized operational diagnostics are available to explicitly delegated support users
+                // without requiring the separate full-access grant checked by AccessGrantFilter.
+                .requestMatchers("/ng/log-diagnostics/**").hasAnyRole("ADMIN", "LOG_DIAGNOSTICS")
                 // Schedule v2 builder — manager/admin authoring of crew patterns, assignments, events.
                 .requestMatchers("/ng/admin/schedule-v2/**").hasRole("ADMIN")
 
@@ -237,6 +248,7 @@ public class SecurityConfigSpring {
             // PwaJwtAuthFilter self-skips non-PWA paths; DesktopAutoAuthFilter self-skips non-desktop paths.
             .addFilterBefore(desktopAutoAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(pwaJwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(aiDiagnosticsApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
             // StepUpAuthFilter must run AFTER the session-establishing filters so the
             // original SecurityContext (user A) is in place; it swaps to user B for
             // one request and restores in a finally block.
@@ -259,14 +271,14 @@ public class SecurityConfigSpring {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(
             "authorization", "content-type", "x-auth-token",
-            "X-Machine-Id", "X-Machine-Name", "X-Device-Number",
+            "X-Machine-Id", "X-Machine-Name", "X-Device-Number", "X-Request-Id",
             // ClientIdInterceptor stamps this on every non-GET Angular write
             // so the tab can filter its own SSE echoes. Same-origin today, but
             // omitting it here would silently fail preflight the moment the
             // frontend is served from a different origin than the API.
             "X-Client-Id"
         ));
-        configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
+        configuration.setExposedHeaders(Arrays.asList("x-auth-token", "X-Request-Id"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

@@ -112,7 +112,7 @@ export interface MaximoCompletionDraft {
 
 export type MaximoFieldType =
   | 'text' | 'textarea' | 'number' | 'date'
-  | 'checkbox' | 'select' | 'radio-group' | 'checkbox-group' | 'image';
+  | 'checkbox' | 'select' | 'radio-group' | 'checkbox-group' | 'image' | 'computed' | 'timer';
 
 export interface MaximoFormFieldDef {
   name: string;
@@ -125,6 +125,13 @@ export interface MaximoFormFieldDef {
   placeholder?: string;
   maximoTarget?: '' | 'worklog' | 'laborhours' | 'reading';
   imageSrc?: string;
+  /** 'computed' only: arithmetic expression over other field names, evaluated in the app (result is submitted). */
+  formula?: string;
+  /** 'computed' only: human-readable formula shown to the operator for reference. */
+  note?: string;
+  /** 'timer' only: show a "time since {field} started → take the sample at {minutes} min" prompt, and
+   *  optionally auto-fill the measured interval minutes into {fillInto} when this timer is started. */
+  waitAfter?: { field: string; minutes: number; fillInto?: string };
 }
 
 export interface MaximoFormTemplate {
@@ -154,6 +161,11 @@ export interface MaximoFormSubmission {
   submittedAt?: string;
   /** Also transition the WO to COMP on completion — the mobile "Submit & complete" flow sets this. */
   completeWo?: boolean;
+  /** Backend completion outcome: true = WO reached target status, false = form attached but Maximo rejected the
+   *  close (see woCloseError), undefined/null = no close attempted. Lets the UI avoid a false COMP. */
+  woClosed?: boolean | null;
+  /** Maximo's rejection message when woClosed === false (the form still attached; only the close failed). */
+  woCloseError?: string;
 }
 
 /** A Maximo attachment (doclink) on a WO — phone subset of the desktop MaximoDoclink. */

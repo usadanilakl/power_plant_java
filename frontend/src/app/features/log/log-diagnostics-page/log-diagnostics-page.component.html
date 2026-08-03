@@ -1,24 +1,53 @@
-<section class="diagnostics-page">
+<section class="diagnostics-page" [attr.aria-busy]="loading || refreshing || loadingOlder">
   <header class="page-header">
     <div class="header-left">
-      <h1>Log Viewer</h1>
-      <span class="event-count" *ngIf="!loading">
-        {{ totalMatched }} events
-      </span>
+      <div>
+        <div class="title-row">
+          <h1>Log Viewer</h1>
+          <span class="sanitized-badge" title="Secrets and sensitive fields are removed by the server">
+            Sanitized view
+          </span>
+        </div>
+        <div class="update-status" aria-live="polite">
+          <span *ngIf="lastUpdated" [class.status-stale]="isStale">
+            {{ isStale ? 'Stale' : 'Updated' }} {{ lastUpdated | date:'mediumTime' }}
+          </span>
+          <span *ngIf="requestDurationMs != null">{{ requestDurationMs }} ms</span>
+          <span *ngIf="!documentVisible && autoRefresh" class="status-paused">Polling paused while tab is hidden</span>
+          <span *ngIf="refreshing">Refreshing...</span>
+        </div>
+      </div>
+      <span class="event-count" *ngIf="!loading">{{ totalMatched }} matching events</span>
       <span class="event-count" *ngIf="loading">Loading...</span>
     </div>
     <div class="header-actions">
       <label class="auto-refresh-toggle">
-        <input type="checkbox" [(ngModel)]="autoRefresh" />
+        <input
+          type="checkbox"
+          [ngModel]="autoRefresh"
+          (ngModelChange)="setAutoRefresh($event)"
+        />
         Auto-refresh
       </label>
-      <button class="btn-refresh" (click)="refresh()">Refresh</button>
+      <button
+        type="button"
+        class="btn-refresh"
+        (click)="refresh()"
+        [disabled]="refreshing"
+        aria-label="Refresh log events now"
+      >
+        {{ refreshing ? 'Refreshing...' : 'Refresh' }}
+      </button>
     </div>
   </header>
 
-  <div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
+  <div *ngIf="errorMessage" class="error-banner" role="alert">{{ errorMessage }}</div>
+  <div *ngIf="truncated" class="warning-banner" role="status">
+    Results were truncated by the server. Narrow the time range or filters for complete results.
+  </div>
+  <span class="copy-status" aria-live="polite">{{ copyMessage }}</span>
 
-  <section class="summary-row">
+  <section class="summary-row" aria-label="Matching event summary">
     <div class="summary-card">
       <span class="card-value">{{ summary.totalEvents }}</span>
       <span class="card-label">Total</span>
@@ -37,28 +66,41 @@
     </div>
   </section>
 
-  <section class="filters">
-    <select [(ngModel)]="windowMinutes" (change)="onDropdownChange()">
+  <section class="filters" aria-label="Log filters">
+    <select
+      [(ngModel)]="windowMinutes"
+      (change)="onDropdownChange()"
+      aria-label="Time window"
+    >
       <option *ngFor="let opt of windowOptions" [ngValue]="opt.value">{{ opt.label }}</option>
     </select>
 
-    <select [(ngModel)]="eventLimit" (change)="onDropdownChange()">
+    <select
+      [(ngModel)]="eventLimit"
+      (change)="onDropdownChange()"
+      aria-label="Events per page"
+    >
       <option *ngFor="let lim of limitOptions" [ngValue]="lim">{{ lim }} rows</option>
     </select>
 
-    <select [(ngModel)]="level" (change)="onDropdownChange()">
+    <select [(ngModel)]="sort" (change)="onDropdownChange()" aria-label="Sort order">
+      <option value="desc">Newest first</option>
+      <option value="asc">Oldest first</option>
+    </select>
+
+    <select [(ngModel)]="level" (change)="onDropdownChange()" aria-label="Log level">
       <option value="ALL">All Levels</option>
       <option value="INFO">Info</option>
       <option value="WARN">Warn</option>
       <option value="ERROR">Error</option>
     </select>
 
-    <select [(ngModel)]="sourceFile" (change)="onDropdownChange()">
+    <select [(ngModel)]="sourceFile" (change)="onDropdownChange()" aria-label="Source file">
       <option value="">All Files</option>
       <option *ngFor="let file of sourceFiles" [value]="file">{{ file }}</option>
     </select>
 
-    <select [(ngModel)]="subsystem" (change)="onDropdownChange()">
+    <select [(ngModel)]="subsystem" (change)="onDropdownChange()" aria-label="Subsystem">
       <option value="">All Subsystems</option>
       <option *ngFor="let sub of subsystems" [value]="sub">{{ sub }}</option>
     </select>
@@ -68,16 +110,23 @@
       [(ngModel)]="text"
       (input)="onTextInput()"
       placeholder="Search messages..."
+      aria-label="Search log messages"
     />
 
-    <button class="btn-advanced" (click)="showAdvancedFilters = !showAdvancedFilters">
+    <button
+      type="button"
+      class="btn-advanced"
+      (click)="showAdvancedFilters = !showAdvancedFilters"
+      [attr.aria-expanded]="showAdvancedFilters"
+      aria-controls="advanced-log-filters"
+    >
       {{ showAdvancedFilters ? 'Less' : 'More' }}
     </button>
 
-    <button class="btn-clear" (click)="clearFilters()">Clear</button>
+    <button type="button" class="btn-clear" (click)="clearFilters()">Clear</button>
   </section>
 
-  <section class="filters-advanced" *ngIf="showAdvancedFilters">
+  <section id="advanced-log-filters" class="filters-advanced" *ngIf="showAdvancedFilters">
     <label>
       Event Code
       <input [(ngModel)]="eventCode" (input)="onTextInput()" placeholder="server_sync.send..." />
@@ -96,8 +145,8 @@
     </label>
   </section>
 
-  <section class="event-table" *ngIf="events.length > 0">
-    <div class="table-header">
+  <section class="event-table" *ngIf="events.length > 0" aria-label="Sanitized log events">
+    <div class="table-header" aria-hidden="true">
       <span class="col-time">Time</span>
       <span class="col-level">Level</span>
       <span class="col-source">Source</span>
@@ -110,33 +159,64 @@
       *ngFor="let event of events; let i = index; trackBy: trackEvent"
       class="table-row-wrapper"
     >
-      <div class="table-row" (click)="toggleRow(i)" [class.row-expanded]="expandedIndex === i">
+      <div
+        class="table-row"
+        role="button"
+        tabindex="0"
+        (click)="toggleRow(event, i)"
+        (keydown)="onRowKeydown($event, event, i)"
+        [class.row-expanded]="isExpanded(event, i)"
+        [attr.aria-expanded]="isExpanded(event, i)"
+        [attr.aria-label]="event.level + ' event at ' + event.timestamp + ': ' + event.message"
+      >
         <span class="col-time" [title]="event.timestamp">{{ event.timestamp | relativeTime }}</span>
         <span class="col-level">
           <span class="level-pill" [class]="levelClass(event.level)">{{ event.level }}</span>
         </span>
-        <span class="col-source">{{ event.sourceFile }}</span>
+        <span class="col-source" [title]="event.sourceFile">{{ event.sourceFile }}</span>
         <span class="col-subsystem">{{ event.subsystem }}</span>
-        <span class="col-eventcode">{{ event.eventCode }}</span>
+        <span class="col-eventcode" [title]="event.eventCode ?? ''">{{ event.eventCode }}</span>
         <span class="col-message">{{ event.message }}</span>
       </div>
 
-      <div class="row-detail" *ngIf="expandedIndex === i">
+      <div class="row-detail" *ngIf="isExpanded(event, i)">
+        <div class="detail-actions">
+          <button type="button" class="btn-copy-event" (click)="copyEvent(event)">
+            Copy sanitized JSON
+          </button>
+        </div>
+
         <div class="detail-context" *ngIf="hasContext(event)">
-          <span *ngIf="event.requestId"><strong>req:</strong> {{ event.requestId }}</span>
-          <span *ngIf="event.syncRunId"><strong>sync:</strong> {{ event.syncRunId }}</span>
-          <span *ngIf="event.jobRunId"><strong>job:</strong> {{ event.jobRunId }}</span>
-          <span *ngIf="event.machineId"><strong>machine:</strong> {{ event.machineId }}</span>
+          <span *ngIf="event.requestId as value" class="context-item">
+            <strong>req:</strong>
+            <button type="button" class="correlation-filter" (click)="applyCorrelationFilter('requestId', value)">{{ value }}</button>
+            <button type="button" class="copy-value" (click)="copyCorrelation('Request ID', value)" aria-label="Copy request ID">Copy</button>
+          </span>
+          <span *ngIf="event.syncRunId as value" class="context-item">
+            <strong>sync:</strong>
+            <button type="button" class="correlation-filter" (click)="applyCorrelationFilter('syncRunId', value)">{{ value }}</button>
+            <button type="button" class="copy-value" (click)="copyCorrelation('Sync run ID', value)" aria-label="Copy sync run ID">Copy</button>
+          </span>
+          <span *ngIf="event.jobRunId as value" class="context-item">
+            <strong>job:</strong> {{ value }}
+            <button type="button" class="copy-value" (click)="copyCorrelation('Job run ID', value)" aria-label="Copy job run ID">Copy</button>
+          </span>
+          <span *ngIf="event.machineId as value" class="context-item">
+            <strong>machine:</strong>
+            <button type="button" class="correlation-filter" (click)="applyCorrelationFilter('machineId', value)">{{ value }}</button>
+            <button type="button" class="copy-value" (click)="copyCorrelation('Machine ID', value)" aria-label="Copy machine ID">Copy</button>
+          </span>
           <span *ngIf="event.entityType"><strong>entity:</strong> {{ event.entityType }}/{{ event.entityId }}</span>
-          <span *ngIf="event.durationMs"><strong>duration:</strong> {{ event.durationMs }}ms</span>
+          <span *ngIf="event.durationMs != null"><strong>duration:</strong> {{ event.durationMs }}ms</span>
           <span *ngIf="event.userId"><strong>user:</strong> {{ event.userId }}</span>
           <span *ngIf="event.path"><strong>path:</strong> {{ event.path }}</span>
-          <span *ngIf="event.status"><strong>status:</strong> {{ event.status }}</span>
+          <span *ngIf="event.status != null"><strong>status:</strong> {{ event.status }}</span>
         </div>
         <div class="detail-extra">
           <div><strong>Logger:</strong> {{ event.logger }}</div>
           <div><strong>Thread:</strong> {{ event.thread }}</div>
           <div *ngIf="event.eventCode"><strong>Event Code:</strong> {{ event.eventCode }}</div>
+          <div *ngIf="event.eventId"><strong>Event ID:</strong> {{ event.eventId }}</div>
         </div>
         <pre class="detail-stacktrace" *ngIf="event.details">{{ event.details }}</pre>
       </div>
@@ -148,6 +228,15 @@
   </div>
 
   <div class="footer-meta" *ngIf="events.length > 0">
-    Showing {{ events.length }} of {{ totalMatched }} events
+    <span>Showing {{ events.length }} of {{ totalMatched }} events</span>
+    <button
+      *ngIf="hasMore"
+      type="button"
+      class="btn-load-older"
+      (click)="requestOlderEvents()"
+      [disabled]="!canLoadOlder"
+    >
+      {{ loadingOlder ? 'Loading...' : loadOlderLabel }}
+    </button>
   </div>
 </section>
