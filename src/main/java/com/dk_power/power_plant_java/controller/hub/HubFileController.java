@@ -15,8 +15,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Hub file REST controller — matches sync-server's FileController API contract.
@@ -33,6 +36,8 @@ public class HubFileController {
     private final HubSseService hubSseService;
 
     private static final long MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    private static final int MAX_MISSING_FILE_WARNINGS = 10_000;
+    private final Set<Long> warnedMissingFileIds = ConcurrentHashMap.newKeySet();
 
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(
@@ -97,12 +102,34 @@ public class HubFileController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                 .body(resource);
 
+        } catch (NoSuchFileException e) {
+            // The metadata row exists, but its content is no longer present in hub storage.
+            // Report a stable terminal status so clients do not retry this file forever.
+            logMissingFileContent(fileId);
+            return ResponseEntity.status(HttpStatus.GONE).body(Map.of(
+                "error", "File content is no longer available",
+                "code", "FILE_CONTENT_MISSING",
+                "fileId", fileId));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (IOException e) {
             log.error("Failed to download file {}: {}", fileId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "error", "Failed to read file: " + e.getMessage()));
+        }
+    }
+
+    private void logMissingFileContent(Long fileId) {
+        if (warnedMissingFileIds.add(fileId)) {
+            // Keep the de-duplication set bounded. Clearing can cause an occasional repeat WARN,
+            // but prevents a long-running hub from retaining every historical file ID forever.
+            if (warnedMissingFileIds.size() > MAX_MISSING_FILE_WARNINGS) {
+                warnedMissingFileIds.clear();
+                warnedMissingFileIds.add(fileId);
+            }
+            log.warn("hub.file.content_missing fileId={}", fileId);
+        } else {
+            log.debug("Hub file content remains unavailable for fileId={}", fileId);
         }
     }
 

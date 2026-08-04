@@ -24,8 +24,16 @@ public class HotWorkDto extends BasePermitDto {
     private String fireWatch;
     private String meterModel;
     private String meterNum;
+    private String meterCalDate;
     private String specialInstructions;
     private HotWorkMeasures measures;
+    // These four exist on the entity and on the Angular model, but were absent here and from the
+    // mapper — so Jackson discarded them on every save (ignoreUnknown) and they never loaded.
+    // The paper form has a cell for each.
+    private Boolean isAirMonitoringRegisteredOnConfinedSpace;
+    private Boolean isFireWatchRequired;
+    private String timeOfInitialTest;
+    private String initialTestResult;
 
     public static HotWorkDto createTestInstance() {
         HotWorkDto dto = new HotWorkDto();

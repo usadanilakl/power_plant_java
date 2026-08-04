@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -113,9 +114,17 @@ public class HubFileService {
             throw new IllegalArgumentException("File has been deleted: " + fileId);
         }
 
-        Path filePath = Path.of(syncedFile.getStoragePath());
-        if (!Files.exists(filePath)) {
-            throw new IOException("File not found on disk: " + filePath);
+        String storagePath = syncedFile.getStoragePath();
+        if (storagePath == null || storagePath.isBlank()) {
+            throw new NoSuchFileException("No storage path for hub file " + fileId);
+        }
+
+        Path filePath = Path.of(storagePath);
+        if (Files.notExists(filePath)) {
+            throw new NoSuchFileException(filePath.toString());
+        }
+        if (!Files.isRegularFile(filePath)) {
+            throw new IOException("Hub storage path is not a regular file: " + filePath);
         }
 
         // Mark as synced to requesting client

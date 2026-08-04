@@ -261,12 +261,14 @@
           ✓ {{ completeSummary() || 'Done.' }}
         </div>
 
-        <!-- Not due yet: mirrors the backend block so no one fills a form only to be rejected at submit. -->
-        <div *ngIf="!completeDone() && tooEarly" class="notdue-banner">
+        <!-- Not due yet: mirrors the backend block so no one fills a form only to be rejected at submit.
+             The form can still be revealed read-for-reference (no finalize/complete) via "Preview form". -->
+        <div *ngIf="!completeDone() && tooEarly && !previewForm()" class="notdue-banner">
           <span class="notdue-i">⏳</span>
           <div>
             <div class="notdue-t">Not due yet</div>
             <div class="notdue-d">Scheduled for <strong>{{ wo?.targetStart | date:'mediumDate' }}</strong> — this PM can't be completed before its period. Come back on or after that date.</div>
+            <button class="preview-btn" *ngIf="completionForm()" (click)="previewForm.set(true)">👁 Preview the form (not submittable yet)</button>
           </div>
         </div>
 
@@ -298,10 +300,11 @@
 
         <div class="muted" *ngIf="!completeDone() && !tooEarly && resolvingForm()">Loading completion form…</div>
 
-        <ng-container *ngIf="!completeDone() && !resolvingForm() && !tooEarly">
+        <ng-container *ngIf="!completeDone() && !resolvingForm() && (!tooEarly || previewForm())">
           <!-- Assigned electronic form → complete by filling it out (PDF + attach + write-back) -->
           <ng-container *ngIf="completionForm() as t; else noActiveForm">
-            <p class="muted">
+            <div class="notdue-compact" *ngIf="tooEarly">⏳ Reference only — not due until <strong>{{ wo?.targetStart | date:'mediumDate' }}</strong>. Completion is disabled below.</div>
+            <p class="muted" *ngIf="!tooEarly">
               This PM is completed with the <strong>{{ t.formName }}</strong> form. Two steps:
               <strong>1)</strong> fill it out and <em>Finalize &amp; Attach</em> (renders a PDF and attaches it to the work order);
               <strong>2)</strong> <em>Complete Work Order</em> to close it in Maximo.
@@ -336,7 +339,8 @@
                 </ng-template>
               </div>
 
-              <div class="actions">
+              <div class="notdue-compact" *ngIf="tooEarly">⏳ Not due until <strong>{{ wo?.targetStart | date:'mediumDate' }}</strong> — completion is disabled here. This is a reference preview only.</div>
+              <div class="actions" *ngIf="!tooEarly">
                 <button class="primary" (click)="submitCompleteForm()" [disabled]="completing() || formFinalized()">
                   {{ completing() ? 'Submitting…' : (formFinalized() ? '✓ Form finalized' : 'Finalize & Attach Form') }}
                 </button>
@@ -346,7 +350,7 @@
                   {{ completing() ? 'Completing…' : 'Complete Work Order' }}
                 </button>
               </div>
-              <p class="muted" *ngIf="!formFinalized()" style="margin-top:6px; font-size:12px;">
+              <p class="muted" *ngIf="!tooEarly && !formFinalized()" style="margin-top:6px; font-size:12px;">
                 Finalize the form first — then “Complete Work Order” will close the WO in Maximo.
               </p>
             </div>

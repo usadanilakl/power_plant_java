@@ -30,6 +30,12 @@ public class HotWork extends BasePermitEntity {
     private String fireWatch;
     private String meterModel;
     private String meterNum;
+    /**
+     * Calibration date of the gas meter ("Cal Date" on the paper form). Distinct from
+     * {@link #date}, which is the permit date — the printable form previously bound both cells to
+     * `date`, so they were two views onto one control and editing either clobbered the other.
+     */
+    private String meterCalDate;
     private String specialInstructions;
     private String location;
     private Boolean isAirMonitoringRegisteredOnConfinedSpace;

@@ -18,7 +18,15 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 public class PrintableForm extends BaseAuditEntity {
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    /**
+     * EAGER on purpose. A PrintableForm without its containers is meaningless — every endpoint
+     * that returns one serializes the containers with it — and the app runs with
+     * {@code spring.jpa.open-in-view=false}, so a LAZY collection throws
+     * LazyInitializationException in the Jackson converter (the session is already closed by the
+     * time the response is written). That took every paper form offline with a 500. This table
+     * holds ~12 rows, so eager loading is cheap and removes the whole class of failure.
+     */
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "printable_form_id")
     private Set<FormContainer> formContainers = new HashSet<>();
 

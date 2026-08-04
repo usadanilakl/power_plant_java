@@ -2,12 +2,9 @@ package com.dk_power.power_plant_java.config;
 
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
 import com.dk_power.power_plant_java.entities.forms.PrintableForm;
-import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
-import com.dk_power.power_plant_java.sevice.sync.SyncContext;
+import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,33 +18,31 @@ import java.util.Set;
 @Slf4j
 public class PermitFormSeeder {
 
-    private final PrintableFormRepo printableFormRepo;
-    private final SyncContext syncContext;
-    private final SyncConfig syncConfig;
+    // Seeds go through the service, not the repo: PrintableFormService#save demotes any existing
+    // primary of the same formType first. Saving via the repo is what produced two IS_PRIMARY=TRUE
+    // Loto rows, which makes findByFormTypeAndIsPrimary throw and takes the paper form offline.
+    private final PrintableFormService printableFormService;
 
     private static final int M = 20; // margin
     private static final int FW = 776; // full width (816 - 2 * margin)
+
+    // Geometry of the `radio` widget (RadioCheckboxesComponent): two 18px squares, 4px gap.
+    // A container using it must be at least RADIO_W wide or the second box is clipped.
+    private static final int RADIO_BOX = 18;
+    private static final int RADIO_PITCH = 22; // box + gap
+    private static final int RADIO_W = 40;     // box + gap + box
 
     /** Available seed types with their default names */
     private static final Map<String, String> SEED_TYPES = Map.of(
         "EnergizedWorkPermit", "Energized Electrical Work Permit",
         "VentingPermit", "Combustible Gas System Venting/Inerting Checklist",
         "ExcavationPermit", "Excavation & Blind Penetrations Permit",
-        "Loto", "LOTO Record Sheet"
+        "Loto", "LOTO Record Sheet",
+        "HotWork", "Hot Work Permit"
     );
 
     public Map<String, String> getAvailableSeedTypes() {
         return SEED_TYPES;
-    }
-
-    @EventListener(ApplicationReadyEvent.class)
-    @Transactional
-    public void onStartup() {
-        // Non-hub machines: clean up any locally-seeded forms (they'll receive hub's forms via sync)
-        if (!syncConfig.isHubMode()) {
-            cleanupLocalDuplicateForms();
-        }
-        // No longer auto-seeds forms — use the admin UI to seed on demand
     }
 
     /**
@@ -65,46 +60,18 @@ public class PermitFormSeeder {
             case "VentingPermit" -> seedVentingForm(formName);
             case "ExcavationPermit" -> seedExcavationForm(formName);
             case "Loto" -> seedLotoForm(formName);
+            case "HotWork" -> seedHotWorkForm(formName);
             default -> throw new IllegalArgumentException("Unknown form type: " + formType);
         };
     }
 
-    /**
-     * On non-hub machines, remove locally-seeded forms if hub-sourced forms have arrived via sync.
-     * This prevents duplicates (same formType but different device-prefixed IDs).
-     * Runs inside syncContext since this is local cleanup, not a change to broadcast.
-     */
-    private void cleanupLocalDuplicateForms() {
-        syncContext.executeInSyncContext(() -> {
-            try {
-                long devicePrefix = syncConfig.getDeviceNumber() * 1_000_000_000L;
-                long deviceCeiling = devicePrefix + 1_000_000_000L;
-
-                for (String formType : List.of("EnergizedWorkPermit", "VentingPermit", "ExcavationPermit", "Loto")) {
-                    List<PrintableForm> forms = printableFormRepo.findAllByFormType(formType);
-                    if (forms.size() <= 1) continue;
-
-                    // Check if any form came from a different device (i.e., hub-synced)
-                    boolean hasHubForm = forms.stream()
-                        .anyMatch(f -> f.getId() < devicePrefix || f.getId() >= deviceCeiling);
-
-                    if (!hasHubForm) continue;
-
-                    // Soft-delete local forms, keep hub-synced ones
-                    for (PrintableForm form : forms) {
-                        if (form.getId() >= devicePrefix && form.getId() < deviceCeiling) {
-                            form.setDeleted(true);
-                            printableFormRepo.save(form);
-                            log.info("Cleaned up locally-seeded form: {} #{} (hub-synced form exists)",
-                                formType, form.getId());
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Form cleanup failed (non-fatal): {}", e.getMessage());
-            }
-        });
-    }
+    // NOTE: an ApplicationReadyEvent listener used to run cleanupLocalDuplicateForms() here on
+    // every non-hub boot. It soft-deleted ANY locally-created form of the four seeded types as
+    // soon as a foreign-id form of the same type existed — including a form the operator had
+    // edited — and did so inside SyncContext, so the deletion was never broadcast and diverged
+    // that node permanently. Removed. Duplicate primaries are now handled explicitly and
+    // reversibly from Admin -> Forms via PrintableFormMaintenanceService#fixDuplicatePrimaries,
+    // which demotes the extra rather than deleting a form, and which does broadcast.
 
     // ========== ENERGIZED WORK PERMIT (1 page) ==========
 
@@ -255,7 +222,7 @@ public class PermitFormSeeder {
         form.addFormContainer(text(M, y, FW, 38, "No work on energized equipment shall be performed alone.\nIf the work scope changes, notify the Plant Manager.\nNo modified work scope shall be performed without PRIOR authorization from the Plant Manager", p,
                 Map.of("backgroundColor", "#cc0000", "color", "white", "textAlign", "center", "fontSize", "9px")));
 
-        PrintableForm saved = printableFormRepo.save(form);
+        PrintableForm saved = printableFormService.save(form);
         log.info("Seeded EnergizedWorkPermit paper form: {}", name);
         return saved;
     }
@@ -268,7 +235,7 @@ public class PermitFormSeeder {
         seedVentingPage1(form);
         seedVentingPage2(form);
 
-        PrintableForm saved = printableFormRepo.save(form);
+        PrintableForm saved = printableFormService.save(form);
         log.info("Seeded VentingPermit paper form: {}", name);
         return saved;
     }
@@ -513,7 +480,7 @@ public class PermitFormSeeder {
         seedExcavationPage2(form);
         seedExcavationPage3(form);
 
-        PrintableForm saved = printableFormRepo.save(form);
+        PrintableForm saved = printableFormService.save(form);
         log.info("Seeded ExcavationPermit paper form: {}", name);
         return saved;
     }
@@ -837,7 +804,7 @@ public class PermitFormSeeder {
         seedLotoPage1(form);
         seedLotoPage2(form);
         seedLotoPage3(form);
-        PrintableForm saved = printableFormRepo.save(form);
+        PrintableForm saved = printableFormService.save(form);
         log.info("Seeded LOTO form (3 pages): {}", name);
         return saved;
     }
@@ -1150,6 +1117,343 @@ public class PermitFormSeeder {
         }
     }
 
+    // ========== HOT WORK PERMIT (2 pages) ==========
+
+    /**
+     * Hot Work Permit, transcribed from the current paper form (2 pages, portrait).
+     *
+     * <p>Bindings were verified against {@code HotWorkDto.toFormFields()} — the renderer resolves
+     * {@code content.name} against that output, not against the entity. Cells with no backing
+     * field are emitted as unbound ruled blanks rather than {@code field()} containers, because a
+     * bound control whose path does not resolve silently discards whatever is typed into it.
+     *
+     * <p>The Y/NA checklist is two columns on paper but {@code HotWorkMeasures} is 12 plain
+     * booleans, so the Y column binds and the NA column prints as an empty hand-marked box.
+     */
+    private PrintableForm seedHotWorkForm(String name) {
+        PrintableForm form = createForm(name, "HotWork");
+        seedHotWorkPage1(form);
+        seedHotWorkPage2(form);
+        PrintableForm saved = printableFormService.save(form);
+        log.info("Seeded HotWork paper form (2 pages): {}", name);
+        return saved;
+    }
+
+    private void seedHotWorkPage1(PrintableForm form) {
+        int p = 1;
+        int y = M;
+
+        // --- Title row ---
+        form.addFormContainer(text(M, y, 70, 18, "Permit #:", p, bold(10)));
+        form.addFormContainer(field(M + 72, y, 150, 18, "redTagNum", "text", p));
+        form.addFormContainer(text(280, y - 2, 260, 24, "HOT WORK PERMIT", p, merge(bold(16), centered())));
+        form.addFormContainer(text(590, y, 206, 18, "Permit Is Valid for One Shift Only", p,
+                merge(bold(9), Map.of("color", "#cc0000", "textDecoration", "underline"))));
+        y += 26;
+
+        y = sectionBar(form, "HOT WORK PERMIT ISSUE SECTION", y, p);
+
+        // --- Issue details ---
+        form.addFormContainer(text(M, y, 130, 20, "Location of Hot Work:", p, small()));
+        form.addFormContainer(field(M + 132, y, 420, 20, "location", "text", p));
+        form.addFormContainer(text(600, y, 40, 20, "Date:", p, small()));
+        form.addFormContainer(field(642, y, 154, 20, "date", "date", p));
+        y += 24;
+
+        form.addFormContainer(text(M, y, 250, 20, "Name of Requestor (Person Performing Work):", p, small()));
+        form.addFormContainer(field(M + 252, y, 240, 20, "foreman", "text", p));
+        form.addFormContainer(text(540, y, 120, 20, "Name of Fire Watch:", p, small()));
+        form.addFormContainer(field(662, y, 134, 20, "fireWatch", "text", p));
+        y += 24;
+
+        form.addFormContainer(text(M, y, FW, 18,
+                "Note: For open flame winter thawing activities, a fire watch is NOT required.  See Procedure for requirements.",
+                p, merge(bold(9), merge(centered(), Map.of("backgroundColor", "#ffff00")))));
+        y += 22;
+
+        form.addFormContainer(text(M, y, 200, 18, "Atmospheric Monitoring Record:", p, bold(10)));
+        y += 20;
+
+        form.addFormContainer(field(M, y, 14, 14, "isAirMonitoringRegisteredOnConfinedSpace", "checkbox", p));
+        form.addFormContainer(text(M + 20, y - 2, FW - 20, 30,
+                "Check this box If the hot work is in a confined space and the records of monitoring will only be recorded on the "
+                        + "Confined Space Entry Permit or Certification of Reclassification.",
+                p, merge(bold(9), Map.of("fontStyle", "italic", "whiteSpace", "normal"))));
+        y += 34;
+
+        form.addFormContainer(text(M, y, 140, 20, "Test Equipment Model #:", p, small()));
+        form.addFormContainer(field(M + 142, y, 200, 20, "meterModel", "text", p));
+        form.addFormContainer(text(380, y, 60, 20, "Serial #:", p, small()));
+        form.addFormContainer(field(442, y, 180, 20, "meterNum", "text", p));
+        form.addFormContainer(text(632, y, 60, 20, "Cal Date:", p, small()));
+        form.addFormContainer(field(694, y, 102, 20, "meterCalDate", "date", p));
+        y += 26;
+
+        // --- Fire watch / initial test strip ---
+        form.addFormContainer(text(M, y, 150, 30, "Fire Watch  Required", p, merge(bold(10), boxed())));
+        form.addFormContainer(text(M + 152, y, RADIO_BOX, 14, "Y", p, merge(bold(9), centered())));
+        form.addFormContainer(text(M + 152 + RADIO_PITCH, y, RADIO_BOX, 14, "N", p, merge(bold(9), centered())));
+        // One boolean, two mutually-exclusive boxes: true = Y, false = N.
+        form.addFormContainer(field(M + 152, y + 14, RADIO_W, RADIO_BOX, "isFireWatchRequired", "radio", p));
+        form.addFormContainer(text(230, y, 140, 30, "Time of Initial Test", p, merge(bold(10), boxed())));
+        form.addFormContainer(field(372, y, 80, 30, "timeOfInitialTest", "time", p));
+        form.addFormContainer(text(456, y, 250, 30, "Initial Reading - Combustibles (LEL) Under 10%", p,
+                merge(bold(9), merge(boxed(), Map.of("whiteSpace", "normal")))));
+        form.addFormContainer(field(708, y, 88, 30, "initialTestResult", "text", p));
+        y += 34;
+
+        // --- Additional monitoring: unbound, filled in by hand during the job ---
+        form.addFormContainer(text(M, y, 210, 40, "Additional Monitoring Results If Required", p,
+                merge(bold(9), merge(boxed(), merge(centered(), Map.of("whiteSpace", "normal"))))));
+        form.addFormContainer(text(M, y + 40, 210, 16,
+                "If required - write down results approximately every 2 hours of hot work", p,
+                merge(centered(), Map.of("fontSize", "7px", "fontStyle", "italic", "whiteSpace", "normal"))));
+        int cx = M + 210;
+        int cw = (FW - 210) / 10;
+        for (int i = 0; i < 5; i++) {
+            form.addFormContainer(text(cx, y, cw, 20, "Time", p, merge(bold(8), merge(boxed(), centered()))));
+            form.addFormContainer(box(cx, y + 20, cw, 36, p));
+            cx += cw;
+            form.addFormContainer(text(cx, y, cw, 20, "Reading", p, merge(bold(8), merge(boxed(), centered()))));
+            form.addFormContainer(box(cx, y + 20, cw, 36, p));
+            cx += cw;
+        }
+        y += 60;
+
+        y = sectionBar(form, "HOT WORK PERMIT CHECKLIST AND APPROVAL SECTION", y, p);
+
+        // --- 12-item checklist. One boolean per row rendered as a Y/NA pair: true = Y, false = N/A.
+        // Both boxes are clickable and mutually exclusive, which is what the paper form means. ---
+        form.addFormContainer(text(M + 4, y, RADIO_BOX, 14, "Y", p, merge(bold(9), centered())));
+        form.addFormContainer(text(M + 4 + RADIO_PITCH, y, RADIO_BOX, 14, "NA", p, merge(bold(9), centered())));
+        y += 16;
+
+        String[][] checklist = {
+            {"measures.areaIsClean", "General Condition of Area Housekeeping is acceptable."},
+            {"measures.flammablesAreSecured", "Remove, cover, or otherwise protect all flammable and combustible materials in area. (35 feet from work area)"},
+            {"measures.noCombustibleDustOrDebrisPresent", "Sweep or vacuum away all combustible dust or debris.  If possible, wet down area after it is cleaned."},
+            {"measures.radiativeHeatPreventiveMeasuresAreTaken", "Walls, roofs, ceilings, pipes, tanks and partitions assessed for conductive or radiated heat and preventive measures taken."},
+            {"measures.vesselsArePurged", "Purge or inert piping or vessels prior to hot work (if used for transporting or storing flammables or combustibles) per site procedure."},
+            {"measures.openingsAreCovered", "Openings in floors or walls covered to contain sparks and hot slag."},
+            {"measures.ductVentilationIsSecured", "Ductwork shutdown or otherwise protected to prevent causing a fire at a distant location."},
+            {"measures.lockOutIsCompleted", "Necessary equipment de-energized and locked out of service per LOTO requirements."},
+            {"measures.communicationIsEstablished", "Communications checked for use in emergency (phones, radios)"},
+            {"measures.fireWatchIsAwareOfDuties", "Fire Watch is aware of their duties, is fire extinguisher trained, knows location of fire extinguishers, and emergency procedures"},
+            {"measures.fireExtinguisherPresent", "The fire extinguisher immediately available and the backup have been inspected and are suitable for use."},
+            {"measures.fireProtectionIsInService", "Fire Protection System in service."},
+        };
+        for (String[] item : checklist) {
+            int rowH = 26;
+            form.addFormContainer(field(M + 4, y + 3, RADIO_W, RADIO_BOX, item[0], "radio", p));
+            form.addFormContainer(text(M + 66, y, FW - 66, rowH, item[1], p,
+                    merge(small(), Map.of("whiteSpace", "normal"))));
+            y += rowH;
+        }
+        // Item 12 carries a red warning clause on the paper.
+        form.addFormContainer(text(M + 66, y - 8, FW - 66, 26,
+                "If area has a fire system and it is out of service, the Plant Manager MUST approve the permit "
+                        + "and notification to insurance carrier is required.",
+                p, merge(bold(9), Map.of("color", "#cc0000", "fontStyle", "italic", "whiteSpace", "normal"))));
+        y += 22;
+
+        form.addFormContainer(text(M, y, 110, 20, "Special Instructions:", p, bold(10)));
+        form.addFormContainer(field(M + 112, y, FW - 112, 20, "specialInstructions", "textarea", p));
+        y += 24;
+
+        form.addFormContainer(text(M, y, 290, 20, "Hot Work Permit Approved (Issuer Signature):", p, bold(9)));
+        form.addFormContainer(blank(M + 292, y, 290, 20, p));
+        form.addFormContainer(text(600, y, 70, 20, "Date/Time:", p, bold(9)));
+        form.addFormContainer(blank(672, y, 124, 20, p));
+        y += 24;
+
+        form.addFormContainer(text(M, y, 340, 20, "Plant Manager (or Designee) Approval (Fire Systems Disabled):", p, bold(9)));
+        form.addFormContainer(blank(M + 342, y, 240, 20, p));
+        form.addFormContainer(text(600, y, 70, 20, "Date/Time:", p, bold(9)));
+        form.addFormContainer(blank(672, y, 124, 20, p));
+        y += 26;
+
+        y = sectionBar(form, "HOT WORK PERMIT CANCELLATION SECTION", y, p);
+
+        form.addFormContainer(text(M, y, FW, 18,
+                "Fire Watch/Fire Monitoring (as required by the table below) have been completed and all ignition sources have been extinguished.",
+                p, merge(small(), centered())));
+        y += 22;
+
+        form.addFormContainer(text(M, y, 150, 20, "Name of Requestor", p, bold(9)));
+        form.addFormContainer(blank(M + 152, y, 190, 20, p));
+        form.addFormContainer(text(370, y, 70, 20, "Signature:", p, bold(9)));
+        form.addFormContainer(blank(442, y, 190, 20, p));
+        form.addFormContainer(text(640, y, 70, 20, "Date/Time:", p, bold(9)));
+        form.addFormContainer(blank(712, y, 84, 20, p));
+        y += 24;
+
+        form.addFormContainer(text(M, y, 150, 20, "Name of Fire Watch", p, bold(9)));
+        form.addFormContainer(blank(M + 152, y, 190, 20, p));
+        form.addFormContainer(text(370, y, 70, 20, "Signature", p, bold(9)));
+        form.addFormContainer(blank(442, y, 190, 20, p));
+        form.addFormContainer(text(640, y, 70, 20, "Date/Time:", p, bold(9)));
+        form.addFormContainer(blank(712, y, 84, 20, p));
+        y += 24;
+
+        form.addFormContainer(box(M, y + 2, 14, p));
+        form.addFormContainer(text(M + 22, y, FW - 22, 18,
+                "The Hot Work is completed; the area has been inspected and this permit is closed out.", p, small()));
+        y += 22;
+
+        form.addFormContainer(text(M, y, 190, 20, "Hot Work Permit Cancelled:", p, bold(9)));
+        form.addFormContainer(blank(M + 192, y, 400, 20, p));
+        form.addFormContainer(text(640, y, 70, 20, "Date/Time:", p, bold(9)));
+        form.addFormContainer(blank(712, y, 84, 20, p));
+        y += 26;
+
+        form.addFormContainer(text(M, y, FW, 16,
+                "Post Copy at Location - Keep Original in Control Room - Upon Completion, File Original in Binder, Copy May be Destroyed.",
+                p, merge(small(), centered())));
+    }
+
+    /** Page 2 is almost entirely static reference content plus hand-filled monitor readings. */
+    private void seedHotWorkPage2(PrintableForm form) {
+        int p = 2;
+        int y = M;
+
+        form.addFormContainer(text(M, y, FW, 22,
+                "Construction and Occupancy Factors for Post-Work Fire Watch and Monitoring Periods", p,
+                merge(bold(12), centered())));
+        y += 30;
+
+        // --- Static factor matrix: 1 rail + 1 label col + 3 groups x (Watch|Monitor) ---
+        int railW = 26;
+        int labelX = M + railW;
+        int labelW = 250;
+        int gridX = labelX + labelW;
+        int colW = (FW - railW - labelW) / 6;
+
+        form.addFormContainer(text(gridX, y, colW * 6, 22, "Construction Factors", p,
+                merge(bold(11), merge(centered(), Map.of("backgroundColor", "#000000", "color", "white")))));
+        y += 22;
+
+        String[] groups = {
+            "Noncombustible construction, or Class 1, or Class A building materials",
+            "Combustible construction without concealed cavities",
+            "Combustible construction with unprotected concealed cavities",
+        };
+        for (int g = 0; g < 3; g++) {
+            form.addFormContainer(text(gridX + g * colW * 2, y, colW * 2, 56, groups[g], p,
+                    merge(small(), merge(boxed(), Map.of("whiteSpace", "normal")))));
+        }
+        y += 56;
+        for (int g = 0; g < 3; g++) {
+            form.addFormContainer(text(gridX + g * colW * 2, y, colW, 20, "Watch", p,
+                    merge(bold(9), merge(boxed(), centered()))));
+            form.addFormContainer(text(gridX + g * colW * 2 + colW, y, colW, 20, "Monitor", p,
+                    merge(bold(9), merge(boxed(), centered()))));
+        }
+        int gridTop = y;
+        y += 20;
+
+        String[][] rows = {
+            {"Noncombustible with any combustibles contained within closed equipment (e.g., ignitable liquid within piping)",
+             "30 minutes", "0 hours", "1 hour", "3 hours", "1 hour", "5 hours", "62"},
+            {"Office, retail or manufacturing with limited combustible loading",
+             "1 hour", "1 hour", "1 hour", "3 hours", "1 hour", "5 hours", "44"},
+            {"Manufacturing with moderate combustible loading",
+             "1 hour", "2 hours", "1 hour", "3 hours", "1 hour", "5 hours", "34"},
+            {"Warehousing", "1 hour", "2 hours", "1 hour", "3 hours", "1 hour", "5 hours", "26"},
+            {"Exceptions: Occupancies with processing or having bulk storage of combustible materials capable of "
+                + "supporting slow-growing fires (e.g., paper, pulp, textile fibers, wood, bark, grain, coal or charcoal)",
+             "1 hour", "3 hours", "1 hour", "3 hours", "1 hour", "5 hours", "96"},
+        };
+        for (String[] row : rows) {
+            int h = Integer.parseInt(row[7]);
+            form.addFormContainer(text(labelX, y, labelW, h, row[0], p,
+                    merge(small(), merge(boxed(), Map.of("whiteSpace", "normal")))));
+            for (int c = 0; c < 6; c++) {
+                form.addFormContainer(text(gridX + c * colW, y, colW, h, row[c + 1], p,
+                        merge(small(), merge(boxed(), centered()))));
+            }
+            y += h;
+        }
+        form.addFormContainer(text(M, gridTop, railW, y - gridTop, "Occupancy Factors", p,
+                merge(bold(9), merge(boxed(), merge(centered(),
+                        Map.of("backgroundColor", "#000000", "color", "white",
+                               "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
+        y += 12;
+
+        form.addFormContainer(text(M, y, 90, 18, "Definitions:", p, bold(10)));
+        y += 20;
+        form.addFormContainer(text(M, y, FW, 32,
+                "Fire Monitor - Provisions implemented to provide early warning of smoldering fire conditions in the hot work "
+                        + "area following completion of the established fire watch time period.",
+                p, merge(small(), Map.of("whiteSpace", "normal"))));
+        y += 34;
+        form.addFormContainer(text(M, y, FW, 32,
+                "Fire Watch - A person or persons responsible for continuously observing the hot work area, maintaining "
+                        + "fire-safe conditions, and responding to emergencies during hot work operations and in the established period following.",
+                p, merge(small(), Map.of("whiteSpace", "normal"))));
+        y += 42;
+
+        // --- Four hand-filled fire-monitor blocks ---
+        int mLabelW = 230;
+        int mColW = (FW - mLabelW) / 10;
+        for (int b = 0; b < 4; b++) {
+            form.addFormContainer(text(M, y, mLabelW, 44, "Fire Monitor:", p, merge(bold(9), boxed())));
+            int x = M + mLabelW;
+            for (int i = 0; i < 5; i++) {
+                form.addFormContainer(text(x, y, mColW, 18, "Time", p, merge(bold(8), merge(boxed(), centered()))));
+                form.addFormContainer(box(x, y + 18, mColW, 26, p));
+                x += mColW;
+                form.addFormContainer(text(x, y, mColW, 18, "Reading", p, merge(bold(8), merge(boxed(), centered()))));
+                form.addFormContainer(box(x, y + 18, mColW, 26, p));
+                x += mColW;
+            }
+            y += 48;
+        }
+    }
+
+    // ---- small layout helpers used by the Hot Work layout ----
+
+    /** Full-width inverted section bar. Returns the new y cursor. */
+    private int sectionBar(PrintableForm form, String label, int y, int page) {
+        form.addFormContainer(text(M, y, FW, 20, label, page,
+                merge(bold(11), merge(centered(), Map.of("backgroundColor", "#000000", "color", "white")))));
+        return y + 24;
+    }
+
+    /** An empty bordered square — a checkbox the operator marks by hand (no backing field). */
+    private FormContainer box(int x, int y, int size, int page) {
+        return box(x, y, size, size, page);
+    }
+
+    private FormContainer box(int x, int y, int w, int h, int page) {
+        Map<String, Object> s = new HashMap<>(paperStyle());
+        s.put("borderStyle", "solid");
+        s.put("borderWidth", "1px");
+        s.put("borderColor", "black");
+        return text(x, y, w, h, "", page, s);
+    }
+
+    /** A ruled blank line — signature or hand-written value with no backing field. */
+    private FormContainer blank(int x, int y, int w, int h, int page) {
+        return text(x, y, w, h, "", page, underlineStyle());
+    }
+
+    private Map<String, Object> small() {
+        return new HashMap<>(Map.of("fontSize", "9px"));
+    }
+
+    /** Thin cell border, for grid/table cells. */
+    private Map<String, Object> boxed() {
+        return new HashMap<>(Map.of(
+                "borderStyle", "solid", "borderWidth", "1px", "borderColor", "black"));
+    }
+
+    /** Right-biased merge of two style maps (both may be immutable). */
+    private Map<String, Object> merge(Map<String, Object> a, Map<String, Object> b) {
+        Map<String, Object> out = new HashMap<>(a);
+        out.putAll(b);
+        return out;
+    }
+
     private int addChecklistSection(PrintableForm form, String[][] items, int startY, int page, int labelW, int fieldX) {
         int y = startY;
         for (String[] item : items) {
@@ -1222,8 +1526,18 @@ public class PermitFormSeeder {
         return Map.of("fontWeight", "bold", "fontSize", fontSize + "px");
     }
 
+    /**
+     * Centres a container's content.
+     *
+     * <p>NOT {@code textAlign}. The container div is {@code display:flex} and the inner
+     * {@code .content-display} div has no width at top level, so it shrink-wraps its text and
+     * {@code textAlign} has nothing to centre within — every centred header the seeder ever wrote
+     * printed left-aligned. Designer-authored forms use {@code justifyContent}, which is why they
+     * look right; the DB shows the split cleanly (seeded forms: 28 textAlign / 0 justifyContent,
+     * designer forms: 0 / 267).
+     */
     private Map<String, Object> centered() {
-        return Map.of("textAlign", "center");
+        return Map.of("justifyContent", "center", "alignItems", "center");
     }
 
     /** Nested form field container (for use inside nestedForm definitions) */

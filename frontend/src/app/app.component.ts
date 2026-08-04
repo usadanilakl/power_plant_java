@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
-import { PrintLayoutComponent } from "./features/form-designer/printable-form/print-layout/print-layout.component";
+import { PrintLayoutComponent } from "./features/form-designer-refactored/print-layout/print-layout.component";
 import { GlobalMessageComponent } from "./shared/global-message/global-message.component";
 import { GlobalContextMenuComponent } from "./shared/menu/context-menu/global-context-menu/global-context-menu.component";
 import { QrScannerComponent } from "./shared/qr-code/qr-scanner/qr-scanner.component";

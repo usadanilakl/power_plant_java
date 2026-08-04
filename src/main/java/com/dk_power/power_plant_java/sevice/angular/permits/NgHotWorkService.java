@@ -61,11 +61,16 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
         return HotWork.class;
     }
 
+    /** A client-side placeholder Value (`new ValueDto()`) arrives with id 0, not null. */
+    private boolean isUnset(com.dk_power.power_plant_java.entities.categories.Value v) {
+        return v == null || v.getId() == null || v.getId() == 0L;
+    }
+
     @Override
     public HotWork save(HotWorkDto dto) {
         HotWork oldEntity = dto.getId() != null ? hotWorkRepo.findById(dto.getId()).orElse(null) : null;
         HotWork hotWork = hotWorkMapper.convertToEntity(dto);
-        if (oldEntity == null && hotWork.getPermitStatus() == null) {
+        if (oldEntity == null && isUnset(hotWork.getPermitStatus())) {
             hotWork.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
         }
         HotWork saved = hotWorkRepo.save(hotWork);
@@ -77,7 +82,11 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
 
     public HotWorkDto createHotWorkRequest(HotWorkDto hotWorkDto) {
         HotWork entity = toEntity(hotWorkDto);
-        if (entity.getPermitStatus() == null) {
+        // Unlike its siblings this path uses the generic ModelMapper-based toEntity(), which DOES
+        // map permitStatus — and the Angular DTO defaults it to `new ValueDto()`, i.e. id 0. That
+        // placeholder is non-null, so a plain `== null` guard was skipped and the subsequent
+        // merge() blew up with "Unable to find Value with id 0". Treat id 0/null as "no status".
+        if (isUnset(entity.getPermitStatus())) {
             entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
         }
         HotWork saved = save(entity);

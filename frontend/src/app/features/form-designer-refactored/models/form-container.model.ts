@@ -1,5 +1,6 @@
 import { BaseDto, BaseModel } from '../../../models/base/base.model';
 import { FormField } from '../../../models/ui/form-field.model';
+import { parseContainerValue } from '../../../models/forms/form-container.model';
 import { PrintableFormDto } from './printable-form.model';
 
 export type ContentType = 'text' | 'formField' | 'image' | 'variable' | 'repeatingSection';
@@ -61,32 +62,35 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
   }
 
   override toJson(): any {
+    // The backend's FormContainer setters take Object/Map and serialize server-side, and the save
+    // path posts the DTO instance directly. Emit plain values so both paths agree — stringifying
+    // here would double-encode.
     return {
       ...super.toJson(),
-      content: JSON.stringify(this.content),
-      position: JSON.stringify(this.position),
-      size: JSON.stringify(this.size),
-      style: JSON.stringify(this.style),
+      content: this.content,
+      position: this.position,
+      size: this.size,
+      style: this.style,
       groupId: this.groupId,
       contentType: this.contentType,
       pageNumber: this.pageNumber,
       locked: this.locked,
-      contentStyle: JSON.stringify(this.contentStyle),
+      contentStyle: this.contentStyle,
     };
   }
 
   static override fromJson(json: any): FormContainerDto {
     return new FormContainerDto({
       ...super.fromJson(json),
-      content: json.contentJson ? JSON.parse(json.contentJson) : null,
-      position: json.positionJson ? JSON.parse(json.positionJson) : { x: 0, y: 0 },
-      size: json.sizeJson ? JSON.parse(json.sizeJson) : { width: 100, height: 100 },
-      style: json.styleJson ? JSON.parse(json.styleJson) : {},
+      content: parseContainerValue(json.content, null),
+      position: parseContainerValue(json.position, { x: 0, y: 0 }),
+      size: parseContainerValue(json.size, { width: 100, height: 100 }),
+      style: parseContainerValue(json.style, {}),
       groupId: json.groupId,
       contentType: json.contentType ?? 'text',
       pageNumber: json.pageNumber ?? 1,
       locked: json.locked ?? false,
-      contentStyle: json.contentStyleJson ? JSON.parse(json.contentStyleJson) : {},
+      contentStyle: parseContainerValue(json.contentStyle, {}),
     });
   }
 }

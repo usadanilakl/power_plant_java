@@ -27,6 +27,8 @@ import java.time.Instant;
 @NoArgsConstructor
 public class PendingFileSync {
 
+    private static final String TERMINAL_FAILURE_PREFIX = "PERMANENT: ";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -74,7 +76,7 @@ public class PendingFileSync {
     public enum SyncStatus {
         PENDING,        // Waiting to be processed
         IN_PROGRESS,    // Currently being processed
-        COMPLETED,      // Successfully synced
+        COMPLETED,      // Queue work finished (success or a terminal remote absence)
         FAILED          // Failed after max retries
     }
 
@@ -113,6 +115,17 @@ public class PendingFileSync {
     public void markFailed(String error) {
         this.status = SyncStatus.FAILED;
         this.lastError = error;
+        this.lastAttemptTime = Instant.now();
+    }
+
+    /**
+     * Finish queue processing when retrying cannot repair the remote absence. Using the existing
+     * COMPLETED lifecycle keeps the task out of recovery and lets normal completed-task cleanup
+     * remove the diagnostic record later without a schema change.
+     */
+    public void markTerminalFailure(String error) {
+        this.status = SyncStatus.COMPLETED;
+        this.lastError = TERMINAL_FAILURE_PREFIX + error;
         this.lastAttemptTime = Instant.now();
     }
 

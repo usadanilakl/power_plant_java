@@ -57,6 +57,7 @@ public class FieldSyncService {
     private final MessageMergeService messageMergeService;
     private final DedupKeyResolver dedupKeyResolver;
     private final SyncDeadLetterService syncDeadLetterService;
+    private final MembershipCrdtService membershipCrdtService;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -74,6 +75,14 @@ public class FieldSyncService {
     // reporting success — can be reverted without a redeploy.
     @org.springframework.beans.factory.annotation.Value("${sync.hub.apply-lww-enabled:false}")
     private boolean hubApplyLwwEnabled;
+
+    // When true, owning-side @ManyToMany membership applies as an LWW-Element-Set (OR-Set) via
+    // MembershipCrdtService instead of the whole-set DELETE-all-then-INSERT + single LWW winner, so
+    // concurrent edits converge instead of clobbering. Default FALSE = current behavior (a no-op to
+    // ship); requires seeding the membership_event table from current join tables before enabling in
+    // prod. See project/features/sync-and-backup/m2m-membership-convergence.md.
+    @org.springframework.beans.factory.annotation.Value("${sync.membership.orset.enabled:false}")
+    private boolean membershipOrsetEnabled;
 
     // Set by the applyIncomingChanges overload; if non-null, deferred change ids are collected here
     // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
@@ -150,7 +159,8 @@ public class FieldSyncService {
             ConversationMergeService conversationMergeService,
             MessageMergeService messageMergeService,
             DedupKeyResolver dedupKeyResolver,
-            SyncDeadLetterService syncDeadLetterService) {
+            SyncDeadLetterService syncDeadLetterService,
+            MembershipCrdtService membershipCrdtService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.serviceFacade = serviceFacade;
         this.syncConfig = syncConfig;
@@ -179,6 +189,7 @@ public class FieldSyncService {
         this.messageMergeService = messageMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
         this.syncDeadLetterService = syncDeadLetterService;
+        this.membershipCrdtService = membershipCrdtService;
     }
 
     /**
@@ -1343,6 +1354,15 @@ public class FieldSyncService {
             return true;
         }
 
+        // Under the OR-Set, owning-side @ManyToMany membership applies via a per-element LWW-Element-Set
+        // (see applyManyToManyChange) that converges regardless of order — so it must NOT be gated by
+        // change-level LWW here, which would discard a concurrent edit before its per-element merge. The
+        // per-element max inside the OR-Set is the real conflict resolution; this is why it is safe to
+        // bypass (unlike the reverted naive delta, which bypassed LWW with no per-element resolution).
+        if (membershipOrsetEnabled && "ManyToMany".equals(incoming.getRelationshipType())) {
+            return true;
+        }
+
         String key = incoming.buildChangeKey();
         FieldChange local = latestChangesMap.get(key);
 
@@ -1574,6 +1594,44 @@ public class FieldSyncService {
                 }
             }
 
+            // OR-Set path (flag-gated): apply as a per-element LWW-Element-Set so concurrent membership
+            // edits converge instead of the whole-set winner clobbering the other. See
+            // project/features/sync-and-backup/m2m-membership-convergence.md.
+            if (membershipOrsetEnabled) {
+                MembershipCrdtService.OrderKey key = new MembershipCrdtService.OrderKey(
+                        change.getTimestamp(), change.getOriginMachineId(), change.getId());
+                List<Long> added;
+                List<Long> removed;
+                if (change.getOldValue() != null) {
+                    // Real edit: delta from the editor's pre-edit set.
+                    List<Long> oldIds = parseRemappedIds(change.getOldValue(), targetTypeName, idRemapTable);
+                    Set<Long> newSet = new LinkedHashSet<>(newIds);
+                    Set<Long> oldSet = new LinkedHashSet<>(oldIds);
+                    added = new ArrayList<>(newSet); added.removeAll(oldSet);
+                    removed = new ArrayList<>(oldSet); removed.removeAll(newSet);
+                } else {
+                    // Whole-set reconcile directive (drift "Use Hub" / accept-remote): make it exactly newIds.
+                    added = new ArrayList<>(new LinkedHashSet<>(newIds));
+                    removed = new ArrayList<>(membershipCrdtService.presentSet(
+                            change.getEntityType(), ownerId, change.getFieldName()));
+                    removed.removeAll(newIds);
+                }
+                // FK safety: only ADD elements that exist locally; a missing added target defers the
+                // whole change so a retry applies it once the referenced row arrives. (REMOVEs are safe.)
+                List<Long> addedExisting = filterExistingIds(field, added);
+                if (addedExisting.size() < added.size()) {
+                    log.warn("ManyToMany(OR-Set) {}.{}: {} added target(s) not present yet — deferring",
+                            entity.getClass().getSimpleName(), change.getFieldName(), added.size() - addedExisting.size());
+                    note(change, ChangeDisposition.DEFERRED);
+                    return false;
+                }
+                membershipCrdtService.applyDelta(change.getEntityType(), ownerId, change.getFieldName(),
+                        tableName, ownerColumn, inverseColumn, addedExisting, removed, key);
+                log.debug("Applied ManyToMany(OR-Set) {}.{}: +{} -{}",
+                        entity.getClass().getSimpleName(), change.getFieldName(), addedExisting.size(), removed.size());
+                return true;
+            }
+
             // Filter newIds to only include entities that actually exist in the target table.
             // This prevents FK constraint violations when referenced entities haven't been
             // received yet (e.g., they're in the next SSE batch).
@@ -1625,6 +1683,30 @@ public class FieldSyncService {
             note(change, ChangeDisposition.FAILED_RETRYABLE);
             return false;
         }
+    }
+
+    /** Parse a serialized id list ("[123, 456]") into remapped Long ids. null/empty/"[]" → empty. */
+    private List<Long> parseRemappedIds(String json, String targetTypeName,
+                                        Map<String, Map<Long, Long>> idRemapTable) {
+        List<Long> ids = new ArrayList<>();
+        if (json == null || json.isEmpty() || "null".equals(json) || "[]".equals(json)) return ids;
+        json = json.trim();
+        if (json.startsWith("[") && json.endsWith("]")) {
+            json = json.substring(1, json.length() - 1);
+            if (!json.isEmpty()) {
+                for (String idStr : json.split(",")) {
+                    idStr = idStr.trim().replace("\"", "");
+                    if (!idStr.isEmpty()) {
+                        Long parsedId = Long.parseLong(idStr);
+                        if (targetTypeName != null) {
+                            parsedId = DedupKeyResolver.resolveRemappedId(targetTypeName, parsedId, idRemapTable);
+                        }
+                        ids.add(parsedId);
+                    }
+                }
+            }
+        }
+        return ids;
     }
 
     /**
@@ -1731,6 +1813,13 @@ public class FieldSyncService {
     private boolean isProtectedAggregateMembershipField(Class<?> entityClass, String fieldName) {
         String entityName = entityClass.getSimpleName();
         if ("JobLog".equals(entityName) && "packages".equals(fieldName)) {
+            return true;
+        }
+        // A printable form's containers are grow-only per child: the additive path only ever sets
+        // a child's FK, never clears one (removal rides the container's own DELETE). Without this
+        // guard a stale or partial payload NULLs every container's printable_form_id before
+        // re-pointing, so a peer's concurrently-added container is silently detached.
+        if ("PrintableForm".equals(entityName) && "formContainers".equals(fieldName)) {
             return true;
         }
         if ("DailyPermitPackage".equals(entityName)) {

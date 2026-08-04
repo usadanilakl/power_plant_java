@@ -1,7 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { PrintableFormService } from '../../../services/forms/printable-form.service';
+import {
+  DuplicatePrimaryResult,
+  FormDiagnostics,
+  OrphanRepairResult,
+  PrintableFormService,
+} from '../../../services/forms/printable-form.service';
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 
 @Component({
@@ -69,6 +74,90 @@ import { PrintableFormDto } from '../../../models/forms/printable-form.model';
           </tbody>
         </table>
         <p *ngIf="forms.length === 0 && !loadingForms" class="no-data">No forms found.</p>
+      </div>
+
+      <!-- Maintenance -->
+      <div class="admin-section">
+        <h3>Form Maintenance</h3>
+        <p class="description">
+          Every action here has a <strong>Dry run</strong> that reports what would change without
+          writing anything. Review it, then Apply.
+        </p>
+
+        <div class="button-group">
+          <button (click)="diagnose()" [disabled]="diagnosing" class="action-btn secondary">
+            {{ diagnosing ? 'Checking...' : 'Run Diagnostics' }}
+          </button>
+        </div>
+
+        <table *ngIf="diagnostics" class="forms-table">
+          <tbody>
+            <tr><th>Live forms</th><td>{{ diagnostics.totalForms }}</td></tr>
+            <tr><th>Live containers</th><td>{{ diagnostics.totalContainers }}</td></tr>
+            <tr>
+              <th>Orphaned containers</th>
+              <td [class.bad]="diagnostics.orphanedContainers > 0">
+                {{ diagnostics.orphanedContainers }}
+                <span *ngIf="orphanBreakdown" class="muted">&nbsp;({{ orphanBreakdown }})</span>
+              </td>
+            </tr>
+            <tr>
+              <th>Form types with &gt;1 primary</th>
+              <td [class.bad]="diagnostics.duplicatePrimaryTypes > 0">
+                {{ diagnostics.duplicatePrimaryTypes }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Orphaned containers -->
+        <div class="sub-section">
+          <h4>Orphaned containers &mdash; this machine only</h4>
+          <p class="description">
+            Containers whose parent form never arrived on this node. The repair is deliberately
+            <strong>not</strong> broadcast: the same row may be correctly linked on another machine,
+            so deleting it fleet-wide would destroy healthy data.
+            <strong>Run this on each machine separately.</strong>
+          </p>
+          <div class="button-group">
+            <button (click)="repairOrphans(true)" [disabled]="repairingOrphans" class="action-btn secondary">
+              {{ repairingOrphans ? 'Working...' : 'Dry run' }}
+            </button>
+            <button (click)="repairOrphans(false)"
+                    [disabled]="repairingOrphans || !orphanDryRunDone"
+                    class="action-btn danger"
+                    title="Run a dry run first">
+              Apply &mdash; soft-delete orphans
+            </button>
+          </div>
+          <pre *ngIf="orphanResult" class="result">{{ orphanResult | json }}</pre>
+        </div>
+
+        <!-- Duplicate primaries -->
+        <div class="sub-section">
+          <h4>Duplicate primary forms &mdash; syncs fleet-wide</h4>
+          <p class="description">
+            More than one primary for a form type makes
+            <code>get-primary-form-by-type</code> throw, which takes that paper form offline.
+            This keeps the newest and demotes the rest. <code>PrintableForm</code> is CRDT-synced,
+            so <strong>run this once, on the hub</strong> &mdash; the change reaches every desktop.
+          </p>
+          <div class="button-group">
+            <button (click)="fixPrimaries(true)" [disabled]="fixingPrimaries" class="action-btn secondary">
+              {{ fixingPrimaries ? 'Working...' : 'Dry run' }}
+            </button>
+            <button (click)="fixPrimaries(false)"
+                    [disabled]="fixingPrimaries || !primaryDryRunDone"
+                    class="action-btn danger"
+                    title="Run a dry run first">
+              Apply &mdash; demote extras
+            </button>
+          </div>
+          <pre *ngIf="primaryResult" class="result">{{ primaryResult | json }}</pre>
+        </div>
+
+        <div class="error" *ngIf="maintenanceError">{{ maintenanceError }}</div>
+        <div class="success-msg" *ngIf="maintenanceMessage">{{ maintenanceMessage }}</div>
       </div>
     </div>
   `,
@@ -176,6 +265,42 @@ import { PrintableFormDto } from '../../../models/forms/printable-form.model';
       color: #999;
       font-style: italic;
     }
+    .sub-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px dashed #ccc;
+    }
+    .sub-section h4 {
+      margin: 0 0 6px;
+      color: #333;
+    }
+    .action-btn.danger {
+      background-color: #dc3545;
+      margin-left: 8px;
+    }
+    .action-btn.danger:hover:not(:disabled) {
+      background-color: #b02a37;
+    }
+    .result {
+      margin-top: 12px;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 12px;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    td.bad {
+      color: #dc3545;
+      font-weight: 700;
+    }
+    .muted {
+      color: #666;
+      font-weight: 400;
+      font-size: 12px;
+    }
   `]
 })
 export class AdminFormsComponent implements OnInit {
@@ -190,11 +315,92 @@ export class AdminFormsComponent implements OnInit {
   forms: PrintableFormDto[] = [];
   loadingForms = false;
 
+  // Maintenance
+  diagnostics: FormDiagnostics | null = null;
+  diagnosing = false;
+  orphanResult: OrphanRepairResult | null = null;
+  repairingOrphans = false;
+  orphanDryRunDone = false;
+  primaryResult: DuplicatePrimaryResult | null = null;
+  fixingPrimaries = false;
+  primaryDryRunDone = false;
+  maintenanceError = '';
+  maintenanceMessage = '';
+
   constructor(private printableFormService: PrintableFormService) {}
+
+  /** e.g. "device 1: 490, device 3: 180" */
+  get orphanBreakdown(): string {
+    const byDevice = this.diagnostics?.orphansByDevice ?? {};
+    return Object.entries(byDevice).map(([device, count]) => `${device}: ${count}`).join(', ');
+  }
 
   ngOnInit() {
     this.loadSeedTypes();
     this.loadForms();
+  }
+
+  diagnose() {
+    this.diagnosing = true;
+    this.maintenanceError = '';
+    this.maintenanceMessage = '';
+    this.printableFormService.diagnose().subscribe({
+      next: res => {
+        this.diagnostics = res.responseData ?? null;
+        this.diagnosing = false;
+      },
+      error: err => {
+        this.diagnosing = false;
+        this.maintenanceError = err.error?.message || 'Diagnostics failed';
+      }
+    });
+  }
+
+  repairOrphans(dryRun: boolean) {
+    this.repairingOrphans = true;
+    this.maintenanceError = '';
+    this.maintenanceMessage = '';
+    this.printableFormService.repairOrphans(dryRun).subscribe({
+      next: res => {
+        this.repairingOrphans = false;
+        this.orphanResult = res.responseData ?? null;
+        this.maintenanceMessage = res.message || '';
+        if (dryRun) {
+          this.orphanDryRunDone = true;
+        } else {
+          this.orphanDryRunDone = false;
+          this.diagnose();
+        }
+      },
+      error: err => {
+        this.repairingOrphans = false;
+        this.maintenanceError = err.error?.message || 'Orphan repair failed';
+      }
+    });
+  }
+
+  fixPrimaries(dryRun: boolean) {
+    this.fixingPrimaries = true;
+    this.maintenanceError = '';
+    this.maintenanceMessage = '';
+    this.printableFormService.fixDuplicatePrimaries(dryRun).subscribe({
+      next: res => {
+        this.fixingPrimaries = false;
+        this.primaryResult = res.responseData ?? null;
+        this.maintenanceMessage = res.message || '';
+        if (dryRun) {
+          this.primaryDryRunDone = true;
+        } else {
+          this.primaryDryRunDone = false;
+          this.diagnose();
+          this.loadForms();
+        }
+      },
+      error: err => {
+        this.fixingPrimaries = false;
+        this.maintenanceError = err.error?.message || 'Duplicate-primary fix failed';
+      }
+    });
   }
 
   loadSeedTypes() {

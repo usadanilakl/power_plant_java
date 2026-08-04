@@ -124,6 +124,8 @@ export class MaximoDetailDialogComponent implements OnInit {
   cDetails = '';
   completing = signal(false);
   completeDone = signal(false);
+  /** Not-yet-due PM: reveal the assigned form read-for-reference (no finalize/complete) when the user opts in. */
+  previewForm = signal(false);
   /** Human summary shown after a completion — honest about whether the WO actually closed vs. form-only attach. */
   completeSummary = signal('');
   laborPeople = signal<{ name: string; personid: string }[]>([]);

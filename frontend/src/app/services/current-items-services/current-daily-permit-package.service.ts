@@ -11,7 +11,7 @@ import { HotWorkService } from "../permits/hot-work.service";
 import { SafeWorkService } from "../permits/safe-work.service";
 import { HotWorkDto } from "../../models/permits/hot-work.model";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
-import { FormBinding } from "../../features/form-designer/printable-form/form-binder/form-binder.component";
+import { FormBinding } from "../../models/forms/form-binding.model";
 import { LotoDto } from "../../models/loto/loto.model";
 import { LotoService } from "../loto/loto.service";
 import { EnergizedWorkPermitDto } from "../../models/permits/energized-work-permit.model";

@@ -40,12 +40,15 @@ export interface HotWorkModel extends BaseModel {
   fireWatch: string | null;
   meterModel: string | null;
   meterNum: string | null;
+  meterCalDate: string | null;
   specialInstructions: string | null;
   measures: HotWorkMeasures | null;
   isAirMonitoringRegisteredOnConfinedSpace: boolean;
   isFireWatchRequired: boolean;
   timeOfInitialTest: string;
   initialTestResult: string;
+  /** Printed as "Permit #" on the paper form. Mapped both ways in HotWorkMapper. */
+  redTagNum: string | null;
   permitStatus: ValueDto;
 }
 
@@ -57,12 +60,14 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   fireWatch: string | null;
   meterModel: string | null;
   meterNum: string | null;
+  meterCalDate: string | null;
   specialInstructions: string | null;
   measures: HotWorkMeasures | null;
   isAirMonitoringRegisteredOnConfinedSpace: boolean;
   timeOfInitialTest: string;
   isFireWatchRequired: boolean;
   initialTestResult: string;
+  redTagNum: string | null;
   permitStatus: ValueDto;
 
   constructor(data: Partial<HotWorkModel> = {}) {
@@ -74,12 +79,14 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this.fireWatch = data.fireWatch ?? null;
     this.meterModel = data.meterModel ?? "RKI GX-3R PRO";
     this.meterNum = data.meterNum ?? null;
+    this.meterCalDate = data.meterCalDate ?? null;
     this.specialInstructions = data.specialInstructions ?? null;
     this.measures = data.measures ?? new HotWorkMeasures();
     this.isAirMonitoringRegisteredOnConfinedSpace = data.isAirMonitoringRegisteredOnConfinedSpace ?? false;
     this.timeOfInitialTest = data.timeOfInitialTest ?? '';
     this.isFireWatchRequired = data.isFireWatchRequired ?? true;
     this. initialTestResult = data.initialTestResult ?? '';
+    this.redTagNum = data.redTagNum ?? null;
     this.permitStatus = data.permitStatus ?? new ValueDto();
   }
 
@@ -93,8 +100,14 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       fireWatch: this.fireWatch,
       meterModel: this.meterModel,
       meterNum: this.meterNum,
+      meterCalDate: this.meterCalDate,
       specialInstructions: this.specialInstructions,
       measures: this.measures,
+      isAirMonitoringRegisteredOnConfinedSpace: this.isAirMonitoringRegisteredOnConfinedSpace,
+      isFireWatchRequired: this.isFireWatchRequired,
+      timeOfInitialTest: this.timeOfInitialTest,
+      initialTestResult: this.initialTestResult,
+      redTagNum: this.redTagNum,
       permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
@@ -109,8 +122,14 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       fireWatch: json.fireWatch || null,
       meterModel: json.meterModel || "RKI GX-3R PRO",
       meterNum: json.meterNum || null,
+      meterCalDate: json.meterCalDate || null,
       specialInstructions: json.specialInstructions || null,
       measures: json.measures || new HotWorkMeasures(),
+      isAirMonitoringRegisteredOnConfinedSpace: json.isAirMonitoringRegisteredOnConfinedSpace ?? false,
+      isFireWatchRequired: json.isFireWatchRequired ?? true,
+      timeOfInitialTest: json.timeOfInitialTest ?? '',
+      initialTestResult: json.initialTestResult ?? '',
+      redTagNum: json.redTagNum ?? null,
       permitStatus: ValueDto.fromJson(json.permitStatus),
     });
   }
@@ -118,7 +137,9 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   static isValidKey(key: string): key is keyof HotWorkModel {
     return [
       'id', 'date', 'location', 'workScope', 'foreman', 'fireWatch',
-      'meterModel', 'meterNum', 'specialInstructions', 'measures',
+      'meterModel', 'meterNum', 'meterCalDate', 'specialInstructions', 'measures',
+      'isAirMonitoringRegisteredOnConfinedSpace', 'isFireWatchRequired',
+      'timeOfInitialTest', 'initialTestResult', 'redTagNum',
       'isVerified', 'name', 'objectType'
     ].includes(key);
   }
@@ -190,6 +211,12 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         type: 'text', 
         initialValue: dto.meterNum 
       },
+      meterCalDate: {
+        name: 'meterCalDate',
+        label: 'Meter Cal Date',
+        type: 'date',
+        initialValue: dto.meterCalDate
+      },
       specialInstructions: { 
         name: 'specialInstructions', 
         label: 'Special Instructions', 
@@ -230,6 +257,12 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         type: 'text', 
         initialValue: dto.initialTestResult 
       },
+      redTagNum: {
+        name: 'redTagNum',
+        label: 'Permit #',
+        type: 'text',
+        initialValue: dto.redTagNum
+      },
       ...measureFields,
     };
   
@@ -246,6 +279,8 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       fireWatch: { id: 'fireWatch', header: 'Fire Watch', accessorKey: 'fireWatch' },
       meterModel: { id: 'meterModel', header: 'Meter Model', accessorKey: 'meterModel' },
       meterNum: { id: 'meterNum', header: 'Meter Number', accessorKey: 'meterNum' },
+      meterCalDate: { id: 'meterCalDate', header: 'Meter Cal Date', accessorKey: 'meterCalDate' },
+      redTagNum: { id: 'redTagNum', header: 'Permit #', accessorKey: 'redTagNum' },
       specialInstructions: { id: 'specialInstructions', header: 'Special Instructions', accessorKey: 'specialInstructions' },
       measures: { 
         id: 'measures', 

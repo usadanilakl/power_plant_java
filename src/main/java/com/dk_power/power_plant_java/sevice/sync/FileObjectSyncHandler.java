@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import com.dk_power.power_plant_java.sevice.hub.HubFileService;
@@ -946,6 +947,9 @@ public class FileObjectSyncHandler {
             if (!inProgressDownloads.add(taskKey)) {
                 continue;
             }
+            // Bound attempted work, not only successful work. Otherwise a failing queue can bypass
+            // maxPerBatch and perform unbounded network calls in one scheduled transaction.
+            processed++;
 
             try {
                 // Mark as in progress
@@ -968,11 +972,18 @@ public class FileObjectSyncHandler {
                         outcome.downloaded(), outcome.failed());
                 }
 
-                // Mark as completed
-                task.markCompleted();
+                if (outcome.permanentlyMissing() > 0) {
+                    task.markTerminalFailure(String.format(
+                        "%d hub file(s) are permanently unavailable", outcome.permanentlyMissing()));
+                    log.warn("file_sync.download_permanently_missing entityId={} missing={} downloaded={}",
+                        task.getEntityId(), outcome.permanentlyMissing(), outcome.downloaded());
+                } else {
+                    task.markCompleted();
+                }
                 pendingFileSyncRepository.save(task);
-                processed++;
-                log.debug("Successfully downloaded files for FileObject #{}", task.getEntityId());
+                if (outcome.permanentlyMissing() == 0) {
+                    log.debug("Successfully downloaded files for FileObject #{}", task.getEntityId());
+                }
 
             } catch (Exception e) {
                 log.error("Failed to download files for FileObject #{}: {}",
@@ -1150,15 +1161,23 @@ public class FileObjectSyncHandler {
      * Throws exception on failure to trigger retry with exponential backoff.
      */
     /** Outcome of a download attempt. Old-folder cleanup only runs on a FULL success (no failures). */
-    private record DownloadOutcome(int downloaded, int failed) {
-        boolean fullSuccess() { return downloaded > 0 && failed == 0; }
+    private record DownloadOutcome(int downloaded, int transientFailures, int permanentlyMissing) {
+        int failed() { return transientFailures + permanentlyMissing; }
+        boolean fullSuccess() { return downloaded > 0 && failed() == 0; }
+    }
+
+    /** A 404/410 for a concrete file ID cannot be repaired by retrying the same queue task. */
+    private static final class PermanentlyMissingRemoteFileException extends IOException {
+        private PermanentlyMissingRemoteFileException(Long fileId, String fileName, int status) {
+            super("Hub file " + fileId + " (" + fileName + ") is unavailable: HTTP " + status);
+        }
     }
 
     private DownloadOutcome downloadFilesFromServer(PendingFileSync task) {
         FileObject fileObject = fileRepo.findById(task.getEntityId()).orElse(null);
         if (fileObject == null) {
             log.warn("FileObject #{} not found, skipping download", task.getEntityId());
-            return new DownloadOutcome(0, 0); // Don't retry if entity doesn't exist
+            return new DownloadOutcome(0, 0, 0); // Don't retry if entity doesn't exist
         }
 
         String listUrl = syncConfig.getSyncServerUrl() +
@@ -1182,7 +1201,7 @@ public class FileObjectSyncHandler {
 
             if (response.getBody() == null) {
                 log.debug("No files found on server for FileObject #{}", task.getEntityId());
-                return new DownloadOutcome(0, 0); // Empty response is OK - no files to download
+                return new DownloadOutcome(0, 0, 0); // Empty response is OK - no files to download
             }
 
             Map<String, Object> body = response.getBody();
@@ -1190,35 +1209,37 @@ public class FileObjectSyncHandler {
 
             if (files == null || files.isEmpty()) {
                 log.debug("No files to download for FileObject #{}", task.getEntityId());
-                return new DownloadOutcome(0, 0); // No files is OK
+                return new DownloadOutcome(0, 0, 0); // No files is OK
             }
 
             log.debug("Downloading {} files for FileObject #{}", files.size(), task.getEntityId());
 
             int successCount = 0;
-            int failCount = 0;
+            int transientFailureCount = 0;
+            int permanentlyMissingCount = 0;
             for (Map<String, Object> fileInfo : files) {
                 try {
                     downloadSingleFile(fileInfo, fileObject);
                     successCount++;
+                } catch (PermanentlyMissingRemoteFileException e) {
+                    permanentlyMissingCount++;
+                    log.warn("Skipping permanently unavailable hub file {}: {}",
+                        fileInfo.get("fileName"), e.getMessage());
                 } catch (Exception e) {
-                    failCount++;
+                    transientFailureCount++;
                     log.error("Failed to download file {}: {}", fileInfo.get("fileName"), e.getMessage());
                 }
             }
 
-            // If all downloads failed, throw to trigger retry
-            if (successCount == 0 && failCount > 0) {
-                throw new RuntimeException("All " + failCount + " file downloads failed for FileObject #" + task.getEntityId());
+            // Retry any transient failure, including partial downloads. Already downloaded files are
+            // integrity-checked and safe to replace on the next attempt.
+            if (transientFailureCount > 0) {
+                throw new RuntimeException(String.format(
+                    "%d transient file download(s) failed for FileObject #%d (%d downloaded, %d permanently missing)",
+                    transientFailureCount, task.getEntityId(), successCount, permanentlyMissingCount));
             }
 
-            // Partial success - log but don't retry
-            if (failCount > 0) {
-                log.warn("Downloaded {}/{} files for FileObject #{}, {} failed",
-                    successCount, files.size(), task.getEntityId(), failCount);
-            }
-
-            return new DownloadOutcome(successCount, failCount);
+            return new DownloadOutcome(successCount, 0, permanentlyMissingCount);
 
         } catch (Exception e) {
             log.error("Error downloading files for FileObject #{}: {}", task.getEntityId(), e.getMessage());
@@ -1243,8 +1264,22 @@ public class FileObjectSyncHandler {
         headers.set("X-Machine-Id", syncConfig.getMachineId());
         headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
-        ResponseEntity<byte[]> response = restTemplate.exchange(
-            downloadUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+        ResponseEntity<byte[]> response;
+        try {
+            response = restTemplate.exchange(
+                downloadUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+        } catch (HttpStatusCodeException e) {
+            if (isPermanentlyMissingStatus(e.getStatusCode())) {
+                throw new PermanentlyMissingRemoteFileException(
+                    fileId, fileName, e.getStatusCode().value());
+            }
+            throw e;
+        }
+
+        if (isPermanentlyMissingStatus(response.getStatusCode())) {
+            throw new PermanentlyMissingRemoteFileException(
+                fileId, fileName, response.getStatusCode().value());
+        }
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
             throw new IOException("Failed to download file " + fileName + ": server returned " + response.getStatusCode());
@@ -1307,6 +1342,11 @@ public class FileObjectSyncHandler {
             Files.deleteIfExists(tmp);
         }
         log.debug("Downloaded file {} to {} ({} bytes)", fileName, targetPath, content.length);
+    }
+
+    private boolean isPermanentlyMissingStatus(HttpStatusCode status) {
+        return status.value() == HttpStatus.NOT_FOUND.value()
+            || status.value() == HttpStatus.GONE.value();
     }
 
     /**

@@ -28,8 +28,9 @@ public class DriftScanScheduler {
                initialDelayString = "${sync.drift.scan-initial-delay-ms:20000}")
     public void scheduledScan() {
         if (!enabled) return;
+        if (syncConfig.isHubMode() || !syncConfig.isServerSyncConfigured()) return;
         String url = syncConfig.getSyncServerUrl();
-        if (url == null || url.isBlank()) return; // no peer to compare against (e.g. the hub)
+        if (url == null || url.isBlank()) return;
         try {
             DriftDetectionService.DriftScanResult r = driftDetectionService.detectAll();
             log.info("drift.scheduled_scan done: {} type(s), {} flagged, {} still-drifting, {} error(s)",

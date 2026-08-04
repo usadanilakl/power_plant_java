@@ -28,10 +28,16 @@ public class HotWorkMapper implements BaseMapper {
         dto.setFireWatch(entity.getFireWatch());
         dto.setMeterModel(entity.getMeterModel());
         dto.setMeterNum(entity.getMeterNum());
+        dto.setMeterCalDate(entity.getMeterCalDate());
         dto.setSpecialInstructions(entity.getSpecialInstructions());
         dto.setLocation(entity.getLocation());
         dto.setWorkScope(entity.getWorkScope());
         dto.setRedTagNum(entity.getRedTagNum());
+        dto.setPermitNumber(entity.getPermitNumber());
+        dto.setIsAirMonitoringRegisteredOnConfinedSpace(entity.getIsAirMonitoringRegisteredOnConfinedSpace());
+        dto.setIsFireWatchRequired(entity.getIsFireWatchRequired());
+        dto.setTimeOfInitialTest(entity.getTimeOfInitialTest());
+        dto.setInitialTestResult(entity.getInitialTestResult());
 
         try {
             dto.setMeasures(entity.getMeasures());
@@ -63,10 +69,17 @@ public class HotWorkMapper implements BaseMapper {
         entity.setFireWatch(dto.getFireWatch());
         entity.setMeterModel(dto.getMeterModel());
         entity.setMeterNum(dto.getMeterNum());
+        entity.setMeterCalDate(dto.getMeterCalDate());
         entity.setSpecialInstructions(dto.getSpecialInstructions());
         entity.setLocation(dto.getLocation());
         entity.setWorkScope(dto.getWorkScope());
         if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
+        if (dto.getIsAirMonitoringRegisteredOnConfinedSpace() != null)
+            entity.setIsAirMonitoringRegisteredOnConfinedSpace(dto.getIsAirMonitoringRegisteredOnConfinedSpace());
+        if (dto.getIsFireWatchRequired() != null)
+            entity.setIsFireWatchRequired(dto.getIsFireWatchRequired());
+        if (dto.getTimeOfInitialTest() != null) entity.setTimeOfInitialTest(dto.getTimeOfInitialTest());
+        if (dto.getInitialTestResult() != null) entity.setInitialTestResult(dto.getInitialTestResult());
 
         try {
             entity.setMeasures(dto.getMeasures());

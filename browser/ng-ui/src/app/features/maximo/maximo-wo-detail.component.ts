@@ -100,16 +100,21 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
             <div class="wd-success"><span class="wd-success-i">⏳</span> Saved on this device — it submits to Maximo when you reconnect.</div>
           } @else if (formLoading()) {
             <p class="wd-msg">Checking for a PM form…</p>
-          } @else if (tooEarly()) {
-            <div class="wd-notdue">
-              <span class="wd-notdue-i">⏳</span>
-              <div>
-                <p class="wd-notdue-t">Not due yet</p>
-                <p class="wd-notdue-d">Scheduled for <b>{{ wo.targetStart | date:'mediumDate' }}</b> — this PM can't be completed before its period. Come back on or after that date.</p>
-              </div>
-            </div>
           } @else if (formTemplate()) {
-            <div class="wd-formhead">
+            @if (tooEarly() && !previewForm()) {
+              <div class="wd-notdue">
+                <span class="wd-notdue-i">⏳</span>
+                <div>
+                  <p class="wd-notdue-t">Not due yet</p>
+                  <p class="wd-notdue-d">Scheduled for <b>{{ wo.targetStart | date:'mediumDate' }}</b> — this PM can't be completed before its period. Come back on or after that date.</p>
+                  <button class="wd-preview-btn" (click)="previewForm.set(true)">👁 Preview the form (not submittable yet)</button>
+                </div>
+              </div>
+            } @else {
+              @if (tooEarly()) {
+                <div class="wd-notdue-compact">⏳ Reference only — not due until <b>{{ wo.targetStart | date:'mediumDate' }}</b>. Completion is disabled below.</div>
+              }
+              <div class="wd-formhead">
               <p class="wd-formname">{{ formTemplate()?.formName }}</p>
               @if (availableForms().length > 1) { <button class="wd-changeform" (click)="backToPicker()">← change form</button> }
             </div>
@@ -201,16 +206,21 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
                 }
               }
             }
-            @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
-            <button class="wd-complete" [disabled]="completing()" (click)="submitForm()">
-              {{ completing() ? 'Submitting…' : 'Submit &amp; complete' }}
-            </button>
-            @if (woCloseFailed()) {
-              <p class="wd-warn"><b>Form attached ✓</b> — but the work order didn't close: {{ woCloseErr() || 'Maximo rejected the status change.' }} Fix the cause in Maximo (e.g. complete any open tasks), then close it below. The form won't be attached again.</p>
+              @if (tooEarly()) {
+                <div class="wd-notdue-compact">⏳ Not due until <b>{{ wo.targetStart | date:'mediumDate' }}</b> — completion is disabled here. This is a reference preview only.</div>
+              } @else {
+                @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
+                <button class="wd-complete" [disabled]="completing()" (click)="submitForm()">
+                  {{ completing() ? 'Submitting…' : 'Submit &amp; complete' }}
+                </button>
+                @if (woCloseFailed()) {
+                  <p class="wd-warn"><b>Form attached ✓</b> — but the work order didn't close: {{ woCloseErr() || 'Maximo rejected the status change.' }} Fix the cause in Maximo (e.g. complete any open tasks), then close it below. The form won't be attached again.</p>
+                }
+                <button class="wd-close-only" [disabled]="completing() || !canComplete()" (click)="completeWo()">
+                  {{ completing() ? 'Closing…' : 'Complete work order (close only — no form)' }}
+                </button>
+              }
             }
-            <button class="wd-close-only" [disabled]="completing() || !canComplete()" (click)="completeWo()">
-              {{ completing() ? 'Closing…' : 'Complete work order (close only — no form)' }}
-            </button>
           } @else if (availableForms().length > 1) {
             <p class="wd-msg">This PM has several forms — choose the one you performed:</p>
             <div class="wd-formpick">
@@ -221,19 +231,29 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
               }
             </div>
           } @else {
-            <label class="wd-field">Labor hours
-              <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value); autosave()" placeholder="e.g. 1.5">
-            </label>
-            <label class="wd-field">Summary
-              <input type="text" [value]="summary()" (input)="summary.set($any($event.target).value); autosave()" placeholder="Short work summary">
-            </label>
-            <label class="wd-field">Details
-              <textarea rows="3" [value]="details()" (input)="details.set($any($event.target).value); autosave()" placeholder="What was done (optional)"></textarea>
-            </label>
-            @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
-            <button class="wd-complete" [disabled]="completing()" (click)="completeWo()">
-              {{ completing() ? 'Completing…' : 'Complete work order' }}
-            </button>
+            @if (tooEarly()) {
+              <div class="wd-notdue">
+                <span class="wd-notdue-i">⏳</span>
+                <div>
+                  <p class="wd-notdue-t">Not due yet</p>
+                  <p class="wd-notdue-d">Scheduled for <b>{{ wo.targetStart | date:'mediumDate' }}</b> — this work order can't be completed before its period. Come back on or after that date.</p>
+                </div>
+              </div>
+            } @else {
+              <label class="wd-field">Labor hours
+                <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value); autosave()" placeholder="e.g. 1.5">
+              </label>
+              <label class="wd-field">Summary
+                <input type="text" [value]="summary()" (input)="summary.set($any($event.target).value); autosave()" placeholder="Short work summary">
+              </label>
+              <label class="wd-field">Details
+                <textarea rows="3" [value]="details()" (input)="details.set($any($event.target).value); autosave()" placeholder="What was done (optional)"></textarea>
+              </label>
+              @if (bannerError()) { <p class="wd-err">{{ bannerError() }}</p> }
+              <button class="wd-complete" [disabled]="completing()" (click)="completeWo()">
+                {{ completing() ? 'Completing…' : 'Complete work order' }}
+              </button>
+            }
           }
         }
       </div>
@@ -286,6 +306,9 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
     .wd-notdue-i { font-size: 1.6rem; line-height: 1; }
     .wd-notdue-t { font-weight: 800; color: #e67e22; margin: 0 0 0.25rem; }
     .wd-notdue-d { color: var(--primary-text); font-size: 0.9rem; margin: 0; line-height: 1.4; }
+    .wd-preview-btn { margin-top: 0.7rem; background: transparent; color: #e67e22; border: 1px solid #e67e22; border-radius: 9px; padding: 0.5rem 0.8rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .wd-preview-btn:hover, .wd-preview-btn:active { background: rgba(230,126,34,0.15); }
+    .wd-notdue-compact { display: flex; align-items: center; gap: 0.4rem; background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 9px; padding: 0.6rem 0.8rem; margin: 0.4rem 0 0.7rem; color: var(--primary-text); font-size: 0.85rem; font-weight: 600; }
     .wd-chip.sm { font-size: 0.6rem; padding: 0.05rem 0.35rem; }
     .st-done { background: #27ae60; } .st-active { background: #2980b9; } .st-wait { background: #e67e22; }
     .st-cancel { background: #95a5a6; } .st-open { background: #7f8c8d; }
@@ -364,6 +387,8 @@ export class MaximoWoDetailComponent implements OnInit {
   woCloseErr = computed(() => this.submitState()?.woCloseError ?? null);
   /** Ticks (~2×/sec while the sheet is open) so running timers + the wait countdown update live. */
   now = signal(Date.now());
+  /** For a not-yet-due PM: reveal the form read-for-reference (no submit) when the operator opts in. */
+  previewForm = signal(false);
   private destroyRef = inject(DestroyRef);
   private emittedDone = false;
 

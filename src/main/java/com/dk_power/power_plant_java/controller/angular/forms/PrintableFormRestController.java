@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.forms.PrintableForm;
 import com.dk_power.power_plant_java.repository.forms.FormContainerRepo;
 import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
 import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
+import com.dk_power.power_plant_java.sevice.forms.PrintableFormMaintenanceService;
 import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ public class PrintableFormRestController {
     private final FormContainerService formContainerService;
     private final PrintableFormService printableFormService;
     private final PermitFormSeeder permitFormSeeder;
+    private final PrintableFormMaintenanceService maintenanceService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<Iterable<PrintableForm>>> getAllForms() {
@@ -75,8 +77,9 @@ public class PrintableFormRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, "FormContainer not found with id: " + containerId));
             }
 
-            form.addFormContainer(container);
-            PrintableForm updatedForm = printableFormRepo.save(form);
+            // Via the service so the parent row is dirtied and the membership change emits a
+            // FieldChange — otherwise the peer receives the container with a null FK.
+            PrintableForm updatedForm = printableFormService.addContainers(form, List.of(container));
 
             return ResponseEntity.ok(new NgApiResponse<>(updatedForm, "Container added to form successfully."));
         } catch (Exception e) {
@@ -93,10 +96,7 @@ public class PrintableFormRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, "PrintableForm not found with id: " + id));
             }
 
-            for (FormContainer container : containers) {
-                form.addFormContainer(container);
-            }
-            PrintableForm updatedForm = printableFormRepo.save(form);
+            PrintableForm updatedForm = printableFormService.addContainers(form, containers);
 
             return ResponseEntity.ok(new NgApiResponse<>(updatedForm, "Containers added to form successfully."));
         } catch (Exception e) {
@@ -178,4 +178,70 @@ public class PrintableFormRestController {
         }
     }
 
+    // ---------------------------------------------------------------- maintenance
+
+    /**
+     * Read-only health snapshot of this node's form tables: orphaned containers (broken down by
+     * the device that created them) and any formType carrying more than one primary.
+     *
+     * <p>{@code GET /ng/forms/maintenance/diagnose}
+     */
+    @GetMapping("/maintenance/diagnose")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> diagnose() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(maintenanceService.diagnose(), "Form diagnostics."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error running diagnostics: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Soft-delete FormContainer rows that have no parent form ON THIS NODE. Local only — the
+     * repair runs inside SyncContext and emits nothing, because the same row may be correctly
+     * linked on another node. Must be run per machine.
+     *
+     * <p>Dry run: {@code POST /ng/forms/maintenance/repair-orphans}
+     * <br>Apply: {@code POST /ng/forms/maintenance/repair-orphans?dryRun=false}
+     */
+    @PostMapping("/maintenance/repair-orphans")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> repairOrphans(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            Map<String, Object> result = maintenanceService.repairOrphanedContainers(dryRun);
+            long count = ((Number) result.getOrDefault("orphanCount", 0)).longValue();
+            String msg = dryRun
+                    ? "Dry run: " + count + " orphaned container(s) would be soft-deleted on this node."
+                    : "Soft-deleted " + count + " orphaned container(s) on this node (not broadcast).";
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error repairing orphans: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Collapse each formType down to a single primary, keeping the most recently created form.
+     * Unlike the orphan repair this DOES broadcast — PrintableForm is CRDT-synced, so running it
+     * once (on the hub) converges the whole fleet.
+     *
+     * <p>Dry run: {@code POST /ng/forms/maintenance/fix-duplicate-primaries}
+     * <br>Apply: {@code POST /ng/forms/maintenance/fix-duplicate-primaries?dryRun=false}
+     */
+    @PostMapping("/maintenance/fix-duplicate-primaries")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> fixDuplicatePrimaries(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            Map<String, Object> result = maintenanceService.fixDuplicatePrimaries(dryRun);
+            long types = ((Number) result.getOrDefault("affectedTypes", 0)).longValue();
+            long demoted = ((Number) result.getOrDefault("demoted", 0)).longValue();
+            String msg = dryRun
+                    ? "Dry run: " + types + " formType(s) have duplicate primaries."
+                    : "Fixed " + types + " formType(s); demoted " + demoted + " form(s). Change syncs to all nodes.";
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error fixing duplicate primaries: " + e.getMessage()));
+        }
+    }
 }

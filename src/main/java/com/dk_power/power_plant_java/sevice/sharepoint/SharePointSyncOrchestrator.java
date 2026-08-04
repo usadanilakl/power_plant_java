@@ -244,7 +244,7 @@ public class SharePointSyncOrchestrator {
                 syncable.afterSync(result);
                 lastSuccessfulSyncAt.put(type, Instant.now());
 
-                log.info("[SP Orchestrator] {} sync{}: created={}, updated={}, autoClosed={}, skipped={}, failed={}, fetched={}, durationMs={}",
+                log.info("[SP Orchestrator] {} sync: created={}, updated={}, autoClosed={}, skipped={}, failed={}, fetched={}, durationMs={}",
                     type,
                     result.getCreated(), result.getUpdated(),
                     result.getAutoClosed(), result.getSkipped(), result.getFailed(),

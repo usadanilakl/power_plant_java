@@ -11,6 +11,7 @@ import { WorkAreaSelectComponent } from '../../../permit-builder/work-area/compo
 import { FormContainerDto } from '../../models/form-container.model';
 import { FormField } from '../../../../models/ui/form-field.model';
 import { FormRenderingService } from '../../services/form-rendering.service';
+import { ContainerContentPipe } from '../../pipes/container-content.pipe';
 
 @Component({
   selector: 'app-form-container-renderer',
@@ -25,6 +26,7 @@ import { FormRenderingService } from '../../services/form-rendering.service';
     InvisibleSearchableMultiSelectComponent,
     forwardRef(() => NestedFormInputComponent),
     WorkAreaSelectComponent,
+    ContainerContentPipe,
   ],
   templateUrl: './form-container-renderer.component.html',
   styleUrl: './form-container-renderer.component.css',
