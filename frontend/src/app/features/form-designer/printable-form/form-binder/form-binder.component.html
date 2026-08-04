@@ -1,9 +1,0 @@
-<div class="form-binder-container">
-  @for (binding of formBindings(); track binding.formDefinition.id) {
-    <app-form-renderer
-      [formDefinitionInput]="binding.formDefinition"
-      [formData]="binding.formData()"
-      (formSubmit)="onFormSubmit($event, binding)">
-    </app-form-renderer>
-  }
-</div>
