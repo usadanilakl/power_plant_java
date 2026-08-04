@@ -74,7 +74,11 @@ public class VentingPermitMapper implements BaseMapper {
 
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
-            dto.setLocation(entity.getWorkArea().getName());
+            // Fallback, not an override: this used to clobber the operator-entered value that was
+            // read a few lines above, so a typed location reverted on every reload.
+            if (dto.getLocation() == null || dto.getLocation().isBlank()) {
+                dto.setLocation(entity.getWorkArea().getName());
+            }
         } else if (entity.getLocation() != null && !entity.getLocation().isEmpty()) {
             workAreaRepo.findFirstByNameIgnoreCase(entity.getLocation())
                 .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));
@@ -136,12 +140,20 @@ public class VentingPermitMapper implements BaseMapper {
         if (dto.getPlantManagerDate() != null) entity.setPlantManagerDate(dto.getPlantManagerDate());
         if (dto.getDivisionDirector() != null) entity.setDivisionDirector(dto.getDivisionDirector());
         if (dto.getDivisionDirectorDate() != null) entity.setDivisionDirectorDate(dto.getDivisionDirectorDate());
-        try { entity.setChecklist(dto.getChecklist()); } catch (Exception e) { /* ignore */ }
+        if (dto.getChecklist() != null) entity.setChecklist(dto.getChecklist());
 
-        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+        // id 0 is the Angular placeholder shape (BaseDto sets id = data.id || 0). It passes a
+        // plain != null check, findById(0) is empty, and the old code then assigned that empty
+        // result unconditionally -- silently UNLINKING the permit's work area. Also: the name is
+        // now a FALLBACK, not an override, so an operator-typed value is no longer clobbered.
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null && dto.getWorkArea().getId() != 0) {
             WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);
-            entity.setWorkArea(workArea);
-            if (workArea != null) entity.setLocation(workArea.getName());
+            if (workArea != null) {
+                entity.setWorkArea(workArea);
+                if (entity.getLocation() == null || entity.getLocation().isBlank()) {
+                    entity.setLocation(workArea.getName());
+                }
+            }
         }
 
         return entity;

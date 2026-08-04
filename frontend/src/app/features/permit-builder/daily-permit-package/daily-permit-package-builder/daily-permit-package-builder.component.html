@@ -737,6 +737,7 @@
       @for(loto of lotos(); track loto.id){
         <app-loto-paper-form
           [dataInput]="loto"
+          [readOnly]="true"
         ></app-loto-paper-form>}
     }
     @if(isEnergizedWorkVisible){

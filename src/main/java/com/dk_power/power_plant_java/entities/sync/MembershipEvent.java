@@ -37,7 +37,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class MembershipEvent {
 
-    public enum Op { ADD, REMOVE }
+    public enum Op { ADD, REMOVE, RESET }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

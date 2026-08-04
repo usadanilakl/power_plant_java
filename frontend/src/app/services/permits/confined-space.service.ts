@@ -5,6 +5,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
+import { normalizePermitPayload, normalizePermitPayloads } from '../../utils/permit-payload.util';
 
 @Injectable({
   providedIn: 'root'
@@ -23,17 +24,17 @@ export class ConfinedSpaceService {
   }
 
   createConfinedSpaceRequest(confinedSpace: ConfinedSpaceDto): Observable<SpringApiResponse<ConfinedSpaceDto>> {
-    return this.http.post<SpringApiResponse<ConfinedSpaceDto>>(this.apiUrl, confinedSpace);
+    return this.http.post<SpringApiResponse<ConfinedSpaceDto>>(this.apiUrl, normalizePermitPayload(confinedSpace));
   }
 
   updateConfinedSpaceRequest(id: string, confinedSpace: ConfinedSpaceDto): Observable<SpringApiResponse<ConfinedSpaceDto>> {
-    return this.http.put<SpringApiResponse<ConfinedSpaceDto>>(`${this.apiUrl}/${id}`, confinedSpace);
+    return this.http.put<SpringApiResponse<ConfinedSpaceDto>>(`${this.apiUrl}/${id}`, normalizePermitPayload(confinedSpace));
   }
 
   deleteConfinedSpaceRequest(id: string): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
   save(requests: ConfinedSpaceDto[]) {
-    return this.http.post<SpringApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/save-all`, requests);
+    return this.http.post<SpringApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/save-all`, normalizePermitPayloads(requests));
   }
 }

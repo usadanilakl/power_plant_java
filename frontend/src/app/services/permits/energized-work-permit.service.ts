@@ -5,6 +5,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { EnergizedWorkPermitDto } from "../../models/permits/energized-work-permit.model";
+import { normalizePermitPayload, normalizePermitPayloads } from '../../utils/permit-payload.util';
 
 @Injectable({
   providedIn: 'root'
@@ -23,10 +24,10 @@ export class EnergizedWorkPermitService {
   }
 
   create(dto: EnergizedWorkPermitDto): Observable<SpringApiResponse<EnergizedWorkPermitDto>> {
-    return this.http.post<SpringApiResponse<EnergizedWorkPermitDto>>(this.apiUrl, dto);
+    return this.http.post<SpringApiResponse<EnergizedWorkPermitDto>>(this.apiUrl, normalizePermitPayload(dto));
   }
 
   save(permits: EnergizedWorkPermitDto[]): Observable<SpringApiResponse<EnergizedWorkPermitDto[]>> {
-    return this.http.post<SpringApiResponse<EnergizedWorkPermitDto[]>>(this.apiUrl + "/save-all", permits);
+    return this.http.post<SpringApiResponse<EnergizedWorkPermitDto[]>>(this.apiUrl + "/save-all", normalizePermitPayloads(permits));
   }
 }

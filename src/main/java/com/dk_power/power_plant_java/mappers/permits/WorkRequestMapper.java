@@ -234,14 +234,18 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setSharepointId(dto.getSharepointId());
         entity.setLocalUuid(dto.getLocalUuid());
 
-        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+        // id 0 is the Angular placeholder shape (BaseDto sets id = data.id || 0). It passes a
+        // plain != null check, findById(0) is empty, and the old code then assigned that empty
+        // result unconditionally -- silently UNLINKING the permit's work area. Also: the name is
+        // now a FALLBACK, not an override, so an operator-typed value is no longer clobbered.
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null && dto.getWorkArea().getId() != 0) {
             WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);
-            entity.setWorkArea(workArea);
             if (workArea != null) {
-                entity.setLocation(workArea.getName());
+                entity.setWorkArea(workArea);
+                if (entity.getLocation() == null || entity.getLocation().isBlank()) {
+                    entity.setLocation(workArea.getName());
+                }
             }
-        } else {
-            entity.setWorkArea(null);
         }
         if (dto.getWorkCategory() != null && dto.getWorkCategory().getName() != null) {
             entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategory().getName()));

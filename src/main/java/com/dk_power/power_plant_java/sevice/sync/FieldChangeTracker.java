@@ -48,6 +48,15 @@ public class FieldChangeTracker {
     @PersistenceContext
     private EntityManager entityManager;
 
+    // OR-Set: record this node's OWN M2M edits into membership_event so its log matches receivers'
+    // (flag-gated, default off). @Autowired field (not constructor) to avoid touching the generated
+    // constructor and any bootstrap ordering; no cycle (MembershipCrdtService does not depend here).
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private MembershipCrdtService membershipCrdtService;
+
+    @org.springframework.beans.factory.annotation.Value("${sync.membership.orset.enabled:false}")
+    private boolean membershipOrsetEnabled;
+
     // Lazy injection to avoid circular dependency
     private FileObjectSyncHandler fileObjectSyncHandler;
 
@@ -667,6 +676,8 @@ public class FieldChangeTracker {
 
     private void publishOnCommit(List<FieldChange> changes, String entityType,
                                  BaseIdEntity newEntity, boolean isCreate) {
+        // Record this node's own M2M edits into the OR-Set, in-tx (before the afterCommit publish).
+        recordLocalMembershipEvents(changes);
         // Capture the origin client id from the current request thread NOW —
         // once the afterCommit callback fires the request thread may already
         // be re-used by a different request whose header would leak in.
@@ -708,6 +719,7 @@ public class FieldChangeTracker {
      * re-notifying the file handler for a removed entity would be wrong.
      */
     private void publishChangesOnCommit(List<FieldChange> changes) {
+        recordLocalMembershipEvents(changes);
         final String originClientId = requestClientIdContext.currentOrNull();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -723,6 +735,34 @@ public class FieldChangeTracker {
             });
         } else {
             syncEventPublisher.publishChanges(changes, originClientId);
+        }
+    }
+
+    /**
+     * Record this node's OWN owning-side @ManyToMany edits into the OR-Set (membership_event), keyed by
+     * the change's GLOBAL id, so its event log matches what receivers record from the same synced change.
+     * Without this the editing node's OR-Set lacks its own additions and later diverges. No-op unless the
+     * OR-Set flag is on; events only — the join table is already written locally by Hibernate.
+     */
+    private void recordLocalMembershipEvents(List<FieldChange> changes) {
+        if (!membershipOrsetEnabled || membershipCrdtService == null || changes == null) return;
+        // recordLocalMembership reconciles the join with native INSERT/DELETE, which needs a real
+        // transaction — the same one that just wrote the join. Every real owning-M2M edit reaches here
+        // under MANDATORY/REQUIRES_NEW propagation, so one is active. If somehow none is (the non-tx
+        // background-publish branch of publish*OnCommit), there was no local join write to reconcile
+        // either — skip rather than fail a native update outside a tx.
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) return;
+        for (FieldChange c : changes) {
+            if (!"ManyToMany".equals(c.getRelationshipType()) || c.getEntityId() == null) continue;
+            try {
+                membershipCrdtService.recordLocalMembership(
+                        c.getEntityType(), c.getEntityId(), c.getFieldName(),
+                        c.getOldValue(), c.getNewValue(),
+                        new MembershipCrdtService.OrderKey(c.getTimestamp(), c.getOriginMachineId(), c.getId()));
+            } catch (Exception e) {
+                log.error("OR-Set: failed to record local membership for {}#{}.{}: {}",
+                        c.getEntityType(), c.getEntityId(), c.getFieldName(), e.getMessage());
+            }
         }
     }
 

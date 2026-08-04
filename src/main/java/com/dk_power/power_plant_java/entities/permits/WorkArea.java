@@ -75,7 +75,7 @@ public class WorkArea extends BaseAuditEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public SwHazards getConstantHazards() {
-        if (constantHazardsJson == null || constantHazardsJson.isEmpty()) {
+        if (constantHazardsJson == null || constantHazardsJson.isEmpty() || "null".equals(constantHazardsJson.trim())) {
             return new SwHazards();
         }
         try {
@@ -94,7 +94,7 @@ public class WorkArea extends BaseAuditEntity {
     }
 
     public HotWorkMeasures getConstantHotWorkMeasures() {
-        if (constantHotWorkMeasuresJson == null || constantHotWorkMeasuresJson.isEmpty()) {
+        if (constantHotWorkMeasuresJson == null || constantHotWorkMeasuresJson.isEmpty() || "null".equals(constantHotWorkMeasuresJson.trim())) {
             return new HotWorkMeasures();
         }
         try {
@@ -113,7 +113,7 @@ public class WorkArea extends BaseAuditEntity {
     }
 
     public ConfinedSpaceHazards getConstantConfinedSpaceHazards() {
-        if (constantConfinedSpaceHazardsJson == null || constantConfinedSpaceHazardsJson.isEmpty()) {
+        if (constantConfinedSpaceHazardsJson == null || constantConfinedSpaceHazardsJson.isEmpty() || "null".equals(constantConfinedSpaceHazardsJson.trim())) {
             return new ConfinedSpaceHazards();
         }
         try {

@@ -88,7 +88,7 @@ public class VentingPermit extends BasePermitEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public VentingChecklist getChecklist() {
-        if (checklistJson == null || checklistJson.isEmpty()) {
+        if (checklistJson == null || checklistJson.isEmpty() || "null".equals(checklistJson.trim())) {
             return new VentingChecklist();
         }
         try {

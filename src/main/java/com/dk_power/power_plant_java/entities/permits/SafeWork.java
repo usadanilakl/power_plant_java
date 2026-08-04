@@ -45,7 +45,7 @@ public class SafeWork extends BasePermitEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public SwHazards getHazards() {
-        if (hazardsJson == null || hazardsJson.isEmpty()) {
+        if (hazardsJson == null || hazardsJson.isEmpty() || "null".equals(hazardsJson.trim())) {
             return new SwHazards();
         }
         try {
@@ -68,7 +68,7 @@ public class SafeWork extends BasePermitEntity {
     }
 
     public SwPermits getPermits() {
-        if (permitsJson == null || permitsJson.isEmpty()) {
+        if (permitsJson == null || permitsJson.isEmpty() || "null".equals(permitsJson.trim())) {
             return new SwPermits();
         }
         try {
@@ -91,7 +91,7 @@ public class SafeWork extends BasePermitEntity {
     }
 
     public SwPpe getPpe() {
-        if (ppeJson == null || ppeJson.isEmpty()) {
+        if (ppeJson == null || ppeJson.isEmpty() || "null".equals(ppeJson.trim())) {
             return new SwPpe();
         }
         try {

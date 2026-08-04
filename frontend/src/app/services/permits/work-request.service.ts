@@ -5,6 +5,7 @@ import { Observable } from "rxjs";
 import { SpringPaginatedResponse } from "../../models/api/spring-pagenated.response.model";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { WorkRequestDto } from "../../models/permits/work-request.model";
+import { normalizePermitPayload, normalizePermitPayloads } from '../../utils/permit-payload.util';
 
 @Injectable({
   providedIn: 'root'
@@ -21,6 +22,6 @@ export class WorkRequestService {
       return this.http.get<SpringApiResponse<WorkRequestDto>>(`${this.apiUrl}/get-by-id/${id}`);
   }
   save(workRequests: WorkRequestDto[]): Observable<SpringApiResponse<WorkRequestDto[]>> {
-      return this.http.post<SpringApiResponse<WorkRequestDto[]>>(this.apiUrl, workRequests);
+      return this.http.post<SpringApiResponse<WorkRequestDto[]>>(this.apiUrl, normalizePermitPayloads(workRequests));
   }
 }

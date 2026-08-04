@@ -16,4 +16,7 @@ public interface MembershipEventRepository extends JpaRepository<MembershipEvent
 
     List<MembershipEvent> findByOwnerTypeAndOwnerIdAndFieldName(
             String ownerType, Long ownerId, String fieldName);
+
+    /** Marker probe for the one-time Phase 1b seed (a sentinel ownerType row records "seeded"). */
+    boolean existsByOwnerType(String ownerType);
 }

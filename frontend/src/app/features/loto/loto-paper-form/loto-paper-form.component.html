@@ -1,6 +1,7 @@
 <app-form-renderer
     [formData]="data()"
     [formDefinition]="form()"
+    [readOnly]="readOnly()"
     (formChange)="onChange($event)"
     (formSubmit)="onSubmit($event)">
 </app-form-renderer>

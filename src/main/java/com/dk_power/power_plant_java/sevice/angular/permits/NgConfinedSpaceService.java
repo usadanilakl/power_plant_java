@@ -68,7 +68,7 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     public ConfinedSpace save(ConfinedSpaceDto dto) {
         ConfinedSpace oldEntity = dto.getId() != null ? confinedSpaceRepo.findById(dto.getId()).orElse(null) : null;
         ConfinedSpace cs = confinedSpaceMapper.convertToEntity(dto);
-        if (oldEntity == null && cs.getPermitStatus() == null) {
+        if (oldEntity == null && isUnset(cs.getPermitStatus())) {
             cs.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
         }
         ConfinedSpace saved = confinedSpaceRepo.save(cs);
@@ -80,7 +80,7 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
 
     public ConfinedSpaceDto createConfinedSpaceRequest(ConfinedSpaceDto confinedSpaceDto) {
         ConfinedSpace confinedSpace = confinedSpaceMapper.convertToEntity(confinedSpaceDto);
-        if (confinedSpace.getPermitStatus() == null) {
+        if (isUnset(confinedSpace.getPermitStatus())) {
             confinedSpace.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
         }
         ConfinedSpace saved = confinedSpaceRepo.save(confinedSpace);
@@ -110,5 +110,16 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
             }
             return confinedSpaceMapper.convertToDto(saved);
         }).toList();
+    }
+
+    /**
+     * A client-side placeholder Value arrives with id 0, not null (Angular's BaseDto sets
+     * id = data.id || 0). A plain == null guard therefore passes it straight through to merge(),
+     * which throws "Unable to find Value with id 0" -- the HotWork create bug. These services are
+     * immune today only because their mappers do not copy permitStatus at all; the moment one does,
+     * the crash reappears. Guarding now so that mapper work is safe.
+     */
+    private boolean isUnset(com.dk_power.power_plant_java.entities.categories.Value v) {
+        return v == null || v.getId() == null || v.getId() == 0L;
     }
 }

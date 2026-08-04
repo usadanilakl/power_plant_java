@@ -85,29 +85,32 @@ public class SafeWorkMapper implements BaseMapper {
         if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
 
         // Convert POJOs to JSON strings and set into entity JSON fields
-        try {
+        // Null-guarded like every scalar above. Unguarded, setHazards(null) serialises the
+        // literal 4-char string "null" into hazards_json, which the getter's isEmpty() check does
+        // not catch -- wiping all 32 hazard booleans on any payload that omits the block.
+        if (dto.getHazards() != null) {
             entity.setHazards(dto.getHazards());
-        } catch (Exception e) {
-            // handle or log exception as needed
         }
 
-        try {
+        if (dto.getPermits() != null) {
             entity.setPermits(dto.getPermits());
-        } catch (Exception e) {
-            // handle or log exception as needed
         }
 
-        try {
+        if (dto.getPpe() != null) {
             entity.setPpe(dto.getPpe());
-        } catch (Exception e) {
-            // handle or log exception as needed
         }
 
-        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+        // id 0 is the Angular placeholder shape (BaseDto sets id = data.id || 0). It passes a
+        // plain != null check, findById(0) is empty, and the old code then assigned that empty
+        // result unconditionally -- silently UNLINKING the permit's work area. Also: the name is
+        // now a FALLBACK, not an override, so an operator-typed value is no longer clobbered.
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null && dto.getWorkArea().getId() != 0) {
             WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);
-            entity.setWorkArea(workArea);
             if (workArea != null) {
-                entity.setLocation(workArea.getName());
+                entity.setWorkArea(workArea);
+                if (entity.getLocation() == null || entity.getLocation().isBlank()) {
+                    entity.setLocation(workArea.getName());
+                }
             }
         }
 

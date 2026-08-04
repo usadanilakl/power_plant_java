@@ -65,7 +65,7 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     public SafeWork save(SafeWorkDto dto) {
         SafeWork oldEntity = dto.getId() != null ? safeWorkRepo.findById(dto.getId()).orElse(null) : null;
         SafeWork sw = safeWorkMapper.convertToEntity(dto);
-        if (oldEntity == null && sw.getPermitStatus() == null) {
+        if (oldEntity == null && isUnset(sw.getPermitStatus())) {
             sw.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
         }
         SafeWork saved = safeWorkRepo.save(sw);
@@ -77,7 +77,7 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
 
     public SafeWorkDto createSafeWork(SafeWorkDto safeWorkDto) {
         SafeWork safeWork = safeWorkMapper.convertToEntity(safeWorkDto);
-        if (safeWork.getPermitStatus() == null) {
+        if (isUnset(safeWork.getPermitStatus())) {
             safeWork.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
         }
         SafeWork saved = safeWorkRepo.save(safeWork);
@@ -101,5 +101,16 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
             }
             return safeWorkMapper.convertToDto(saved);
         }).toList();
+    }
+
+    /**
+     * A client-side placeholder Value arrives with id 0, not null (Angular's BaseDto sets
+     * id = data.id || 0). A plain == null guard therefore passes it straight through to merge(),
+     * which throws "Unable to find Value with id 0" -- the HotWork create bug. These services are
+     * immune today only because their mappers do not copy permitStatus at all; the moment one does,
+     * the crash reappears. Guarding now so that mapper work is safe.
+     */
+    private boolean isUnset(com.dk_power.power_plant_java.entities.categories.Value v) {
+        return v == null || v.getId() == null || v.getId() == 0L;
     }
 }

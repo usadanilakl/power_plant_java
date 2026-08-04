@@ -49,7 +49,7 @@ public class HotWork extends BasePermitEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public HotWorkMeasures getMeasures() {
-        if (measuresJson == null || measuresJson.isEmpty()) {
+        if (measuresJson == null || measuresJson.isEmpty() || "null".equals(measuresJson.trim())) {
             return new HotWorkMeasures();
         }
         try {

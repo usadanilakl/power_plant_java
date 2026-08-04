@@ -37,7 +37,7 @@ public class WorkCategoryProfile extends BaseAuditEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public SwHazards getStandardHazards() {
-        if (standardHazardsJson == null || standardHazardsJson.isEmpty()) {
+        if (standardHazardsJson == null || standardHazardsJson.isEmpty() || "null".equals(standardHazardsJson.trim())) {
             return new SwHazards();
         }
         try {
@@ -56,7 +56,7 @@ public class WorkCategoryProfile extends BaseAuditEntity {
     }
 
     public HotWorkMeasures getStandardHotWorkMeasures() {
-        if (standardHotWorkMeasuresJson == null || standardHotWorkMeasuresJson.isEmpty()) {
+        if (standardHotWorkMeasuresJson == null || standardHotWorkMeasuresJson.isEmpty() || "null".equals(standardHotWorkMeasuresJson.trim())) {
             return new HotWorkMeasures();
         }
         try {
@@ -75,7 +75,7 @@ public class WorkCategoryProfile extends BaseAuditEntity {
     }
 
     public ConfinedSpaceHazards getStandardConfinedSpaceHazards() {
-        if (standardConfinedSpaceHazardsJson == null || standardConfinedSpaceHazardsJson.isEmpty()) {
+        if (standardConfinedSpaceHazardsJson == null || standardConfinedSpaceHazardsJson.isEmpty() || "null".equals(standardConfinedSpaceHazardsJson.trim())) {
             return new ConfinedSpaceHazards();
         }
         try {

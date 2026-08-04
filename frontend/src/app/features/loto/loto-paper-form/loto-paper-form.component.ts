@@ -22,6 +22,14 @@ export class LotoPaperFormComponent {
   private destroyRef = inject(DestroyRef);
 
   dataInput= input<LotoDto | null>(null);
+  /**
+   * When true the form renders but never writes. The package builder mounts this component with
+   * no (changeEvent) handler — unlike all six sibling paper forms — so onChange() fell through to
+   * an unconditional currentLotoService.save(). Combined with the lotoPoints form-array carrying
+   * no id, that save round-tripped the point list through findById(0) and wiped it. LOTO is edited
+   * through its own form, which goes via the lifecycle-gated endpoints.
+   */
+  readOnly = input<boolean>(false);
 
   @Output() formSubmit = new EventEmitter<LotoDto>();
   @Output() changeEvent = new EventEmitter<LotoDto>();
@@ -74,6 +82,7 @@ export class LotoPaperFormComponent {
   });
 
   onSubmit(form: LotoDto): void {
+    if(this.readOnly()) return;
     if(this.formSubmit.observers.length > 0){
       this.formSubmit.emit(form);
       return;
@@ -81,6 +90,7 @@ export class LotoPaperFormComponent {
     this.currentLotoService.save([form]);
   }
   onChange(form: LotoDto): void {
+    if(this.readOnly()) return;
     if(this.changeEvent.observers.length > 0){
       this.changeEvent.emit(form);
       return;

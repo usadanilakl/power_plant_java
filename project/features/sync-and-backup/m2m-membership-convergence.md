@@ -87,18 +87,60 @@ re-added can be GC'd after a durable safe-horizon (same watermark discipline as
   event key vs the remove's REMOVE event key decides presence, order-independently. ✓
 - **Idempotency:** apply each event twice → no change. ✓
 
-## 5. Interaction with the reconcile paths (do not regress)
+## 5. The reconcile path — a RESET barrier (not receiver-local removes)
 Drift "Use Hub" / accept-remote synthesize a **whole-set** directive (`buildHubChangesWithRelTypes`,
-`null` oldValue) meaning "make the set exactly this." Keep that as a distinct op: it writes ADD events
-(key = now/hub) for every element in the target set and REMOVE events for local-only elements, so it
-still reaches exact match — but through the same event model, so it can't clobber a *newer* concurrent
-edit that arrives afterward.
+`null` oldValue) meaning "make the set exactly this." Deriving its removals from the receiver's local
+present-set is **delivery-order-dependent and diverges** (a not-yet-arrived element isn't tombstoned).
+Instead a reconcile-to-`{new}@K` records a per-`(owner,field)` **RESET barrier at key K** plus `ADD@K`
+for each element of `{new}`, and presence becomes:
 
-## 6. Migration
+> **present(X) = latest ADD(X) ≻ latest REMOVE(X)  AND  latest ADD(X) ⪰ latest RESET(owner,field)**
+
+The RESET is delivery-independent: any element whose latest ADD is older than K is suppressed
+regardless of when it arrives; the `{new}` elements survive because their ADD key equals K. Stored as
+an event with a sentinel `element_id = -1` (negative — no real entity id is ≤ 0, since
+`DevicePrefixedIdGenerator` mints `device*1e9 + seq` with `seq ≥ 1`, so the sentinel can never collide
+with an element id even when ids arrive pre-assigned from another node).
+
+## 5b. A node must record its OWN edits too — and reconcile its OWN join
+`membership_event` must reflect **every** change a node sees, including its own local edits — a node
+never re-applies its own change, so if only the receive path records events, the editing node's OR-Set
+lacks its own additions and diverges. `FieldChangeTracker.recordLocalMembershipEvents` (called in-tx
+from both `publishOnCommit`/`publishChangesOnCommit`, guarded on an actual transaction) records the
+local M2M edit's events, **keyed by the change's global id** — so the editor and every receiver record
+the *identical* event; same delta/RESET semantics as the receive path.
+
+It is **not** events-only. It delegates to the same `applyDelta`/`applyReconcile` as the receive path,
+so it ALSO reconciles the join. Hibernate writes the local join row unconditionally, but a local edit
+can **lose** under `SyncOrder` — a local `ADD(X)@K1` whose key is older than an already-recorded
+`REMOVE(X)@K2` (clock skew), or older than a newer `RESET`. The OR-Set then computes X absent while
+Hibernate left X's join row in place → the local join permanently disagrees with the converged set
+(round-3 review finding). Reconciling in the local path deletes that stray row; for the common winning
+edit the reconcile is a no-op (row already matches). The reconcile issues native INSERT/DELETE, hence
+the actual-transaction guard — every real owning-M2M edit is in one (MANDATORY/REQUIRES_NEW); a non-tx
+publish wrote no local join row, so there is nothing to reconcile.
+
+## 6. Migration — the Phase 1b seeder  (BUILT: `MembershipSeedService`)
 New `membership_event` table (DDL; `ddl-auto=update` creates it on the hub, clients on JAR update).
-Seed once from the current join tables: every existing join row → an `ADD` with a baseline timestamp
-older than any real edit. No data loss; whole-set replace stays as the reconcile fallback during
-rollout. Feature-flagged; prove **zero drift** on a known-good hub + 2-client cluster before enabling.
+Without seeding, a node that predates the feature has full join tables but an EMPTY event log, so the
+first reconcile can't see its existing members (`allElementIds` is empty → a reconcile-to-empty leaves
+stale rows; a peer whole-set create can't reason about them). `MembershipSeedService` runs once on
+`ApplicationReadyEvent` (flag-gated, hub AND clients), scans the metamodel for every owning-side
+`@ManyToMany` with a `@JoinTable`, and records one baseline `ADD` per existing join row via
+`MembershipCrdtService.seedBaselineAdd`:
+
+- **Deterministic key** `(baseline ts, origin=`__seed__`, changeId=UUID.nameUUIDFromBytes(owner|field|owner|element))`
+  — identical on every node, so converged nodes seed byte-identical events and stay converged.
+- **Baseline ts** (`sync.membership.orset.seed-baseline`, default `2000-01-01T00:00:00Z`) predates every
+  real edit, so any later real ADD/REMOVE outranks the seed and re-running is idempotent (upsert-only-if-newer).
+- **Runs once**, guarded by a sentinel marker row (`owner_type='__seed_marker__'`), written in the SAME
+  transaction as the seed so a mid-seed crash rolls back and re-runs next boot.
+
+The seeder captures each node's CURRENT join state verbatim — it does **not** reconcile drift. So the
+enablement runbook is: **(1)** drift tool → zero drift on the hub + client cluster, **(2)** set
+`sync.membership.orset.enabled=true` and restart all nodes → each seeds its converged join state,
+**(3)** drift-verify zero drift again. Whole-set replace stays as the reconcile fallback. ITs:
+`MembershipSeedServiceIT` (seeds/idempotent/reconcile-removes-seeded/coexists-with-peer-add).
 
 ## 7. Phasing
 - **P1 — M2M owning sides.** Schema + `{added,removed}` emission + LWW-Element-Set apply. Reconcile

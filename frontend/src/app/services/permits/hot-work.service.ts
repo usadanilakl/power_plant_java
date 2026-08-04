@@ -5,6 +5,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { HotWorkDto } from "../../models/permits/hot-work.model";
+import { normalizePermitPayload, normalizePermitPayloads } from '../../utils/permit-payload.util';
 
 @Injectable({
   providedIn: 'root'
@@ -23,17 +24,17 @@ export class HotWorkService {
   }
 
   createHotWorkRequest(hotWork: HotWorkDto): Observable<SpringApiResponse<HotWorkDto>> {
-    return this.http.post<SpringApiResponse<HotWorkDto>>(this.apiUrl, hotWork);
+    return this.http.post<SpringApiResponse<HotWorkDto>>(this.apiUrl, normalizePermitPayload(hotWork));
   }
 
   updateHotWorkRequest(id: string, hotWork: HotWorkDto): Observable<SpringApiResponse<HotWorkDto>> {
-    return this.http.put<SpringApiResponse<HotWorkDto>>(`${this.apiUrl}/${id}`, hotWork);
+    return this.http.put<SpringApiResponse<HotWorkDto>>(`${this.apiUrl}/${id}`, normalizePermitPayload(hotWork));
   }
 
   deleteHotWorkRequest(id: string): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
   save(requests: HotWorkDto[]): Observable<SpringApiResponse<HotWorkDto[]>> {
-    return this.http.post<SpringApiResponse<HotWorkDto[]>>(this.apiUrl + "/save-all", requests);
+    return this.http.post<SpringApiResponse<HotWorkDto[]>>(this.apiUrl + "/save-all", normalizePermitPayloads(requests));
   }
 }

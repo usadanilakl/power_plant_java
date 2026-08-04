@@ -46,6 +46,7 @@ class MembershipCrdtConvergenceIT {
     @Autowired private FieldChangeRepository fieldChangeRepository;
     @Autowired private EntityManager entityManager;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private MembershipCrdtService membershipCrdtService;
 
     @MockBean private com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService redTagAutomationService;
     @MockBean private WorkAreaGitHubPublisher workAreaGitHubPublisher;
@@ -142,6 +143,64 @@ class MembershipCrdtConvergenceIT {
         assertThat(joinRows(eq)).containsExactlyInAnyOrder(a.getId(), b.getId());
     }
 
+    @Test
+    @DisplayName("Whole-set reconcile racing a concurrent add converges via the RESET barrier, both orders")
+    void reconcileRacingAdd_orderIndependent() {
+        LotoPoint x = point("ORS-RC-X");
+        FieldChange add = m2m(0L, "[]", ids(x), 60);           // ADD(X) @T1
+        FieldChange reconcileEmpty = reconcile(0L, "[]", 120); // reconcile-to-empty @T2 > T1
+
+        // order 1: add then reconcile-to-empty
+        Long eq1 = equipment("ORS-RC1"); reset();
+        apply(rebind(add, eq1)); apply(rebindReconcile(reconcileEmpty, eq1));
+        assertThat(joinRows(eq1)).isEmpty();
+
+        // order 2: reconcile-to-empty then add (the case that diverged before the RESET barrier)
+        Long eq2 = equipment("ORS-RC2"); reset();
+        apply(rebindReconcile(reconcileEmpty, eq2)); apply(rebind(add, eq2));
+        assertThat(joinRows(eq2)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A node's own local edit is recorded in the OR-Set, so a later reconcile removes it")
+    void localEditRecorded_reconcileRemovesIt() {
+        LotoPoint b = point("ORS-LOC-B");
+        Long eq = equipment("ORS-LOC");
+        // Simulate a LOCAL create/add of B: Hibernate writes the join row AND the tracker records the
+        // OR-Set event (this is what recordLocalMembership does from FieldChangeTracker.publish*).
+        insertJoin(eq, b.getId());
+        recordLocal(eq, "lotoPoints", null, "[" + b.getId() + "]", 60);
+
+        // A whole-set reconcile-to-empty @T2 > T1 arrives (e.g. "Use Hub" to a hub state without B).
+        apply(reconcile(eq, "[]", 120));
+
+        // B is removed: because the node's OWN add IS in the OR-Set, the RESET barrier suppresses it —
+        // converging with a peer that received the add. Without local recording, B would be stranded.
+        assertThat(joinRows(eq)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A losing local edit reconciles its OWN join row (round-3 fix): local add older than a known remove is undone")
+    void losingLocalEdit_reconcilesOwnJoin() {
+        LotoPoint a = point("ORS-LL-A"), x = point("ORS-LL-X");
+        Long eq = equipment("ORS-LL");
+        insertJoin(eq, a.getId()); // base {A}
+        reset();
+
+        // This node has RECEIVED a remove of X @T2 from a peer → REMOVE(X) tombstone; X not present.
+        apply(m2m(eq, "[" + a.getId() + "," + x.getId() + "]", ids(a), 120)); // -X @T2
+        assertThat(joinRows(eq)).containsExactly(a.getId());
+
+        // Now this node LOCALLY adds X, but its clock is behind → the edit's key is @T1 < T2. Hibernate
+        // unconditionally writes the join row (simulated), and the tracker records the local edit.
+        insertJoin(eq, x.getId());
+        recordLocal(eq, "lotoPoints", ids(a), "[" + a.getId() + "," + x.getId() + "]", 60);
+
+        // X's local add LOSES to the newer REMOVE. Recording must reconcile the stray join row away, or
+        // this node keeps X while every peer drops it → permanent divergence (the round-3 defect).
+        assertThat(joinRows(eq)).containsExactly(a.getId());
+    }
+
     // ---- helpers ----
 
     private LotoPoint point(String tag) {
@@ -154,6 +213,15 @@ class MembershipCrdtConvergenceIT {
         Equipment e = new Equipment();
         e.setTagNumber(tag);
         return equipmentRepo.saveAndFlush(e).getId();
+    }
+
+    /** Record a local edit exactly as FieldChangeTracker.publish* does — in a transaction (native join
+     *  reconcile needs one). oldValue null = create/whole-set; otherwise a delta from oldValue→newValue. */
+    private void recordLocal(Long eq, String field, String oldValue, String newValue, long tsOffset) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(s ->
+            membershipCrdtService.recordLocalMembership("Equipment", eq, field, oldValue, newValue,
+                new MembershipCrdtService.OrderKey(Instant.now().plusSeconds(tsOffset),
+                        "LEADS-OFFICE-PC", java.util.UUID.randomUUID())));
     }
 
     private void insertJoin(Long eq, Long pointId) {
@@ -200,6 +268,21 @@ class MembershipCrdtConvergenceIT {
     private FieldChange rebind(FieldChange src, Long eqId) {
         FieldChange c = m2m(eqId, src.getOldValue(), src.getNewValue(), 0);
         c.setTimestamp(src.getTimestamp()); // preserve the relative order (T1 < T2)
+        return c;
+    }
+
+    /** A whole-set reconcile directive (oldValue == null): "set exactly newValue". */
+    private FieldChange reconcile(Long eqId, String newValue, long tsOffset) {
+        FieldChange c = new FieldChange("Equipment", eqId, "lotoPoints", null, newValue,
+                "LEADS-OFFICE-PC", "Leads Office PC", FieldChange.ChangeType.UPDATE);
+        c.setRelationshipType("ManyToMany");
+        c.setTimestamp(Instant.now().plusSeconds(tsOffset));
+        return c;
+    }
+
+    private FieldChange rebindReconcile(FieldChange src, Long eqId) {
+        FieldChange c = reconcile(eqId, src.getNewValue(), 0);
+        c.setTimestamp(src.getTimestamp());
         return c;
     }
 }

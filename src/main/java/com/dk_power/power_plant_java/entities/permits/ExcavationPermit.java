@@ -66,7 +66,7 @@ public class ExcavationPermit extends BasePermitEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public ExcavationTypeOfWork getTypeOfWork() {
-        if (typeOfWorkJson == null || typeOfWorkJson.isEmpty()) {
+        if (typeOfWorkJson == null || typeOfWorkJson.isEmpty() || "null".equals(typeOfWorkJson.trim())) {
             return new ExcavationTypeOfWork();
         }
         try {
@@ -87,7 +87,7 @@ public class ExcavationPermit extends BasePermitEntity {
     }
 
     public ExcavationChecklist getChecklist() {
-        if (checklistJson == null || checklistJson.isEmpty()) {
+        if (checklistJson == null || checklistJson.isEmpty() || "null".equals(checklistJson.trim())) {
             return new ExcavationChecklist();
         }
         try {

@@ -71,7 +71,7 @@ public class ConfinedSpace extends BasePermitEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public ConfinedSpaceHazards getHazards() {
-        if (hazardsJson == null || hazardsJson.isEmpty()) {
+        if (hazardsJson == null || hazardsJson.isEmpty() || "null".equals(hazardsJson.trim())) {
             return new ConfinedSpaceHazards();
         }
         try {
@@ -94,7 +94,7 @@ public class ConfinedSpace extends BasePermitEntity {
     }
 
     public ConfinedSpacePrecautions getPrecautions() {
-        if (precautionsJson == null || precautionsJson.isEmpty()) {
+        if (precautionsJson == null || precautionsJson.isEmpty() || "null".equals(precautionsJson.trim())) {
             return new ConfinedSpacePrecautions();
         }
         try {
@@ -117,7 +117,7 @@ public class ConfinedSpace extends BasePermitEntity {
     }
 
     public ConfinedSpacePpe getPpe() {
-        if (ppeJson == null || ppeJson.isEmpty()) {
+        if (ppeJson == null || ppeJson.isEmpty() || "null".equals(ppeJson.trim())) {
             return new ConfinedSpacePpe();
         }
         try {

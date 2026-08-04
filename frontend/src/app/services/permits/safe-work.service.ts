@@ -4,6 +4,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { SafeWorkDto } from "../../models/permits/safe-work.model";
+import { normalizePermitPayload, normalizePermitPayloads } from '../../utils/permit-payload.util';
 
 @Injectable({
   providedIn: 'root'
@@ -22,9 +23,9 @@ export class SafeWorkService {
   }
 
   createSafeWork(safeWork: SafeWorkDto): Observable<SpringApiResponse<SafeWorkDto>> {
-    return this.http.post<SpringApiResponse<SafeWorkDto>>(this.apiUrl, safeWork);
+    return this.http.post<SpringApiResponse<SafeWorkDto>>(this.apiUrl, normalizePermitPayload(safeWork));
   }
   save(requests: SafeWorkDto[]): Observable<SpringApiResponse<SafeWorkDto[]>> {
-    return this.http.post<SpringApiResponse<SafeWorkDto[]>>(this.apiUrl + "/save-all", requests);
+    return this.http.post<SpringApiResponse<SafeWorkDto[]>>(this.apiUrl + "/save-all", normalizePermitPayloads(requests));
   }
 }

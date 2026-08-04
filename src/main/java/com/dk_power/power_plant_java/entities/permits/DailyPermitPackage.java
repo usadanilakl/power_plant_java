@@ -100,7 +100,7 @@ public class DailyPermitPackage extends BaseAuditEntity {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<PackageModification> getModifications() {
-        if (modificationsJson == null || modificationsJson.isEmpty()) {
+        if (modificationsJson == null || modificationsJson.isEmpty() || "null".equals(modificationsJson.trim())) {
             return new ArrayList<>();
         }
         try {

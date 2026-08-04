@@ -1600,35 +1600,43 @@ public class FieldSyncService {
             if (membershipOrsetEnabled) {
                 MembershipCrdtService.OrderKey key = new MembershipCrdtService.OrderKey(
                         change.getTimestamp(), change.getOriginMachineId(), change.getId());
-                List<Long> added;
-                List<Long> removed;
+                String ownerType = change.getEntityType();
                 if (change.getOldValue() != null) {
-                    // Real edit: delta from the editor's pre-edit set.
+                    // Real edit: apply the commuting delta (added=new-old, removed=old-new).
                     List<Long> oldIds = parseRemappedIds(change.getOldValue(), targetTypeName, idRemapTable);
                     Set<Long> newSet = new LinkedHashSet<>(newIds);
                     Set<Long> oldSet = new LinkedHashSet<>(oldIds);
-                    added = new ArrayList<>(newSet); added.removeAll(oldSet);
-                    removed = new ArrayList<>(oldSet); removed.removeAll(newSet);
+                    List<Long> added = new ArrayList<>(newSet); added.removeAll(oldSet);
+                    List<Long> removed = new ArrayList<>(oldSet); removed.removeAll(newSet);
+                    // FK safety: only ADD elements that exist locally; a missing added target defers the
+                    // whole change so a retry applies it once the referenced row arrives. (REMOVEs are safe.)
+                    List<Long> addedExisting = filterExistingIds(field, added);
+                    if (addedExisting.size() < added.size()) {
+                        log.warn("ManyToMany(OR-Set) {}.{}: {} added target(s) not present yet — deferring",
+                                entity.getClass().getSimpleName(), change.getFieldName(), added.size() - addedExisting.size());
+                        note(change, ChangeDisposition.DEFERRED);
+                        return false;
+                    }
+                    membershipCrdtService.applyDelta(ownerType, ownerId, change.getFieldName(),
+                            tableName, ownerColumn, inverseColumn, addedExisting, removed, key);
+                    log.debug("Applied ManyToMany(OR-Set) {}.{}: +{} -{}",
+                            entity.getClass().getSimpleName(), change.getFieldName(), addedExisting.size(), removed.size());
                 } else {
-                    // Whole-set reconcile directive (drift "Use Hub" / accept-remote): make it exactly newIds.
-                    added = new ArrayList<>(new LinkedHashSet<>(newIds));
-                    removed = new ArrayList<>(membershipCrdtService.presentSet(
-                            change.getEntityType(), ownerId, change.getFieldName()));
-                    removed.removeAll(newIds);
+                    // Whole-set reconcile directive (drift "Use Hub" / accept-remote): set exactly newIds,
+                    // via a delivery-INDEPENDENT RESET barrier at this change's key (see applyReconcile).
+                    List<Long> targets = new ArrayList<>(new LinkedHashSet<>(newIds));
+                    List<Long> targetsExisting = filterExistingIds(field, targets);
+                    if (targetsExisting.size() < targets.size()) {
+                        log.warn("ManyToMany(OR-Set reconcile) {}.{}: {} target(s) not present yet — deferring",
+                                entity.getClass().getSimpleName(), change.getFieldName(), targets.size() - targetsExisting.size());
+                        note(change, ChangeDisposition.DEFERRED);
+                        return false;
+                    }
+                    membershipCrdtService.applyReconcile(ownerType, ownerId, change.getFieldName(),
+                            tableName, ownerColumn, inverseColumn, targetsExisting, key);
+                    log.debug("Applied ManyToMany(OR-Set reconcile) {}.{}: ={}",
+                            entity.getClass().getSimpleName(), change.getFieldName(), targetsExisting.size());
                 }
-                // FK safety: only ADD elements that exist locally; a missing added target defers the
-                // whole change so a retry applies it once the referenced row arrives. (REMOVEs are safe.)
-                List<Long> addedExisting = filterExistingIds(field, added);
-                if (addedExisting.size() < added.size()) {
-                    log.warn("ManyToMany(OR-Set) {}.{}: {} added target(s) not present yet — deferring",
-                            entity.getClass().getSimpleName(), change.getFieldName(), added.size() - addedExisting.size());
-                    note(change, ChangeDisposition.DEFERRED);
-                    return false;
-                }
-                membershipCrdtService.applyDelta(change.getEntityType(), ownerId, change.getFieldName(),
-                        tableName, ownerColumn, inverseColumn, addedExisting, removed, key);
-                log.debug("Applied ManyToMany(OR-Set) {}.{}: +{} -{}",
-                        entity.getClass().getSimpleName(), change.getFieldName(), addedExisting.size(), removed.size());
                 return true;
             }
 

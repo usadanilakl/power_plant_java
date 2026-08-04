@@ -50,7 +50,7 @@ public class EnergizedWorkPermit extends BasePermitEntity {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public EnergizedWorkChecklist getChecklist() {
-        if (checklistJson == null || checklistJson.isEmpty()) {
+        if (checklistJson == null || checklistJson.isEmpty() || "null".equals(checklistJson.trim())) {
             return new EnergizedWorkChecklist();
         }
         try {

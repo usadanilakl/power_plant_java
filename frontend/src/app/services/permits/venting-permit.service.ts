@@ -5,6 +5,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { VentingPermitDto } from "../../models/permits/venting-permit.model";
+import { normalizePermitPayload, normalizePermitPayloads } from '../../utils/permit-payload.util';
 
 @Injectable({
   providedIn: 'root'
@@ -23,10 +24,10 @@ export class VentingPermitService {
   }
 
   create(dto: VentingPermitDto): Observable<SpringApiResponse<VentingPermitDto>> {
-    return this.http.post<SpringApiResponse<VentingPermitDto>>(this.apiUrl, dto);
+    return this.http.post<SpringApiResponse<VentingPermitDto>>(this.apiUrl, normalizePermitPayload(dto));
   }
 
   save(permits: VentingPermitDto[]): Observable<SpringApiResponse<VentingPermitDto[]>> {
-    return this.http.post<SpringApiResponse<VentingPermitDto[]>>(this.apiUrl + "/save-all", permits);
+    return this.http.post<SpringApiResponse<VentingPermitDto[]>>(this.apiUrl + "/save-all", normalizePermitPayloads(permits));
   }
 }
