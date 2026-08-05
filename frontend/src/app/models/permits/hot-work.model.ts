@@ -47,8 +47,10 @@ export interface HotWorkModel extends BaseModel {
   isFireWatchRequired: boolean;
   timeOfInitialTest: string;
   initialTestResult: string;
-  /** Printed as "Permit #" on the paper form. Mapped both ways in HotWorkMapper. */
+  /** NAES Red Tag number, when the permit came from that system. */
   redTagNum: string | null;
+  /** This app's own permit number, from PermitNumberGenerator (D%02d-yy-MM-dd-%03d). Printed. */
+  permitNumber: string | null;
   permitStatus: ValueDto;
 }
 
@@ -68,6 +70,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   isFireWatchRequired: boolean;
   initialTestResult: string;
   redTagNum: string | null;
+  permitNumber: string | null;
   permitStatus: ValueDto;
 
   constructor(data: Partial<HotWorkModel> = {}) {
@@ -87,6 +90,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this.isFireWatchRequired = data.isFireWatchRequired ?? true;
     this. initialTestResult = data.initialTestResult ?? '';
     this.redTagNum = data.redTagNum ?? null;
+    this.permitNumber = data.permitNumber ?? null;
     this.permitStatus = data.permitStatus ?? new ValueDto();
   }
 
@@ -108,6 +112,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       timeOfInitialTest: this.timeOfInitialTest,
       initialTestResult: this.initialTestResult,
       redTagNum: this.redTagNum,
+      permitNumber: this.permitNumber,
       permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
@@ -130,6 +135,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       timeOfInitialTest: json.timeOfInitialTest ?? '',
       initialTestResult: json.initialTestResult ?? '',
       redTagNum: json.redTagNum ?? null,
+      permitNumber: json.permitNumber ?? null,
       permitStatus: ValueDto.fromJson(json.permitStatus),
     });
   }
@@ -139,7 +145,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       'id', 'date', 'location', 'workScope', 'foreman', 'fireWatch',
       'meterModel', 'meterNum', 'meterCalDate', 'specialInstructions', 'measures',
       'isAirMonitoringRegisteredOnConfinedSpace', 'isFireWatchRequired',
-      'timeOfInitialTest', 'initialTestResult', 'redTagNum',
+      'timeOfInitialTest', 'initialTestResult', 'redTagNum', 'permitNumber',
       'isVerified', 'name', 'objectType'
     ].includes(key);
   }
@@ -259,9 +265,15 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       },
       redTagNum: {
         name: 'redTagNum',
-        label: 'Permit #',
+        label: 'Red Tag #',
         type: 'text',
         initialValue: dto.redTagNum
+      },
+      permitNumber: {
+        name: 'permitNumber',
+        label: 'Permit #',
+        type: 'text',
+        initialValue: dto.permitNumber
       },
       ...measureFields,
     };
@@ -280,7 +292,8 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       meterModel: { id: 'meterModel', header: 'Meter Model', accessorKey: 'meterModel' },
       meterNum: { id: 'meterNum', header: 'Meter Number', accessorKey: 'meterNum' },
       meterCalDate: { id: 'meterCalDate', header: 'Meter Cal Date', accessorKey: 'meterCalDate' },
-      redTagNum: { id: 'redTagNum', header: 'Permit #', accessorKey: 'redTagNum' },
+      redTagNum: { id: 'redTagNum', header: 'Red Tag #', accessorKey: 'redTagNum' },
+      permitNumber: { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
       specialInstructions: { id: 'specialInstructions', header: 'Special Instructions', accessorKey: 'specialInstructions' },
       measures: { 
         id: 'measures', 

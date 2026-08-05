@@ -33,7 +33,9 @@ public class SwPermits {
     private boolean ventingPurging;             // Venting/Purging Procedure
     private String ventingPurgingDescription;
 
-    private boolean jha;                        // JHA
+    // Default true to match the Angular DTO. They disagreed, so a Java-created permit and a
+    // UI-created one rendered different tick states for the same blank form.
+    private boolean jha = true;                        // JHA
     private boolean gasTesting;                 // Air Monitoring within Safe Limits
     private boolean liftPlan;                   // Lift Plan                       (new)
     private boolean confSpaceRescuePlanReview;  // Conf. Space Rescue Plan Review   (new)

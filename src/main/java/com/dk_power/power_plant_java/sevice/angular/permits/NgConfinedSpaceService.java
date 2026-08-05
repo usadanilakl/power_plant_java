@@ -122,4 +122,18 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     private boolean isUnset(com.dk_power.power_plant_java.entities.categories.Value v) {
         return v == null || v.getId() == null || v.getId() == 0L;
     }
+
+    /**
+     * Use the hand-written mapper, not the generic ModelMapper in NgCrudService#toDto.
+     *
+     * <p>Without this, get-by-id (which goes through toDto) and get-all (which calls
+     * confinedSpaceMapper.convertToDto directly) returned the SAME permit in two DIFFERENT shapes —
+     * the generic path carries fields the hand mapper drops and vice versa. A printable-form cell
+     * verified against one endpoint could therefore be silently wrong when the permit was opened
+     * the other way.
+     */
+    @Override
+    public ConfinedSpaceDto toDto(ConfinedSpace entity) {
+        return confinedSpaceMapper.convertToDto(entity);
+    }
 }

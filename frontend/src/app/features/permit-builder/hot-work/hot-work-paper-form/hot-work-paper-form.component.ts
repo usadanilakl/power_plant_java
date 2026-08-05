@@ -81,7 +81,9 @@ export class HotWorkPaperFormComponent {
       this.submitEvent.emit(form);
       return;
     }
-    this.currentHotWorkService.createHotWork(form);
+    // createHotWork returns a cold Observable -- without subscribing no request is ever sent,
+    // so Submit silently did nothing. saveHotWork subscribes for us.
+    this.currentHotWorkService.saveHotWork(form);
   }
 
   onChange(form: HotWorkDto): void {

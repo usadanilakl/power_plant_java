@@ -173,3 +173,33 @@ them I'll proceed on the recommendation shown.
 - CSS page rotation is **mechanically expressible but completely unexercised** — 0 `transform`
   usages in 2,041 container rows. Treat any estimate for that path as a guess until one throwaway
   container is print-previewed.
+
+---
+
+## RESOLVED 2026-08-05 — permit edit locking
+
+**Policy: "Active locks most fields, a few stay open."**
+
+- `Building` — fully editable (draft).
+- `Active` — scope/hazard/PPE sections FROZEN; operational sections stay writable
+  (sign-on/sign-off, monitoring readings, closure comments, cancellation).
+- `Closed` / `Cancelled` / `Revoked` / `Expired` / `Processed` — fully locked.
+
+**Enforcement: both layers — frontend `readOnly` on the paper renderer AND a server-side guard on
+save. Scheduled AFTER the remaining forms are built**, as one coherent pass rather than a UI-only
+gate that the PWA, scripts or a direct POST would bypass.
+
+**Consequence for seeding (acted on now):** the policy is per-SECTION, so every seeded container
+carries a `groupId` identifying its section. `FormContainer.groupId` already exists and was unused
+by the seeder. Tagging while authoring avoids re-authoring every form when the lock lands.
+
+Convention:
+- `frozen:<section>`  — locked once the permit leaves Building
+- `ops:<section>`     — stays writable while Active
+- untagged            — static text, never editable either way
+
+**Context this resolves:** no edit gating existed at ANY layer for the six non-LOTO permit types
+(verified 2026-08-05: zero frontend matches, zero backend guards; only JHA/WorkRequest have
+revoke/cancel state checks, and only LOTO has a real FSM). For SafeWork the gate was not even
+buildable before, because `permitStatus` was mapped in neither mapper direction so the client never
+received it — fixed in the same session.

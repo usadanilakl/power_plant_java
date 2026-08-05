@@ -105,9 +105,19 @@ export class CurrentHotWorkService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newHotWork = this.normalizeHotWork(response.responseData);
-                    this.addHotWorkToList(newHotWork);
-                    this.setCurrentHotWorkWithDto(newHotWork);
+                    const saved = this.normalizeHotWork(response.responseData);
+                    // Upsert, not append. The paper form's onChange routes here on EVERY edit, and
+                    // the server updates the existing row (the DTO carries a real id) -- so blindly
+                    // appending added a duplicate left-menu entry per keystroke that vanished on
+                    // refresh, because nothing new had actually been created.
+                    const exists = saved.id != null && saved.id !== 0
+                        && this.allActiveHotWorksSubject.value.some(hw => hw.id === saved.id);
+                    if (exists) {
+                        this.updateHotWorkInList(saved);
+                    } else {
+                        this.addHotWorkToList(saved);
+                    }
+                    this.setCurrentHotWorkWithDto(saved);
                 }
             })
         );

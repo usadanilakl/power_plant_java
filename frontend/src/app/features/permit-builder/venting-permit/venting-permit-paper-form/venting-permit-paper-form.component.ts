@@ -81,7 +81,9 @@ export class VentingPermitPaperFormComponent {
       this.submitEvent.emit(form);
       return;
     }
-    this.currentVentingPermitService.createPermit(form);
+    // createPermit returns a cold Observable -- unsubscribed, no request was ever sent, so
+    // Submit silently did nothing. savePermit subscribes for us.
+    this.currentVentingPermitService.savePermit(form);
   }
 
   onChange(form: VentingPermitDto): void {

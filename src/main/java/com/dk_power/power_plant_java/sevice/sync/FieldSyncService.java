@@ -84,6 +84,15 @@ public class FieldSyncService {
     @org.springframework.beans.factory.annotation.Value("${sync.membership.orset.enabled:false}")
     private boolean membershipOrsetEnabled;
 
+    // When true, a batch that ROLLS BACK is retried by bisection — each half re-applied in its own
+    // transaction — so a single poison change (e.g. a unique-constraint violation) no longer charges its
+    // innocent batch-mates FAILED_RETRYABLE and eventually dead-letters them after the give-up budget.
+    // Only the genuinely-failing change (isolated down to a size-1 sub-batch) stays FAILED_RETRYABLE.
+    // Default FALSE = current whole-batch behaviour (a no-op to ship); the happy path is untouched, this
+    // only changes the already-failing rollback path. See project_sync_powerplant_roadmap Inc 2 follow-up.
+    @org.springframework.beans.factory.annotation.Value("${sync.apply.bisect-on-rollback-enabled:false}")
+    private boolean bisectOnRollbackEnabled;
+
     // Set by the applyIncomingChanges overload; if non-null, deferred change ids are collected here
     // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
     private java.util.Set<java.util.UUID> deferredChangeIds = null;
@@ -213,13 +222,14 @@ public class FieldSyncService {
     }
 
     /**
-     * @param deferredOut if non-null, is populated with the ids of changes that were DEFERRED — not
-     *        applied because a referenced parent/entity hasn't arrived yet (transient; will retry).
-     *        The client uses this to acknowledge only terminal changes and keep deferred ones pending,
-     *        so the hub re-sends them (fixes the D6 silent-drop where deferred relationship changes
-     *        were acked and then never re-sent). NOTE: currently captures OneToMany parent-missing and
-     *        unresolved ManyToOne deferrals; ManyToMany-internal and scalar-entity-not-found deferrals
-     *        still fall through to ack pending the full per-change disposition work.
+     * @param deferredOut if non-null, is populated with the ids of changes that were NOT terminally
+     *        resolved — anything DEFERRED (a parent/entity that hasn't arrived, an incomplete ManyToMany,
+     *        an unresolved ManyToOne, a scalar entity-not-found) or FAILED_RETRYABLE (a rolled-back
+     *        batch). Sourced from the per-run {@link DispositionLedger} ({@code idsWith(DEFERRED,
+     *        FAILED_RETRYABLE)}), so it now reflects EVERY non-terminal outcome rather than the three
+     *        hand-picked call sites the first version covered. The client uses this to acknowledge only
+     *        terminal changes and keep the rest pending, so the hub re-sends them — fixing the D6
+     *        silent-drop where a deferred change was acked and then never re-sent.
      */
     public int applyIncomingChanges(List<FieldChange> incomingChanges, boolean skipSave,
                                     java.util.Set<java.util.UUID> deferredOut) {
@@ -326,7 +336,21 @@ public class FieldSyncService {
         // When entities are saved, the EntityListener won't broadcast these changes
         syncContext.startSync();
         try {
-            // Use programmatic transaction to ensure it works from any thread
+            return bisectOnRollbackEnabled
+                    ? applyBatchBisecting(incomingChanges)   // isolate a poison change from its neighbours
+                    : applyWholeBatchInTx(incomingChanges);  // legacy: whole batch, charge all on rollback
+        } finally {
+            syncContext.endSync();
+        }
+    }
+
+    /**
+     * Legacy apply: the whole batch in ONE transaction; on rollback EVERY change is charged
+     * FAILED_RETRYABLE (one poison change re-pulls its innocent batch-mates until the give-up budget
+     * dead-letters them). Kept byte-identical as the default so shipping the bisect flag is a no-op.
+     */
+    private int applyWholeBatchInTx(List<FieldChange> incomingChanges) {
+        try {
             Integer result = transactionTemplate.execute(status -> {
                 try {
                     int applied = applyIncomingChangesInternal(incomingChanges);
@@ -360,8 +384,83 @@ public class FieldSyncService {
                 incomingChanges.size(), e.getMessage());
             noteAll(incomingChanges, ChangeDisposition.FAILED_RETRYABLE);
             return 0;
+        }
+    }
+
+    /**
+     * Apply {@code batch}; if it rolls back, bisect and retry each half in its own transaction so a
+     * single poison change (e.g. a unique-constraint violation) does not charge its innocent batch-mates.
+     * The poison is isolated down to a size-1 sub-batch and it alone stays FAILED_RETRYABLE; the healthy
+     * changes apply (or defer) normally and get acked. Wall-clock cost is bounded — bisection only runs
+     * on the already-failing rollback path (~2·log2(n) extra transactions for a single poison; ≤2n−1 if
+     * every change fails).
+     *
+     * <p>Bisection can split an intra-batch dependency (a CREATE in one half, a change referencing it in
+     * the other). That is safe: the referencing change simply DEFERS (recorded, not acked) and converges
+     * on the next sync cycle via the normal FK-deferral path — the same eventual-consistency mechanism the
+     * system already relies on. This only ever happens on a batch that ALREADY rolled back as a whole, so
+     * the alternative was worse: the flag-off path applied NOTHING and re-pulled the entire batch (poison
+     * included) every cycle until the give-up budget dead-lettered the innocents. Bisection is strictly
+     * better here — it converges the healthy changes now and the split dependency one cycle later.
+     */
+    private int applyBatchBisecting(List<FieldChange> batch) {
+        BatchAttempt attempt = attemptBatchInOwnTx(batch);
+        if (!attempt.rolledBack()) {
+            return attempt.applied();
+        }
+        if (batch.size() > 1) {
+            int mid = batch.size() / 2;
+            int left = applyBatchBisecting(new ArrayList<>(batch.subList(0, mid)));
+            int right = applyBatchBisecting(new ArrayList<>(batch.subList(mid, batch.size())));
+            return left + right;
+        }
+        // A single change that still rolls back IS the poison: retryable, and it alone is charged.
+        noteAll(batch, ChangeDisposition.FAILED_RETRYABLE);
+        return 0;
+    }
+
+    private record BatchAttempt(int applied, boolean rolledBack) {}
+
+    /**
+     * Apply {@code batch} in its own transaction with a FRESH ledger and deferred-set, folded into the
+     * run's ledger/deferred-set ONLY on success. So a rolled-back attempt's optimistic in-tx notes
+     * (APPLIED for changes that never committed, DEFERRED added to the shared set) are discarded rather
+     * than masking the real outcome when the change is re-applied in a smaller sub-batch — the precedence
+     * trap a naive bisect would hit (a stale FAILED_RETRYABLE outranks a later real APPLIED).
+     */
+    private BatchAttempt attemptBatchInOwnTx(List<FieldChange> batch) {
+        DispositionLedger runLedger = this.currentLedger;
+        java.util.Set<java.util.UUID> runDeferred = this.deferredChangeIds;
+        DispositionLedger attemptLedger = new DispositionLedger();
+        java.util.Set<java.util.UUID> attemptDeferred = runDeferred != null ? new java.util.HashSet<>() : null;
+        this.currentLedger = attemptLedger;
+        this.deferredChangeIds = attemptDeferred;
+        try {
+            Integer applied = transactionTemplate.execute(status -> {
+                try {
+                    int n = applyIncomingChangesInternal(batch);
+                    if (persistApplyStateThisRun && hubApplyStateSink != null) {
+                        hubApplyStateSink.persistTerminal(attemptLedger.idDispositions());
+                    }
+                    return n;
+                } catch (Exception e) {
+                    log.error("Sub-batch of {} rolled back (will bisect): {}", batch.size(), e.getMessage());
+                    status.setRollbackOnly();
+                    return null; // signal rollback; the caller decides charge-vs-bisect, so do NOT note here
+                }
+            });
+            if (applied == null) {
+                return new BatchAttempt(0, true);
+            }
+            if (runLedger != null) runLedger.merge(attemptLedger);
+            if (runDeferred != null) runDeferred.addAll(attemptDeferred);
+            return new BatchAttempt(applied, false);
+        } catch (org.springframework.transaction.UnexpectedRollbackException e) {
+            // Rollback surfaced at commit — discard the attempt's ledger/deferred and let the caller bisect.
+            return new BatchAttempt(0, true);
         } finally {
-            syncContext.endSync();
+            this.currentLedger = runLedger;
+            this.deferredChangeIds = runDeferred;
         }
     }
 

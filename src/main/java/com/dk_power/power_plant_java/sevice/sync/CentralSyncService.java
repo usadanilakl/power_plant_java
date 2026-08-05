@@ -101,7 +101,7 @@ public class CentralSyncService {
         return DEFAULT_SEND_BATCH_SIZE;
     }
 
-    private int getReceiveBatchSize() {
+    int getReceiveBatchSize() {   // package-visible so the ack-gate/head-of-line test can control page size
         return receiveBatchSize;
     }
 
@@ -578,13 +578,29 @@ public class CentralSyncService {
                         deferred.size());
                 }
 
-                // No-progress guard: if this batch acked NOTHING (every change deferred), re-fetching
-                // page 0 would return the identical batch and spin. Yield to the next sync cycle so the
-                // lagging parent has time to arrive (and MAX_DEFERRALS advances per cycle, not per spin).
+                // Head-of-line fix: a FULL page that acked NOTHING (every change deferred — e.g. a parent
+                // that hasn't arrived) must not stall the healthy changes queued BEHIND it for up to
+                // MAX_DEFERRALS cycles. Advance past it THIS drain so those get through now.
+                //   Skip-safe: we advance ONLY on a full all-deferred page, and deferred changes are never
+                //   acked, so every offset we step over — [0 .. page*batchSize) — stays occupied by exactly
+                //   those still-pending deferred rows. The next unacked change is therefore always at
+                //   page*batchSize; nothing is skipped. The paged-over deferred rows stay pending and are
+                //   retried next cycle (give-up budget advances once per cycle via countedThisDrain).
                 if (ackIds.isEmpty() && !deferred.isEmpty()) {
                     result.morePending = true;
-                    log.info("server_sync.receive.all_deferred count={} — yielding to next cycle", deferred.size());
-                    break;
+                    if (batch.size() < batchSize) {
+                        // Partial trailing page, entirely deferred — nothing healthy behind it; yield.
+                        log.info("server_sync.receive.all_deferred count={} (tail) — yielding to next cycle", deferred.size());
+                        break;
+                    }
+                    page++;
+                    log.info("server_sync.receive.page_all_deferred count={} — paging past to reach changes behind it (page={})",
+                        deferred.size(), page);
+                    if (batchNumber > 1000) {
+                        log.warn("Too many receive batches ({}), stopping", batchNumber);
+                        break;
+                    }
+                    continue;
                 }
 
                 log.debug("Batch {}: received {} changes, applied {}", batchNumber, batch.size(), applied);
@@ -594,9 +610,10 @@ public class CentralSyncService {
                     break;
                 }
 
-                // Always fetch page 0 — acknowledged changes are removed from the
-                // pending set, so the next unacknowledged batch is always at page 0.
-                // Incrementing page would skip records.
+                // Re-fetch the SAME page: acknowledged changes are removed from the pending set, shifting
+                // the next unacknowledged batch DOWN into this page's window. `page` is only ever advanced
+                // above (to step over a full, still-deferred page); it is never reset within a drain, so
+                // the deferred prefix we have paged over is neither re-fetched nor skipped.
 
                 // Safety check
                 if (batchNumber > 1000) {
@@ -619,7 +636,7 @@ public class CentralSyncService {
      * Returns -1 if the server is unreachable, so callers can distinguish
      * "no changes" from "server is down".
      */
-    private long getPendingChangeCountFromServer() {
+    long getPendingChangeCountFromServer() {
         try {
             String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/count";
 
@@ -645,7 +662,7 @@ public class CentralSyncService {
     /**
      * Fetch a batch of changes from the server.
      */
-    private List<FieldChange> fetchBatchFromServer(int page, int size) {
+    List<FieldChange> fetchBatchFromServer(int page, int size) {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/batch?page=" + page + "&size=" + size;
 
         HttpHeaders headers = new HttpHeaders();
@@ -669,7 +686,7 @@ public class CentralSyncService {
      * The server only marks changes as synced after this call,
      * so if the client fails to apply, the changes will be re-sent next cycle.
      */
-    private void acknowledgeChangesToServer(List<java.util.UUID> changeIds) {
+    void acknowledgeChangesToServer(List<java.util.UUID> changeIds) {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/acknowledge";
 
         HttpHeaders headers = new HttpHeaders();
@@ -685,7 +702,7 @@ public class CentralSyncService {
     /**
      * Helper class for batched receive results.
      */
-    private static class BatchedReceiveResult {
+    static class BatchedReceiveResult {
         int totalReceived = 0;
         int totalApplied = 0;
         boolean morePending = false;
@@ -698,8 +715,9 @@ public class CentralSyncService {
         return applyIncomingChanges(incomingChanges, null);
     }
 
-    /** Apply variant that also collects deferred change ids (D6) so the caller can avoid acking them. */
-    private int applyIncomingChanges(List<FieldChange> incomingChanges, java.util.Set<java.util.UUID> deferredOut) {
+    /** Apply variant that also collects deferred change ids (D6) so the caller can avoid acking them.
+     *  Package-visible (not private) so the ack-gate loop test can stub deferral deterministically. */
+    int applyIncomingChanges(List<FieldChange> incomingChanges, java.util.Set<java.util.UUID> deferredOut) {
         syncContext.startSync();
         try {
             return fieldSyncService.applyIncomingChanges(incomingChanges, false, deferredOut);

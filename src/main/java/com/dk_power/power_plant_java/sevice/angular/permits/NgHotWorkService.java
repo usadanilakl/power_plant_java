@@ -117,4 +117,18 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
             return hotWorkMapper.convertToDto(saved);
         }).toList();
     }
+
+    /**
+     * Use the hand-written mapper, not the generic ModelMapper in NgCrudService#toDto.
+     *
+     * <p>Without this, get-by-id (which goes through toDto) and get-all (which calls
+     * hotWorkMapper.convertToDto directly) returned the SAME permit in two DIFFERENT shapes —
+     * the generic path carries fields the hand mapper drops and vice versa. A printable-form cell
+     * verified against one endpoint could therefore be silently wrong when the permit was opened
+     * the other way.
+     */
+    @Override
+    public HotWorkDto toDto(HotWork entity) {
+        return hotWorkMapper.convertToDto(entity);
+    }
 }

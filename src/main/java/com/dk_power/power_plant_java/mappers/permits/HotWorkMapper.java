@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.HotWorkDto;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.permits.HotWorkRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class HotWorkMapper implements BaseMapper {
     private final ModelMapper modelMapper;
+    private final ValueMapper valueMapper;
     private final HotWorkRepo hotWorkRepo;
     private final WorkAreaRepo workAreaRepo;
     private final WorkAreaMapper workAreaMapper;
@@ -21,6 +23,12 @@ public class HotWorkMapper implements BaseMapper {
     public HotWorkDto convertToDto(HotWork entity) {
         if (entity == null) return null;
         HotWorkDto dto = new HotWorkDto();
+
+        // Audit stamps, permit number, sync bookkeeping. Without this the hand mapper
+        // returns a thinner object than the ModelMapper it replaced on get-by-id.
+        copyBaseFields(entity, dto);
+        // Status was carried by neither mapper direction, so the detail view showed blank.
+        if (entity.getPermitStatus() != null) dto.setPermitStatus(valueMapper.convertToDto(entity.getPermitStatus()));
 
         dto.setId(entity.getId());
         dto.setDate(entity.getDate());

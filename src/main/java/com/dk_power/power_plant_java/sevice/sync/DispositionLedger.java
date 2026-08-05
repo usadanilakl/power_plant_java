@@ -67,6 +67,20 @@ public class DispositionLedger {
         for (FieldChange c : changes) record(c, disposition);
     }
 
+    /**
+     * Fold another ledger's outcomes into this one, keeping the highest-ranked per change (same
+     * precedence as {@link #record}). Used by bisect-on-rollback: each sub-batch is applied with its
+     * OWN fresh ledger so a rolled-back attempt's optimistic APPLIED notes never leak here — only a
+     * SUCCESSFUL sub-batch is merged in, so a re-applied change's real outcome cannot be masked by a
+     * stale FAILED_RETRYABLE from the abandoned whole-batch attempt.
+     */
+    public void merge(DispositionLedger other) {
+        if (other == null) return;
+        for (Map.Entry<FieldChange, ChangeDisposition> e : other.byChange.entrySet()) {
+            record(e.getKey(), e.getValue());
+        }
+    }
+
     /** The recorded outcome for {@code change}, or null if this run never classified it. */
     public ChangeDisposition of(FieldChange change) {
         return change == null ? null : byChange.get(change);

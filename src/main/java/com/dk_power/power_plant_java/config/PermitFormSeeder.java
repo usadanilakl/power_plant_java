@@ -38,7 +38,8 @@ public class PermitFormSeeder {
         "VentingPermit", "Combustible Gas System Venting/Inerting Checklist",
         "ExcavationPermit", "Excavation & Blind Penetrations Permit",
         "Loto", "LOTO Record Sheet",
-        "HotWork", "Hot Work Permit"
+        "HotWork", "Hot Work Permit",
+        "SafeWork", "Safe Work Permit"
     );
 
     public Map<String, String> getAvailableSeedTypes() {
@@ -61,6 +62,7 @@ public class PermitFormSeeder {
             case "ExcavationPermit" -> seedExcavationForm(formName);
             case "Loto" -> seedLotoForm(formName);
             case "HotWork" -> seedHotWorkForm(formName);
+            case "SafeWork" -> seedSafeWorkForm(formName);
             default -> throw new IllegalArgumentException("Unknown form type: " + formType);
         };
     }
@@ -1117,6 +1119,290 @@ public class PermitFormSeeder {
         }
     }
 
+    // ========== SAFE WORK PERMIT (SMP-17 Rev 1, 2 pages) ==========
+
+    /**
+     * Safe Work Permit, transcribed from the current paper form.
+     *
+     * <p>All 72 hazard/permit/PPE bindings were verified 1:1 across SwHazards/SwPermits/SwPpe ->
+     * Java DTO -> SafeWorkMapper (both directions) -> Angular class -> fromJson -> toFormFields.
+     * The binding prefix is {@code hazards.} / {@code permits.} / {@code ppe.} — NOT
+     * {@code swHazards.} — because that is the shape {@code getHazardFields()} emits.
+     *
+     * <p>Containers carry a {@code groupId} identifying their section, so the agreed edit-lock
+     * policy ("Active freezes scope/hazards/PPE, operational sections stay writable") can be
+     * applied later without re-authoring the form. See DECISIONS.md.
+     */
+    private PrintableForm seedSafeWorkForm(String name) {
+        PrintableForm form = createForm(name, "SafeWork");
+        seedSafeWorkPage1(form);
+        seedSafeWorkPage2(form);
+        PrintableForm saved = printableFormService.save(form);
+        log.info("Seeded SafeWork paper form (2 pages): {}", name);
+        return saved;
+    }
+
+    private void seedSafeWorkPage1(PrintableForm form) {
+        int p = 1;
+        int y = M;
+
+        // --- Header ---
+        form.addFormContainer(text(M, y, 200, 44, "NAES SAFE", p, merge(bold(14), merge(centered(), boxed()))));
+        form.addFormContainer(text(M + 200, y, FW - 200, 22, "Safety Manual Procedure – 17", p,
+                merge(bold(12), boxed())));
+        form.addFormContainer(text(M + 200, y + 22, FW - 200, 22, "Safe Work Permit  -  Jackson Generation", p,
+                merge(bold(12), boxed())));
+        y += 48;
+
+        // --- Issue row ---
+        form.addFormContainer(text(M, y, 90, 22, "Date Issued:", p, merge(small(), boxed())));
+        form.addFormContainer(gid(field(M + 92, y, 90, 22, "date", "date", p), "frozen:header"));
+        form.addFormContainer(text(M + 184, y, 90, 22, "Time Issued:", p, merge(small(), boxed())));
+        form.addFormContainer(gid(field(M + 276, y, 80, 22, "time", "text", p), "frozen:header"));
+        form.addFormContainer(text(M + 358, y, 230, 22, "Company/Person Performing Work", p,
+                merge(small(), merge(boxed(), centered()))));
+        form.addFormContainer(gid(field(M + 590, y, 60, 22, "companyPerson", "text", p), "frozen:header"));
+        form.addFormContainer(text(650, y, 80, 22, "Permit Number", p, merge(small(), boxed())));
+        form.addFormContainer(gid(field(732, y, 64, 22, "permitNumber", "text", p), "frozen:header"));
+        y += 26;
+
+        form.addFormContainer(text(M, y, 160, 22, "Specific Location of Work:", p, merge(small(), boxed())));
+        form.addFormContainer(gid(field(M + 162, y, FW - 162, 22, "location", "text", p), "frozen:header"));
+        y += 24;
+        form.addFormContainer(text(M, y, 200, 22, "Description Of Work to be Performed:", p, merge(small(), boxed())));
+        form.addFormContainer(gid(field(M + 202, y, FW - 202, 22, "workScope", "textarea", p), "frozen:header"));
+        y += 26;
+
+        // --- Hazards: three columns ---
+        y = sectionBarLight(form, "IDENTIFY SAFETY HAZARDS", y, p);
+        int colW = FW / 3;
+        int c1 = M, c2 = M + colW, c3 = M + colW * 2;
+        String G = "frozen:hazards";
+
+        String[][] h1 = {
+            {"highTemp", "*High Temperature (>140F)"}, {"highPressure", "*High Pressure (>100 psi)"},
+            {"hazardousFlammablePipingMaint", "*Hazardous or Flamable Piping Maint."},
+            {"electricalTesting599V", "*Electrical Testing > 599V"},
+            {"energized", "**Energized Electrical Work (>50V)"}, {"storedEnergy", "Stored Energy (LOTO)"},
+            {"eyeHazard", "Eye Hazard"}, {"egressAccess", "Egress & Access Hazard"},
+            {"ergonomicHazard", "Ergonomic Hazards"},
+        };
+        String[][] h2 = {
+            {"fallingObject", "Falling Object Hazard"}, {"highNoise", "High Noise"},
+            {"dustParticulate", "Dust/Particulate"}, {"combustibleDust", "Combustible Dust"},
+            {"fireHazard", "Fire/Explosion Hazard"}, {"hotSurface", "Hot Surfaces"},
+            {"slippery", "Slip/Trip/Fall Hazards"}, {"ventilationRequired", "Ventilation Req'd (Mech/Natural)"},
+            {"lightingRestrictions", "Lighting/Visibility restrictions"},
+            {"exposedRotatingParts", "Exposed Rotating Parts"},
+        };
+        String[][] h3 = {
+            {"chemicalExposure", "Possible Chemical Exposure"}, {"liftingHazard", "Lifting Hazard"},
+            {"handTraps", "Hand Traps"}, {"heatColdStress", "Heat/Cold Stress"},
+            {"elevatedSurface", "Elevated Work Surface"}, {"environmental", "Environmental Concern"},
+        };
+        int yy = checkColumn(form, h1, c1, y, colW, p, G);
+        checkColumn(form, h2, c2, y, colW, p, G);
+        int y3 = checkColumn(form, h3, c3, y, colW, p, G);
+
+        // col-3 tail: three items that carry a write-in beside them
+        y3 = checkWithWriteIn(form, c3, y3, colW, "weatherHazards", "Weather Hazards",
+                "weatherHazardDescription", p, G);
+        y3 = checkWithWriteIn(form, c3, y3, colW, "testingTroubleshooting50V", "Testing/Troubleshooting>50V",
+                "voltageDescription", p, G);
+        y3 = checkRow(form, c3, y3, colW, "hexavalentChromium", "Hexavalent Chromium (Cr(VI))", p, G);
+        y3 = checkWithWriteIn(form, c3, y3, colW, "other", "Other", "otherDescription", p, G);
+
+        // col-1 footnotes (static)
+        form.addFormContainer(text(c1, yy, colW - 4, 12, "* REQUIRES PLANT MANAGER APPROVAL", p, bold(8)));
+        form.addFormContainer(text(c1, yy + 12, colW - 4, 12, "**REQUIRES ENERGIZED ELECTRICAL WP", p, bold(8)));
+        y = Math.max(y3, yy + 26) + 4;
+
+        // --- Required permits / tests / actions ---
+        y = sectionBarLight(form, "REQUIRED PERMITS/TESTS/ACTIONS", y, p);
+        String GP = "frozen:permits";
+        int yp1 = y, yp2 = y, yp3 = y;
+        yp1 = checkWithWriteIn(form, c1, yp1, colW, "lotoRequired", "LOTO Required #", "lotoDescription", p, GP);
+        yp1 = checkWithWriteIn(form, c1, yp1, colW, "hotWork", "Hot Work Permit #", "hotWorkDescription", p, GP);
+        yp1 = checkWithWriteIn(form, c1, yp1, colW, "confinedSpace", "Confined Space #", "confinedSpaceDescription", p, GP);
+        yp1 = checkRow(form, c1, yp1, colW, "excavationPermit", "Excavation Permit", p, GP);
+        yp1 = checkWithWriteIn(form, c1, yp1, colW, "energizedPermit", "Energized Electrical WP", "energizedPermitDescription", p, GP);
+
+        yp2 = checkWithWriteIn(form, c2, yp2, colW, "ventingPurging", "Venting/Purging Procedure", "ventingPurgingDescription", p, GP);
+        yp2 = checkRow(form, c2, yp2, colW, "jha", "JHA", p, GP);
+        yp2 = checkRow(form, c2, yp2, colW, "gasTesting", "Air Monitoring within Safe Limits", p, GP);
+        yp2 = checkRow(form, c2, yp2, colW, "liftPlan", "Lift Plan", p, GP);
+
+        yp3 = checkRow(form, c3, yp3, colW, "confSpaceRescuePlanReview", "Conf. Space Rescue Plan Review", p, GP);
+        yp3 = checkRow(form, c3, yp3, colW, "fallRescuePlan", "Fall Rescue Plan", p, GP);
+        yp3 = checkWithWriteIn(form, c3, yp3, colW, "other", "Other", "otherDescription", p, GP);
+        y = Math.max(yp1, Math.max(yp2, yp3)) + 4;
+
+        // --- PPE: four columns ---
+        y = sectionBarLight(form, "PROTECTIVE EQUIPMENT REQUIRED", y, p);
+        String GE = "frozen:ppe";
+        int qw = FW / 4;
+        int q1 = M, q2 = M + qw, q3 = M + qw * 2, q4 = M + qw * 3;
+        int yq1 = y, yq2 = y, yq3 = y, yq4 = y;
+        for (String[] it : new String[][]{{"hardhat","Hardhat"},{"safetyGlasses","Safety Glasses"},
+                {"hearingProtection","Hearing Protection"},{"boots","Protective Footwear"},
+                {"weldingPpe","Welding PPE"}}) {
+            yq1 = checkRow(form, q1, yq1, qw, it[0], it[1], p, GE);
+        }
+        yq2 = checkWithWriteIn(form, q2, yq2, qw, "respiratorDustMask", "Respirator/Dust Mask", "respiratorType", p, GE);
+        yq2 = checkWithWriteIn(form, q2, yq2, qw, "gloves", "Protective Gloves", "glovesType", p, GE);
+        yq2 = checkRow(form, q2, yq2, qw, "gasMonitor", "Air Monitor", p, GE);
+        yq2 = checkRow(form, q2, yq2, qw, "tyvekSuit", "Tyvek Suit", p, GE);
+
+        yq3 = checkRow(form, q3, yq3, qw, "acidSuit", "Acid Suit/Rainsuit", p, GE);
+        yq3 = checkRow(form, q3, yq3, qw, "barricade", "Barricade/Rope Off", p, GE);
+        yq3 = checkRow(form, q3, yq3, qw, "faceShield", "Face Shield/Goggles", p, GE);
+        yq3 = checkWithWriteIn(form, q3, yq3, qw, "arcFlashPpe", "Arc Flash/Shock PPE", "classCalRating", p, GE);
+        yq3 = checkRow(form, q3, yq3, qw, "gfi", "GFCI", p, GE);
+
+        yq4 = checkRow(form, q4, yq4, qw, "purgingVentilation", "Purging/Ventilation", p, GE);
+        yq4 = checkWithWriteIn(form, q4, yq4, qw, "fallProtection", "Fall Protection(Restraint/Lanyard/SRL)", "fallClearance", p, GE);
+        yq4 = checkWithWriteIn(form, q4, yq4, qw, "other", "Other", "otherDescription", p, GE);
+        y = Math.max(Math.max(yq1, yq2), Math.max(yq3, yq4)) + 6;
+
+        // --- Special instructions ---
+        form.addFormContainer(text(M, y, 120, 20, "Special Instructions:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 122, y, FW - 122, 34, "specialInstructions", "textarea", p),
+                "frozen:instructions"));
+        y += 38;
+
+        // --- Approval row ---
+        form.addFormContainer(text(M, y, 190, 34,
+                "The work scope has been reviewed, pre-job briefing held, and the work may proceed", p,
+                merge(bold(8), merge(boxed(), merge(centered(), Map.of("whiteSpace", "normal"))))));
+        form.addFormContainer(text(M + 192, y, 200, 16, "Work Authority", p, small()));
+        form.addFormContainer(text(M + 192, y + 16, 12, 18, "X", p, bold(10)));
+        form.addFormContainer(blank(M + 206, y + 16, 186, 18, p));
+        form.addFormContainer(text(M + 394, y, 200, 16, "Plant Manager (as Required)", p, small()));
+        form.addFormContainer(text(M + 394, y + 16, 12, 18, "X", p, bold(10)));
+        form.addFormContainer(blank(M + 408, y + 16, 186, 18, p));
+        form.addFormContainer(text(M + 596, y, 180, 16, "Requestor", p, small()));
+        form.addFormContainer(text(M + 596, y + 16, 12, 18, "X", p, bold(10)));
+        form.addFormContainer(gid(field(M + 610, y + 16, 166, 18, "requestedBy", "text", p), "ops:signoff"));
+        y += 38;
+
+        // --- Sign-on table: unbound (decision #26 -- no repeating store exists yet) ---
+        String[] cols = {"Sign and Print Name", "Company", "Sign On Date", "Sign On Time",
+                         "Sign Off Date", "Sign Off Time", "Work Completed"};
+        int[] w = {200, 150, 78, 78, 78, 78, 114};
+        int x = M;
+        for (int i = 0; i < cols.length; i++) {
+            form.addFormContainer(text(x, y, w[i], 22, cols[i], p,
+                    merge(bold(8), merge(boxed(), merge(centered(), Map.of("whiteSpace", "normal"))))));
+            x += w[i];
+        }
+        y += 22;
+        for (int r = 0; r < 7; r++) {
+            x = M;
+            for (int i = 0; i < cols.length - 1; i++) {
+                form.addFormContainer(box(x, y, w[i], 20, p));
+                x += w[i];
+            }
+            form.addFormContainer(box(x, y, 40, 20, p));
+            form.addFormContainer(text(x + 42, y + 2, 30, 16, "Yes", p, small()));
+            form.addFormContainer(box(x + 72, y, 40, 20, p));
+            y += 20;
+        }
+        y += 4;
+
+        form.addFormContainer(text(M, y, 300, 20, "Safe Work Permit Released.  Work Authority:", p, bold(9)));
+        form.addFormContainer(blank(M + 302, y, 260, 20, p));
+        form.addFormContainer(text(590, y, 70, 20, "Date/Time:", p, bold(9)));
+        form.addFormContainer(blank(662, y, 134, 20, p));
+        y += 24;
+
+        form.addFormContainer(text(M, y, FW, 14,
+                "Std SMP-17 Form Safe Work Permit        Revision 1        1 of 2", p, small()));
+    }
+
+    /** Page 2 is the sign-on/sign-off sheet: unbound ruled rows. */
+    private void seedSafeWorkPage2(PrintableForm form) {
+        int p = 2;
+        int y = M;
+
+        form.addFormContainer(text(M, y, 200, 44, "NAES SAFE", p, merge(bold(14), merge(centered(), boxed()))));
+        form.addFormContainer(text(M + 200, y, FW - 200, 22, "Safety Manual Procedure – 17", p, merge(bold(12), boxed())));
+        form.addFormContainer(text(M + 200, y + 22, FW - 200, 22, "Safe Work Permit  -  Jackson Generation", p, merge(bold(12), boxed())));
+        y += 52;
+
+        form.addFormContainer(text(M, y, FW, 24, "SAFE WORK PERMIT SIGN-ON/SIGN-OFF SHEET", p,
+                merge(bold(14), centered())));
+        y += 26;
+        form.addFormContainer(text(300, y, 50, 20, "SWP#", p, merge(bold(10), centered())));
+        form.addFormContainer(gid(field(352, y, 180, 20, "permitNumber", "text", p), "frozen:header"));
+        y += 24;
+
+        form.addFormContainer(text(M + 320, y, 160, 16, "SIGN-ON", p, merge(bold(9), centered())));
+        form.addFormContainer(text(M + 480, y, 160, 16, "SIGN-OFF", p, merge(bold(9), centered())));
+        y += 16;
+
+        String[] cols = {"NAME", "COMPANY", "DATE", "TIME", "DATE", "TIME"};
+        int[] w = {250, 246, 80, 80, 80, 40};
+        int x = M;
+        for (int i = 0; i < cols.length; i++) {
+            form.addFormContainer(text(x, y, w[i], 20, cols[i], p,
+                    merge(bold(8), merge(boxed(), centered()))));
+            x += w[i];
+        }
+        y += 20;
+        int rows = Math.min(28, (1056 - M - 30 - y) / 24);
+        for (int r = 0; r < rows; r++) {
+            x = M;
+            for (int i = 0; i < cols.length; i++) {
+                form.addFormContainer(box(x, y, w[i], 24, p));
+                x += w[i];
+            }
+            y += 24;
+        }
+        form.addFormContainer(text(M, y + 4, FW, 14,
+                "Std SMP-17 Form Safe Work Permit        Revision 1        2 of 2", p, small()));
+    }
+
+    // ---- checkbox-column helpers ----
+
+    /** Emit a run of checkbox+label rows down one column. Returns the new y. */
+    private int checkColumn(PrintableForm form, String[][] items, int x, int y, int w, int page, String group) {
+        for (String[] it : items) y = checkRow(form, x, y, w, it[0], it[1], page, group);
+        return y;
+    }
+
+    private int checkRow(PrintableForm form, int x, int y, int w, String key, String label,
+                         int page, String group) {
+        String prefix = group.endsWith("hazards") ? "hazards." : group.endsWith("permits") ? "permits." : "ppe.";
+        form.addFormContainer(gid(field(x, y + 2, 14, 14, prefix + key, "checkbox", page), group));
+        form.addFormContainer(text(x + 18, y, w - 22, 18, label, page,
+                merge(small(), Map.of("whiteSpace", "normal"))));
+        return y + 18;
+    }
+
+    /** Checkbox + label + a short ruled write-in bound to its own description field. */
+    private int checkWithWriteIn(PrintableForm form, int x, int y, int w, String key, String label,
+                                 String descKey, int page, String group) {
+        String prefix = group.endsWith("hazards") ? "hazards." : group.endsWith("permits") ? "permits." : "ppe.";
+        form.addFormContainer(gid(field(x, y + 2, 14, 14, prefix + key, "checkbox", page), group));
+        form.addFormContainer(text(x + 18, y, w - 22, 18, label, page,
+                merge(small(), Map.of("whiteSpace", "normal"))));
+        form.addFormContainer(gid(field(x + 18, y + 18, w - 22, 16, prefix + descKey, "text", page), group));
+        return y + 36;
+    }
+
+    /** A lighter section bar than the inverted one used on Hot Work. */
+    private int sectionBarLight(PrintableForm form, String label, int y, int page) {
+        form.addFormContainer(text(M, y, FW, 20, label, page,
+                merge(bold(11), merge(centered(), Map.of("backgroundColor", "#d9d9d9")))));
+        return y + 22;
+    }
+
+    /** Tag a container with its section, so the edit-lock policy can be applied per section later. */
+    private FormContainer gid(FormContainer c, String group) {
+        c.setGroupId(group);
+        return c;
+    }
+
     // ========== HOT WORK PERMIT (2 pages) ==========
 
     /**
@@ -1145,7 +1431,7 @@ public class PermitFormSeeder {
 
         // --- Title row ---
         form.addFormContainer(text(M, y, 70, 18, "Permit #:", p, bold(10)));
-        form.addFormContainer(field(M + 72, y, 150, 18, "redTagNum", "text", p));
+        form.addFormContainer(field(M + 72, y, 150, 18, "permitNumber", "text", p));
         form.addFormContainer(text(280, y - 2, 260, 24, "HOT WORK PERMIT", p, merge(bold(16), centered())));
         form.addFormContainer(text(590, y, 206, 18, "Permit Is Valid for One Shift Only", p,
                 merge(bold(9), Map.of("color", "#cc0000", "textDecoration", "underline"))));

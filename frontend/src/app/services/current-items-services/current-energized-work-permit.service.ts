@@ -104,9 +104,18 @@ export class CurrentEnergizedWorkPermitService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newPermit = this.normalizePermit(response.responseData);
-                    this.addPermitToList(newPermit);
-                    this.setCurrentPermitWithDto(newPermit);
+                    const saved = this.normalizePermit(response.responseData);
+                    // Upsert, not append: the paper form's onChange routes here on every edit and the
+                    // server updates the existing row, so appending grew the left menu by one phantom
+                    // entry per keystroke (gone on refresh, because nothing new was created).
+                    const exists = saved.id != null && saved.id !== 0
+                        && this.allActivePermitsSubject.value.some(p => p.id === saved.id);
+                    if (exists) {
+                        this.updatePermitInList(saved);
+                    } else {
+                        this.addPermitToList(saved);
+                    }
+                    this.setCurrentPermitWithDto(saved);
                 }
             })
         );

@@ -154,8 +154,11 @@ public class FullSyncToServerService {
     private static final ConcurrentHashMap<Class<?>, List<CachedFieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
 
     // Fields to exclude from sync
+    // dateCreated is synced (immutable creation instant must converge — see FieldChangeTracker); a cold
+    // resync must carry it too, or the pushed entities get the hub's local creation time. dateModified
+    // stays excluded (per-node, re-minted by @PreUpdate).
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
-        "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
+        "id", "version", "dateModified", "objectType", "serialVersionUID",
         "hibernateLazyInitializer", "handler"
     );
 

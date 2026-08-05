@@ -68,7 +68,14 @@ public class FieldChangeTracker {
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", // ID is never changed for updates, and Hibernate snapshot doesn't include it
         "version",
-        "dateCreated", "dateModified", "objectType", "serialVersionUID",
+        // dateCreated is NOT excluded: it is the entity's IMMUTABLE creation instant and must converge —
+        // excluding it let BaseIdEntity.onCreate() re-mint it to the RECEIVER's local time, so the same
+        // entity had a different creation timestamp per node (and permit-number buckets derive from it,
+        // a user-visible divergence). It is set on the create only (never changes on update, so update
+        // diffs never emit it) and the CREATE apply sets it before persist, so onCreate()'s null-guard
+        // preserves the origin's value. dateModified STAYS excluded: @PreUpdate re-mints it on every
+        // save, so it is legitimately per-node "last touched here" and would be clobbered on apply anyway.
+        "dateModified", "objectType", "serialVersionUID",
         "hibernateLazyInitializer", "handler"
     );
 

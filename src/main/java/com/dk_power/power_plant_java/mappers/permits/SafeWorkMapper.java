@@ -1,9 +1,12 @@
 package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
+import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.permits.SafeWorkRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,8 @@ public class SafeWorkMapper implements BaseMapper {
     private final SafeWorkRepo safeWorkRepo;
     private final WorkAreaRepo workAreaRepo;
     private final WorkAreaMapper workAreaMapper;
+    private final ValueMapper valueMapper;
+    private final ValueRepo valueRepo;
 
     @Override
     public ModelMapper getMapper() {
@@ -27,6 +32,10 @@ public class SafeWorkMapper implements BaseMapper {
 
         SafeWorkDto dto = new SafeWorkDto();
 
+        // Audit stamps, permit number, sync bookkeeping. Without this the hand mapper
+        // returns a thinner object than the ModelMapper it replaced on get-by-id.
+        copyBaseFields(safeWork, dto);
+
         if (safeWork.getId()!= null) dto.setId(safeWork.getId());
         if (safeWork.getDate() != null) dto.setDate(safeWork.getDate());
         if (safeWork.getTime() != null) dto.setTime(safeWork.getTime());
@@ -36,6 +45,10 @@ public class SafeWorkMapper implements BaseMapper {
         if (safeWork.getSpecialInstructions() != null) dto.setSpecialInstructions(safeWork.getSpecialInstructions());
         if (safeWork.getRequestedBy() != null) dto.setRequestedBy(safeWork.getRequestedBy());
         if(safeWork.getRedTagNum()!=null) dto.setRedTagNum(safeWork.getRedTagNum());
+        // Both were generated/populated server-side but carried by neither mapper direction, so the
+        // permit number literally could not be printed and the status column was always blank.
+        if (safeWork.getPermitNumber() != null) dto.setPermitNumber(safeWork.getPermitNumber());
+        if (safeWork.getPermitStatus() != null) dto.setPermitStatus(valueMapper.convertToDto(safeWork.getPermitStatus()));
 
         // Convert JSON fields to POJOs and set in DTO
         try {
@@ -83,6 +96,15 @@ public class SafeWorkMapper implements BaseMapper {
         if (dto.getSpecialInstructions() != null) entity.setSpecialInstructions(dto.getSpecialInstructions());
         if (dto.getRequestedBy() != null) entity.setRequestedBy(dto.getRequestedBy());
         if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
+        if (dto.getPermitNumber() != null && !dto.getPermitNumber().isEmpty()) entity.setPermitNumber(dto.getPermitNumber());
+        // Resolve by id, never merge a detached Value. id 0 is the Angular placeholder shape and must
+        // be ignored, or NgSafeWorkService's "Building" default is skipped and merge() throws
+        // "Unable to find Value with id 0" -- the HotWork create bug.
+        if (dto.getPermitStatus() != null && dto.getPermitStatus().getId() != null
+                && dto.getPermitStatus().getId() != 0) {
+            Value status = valueRepo.findById(dto.getPermitStatus().getId()).orElse(null);
+            if (status != null) entity.setPermitStatus(status);
+        }
 
         // Convert POJOs to JSON strings and set into entity JSON fields
         // Null-guarded like every scalar above. Unguarded, setHazards(null) serialises the

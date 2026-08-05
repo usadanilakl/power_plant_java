@@ -15,15 +15,17 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SwPpe {
 
-    private boolean hardhat;
-    private boolean safetyGlasses;
-    private boolean hearingProtection;
-    private boolean boots;                  // Protective Footwear
+    // Default true to match the Angular DTO. They disagreed, so a Java-created permit and a
+    // UI-created one rendered different tick states for the same blank form.
+    private boolean hardhat = true;
+    private boolean safetyGlasses = true;
+    private boolean hearingProtection = true;
+    private boolean boots = true;                  // Protective Footwear
     private boolean weldingPpe;             // Welding PPE (was jacket + shield + gloves)
 
     private boolean respiratorDustMask;     // Respirator/Dust Mask (was respirator + dustMask)
     private String respiratorType;          // "Type" text beside Respirator/Dust Mask
-    private boolean gloves;                 // Protective Gloves
+    private boolean gloves = true;                 // Protective Gloves
     private String glovesType;              // "Type" text beside Protective Gloves
     private boolean gasMonitor;             // Air Monitor
     private boolean tyvekSuit;              // Tyvek Suit                          (new)

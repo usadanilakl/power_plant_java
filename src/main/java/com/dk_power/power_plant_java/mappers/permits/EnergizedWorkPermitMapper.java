@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.EnergizedWorkPermitDto;
 import com.dk_power.power_plant_java.entities.permits.EnergizedWorkPermit;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.permits.EnergizedWorkPermitRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class EnergizedWorkPermitMapper implements BaseMapper {
     private final EnergizedWorkPermitRepo repo;
     private final WorkAreaRepo workAreaRepo;
     private final WorkAreaMapper workAreaMapper;
+    private final ValueMapper valueMapper;
 
     @Override
     public ModelMapper getMapper() {
@@ -25,6 +27,12 @@ public class EnergizedWorkPermitMapper implements BaseMapper {
     public EnergizedWorkPermitDto convertToDto(EnergizedWorkPermit entity) {
         if (entity == null) return null;
         EnergizedWorkPermitDto dto = new EnergizedWorkPermitDto();
+
+        // Audit stamps, permit number, sync bookkeeping. Without this the hand mapper
+        // returns a thinner object than the ModelMapper it replaced on get-by-id.
+        copyBaseFields(entity, dto);
+        // Status was carried by neither mapper direction, so the detail view showed blank.
+        if (entity.getPermitStatus() != null) dto.setPermitStatus(valueMapper.convertToDto(entity.getPermitStatus()));
 
         if (entity.getId() != null) dto.setId(entity.getId());
         if (entity.getDate() != null) dto.setDate(entity.getDate());
