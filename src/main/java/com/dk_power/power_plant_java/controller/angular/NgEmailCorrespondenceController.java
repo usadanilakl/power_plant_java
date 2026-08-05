@@ -2,9 +2,12 @@ package com.dk_power.power_plant_java.controller.angular;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.base_dtos.EmailCorrespondenceDto;
+import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
+import com.dk_power.power_plant_java.dto.email.MailboxMessageDto;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService;
+import com.dk_power.power_plant_java.sevice.email.ApiEmailService;
 import com.dk_power.power_plant_java.sevice.email.EmailPollingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,47 @@ import java.util.List;
 public class NgEmailCorrespondenceController {
     private final NgEmailCorrespondenceService service;
     private final EmailPollingService emailPollingService;
+    private final ApiEmailService apiEmailService;
+
+    /**
+     * List recent messages from the shared mailbox's Inbox or Sent folder (for the Correspondence Inbox/Outbox tabs).
+     * folder = "inbox" (default) or "sent"/"outbox".
+     */
+    @GetMapping("/mailbox")
+    public ResponseEntity<NgApiResponse<List<MailboxMessageDto>>> mailbox(
+            @RequestParam(name = "folder", defaultValue = "inbox") String folder,
+            @RequestParam(name = "top", defaultValue = "50") int top) {
+        try {
+            boolean sent = "sent".equalsIgnoreCase(folder) || "sentitems".equalsIgnoreCase(folder)
+                    || "outbox".equalsIgnoreCase(folder);
+            String graphFolder = sent ? "sentitems" : "inbox";
+            String direction = sent ? "OUTBOUND" : "INBOUND";
+            List<MailboxMessageDto> msgs = apiEmailService.listFolderMessages(graphFolder, top).stream()
+                    .map(m -> toMailboxDto(m, direction))
+                    .toList();
+            return ResponseEntity.ok(new NgApiResponse<>(msgs, "ok"));
+        } catch (Exception e) {
+            log.warn("[EmailCorrespondence] mailbox list failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    private static MailboxMessageDto toMailboxDto(GraphEmailMessage m, String direction) {
+        String date = m.getReceivedDateTime() != null ? m.getReceivedDateTime().toString()
+                : (m.getSentDateTime() != null ? m.getSentDateTime().toString() : "");
+        String to = (m.getToRecipients() == null || m.getToRecipients().isEmpty())
+                ? "" : String.join(", ", m.getToRecipients());
+        return new MailboxMessageDto(m.getId(), m.getSubject(), m.getSenderEmail(), to, date,
+                Boolean.TRUE.equals(m.getIsRead()), direction, snippet(m), m.getConversationId());
+    }
+
+    private static String snippet(GraphEmailMessage m) {
+        String base = (m.getBodyPreview() != null && !m.getBodyPreview().isBlank())
+                ? m.getBodyPreview() : m.getBodyContent();
+        if (base == null) return "";
+        String text = base.replaceAll("(?s)<[^>]+>", " ").replace("&nbsp;", " ").replaceAll("\\s+", " ").trim();
+        return text.length() > 500 ? text.substring(0, 500) + "…" : text;
+    }
 
     /**
      * Get correspondence for a specific entity (polymorphic query)

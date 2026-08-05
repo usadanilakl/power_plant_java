@@ -114,6 +114,9 @@ public class OrderingService {
                 .note(joinNotes(item.getBodyNote(), req.getNote()))
                 .summaryTitle(item.getDisplayName())
                 .lines(req.getLines())
+                // log real sends to Correspondence; test sends are not logged
+                .logEntityType(test ? null : "Ordering")
+                .logCorrespondenceType("Vendor Order")
                 .build();
     }
 

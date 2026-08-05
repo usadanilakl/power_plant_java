@@ -22,6 +22,9 @@
       <button *ngIf="isWo" [class.active]="tab() === 'tasks'" (click)="setTab('tasks')">
         Tasks <span class="muted" *ngIf="tasksLoaded()">({{ tasks().length }})</span>
       </button>
+      <button *ngIf="isWo && wo?.pmnum" [class.active]="tab() === 'history'" (click)="setTab('history')">
+        History <span class="muted" *ngIf="historyLoaded()">({{ historyRows().length }})</span>
+      </button>
       <button *ngIf="canComplete" [class.active]="tab() === 'complete'" (click)="setTab('complete')">
         Complete
       </button>
@@ -43,6 +46,7 @@
             📋 {{ genSuitCopied() ? 'GS ✓ copied' : 'GS' }}
           </button>
           <button class="link" *ngIf="!showTransferLead()" (click)="startTransferLead()">⇄ Transfer lead</button>
+          <button class="link" *ngIf="canComplete && !showReschedule()" (click)="startReschedule()">📅 Reschedule</button>
         </div>
         <table class="kv">
           <tr *ngFor="let pair of detailFields">
@@ -130,6 +134,27 @@
               {{ transferring() ? 'Transferring…' : 'Transfer lead' }}
             </button>
             <button (click)="cancelTransferLead()" [disabled]="transferring()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Reschedule panel (WO only): set Target Start / Finish -->
+        <div class="transfer-panel" *ngIf="isWo && showReschedule()">
+          <h4>Reschedule — Target dates</h4>
+          <p class="muted">Sets the work order's Target Start and Target Finish in Maximo (finish is clamped to ≥ start).
+            Maximo may reject the change in a status that locks these fields — any error shows above.</p>
+          <div class="reschedule-fields">
+            <label>Target start
+              <input type="date" [(ngModel)]="rescheduleStart" />
+            </label>
+            <label>Target finish
+              <input type="date" [(ngModel)]="rescheduleFinish" />
+            </label>
+          </div>
+          <div class="transfer-actions">
+            <button class="primary" (click)="submitReschedule()" [disabled]="rescheduling() || !rescheduleStart">
+              {{ rescheduling() ? 'Saving…' : 'Save dates' }}
+            </button>
+            <button (click)="cancelReschedule()" [disabled]="rescheduling()">Cancel</button>
           </div>
         </div>
       </div>
@@ -253,6 +278,23 @@
           Completing a task changes only that task's status. Maximo decides whether finishing the last task
           advances the parent work order.
         </p>
+      </div>
+
+      <!-- History tab (WO with a PM): previously-completed work orders -->
+      <div *ngIf="tab() === 'history' && !loading()">
+        <p class="muted" *ngIf="historyRows().length === 0">No completed work orders found for this PM.</p>
+        <ng-container *ngIf="historyRows().length">
+          <p class="muted hist-cap">Previously completed for PM {{ wo?.pmnum }} — newest first</p>
+          <table class="kv hist-table">
+            <tr><th>WO</th><th>Completed</th><th>Status</th><th>Lead</th></tr>
+            <tr *ngFor="let h of historyRows()">
+              <td>{{ h.wonum }}</td>
+              <td>{{ ((h.statusDate || h.targetStart) | date:'mediumDate') || '—' }}</td>
+              <td>{{ h.status }}</td>
+              <td>{{ h.leadCraft || '—' }}</td>
+            </tr>
+          </table>
+        </ng-container>
       </div>
 
       <!-- Complete tab (WO only) -->

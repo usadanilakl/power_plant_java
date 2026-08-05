@@ -165,6 +165,34 @@ public class MaximoPmAuditService {
                 .build();
     }
 
+    private static final Set<String> COMPLETED_WO_STATUSES = Set.of("COMP", "CLOSE", "CLOSED");
+
+    /**
+     * A PM's previously-completed (COMP / CLOSE / CLOSED) work orders over the occurrence window, newest completion
+     * first — the per-PM "history" list shown on the desktop and PWA. Best-effort: empty on a blank pmnum or a
+     * Maximo read failure (never throws to the UI). Sorts by status-date (the completion date for a COMP WO).
+     */
+    public List<MaximoWorkOrderDto> completedWorkOrdersForPmnum(String pmnum) {
+        if (pmnum == null || pmnum.isBlank()) return List.of();
+        MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
+        c.setPmnum(pmnum.trim());
+        c.setReportdateFrom(LocalDate.now().minusYears(OCCURRENCE_YEARS) + "T00:00:00");
+        List<MaximoWorkOrderDto> all;
+        try {
+            all = workOrders.listAllByCriteria(c, OCC_PAGE_SIZE, OCC_MAX_PAGES);
+        } catch (Exception e) {
+            log.debug("[Maximo] completed history for PM {} failed: {}", pmnum, e.toString());
+            return List.of();
+        }
+        return all.stream()
+                .filter(w -> w.getStatus() != null && COMPLETED_WO_STATUSES.contains(w.getStatus().trim().toUpperCase(Locale.ROOT)))
+                .sorted(Comparator.comparing((MaximoWorkOrderDto w) -> {
+                    LocalDate d = firstDate(w.getStatusDate(), w.getTargetStart(), w.getReportdate());
+                    return d == null ? LocalDate.MIN : d;
+                }).reversed())
+                .toList();
+    }
+
     /** A PM's work orders over the occurrence window (pmnum, else the exact description phrase). Empty on failure. */
     private List<MaximoWorkOrderDto> occurrenceWos(RecurringPmDto pm, LocalDate today) {
         MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();

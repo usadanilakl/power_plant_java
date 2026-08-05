@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.email.EmailRequest;
 import com.dk_power.power_plant_java.dto.order.OrderLineDto;
 import com.dk_power.power_plant_java.dto.order.OrderRequestDto;
 import com.dk_power.power_plant_java.dto.order.OrderResultDto;
+import com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService;
 import com.dk_power.power_plant_java.sevice.email.EmailFacadeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class OrderEmailService {
     private static final String DEFAULT_INTRO = "Jackson Generation would like to order the following:";
 
     private final EmailFacadeService emailFacadeService;
+    private final NgEmailCorrespondenceService correspondenceService;
 
     /**
      * Compose the order into an HTML email and send it. Returns {@code sent=false} (a no-op) when there are no lines
@@ -54,16 +56,33 @@ public class OrderEmailService {
             return result;
         }
 
+        String body = buildHtmlBody(order);
         emailFacadeService.sendEmail(EmailRequest.builder()
                 .to(order.getTo()).cc(order.getCc()).subject(order.getSubject())
-                .body(buildHtmlBody(order)).attachments(order.getAttachments()).html(true).build());
+                .body(body).attachments(order.getAttachments()).html(true).build());
         result.setSent(true);
         log.info("[OrderEmail] order email sent to {} (cc {}) — {} line(s), PO {}",
                 order.getTo(), order.getCc(), order.getLines().size(), order.getPoNumber());
+        logCorrespondence(order, body);
         result.setMessage("Order email sent to " + order.getTo()
                 + (isBlank(order.getCc()) ? "" : " (cc " + order.getCc() + ")")
                 + " — " + order.getLines().size() + " item(s).");
         return result;
+    }
+
+    /** Best-effort: log the sent order as OUTBOUND EmailCorrespondence so it shows in the Correspondence "Linked" tab.
+     *  Driven by the order's log* fields; a failure never affects the send. (Uses the proven Mail.Send path, so no
+     *  Graph message/conversation id is captured — vendor replies are still visible in the mailbox Inbox tab.) */
+    private void logCorrespondence(OrderRequestDto order, String body) {
+        if (isBlank(order.getLogEntityType())) return;
+        try {
+            correspondenceService.saveOutbound(
+                    order.getLogEntityType(), null,
+                    order.getSubject(), body, order.getTo(),
+                    isBlank(order.getLogCorrespondenceType()) ? "Order Email" : order.getLogCorrespondenceType());
+        } catch (Exception e) {
+            log.warn("[OrderEmail] correspondence logging failed: {}", e.getMessage());
+        }
     }
 
     // ── body / summary ──────────────────────────────────────────────────────────

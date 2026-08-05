@@ -676,7 +676,9 @@ public class ApiEmailService {
                         .id(getTextValue(messageNode, "id"))
                         .subject(getTextValue(messageNode, "subject"))
                         .bodyContent(extractBodyContent(messageNode))
+                        .bodyPreview(getTextValue(messageNode, "bodyPreview"))
                         .senderEmail(extractSenderEmail(messageNode))
+                        .toRecipients(extractToRecipients(messageNode))
                         .sentDateTime(parseDateTime(messageNode.get("sentDateTime")))
                         .receivedDateTime(parseDateTime(messageNode.get("receivedDateTime")))
                         .internetMessageId(getTextValue(messageNode, "internetMessageId"))
@@ -721,6 +723,60 @@ public class ApiEmailService {
             return senderNode.get("emailAddress").get("address").asText();
         }
         return "";
+    }
+
+    /** Extracts the "to" recipient email addresses from a Graph message node. */
+    private List<String> extractToRecipients(JsonNode messageNode) {
+        List<String> tos = new ArrayList<>();
+        JsonNode arr = messageNode.get("toRecipients");
+        if (arr != null && arr.isArray()) {
+            for (JsonNode r : arr) {
+                JsonNode addr = r.path("emailAddress").path("address");
+                if (!addr.isMissingNode() && !addr.asText("").isBlank()) tos.add(addr.asText());
+            }
+        }
+        return tos;
+    }
+
+    /**
+     * List recent messages from a well-known folder ("inbox" or "sentitems") of the monitored mailbox
+     * ({@code email.graph.from}). Read-only; used by the Correspondence Inbox/Outbox tabs. Returns empty when the
+     * certificate credential is unavailable.
+     */
+    public List<GraphEmailMessage> listFolderMessages(String folder, int top) {
+        if (credential == null) {
+            log.warn("[Email] Cannot read mailbox - certificate credential not available");
+            return Collections.emptyList();
+        }
+        String safeFolder = "sentitems".equalsIgnoreCase(folder) ? "sentitems" : "inbox";
+        String orderBy = "sentitems".equals(safeFolder) ? "sentDateTime desc" : "receivedDateTime desc";
+        // bodyPreview (light) instead of full body keeps larger fetches cheap
+        int pageSize = Math.min(Math.max(top, 1), 500);
+        try {
+            ensureValidToken();
+            String url = String.format(
+                "https://graph.microsoft.com/v1.0/users/%s/mailFolders/%s/messages?" +
+                "$top=%d&" +
+                "$select=id,subject,bodyPreview,sender,toRecipients,sentDateTime,receivedDateTime," +
+                "internetMessageId,conversationId,isRead&" +
+                "$orderby=%s",
+                fromEmail, safeFolder, pageSize, orderBy);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(emailAccessToken);
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+            ResponseEntity<String> response = exchangeWithRetry(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return parseGraphMessages(response.getBody());
+            }
+            log.error("[Email] Failed to list {} messages. Status: {}", safeFolder, response.getStatusCode());
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("[Email] Error listing {} messages: {}", safeFolder, e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     /**

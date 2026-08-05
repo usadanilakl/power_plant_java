@@ -249,7 +249,14 @@ public class PmAssignmentService {
      * Returns {@code target} unchanged when no preferred weekday is set.
      */
     static LocalDate effectiveTargetDate(LocalDate target, Integer dow, RecurrenceCadence cadence) {
-        if (target == null || dow == null || dow < 1 || dow > 7) return target;
+        if (target == null) return null;
+        boolean noDow = (dow == null || dow < 1 || dow > 7);
+        // Monthly PMs default to the 1st of the WO's month (Target Finish → last day via periodEndDate) when no
+        // preferred weekday is set; a preferred weekday still snaps within the month via the logic below.
+        if (cadence == RecurrenceCadence.MONTH && noDow) {
+            return target.with(TemporalAdjusters.firstDayOfMonth());
+        }
+        if (dow == null || dow < 1 || dow > 7) return target;
         if (cadence == RecurrenceCadence.WEEK) {
             return target.with(ChronoField.DAY_OF_WEEK, dow); // same ISO week
         }

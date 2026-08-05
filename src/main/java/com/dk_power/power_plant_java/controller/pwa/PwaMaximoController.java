@@ -20,12 +20,16 @@ import com.dk_power.power_plant_java.dto.maximo.AddWorklogRequest;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
+import com.dk_power.power_plant_java.dto.maximo.ReorderLineDto;
+import com.dk_power.power_plant_java.dto.maximo.ReorderResultDto;
+import com.dk_power.power_plant_java.sevice.maximo.ChemInventoryReorderService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoBundleService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoDoclinksAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryCatalogService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoPmAuditService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
@@ -71,6 +75,8 @@ public class PwaMaximoController {
     private final RecurringPmService recurringPms;
     private final MaximoFormService forms;
     private final MaximoFormCompletionService completion;
+    private final MaximoPmAuditService pmAudit;
+    private final ChemInventoryReorderService reorder;
     private final UserRepo userRepo;
 
     // ── Work orders ────────────────────────────────────────────────────────────
@@ -288,6 +294,36 @@ public class PwaMaximoController {
         }
     }
 
+    /**
+     * Edit a service request's description / long description / priority — only while it is still NEW (not yet
+     * triaged), matching the phone's attach gate. Blank fields are left unchanged (adapter skips blanks).
+     */
+    @PostMapping("/service-requests/update")
+    public ResponseEntity<NgApiResponse<MaximoServiceRequestDto>> updateSr(
+            @RequestParam("href") String href, @RequestBody UpdateSrBody body) {
+        try {
+            MaximoServiceRequestDto current = serviceRequests.findByHref(href).orElse(null);
+            if (current == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "SR not found"));
+            String status = current.getStatus() == null ? "" : current.getStatus().trim();
+            if (!"NEW".equalsIgnoreCase(status)) {
+                return ResponseEntity.badRequest().body(
+                        new NgApiResponse<>(null, "This request can only be edited while it's NEW (now " + status + ")."));
+            }
+            java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
+            fields.put("spi:description", body.description());
+            fields.put("spi:description_longdescription", body.longDescription());
+            fields.put("spi:reportedpriority", body.priority());
+            MaximoServiceRequestDto updated = serviceRequests.updateFields(href, fields);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "updated"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] SR update {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Editable SR fields exposed to the phone (blank = unchanged). */
+    public record UpdateSrBody(String description, String longDescription, String priority) {}
+
     /** Attach a photo/file to a just-created SR. Best-effort — caller uploads after create succeeds. */
     @PostMapping("/service-requests/attachment")
     public ResponseEntity<NgApiResponse<MaximoDoclinkDto>> uploadSrAttachment(
@@ -302,6 +338,30 @@ public class PwaMaximoController {
             log.warn("[PWA-Maximo] SR attachment upload failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Attachment failed: " + e.getMessage()));
         }
+    }
+
+    /** List a service request's attachments (photos/PDFs/docs). */
+    @GetMapping("/service-requests/attachments")
+    public ResponseEntity<NgApiResponse<List<MaximoDoclinkDto>>> listSrAttachments(@RequestParam("href") String href) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(doclinks.list("mxapisr", href), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] SR attachments list failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Stream one SR attachment's bytes (inline, so the phone can preview an image/PDF). */
+    @GetMapping("/service-requests/attachments/content")
+    public ResponseEntity<byte[]> srAttachmentContent(
+            @RequestParam("href") String href, @RequestParam("attachmentId") String attachmentId) {
+        ResponseEntity<byte[]> upstream = doclinks.streamBinary("mxapisr", href, attachmentId);
+        org.springframework.http.HttpHeaders out = new org.springframework.http.HttpHeaders();
+        if (upstream.getHeaders().getContentType() != null) out.setContentType(upstream.getHeaders().getContentType());
+        long len = upstream.getHeaders().getContentLength();
+        if (len > 0) out.setContentLength(len);
+        out.set(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline");
+        return new ResponseEntity<>(upstream.getBody(), out, upstream.getStatusCode());
     }
 
     // ── Reference pickers ──────────────────────────────────────────────────────
@@ -324,12 +384,13 @@ public class PwaMaximoController {
 
     /**
      * PM overview bucketed overdue / due-this-week / upcoming (+ completed). {@code mode=leads} (default)
-     * tracks the lead operators; {@code mode=mine} tracks the signed-in user. {@code pmOnly=true} (default)
-     * restricts every bucket to PM work orders (worktype PM or a pmnum).
+     * tracks the lead operators; {@code mode=mine} tracks the signed-in user; {@code mode=custom} tracks the
+     * given {@code personids}. {@code pmOnly=true} (default) restricts every bucket to PM work orders.
      */
     @GetMapping("/bundle/overview")
     public ResponseEntity<NgApiResponse<MaximoOverviewDto>> overview(
             @RequestParam(value = "mode", defaultValue = "leads") String mode,
+            @RequestParam(value = "personids", required = false) String personids,
             @RequestParam(value = "pmOnly", defaultValue = "true") boolean pmOnly,
             @RequestParam(value = "pageSize", defaultValue = "200") int pageSize) {
         try {
@@ -338,6 +399,8 @@ public class PwaMaximoController {
                 String pid = currentUserPersonid();
                 List<String> ids = (pid == null || pid.isBlank()) ? List.of() : List.of(pid);
                 ov = bundles.overview("people", ids, pageSize);
+            } else if ("custom".equalsIgnoreCase(mode) || "people".equalsIgnoreCase(mode)) {
+                ov = bundles.overview("people", parsePersonids(personids), pageSize);
             } else {
                 ov = bundles.overview("leads", null, pageSize);
             }
@@ -347,6 +410,25 @@ public class PwaMaximoController {
             log.warn("[PWA-Maximo] overview failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
+    }
+
+    private static List<String> parsePersonids(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        return java.util.Arrays.stream(csv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+    }
+
+    /** Active users that have a Maximo personid — the pool for the "custom" people filter (name + personid). */
+    @GetMapping("/labor-people")
+    public ResponseEntity<NgApiResponse<List<java.util.Map<String, String>>>> laborPeople() {
+        List<java.util.Map<String, String>> people = new java.util.ArrayList<>();
+        for (User u : userRepo.findByIsActiveTrue()) {
+            String pid = u.getMaximoPersonid();
+            if (pid == null || pid.isBlank()) continue;
+            String name = (u.getName() != null && !u.getName().isBlank()) ? u.getName() : pid;
+            people.add(java.util.Map.of("name", name, "personid", pid));
+        }
+        people.sort((a, b) -> a.get("name").compareToIgnoreCase(b.get("name")));
+        return ResponseEntity.ok(new NgApiResponse<>(people, people.size() + " people"));
     }
 
     private void filterToPm(MaximoOverviewDto ov) {
@@ -385,6 +467,46 @@ public class PwaMaximoController {
         }
     }
 
+    /** Existing submissions for a work order (newest first) — lets the phone prefill a form already started on this WO. */
+    @GetMapping("/forms/submissions/for-wo")
+    public ResponseEntity<NgApiResponse<List<MaximoFormSubmissionDto>>> submissionsForWo(
+            @RequestParam("wonum") String wonum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(forms.getSubmissionsForWo(wonum), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] submissions for-wo failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * The newest submission of a form across all work orders — carries settings/values forward into a fresh run
+     * (e.g. the chem-inventory target levels + reorder email/config). Null when the form has none yet. Mirrors
+     * the desktop so the PWA chem-inventory form prefills the same sticky config instead of opening blank.
+     */
+    @GetMapping("/forms/submissions/latest-for-form")
+    public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> latestForForm(
+            @RequestParam("formKey") String formKey) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(forms.getLatestSubmissionForForm(formKey), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] latest-for-form failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** A PM's previously-completed work orders (COMP / CLOSE), newest first — the phone's per-PM history view. */
+    @GetMapping("/pm-completed-history")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> pmCompletedHistory(
+            @RequestParam("pmnum") String pmnum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(pmAudit.completedWorkOrdersForPmnum(pmnum), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] pm-completed-history {} failed: {}", pmnum, e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
     /** Submit a completed PM form: renders the PDF, attaches it to the WO, write-backs, advances status. */
     @PostMapping("/forms/complete")
     public ResponseEntity<NgApiResponse<MaximoFormSubmissionDto>> completeForm(@RequestBody MaximoFormSubmissionDto dto) {
@@ -393,6 +515,29 @@ public class PwaMaximoController {
         } catch (Exception e) {
             log.warn("[PWA-Maximo] form complete failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Dry-run: which reagents on a filled inventory form are below target (need reordering). No email/writes. */
+    @PostMapping("/forms/submissions/reorder-preview")
+    public ResponseEntity<NgApiResponse<List<ReorderLineDto>>> reorderPreview(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(reorder.computeReorder(dto), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] reorder-preview failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Send the vendor reorder email and attach the order summary to the work order (the phone's ordering step). */
+    @PostMapping("/forms/submissions/reorder-send")
+    public ResponseEntity<NgApiResponse<ReorderResultDto>> reorderSend(@RequestBody MaximoFormSubmissionDto dto) {
+        try {
+            ReorderResultDto result = reorder.sendReorder(dto);
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.isSent() ? "sent" : "not-sent"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] reorder-send failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
 

@@ -357,6 +357,30 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         return result;
     }
 
+    /**
+     * Create/update a LOTO point AND convert it to a DTO within the SAME transaction. The DTO mapping
+     * walks lazy {@code @ManyToMany} collections — notably {@code pictures}, which {@code processLotoPoint}
+     * does NOT eager-fetch (it fetches only equipment). The controller used to convert the entity AFTER
+     * {@code processLotoPoint}'s transaction returned; with {@code open-in-view=false} that detached
+     * entity threw {@code LazyInitializationException} on {@code getPictures()} — so the point committed
+     * but the response failed with a misleading 400. Converting in-transaction keeps the session open
+     * for the mapping, and makes the create/update atomic with its response (no more orphan-on-map-error).
+     */
+    @Transactional
+    public LotoPointDto processLotoPointToDto(LotoPointIdDto lotoPointDto) {
+        return toDto(processLotoPoint(lotoPointDto));
+    }
+
+    /**
+     * Save a LOTO point DTO AND map the result back to a DTO in the SAME transaction — same reason as
+     * {@link #processLotoPointToDto}: the /tagging endpoint mapped the saved entity after its transaction
+     * returned, hitting {@code LazyInitializationException} on a lazy collection with open-in-view off.
+     */
+    @Transactional
+    public LotoPointDto saveToDto(LotoPointDto dto) {
+        return toDto(save(dto));
+    }
+
     private Set<Long> lotoPointIds(Equipment equipment) {
         if (equipment == null || equipment.getLotoPoints() == null) {
             return new LinkedHashSet<>();

@@ -234,3 +234,84 @@
   background: var(--secondary-bg, #f5f5f5);
   color: var(--text-secondary, #888);
 }
+
+/* Sub-tabs (Linked / Inbox / Outbox) */
+.sub-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-color, #ddd);
+  flex-shrink: 0;
+}
+
+.sub-tab {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary, #666);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.sub-tab:hover {
+  color: var(--text-primary, #333);
+}
+
+.sub-tab.active {
+  color: var(--primary-color, #1976d2);
+  border-bottom-color: var(--primary-color, #1976d2);
+  font-weight: 600;
+}
+
+.mailbox-note {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+
+.cell-snippet {
+  font-size: 12px;
+  color: var(--text-secondary, #777);
+  max-width: 460px;
+}
+
+/* Message detail panel (mailbox tabs) */
+.msg-detail {
+  flex-shrink: 0;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  background: var(--card-background, #fff);
+  max-height: 42%;
+  overflow: auto;
+}
+
+.msg-detail-head {
+  position: relative;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-primary, #333);
+}
+
+.msg-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+}
+
+.msg-detail-body {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-primary, #333);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

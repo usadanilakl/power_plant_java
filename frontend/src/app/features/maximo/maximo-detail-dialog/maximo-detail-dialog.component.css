@@ -223,6 +223,12 @@ input { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
 .transfer-panel h4 { margin: 0 0 6px; color: #7cc6ff; }
 .transfer-panel .tl-picker { display: flex; flex-direction: column; gap: 4px; color: #aaa; font-size: 12px; max-width: 320px; }
 .transfer-actions { display: flex; gap: 8px; margin-top: 10px; }
+.reschedule-fields { display: flex; gap: 14px; flex-wrap: wrap; }
+.reschedule-fields label { display: flex; flex-direction: column; gap: 4px; color: #aaa; font-size: 12px; }
+.reschedule-fields input[type="date"] { background: #1c1c1c; color: #e6e6e6; border: 1px solid #444; border-radius: 3px; padding: 5px 8px; font: inherit; font-size: 13px; }
+.hist-cap { margin: 0 0 8px; font-size: 12px; }
+.hist-table th { color: #9fb0c0; font-weight: 500; text-align: left; padding: 4px 10px 4px 0; font-size: 12px; }
+.hist-table td { padding: 4px 10px 4px 0; font-size: 13px; border-bottom: 1px solid #2c2c2c; }
 
 /* "Not due yet" — blocks the Complete tab before a PM's Target Start (mirrors the backend). */
 .notdue-banner { display: flex; gap: 12px; align-items: flex-start; margin: 6px 0 4px;

@@ -22,6 +22,8 @@ public class GraphEmailMessage {
     private String subject;
     private String bodyContent;
     private String bodyContentType;
+    /** Graph's lightweight plaintext preview (~255 chars) — used by the mailbox viewer instead of the full body. */
+    private String bodyPreview;
     private String senderEmail;
     private String senderName;
     private List<String> toRecipients;

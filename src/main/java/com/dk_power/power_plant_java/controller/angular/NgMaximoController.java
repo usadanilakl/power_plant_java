@@ -378,6 +378,36 @@ public class NgMaximoController {
     public record LeadTransferRequest(String personid, String memo) {}
 
     /**
+     * Reschedule a work order: set its Target Start (and optional Target Finish) in one MERGE. Dates are
+     * {@code yyyy-MM-dd}; a blank/absent finish defaults to the start, and finish is clamped to ≥ start so
+     * Maximo can't collapse the window. Returns the refreshed WO. Intended for approved/open WOs — Maximo
+     * itself rejects the write in statuses that don't allow it.
+     */
+    @PostMapping("/work-orders/{href}/target-dates")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> setTargetDates(
+            @PathVariable String href, @RequestBody TargetDatesRequest req) {
+        try {
+            if (req == null || req.targetStart() == null || req.targetStart().isBlank()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "targetStart is required"));
+            }
+            java.time.LocalDate start = java.time.LocalDate.parse(req.targetStart().trim());
+            java.time.LocalDate finish = (req.targetFinish() != null && !req.targetFinish().isBlank())
+                    ? java.time.LocalDate.parse(req.targetFinish().trim()) : start;
+            workOrders.setTargetWindow(href, start, finish);
+            MaximoWorkOrderDto updated = workOrders.findByHref(href).orElse(null);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "rescheduled"));
+        } catch (java.time.format.DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Dates must be yyyy-MM-dd"));
+        } catch (Exception e) {
+            log.warn("[Maximo] reschedule {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Body for {@link #setTargetDates}: ISO {@code yyyy-MM-dd} start and optional finish. */
+    public record TargetDatesRequest(String targetStart, String targetFinish) {}
+
+    /**
      * Add a worklog note to a work order (no labor, no status change). Handy for adding a log to an
      * already-completed WO. Returns the refreshed worklog list.
      */

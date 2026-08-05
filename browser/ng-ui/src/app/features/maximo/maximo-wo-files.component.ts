@@ -31,11 +31,13 @@ import { MaximoDoclink } from './maximo.model';
       </div>
     }
 
-    <label class="wf-add" [class.busy]="uploading()">
-      {{ uploading() ? 'Uploading…' : '＋ Add photo / file' }}
-      <input type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" (change)="pick($event)" [disabled]="uploading()" hidden>
-    </label>
-    @if (uploadError()) { <p class="wf-err">{{ uploadError() }}</p> }
+    @if (canUpload) {
+      <label class="wf-add" [class.busy]="uploading()">
+        {{ uploading() ? 'Uploading…' : '＋ Add photo / file' }}
+        <input type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" (change)="pick($event)" [disabled]="uploading()" hidden>
+      </label>
+      @if (uploadError()) { <p class="wf-err">{{ uploadError() }}</p> }
+    }
   `,
   styles: [`
     .wf-msg { text-align: center; color: var(--secondary-text, #888); padding: 1rem; font-size: 0.9rem; }
@@ -56,6 +58,10 @@ import { MaximoDoclink } from './maximo.model';
 })
 export class MaximoWoFilesComponent implements OnInit {
   @Input({ required: true }) href!: string;
+  /** Which Maximo record the href points at — routes list/view/upload to the WO or SR endpoints. */
+  @Input() parent: 'wo' | 'sr' = 'wo';
+  /** When false, viewing still works but the upload control is hidden (e.g. an SR past NEW). */
+  @Input() canUpload = true;
 
   private api = inject(MaximoApiService);
 
@@ -70,7 +76,8 @@ export class MaximoWoFilesComponent implements OnInit {
 
   private load(): void {
     this.loading.set(true); this.error.set(null);
-    this.api.listWoAttachments(this.href).subscribe({
+    const list$ = this.parent === 'sr' ? this.api.listSrAttachments(this.href) : this.api.listWoAttachments(this.href);
+    list$.subscribe({
       next: f => { this.files.set(f); this.loading.set(false); },
       error: () => { this.error.set('Could not load attachments — check your connection.'); this.loading.set(false); }
     });
@@ -81,7 +88,8 @@ export class MaximoWoFilesComponent implements OnInit {
     this.opening.set(f.href);
     // A blank tab opened synchronously (inside the click) survives the async fetch without a popup block.
     const tab = window.open('', '_blank');
-    this.api.fetchWoAttachment(this.href, f.href).subscribe({
+    const bytes$ = this.parent === 'sr' ? this.api.fetchSrAttachment(this.href, f.href) : this.api.fetchWoAttachment(this.href, f.href);
+    bytes$.subscribe({
       next: blob => {
         this.opening.set(null);
         const url = URL.createObjectURL(blob);
@@ -98,7 +106,8 @@ export class MaximoWoFilesComponent implements OnInit {
     input.value = '';
     if (!file) return;
     this.uploading.set(true); this.uploadError.set(null);
-    this.api.uploadWoAttachment(this.href, file).subscribe({
+    const up$ = this.parent === 'sr' ? this.api.uploadSrAttachment(this.href, file) : this.api.uploadWoAttachment(this.href, file);
+    up$.subscribe({
       next: ok => {
         this.uploading.set(false);
         if (ok) this.load(); else this.uploadError.set('Upload failed — check your connection and try again.');

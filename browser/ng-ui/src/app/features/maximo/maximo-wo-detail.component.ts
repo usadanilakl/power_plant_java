@@ -6,10 +6,11 @@ import { MaximoSyncService } from './maximo-sync.service';
 import { MaximoWoFilesComponent } from './maximo-wo-files.component';
 import { MaximoWoNotesComponent } from './maximo-wo-notes.component';
 import {
-  COMPLETABLE_WO_STATUSES, MaximoFormFieldDef, MaximoFormTemplate, MaximoWorkOrder, statusClass,
+  COMPLETABLE_WO_STATUSES, MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, MaximoWorkOrder,
+  ReorderLine, ReorderResult, statusClass,
 } from './maximo.model';
 
-type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
+type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
 
 /**
  * Bottom-sheet for a work order: read its details, complete its child tasks, and complete the WO itself
@@ -46,6 +47,9 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
           <button class="wd-tab" [class.active]="tab() === 'tasks'" (click)="openTasks()">Tasks</button>
           <button class="wd-tab" [class.active]="tab() === 'files'" (click)="tab.set('files')">Files</button>
           <button class="wd-tab" [class.active]="tab() === 'notes'" (click)="tab.set('notes')">Notes</button>
+          @if (wo.pmnum) {
+            <button class="wd-tab" [class.active]="tab() === 'history'" (click)="openHistory()">History</button>
+          }
           @if (canComplete()) {
             <button class="wd-tab" [class.active]="tab() === 'complete'" (click)="tab.set('complete')">Complete</button>
           }
@@ -93,9 +97,47 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
           <app-maximo-wo-notes [href]="wo.href"></app-maximo-wo-notes>
         }
 
+        @if (tab() === 'history') {
+          @if (historyLoading()) { <p class="wd-msg">Loading history…</p> }
+          @else if (history().length === 0) { <p class="wd-msg">No completed work orders found for this PM.</p> }
+          @else {
+            <p class="wd-hist-cap">Previously completed for PM {{ wo.pmnum }} — newest first</p>
+            <div class="wd-hist">
+              @for (h of history(); track h.wonum) {
+                <div class="wd-hist-row">
+                  <div class="wd-hist-top">
+                    <span class="wd-hist-id">{{ h.wonum }}</span>
+                    <span class="wd-chip sm" [class]="chip(h.status)">{{ h.status }}</span>
+                    <span class="wd-hist-date">{{ ((h.statusDate || h.targetStart) | date:'mediumDate') || '—' }}</span>
+                  </div>
+                  <span class="wd-hist-desc">{{ h.description || '(no description)' }}</span>
+                  @if (h.leadCraft) { <span class="wd-hist-lead">Lead: {{ h.leadCraft }}</span> }
+                </div>
+              }
+            </div>
+          }
+        }
+
         @if (tab() === 'complete') {
           @if (done()) {
             <div class="wd-success"><span class="wd-success-i">✓</span> Work order completed.</div>
+            @if (reorderLoading()) { <p class="wd-msg">Checking reorder levels…</p> }
+            @else if (reorderResult()?.sent) {
+              <div class="wd-reorder-done">✓ {{ reorderResult()?.message || 'Reorder email sent to the vendor.' }}</div>
+            } @else if (reorderLines().length) {
+              <div class="wd-reorder">
+                <h4 class="wd-reorder-h">Reorder needed — {{ reorderLines().length }} item(s) below target</h4>
+                <div class="wd-reorder-list">
+                  @for (l of reorderLines(); track l.reagent) {
+                    <div class="wd-reorder-row"><span class="wd-reorder-name">{{ l.reagent }}</span><span class="wd-reorder-qty">{{ l.inStock }} / {{ l.target }} · order {{ l.need }}</span></div>
+                  }
+                </div>
+                <button class="wd-complete" [disabled]="reorderSending()" (click)="sendReorder()">
+                  {{ reorderSending() ? 'Sending…' : '✉ Send reorder email to vendor' }}
+                </button>
+                @if (reorderResult() && !reorderResult()?.sent) { <p class="wd-err">{{ reorderResult()?.message }}</p> }
+              </div>
+            }
           } @else if (queued()) {
             <div class="wd-success"><span class="wd-success-i">⏳</span> Saved on this device — it submits to Maximo when you reconnect.</div>
           } @else if (formLoading()) {
@@ -309,6 +351,14 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
     .wd-preview-btn { margin-top: 0.7rem; background: transparent; color: #e67e22; border: 1px solid #e67e22; border-radius: 9px; padding: 0.5rem 0.8rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .wd-preview-btn:hover, .wd-preview-btn:active { background: rgba(230,126,34,0.15); }
     .wd-notdue-compact { display: flex; align-items: center; gap: 0.4rem; background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 9px; padding: 0.6rem 0.8rem; margin: 0.4rem 0 0.7rem; color: var(--primary-text); font-size: 0.85rem; font-weight: 600; }
+    .wd-hist-cap { font-size: 0.78rem; color: var(--secondary-text, #888); margin: 0 0 0.6rem; }
+    .wd-hist { display: flex; flex-direction: column; gap: 0.5rem; }
+    .wd-hist-row { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--secondary-background); }
+    .wd-hist-top { display: flex; align-items: center; gap: 0.5rem; }
+    .wd-hist-id { font-weight: 700; color: var(--primary-text); }
+    .wd-hist-date { margin-left: auto; font-size: 0.8rem; color: var(--secondary-text, #888); }
+    .wd-hist-desc { font-size: 0.86rem; color: var(--primary-text); }
+    .wd-hist-lead { font-size: 0.75rem; color: var(--secondary-text, #888); }
     .wd-chip.sm { font-size: 0.6rem; padding: 0.05rem 0.35rem; }
     .st-done { background: #27ae60; } .st-active { background: #2980b9; } .st-wait { background: #e67e22; }
     .st-cancel { background: #95a5a6; } .st-open { background: #7f8c8d; }
@@ -344,6 +394,12 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes';
     .wd-complete:disabled { opacity: 0.6; cursor: default; }
     .wd-success { text-align: center; padding: 2rem 1rem; color: var(--primary-text); font-size: 1.05rem; font-weight: 700; }
     .wd-success-i { display: block; width: 3rem; height: 3rem; line-height: 3rem; margin: 0 auto 0.6rem; border-radius: 50%; background: #27ae60; color: #fff; font-size: 1.7rem; }
+    .wd-reorder { border: 1px solid #e67e22; background: rgba(230,126,34,0.1); border-radius: 12px; padding: 0.9rem 1rem; margin-top: 0.5rem; }
+    .wd-reorder-h { margin: 0 0 0.6rem; font-size: 0.92rem; color: #e67e22; font-weight: 800; }
+    .wd-reorder-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.8rem; }
+    .wd-reorder-row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; color: var(--primary-text); }
+    .wd-reorder-qty { color: var(--secondary-text, #888); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .wd-reorder-done { text-align: center; color: #27ae60; font-weight: 700; font-size: 0.95rem; padding: 0.8rem; }
   `]
 })
 export class MaximoWoDetailComponent implements OnInit {
@@ -368,6 +424,9 @@ export class MaximoWoDetailComponent implements OnInit {
   tasksLoading = signal(false);
   private tasksLoaded = false;
   busyTask = signal<string | null>(null);
+  history = signal<MaximoWorkOrder[]>([]);
+  historyLoading = signal(false);
+  private historyLoaded = false;
 
   hours = signal('');
   summary = signal('');
@@ -389,6 +448,12 @@ export class MaximoWoDetailComponent implements OnInit {
   now = signal(Date.now());
   /** For a not-yet-due PM: reveal the form read-for-reference (no submit) when the operator opts in. */
   previewForm = signal(false);
+  // Chem-inventory reorder offer, shown after a successful inventory-form submission (online only).
+  reorderLines = signal<ReorderLine[]>([]);
+  reorderLoading = signal(false);
+  reorderSending = signal(false);
+  reorderResult = signal<ReorderResult | null>(null);
+  private reorderChecked = false;
   private destroyRef = inject(DestroyRef);
   private emittedDone = false;
 
@@ -401,6 +466,15 @@ export class MaximoWoDetailComponent implements OnInit {
         // If the form attached but Maximo rejected the close, keep the real status so the close-only retry stays live.
         if (this.submitState()?.woClosed !== false) this.status.set('COMP');
         this.completed.emit();
+      }
+    });
+    // After a successful submit of a chem-inventory form, check reorder levels so the operator can send the
+    // vendor order from the phone (nothing is sent automatically — same manual step as the desktop).
+    effect(() => {
+      const t = this.formTemplate();
+      if (this.done() && !this.reorderChecked && t && this.isInventoryTemplate(t)) {
+        this.reorderChecked = true;
+        this.loadReorderOffer();
       }
     });
     const tick = setInterval(() => this.now.set(Date.now()), 500);
@@ -470,12 +544,76 @@ export class MaximoWoDetailComponent implements OnInit {
     }
   }
 
-  /** Pick which assigned form to perform; restores that form's own in-progress draft (kept per form). */
+  /**
+   * Pick which assigned form to perform, then seed its values (mirrors the desktop):
+   *   1. an in-progress draft for THIS wo+form (freshest, offline-safe) wins;
+   *   2. else a prior submission already on this WO;
+   *   3. else, for an inventory form (chem-lab), carry the last run's sticky config + target levels forward
+   *      (vendor emails / __desired / __include), clearing __instock so the counts are re-entered.
+   * Steps 2-3 are best-effort over the network — offline they simply leave the form blank, as before.
+   */
   selectForm(t: MaximoFormTemplate): void {
     this.formTemplate.set(t);
     this.error.set(null);
-    const d = this.store.getDraft(this.wo.wonum, t.formKey);
-    this.formValues.set((d?.mode === 'form' && d.formValues) ? d.formValues : {});
+    this.previewForm.set(false);
+
+    const draft = this.store.getDraft(this.wo.wonum, t.formKey);
+    if (draft?.mode === 'form' && draft.formValues) { this.formValues.set(draft.formValues); return; }
+    this.formValues.set({});
+
+    this.api.submissionsForWo(this.wo.wonum).subscribe({
+      next: subs => {
+        const match = (subs ?? []).find(s => s.templateFormKey === t.formKey) ?? null;
+        if (match?.valuesJson) { this.formValues.set(this.parseValues(match.valuesJson)); return; }
+        if (!match && this.isInventoryTemplate(t)) {
+          this.api.latestSubmissionForForm(t.formKey).subscribe({
+            next: latest => {
+              if (!latest?.valuesJson) return;
+              const carried = this.parseValues(latest.valuesJson);
+              for (const k of Object.keys(carried)) if (k.endsWith('__instock')) delete carried[k];
+              this.formValues.set(carried);
+            },
+            error: () => { /* carry-forward is best-effort */ }
+          });
+        }
+      },
+      error: () => { /* prefill is best-effort (e.g. offline) */ }
+    });
+  }
+
+  private parseValues(json: string | undefined): Record<string, any> {
+    if (!json) return {};
+    try { return JSON.parse(json) ?? {}; } catch { return {}; }
+  }
+  /** An inventory (chem-lab reorder) form carries a `<key>__instock` count field per reagent. */
+  private isInventoryTemplate(t: MaximoFormTemplate): boolean {
+    try { return (JSON.parse(t.fieldsJson) as MaximoFormFieldDef[]).some(d => (d.name ?? '').endsWith('__instock')); }
+    catch { return false; }
+  }
+
+  // ── Chem-inventory reorder (post-submit): compute what's below target, then send the vendor email on demand ──
+  private reorderDto(): MaximoFormSubmission {
+    const t = this.formTemplate();
+    return {
+      templateFormKey: t?.formKey ?? '', templateName: t?.formName,
+      wonum: this.wo.wonum, pmnum: this.wo.pmnum, woHref: this.wo.href, siteid: this.wo.siteid,
+      valuesJson: JSON.stringify(this.formValues()),
+    };
+  }
+  private loadReorderOffer(): void {
+    this.reorderLoading.set(true);
+    this.api.reorderPreview(this.reorderDto()).subscribe({
+      next: lines => { this.reorderLines.set(lines ?? []); this.reorderLoading.set(false); },
+      error: () => { this.reorderLines.set([]); this.reorderLoading.set(false); }
+    });
+  }
+  sendReorder(): void {
+    if (this.reorderSending()) return;
+    this.reorderSending.set(true);
+    this.api.reorderSend(this.reorderDto()).subscribe({
+      next: res => { this.reorderResult.set(res); this.reorderSending.set(false); },
+      error: () => { this.reorderResult.set({ sent: false, message: 'Send failed — try again, or send it from the desktop.' }); this.reorderSending.set(false); }
+    });
   }
 
   /** Back to the form picker (only when several are assigned) to choose a different one. */
@@ -695,6 +833,19 @@ export class MaximoWoDetailComponent implements OnInit {
     this.api.listWoTasks(this.wo.wonum).subscribe({
       next: t => { this.tasks.set(t); this.tasksLoading.set(false); },
       error: () => { this.tasks.set([]); this.tasksLoading.set(false); }
+    });
+  }
+
+  /** Previously-completed WOs for this WO's PM (lazy, loaded once when the tab opens). */
+  openHistory(): void {
+    this.tab.set('history');
+    if (this.historyLoaded) return;
+    this.historyLoaded = true;
+    if (!this.wo.pmnum) { this.history.set([]); return; }
+    this.historyLoading.set(true);
+    this.api.pmCompletedHistory(this.wo.pmnum).subscribe({
+      next: h => { this.history.set(h ?? []); this.historyLoading.set(false); },
+      error: () => { this.history.set([]); this.historyLoading.set(false); }
     });
   }
 

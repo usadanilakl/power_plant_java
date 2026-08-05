@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.maximo.ChemInventoryReorderService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormCompletionService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormSeeder;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoFormService;
+import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPmAuditService;
 import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import lombok.RequiredArgsConstructor;
@@ -226,6 +227,18 @@ public class NgMaximoFormController {
             return ResponseEntity.ok(new NgApiResponse<>(audit.auditCards(recurringOnly), "ok"));
         } catch (Exception e) {
             log.warn("[MaximoForms] pm-audit-cards failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** A PM's previously-completed work orders (COMP / CLOSE), newest first — the per-PM completion history. */
+    @GetMapping("/pm-completed-history")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> pmCompletedHistory(
+            @RequestParam("pmnum") String pmnum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(audit.completedWorkOrdersForPmnum(pmnum), "ok"));
+        } catch (Exception e) {
+            log.warn("[MaximoForms] pm-completed-history {} failed: {}", pmnum, e.getMessage());
             return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
         }
     }

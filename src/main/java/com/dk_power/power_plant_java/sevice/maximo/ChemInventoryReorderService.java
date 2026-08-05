@@ -118,6 +118,8 @@ public class ChemInventoryReorderService {
                 .greeting("Good afternoon,")
                 .intro("Jackson Generation would like to order the following:")
                 .lines(orderLines)
+                .logEntityType("Ordering")
+                .logCorrespondenceType("Lab Reagent Reorder")
                 .build();
         boolean sent;
         try {

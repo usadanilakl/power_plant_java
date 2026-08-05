@@ -38,4 +38,9 @@ public class OrderRequestDto {
     private List<OrderLineDto> lines = new ArrayList<>();
     /** Optional email attachments (base64). */
     private List<EmailAttachment> attachments;
+
+    /** When set, the sent email is logged as OUTBOUND EmailCorrespondence under this entityType (e.g. "Ordering"). */
+    private String logEntityType;
+    /** Correspondence type label for the logged email (e.g. "Vendor Order"); null → "Order Email". */
+    private String logCorrespondenceType;
 }

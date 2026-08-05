@@ -9,7 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EmailCorrespondenceService } from '../../../services/email-correspondence.service';
+import { EmailCorrespondenceService, MailboxMessage } from '../../../services/email-correspondence.service';
 import { CorrespondenceDialogService } from '../../../shared/correspondence-dialog/correspondence-dialog.service';
 import { CorrespondenceDialogComponent } from '../../../shared/correspondence-dialog/correspondence-dialog.component';
 import { EmailCorrespondenceDto } from '../../../models/base/email-correspondence.model';
@@ -30,6 +30,26 @@ export class CorrespondencePageComponent implements OnInit {
   items = signal<EmailCorrespondenceDto[]>([]);
   isLoading = signal(false);
   isPolling = signal(false);
+
+  // Sub-tabs: entity-linked correspondence vs the raw shared mailbox (Inbox / Sent).
+  tab = signal<'linked' | 'inbox' | 'outbox'>('linked');
+  mailbox = signal<MailboxMessage[]>([]);
+  mailboxLoading = signal(false);
+  mailboxError = signal('');
+  mailboxSearch = signal('');
+  mailboxTop = signal(100);
+  selected = signal<MailboxMessage | null>(null);
+
+  mailboxFiltered = computed(() => {
+    const q = this.mailboxSearch().trim().toLowerCase();
+    const rows = this.mailbox();
+    if (!q) return rows;
+    return rows.filter(m =>
+      (m.subject || '').toLowerCase().includes(q) ||
+      (m.from || '').toLowerCase().includes(q) ||
+      (m.to || '').toLowerCase().includes(q) ||
+      (m.snippet || '').toLowerCase().includes(q));
+  });
 
   // Filter state
   filterDirection = '';
@@ -97,6 +117,30 @@ export class CorrespondencePageComponent implements OnInit {
       error: () => {
         this.isLoading.set(false);
       }
+    });
+  }
+
+  setTab(t: 'linked' | 'inbox' | 'outbox'): void {
+    this.tab.set(t);
+    this.selected.set(null);
+    if (t !== 'linked') this.loadMailbox();
+  }
+
+  loadMailbox(): void {
+    const folder: 'inbox' | 'sent' = this.tab() === 'outbox' ? 'sent' : 'inbox';
+    this.mailboxLoading.set(true);
+    this.mailboxError.set('');
+    this.selected.set(null);
+    this.correspondenceService.listMailbox(folder, this.mailboxTop()).subscribe({
+      next: (msgs) => {
+        this.mailbox.set(msgs);
+        this.mailboxLoading.set(false);
+      },
+      error: (e) => {
+        this.mailbox.set([]);
+        this.mailboxError.set(e?.error?.message || 'Could not load the mailbox.');
+        this.mailboxLoading.set(false);
+      },
     });
   }
 

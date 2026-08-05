@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult } from '../../models/maximo/maximo-form.models';
 import { PmAuditCard, PmAuditRow, PmCompletionDetail } from '../../models/maximo/pm.models';
+import { MaximoWorkOrder } from '../../models/maximo/maximo.models';
 
 /** Client for the electronic Maximo task-forms API (/ng/maximo/forms). */
 @Injectable({ providedIn: 'root' })
@@ -24,6 +25,13 @@ export class MaximoFormApiService {
   getAuditCards(recurringOnly: boolean): Observable<PmAuditCard[]> {
     const p = new HttpParams().set('recurringOnly', String(recurringOnly));
     return this.http.get<SpringApiResponse<PmAuditCard[]>>(`${this.base}/pm-audit-cards`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** A PM's previously-completed work orders (COMP/CLOSE), newest first — the per-PM completion history. */
+  getPmCompletedHistory(pmnum: string): Observable<MaximoWorkOrder[]> {
+    const p = new HttpParams().set('pmnum', pmnum);
+    return this.http.get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/pm-completed-history`, { params: p })
       .pipe(map(r => r.responseData ?? []));
   }
 

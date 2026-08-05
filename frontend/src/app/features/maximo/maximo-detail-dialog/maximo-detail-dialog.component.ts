@@ -26,7 +26,7 @@ import {
   MaximoWorklog
 } from '../../../models/maximo/maximo.models';
 
-type Tab = 'details' | 'notes' | 'attachments' | 'complete' | 'materials' | 'tasks';
+type Tab = 'details' | 'notes' | 'attachments' | 'complete' | 'materials' | 'tasks' | 'history';
 
 /** Statuses from which a WO can still be completed. */
 const COMPLETABLE_WO_STATUSES = ['APPR', 'INPRG', 'WMATL', 'WSCH', 'WPCOND'];
@@ -272,6 +272,24 @@ export class MaximoDetailDialogComponent implements OnInit {
     }
     if (t === 'materials' && !this.materialsLoaded()) await this.loadMaterials();
     if (t === 'tasks' && !this.tasksLoaded()) await this.loadTasks();
+    if (t === 'history' && !this.historyLoaded()) await this.loadHistory();
+  }
+
+  /** Previously-completed WOs for this WO's PM (by pmnum), newest first. */
+  historyRows = signal<MaximoWorkOrder[]>([]);
+  historyLoaded = signal(false);
+  async loadHistory() {
+    const pmnum = this.wo?.pmnum?.trim();
+    if (!pmnum) { this.historyRows.set([]); this.historyLoaded.set(true); return; }
+    this.loading.set(true);
+    try {
+      this.historyRows.set(await firstValueFrom(this.formApi.getPmCompletedHistory(pmnum)));
+      this.historyLoaded.set(true);
+    } catch (e: any) {
+      this.error.set(this.errMsg(e));
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   /** Load this WO's internal tasks (child WOs). Keyed by the parent's wonum. */
@@ -872,6 +890,43 @@ export class MaximoDetailDialogComponent implements OnInit {
       this.error.set(this.errMsg(e));
     } finally {
       this.transferring.set(false);
+    }
+  }
+
+  // ── Reschedule (Target Start / Finish) ──────────────────────────────────
+  showReschedule = signal(false);
+  rescheduleStart = '';    // yyyy-MM-dd
+  rescheduleFinish = '';   // yyyy-MM-dd
+  rescheduling = signal(false);
+
+  startReschedule() {
+    this.rescheduleStart = (this.wo?.targetStart || '').substring(0, 10);
+    this.rescheduleFinish = (this.wo?.targetFinish || '').substring(0, 10);
+    this.showReschedule.set(true);
+    this.error.set(null);
+  }
+  cancelReschedule() { this.showReschedule.set(false); }
+
+  /** Set Target Start (+ optional Finish) on the WO in one MERGE, then swap in the refreshed WO + notify the parent. */
+  async submitReschedule() {
+    if (!this.wo?.href || this.rescheduling()) return;
+    const start = (this.rescheduleStart || '').trim();
+    if (!start) { this.error.set('Pick a target start date.'); return; }
+    const finish = (this.rescheduleFinish || '').trim();
+    if (finish && finish < start) { this.error.set('Target finish cannot be before target start.'); return; }
+    this.rescheduling.set(true);
+    this.error.set(null);
+    try {
+      const updated = await firstValueFrom(this.api.setTargetDates(this.wo.href, start, finish || undefined));
+      if (updated) {
+        this.wo = updated;
+        this.completed.emit(updated);   // parents wire (completed) → refresh their list
+      }
+      this.showReschedule.set(false);
+    } catch (e: any) {
+      this.error.set(this.errMsg(e));
+    } finally {
+      this.rescheduling.set(false);
     }
   }
 

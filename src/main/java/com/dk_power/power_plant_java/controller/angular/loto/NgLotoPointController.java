@@ -322,8 +322,9 @@ public class NgLotoPointController {
                 existingLotoPoint.setSpecificLocation((String) tagData.get("specificLocation"));
             }
 
-            // Save the updated LotoPoint
-            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(existingLotoPoint));
+            // Save + map to DTO in one service tx so lazy collections (pictures/equipment) initialize
+            // before the entity detaches (open-in-view disabled) — see NgLotoPointService.saveToDto.
+            LotoPointDto updatedLotoPoint = ngLotoPointService.saveToDto(existingLotoPoint);
 
             NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -344,10 +345,9 @@ public class NgLotoPointController {
 
 //            LotoPoint lp = ngLotoPointService.convertIdDtoToEntity(lotoPoint);
 
-            // processLotoPoint already handles saving the LotoPoint and all equipment relationships
-            LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
-
-            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(lp);
+            // Save + map to DTO in ONE service transaction so lazy collections (pictures) initialize
+            // before the entity detaches (open-in-view disabled) — see processLotoPointToDto.
+            LotoPointDto updatedLotoPoint = ngLotoPointService.processLotoPointToDto(lotoPoint);
 
             NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -362,9 +362,11 @@ public class NgLotoPointController {
     @PostMapping
     public ResponseEntity<NgApiResponse<LotoPointDto>> createLotoPoint(@RequestBody LotoPointIdDto lotoPoint) {
         try {
-            // processLotoPoint already handles saving the LotoPoint and all equipment relationships
-            LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
-            LotoPointDto createdLotoPoint = ngLotoPointService.toDto(lp);
+            // Save the point + equipment AND map to DTO in ONE service transaction, so lazy collections
+            // (pictures) initialize before the entity detaches (open-in-view is disabled). See
+            // NgLotoPointService.processLotoPointToDto — converting after the tx returned threw
+            // LazyInitializationException, committing the point but failing the response with a 400.
+            LotoPointDto createdLotoPoint = ngLotoPointService.processLotoPointToDto(lotoPoint);
 
             NgApiResponse<LotoPointDto> response = new NgApiResponse<>(createdLotoPoint, "LotoPoint created successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);

@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   CompleteWorkOrderRequest, CreateMaximoServiceRequest, MaximoDoclink, MaximoFormSubmission, MaximoFormTemplate,
   MaximoInventoryItem, MaximoLocation, MaximoOverview, MaximoServiceRequest, MaximoWorkOrder, MaximoWorklog,
-  PartsCheckoutRequest, PartsCheckoutResult, PhysicalObjectNode,
+  PartsCheckoutRequest, PartsCheckoutResult, PhysicalObjectNode, ReorderLine, ReorderResult,
 } from './maximo.model';
 
 export interface WoQuery { status?: string; worktype?: string; location?: string; textContains?: string; pageSize?: number; }
@@ -112,6 +112,33 @@ export class MaximoApiService {
     );
   }
 
+  /** Existing submissions for a work order (newest first) — used to prefill a form already started on this WO. */
+  submissionsForWo(wonum: string): Observable<MaximoFormSubmission[]> {
+    const params = new HttpParams().set('wonum', wonum);
+    return this.http.get<{ responseData: MaximoFormSubmission[] }>(`${this.base}/forms/submissions/for-wo`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /** A PM's previously-completed work orders (COMP/CLOSE), newest first — the per-PM history list. */
+  pmCompletedHistory(pmnum: string): Observable<MaximoWorkOrder[]> {
+    const params = new HttpParams().set('pmnum', pmnum);
+    return this.http.get<{ responseData: MaximoWorkOrder[] }>(`${this.base}/pm-completed-history`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /** Newest submission of a form across all WOs — carries sticky settings forward (e.g. chem-inventory reorder config). */
+  latestSubmissionForForm(formKey: string): Observable<MaximoFormSubmission | null> {
+    const params = new HttpParams().set('formKey', formKey);
+    return this.http.get<{ responseData: MaximoFormSubmission }>(`${this.base}/forms/submissions/latest-for-form`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
   /** Complete a work order or task (by href). Blank laborcode defaults to the signed-in user server-side. */
   completeWorkOrder(href: string, body: CompleteWorkOrderRequest): Observable<MaximoWorkOrder | null> {
     const params = new HttpParams().set('href', href);
@@ -131,11 +158,20 @@ export class MaximoApiService {
   }
 
   /** PM overview buckets (overdue / due / upcoming). mode 'leads' or 'mine'; pmOnly restricts to PM WOs. */
-  getOverview(mode: 'leads' | 'mine', pmOnly = true): Observable<MaximoOverview | null> {
-    const params = new HttpParams().set('mode', mode).set('pmOnly', String(pmOnly)).set('pageSize', '200');
+  getOverview(mode: 'leads' | 'mine' | 'custom', personids: string[] = [], pmOnly = true): Observable<MaximoOverview | null> {
+    let params = new HttpParams().set('mode', mode).set('pmOnly', String(pmOnly)).set('pageSize', '200');
+    if (mode === 'custom' && personids.length) params = params.set('personids', personids.join(','));
     return this.http.get<{ responseData: MaximoOverview }>(`${this.base}/bundle/overview`, { params }).pipe(
       timeout(40000),
       map(r => r.responseData ?? null)
+    );
+  }
+
+  /** Active users that have a Maximo personid — the pool for the "custom" people filter. */
+  getLaborPeople(): Observable<{ name: string; personid: string }[]> {
+    return this.http.get<{ responseData: { name: string; personid: string }[] }>(`${this.base}/labor-people`).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
     );
   }
 
@@ -148,6 +184,48 @@ export class MaximoApiService {
       timeout(60000),
       map(() => true),
       catchError(() => of(false))
+    );
+  }
+
+  /** Edit a NEW service request's description / long description / priority. Errors surface (e.g. "not NEW"). */
+  updateServiceRequest(href: string, body: { description?: string; longDescription?: string; priority?: string }): Observable<MaximoServiceRequest | null> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoServiceRequest }>(`${this.base}/service-requests/update`, body, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
+  /** Dry-run: which reagents on a filled chem-inventory form are below target. No email/writes. */
+  reorderPreview(dto: MaximoFormSubmission): Observable<ReorderLine[]> {
+    return this.http.post<{ responseData: ReorderLine[] }>(`${this.base}/forms/submissions/reorder-preview`, dto).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /** Send the vendor reorder email + attach the order summary to the WO. */
+  reorderSend(dto: MaximoFormSubmission): Observable<ReorderResult> {
+    return this.http.post<{ responseData: ReorderResult }>(`${this.base}/forms/submissions/reorder-send`, dto).pipe(
+      timeout(60000),
+      map(r => r.responseData ?? { sent: false, message: 'No response' })
+    );
+  }
+
+  /** List a service request's attachments (photos/PDFs/docs). */
+  listSrAttachments(href: string): Observable<MaximoDoclink[]> {
+    const params = new HttpParams().set('href', href);
+    return this.http.get<{ responseData: MaximoDoclink[] }>(`${this.base}/service-requests/attachments`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /** Stream one SR attachment's bytes (inline preview). */
+  fetchSrAttachment(href: string, attachmentId: string): Observable<Blob> {
+    const params = new HttpParams().set('href', href).set('attachmentId', attachmentId);
+    return this.http.get(`${this.base}/service-requests/attachments/content`, { params, responseType: 'blob' }).pipe(
+      timeout(60000)
     );
   }
 

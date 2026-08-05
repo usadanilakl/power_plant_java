@@ -370,6 +370,14 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData ?? null));
   }
 
+  /** Reschedule a WO: set Target Start (+ optional Target Finish), dates as yyyy-MM-dd. Returns the refreshed WO. */
+  setTargetDates(href: string, targetStart: string, targetFinish?: string): Observable<MaximoWorkOrder | null> {
+    return this.http
+      .post<SpringApiResponse<MaximoWorkOrder>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/target-dates`, { targetStart, targetFinish })
+      .pipe(map(r => r.responseData ?? null));
+  }
+
   /** Add a worklog note to a WO (works on a completed WO). Returns the refreshed worklog list. */
   addWoWorklog(href: string, body: { summary: string; details?: string; logtype?: string }): Observable<MaximoWorklog[]> {
     return this.http

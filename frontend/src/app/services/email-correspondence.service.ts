@@ -1,10 +1,23 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { EmailCorrespondenceDto } from '../models/base/email-correspondence.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { SearchCriteria } from '../models/api/search-criteria.model';
+
+/** A raw mailbox message (Inbox/Sent folder) for the Correspondence Inbox/Outbox tabs. */
+export interface MailboxMessage {
+  id: string;
+  subject: string;
+  from: string;
+  to: string;
+  date: string;
+  isRead: boolean;
+  direction: 'INBOUND' | 'OUTBOUND';
+  snippet: string;
+  conversationId: string;
+}
 
 /**
  * Service for Email Correspondence operations.
@@ -70,5 +83,12 @@ export class EmailCorrespondenceService {
    */
   triggerPoll(): Observable<SpringApiResponse<void>> {
     return this.http.post<SpringApiResponse<void>>(`${this.apiUrl}/poll`, {});
+  }
+
+  /** List recent messages from the shared mailbox's Inbox or Sent folder. */
+  listMailbox(folder: 'inbox' | 'sent', top: number = 50): Observable<MailboxMessage[]> {
+    return this.http
+      .get<SpringApiResponse<MailboxMessage[]>>(`${this.apiUrl}/mailbox?folder=${folder}&top=${top}`)
+      .pipe(map(r => r.responseData ?? []));
   }
 }

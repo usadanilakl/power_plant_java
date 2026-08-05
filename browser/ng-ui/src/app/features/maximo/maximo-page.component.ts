@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoWoDetailComponent } from './maximo-wo-detail.component';
+import { MaximoWoFilesComponent } from './maximo-wo-files.component';
 import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
 import {
   MaximoServiceRequest, MaximoWorkOrder, SR_STATUSES, WO_STATUSES, WO_WORKTYPES, statusClass,
@@ -17,7 +18,7 @@ type Tab = 'wo' | 'sr';
 @Component({
   selector: 'app-maximo-page',
   standalone: true,
-  imports: [MainLayoutComponent, RouterMenuComponent, DatePipe, MaximoWoDetailComponent, MaximoTreePickerComponent],
+  imports: [MainLayoutComponent, RouterMenuComponent, DatePipe, MaximoWoDetailComponent, MaximoWoFilesComponent, MaximoTreePickerComponent],
   template: `
     <app-main-layout [header]="'Maximo'">
       <ng-container header>
@@ -116,13 +117,39 @@ type Tab = 'wo' | 'sr';
                 <span class="mx-chip" [class]="chip(d.status)">{{ d.status }}</span>
                 <button class="mx-x" (click)="detail.set(null)">✕</button>
               </div>
-              <h2 class="mx-modal-title">{{ d.description || '(no description)' }}</h2>
-              @if (d.longDescription) { <p class="mx-long">{{ d.longDescription }}</p> }
-              <dl class="mx-facts">
-                @for (f of d.facts; track f.k) {
-                  @if (f.v) { <dt>{{ f.k }}</dt><dd>{{ f.v }}</dd> }
+              @if (editingSr()) {
+                <div class="mx-edit">
+                  <label class="mx-edit-f">Description
+                    <input type="text" [value]="srDesc()" (input)="srDesc.set($any($event.target).value)">
+                  </label>
+                  <label class="mx-edit-f">Details
+                    <textarea rows="4" [value]="srLong()" (input)="srLong.set($any($event.target).value)"></textarea>
+                  </label>
+                  <label class="mx-edit-f">Priority
+                    <input type="text" [value]="srPriority()" (input)="srPriority.set($any($event.target).value)" placeholder="e.g. 3">
+                  </label>
+                  @if (srEditError()) { <p class="mx-edit-err">{{ srEditError() }}</p> }
+                  <div class="mx-edit-actions">
+                    <button class="mx-save" [disabled]="savingSr()" (click)="saveSr()">{{ savingSr() ? 'Saving…' : 'Save' }}</button>
+                    <button class="mx-cancel" [disabled]="savingSr()" (click)="editingSr.set(false)">Cancel</button>
+                  </div>
+                </div>
+              } @else {
+                <h2 class="mx-modal-title">{{ d.description || '(no description)' }}</h2>
+                @if (d.longDescription) { <p class="mx-long">{{ d.longDescription }}</p> }
+                <dl class="mx-facts">
+                  @for (f of d.facts; track f.k) {
+                    @if (f.v) { <dt>{{ f.k }}</dt><dd>{{ f.v }}</dd> }
+                  }
+                </dl>
+                @if (isNewSr(d.status)) {
+                  <button class="mx-edit-btn" (click)="startEditSr()">✎ Edit request</button>
                 }
-              </dl>
+                <div class="mx-attach">
+                  <h4 class="mx-attach-h">Attachments</h4>
+                  <app-maximo-wo-files [href]="d.href" parent="sr" [canUpload]="isNewSr(d.status)"></app-maximo-wo-files>
+                </div>
+              }
             </div>
           </div>
         }
@@ -165,6 +192,17 @@ type Tab = 'wo' | 'sr';
     .mx-modal-title { font-size: 1.1rem; font-weight: 700; color: var(--primary-text); margin: 0 0 0.5rem; }
     .mx-long { white-space: pre-wrap; color: var(--primary-text); font-size: 0.9rem; margin: 0 0 0.8rem; }
     .mx-facts { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.8rem; margin: 0; }
+    .mx-attach { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--border-color); }
+    .mx-attach-h { font-size: 0.8rem; font-weight: 700; color: var(--secondary-text, #888); margin: 0 0 0.6rem; }
+    .mx-edit-btn { background: transparent; color: var(--accent-color); border: 1px solid var(--border-color); border-radius: 9px; padding: 0.5rem 0.8rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 0.3rem; }
+    .mx-edit { display: flex; flex-direction: column; gap: 0.7rem; }
+    .mx-edit-f { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--secondary-text, #888); }
+    .mx-edit-f input, .mx-edit-f textarea { padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 9px; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-size: 0.95rem; box-sizing: border-box; }
+    .mx-edit-err { color: #e74c3c; font-size: 0.85rem; margin: 0; }
+    .mx-edit-actions { display: flex; gap: 0.6rem; }
+    .mx-save { flex: 1; background: #27ae60; color: #fff; border: none; border-radius: 10px; padding: 0.75rem; font-size: 0.95rem; font-weight: 800; cursor: pointer; font-family: inherit; }
+    .mx-save:disabled { opacity: 0.6; }
+    .mx-cancel { background: transparent; color: var(--secondary-text, #888); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.9rem; cursor: pointer; font-family: inherit; }
     .mx-facts dt { font-size: 0.75rem; font-weight: 700; color: var(--secondary-text, #888); }
     .mx-facts dd { margin: 0; font-size: 0.88rem; color: var(--primary-text); }
   `]
@@ -187,8 +225,16 @@ export class MaximoPageComponent implements OnInit {
   srs = signal<MaximoServiceRequest[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
-  detail = signal<{ id: string; status: string; description: string; longDescription: string; facts: { k: string; v: string }[] } | null>(null);
+  detail = signal<{ href: string; id: string; status: string; description: string; longDescription: string; facts: { k: string; v: string }[] } | null>(null);
   woDetail = signal<MaximoWorkOrder | null>(null);
+  // SR edit (NEW only)
+  private srRaw = signal<MaximoServiceRequest | null>(null);
+  editingSr = signal(false);
+  savingSr = signal(false);
+  srDesc = signal('');
+  srLong = signal('');
+  srPriority = signal('');
+  srEditError = signal<string | null>(null);
 
   items = computed(() => this.tab() === 'wo' ? this.wos() : this.srs());
   statusOptions = computed(() => this.tab() === 'wo' ? WO_STATUSES : SR_STATUSES);
@@ -236,6 +282,35 @@ export class MaximoPageComponent implements OnInit {
   onSearch(e: Event): void { this.search.set((e.target as HTMLInputElement).value); this.reload$.next(); }
 
   chip(status: string | undefined): string { return statusClass(status); }
+  /** SRs can only be attached to / edited while still NEW (not yet triaged) — matches the desktop's editable gate. */
+  isNewSr(status: string | undefined): boolean { return (status || '').toUpperCase() === 'NEW'; }
+
+  startEditSr(): void {
+    const s = this.srRaw();
+    if (!s) return;
+    this.srDesc.set(s.description ?? '');
+    this.srLong.set(s.longDescription ?? '');
+    this.srPriority.set(s.priority ?? '');
+    this.srEditError.set(null);
+    this.editingSr.set(true);
+  }
+  saveSr(): void {
+    const s = this.srRaw();
+    if (!s || this.savingSr()) return;
+    this.savingSr.set(true);
+    this.srEditError.set(null);
+    this.api.updateServiceRequest(s.href, {
+      description: this.srDesc().trim(), longDescription: this.srLong().trim(), priority: this.srPriority().trim(),
+    }).subscribe({
+      next: updated => {
+        this.savingSr.set(false);
+        if (updated) this.openSr(updated);   // refresh the modal from the saved record (also clears edit mode)
+        this.editingSr.set(false);
+        this.refresh();                       // refresh the list behind it
+      },
+      error: e => { this.savingSr.set(false); this.srEditError.set(e?.error?.message || 'Could not save — check your connection.'); }
+    });
+  }
   newRequest(): void { this.router.navigate(['/maximo/new-request']); }
   goPm(): void { this.router.navigate(['/maximo/pm']); }
   goParts(): void { this.router.navigate(['/maximo/parts']); }
@@ -243,8 +318,10 @@ export class MaximoPageComponent implements OnInit {
   openWo(w: MaximoWorkOrder): void { this.woDetail.set(w); }
   refresh(): void { this.reload$.next(); }
   openSr(s: MaximoServiceRequest): void {
+    this.srRaw.set(s);
+    this.editingSr.set(false);
     this.detail.set({
-      id: s.ticketid, status: s.status, description: s.description, longDescription: s.longDescription,
+      href: s.href, id: s.ticketid, status: s.status, description: s.description, longDescription: s.longDescription,
       facts: [
         { k: 'Asset', v: s.assetnum }, { k: 'Location', v: s.location }, { k: 'Priority', v: s.priority },
         { k: 'Reported by', v: s.reportedby }, { k: 'Affected', v: s.affectedperson },

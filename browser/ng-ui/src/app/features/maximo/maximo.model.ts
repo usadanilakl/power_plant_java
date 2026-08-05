@@ -168,6 +168,25 @@ export interface MaximoFormSubmission {
   woCloseError?: string;
 }
 
+/** One reagent below its target on a chem-inventory form (need = target − inStock). */
+export interface ReorderLine {
+  reagent: string;
+  target: number;
+  inStock: number;
+  need: number;
+}
+
+/** Outcome of a reorder-email send (or dry-run preview). */
+export interface ReorderResult {
+  sent: boolean;
+  message?: string;
+  recipient?: string;
+  cc?: string;
+  poNumber?: string;
+  doclinkId?: string;
+  lines?: ReorderLine[];
+}
+
 /** A Maximo attachment (doclink) on a WO — phone subset of the desktop MaximoDoclink. */
 export interface MaximoDoclink {
   href: string;            // doclink id
