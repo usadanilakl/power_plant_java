@@ -68,6 +68,7 @@
           <app-rf-reactive-form
             [entity]="entity()"
             [fields]="fields()"
+            [driftEntityType]="'LotoStandard'"
             [title]="'LOTO Standard Form'"
             (formValueChange)="onAnyValueChange($event)"
             (formSubmit)="onSubmit($event)"

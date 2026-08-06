@@ -16,25 +16,54 @@
     </div>
   </div>
 
-  <!-- Breakdown: what is drifting, by direction/peer -->
+  <!-- Breakdown: what is drifting, by direction/peer. Each one is a FILTER — click to show only that
+       group, click again to clear. Counts are for the selected type (the rows it will actually filter);
+       the all-types total is in the tooltip. -->
   <div class="dc-breakdown">
-    <div class="bd-item hub" title="Row exists on both, but the content differs from the hub">
-      <span class="bd-n">{{ breakdown().hubDiffers }}</span><span class="bd-l">differ from hub</span>
-    </div>
-    <div class="bd-item pull" title="The hub has these rows, this node doesn't — Use Hub pulls them">
-      <span class="bd-n">{{ breakdown().onHubNotLocal }}</span><span class="bd-l">on hub, not here</span>
-    </div>
-    <div class="bd-item push" title="This node has these rows, the hub doesn't — Keep Local pushes them">
-      <span class="bd-n">{{ breakdown().localNotOnHub }}</span><span class="bd-l">here, not on hub</span>
-    </div>
-    <div class="bd-item sp" title="Rows missing on SharePoint">
-      <span class="bd-n">{{ breakdown().sharePoint }}</span><span class="bd-l">not on SharePoint</span>
-    </div>
+    <button class="bd-item hub" [class.on]="kindFilter() === 'hubDiffers'" (click)="filterBy('hubDiffers')"
+            [title]="'Row exists on both, but the content differs from the hub — click to filter. All types: ' + breakdown().hubDiffers">
+      <span class="bd-n">{{ selectedType() ? typeCounts().hubDiffers : breakdown().hubDiffers }}</span><span class="bd-l">differ from hub</span>
+    </button>
+    <button class="bd-item pull" [class.on]="kindFilter() === 'onHubNotLocal'" (click)="filterBy('onHubNotLocal')"
+            [title]="'The hub has these rows, this node doesn\'t — Use Hub pulls them. Click to filter. All types: ' + breakdown().onHubNotLocal">
+      <span class="bd-n">{{ selectedType() ? typeCounts().onHubNotLocal : breakdown().onHubNotLocal }}</span><span class="bd-l">on hub, not here</span>
+    </button>
+    <button class="bd-item push" [class.on]="kindFilter() === 'localNotOnHub'" (click)="filterBy('localNotOnHub')"
+            [title]="'This node has these rows, the hub doesn\'t — Keep Local pushes them. Click to filter. All types: ' + breakdown().localNotOnHub">
+      <span class="bd-n">{{ selectedType() ? typeCounts().localNotOnHub : breakdown().localNotOnHub }}</span><span class="bd-l">here, not on hub</span>
+    </button>
+    <button class="bd-item sp" [class.on]="kindFilter() === 'sharePoint'" (click)="filterBy('sharePoint')"
+            [title]="'Rows missing on SharePoint — click to filter. All types: ' + breakdown().sharePoint">
+      <span class="bd-n">{{ selectedType() ? typeCounts().sharePoint : breakdown().sharePoint }}</span><span class="bd-l">not on SharePoint</span>
+    </button>
+    @if (filtering()) {
+      <button class="bd-clear" (click)="clearFilters()" title="Show every drifted row again">✕ clear filter</button>
+    }
   </div>
 
   <div class="dc-body" [class.with-drawer]="compareId() !== null">
     <!-- rail -->
     <div class="rail">
+      <!-- File content is a SEPARATE channel from entity rows: a FileObject can be perfectly in sync
+           while its PDF is missing from disk, so it gets its own mode rather than a type in the list. -->
+      <div class="type files-entry" [class.on]="filesMode()" (click)="openFiles()">
+        <div class="tinfo">
+          <div class="nm">📁 File content</div>
+          <div class="meta">
+            @if (fileReport(); as fr) {
+              {{ fr.error ? fr.error : (fr.missingLocally + fr.missingOnHub + fr.sizeDiffers) + ' drifting' }}
+            } @else { not scanned yet }
+          </div>
+        </div>
+        @if (fileReport(); as fr) {
+          @if (!fr.error) {
+            <span class="cnt" [class.warn]="!fr.inSync" [class.ok]="fr.inSync">
+              {{ fr.inSync ? '✓' : (fr.missingLocally + fr.missingOnHub + fr.sizeDiffers) }}
+            </span>
+          }
+        }
+      </div>
+
       <div class="rail-h">Drifting</div>
       @for (o of driftingTypes(); track o.entityType) {
         <div class="type" [class.on]="selectedType() === o.entityType" (click)="selectType(o.entityType)">
@@ -60,9 +89,119 @@
 
     <!-- main -->
     <div class="main">
-      @if (selected().size > 0) {
+      @if (filesMode()) {
+        <!-- ===== File-content drift: local uploads tree vs the hub's file manifest ===== -->
+        <div class="main-h">
+          <h3>📁 File content</h3>
+          @if (fileReport(); as fr) {
+            <span class="tag">{{ fr.localCount }} local · {{ fr.hubCount }} on hub</span>
+          }
+          <button class="btn sm" [disabled]="fileScanning()" (click)="scanFiles()">
+            {{ fileScanning() ? 'Scanning…' : '⟳ Scan files' }}
+          </button>
+          <div class="dc-search">
+            <input type="text" placeholder="Search path or file…" [value]="fileSearch()"
+                   (input)="onFileSearch($any($event.target).value)" />
+            @if (fileSearch()) { <span class="dc-search-x" (click)="onFileSearch('')" title="Clear search">✕</span> }
+          </div>
+        </div>
+
+        @if (fileScanning() && !fileReport()) {
+          <div class="pad">Walking the uploads folder and comparing with the hub…</div>
+        } @else if (!fileReport()) {
+          <div class="pad">Not scanned yet — press <b>Scan files</b>.</div>
+        } @else if (fileReport()!.error) {
+          <div class="pad">Couldn't compare files: {{ fileReport()!.error }}</div>
+        } @else {
+          <div class="dc-breakdown files-bd">
+            <button class="bd-item pull" [class.on]="fileKindFilter() === 'MISSING_LOCALLY'"
+                    (click)="fileFilterBy('MISSING_LOCALLY')"
+                    title="The hub has these files, this node doesn't — Download repairs them">
+              <span class="bd-n">{{ fileReport()!.missingLocally }}</span><span class="bd-l">on hub, not here</span>
+            </button>
+            <button class="bd-item push" [class.on]="fileKindFilter() === 'MISSING_ON_HUB'"
+                    (click)="fileFilterBy('MISSING_ON_HUB')"
+                    title="This node has these files, the hub doesn't — Upload pushes them up (this is the direction that risks data loss)">
+              <span class="bd-n">{{ fileReport()!.missingOnHub }}</span><span class="bd-l">here, not on hub</span>
+            </button>
+            <button class="bd-item hub" [class.on]="fileKindFilter() === 'SIZE_DIFFERS'"
+                    (click)="fileFilterBy('SIZE_DIFFERS')"
+                    title="Both sides have the file but the sizes differ — one copy is different or truncated">
+              <span class="bd-n">{{ fileReport()!.sizeDiffers }}</span><span class="bd-l">size differs</span>
+            </button>
+          </div>
+
+          @if (fileResult()) { <div class="file-note">{{ fileResult() }}</div> }
+          @if (fileReport()!.truncated > 0) {
+            <div class="file-note warn">Showing the first {{ fileReport()!.entries.length }} drifting files —
+              {{ fileReport()!.truncated }} more were not listed. Repair these, then scan again.</div>
+          }
+
+          @if (fileVisibleSelected().length > 0) {
+            <div class="bulkbar">
+              <b>{{ fileVisibleSelected().length }}</b> selected
+              <div class="bacts">
+                @if (filePullable().length) {
+                  <button class="btn sm hub" [disabled]="fileBusy()" (click)="pullFiles(filePullable())">
+                    ⬇ Download {{ filePullable().length }} from hub
+                  </button>
+                }
+                @if (filePushable().length) {
+                  <button class="btn sm loc" [disabled]="fileBusy()" (click)="pushFiles(filePushable())">
+                    ⬆ Upload {{ filePushable().length }} to hub
+                  </button>
+                }
+              </div>
+              @if (fileBusy()) { <span class="busy">working…</span> }
+            </div>
+          }
+
+          @if (!fileRows().length) {
+            <div class="pad">
+              @if (fileReport()!.inSync) { Every file matches the hub — {{ fileReport()!.localCount }} files verified. }
+              @else { No files match the current filter. }
+            </div>
+          } @else {
+            <div class="tbl-scroll">
+              <table>
+                <thead><tr>
+                  <th class="ck"><span class="cbx" [class.on]="fileAllSelected()" (click)="fileToggleAll()"></span></th>
+                  <th>File</th><th>Drift</th><th>Local</th><th>Hub</th><th class="ra">Actions</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of fileRows(); track f.relativePath) {
+                    <tr [class.sel]="fileIsSel(f.relativePath)">
+                      <td class="ck"><span class="cbx" [class.on]="fileIsSel(f.relativePath)"
+                                           (click)="fileToggle(f.relativePath)"></span></td>
+                      <td>
+                        @if (f.label) { <span class="ename">{{ f.label }}</span> }
+                        <span class="fpath">{{ f.relativePath }}</span>
+                      </td>
+                      <td><span class="k">{{ fileKindText(f.kind) }}</span></td>
+                      <td class="szc">{{ size(f.localSize) }}</td>
+                      <td class="szc">{{ size(f.hubSize) }}</td>
+                      <td class="ra"><div class="rowacts">
+                        <!-- Both directions on SIZE_DIFFERS: the sizes disagree but not about who's right. -->
+                        @if (f.kind !== 'MISSING_ON_HUB') {
+                          <button class="btn xs hub" [disabled]="fileBusy()"
+                                  (click)="pullFiles([f.relativePath])">⬇ Download</button>
+                        }
+                        @if (f.kind !== 'MISSING_LOCALLY') {
+                          <button class="btn xs loc" [disabled]="fileBusy()"
+                                  (click)="pushFiles([f.relativePath])">⬆ Upload</button>
+                        }
+                      </div></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      } @else {
+      @if (visibleSelected().length > 0) {
         <div class="bulkbar">
-          <b>{{ selected().size }}</b> selected
+          <b>{{ visibleSelected().length }}</b> selected
           <div class="bacts">
             <button class="btn sm hub" [disabled]="busy()" (click)="bulk('hub')">Use Hub</button>
             <button class="btn sm loc" [disabled]="busy()" (click)="bulk('local')">Keep Local</button>
@@ -74,7 +213,17 @@
       }
       <div class="main-h">
         <h3>{{ selectedType() || 'Select a type' }}</h3>
-        @if (selectedType()) { <span class="tag">{{ rows().length }} drifting</span> }
+        @if (selectedType()) {
+          <span class="tag">
+            @if (filtering()) { {{ rows().length }} of {{ allRows().length }} } @else { {{ rows().length }} }
+            drifting
+          </span>
+          <div class="dc-search">
+            <input type="text" placeholder="Search entity — name or id…" [value]="search()"
+                   (input)="onSearch($any($event.target).value)" />
+            @if (search()) { <span class="dc-search-x" (click)="onSearch('')" title="Clear search">✕</span> }
+          </div>
+        }
       </div>
 
       @if (loadingRecords()) {
@@ -82,7 +231,13 @@
       } @else if (!selectedType()) {
         <div class="pad">Pick an entity type on the left to review its drift.</div>
       } @else if (!rows().length) {
-        <div class="pad">No drift on {{ selectedType() }} — verified in sync.</div>
+        @if (filtering() && allRows().length) {
+          <div class="pad">No rows here match the filter.
+            <button class="btn xs ghost" (click)="clearFilters()">Show all {{ allRows().length }}</button>
+          </div>
+        } @else {
+          <div class="pad">No drift on {{ selectedType() }} — verified in sync.</div>
+        }
       } @else {
         <div class="tbl-scroll">
           <table>
@@ -95,7 +250,10 @@
                 <tr class="rowclick" [class.sel]="isSel(row.id)" [class.active]="compareId() === row.id"
                     (click)="openCompare(row.id)" title="Click to compare local vs hub before deciding">
                   <td class="ck" (click)="$event.stopPropagation()"><span class="cbx" [class.on]="isSel(row.id)" (click)="toggle(row.id)"></span></td>
-                  <td><span class="id">#{{ row.id }}</span></td>
+                  <td>
+                    @if (label(row.id)) { <span class="ename">{{ label(row.id) }}</span> }
+                    <span class="id">#{{ row.id }}</span>
+                  </td>
                   <td>
                     @if (row.hub) { <span class="badge h">H</span> }
                     @if (row.sp) { <span class="badge s">SP</span> }
@@ -126,6 +284,7 @@
           </table>
         </div>
       }
+      } <!-- /@else — entity-drift panel (files panel is the @if branch above) -->
     </div>
 
     <!-- compare drawer -->
@@ -159,12 +318,19 @@
               @if (!f.allMatch) {
                 <div class="diffrow">
                   <div class="fname">{{ f.fieldName }}
+                    @if (f.refType) { <span class="reft">→ {{ f.refType }}</span> }
                     @if (!f.localHubMatch) { <span class="flag">hub differs</span> }
                     @if (diff()!.spBacked && f.spMapped && !f.localSpMatch) { <span class="flag sp">SP differs</span> }
                   </div>
                   <div class="three" [class.two]="!diff()!.spBacked || !f.spMapped">
-                    <div class="cell" [class.diffv]="!f.localHubMatch"><div class="lb">Local</div>{{ f.localValue || '—' }}</div>
-                    <div class="cell" [class.diffv]="!f.localHubMatch"><div class="lb">Hub</div>{{ f.hubValue || '—' }}</div>
+                    <div class="cell" [class.diffv]="!f.localHubMatch">
+                      <div class="lb">Local</div>{{ cellText(f, 'local') }}
+                      @if (cellRaw(f, 'local')) { <div class="rawv">{{ cellRaw(f, 'local') }}</div> }
+                    </div>
+                    <div class="cell" [class.diffv]="!f.localHubMatch">
+                      <div class="lb">Hub</div>{{ cellText(f, 'hub') }}
+                      @if (cellRaw(f, 'hub')) { <div class="rawv">{{ cellRaw(f, 'hub') }}</div> }
+                    </div>
                     @if (diff()!.spBacked && f.spMapped) {
                       <div class="cell"><div class="lb">SharePoint</div>{{ f.spValue || '—' }}</div>
                     }

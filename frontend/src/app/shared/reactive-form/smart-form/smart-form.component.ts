@@ -379,6 +379,11 @@ export class SmartFormComponent {
     return this.driftByField().get(fieldName);
   }
 
+  /** Popover value rendering — shared with the Drift Center so a relationship field reads "OPEN",
+   *  not "4711", in both places. */
+  driftText(entry: ThreeWayFieldEntry, side: 'local' | 'hub'): string { return this.driftService.valueText(entry, side); }
+  driftRaw(entry: ThreeWayFieldEntry, side: 'local' | 'hub'): string { return this.driftService.valueRaw(entry, side); }
+
   openFieldDrift(field: string, event: MouseEvent): void {
     event.stopPropagation();
     const entry = this.driftByField().get(field);

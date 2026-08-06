@@ -33,9 +33,13 @@ public class HubEntityComparisonService {
     private final EntityTableRegistry entityTableRegistry;
     private final ServiceFacade serviceFacade;
     private final ObjectMapper objectMapper;
+    private final com.dk_power.power_plant_java.sevice.sync.SyncLabelService syncLabelService;
 
     // Cache for trackable fields per entity class (mirrors FieldChangeTracker's approach)
     private static final ConcurrentHashMap<Class<?>, List<FieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
+
+    /** Cap on one entity-labels request (see {@link #getEntityLabels}). */
+    private static final int MAX_LABEL_BATCH = 500;
 
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
@@ -45,11 +49,13 @@ public class HubEntityComparisonService {
     public HubEntityComparisonService(JdbcTemplate jdbcTemplate,
                                        EntityTableRegistry entityTableRegistry,
                                        ServiceFacade serviceFacade,
-                                       ObjectMapper objectMapper) {
+                                       ObjectMapper objectMapper,
+                                       com.dk_power.power_plant_java.sevice.sync.SyncLabelService syncLabelService) {
         this.jdbcTemplate = jdbcTemplate;
         this.entityTableRegistry = entityTableRegistry;
         this.serviceFacade = serviceFacade;
         this.objectMapper = objectMapper;
+        this.syncLabelService = syncLabelService;
     }
 
     /**
@@ -120,6 +126,40 @@ public class HubEntityComparisonService {
             });
         }
         return timestamps;
+    }
+
+    /**
+     * Human labels (entityId -> "01-VCND100 · Condensate pump discharge") for a batch of ids.
+     *
+     * <p>Replaces the desktop's old one-HTTP-call-per-id loop: the drift UI needs a label for every
+     * hub-only row in a list and for every id referenced by a drifting relationship field, which was
+     * N sequential round-trips. Ids the hub doesn't have are simply absent from the result — the caller
+     * falls back to {@code #id}.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> getEntityLabels(String entityType, List<Long> entityIds) {
+        if (entityIds == null || entityIds.isEmpty()) return Collections.emptyMap();
+        SyncableService<?> service = serviceFacade.getService(entityType);
+        if (service == null) throw new IllegalArgumentException("No service for entity type: " + entityType);
+
+        // Labels are per-row lookups, so bound the batch: a UI list only ever shows a page of rows, and an
+        // unbounded request would turn one call into thousands of queries inside a single transaction.
+        List<Long> batch = entityIds.size() > MAX_LABEL_BATCH ? entityIds.subList(0, MAX_LABEL_BATCH) : entityIds;
+        if (batch.size() < entityIds.size()) {
+            log.debug("entity-labels: capped {} request from {} to {} ids", entityType, entityIds.size(), MAX_LABEL_BATCH);
+        }
+
+        Map<Long, String> labels = new LinkedHashMap<>();
+        for (Long id : batch) {
+            if (id == null) continue;
+            try {
+                BaseIdEntity entity = (BaseIdEntity) service.getEntityById(id);
+                if (entity != null) labels.put(id, syncLabelService.labelFromData(entityType, serializeEntityFields(entity), id));
+            } catch (Exception e) {
+                log.trace("hub label lookup failed for {}#{}: {}", entityType, id, e.getMessage());
+            }
+        }
+        return labels;
     }
 
     /**

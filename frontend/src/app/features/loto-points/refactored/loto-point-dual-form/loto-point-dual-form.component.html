@@ -62,6 +62,7 @@
             #primaryForm
             [entity]="currentPrimaryValues() || primaryLotoPoint()"
             [fields]="primaryFields()"
+            [driftEntityType]="'LotoPoint'"
             [title]="''"
             [showSubmitButton]="false"
             (formValueChange)="onPrimaryValueChange($event)"
@@ -273,6 +274,7 @@
               #counterpartForm
               [entity]="currentCounterpartValues() || counterpartLotoPoint()!"
               [fields]="counterpartFields()"
+              [driftEntityType]="'LotoPoint'"
               [title]="''"
               [showSubmitButton]="false"
               (formValueChange)="onCounterpartValueChange($event)"

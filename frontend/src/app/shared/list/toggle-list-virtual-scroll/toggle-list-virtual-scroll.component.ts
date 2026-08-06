@@ -16,6 +16,7 @@ import {
 import { NestedItem } from '../../../models/ui/nested-item.model';
 import { CdkVirtualScrollViewport, ScrollingModule } from "@angular/cdk/scrolling";
 import { CommonModule } from '@angular/common';
+import { DriftDotComponent } from '../../sync-indicator/drift-dot.component';
 
 interface FlatItem extends NestedItem {
   level: number;
@@ -25,7 +26,7 @@ interface FlatItem extends NestedItem {
 
 @Component({
   selector: 'app-toggle-list-virtual-scroll',
-  imports: [ScrollingModule, CommonModule],
+  imports: [ScrollingModule, CommonModule, DriftDotComponent],
   templateUrl: './toggle-list-virtual-scroll.component.html',
   standalone: true,
   styleUrl: './toggle-list-virtual-scroll.component.css',
@@ -49,6 +50,12 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
    * row click both toggles the branch AND emits — every existing consumer relies on that, so leave it off.
    */
   caretToggleOnly = input(false);
+  /**
+   * OPT-IN drift badge: set to a synced entity type (e.g. "LotoStandard") to show a hub/SharePoint drift
+   * dot on LEAF rows (group rows are labels, not entities). Unset — every existing consumer — renders
+   * exactly as before. Mirrors TableComponent's driftEntityType opt-in.
+   */
+  driftEntityType = input<string | undefined>(undefined);
 
   itemClicked = output<FlatItem>();
   itemDoubleClicked = output<FlatItem>();

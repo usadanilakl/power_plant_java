@@ -535,6 +535,8 @@ button[type="button"]:hover {
 .fd-row { display: flex; gap: 8px; }
 .fd-lb { width: 44px; color: #98a2b3; font-size: 11px; text-transform: uppercase; }
 .fd-v { flex: 1; word-break: break-word; }
+/* Raw serialized value under a labeled relationship — the label reads, the id is what you quote. */
+.fd-raw { display: block; margin-top: 2px; font-family: ui-monospace, monospace; font-size: 10px; opacity: 0.6; word-break: break-all; }
 .fd-acts { display: flex; gap: 8px; }
 .fd-btn { flex: 1; padding: 6px 8px; border-radius: 6px; border: 1px solid #353c4a; cursor: pointer; font-size: 12px; font-weight: 600; }
 .fd-btn.hub { background: #e67e22; color: #fff; border-color: #e67e22; }

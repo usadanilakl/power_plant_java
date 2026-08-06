@@ -68,7 +68,9 @@
                     />
                   </div>
                   <div class="standard-info">
-                    <div class="standard-name">{{ standard.name || 'Untitled' }}</div>
+                    <div class="standard-name">{{ standard.name || 'Untitled' }}
+                      <app-drift-dot [entityType]="'LotoStandard'" [entityId]="standard.id" />
+                    </div>
                     @if (standard.description) {
                       <div class="standard-description">{{ standard.description }}</div>
                     }

@@ -104,15 +104,16 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
             <p class="wd-hist-cap">Previously completed for PM {{ wo.pmnum }} — newest first</p>
             <div class="wd-hist">
               @for (h of history(); track h.wonum) {
-                <div class="wd-hist-row">
+                <button type="button" class="wd-hist-row" (click)="historyWo.set(h)">
                   <div class="wd-hist-top">
                     <span class="wd-hist-id">{{ h.wonum }}</span>
                     <span class="wd-chip sm" [class]="chip(h.status)">{{ h.status }}</span>
                     <span class="wd-hist-date">{{ ((h.statusDate || h.targetStart) | date:'mediumDate') || '—' }}</span>
+                    <span class="wd-hist-go">›</span>
                   </div>
                   <span class="wd-hist-desc">{{ h.description || '(no description)' }}</span>
                   @if (h.leadCraft) { <span class="wd-hist-lead">Lead: {{ h.leadCraft }}</span> }
-                </div>
+                </button>
               }
             </div>
           }
@@ -300,6 +301,31 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
         }
       </div>
     </div>
+
+    @if (historyWo(); as h) {
+      <div class="wd-backdrop wd-hist-ov" (click)="historyWo.set(null)">
+        <div class="wd-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Completed work order ' + h.wonum" (click)="$event.stopPropagation()">
+          <div class="wd-head">
+            <span class="wd-id">{{ h.wonum }}</span>
+            <span class="wd-chip" [class]="chip(h.status)">{{ h.status }}</span>
+            <button class="wd-x" (click)="historyWo.set(null)">✕</button>
+          </div>
+          <h2 class="wd-title">{{ h.description || '(no description)' }}</h2>
+          @if (h.longDescription) { <p class="wd-long">{{ h.longDescription }}</p> }
+          <dl class="wd-facts">
+            <dt>Completed</dt><dd>{{ ((h.statusDate || h.targetStart) | date:'medium') || '—' }}</dd>
+            <dt>Lead</dt><dd>{{ h.leadCraft || '—' }}</dd>
+            <dt>Asset</dt><dd>{{ h.assetnum || '—' }}</dd>
+            <dt>Location</dt><dd>{{ h.location || '—' }}</dd>
+            @if (h.pmnum) { <dt>PM</dt><dd>{{ h.pmnum }}</dd> }
+          </dl>
+          <h4 class="wd-sec">Completed form &amp; attachments</h4>
+          <app-maximo-wo-files [href]="h.href" [canUpload]="false"></app-maximo-wo-files>
+          <h4 class="wd-sec">Work log</h4>
+          <app-maximo-wo-notes [href]="h.href" [canAdd]="false"></app-maximo-wo-notes>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .wd-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: stretch; justify-content: center; z-index: 10000; }
@@ -353,10 +379,13 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
     .wd-notdue-compact { display: flex; align-items: center; gap: 0.4rem; background: rgba(230,126,34,0.12); border: 1px solid #e67e22; border-radius: 9px; padding: 0.6rem 0.8rem; margin: 0.4rem 0 0.7rem; color: var(--primary-text); font-size: 0.85rem; font-weight: 600; }
     .wd-hist-cap { font-size: 0.78rem; color: var(--secondary-text, #888); margin: 0 0 0.6rem; }
     .wd-hist { display: flex; flex-direction: column; gap: 0.5rem; }
-    .wd-hist-row { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--secondary-background); }
+    .wd-hist-row { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--secondary-background); width: 100%; text-align: left; cursor: pointer; font-family: inherit; }
+    .wd-hist-row:hover, .wd-hist-row:active { border-color: var(--accent-color); }
     .wd-hist-top { display: flex; align-items: center; gap: 0.5rem; }
     .wd-hist-id { font-weight: 700; color: var(--primary-text); }
     .wd-hist-date { margin-left: auto; font-size: 0.8rem; color: var(--secondary-text, #888); }
+    .wd-hist-go { color: var(--accent-color); font-weight: 700; font-size: 1.1rem; line-height: 1; }
+    .wd-hist-ov { z-index: 10001; }
     .wd-hist-desc { font-size: 0.86rem; color: var(--primary-text); }
     .wd-hist-lead { font-size: 0.75rem; color: var(--secondary-text, #888); }
     .wd-chip.sm { font-size: 0.6rem; padding: 0.05rem 0.35rem; }
@@ -413,7 +442,7 @@ export class MaximoWoDetailComponent implements OnInit {
   private host = inject(ElementRef<HTMLElement>);
 
   @HostListener('document:keydown.escape')
-  onEscape(): void { this.close.emit(); }
+  onEscape(): void { if (this.historyWo()) { this.historyWo.set(null); return; } this.close.emit(); }
 
   tab = signal<Tab>('details');
   status = signal('');
@@ -427,6 +456,8 @@ export class MaximoWoDetailComponent implements OnInit {
   history = signal<MaximoWorkOrder[]>([]);
   historyLoading = signal(false);
   private historyLoaded = false;
+  /** A completed WO from the History tab, opened read-only to view its form PDF + worklog. */
+  historyWo = signal<MaximoWorkOrder | null>(null);
 
   hours = signal('');
   summary = signal('');

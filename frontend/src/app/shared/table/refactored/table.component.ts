@@ -18,7 +18,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timer, forkJoin } from 'rxjs';
-import { DriftService, RowDrift, DriftRecord, ThreeWayFieldDiff } from '../../../services/drift.service';
+import { DriftService, RowDrift, DriftRecord, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../services/drift.service';
 import {
   CdkVirtualScrollViewport,
   ScrollingModule,
@@ -676,6 +676,12 @@ export class TableComponent implements OnInit, AfterViewInit {
             : `${r.flagged + r.stillDrifting} drift(s)${r.errors ? ', ' + r.errors + ' err' : ''}`);
         this.loadDrift(type);
       });
+  }
+
+  /** Popover value rendering — shared with the Drift Center + form popovers, so a relationship field
+   *  reads "OPEN → CLOSED" instead of "4711 → 4712". The raw value stays in the cell's title tooltip. */
+  driftText(entry: ThreeWayFieldEntry, side: 'local' | 'hub'): string {
+    return this.driftService.valueText(entry, side);
   }
 
   /** Drift for a row (or undefined) — drives the badge in the first cell. */

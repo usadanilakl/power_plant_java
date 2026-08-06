@@ -212,8 +212,12 @@
   <div class="fd-pop" [style.left.px]="pop.x" [style.top.px]="pop.y">
     <div class="fd-head">{{ pop.field }} — differs from hub</div>
     <div class="fd-vals">
-      <div class="fd-row"><span class="fd-lb">Local</span><span class="fd-v">{{ pop.entry.localValue || '—' }}</span></div>
-      <div class="fd-row"><span class="fd-lb">Hub</span><span class="fd-v">{{ pop.entry.hubValue || '—' }}</span></div>
+      <div class="fd-row"><span class="fd-lb">Local</span><span class="fd-v">{{ driftText(pop.entry, 'local') }}
+        @if (driftRaw(pop.entry, 'local')) { <span class="fd-raw">{{ driftRaw(pop.entry, 'local') }}</span> }
+      </span></div>
+      <div class="fd-row"><span class="fd-lb">Hub</span><span class="fd-v">{{ driftText(pop.entry, 'hub') }}
+        @if (driftRaw(pop.entry, 'hub')) { <span class="fd-raw">{{ driftRaw(pop.entry, 'hub') }}</span> }
+      </span></div>
       @if (pop.entry.spMapped) {
         <div class="fd-row"><span class="fd-lb">SP</span><span class="fd-v">{{ pop.entry.spValue || '—' }}</span></div>
       }

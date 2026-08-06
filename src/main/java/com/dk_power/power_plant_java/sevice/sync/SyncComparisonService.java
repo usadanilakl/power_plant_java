@@ -41,6 +41,7 @@ public class SyncComparisonService {
     private final ServiceFacade serviceFacade;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final SyncLabelService syncLabelService;
 
     private static final ConcurrentHashMap<Class<?>, List<FieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
@@ -53,13 +54,15 @@ public class SyncComparisonService {
                                   EntityTableRegistry entityTableRegistry,
                                   ServiceFacade serviceFacade,
                                   RestTemplate restTemplate,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  SyncLabelService syncLabelService) {
         this.syncConfig = syncConfig;
         this.jdbcTemplate = jdbcTemplate;
         this.entityTableRegistry = entityTableRegistry;
         this.serviceFacade = serviceFacade;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.syncLabelService = syncLabelService;
     }
 
     // ==================== Cached server IDs for quick checks ====================
@@ -401,6 +404,36 @@ public class SyncComparisonService {
         }
     }
 
+    /**
+     * Batch human labels from the hub (id -&gt; label) in ONE call. Falls back to the old per-id data fetch
+     * (bounded) when the hub predates {@code /api/sync/entity-labels} — an older hub then still labels the
+     * first rows instead of the UI regressing to bare ids everywhere.
+     */
+    public Map<Long, String> fetchServerEntityLabels(String entityType, List<Long> ids, String syncServerUrl) {
+        if (ids == null || ids.isEmpty() || syncServerUrl == null || syncServerUrl.isBlank()) return Collections.emptyMap();
+        try {
+            HttpHeaders headers = buildHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            ResponseEntity<Map<Long, String>> r = restTemplate.exchange(
+                syncServerUrl + "/api/sync/entity-labels/" + entityType,
+                HttpMethod.POST, new HttpEntity<>(ids, headers), new ParameterizedTypeReference<>() {});
+            return r.getBody() != null ? r.getBody() : Collections.emptyMap();
+        } catch (Exception e) {
+            log.debug("Batch hub labels unavailable for {} ({}), falling back to per-id", entityType, e.getMessage());
+            Map<Long, String> out = new LinkedHashMap<>();
+            for (Long id : ids.subList(0, Math.min(ids.size(), LEGACY_LABEL_FALLBACK_LIMIT))) {
+                try {
+                    Map<String, String> data = fetchServerEntityData(entityType, id, syncServerUrl);
+                    if (data != null) out.put(id, syncLabelService.labelFromData(entityType, data, id));
+                } catch (Exception ignored) {}
+            }
+            return out;
+        }
+    }
+
+    /** Cap on the pre-batch-endpoint fallback, so an outdated hub can't turn one list into 500 round-trips. */
+    private static final int LEGACY_LABEL_FALLBACK_LIMIT = 25;
+
     private List<StaleEntity> findStaleEntities(String entityType, List<Long> commonIds, String syncServerUrl) {
         try {
             // Get server timestamps
@@ -527,12 +560,49 @@ public class SyncComparisonService {
                 if (!seen.add(field.getName())) continue;
                 if (shouldTrack(field)) {
                     field.setAccessible(true);
-                    fields.add(new FieldInfo(field, field.getName()));
+                    fields.add(new FieldInfo(field, field.getName(), refTypeOf(field)));
                 }
             }
             current = current.getSuperclass();
         }
         return fields;
+    }
+
+    /**
+     * The entity type this field REFERENCES, or null for a plain value field. Drives the drift UI's
+     * id→label rendering: {@code serializeValue} writes a bare id for a {@link BaseIdEntity} field and a
+     * JSON id array for a collection of them, so knowing the target type is all the UI needs to turn
+     * {@code 4711} into {@code OPEN}.
+     */
+    private String refTypeOf(Field field) {
+        if (BaseIdEntity.class.isAssignableFrom(field.getType())) return field.getType().getSimpleName();
+        if (Collection.class.isAssignableFrom(field.getType())) {
+            java.lang.reflect.Type gt = field.getGenericType();
+            if (gt instanceof java.lang.reflect.ParameterizedType pt) {
+                java.lang.reflect.Type[] args = pt.getActualTypeArguments();
+                if (args.length == 1 && args[0] instanceof Class<?> c && BaseIdEntity.class.isAssignableFrom(c)) {
+                    return c.getSimpleName();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * fieldName -&gt; referenced entity type, for every relationship field of a type (empty map for an
+     * unknown type). Read-only metadata — it does NOT touch serialization, so the content hash that the
+     * drift scan compares against the hub is unchanged.
+     */
+    public Map<String, String> refTypesFor(String entityType) {
+        SyncableService<?> service = serviceFacade.getService(entityType);
+        Object prototype = null;
+        try { prototype = service != null ? service.getEntity() : null; } catch (Exception ignored) {}
+        if (prototype == null) return Collections.emptyMap();
+        Map<String, String> out = new LinkedHashMap<>();
+        for (FieldInfo fi : getFields(prototype.getClass())) {
+            if (fi.refType() != null) out.put(fi.name(), fi.refType());
+        }
+        return out;
     }
 
     private boolean shouldTrack(Field field) {
@@ -548,7 +618,8 @@ public class SyncComparisonService {
         return true;
     }
 
-    private record FieldInfo(Field field, String name) {}
+    /** @param refType referenced entity type for relationship fields, null for plain value fields. */
+    private record FieldInfo(Field field, String name, String refType) {}
 
     private Map<Long, Instant> fetchServerTimestamps(String entityType, List<Long> entityIds, String syncServerUrl) {
         String url = syncServerUrl + "/api/sync/entity-timestamps/" + entityType;

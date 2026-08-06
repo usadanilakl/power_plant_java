@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { map, catchError, tap, shareReplay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export type DriftPeer = 'HUB' | 'SHAREPOINT';
@@ -54,10 +54,44 @@ export interface ThreeWayFieldEntry {
   fieldName: string;
   localValue?: string; hubValue?: string; spValue?: string;
   spMapped: boolean; allMatch: boolean; localHubMatch: boolean; localSpMatch: boolean; hubSpMatch: boolean;
+  /** Presentation-only (backend SyncLabelService): the referenced entity type for relationship fields. */
+  refType?: string;
+  /** Human rendering of localValue/hubValue ("OPEN", "01-VCND100, +3 more"). Absent = show the raw value. */
+  localLabel?: string; hubLabel?: string;
 }
 export interface ThreeWayFieldDiff {
   entityType: string; entityId: number; spBacked: boolean;
   fields: ThreeWayFieldEntry[]; mismatchCount: number;
+}
+
+// ==================== File-content drift (the bytes channel) ====================
+
+export type FileDriftKind = 'MISSING_LOCALLY' | 'MISSING_ON_HUB' | 'SIZE_DIFFERS';
+
+/** One drifting file path (mirrors the backend FileDriftService.FileDriftEntry). */
+export interface FileDriftEntry {
+  relativePath: string;
+  kind: FileDriftKind;
+  localSize?: number;
+  hubSize?: number;
+  /** Owning FileObject, when the path could be mapped back to one. */
+  fileObjectId?: number;
+  label?: string;
+}
+
+export interface FileDriftReport {
+  localCount: number; hubCount: number;
+  missingLocally: number; missingOnHub: number; sizeDiffers: number;
+  entries: FileDriftEntry[];
+  /** Drifting files omitted from `entries` by the server-side cap — never a silent truncation. */
+  truncated: number;
+  error?: string;
+  inSync?: boolean;
+}
+
+export interface FileRepairResult {
+  requested: number; succeeded: number; failed: number;
+  unmapped: string[]; errors: string[]; message?: string;
 }
 
 interface NgApiResponse<T> { responseData: T; message: string; }
@@ -174,6 +208,22 @@ export class DriftService {
     );
   }
 
+  /**
+   * Same map as {@link statusForType}, but SHARED across subscribers for a short window.
+   *
+   * <p>Load-bearing for {@code DriftDotComponent}: a list renders one badge per row, and each badge asks
+   * for its type's drift map. Without this, a 50-row list would fire 50 identical GETs. {@code shareReplay}
+   * collapses them into one in-flight request; the TTL lets a later scan refresh the badges.
+   */
+  statusForTypeShared(entityType: string, ttlMs = 30000): Observable<Map<number, RowDrift>> {
+    const hit = this.rowStatusCache.get(entityType);
+    if (hit && Date.now() - hit.at < ttlMs) return hit.obs;
+    const obs = this.statusForType(entityType).pipe(shareReplay(1));
+    this.rowStatusCache.set(entityType, { at: Date.now(), obs });
+    return obs;
+  }
+  private rowStatusCache = new Map<string, { at: number; obs: Observable<Map<number, RowDrift>> }>();
+
   /** Every record (row + field, both peers) for one entity — the drill-down feed. */
   rowRecords(entityType: string, entityId: number): Observable<DriftRecord[]> {
     return this.http.get<NgApiResponse<DriftRecord[]>>(`${this.base}/row/${entityType}/${entityId}`).pipe(
@@ -232,11 +282,61 @@ export class DriftService {
       .pipe(map(r => r?.responseData ?? null), catchError(() => of(null)));
   }
 
+  // ==================== File-content drift ====================
+
+  /** Walk local uploads vs the hub's path manifest. On-demand — heavier than the entity scan. */
+  scanFiles(): Observable<FileDriftReport | null> {
+    return this.http.post<NgApiResponse<FileDriftReport>>(`${this.base}/files/scan`, {})
+      .pipe(map(r => r?.responseData ?? null), catchError(() => of(null)));
+  }
+
+  /** Download these paths from the hub (fixes missing-locally / size-differs). Synchronous server-side. */
+  pullFiles(paths: string[]): Observable<FileRepairResult | null> {
+    return this.http.post<NgApiResponse<FileRepairResult>>(`${this.base}/files/pull`, paths)
+      .pipe(map(r => r?.responseData ?? null), catchError(() => of(null)));
+  }
+
+  /** Queue the owning FileObjects for upload (fixes missing-on-hub). Transfers in the BACKGROUND. */
+  pushFiles(paths: string[]): Observable<FileRepairResult | null> {
+    return this.http.post<NgApiResponse<FileRepairResult>>(`${this.base}/files/push`, paths)
+      .pipe(map(r => r?.responseData ?? null), catchError(() => of(null)));
+  }
+
+  // ==================== Value rendering (shared by the Drift Center + both form popovers) ====================
+
+  /** What to PRINT for one side of a field diff: the human label when the backend resolved the
+   *  relationship ids, else the raw serialized value. One implementation so the Drift Center drawer and
+   *  the in-form popovers can never disagree about how a value reads. */
+  valueText(entry: ThreeWayFieldEntry, side: 'local' | 'hub' | 'sp'): string {
+    if (side === 'sp') return entry.spValue || '—';
+    const label = side === 'local' ? entry.localLabel : entry.hubLabel;
+    const raw = side === 'local' ? entry.localValue : entry.hubValue;
+    return label || raw || '—';
+  }
+
+  /** The raw serialized value to show BENEATH a labeled one ('' when there's no label, i.e. nothing
+   *  is being hidden). Ids stay visible — they're what gets quoted in a bug report. */
+  valueRaw(entry: ThreeWayFieldEntry, side: 'local' | 'hub'): string {
+    const label = side === 'local' ? entry.localLabel : entry.hubLabel;
+    const raw = side === 'local' ? entry.localValue : entry.hubValue;
+    return label && raw ? raw : '';
+  }
+
   /** Friendly labels (id -> tag/name/description) for HUB-ONLY rows the local list can't render — the
    *  "missing from local" strip. Best-effort; ids with no hub data come back as "#id". */
   hubLabels(entityType: string, ids: number[]): Observable<Map<number, string>> {
+    return this.fetchLabels(`${this.base}/hub-labels/${entityType}`, ids);
+  }
+
+  /** Labels for a MIXED id list (some local, some hub-only) — the Drift Center row list. Resolves locally
+   *  first on the server and only asks the hub for the remainder, so it costs 0-1 hub calls. */
+  labels(entityType: string, ids: number[]): Observable<Map<number, string>> {
+    return this.fetchLabels(`${this.base}/labels/${entityType}`, ids);
+  }
+
+  private fetchLabels(url: string, ids: number[]): Observable<Map<number, string>> {
     if (!ids.length) return of(new Map<number, string>());
-    return this.http.post<NgApiResponse<Record<string, string>>>(`${this.base}/hub-labels/${entityType}`, ids).pipe(
+    return this.http.post<NgApiResponse<Record<string, string>>>(url, ids).pipe(
       map(r => {
         const m = new Map<number, string>();
         const data = r?.responseData ?? {};

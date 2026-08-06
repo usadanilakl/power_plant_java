@@ -7,11 +7,12 @@ import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-window/rf-floating-window.component';
 import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
+import { DriftDotComponent } from '../../../../../shared/sync-indicator/drift-dot.component';
 
 @Component({
   selector: 'app-loto-standards-selector',
   standalone: true,
-  imports: [CommonModule, FormsModule, RfFloatingWindowComponent],
+  imports: [CommonModule, FormsModule, RfFloatingWindowComponent, DriftDotComponent],
   templateUrl: './loto-standards-selector.component.html',
   styleUrl: './loto-standards-selector.component.css',
 })

@@ -21,14 +21,29 @@ h2,h3,h4{margin:0;font-weight:650}
 .dot.amber{background:var(--amber)} .dot.red{background:var(--red)}
 
 .dc-breakdown{display:flex;gap:10px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
-.bd-item{flex:1;display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:8px;
-  background:var(--panel3);border:1px solid var(--line);border-left:3px solid var(--dim2)}
+/* Each breakdown item is a filter toggle — hence <button>, cursor, hover and an .on pressed state. */
+.bd-item{flex:1;display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:8px;text-align:left;
+  background:var(--panel3);border:1px solid var(--line);border-left:3px solid var(--dim2);
+  cursor:pointer;font:inherit;transition:background .12s,border-color .12s}
+.bd-item:hover{background:var(--panel2)}
+.bd-item.on{background:var(--panel2);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .bd-item.hub{border-left-color:var(--amber)}
 .bd-item.pull{border-left-color:var(--sky)}
 .bd-item.push{border-left-color:var(--green)}
 .bd-item.sp{border-left-color:#a78bfa}
 .bd-n{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--tx)}
 .bd-l{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.03em}
+.bd-clear{align-self:center;padding:7px 11px;border-radius:7px;background:var(--panel3);border:1px solid var(--line);
+  color:var(--dim);font:600 11px system-ui;cursor:pointer;white-space:nowrap}
+.bd-clear:hover{color:var(--tx);border-color:var(--line2)}
+/* ===== File-content drift ===== */
+.files-bd{border-bottom:none;padding:10px 16px 4px}
+.files-entry{border-bottom:1px solid var(--line);margin-bottom:6px}
+.fpath{display:block;font:11px var(--mono);color:var(--dim);word-break:break-all}
+.szc{font:12px var(--mono);color:var(--dim);white-space:nowrap}
+.file-note{margin:0 16px 6px;padding:7px 10px;border-radius:6px;background:var(--panel3);
+  border-left:3px solid var(--accent);font-size:12px;color:var(--dim)}
+.file-note.warn{border-left-color:var(--amber);color:var(--tx)}
 
 .btn{border:1px solid var(--line2);background:var(--panel3);color:var(--tx);border-radius:8px;padding:7px 13px;font:600 13px system-ui;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:#4a5568}
@@ -61,6 +76,14 @@ h2,h3,h4{margin:0;font-weight:650}
 .main-h{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line)}
 .main-h h3{font-size:15px}
 .tag{font:600 11px var(--mono);color:var(--dim);background:var(--panel3);border:1px solid var(--line);border-radius:5px;padding:3px 7px}
+/* Entity search — pushed to the right of the type header. */
+.dc-search{margin-left:auto;position:relative;display:flex;align-items:center}
+.dc-search input{width:230px;padding:6px 26px 6px 10px;border-radius:7px;background:var(--panel3);
+  border:1px solid var(--line);color:var(--tx);font:12px system-ui;outline:none}
+.dc-search input:focus{border-color:var(--accent)}
+.dc-search input::placeholder{color:var(--dim2)}
+.dc-search-x{position:absolute;right:8px;color:var(--dim2);cursor:pointer;font-size:11px}
+.dc-search-x:hover{color:var(--tx)}
 .pad{padding:22px 16px;color:var(--dim)}
 
 .tbl-scroll{overflow:auto;flex:1}
@@ -72,6 +95,8 @@ tbody tr:hover{background:var(--panel2)}
 tr.sel{background:rgba(59,130,246,.09)}
 tr.active{box-shadow:inset 3px 0 0 var(--accent)}
 .id{font:12px var(--mono);color:var(--dim)}
+/* Human label for a drifted row — the id stays beside it (ops still work in ids). */
+.ename{display:block;font-weight:600;color:var(--tx);margin-bottom:2px}
 .detail{color:var(--dim)} .detail .k{color:var(--tx);font-weight:600}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:18px;padding:0 6px;border-radius:5px;font:700 10px var(--mono);margin-right:4px}
 .badge.h{background:var(--amber-bg);color:var(--amber)} .badge.s{background:var(--sky-bg);color:var(--sky)}
@@ -98,6 +123,10 @@ tr.active{box-shadow:inset 3px 0 0 var(--accent)}
 .cell{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:12px;min-height:34px;word-break:break-word}
 .cell.diffv{border-color:var(--line2)}
 .cell .lb{font:600 9px system-ui;text-transform:uppercase;letter-spacing:.06em;color:var(--dim2);margin-bottom:3px}
+/* Raw serialized ids under a labeled relationship value — the label is what you read, the id is what
+   you quote in a bug report, so show both rather than hiding the truth behind a friendly name. */
+.cell .rawv{margin-top:3px;font:11px var(--mono);color:var(--dim2);word-break:break-all}
+.reft{font:600 9px var(--mono);padding:1px 5px;border-radius:4px;background:var(--panel2);color:var(--dim2)}
 .facts{display:flex;gap:6px;margin-top:8px}
 .mini{font:600 11px system-ui;border:1px solid var(--line2);background:var(--panel3);color:var(--tx);border-radius:6px;padding:4px 8px;cursor:pointer}
 .mini:disabled{opacity:.55;cursor:default}

@@ -262,9 +262,9 @@
                   <div class="dp-field">
                     <div class="dp-fn">{{ f.fieldName }}</div>
                     <div class="dp-vals">
-                      <span class="dp-loc" [title]="f.localValue || ''">{{ f.localValue || '—' }}</span>
+                      <span class="dp-loc" [title]="f.localValue || ''">{{ driftText(f, 'local') }}</span>
                       <span class="dp-arr">→</span>
-                      <span class="dp-hub" [title]="f.hubValue || ''">{{ f.hubValue || '—' }}</span>
+                      <span class="dp-hub" [title]="f.hubValue || ''">{{ driftText(f, 'hub') }}</span>
                     </div>
                   </div>
                 }

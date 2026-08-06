@@ -483,6 +483,22 @@ public class HubSyncController {
         }
     }
 
+    /**
+     * Batch human labels (id -&gt; "01-VCND100 · …") for the drift UI. One call for a whole list of ids —
+     * the desktop previously fetched full entity data once per id, which was N sequential round-trips for
+     * a single "missing from local" strip. Ids the hub doesn't have are omitted, not errors.
+     */
+    @PostMapping("/entity-labels/{entityType}")
+    public ResponseEntity<?> getEntityLabels(
+            @PathVariable String entityType,
+            @RequestBody List<Long> entityIds) {
+        try {
+            return ResponseEntity.ok(hubEntityComparisonService.getEntityLabels(entityType, entityIds));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/entity-timestamps/{entityType}")
     public ResponseEntity<?> getEntityTimestamps(
             @PathVariable String entityType,

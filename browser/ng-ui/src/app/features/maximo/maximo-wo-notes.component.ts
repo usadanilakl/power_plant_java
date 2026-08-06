@@ -30,14 +30,16 @@ import { MaximoWorklog } from './maximo.model';
       </div>
     }
 
-    <div class="wn-add">
-      <input class="wn-in" type="text" [value]="summary()" (input)="summary.set($any($event.target).value)" placeholder="New note (summary)">
-      <textarea class="wn-in" rows="2" [value]="details()" (input)="details.set($any($event.target).value)" placeholder="Details (optional)"></textarea>
-      @if (addError()) { <p class="wn-err">{{ addError() }}</p> }
-      <button class="wn-btn" [disabled]="adding() || !summary().trim()" (click)="add()">
-        {{ adding() ? 'Adding…' : 'Add note' }}
-      </button>
-    </div>
+    @if (canAdd) {
+      <div class="wn-add">
+        <input class="wn-in" type="text" [value]="summary()" (input)="summary.set($any($event.target).value)" placeholder="New note (summary)">
+        <textarea class="wn-in" rows="2" [value]="details()" (input)="details.set($any($event.target).value)" placeholder="Details (optional)"></textarea>
+        @if (addError()) { <p class="wn-err">{{ addError() }}</p> }
+        <button class="wn-btn" [disabled]="adding() || !summary().trim()" (click)="add()">
+          {{ adding() ? 'Adding…' : 'Add note' }}
+        </button>
+      </div>
+    }
   `,
   styles: [`
     .wn-msg { text-align: center; color: var(--secondary-text, #888); padding: 1rem; font-size: 0.9rem; }
@@ -59,6 +61,8 @@ import { MaximoWorklog } from './maximo.model';
 })
 export class MaximoWoNotesComponent implements OnInit {
   @Input({ required: true }) href!: string;
+  /** When false, notes are read-only (the add-note box is hidden) — e.g. viewing a completed WO's log. */
+  @Input() canAdd = true;
 
   private api = inject(MaximoApiService);
 

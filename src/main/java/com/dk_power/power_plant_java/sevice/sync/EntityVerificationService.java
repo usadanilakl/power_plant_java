@@ -28,6 +28,7 @@ public class EntityVerificationService {
     private final SyncConfig syncConfig;
     private final ServiceFacade serviceFacade;
     private final List<SharePointSyncable<?>> syncables;
+    private final SyncLabelService syncLabelService;
 
     private Map<String, SharePointSyncable<?>> syncableMap;
 
@@ -283,6 +284,8 @@ public class EntityVerificationService {
                 .build());
         }
 
+        enrichRefLabels(entityType, fields);
+
         return ThreeWayFieldDiff.builder()
             .entityType(entityType)
             .entityId(entityId)
@@ -291,6 +294,71 @@ public class EntityVerificationService {
             .fields(fields)
             .mismatchCount((int) fields.stream().filter(f -> !f.isAllMatch()).count())
             .build();
+    }
+
+    /**
+     * Attach human labels to relationship fields, so the compare drawer shows {@code isoPos: OPEN → CLOSED}
+     * instead of {@code 4711 → 4712}, and {@code lotoPoints: 01-VCND100, 01-VCND101, +12 more} instead of a
+     * JSON id array.
+     *
+     * <p>Purely additive — the {@code localValue}/{@code hubValue} strings are untouched, so nothing that
+     * compares or hashes them changes behaviour.
+     *
+     * <p>Two deliberate choices:
+     * <ul>
+     *   <li><b>Only mismatching fields</b> are enriched. Matching fields are never rendered by the UI, and
+     *       labeling them would cost hub round-trips for output nobody sees.</li>
+     *   <li><b>The hub side is labeled by the HUB</b>, not from local rows with the same ids. A field that
+     *       differs often references a row that is itself different (or absent) locally — labeling the hub
+     *       column from local data would quietly show the wrong name in exactly the case the tool exists for.</li>
+     * </ul>
+     */
+    private void enrichRefLabels(String entityType, List<ThreeWayFieldEntry> fields) {
+        Map<String, String> refTypes;
+        try {
+            refTypes = syncComparisonService.refTypesFor(entityType);
+        } catch (Exception e) {
+            log.debug("[Verify] ref-type lookup failed for {}: {}", entityType, e.getMessage());
+            return;
+        }
+        if (refTypes.isEmpty()) return;
+
+        // Collect the ids each side references, grouped by target type (one batch per type, not per field).
+        Map<String, Set<Long>> localIdsByType = new LinkedHashMap<>();
+        Map<String, Set<Long>> hubIdsByType = new LinkedHashMap<>();
+        for (ThreeWayFieldEntry f : fields) {
+            String refType = refTypes.get(f.getFieldName());
+            if (refType == null || f.isAllMatch()) continue;
+            f.setRefType(refType);
+            localIdsByType.computeIfAbsent(refType, k -> new LinkedHashSet<>())
+                    .addAll(syncLabelService.extractIds(f.getLocalValue()));
+            hubIdsByType.computeIfAbsent(refType, k -> new LinkedHashSet<>())
+                    .addAll(syncLabelService.extractIds(f.getHubValue()));
+        }
+        if (localIdsByType.isEmpty() && hubIdsByType.isEmpty()) return;
+
+        Map<String, Map<Long, String>> localLabels = new HashMap<>();
+        localIdsByType.forEach((type, ids) -> localLabels.put(type, syncLabelService.labelsFor(type, ids)));
+
+        Map<String, Map<Long, String>> hubLabels = new HashMap<>();
+        String hubUrl = syncConfig.getSyncServerUrl();
+        hubIdsByType.forEach((type, ids) -> {
+            if (ids.isEmpty()) return;
+            try {
+                hubLabels.put(type, syncComparisonService.fetchServerEntityLabels(type, new ArrayList<>(ids), hubUrl));
+            } catch (Exception e) {
+                log.debug("[Verify] hub labels unavailable for {}: {}", type, e.getMessage());
+            }
+        });
+
+        for (ThreeWayFieldEntry f : fields) {
+            String refType = f.getRefType();
+            if (refType == null) continue;
+            f.setLocalLabel(syncLabelService.renderRefValue(
+                    f.getLocalValue(), localLabels.getOrDefault(refType, Collections.emptyMap())));
+            f.setHubLabel(syncLabelService.renderRefValue(
+                    f.getHubValue(), hubLabels.getOrDefault(refType, Collections.emptyMap())));
+        }
     }
 
     /**
@@ -485,5 +553,12 @@ public class EntityVerificationService {
         private boolean localHubMatch;
         private boolean localSpMatch;
         private boolean hubSpMatch;
+        // ---- presentation-only (see SyncLabelService). NEVER used for comparison or hashing: the raw
+        // *Value fields stay the source of truth, these just let the UI print "OPEN" instead of "4711".
+        /** Referenced entity type when this field is a relationship (e.g. "Value"), else null. */
+        private String refType;
+        /** Human rendering of localValue / hubValue when refType is set and the ids resolved, else null. */
+        private String localLabel;
+        private String hubLabel;
     }
 }

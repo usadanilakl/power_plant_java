@@ -22,6 +22,8 @@ export class RfToggleMenuComponent {
   searchPlaceholder = input<string>('Search...');
   /** Opt-in picker interaction: caret expands, row body selects (see ToggleListVirtualScrollComponent). */
   caretToggleOnly = input<boolean>(false);
+  /** OPT-IN drift badge on leaf rows — pass a synced entity type (e.g. "LotoStandard"). Unset = no change. */
+  driftEntityType = input<string | undefined>(undefined);
 
   // Outputs
   itemClick = output<NestedItem>();

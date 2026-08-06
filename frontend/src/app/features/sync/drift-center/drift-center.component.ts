@@ -4,10 +4,15 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of } from 'rxjs';
 import {
-  DriftService, DriftRecord, DriftScanState, ThreeWayFieldDiff,
+  DriftService, DriftRecord, DriftScanState, ThreeWayFieldDiff, ThreeWayFieldEntry,
+  FileDriftReport, FileDriftEntry, FileDriftKind,
 } from '../../../services/drift.service';
 
 interface DriftRow { id: number; hub?: DriftRecord; sp?: DriftRecord; }
+
+/** The four buckets the breakdown strip counts — and now filters by. Mirrors the backend's
+ *  DriftDetectionService.breakdown() keys so a chip's count and its filter can't diverge. */
+export type DriftFilterKind = 'hubDiffers' | 'onHubNotLocal' | 'localNotOnHub' | 'sharePoint';
 
 /**
  * Consolidated Drift Center (Sync Dashboard › Drift). One tool over the persisted hub + SharePoint drift:
@@ -35,6 +40,8 @@ export class DriftCenterComponent implements OnInit {
   lastScanAt = signal<string | null>(null);
 
   selected = signal<Set<number>>(new Set());
+  /** entityId -> human label for the drifted rows (from the backend SyncLabelService). */
+  labels = signal<Map<number, string>>(new Map());
 
   compareId = signal<number | null>(null);
   diff = signal<ThreeWayFieldDiff | null>(null);
@@ -49,7 +56,9 @@ export class DriftCenterComponent implements OnInit {
   /** Direction/peer breakdown of what's drifting (from the service signal). */
   breakdown = computed(() => this.drift.breakdown());
 
-  rows = computed<DriftRow[]>(() => {
+  /** Every drifted row of the selected type — the unfiltered set. Label loading and the chip counts read
+   *  THIS, never the filtered view, so searching by name still works after a filter narrows the table. */
+  allRows = computed<DriftRow[]>(() => {
     const byId = new Map<number, DriftRow>();
     for (const r of this.records()) {
       if (r.fieldName !== '_entity_') continue;
@@ -59,13 +68,46 @@ export class DriftCenterComponent implements OnInit {
     }
     return [...byId.values()];
   });
-  allSelected = computed(() => this.rows().length > 0 && this.selected().size === this.rows().length);
+
+  /** Active breakdown filter (a clicked chip), or null for "everything". */
+  kindFilter = signal<DriftFilterKind | null>(null);
+  /** Free-text entity filter — matches the human label or the id. */
+  search = signal('');
+
+  /** What the table shows: breakdown chip AND search, intersected. */
+  rows = computed<DriftRow[]>(() => {
+    const kind = this.kindFilter();
+    const q = this.search().trim().toLowerCase();
+    return this.allRows().filter(r => this.matchesKind(r, kind) && this.matchesSearch(r, q));
+  });
+
+  /** Per-type counts for the chips. The /breakdown signal is GLOBAL (all types); when a type is selected
+   *  the chip must show the number it will actually filter to, or clicking "1957" and getting 3 rows reads
+   *  like a bug. The global number stays available in the chip's tooltip. */
+  typeCounts = computed(() => {
+    const c = { hubDiffers: 0, onHubNotLocal: 0, localNotOnHub: 0, sharePoint: 0 };
+    for (const r of this.allRows()) {
+      if (r.hub?.kind === 'DIFFERING') c.hubDiffers++;
+      else if (r.hub?.kind === 'MISSING_LOCALLY') c.onHubNotLocal++;
+      else if (r.hub?.kind === 'MISSING_ON_PEER') c.localNotOnHub++;
+      if (r.sp) c.sharePoint++;
+    }
+    return c;
+  });
+  filtering = computed(() => this.kindFilter() !== null || this.search().trim() !== '');
+
+  /** Selected rows that are actually VISIBLE. Bulk actions are scoped to these: acting on rows a filter
+   *  has hidden would be a destructive surprise. */
+  visibleSelected = computed(() => this.rows().filter(r => this.selected().has(r.id)).map(r => r.id));
+  allSelected = computed(() => this.rows().length > 0 && this.visibleSelected().length === this.rows().length);
 
   /** The drifted row currently open in the compare drawer — so the drawer can offer the same whole-row
    *  actions (Use Hub / Keep Local / Push) right next to the field diff, instead of forcing a blind choice. */
   compareRow = computed<DriftRow | null>(() => {
     const id = this.compareId();
-    return id == null ? null : (this.rows().find(r => r.id === id) ?? null);
+    // allRows, not rows: the drawer is about ONE row and must keep its actions even if the list filter
+    // (or a search the user typed after opening it) no longer includes that row.
+    return id == null ? null : (this.allRows().find(r => r.id === id) ?? null);
   });
 
   ngOnInit(): void {
@@ -93,7 +135,13 @@ export class DriftCenterComponent implements OnInit {
 
   selectType(type: string): void {
     this.selectedType.set(type);
+    this.filesMode.set(false); // picking an entity type leaves the file-content view
     this.selected.set(new Set());
+    this.labels.set(new Map()); // ids are per-type — never carry labels across a type switch
+    this.search.set('');        // a search term from the previous type is just noise here
+    // The breakdown filter DOES persist: "show me everything that's on the hub but not here" is a
+    // workflow you walk type by type, and the highlighted chip keeps it visible.
+
     this.closeCompare();
     this.loadRecords();
   }
@@ -102,8 +150,148 @@ export class DriftCenterComponent implements OnInit {
     const t = this.selectedType(); if (!t) return;
     this.loadingRecords.set(true);
     this.drift.statusRecords(t).pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(recs => { this.records.set(recs); this.loadingRecords.set(false); });
+      .subscribe(recs => {
+        this.records.set(recs);
+        this.loadingRecords.set(false);
+        this.loadLabels(t);
+      });
   }
+
+  /** Resolve human labels for the drifted rows so the list reads "01-VCND100 · #123", not "#123".
+   *  Mixed local/hub-only ids — the server resolves locally first and only asks the hub for the rest. */
+  private loadLabels(type: string): void {
+    // allRows, not rows: search matches on the label, so every row needs one even while a filter hides it.
+    const ids = this.allRows().map(r => r.id).filter(id => !this.labels().has(id));
+    if (!ids.length) return;
+    this.drift.labels(type, ids).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(m => {
+      this.labels.update(prev => { const n = new Map(prev); m.forEach((v, k) => n.set(k, v)); return n; });
+    });
+  }
+
+  /** Human label for a drifted row; '' until it loads (the id is always shown next to it anyway). */
+  label(id: number): string {
+    const l = this.labels().get(id);
+    return !l || l === '#' + id ? '' : l;
+  }
+
+  // ==================== File-content drift (the bytes channel) ====================
+  // Entity drift compares ROWS; a FileObject row can be perfectly in sync while its PDF is missing from
+  // disk, because bytes travel on a separate queue. This view is its own mode: on-demand scan, path-based
+  // list, pull/push repair.
+
+  filesMode = signal(false);
+  fileReport = signal<FileDriftReport | null>(null);
+  fileScanning = signal(false);
+  fileBusy = signal(false);
+  fileResult = signal('');
+  fileKindFilter = signal<FileDriftKind | null>(null);
+  fileSearch = signal('');
+  fileSelected = signal<Set<string>>(new Set());
+
+  fileRows = computed<FileDriftEntry[]>(() => {
+    const all = this.fileReport()?.entries ?? [];
+    const kind = this.fileKindFilter();
+    const q = this.fileSearch().trim().toLowerCase();
+    return all.filter(e =>
+      (!kind || e.kind === kind) &&
+      (!q || e.relativePath.toLowerCase().includes(q) || (e.label ?? '').toLowerCase().includes(q)));
+  });
+  fileAllSelected = computed(() =>
+    this.fileRows().length > 0 && this.fileRows().every(e => this.fileSelected().has(e.relativePath)));
+  /** Visible + selected only — bulk repair must never touch rows a filter is hiding. */
+  fileVisibleSelected = computed(() =>
+    this.fileRows().filter(e => this.fileSelected().has(e.relativePath)).map(e => e.relativePath));
+  /**
+   * A repair direction is offered only where it's meaningful: you can push anything that EXISTS locally
+   * and pull anything that exists ON THE HUB. SIZE_DIFFERS qualifies for both on purpose — a size
+   * mismatch doesn't say which side is right, so forcing "download" would silently make the hub the
+   * winner and could overwrite a locally-correct file.
+   */
+  filePushable = computed(() =>
+    this.fileRows().filter(e => e.kind !== 'MISSING_LOCALLY' && this.fileSelected().has(e.relativePath))
+      .map(e => e.relativePath));
+  filePullable = computed(() =>
+    this.fileRows().filter(e => e.kind !== 'MISSING_ON_HUB' && this.fileSelected().has(e.relativePath))
+      .map(e => e.relativePath));
+
+  openFiles(): void {
+    this.filesMode.set(true);
+    this.closeCompare();
+    if (!this.fileReport()) this.scanFiles();
+  }
+  closeFiles(): void { this.filesMode.set(false); }
+
+  scanFiles(): void {
+    if (this.fileScanning()) return;
+    this.fileScanning.set(true);
+    this.fileResult.set('');
+    this.drift.scanFiles().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.fileReport.set(r);
+      this.fileScanning.set(false);
+      this.fileSelected.set(new Set());
+    });
+  }
+
+  fileFilterBy(kind: FileDriftKind): void {
+    this.fileKindFilter.set(this.fileKindFilter() === kind ? null : kind);
+  }
+  onFileSearch(v: string): void { this.fileSearch.set(v); }
+  fileToggle(path: string): void {
+    const s = new Set(this.fileSelected());
+    s.has(path) ? s.delete(path) : s.add(path);
+    this.fileSelected.set(s);
+  }
+  fileIsSel(path: string): boolean { return this.fileSelected().has(path); }
+  fileToggleAll(): void {
+    const visible = this.fileRows().map(e => e.relativePath);
+    if (this.fileAllSelected()) {
+      this.fileSelected.update(s => new Set([...s].filter(p => !visible.includes(p))));
+    } else {
+      this.fileSelected.update(s => new Set([...s, ...visible]));
+    }
+  }
+
+  /** Pull from the hub — synchronous, so a re-scan right after gives a truthful result. */
+  pullFiles(paths: string[]): void {
+    if (!paths.length || this.fileBusy()) return;
+    this.fileBusy.set(true);
+    this.drift.pullFiles(paths).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.fileBusy.set(false);
+      this.fileResult.set(r?.message ?? 'Pull failed');
+      this.scanFiles();
+    });
+  }
+
+  /**
+   * Push local-only files up. The upload goes through the existing durable queue, so it completes in the
+   * BACKGROUND — we deliberately do NOT re-scan straight away, because the bytes won't be on the hub yet
+   * and an immediate re-scan would still show the file as drifting and read like the repair failed.
+   */
+  pushFiles(paths: string[]): void {
+    if (!paths.length || this.fileBusy()) return;
+    this.fileBusy.set(true);
+    this.drift.pushFiles(paths).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.fileBusy.set(false);
+      this.fileResult.set(r?.message ?? 'Push failed');
+      this.fileSelected.set(new Set());
+    });
+  }
+
+  fileKindText(k: FileDriftKind): string {
+    return k === 'MISSING_LOCALLY' ? 'on hub, not here'
+      : k === 'MISSING_ON_HUB' ? 'here, not on hub' : 'size differs';
+  }
+  /** Human file size; '—' when that side doesn't have the file at all. */
+  size(bytes?: number): string {
+    if (bytes == null) return '—';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  /** Diff-cell rendering — delegated so the drawer and the in-form popovers read identically. */
+  cellText(f: ThreeWayFieldEntry, side: 'local' | 'hub'): string { return this.drift.valueText(f, side); }
+  cellRaw(f: ThreeWayFieldEntry, side: 'local' | 'hub'): string { return this.drift.valueRaw(f, side); }
 
   scanNow(): void {
     if (this.scanning()) return;
@@ -114,6 +302,36 @@ export class DriftCenterComponent implements OnInit {
       .subscribe(() => { this.scanning.set(false); this.reloadOverview(); this.loadRecords(); });
   }
 
+  // ---- filters ----
+
+  /** Click a breakdown chip to show only that group; click the active one again to clear. */
+  filterBy(kind: DriftFilterKind): void {
+    this.kindFilter.set(this.kindFilter() === kind ? null : kind);
+    this.closeCompare(); // the open row may no longer be in view
+  }
+  onSearch(value: string): void { this.search.set(value); }
+  clearFilters(): void { this.kindFilter.set(null); this.search.set(''); }
+
+  /** Does a row belong to the given breakdown bucket? Same mapping as the backend's breakdown(): a row
+   *  that drifts on BOTH peers counts under its hub kind AND under SharePoint. */
+  private matchesKind(r: DriftRow, kind: DriftFilterKind | null): boolean {
+    if (!kind) return true;
+    switch (kind) {
+      case 'hubDiffers': return r.hub?.kind === 'DIFFERING';
+      case 'onHubNotLocal': return r.hub?.kind === 'MISSING_LOCALLY';
+      case 'localNotOnHub': return r.hub?.kind === 'MISSING_ON_PEER';
+      case 'sharePoint': return !!r.sp;
+    }
+  }
+
+  /** Match on the human label or the id — "vcnd100", "#123" and "123" all find the row. */
+  private matchesSearch(r: DriftRow, q: string): boolean {
+    if (!q) return true;
+    const needle = q.startsWith('#') ? q.slice(1) : q;
+    if (String(r.id).includes(needle)) return true;
+    return (this.labels().get(r.id) ?? '').toLowerCase().includes(q);
+  }
+
   // ---- selection ----
   toggle(id: number): void {
     const s = new Set(this.selected());
@@ -122,12 +340,19 @@ export class DriftCenterComponent implements OnInit {
   }
   isSel(id: number): boolean { return this.selected().has(id); }
   toggleAll(): void {
-    this.selected.set(this.allSelected() ? new Set() : new Set(this.rows().map(r => r.id)));
+    // Scoped to the filtered view — "select all" must never reach rows the user can't see.
+    if (this.allSelected()) {
+      const visible = new Set(this.rows().map(r => r.id));
+      this.selected.update(s => new Set([...s].filter(id => !visible.has(id))));
+    } else {
+      this.selected.update(s => new Set([...s, ...this.rows().map(r => r.id)]));
+    }
   }
 
   // ---- reconcile (row + bulk) ----
   act(id: number, kind: 'hub' | 'local' | 'sp'): void { this.runReconcile([id], kind); }
-  bulk(kind: 'hub' | 'local' | 'sp'): void { this.runReconcile([...this.selected()], kind); }
+  /** Bulk acts on the VISIBLE selection only — see {@link visibleSelected}. */
+  bulk(kind: 'hub' | 'local' | 'sp'): void { this.runReconcile(this.visibleSelected(), kind); }
 
   ackRow(row: DriftRow): void { this.runAck([row.hub?.id, row.sp?.id]); }
   bulkAck(): void {

@@ -30,6 +30,7 @@ public class NgDriftController {
     private final DriftDetectionService driftDetectionService;
     private final SyncComparisonService syncComparisonService;
     private final SyncConfig syncConfig;
+    private final com.dk_power.power_plant_java.sevice.sync.SyncLabelService syncLabelService;
 
     /** Run a full drift scan (both peers, every type) and persist/refresh records. Synchronous. */
     @PostMapping("/scan")
@@ -102,36 +103,54 @@ public class NgDriftController {
 
     /**
      * Friendly labels (id -> tag/name/description) for HUB-ONLY rows the local list can't render — used by the
-     * "missing from local" strip so a row reads "01-VCND100" instead of a bare id. Fetches each entity's data
-     * from the hub (best-effort; falls back to "#id" on any miss) so it works for rows not present locally.
+     * "missing from local" strip so a row reads "01-VCND100" instead of a bare id. One batched hub call
+     * (was one round-trip per id); ids the hub can't resolve come back as "#id".
      */
     @PostMapping("/hub-labels/{entityType}")
     public ResponseEntity<NgApiResponse<Map<Long, String>>> hubLabels(
             @PathVariable String entityType, @RequestBody List<Long> ids) {
-        Map<Long, String> labels = new LinkedHashMap<>();
-        String url = syncConfig.getSyncServerUrl();
-        if (ids != null && url != null && !url.isBlank()) {
-            for (Long id : ids) {
-                try {
-                    labels.put(id, labelFrom(syncComparisonService.fetchServerEntityData(entityType, id, url), id));
-                } catch (Exception e) {
-                    labels.put(id, "#" + id);
-                }
-            }
-        }
-        return ResponseEntity.ok(new NgApiResponse<>(labels, "OK"));
+        return ResponseEntity.ok(new NgApiResponse<>(fill(ids, fetchHubLabels(entityType, ids)), "OK"));
     }
 
-    /** Best-effort human label from a hub entity's serialized fields (camelCase field names). */
-    private String labelFrom(Map<String, String> data, Long id) {
-        if (data != null) {
-            for (String key : List.of("tagNumber", "name", "permitNumber", "title", "description")) {
-                String v = data.get(key);
-                if (v != null && !v.isBlank() && !"null".equals(v)) {
-                    return v.length() > 60 ? v.substring(0, 60) + "…" : v;
-                }
-            }
+    /**
+     * Labels for a MIXED list of drifted rows — the Drift Center's row list, where some ids exist locally
+     * (DIFFERING / MISSING_ON_PEER) and some don't (MISSING_LOCALLY). Resolves locally first (free, no
+     * network) and asks the hub only for what's left, so a normal drift list costs zero or one hub call.
+     */
+    @PostMapping("/labels/{entityType}")
+    public ResponseEntity<NgApiResponse<Map<Long, String>>> labels(
+            @PathVariable String entityType, @RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return ResponseEntity.ok(new NgApiResponse<>(Map.of(), "OK"));
+
+        Map<Long, String> resolved = new LinkedHashMap<>(syncLabelService.labelsFor(entityType, ids));
+        List<Long> unresolved = ids.stream()
+                .filter(id -> id != null && ("#" + id).equals(resolved.get(id)))
+                .toList();
+        if (!unresolved.isEmpty()) resolved.putAll(fetchHubLabels(entityType, unresolved));
+        return ResponseEntity.ok(new NgApiResponse<>(fill(ids, resolved), "OK"));
+    }
+
+    /** One batched hub call; empty (not an error) when sync isn't configured or the hub is unreachable. */
+    private Map<Long, String> fetchHubLabels(String entityType, List<Long> ids) {
+        String url = syncConfig.getSyncServerUrl();
+        if (ids == null || ids.isEmpty() || url == null || url.isBlank()) return Map.of();
+        try {
+            return syncComparisonService.fetchServerEntityLabels(entityType, ids, url);
+        } catch (Exception e) {
+            log.debug("hub labels failed for {}: {}", entityType, e.getMessage());
+            return Map.of();
         }
-        return "#" + id;
+    }
+
+    /** Guarantee an entry per requested id so the UI never has to special-case a missing key. */
+    private Map<Long, String> fill(List<Long> ids, Map<Long, String> resolved) {
+        Map<Long, String> out = new LinkedHashMap<>();
+        if (ids == null) return out;
+        for (Long id : ids) {
+            if (id == null) continue;
+            String v = resolved.get(id);
+            out.put(id, (v == null || v.isBlank()) ? "#" + id : v);
+        }
+        return out;
     }
 }
