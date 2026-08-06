@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class ShiftEntry {
     private String name;
     private String group;
@@ -16,4 +16,7 @@ public class ShiftEntry {
     private String position;
     private Long userId;
     private Double matchConfidence;
+    /** Raw shift code when the bucket alone can't express it — e.g. "L" (Leads Meeting), stored in the
+     *  unscheduled bucket. Null for normal rows, where the containing bucket (day/night/…) IS the shift. */
+    private String code;
 }

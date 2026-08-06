@@ -1008,7 +1008,9 @@ export class PersonnelPageComponent implements OnInit {
     if (hit(day.nightShift)) return 'N';
     if (hit(day.training)) return 'T';
     if (hit(day.pto)) return 'P';
-    if (hit(day.unscheduled)) return 'U';
+    // Unscheduled may carry a raw code the bucket can't express (e.g. "L" Leads Meeting).
+    const u = day.unscheduled?.find(e => this.entryMatchesMe(e, targetName, userId));
+    if (u) return ((u.code as ShiftCode) || 'U');
     return '';
   }
 

@@ -607,7 +607,8 @@ export class PersonnelManager {
       const date: string = d.date;
       (d.dayShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'D'));
       (d.nightShift || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'N'));
-      (d.unscheduled || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'U'));
+      // e.code preserves a raw code the bucket can't express (e.g. "L" Leads Meeting stashed in unscheduled).
+      (d.unscheduled || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, (e.code || 'U') as ShiftCode));
       (d.pto || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'P'));
       (d.training || []).forEach((e: any) => put(keyOf(e), e.name, e.group, e.userId, e.position, date, 'T'));
     }

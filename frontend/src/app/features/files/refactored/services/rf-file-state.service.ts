@@ -354,7 +354,14 @@ export class RfFileStateService {
       .subscribe();
   }
 
-  async submitFormWithFile(item: Partial<FileDto>, file: File, overrideFile: string): Promise<void> {
+  async submitFormWithFile(
+    item: Partial<FileDto>,
+    file: File,
+    overrideFile: string,
+    opts?: { splitMultiPage?: boolean; convertToJpg?: boolean },
+  ): Promise<void> {
+    const splitMultiPage = opts?.splitMultiPage;
+    const convertToJpg = opts?.convertToJpg;
     const fileId = item.id || null;
     const isNew = !fileId;
 
@@ -380,6 +387,15 @@ export class RfFileStateService {
 
     // Append the override/revision flag
     formData.append('overrideFile', overrideFile);
+
+    // Explicit split-multi-page + convert-to-jpg choices (from the client PDF dialog).
+    // Undefined = fall back to fileType policy on the backend.
+    if (splitMultiPage !== undefined) {
+      formData.append('splitMultiPage', String(splitMultiPage));
+    }
+    if (convertToJpg !== undefined) {
+      formData.append('convertToJpg', String(convertToJpg));
+    }
 
     this.apiService.uploadFile(formData)
       .pipe(

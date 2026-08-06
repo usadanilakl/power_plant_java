@@ -2025,18 +2025,28 @@ export class InteractiveImageComponent {
     const deltaX = currentX - this.dragStartPos.x;
     const deltaY = currentY - this.dragStartPos.y;
 
-    // Update positions of all dragged shapes with boundary constraints
+    // Update positions of all dragged shapes with boundary constraints.
+    // COORD-SPACE NOTE: shape.x/y are stored in each shape's originalPictureSize
+    // coordinate space (see canvas-render.service.getNormalizationFactor + scaleShape).
+    // deltaX/deltaY above were computed in the CURRENT-natural coordinate space
+    // (img.naturalWidth/Height). To add them to initialPos, we must first scale each
+    // delta back to that shape's original-picture space per-shape. Without this
+    // conversion the shape teleports on drag whenever the current image dimensions
+    // differ from the picture size the shape was originally drawn on (the classic
+    // "worked before revision, drags to garbage after".)
+    const natW = this.img?.naturalWidth || 0;
+    const natH = this.img?.naturalHeight || 0;
     this.draggedShapeIds.forEach((shapeId) => {
       const initialPos = this.initialShapePositions.get(shapeId);
       const shape = this.shapeManager.getShapeById(shapeId);
 
       if (initialPos && shape && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol' || shape.type === 'file-connector')) {
-        let newX = initialPos.x + deltaX;
-        let newY = initialPos.y + deltaY;
-
-        // Optional: Constrain shapes to stay within image bounds
-        // newX = Math.max(0, Math.min(newX, this.img.naturalWidth - shape.width));
-        // newY = Math.max(0, Math.min(newY, this.img.naturalHeight - shape.height));
+        const origW = shape.originalPictureWidth || natW || 1;
+        const origH = shape.originalPictureHeight || natH || 1;
+        const shapeDeltaX = natW > 0 ? deltaX * (origW / natW) : deltaX;
+        const shapeDeltaY = natH > 0 ? deltaY * (origH / natH) : deltaY;
+        const newX = initialPos.x + shapeDeltaX;
+        const newY = initialPos.y + shapeDeltaY;
 
         this.shapeManager.updateShape(shapeId, {
           x: newX,
@@ -2129,8 +2139,19 @@ export class InteractiveImageComponent {
       this.transformState.scale /
       this.baseImageScale;
 
-    const deltaX = currentX - this.resizeStartPos.x;
-    const deltaY = currentY - this.resizeStartPos.y;
+    const rawDeltaX = currentX - this.resizeStartPos.x;
+    const rawDeltaY = currentY - this.resizeStartPos.y;
+
+    // Same coord-space fix as the drag path: initialShapeBounds is in this shape's
+    // originalPictureSize space; rawDeltaX/Y is in CURRENT-natural space. Scale the
+    // delta back to original-picture space before passing to calculateNewBounds so the
+    // handle math stays consistent even when img.naturalWidth != originalPictureWidth.
+    const natW = this.img?.naturalWidth || 0;
+    const natH = this.img?.naturalHeight || 0;
+    const origW = shape.originalPictureWidth || natW || 1;
+    const origH = shape.originalPictureHeight || natH || 1;
+    const deltaX = natW > 0 ? rawDeltaX * (origW / natW) : rawDeltaX;
+    const deltaY = natH > 0 ? rawDeltaY * (origH / natH) : rawDeltaY;
 
     const newBounds = this.calculateNewBounds(
       this.initialShapeBounds,

@@ -183,12 +183,13 @@ public class NgFileRestController {
     public ResponseEntity<NgApiResponse<Object>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                             @RequestPart(value = "file", required = false) MultipartFile file,
                                                             @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile,
-                                                            @RequestParam(value = "convertToJpg", required = false) Boolean convertToJpg) {
+                                                            @RequestParam(value = "convertToJpg", required = false) Boolean convertToJpg,
+                                                            @RequestParam(value = "splitMultiPage", required = false) Boolean splitMultiPage) {
 
         try {
             Object responseObject = null;
             if (file != null) {
-                responseObject = ngFileService.processPidFile(fileDto, file, overrideFile, convertToJpg);
+                responseObject = ngFileService.processPidFile(fileDto, file, overrideFile, convertToJpg, splitMultiPage);
             } else {
                 responseObject = ngFileService.updateFileObject(fileDto);
             }

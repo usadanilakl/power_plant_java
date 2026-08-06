@@ -130,8 +130,68 @@ export class RfFileEditroComponent {
   /** True when the primary file has a counterpartId pointer (button enabled). */
   hasCounterpart = computed(() => !!this.currentFile()?.counterpartId);
 
+  // ==================== SHAPE COORD-SPACE MISMATCH WARNING ====================
+  // Shapes are stored in the picture-size coordinate space they were drawn on
+  // (Equipment.originalPictureSize). At render time they linearly scale to the
+  // current image's natural dimensions. If a new revision produced a JPG whose
+  // dimensions/aspect differ from what shapes were drawn on, linear scaling can
+  // only account for proportional resize — content-offset drift (different
+  // margins, added/removed title block, different DPI) will visibly misplace
+  // shapes and there is no automatic fix. Warn the user so they know a re-anchor
+  // is needed. Probes the JPG in the background; nothing renders until the
+  // probe completes.
+  currentImageDims = signal<{ width: number; height: number } | null>(null);
+  dimensionWarning = computed<{ pictureSize: string; delta: string } | null>(() => {
+    const dims = this.currentImageDims();
+    const equipment = this.equipment();
+    if (!dims || !equipment || equipment.length === 0) return null;
+    // Collect the unique originalPictureSize strings actually in play on this file.
+    const seen = new Set<string>();
+    for (const eq of equipment) {
+      if (eq.originalPictureSize) seen.add(eq.originalPictureSize);
+    }
+    if (seen.size === 0) return null;
+    const currentAspect = dims.width / dims.height;
+    for (const raw of seen) {
+      const m = raw.replace(/[{}]/g, '').match(/width:(\d+(?:\.\d+)?),\s*height:(\d+(?:\.\d+)?)/i);
+      if (!m) continue;
+      const ow = Number(m[1]);
+      const oh = Number(m[2]);
+      if (!ow || !oh) continue;
+      const aspectDelta = Math.abs((ow / oh) - currentAspect) / currentAspect;
+      const widthDelta = Math.abs(ow - dims.width) / ow;
+      const heightDelta = Math.abs(oh - dims.height) / oh;
+      // Any aspect drift ≥1% OR either linear dim off by ≥5% is a real risk of
+      // visible shape misplacement — linear normalization can't correct for it.
+      if (aspectDelta > 0.01 || widthDelta > 0.05 || heightDelta > 0.05) {
+        return {
+          pictureSize: `${ow}×${oh}`,
+          delta: `now ${dims.width}×${dims.height} (aspect drift ${(aspectDelta * 100).toFixed(1)}%)`,
+        };
+      }
+    }
+    return null;
+  });
+
   constructor() {
-    console.log('[RfFileEditro] constructor fired at', Date.now());
+    // Probe the current image's natural dimensions off the DOM whenever the file
+    // link changes. Uses a bare Image() so we don't depend on the interactive-image
+    // component being loaded / measured. Nulls the signal first so the banner
+    // hides during navigation instead of flashing stale info.
+    effect(() => {
+      const link = this.fileLink();
+      this.currentImageDims.set(null);
+      if (!link || !this.isImage()) return;
+      const probe = new Image();
+      probe.onload = () => {
+        if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+          this.currentImageDims.set({ width: probe.naturalWidth, height: probe.naturalHeight });
+        }
+      };
+      probe.onerror = () => { /* leave dims null — no banner */ };
+      probe.src = link;
+    });
+
     // Keep the counterpart pane in sync when the user navigates to a different
     // primary file. Without this, an open counterpart pane keeps showing the
     // OLD file's counterpart even after the user opens a new file.
@@ -377,6 +437,20 @@ export class RfFileEditroComponent {
           }
         });
     }
+  }
+
+  /**
+   * Bulk-nudge helper for the "shape placement may be inaccurate" banner.
+   * Selects every shape on the current file so the user can drag any one and
+   * they all translate by the same visible delta (per-shape original-picture
+   * scaling is handled in interactive-image.component's drag path). Same as
+   * pressing Ctrl+A on the image, but discoverable from the warning banner
+   * without needing keyboard focus on the canvas.
+   */
+  selectAllShapesForNudge(): void {
+    const ids = this.shapeManager.shapes().map(s => s.id);
+    if (ids.length === 0) return;
+    this.shapeManager.selectMultipleShapes(ids);
   }
 
   // ==================== LOTO POINT FORM METHODS ====================

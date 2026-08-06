@@ -35,6 +35,7 @@ import { LotoStandardPendingChangesPanelComponent } from '../loto-builder/loto-s
 import { LotoStandardCloseReviewDialogComponent } from '../loto-builder/loto-standard-close-review-dialog/loto-standard-close-review-dialog.component';
 import { PointPrerequisitesEditorComponent } from '../loto-builder/point-prerequisites-editor/point-prerequisites-editor.component';
 import { RfLotoPrintService } from '../../../../services/ui/rf-loto-print.service';
+import { RedTagAutomationService } from '../../../../services/automation/red-tag-automation.service';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -70,6 +71,7 @@ export class RfLotoStandardFormComponent {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private printService = inject(RfLotoPrintService);
+  private redTagAutomation = inject(RedTagAutomationService);
 
   /** Read the tab-bar's Duplicate button visibility from the template. */
   canDuplicate = computed(() => !!this.entity().id && this.authService.isControlAuthority());
@@ -589,6 +591,79 @@ export class RfLotoStandardFormComponent {
         console.error('Error creating LOTO permit from standard', err);
         alert(`Error flipping LOTO standard to permit: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
       }
+    });
+  }
+
+  /** Same CA gate as Duplicate — createFromStandard requires CONTROL_AUTHORITY server-side. */
+  canBuildInRedTag = computed(() => !!this.entity().id && this.authService.isControlAuthority());
+  buildInRedTagTooltip = computed(() => {
+    if (!this.entity().id) return 'Save the standard first';
+    if (!this.authService.isControlAuthority()) return 'Requires the Control Authority role';
+    return 'Create a new LOTO permit from this standard and start the Red Tag automation build';
+  });
+  isBuildingInRedTag = signal(false);
+
+  /**
+   * Create a LOTO permit from this standard AND immediately kick off the Red Tag
+   * automation build against the new permit. Mirrors the "Build in Red Tag" button
+   * on the LOTO permit page, but the entry point is a Standard (no existing permit
+   * to build against) — so we call {@code createFromStandard} first, then
+   * {@code redTagAutomation.buildLoto(newId)}, then navigate to the permit editor
+   * so the operator lands on the page that already renders the progress panel and
+   * pause/stop/retry controls.
+   *
+   * <p>If the permit is created but the build kick-off fails, we still navigate so
+   * the operator sees the new permit and can retry from there rather than losing
+   * track of an orphan.
+   */
+  buildInRedTagFromStandard(): void {
+    const standard = this.entity();
+    if (!standard.id) {
+      this.messageService.showError('Save the LOTO standard before starting a Red Tag build.');
+      return;
+    }
+    if (!this.canBuildInRedTag()) {
+      this.messageService.showError('Starting a Red Tag build requires the Control Authority role.');
+      return;
+    }
+    if (this.isBuildingInRedTag()) return;
+
+    const confirmMsg = `Create a new LOTO permit from "${standard.name || 'this standard'}" `
+      + `and start the Red Tag automation build immediately?`;
+    if (!confirm(confirmMsg)) return;
+
+    this.isBuildingInRedTag.set(true);
+    this.lotoService.createFromStandard(standard.id).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (response) => {
+        const newPermitId = response?.responseData?.id;
+        if (!newPermitId) {
+          this.isBuildingInRedTag.set(false);
+          this.messageService.showError('LOTO permit was not created — backend returned no id.');
+          return;
+        }
+        this.redTagAutomation.buildLoto(newPermitId).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+          next: () => {
+            this.isBuildingInRedTag.set(false);
+            this.messageService.showSuccess('LOTO permit created and Red Tag build started.');
+            this.router.navigate(['/loto/loto'], { queryParams: { lotoId: newPermitId } });
+          },
+          error: (err) => {
+            this.isBuildingInRedTag.set(false);
+            const msg = err?.error?.message ?? err?.message ?? 'Failed to start Red Tag build';
+            this.messageService.showError(`${msg}. Permit was created — retry from the permit page.`);
+            this.router.navigate(['/loto/loto'], { queryParams: { lotoId: newPermitId } });
+          },
+        });
+      },
+      error: (err) => {
+        this.isBuildingInRedTag.set(false);
+        this.messageService.showError(
+          `Failed to create LOTO permit: ${err?.error?.message ?? err?.message ?? 'Unknown error'}`);
+      },
     });
   }
 

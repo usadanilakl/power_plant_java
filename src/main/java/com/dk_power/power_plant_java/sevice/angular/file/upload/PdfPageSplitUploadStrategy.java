@@ -18,15 +18,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Handles PDF uploads. Behavior depends on {@link UploadTarget#convertToJpg()}:
+ * Handles PDF uploads. Behavior is now controlled by two independent flags
+ * ({@link UploadTarget#splitMultiPage()} and {@link UploadTarget#convertToJpg()})
+ * so the caller can pick any combination:
  *
  * <ul>
- *   <li><b>true (legacy P&ID behavior)</b>: splits the PDF into single-page PDFs
- *       and generates a jpg per page. Each split page becomes its own FileObject.
- *       Result extensions: {@code [pdf, jpg]}.</li>
- *   <li><b>false</b>: writes the original PDF as-is, no splitting, no jpg derivative.
- *       Single result with extensions: {@code [pdf]}. JPG can be generated on demand
- *       later via {@code POST /ng/files/{id}/ensure-jpg}.</li>
+ *   <li><b>split=true, convertToJpg=true</b> (legacy P&ID behavior): splits the
+ *       PDF into single-page PDFs and generates a jpg per page. Each split page
+ *       becomes its own FileObject. Result extensions: {@code [pdf, jpg]}.</li>
+ *   <li><b>split=true, convertToJpg=false</b>: splits pages but doesn't produce
+ *       jpg derivatives. Each page becomes its own FileObject with extension
+ *       {@code [pdf]}.</li>
+ *   <li><b>split=false, convertToJpg=true</b>: keeps the multi-page PDF as a
+ *       single file and generates ONE jpg from the first page. Extensions:
+ *       {@code [pdf, jpg]}.</li>
+ *   <li><b>split=false, convertToJpg=false</b>: writes the original PDF as-is,
+ *       no splitting, no jpg derivative. Extensions: {@code [pdf]}. JPG can be
+ *       generated on demand later via {@code POST /ng/files/{id}/ensure-jpg}.</li>
  * </ul>
  */
 @Component
@@ -49,17 +57,29 @@ public class PdfPageSplitUploadStrategy implements UploadStrategy {
         }
 
         Path pdfFolder = Paths.get(filesRootPath, "pdf", target.fileTypeName(), target.vendorName());
+        Path jpgFolder = Paths.get(filesRootPath, "jpg", target.fileTypeName(), target.vendorName());
 
-        if (!target.convertToJpg()) {
-            // Plain PDF upload — no split, no jpg derivative.
+        if (!target.splitMultiPage()) {
+            // Keep as single PDF. Optionally produce one jpg (from page 1) if convertToJpg=true.
             MultipartFile renamed = new RenamedMultipartFile(file, target.fileNumber() + ".pdf");
             String written = FileUtil.uploadFileToLocal(renamed, pdfFolder.toString(), override);
             String writtenName = Paths.get(written).getFileName().toString();
             String writtenFileNumber = FileUtil.getNameFromPathWithoutExtension(writtenName);
-            return List.of(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf")));
+            if (!target.convertToJpg()) {
+                return List.of(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf")));
+            }
+            try {
+                File pdfOnDisk = Paths.get(written).toFile();
+                File jpg = PdfConverter.convertPdfToJpg(pdfOnDisk);
+                FileUtil.uploadFileToLocal(jpg, jpgFolder.toString(), override);
+                Files.deleteIfExists(jpg.toPath());
+                return List.of(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf", "jpg")));
+            } catch (IOException e) {
+                log.warn("Kept-as-single PDF upload succeeded but jpg conversion failed for {}: {}",
+                        writtenName, e.getMessage());
+                return List.of(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf")));
+            }
         }
-
-        Path jpgFolder = Paths.get(filesRootPath, "jpg", target.fileTypeName(), target.vendorName());
 
         // Rename incoming file so split-page naming is deterministic
         MultipartFile renamed = new RenamedMultipartFile(file, target.fileNumber() + ".pdf");
@@ -76,14 +96,21 @@ public class PdfPageSplitUploadStrategy implements UploadStrategy {
             for (File pdfPage : splitPages) {
                 try {
                     String writtenPdf = FileUtil.uploadFileToLocal(pdfPage, pdfFolder.toString(), override);
-                    File jpg = PdfConverter.convertPdfToJpg(pdfPage);
-                    FileUtil.uploadFileToLocal(jpg, jpgFolder.toString(), override);
-                    Files.deleteIfExists(pdfPage.toPath());
-                    Files.deleteIfExists(jpg.toPath());
-
                     String writtenName = Paths.get(writtenPdf).getFileName().toString();
                     String writtenFileNumber = FileUtil.getNameFromPathWithoutExtension(writtenName);
-                    results.add(new UploadedFile(writtenFileNumber, "pdf", List.of("pdf", "jpg")));
+
+                    List<String> exts;
+                    if (target.convertToJpg()) {
+                        File jpg = PdfConverter.convertPdfToJpg(pdfPage);
+                        FileUtil.uploadFileToLocal(jpg, jpgFolder.toString(), override);
+                        Files.deleteIfExists(jpg.toPath());
+                        exts = List.of("pdf", "jpg");
+                    } else {
+                        exts = List.of("pdf");
+                    }
+                    Files.deleteIfExists(pdfPage.toPath());
+
+                    results.add(new UploadedFile(writtenFileNumber, "pdf", exts));
                 } catch (IOException e) {
                     log.warn("Failed to write split page {}: {}", pdfPage.getName(), e.getMessage());
                 }

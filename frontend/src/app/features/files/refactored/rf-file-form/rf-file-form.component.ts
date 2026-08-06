@@ -23,6 +23,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { CurrentFileService } from '../../../../services/current-file.service';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { SetCounterpartDialogComponent } from '../set-counterpart-dialog/set-counterpart-dialog.component';
+import { countPdfPages } from '../services/pdf-page-count.util';
 
 type FileFieldName = keyof FileDto;
 
@@ -46,6 +47,17 @@ export class RfFileFormComponent {
   protected isCheckingDuplicates = signal<boolean>(false);
   // Held until user resolves the duplicate modal.
   private pendingSubmit: { fileDtoData: any; file: File; overrideFile: string } | null = null;
+
+  // PDF options dialog state. Shown after file select on submit for EVERY .pdf
+  // upload — the user picks two things independently:
+  //   1. Split multi-page PDFs into one FileObject per page (only meaningful when
+  //      pages > 1; for single-page PDFs the flag is a no-op)
+  //   2. Also generate a JPG derivative (for the file viewer / shape drawing)
+  // pageCount is best-effort informational; null = unknown, don't show a count.
+  protected pdfPrompt = signal<{ pageCount: number | null; fileName: string } | null>(null);
+  protected pdfPromptSplit = signal<boolean>(true);
+  protected pdfPromptConvertToJpg = signal<boolean>(true);
+  private pendingPdfSubmit: { fileDtoData: any; file: File; overrideFile: string } | null = null;
 
   entityInput = input<FileDto>();
   fieldsInput = input<FileFieldName[]>([]);
@@ -479,7 +491,57 @@ export class RfFileFormComponent {
       }
     }
 
+    // PDF? Always ask the user what to do (split? JPG?) before firing.
+    if (await this.shouldPromptForPdfOptions(file)) {
+      this.pendingPdfSubmit = { fileDtoData, file, overrideFile };
+      return;
+    }
+
     this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
+  }
+
+  /**
+   * Returns true if this is a PDF upload — in which case we open the PDF-options
+   * dialog and hold the submit until the user resolves it. Non-PDF uploads
+   * bypass the dialog entirely.
+   *
+   * Page count is best-effort (see {@link countPdfPages}) and only used as an
+   * informational label in the dialog. The dialog fires for every PDF regardless
+   * of detection success, so the modern-object-stream PDFs whose page count can't
+   * be extracted from raw bytes still get the choice.
+   */
+  private async shouldPromptForPdfOptions(file: File): Promise<boolean> {
+    if (!file || !/\.pdf$/i.test(file.name)) return false;
+    const pageCount = await countPdfPages(file);
+    // Reset choices to safe defaults (split + JPG = today's PID behavior) each
+    // time the dialog opens so a prior submission doesn't leak state.
+    this.pdfPromptSplit.set(true);
+    this.pdfPromptConvertToJpg.set(true);
+    this.pdfPrompt.set({ pageCount, fileName: file.name });
+    return true;
+  }
+
+  /**
+   * User confirmed the PDF-options dialog. Resumes the held submit with the
+   * chosen {@code splitMultiPage} + {@code convertToJpg} overrides.
+   */
+  protected confirmPdfPrompt(): void {
+    const pending = this.pendingPdfSubmit;
+    const split = this.pdfPromptSplit();
+    const convertToJpg = this.pdfPromptConvertToJpg();
+    this.pendingPdfSubmit = null;
+    this.pdfPrompt.set(null);
+    if (!pending) return;
+    this.stateService.submitFormWithFile(pending.fileDtoData, pending.file, pending.overrideFile, {
+      splitMultiPage: split,
+      convertToJpg,
+    });
+  }
+
+  /** User dismissed the PDF-options dialog — cancels the upload. */
+  protected cancelPdfPrompt(): void {
+    this.pendingPdfSubmit = null;
+    this.pdfPrompt.set(null);
   }
 
   /**
@@ -526,7 +588,7 @@ export class RfFileFormComponent {
   }
 
   /** Submit using the matched file's identity, attaching the user's selected bytes. */
-  private applyToMatch(matchFile: FileDto, overrideFile: string): void {
+  private async applyToMatch(matchFile: FileDto, overrideFile: string): Promise<void> {
     if (!this.pendingSubmit) return;
     const { file } = this.pendingSubmit;
     const targetDto: any = {
@@ -540,6 +602,10 @@ export class RfFileFormComponent {
     };
     this.duplicateReport.set(null);
     this.pendingSubmit = null;
+    if (await this.shouldPromptForPdfOptions(file)) {
+      this.pendingPdfSubmit = { fileDtoData: targetDto, file, overrideFile };
+      return;
+    }
     this.stateService.submitFormWithFile(targetDto, file, overrideFile);
   }
 
@@ -563,11 +629,15 @@ export class RfFileFormComponent {
    * a prefix or suffix. Without this button the user's only escape was
    * "Cancel upload" — no way to actually save what they picked.
    */
-  protected onSaveAsNew(): void {
+  protected async onSaveAsNew(): Promise<void> {
     if (!this.pendingSubmit) return;
     const { fileDtoData, file, overrideFile } = this.pendingSubmit;
     this.duplicateReport.set(null);
     this.pendingSubmit = null;
+    if (await this.shouldPromptForPdfOptions(file)) {
+      this.pendingPdfSubmit = { fileDtoData, file, overrideFile };
+      return;
+    }
     this.stateService.submitFormWithFile(fileDtoData, file, overrideFile);
   }
 

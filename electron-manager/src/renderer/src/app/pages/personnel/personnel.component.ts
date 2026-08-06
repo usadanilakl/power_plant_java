@@ -799,6 +799,7 @@ const GROUP_LABELS: Record<string, string> = {
     .shift-pto { color: #3b82f6; }
     .shift-training { color: #f59e0b; }
     .shift-ocm { color: #ec4899; font-size: 9px; }
+    .shift-leads { color: #b45309; }   /* L — Leads Meeting */
 
     /* Contacts table */
     .contacts-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -1599,7 +1600,7 @@ export class PersonnelComponent implements OnInit {
   }
 
   getShiftClass(code: string): string {
-    const map: Record<string, string> = { 'D': 'shift-day', 'N': 'shift-night', 'U': 'shift-off', 'P': 'shift-pto', 'T': 'shift-training', 'OCM': 'shift-ocm' };
+    const map: Record<string, string> = { 'D': 'shift-day', 'N': 'shift-night', 'U': 'shift-off', 'P': 'shift-pto', 'T': 'shift-training', 'OCM': 'shift-ocm', 'L': 'shift-leads' };
     return map[code] || 'shift-off';
   }
 

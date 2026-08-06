@@ -455,6 +455,9 @@ public class ShiftDayService {
                 case "P" -> pto.add(e);
                 case "T" -> training.add(e);
                 case "OCM" -> onCallManagers.add(e);
+                // Leads Meeting has no dedicated bucket; stash it in unscheduled but tag the entry with
+                // its raw code so consumers render "L" instead of "U" (it was being dropped entirely).
+                case "L" -> unscheduled.add(e.toBuilder().code("L").build());
                 default -> { /* unknown code — silently skip */ }
             }
         }

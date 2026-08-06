@@ -88,6 +88,15 @@
                   </button>
                 }
                 <button type="button" class="counterpart-btn" (click)="flipToPermit()">Flip to Permit</button>
+                @if (canBuildInRedTag()) {
+                  <button type="button" class="counterpart-btn"
+                          (click)="buildInRedTagFromStandard()"
+                          [disabled]="isBuildingInRedTag()"
+                          [title]="buildInRedTagTooltip()"
+                          data-testid="build-in-red-tag-btn">
+                    {{ isBuildingInRedTag() ? 'Starting…' : '🚦 Build in Red Tag' }}
+                  </button>
+                }
                 <button type="button" class="counterpart-btn"
                         (click)="onPrintPids()"
                         [disabled]="isPrintingPids()"

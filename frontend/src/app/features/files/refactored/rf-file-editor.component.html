@@ -1,4 +1,19 @@
 <div class="split-view-container" [class.table-open]="isLotoPointTableOpen()">
+  @if (dimensionWarning(); as warn) {
+    <div class="dim-mismatch-banner" role="alert">
+      <strong>⚠ Shape placement may be inaccurate</strong> —
+      shapes on this file were drawn against a {{ warn.pictureSize }} image; {{ warn.delta }}.
+      Linear scaling can't compensate for content-offset drift (different margins, title block, DPI).
+      <br>
+      <strong>Fix (uniform offset):</strong>
+      <button type="button" class="dim-banner-btn" (click)="selectAllShapesForNudge()"
+              title="Selects every shape on this file. Then drag any one shape to move them all together.">
+        Select all shapes
+      </button>
+      then drag any shape — all selected shapes move together with the same delta.
+      Release to save. (Or use <kbd>Ctrl+A</kbd> on the image.)
+    </div>
+  }
   <!-- Image/PDF Section -->
   <div class="image-section">
     <div class="image-container" [class.with-counterpart]="showCounterpart() && hasCounterpart()">

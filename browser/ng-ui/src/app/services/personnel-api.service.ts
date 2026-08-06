@@ -31,6 +31,7 @@ export interface ShiftEntry {
   position?: string;         // Lead / Control Room Operator / Auxiliary Operator (ops); blank for others
   userId?: number;
   matchConfidence?: number;
+  code?: string;             // raw shift code the bucket can't express (e.g. "L" Leads Meeting in unscheduled)
 }
 
 /** Per-day open-seat counts — the coverage chip data. GET /coverage-signup/open. */

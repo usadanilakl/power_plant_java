@@ -185,6 +185,19 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     /**
+     * Decide whether to split a multi-page PDF upload into one FileObject per page.
+     * Precedence: explicit param > fileType.convertToJpg (historical proxy) > true.
+     *
+     * Historically split was implicit in {@code convertToJpg} — this fallback keeps
+     * that behavior for callers that don't pass an explicit split flag.
+     */
+    private boolean resolveSplitMultiPage(Boolean explicit, com.dk_power.power_plant_java.entities.categories.Value fileType) {
+        if (explicit != null) return explicit;
+        if (fileType != null && fileType.getConvertToJpg() != null) return fileType.getConvertToJpg();
+        return true;
+    }
+
+    /**
      * SHA-256 hex of the given bytes. Used to set {@code FileObject.fileHash}
      * on the canonical source file so sync can detect content changes.
      */
@@ -399,15 +412,24 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override) throws IOException {
-        return processPidFile(fileDto, file, override, null);
+        return processPidFile(fileDto, file, override, null, null);
+    }
+
+    /** Legacy 4-arg overload: split follows convertToJpg. */
+    public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override, Boolean convertToJpg) throws IOException {
+        return processPidFile(fileDto, file, override, convertToJpg, null);
     }
 
     /**
-     * @param convertToJpg explicit override for PDF→JPG conversion. {@code null}
-     *                     falls back to the fileType's {@code convertToJpg} policy
-     *                     (and ultimately to {@code true} for backwards compat).
+     * @param convertToJpg   explicit override for PDF→JPG conversion. {@code null}
+     *                       falls back to the fileType's {@code convertToJpg} policy
+     *                       (and ultimately to {@code true} for backwards compat).
+     * @param splitMultiPage explicit override for splitting multi-page PDFs into one
+     *                       FileObject per page. {@code null} falls back to fileType
+     *                       policy — historically the same field as convertToJpg.
      */
-    public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override, Boolean convertToJpg) throws IOException {
+    public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override,
+                                        Boolean convertToJpg, Boolean splitMultiPage) throws IOException {
 
         if (file == null) throw new RuntimeException("File is required");
 
@@ -426,6 +448,28 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String originalSourceHash = computeSha256(file.getBytes());
 
         String baseName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
+
+        // Revise branch: snapshot the pre-existing entity's OLD identifiers BEFORE
+        // convertIdDtoToEntity mutates the managed instance in place. We need the OLD
+        // fileNumber/type/vendor to (a) locate current on-disk siblings, (b) relocate them
+        // if the user renamed on the same submission, and (c) build an UploadTarget whose
+        // target path already contains the current file — so FileUtil's -revN collision
+        // suffix fires instead of silently orphaning the old file.
+        boolean isRevise = !override && fileDto.getId() != null && fileDto.getId() != 0;
+        String oldBaseName = null;
+        String oldFileTypeName = null;
+        String oldVendorName = null;
+        if (isRevise) {
+            FileObject preExisting = fileRepo.findById(fileDto.getId()).orElse(null);
+            if (preExisting != null) {
+                oldBaseName = stripRevSuffix(preExisting.getFileNumber());
+                oldFileTypeName = preExisting.getFileType() != null ? preExisting.getFileType().getName() : null;
+                oldVendorName = preExisting.getVendor() != null ? preExisting.getVendor().getName() : null;
+            } else {
+                isRevise = false;
+            }
+        }
+
         // Template entity carries the target metadata (fileType, vendor, name, etc.)
         FileObject template = convertIdDtoToEntity(fileDto);
         template.setBaseLink(filesRelativePath);
@@ -434,11 +478,35 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             throw new RuntimeException("fileType and vendor are required");
         }
 
+        // For revise: strip any -revN off the incoming/existing base name and, if the
+        // user also renamed/re-typed/re-vendored on the same submission, move the whole
+        // sibling group (X.pdf + X-rev1.pdf + …) to the new location BEFORE writing the
+        // new bytes. Then the strategy's -revN detector finds the moved siblings and
+        // increments correctly instead of orphaning them at the old path.
+        //
+        // Also mutates template.fileNumber to the stripped base name so applyUploadResult's
+        // later setFileNumber("X-revK") produces "X-revK" — not the cascading "X-rev1-revK".
+        String targetBaseName = baseName;
+        if (isRevise) {
+            String newBase = stripRevSuffix(template.getFileNumber());
+            String newType = template.getFileType().getName();
+            String newVendor = template.getVendor().getName();
+            boolean identifiersChanged = !Objects.equals(oldBaseName, newBase)
+                    || !Objects.equals(oldFileTypeName, newType)
+                    || !Objects.equals(oldVendorName, newVendor);
+            if (identifiersChanged) {
+                relocateSiblingsForRevise(oldBaseName, oldFileTypeName, oldVendorName, template, newBase);
+            }
+            template.setFileNumber(newBase);
+            targetBaseName = newBase;
+        }
+
         UploadStrategy.UploadTarget target = new UploadStrategy.UploadTarget(
-                baseName,
+                targetBaseName,
                 template.getFileType().getName(),
                 template.getVendor().getName(),
-                resolveConvertToJpg(convertToJpg, template.getFileType())
+                resolveConvertToJpg(convertToJpg, template.getFileType()),
+                resolveSplitMultiPage(splitMultiPage, template.getFileType())
         );
         UploadStrategy strategy = uploadStrategyRegistry.get(fileExtension);
         List<UploadStrategy.UploadedFile> uploaded = strategy.upload(file, target, override);
@@ -485,6 +553,49 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         fileObject.buildFileLink();
     }
 
+    /** Strip a trailing "-revN" (any digits) so we can re-derive the base identity. */
+    private static String stripRevSuffix(String name) {
+        if (name == null) return null;
+        return name.replaceFirst("-rev\\d+$", "");
+    }
+
+    /**
+     * Revise-branch helper: relocate the existing on-disk sibling group ({@code X.pdf,
+     * X-rev1.pdf, X-rev1.jpg, …}) from the OLD (fileType, vendor, baseName) folder to
+     * the NEW folder, renaming each to {@code newBaseName} while preserving that
+     * file's {@code -revN} suffix and extension. Used when the user renames / re-types
+     * / re-vendors on the same submission as a revise, so the strategy's {@code -revN}
+     * collision suffix fires at the NEW path (instead of writing the new bytes
+     * unversioned at an empty new path and orphaning the old file).
+     */
+    private void relocateSiblingsForRevise(String oldBaseName,
+                                           String oldFileTypeName,
+                                           String oldVendorName,
+                                           FileObject newEntity,
+                                           String newBaseName) throws IOException {
+        if (oldBaseName == null || oldFileTypeName == null || oldVendorName == null) return;
+        // Build a lightweight lookup entity that mirrors the OLD on-disk layout.
+        // Using the passed newEntity would already be mutated to the new type/vendor,
+        // so we can't reuse getFilesWithAllExtensions(newEntity) here.
+        List<String> exts = newEntity.getExtensionsArray();
+        if (exts.isEmpty() && newEntity.getExtension() != null && !newEntity.getExtension().isEmpty()) {
+            exts = List.of(newEntity.getExtension());
+        }
+        for (String ext : exts) {
+            // OLD folder path built from OLD identifiers.
+            Path oldFolder = Paths.get(filesRootPath,
+                    newEntity.getBaseLink() + "/" + ext + "/" + oldFileTypeName + "/" + oldVendorName);
+            if (!Files.exists(oldFolder)) continue;
+            List<File> siblings = FileUtil.getRevisionsByFileNumber(oldBaseName, oldFolder.toString());
+            for (File oldFile : siblings) {
+                String newName = FileUtil.renameFileWithRevisions(oldFile, newBaseName);
+                Path newPath = Paths.get(filesRootPath, newEntity.buildRelativeFolder(ext)).resolve(newName);
+                logger.info("Revise-relocate: {} -> {}", oldFile.toPath(), newPath);
+                FileUtil.moveFileAndCleanup(oldFile.toPath(), newPath);
+            }
+        }
+    }
+
     /**
      * Process multiple files at once. All files share the same fileType and vendor.
      * File number is derived from each original filename (without extension). File
@@ -495,10 +606,15 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      * everything else through direct upload.
      */
     public List<FileDto> processMultipleFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName) throws IOException {
-        return processMultipleFiles(files, fileTypeId, vendorId, sharedFileName, null);
+        return processMultipleFiles(files, fileTypeId, vendorId, sharedFileName, null, null);
     }
 
+    /** Legacy 5-arg overload: split follows convertToJpg. */
     public List<FileDto> processMultipleFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName, Boolean convertToJpg) throws IOException {
+        return processMultipleFiles(files, fileTypeId, vendorId, sharedFileName, convertToJpg, null);
+    }
+
+    public List<FileDto> processMultipleFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName, Boolean convertToJpg, Boolean splitMultiPage) throws IOException {
         if (files == null || files.isEmpty()) {
             throw new RuntimeException("No files provided");
         }
@@ -511,6 +627,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         boolean useSharedName = sharedFileName != null && !sharedFileName.trim().isEmpty();
         String effectiveSharedName = useSharedName ? sharedFileName.trim() : null;
         boolean effectiveConvertToJpg = resolveConvertToJpg(convertToJpg, fileType);
+        boolean effectiveSplitMultiPage = resolveSplitMultiPage(splitMultiPage, fileType);
 
         List<FileDto> uploadedFiles = new ArrayList<>();
 
@@ -534,7 +651,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                     fileNameWithoutExtension,
                     fileType.getName(),
                     vendor.getName(),
-                    effectiveConvertToJpg
+                    effectiveConvertToJpg,
+                    effectiveSplitMultiPage
             );
             UploadStrategy strategy = uploadStrategyRegistry.get(extension);
             List<UploadStrategy.UploadedFile> uploaded = strategy.upload(file, target, false);

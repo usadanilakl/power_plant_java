@@ -35,15 +35,24 @@ public interface UploadStrategy {
      * Destination metadata used by strategies to build the on-disk path.
      * Matches the FileObject path scheme: {@code {filesRoot}/{ext}/{fileType}/{vendor}/{fileNumber}.{ext}}.
      *
-     * @param fileNumber    base name of the file(s) without extension
-     * @param fileTypeName  the FileObject's fileType name (e.g. "PID", "Manual")
-     * @param vendorName    the FileObject's vendor name
-     * @param convertToJpg  for PDF uploads: whether to split pages + generate jpg derivatives.
-     *                      Ignored by non-PDF strategies. True = legacy P&ID behavior.
+     * @param fileNumber      base name of the file(s) without extension
+     * @param fileTypeName    the FileObject's fileType name (e.g. "PID", "Manual")
+     * @param vendorName      the FileObject's vendor name
+     * @param convertToJpg    for PDF uploads: whether to also produce jpg derivative(s).
+     *                        Ignored by non-PDF strategies.
+     * @param splitMultiPage  for PDF uploads: whether to split a multi-page PDF into
+     *                        one FileObject per page. When false, the multi-page PDF
+     *                        is kept as a single file. Ignored by non-PDF strategies.
      */
-    record UploadTarget(String fileNumber, String fileTypeName, String vendorName, boolean convertToJpg) {
+    record UploadTarget(String fileNumber, String fileTypeName, String vendorName,
+                        boolean convertToJpg, boolean splitMultiPage) {
+        /** Legacy convenience: default both to true (historical P&ID behavior). */
         public UploadTarget(String fileNumber, String fileTypeName, String vendorName) {
-            this(fileNumber, fileTypeName, vendorName, true);
+            this(fileNumber, fileTypeName, vendorName, true, true);
+        }
+        /** Legacy convenience: split defaults to convertToJpg (matches pre-split-flag behavior). */
+        public UploadTarget(String fileNumber, String fileTypeName, String vendorName, boolean convertToJpg) {
+            this(fileNumber, fileTypeName, vendorName, convertToJpg, convertToJpg);
         }
     }
 
