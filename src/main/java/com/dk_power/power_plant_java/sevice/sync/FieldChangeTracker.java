@@ -13,8 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -56,6 +58,11 @@ public class FieldChangeTracker {
 
     @org.springframework.beans.factory.annotation.Value("${sync.membership.orset.enabled:false}")
     private boolean membershipOrsetEnabled;
+
+    // Used to run the OR-Set local-membership bookkeeping in its OWN transaction AFTER the entity commit
+    // (see recordLocalMembershipEvents). Field-injected to avoid touching the generated constructor.
+    @org.springframework.beans.factory.annotation.Autowired
+    private PlatformTransactionManager transactionManager;
 
     // Lazy injection to avoid circular dependency
     private FileObjectSyncHandler fileObjectSyncHandler;
@@ -683,8 +690,6 @@ public class FieldChangeTracker {
 
     private void publishOnCommit(List<FieldChange> changes, String entityType,
                                  BaseIdEntity newEntity, boolean isCreate) {
-        // Record this node's own M2M edits into the OR-Set, in-tx (before the afterCommit publish).
-        recordLocalMembershipEvents(changes);
         // Capture the origin client id from the current request thread NOW —
         // once the afterCommit callback fires the request thread may already
         // be re-used by a different request whose header would leak in.
@@ -693,6 +698,9 @@ public class FieldChangeTracker {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    // OR-Set local-membership bookkeeping AFTER commit, in its own tx (see
+                    // recordLocalMembershipEvents) — never mid-flush, never able to roll back the create.
+                    recordLocalMembershipEvents(changes);
                     log.debug("Publishing {} changes for sync broadcast (afterCommit)", changes.size());
                     try {
                         syncEventPublisher.publishChanges(changes, originClientId);
@@ -712,6 +720,9 @@ public class FieldChangeTracker {
                 }
             });
         } else {
+            // No active transaction (background worker) — nothing to defer; the membership bookkeeping
+            // opens its own tx internally, and there is no in-flush hazard here.
+            recordLocalMembershipEvents(changes);
             log.debug("Publishing {} changes for sync broadcast (no active synchronization)", changes.size());
             syncEventPublisher.publishChanges(changes, originClientId);
             if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
@@ -726,12 +737,13 @@ public class FieldChangeTracker {
      * re-notifying the file handler for a removed entity would be wrong.
      */
     private void publishChangesOnCommit(List<FieldChange> changes) {
-        recordLocalMembershipEvents(changes);
         final String originClientId = requestClientIdContext.currentOrNull();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    // OR-Set bookkeeping post-commit, own tx (never mid-flush) — see recordLocalMembershipEvents.
+                    recordLocalMembershipEvents(changes);
                     try {
                         syncEventPublisher.publishChanges(changes, originClientId);
                     } catch (Exception e) {
@@ -741,6 +753,7 @@ public class FieldChangeTracker {
                 }
             });
         } else {
+            recordLocalMembershipEvents(changes);
             syncEventPublisher.publishChanges(changes, originClientId);
         }
     }
@@ -748,27 +761,34 @@ public class FieldChangeTracker {
     /**
      * Record this node's OWN owning-side @ManyToMany edits into the OR-Set (membership_event), keyed by
      * the change's GLOBAL id, so its event log matches what receivers record from the same synced change.
-     * Without this the editing node's OR-Set lacks its own additions and later diverges. No-op unless the
-     * OR-Set flag is on; events only — the join table is already written locally by Hibernate.
+     * Without this the editing node's OR-Set lacks its own additions and later diverges.
+     *
+     * <p><b>Runs AFTER the entity commit, each change in its OWN {@code REQUIRES_NEW} transaction.</b> This
+     * is emitted from {@code @PostPersist}/{@code @PostUpdate}, which fire DURING the commit-time flush;
+     * {@link MembershipCrdtService#recordLocalMembership} does JPA {@code save()} + native queries, and
+     * doing those mid-flush triggers a REENTRANT flush that marks the whole transaction rollback-only —
+     * which silently rolled back the primary create (observed live: "Equipment#…​.lotoPoints" creates
+     * failing with "marked as rollback-only"). The primary write must NEVER depend on this best-effort
+     * bookkeeping. Post-commit the join rows are durable and visible, so {@code recordLocalMembership}'s
+     * reconcile is a clean no-op for the winning edit; on failure the entity is already safely committed
+     * and the join self-heals on the next edit or drift scan. Full stack trace is logged (not just
+     * {@code getMessage()}) so any residual failure is diagnosable. No-op unless the OR-Set flag is on.
      */
     private void recordLocalMembershipEvents(List<FieldChange> changes) {
         if (!membershipOrsetEnabled || membershipCrdtService == null || changes == null) return;
-        // recordLocalMembership reconciles the join with native INSERT/DELETE, which needs a real
-        // transaction — the same one that just wrote the join. Every real owning-M2M edit reaches here
-        // under MANDATORY/REQUIRES_NEW propagation, so one is active. If somehow none is (the non-tx
-        // background-publish branch of publish*OnCommit), there was no local join write to reconcile
-        // either — skip rather than fail a native update outside a tx.
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) return;
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         for (FieldChange c : changes) {
             if (!"ManyToMany".equals(c.getRelationshipType()) || c.getEntityId() == null) continue;
             try {
-                membershipCrdtService.recordLocalMembership(
+                tx.executeWithoutResult(s -> membershipCrdtService.recordLocalMembership(
                         c.getEntityType(), c.getEntityId(), c.getFieldName(),
                         c.getOldValue(), c.getNewValue(),
-                        new MembershipCrdtService.OrderKey(c.getTimestamp(), c.getOriginMachineId(), c.getId()));
+                        new MembershipCrdtService.OrderKey(c.getTimestamp(), c.getOriginMachineId(), c.getId())));
             } catch (Exception e) {
-                log.error("OR-Set: failed to record local membership for {}#{}.{}: {}",
-                        c.getEntityType(), c.getEntityId(), c.getFieldName(), e.getMessage());
+                log.error("OR-Set: failed to record local membership for {}#{}.{} (entity already committed; "
+                        + "join reconciles on next edit/drift scan)",
+                        c.getEntityType(), c.getEntityId(), c.getFieldName(), e);
             }
         }
     }

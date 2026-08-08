@@ -57,24 +57,24 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
   `,
   styles: [`
     .pl { padding: 10px 12px; }
-    .pl-net { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
-    .pl-pending { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
-    .pl-msg { padding: 20px; text-align: center; color: #777; }
-    .pl-err { color: #c62828; }
+    .pl-net { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .pl-pending { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--accent-color); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .pl-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
+    .pl-err { color: var(--danger-text); }
     .pl-sec { margin-bottom: 16px; }
-    .pl-sec-h { font-size: 13px; font-weight: 700; color: #37474f; text-transform: uppercase; margin-bottom: 6px; }
-    .pl-count { background: #eceff1; border-radius: 8px; padding: 0 7px; font-size: 11px; color: #607d8b; }
-    .pl-card { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+    .pl-sec-h { font-size: 13px; font-weight: 700; color: var(--primary-text); text-transform: uppercase; margin-bottom: 6px; }
+    .pl-count { background: var(--secondary-background); border-radius: 8px; padding: 0 7px; font-size: 11px; color: var(--secondary-text); }
+    .pl-card { display: flex; align-items: center; gap: 10px; background: var(--card-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
     .pl-body { flex: 1; min-width: 0; }
-    .pl-name { font-size: 15px; font-weight: 600; }
+    .pl-name { font-size: 15px; font-weight: 600; color: var(--primary-text); }
     .pl-meta { margin-top: 4px; }
-    .pl-chip { display: inline-block; background: #eef2f7; color: #445; border-radius: 4px; padding: 2px 7px; margin: 2px 4px 0 0; font-size: 12px; }
-    .pl-grab { margin-top: 5px; color: #e65100; font-size: 12px; }
-    .pl-blocked { margin-top: 5px; color: #b71c1c; font-size: 12px; }
-    .pl-go.view { background: #607d8b; }
-    .pl-go { flex: none; background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 10px 14px; font-size: 14px; }
-    .pl-go:disabled { background: #90caf9; }
-    .pl-empty { color: #999; font-size: 13px; padding: 6px 2px; }
+    .pl-chip { display: inline-block; background: var(--secondary-background); color: var(--secondary-text); border-radius: 4px; padding: 2px 7px; margin: 2px 4px 0 0; font-size: 12px; }
+    .pl-grab { margin-top: 5px; color: var(--warning-text); font-size: 12px; }
+    .pl-blocked { margin-top: 5px; color: var(--danger-text); font-size: 12px; }
+    .pl-go.view { background: var(--secondary-text); }
+    .pl-go { flex: none; min-height: 48px; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 10px 16px; font-size: 15px; font-weight: 600; }
+    .pl-go:disabled { opacity: 0.5; }
+    .pl-empty { color: var(--secondary-text); font-size: 13px; padding: 6px 2px; }
   `],
 })
 export class LotoPermitListComponent implements OnInit {

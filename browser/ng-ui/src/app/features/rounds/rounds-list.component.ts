@@ -64,22 +64,22 @@ import { RoundListItem } from './rounds.model';
   `,
   styles: [`
     .rl { padding: 10px 12px; }
-    .rl-offline { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
-    .rl-pending { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
-    .rl-issues { width: 100%; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; border-radius: 8px; padding: 10px; font-size: 14px; margin-bottom: 12px; }
-    .rl-msg { padding: 20px; text-align: center; color: #777; }
-    .rl-error { color: #c62828; }
-    .rl-card { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .rl-offline { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .rl-pending { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--accent-color); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .rl-issues { width: 100%; background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 12px; font-size: 14px; margin-bottom: 12px; }
+    .rl-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
+    .rl-error { color: var(--danger-text); }
+    .rl-card { display: flex; align-items: center; gap: 10px; background: var(--card-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
     .rl-body { flex: 1; min-width: 0; }
-    .rl-name { font-size: 15px; font-weight: 600; }
+    .rl-name { font-size: 15px; font-weight: 600; color: var(--primary-text); }
     .rl-meta { margin-top: 4px; }
-    .rl-chip { display: inline-block; background: #eef2f7; color: #445; border-radius: 4px; padding: 2px 7px; margin: 2px 4px 0 0; font-size: 12px; }
-    .rl-chip.due { background: #ffebee; color: #c62828; font-weight: 600; }
-    .rl-last { margin-top: 4px; color: #999; font-size: 12px; }
-    .rl-grabbed { margin-top: 5px; color: #e65100; font-size: 12px; }
-    .rl-go { flex: none; background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; }
-    .rl-go:disabled { background: #90caf9; }
-    .rl-continue { background: #2e7d32; }
+    .rl-chip { display: inline-block; background: var(--secondary-background); color: var(--secondary-text); border-radius: 4px; padding: 2px 7px; margin: 2px 4px 0 0; font-size: 12px; }
+    .rl-chip.due { background: var(--danger-bg); color: var(--danger-text); font-weight: 600; }
+    .rl-last { margin-top: 4px; color: var(--secondary-text); font-size: 12px; }
+    .rl-grabbed { margin-top: 5px; color: var(--warning-text); font-size: 12px; }
+    .rl-go { flex: none; min-height: 48px; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 10px 18px; font-size: 15px; font-weight: 600; }
+    .rl-go:disabled { opacity: 0.5; }
+    .rl-continue { background: var(--success-solid); }
   `],
 })
 export class RoundsListComponent implements OnInit {

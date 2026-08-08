@@ -1,81 +1,29 @@
 import { Injectable } from '@angular/core';
 
+/**
+ * Read-only queries about the current viewport.
+ *
+ * This used to rewrite the <meta name="viewport"> tag on every resize and force the page back to
+ * "mobile view" whenever `innerWidth > screen.width * 1.5`. That heuristic was unreliable, and on a
+ * tablet where someone had deliberately asked for the desktop site it overrode their choice. The
+ * static meta tag in index.html is the single source of truth now — it already sets
+ * `width=device-width, viewport-fit=cover` and keeps pinch-zoom available via `maximum-scale=5`.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class ViewportService {
-  
-  constructor() {
-    this.enforceResponsiveView();
-  }
 
-  /**
-   * Enforces responsive/mobile view by detecting and resetting desktop mode
-   */
-  private enforceResponsiveView(): void {
-    // Check if viewport is set to desktop width
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    
-    if (viewportMeta) {
-      // Ensure viewport is always set for mobile
-      viewportMeta.setAttribute('content', 
-        'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes'
-      );
-    }
-
-    // Listen for viewport changes
-    window.addEventListener('resize', () => {
-      this.checkViewportScale();
-    });
-
-    // Initial check
-    this.checkViewportScale();
-  }
-
-  /**
-   * Checks if the viewport scale has been changed (desktop mode requested)
-   */
-  private checkViewportScale(): void {
-    const viewportWidth = window.innerWidth;
-    const screenWidth = window.screen.width;
-    
-    // If viewport width is significantly larger than screen width,
-    // user might have requested desktop site
-    if (viewportWidth > screenWidth * 1.5) {
-      console.warn('Desktop mode detected, enforcing mobile view');
-      this.resetViewport();
-    }
-  }
-
-  /**
-   * Resets viewport to mobile-friendly settings
-   */
-  private resetViewport(): void {
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    if (viewportMeta) {
-      viewportMeta.setAttribute('content', 
-        'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes'
-      );
-      
-      // Force a reflow
-      window.dispatchEvent(new Event('resize'));
-    }
-  }
-
-  /**
-   * Checks if the app is running in standalone mode (installed PWA)
-   */
+  /** True when running as an installed PWA rather than a browser tab. */
   isStandalone(): boolean {
     return window.matchMedia('(display-mode: standalone)').matches ||
            (window.navigator as any).standalone === true;
   }
 
-  /**
-   * Gets the actual device type
-   */
+  /** Coarse device class by width. Matches the 768px breakpoint used across the app's CSS. */
   getDeviceType(): 'mobile' | 'tablet' | 'desktop' {
     const width = window.innerWidth;
-    
+
     if (width < 768) {
       return 'mobile';
     } else if (width < 1024) {

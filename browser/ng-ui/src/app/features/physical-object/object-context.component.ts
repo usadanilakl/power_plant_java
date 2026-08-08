@@ -148,37 +148,37 @@ type Tab = 'overview' | 'loto' | 'files' | 'logs' | 'checks' | 'maximo';
     </div>
   `,
   styles: [`
-    .oc { font-size: 14px; }
-    .oc-msg { padding: 16px; color: #666; text-align: center; }
-    .oc-error { color: #c62828; }
-    .oc-head { padding: 8px 0 6px; border-bottom: 1px solid #eee; }
-    .oc-title { font-size: 16px; font-weight: 600; }
+    .oc { font-size: 14px; color: var(--primary-text); }
+    .oc-msg { padding: 16px; color: var(--secondary-text); text-align: center; }
+    .oc-error { color: var(--danger-text); }
+    .oc-head { padding: 8px 0 6px; border-bottom: 1px solid var(--border-color); }
+    .oc-title { font-size: 16px; font-weight: 600; color: var(--primary-text); }
     .oc-sub { margin-top: 4px; }
-    .oc-crumb { margin-top: 4px; color: #888; font-size: 12px; }
-    .oc-report { margin-top: 8px; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
-    .oc-chip { display: inline-block; background: #eef2f7; color: #445; border-radius: 4px; padding: 2px 7px; margin: 2px 4px 2px 0; font-size: 12px; }
-    .oc-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid #eee; margin-top: 6px; }
-    .oc-tabs button { flex: none; background: none; border: none; padding: 8px 10px; font-size: 13px; color: #666; border-bottom: 2px solid transparent; }
-    .oc-tabs button.active { color: #1976d2; border-bottom-color: #1976d2; font-weight: 600; }
+    .oc-crumb { margin-top: 4px; color: var(--secondary-text); font-size: 12px; }
+    .oc-report { margin-top: 8px; background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+    .oc-chip { display: inline-block; background: var(--secondary-background); color: var(--secondary-text); border-radius: 4px; padding: 2px 7px; margin: 2px 4px 2px 0; font-size: 12px; }
+    .oc-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--border-color); margin-top: 6px; }
+    .oc-tabs button { flex: none; background: none; border: none; padding: 8px 12px; font-size: 13px; color: var(--secondary-text); border-bottom: 2px solid transparent; }
+    .oc-tabs button.active { color: var(--accent-color); border-bottom-color: var(--accent-color); font-weight: 600; }
     .oc-body { padding: 8px 0; }
     .oc-dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
-    .oc-dl dt { color: #888; font-size: 12px; }
+    .oc-dl dt { color: var(--secondary-text); font-size: 12px; }
     .oc-dl dd { margin: 0; }
-    .oc-row { padding: 7px 0; border-bottom: 1px solid #f0f0f0; }
+    .oc-row { padding: 7px 0; border-bottom: 1px solid var(--border-color); }
     .oc-link { display: block; text-decoration: none; color: inherit; }
     .oc-row-main { font-size: 14px; }
-    .oc-muted { color: #888; }
-    .oc-row-sub { display: flex; gap: 10px; color: #999; font-size: 12px; margin-top: 2px; }
-    .oc-empty { color: #999; padding: 12px 0; text-align: center; font-size: 13px; }
-    .oc-attn-row { background: #fff8e1; }
+    .oc-muted { color: var(--secondary-text); }
+    .oc-row-sub { display: flex; gap: 10px; color: var(--secondary-text); font-size: 12px; margin-top: 2px; }
+    .oc-empty { color: var(--secondary-text); padding: 12px 0; text-align: center; font-size: 13px; }
+    .oc-attn-row { background: var(--warning-bg); }
     .oc-addlog { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 8px; }
-    .oc-addlog textarea { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 5px; font: inherit; resize: vertical; }
-    .oc-addlog button { background: #1976d2; color: #fff; border: none; border-radius: 5px; padding: 6px 12px; }
-    .oc-attn { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #777; }
-    .oc-mx-group { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; margin: 8px 0 2px; }
+    .oc-addlog textarea { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 5px; font: inherit; font-size: 16px; resize: vertical; background: var(--input-bg); color: var(--primary-text); }
+    .oc-addlog button { background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 5px; padding: 6px 14px; }
+    .oc-attn { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--secondary-text); }
+    .oc-mx-group { font-size: 12px; font-weight: 600; color: var(--secondary-text); text-transform: uppercase; margin: 8px 0 2px; }
     .oc-badge { border-radius: 3px; padding: 1px 5px; font-size: 10px; margin-left: 6px; }
-    .oc-badge.oor { background: #ffebee; color: #c62828; }
-    .oc-last { color: #666; }
+    .oc-badge.oor { background: var(--danger-bg); color: var(--danger-text); }
+    .oc-last { color: var(--secondary-text); }
   `],
 })
 export class ObjectContextComponent {

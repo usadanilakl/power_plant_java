@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 export type MessageColor = 'red' | 'green' | 'white' | 'yellow' | 'orange';
-export type MessageType = 'blocking' | 'informational' | 'loading';
+export type MessageType = 'blocking' | 'informational' | 'loading' | 'confirm' | 'prompt';
 
 export interface Message {
   text: string;
@@ -10,6 +10,17 @@ export interface Message {
   durationMs: number;
   type: MessageType;
   isMinimized: boolean;
+  /** confirm/prompt only — button labels. */
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** prompt only — placeholder and seed value for the text field. */
+  placeholder?: string;
+  initialValue?: string;
+  /**
+   * confirm/prompt only — settled by the component when the user picks. Confirm resolves boolean;
+   * prompt resolves the entered string, or null on cancel.
+   */
+  resolve?: (value: any) => void;
 }
 
 @Injectable({
@@ -34,6 +45,7 @@ export class GlobalMessageService {
    */
   showInfo(text: string, color: MessageColor = 'green', durationMs = 8000, minimizeAfterMs = 1500) {
     this.clearTimeouts();
+    this.settlePending();
 
     this.messageSubject.next({
       text,
@@ -83,8 +95,51 @@ export class GlobalMessageService {
     this.show(text, color, 0, 'loading');
   }
 
+  /**
+   * In-app replacement for window.confirm(). Native dialogs render as "site says…" on Android,
+   * are dismissed by rotation, and look broken in an installed PWA — so ask inside the app instead.
+   * Resolves true when confirmed, false on cancel / backdrop dismiss.
+   */
+  confirm(text: string, opts: { confirmLabel?: string; cancelLabel?: string; color?: MessageColor } = {}): Promise<boolean> {
+    this.clearTimeouts();
+    this.settlePending();
+    return new Promise<boolean>(resolve => {
+      this.messageSubject.next({
+        text,
+        color: opts.color ?? 'yellow',
+        durationMs: 0,
+        type: 'confirm',
+        isMinimized: false,
+        confirmLabel: opts.confirmLabel ?? 'OK',
+        cancelLabel: opts.cancelLabel ?? 'Cancel',
+        resolve: (v: boolean) => resolve(v),
+      });
+    });
+  }
+
+  /** In-app replacement for window.prompt(). Resolves the entered text, or null on cancel. */
+  promptText(text: string, opts: { placeholder?: string; initialValue?: string; confirmLabel?: string; cancelLabel?: string } = {}): Promise<string | null> {
+    this.clearTimeouts();
+    this.settlePending();
+    return new Promise<string | null>(resolve => {
+      this.messageSubject.next({
+        text,
+        color: 'white',
+        durationMs: 0,
+        type: 'prompt',
+        isMinimized: false,
+        placeholder: opts.placeholder ?? '',
+        initialValue: opts.initialValue ?? '',
+        confirmLabel: opts.confirmLabel ?? 'Save',
+        cancelLabel: opts.cancelLabel ?? 'Cancel',
+        resolve: (v: string | null) => resolve(v),
+      });
+    });
+  }
+
   private show(text: string, color: MessageColor, durationMs: number, type: MessageType) {
     this.clearTimeouts();
+    this.settlePending();
 
     this.messageSubject.next({
       text,
@@ -111,7 +166,21 @@ export class GlobalMessageService {
 
   hideMessage() {
     this.clearTimeouts();
+    this.settlePending();
     this.messageSubject.next(null);
+  }
+
+  /**
+   * Settle an in-flight confirm/prompt as "cancelled" so an awaiting caller can never hang — e.g.
+   * a navigation, or any newer message superseding the dialog while it is still open.
+   */
+  private settlePending() {
+    const current = this.messageSubject.value;
+    if (current?.resolve) {
+      current.resolve(current.type === 'confirm' ? false : null);
+      // Drop the resolver so a later hideMessage() can't settle the same promise twice.
+      this.messageSubject.next({ ...current, resolve: undefined });
+    }
   }
 
   private clearTimeouts() {

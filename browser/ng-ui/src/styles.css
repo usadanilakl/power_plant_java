@@ -22,6 +22,23 @@
   --error-bg: #f8d7da;
   --error-text: #721c24;
 
+  /* Semantic status palette — soft (tinted panel) + solid (filled badge/button) + border.
+     Field screens key pass/fail/warn off these so both themes stay legible. */
+  --success-solid: #2e7d32;
+  --success-border: #a5d6a7;
+  --danger-bg: #fdecea;
+  --danger-text: #c62828;
+  --danger-solid: #c62828;
+  --danger-border: #ef9a9a;
+  --warning-bg: #fff8e1;
+  --warning-text: #8d6e00;
+  --warning-solid: #e67e22;
+  --warning-border: #ffe082;
+  --info-bg: #eef4fb;
+  --info-text: #1976d2;
+  /* Text/icon colour on top of any *-solid fill. */
+  --on-solid: #ffffff;
+
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
   --menu-item-hover-bg-color: var(--secondary-background);
@@ -53,6 +70,22 @@
   --error-bg: #3d1b1b;
   --error-text: #ef9a9a;
 
+  /* Semantic status palette — dark. Solids stay saturated enough to read as status at a glance
+     outdoors; soft backgrounds are dark tints so cards don't glare on night shift. */
+  --success-solid: #2e7d32;
+  --success-border: #2e7d32;
+  --danger-bg: #3d1b1b;
+  --danger-text: #ef9a9a;
+  --danger-solid: #c62828;
+  --danger-border: #8e3b3b;
+  --warning-bg: #3a2f14;
+  --warning-text: #ffcc80;
+  --warning-solid: #e67e22;
+  --warning-border: #7a5c1e;
+  --info-bg: #1e2f42;
+  --info-text: #7fb8f0;
+  --on-solid: #ffffff;
+
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
   --menu-item-hover-bg-color: var(--secondary-background);
@@ -81,6 +114,67 @@ body.menu-open {
   position: fixed !important;
   width: 100% !important;
   height: 100% !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile baseline
+   --------------------------------------------------------------------------- */
+
+/*
+ * iOS Safari auto-zooms the page when a focused control's text is under 16px, and never zooms back —
+ * disorienting halfway through a checklist. Floor every focusable control at 16px on touch-primary
+ * devices. Scoped to (pointer: coarse) so desktop keeps its denser type.
+ */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: max(16px, 1em);
+  }
+}
+
+/*
+ * Field use means gloves. WCAG 2.5.8 asks for 24px; Apple/Google both say 44-48px. Anything that is
+ * hit-tested gets a 44px minimum box on touch devices unless a component opts out with .tap-exempt
+ * (inline text links, tightly-packed table affordances that have their own larger hit area).
+ */
+@media (pointer: coarse) {
+  button:not(.tap-exempt),
+  [role="button"]:not(.tap-exempt),
+  summary:not(.tap-exempt),
+  a.btn:not(.tap-exempt) {
+    min-height: 44px;
+  }
+
+  /* Checkboxes/radios are drawn at their intrinsic size; grow the box itself rather than a wrapper. */
+  input[type="checkbox"]:not(.tap-exempt),
+  input[type="radio"]:not(.tap-exempt) {
+    min-width: 22px;
+    min-height: 22px;
+  }
+}
+
+/*
+ * Safe-area helpers. index.html sets viewport-fit=cover, so the page paints under the notch and the
+ * home indicator; anything pinned to a screen edge must pad itself back out. Use these rather than
+ * hand-rolling env() at each call site.
+ */
+.safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-left   { padding-left:   env(safe-area-inset-left, 0px); }
+.safe-right  { padding-right:  env(safe-area-inset-right, 0px); }
+
+/* Respect the OS "reduce motion" setting — several spinners and badges animate indefinitely. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 

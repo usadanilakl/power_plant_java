@@ -10,6 +10,7 @@ import { LotoPermitApiService } from './loto-permit-api.service';
 import { LotoPermitStore } from './loto-permit-store.service';
 import { LotoPermitSyncService } from './loto-permit-sync.service';
 import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto-permit.model';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 /**
  * Hang or Verify a LOTO permit (mode from route data). HANG is order-locked: a point is available only once every
@@ -109,41 +110,42 @@ import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto
   `,
   styles: [`
     .ph { padding: 10px 12px 90px; }
-    .ph-back { background: none; border: none; color: #1976d2; padding: 4px 0 8px; font-size: 14px; }
-    .ph-net { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
-    .ph-msg { padding: 20px; text-align: center; color: #777; }
-    .ph-err { color: #c62828; }
+    .ph-back { background: none; border: none; color: var(--accent-color); padding: 4px 0 8px; font-size: 14px; }
+    .ph-net { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .ph-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
+    .ph-err { color: var(--danger-text); }
     .ph-head { margin-bottom: 10px; }
-    .ph-title { font-size: 16px; font-weight: 600; }
-    .ph-sub { color: #666; font-size: 13px; margin-top: 2px; }
-    .ph-p { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
-    .ph-p.done { border-color: #a5d6a7; background: #f4fbf4; }
+    .ph-title { font-size: 16px; font-weight: 600; color: var(--primary-text); }
+    .ph-sub { color: var(--secondary-text); font-size: 13px; margin-top: 2px; }
+    .ph-p { background: var(--card-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .ph-p.done { border-color: var(--success-border); background: var(--success-bg); }
     .ph-p.locked { opacity: 0.6; }
     .ph-p-head { display: flex; justify-content: space-between; align-items: center; }
-    .ph-tag { font-weight: 700; }
+    .ph-tag { font-weight: 700; color: var(--primary-text); }
     .ph-flags { display: flex; align-items: center; gap: 8px; }
-    .ph-badge.ok { background: #e8f5e9; color: #2e7d32; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
-    .ph-dwg { background: #eef4fb; color: #1976d2; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; }
-    .ph-desc { margin: 4px 0 6px; font-size: 14px; }
-    .ph-pos { display: flex; flex-wrap: wrap; gap: 10px; color: #555; font-size: 12px; }
-    .ph-lock { margin-top: 8px; background: #fff3e0; color: #e65100; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
-    .ph-blocked { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
+    .ph-badge.ok { background: var(--success-bg); color: var(--success-text); border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+    .ph-dwg { background: var(--info-bg); color: var(--info-text); border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; }
+    .ph-desc { margin: 4px 0 6px; font-size: 14px; color: var(--primary-text); }
+    .ph-pos { display: flex; flex-wrap: wrap; gap: 10px; color: var(--secondary-text); font-size: 12px; }
+    .ph-lock { margin-top: 8px; background: var(--warning-bg); color: var(--warning-text); border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+    .ph-blocked { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
     .ph-safety { margin-top: 8px; }
-    .ph-safety-h { font-size: 12px; color: #666; font-weight: 600; }
-    .ph-chk { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; margin-top: 3px; }
-    .ph-notes { width: 100%; margin-top: 8px; padding: 7px; border: 1px solid #ccc; border-radius: 6px; font: inherit; resize: vertical; }
-    .ph-mark { margin-top: 8px; width: 100%; padding: 10px; border: 1px solid #cfcfcf; border-radius: 8px; background: #fafafa; font-size: 15px; }
-    .ph-mark.on { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+    .ph-safety-h { font-size: 12px; color: var(--secondary-text); font-weight: 600; }
+    .ph-chk { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; margin-top: 3px; color: var(--primary-text); min-height: 44px; }
+    .ph-notes { width: 100%; margin-top: 8px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font: inherit; font-size: 16px; resize: vertical; background: var(--input-bg); color: var(--primary-text); }
+    .ph-mark { margin-top: 8px; width: 100%; min-height: 52px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--secondary-background); color: var(--primary-text); font-size: 16px; font-weight: 600; }
+    .ph-mark.on { background: var(--success-solid); color: var(--on-solid); border-color: var(--success-solid); }
     .ph-mark:disabled { opacity: 0.5; }
-    .ph-foot { position: sticky; bottom: 0; background: #fff; padding: 10px 0; border-top: 1px solid #eee; }
-    .ph-sign { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-    .ph-sign.dis { color: #aaa; }
-    .ph-submit { width: 100%; margin-top: 8px; background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 13px; font-size: 16px; }
-    .ph-submit:disabled { background: #90caf9; }
+    .ph-foot { position: sticky; bottom: 0; background: var(--primary-background); padding: 10px 0; border-top: 1px solid var(--border-color); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+    .ph-sign { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--primary-text); min-height: 44px; }
+    .ph-sign.dis { color: var(--secondary-text); opacity: 0.7; }
+    .ph-submit { width: 100%; min-height: 52px; margin-top: 8px; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 13px; font-size: 16px; font-weight: 600; }
+    .ph-submit:disabled { opacity: 0.5; }
   `],
 })
 export class LotoPermitPhaseComponent implements OnInit {
   private api = inject(LotoPermitApiService);
+  private globalMessage = inject(GlobalMessageService);
   private store = inject(LotoPermitStore);
   private syncSvc = inject(LotoPermitSyncService);
   private drawingSvc = inject(LotoDrawingService);
@@ -332,14 +334,14 @@ export class LotoPermitPhaseComponent implements OnInit {
         if (res.aggregateSigned) parts.push('signed complete');
         if (res.failures?.length) parts.push(`${res.failures.length} rejected: ${res.failures[0]}`);
         if (res.aggregateMessage) parts.push(res.aggregateMessage);
-        alert('Submitted — ' + parts.join(', '));
+        this.globalMessage.showSuccess('Submitted — ' + parts.join(', '));
         this.router.navigate(['/loto']);
       },
       error: (err) => {
         this.submitting.set(false);
         const status = err?.status;
         if (status === 400 || status === 409) this.error.set(err?.error?.message || 'Rejected — review and retry.');
-        else { alert('No connection — saved and will submit automatically when back online.'); this.router.navigate(['/loto']); }
+        else { this.globalMessage.showInfo('No connection — saved and will submit automatically when back online.', 'yellow'); this.router.navigate(['/loto']); }
       },
     });
   }

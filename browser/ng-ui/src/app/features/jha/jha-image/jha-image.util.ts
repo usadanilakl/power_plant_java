@@ -1,12 +1,16 @@
-import html2canvas from 'html2canvas';
 import { Jha } from '../../../models/permits/jha.model';
 
 /**
  * Captures the JHA form data as a PNG image (base64).
  * Builds an off-screen HTML element styled like the paper JHA form,
  * renders it with html2canvas, then cleans up.
+ *
+ * html2canvas is loaded on demand: it is a large CommonJS dependency (an optimization bailout at
+ * build time) and is only needed at the moment a JHA is actually submitted, not when the form opens.
  */
 export async function captureJhaAsImage(jha: Jha): Promise<string> {
+  const { default: html2canvas } = await import('html2canvas');
+
   const container = document.createElement('div');
   container.style.position = 'absolute';
   container.style.left = '-9999px';

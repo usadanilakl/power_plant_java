@@ -85,7 +85,7 @@ import { MaximoInventoryItem, MaximoLocation, PartsCheckoutRequest, PartsCheckou
                       <span class="pc-line-desc">{{ ln.item.description }}</span>
                       @if (ln.item.status === 'OBSOLETE') { <span class="pc-obs">OBSOLETE — can't issue</span> }
                     </div>
-                    <input class="pc-qty" type="number" min="1" step="1" [value]="ln.qty" (input)="setQty(i, $any($event.target).value)">
+                    <input class="pc-qty" type="number" inputmode="numeric" min="1" step="1" [value]="ln.qty" (input)="setQty(i, $any($event.target).value)">
                     <button class="pc-rm" (click)="removeLine(i)">✕</button>
                   </div>
                 }

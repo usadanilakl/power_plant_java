@@ -203,7 +203,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
                 }
                 @case ('number') {
                   <label class="wd-field">{{ row.f.label }}{{ row.f.unit ? ' (' + row.f.unit + ')' : '' }}{{ req(row.f) }}
-                    <input type="number" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)">
+                    <input type="number" inputmode="decimal" [value]="val(row.f.name)" (input)="setVal(row.f.name, $any($event.target).value)">
                   </label>
                 }
                 @case ('date') {
@@ -236,7 +236,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
                       @if (waitInfo(row.f); as w) { <div class="wd-timer-wait" [class.ready]="w.ready">{{ w.text }}</div> }
                       <div class="wd-timer-row">
                         <button type="button" class="wd-timer-go start" (click)="startTimer(row.f)">▶ Start timing</button>
-                        <input class="wd-timer-manual" type="number" step="0.1" placeholder="or type sec"
+                        <input class="wd-timer-manual" type="number" inputmode="decimal" step="0.1" placeholder="or type sec"
                                (input)="setVal(row.f.name, $any($event.target).value)">
                       </div>
                     }
@@ -284,7 +284,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
               </div>
             } @else {
               <label class="wd-field">Labor hours
-                <input type="number" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value); autosave()" placeholder="e.g. 1.5">
+                <input type="number" inputmode="decimal" step="0.25" min="0" [value]="hours()" (input)="hours.set($any($event.target).value); autosave()" placeholder="e.g. 1.5">
               </label>
               <label class="wd-field">Summary
                 <input type="text" [value]="summary()" (input)="summary.set($any($event.target).value); autosave()" placeholder="Short work summary">

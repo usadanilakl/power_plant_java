@@ -47,7 +47,6 @@ public class MembershipSeedService {
 
     private final EntityManager entityManager;
     private final MembershipEventRepository eventRepository;
-    private final MembershipCrdtService membershipCrdtService;
     private final PlatformTransactionManager transactionManager;
 
     @Value("${sync.membership.orset.enabled:false}")
@@ -82,35 +81,71 @@ public class MembershipSeedService {
         List<OwningM2M> fields = discoverOwningManyToMany();
         log.info("membership.seed starting — {} owning @ManyToMany field(s), baseline={}", fields.size(), baseline);
 
-        new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
-            long total = 0;
-            for (OwningM2M f : fields) {
-                total += seedField(f, baseline);
+        // Seed each field in its OWN transaction (not one giant tx): the join tables total ~25k rows on a
+        // real cluster, and holding a single write-locked transaction over all of them starves a busy hub
+        // (single-writer H2). Per-field commits release the lock between tables and keep each undo log
+        // small. Each field is a bulk INSERT…SELECT (one statement) guarded by NOT EXISTS, so the whole
+        // seed is idempotent — a crash mid-seed just re-runs the unseeded fields next boot.
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        long total = 0;
+        for (OwningM2M f : fields) {
+            try {
+                Long n = tx.execute(s -> seedField(f, baseline));
+                total += (n != null ? n : 0);
+            } catch (Exception e) {
+                log.error("membership.seed FAILED at {}.{} ({}) — marker NOT written, will retry next boot",
+                        f.entityType(), f.fieldName(), e.getMessage());
+                return;
             }
-            // Marker last, in the SAME tx — so a crash mid-seed rolls back entirely and re-runs next boot.
-            eventRepository.save(new MembershipEvent(MARKER_OWNER_TYPE, 0L, MARKER_FIELD, -1L, Op.RESET,
-                    baseline, MembershipCrdtService.SEED_ORIGIN,
-                    java.util.UUID.nameUUIDFromBytes("membership-seed-marker".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
-            log.info("membership.seed complete — seeded {} baseline ADD event(s) across {} field(s)", total, fields.size());
-        });
+        }
+        // Marker only after EVERY field committed — so a partial seed re-runs (NOT EXISTS makes it safe).
+        // Wrapped in try/catch so a marker-write failure logs loudly but NEVER propagates out of the
+        // ApplicationReadyEvent listener (an uncaught throw here fails the whole app startup). Op is ADD
+        // (a plain sentinel row keyed by owner_type '__seed_marker__') — it deliberately does NOT use
+        // RESET, so the marker survives even a stale op CHECK constraint on a table created before RESET
+        // existed; if the seed itself never persisted, the marker's absence just re-runs it next boot.
+        final long seeded = total;
+        try {
+            tx.executeWithoutResult(s -> eventRepository.save(new MembershipEvent(MARKER_OWNER_TYPE, 0L, MARKER_FIELD, -1L,
+                    Op.ADD, baseline, MembershipCrdtService.SEED_ORIGIN,
+                    java.util.UUID.nameUUIDFromBytes("membership-seed-marker".getBytes(java.nio.charset.StandardCharsets.UTF_8)))));
+            log.info("membership.seed complete — seeded {} baseline ADD event(s) across {} field(s)", seeded, fields.size());
+        } catch (Exception e) {
+            log.error("membership.seed marker write FAILED — seeded {} row(s) but the marker did not persist; "
+                    + "the seed will re-run idempotently next boot. Cause: {}", seeded, e.getMessage());
+        }
     }
 
-    /** Read every join row for one field and record a baseline ADD; returns rows seeded. */
-    @SuppressWarnings("unchecked")
+    /**
+     * Bulk-seed one baseline ADD per join row for one field in a SINGLE {@code INSERT…SELECT}. The
+     * {@code NOT EXISTS} guard makes it idempotent (re-runnable). {@code change_id} is RANDOM per row —
+     * safe: {@code membership_event} is LOCAL (never syncs) and the baseline ts predates every real edit,
+     * so a seed row can never win a comparison; only its EXISTENCE matters, which converges because both
+     * nodes seed the same (drift-verified) join rows. Table/column names come from the entity's
+     * {@code @JoinTable}, not user input. Returns rows inserted.
+     */
     private long seedField(OwningM2M f, Instant baseline) {
-        List<Object[]> rows = entityManager.createNativeQuery(
-                        "SELECT " + f.ownerColumn() + ", " + f.inverseColumn() + " FROM " + f.joinTable())
-                .getResultList();
-        for (Object[] row : rows) {
-            if (row[0] == null || row[1] == null) continue;
-            Long ownerId = ((Number) row[0]).longValue();
-            Long elementId = ((Number) row[1]).longValue();
-            membershipCrdtService.seedBaselineAdd(f.entityType(), ownerId, f.fieldName(), elementId, baseline);
+        // SELECT DISTINCT the (owner, element) pairs first: some legacy join tables (e.g. file_point) hold
+        // duplicate rows, and without de-duping the single INSERT would emit two identical ADD events and
+        // hit the membership_event unique constraint. DISTINCT is applied in the inner query (not on the
+        // outer row, which carries a per-row RANDOM_UUID). NOT EXISTS keeps it idempotent across re-runs.
+        String sql = "INSERT INTO membership_event (owner_type, owner_id, field_name, element_id, op, ts, origin, change_id) "
+                + "SELECT ?1, d.oid, ?2, d.eid, 'ADD', ?3, ?4, RANDOM_UUID() FROM ("
+                + "SELECT DISTINCT j." + f.ownerColumn() + " AS oid, j." + f.inverseColumn() + " AS eid "
+                + "FROM " + f.joinTable() + " j "
+                + "WHERE j." + f.ownerColumn() + " IS NOT NULL AND j." + f.inverseColumn() + " IS NOT NULL) d "
+                + "WHERE NOT EXISTS (SELECT 1 FROM membership_event me WHERE me.owner_type = ?1 "
+                + "AND me.owner_id = d.oid AND me.field_name = ?2 AND me.element_id = d.eid AND me.op = 'ADD')";
+        int inserted = entityManager.createNativeQuery(sql)
+                .setParameter(1, f.entityType())
+                .setParameter(2, f.fieldName())
+                .setParameter(3, java.sql.Timestamp.from(baseline))
+                .setParameter(4, MembershipCrdtService.SEED_ORIGIN)
+                .executeUpdate();
+        if (inserted > 0) {
+            log.info("membership.seed {}.{} → {} row(s) from {}", f.entityType(), f.fieldName(), inserted, f.joinTable());
         }
-        if (!rows.isEmpty()) {
-            log.info("membership.seed {}.{} → {} join row(s) from {}", f.entityType(), f.fieldName(), rows.size(), f.joinTable());
-        }
-        return rows.size();
+        return inserted;
     }
 
     /** Every owning-side @ManyToMany (has @JoinTable) on a synced BaseIdEntity — the same set the apply path handles. */

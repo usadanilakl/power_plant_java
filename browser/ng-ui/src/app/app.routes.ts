@@ -1,23 +1,13 @@
 import { Routes } from '@angular/router';
 
-import { WorkRequestPageComponent } from './pages/work-request-page/work-request-page.component';
-import { JhaPageComponent } from './pages/jha-page/jha-page.component';
-import { WorkRequestComponent } from './features/work-request/work-request.component';
-import { JhaComponent } from './features/jha/jha.component';
+/*
+ * Every screen is lazy-loaded. Eagerly importing the Tier-1 screens (work request, JHA, inventory,
+ * SDS, instruments, field lists) pulled their whole dependency trees into the initial bundle — which
+ * is the worst place for them, since those are the screens most often opened cold on plant cellular.
+ * Guards stay eager: they're tiny and must run before the chunk is fetched.
+ */
 import { standaloneGuard } from './guards/standalone.guard';
 import { userSetupGuard } from './guards/user-setup.guard';
-import { InstrumentPageComponent } from './pages/instrument-page/instrument-page.component';
-import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
-import { InstrumentFormComponent } from './features/equipment/instrument/instrument-form/instrument-form.component';
-import { HomePageComponent } from './pages/home-page/home-page.component';
-import { FieldListPageComponent } from './pages/field-list-page/field-list-page.component';
-import { FieldListComponent } from './features/field-list/field-list.component';
-import { InventoryPageComponent } from './pages/inventory-page/inventory-page.component';
-import { InventoryComponent } from './features/inventory/inventory.component';
-import { SdsPageComponent } from './pages/sds-page/sds-page.component';
-import { SdsComponent } from './features/sds/sds.component';
-import { SdsAuditPageComponent } from './pages/sds-audit-page/sds-audit-page.component';
-import { SdsAuditComponent } from './features/sds-audit/sds-audit.component';
 import { authGuard } from './auth/auth.guard';
 import { plantGuard } from './guards/plant.guard';
 import { plantGroupGuard } from './guards/plant-group.guard';
@@ -41,25 +31,25 @@ export const routes: Routes = [
     { path: '', redirectTo: '/home', pathMatch: 'full' },
     {
       path: 'home',
-      component: HomePageComponent,
+      loadComponent: () => import('./pages/home-page/home-page.component').then(m => m.HomePageComponent),
       canActivate: [standaloneGuard, userSetupGuard]
     },
     {
       path: 'work-request',
-      component: WorkRequestPageComponent,
+      loadComponent: () => import('./pages/work-request-page/work-request-page.component').then(m => m.WorkRequestPageComponent),
       canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: WorkRequestComponent }
+        { path: 'form', loadComponent: () => import('./features/work-request/work-request.component').then(m => m.WorkRequestComponent) }
       ]
     },
     {
       path: 'jha',
-      component: JhaPageComponent,
+      loadComponent: () => import('./pages/jha-page/jha-page.component').then(m => m.JhaPageComponent),
       canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: JhaComponent }
+        { path: 'form', loadComponent: () => import('./features/jha/jha.component').then(m => m.JhaComponent) }
       ]
     },
     {
@@ -91,38 +81,38 @@ export const routes: Routes = [
     },
     {
       path: 'field-lists',
-      component: FieldListPageComponent,
+      loadComponent: () => import('./pages/field-list-page/field-list-page.component').then(m => m.FieldListPageComponent),
       canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: FieldListComponent }
+        { path: 'form', loadComponent: () => import('./features/field-list/field-list.component').then(m => m.FieldListComponent) }
       ]
     },
     {
       path: 'inventory',
-      component: InventoryPageComponent,
+      loadComponent: () => import('./pages/inventory-page/inventory-page.component').then(m => m.InventoryPageComponent),
       canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: InventoryComponent }
+        { path: 'form', loadComponent: () => import('./features/inventory/inventory.component').then(m => m.InventoryComponent) }
       ]
     },
     {
       path: 'sds',
-      component: SdsPageComponent,
+      loadComponent: () => import('./pages/sds-page/sds-page.component').then(m => m.SdsPageComponent),
       canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: SdsComponent }
+        { path: 'form', loadComponent: () => import('./features/sds/sds.component').then(m => m.SdsComponent) }
       ]
     },
     {
       path: 'sds-audit',
-      component: SdsAuditPageComponent,
+      loadComponent: () => import('./pages/sds-audit-page/sds-audit-page.component').then(m => m.SdsAuditPageComponent),
       canActivate: [standaloneGuard, userSetupGuard, authGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: SdsAuditComponent }
+        { path: 'form', loadComponent: () => import('./features/sds-audit/sds-audit.component').then(m => m.SdsAuditComponent) }
       ]
     },
     {
@@ -213,12 +203,12 @@ export const routes: Routes = [
     },
     {
       path: 'instruments',
-      component: InstrumentPageComponent,
+      loadComponent: () => import('./pages/instrument-page/instrument-page.component').then(m => m.InstrumentPageComponent),
       canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: InstrumentComponent },
-        { path: 'new', component: InstrumentFormComponent }
+        { path: 'form', loadComponent: () => import('./features/equipment/instrument/instrument.component').then(m => m.InstrumentComponent) },
+        { path: 'new', loadComponent: () => import('./features/equipment/instrument/instrument-form/instrument-form.component').then(m => m.InstrumentFormComponent) }
       ]
     },
 ];

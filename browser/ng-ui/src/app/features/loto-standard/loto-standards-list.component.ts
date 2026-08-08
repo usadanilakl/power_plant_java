@@ -51,8 +51,8 @@ import { LotoStandard, statusPhase } from './loto-standard.model';
       border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem;
       background: var(--card-bg, var(--secondary-background)); color: var(--primary-text);
     }
-    .ls-msg { text-align: center; color: var(--secondary-text, #888); padding: 2rem 1rem; }
-    .ls-error { color: #e74c3c; }
+    .ls-msg { text-align: center; color: var(--secondary-text); padding: 2rem 1rem; }
+    .ls-error { color: var(--danger-text); }
     .ls-list { display: flex; flex-direction: column; gap: 0.6rem; }
     .ls-item {
       display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem;
@@ -64,12 +64,12 @@ import { LotoStandard, statusPhase } from './loto-standard.model';
     .ls-item:active { transform: scale(0.995); }
     .ls-name { font-size: 1.05rem; font-weight: 600; color: var(--primary-text); }
     .ls-meta { display: flex; align-items: center; gap: 0.6rem; }
-    .ls-badge { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; color: #fff; }
-    .ls-badge.b-active { background: #27ae60; }
-    .ls-badge.b-walkdown { background: #2980b9; }
-    .ls-badge.b-verification { background: #e67e22; }
-    .ls-badge.b-draft { background: #95a5a6; }
-    .ls-count { font-size: 0.8rem; color: var(--secondary-text, #888); }
+    .ls-badge { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; color: var(--on-solid); }
+    .ls-badge.b-active { background: var(--success-solid); }
+    .ls-badge.b-walkdown { background: var(--accent-color); }
+    .ls-badge.b-verification { background: var(--warning-solid); }
+    .ls-badge.b-draft { background: var(--secondary-text); }
+    .ls-count { font-size: 0.8rem; color: var(--secondary-text); }
   `]
 })
 export class LotoStandardsListComponent implements OnInit {

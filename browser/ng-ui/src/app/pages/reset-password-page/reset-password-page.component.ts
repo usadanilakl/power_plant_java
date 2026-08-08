@@ -34,7 +34,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
             <form *ngIf="token && !successMessage" (ngSubmit)="onSubmit()">
               <div class="form-group">
                 <label for="newPassword">New Password</label>
-                <input id="newPassword" type="password" [(ngModel)]="newPassword"
+                <input id="newPassword" type="password" autocomplete="new-password" [(ngModel)]="newPassword"
                        name="newPassword" placeholder="Enter new password" required autofocus>
                 <div class="strength-bar">
                   <div class="strength-fill" [style.width.%]="strengthPercent" [style.background]="strengthColor"></div>
@@ -44,7 +44,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 
               <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
-                <input id="confirmPassword" type="password" [(ngModel)]="confirmPassword"
+                <input id="confirmPassword" type="password" autocomplete="new-password" [(ngModel)]="confirmPassword"
                        name="confirmPassword" placeholder="Confirm new password" required>
               </div>
 

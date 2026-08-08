@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, debounceTime, switchMap, of, catchError, from, concatMap } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
@@ -27,6 +27,13 @@ import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
               </div>
             </div>
           } @else {
+            @if (restoredDraft()) {
+              <div class="sc-restored">
+                Restored your unsent request. Attachments aren't saved — re-add any files.
+                <button type="button" class="sc-link" (click)="discardDraft()">discard</button>
+              </div>
+            }
+
             <label class="sc-field">Description <span class="sc-req">*</span>
               <textarea rows="2" [value]="description()" (input)="description.set($any($event.target).value)"
                         placeholder="What's the problem?"></textarea>
@@ -112,7 +119,8 @@ import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
     .sc-back { background: none; border: none; color: var(--accent-color); font-size: 0.9rem; padding: 0.2rem 0; cursor: pointer; margin-bottom: 0.5rem; }
     .sc-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.82rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.9rem; }
     .sc-field textarea, .sc-field input, .sc-field select { padding: 0.6rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-weight: 400; box-sizing: border-box; }
-    .sc-req { color: #e74c3c; }
+    .sc-req { color: var(--danger-text); }
+    .sc-restored { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--accent-color); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.82rem; margin-bottom: 0.9rem; }
     .sc-picked { font-size: 0.85rem; color: var(--primary-text); margin: -0.4rem 0 0.9rem; }
     .sc-clear { background: none; border: none; color: var(--accent-color); font-size: 0.78rem; cursor: pointer; }
     .sc-loc-results { display: flex; flex-direction: column; gap: 0.3rem; margin: -0.4rem 0 0.9rem; max-height: 220px; overflow-y: auto; }
@@ -162,18 +170,77 @@ export class MaximoSrCreateComponent implements OnDestroy {
 
   private locSearch$ = new Subject<string>();
 
+  /**
+   * Text fields are mirrored to localStorage on every edit so a reload can't lose a typed-up
+   * request. Attachments are deliberately NOT persisted — File objects don't survive serialisation,
+   * and re-encoding photos into storage is not worth the quota. The restore banner says as much.
+   */
+  private static readonly DRAFT_KEY = 'pwa_maximo_sr_draft';
+  /** True when the form was rehydrated from a saved draft, so the UI can say so. */
+  restoredDraft = signal(false);
+
   constructor() {
     this.locSearch$.pipe(
       debounceTime(300),
       switchMap(q => q.trim().length < 2 ? of([]) : this.api.searchLocations(q.trim()).pipe(catchError(() => of([]))))
     ).subscribe(res => this.locResults.set(res));
 
+    this.restoreDraft();
+
     // Prefill from a deep-link (e.g. "Report to Maximo" on a Rounds object / out-of-range issue).
+    // Deep-link params win over a restored draft — an explicit link is a fresh, specific intent.
     const qp = this.route.snapshot.queryParamMap;
     const asset = qp.get('assetnum'); if (asset) this.assetnum.set(asset);
     const loc = qp.get('location'); if (loc) { this.location.set(loc); this.locationQuery.set(loc); }
     const desc = qp.get('description'); if (desc) this.description.set(desc);
     const long = qp.get('longDescription'); if (long) this.longDescription.set(long);
+
+    // Persist after every change to any tracked field.
+    effect(() => {
+      const draft = {
+        description: this.description(),
+        longDescription: this.longDescription(),
+        priority: this.priority(),
+        assetnum: this.assetnum(),
+        location: this.location(),
+        locationQuery: this.locationQuery(),
+        manualEntry: this.manualEntry(),
+      };
+      // Nothing typed yet, or already submitted — don't leave an empty draft lying around.
+      if (this.createdTicket() || !this.hasContent(draft)) {
+        localStorage.removeItem(MaximoSrCreateComponent.DRAFT_KEY);
+        return;
+      }
+      try {
+        localStorage.setItem(MaximoSrCreateComponent.DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        // Quota exceeded / private mode — autosave is best-effort, never block the form.
+      }
+    });
+  }
+
+  private hasContent(d: Record<string, unknown>): boolean {
+    return !!(d['description'] || d['longDescription'] || d['assetnum'] || d['location']);
+  }
+
+  private restoreDraft(): void {
+    try {
+      const raw = localStorage.getItem(MaximoSrCreateComponent.DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!this.hasContent(d)) return;
+      this.description.set(d.description ?? '');
+      this.longDescription.set(d.longDescription ?? '');
+      this.priority.set(d.priority ?? '3');
+      this.assetnum.set(d.assetnum ?? '');
+      this.location.set(d.location ?? '');
+      this.locationQuery.set(d.locationQuery ?? '');
+      this.manualEntry.set(!!d.manualEntry);
+      this.restoredDraft.set(true);
+    } catch {
+      // Corrupt draft — start clean rather than blocking the screen.
+      localStorage.removeItem(MaximoSrCreateComponent.DRAFT_KEY);
+    }
   }
 
   canSubmit(): boolean { return this.description().trim().length > 0; }
@@ -277,6 +344,13 @@ export class MaximoSrCreateComponent implements OnDestroy {
     this.assetnum.set(''); this.location.set(''); this.locationQuery.set(''); this.locResults.set([]);
     this.revokePhotos(); this.photos.set([]);
     this.error.set(null); this.createdTicket.set(null); this.uploadStatus.set(null);
+    this.restoredDraft.set(false);
+    localStorage.removeItem(MaximoSrCreateComponent.DRAFT_KEY);
+  }
+
+  /** Throw away a restored draft and start from an empty form. */
+  discardDraft(): void {
+    this.reset();
   }
   back(): void { this.router.navigate(['/maximo']); }
 

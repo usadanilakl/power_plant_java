@@ -18,6 +18,11 @@ export class GlobalMessageComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.subscription = this.globalMessageService.message$.subscribe(message => {
+      // Seed the prompt field when a new prompt opens, so each one starts from its own initialValue
+      // rather than whatever the previous prompt was left holding.
+      if (message?.type === 'prompt' && this.message?.type !== 'prompt') {
+        this.promptValue = message.initialValue ?? '';
+      }
       this.message = message;
     });
   }
@@ -37,7 +42,19 @@ export class GlobalMessageComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Bound to the prompt's text field; reset each time a new prompt opens. */
+  promptValue = '';
+
   hide(): void {
+    this.globalMessageService.hideMessage();
+  }
+
+  /**
+   * Settle a confirm/prompt with the user's choice, then close. hideMessage() will also try to
+   * settle it as cancelled, but a promise only honours its first settlement so this value wins.
+   */
+  answer(value: boolean | string | null): void {
+    this.message?.resolve?.(value);
     this.globalMessageService.hideMessage();
   }
 
@@ -54,6 +71,7 @@ export class GlobalMessageComponent implements OnInit, OnDestroy {
 
     // Close only if the overlay background is clicked, not the message card
     if ((event.target as HTMLElement).classList.contains('overlay')) {
+      // A backdrop tap on confirm/prompt means "cancel" — hideMessage settles it that way.
       this.hide();
     }
   }

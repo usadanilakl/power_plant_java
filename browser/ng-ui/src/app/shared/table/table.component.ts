@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, DestroyRef, ElementRef, inject, input, Input, OnInit, output, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, computed, DestroyRef, ElementRef, inject, input, Input, OnDestroy, OnInit, output, signal, ViewChild } from '@angular/core';
 import { Column } from '../../models/inputs/column.model';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { SearchCriteria, SearchCriteriaDto } from '../../models/api/search-criteria.model';
@@ -18,7 +18,15 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   private destroyRef = inject(DestroyRef);
 
-  @Input() columns: Column[] = [];
+  /** Kept as a plain array for the existing template/consumers; mirrored into a signal for computeds. */
+  @Input()
+  get columns(): Column[] { return this._columns; }
+  set columns(value: Column[]) {
+    this._columns = value ?? [];
+    this.columnsSignal.set(this._columns);
+  }
+  private _columns: Column[] = [];
+
   @Input() deleteItem?: (item: string) => void;
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
@@ -71,6 +79,24 @@ export class TableComponent implements OnInit, AfterViewInit {
   currentSortColumn: string | null = null;
   isAscending: boolean = true;
 
+  /**
+   * Below this width the grid is replaced by a card list. A table needs hover, right-click and
+   * horizontal room; a phone has none of those, and an N-column filter header is unusable at 390px.
+   */
+  private static readonly MOBILE_BREAKPOINT = '(max-width: 768px)';
+  readonly isMobile = signal(false);
+  private mobileQuery?: MediaQueryList;
+  showMobileFilters = false;
+
+  /** Desktop rows are 50px; a card carries a title plus a wrapped meta line, so it needs more. */
+  private static readonly DESKTOP_ROW_HEIGHT = 50;
+  private static readonly MOBILE_CARD_HEIGHT = 96;
+
+  /** Columns rendered as label/value pairs under the card title (everything but the first). */
+  readonly secondaryColumns = computed(() => this.columnsSignal().slice(1));
+  /** Mirrors the @Input so the computed above recalculates when columns are reassigned. */
+  private columnsSignal = signal<Column[]>([]);
+
   private clickTimer: any;
   private clickDelay = 250; // milliseconds
   private hoverSubject = new Subject<any>();
@@ -82,7 +108,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   
   ngAfterViewInit() {
       setTimeout(() => {
-        if (this.tableBody && this.tableBody.nativeElement) {
+        // Card mode has no <tr> to measure and uses a fixed card height instead.
+        if (!this.isMobile() && this.tableBody && this.tableBody.nativeElement) {
           const sampleRow = this.tableBody.nativeElement.querySelector('tr');
           if (sampleRow) {
             this.rowHeight = sampleRow.offsetHeight;
@@ -123,6 +150,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
 
   ngOnInit() {
+    this.watchBreakpoint();
     // console.log('TableComponent initialized');
     this.items$.pipe(
       debounceTime(0),
@@ -345,6 +373,49 @@ export class TableComponent implements OnInit, AfterViewInit {
     if (item.instrumentTagNumber) return `instrumentTagNumber:${item.instrumentTagNumber}`;
 
     return index;
+  }
+
+  /**
+   * Track the mobile breakpoint and keep the virtual-scroll item size in step with it — the
+   * viewport needs an accurate height per item or the scrollbar and rendered window drift apart.
+   */
+  private watchBreakpoint() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    this.mobileQuery = window.matchMedia(TableComponent.MOBILE_BREAKPOINT);
+    const apply = (matches: boolean) => {
+      this.isMobile.set(matches);
+      this.rowHeight = matches ? TableComponent.MOBILE_CARD_HEIGHT : TableComponent.DESKTOP_ROW_HEIGHT;
+      // Let the new template settle before the viewport re-measures against the new item size.
+      setTimeout(() => this.viewport?.checkViewportSize());
+    };
+    apply(this.mobileQuery.matches);
+    const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+    this.mobileQuery.addEventListener('change', onChange);
+    this.destroyRef.onDestroy(() => this.mobileQuery?.removeEventListener('change', onChange));
+  }
+
+  /** Touch stand-in for right-click: same output, without swallowing the card's own tap. */
+  onCardMenu(item: any, event: MouseEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.rowRightClicked.emit(item);
+  }
+
+  /** Mobile sort picker — sorts by column id, matching the desktop header-click behaviour. */
+  sortById(columnId: string | null) {
+    if (!columnId) { this.currentSortColumn = null; return; }
+    const column = this.columns.find(c => c.id === columnId);
+    if (!column) return;
+    // sortColumn() flips direction when re-sorting the same column; force ascending on a fresh pick.
+    const key = column.accessorKey || column.id;
+    if (this.currentSortColumn !== key) this.isAscending = false;
+    this.sortColumn(column);
+  }
+
+  /** Flip sort direction without changing the column (mobile only — desktop re-clicks the header). */
+  toggleSortDirection() {
+    const column = this.columns.find(c => (c.accessorKey || c.id) === this.currentSortColumn);
+    if (column) this.sortColumn(column);
   }
 
   sortColumn(column: Column) {

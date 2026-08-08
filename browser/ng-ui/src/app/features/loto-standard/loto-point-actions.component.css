@@ -15,22 +15,22 @@
 .pa-btn {
   padding: 6px 10px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #ccc);
-  background: var(--surface-color, #f5f5f5);
-  color: var(--text-color, #222);
+  border: 1px solid var(--border-color);
+  background: var(--secondary-background);
+  color: var(--primary-text);
   font-size: 0.9em;
   cursor: pointer;
   transition: background 0.12s ease;
 }
 
 .pa-btn:hover {
-  background: var(--surface-hover-color, #ececec);
+  background: var(--hover-background);
 }
 
 .pa-btn.active {
-  background: var(--accent-color, #2b7cff);
-  color: #fff;
-  border-color: var(--accent-color, #2b7cff);
+  background: var(--accent-color);
+  color: var(--on-solid);
+  border-color: var(--accent-color);
 }
 
 /* Panels — inline expandable, no modal overlay. */
@@ -38,9 +38,9 @@
 .pa-panel {
   margin-top: 8px;
   padding: 10px;
-  border: 1px solid var(--border-color, #ccc);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: var(--card-background-color, #fff);
+  background: var(--card-background);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -56,8 +56,8 @@
   padding: 8px 14px;
   border-radius: 6px;
   border: none;
-  background: var(--accent-color, #2b7cff);
-  color: #fff;
+  background: var(--accent-color);
+  color: var(--on-solid);
   font-weight: 600;
   cursor: pointer;
   min-height: 36px;
@@ -71,14 +71,14 @@
 .pa-hint {
   padding: 8px;
   text-align: center;
-  color: var(--muted-text-color, #777);
+  color: var(--secondary-text);
   font-style: italic;
   font-size: 0.9em;
 }
 
 .pa-hint-offline {
-  background: rgba(255, 200, 0, 0.12);
-  color: var(--warning-text-color, #855);
+  background: var(--warning-bg);
+  color: var(--warning-text);
   border-radius: 4px;
   font-style: normal;
   text-align: left;
@@ -86,8 +86,8 @@
 
 .pa-error {
   padding: 8px 10px;
-  background: var(--error-background-color, #fdd);
-  color: var(--error-text-color, #900);
+  background: var(--danger-bg);
+  color: var(--danger-text);
   border-radius: 4px;
   font-size: 0.9em;
 }
@@ -102,10 +102,10 @@
 
 .pa-tile {
   position: relative;
-  border: 1px solid var(--border-color, #ccc);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   overflow: hidden;
-  background: var(--surface-color, #f0f0f0);
+  background: var(--secondary-background);
   display: flex;
   flex-direction: column;
 }
@@ -127,7 +127,7 @@
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--on-solid);
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -140,7 +140,7 @@
 .pa-tile-name {
   padding: 4px 6px;
   font-size: 0.75em;
-  color: var(--text-color, #222);
+  color: var(--primary-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -159,19 +159,19 @@
 .pa-comment {
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--surface-color, #f5f5f5);
-  border-left: 3px solid var(--accent-color, #2b7cff);
+  background: var(--secondary-background);
+  border-left: 3px solid var(--accent-color);
 }
 
 .pa-comment-pending {
-  border-left-color: var(--warning-text-color, #b85);
-  background: rgba(255, 200, 0, 0.08);
+  border-left-color: var(--warning-solid);
+  background: var(--warning-bg);
 }
 
 .pa-comment-body {
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--text-color, #222);
+  color: var(--primary-text);
 }
 
 .pa-comment-meta {
@@ -179,34 +179,34 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--muted-text-color, #777);
+  color: var(--secondary-text);
   font-size: 0.8em;
 }
 
 .pa-comment-pending-badge {
   padding: 1px 6px;
   border-radius: 10px;
-  background: var(--warning-text-color, #b85);
-  color: #fff;
+  background: var(--warning-solid);
+  color: var(--on-solid);
   font-size: 0.75em;
 }
 
 .pa-comment-error-badge {
-  background: var(--error-text-color, #900);
+  background: var(--danger-solid);
 }
 
 .pa-comment-del {
   margin-left: auto;
   border: none;
   background: transparent;
-  color: var(--muted-text-color, #999);
+  color: var(--secondary-text);
   cursor: pointer;
   font-size: 16px;
   padding: 0 4px;
 }
 
 .pa-comment-del:hover {
-  color: var(--error-text-color, #900);
+  color: var(--danger-text);
 }
 
 /* Compose area */
@@ -221,9 +221,9 @@
   flex: 1;
   padding: 8px 10px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #ccc);
-  background: var(--card-background-color, #fff);
-  color: var(--text-color, #222);
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
   font-family: inherit;
   font-size: 0.95em;
   resize: vertical;
@@ -234,8 +234,8 @@
   padding: 8px 16px;
   border-radius: 6px;
   border: none;
-  background: var(--accent-color, #2b7cff);
-  color: #fff;
+  background: var(--accent-color);
+  color: var(--on-solid);
   font-weight: 600;
   cursor: pointer;
   min-height: 44px;

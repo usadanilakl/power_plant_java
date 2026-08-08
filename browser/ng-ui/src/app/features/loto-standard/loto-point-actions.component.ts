@@ -16,6 +16,7 @@ import { LotoPointApiService } from './loto-point-api.service';
 import { LotoCommentQueueService } from './loto-comment-queue.service';
 import { LotoPointComment, LotoPointPhoto } from './loto-standard.model';
 import { ServerStatusService } from '../../services/server-status.service';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 /**
  * Per-LOTO-point action strip: 📸 Photos + 💬 Comments buttons that expand
@@ -46,6 +47,7 @@ import { ServerStatusService } from '../../services/server-status.service';
 })
 export class LotoPointActionsComponent {
   private api = inject(LotoPointApiService);
+  private globalMessage = inject(GlobalMessageService);
   private queue = inject(LotoCommentQueueService);
   private serverStatus = inject(ServerStatusService);
 
@@ -174,9 +176,12 @@ export class LotoPointActionsComponent {
     });
   }
 
-  onDeletePhoto(photo: LotoPointPhoto): void {
+  async onDeletePhoto(photo: LotoPointPhoto): Promise<void> {
     if (!photo?.id) return;
-    const confirmed = confirm(`Remove "${photo.name ?? 'this photo'}" from the point?`);
+    const confirmed = await this.globalMessage.confirm(
+      `Remove "${photo.name ?? 'this photo'}" from the point?`,
+      { confirmLabel: 'Remove', color: 'red' },
+    );
     if (!confirmed) return;
     this.api.deletePhoto(this.pointId, photo.id).subscribe({
       next: (list) => this.photos.set(list ?? []),
@@ -241,9 +246,11 @@ export class LotoPointActionsComponent {
     // correct completion signal.
   }
 
-  onDeleteComment(comment: LotoPointComment): void {
+  async onDeleteComment(comment: LotoPointComment): Promise<void> {
     if (!comment?.id || comment.id < 0) return;
-    const confirmed = confirm('Delete this comment?');
+    const confirmed = await this.globalMessage.confirm('Delete this comment?', {
+      confirmLabel: 'Delete', color: 'red',
+    });
     if (!confirmed) return;
     this.api.deleteComment(this.pointId, comment.id).subscribe({
       next: () =>

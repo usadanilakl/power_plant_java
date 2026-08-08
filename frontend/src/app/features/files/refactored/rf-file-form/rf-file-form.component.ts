@@ -49,14 +49,16 @@ export class RfFileFormComponent {
   private pendingSubmit: { fileDtoData: any; file: File; overrideFile: string } | null = null;
 
   // PDF options dialog state. Shown after file select on submit for EVERY .pdf
-  // upload — the user picks two things independently:
-  //   1. Split multi-page PDFs into one FileObject per page (only meaningful when
-  //      pages > 1; for single-page PDFs the flag is a no-op)
-  //   2. Also generate a JPG derivative (for the file viewer / shape drawing)
-  // pageCount is best-effort informational; null = unknown, don't show a count.
+  // upload. UI is a two-mode picker (Drawing / Document) with an Advanced
+  // disclosure for the granular split + JPG toggles. Mode selection drives
+  // both flags together so the "keep-single + JPG" combo (which only converts
+  // page 1 and is useless for multi-page docs) isn't reachable from the main UI.
+  // pageCount is best-effort informational; null = unknown.
   protected pdfPrompt = signal<{ pageCount: number | null; fileName: string } | null>(null);
+  protected pdfPromptMode = signal<'drawing' | 'document' | 'custom'>('drawing');
   protected pdfPromptSplit = signal<boolean>(true);
   protected pdfPromptConvertToJpg = signal<boolean>(true);
+  protected pdfPromptShowAdvanced = signal<boolean>(false);
   private pendingPdfSubmit: { fileDtoData: any; file: File; overrideFile: string } | null = null;
 
   entityInput = input<FileDto>();
@@ -513,13 +515,58 @@ export class RfFileFormComponent {
   private async shouldPromptForPdfOptions(file: File): Promise<boolean> {
     if (!file || !/\.pdf$/i.test(file.name)) return false;
     const pageCount = await countPdfPages(file);
-    // Reset choices to safe defaults (split + JPG = today's PID behavior) each
-    // time the dialog opens so a prior submission doesn't leak state.
+    // Reset to Drawing mode (split + JPG) — matches legacy P&ID behavior and is
+    // the correct default for the majority of uploads. Users switch to Document
+    // for manuals or open Advanced for granular control.
+    this.pdfPromptMode.set('drawing');
     this.pdfPromptSplit.set(true);
     this.pdfPromptConvertToJpg.set(true);
+    this.pdfPromptShowAdvanced.set(false);
     this.pdfPrompt.set({ pageCount, fileName: file.name });
     return true;
   }
+
+  /**
+   * Mode-card click. Sets the mode and mirrors its meaning into the split /
+   * convertToJpg signals so the Advanced panel stays in sync if the user opens it.
+   * Modes: drawing = split+JPG (P&IDs, schematics), document = single+no-JPG (manuals).
+   */
+  protected setPdfMode(mode: 'drawing' | 'document'): void {
+    this.pdfPromptMode.set(mode);
+    if (mode === 'drawing') {
+      this.pdfPromptSplit.set(true);
+      this.pdfPromptConvertToJpg.set(true);
+    } else {
+      this.pdfPromptSplit.set(false);
+      this.pdfPromptConvertToJpg.set(false);
+    }
+  }
+
+  /**
+   * Advanced toggle change. Marks the picker as 'custom' so the mode cards
+   * stop showing as selected — the user's explicit choice takes precedence.
+   */
+  protected setPdfAdvancedSplit(value: boolean): void {
+    this.pdfPromptSplit.set(value);
+    this.pdfPromptMode.set('custom');
+  }
+  protected setPdfAdvancedConvertToJpg(value: boolean): void {
+    this.pdfPromptConvertToJpg.set(value);
+    this.pdfPromptMode.set('custom');
+  }
+  protected togglePdfAdvanced(): void {
+    this.pdfPromptShowAdvanced.set(!this.pdfPromptShowAdvanced());
+  }
+
+  /** Human-readable summary of the current choice — shown on the Upload button. */
+  protected pdfPromptSummary = computed(() => {
+    const split = this.pdfPromptSplit();
+    const jpg = this.pdfPromptConvertToJpg();
+    if (split && jpg) return 'Split + JPG';
+    if (split && !jpg) return 'Split, no JPG';
+    if (!split && jpg) return 'Single PDF + JPG (page 1 only)';
+    return 'Single PDF';
+  });
 
   /**
    * User confirmed the PDF-options dialog. Resumes the held submit with the

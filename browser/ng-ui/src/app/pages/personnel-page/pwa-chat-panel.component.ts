@@ -5,6 +5,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import {
   PwaChatService, PlantConversation, PlantChatMessage,
 } from '../../services/pwa-chat.service';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 /**
  * PWA chat panel — mirror of the Electron ChatPanelComponent, adapted for the PWA layout (narrower
@@ -21,6 +22,7 @@ import {
 })
 export class PwaChatPanelComponent implements OnInit, OnDestroy, AfterViewChecked {
   chat = inject(PwaChatService);
+  private globalMessage = inject(GlobalMessageService);
 
   conversations = signal<PlantConversation[]>([]);
   activeConversationId = signal<string | null>(null);
@@ -158,7 +160,7 @@ export class PwaChatPanelComponent implements OnInit, OnDestroy, AfterViewChecke
       }
       this.recomputePendingAcks();
     } catch (err: any) {
-      alert('Acknowledge failed: ' + (err?.message ?? 'unknown'));
+      this.globalMessage.showError('Acknowledge failed: ' + (err?.message ?? 'unknown'));
     }
   }
 

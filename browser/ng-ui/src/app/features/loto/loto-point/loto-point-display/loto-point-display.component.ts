@@ -6,6 +6,8 @@ import { ButtonConfig, ButtonsComponent } from "../../../../shared/menus/buttons
 import { QrScannerService } from '../../../../shared/qr-scanner/qr-scanner.service';
 import { take } from 'rxjs';
 import { QrGeneratorComponent } from "../../../../shared/qr-generator/qr-generator.component";
+import { GlobalMessageService } from '../../../../services/global-message.service';
+import { HapticsService } from '../../../../services/haptics.service';
 
 @Component({
   selector: 'app-loto-point-display',
@@ -16,6 +18,8 @@ import { QrGeneratorComponent } from "../../../../shared/qr-generator/qr-generat
 export class LotoPointDisplayComponent {
   
   qrScannerService = inject(QrScannerService);
+  private globalMessage = inject(GlobalMessageService);
+  private haptics = inject(HapticsService);
 
 
   private lotoPointStateService = inject(LotoPointStateService);
@@ -49,11 +53,11 @@ export class LotoPointDisplayComponent {
         try {
           const data = JSON.parse(resultString);
           if (data.jhaId) {
-            alert(`Loading JHA with ID: ${data.jhaId}`);
+            this.globalMessage.showInfo(`Loading JHA with ID: ${data.jhaId}`);
             // Example: this.jhaStateService.loadJhaById(data.jhaId);
           }
         } catch (e) {
-          alert(`Invalid QR Code Data: ${resultString}`);
+          this.globalMessage.showError(`Invalid QR Code Data: ${resultString}`);
         }
       });
   }
@@ -67,12 +71,15 @@ export class LotoPointDisplayComponent {
         try {
           const data = JSON.parse(resultString);
           if (data.tagNumber) {
-            if(data.tagNumber === this.lotoPoint().tagNumber)alert(`Success: ${data.tagNumber} is scanned and marked as complete.`);
-            else alert(`Error: ${data.tagNumber} is not the same as ${this.lotoPoint().tagNumber}.`);
+            const match = data.tagNumber === this.lotoPoint().tagNumber;
+            // Buzz the outcome: a scan is done at arm's length, often in glare.
+            this.haptics.tap(match ? 'success' : 'error');
+            if (match) this.globalMessage.showSuccess(`Success: ${data.tagNumber} is scanned and marked as complete.`);
+            else this.globalMessage.showError(`Error: ${data.tagNumber} is not the same as ${this.lotoPoint().tagNumber}.`);
             // Example: this.jhaStateService.loadJhaById(data.jhaId);
           }
         } catch (e) {
-          alert(`Invalid QR Code Data: ${resultString}`);
+          this.globalMessage.showError(`Invalid QR Code Data: ${resultString}`);
         }
       });
   }

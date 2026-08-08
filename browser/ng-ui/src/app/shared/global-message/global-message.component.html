@@ -17,6 +17,24 @@
         @if (message.type === 'blocking') {
           <button class="message-btn" type="button" (click)="hide()">OK</button>
         }
+        @if (message.type === 'prompt') {
+          <input class="message-input" type="text" [placeholder]="message.placeholder ?? ''"
+                 [value]="promptValue"
+                 (input)="promptValue = $any($event.target).value"
+                 (keyup.enter)="answer(promptValue)">
+        }
+        @if (message.type === 'confirm' || message.type === 'prompt') {
+          <div class="message-actions">
+            <button class="message-btn ghost" type="button" (click)="answer(message.type === 'confirm' ? false : null)">
+              {{ message.cancelLabel }}
+            </button>
+            @if (message.type === 'confirm') {
+              <button class="message-btn" type="button" (click)="answer(true)">{{ message.confirmLabel }}</button>
+            } @else {
+              <button class="message-btn" type="button" (click)="answer(promptValue)">{{ message.confirmLabel }}</button>
+            }
+          </div>
+        }
       </div>
     </div>
   } @else {

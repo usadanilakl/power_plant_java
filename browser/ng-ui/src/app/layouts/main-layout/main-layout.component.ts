@@ -65,19 +65,12 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
     
     // Listen for media query changes
     this.mediaQuery.addEventListener('change', this.handleMediaQueryChange);
-    
-    // Fix for Android viewport height issues
-    this.updateViewportHeight();
-    window.addEventListener('resize', this.updateViewportHeight);
-    window.addEventListener('orientationchange', this.updateViewportHeight);
   }
 
-  
+
   ngOnDestroy() {
     this.mediaQuery.removeEventListener('change', this.handleMediaQueryChange);
-    window.removeEventListener('resize', this.updateViewportHeight);
-    window.removeEventListener('orientationchange', this.updateViewportHeight);
-    
+
     // Clean up overlay listener
     if (this.overlay?.nativeElement) {
       this.overlay.nativeElement.removeEventListener('click', this.onOverlayClick);
@@ -90,12 +83,6 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
-  }
-
-  private updateViewportHeight = () => {
-    // Fix for Android browsers where 100vh includes the address bar
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
   }
 
   private handleMediaQueryChange = (e: MediaQueryListEvent) => {
@@ -143,10 +130,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
       } else {
         this.isMenuVisible = false;
       }
-      
-      // Update viewport height after view initialization
-      this.updateViewportHeight();
-    
+
     // Add click listener to overlay for mobile
     if (this.overlay?.nativeElement) {
       this.overlay.nativeElement.addEventListener('click', this.onOverlayClick);

@@ -175,15 +175,17 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                     this.globalMessageService.showMessage('Instrument created.', 'green', 3000);
                     this.loadAllInstruments();
                 } else if (result.requiresMerge && !mergeRetryUsed) {
-                    const userConfirmed = window.confirm(
-                        `${result.message || 'A record with this tag already exists.'}\n\nSelect OK to merge your non-empty values into the existing instrument record.`
-                    );
-                    if (userConfirmed) {
-                        const mergedDto: PwaInstrumentDto = { ...dto, mergePolicy: 'merge' };
-                        this.submitInstrumentCreate(mergedDto, true);
-                    } else {
-                        this.globalMessageService.showMessage('Instrument creation canceled due to duplicate tag.', 'orange', 5000);
-                    }
+                    void this.globalMessageService.confirm(
+                        `${result.message || 'A record with this tag already exists.'} Merge your non-empty values into the existing instrument record?`,
+                        { confirmLabel: 'Merge', color: 'orange' },
+                    ).then(userConfirmed => {
+                        if (userConfirmed) {
+                            const mergedDto: PwaInstrumentDto = { ...dto, mergePolicy: 'merge' };
+                            this.submitInstrumentCreate(mergedDto, true);
+                        } else {
+                            this.globalMessageService.showMessage('Instrument creation canceled due to duplicate tag.', 'orange', 5000);
+                        }
+                    });
                 } else if (result.requiresEmail) {
                     this.globalMessageService.showMessage(
                         'All creation methods failed. Please submit via email.', 'red', 7000);

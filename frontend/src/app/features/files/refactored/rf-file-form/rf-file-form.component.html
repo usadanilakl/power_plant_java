@@ -195,73 +195,102 @@
 }
 
 <!-- PDF-upload options dialog. Shown right before submit fires for every .pdf
-     upload. User independently chooses whether to split multi-page PDFs into
-     per-page FileObjects AND whether to generate a JPG preview derivative.
-     Non-PDF uploads skip this entirely. Defaults: split=on, jpg=on
-     (matches legacy P&ID behavior). Both defaults can be unchecked. -->
+     upload. Two-mode picker (Drawing / Document) covers ~99% of real uploads;
+     Advanced disclosure exposes granular split + JPG toggles for edge cases.
+     Non-PDF uploads skip this entirely. Mode 'drawing' = split + JPG (P&IDs,
+     schematics); 'document' = single + no JPG (manuals, reports). -->
 @if (pdfPrompt(); as prompt) {
-  <div class="dup-overlay" (mousedown)="cancelPdfPrompt()">
-    <div class="dup-modal split-modal" (mousedown)="$event.stopPropagation()">
-      <div class="dup-header">
-        <h3>
-          @if (prompt.pageCount && prompt.pageCount > 1) {
-            PDF Upload Options — {{ prompt.pageCount }} pages
-          } @else if (prompt.pageCount === 1) {
-            PDF Upload Options — 1 page
-          } @else {
-            PDF Upload Options
-          }
-        </h3>
-        <button class="dup-close" type="button" (click)="cancelPdfPrompt()">&times;</button>
+  <div class="pdf-opt-overlay" (mousedown)="cancelPdfPrompt()">
+    <div class="pdf-opt-modal" (mousedown)="$event.stopPropagation()">
+      <div class="pdf-opt-header">
+        <div class="pdf-opt-title-wrap">
+          <h3 class="pdf-opt-title">PDF Upload Options</h3>
+          <div class="pdf-opt-subtitle" [title]="prompt.fileName">
+            {{ prompt.fileName }}
+            @if (prompt.pageCount && prompt.pageCount > 1) {
+              <span class="pdf-opt-pagecount">· {{ prompt.pageCount }} pages</span>
+            } @else if (prompt.pageCount === 1) {
+              <span class="pdf-opt-pagecount">· 1 page</span>
+            }
+          </div>
+        </div>
+        <button class="pdf-opt-close" type="button" (click)="cancelPdfPrompt()" aria-label="Close">&times;</button>
       </div>
-      <div class="dup-body">
-        <p class="dup-intro">
-          Choose how <strong>"{{ prompt.fileName }}"</strong> should be processed:
-        </p>
 
-        <fieldset class="pdf-opt-group">
-          <legend>Multi-page split</legend>
-          <label class="pdf-opt">
-            <input type="radio" name="pdfSplit" [checked]="pdfPromptSplit()"
-                   (change)="pdfPromptSplit.set(true)">
-            <span>
-              <strong>Split into pages</strong> — one file entry per page.
-              Best for P&amp;IDs and drawing sets where each page is its own document.
-            </span>
-          </label>
-          <label class="pdf-opt">
-            <input type="radio" name="pdfSplit" [checked]="!pdfPromptSplit()"
-                   (change)="pdfPromptSplit.set(false)">
-            <span>
-              <strong>Keep as single PDF</strong> — one file entry containing all pages.
-              Best for manuals, reports, and specs.
-            </span>
-          </label>
-          @if (prompt.pageCount === 1) {
-            <p class="pdf-opt-note">This PDF has 1 page — either option produces the same result.</p>
+      <div class="pdf-opt-body">
+        <div class="pdf-modes">
+          <button type="button"
+                  class="pdf-mode"
+                  [class.pdf-mode-selected]="pdfPromptMode() === 'drawing'"
+                  (click)="setPdfMode('drawing')">
+            <div class="pdf-mode-icon">📐</div>
+            <div class="pdf-mode-name">Drawing</div>
+            <div class="pdf-mode-desc">
+              Split into pages + generate JPG for shape drawing.
+              P&amp;IDs, electrical schematics, drawing sets.
+            </div>
+          </button>
+          <button type="button"
+                  class="pdf-mode"
+                  [class.pdf-mode-selected]="pdfPromptMode() === 'document'"
+                  (click)="setPdfMode('document')">
+            <div class="pdf-mode-icon">📄</div>
+            <div class="pdf-mode-name">Document</div>
+            <div class="pdf-mode-desc">
+              Keep as single PDF, no JPG preview.
+              Manuals, reports, procedures, specs.
+            </div>
+          </button>
+        </div>
+
+        <button type="button" class="pdf-advanced-toggle" (click)="togglePdfAdvanced()">
+          <span class="pdf-advanced-caret">{{ pdfPromptShowAdvanced() ? '▾' : '▸' }}</span>
+          Advanced options
+          @if (pdfPromptMode() === 'custom') {
+            <span class="pdf-advanced-custom">· custom</span>
           }
-        </fieldset>
+        </button>
 
-        <fieldset class="pdf-opt-group">
-          <legend>JPG preview</legend>
-          <label class="pdf-opt">
-            <input type="checkbox" [checked]="pdfPromptConvertToJpg()"
-                   (change)="pdfPromptConvertToJpg.set(!pdfPromptConvertToJpg())">
-            <span>
-              <strong>Also generate JPG</strong> — needed to view the file in the interactive
-              editor (shape drawing, LOTO points). Skip for documents you'll only download.
-              JPGs can be regenerated later from any file's context menu.
-            </span>
-          </label>
-        </fieldset>
+        @if (pdfPromptShowAdvanced()) {
+          <div class="pdf-advanced-panel">
+            <label class="pdf-advanced-row">
+              <input type="checkbox"
+                     [checked]="pdfPromptSplit()"
+                     (change)="setPdfAdvancedSplit(!pdfPromptSplit())">
+              <span>
+                <span class="pdf-advanced-label">Split multi-page PDF into per-page files</span>
+                <span class="pdf-advanced-hint">
+                  Each page becomes its own file entry. No effect on single-page PDFs.
+                </span>
+              </span>
+            </label>
+            <label class="pdf-advanced-row">
+              <input type="checkbox"
+                     [checked]="pdfPromptConvertToJpg()"
+                     (change)="setPdfAdvancedConvertToJpg(!pdfPromptConvertToJpg())">
+              <span>
+                <span class="pdf-advanced-label">Generate JPG preview</span>
+                <span class="pdf-advanced-hint">
+                  Needed for interactive viewing / shape drawing. When splitting, one JPG per page;
+                  otherwise only the first page is converted (rarely useful for multi-page docs).
+                  JPGs can also be generated later from a file's context menu.
+                </span>
+              </span>
+            </label>
+          </div>
+        }
       </div>
-      <div class="dup-footer">
-        <button type="button" class="dup-btn dup-btn-cancel" (click)="cancelPdfPrompt()">
-          Cancel
-        </button>
-        <button type="button" class="dup-btn dup-btn-primary" (click)="confirmPdfPrompt()">
-          Upload
-        </button>
+
+      <div class="pdf-opt-footer">
+        <span class="pdf-opt-summary">{{ pdfPromptSummary() }}</span>
+        <div class="pdf-opt-actions">
+          <button type="button" class="pdf-opt-btn pdf-opt-btn-cancel" (click)="cancelPdfPrompt()">
+            Cancel
+          </button>
+          <button type="button" class="pdf-opt-btn pdf-opt-btn-primary" (click)="confirmPdfPrompt()">
+            Upload
+          </button>
+        </div>
       </div>
     </div>
   </div>

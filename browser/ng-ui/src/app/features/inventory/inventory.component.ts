@@ -16,6 +16,7 @@ import { Option } from '../../models/inputs/option.model';
 import { BradyPrinterModalService } from '../../shared/brady-printer-manager/brady-printer-modal.service';
 import { NativePrintService } from '../../shared/native-print/native-print.service';
 import { SupabaseDataService } from '../../services/supabase-data.service';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 type ViewMode = 'select' | 'new' | 'edit' | 'scan-result' | 'list';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -536,6 +537,7 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 })
 export class InventoryComponent implements OnInit {
   private serverApi = inject(ServerApiService);
+  private globalMessage = inject(GlobalMessageService);
   serverStatus = inject(ServerStatusService);
   private authService = inject(AuthService);
   private orchestrator = inject(SubmissionOrchestratorService);
@@ -674,10 +676,10 @@ export class InventoryComponent implements OnInit {
         if (item) {
           this.setScannedItem(item);
         } else {
-          alert('Item not found for QR token: ' + token);
+          this.globalMessage.showWarning('Item not found for QR token: ' + token);
         }
       },
-      error: () => alert('Could not look up item. Server may be offline.')
+      error: () => this.globalMessage.showError('Could not look up item. Server may be offline.')
     });
   }
 

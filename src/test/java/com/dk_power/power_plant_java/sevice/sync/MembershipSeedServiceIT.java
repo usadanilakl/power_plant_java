@@ -92,6 +92,10 @@ class MembershipSeedServiceIT {
                 .containsExactly(a.getId());
     }
 
+    // NOTE: the duplicate-join-row case (which forced the SELECT DISTINCT in seedField) can't be unit-tested
+    // on eq_loto_point — it maps a Set and has a composite PK, so duplicates are impossible. Only List-based
+    // @ManyToMany tables (e.g. file_point / Equipment.files) allow dupes; that path is validated live.
+
     @Test
     @DisplayName("Seeded member is visible to a later reconcile-to-empty and gets removed (no stale join row)")
     void seededMemberRemovedByReconcileToEmpty() {
@@ -120,6 +124,59 @@ class MembershipSeedServiceIT {
         apply(m2m(eq, ids(a), ids(a, b), 120)); // peer delta: +B @now
 
         assertThat(joinRows(eq)).containsExactlyInAnyOrder(a.getId(), b.getId());
+    }
+
+    @Test
+    @DisplayName("Repro: OR-Set reconcile races Hibernate's UNFLUSHED same-tx join write (the live create rollback)")
+    void reconcileRacesUnflushedHibernateJoinWrite() {
+        LotoPoint p1 = point("RACE-1");      // existing member (seeded)
+        LotoPoint p2 = point("RACE-2");      // new member added in the create's tx
+        Long eqId = equipment("RACE-EQ");
+        insertJoin(eqId, p1.getId());
+        clearEvents();
+        seedService.seed();                  // seeds ADD(eq,p1)
+
+        // Mirror the live create: within ONE tx, Hibernate writes the p2 join row (still UNFLUSHED),
+        // then the OR-Set reconcile runs in that same tx — exactly the FieldChangeTracker sequence.
+        new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
+            Equipment eq = equipmentRepo.findById(eqId).orElseThrow();
+            LotoPoint p2m = lotoPointRepo.findById(p2.getId()).orElseThrow();
+            eq.getLotoPoints().add(p2m);
+            equipmentRepo.save(eq);          // pending INSERT into eq_loto_point — not yet flushed
+            membershipCrdtService.recordLocalMembership("Equipment", eqId, "lotoPoints",
+                    "[" + p1.getId() + "]", "[" + p1.getId() + "," + p2.getId() + "]",
+                    new MembershipCrdtService.OrderKey(java.time.Instant.now(), "LEADS-OFFICE-PC", java.util.UUID.randomUUID()));
+        });
+
+        assertThat(joinRows(eqId)).containsExactlyInAnyOrder(p1.getId(), p2.getId());
+        assertThat(membershipCrdtService.presentSet("Equipment", eqId, "lotoPoints"))
+                .containsExactlyInAnyOrder(p1.getId(), p2.getId());
+    }
+
+    @Test
+    @DisplayName("End-to-end: adding a point to a SEEDED equipment via the real save path commits (no reentrant-flush rollback) and records the ADD")
+    void addPointToSeededEquipmentViaListener_commitsAndRecords() {
+        LotoPoint p1 = point("E2E-1");
+        LotoPoint p2 = point("E2E-2");
+        Long eqId = equipment("E2E-EQ");
+        insertJoin(eqId, p1.getId());
+        clearEvents();
+        seedService.seed(); // ADD(eq,p1)@baseline
+
+        // Real save path: dirty the equipment's lotoPoints and save → @PostUpdate fires DURING the
+        // commit flush → FieldChangeTracker emits the Equipment.lotoPoints M2M change. The OLD in-flush
+        // recordLocalMembership did JPA save + native queries here → reentrant flush → tx rollback-only,
+        // which is what silently rolled back the live create. Post-commit isolation must let this commit.
+        new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
+            Equipment eq = equipmentRepo.findById(eqId).orElseThrow();
+            LotoPoint p2m = lotoPointRepo.findById(p2.getId()).orElseThrow();
+            eq.addLotoPoint(p2m);
+            equipmentRepo.save(eq);
+        });
+
+        assertThat(joinRows(eqId)).containsExactlyInAnyOrder(p1.getId(), p2.getId());
+        assertThat(membershipCrdtService.presentSet("Equipment", eqId, "lotoPoints"))
+                .containsExactlyInAnyOrder(p1.getId(), p2.getId());
     }
 
     // ---- helpers ----

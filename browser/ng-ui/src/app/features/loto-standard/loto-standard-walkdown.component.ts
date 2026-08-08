@@ -14,6 +14,8 @@ import {
   GLOBAL_ITEMS, GlobalItemDef, LOTO_STANDARD_STATUS, LotoPointRef, LotoStandard, POINT_CHECKS,
   PointChecklist, PositionOptions, WalkdownDraft, orderedPoints, pointChecklistComplete, pointHasNegative,
 } from './loto-standard.model';
+import { WakeLockService } from '../../services/wake-lock.service';
+import { HapticsService } from '../../services/haptics.service';
 
 type TransitionMode = 'verify' | 'walkdown' | null;
 
@@ -162,14 +164,25 @@ type TransitionMode = 'verify' | 'walkdown' | null;
               }
               <textarea class="w-comment" rows="2" placeholder="Notes (optional)"
                         [value]="notes()" (input)="setNotes($any($event.target).value)"></textarea>
+              @if (draft()!.status === 'failed' && draft()!.lastError) {
+                <p class="w-msg w-error">{{ draft()!.lastError }}</p>
+              }
+            </div>
+
+            <!--
+              Sticky action bar. A standard can carry 30+ points, so the submit control has to stay
+              reachable without scrolling to the very bottom; the counter doubles as live progress.
+            -->
+            <div class="w-sticky">
+              <div class="w-sticky-progress">
+                <span>{{ completeCount() }} / {{ points().length }} points</span>
+                @if (!allGlobalChecked()) { <span class="w-sticky-warn">standard items outstanding</span> }
+              </div>
               <button class="w-finish-btn" [disabled]="!canSubmit() || submitting()" (click)="doSubmit()">
                 {{ submitting() ? 'Submitting…'
                    : (!online() ? 'Save & queue for submit'
                    : (mode() === 'verify' ? 'Mark Verified' : mode() === 'walkdown' ? 'Mark Walkdown Complete' : 'Submit checklist')) }}
               </button>
-              @if (draft()!.status === 'failed' && draft()!.lastError) {
-                <p class="w-msg w-error">{{ draft()!.lastError }}</p>
-              }
             </div>
           }
 
@@ -185,17 +198,18 @@ type TransitionMode = 'verify' | 'walkdown' | null;
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; }
-    .w-container { padding: 1rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; padding-bottom: 4rem; }
+    /* Bottom padding is small: the sticky action bar is the last child and provides the end-stop. */
+    .w-container { padding: 1rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; padding-bottom: 0.5rem; }
     .w-back { background: none; border: none; color: var(--accent-color); font-size: 0.9rem; padding: 0.2rem 0; cursor: pointer; }
-    .w-net { background: #b9770e; color: #fff; border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.82rem; margin: 0.4rem 0 0.6rem; }
-    .w-msg { text-align: center; color: var(--secondary-text, #888); padding: 2rem 1rem; }
-    .w-error { color: #e74c3c; }
+    .w-net { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.82rem; margin: 0.4rem 0 0.6rem; }
+    .w-msg { text-align: center; color: var(--secondary-text); padding: 2rem 1rem; }
+    .w-error { color: var(--danger-text); }
     .w-done { text-align: center; padding: 2.5rem 1rem; }
-    .w-done-icon { width: 3.5rem; height: 3.5rem; line-height: 3.5rem; margin: 0 auto 0.75rem; border-radius: 50%; background: #27ae60; color: #fff; font-size: 2rem; }
+    .w-done-icon { width: 3.5rem; height: 3.5rem; line-height: 3.5rem; margin: 0 auto 0.75rem; border-radius: 50%; background: var(--success-solid); color: var(--on-solid); font-size: 2rem; }
     .w-done-title { color: var(--primary-text); font-size: 1.05rem; margin-bottom: 1.25rem; }
     .w-title { font-size: 1.3rem; font-weight: 700; color: var(--primary-text); margin: 0.3rem 0 0.2rem; }
     .w-status { color: var(--primary-text); font-size: 0.9rem; margin: 0 0 1rem; }
-    .w-hint { color: var(--secondary-text, #888); font-size: 0.85rem; font-style: italic; }
+    .w-hint { color: var(--secondary-text); font-size: 0.85rem; font-style: italic; }
     .w-h2 { font-size: 1rem; font-weight: 700; color: var(--primary-text); margin: 1.2rem 0 0.5rem; }
     .w-globals { display: flex; flex-direction: column; gap: 0.65rem; }
     .w-global-item { border-bottom: 1px solid var(--border-color); padding-bottom: 0.55rem; }
@@ -205,51 +219,61 @@ type TransitionMode = 'verify' | 'walkdown' | null;
     .w-reveal { margin: 0.25rem 0 0 1.65rem; }
     .w-reveal summary { font-size: 0.78rem; color: var(--accent-color); cursor: pointer; }
     .w-reveal-body { white-space: pre-wrap; font-size: 0.85rem; color: var(--primary-text); margin: 0.35rem 0 0; }
-    .w-reveal-empty { display: block; margin: 0.15rem 0 0 1.65rem; font-size: 0.72rem; font-style: italic; color: var(--secondary-text, #888); }
+    .w-reveal-empty { display: block; margin: 0.15rem 0 0 1.65rem; font-size: 0.72rem; font-style: italic; color: var(--secondary-text); }
     .w-order { margin: 0.4rem 0 0 1.4rem; padding-left: 1rem; font-size: 0.85rem; color: var(--primary-text); }
     .w-order-item { margin: 0.35rem 0; padding-bottom: 0.35rem; border-bottom: 1px dashed var(--border-color); }
     .w-order-item:last-child { border-bottom: none; }
     .w-order-tag { font-weight: 700; }
-    .w-order-desc { display: block; color: var(--secondary-text, #888); font-size: 0.8rem; margin-top: 0.1rem; }
+    .w-order-desc { display: block; color: var(--secondary-text); font-size: 0.8rem; margin-top: 0.1rem; }
     .w-point { border: 1px solid var(--border-color); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem; background: var(--card-bg, var(--secondary-background)); }
-    .w-point.done { border-color: #27ae60; }
+    .w-point.done { border-color: var(--success-border); }
     .w-point-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
     .w-point-head-right { display: flex; align-items: center; gap: 0.4rem; }
     .w-drawing-btn { background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; padding: 0.2rem 0.55rem; font-size: 0.72rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .w-tag { font-weight: 700; color: var(--primary-text); }
-    .w-badge-ok { font-size: 0.72rem; font-weight: 700; color: #fff; background: #27ae60; padding: 0.12rem 0.5rem; border-radius: 999px; }
+    .w-badge-ok { font-size: 0.72rem; font-weight: 700; color: var(--on-solid); background: var(--success-solid); padding: 0.12rem 0.5rem; border-radius: 999px; }
     .w-point-info { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.7rem; margin: 0 0 0.55rem; }
-    .w-point-info dt { font-size: 0.72rem; font-weight: 700; color: var(--secondary-text, #888); align-self: start; }
+    .w-point-info dt { font-size: 0.72rem; font-weight: 700; color: var(--secondary-text); align-self: start; }
     .w-point-info dd { margin: 0; font-size: 0.85rem; color: var(--primary-text); }
-    .w-point-info .w-missing { color: #e67e22; font-weight: 600; }
-    .w-flag-missing { font-size: 0.72rem; font-weight: 700; color: #e67e22; white-space: nowrap; }
-    .w-check { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0; }
-    .w-check-label { font-size: 0.85rem; color: var(--primary-text); flex: 1; }
-    .w-check-btns { display: flex; gap: 0.3rem; flex-shrink: 0; }
-    .w-yn { border: 1px solid var(--border-color); background: transparent; color: var(--secondary-text, #888); border-radius: 8px; padding: 0.3rem 0.7rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .w-yn.pass.active { background: #27ae60; border-color: #27ae60; color: #fff; }
-    .w-yn.fail.active { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+    .w-point-info .w-missing { color: var(--warning-text); font-weight: 600; }
+    .w-flag-missing { font-size: 0.72rem; font-weight: 700; color: var(--warning-text); white-space: nowrap; }
+    .w-check { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.35rem 0; }
+    .w-check-label { font-size: 0.9rem; color: var(--primary-text); flex: 1; }
+    .w-check-btns { display: flex; gap: 0.4rem; flex-shrink: 0; }
+    /* 44px min box + 64px min width: this is the safety decision, tapped with gloves on.
+       Tapping the active value again clears it back to unanswered (see setCheck). */
+    .w-yn { min-height: 44px; min-width: 64px; border: 1px solid var(--border-color); background: transparent; color: var(--secondary-text); border-radius: 8px; padding: 0.3rem 0.7rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .w-yn.pass.active { background: var(--success-solid); border-color: var(--success-solid); color: var(--on-solid); }
+    .w-yn.fail.active { background: var(--danger-solid); border-color: var(--danger-solid); color: var(--on-solid); }
     .w-comment { width: 100%; box-sizing: border-box; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); resize: vertical; }
     .w-correct { margin-top: 0.6rem; }
     .w-correct summary { font-size: 0.8rem; color: var(--accent-color); cursor: pointer; }
-    .w-field { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.8rem; color: var(--secondary-text, #888); margin: 0.5rem 0; }
+    .w-field { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.8rem; color: var(--secondary-text); margin: 0.5rem 0; }
     .w-field input, .w-field select { padding: 0.45rem 0.6rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; }
     .w-finish { margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
-    .w-finish-btn { width: 100%; margin-top: 0.5rem; background: #27ae60; color: #fff; border: none; border-radius: 10px; padding: 0.8rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .w-finish-btn { width: 100%; min-height: 52px; background: var(--success-solid); color: var(--on-solid); border: none; border-radius: 10px; padding: 0.8rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .w-finish-btn:disabled { opacity: 0.5; cursor: default; }
-    .w-save { background: var(--accent-color); color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .w-flash { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: #2c3e50; color: #fff; padding: 0.6rem 1.1rem; border-radius: 999px; font-size: 0.85rem; box-shadow: 0 3px 12px rgba(0,0,0,0.3); z-index: 50; max-width: 90%; text-align: center; }
-    .w-flash.err { background: #c0392b; }
+    .w-save { background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 0.5rem 1.1rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    /* Pinned above the home indicator; --w-container padding-bottom keeps the last card clear of it. */
+    .w-sticky { position: sticky; bottom: 0; margin: 0 -1rem; padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom, 0px)); background: var(--primary-background); border-top: 1px solid var(--border-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.08); }
+    .w-sticky-progress { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; font-size: 0.8rem; color: var(--secondary-text); margin-bottom: 0.45rem; }
+    .w-sticky-warn { color: var(--warning-text); font-weight: 600; }
+    .w-flash { position: fixed; bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--primary-text); color: var(--primary-background); padding: 0.6rem 1.1rem; border-radius: 999px; font-size: 0.85rem; box-shadow: 0 3px 12px rgba(0,0,0,0.3); z-index: 50; max-width: 90%; text-align: center; }
+    .w-flash.err { background: var(--danger-solid); color: var(--on-solid); }
   `]
 })
 export class LotoStandardWalkdownComponent implements OnInit {
   private api = inject(LotoStandardApiService);
+  private haptics = inject(HapticsService);
   private store = inject(LotoStandardStore);
   private sync = inject(LotoWalkdownSyncService);
   private drawingService = inject(LotoDrawingService);
   private serverStatus = inject(ServerStatusService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+
+  /** Keep the screen on for the whole walkdown; released automatically when this screen closes. */
+  private wakeLock = inject(WakeLockService).bindTo();
 
   readonly checks = POINT_CHECKS;
   online = this.serverStatus.isOnline;
@@ -283,7 +307,8 @@ export class LotoStandardWalkdownComponent implements OnInit {
     return this.points().filter(p => pointChecklistComplete(d?.pointResults?.[String(p.id)])).length;
   });
 
-  private allGlobalChecked = computed(() =>
+  /** Also surfaced in the sticky bar, so it can't be private. */
+  allGlobalChecked = computed(() =>
     this.globalItemsToShow().every(g => this.draft()?.globalItems?.[g.key]?.checked));
   private allPointsComplete = computed(() => {
     const pts = this.points();
@@ -389,11 +414,15 @@ export class LotoStandardWalkdownComponent implements OnInit {
     return this.draft()?.pointResults?.[String(pointId)]?.[key] as boolean | null | undefined;
   }
   setCheck(pointId: number, key: keyof PointChecklist, value: boolean): void {
+    let cleared = false;
     this.patch(d => {
       const cur: PointChecklist = { ...(d.pointResults[String(pointId)] ?? {}) };
-      (cur[key] as boolean | null) = cur[key] === value ? null : value;
+      cleared = cur[key] === value;
+      (cur[key] as boolean | null) = cleared ? null : value;
       d.pointResults[String(pointId)] = cur;
     });
+    // Confirm the tap by feel — the screen is often washed out and held at arm's length.
+    this.haptics.tap(cleared ? 'tap' : value ? 'success' : 'warn');
   }
   pointNegative(pointId: number): boolean { return pointHasNegative(this.draft()?.pointResults?.[String(pointId)]); }
   pointComplete(pointId: number): boolean { return pointChecklistComplete(this.draft()?.pointResults?.[String(pointId)]); }

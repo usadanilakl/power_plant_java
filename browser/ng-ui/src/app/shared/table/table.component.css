@@ -527,3 +527,182 @@ tr.selected:hover {
   pointer-events: none;
   cursor: grabbing;
 } */
+/* ---------------------------------------------------------------------------
+   Mobile card mode (<=768px)
+   The grid is replaced by a list of cards: no hover, no right-click, no
+   horizontal scrolling. Card height is fixed so cdk-virtual-scroll keeps an
+   accurate item size — overflowing content is clamped rather than growing.
+   --------------------------------------------------------------------------- */
+
+.table-wrapper.mobile .table-header-container {
+  /* Header + per-column filter row are replaced by the collapsible controls above. */
+  display: none;
+}
+
+.mobile-filter-toggle,
+.mobile-sort-dir,
+.mobile-filter-logic {
+  background: var(--secondary-background);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.mobile-filter-toggle {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.mobile-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mobile-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+}
+
+.mobile-filter-row {
+  display: flex;
+  gap: 6px;
+}
+
+.mobile-filter-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--primary-text);
+  font-size: 16px;
+}
+
+.mobile-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-sort-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+}
+
+.mobile-sort select {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--primary-text);
+  font-size: 16px;
+}
+
+.card-list {
+  display: block;
+  padding: 8px;
+}
+
+.row-card {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  /* Must match MOBILE_CARD_HEIGHT (96) minus the 8px bottom margin. */
+  height: 88px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.row-card.selected {
+  border-color: var(--accent-color);
+  background: var(--selected-background);
+}
+
+.row-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.row-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-card-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  /* Clamp to two lines so every card stays exactly one item tall. */
+  max-height: 2.6em;
+  overflow: hidden;
+}
+
+.row-card-field {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 0.78rem;
+  min-width: 0;
+}
+
+.row-card-label {
+  color: var(--secondary-text);
+  flex: none;
+}
+
+.row-card-label::after {
+  content: ':';
+}
+
+.row-card-value {
+  color: var(--primary-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-card-menu {
+  flex: none;
+  width: 44px;
+  align-self: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--secondary-text);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.row-card-menu:active {
+  background: var(--hover-background);
+}

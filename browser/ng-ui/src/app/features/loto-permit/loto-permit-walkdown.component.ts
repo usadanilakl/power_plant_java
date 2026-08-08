@@ -11,6 +11,7 @@ import { LotoPermitApiService } from './loto-permit-api.service';
 import { LotoPermitStore } from './loto-permit-store.service';
 import { LotoPermitSyncService } from './loto-permit-sync.service';
 import { PwaLotoDetail, PwaLotoPoint, PwaWalkdownSession, WalkdownDraft } from './loto-permit.model';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 /**
  * Repeatable LOTO permit walkdown — a standalone multi-crew checklist available once the permit is verified. Free
@@ -92,37 +93,38 @@ import { PwaLotoDetail, PwaLotoPoint, PwaWalkdownSession, WalkdownDraft } from '
   `,
   styles: [`
     .wd { padding: 10px 12px 90px; }
-    .wd-back { background: none; border: none; color: #1976d2; padding: 4px 0 8px; font-size: 14px; }
-    .wd-net { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
-    .wd-msg { padding: 20px; text-align: center; color: #777; }
-    .wd-err { color: #c62828; }
+    .wd-back { background: none; border: none; color: var(--accent-color); padding: 4px 0 8px; font-size: 14px; }
+    .wd-net { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .wd-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
+    .wd-err { color: var(--danger-text); }
     .wd-head { margin-bottom: 10px; }
-    .wd-title { font-size: 16px; font-weight: 600; }
-    .wd-sub { color: #666; font-size: 13px; }
-    .wd-start { width: 100%; background: #2e7d32; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; }
-    .wd-start:disabled { background: #a5d6a7; }
-    .wd-hint { color: #888; font-size: 12px; text-align: center; }
-    .wd-sec { font-size: 12px; font-weight: 700; color: #607d8b; text-transform: uppercase; margin: 14px 0 4px; }
-    .wd-sess { background: #fff; border: 1px solid #e6e6e6; border-radius: 8px; padding: 10px; margin-bottom: 6px; }
-    .wd-muted { color: #999; font-size: 12px; }
-    .wd-sesshdr { display: flex; align-items: center; justify-content: space-between; color: #555; font-size: 13px; margin-bottom: 8px; }
-    .wd-switch { background: #eef4fb; color: #1976d2; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; }
-    .wd-p { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-    .wd-p.on { border-color: #90caf9; background: #f5f9ff; }
-    .wd-row { display: flex; align-items: center; gap: 8px; }
-    .wd-tag { font-weight: 700; }
-    .wd-desc { color: #333; font-size: 14px; }
-    .wd-pos { display: flex; align-items: center; gap: 10px; color: #666; font-size: 12px; margin-top: 4px; padding-left: 24px; }
-    .wd-dwg { background: #eef4fb; color: #1976d2; border: none; border-radius: 6px; padding: 2px 8px; }
-    .wd-note { width: 100%; margin-top: 6px; padding: 7px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
-    .wd-foot { position: sticky; bottom: 0; background: #fff; padding: 10px 0; border-top: 1px solid #eee; }
-    .wd-complete { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-    .wd-submit { width: 100%; margin-top: 8px; background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 13px; font-size: 16px; }
-    .wd-submit:disabled { background: #90caf9; }
+    .wd-title { font-size: 16px; font-weight: 600; color: var(--primary-text); }
+    .wd-sub { color: var(--secondary-text); font-size: 13px; }
+    .wd-start { width: 100%; min-height: 52px; background: var(--success-solid); color: var(--on-solid); border: none; border-radius: 8px; padding: 12px; font-size: 16px; font-weight: 600; }
+    .wd-start:disabled { opacity: 0.5; }
+    .wd-hint { color: var(--secondary-text); font-size: 12px; text-align: center; }
+    .wd-sec { font-size: 12px; font-weight: 700; color: var(--secondary-text); text-transform: uppercase; margin: 14px 0 4px; }
+    .wd-sess { background: var(--card-background); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 6px; }
+    .wd-muted { color: var(--secondary-text); font-size: 12px; }
+    .wd-sesshdr { display: flex; align-items: center; justify-content: space-between; color: var(--secondary-text); font-size: 13px; margin-bottom: 8px; }
+    .wd-switch { background: var(--info-bg); color: var(--info-text); border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; }
+    .wd-p { background: var(--card-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+    .wd-p.on { border-color: var(--accent-color); background: var(--info-bg); }
+    .wd-row { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+    .wd-tag { font-weight: 700; color: var(--primary-text); }
+    .wd-desc { color: var(--primary-text); font-size: 14px; }
+    .wd-pos { display: flex; align-items: center; gap: 10px; color: var(--secondary-text); font-size: 12px; margin-top: 4px; padding-left: 24px; }
+    .wd-dwg { background: var(--info-bg); color: var(--info-text); border: none; border-radius: 6px; padding: 2px 10px; }
+    .wd-note { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font: inherit; font-size: 16px; background: var(--input-bg); color: var(--primary-text); }
+    .wd-foot { position: sticky; bottom: 0; background: var(--primary-background); padding: 10px 0; border-top: 1px solid var(--border-color); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+    .wd-complete { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--primary-text); min-height: 44px; }
+    .wd-submit { width: 100%; min-height: 52px; margin-top: 8px; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 13px; font-size: 16px; font-weight: 600; }
+    .wd-submit:disabled { opacity: 0.5; }
   `],
 })
 export class LotoPermitWalkdownComponent implements OnInit {
   private api = inject(LotoPermitApiService);
+  private globalMessage = inject(GlobalMessageService);
   private store = inject(LotoPermitStore);
   private syncSvc = inject(LotoPermitSyncService);
   private drawingSvc = inject(LotoDrawingService);
@@ -242,12 +244,12 @@ export class LotoPermitWalkdownComponent implements OnInit {
     };
     this.store.saveWalkdownDraft(draft);
     this.syncSvc.submitWalkdown(draft).subscribe({
-      next: () => { alert('Walkdown submitted.'); this.router.navigate(['/loto']); },
+      next: () => { this.globalMessage.showSuccess('Walkdown submitted.'); this.router.navigate(['/loto']); },
       error: (err) => {
         this.submitting.set(false);
         const status = err?.status;
         if (status === 400 || status === 409) this.error.set(err?.error?.message || 'Rejected — review and retry.');
-        else { alert('No connection — saved and will submit automatically when back online.'); this.router.navigate(['/loto']); }
+        else { this.globalMessage.showInfo('No connection — saved and will submit automatically when back online.', 'yellow'); this.router.navigate(['/loto']); }
       },
     });
   }

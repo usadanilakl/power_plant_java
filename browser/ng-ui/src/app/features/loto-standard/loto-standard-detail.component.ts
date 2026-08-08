@@ -117,26 +117,26 @@ type Tab = 'standard' | 'procedure';
     :host { display: flex; flex-direction: column; height: 100%; }
     .d-container { padding: 1rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
     .d-back { background: none; border: none; color: var(--accent-color); font-size: 0.9rem; padding: 0.2rem 0; cursor: pointer; }
-    .d-msg { text-align: center; color: var(--secondary-text, #888); padding: 2rem 1rem; }
-    .d-error { color: #e74c3c; }
+    .d-msg { text-align: center; color: var(--secondary-text); padding: 2rem 1rem; }
+    .d-error { color: var(--danger-text); }
     .d-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0.4rem 0 0.75rem; }
     .d-title { font-size: 1.3rem; font-weight: 700; color: var(--primary-text); margin: 0; }
-    .d-badge { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; color: #fff; white-space: nowrap; }
-    .d-badge.b-active { background: #27ae60; }
-    .d-badge.b-walkdown { background: #2980b9; }
-    .d-badge.b-verification { background: #e67e22; }
-    .d-badge.b-draft { background: #95a5a6; }
-    .d-action { display: block; width: 100%; margin: 0 0 1rem; background: #e67e22; color: #fff; border: none; border-radius: 10px; padding: 0.7rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .d-badge { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; color: var(--on-solid); white-space: nowrap; }
+    .d-badge.b-active { background: var(--success-solid); }
+    .d-badge.b-walkdown { background: var(--accent-color); }
+    .d-badge.b-verification { background: var(--warning-solid); }
+    .d-badge.b-draft { background: var(--secondary-text); }
+    .d-action { display: block; width: 100%; margin: 0 0 1rem; background: var(--warning-solid); color: var(--on-solid); border: none; border-radius: 10px; padding: 0.7rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .d-tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; }
     .d-tab {
       background: none; border: none; padding: 0.6rem 0.4rem; font-size: 0.95rem; font-weight: 600; cursor: pointer;
-      color: var(--secondary-text, #888); border-bottom: 2px solid transparent; font-family: inherit;
+      color: var(--secondary-text); border-bottom: 2px solid transparent; font-family: inherit;
     }
     .d-tab.active { color: var(--primary-text); border-bottom-color: var(--accent-color); }
     .d-section { margin-bottom: 1rem; }
     .d-desc { color: var(--primary-text); margin: 0 0 0.75rem; }
     .d-facts { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.8rem; margin: 0; }
-    .d-facts dt { font-weight: 700; color: var(--secondary-text, #888); font-size: 0.85rem; }
+    .d-facts dt { font-weight: 700; color: var(--secondary-text); font-size: 0.85rem; }
     .d-facts dd { margin: 0; color: var(--primary-text); font-size: 0.9rem; }
     .d-h2 { font-size: 1rem; font-weight: 700; color: var(--primary-text); margin: 1rem 0 0.5rem; }
     .d-points { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -147,13 +147,13 @@ type Tab = 'standard' | 'procedure';
     .d-flag { font-size: 0.68rem; background: var(--border-color); color: var(--primary-text); padding: 0.1rem 0.4rem; border-radius: 6px; }
     .d-drawing-btn { font-size: 0.68rem; font-weight: 700; background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); padding: 0.1rem 0.4rem; border-radius: 6px; cursor: pointer; font-family: inherit; }
     .d-point-desc { color: var(--primary-text); font-size: 0.9rem; margin-top: 0.25rem; }
-    .d-point-pos { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; margin-top: 0.35rem; font-size: 0.82rem; color: var(--secondary-text, #888); }
-    .d-point-loc { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text, #888); }
-    .d-point-ze { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text, #888); }
+    .d-point-pos { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; margin-top: 0.35rem; font-size: 0.82rem; color: var(--secondary-text); }
+    .d-point-loc { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text); }
+    .d-point-ze { margin-top: 0.25rem; font-size: 0.8rem; color: var(--secondary-text); }
     .d-proc { margin-bottom: 1rem; }
     .d-proc-h { font-size: 0.9rem; font-weight: 700; color: var(--primary-text); margin: 0 0 0.3rem; }
     .d-proc-body { white-space: pre-wrap; color: var(--primary-text); font-size: 0.9rem; margin: 0; }
-    .d-note { font-style: italic; color: var(--secondary-text, #888); font-size: 0.85rem; }
+    .d-note { font-style: italic; color: var(--secondary-text); font-size: 0.85rem; }
   `]
 })
 export class LotoStandardDetailComponent implements OnInit {

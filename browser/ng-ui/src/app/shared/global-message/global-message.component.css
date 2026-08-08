@@ -57,6 +57,7 @@
 
 .message-btn {
   padding: 10px 32px;
+  min-height: 48px;
   background: var(--accent-color, #007bff);
   color: #fff;
   border: none;
@@ -68,6 +69,48 @@
 
 .message-btn:hover {
   background: var(--accent-color-hover, #0056b3);
+}
+
+/* Secondary action (Cancel) — present on confirm/prompt only. */
+.message-btn.ghost {
+  background: transparent;
+  color: var(--primary-text, #333);
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.message-btn.ghost:hover {
+  background: var(--hover-background, #f0f2f5);
+}
+
+/* Two-button row. Confirm sits right (thumb side); both stretch for a large target. */
+.message-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.message-actions .message-btn {
+  flex: 1;
+  padding: 10px 16px;
+}
+
+.message-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 8px;
+  background: var(--input-bg, #fff);
+  color: var(--primary-text, #333);
+  /* 16px keeps iOS from auto-zooming when the field takes focus. */
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.message-input:focus {
+  outline: none;
+  border-color: var(--accent-color, #007bff);
 }
 
 .spinner {

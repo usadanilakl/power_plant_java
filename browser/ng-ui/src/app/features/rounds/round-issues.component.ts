@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { ObjectContextComponent } from '../physical-object/object-context.component';
 import { RoundsApiService } from './rounds-api.service';
 import { IssueCommentDto, RoundIssueDto } from './rounds.model';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 /** Active Out-of-Range dashboard: every OPEN round issue, grouped by category, with comment / resolve / object-info. */
 @Component({
@@ -76,33 +77,34 @@ import { IssueCommentDto, RoundIssueDto } from './rounds.model';
   `,
   styles: [`
     .ri { padding: 10px 12px 60px; }
-    .ri-back { background: none; border: none; color: #1976d2; padding: 4px 0; font-size: 14px; }
-    .ri-toggle { display: block; margin: 4px 0 12px; font-size: 13px; color: #666; }
-    .ri-msg { padding: 20px; text-align: center; color: #777; }
-    .ri-error { color: #c62828; }
-    .ri-group { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; margin: 12px 0 4px; }
-    .ri-card { background: #fff; border: 1px solid #ffcdd2; border-left: 4px solid #ef5350; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
-    .ri-card.resolved { border-color: #c8e6c9; border-left-color: #66bb6a; opacity: 0.75; }
+    .ri-back { background: none; border: none; color: var(--accent-color); padding: 4px 0; font-size: 14px; }
+    .ri-toggle { display: block; margin: 4px 0 12px; font-size: 13px; color: var(--secondary-text); }
+    .ri-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
+    .ri-error { color: var(--danger-text); }
+    .ri-group { font-size: 12px; font-weight: 600; color: var(--secondary-text); text-transform: uppercase; margin: 12px 0 4px; }
+    .ri-card { background: var(--card-background); border: 1px solid var(--danger-border); border-left: 4px solid var(--danger-solid); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .ri-card.resolved { border-color: var(--success-border); border-left-color: var(--success-solid); opacity: 0.75; }
     .ri-head { display: flex; justify-content: space-between; gap: 8px; }
-    .ri-prompt { font-size: 14px; font-weight: 600; }
-    .ri-badge { flex: none; background: #ffebee; color: #c62828; border-radius: 4px; padding: 1px 7px; font-size: 11px; height: fit-content; }
-    .ri-badge.res { background: #e8f5e9; color: #2e7d32; }
-    .ri-meta { display: flex; gap: 10px; color: #999; font-size: 12px; margin-top: 4px; }
-    .ri-first { color: #555; font-size: 13px; margin-top: 5px; }
+    .ri-prompt { font-size: 14px; font-weight: 600; color: var(--primary-text); }
+    .ri-badge { flex: none; background: var(--danger-bg); color: var(--danger-text); border-radius: 4px; padding: 1px 7px; font-size: 11px; height: fit-content; }
+    .ri-badge.res { background: var(--success-bg); color: var(--success-text); }
+    .ri-meta { display: flex; gap: 10px; color: var(--secondary-text); font-size: 12px; margin-top: 4px; }
+    .ri-first { color: var(--secondary-text); font-size: 13px; margin-top: 5px; }
     .ri-actions { display: flex; gap: 8px; margin-top: 8px; }
-    .ri-actions button { background: #eef4fb; color: #1976d2; border: none; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
-    .ri-actions .ri-resolve { background: #e8f5e9; color: #2e7d32; margin-left: auto; }
-    .ri-comments { margin-top: 8px; border-top: 1px dashed #eee; padding-top: 6px; }
-    .ri-comment { font-size: 13px; padding: 3px 0; }
-    .ri-comment em { display: block; color: #999; font-size: 11px; }
+    .ri-actions button { background: var(--info-bg); color: var(--info-text); border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; }
+    .ri-actions .ri-resolve { background: var(--success-bg); color: var(--success-text); margin-left: auto; }
+    .ri-comments { margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 6px; }
+    .ri-comment { font-size: 13px; padding: 3px 0; color: var(--primary-text); }
+    .ri-comment em { display: block; color: var(--secondary-text); font-size: 11px; }
     .ri-addc { display: flex; gap: 6px; margin-top: 6px; }
-    .ri-addc input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 6px; }
-    .ri-addc button { background: #1976d2; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; }
-    .ri-obj { margin-top: 10px; border-top: 1px dashed #ddd; padding-top: 8px; }
+    .ri-addc input { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; background: var(--input-bg); color: var(--primary-text); }
+    .ri-addc button { background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 6px; padding: 6px 14px; }
+    .ri-obj { margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 8px; }
   `],
 })
 export class RoundIssuesComponent implements OnInit {
   private api = inject(RoundsApiService);
+  private globalMessage = inject(GlobalMessageService);
   private router = inject(Router);
 
   issues = signal<RoundIssueDto[]>([]);
@@ -165,9 +167,15 @@ export class RoundIssuesComponent implements OnInit {
   }
 
   async resolve(i: RoundIssueDto): Promise<void> {
-    const note = prompt('Resolution note (optional):') ?? undefined;
+    // Cancel now aborts. The old window.prompt() coerced a cancel to "no note" and resolved the
+    // issue anyway, so there was no way to back out once the dialog opened.
+    const note = await this.globalMessage.promptText('Resolution note (optional):', {
+      placeholder: 'What was done?', confirmLabel: 'Resolve',
+    });
+    if (note === null) return;
     try {
-      await firstValueFrom(this.api.resolveIssue(i.id, note));
+      // The note is optional: send undefined rather than '' so the API omits it entirely.
+      await firstValueFrom(this.api.resolveIssue(i.id, note.trim() || undefined));
       this.reload();
     } catch (e: any) {
       this.error.set(e?.error?.message || e?.message || 'Failed to resolve');

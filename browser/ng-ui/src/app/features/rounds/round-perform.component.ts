@@ -9,6 +9,9 @@ import { RoundsApiService } from './rounds-api.service';
 import { RoundsStore } from './rounds-store.service';
 import { RoundsSyncService } from './rounds-sync.service';
 import { AnswerHistory, QuestionForPerform, RoundDraft, RoundPerform, isOutOfRange, isQuestionVisible, parseChoices } from './rounds.model';
+import { GlobalMessageService } from '../../services/global-message.service';
+import { WakeLockService } from '../../services/wake-lock.service';
+import { HapticsService } from '../../services/haptics.service';
 
 interface Draft { value: string; comment: string; }
 
@@ -135,46 +138,51 @@ interface Draft { value: string; comment: string; }
   `,
   styles: [`
     .rp { padding: 10px 12px 80px; }
-    .rp-back { background: none; border: none; color: #1976d2; padding: 4px 0 10px; font-size: 14px; }
-    .rp-offline { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px; }
-    .rp-msg { padding: 20px; text-align: center; color: #777; }
-    .rp-error { color: #c62828; }
-    .rp-progress { color: #666; font-size: 13px; margin-bottom: 10px; }
-    .rp-q { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
-    .rp-q.oor { border-color: #ef9a9a; background: #fff5f5; }
+    .rp-back { background: none; border: none; color: var(--accent-color); padding: 4px 0 10px; font-size: 14px; }
+    .rp-offline { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px; }
+    .rp-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
+    .rp-error { color: var(--danger-text); }
+    .rp-progress { color: var(--secondary-text); font-size: 13px; margin-bottom: 10px; }
+    .rp-q { background: var(--card-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .rp-q.oor { border-color: var(--danger-border); background: var(--danger-bg); }
     .rp-q-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .rp-q-cat { color: #888; font-size: 12px; text-transform: uppercase; }
-    .rp-q-tag { color: #aaa; }
+    .rp-q-cat { color: var(--secondary-text); font-size: 12px; text-transform: uppercase; }
+    .rp-q-tag { color: var(--secondary-text); opacity: 0.8; }
     .rp-q-actions { display: flex; gap: 6px; flex: none; }
-    .rp-info { background: #eef4fb; color: #1976d2; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; }
-    .rp-history { margin: 6px 0 8px; border: 1px solid #eee; border-radius: 6px; overflow: hidden; }
-    .rp-hrow { display: flex; justify-content: space-between; padding: 4px 8px; font-size: 12px; border-bottom: 1px solid #f2f2f2; }
-    .rp-hrow.oor { background: #fff5f5; color: #c62828; }
-    .rp-hmeta { color: #999; }
-    .rp-hempty { padding: 8px; color: #999; font-size: 12px; text-align: center; }
-    .rp-prompt { font-size: 15px; margin: 4px 0 8px; }
-    .rp-known { background: #fff3e0; color: #e65100; border-radius: 6px; padding: 6px 8px; font-size: 12px; margin-bottom: 8px; }
+    .rp-info { background: var(--info-bg); color: var(--info-text); border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; }
+    .rp-history { margin: 6px 0 8px; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
+    .rp-hrow { display: flex; justify-content: space-between; padding: 4px 8px; font-size: 12px; border-bottom: 1px solid var(--border-color); }
+    .rp-hrow.oor { background: var(--danger-bg); color: var(--danger-text); }
+    .rp-hmeta { color: var(--secondary-text); }
+    .rp-hempty { padding: 8px; color: var(--secondary-text); font-size: 12px; text-align: center; }
+    .rp-prompt { font-size: 15px; margin: 4px 0 8px; color: var(--primary-text); }
+    .rp-known { background: var(--warning-bg); color: var(--warning-text); border-radius: 6px; padding: 6px 8px; font-size: 12px; margin-bottom: 8px; }
     .rp-reading { display: flex; align-items: center; gap: 8px; }
-    .rp-reading input { width: 120px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
-    .rp-unit { color: #666; }
-    .rp-limits { color: #999; font-size: 12px; }
-    select, .rp-q input[type=text], .rp-q input:not([type]) { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+    .rp-reading input { width: 130px; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; background: var(--input-bg); color: var(--primary-text); }
+    .rp-unit { color: var(--secondary-text); }
+    .rp-limits { color: var(--secondary-text); font-size: 12px; }
+    select, .rp-q input[type=text], .rp-q input:not([type]) { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; background: var(--input-bg); color: var(--primary-text); }
     .rp-toggle { display: flex; gap: 8px; }
-    .rp-toggle button { flex: 1; padding: 10px; border: 1px solid #cfcfcf; border-radius: 8px; background: #fafafa; font-size: 15px; }
-    .rp-toggle button.on { background: #2e7d32; color: #fff; border-color: #2e7d32; }
-    .rp-toggle button.fail.on { background: #c62828; border-color: #c62828; }
-    .rp-comment { width: 100%; margin-top: 8px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font: inherit; resize: vertical; }
-    .rp-comment.req { border-color: #ef5350; background: #fff5f5; }
-    .rp-obj { margin-top: 10px; border-top: 1px dashed #ddd; padding-top: 8px; }
-    .rp-foot { position: sticky; bottom: 0; background: #fff; padding: 10px 0; border-top: 1px solid #eee; }
-    .rp-block { color: #c62828; font-size: 13px; }
-    .rp-notes { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font: inherit; margin-bottom: 8px; }
-    .rp-submit { width: 100%; background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 13px; font-size: 16px; }
-    .rp-submit:disabled { background: #90caf9; }
+    /* 52px: primary pass/fail decision, hit with gloves on. */
+    .rp-toggle button { flex: 1; min-height: 52px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--secondary-background); color: var(--primary-text); font-size: 16px; font-weight: 600; }
+    .rp-toggle button.on { background: var(--success-solid); color: var(--on-solid); border-color: var(--success-solid); }
+    .rp-toggle button.fail.on { background: var(--danger-solid); color: var(--on-solid); border-color: var(--danger-solid); }
+    .rp-comment { width: 100%; margin-top: 8px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font: inherit; font-size: 16px; resize: vertical; background: var(--input-bg); color: var(--primary-text); }
+    .rp-comment.req { border-color: var(--danger-border); background: var(--danger-bg); }
+    .rp-obj { margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 8px; }
+    .rp-foot { position: sticky; bottom: 0; background: var(--primary-background); padding: 10px 0; border-top: 1px solid var(--border-color); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+    .rp-block { color: var(--danger-text); font-size: 13px; }
+    .rp-notes { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font: inherit; font-size: 16px; margin-bottom: 8px; background: var(--input-bg); color: var(--primary-text); }
+    .rp-submit { width: 100%; min-height: 52px; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 13px; font-size: 16px; font-weight: 600; }
+    .rp-submit:disabled { opacity: 0.5; }
   `],
 })
 export class RoundPerformComponent implements OnInit {
   private api = inject(RoundsApiService);
+  private globalMessage = inject(GlobalMessageService);
+  private haptics = inject(HapticsService);
+  /** Screen stays on for the whole round; released when this screen closes. */
+  private wakeLock = inject(WakeLockService).bindTo();
   private store = inject(RoundsStore);
   private sync = inject(RoundsSyncService);
   private route = inject(ActivatedRoute);
@@ -311,7 +319,13 @@ export class RoundPerformComponent implements OnInit {
     return isOutOfRange(q, d.value, null) && !q.openIssue && d.comment.trim() === '';
   }
 
-  setVal(qid: number, v: string): void { this.draft[qid].value = v; this.touch(); }
+  /** Re-tapping the active choice clears it, so a mis-tap with gloves on is recoverable. */
+  setVal(qid: number, v: string): void {
+    const cleared = this.draft[qid].value === v;
+    this.draft[qid].value = cleared ? '' : v;
+    this.touch();
+    this.haptics.tap(cleared ? 'tap' : 'success');
+  }
   touch(): void { this.tick.update(n => n + 1); this.persistDraft('draft'); }
   toggleObj(qid: number): void { this.shownObj.update(x => x === qid ? null : qid); }
 
@@ -339,7 +353,7 @@ export class RoundPerformComponent implements OnInit {
         const parts = [`${res.answersSaved} saved`];
         if (res.issuesOpened) parts.push(`${res.issuesOpened} issue(s) opened`);
         if (res.issuesResolved) parts.push(`${res.issuesResolved} resolved`);
-        alert('Round submitted — ' + parts.join(', '));
+        this.globalMessage.showSuccess('Round submitted — ' + parts.join(', '));
         this.router.navigate(['/rounds']);
       },
       error: (err) => {
@@ -350,7 +364,7 @@ export class RoundPerformComponent implements OnInit {
           this.error.set(err?.error?.message || 'Submit was rejected — review and try again.');
         } else {
           // network/offline — draft stays queued and auto-flushes on reconnect
-          alert('No connection — round saved and will submit automatically when back online.');
+          this.globalMessage.showInfo('No connection — round saved and will submit automatically when back online.', 'yellow');
           this.router.navigate(['/rounds']);
         }
       },

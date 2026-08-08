@@ -13,6 +13,7 @@ import {
   ServerApiService
 } from '../../services/server-api.service';
 import { PowerAutomateService } from '../../services/power-automate.service';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 interface QualificationReportRow {
   trackKey: string;
@@ -679,12 +680,12 @@ interface QualificationReportSummary {
                     <label>
                       <span>Default Months</span>
                       <span class="field-help">Used to calculate expiration from the issued date when expiration is required. Leave blank for non-expiring qualifications.</span>
-                      <input name="defaultValidityMonths" type="number" min="0" [ngModel]="definitionDraft().defaultValidityMonths" (ngModelChange)="updateDefinitionDraft('defaultValidityMonths', $event)">
+                      <input name="defaultValidityMonths" type="number" inputmode="numeric" min="0" [ngModel]="definitionDraft().defaultValidityMonths" (ngModelChange)="updateDefinitionDraft('defaultValidityMonths', $event)">
                     </label>
                     <label>
                       <span>Sort</span>
                       <span class="field-help">Lower numbers appear first in the catalog list and the assignment dropdown.</span>
-                      <input name="sortOrder" type="number" [ngModel]="definitionDraft().sortOrder" (ngModelChange)="updateDefinitionDraft('sortOrder', $event)">
+                      <input name="sortOrder" type="number" inputmode="numeric" [ngModel]="definitionDraft().sortOrder" (ngModelChange)="updateDefinitionDraft('sortOrder', $event)">
                     </label>
                     <label>
                       <span>Description</span>
@@ -1302,6 +1303,7 @@ interface QualificationReportSummary {
 })
 export class QualificationManagementComponent implements OnInit {
   private serverApi = inject(ServerApiService);
+  private globalMessage = inject(GlobalMessageService);
   private pa = inject(PowerAutomateService);
 
   @ViewChild('qrPanel', { static: false }) qrPanel?: ElementRef<HTMLElement>;
@@ -1706,9 +1708,13 @@ export class QualificationManagementComponent implements OnInit {
     });
   }
 
-  deleteQualification(qualification: PwaQualificationDto): void {
+  async deleteQualification(qualification: PwaQualificationDto): Promise<void> {
     if (!qualification.sharepointId) return;
-    if (!confirm(`Delete ${qualification.qualificationName || 'qualification'} from this person?`)) return;
+    const ok = await this.globalMessage.confirm(
+      `Delete ${qualification.qualificationName || 'qualification'} from this person?`,
+      { confirmLabel: 'Delete', color: 'red' },
+    );
+    if (!ok) return;
     this.busy.set(true);
     if (this.paFallbackActive()) {
       this.deleteAssignmentViaPowerAutomate(qualification);
@@ -1779,9 +1785,13 @@ export class QualificationManagementComponent implements OnInit {
     });
   }
 
-  deleteDefinition(definition: PwaQualificationDefinitionDto): void {
+  async deleteDefinition(definition: PwaQualificationDefinitionDto): Promise<void> {
     if (!definition.sharepointId) return;
-    if (!confirm(`Delete ${definition.qualificationName || 'catalog item'}?`)) return;
+    const ok = await this.globalMessage.confirm(
+      `Delete ${definition.qualificationName || 'catalog item'}?`,
+      { confirmLabel: 'Delete', color: 'red' },
+    );
+    if (!ok) return;
     this.busy.set(true);
     if (this.paFallbackActive()) {
       this.deleteDefinitionViaPowerAutomate(definition);

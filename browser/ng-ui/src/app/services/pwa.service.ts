@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
 import { SwUpdate, VersionEvent, VersionReadyEvent } from '@angular/service-worker';
 import { BehaviorSubject, filter } from 'rxjs';
+import { GlobalMessageService } from './global-message.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,8 +12,11 @@ export class PwaService {
 
   private document = inject(DOCUMENT);
   private swUpdate = inject(SwUpdate, { optional: true });
+  private globalMessage = inject(GlobalMessageService);
   private promptEventSource = new BehaviorSubject<any>(null);
   private updateCheckInFlight = false;
+  /** Guards against re-asking on every focus once the user has already been offered this version. */
+  private updatePrompted = false;
   /**
    * Observable that emits the 'beforeinstallprompt' event.
    * This event is captured and stored, so subscribers will get the latest event even if they subscribe late.
@@ -82,14 +86,40 @@ export class PwaService {
     }
 
     console.log('[PWA] New app version ready', event);
-    this.swUpdate!.activateUpdate()
-      .then(() => {
-        console.log('[PWA] Update activated, reloading application');
-        this.document.location.reload();
-      })
-      .catch((error) => {
-        console.error('[PWA] Failed to activate update', error);
-      });
+    this.promptToApplyUpdate();
+  }
+
+  /**
+   * Ask before swapping the app out from under the user.
+   *
+   * Update checks fire on focus and visibilitychange — i.e. every time an operator comes back after
+   * taking a photo or unlocking the phone. Activating and reloading right then would yank the screen
+   * away mid-task. The offline-first screens (rounds, LOTO walkdown, work request) autosave drafts
+   * and would survive it, but Maximo SR create and any half-typed form would not.
+   *
+   * Left un-applied, the update simply lands on the next natural reload, so declining is safe.
+   */
+  private promptToApplyUpdate(): void {
+    if (this.updatePrompted) return; // one ask per session — don't nag on every focus
+    this.updatePrompted = true;
+
+    void this.globalMessage.confirm(
+      'A new version of the app is ready. Reload now to apply it?',
+      { confirmLabel: 'Reload', cancelLabel: 'Later', color: 'white' },
+    ).then((accepted) => {
+      if (!accepted) {
+        console.log('[PWA] Update deferred by user; will apply on next load');
+        return;
+      }
+      this.swUpdate!.activateUpdate()
+        .then(() => {
+          console.log('[PWA] Update activated, reloading application');
+          this.document.location.reload();
+        })
+        .catch((error) => {
+          console.error('[PWA] Failed to activate update', error);
+        });
+    });
   }
 
   private registerUpdateTriggers(): void {
