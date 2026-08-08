@@ -87,6 +87,15 @@ public class FieldChangeCompactor {
     @Value("${sync.hub.compaction-min-age-hours:168}")
     private long minAgeHours;
 
+    // OR-Set: owning-side @ManyToMany membership is an LWW-Element-Set — its per-element ADD/REMOVE history
+    // is NOT whole-field-superseded, so keeping only the SyncOrder-latest change (and deleting the rest)
+    // would drop a concurrently-added element from the log. A catching-up/fresh node replaying the
+    // compacted log would then be missing that element (each concurrent add carries only its OWN element in
+    // newValue). When the OR-Set is on, membership fields are therefore EXCLUDED from compaction — like the
+    // _entity_ CREATE markers. When it is off, M2M is whole-set LWW and compacting to the latest is correct.
+    @Value("${sync.membership.orset.enabled:false}")
+    private boolean membershipOrsetEnabled;
+
     private final AtomicBoolean inFlight = new AtomicBoolean(false);
 
     public FieldChangeCompactor(FieldChangeRepository fieldChangeRepository,
@@ -176,6 +185,13 @@ public class FieldChangeCompactor {
 
             List<FieldChange> rows = fieldChangeRepository.findAllForKey(entityType, entityId, fieldName);
             if (rows.size() <= 1) continue; // raced away since the candidate query
+
+            // OR-Set membership fields are NOT compactable — each per-element ADD/REMOVE must survive in the
+            // log or a catching-up node loses a concurrently-added element. (The candidate query can't see
+            // relationshipType per key; skip here where the flag and the rows are both available.)
+            if (membershipOrsetEnabled && rows.stream().anyMatch(r -> "ManyToMany".equals(r.getRelationshipType()))) {
+                continue;
+            }
 
             FieldChange latest = rows.stream().max(SyncOrder.TOTAL).orElse(null);
             if (latest == null || latest.getId() == null) continue;

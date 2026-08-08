@@ -214,6 +214,59 @@ class FieldChangeCompactorIT {
         assertThat(exists(b)).isTrue();
     }
 
+    @Test
+    @DisplayName("OR-Set on: owning-@ManyToMany membership keys are NOT compacted (per-element history must survive)")
+    void doesNotCompactManyToManyWhenOrsetOn() {
+        ReflectionTestUtils.setField(compactor, "membershipOrsetEnabled", true);
+        // Two concurrent membership adds on the same field — both durably applied and old enough to be
+        // otherwise-compactable. Under the OR-Set each carries only its OWN element, so collapsing to the
+        // latest would drop the other element from the log (a catching-up node would then miss it).
+        UUID add1 = m2mChange("Equipment", 1200, "lotoPoints", "[1]", now.minus(72, ChronoUnit.HOURS), "APPLIED");
+        UUID add2 = m2mChange("Equipment", 1200, "lotoPoints", "[2]", now.minus(48, ChronoUnit.HOURS), "APPLIED");
+
+        compactor.runCompaction();
+
+        assertThat(rowsFor("Equipment", 1200, "lotoPoints"))
+                .as("membership history is not whole-field-superseded — keep every per-element change").isEqualTo(2);
+        assertThat(exists(add1)).isTrue();
+        assertThat(exists(add2)).isTrue();
+    }
+
+    @Test
+    @DisplayName("OR-Set OFF: @ManyToMany is whole-set LWW → still compacts to the latest (no regression)")
+    void compactsManyToManyWhenOrsetOff() {
+        ReflectionTestUtils.setField(compactor, "membershipOrsetEnabled", false);
+        UUID old = m2mChange("Equipment", 1300, "lotoPoints", "[1]", now.minus(72, ChronoUnit.HOURS), "APPLIED");
+        UUID latest = m2mChange("Equipment", 1300, "lotoPoints", "[1,2]", now.minus(48, ChronoUnit.HOURS), "APPLIED");
+
+        compactor.runCompaction();
+
+        assertThat(rowsFor("Equipment", 1300, "lotoPoints")).isEqualTo(1);
+        assertThat(exists(latest)).isTrue();
+        assertThat(exists(old)).isFalse();
+    }
+
+    private UUID m2mChange(String et, long eid, String fn, String val, Instant ts, String disposition) {
+        UUID id = UUID.randomUUID();
+        tx().executeWithoutResult(s -> {
+            FieldChange c = new FieldChange(et, eid, fn, null, val, "REMOTE", "remote-machine", FieldChange.ChangeType.UPDATE);
+            c.setId(id);
+            c.setTimestamp(ts);
+            c.setRelationshipType("ManyToMany");
+            fieldChangeRepository.save(c);
+            if (disposition != null) {
+                HubChangeApplyState st = new HubChangeApplyState();
+                st.setChangeId(id);
+                st.setDisposition(disposition);
+                st.setEntityType(et);
+                st.setEntityId(eid);
+                st.setFirstSeenAt(now);
+                applyStateRepo.save(st);
+            }
+        });
+        return id;
+    }
+
     private UUID markerChange(String et, long eid, FieldChange.ChangeType type, String val, Instant ts) {
         UUID id = UUID.randomUUID();
         tx().executeWithoutResult(s -> {

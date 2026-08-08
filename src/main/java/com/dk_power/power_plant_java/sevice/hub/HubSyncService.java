@@ -56,6 +56,13 @@ public class HubSyncService {
     private final HubApplyStateSink hubApplyStateSink;
     private final FieldChangeCompactor fieldChangeCompactor;
 
+    // OR-Set: owning-side @ManyToMany membership converges via a per-element LWW-Element-Set in the apply
+    // path (FieldSyncService.applyManyToManyChange), so on the hub it must be EXEMPT from the whole-field
+    // LWW accept-gate and from compaction — otherwise a concurrent older membership edit is dropped before
+    // its per-element merge runs. Field-injected @Value (matches FieldSyncService.membershipOrsetEnabled).
+    @org.springframework.beans.factory.annotation.Value("${sync.membership.orset.enabled:false}")
+    private boolean membershipOrsetEnabled;
+
     // Legacy in-memory apply-failure recovery. Used ONLY when the durable apply-state path is off
     // (hubApplyStateSink.isDurableEnabled() == false). A hub restart wipes this queue — that IS the D7
     // defect the durable path (Inc 7) fixes. The two paths are mutually exclusive: when durable is on,
@@ -424,6 +431,16 @@ public class HubSyncService {
     }
 
     private boolean shouldAcceptChange(FieldChange incoming, Map<String, FieldChange> latestChanges) {
+        // OR-Set: owning-side @ManyToMany membership converges via a per-element LWW-Element-Set in the
+        // apply path (FieldSyncService.applyManyToManyChange) regardless of change order — so it must NOT
+        // be gated by whole-field LWW here. Gating drops a CONCURRENT older membership edit before its
+        // per-element merge runs (observed live: two nodes each add a different point to the same
+        // Equipment.lotoPoints; the hub kept its own newer add and silently rejected the client's older
+        // one, so that point never converged onto the hub). Accept it and let the OR-Set do the real,
+        // element-by-element resolution. Mirrors the identical bypass in FieldSyncService.shouldApplyChange.
+        if (membershipOrsetEnabled && "ManyToMany".equals(incoming.getRelationshipType())) {
+            return true;
+        }
         String key = incoming.getEntityType() + ":" + incoming.getEntityId() + ":" + incoming.getFieldName();
         FieldChange latest = latestChanges.get(key);
         // Same total order the clients use (SyncOrder). Was an inline copy with no final tiebreak.
@@ -432,8 +449,17 @@ public class HubSyncService {
 
     private List<FieldChange> compactChanges(List<FieldChange> changes) {
         Map<String, FieldChange> latestByField = new LinkedHashMap<>();
+        // OR-Set membership changes are NOT compacted: each per-element @ManyToMany edit must survive to
+        // the apply path. Whole-field compaction keeps only the latest per (entity:field) and would
+        // silently drop concurrent adds on the same field within a single exchange — the same clobber the
+        // accept-gate bypass prevents. They pass through verbatim; only non-membership fields compact.
+        List<FieldChange> passthrough = new ArrayList<>();
 
         for (FieldChange change : changes) {
+            if (membershipOrsetEnabled && "ManyToMany".equals(change.getRelationshipType())) {
+                passthrough.add(change);
+                continue;
+            }
             String key = change.getEntityType() + ":" + change.getEntityId() + ":" + change.getFieldName();
             FieldChange existing = latestByField.get(key);
             // Same total order (SyncOrder). The old `isAfter` kept the first-encountered change on a
@@ -444,13 +470,15 @@ public class HubSyncService {
         }
 
         int originalSize = changes.size();
-        int compactedSize = latestByField.size();
+        int compactedSize = latestByField.size() + passthrough.size();
         if (compactedSize < originalSize) {
-            log.debug("Compacted {} changes to {} (removed {} duplicates)",
-                originalSize, compactedSize, originalSize - compactedSize);
+            log.debug("Compacted {} changes to {} (removed {} duplicates; {} membership passthrough)",
+                originalSize, compactedSize, originalSize - compactedSize, passthrough.size());
         }
 
-        return new ArrayList<>(latestByField.values());
+        List<FieldChange> out = new ArrayList<>(latestByField.values());
+        out.addAll(passthrough);
+        return out;
     }
 
     private void broadcastChangesInBatches(List<FieldChange> changes, String originMachineId) {
