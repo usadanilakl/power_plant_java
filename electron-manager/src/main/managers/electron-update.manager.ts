@@ -257,25 +257,80 @@ export class ElectronUpdateManager {
     const stagingVersionPath = path.join(this.stagingDir, 'electron-version.json');
     const logFile = path.join(this.stagingDir, 'update.log');
 
+    // Extract-to-swap staging dirs. We never unzip over a live install:
+    //   <install>.new  — fresh extract target (empty, so nothing can be locked)
+    //   <install>.prev — the outgoing version, kept as the rollback copy
+    const newDir = `${installDir}.new`;
+    const prevDir = `${installDir}.prev`;
+    const exeName = path.basename(exePath);
+
     // Escape single quotes for PowerShell string literals
     const psZipPath = zipPath.replace(/'/g, "''");
-    const psInstallDir = installDir.replace(/'/g, "''");
+    const psNewDir = newDir.replace(/'/g, "''");
 
     // --- Script 1: update-extract.cmd ---
-    // Does only the extraction + writes a marker file on success.
-    // Can be run as current user or elevated via UAC.
+    // Extracts, verifies, and swaps. All three need the same filesystem rights, so they live in
+    // the one script the orchestrator can re-run under UAC. The marker means "fully applied",
+    // not "unzip returned".
+    //
+    // Why extract-to-swap rather than unzip-over-the-top:
+    //   1. Expand-Archive raises a NON-TERMINATING error when it cannot replace a locked file and
+    //      powershell.exe still exits 0 — so `if not errorlevel 1` reported success after a
+    //      PARTIAL extraction. Harmless while every build shipped identical Electron binaries;
+    //      fatal the first time a release changes them (mixed Chromium tree, app will not start).
+    //   2. A fresh directory has nothing to lock, so extraction failures are real failures.
+    //   3. Renaming the live install is itself the "did the app actually exit?" test — it fails
+    //      loudly instead of silently writing over a running process.
+    //   4. Overlay extraction never deletes files, so anything dropped from the distribution
+    //      lingered in every field install forever. A swap leaves exactly the shipped tree.
+    //
     // CRLF line endings are critical for CMD on Windows.
     const extractLines = [
       '@echo off',
-      `echo Extracting update to: "${installDir}"`,
-      `powershell -NoProfile -Command "Expand-Archive -Path '${psZipPath}' -DestinationPath '${psInstallDir}' -Force"`,
-      'if not errorlevel 1 (',
-      `    echo OK > "${markerPath}"`,
-      '    echo Extraction successful.',
-      ') else (',
+      `echo Extracting update to: "${newDir}"`,
+      '',
+      'REM Start from a clean extract dir so a stale partial run cannot poison this one.',
+      `if exist "${newDir}" rmdir /s /q "${newDir}"`,
+      '',
+      `powershell -NoProfile -Command "$ErrorActionPreference='Stop'; try { Expand-Archive -Path '${psZipPath}' -DestinationPath '${psNewDir}' -Force; exit 0 } catch { Write-Host $_.Exception.Message; exit 1 }"`,
+      'if errorlevel 1 (',
       '    echo Extraction FAILED.',
+      `    if exist "${newDir}" rmdir /s /q "${newDir}"`,
+      '    exit /b 1',
       ')',
-      'exit /b %errorlevel%',
+      '',
+      'REM Verify the payload landed before touching the live install.',
+      `if not exist "${newDir}\\${exeName}" (`,
+      '    echo Verification FAILED: executable missing from extracted payload.',
+      `    rmdir /s /q "${newDir}"`,
+      '    exit /b 1',
+      ')',
+      `if not exist "${newDir}\\resources\\app.asar" (`,
+      '    echo Verification FAILED: resources\\app.asar missing from extracted payload.',
+      `    rmdir /s /q "${newDir}"`,
+      '    exit /b 1',
+      ')',
+      '',
+      'REM Swap. Keep only one previous version.',
+      `if exist "${prevDir}" rmdir /s /q "${prevDir}"`,
+      `move "${installDir}" "${prevDir}" >nul 2>&1`,
+      'if errorlevel 1 (',
+      '    echo Swap FAILED: the install folder is still in use - the app did not fully exit.',
+      '    echo Nothing was changed.',
+      `    rmdir /s /q "${newDir}"`,
+      '    exit /b 1',
+      ')',
+      '',
+      `move "${newDir}" "${installDir}" >nul 2>&1`,
+      'if errorlevel 1 (',
+      '    echo Swap FAILED while installing the new version - rolling back.',
+      `    move "${prevDir}" "${installDir}" >nul 2>&1`,
+      '    exit /b 1',
+      ')',
+      '',
+      `echo OK > "${markerPath}"`,
+      'echo Update applied and verified.',
+      'exit /b 0',
     ];
     const extractScript = extractLines.join('\r\n') + '\r\n';
 
@@ -303,9 +358,23 @@ export class ElectronUpdateManager {
       'echo Waiting for DK Power Manager to exit...',
       `echo [%date% %time%] Waiting for PID ${electronPid} >> "%LOGFILE%"`,
       '',
-      `powershell -NoProfile -Command "try { Wait-Process -Id ${electronPid} -Timeout 60 -ErrorAction Stop } catch { }"`,
+      // The old version swallowed a timeout in an empty catch and carried on regardless, which is
+      // what CREATED the locked-file condition it then failed to detect. Exit non-zero instead:
+      // WaitForExit returns false on timeout, and a missing process means it already exited.
+      `powershell -NoProfile -Command "$p = Get-Process -Id ${electronPid} -ErrorAction SilentlyContinue; if ($p) { if (-not $p.WaitForExit(60000)) { exit 1 } }; exit 0"`,
+      'if errorlevel 1 (',
+      '    echo [%date% %time%] ERROR: app still running after 60s - aborting, nothing changed >> "%LOGFILE%"',
+      '    echo.',
+      '    echo ERROR: DK Power Manager did not exit within 60 seconds.',
+      '    echo The update was NOT applied and nothing was changed.',
+      '    echo Close the app completely and click "Apply Update" again.',
+      '    echo.',
+      '    echo Log: "%LOGFILE%"',
+      '    timeout /t 20 /nobreak >nul',
+      '    exit /b 1',
+      ')',
       '',
-      'echo [%date% %time%] Process exited (or timed out) >> "%LOGFILE%"',
+      'echo [%date% %time%] Process exited >> "%LOGFILE%"',
       '',
       'REM Extra wait for file handles to release',
       'timeout /t 3 /nobreak >nul',
@@ -353,18 +422,22 @@ export class ElectronUpdateManager {
       '    goto EXTRACTION_OK',
       ')',
       '',
-      'REM Both attempts failed',
+      'REM Both attempts failed. The swap either never happened or rolled itself back, so the',
+      'REM existing install is intact — relaunch it rather than leaving the desktop with nothing.',
+      'REM (The old script ended at `pause >nul`, which parked an unattended plant PC at a console',
+      'REM prompt with no app and no backend until someone walked over to it.)',
       'echo [%date% %time%] ERROR: All extraction attempts failed >> "%LOGFILE%"',
+      `if exist "${newDir}" rmdir /s /q "${newDir}"`,
       'echo.',
-      'echo ERROR: Update extraction failed.',
+      'echo ERROR: Update failed. The existing version is untouched and is being restarted.',
       'echo.',
       'echo The update ZIP is preserved. You can retry by clicking',
       'echo "Apply Update" again from the Sync ^& Updates page.',
       'echo.',
       'echo Log: "%LOGFILE%"',
-      'echo.',
-      'echo Press any key to exit...',
-      'pause >nul',
+      `echo [%date% %time%] Relaunching previous version after failure >> "%LOGFILE%"`,
+      `start "" "${exePath}"`,
+      'timeout /t 20 /nobreak >nul',
       'exit /b 1',
       '',
       ':EXTRACTION_OK',
@@ -377,9 +450,12 @@ export class ElectronUpdateManager {
       '    echo [%date% %time%] Version file copied >> "%LOGFILE%"',
       ')',
       '',
-      'REM Cleanup staging directory',
+      'REM Cleanup staging directory. NOTE: <install>.prev is deliberately NOT deleted — it is the',
+      'REM rollback copy, and rollback.cmd in the working dir restores it. The next update replaces',
+      'REM it, so at most one previous version is ever kept.',
       'echo Cleaning up...',
       `rmdir /s /q "${this.stagingDir}" 2>nul`,
+      `echo [%date% %time%] Previous version kept at "${prevDir}" (run rollback.cmd to restore) >> "%LOGFILE%"`,
       '',
       'echo.',
       'echo Update applied successfully!',
@@ -392,11 +468,59 @@ export class ElectronUpdateManager {
     ];
     const mainScript = mainLines.join('\r\n') + '\r\n';
 
+    // --- Script 4: rollback.cmd (working dir, survives staging cleanup) ---
+    // Without this, recovering a bad update means someone who knows what `.prev` is walking to the
+    // machine. With it, it is one double-click. Lives in the working dir because the staging dir is
+    // deleted on success and the install dir is what gets swapped.
+    const rollbackLines = [
+      '@echo off',
+      'title DK Power Manager - Rollback',
+      'echo Restoring the previous DK Power Manager version...',
+      'echo.',
+      `if not exist "${prevDir}" (`,
+      '    echo Nothing to roll back to - no previous version is stored.',
+      '    pause',
+      '    exit /b 1',
+      ')',
+      '',
+      'echo Close DK Power Manager first if it is running.',
+      'pause',
+      '',
+      `if exist "${newDir}" rmdir /s /q "${newDir}"`,
+      `move "${installDir}" "${newDir}" >nul 2>&1`,
+      'if errorlevel 1 (',
+      '    echo FAILED: the install folder is in use. Close the app and try again.',
+      '    pause',
+      '    exit /b 1',
+      ')',
+      `move "${prevDir}" "${installDir}" >nul 2>&1`,
+      'if errorlevel 1 (',
+      '    echo FAILED to restore - putting things back.',
+      `    move "${newDir}" "${installDir}" >nul 2>&1`,
+      '    pause',
+      '    exit /b 1',
+      ')',
+      `rmdir /s /q "${newDir}" 2>nul`,
+      'echo.',
+      'echo Rollback complete. Relaunching...',
+      `start "" "${exePath}"`,
+      'timeout /t 3 /nobreak >nul',
+      'exit /b 0',
+    ];
+    const rollbackScript = rollbackLines.join('\r\n') + '\r\n';
+    const rollbackPath = path.join(this.workingDir, 'rollback.cmd');
+
     try {
       // Write all scripts to staging
       fs.writeFileSync(extractCmdPath, extractScript, { encoding: 'utf8' });
       fs.writeFileSync(elevatePsPath, elevateScript, { encoding: 'utf8' });
       fs.writeFileSync(cmdPath, mainScript, { encoding: 'utf8' });
+      try {
+        fs.writeFileSync(rollbackPath, rollbackScript, { encoding: 'utf8' });
+      } catch (err: any) {
+        // Non-fatal: the update can still proceed, we just lose the one-click recovery.
+        console.warn(`Could not write rollback.cmd: ${err.message}`);
+      }
 
       // Launch detached with proper quoting for paths with spaces.
       // windowsVerbatimArguments prevents Node from re-escaping our quotes.
