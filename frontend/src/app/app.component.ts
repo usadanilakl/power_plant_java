@@ -15,6 +15,7 @@ import { WrDetailDialogComponent } from "./shared/wr-detail-dialog/wr-detail-dia
 import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment-dialog.component";
 import { ProcessWrDialogComponent } from "./shared/process-wr-dialog/process-wr-dialog.component";
 import { LotoPointBulkCreateDialogComponent } from "./features/loto-points/refactored/loto-point-bulk-create/loto-point-bulk-create-dialog.component";
+import { CatchupBannerComponent } from "./shared/catchup-banner/catchup-banner.component";
 
 @Component({
   selector: 'app-root',
@@ -36,6 +37,7 @@ import { LotoPointBulkCreateDialogComponent } from "./features/loto-points/refac
     WrDetailDialogComponent,
     AttachmentDialogComponent,
     ProcessWrDialogComponent,
+    CatchupBannerComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

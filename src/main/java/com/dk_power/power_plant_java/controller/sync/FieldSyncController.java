@@ -315,6 +315,17 @@ public class FieldSyncController {
     }
 
     /**
+     * Catch-up progress snapshot for the UI banner/progress bar. Lets a client that reconnected with a
+     * big backlog show "Sync in progress: N%" (app usable, some data still loading) instead of the
+     * always-out-of-sync indicator. Poll every few seconds while {@code inProgress}.
+     * GET /api/field-sync/catchup-status
+     */
+    @GetMapping("/catchup-status")
+    public ResponseEntity<CentralSyncService.CatchUpStatus> getCatchUpStatus() {
+        return ResponseEntity.ok(centralSyncService.getCatchUpStatus());
+    }
+
+    /**
      * Get sync toggle state.
      * GET /api/field-sync/sync-toggle
      */

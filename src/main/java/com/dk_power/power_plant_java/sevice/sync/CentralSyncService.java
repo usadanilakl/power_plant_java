@@ -81,6 +81,8 @@ public class CentralSyncService {
     private volatile long catchUpSessionReceived = 0;
     private volatile long catchUpSessionCycles = 0;
     private volatile long catchUpSessionPeakPending = 0;
+    // Most recent pending-count from the hub — drives the UI catch-up progress bar (see getCatchUpStatus).
+    private volatile long catchUpLastPending = 0;
 
     // Sync metrics
     private final AtomicLong totalChangesSent = new AtomicLong(0);
@@ -213,6 +215,32 @@ public class CentralSyncService {
 
         return fieldChangeRepository.countPendingChangesFor("SERVER");
     }
+
+    /**
+     * Snapshot of the current catch-up (backlog drain) for the UI progress bar. Reads the session
+     * counters maintained on the single-flight receive path; cheap and safe from a request thread.
+     */
+    public CatchUpStatus getCatchUpStatus() {
+        boolean inProgress = catchUpSessionStartMs != 0;
+        long peak = catchUpSessionPeakPending;
+        long remaining = Math.max(0, catchUpLastPending);
+        long applied = catchUpSessionApplied;
+        long elapsedMs = inProgress ? (System.currentTimeMillis() - catchUpSessionStartMs) : 0;
+        double perSec = elapsedMs > 0 ? applied * 1000.0 / elapsedMs : 0.0;
+        // Progress as work-done / total-known-so-far. Unlike (peak-remaining)/peak this does NOT snap back
+        // to 0 when a fresh batch arrives mid-drain (it only dips proportionally), so the bar stays smooth.
+        long total = applied + remaining;
+        long percent = !inProgress ? 100
+                : (total > 0 ? Math.max(0, Math.min(100, Math.round(applied * 100.0 / total)))
+                             : (remaining == 0 ? 100 : 0));
+        Long etaSeconds = (inProgress && perSec > 0 && remaining > 0) ? Math.round(remaining / perSec) : null;
+        return new CatchUpStatus(inProgress, peak, remaining, applied, percent, perSec, etaSeconds, elapsedMs / 1000);
+    }
+
+    /** Catch-up progress snapshot for the UI. percentComplete 0-100; etaSeconds null when idle/unknown. */
+    public record CatchUpStatus(boolean inProgress, long peakPending, long remaining, long applied,
+                                long percentComplete, double throughputPerSec, Long etaSeconds,
+                                long elapsedSeconds) {}
 
     /**
      * Polls every 15s; runs send + receive when interval has elapsed.
@@ -512,6 +540,7 @@ public class CentralSyncService {
             // Server is unreachable - propagate as error so circuit breaker works
             throw new RuntimeException("Server unreachable - cannot get pending change count");
         }
+        catchUpLastPending = pendingCount; // latest remaining, for the UI progress bar
         if (pendingCount == 0) {
             // Backlog fully drained — if a catch-up session was in progress, emit its whole-drain summary
             // (total wall-clock, changes applied, throughput). THIS is the number for the offline-return pain.
