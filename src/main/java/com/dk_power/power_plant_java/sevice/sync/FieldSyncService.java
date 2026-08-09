@@ -1165,6 +1165,36 @@ public class FieldSyncService {
                               && "_entity_".equals(c.getFieldName()));
 
                 if (!hasCreate) {
+                    // The entity may exist but be SOFT-DELETED (hidden by @Where(deleted=false)), so findById
+                    // returned null. A relationship/field change that targets a soft-deleted entity whose
+                    // deletion OUTRANKS the change (SyncOrder) is MOOT — the entity is gone. Deferring it 15x
+                    // to dead-letter is pure waste that dominates a large catch-up: create-then-add-to-standard-
+                    // then-delete-while-offline leaves the point's M2M/relationship changes chasing an entity
+                    // that is already soft-deleted on the receiver. Measured 2026-08-09: 778 such dead-weight
+                    // deferrals turned a ~10k-change catch-up into minutes of applied=0 cycles. Ack as a no-op
+                    // instead. Guarded by "deletion is strictly newer" so a re-activation still in flight (its
+                    // CREATE not yet arrived) keeps deferring as before.
+                    String delTable = getTableName(entityType);
+                    if (delTable != null) {
+                        long softDeleted = ((Number) entityManager.createNativeQuery(
+                                "SELECT COUNT(*) FROM " + delTable + " WHERE id = :id AND deleted = true")
+                                .setParameter("id", entityId).getSingleResult()).longValue();
+                        if (softDeleted > 0) {
+                            FieldChange localDeleted = latestChangesMap.get(
+                                    FieldChange.buildChangeKey(entityType, entityId, "deleted"));
+                            FieldChange newestIncoming = changes.stream().max(SyncOrder.TOTAL).orElse(null);
+                            boolean deletionWins = localDeleted != null && "true".equals(localDeleted.getNewValue())
+                                    && newestIncoming != null
+                                    && SyncOrder.TOTAL.compare(localDeleted, newestIncoming) > 0;
+                            if (deletionWins) {
+                                for (FieldChange change : changes) saveIncomingChange(change);
+                                noteAll(changes, ChangeDisposition.NOOP_SUPERSEDED);
+                                log.debug("Entity {}#{} soft-deleted (deletion newer) — {} moot change(s) acked "
+                                        + "as no-op, not deferred", entityType, entityId, changes.size());
+                                return changes.size();
+                            }
+                        }
+                    }
                     boolean relationshipOnly = changes.stream()
                         .anyMatch(c -> c.getRelationshipType() != null);
                     if (relationshipOnly) {

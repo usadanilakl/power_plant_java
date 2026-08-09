@@ -65,6 +65,23 @@ public class CentralSyncService {
 
     private volatile boolean backlogTooLarge = false;
 
+    // Catch-up session timing: a backlog drain spans MANY 15s receive cycles (each budget-limited), so
+    // per-cycle logs can't answer "how long did catch-up take and how fast". These fields track one whole
+    // session — from the first cycle with pending>=CATCHUP_SESSION_MIN until pending reaches 0 — and are
+    // only touched on the single-flight receive path (guarded by `receiving`), so plain volatile is safe.
+    // A minimum backlog gates the summary so a normal trickle of changes doesn't spam session logs.
+    private static final long CATCHUP_SESSION_MIN = 25;
+    // Continuous-drain bound: while a backlog remains, keep draining within ONE poll invocation instead
+    // of one 1.5s budget per 15s poll (which throttles a big catch-up to ~50/sec even though apply runs
+    // at ~500/sec). Bounded so the poll thread isn't held indefinitely — the next poll continues any
+    // remainder. See receiveFromServer.
+    private static final long CONTINUOUS_DRAIN_MAX_MS = 20000;
+    private volatile long catchUpSessionStartMs = 0;   // 0 = no session in progress
+    private volatile long catchUpSessionApplied = 0;
+    private volatile long catchUpSessionReceived = 0;
+    private volatile long catchUpSessionCycles = 0;
+    private volatile long catchUpSessionPeakPending = 0;
+
     // Sync metrics
     private final AtomicLong totalChangesSent = new AtomicLong(0);
     private final AtomicLong totalChangesReceived = new AtomicLong(0);
@@ -282,6 +299,21 @@ public class CentralSyncService {
             backlogTooLarge = false;
 
             BatchedReceiveResult receiveResult = receiveIncomingChangesInBatches();
+            // Continuous drain: a big backlog otherwise drains only ~1.5s per 15s poll (measured ~50/sec)
+            // even though the apply runs at ~500/sec, because each poll does ONE budgeted receive then
+            // waits for the next tick. Keep draining in THIS invocation while a backlog remains, bounded by
+            // wall-clock. Safe: receive uses its own DB connection and does NOT block reads (Hikari.pending
+            // measured 0 under a 16k-change catch-up), and outbound send has its own lock + an immediate
+            // on-local-change trigger, so it is not starved. Stop on no progress to avoid a hot spin.
+            long drainStart = System.currentTimeMillis();
+            while (receiveResult.morePending
+                    && (System.currentTimeMillis() - drainStart) < CONTINUOUS_DRAIN_MAX_MS) {
+                BatchedReceiveResult more = receiveIncomingChangesInBatches();
+                receiveResult.totalReceived += more.totalReceived;
+                receiveResult.totalApplied += more.totalApplied;
+                receiveResult.morePending = more.morePending;
+                if (more.totalApplied == 0) break; // no productive progress this pass — let the next poll retry
+            }
             result.setChangesReceived(receiveResult.totalReceived);
             result.setChangesApplied(receiveResult.totalApplied);
             result.setMorePending(receiveResult.morePending);
@@ -481,8 +513,35 @@ public class CentralSyncService {
             throw new RuntimeException("Server unreachable - cannot get pending change count");
         }
         if (pendingCount == 0) {
+            // Backlog fully drained — if a catch-up session was in progress, emit its whole-drain summary
+            // (total wall-clock, changes applied, throughput). THIS is the number for the offline-return pain.
+            if (catchUpSessionStartMs != 0) {
+                long durMs = System.currentTimeMillis() - catchUpSessionStartMs;
+                double perSec = durMs > 0 ? (catchUpSessionApplied * 1000.0 / durMs) : 0.0;
+                log.info("server_sync.catchup.session_complete durationMs={} durationS={} applied={} received={} "
+                                + "cycles={} peakPending={} throughputPerSec={}",
+                        durMs, String.format("%.1f", durMs / 1000.0), catchUpSessionApplied, catchUpSessionReceived,
+                        catchUpSessionCycles, catchUpSessionPeakPending, String.format("%.1f", perSec));
+                catchUpSessionStartMs = 0;
+            }
             log.debug("No incoming changes from server");
             return result;
+        }
+
+        // Backlog present — open a catch-up session once it exceeds the threshold, then accumulate across
+        // cycles. A session, once open, tracks all the way down to pending==0 (even as pending drops below
+        // the threshold), so the summary covers the whole drain.
+        if (catchUpSessionStartMs == 0 && pendingCount >= CATCHUP_SESSION_MIN) {
+            catchUpSessionStartMs = System.currentTimeMillis();
+            catchUpSessionApplied = 0;
+            catchUpSessionReceived = 0;
+            catchUpSessionCycles = 0;
+            catchUpSessionPeakPending = 0;
+            log.info("server_sync.catchup.session_start pending={}", pendingCount);
+        }
+        if (catchUpSessionStartMs != 0) {
+            catchUpSessionCycles++;
+            if (pendingCount > catchUpSessionPeakPending) catchUpSessionPeakPending = pendingCount;
         }
 
         log.info("server_sync.receive.start pending={} batchSize={} budgetMs={}", pendingCount, batchSize, receiveMaxDurationMs);
@@ -626,8 +685,16 @@ public class CentralSyncService {
             }
         }
 
-        log.info("server_sync.receive.complete received={} applied={} batches={} morePending={}",
-            result.totalReceived, result.totalApplied, batchNumber, result.morePending);
+        // Accumulate this cycle into the catch-up session (summary emitted when pending finally hits 0).
+        if (catchUpSessionStartMs != 0) {
+            catchUpSessionApplied += result.totalApplied;
+            catchUpSessionReceived += result.totalReceived;
+        }
+
+        long elapsedMs = System.currentTimeMillis() - startTime;
+        double perSec = elapsedMs > 0 ? (result.totalApplied * 1000.0 / elapsedMs) : 0.0;
+        log.info("server_sync.receive.complete received={} applied={} batches={} morePending={} elapsedMs={} throughputPerSec={}",
+            result.totalReceived, result.totalApplied, batchNumber, result.morePending, elapsedMs, String.format("%.1f", perSec));
         return result;
     }
 
