@@ -119,8 +119,6 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
       flex-direction: column;
       align-items: center;
       padding: 2rem 1rem;
-      height: 100%;
-      overflow-y: auto;
     }
 
     .home-title {

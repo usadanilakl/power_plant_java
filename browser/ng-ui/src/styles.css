@@ -1,5 +1,9 @@
 /* Light Theme (default) */
 :root {
+  /* Height of the mobile bottom nav bar, excluding its safe-area inset. Offsets elsewhere (the
+     floating side-menu button, drawer padding) key off this — keep in sync with bottom-nav. */
+  --bottom-nav-h: 52px;
+
   --primary-background: #ffffff;
   --secondary-background: #f0f2f5;
   --primary-text: #212529;

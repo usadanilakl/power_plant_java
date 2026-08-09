@@ -333,8 +333,8 @@
     /* Force GPU acceleration */
     transform: translate3d(0, 0, 0);
     -webkit-transform: translate3d(0, 0, 0);
-    /* Clear the home indicator so the last row of a list stays reachable. */
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    /* The bottom nav sits below this and owns the safe-area inset, so no extra padding here. */
+    padding-bottom: 0.5rem;
   }
 }
 
@@ -354,7 +354,7 @@
     /* Full-screen drawer: keep its first and last items clear of the system UI.
        Bottom also clears the floating Close button that sits at 16px + inset. */
     padding-top: env(safe-area-inset-top, 0px) !important;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box !important;
   }
 
@@ -367,9 +367,9 @@
     cursor: default !important;
     background-color: transparent !important;
     position: fixed !important;
-    /* Sits above the home indicator rather than on it. */
+    /* Clears the bottom nav bar (--bottom-nav-h) and, below it, the home indicator. */
     left: max(8px, env(safe-area-inset-left, 0px)) !important;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(12px + var(--bottom-nav-h, 52px) + env(safe-area-inset-bottom, 0px)) !important;
     top: auto !important;
     height: auto !important;
     z-index: 1003 !important;
@@ -412,7 +412,7 @@
   .left-menu.active ~ .resizer {
     left: auto !important;
     right: max(16px, env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(12px + var(--bottom-nav-h, 52px) + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   @keyframes menu-btn-entrance {
@@ -447,35 +447,13 @@
     font-size: 0.8rem;
   }
 
+  /*
+   * The horizontally-scrolling nav row is replaced by the bottom tab bar on phones. Keeping both
+   * would mean two competing navigations and would cost a row of vertical space on the screens
+   * that need it most.
+   */
   .header-nav {
-    padding: 0 0.5rem;
-  }
-
-  /* Scroll hint on nav row */
-  .header-nav::before {
-    content: '›';
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: var(--header-text);
-    opacity: 0.7;
-    z-index: 2;
-    pointer-events: none;
-    animation: scroll-hint-pulse 1.5s ease-in-out infinite;
-    transition: opacity 0.3s ease;
-  }
-
-  .header-nav.scrolled::before {
-    opacity: 0;
     display: none;
-  }
-
-  @keyframes scroll-hint-pulse {
-    0%, 100% { transform: translateY(-50%) translateX(0); opacity: 0.7; }
-    50% { transform: translateY(-50%) translateX(4px); opacity: 1; }
   }
 }
 

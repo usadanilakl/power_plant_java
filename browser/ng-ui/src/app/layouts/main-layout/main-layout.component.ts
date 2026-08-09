@@ -7,10 +7,11 @@ import { ServerStatusComponent } from "../../shared/server-status/server-status.
 import { ServerStatusService } from "../../services/server-status.service";
 import { UserSetupService } from "../../services/user-setup.service";
 import { toSignal } from '@angular/core/rxjs-interop';
+import { BottomNavComponent } from '../../shared/menus/bottom-nav/bottom-nav.component';
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, UserIconComponent, ServerStatusComponent],
+  imports: [ThemeToggleComponent, UserIconComponent, ServerStatusComponent, BottomNavComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css'
 })

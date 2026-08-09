@@ -81,6 +81,13 @@
       }
     </div>
   </div>
+
+  <!--
+    Mobile navigation. Mounted here (not per-screen) so every page has a way out — 14 screens
+    project no nav of their own. A flex sibling rather than position:fixed, so it takes real space
+    and in-page sticky footers stack above it. Hides itself above 768px.
+  -->
+  <app-bottom-nav></app-bottom-nav>
 </div>
 
 

@@ -234,7 +234,7 @@ interface OpenItem {
     }
   `,
   styles: [`
-    :host { display: block; height: 100%; overflow-y: auto; overflow-x: hidden; }
+    :host { display: block; }
     .action-selector { display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
     .action-title { font-size: 1.6rem; font-weight: 700; margin: 0 0 0.25rem; }
     .action-subtitle { font-size: 1rem; color: var(--secondary-text); margin: 0 0 2rem; }
