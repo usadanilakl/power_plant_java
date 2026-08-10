@@ -131,6 +131,17 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/**").authenticated()
                 .requestMatchers("/api/pwa/auth/me", "/api/pwa/auth/refresh").authenticated()
 
+                // Catch-up banner poll. Reachable by anyone, but the CONTROLLER still gates the data
+                // on NetworkUtils.isInternalRequest and hands off-LAN callers a fixed idle snapshot —
+                // the real counters never leave the LAN. Must sit ABOVE the lanOnlyMatcher for
+                // "/api/field-sync/" below, since the first matching rule wins.
+                //
+                // It is permitAll purely to avoid emitting a 401: the banner is mounted at app-root,
+                // so every external visitor polled it, and the reverse proxy in front of the hub
+                // decorates 401s with WWW-Authenticate (Negotiate/NTLM/Basic), which pops a native
+                // Windows credential dialog over our own login page. See FieldSyncController.
+                .requestMatchers("/api/field-sync/catchup-status").permitAll()
+
                 // Public endpoints — no auth required
                 .requestMatchers(
                     "/api/auth/login", "/api/auth/logout", "/api/auth/me",

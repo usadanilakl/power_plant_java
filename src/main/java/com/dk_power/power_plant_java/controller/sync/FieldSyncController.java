@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.controller.sync;
 
+import com.dk_power.power_plant_java.config.NetworkUtils;
 import com.dk_power.power_plant_java.config.SyncConfig;
+import jakarta.servlet.http.HttpServletRequest;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import org.springframework.core.env.Environment;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
@@ -321,9 +323,34 @@ public class FieldSyncController {
      * GET /api/field-sync/catchup-status
      */
     @GetMapping("/catchup-status")
-    public ResponseEntity<CentralSyncService.CatchUpStatus> getCatchUpStatus() {
+    public ResponseEntity<CentralSyncService.CatchUpStatus> getCatchUpStatus(HttpServletRequest request) {
+        // Off-LAN callers get a fixed "idle" snapshot instead of a 401.
+        //
+        // The banner is mounted at app-root, so EVERY external visitor polled this — including
+        // anyone arriving from a QR scan — and every poll returned 401. The reverse proxy in front
+        // of the hub decorates 401 responses with `WWW-Authenticate: Negotiate/NTLM/Basic`, which
+        // makes the browser raise a native Windows credential dialog on top of our own login page.
+        // Confusing, and nothing the app can strip (the header is added downstream of Spring, after
+        // SuppressWwwAuthenticateFilter has already run).
+        //
+        // Returning 200-idle removes the 401, and therefore the prompt. No data crosses the LAN
+        // boundary: the real counters are still internal-only, and "idle" is exactly what an
+        // external client should see — catch-up progress describes a LAN desktop draining its own
+        // backlog, which is meaningless for a phone on the internet. The banner hides itself on
+        // inProgress=false, so the UI is correct rather than merely quiet.
+        //
+        // This is a workaround for the proxy's behaviour, not a fix for it: any OTHER 401 (an
+        // expired session, say) still triggers the same dialog until that appliance stops adding
+        // the header.
+        if (!NetworkUtils.isInternalRequest(request)) {
+            return ResponseEntity.ok(IDLE_CATCH_UP);
+        }
         return ResponseEntity.ok(centralSyncService.getCatchUpStatus());
     }
+
+    /** Fixed "nothing in progress" snapshot handed to off-LAN callers — leaks no counters. */
+    private static final CentralSyncService.CatchUpStatus IDLE_CATCH_UP =
+            new CentralSyncService.CatchUpStatus(false, 0L, 0L, 0L, 0L, 0.0, null, 0L);
 
     /**
      * Get sync toggle state.
