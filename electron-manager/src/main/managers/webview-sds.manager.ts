@@ -720,8 +720,10 @@ export class WebViewSdsManager {
         + 'not the eBinder. Row data was still imported and existing PDFs are preserved. '
         + 'Re-run with showScrapeWindow to see the frame dump.';
       console.error(`[WebViewSds] ${this.lastError}`);
+      this.appendCaptureLog(`FAIL  0/${pdfAttempted} captured — capture mechanism broken`);
     } else if (opts.capturePdfs && pdfAttempted > 0) {
       console.log(`[WebViewSds] PDF capture: ${pdfCaptured}/${pdfAttempted}`);
+      this.appendCaptureLog(`${pdfCaptured === pdfAttempted ? 'OK   ' : 'PART '} ${pdfCaptured}/${pdfAttempted} captured`);
     }
 
     return { rows, pdfs };
@@ -1056,6 +1058,27 @@ export class WebViewSdsManager {
    * bytes, and validate %PDF- magic. Falls back to Ctrl+S keystroke if the shadow root isn't
    * accessible from JS.
    */
+  /**
+   * Append one line to <workingDir>/logs/sds-capture.log.
+   *
+   * PDF-capture outcomes only ever went to console.log, and a PACKAGED Electron app on Windows is a
+   * GUI-subsystem binary with no console attached — so on every plant machine that output goes
+   * nowhere and cannot be redirected. That blind spot is why a broken capture reads to an operator
+   * as "the eBinder had no PDF", and why verifying it kept depending on someone watching a terminal.
+   * A file survives the session.
+   */
+  private appendCaptureLog(line: string): void {
+    try {
+      const dir = path.join(getWorkingDir(), 'logs');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(
+        path.join(dir, 'sds-capture.log'),
+        `${new Date().toISOString()}  ${line}\n`,
+        'utf-8'
+      );
+    } catch { /* diagnostics must never break a scrape */ }
+  }
+
   private async capturePdf(
     win: BrowserWindow, ses: Electron.Session, rowIndex: number, key: string
   ): Promise<{ fileName: string; contentType: string; base64: string } | null> {
