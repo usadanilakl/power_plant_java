@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.sevice.sync.SyncTestService.TestResult;
 import com.dk_power.power_plant_java.sevice.sync.SyncTestService.TestRun;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
+@ConditionalOnProperty(name = "sync.test-endpoints.enabled", havingValue = "true") // test/load-gen only; excluded from prod
 public class SyncTestController {
 
     private final SyncTestService syncTestService;

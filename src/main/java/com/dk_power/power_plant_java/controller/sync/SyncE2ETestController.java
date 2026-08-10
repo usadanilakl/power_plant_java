@@ -1,27 +1,31 @@
 package com.dk_power.power_plant_java.controller.sync;
 
 import com.dk_power.power_plant_java.sevice.sync.CategoryValueMergeService;
-import com.dk_power.power_plant_java.sevice.sync.NaturalKeyDivergenceReconciler;
 import com.dk_power.power_plant_java.sevice.sync.SyncE2EFileTestService;
 import com.dk_power.power_plant_java.sevice.sync.SyncE2ETestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+// Test / seed / cleanup / load-gen endpoints — EXCLUDED from production. Registered ONLY when
+// sync.test-endpoints.enabled=true (the isolated sync lab sets it via launch arg; prod never does), so
+// the seed, cleanup/{prefix}, cleanup/all, and hard-delete routes are unreachable on a real hub/desktop.
+// (A profile gate can't be used here: the lab runs the 'prod' profile to mirror production.)
 @RestController
 @RequestMapping("/api/sync-e2e")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
+@ConditionalOnProperty(name = "sync.test-endpoints.enabled", havingValue = "true")
 public class SyncE2ETestController {
 
     private final SyncE2ETestService syncE2ETestService;
     private final SyncE2EFileTestService syncE2EFileTestService;
     private final CategoryValueMergeService categoryValueMergeService;
-    private final NaturalKeyDivergenceReconciler naturalKeyDivergenceReconciler;
 
     /**
      * Seed a full entity graph: Categories → Values → Equipment → LotoPoints → LotoStandards.
@@ -144,25 +148,6 @@ public class SyncE2ETestController {
                 "durationMs", System.currentTimeMillis() - start
         ));
     }
-
-    /**
-     * Self-heal Category/Value duplicate divergence that predates the deterministic pre-save path:
-     * re-create the smaller-id survivor wherever this node wrongly kept the larger id, then run the
-     * deterministic merge to converge + emit synced changes. Runs on ANY node (hub or client).
-     * POST /api/sync-e2e/reconcile-divergence
-     */
-    @PostMapping("/reconcile-divergence")
-    public ResponseEntity<Map<String, Object>> reconcileDivergence() {
-        log.info("API: Triggering natural-key divergence reconcile");
-        long start = System.currentTimeMillis();
-        NaturalKeyDivergenceReconciler.ReconcileResult result = naturalKeyDivergenceReconciler.reconcile();
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "ranOnHub", result.ranOnHub(),
-                "recreated", result.recreated(),
-                "wrongEntriesSeen", result.wrongEntriesSeen(),
-                "remapsCleaned", result.remapsCleaned(),
-                "durationMs", System.currentTimeMillis() - start
-        ));
-    }
+    // reconcile-natural-key-divergence relocated to DataIntegrityController (/api/data-integrity) so it
+    // has a stable, non-test home available in production.
 }

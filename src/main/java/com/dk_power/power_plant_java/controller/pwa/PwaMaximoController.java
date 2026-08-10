@@ -300,9 +300,12 @@ public class PwaMaximoController {
      */
     @PostMapping("/service-requests/update")
     public ResponseEntity<NgApiResponse<MaximoServiceRequestDto>> updateSr(
-            @RequestParam("href") String href, @RequestBody UpdateSrBody body) {
+            @RequestParam(value = "href", required = false) String href,
+            @RequestParam(value = "hrefHex", required = false) String hrefHex,
+            @RequestBody UpdateSrBody body) {
+        String h = attachHref(href, hrefHex);   // SR hrefs can contain "--"; the PWA hex-encodes them past the IIS filter
         try {
-            MaximoServiceRequestDto current = serviceRequests.findByHref(href).orElse(null);
+            MaximoServiceRequestDto current = serviceRequests.findByHref(h).orElse(null);
             if (current == null) return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "SR not found"));
             String status = current.getStatus() == null ? "" : current.getStatus().trim();
             if (!"NEW".equalsIgnoreCase(status)) {
@@ -313,10 +316,10 @@ public class PwaMaximoController {
             fields.put("spi:description", body.description());
             fields.put("spi:description_longdescription", body.longDescription());
             fields.put("spi:reportedpriority", body.priority());
-            MaximoServiceRequestDto updated = serviceRequests.updateFields(href, fields);
+            MaximoServiceRequestDto updated = serviceRequests.updateFields(h, fields);
             return ResponseEntity.ok(new NgApiResponse<>(updated, "updated"));
         } catch (Exception e) {
-            log.warn("[PWA-Maximo] SR update {} failed: {}", href, e.getMessage());
+            log.warn("[PWA-Maximo] SR update {} failed: {}", h, e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
@@ -324,14 +327,27 @@ public class PwaMaximoController {
     /** Editable SR fields exposed to the phone (blank = unchanged). */
     public record UpdateSrBody(String description, String longDescription, String priority) {}
 
-    /** Attach a photo/file to a just-created SR. Best-effort — caller uploads after create succeeds. */
+    /**
+     * Resolve an attachment target href from either {@code ?href} (raw) or {@code ?hrefHex} (hex-encoded).
+     * The PWA hex-encodes Maximo base64 keys so characters like {@code --} never appear in the URL, where the
+     * IIS reverse-proxy request filter rejects them (SQL-comment signature) before the request reaches this app.
+     */
+    private static String attachHref(String href, String hrefHex) {
+        if (hrefHex != null && !hrefHex.isBlank()) {
+            return new String(java.util.HexFormat.of().parseHex(hrefHex.trim()), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return href;
+    }
+
+    /** Attach a photo/file to a service request. Best-effort — caller uploads after create succeeds. */
     @PostMapping("/service-requests/attachment")
     public ResponseEntity<NgApiResponse<MaximoDoclinkDto>> uploadSrAttachment(
             @RequestPart("file") MultipartFile file,
-            @RequestParam("href") String href,
+            @RequestParam(value = "href", required = false) String href,
+            @RequestParam(value = "hrefHex", required = false) String hrefHex,
             @RequestParam(value = "doctype", required = false, defaultValue = "Attachments") String doctype) {
         try {
-            MaximoDoclinkDto created = doclinks.upload("mxapisr", href,
+            MaximoDoclinkDto created = doclinks.upload("mxapisr", attachHref(href, hrefHex),
                     file.getOriginalFilename(), file.getContentType(), file.getBytes(), doctype);
             return ResponseEntity.ok(new NgApiResponse<>(created, "uploaded"));
         } catch (Exception e) {
@@ -342,9 +358,11 @@ public class PwaMaximoController {
 
     /** List a service request's attachments (photos/PDFs/docs). */
     @GetMapping("/service-requests/attachments")
-    public ResponseEntity<NgApiResponse<List<MaximoDoclinkDto>>> listSrAttachments(@RequestParam("href") String href) {
+    public ResponseEntity<NgApiResponse<List<MaximoDoclinkDto>>> listSrAttachments(
+            @RequestParam(value = "href", required = false) String href,
+            @RequestParam(value = "hrefHex", required = false) String hrefHex) {
         try {
-            return ResponseEntity.ok(new NgApiResponse<>(doclinks.list("mxapisr", href), "ok"));
+            return ResponseEntity.ok(new NgApiResponse<>(doclinks.list("mxapisr", attachHref(href, hrefHex)), "ok"));
         } catch (Exception e) {
             log.warn("[PWA-Maximo] SR attachments list failed: {}", e.getMessage());
             return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
@@ -354,8 +372,10 @@ public class PwaMaximoController {
     /** Stream one SR attachment's bytes (inline, so the phone can preview an image/PDF). */
     @GetMapping("/service-requests/attachments/content")
     public ResponseEntity<byte[]> srAttachmentContent(
-            @RequestParam("href") String href, @RequestParam("attachmentId") String attachmentId) {
-        ResponseEntity<byte[]> upstream = doclinks.streamBinary("mxapisr", href, attachmentId);
+            @RequestParam(value = "href", required = false) String href,
+            @RequestParam(value = "hrefHex", required = false) String hrefHex,
+            @RequestParam("attachmentId") String attachmentId) {
+        ResponseEntity<byte[]> upstream = doclinks.streamBinary("mxapisr", attachHref(href, hrefHex), attachmentId);
         org.springframework.http.HttpHeaders out = new org.springframework.http.HttpHeaders();
         if (upstream.getHeaders().getContentType() != null) out.setContentType(upstream.getHeaders().getContentType());
         long len = upstream.getHeaders().getContentLength();

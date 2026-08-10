@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.sync;
 import com.dk_power.power_plant_java.sevice.sync.DataIntegrityService;
 import com.dk_power.power_plant_java.sevice.sync.DataIntegrityService.IntegrityCheckResult;
 import com.dk_power.power_plant_java.sevice.sync.DataIntegrityService.IntegrityFixResult;
+import com.dk_power.power_plant_java.sevice.sync.NaturalKeyDivergenceReconciler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class DataIntegrityController {
 
     private final DataIntegrityService dataIntegrityService;
+    private final NaturalKeyDivergenceReconciler naturalKeyDivergenceReconciler;
 
     /**
      * Check all integrity issues (read-only).
@@ -100,5 +102,19 @@ public class DataIntegrityController {
         log.info("Purge deleted requested (dryRun={}, retentionDays={})", dryRun, retentionDays);
         IntegrityFixResult result = dataIntegrityService.purgeSoftDeleted(dryRun, retentionDays);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Heal Category/Value duplicate divergence that predates the deterministic dedup path
+     * ({@code sync.dedup.deterministic-convergence.enabled}): re-create the smaller-id survivor wherever
+     * this hub kept the larger id, then run the deterministic merge to converge + emit synced changes.
+     * HUB-ONLY (no-ops on a client). Run ONLY after every client is on the deterministic-dedup jar — a
+     * client on the old jar would mishandle the corrections. Relocated here from the (prod-excluded)
+     * SyncE2ETestController so it has a stable, non-test home in production.
+     */
+    @PostMapping("/reconcile-natural-key-divergence")
+    public ResponseEntity<NaturalKeyDivergenceReconciler.ReconcileResult> reconcileNaturalKeyDivergence() {
+        log.info("Natural-key divergence reconcile requested");
+        return ResponseEntity.ok(naturalKeyDivergenceReconciler.reconcile());
     }
 }

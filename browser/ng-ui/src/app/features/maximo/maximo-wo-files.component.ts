@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { from, concatMap, map, catchError, of } from 'rxjs';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoDoclink } from './maximo.model';
 
@@ -33,8 +34,8 @@ import { MaximoDoclink } from './maximo.model';
 
     @if (canUpload) {
       <label class="wf-add" [class.busy]="uploading()">
-        {{ uploading() ? 'Uploading…' : '＋ Add photo / file' }}
-        <input type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" (change)="pick($event)" [disabled]="uploading()" hidden>
+        {{ uploading() ? 'Uploading…' : '＋ Add photos / files' }}
+        <input type="file" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" multiple (change)="pick($event)" [disabled]="uploading()" hidden>
       </label>
       @if (uploadError()) { <p class="wf-err">{{ uploadError() }}</p> }
     }
@@ -102,17 +103,26 @@ export class MaximoWoFilesComponent implements OnInit {
 
   pick(ev: Event): void {
     const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const files = Array.from(input.files ?? []);
     input.value = '';
-    if (!file) return;
+    if (!files.length || this.uploading()) return;
     this.uploading.set(true); this.uploadError.set(null);
-    const up$ = this.parent === 'sr' ? this.api.uploadSrAttachment(this.href, file) : this.api.uploadWoAttachment(this.href, file);
-    up$.subscribe({
-      next: ok => {
+    const up = (f: File) => this.parent === 'sr'
+      ? this.api.uploadSrAttachment(this.href, f) : this.api.uploadWoAttachment(this.href, f);
+    const fails: string[] = [];
+    // Upload sequentially; keep going if one fails, then surface the REAL server message (not "check connection").
+    from(files).pipe(
+      concatMap(f => up(f).pipe(
+        map(() => null as string | null),
+        catchError((e: any) => of(e?.error?.message || e?.message || 'upload failed'))
+      ))
+    ).subscribe({
+      next: err => { if (err) fails.push(err); },
+      complete: () => {
         this.uploading.set(false);
-        if (ok) this.load(); else this.uploadError.set('Upload failed — check your connection and try again.');
-      },
-      error: () => { this.uploading.set(false); this.uploadError.set('Upload failed — check your connection and try again.'); }
+        if (fails.length) this.uploadError.set(`${fails.length} of ${files.length} attachment(s) failed — ${fails[0]}`);
+        this.load();   // show whatever DID attach
+      }
     });
   }
 

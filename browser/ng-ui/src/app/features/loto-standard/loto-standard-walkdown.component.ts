@@ -123,7 +123,7 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                 }
 
                 <details class="w-correct">
-                  <summary>Correct tag / description / position</summary>
+                  <summary>Correct tag / description / position / location</summary>
                   <label class="w-field">Tag number
                     <input type="text" [value]="corrTag(p)" (input)="setCorr(p.id, 'tagNumber', $any($event.target).value)">
                   </label>
@@ -142,6 +142,12 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                       @for (o of positions().normPos; track o.id) { <option [value]="o.id" [selected]="o.id === corrNorm(p)">{{ o.name }}</option> }
                     </select>
                   </label>
+                  <label class="w-field">Specific location
+                    <input type="text" [value]="corrSpecific(p)" (input)="setCorr(p.id, 'specificLocation', $any($event.target).value)">
+                  </label>
+                  <label class="w-field">General location
+                    <input type="text" [value]="corrGeneral(p)" (input)="setCorr(p.id, 'generalLocation', $any($event.target).value)">
+                  </label>
                 </details>
 
                 <app-loto-point-actions
@@ -159,8 +165,8 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                     {{ mode() === 'verify' ? 'verify' : 'complete the walkdown' }}.</p>
                 }
               } @else {
-                <h2 class="w-h2">Submit checklist</h2>
-                <p class="w-hint">This standard isn't awaiting a transition — your checklist will be recorded as evidence.</p>
+                <h2 class="w-h2">Submit corrections</h2>
+                <p class="w-hint">This standard isn't awaiting a transition — any per-point corrections you made are applied to the LOTO points, and the checklist (if any) is recorded as evidence. The standard's status doesn't change.</p>
               }
               <textarea class="w-comment" rows="2" placeholder="Notes (optional)"
                         [value]="notes()" (input)="setNotes($any($event.target).value)"></textarea>
@@ -442,7 +448,13 @@ export class LotoStandardWalkdownComponent implements OnInit {
     const c = this.draft()?.corrections?.[String(p.id)];
     return (c?.normPosId ?? p.normPos?.id) ?? '';
   }
-  setCorr(pointId: number, field: 'tagNumber' | 'description', value: string): void {
+  corrSpecific(p: LotoPointRef): string {
+    return this.draft()?.corrections?.[String(p.id)]?.specificLocation ?? p.specificLocation ?? '';
+  }
+  corrGeneral(p: LotoPointRef): string {
+    return this.draft()?.corrections?.[String(p.id)]?.generalLocation ?? p.generalLocation ?? '';
+  }
+  setCorr(pointId: number, field: 'tagNumber' | 'description' | 'specificLocation' | 'generalLocation', value: string): void {
     this.patch(d => { d.corrections[String(pointId)] = { ...(d.corrections[String(pointId)] ?? {}), [field]: value }; });
   }
   setCorrPos(pointId: number, field: 'isoPosId' | 'normPosId', value: string): void {

@@ -175,21 +175,30 @@ export class MaximoApiService {
     );
   }
 
-  /** Best-effort photo/file attach to a created SR (by href). Resolves false on failure. */
+  /** Attach a photo/file to an SR (by href). Emits true on success; ERRORS on failure so the caller can
+   *  surface the real Maximo message (the endpoint returns it in the response body). */
   uploadSrAttachment(href: string, file: File): Observable<boolean> {
     const form = new FormData();
     form.append('file', file, file.name);
-    const params = new HttpParams().set('href', href);
+    const params = new HttpParams().set('hrefHex', this.hex(href));
     return this.http.post(`${this.base}/service-requests/attachment`, form, { params }).pipe(
       timeout(60000),
-      map(() => true),
-      catchError(() => of(false))
+      map(() => true)
     );
+  }
+
+  /** Hex-encode a value so it can't contain characters an upstream proxy filter rejects (Maximo base64 keys
+   *  can contain "--", which IIS request-filtering blocks). The hub decodes ?hrefHex back to the real href. */
+  private hex(s: string): string {
+    const bytes = new TextEncoder().encode(s);
+    let out = '';
+    for (const b of bytes) out += b.toString(16).padStart(2, '0');
+    return out;
   }
 
   /** Edit a NEW service request's description / long description / priority. Errors surface (e.g. "not NEW"). */
   updateServiceRequest(href: string, body: { description?: string; longDescription?: string; priority?: string }): Observable<MaximoServiceRequest | null> {
-    const params = new HttpParams().set('href', href);
+    const params = new HttpParams().set('hrefHex', this.hex(href));
     return this.http.post<{ responseData: MaximoServiceRequest }>(`${this.base}/service-requests/update`, body, { params }).pipe(
       timeout(30000),
       map(r => r.responseData ?? null)
@@ -214,7 +223,7 @@ export class MaximoApiService {
 
   /** List a service request's attachments (photos/PDFs/docs). */
   listSrAttachments(href: string): Observable<MaximoDoclink[]> {
-    const params = new HttpParams().set('href', href);
+    const params = new HttpParams().set('hrefHex', this.hex(href));
     return this.http.get<{ responseData: MaximoDoclink[] }>(`${this.base}/service-requests/attachments`, { params }).pipe(
       timeout(30000),
       map(r => r.responseData ?? [])
@@ -223,7 +232,7 @@ export class MaximoApiService {
 
   /** Stream one SR attachment's bytes (inline preview). */
   fetchSrAttachment(href: string, attachmentId: string): Observable<Blob> {
-    const params = new HttpParams().set('href', href).set('attachmentId', attachmentId);
+    const params = new HttpParams().set('hrefHex', this.hex(href)).set('attachmentId', attachmentId);
     return this.http.get(`${this.base}/service-requests/attachments/content`, { params, responseType: 'blob' }).pipe(
       timeout(60000)
     );
@@ -248,15 +257,14 @@ export class MaximoApiService {
     );
   }
 
-  /** Attach a photo/file to a work order. Resolves false on failure. */
+  /** Attach a photo/file to a work order. Emits true on success; ERRORS on failure (real message in the body). */
   uploadWoAttachment(href: string, file: File): Observable<boolean> {
     const form = new FormData();
     form.append('file', file, file.name);
     const params = new HttpParams().set('href', href);
     return this.http.post(`${this.base}/work-orders/attachment`, form, { params }).pipe(
       timeout(60000),
-      map(() => true),
-      catchError(() => of(false))
+      map(() => true)
     );
   }
 

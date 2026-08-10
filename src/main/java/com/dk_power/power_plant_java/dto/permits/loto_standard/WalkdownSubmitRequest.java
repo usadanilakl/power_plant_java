@@ -26,6 +26,17 @@ public record WalkdownSubmitRequest(
 ) {
     public record GlobalItemInput(Boolean checked, String notes) {}
 
-    /** Positions are Value FKs — corrections carry the chosen Value id, not free text. */
-    public record PointCorrectionInput(String tagNumber, String description, Long isoPosId, Long normPosId) {}
+    /**
+     * In-field corrections a walker can apply to a LOTO point. All fields are OPTIONAL — a
+     * correction is applied only when present (non-null). Positions are Value FKs, so those
+     * carry the chosen Value id rather than free text. specificLocation / generalLocation
+     * are free-text strings mirroring the LotoPoint columns.
+     */
+    public record PointCorrectionInput(
+            String tagNumber,
+            String description,
+            Long isoPosId,
+            Long normPosId,
+            String specificLocation,
+            String generalLocation) {}
 }

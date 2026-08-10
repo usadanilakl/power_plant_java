@@ -35,6 +35,10 @@ type Tab = 'standard' | 'procedure';
               <button class="d-action" (click)="openWalkdown()">
                 {{ walkdownMode() === 'verify' ? '✓ Verify this standard' : '✓ Walk down this standard' }}
               </button>
+            } @else if (canEditPoints()) {
+              <button class="d-action d-action-secondary" (click)="openWalkdown()">
+                ✎ Correct points (tag / positions / locations)
+              </button>
             }
 
             <div class="d-tabs">
@@ -127,6 +131,9 @@ type Tab = 'standard' | 'procedure';
     .d-badge.b-verification { background: var(--warning-solid); }
     .d-badge.b-draft { background: var(--secondary-text); }
     .d-action { display: block; width: 100%; margin: 0 0 1rem; background: var(--warning-solid); color: var(--on-solid); border: none; border-radius: 10px; padding: 0.7rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    /* Secondary action for Draft: same shape as the primary walkdown/verify button, muted color so
+       it doesn't compete for attention when a verify/walkdown action would otherwise be primary. */
+    .d-action-secondary { background: var(--accent-color); }
     .d-tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; }
     .d-tab {
       background: none; border: none; padding: 0.6rem 0.4rem; font-size: 0.95rem; font-weight: 600; cursor: pointer;
@@ -178,6 +185,17 @@ export class LotoStandardDetailComponent implements OnInit {
       case LOTO_STANDARD_STATUS.VERIFIED: return 'walkdown';
       default: return null;
     }
+  });
+
+  /**
+   * On Draft (and re-approval draft) statuses the standard has no pending transition, but the
+   * walker still needs to fix point details discovered in the field. Opens the same walkdown
+   * screen — submit records evidence + applies corrections without attempting a transition.
+   */
+  canEditPoints = computed<boolean>(() => {
+    const name = this.std()?.developmentStatus?.name;
+    return name === LOTO_STANDARD_STATUS.DRAFT
+        || name === LOTO_STANDARD_STATUS.NEW_PENDING_REAPPROVAL;
   });
 
   procedureBlocks = computed(() => {

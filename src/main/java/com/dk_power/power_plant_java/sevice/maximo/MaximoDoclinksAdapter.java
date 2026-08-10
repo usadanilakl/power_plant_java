@@ -73,6 +73,12 @@ public class MaximoDoclinksAdapter {
 
         ResponseEntity<Void> resp = access.postBinary(url, bytes, h);
         String docId = extractIdFromLocation(resp.getHeaders().getFirst(HttpHeaders.LOCATION));
+        // A real doclink create answers 201 with the new URL in Location. A 2xx with no Location means Maximo
+        // did NOT persist an attachment — fail loudly rather than return a stub the caller reports as "uploaded".
+        if (docId == null || docId.isBlank()) {
+            throw new IllegalStateException("Maximo accepted the request but created no attachment (no Location) on "
+                    + parentObjectStructure + "/" + parentHref + " — the object structure may not expose doclinks.");
+        }
         log.info("[Maximo] Uploaded doclink to {}/{} name={} id={}", parentObjectStructure, parentHref, fileName, docId);
 
         MaximoDoclinkDto d = new MaximoDoclinkDto();

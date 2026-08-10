@@ -1,6 +1,6 @@
 import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, debounceTime, switchMap, of, catchError, from, concatMap } from 'rxjs';
+import { Subject, debounceTime, switchMap, of, catchError, from, concatMap, map } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { MaximoApiService } from './maximo-api.service';
 import { CreateMaximoServiceRequest, MaximoLocation } from './maximo.model';
@@ -21,6 +21,7 @@ import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
               <div class="sc-done-icon">✓</div>
               <p class="sc-done-title">Request submitted</p>
               <p class="sc-done-id">{{ createdTicket() }}</p>
+              @if (attachWarning()) { <p class="sc-done-warn">⚠ {{ attachWarning() }}</p> }
               <div class="sc-done-actions">
                 <button class="sc-btn" (click)="reset()">New request</button>
                 <button class="sc-btn alt" (click)="back()">Back to Maximo</button>
@@ -141,7 +142,8 @@ import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
     .sc-done { text-align: center; padding: 2.5rem 1rem; }
     .sc-done-icon { width: 3.5rem; height: 3.5rem; line-height: 3.5rem; margin: 0 auto 0.75rem; border-radius: 50%; background: #27ae60; color: #fff; font-size: 2rem; }
     .sc-done-title { color: var(--primary-text); font-size: 1.1rem; font-weight: 700; margin: 0 0 0.25rem; }
-    .sc-done-id { color: var(--secondary-text, #888); margin: 0 0 1.5rem; }
+    .sc-done-id { color: var(--secondary-text, #888); margin: 0 0 1rem; }
+    .sc-done-warn { color: #e67e22; font-size: 0.85rem; margin: 0 0 1.2rem; max-width: 30rem; line-height: 1.4; }
     .sc-done-actions { display: flex; gap: 0.6rem; justify-content: center; }
     .sc-btn { background: var(--accent-color); color: #fff; border: none; border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .sc-btn.alt { background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); }
@@ -167,6 +169,8 @@ export class MaximoSrCreateComponent implements OnDestroy {
   uploadStatus = signal<string | null>(null);
   error = signal<string | null>(null);
   createdTicket = signal<string | null>(null);
+  /** Shown on the success screen when the SR saved but one or more attachments failed. */
+  attachWarning = signal<string | null>(null);
 
   private locSearch$ = new Subject<string>();
 
@@ -310,21 +314,42 @@ export class MaximoSrCreateComponent implements OnDestroy {
     this.submitting.set(true); this.error.set(null); this.uploadStatus.set(null);
     this.api.createServiceRequest(body).subscribe({
       next: sr => {
-        if (!sr?.ticketid || !sr.href) {
+        if (!sr?.ticketid) {
           this.submitting.set(false);
           this.error.set('Submitted, but no ticket id came back. Check Maximo.');
           return;
         }
+        if (!sr.href) {
+          // The SR WAS created (we have a ticket id) but no href to attach to. Go to the success screen with a
+          // note — do NOT leave the form primed, which would let a retry create a DUPLICATE request.
+          if (this.photos().length) this.attachWarning.set('Attachments were not uploaded (no reference returned) — reopen the request to add them.');
+          this.finish(sr.ticketid);
+          return;
+        }
         const photos = this.photos();
         if (!photos.length) { this.finish(sr.ticketid); return; }
-        // SR is created — upload photos best-effort (a failure doesn't undo the SR).
-        let done = 0;
+        // SR is created — upload photos (a failure doesn't undo the SR, but we report it honestly instead of
+        // silently "succeeding"). Keep going past a failure and collect the real server messages.
+        let attempted = 0;
+        const fails: string[] = [];
         this.uploadStatus.set(`Uploading attachment 1/${photos.length}…`);
         from(photos).pipe(
-          concatMap(p => this.api.uploadSrAttachment(sr.href, p.file))
+          concatMap(p => this.api.uploadSrAttachment(sr.href, p.file).pipe(
+            map(() => null as string | null),
+            catchError((e: any) => of(e?.error?.message || e?.message || 'upload failed'))
+          ))
         ).subscribe({
-          next: () => { done++; if (done < photos.length) this.uploadStatus.set(`Uploading attachment ${done + 1}/${photos.length}…`); },
-          complete: () => this.finish(sr.ticketid),
+          next: err => {
+            if (err) fails.push(err);
+            attempted++;
+            if (attempted < photos.length) this.uploadStatus.set(`Uploading attachment ${attempted + 1}/${photos.length}…`);
+          },
+          complete: () => {
+            if (fails.length) {
+              this.attachWarning.set(`${fails.length} of ${photos.length} attachment(s) didn't upload — ${fails[0]}`);
+            }
+            this.finish(sr.ticketid);
+          },
         });
       },
       error: e => { this.submitting.set(false); this.error.set(e?.error?.message || e?.message || 'Submit failed. Try again when you have signal.'); }
@@ -343,7 +368,7 @@ export class MaximoSrCreateComponent implements OnDestroy {
     this.description.set(''); this.longDescription.set(''); this.priority.set('3');
     this.assetnum.set(''); this.location.set(''); this.locationQuery.set(''); this.locResults.set([]);
     this.revokePhotos(); this.photos.set([]);
-    this.error.set(null); this.createdTicket.set(null); this.uploadStatus.set(null);
+    this.error.set(null); this.createdTicket.set(null); this.uploadStatus.set(null); this.attachWarning.set(null);
     this.restoredDraft.set(false);
     localStorage.removeItem(MaximoSrCreateComponent.DRAFT_KEY);
   }

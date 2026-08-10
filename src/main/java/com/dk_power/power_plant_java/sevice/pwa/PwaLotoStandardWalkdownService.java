@@ -108,12 +108,12 @@ public class PwaLotoStandardWalkdownService {
      */
     @Transactional
     public void saveEvidence(Long standardId, WalkdownSubmitRequest req) {
-        // Walkdown evidence-recording is a manager activity per operational policy.
-        // The evidence IS the walkdown; the eventual markWalkdownComplete transition
-        // is also manager-gated (see NgLotoStandardService.markWalkdownComplete).
-        // Gate them consistently so a non-manager can't fill out the checklist and
-        // then hand the transition to a manager to rubber-stamp.
-        lotoStandardService.requireLotoRole(LotoRole.MANAGER);
+        // Walkdown evidence-recording is a Control Authority activity per operational policy:
+        // the CA owns build-time correctness and the walkdown is where they confirm the
+        // physical world matches what's on the standard. The evidence IS the walkdown,
+        // and it can drive corrections + LotoPoint isLockable/isLabeled flips — both of
+        // which are CA's authority.
+        lotoStandardService.requireLotoRole(LotoRole.CONTROL_AUTHORITY);
 
         LotoStandard s = standardRepo.findById(standardId)
                 .orElseThrow(() -> new IllegalArgumentException("LOTO standard not found: " + standardId));
@@ -127,7 +127,8 @@ public class PwaLotoStandardWalkdownService {
         if (req.corrections() != null) {
             for (Map.Entry<Long, WalkdownSubmitRequest.PointCorrectionInput> e : req.corrections().entrySet()) {
                 WalkdownSubmitRequest.PointCorrectionInput c = e.getValue();
-                if (c != null) applyCorrection(e.getKey(), c.tagNumber(), c.description(), c.isoPosId(), c.normPosId());
+                if (c != null) applyCorrection(e.getKey(), c.tagNumber(), c.description(),
+                        c.isoPosId(), c.normPosId(), c.specificLocation(), c.generalLocation());
             }
         }
 
@@ -158,6 +159,13 @@ public class PwaLotoStandardWalkdownService {
                 pr.put(e.getKey(), cl);
             }
             w.setPointResults(pr);
+
+            // Equipment Lockable and Metal Tag Present are DURABLE PHYSICAL PROPERTIES of the point
+            // (does this valve have a padlock provision? is there a permanent metal tag?), not
+            // per-walkdown flukes. Persist definitive answers onto the LotoPoint itself so future
+            // permit builders can see them. Nulls (unanswered) are skipped — never clobber an
+            // existing flag with "walker didn't check today".
+            applyPhysicalFlagsFromChecklist(pr);
         }
 
         stamp(w);
@@ -165,11 +173,15 @@ public class PwaLotoStandardWalkdownService {
     }
 
     /**
-     * Correct a point's tag / description / positions in place. Positions are Value FKs — an id is looked up
-     * and set only if it resolves. Goes through JPA so the {@code FieldChangeEntityListener} fires (syncs).
+     * Correct a point's tag / description / positions / locations in place. Positions are Value FKs — an
+     * id is looked up and set only if it resolves. Locations are free-text strings mirroring the LotoPoint
+     * columns. Every field is OPTIONAL — only non-null fields are applied. Goes through JPA so the
+     * {@code FieldChangeEntityListener} fires (syncs).
      */
-    public void applyCorrection(Long pointId, String tagNumber, String description, Long isoPosId, Long normPosId) {
-        // Corrections modify a LOTO point in place (tag/description/positions).
+    public void applyCorrection(Long pointId, String tagNumber, String description,
+                                Long isoPosId, Long normPosId,
+                                String specificLocation, String generalLocation) {
+        // Corrections modify a LOTO point in place (tag/description/positions/locations).
         // Either a Control Authority (who owns build-time content) or a Manager
         // (who owns walkdown and might spot an in-field discrepancy) may apply
         // one — anyone lower is rejected.
@@ -180,7 +192,44 @@ public class PwaLotoStandardWalkdownService {
         if (description != null) p.setDescription(description);
         if (isoPosId != null) valueRepo.findById(isoPosId).ifPresent(p::setIsoPos);
         if (normPosId != null) valueRepo.findById(normPosId).ifPresent(p::setNormPos);
+        if (specificLocation != null) p.setSpecificLocation(specificLocation);
+        if (generalLocation != null) p.setGeneralLocation(generalLocation);
         lotoPointRepo.save(p);
+    }
+
+    /**
+     * Persist Pass/Fail on {@code equipmentLockable} / {@code metalTagPresent} to the LOTO point's
+     * durable physical flags ({@code isLockable} / {@code isLabeled}). Only definitive answers are
+     * applied — null (unanswered) never clobbers an existing flag. No-op writes are skipped so we
+     * don't emit a sync event for a flag that already matches.
+     */
+    private void applyPhysicalFlagsFromChecklist(Map<Long, PointChecklist> results) {
+        for (Map.Entry<Long, PointChecklist> e : results.entrySet()) {
+            PointChecklist c = e.getValue();
+            if (c == null) continue;
+            Boolean lockable = c.getEquipmentLockable();
+            Boolean labeled = c.getMetalTagPresent();
+            if (lockable == null && labeled == null) continue;
+
+            lotoPointRepo.findById(e.getKey()).ifPresent(p -> {
+                boolean changed = false;
+                if (lockable != null) {
+                    boolean current = Boolean.TRUE.equals(p.getIsLockable());
+                    if (lockable.booleanValue() != current) {
+                        p.setIsLockable(lockable);
+                        changed = true;
+                    }
+                }
+                if (labeled != null) {
+                    boolean current = Boolean.TRUE.equals(p.getIsLabeled());
+                    if (labeled.booleanValue() != current) {
+                        p.setIsLabeled(labeled);
+                        changed = true;
+                    }
+                }
+                if (changed) lotoPointRepo.save(p);
+            });
+        }
     }
 
     // ── Official transitions (delegated; role + different-person enforced there) ──

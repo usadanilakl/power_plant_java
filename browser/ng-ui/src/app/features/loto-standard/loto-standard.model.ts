@@ -189,6 +189,10 @@ export interface PointCorrection {
   description?: string;
   isoPosId?: number | null;
   normPosId?: number | null;
+  /** Mirrors LotoPoint.specificLocation (free text). */
+  specificLocation?: string;
+  /** Mirrors LotoPoint.generalLocation (free text). */
+  generalLocation?: string;
 }
 
 // ── Offline draft + one-shot submit ────────────────────────────────────────
