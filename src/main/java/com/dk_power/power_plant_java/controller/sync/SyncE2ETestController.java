@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.sync;
 
 import com.dk_power.power_plant_java.sevice.sync.CategoryValueMergeService;
+import com.dk_power.power_plant_java.sevice.sync.NaturalKeyDivergenceReconciler;
 import com.dk_power.power_plant_java.sevice.sync.SyncE2EFileTestService;
 import com.dk_power.power_plant_java.sevice.sync.SyncE2ETestService;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class SyncE2ETestController {
     private final SyncE2ETestService syncE2ETestService;
     private final SyncE2EFileTestService syncE2EFileTestService;
     private final CategoryValueMergeService categoryValueMergeService;
+    private final NaturalKeyDivergenceReconciler naturalKeyDivergenceReconciler;
 
     /**
      * Seed a full entity graph: Categories → Values → Equipment → LotoPoints → LotoStandards.
@@ -139,6 +141,27 @@ public class SyncE2ETestController {
         categoryValueMergeService.mergeIfDuplicatesExist();
         return ResponseEntity.ok(Map.of(
                 "success", true,
+                "durationMs", System.currentTimeMillis() - start
+        ));
+    }
+
+    /**
+     * Self-heal Category/Value duplicate divergence that predates the deterministic pre-save path:
+     * re-create the smaller-id survivor wherever this node wrongly kept the larger id, then run the
+     * deterministic merge to converge + emit synced changes. Runs on ANY node (hub or client).
+     * POST /api/sync-e2e/reconcile-divergence
+     */
+    @PostMapping("/reconcile-divergence")
+    public ResponseEntity<Map<String, Object>> reconcileDivergence() {
+        log.info("API: Triggering natural-key divergence reconcile");
+        long start = System.currentTimeMillis();
+        NaturalKeyDivergenceReconciler.ReconcileResult result = naturalKeyDivergenceReconciler.reconcile();
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "ranOnHub", result.ranOnHub(),
+                "recreated", result.recreated(),
+                "wrongEntriesSeen", result.wrongEntriesSeen(),
+                "remapsCleaned", result.remapsCleaned(),
                 "durationMs", System.currentTimeMillis() - start
         ));
     }

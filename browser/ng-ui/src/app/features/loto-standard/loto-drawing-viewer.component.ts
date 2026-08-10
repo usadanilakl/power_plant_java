@@ -47,7 +47,16 @@ interface DrawingFile {
           <div class="dv-viewport" #viewport
                (pointerdown)="onDown($event)" (pointermove)="onMove($event)"
                (pointerup)="onUp($event)" (pointercancel)="onUp($event)" (wheel)="onWheel($event)">
-            <div class="dv-stage" [style.transform]="transform()">
+            <!--
+              Zoom is applied as the stage's LAYOUT WIDTH, not as transform: scale().
+
+              Safari rasterises a transformed layer once at its pre-transform size and then stretches
+              that bitmap, so a scaled-up drawing goes soft on iPhone while Chrome — which
+              re-rasterises at the composited scale — stays sharp. Sizing the stage in real pixels
+              makes both engines re-render the image at the zoomed size. transform carries the pan
+              offset only. The highlight rects are positioned in %, so they track the stage for free.
+            -->
+            <div class="dv-stage" [style.width.px]="stageW()" [style.transform]="transform()">
               @if (imgUrl()) {
                 <img class="dv-img" [src]="imgUrl()" alt="drawing" (load)="onImgLoad($event)" draggable="false">
                 @for (r of currentRects(); track $index) {
@@ -83,7 +92,8 @@ interface DrawingFile {
     .dv-tab.active { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
     .dv-viewport { position: relative; flex: 1; min-height: 55vh; overflow: hidden; background: #2b2b2b; touch-action: none; cursor: grab; }
     .dv-viewport:active { cursor: grabbing; }
-    .dv-stage { position: absolute; top: 0; left: 0; width: 100%; transform-origin: 0 0; }
+    /* Width is bound per-frame (see template). No scale() here — that is what blurs on iOS. */
+    .dv-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
     .dv-img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
     .dv-hl { position: absolute; border-style: solid; border-color: #ff3b30; border-width: calc(2px / var(--s, 1)); background: rgba(255,59,48,0.12); border-radius: calc(2px / var(--s, 1)); pointer-events: none; box-sizing: border-box; }
     .dv-controls { display: flex; gap: 0.5rem; justify-content: center; padding: 0.55rem; border-top: 1px solid var(--border-color); }
@@ -115,7 +125,17 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   scale = signal(1);
   private tx = signal(0);
   private ty = signal(0);
-  transform = computed(() => `translate(${this.tx()}px, ${this.ty()}px) scale(${this.scale()})`);
+  /** Pan only — the zoom lives in {@link stageW} so the image re-rasterises sharply. */
+  transform = computed(() => `translate(${this.tx()}px, ${this.ty()}px)`);
+
+  /** Viewport size, tracked as signals so the stage width can be a computed. */
+  private baseW = signal(0);
+  private baseH = signal(0);
+  /** Stage width in real pixels: viewport width at scale 1, multiplied by the zoom. */
+  stageW = computed(() => Math.max(1, this.baseW() * this.scale()));
+
+  private static readonly MIN_SCALE = 0.2;
+  private static readonly MAX_SCALE = 8;
 
   /** Descriptors grouped into one entry per file, each carrying that file's highlight rectangles. */
   files = computed<DrawingFile[]>(() => {
@@ -141,8 +161,23 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   private lastY = 0;
   private objectUrl: string | null = null;
 
+  /** Live pointers by id — size 1 pans, size 2 pinches. */
+  private pointers = new Map<number, { x: number; y: number }>();
+  private pinchDist = 0;
+  private pinchMid = { x: 0, y: 0 };
+  private lastTap = { t: 0, x: 0, y: 0 };
+
   async ngOnInit(): Promise<void> {
     document.body.appendChild(this.host.nativeElement);
+
+    // iOS Safari drives pinch through its own non-standard gesture events and zooms the whole PAGE,
+    // ignoring touch-action. Without this the viewer's pinch fights Safari's document zoom.
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+      this.host.nativeElement.addEventListener(type, this.blockPageZoom, { passive: false });
+    }
+    window.addEventListener('resize', this.onViewportResize);
+    window.addEventListener('orientationchange', this.onViewportResize);
+
     try {
       const list = await this.drawingService.drawingsForPoint(this.standardId, this.pointId, this.source);
       this.drawings.set(list);
@@ -154,7 +189,24 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void { this.revoke(); this.host.nativeElement.remove(); }
+  ngOnDestroy(): void {
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+      this.host.nativeElement.removeEventListener(type, this.blockPageZoom);
+    }
+    window.removeEventListener('resize', this.onViewportResize);
+    window.removeEventListener('orientationchange', this.onViewportResize);
+    this.revoke();
+    this.host.nativeElement.remove();
+  }
+
+  private blockPageZoom = (e: Event) => e.preventDefault();
+
+  /** Re-measure and re-fit; the old framing is meaningless at a new viewport size. */
+  private onViewportResize = () => {
+    const wasFitted = this.scale() <= 1.01;
+    this.measure();
+    if (wasFitted) this.fit();
+  };
 
   async select(i: number): Promise<void> { if (i !== this.index()) await this.load(i); }
 
@@ -169,18 +221,52 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     this.objectUrl = url;
     this.imgUrl.set(url);
     this.loading.set(false);
+    // The viewport is behind @if(loading()), so it only exists after this change is rendered.
+    // Measure on the next tick so the stage gets a real width before the image paints, rather
+    // than briefly laying out at the 1px floor.
+    setTimeout(() => this.measure());
   }
 
   onImgLoad(e: Event): void {
     const img = e.target as HTMLImageElement;
     this.natW.set(img.naturalWidth); this.natH.set(img.naturalHeight);
+    // The viewport only has a box once the image is in it — measure before framing against it.
+    this.measure();
     if (this.currentRects().length) this.zoomToPoint(); else this.fit();
   }
 
   // ── Zoom / pan ─────────────────────────────────────────────────────────────
-  private vp(): { w: number; h: number } {
+  /** Re-read the viewport box. Called on image load and whenever the window/orientation changes. */
+  private measure(): void {
     const el = this.viewport?.nativeElement;
-    return { w: el?.clientWidth ?? 300, h: el?.clientHeight ?? 300 };
+    if (!el) return;
+    this.baseW.set(el.clientWidth || 300);
+    this.baseH.set(el.clientHeight || 300);
+  }
+
+  private vp(): { w: number; h: number } {
+    if (!this.baseW()) this.measure();
+    return { w: this.baseW() || 300, h: this.baseH() || 300 };
+  }
+
+  /** Pointer position relative to the viewport box — the anchor space zoom math works in. */
+  private local(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.viewport?.nativeElement.getBoundingClientRect();
+    return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
+  }
+
+  /**
+   * Zoom by `factor` while holding the point under (ax, ay) — viewport coordinates — still.
+   * That anchor is what makes pinch feel attached to the fingers rather than to the centre.
+   */
+  private zoomAt(factor: number, ax: number, ay: number): void {
+    const s0 = this.scale();
+    const s = Math.min(LotoDrawingViewerComponent.MAX_SCALE,
+                       Math.max(LotoDrawingViewerComponent.MIN_SCALE, s0 * factor));
+    if (s === s0) return;
+    this.tx.set(ax - (ax - this.tx()) * (s / s0));
+    this.ty.set(ay - (ay - this.ty()) * (s / s0));
+    this.scale.set(s);
   }
   /** Displayed stage height at scale 1 (stage width == viewport width; height follows the image aspect). */
   private stageHeight(w: number): number {
@@ -210,24 +296,99 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     this.ty.set(0);
   }
 
+  /** Button zoom — anchored to the middle of the viewport. */
   zoomBy(factor: number): void {
     const { w, h } = this.vp();
-    const s0 = this.scale();
-    const s = Math.min(8, Math.max(0.2, s0 * factor));
-    this.tx.set(w / 2 - (w / 2 - this.tx()) * (s / s0));
-    this.ty.set(h / 2 - (h / 2 - this.ty()) * (s / s0));
-    this.scale.set(s);
+    this.zoomAt(factor, w / 2, h / 2);
   }
 
-  onWheel(e: WheelEvent): void { e.preventDefault(); this.zoomBy(e.deltaY < 0 ? 1.12 : 0.89); }
-  onDown(e: PointerEvent): void { this.dragging = true; this.lastX = e.clientX; this.lastY = e.clientY; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); }
+  /** Wheel/trackpad zoom, anchored under the cursor. */
+  onWheel(e: WheelEvent): void {
+    e.preventDefault();
+    const p = this.local(e.clientX, e.clientY);
+    this.zoomAt(e.deltaY < 0 ? 1.12 : 0.89, p.x, p.y);
+  }
+
+  // ── Pointer gestures: one finger pans, two pinch-zoom ──────────────────────
+
+  onDown(e: PointerEvent): void {
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (this.pointers.size === 2) {
+      this.beginPinch();
+    } else if (this.pointers.size === 1) {
+      this.dragging = true;
+      this.lastX = e.clientX;
+      this.lastY = e.clientY;
+    }
+  }
+
   onMove(e: PointerEvent): void {
+    if (!this.pointers.has(e.pointerId)) return;
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (this.pointers.size >= 2) { this.updatePinch(); return; }
     if (!this.dragging) return;
+
     this.tx.set(this.tx() + (e.clientX - this.lastX));
     this.ty.set(this.ty() + (e.clientY - this.lastY));
-    this.lastX = e.clientX; this.lastY = e.clientY;
+    this.lastX = e.clientX;
+    this.lastY = e.clientY;
   }
-  onUp(_e: PointerEvent): void { this.dragging = false; }
+
+  onUp(e: PointerEvent): void {
+    this.pointers.delete(e.pointerId);
+    this.maybeDoubleTap(e);
+
+    if (this.pointers.size === 1) {
+      // Lifting one finger of a pinch: re-seat the pan origin on the finger that is still
+      // down, otherwise the image jumps by the distance between the two touch points.
+      const remaining = this.pointers.values().next().value!;
+      this.lastX = remaining.x;
+      this.lastY = remaining.y;
+      this.dragging = true;
+    } else if (this.pointers.size === 0) {
+      this.dragging = false;
+    }
+  }
+
+  private beginPinch(): void {
+    // A pinch is not a drag — stop panning so the second finger doesn't also translate.
+    this.dragging = false;
+    const [a, b] = [...this.pointers.values()];
+    this.pinchDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    this.pinchMid = this.local((a.x + b.x) / 2, (a.y + b.y) / 2);
+  }
+
+  private updatePinch(): void {
+    const [a, b] = [...this.pointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const mid = this.local((a.x + b.x) / 2, (a.y + b.y) / 2);
+
+    this.zoomAt(dist / this.pinchDist, this.pinchMid.x, this.pinchMid.y);
+    // Two-finger drag pans as well as zooms, which is what the gesture is expected to do.
+    this.tx.set(this.tx() + (mid.x - this.pinchMid.x));
+    this.ty.set(this.ty() + (mid.y - this.pinchMid.y));
+
+    this.pinchDist = dist;
+    this.pinchMid = mid;
+  }
+
+  /** Double-tap toggles between fit and a close-up on the tapped spot. */
+  private maybeDoubleTap(e: PointerEvent): void {
+    if (e.pointerType === 'mouse') return;
+    const now = Date.now();
+    const near = Math.hypot(e.clientX - this.lastTap.x, e.clientY - this.lastTap.y) < 30;
+    if (now - this.lastTap.t < 300 && near) {
+      this.lastTap = { t: 0, x: 0, y: 0 };
+      const p = this.local(e.clientX, e.clientY);
+      if (this.scale() > 1.2) this.fit();
+      else this.zoomAt(2.5 / this.scale(), p.x, p.y);
+      return;
+    }
+    this.lastTap = { t: now, x: e.clientX, y: e.clientY };
+  }
 
   private revoke(): void {
     if (this.objectUrl) { URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; }

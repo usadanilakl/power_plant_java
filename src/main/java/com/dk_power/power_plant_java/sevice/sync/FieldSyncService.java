@@ -93,6 +93,17 @@ public class FieldSyncService {
     @org.springframework.beans.factory.annotation.Value("${sync.apply.bisect-on-rollback-enabled:false}")
     private boolean bisectOnRollbackEnabled;
 
+    // When true, a natural-key duplicate CREATE for Category/Value is NOT silently redirected onto the
+    // node-local survivor pre-save; the incoming row is inserted to COEXIST, so the hub's deterministic
+    // (smallest-id) CategoryValueMergeService becomes the SOLE dedup authority and emits synced
+    // tombstone+repoint that every node applies. The old pre-save redirect recorded its keep-local
+    // decision only in dedup_id_remap (native MERGE INTO, a plain @Entity → unsynced), so two nodes that
+    // independently created the same natural key while partitioned each kept their OWN survivor (different
+    // device-prefixed ids) and stayed STABLY DIVERGED forever (confirmed in the 3-node lab 2026-08-09).
+    // Default FALSE = current behavior (a no-op to ship); enabled per-cluster after lab validation.
+    @org.springframework.beans.factory.annotation.Value("${sync.dedup.deterministic-convergence.enabled:false}")
+    private boolean deterministicDedupConvergence;
+
     // Set by the applyIncomingChanges overload; if non-null, deferred change ids are collected here
     // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
     private java.util.Set<java.util.UUID> deferredChangeIds = null;
@@ -858,8 +869,9 @@ public class FieldSyncService {
                 handleValueNameChangesForFileStructure(valueNameChanges);
             }
 
-            // Merge duplicates — same guard as afterCommit path
-            if (mergeInProgress.compareAndSet(false, true)) {
+            // Merge duplicates — hub only, SAME guard as the afterCommit path (this fallback previously
+            // omitted the isHubMode() check, letting a client run dedup and emit conflicting merge decisions).
+            if (syncConfig.isHubMode() && mergeInProgress.compareAndSet(false, true)) {
                 try {
                     runMergeCascade();
                 } finally {
@@ -1118,6 +1130,40 @@ public class FieldSyncService {
             if (!Objects.equals(targetEntityId, entityId)) {
                 log.info("Applying {}#{} change(s) to remapped owner #{}",
                     entityType, entityId, targetEntityId);
+                // The incoming id is a DEAD DUPLICATE (deduped into targetEntityId). Its OWN deletion must
+                // NOT propagate to the survivor: a reconcile/merge soft-delete of the loser id — emitted
+                // either as a DELETE marker OR as a deleted=true UPDATE — resolves through this remap and
+                // would otherwise destroy the survivor (observed: a client's correct Value erased when the
+                // loser's deletion remapped onto it). Drop ONLY the deletion changes (ack them superseded);
+                // other field changes still legitimately merge into the survivor. The survivor's lifecycle
+                // is governed only by changes targeting its OWN id. Flag-gated + SCOPED to Category/Value:
+                // those are the only types that use the coexist+deterministic-merge path where the remap
+                // target is a merge-tombstoned dead duplicate. Every OTHER natural-key type (WorkRequest,
+                // Jha, User, …) still uses the old keep-local redirect, where a user's delete of a redirected
+                // id is a REAL delete that must reach the survivor — dropping it there would lose the delete.
+                if (deterministicDedupConvergence
+                        && ("Category".equals(entityType) || "Value".equals(entityType))) {
+                    List<FieldChange> kept = new ArrayList<>(changes.size());
+                    int dropped = 0;
+                    for (FieldChange c : changes) {
+                        boolean isDeleteMarker = c.getChangeType() == FieldChange.ChangeType.DELETE;
+                        boolean isDeletedTrue = "deleted".equals(c.getFieldName()) && c.getNewValue() != null
+                                && "true".equalsIgnoreCase(c.getNewValue().replace("\"", "").trim());
+                        if (isDeleteMarker || isDeletedTrue) {
+                            saveIncomingChange(c);
+                            note(c, ChangeDisposition.NOOP_SUPERSEDED);
+                            dropped++;
+                        } else {
+                            kept.add(c);
+                        }
+                    }
+                    if (dropped > 0) {
+                        log.info("dedup.deterministic: dropped {} deletion-change(s) for dead-duplicate {}#{} — survivor #{} preserved",
+                            dropped, entityType, entityId, targetEntityId);
+                        changes = kept;
+                        if (changes.isEmpty()) return dropped;
+                    }
+                }
             }
 
             // Check for DELETE changes first
@@ -1274,7 +1320,23 @@ public class FieldSyncService {
                     Long existingDupId = dedupKeyResolver.findExistingByNaturalKey(
                         entityType, entityId, changes, idRemapTable);
 
-                    if (existingDupId != null) {
+                    // Deterministic-convergence path (flag-gated, Category/Value only): do NOT silently
+                    // redirect the incoming CREATE onto whatever row this node happened to already have.
+                    // The old redirect recorded its keep-local decision only in dedup_id_remap (native,
+                    // unsynced), so two nodes that independently created the same natural key kept
+                    // DIFFERENT survivors forever. Instead let the incoming row INSERT and coexist; the
+                    // hub's deterministic (smallest-id) CategoryValueMergeService then merges the pair and
+                    // emits SYNCED tombstone+repoint that EVERY node applies — so the whole cluster
+                    // converges on the smallest id regardless of arrival order (no silent divergence).
+                    boolean deterministicCoexist = existingDupId != null
+                        && deterministicDedupConvergence
+                        && ("Category".equals(entityType) || "Value".equals(entityType));
+
+                    if (deterministicCoexist) {
+                        log.info("dedup.deterministic: {}#{} coexists with existing #{}; hub merge will converge (smallest-id wins)",
+                            entityType, entityId, existingDupId);
+                        // fall through to the NORMAL CREATE PATH below (insert the incoming row)
+                    } else if (existingDupId != null) {
                         // REDIRECT: Don't create a duplicate. Apply changes to existing entity via LWW.
                         log.debug("Pre-save dedup: {}#{} matches existing #{}. Redirecting.",
                             entityType, entityId, existingDupId);
@@ -2089,6 +2151,10 @@ public class FieldSyncService {
      * Called at the start of each applyIncomingChangesInternal() so that
      * cross-batch ManyToOne references to dedup-redirected IDs resolve correctly.
      */
+    /** Category/Value physical tables — for the deterministic-convergence stale-remap filter below. */
+    private static final Map<String, String> DEDUP_FILTER_TABLES =
+        Map.of("Category", "category", "Value", "val_table");
+
     @SuppressWarnings("unchecked")
     private Map<String, Map<Long, Long>> loadPersistentRemaps() {
         Map<String, Map<Long, Long>> table = new HashMap<>();
@@ -2096,20 +2162,50 @@ public class FieldSyncService {
             List<Object[]> rows = entityManager.createNativeQuery(
                 "SELECT entity_type, original_id, remapped_id FROM dedup_id_remap")
                 .getResultList();
+            int skippedStale = 0;
             for (Object[] row : rows) {
                 String type = (String) row[0];
                 Long origId = ((Number) row[1]).longValue();
                 Long remapId = ((Number) row[2]).longValue();
+                // Deterministic-convergence: a WRONG-DIRECTION Category/Value remap (a SMALLER id redirected
+                // onto a LARGER one) contradicts smallest-id-wins and is the fingerprint of the old buggy
+                // pre-save redirect. Left active it re-redirects the hub reconcile's correction (the fresh
+                // CREATE of the smaller id) straight back onto the dead larger id, so a client that kept the
+                // wrong survivor never converges. Make it INERT — but ONLY when the smaller id's row is
+                // genuinely ABSENT (the buggy redirect never inserted it). The admin orphan-merge tool also
+                // writes remaps and can legitimately be wrong-direction, but it SOFT-DELETES its loser (the
+                // row EXISTS), so an existing smaller-id row is left mapped and the admin decision stands.
+                if (deterministicDedupConvergence && origId < remapId
+                        && DEDUP_FILTER_TABLES.containsKey(type)
+                        && !rowExistsById(DEDUP_FILTER_TABLES.get(type), origId)) {
+                    skippedStale++;
+                    continue;
+                }
                 table.computeIfAbsent(type, k -> new HashMap<>()).put(origId, remapId);
             }
-            if (!table.isEmpty()) {
+            if (!table.isEmpty() || skippedStale > 0) {
                 int total = table.values().stream().mapToInt(Map::size).sum();
-                log.debug("Loaded {} persistent dedup remaps", total);
+                log.debug("Loaded {} persistent dedup remaps ({} stale wrong-direction skipped)", total, skippedStale);
             }
         } catch (Exception e) {
             log.warn("Could not load persistent dedup remaps: {}", e.getMessage());
         }
         return table;
+    }
+
+    /** Native existence probe by primary key that bypasses {@code @Where(deleted=false)} (counts any state). */
+    private boolean rowExistsById(String table, Long id) {
+        try {
+            Number n = (Number) entityManager.createNativeQuery(
+                "SELECT COUNT(*) FROM " + table + " WHERE id = :id").setParameter("id", id).getSingleResult();
+            return n.longValue() > 0;
+        } catch (Exception e) {
+            // Probe failed — default to "exists" so a single bad row neither aborts loading the rest of the
+            // remap table (this runs inside the one-shot loadPersistentRemaps loop) nor inert-ifies a remap
+            // on an unreliable absence signal. Keeping the remap is the safe, pre-CHANGE-1 default.
+            log.warn("rowExistsById probe failed for {}#{}: {} — treating as present (remap kept)", table, id, e.getMessage());
+            return true;
+        }
     }
 
     /**
@@ -2131,6 +2227,17 @@ public class FieldSyncService {
                 .setParameter("originalId", originalId)
                 .setParameter("remappedId", remappedId)
                 .setParameter("createdAt", Instant.now())
+                .executeUpdate();
+            // Circular-remap guard: remappedId is now a canonical survivor, so it must not ALSO appear as a
+            // dead-duplicate original. Leaving a contradictory (remappedId -> X) row lets both directions
+            // load after a restart, forming a cycle that permanently defers updates to the survivor. Remove
+            // any such row. (Does not touch a legitimate chain A->B->C: writing A->B deletes rows with
+            // original_id=B, and in a correct system B is alive/canonical when A dedups into it, so no B->C
+            // row exists yet.)
+            entityManager.createNativeQuery(
+                "DELETE FROM dedup_id_remap WHERE entity_type = :entityType AND original_id = :remappedId")
+                .setParameter("entityType", entityType)
+                .setParameter("remappedId", remappedId)
                 .executeUpdate();
         } catch (Exception e) {
             log.warn("Could not persist dedup remap: {}#{} -> #{}: {}",

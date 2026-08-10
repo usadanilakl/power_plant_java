@@ -192,6 +192,20 @@ public class CategoryValueMergeService {
 
                     entityManager.flush();
 
+                    // The JPA move above only touches ACTIVE values (@Where(deleted=false) hides
+                    // soft-deleted ones from the query), but verify-before-delete counts ALL rows via
+                    // native SQL — so a soft-deleted value still carrying the dup category_id (e.g. a
+                    // value that was itself merged earlier) counts as a dangling reference and aborts the
+                    // whole category merge forever. Repoint those soft-deleted stragglers too, via native
+                    // SQL: a deleted value carries no synced state that matters, so no FieldChange emission
+                    // is needed — this only preserves the invariant "no value references a dead category".
+                    entityManager.createNativeQuery(
+                        "UPDATE val_table SET category_id = :canon WHERE category_id = :dup AND deleted = true")
+                        .setParameter("canon", canonicalId)
+                        .setParameter("dup", duplicateId)
+                        .executeUpdate();
+                    entityManager.flush();
+
                     long remaining = valueReferenceRepointService.countReferencesByFkMap(
                             duplicateId, categoryFkColumns);
                     if (remaining > 0) {

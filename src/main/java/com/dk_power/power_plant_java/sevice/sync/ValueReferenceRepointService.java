@@ -586,6 +586,15 @@ public class ValueReferenceRepointService {
                 .setParameter("remappedId", remappedId)
                 .setParameter("createdAt", java.time.Instant.now())
                 .executeUpdate();
+            // Circular-remap guard: remappedId (the merge's canonical survivor) must not ALSO appear as a
+            // dead-duplicate original. A leftover (remappedId -> X) row — e.g. a stale wrong-direction remap
+            // from the old buggy redirect — would, once both directions load after a restart, form a cycle
+            // that permanently defers updates to the survivor. Delete any such row so the pair can't form.
+            entityManager.createNativeQuery(
+                "DELETE FROM dedup_id_remap WHERE entity_type = :entityType AND original_id = :remappedId")
+                .setParameter("entityType", entityType)
+                .setParameter("remappedId", remappedId)
+                .executeUpdate();
         } catch (Exception e) {
             log.error("persistDedupRemap: failed for {}:{}->{} — rolling pair back so the merge isn't applied without the redirect record",
                     entityType, originalId, remappedId, e);
