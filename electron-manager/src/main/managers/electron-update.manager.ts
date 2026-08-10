@@ -117,6 +117,14 @@ export class ElectronUpdateManager {
     const totalBytes = checkResult.data.fileSize;
     const fileName = checkResult.data.fileName;
 
+    // Clear a stale staged build before downloading. Without this, a ZIP left by a failed apply
+    // lingers: if the new build has a different filename getStagedZipPath() may pick the OLD one,
+    // and applyUpdate() would then install the wrong version.
+    if (this.getStagedZipPath() !== null && this.getStagedChecksum() !== expectedChecksum) {
+      console.log('Discarding stale staged update before downloading the newer build');
+      this.discardStaged();
+    }
+
     // Ensure staging directory exists
     if (!fs.existsSync(this.stagingDir)) {
       fs.mkdirSync(this.stagingDir, { recursive: true });
@@ -554,9 +562,45 @@ export class ElectronUpdateManager {
     }
   }
 
-  /** Check if a verified ZIP is staged and ready to apply */
-  public isUpdateStaged(): boolean {
-    return this.getStagedZipPath() !== null;
+  /**
+   * Is a ZIP staged and ready to apply?
+   *
+   * When {@code expectedChecksum} is supplied, a staged ZIP only counts if it IS that build.
+   * The UI disables "Download" whenever something is staged, so a STALE staged ZIP — one left by
+   * a failed apply, after a newer build was published — would otherwise strand the operator with
+   * no way to fetch the new one and no discard button. Observed 2026-08-09.
+   *
+   * The comparison is cheap: the expected checksum was written into the staging
+   * electron-version.json at download time, so nothing has to be re-hashed.
+   */
+  public isUpdateStaged(expectedChecksum?: string): boolean {
+    if (this.getStagedZipPath() === null) return false;
+    if (!expectedChecksum) return true;
+    return this.getStagedChecksum() === expectedChecksum;
+  }
+
+  /** Checksum of the currently staged ZIP, from the staging version record ('' if none). */
+  public getStagedChecksum(): string {
+    try {
+      const p = path.join(this.stagingDir, 'electron-version.json');
+      if (fs.existsSync(p)) {
+        const record: ElectronVersionRecord = JSON.parse(fs.readFileSync(p, 'utf8'));
+        return record.checksum || '';
+      }
+    } catch { /* corrupted — treat as no staged build */ }
+    return '';
+  }
+
+  /** Delete anything staged. Used to clear a stale ZIP so a newer build can be downloaded. */
+  public discardStaged(): void {
+    try {
+      if (fs.existsSync(this.stagingDir)) {
+        fs.rmSync(this.stagingDir, { recursive: true, force: true });
+        console.log('Discarded staged Electron update');
+      }
+    } catch (err: any) {
+      console.warn(`Could not discard staged update: ${err.message}`);
+    }
   }
 
   /** Get the local checksum from electron-version.json */

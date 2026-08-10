@@ -663,7 +663,9 @@ export default class App {
       if (electronResult.success && electronResult.data) {
         assessment.electron = {
           updateAvailable: electronResult.data.isNewer,
-          updateStaged: electronMgr.isUpdateStaged(),
+          // Pass the server's checksum so a STALE staged ZIP (left by a failed apply, before a
+          // newer build was published) does not keep the Download button disabled.
+          updateStaged: electronMgr.isUpdateStaged(electronResult.data.checksum),
           updateInfo: electronResult.data
         };
         console.log(`Electron update: ${electronResult.data.isNewer ? 'available' : 'up to date'}`);
