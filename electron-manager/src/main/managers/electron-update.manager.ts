@@ -295,6 +295,9 @@ export class ElectronUpdateManager {
     // CRLF line endings are critical for CMD on Windows.
     const extractLines = [
       '@echo off',
+      'REM Move our own cwd out of the install folder before touching it — a directory that is any',
+      'REM process\'s current directory cannot be renamed on Windows. All paths below are absolute.',
+      'cd /d "%SystemRoot%"',
       `echo Extracting update to: "${newDir}"`,
       '',
       'REM Start from a clean extract dir so a stale partial run cannot poison this one.',
@@ -366,6 +369,9 @@ export class ElectronUpdateManager {
     const mainLines = [
       '@echo off',
       'title DK Power Manager - Updating...',
+      'REM Same reason as update-extract.cmd: this shell must not hold the install folder open,',
+      'REM and it stays alive for the whole run (including while the elevated retry executes).',
+      'cd /d "%SystemRoot%"',
       '',
       `set "LOGFILE=${logFile}"`,
       `set "EXTRACT_CMD=${extractCmdPath}"`,
@@ -498,6 +504,7 @@ export class ElectronUpdateManager {
     const rollbackLines = [
       '@echo off',
       'title DK Power Manager - Rollback',
+      'cd /d "%SystemRoot%"',   // must not hold the install folder open — see update-extract.cmd
       'echo Restoring the previous DK Power Manager version...',
       'echo.',
       `if not exist "${prevDir}" (`,
@@ -547,7 +554,15 @@ export class ElectronUpdateManager {
 
       // Launch detached with proper quoting for paths with spaces.
       // windowsVerbatimArguments prevents Node from re-escaping our quotes.
+      // cwd MUST be outside the install directory. Windows will not rename a directory that is
+      // any process's current directory, so a cmd.exe inheriting Electron's cwd (which for a
+      // packaged app IS the install folder) makes the swap impossible — permanently, not as a
+      // race. Observed 2026-08-10: all 15 retries failed, then the elevated retry failed too,
+      // because the original non-elevated cmd.exe was still alive holding the folder.
+      // The working dir is always outside the install dir (ProgramData when packaged) and is
+      // never renamed or deleted by these scripts.
       const child = spawn('cmd.exe', ['/c', `"${cmdPath}"`], {
+        cwd: this.workingDir,
         detached: true,
         stdio: 'ignore',
         windowsHide: false,
