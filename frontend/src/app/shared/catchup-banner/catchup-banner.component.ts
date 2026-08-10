@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Subscription, interval, startWith, switchMap, catchError, of } from 'rxjs';
+import { Subscription, interval, startWith, switchMap, catchError, of, filter } from 'rxjs';
 
 /** Mirrors CentralSyncService.CatchUpStatus (GET /api/field-sync/catchup-status). */
 interface CatchUpStatus {
@@ -70,13 +70,25 @@ export class CatchupBannerComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Poll every 4s. The endpoint is cheap (reads volatile counters); returns inProgress=false when idle,
     // which hides the banner. Transient errors are swallowed so a blip never shows a broken banner.
+    //
+    // /api/field-sync/** is LAN-gated (SecurityConfigSpring lanOnlyMatcher), so an external client —
+    // anyone arriving through the public hub URL, e.g. after scanning a QR code — gets a 401 on every
+    // single poll. This banner is mounted at app-root, so that was one console error every 4 seconds
+    // for the whole session. Auth failures are permanent for that client, not transient: stop asking.
     this.sub = interval(4000).pipe(
       startWith(0),
+      filter(() => !this.notPermitted),
       switchMap(() => this.http.get<CatchUpStatus>('/api/field-sync/catchup-status').pipe(
-        catchError(() => of<CatchUpStatus | null>(null))
+        catchError((err: { status?: number }) => {
+          if (err?.status === 401 || err?.status === 403) this.notPermitted = true;
+          return of<CatchUpStatus | null>(null);
+        })
       ))
     ).subscribe(s => this.status.set(s));
   }
+
+  /** Set once the endpoint answers 401/403 — this client is off-LAN and will never be allowed. */
+  private notPermitted = false;
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
