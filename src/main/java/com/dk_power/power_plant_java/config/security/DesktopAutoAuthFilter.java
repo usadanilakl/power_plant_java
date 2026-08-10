@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,11 +29,34 @@ import java.util.stream.Collectors;
  * Reads System.getProperty("user.name") and matches against User.windowsUsername,
  * case-insensitively — Windows can report the same account with different casing
  * between logons, which would otherwise silently break auto-auth for that user.
+ *
+ * <p><b>Desktop only — deliberately not registered on the hub.</b> This grants a full
+ * ROLE_ADMIN/ROLE_PLANT identity with no credential, on the strength of the request arriving over
+ * loopback. On a desktop that is sound: loopback means a process on the operator's own machine.
+ * The hub is published to the internet behind IIS, where the only thing separating outside traffic
+ * from "local" traffic is that IIS adds forwarding headers and {@link NetworkUtils#isLoopbackRequest}
+ * rejects anything carrying them. That works, but it makes a single reverse-proxy misconfiguration
+ * — or any scheduled task, monitoring probe or SSRF running on the hub box — worth full admin.
+ * The hub has no operator sitting at it, so the feature earns nothing there.
+ *
+ * <p>Disabled by {@code sync.role=hub} (set only in application-hub.properties). Desktops leave it
+ * unset and are unaffected: Electron always talks to its own local instance on port 8082, so
+ * operators still never see a login screen. The only behaviour change is that browsing to the hub's
+ * own port from the hub console now asks for a password.
+ *
+ * <p>Note this is a RUNTIME gate rather than {@code @Profile("!hub")}: {@code SecurityConfigSpring}
+ * injects this filter as a required constructor dependency, so removing the bean on the hub would
+ * fail startup with NoSuchBeanDefinitionException. The bean stays registered everywhere; on the hub
+ * it simply passes every request straight through.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class DesktopAutoAuthFilter extends OncePerRequestFilter {
+
+    /** "hub" on the central server (application-hub.properties); empty on desktops. */
+    @Value("${sync.role:}")
+    private String syncRole;
 
     private final UserRepo userRepo;
     private String cachedWindowsUsername;
@@ -43,6 +67,14 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+
+        // Never on the hub. See the class javadoc: the hub is internet-facing and has no operator
+        // sitting at it, so granting admin on the strength of a loopback source address there is
+        // all risk and no benefit.
+        if ("hub".equalsIgnoreCase(syncRole)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // Only auto-auth for localhost requests
         if (!NetworkUtils.isLoopbackRequest(request)) {

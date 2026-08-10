@@ -142,7 +142,19 @@ async function main() {
   restoreBackedUpData();
 
   console.log('Step 5: Deploying...');
-  run('npx angular-cli-ghpages --dir=docs/browser --repo=https://github.com/JacksonGeneration/permits.git');
+  // Use the PINNED local binary, not `npx`. Bare `npx angular-cli-ghpages` downloads whatever
+  // version npm serves that day and runs it on this machine with the credentials that publish the
+  // site — an unreviewed third-party package with push access to the public PWA. The dependency is
+  // pinned in package.json and resolved from node_modules/.bin instead.
+  const ghpages = path.join('node_modules', '.bin', 'angular-cli-ghpages');
+  if (!fs.existsSync(ghpages) && !fs.existsSync(`${ghpages}.cmd`)) {
+    throw new Error(
+      'angular-cli-ghpages is not installed. Run `npm install` first.\n' +
+      'It is a pinned devDependency on purpose — do not fall back to `npx`, which would fetch and ' +
+      'execute an unpinned version with the credentials that publish the site.'
+    );
+  }
+  run(`"${ghpages}" --dir=docs/browser --repo=https://github.com/JacksonGeneration/permits.git`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
