@@ -21,19 +21,19 @@
     "package:dir": "node scripts/ensure-package-output-free.js && npm run download-jre && npm run sync-defaults && npm run build && electron-builder --dir",
     "package:zip": "npm run package:dir && node scripts/create-update-zip.js"
   },
+  "_comment_vosk": "vosk was declared as ^0.3.45 — a version that has NEVER been published (npm tops out at 0.3.39). That made `npm install` fail with ETARGET for this whole package, which is why vosk was never in node_modules or the lockfile and why voice input has been dormant. Removed rather than pinned: it is a native N-API addon, and keeping the dependency tree free of native modules is what makes Electron upgrades cheap (no ABI rebuilds). vosk.manager.ts already require()s it inside a try/catch and degrades to 'unavailable', so re-enabling is just `npm i vosk@^0.3.39` plus a rebuild — no code change.",
   "dependencies": {
     "@azure/identity": "^4.13.0",
     "adm-zip": "^0.5.16",
     "cheerio": "^1.2.0",
-    "vosk": "^0.3.45",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
-    "@types/node": "^20.11.0",
+    "@types/node": "^24.13.3",
     "concurrently": "^8.2.2",
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.3",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "typescript": "^5.3.3"
   },
   "build": {

@@ -570,6 +570,10 @@ export class WebViewSdsManager {
 
     const rows: ScrapedRow[] = [];
     const pdfs: Record<string, { fileName: string; contentType: string; base64: string } | null> = {};
+    // Capture tallies for the fail-loud check at the end of this method. Counted here rather than
+    // from `pdfs` because streaming mode (opts.onCaptured) hands each PDF off and never fills it.
+    let pdfAttempted = 0;
+    let pdfCaptured = 0;
     this.fullResponseLog = [];
     this.scrapeStartMs = Date.now();
     try {
@@ -673,7 +677,9 @@ export class WebViewSdsManager {
           this.progressRow = rows.length;
           if (opts.capturePdfs) {
             const key = row.sourceId || `idx-${page}-${i}`;
+            pdfAttempted++;
             const capturedPdf = await this.capturePdf(win, ses, i, key);
+            if (capturedPdf) pdfCaptured++;
             if (opts.onCaptured) {
               // Streaming mode: hand the PDF off to the caller and drop it — memory stays
               // bounded to one PDF at a time regardless of catalog size. Aborts on callback
@@ -699,6 +705,25 @@ export class WebViewSdsManager {
       if (!win.isDestroyed()) win.destroy();
       if (this.scrapeWindow === win) this.scrapeWindow = null;
     }
+
+    // Fail loud on a SYSTEMIC capture failure. Zero PDFs out of N attempts is not "the vendor had
+    // none for any of them" — it means the capture mechanism itself is broken. That is exactly what
+    // an Electron/Chromium upgrade can do here, because the viewer is located via the frame tree
+    // and a shadow-DOM button (Electron 41 moved PDFs to out-of-process iframes in the same
+    // WebContents). Without this the run looks green: capturePdf returns null, the backend counts
+    // every row as `ebinderHadNoPdf` WITHOUT adding to report.getErrors(), and the operator is told
+    // the eBinder had no documents — blaming the vendor site for our own regression.
+    // Row data is still returned and imported; the backend's preservation guarantee means existing
+    // PDFs are never overwritten by a bad scrape, so this is loud but not destructive.
+    if (opts.capturePdfs && pdfAttempted > 0 && pdfCaptured === 0) {
+      this.lastError = `PDF capture failed for all ${pdfAttempted} row(s) — the capture mechanism is broken, `
+        + 'not the eBinder. Row data was still imported and existing PDFs are preserved. '
+        + 'Re-run with showScrapeWindow to see the frame dump.';
+      console.error(`[WebViewSds] ${this.lastError}`);
+    } else if (opts.capturePdfs && pdfAttempted > 0) {
+      console.log(`[WebViewSds] PDF capture: ${pdfCaptured}/${pdfAttempted}`);
+    }
+
     return { rows, pdfs };
   }
 
