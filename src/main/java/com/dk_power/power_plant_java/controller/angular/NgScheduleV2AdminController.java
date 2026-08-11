@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.PtoRequestDto;
 import com.dk_power.power_plant_java.dto.schedule.ReliefRotationDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleEventDto;
+import com.dk_power.power_plant_java.dto.schedule.CrewShiftOverrideDto;
 import com.dk_power.power_plant_java.dto.schedule.ScheduleDayOverrideDto;
 import com.dk_power.power_plant_java.dto.users.ShiftDayDto;
 import com.dk_power.power_plant_java.sevice.schedule.NgCoverageService;
@@ -204,6 +205,26 @@ public class NgScheduleV2AdminController {
     @DeleteMapping("/overrides/{id}")
     public ResponseEntity<NgApiResponse<Boolean>> deleteOverride(@PathVariable Long id) {
         boolean ok = service.deleteOverride(id);
+        return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
+    }
+
+    // ---- Crew shift overrides (outage / campaign pins) ----------------------
+
+    @GetMapping("/crew-shift-overrides")
+    public ResponseEntity<NgApiResponse<List<CrewShiftOverrideDto>>> listCrewShiftOverrides(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(new NgApiResponse<>(service.listCrewShiftOverrides(from, to), "Crew shift overrides"));
+    }
+
+    @PostMapping("/crew-shift-overrides")
+    public ResponseEntity<NgApiResponse<CrewShiftOverrideDto>> saveCrewShiftOverride(@RequestBody CrewShiftOverrideDto dto) {
+        return ResponseEntity.ok(new NgApiResponse<>(service.saveCrewShiftOverride(dto), "Crew shift override saved"));
+    }
+
+    @DeleteMapping("/crew-shift-overrides/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> deleteCrewShiftOverride(@PathVariable Long id) {
+        boolean ok = service.deleteCrewShiftOverride(id);
         return ResponseEntity.ok(new NgApiResponse<>(ok, ok ? "Deleted" : "Not found"));
     }
 

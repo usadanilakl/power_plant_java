@@ -14,8 +14,9 @@ export interface LotoPointRef {
   normalPosition?: string;
   isoPos?: LotoValueRef | null;
   normPos?: LotoValueRef | null;
+  /** Location Value (dropdown) — replaces the retired generalLocation free-text field. */
+  location?: LotoValueRef | null;
   specificLocation?: string;
-  generalLocation?: string;
   fluid?: string;
   isLabeled?: boolean;
   isLockable?: boolean;
@@ -178,10 +179,11 @@ export function pointHasNegative(c: PointChecklist | undefined): boolean {
 
 // ── Position options + in-field corrections ────────────────────────────────
 
-/** isoPos / normPos Value option lists (mirror the desktop 'isoPos' / 'normPos' categories). */
+/** isoPos / normPos / location Value option lists (mirror the desktop Value categories). */
 export interface PositionOptions {
   isoPos: LotoValueRef[];
   normPos: LotoValueRef[];
+  location: LotoValueRef[];
 }
 
 export interface PointCorrection {
@@ -189,10 +191,14 @@ export interface PointCorrection {
   description?: string;
   isoPosId?: number | null;
   normPosId?: number | null;
+  /** Mirrors LotoPoint.location — Value FK (dropdown). Replaces the retired generalLocation. */
+  locationId?: number | null;
   /** Mirrors LotoPoint.specificLocation (free text). */
   specificLocation?: string;
-  /** Mirrors LotoPoint.generalLocation (free text). */
-  generalLocation?: string;
+  /** Mirrors LotoPoint.isLockable (has padlock provision). null = leave as is; true/false explicitly sets. */
+  isLockable?: boolean | null;
+  /** Mirrors LotoPoint.isLabeled (permanent metal tag present). null = leave as is; true/false explicitly sets. */
+  isLabeled?: boolean | null;
 }
 
 // ── Offline draft + one-shot submit ────────────────────────────────────────

@@ -458,3 +458,12 @@
 .relief-cols { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
 .relief-col { flex: 1; min-width: 260px; }
 .relief-col h4 { margin: 6px 0 8px; font-size: 0.92rem; color: var(--primary-text, #1a2027); }
+
+/* Locked (frozen past) date headers — greyed + struck through, not clickable for edits. */
+.mgrid-day.mgrid-locked { opacity: 0.45; cursor: not-allowed; }
+.mgrid-day.mgrid-locked .md-dom { text-decoration: line-through; }
+
+/* Outages list */
+.outage-group { margin: 12px 0; }
+.outage-head { display: flex; gap: 10px; align-items: baseline; margin-bottom: 4px; }
+.outage-head strong { font-size: 0.95rem; }

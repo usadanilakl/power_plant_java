@@ -188,7 +188,8 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.schedule.PtoRequestSyncService ptoRequestSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.CoverageRequestSyncService coverageRequestSyncService,
             @Lazy com.dk_power.power_plant_java.sevice.schedule.CoverageSignupSyncService coverageSignupSyncService,
-            @Lazy com.dk_power.power_plant_java.sevice.schedule.ScheduleDayOverrideSyncService scheduleDayOverrideSyncService
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.ScheduleDayOverrideSyncService scheduleDayOverrideSyncService,
+            @Lazy com.dk_power.power_plant_java.sevice.schedule.CrewShiftOverrideSyncService crewShiftOverrideSyncService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -300,6 +301,7 @@ public class ServiceFacade {
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CoverageRequest.class.getSimpleName(), coverageRequestSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CoverageSignup.class.getSimpleName(), coverageSignupSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.schedule.ScheduleDayOverride.class.getSimpleName(), scheduleDayOverrideSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.schedule.CrewShiftOverride.class.getSimpleName(), crewShiftOverrideSyncService);
     }
 
     public SyncableService getService(String entityClass) {

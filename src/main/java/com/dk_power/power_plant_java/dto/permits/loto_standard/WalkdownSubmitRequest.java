@@ -28,15 +28,20 @@ public record WalkdownSubmitRequest(
 
     /**
      * In-field corrections a walker can apply to a LOTO point. All fields are OPTIONAL — a
-     * correction is applied only when present (non-null). Positions are Value FKs, so those
-     * carry the chosen Value id rather than free text. specificLocation / generalLocation
-     * are free-text strings mirroring the LotoPoint columns.
+     * correction is applied only when present (non-null). isoPosId / normPosId / locationId
+     * are Value FKs, so those carry the chosen Value id rather than free text.
+     * specificLocation is a free-text string mirroring the LotoPoint column (there's no
+     * generalLocation counterpart — that dead field has been retired from the UI).
+     * isLockable / isLabeled are the durable physical flags — Boolean (not primitive) so
+     * null means "leave as is" and true/false explicitly sets the flag.
      */
     public record PointCorrectionInput(
             String tagNumber,
             String description,
             Long isoPosId,
             Long normPosId,
+            Long locationId,
             String specificLocation,
-            String generalLocation) {}
+            Boolean isLockable,
+            Boolean isLabeled) {}
 }

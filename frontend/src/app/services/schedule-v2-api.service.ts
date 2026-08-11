@@ -137,6 +137,18 @@ export interface ScheduleDayOverride {
   reason?: string;
 }
 
+/** A temporary per-crew shift pin for an outage window (overrides the rotation). */
+export interface CrewShiftOverride {
+  id?: number;
+  label?: string;       // outage / campaign name (groups the per-crew rows)
+  startDate?: string;
+  endDate?: string;
+  crewId?: number;
+  crewName?: string;
+  shift?: string;       // D | N | OFF
+  isActive?: boolean;
+}
+
 export interface PtoRequest {
   id?: number;
   userId?: number;
@@ -257,6 +269,20 @@ export class ScheduleV2ApiService {
     return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/overrides/${id}`);
   }
 
+  // Crew shift overrides (outage / campaign pins)
+  listCrewShiftOverrides(from?: string, to?: string): Observable<SpringApiResponse<CrewShiftOverride[]>> {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http.get<SpringApiResponse<CrewShiftOverride[]>>(`${this.base}/crew-shift-overrides`, { params });
+  }
+  saveCrewShiftOverride(o: CrewShiftOverride): Observable<SpringApiResponse<CrewShiftOverride>> {
+    return this.http.post<SpringApiResponse<CrewShiftOverride>>(`${this.base}/crew-shift-overrides`, o);
+  }
+  deleteCrewShiftOverride(id: number): Observable<SpringApiResponse<boolean>> {
+    return this.http.delete<SpringApiResponse<boolean>>(`${this.base}/crew-shift-overrides/${id}`);
+  }
+
   // On-call rotation
   listOnCall(): Observable<SpringApiResponse<OnCallRotation[]>> {
     return this.http.get<SpringApiResponse<OnCallRotation[]>>(`${this.base}/on-call`);
@@ -284,8 +310,8 @@ export class ScheduleV2ApiService {
   assignableUsers(): Observable<SpringApiResponse<AssignableUser[]>> {
     return this.http.get<SpringApiResponse<AssignableUser[]>>(`${this.base}/assignable-users`);
   }
-  status(): Observable<SpringApiResponse<{ active: boolean }>> {
-    return this.http.get<SpringApiResponse<{ active: boolean }>>(`${this.base}/status`);
+  status(): Observable<SpringApiResponse<{ active: boolean; earliestEditable?: string }>> {
+    return this.http.get<SpringApiResponse<{ active: boolean; earliestEditable?: string }>>(`${this.base}/status`);
   }
   materialize(from: string, to: string): Observable<SpringApiResponse<{ rowsWritten: number }>> {
     const params = new HttpParams().set('from', from).set('to', to);

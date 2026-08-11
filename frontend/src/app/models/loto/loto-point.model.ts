@@ -296,7 +296,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       'normPos',
       'specificLocation',
       'standard',
-      'generalLocation',
+      // generalLocation removed from the default form — dead field. `location` (Value dropdown)
+      // is the intended replacement; wire it in here if/when the desktop form should surface it.
       'isVerified',
       'zeroEnergyMethod',
     ]

@@ -88,6 +88,10 @@ public class NgCoverageService {
      */
     public CoverageRequestDto setDayNeed(LocalDate date, String discipline, String position, String shift, int count) {
         if (date == null) throw new IllegalArgumentException("date is required");
+        if (materialisation.isDateLocked(date)) {
+            throw new IllegalStateException("That day is locked (before the " + materialisation.earliestEditableDate()
+                    + " edit cutoff) and can no longer be changed.");
+        }
         String disc = discipline == null ? CoverageRequest.Discipline.OPS : discipline;
         String pos = CoverageRequest.Discipline.OPS.equals(disc) ? position : null;
         String sh = CoverageRequest.ShiftType.NIGHT.equals(shift)
@@ -759,6 +763,9 @@ public class NgCoverageService {
         }
         if (date == null || date.isBefore(r.getStartDate()) || date.isAfter(r.getEndDate())) {
             throw new IllegalArgumentException("Date is outside the coverage window");
+        }
+        if (materialisation.isDateLocked(date)) {
+            throw new IllegalStateException("That day is locked and can no longer be signed up for.");
         }
         // One coverage seat per person per day — a person works a single shift, so an active signup on
         // ANY request that day (not just this one) blocks a second. This prevents a user filling both a

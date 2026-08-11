@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.entities.schedule.CoverageSignup;
 import com.dk_power.power_plant_java.entities.schedule.Crew;
 import com.dk_power.power_plant_java.entities.schedule.CrewAssignment;
 import com.dk_power.power_plant_java.entities.schedule.CrewRotation;
+import com.dk_power.power_plant_java.entities.schedule.CrewShiftOverride;
 import com.dk_power.power_plant_java.entities.schedule.OnCallRotation;
 import com.dk_power.power_plant_java.entities.schedule.PtoRequest;
 import com.dk_power.power_plant_java.entities.schedule.ReliefRotation;
@@ -19,6 +20,7 @@ import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewShiftOverrideRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
 import com.dk_power.power_plant_java.repository.schedule.ReliefRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.ScheduleDayOverrideRepo;
@@ -79,6 +81,7 @@ public class ScheduleMaterialisationService {
     private final PtoRequestRepo ptoRepo;
     private final CoverageSignupRepo signupRepo;
     private final ScheduleDayOverrideRepo overrideRepo;
+    private final CrewShiftOverrideRepo crewShiftOverrideRepo;
     private final OnCallRotationRepo onCallRepo;
     private final ReliefRotationRepo reliefRepo;
     private final CrewRepo crewRepo;
@@ -95,9 +98,25 @@ public class ScheduleMaterialisationService {
     private int horizonDays;
     @Value("${schedule.v2.backfill-days:7}")
     private int backfillDays;
+    @Value("${schedule.v2.lock-before-days:3}")
+    private int lockBeforeDays;
 
     public boolean isActive() {
         return v2Enabled && !v2Rollback;
+    }
+
+    /**
+     * The earliest date that may still be authored or (re)materialised. Days strictly before this are
+     * FROZEN — the materialiser never rewrites them and authoring refuses to target them — so history
+     * reflects what actually happened. Grace window = {@code schedule.v2.lock-before-days} (default 3).
+     */
+    public LocalDate earliestEditableDate() {
+        return LocalDate.now(PLANT_ZONE).minusDays(Math.max(0, lockBeforeDays));
+    }
+
+    /** Whether {@code date} is frozen (in the locked past) and must not be authored or re-materialised. */
+    public boolean isDateLocked(LocalDate date) {
+        return date != null && date.isBefore(earliestEditableDate());
     }
 
     /**
@@ -177,6 +196,11 @@ public class ScheduleMaterialisationService {
             return 0;
         }
         if (from == null || to == null || to.isBefore(from)) return 0;
+        // Past-lock: never (re)write frozen days — clamp the window up to the earliest editable date so
+        // history is immutable regardless of which materialise path (edit, roll-forward, manual) got here.
+        LocalDate lockFloor = earliestEditableDate();
+        if (from.isBefore(lockFloor)) from = lockFloor;
+        if (to.isBefore(from)) return 0;   // whole requested range is frozen
         long span = ChronoUnit.DAYS.between(from, to) + 1;
         if (span > MAX_RANGE_DAYS) {
             log.warn("[ScheduleV2] Range {}..{} spans {} days (> {} cap); clamping 'to'.",
@@ -189,6 +213,14 @@ public class ScheduleMaterialisationService {
         List<PtoRequest> ptos = ptoRepo.findApprovedOverlapping(from, to);
         List<ScheduleDayOverride> overrides = overrideRepo.findByDateBetween(from, to);
         List<CoverageSignup> signups = signupRepo.findByDateBetweenAndStatus(from, to, CoverageSignup.Status.APPROVED);
+        // Outage / campaign pins: temporary per-crew fixed shift over a window (crewId -> its overrides).
+        List<CrewShiftOverride> crewShiftOverrides = crewShiftOverrideRepo.findActiveOverlapping(from, to);
+        Map<Long, List<CrewShiftOverride>> crewOverridesByCrew = new HashMap<>();
+        for (CrewShiftOverride o : crewShiftOverrides) {
+            if (o.getCrew() != null && o.getCrew().getId() != null) {
+                crewOverridesByCrew.computeIfAbsent(o.getCrew().getId(), k -> new ArrayList<>()).add(o);
+            }
+        }
 
         Map<LocalDate, List<ScheduleDayOverride>> overridesByDate = new HashMap<>();
         for (ScheduleDayOverride o : overrides) {
@@ -214,7 +246,7 @@ public class ScheduleMaterialisationService {
             if (materializeDay(d, assignments, events, ptos,
                     overridesByDate.getOrDefault(d, List.of()),
                     signupsByDate.getOrDefault(d, List.of()),
-                    cellCache, onCall, relief, holidays, existingByDate)) {
+                    cellCache, onCall, relief, holidays, existingByDate, crewOverridesByCrew)) {
                 written++;
             }
         }
@@ -234,7 +266,8 @@ public class ScheduleMaterialisationService {
                                    OnCallCtx onCall,
                                    ReliefCtx relief,
                                    Set<LocalDate> holidays,
-                                   Map<LocalDate, ShiftDay> existingByDate) {
+                                   Map<LocalDate, ShiftDay> existingByDate,
+                                   Map<Long, List<CrewShiftOverride>> crewOverrides) {
         DayBuckets b = new DayBuckets();
 
         // 0) On-call manager for the day (an override with code OCM can still replace it below).
@@ -244,14 +277,14 @@ public class ScheduleMaterialisationService {
         //      Returns only the ids relief ACTUALLY placed today (current slot occupants), not the
         //      whole succession line — a lineOrder member waiting for their turn must still fall
         //      through to their normal crew placement below.
-        Set<Long> reliefPlacedToday = applyRelief(b, date, relief, cellCache, holidays);
+        Set<Long> reliefPlacedToday = applyRelief(b, date, relief, cellCache, holidays, crewOverrides);
 
         // 1) Staffing — place each person from their assignment, EXCEPT anyone the relief rotation
         //    actually placed above (their static crew assignment is overridden while active).
         for (CrewAssignment a : assignments) {
             User au = a.getUser();
             if (au != null && au.getId() != null && reliefPlacedToday.contains(au.getId())) continue;
-            if (assignmentCovers(a, date)) placeAssignment(b, a, date, cellCache, holidays);
+            if (assignmentCovers(a, date)) placeAssignment(b, a, date, cellCache, holidays, crewOverrides);
         }
 
         // 2) Approved coverage signups → pull the coverer into the covered shift.
@@ -306,10 +339,11 @@ public class ScheduleMaterialisationService {
     }
 
     private void placeAssignment(DayBuckets b, CrewAssignment a, LocalDate date,
-                                 Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays) {
+                                 Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays,
+                                 Map<Long, List<CrewShiftOverride>> crewOverrides) {
         User u = a.getUser();
         if (u == null) return;
-        String shift = resolveShift(a, date, cellCache, holidays);
+        String shift = resolveShift(a, date, cellCache, holidays, crewOverrides);
         if (shift == null) return;
         String group = CrewAssignment.Type.FIXED.equals(a.getAssignmentType())
                 ? a.getGroupLabel()
@@ -343,7 +377,7 @@ public class ScheduleMaterialisationService {
      * ROTATING (via crew rotation) and FIXED, or {@code null} for RELIEF / inactive / unschedulable.
      */
     private String resolveShift(CrewAssignment a, LocalDate date, Map<Long, List<PatternCell>> cellCache,
-                                Set<LocalDate> holidays) {
+                                Set<LocalDate> holidays, Map<Long, List<CrewShiftOverride>> crewOverrides) {
         String type = a.getAssignmentType();
         if (CrewAssignment.Type.RELIEF.equals(type)) return null;   // coverage-only, never auto-scheduled
         if (CrewAssignment.Type.FIXED.equals(type)) {
@@ -351,7 +385,7 @@ public class ScheduleMaterialisationService {
             return fixedDayWorked(a.getFixedDaysOfWeek(), date, holidays) ? a.getFixedShift() : null;
         }
         // ROTATING (default): the whole crew shares the rotation's shift for this cycle day.
-        return crewShiftFor(a.getCrew(), date, cellCache);
+        return crewShiftFor(a.getCrew(), date, cellCache, crewOverrides);
     }
 
     /**
@@ -387,8 +421,27 @@ public class ScheduleMaterialisationService {
     }
 
     /** The shift code (D/N/O or null) a crew yields on a date from its rotation cells at its offset. */
-    private String crewShiftFor(Crew crew, LocalDate date, Map<Long, List<PatternCell>> cellCache) {
+    /** The active outage/campaign pin for a crew on a date ({@code D}/{@code N}/{@code OFF}), or null. */
+    private static String pinnedCrewShift(Crew crew, LocalDate date,
+                                          Map<Long, List<CrewShiftOverride>> crewOverrides) {
+        if (crewOverrides == null || crew == null || crew.getId() == null) return null;
+        List<CrewShiftOverride> list = crewOverrides.get(crew.getId());
+        if (list == null) return null;
+        for (CrewShiftOverride o : list) {
+            if (o.getStartDate() == null || o.getEndDate() == null || o.getShift() == null) continue;
+            if (!date.isBefore(o.getStartDate()) && !date.isAfter(o.getEndDate())) return o.getShift();
+        }
+        return null;
+    }
+
+    private String crewShiftFor(Crew crew, LocalDate date, Map<Long, List<PatternCell>> cellCache,
+                                Map<Long, List<CrewShiftOverride>> crewOverrides) {
         if (crew == null || Boolean.FALSE.equals(crew.getIsActive())) return null;
+        // Outage / campaign pin: a temporary per-crew fixed shift for a window overrides the rotation
+        // (e.g. crews A+B hold nights for a 3-week outage — no switching). The rotation resumes
+        // automatically after the window (cycle math is absolute-epoch-anchored). OFF drops the crew.
+        String pinned = pinnedCrewShift(crew, date, crewOverrides);
+        if (pinned != null) return CrewShiftOverride.Shift.OFF.equals(pinned) ? null : pinned;
         CrewRotation rot = crew.getRotation();
         if (rot == null) return null;
         Integer len = rot.getPatternLengthDays();
@@ -412,10 +465,17 @@ public class ScheduleMaterialisationService {
     public String scheduledShiftForUser(Long userId, LocalDate date) {
         if (userId == null || date == null) return null;
         Map<Long, List<PatternCell>> cache = new HashMap<>();
+        // Honour an active outage pin so a coverage base-shift check matches the outage schedule.
+        Map<Long, List<CrewShiftOverride>> crewOverrides = new HashMap<>();
+        for (CrewShiftOverride o : crewShiftOverrideRepo.findActiveOverlapping(date, date)) {
+            if (o.getCrew() != null && o.getCrew().getId() != null) {
+                crewOverrides.computeIfAbsent(o.getCrew().getId(), k -> new ArrayList<>()).add(o);
+            }
+        }
         for (CrewAssignment a : assignmentRepo.findActiveOverlapping(date, date)) {
             User u = a.getUser();
             if (u == null || !userId.equals(u.getId()) || !assignmentCovers(a, date)) continue;
-            String shift = resolveShift(a, date, cache, Set.of());   // base placement; holidays irrelevant for coverage
+            String shift = resolveShift(a, date, cache, Set.of(), crewOverrides);   // base placement; holidays irrelevant for coverage
             if (CrewRotation.Shift.DAY.equals(shift) || CrewRotation.Shift.NIGHT.equals(shift)) return shift;
         }
         return null;
@@ -618,7 +678,8 @@ public class ScheduleMaterialisationService {
      *         normal crew placement instead of vanishing from the schedule entirely.
      */
     private Set<Long> applyRelief(DayBuckets b, LocalDate date, ReliefCtx ctx,
-                                  Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays) {
+                                  Map<Long, List<PatternCell>> cellCache, Set<LocalDate> holidays,
+                                  Map<Long, List<CrewShiftOverride>> crewOverrides) {
         if (ctx == null || ctx.lanes().isEmpty()) return Set.of();
         Set<Long> placedToday = new HashSet<>();
         for (ReliefLane lane : ctx.lanes()) {
@@ -639,7 +700,7 @@ public class ScheduleMaterialisationService {
                         continue;   // not placed by relief — let them fall through to their own assignment
                     }
                     placedToday.add(e.getKey());
-                    placeByShift(b, crewShiftFor(crew, date, cellCache), entryFor(u, slot, lane.position()));
+                    placeByShift(b, crewShiftFor(crew, date, cellCache, crewOverrides), entryFor(u, slot, lane.position()));
                 }
             }
         }

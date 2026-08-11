@@ -70,6 +70,7 @@ public class EntityTableRegistry {
         Map.entry("CoverageRequest", "coverage_request"),
         Map.entry("CoverageSignup", "coverage_signup"),
         Map.entry("ScheduleDayOverride", "schedule_day_override"),
+        Map.entry("CrewShiftOverride", "crew_shift_override"),
         Map.entry("RecurringPm", "recurring_pm"),  // @Table(name = "recurring_pm")
         Map.entry("MaximoTicketAsset", "maximo_ticket_asset"), // Maximo SR/WO → asset index
         Map.entry("MaximoFormTemplate", "maximo_form_template"),     // electronic task-form definitions
@@ -170,6 +171,7 @@ public class EntityTableRegistry {
         "CrewRotation",
         "Crew",
         "CrewAssignment",
+        "CrewShiftOverride",   // FK Crew — after Crew
         "OnCallRotation",
         "ReliefRotation",
         "ScheduleEvent",

@@ -3,6 +3,9 @@ package com.dk_power.power_plant_java.sevice.schedule;
 import com.dk_power.power_plant_java.dto.schedule.CrewAssignmentDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewDto;
 import com.dk_power.power_plant_java.dto.schedule.CrewRotationDto;
+import com.dk_power.power_plant_java.dto.schedule.CrewShiftOverrideDto;
+import com.dk_power.power_plant_java.entities.schedule.CrewShiftOverride;
+import com.dk_power.power_plant_java.repository.schedule.CrewShiftOverrideRepo;
 import com.dk_power.power_plant_java.dto.schedule.PatternCell;
 import com.dk_power.power_plant_java.dto.schedule.SchedulePositionDto;
 import com.dk_power.power_plant_java.dto.schedule.OnCallRotationDto;
@@ -64,6 +67,7 @@ public class NgScheduleV2Service {
     private final CrewAssignmentRepo assignmentRepo;
     private final ScheduleEventRepo eventRepo;
     private final ScheduleDayOverrideRepo overrideRepo;
+    private final CrewShiftOverrideRepo crewShiftOverrideRepo;
     private final OnCallRotationRepo onCallRepo;
     private final ReliefRotationRepo reliefRepo;
     private final UserRepo userRepo;
@@ -221,6 +225,10 @@ public class NgScheduleV2Service {
     }
 
     public ScheduleDayOverrideDto saveOverride(ScheduleDayOverrideDto dto) {
+        if (materialisation.isDateLocked(dto.getDate())) {
+            throw new IllegalStateException("That day is locked (before the " + materialisation.earliestEditableDate()
+                    + " edit cutoff) and can no longer be changed.");
+        }
         ScheduleDayOverride o = null;
         if (dto.getId() != null) {
             o = overrideRepo.findById(dto.getId()).orElse(null);
@@ -260,6 +268,48 @@ public class NgScheduleV2Service {
     // ---- On-call rotation ---------------------------------------------------
 
     @Transactional(readOnly = true)
+    // ---- Crew shift overrides (outage / campaign pins) -------------------------------------------
+
+    /** All crew-shift overrides, or only those overlapping [from,to] when both are given. */
+    public List<CrewShiftOverrideDto> listCrewShiftOverrides(LocalDate from, LocalDate to) {
+        List<CrewShiftOverride> rows = (from != null && to != null)
+                ? crewShiftOverrideRepo.findActiveOverlapping(from, to)
+                : crewShiftOverrideRepo.findAll();
+        return rows.stream().map(this::toDto).toList();
+    }
+
+    public CrewShiftOverrideDto saveCrewShiftOverride(CrewShiftOverrideDto dto) {
+        CrewShiftOverride o = dto.getId() != null
+                ? crewShiftOverrideRepo.findById(dto.getId()).orElseGet(CrewShiftOverride::new)
+                : new CrewShiftOverride();
+        o.setLabel(dto.getLabel());
+        o.setStartDate(dto.getStartDate());
+        o.setEndDate(dto.getEndDate());
+        if (dto.getCrewId() != null) crewRepo.findById(dto.getCrewId()).ifPresent(o::setCrew);
+        o.setShift(dto.getShift());
+        o.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
+        CrewShiftOverrideDto out = toDto(crewShiftOverrideRepo.save(o));
+        rematerialize();
+        return out;
+    }
+
+    public boolean deleteCrewShiftOverride(Long id) {
+        return crewShiftOverrideRepo.findById(id)
+                .map(o -> { o.setDeleted(true); crewShiftOverrideRepo.save(o); rematerialize(); return true; })
+                .orElse(false);
+    }
+
+    private CrewShiftOverrideDto toDto(CrewShiftOverride o) {
+        Crew c = o.getCrew();
+        return CrewShiftOverrideDto.builder()
+                .id(o.getId()).label(o.getLabel())
+                .startDate(o.getStartDate()).endDate(o.getEndDate())
+                .crewId(c != null ? c.getId() : null)
+                .crewName(c != null ? c.getName() : null)
+                .shift(o.getShift()).isActive(o.getIsActive())
+                .build();
+    }
+
     public List<OnCallRotationDto> listOnCall() {
         return onCallRepo.findAll().stream().map(this::toDto).toList();
     }
@@ -328,6 +378,9 @@ public class NgScheduleV2Service {
     public Map<String, Object> status() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("active", materialisation.isActive());
+        // Past-lock boundary: days before this are frozen (see schedule.v2.lock-before-days). The grid
+        // greys them out and disables the override modal on those date headers.
+        m.put("earliestEditable", materialisation.earliestEditableDate());
         return m;
     }
 

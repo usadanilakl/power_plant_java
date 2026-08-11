@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.schedule.CoverageSignupRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewAssignmentRepo;
 import com.dk_power.power_plant_java.repository.schedule.CrewRepo;
+import com.dk_power.power_plant_java.repository.schedule.CrewShiftOverrideRepo;
 import com.dk_power.power_plant_java.repository.schedule.OnCallRotationRepo;
 import com.dk_power.power_plant_java.repository.schedule.PtoRequestRepo;
 import com.dk_power.power_plant_java.repository.schedule.ReliefRotationRepo;
@@ -58,6 +59,7 @@ class ScheduleMaterialisationServiceTest {
     @Mock private PtoRequestRepo ptoRepo;
     @Mock private CoverageSignupRepo signupRepo;
     @Mock private ScheduleDayOverrideRepo overrideRepo;
+    @Mock private CrewShiftOverrideRepo crewShiftOverrideRepo;
     @Mock private OnCallRotationRepo onCallRepo;
     @Mock private ReliefRotationRepo reliefRepo;
     @Mock private CrewRepo crewRepo;
@@ -71,12 +73,15 @@ class ScheduleMaterialisationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ScheduleMaterialisationService(
-                assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo,
+                assignmentRepo, eventRepo, ptoRepo, signupRepo, overrideRepo, crewShiftOverrideRepo,
                 onCallRepo, reliefRepo, crewRepo, userRepo, shiftDayService, objectMapper, syncConfig);
         ReflectionTestUtils.setField(service, "v2Enabled", true);
         ReflectionTestUtils.setField(service, "v2Rollback", false);
         ReflectionTestUtils.setField(service, "horizonDays", 180);
         ReflectionTestUtils.setField(service, "backfillDays", 7);
+        // Neutralise the past-lock: these tests materialise around epoch day 0 (1970), which the lock
+        // (relative to today) would otherwise freeze. A huge grace window pushes the lock floor before 1970.
+        ReflectionTestUtils.setField(service, "lockBeforeDays", 1_000_000);
         // Default mock booleans (isHubMode=false, isServerSyncEnabled=false) already satisfy the
         // "standalone / no configured upstream hub" branch, so materialisation runs normally in every
         // test below unless a test explicitly overrides these to exercise the gate itself.

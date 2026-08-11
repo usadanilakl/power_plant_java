@@ -7,10 +7,10 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import {
   ScheduleV2ApiService, SchedulePosition, CrewRotation, Crew, CrewAssignment,
   ScheduleEvent, AssignableUser, CoverageRequest, CoverageSignup, ShiftDayView, ShiftEntryView, OnCallRotation,
-  PtoRequest, ReliefRotation, ScheduleDayOverride, EligibilityDetail,
+  PtoRequest, ReliefRotation, ScheduleDayOverride, EligibilityDetail, CrewShiftOverride,
 } from '../../../services/schedule-v2-api.service';
 
-type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule' | 'oncall' | 'pto' | 'relief';
+type Tab = 'positions' | 'rotations' | 'crews' | 'staffing' | 'events' | 'coverage' | 'schedule' | 'oncall' | 'pto' | 'relief' | 'outages';
 
 /**
  * Schedule v2 manager build tools (admin-gated). Positions → Rotations → Crews → Staffing, plus
@@ -33,12 +33,23 @@ export class ScheduleBuilderComponent implements OnInit {
   readonly SHIFT_AFFINITY = ['BOTH', 'DAY', 'NIGHT'];
   readonly ASSIGNMENT_TYPES = ['ROTATING', 'FIXED', 'RELIEF'];
   readonly FIXED_SHIFTS = ['D', 'N'];
+  // Day-staff shift templates — pick one to fill the FIXED fields in a click; "custom" reveals the
+  // manual weekday checkboxes (per-person off-days) unchanged.
+  readonly FIXED_TEMPLATES = [
+    { key: '4x10-mon-thu', label: '4×10 · Mon–Thu', shift: 'D', days: 'MON,TUE,WED,THU' },
+    { key: '4x10-tue-fri', label: '4×10 · Tue–Fri', shift: 'D', days: 'TUE,WED,THU,FRI' },
+    { key: '5x8-mon-fri',  label: '5×8 · Mon–Fri',  shift: 'D', days: 'MON,TUE,WED,THU,FRI' },
+    { key: 'custom',       label: 'Custom…',         shift: '',  days: '' },
+  ];
   readonly DOW = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   readonly COVERAGE_SHIFTS = ['DAY', 'NIGHT'];
   readonly COVERAGE_REASONS = ['MANUAL', 'OUTAGE', 'PTO_COVERAGE'];
 
   activeTab = signal<Tab>('positions');
   active = signal<boolean>(false);
+  /** Days before this (yyyy-MM-dd) are locked/frozen — schedule.v2.lock-before-days. The grid greys
+   *  them out and blocks the override modal on those date headers. */
+  earliestEditable = signal<string | null>(null);
   message = signal<string | null>(null);
   loading = signal(false);
   /** Set around read-only list/preview fetches (reloadAll/loadPreview/loadOnCall/loadRelief/loadPto) —
@@ -103,6 +114,14 @@ export class ScheduleBuilderComponent implements OnInit {
   editingRelief: ReliefRotation | null = null;
   newReliefMemberId?: number;
 
+  // Outages — temporary per-crew shift pins for a date window (crews hold a shift, no rotation switching).
+  crewShiftOverrides = signal<CrewShiftOverride[]>([]);
+  readonly OUTAGE_SHIFTS = [
+    { code: '', label: '— (rotation)' }, { code: 'D', label: 'Day' }, { code: 'N', label: 'Night' }, { code: 'OFF', label: 'Off' },
+  ];
+  /** Draft outage: a shared window + label, plus a per-crew shift pick ('' = leave the crew on its rotation). */
+  editingOutage: { label: string; startDate?: string; endDate?: string; crewShifts: Record<number, string> } | null = null;
+
   readonly PTO_STATUSES = ['PENDING_MANUAL_REVIEW', 'PENDING', 'APPROVED', 'REJECTED', ''];
   ptoRequests = signal<PtoRequest[]>([]);
   ptoStatusFilter = signal<string>('PENDING_MANUAL_REVIEW');
@@ -118,7 +137,16 @@ export class ScheduleBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     this.reloadAll();
-    this.api.status().subscribe(r => this.active.set(!!r.responseData?.active));
+    this.api.status().subscribe(r => {
+      this.active.set(!!r.responseData?.active);
+      this.earliestEditable.set(r.responseData?.earliestEditable ?? null);
+    });
+  }
+
+  /** Whether a yyyy-MM-dd date is in the locked past (frozen — no edits). ISO strings sort chronologically. */
+  isDateLocked(date?: string | null): boolean {
+    const lock = this.earliestEditable();
+    return !!date && !!lock && date < lock;
   }
 
   reloadAll(): void {
@@ -152,6 +180,7 @@ export class ScheduleBuilderComponent implements OnInit {
     if (t === 'oncall') this.loadOnCall();
     if (t === 'pto') this.loadPto();
     if (t === 'relief') this.loadRelief();
+    if (t === 'outages') this.loadOutages();
   }
   private flash(m: string): void { this.message.set(m); setTimeout(() => this.message.set(null), 3500); }
   private errText(e: any): string { return e?.error?.message ?? e?.message ?? 'error'; }
@@ -244,8 +273,11 @@ export class ScheduleBuilderComponent implements OnInit {
   pickOffset(k: number): void { if (this.editingCrew) this.editingCrew.offsetDays = k; }
 
   // ---- staffing ----
-  newAssignment(): void { this.editingAssignment = { assignmentType: 'ROTATING', position: '', isActive: true }; }
-  editAssignment(a: CrewAssignment): void { this.editingAssignment = { ...a }; }
+  /** Selected FIXED shift-template key ('custom' reveals the manual weekday controls). */
+  fixedTemplateSel = signal<string>('custom');
+  newAssignment(): void { this.editingAssignment = { assignmentType: 'ROTATING', position: '', isActive: true }; this.fixedTemplateSel.set('custom'); }
+  editAssignment(a: CrewAssignment): void { this.editingAssignment = { ...a }; this.fixedTemplateSel.set(this.currentFixedTemplate()); }
+  onFixedTemplateChange(key: string): void { this.fixedTemplateSel.set(key); this.applyFixedTemplate(key); }
   cancelAssignment(): void { this.editingAssignment = null; }
   hasDow(day: string): boolean {
     const csv = this.editingAssignment?.fixedDaysOfWeek ?? '';
@@ -257,6 +289,21 @@ export class ScheduleBuilderComponent implements OnInit {
     const i = set.indexOf(day);
     if (i >= 0) set.splice(i, 1); else set.push(day);
     this.editingAssignment.fixedDaysOfWeek = this.DOW.filter(d => set.includes(d)).join(',');
+  }
+  /** Which FIXED template matches the current shift + weekdays (drives the dropdown), else 'custom'. */
+  currentFixedTemplate(): string {
+    const a = this.editingAssignment;
+    if (!a) return 'custom';
+    const days = (a.fixedDaysOfWeek ?? '').split(',').map(s => s.trim()).filter(Boolean).sort().join(',');
+    const t = this.FIXED_TEMPLATES.find(x => x.key !== 'custom' && x.shift === (a.fixedShift ?? '')
+      && x.days.split(',').sort().join(',') === days);
+    return t?.key ?? 'custom';
+  }
+  applyFixedTemplate(key: string): void {
+    const t = this.FIXED_TEMPLATES.find(x => x.key === key);
+    if (!t || !this.editingAssignment || t.key === 'custom') return;   // custom = leave fields, show manual controls
+    this.editingAssignment.fixedShift = t.shift;
+    this.editingAssignment.fixedDaysOfWeek = t.days;
   }
   saveAssignment(): void {
     if (!this.editingAssignment) return;
@@ -446,6 +493,55 @@ export class ScheduleBuilderComponent implements OnInit {
     });
   }
 
+  // ---- outages (temporary per-crew shift pins) ----
+  loadOutages(): void {
+    this.fetching.set(true);
+    this.api.listCrewShiftOverrides().subscribe({
+      next: r => { this.crewShiftOverrides.set(r.responseData ?? []); this.fetching.set(false); },
+      error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
+    });
+  }
+  newOutage(): void { this.editingOutage = { label: '', startDate: undefined, endDate: undefined, crewShifts: {} }; }
+  cancelOutage(): void { this.editingOutage = null; }
+  saveOutage(): void {
+    const o = this.editingOutage;
+    if (!o) return;
+    if (!o.startDate || !o.endDate) { this.flash('Pick a start and end date'); return; }
+    const rows = this.crews()
+      .filter(c => c.id != null && o.crewShifts[c.id!])
+      .map(c => this.api.saveCrewShiftOverride({
+        label: o.label || 'Outage', startDate: o.startDate, endDate: o.endDate,
+        crewId: c.id, shift: o.crewShifts[c.id!], isActive: true,
+      }));
+    if (!rows.length) { this.flash('Pick a shift for at least one crew'); return; }
+    this.loading.set(true);
+    forkJoin(rows).subscribe({
+      next: () => { this.loading.set(false); this.editingOutage = null; this.flash('Outage saved'); this.loadOutages(); },
+      error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
+    });
+  }
+  deleteOutage(o: CrewShiftOverride): void {
+    if (o.id == null || !confirm('Remove this crew pin?')) return;
+    this.api.deleteCrewShiftOverride(o.id).subscribe({
+      next: () => { this.flash('Removed'); this.loadOutages(); },
+      error: e => this.flash('Delete failed: ' + this.errText(e)),
+    });
+  }
+  /** Group the flat crew-pins by outage (label + window) for the list. */
+  outageGroups = computed(() => {
+    const m = new Map<string, CrewShiftOverride[]>();
+    for (const o of this.crewShiftOverrides()) {
+      const k = (o.label || 'Outage') + '|' + (o.startDate ?? '') + '|' + (o.endDate ?? '');
+      const arr = m.get(k); if (arr) arr.push(o); else m.set(k, [o]);
+    }
+    return Array.from(m.values()).map(rows => ({
+      label: rows[0].label || 'Outage', startDate: rows[0].startDate, endDate: rows[0].endDate, rows,
+    }));
+  });
+  outageShiftLabel(code?: string): string {
+    return this.OUTAGE_SHIFTS.find(s => s.code === code)?.label ?? (code ?? '');
+  }
+
   // ---- materialize ----
   /** today−7 .. today+180 — the fixed window Regenerate rebuilds. Local-time, matches ymd()/todayIso(). */
   private defaultHorizon(): { from: string; to: string } {
@@ -569,6 +665,7 @@ export class ScheduleBuilderComponent implements OnInit {
 
   // ---- per-day manual override dialog ----
   openDayOverride(date: string): void {
+    if (this.isDateLocked(date)) { this.flash('That day is locked (past the edit cutoff) and can no longer be changed.'); return; }
     this.overrideModalDate.set(date);
     this.overrideForm = { userId: undefined, shift: 'OFF', reason: '' };
   }

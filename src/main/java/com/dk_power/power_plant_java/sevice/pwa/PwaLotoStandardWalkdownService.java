@@ -85,7 +85,7 @@ public class PwaLotoStandardWalkdownService {
 
     @Transactional(readOnly = true)
     public PositionOptionsDto positionOptions() {
-        return new PositionOptionsDto(safeValues("isoPos"), safeValues("normPos"));
+        return new PositionOptionsDto(safeValues("isoPos"), safeValues("normPos"), safeValues("location"));
     }
 
     private List<ValueDto> safeValues(String category) {
@@ -128,7 +128,8 @@ public class PwaLotoStandardWalkdownService {
             for (Map.Entry<Long, WalkdownSubmitRequest.PointCorrectionInput> e : req.corrections().entrySet()) {
                 WalkdownSubmitRequest.PointCorrectionInput c = e.getValue();
                 if (c != null) applyCorrection(e.getKey(), c.tagNumber(), c.description(),
-                        c.isoPosId(), c.normPosId(), c.specificLocation(), c.generalLocation());
+                        c.isoPosId(), c.normPosId(), c.locationId(), c.specificLocation(),
+                        c.isLockable(), c.isLabeled());
             }
         }
 
@@ -173,15 +174,19 @@ public class PwaLotoStandardWalkdownService {
     }
 
     /**
-     * Correct a point's tag / description / positions / locations in place. Positions are Value FKs — an
-     * id is looked up and set only if it resolves. Locations are free-text strings mirroring the LotoPoint
-     * columns. Every field is OPTIONAL — only non-null fields are applied. Goes through JPA so the
-     * {@code FieldChangeEntityListener} fires (syncs).
+     * Correct a point's tag / description / positions / location / physical flags in place.
+     * isoPosId / normPosId / locationId are Value FKs — the id is looked up and set only if it
+     * resolves. specificLocation is a free-text string mirroring the LotoPoint column (there is
+     * no generalLocation counterpart — that dead field was retired from the UI). isLockable /
+     * isLabeled are the durable physical flags (Boolean, so null = leave as is, true/false
+     * explicitly sets). Every field is OPTIONAL — only non-null fields are applied. Goes
+     * through JPA so the {@code FieldChangeEntityListener} fires (syncs).
      */
     public void applyCorrection(Long pointId, String tagNumber, String description,
-                                Long isoPosId, Long normPosId,
-                                String specificLocation, String generalLocation) {
-        // Corrections modify a LOTO point in place (tag/description/positions/locations).
+                                Long isoPosId, Long normPosId, Long locationId,
+                                String specificLocation,
+                                Boolean isLockable, Boolean isLabeled) {
+        // Corrections modify a LOTO point in place (tag/description/positions/location/flags).
         // Either a Control Authority (who owns build-time content) or a Manager
         // (who owns walkdown and might spot an in-field discrepancy) may apply
         // one — anyone lower is rejected.
@@ -192,8 +197,10 @@ public class PwaLotoStandardWalkdownService {
         if (description != null) p.setDescription(description);
         if (isoPosId != null) valueRepo.findById(isoPosId).ifPresent(p::setIsoPos);
         if (normPosId != null) valueRepo.findById(normPosId).ifPresent(p::setNormPos);
+        if (locationId != null) valueRepo.findById(locationId).ifPresent(p::setLocation);
         if (specificLocation != null) p.setSpecificLocation(specificLocation);
-        if (generalLocation != null) p.setGeneralLocation(generalLocation);
+        if (isLockable != null) p.setIsLockable(isLockable);
+        if (isLabeled != null) p.setIsLabeled(isLabeled);
         lotoPointRepo.save(p);
     }
 

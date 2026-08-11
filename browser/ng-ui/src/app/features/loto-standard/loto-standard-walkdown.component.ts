@@ -145,9 +145,31 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                   <label class="w-field">Specific location
                     <input type="text" [value]="corrSpecific(p)" (input)="setCorr(p.id, 'specificLocation', $any($event.target).value)">
                   </label>
-                  <label class="w-field">General location
-                    <input type="text" [value]="corrGeneral(p)" (input)="setCorr(p.id, 'generalLocation', $any($event.target).value)">
+                  <label class="w-field">Location
+                    <select [value]="corrLocation(p)" (change)="setCorrPos(p.id, 'locationId', $any($event.target).value)">
+                      <option value="">—</option>
+                      @for (o of positions().location; track o.id) { <option [value]="o.id" [selected]="o.id === corrLocation(p)">{{ o.name }}</option> }
+                    </select>
                   </label>
+                  <!-- Durable physical flags — tap Yes/No to set; tap the active side again to clear. -->
+                  <div class="w-check">
+                    <span class="w-check-label">Lockable</span>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="corrLockable(p) === true"
+                              (click)="setCorrFlag(p.id, 'isLockable', true)">Yes</button>
+                      <button class="w-yn fail" [class.active]="corrLockable(p) === false"
+                              (click)="setCorrFlag(p.id, 'isLockable', false)">No</button>
+                    </span>
+                  </div>
+                  <div class="w-check">
+                    <span class="w-check-label">Metal tag present</span>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="corrLabeled(p) === true"
+                              (click)="setCorrFlag(p.id, 'isLabeled', true)">Yes</button>
+                      <button class="w-yn fail" [class.active]="corrLabeled(p) === false"
+                              (click)="setCorrFlag(p.id, 'isLabeled', false)">No</button>
+                    </span>
+                  </div>
                 </details>
 
                 <app-loto-point-actions
@@ -285,7 +307,7 @@ export class LotoStandardWalkdownComponent implements OnInit {
   online = this.serverStatus.isOnline;
 
   std = signal<LotoStandard | null>(null);
-  positions = signal<PositionOptions>({ isoPos: [], normPos: [] });
+  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [] });
   draft = signal<WalkdownDraft | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
@@ -451,13 +473,40 @@ export class LotoStandardWalkdownComponent implements OnInit {
   corrSpecific(p: LotoPointRef): string {
     return this.draft()?.corrections?.[String(p.id)]?.specificLocation ?? p.specificLocation ?? '';
   }
-  corrGeneral(p: LotoPointRef): string {
-    return this.draft()?.corrections?.[String(p.id)]?.generalLocation ?? p.generalLocation ?? '';
+  /** Effective Location Value id — pending correction wins over the persisted point value. */
+  corrLocation(p: LotoPointRef): number | '' {
+    const c = this.draft()?.corrections?.[String(p.id)];
+    return (c?.locationId ?? p.location?.id) ?? '';
   }
-  setCorr(pointId: number, field: 'tagNumber' | 'description' | 'specificLocation' | 'generalLocation', value: string): void {
+  /** Effective isLockable to render — pending correction wins over the persisted point flag. */
+  corrLockable(p: LotoPointRef): boolean | null {
+    const cv = this.draft()?.corrections?.[String(p.id)]?.isLockable;
+    // cv can be true/false/null (cleared)/undefined (never set). Only fall back on undefined,
+    // so a walker's explicit null (cleared re-tap) shows the underlying point value again.
+    return cv === undefined ? (p.isLockable ?? null) : cv;
+  }
+  corrLabeled(p: LotoPointRef): boolean | null {
+    const cv = this.draft()?.corrections?.[String(p.id)]?.isLabeled;
+    return cv === undefined ? (p.isLabeled ?? null) : cv;
+  }
+  setCorr(pointId: number, field: 'tagNumber' | 'description' | 'specificLocation', value: string): void {
     this.patch(d => { d.corrections[String(pointId)] = { ...(d.corrections[String(pointId)] ?? {}), [field]: value }; });
   }
-  setCorrPos(pointId: number, field: 'isoPosId' | 'normPosId', value: string): void {
+  /**
+   * Toggle a durable physical flag correction. Tap Yes/No to set; tap the active side again to
+   * clear the override (so the underlying point flag stays authoritative). Cleared value is `null`
+   * — the backend skips null on {@code applyCorrection}, matching the "leave as is" semantics.
+   */
+  setCorrFlag(pointId: number, field: 'isLockable' | 'isLabeled', value: boolean): void {
+    let cleared = false;
+    this.patch(d => {
+      const cur = d.corrections[String(pointId)] ?? {};
+      cleared = cur[field] === value;
+      d.corrections[String(pointId)] = { ...cur, [field]: cleared ? null : value };
+    });
+    this.haptics.tap(cleared ? 'tap' : value ? 'success' : 'warn');
+  }
+  setCorrPos(pointId: number, field: 'isoPosId' | 'normPosId' | 'locationId', value: string): void {
     const id = value ? Number(value) : null;
     this.patch(d => { d.corrections[String(pointId)] = { ...(d.corrections[String(pointId)] ?? {}), [field]: id }; });
   }
