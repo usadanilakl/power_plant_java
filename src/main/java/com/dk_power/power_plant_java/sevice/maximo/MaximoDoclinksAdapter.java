@@ -29,6 +29,7 @@ import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.strRa
 public class MaximoDoclinksAdapter {
 
     private final MaximoAccessService access;
+    private final HeicImageConverter heicConverter;
 
     public List<MaximoDoclinkDto> list(String parentObjectStructure, String parentHref) {
         String url = access.subUrl(parentObjectStructure, parentHref, "doclinks");
@@ -60,6 +61,12 @@ public class MaximoDoclinksAdapter {
                                    String contentType,
                                    byte[] bytes,
                                    String doctype) {
+        // iPhone HEIC → JPEG (Maximo rejects HEIC + it won't render off-Apple). No-op for anything else.
+        HeicImageConverter.Result conv = heicConverter.ensureJpeg(bytes, fileName, contentType);
+        bytes = conv.bytes();
+        fileName = conv.fileName();
+        contentType = conv.contentType();
+
         String url = access.subUrl(parentObjectStructure, parentHref, "doclinks");
         String mime = (contentType != null && !contentType.isBlank())
                 ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE;

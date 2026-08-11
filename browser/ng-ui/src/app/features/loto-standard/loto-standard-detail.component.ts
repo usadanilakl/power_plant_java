@@ -188,12 +188,18 @@ export class LotoStandardDetailComponent implements OnInit {
   });
 
   /**
-   * On Draft (and re-approval draft) statuses the standard has no pending transition, but the
-   * walker still needs to fix point details discovered in the field. Opens the same walkdown
-   * screen — submit records evidence + applies corrections without attempting a transition.
+   * On Draft / New-Pending-Reapproval / no-status-yet standards the standard has no pending
+   * transition, but the walker still needs to fix point details discovered in the field.
+   * Opens the same walkdown screen — submit records evidence + applies corrections without
+   * attempting a transition.
+   *
+   * <p>Null / undefined developmentStatus is treated as Draft because a freshly created
+   * standard may have no status Value assigned yet — the detail view's own facts list falls
+   * back to "Draft" for that case, so the affordance should match.
    */
   canEditPoints = computed<boolean>(() => {
     const name = this.std()?.developmentStatus?.name;
+    if (!name) return true;                                           // no status yet ≡ Draft
     return name === LOTO_STANDARD_STATUS.DRAFT
         || name === LOTO_STANDARD_STATUS.NEW_PENDING_REAPPROVAL;
   });

@@ -127,10 +127,40 @@ public class ScheduleMaterialisationService {
      * upstream hub, so this is safe to schedule everywhere.
      */
     @Scheduled(cron = "${schedule.v2.daily-refresh-cron:0 15 4 * * *}", zone = "America/Chicago")
+    @Transactional   // scheduler → proxy → this method opens the session; the inner materialize* calls
+                     // are self-invocations (proxy bypassed) so they rely on THIS tx for lazy loads.
     public void dailyRollForward() {
         int written = materializeDefaultHorizon();
         if (written > 0) {
             log.info("[ScheduleV2] Daily roll-forward materialised {} day row(s) changed", written);
+        }
+    }
+
+    /**
+     * Frequent hub-side refresh so schedule-authoring that arrives via SYNC — a manager creating an
+     * assignment/override/coverage need, or approving a coverage signup, on a DESKTOP or the PWA — is
+     * reflected in ShiftDay without waiting for the 4:15 AM roll-forward. The materialiser only runs on
+     * a node's OWN service-layer edits (admin saves, coverage mutations); a change applied through
+     * sync-apply never calls it, and a subordinate desktop's own edit no-ops under the hub-gate. So on
+     * the hub a desktop/PWA-origin edit would otherwise lag ShiftDay by up to a day (only the manager's
+     * signup-status change would sync; the coverer wouldn't appear in the shift grid until 4:15 AM).
+     *
+     * <p>Idle-cheap: {@link #materializeRange} writes only rows whose content actually changed, so a
+     * tick with no upstream authoring produces zero ShiftDay writes and zero sync traffic — the only
+     * cost is one horizon read + the in-memory recompute. <b>Hub-only</b> (desktops never materialise;
+     * standalone/dev nodes already rematerialise locally on their own edits, so neither needs this).
+     * Interval via {@code schedule.v2.hub-refresh-interval-ms} (default 10 min); raise it very high to
+     * effectively disable.
+     */
+    @Scheduled(fixedDelayString = "${schedule.v2.hub-refresh-interval-ms:600000}",
+               initialDelayString = "${schedule.v2.hub-refresh-interval-ms:600000}")
+    @Transactional   // see dailyRollForward: opens the session the self-invoked materialize* calls need.
+    public void hubSyncRefresh() {
+        if (!isActive() || !syncConfig.isHubMode()) return;   // hub only; skip work + log spam elsewhere
+        int written = materializeDefaultHorizon();
+        if (written > 0) {
+            log.info("[ScheduleV2] Hub sync-refresh rematerialised {} day row(s) — picked up authoring "
+                    + "that arrived via sync (desktop/PWA-origin edit)", written);
         }
     }
 
@@ -229,7 +259,10 @@ public class ScheduleMaterialisationService {
             User u = s.getUser();
             if (u == null) continue;
             ShiftEntry existing = b.extractUser(u.getId());
-            ShiftEntry entry = existing != null ? existing : entryFor(u, "Cover", null);
+            // Label a fresh coverage entry with the seat being filled (e.g. "AO") so the grids can
+            // show what role the coverer is covering; someone already placed keeps their own role.
+            String coverPos = s.getCoverageRequest() != null ? s.getCoverageRequest().getPosition() : null;
+            ShiftEntry entry = existing != null ? existing : entryFor(u, "Cover", coverPos);
             if (CoverageRequest.ShiftType.NIGHT.equals(s.getShift())) b.night.add(entry);
             else b.day.add(entry);
         }

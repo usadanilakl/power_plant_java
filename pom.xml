@@ -216,8 +216,33 @@
             <version>33.4.0-jre</version>
         </dependency>
 
-
-
+        <!-- Bundled FFmpeg (JavaCPP) — converts iPhone HEIC attachments to JPEG server-side so Maximo accepts
+             them and they view on any device. Windows-x86_64 natives only (the hub is Windows) to keep the size
+             down; the ffmpeg binary self-extracts at runtime, so NO separate install is needed on the hub.
+             8.x is required: FFmpeg only gained the still-image "heif" demuxer (with grid/tiled iPhone HEIC
+             support) in 7.0 — 6.x has no HEIF demuxer and mis-parses HEIC as MOV ("moov atom not found"). -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>8.1.2-1.5.14</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>8.1.2-1.5.14</version>
+            <classifier>windows-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>1.5.14</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>1.5.14</version>
+            <classifier>windows-x86_64</classifier>
+        </dependency>
 
 
 
