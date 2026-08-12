@@ -90,7 +90,30 @@ public class AuthController {
         } catch (AuthenticationException e) {
             log.warn("security.login.failed credential={} reason={}",
                 loginRequest.credential(), e.getMessage());
-            return ResponseEntity.status(401).body(Map.of(
+            // 400, NOT 401, on a wrong password.
+            //
+            // The reverse proxy in front of the hub decorates 401 responses with
+            // `WWW-Authenticate: Negotiate/NTLM/Basic`. On a SAME-ORIGIN request — which the hub's
+            // own login page is — the browser answers a challenge by raising its native credential
+            // dialog. So typing the wrong password produced a Windows login box on top of our login
+            // page instead of the words "Invalid email or password". Nothing but 401 triggers that,
+            // so the status is the whole fix.
+            //
+            // Non-invasive by design: the body is unchanged, LoginComponent reads err.error.message
+            // and never inspects the status, and authInterceptor only acts on 401 (it deliberately
+            // skips redirecting when already on /login, so it was doing nothing here anyway).
+            //
+            // Deliberately NOT applied to:
+            //   - the other 401s in this controller (profile/sessions/…): those fire when a session
+            //     expires, and authInterceptor uses the 401 to bounce the user to /login. Changing
+            //     them would trade one annoyance for a worse one.
+            //   - PwaAuthController: ng-ui's auth.service keys on status 401 (see
+            //     auth.service.ts:459 for the ACCOUNT_INACTIVE check), and the PWA calls the hub
+            //     cross-origin, where browsers suppress the native dialog anyway.
+            //
+            // This is a workaround for the proxy's behaviour, not a fix for it. Session expiry can
+            // still surface the dialog until that appliance stops adding the header.
+            return ResponseEntity.status(400).body(Map.of(
                 "error", "INVALID_CREDENTIALS",
                 "message", "Invalid email or password"
             ));
