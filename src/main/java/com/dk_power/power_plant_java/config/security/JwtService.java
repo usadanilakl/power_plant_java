@@ -143,10 +143,16 @@ public class JwtService {
     public String generateToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
+        // Login accepts an email OR a username (UserDetailsServiceImpl), so an account can legitimately
+        // have no email. Falling back to the username keeps the subject non-null, which is what the
+        // filter and the refresh endpoint resolve the user from.
+        String email = user.getEmail();
+        String subject = (email == null || email.isBlank()) ? user.getUsername() : email;
         return Jwts.builder()
                 .issuer(hubIssuer)
-                .subject(user.getEmail())
+                .subject(subject)
                 .claim("email", user.getEmail())
+                .claim("username", user.getUsername())
                 .claim("userId", user.getId())
                 .claim("roles", user.getRoles())
                 .claim("permissionLevel", user.getPermissionLevel())
@@ -365,6 +371,15 @@ public class JwtService {
         Object email = claims.get("email");
         if (email instanceof String s && !s.isBlank()) return s;
         return claims.getSubject();
+    }
+
+    /**
+     * The username on a hub token, when the account has one. Accounts can sign in by email OR
+     * username, so an email-keyed lookup alone misses username-only accounts.
+     */
+    public String extractUsername(Claims claims) {
+        Object username = claims.get("username");
+        return username instanceof String s && !s.isBlank() ? s : null;
     }
 
     public boolean isHubIssued(Claims claims) {

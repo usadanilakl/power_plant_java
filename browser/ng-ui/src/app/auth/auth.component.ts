@@ -8,6 +8,7 @@ import { UserSetupService } from '../services/user-setup.service';
 import { ServerStatusService } from '../services/server-status.service';
 import { CommonModule } from '@angular/common';
 import { SignatureInputComponent } from '../shared/input-fields/signature-input/signature-input.component';
+import { PasswordToggleDirective } from '../shared/input-fields/password-toggle.directive';
 import { switchMap } from 'rxjs';
 
 type AuthStep = 'identify' | 'signin' | 'register' | 'pending_approval';
@@ -15,7 +16,7 @@ type AuthStep = 'identify' | 'signin' | 'register' | 'pending_approval';
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, SignatureInputComponent],
+  imports: [ReactiveFormsModule, CommonModule, SignatureInputComponent, PasswordToggleDirective],
   templateUrl: './auth.component.html',
   styleUrl: './auth.component.css'
 })
@@ -87,6 +88,16 @@ export class AuthComponent implements OnInit {
     // lands straight on the register step (pre-filled) to set a password and complete registration.
     if (this.route.snapshot.queryParams['complete'] === '1' && localData && !localData.registeredOnServer) {
       this.step = 'register';
+    }
+
+    // Deep-link from the reset-password screen ("Go to Login" after a reset). The account is already
+    // known, so skip the lookup step and land on sign-in pre-filled.
+    const prefill = this.route.snapshot.queryParams['email'];
+    if (prefill) {
+      this.lookedUpEmail = prefill;
+      this.identifyForm.patchValue({ credential: prefill });
+      this.loginForm.patchValue({ email: prefill });
+      this.step = 'signin';
     }
   }
 

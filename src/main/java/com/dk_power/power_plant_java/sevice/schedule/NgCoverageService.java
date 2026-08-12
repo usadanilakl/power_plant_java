@@ -812,11 +812,9 @@ public class NgCoverageService {
         if (from == null || to == null) return;
         LocalDate lo = from.isAfter(to) ? to : from;
         LocalDate hi = from.isAfter(to) ? from : to;
-        try {
-            materialisation.materializeRange(lo, hi);
-        } catch (Exception e) {
-            log.warn("[ScheduleV2] Coverage re-materialisation failed (change committed): {}", e.getMessage());
-        }
+        // materializeRange never throws (catches internally) so it can't mark this transaction
+        // rollback-only and fail the coverage change.
+        materialisation.materializeRange(lo, hi);
     }
 
     private static boolean covers(CoverageRequest r, LocalDate d) {

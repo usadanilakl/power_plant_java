@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { PasswordToggleDirective } from '../../../shared/password-toggle/password-toggle.directive';
 
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, PasswordToggleDirective],
   template: `
     <div class="container">
       <div class="card">
@@ -38,6 +39,7 @@ import { AuthService } from '../../../services/auth.service';
               placeholder="Enter new password"
               required
               autofocus
+              appPasswordToggle
             />
             <div class="strength-bar">
               <div class="strength-fill" [style.width.%]="strengthPercent" [style.background]="strengthColor"></div>
@@ -54,6 +56,7 @@ import { AuthService } from '../../../services/auth.service';
               name="confirmPassword"
               placeholder="Confirm new password"
               required
+              appPasswordToggle
             />
           </div>
 

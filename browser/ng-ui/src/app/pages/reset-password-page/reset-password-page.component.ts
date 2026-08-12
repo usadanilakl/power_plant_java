@@ -1,16 +1,17 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 import { ServerApiService } from '../../services/server-api.service';
 import { AuthService } from '../../auth/auth.service';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
+import { PasswordToggleDirective } from '../../shared/input-fields/password-toggle.directive';
 
 @Component({
   selector: 'app-reset-password-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent],
+  imports: [CommonModule, FormsModule, RouterLink, MainLayoutComponent, PasswordToggleDirective],
   template: `
     <app-main-layout [isBottomMenuEnabled]="false" [isSideMenuEnabled]="false">
       <ng-container main-content>
@@ -21,7 +22,14 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
             <div *ngIf="successMessage" class="success-message">
               {{ successMessage }}
               <div *ngIf="autoLoginFailed" class="auto-login-note">
-                <a routerLink="/login" class="go-login-link">Go to Login</a>
+                <a [routerLink]="['/login']" [queryParams]="loginQueryParams" class="go-login-link">Go to Login</a>
+              </div>
+            </div>
+
+            <div *ngIf="noticeMessage" class="notice-message">
+              {{ noticeMessage }}
+              <div class="auto-login-note">
+                <a [routerLink]="['/login']" [queryParams]="loginQueryParams" class="go-login-link">Go to Login</a>
               </div>
             </div>
 
@@ -31,11 +39,11 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
               Invalid reset link. No token provided.
             </div>
 
-            <form *ngIf="token && !successMessage" (ngSubmit)="onSubmit()">
+            <form *ngIf="token && !successMessage && !noticeMessage" (ngSubmit)="onSubmit()">
               <div class="form-group">
                 <label for="newPassword">New Password</label>
                 <input id="newPassword" type="password" autocomplete="new-password" [(ngModel)]="newPassword"
-                       name="newPassword" placeholder="Enter new password" required autofocus>
+                       name="newPassword" placeholder="Enter new password" required autofocus appPasswordToggle>
                 <div class="strength-bar">
                   <div class="strength-fill" [style.width.%]="strengthPercent" [style.background]="strengthColor"></div>
                 </div>
@@ -45,7 +53,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
               <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
                 <input id="confirmPassword" type="password" autocomplete="new-password" [(ngModel)]="confirmPassword"
-                       name="confirmPassword" placeholder="Confirm new password" required>
+                       name="confirmPassword" placeholder="Confirm new password" required appPasswordToggle>
               </div>
 
               <button type="submit" [disabled]="isLoading">
@@ -54,7 +62,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
               </button>
             </form>
 
-            <a routerLink="/login" class="back-link">Back to Sign In</a>
+            <a [routerLink]="['/login']" [queryParams]="loginQueryParams" class="back-link">Back to Sign In</a>
           </div>
         </div>
       </ng-container>
@@ -179,6 +187,18 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
       text-align: center;
     }
 
+    /* Not an error: the link is spent but the account is fine — the user just needs to sign in. */
+    .notice-message {
+      color: #856404;
+      background-color: rgba(255, 193, 7, 0.12);
+      border: 1px solid rgba(255, 193, 7, 0.4);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
     .back-link {
       display: block;
       text-align: center;
@@ -223,13 +243,23 @@ export class ResetPasswordPageComponent implements OnInit {
   private serverApi = inject(ServerApiService);
   private authService = inject(AuthService);
 
+  /** Auto sign-in happens right after the hub answered the reset, so it is demonstrably up. Give it a
+   *  realistic window instead of the 5s dual-auth default — a slow answer here used to be read as
+   *  "hub down", fall through to a Supabase password that hasn't been mirrored yet, and dead-end the
+   *  user on a page whose only way out was a spent reset link. */
+  private static readonly AUTO_LOGIN_TIMEOUT_MS = 20000;
+
   token = '';
   newPassword = '';
   confirmPassword = '';
   isLoading = false;
   successMessage = '';
   errorMessage = '';
+  /** Non-error dead-end (spent/expired link) — the account is fine, the user just needs to sign in. */
+  noticeMessage = '';
   autoLoginFailed = false;
+  /** Carries the account forward so "Go to Login" lands on the sign-in step, pre-filled. */
+  loginQueryParams: Record<string, string> = {};
 
   ngOnInit(): void {
     this.token = this.route.snapshot.queryParams['token'] || '';
@@ -278,33 +308,67 @@ export class ResetPasswordPageComponent implements OnInit {
     this.isLoading = true;
     const password = this.newPassword;
 
-    this.serverApi.resetPassword(this.token, password).subscribe({
+    // Raw variant: the generic handleError replaces the HttpErrorResponse with a bare Error, which
+    // threw away the server's reason code — every failure, including "link already used", surfaced
+    // as "Failed to reset password. Please try again." and sent users back to re-use a spent link.
+    this.serverApi.resetPasswordRaw(this.token, password).subscribe({
       next: (res: any) => {
         this.successMessage = 'Password set successfully. Signing you in...';
-        const email = res.email;
+        const email = res?.email;
         if (email) {
-          this.authService.authenticate(email, password).pipe(
+          this.loginQueryParams = { email };
+          this.authService.authenticate(email, password, ResetPasswordPageComponent.AUTO_LOGIN_TIMEOUT_MS).pipe(
             switchMap(() => this.authService.syncLocalUserData())
           ).subscribe({
             next: () => {
               this.router.navigate(['/home']);
             },
-            error: () => {
-              this.isLoading = false;
-              this.successMessage = 'Password set successfully.';
-              this.autoLoginFailed = true;
-            }
+            error: () => this.onAutoLoginFailed()
           });
         } else {
-          this.isLoading = false;
-          this.autoLoginFailed = true;
-          this.successMessage = 'Password set successfully.';
+          this.onAutoLoginFailed();
         }
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err.error?.message || 'Failed to reset password. Please try again.';
+        this.applyResetError(err);
       }
     });
+  }
+
+  /** The password IS set — say so plainly and give a link that actually navigates. */
+  private onAutoLoginFailed(): void {
+    this.isLoading = false;
+    this.successMessage = 'Password set successfully. Sign in with your new password to continue.';
+    this.autoLoginFailed = true;
+  }
+
+  /**
+   * A spent or expired link is not a failed reset. In practice the user already set their password on
+   * the first submit, then came back to the emailed link — telling them "failed, please try again"
+   * makes them loop on a token that can never work again.
+   */
+  private applyResetError(err: any): void {
+    const code = err?.error?.error;
+    const serverMessage = err?.error?.message;
+
+    if (code === 'TOKEN_USED') {
+      this.noticeMessage = 'This link has already been used. If you set your password, sign in with it — '
+        + 'otherwise request a new link from the sign-in screen.';
+      return;
+    }
+    if (code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN') {
+      this.noticeMessage = (serverMessage || 'This reset link is no longer valid.')
+        + ' Request a new one from the sign-in screen.';
+      return;
+    }
+    if (serverMessage) {
+      this.errorMessage = serverMessage;
+      return;
+    }
+    // No response body at all (timeout / connection dropped). The hub may well have committed the
+    // change, so don't assert that it failed.
+    this.errorMessage = 'Could not confirm the password change. Try signing in with your new password '
+      + 'first — if that fails, request a new reset link.';
   }
 }

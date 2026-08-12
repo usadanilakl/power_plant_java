@@ -443,12 +443,16 @@ export class ServerApiService {
     );
   }
 
-  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
+  /**
+   * Password reset. The HttpErrorResponse is deliberately preserved (no handleError) so the caller
+   * can tell a spent link (TOKEN_USED) from a genuine failure — handleError collapses every failure
+   * into a bare Error and the server's reason code is lost with it.
+   */
+  resetPasswordRaw(token: string, newPassword: string): Observable<{ message: string; email?: string }> {
+    return this.http.post<{ message: string; email?: string }>(
       `${this.baseUrl}/api/auth/reset-password`, { token, newPassword }
     ).pipe(
-      timeout(10000),
-      catchError(this.handleError)
+      timeout(20000)
     );
   }
 
@@ -472,9 +476,15 @@ export class ServerApiService {
   // or merely REJECTED the request (401 → try Supabase, then reconcile). See dual-auth.md.
 
   /** Hub login, 5s timeout, error preserved. */
-  pwaLoginRaw(email: string, password: string): Observable<PwaLoginResponse> {
+  /**
+   * @param timeoutMs how long to wait before treating the hub as down and failing over to Supabase.
+   *        The 5s default keeps the interactive sign-in screen responsive; callers that already know
+   *        the hub is up (e.g. auto sign-in straight after a password reset) should pass more, or a
+   *        merely slow answer gets misread as an outage.
+   */
+  pwaLoginRaw(email: string, password: string, timeoutMs = 5000): Observable<PwaLoginResponse> {
     return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/login`, { email, password }).pipe(
-      timeout(5000)
+      timeout(timeoutMs)
     );
   }
 

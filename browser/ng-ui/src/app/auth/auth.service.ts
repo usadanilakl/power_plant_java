@@ -82,8 +82,12 @@ export class AuthService {
 
   // ── Login (dual-path) ──────────────────────────────────────────────────────
 
-  authenticate(email: string, password: string): Observable<PwaAuthData> {
-    return this.serverApi.pwaLoginRaw(email, password).pipe(
+  /**
+   * @param hubTimeoutMs how long to wait on the hub before falling back to Supabase. Callers that
+   *        just talked to the hub successfully should raise it — see pwaLoginRaw.
+   */
+  authenticate(email: string, password: string, hubTimeoutMs?: number): Observable<PwaAuthData> {
+    return this.serverApi.pwaLoginRaw(email, password, hubTimeoutMs).pipe(
       map(response => this.toHubAuthData(response)),
       tap(authData => {
         this.storeAuth(authData);

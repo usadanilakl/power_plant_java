@@ -36,7 +36,7 @@
         <button [class.active]="activeTab()==='pto'" (click)="setTab('pto')">PTO</button>
         <button [class.active]="activeTab()==='oncall'" (click)="setTab('oncall')">On-Call</button>
         <button [class.active]="activeTab()==='relief'" (click)="setTab('relief')">Relief</button>
-        <button [class.active]="activeTab()==='outages'" (click)="setTab('outages')">Outages</button>
+        <button [class.active]="activeTab()==='outages'" (click)="setTab('outages')">Rotation freeze</button>
         <button [class.active]="activeTab()==='schedule'" (click)="setTab('schedule')">Schedule</button>
       </nav>
 
@@ -579,52 +579,58 @@
       </section>
 
       <!-- ============================= SCHEDULE ============================= -->
-      <!-- ============================== OUTAGES ============================== -->
+      <!-- ============================== ROTATION FREEZE ============================== -->
       <section *ngIf="activeTab()==='outages'">
         <p class="muted">
-          Pin whole crews to a fixed shift for a date window — e.g. crews A &amp; B on nights, C &amp; D on
-          days, with no switching. Each crew’s rotation resumes automatically after the window ends.
+          Freeze a crew’s rotation for a window (outages / smooth transitions). The crew keeps its exact
+          on/off pattern — same working days, same off days (still 2/2/5/5) — but stops switching
+          day↔night and holds the shift you pick. One entry per crew, each with its own start/end so
+          crews can stop and resume at different times. <b>Off</b> = the crew doesn’t work at all during
+          the window.
         </p>
-        <div class="sb-toolbar" *ngIf="!editingOutage">
-          <button class="btn btn-primary" (click)="newOutage()">+ New outage</button>
+        <div class="sb-toolbar" *ngIf="!editingFreeze">
+          <button class="btn btn-primary" (click)="newFreeze()">+ New rotation freeze</button>
         </div>
-        <div class="sb-editor" *ngIf="editingOutage">
+        <div class="sb-editor" *ngIf="editingFreeze">
           <div class="sb-field-row">
-            <label>Name <input [(ngModel)]="editingOutage.label" placeholder="Fall outage" /></label>
-            <label>Start <input type="date" [(ngModel)]="editingOutage.startDate" /></label>
-            <label>End <input type="date" [(ngModel)]="editingOutage.endDate" /></label>
-          </div>
-          <div class="sb-field-row">
-            <span class="dow-label">Crew shifts for the window (“— ” leaves a crew on its rotation):</span>
-          </div>
-          <div class="sb-field-row">
-            <label *ngFor="let c of crews()">{{ c.name }}
-              <select [(ngModel)]="editingOutage.crewShifts[c.id!]">
-                <option *ngFor="let s of OUTAGE_SHIFTS" [value]="s.code">{{ s.label }}</option>
+            <label>Crew
+              <select [(ngModel)]="editingFreeze.crewId">
+                <option [ngValue]="undefined">— select —</option>
+                <option *ngFor="let c of crews()" [ngValue]="c.id">{{ c.name }}</option>
               </select>
             </label>
+            <label>Hold on
+              <select [(ngModel)]="editingFreeze.shift">
+                <option *ngFor="let s of FREEZE_SHIFTS" [value]="s.code">{{ s.label }}</option>
+              </select>
+            </label>
+            <label>Freeze from <input type="date" [(ngModel)]="editingFreeze.startDate" /></label>
+            <label>Resume after <input type="date" [(ngModel)]="editingFreeze.endDate" /></label>
+            <label>Label <input [(ngModel)]="editingFreeze.label" placeholder="Fall outage (optional)" /></label>
           </div>
           <div class="sb-editor-actions">
-            <button class="btn btn-primary" (click)="saveOutage()" [disabled]="loading()">Save outage</button>
-            <button class="btn" (click)="cancelOutage()">Cancel</button>
+            <button class="btn btn-primary" (click)="saveFreeze()" [disabled]="loading()">Save freeze</button>
+            <button class="btn" (click)="cancelFreeze()">Cancel</button>
           </div>
         </div>
-        <p class="muted" *ngIf="fetching() && outageGroups().length===0">Loading…</p>
-        <p class="muted" *ngIf="!fetching() && !editingOutage && outageGroups().length===0">No outages defined.</p>
-        <ng-container *ngIf="!editingOutage">
-          <div class="outage-group" *ngFor="let g of outageGroups()">
-            <div class="outage-head"><strong>{{ g.label }}</strong> <span class="muted">{{ g.startDate }} → {{ g.endDate }}</span></div>
-            <table class="sb-table">
-              <tbody>
-                <tr *ngFor="let o of g.rows">
-                  <td>{{ o.crewName || '—' }}</td>
-                  <td><span class="pill">{{ outageShiftLabel(o.shift) }}</span></td>
-                  <td class="ta-r"><button class="btn sm danger" (click)="deleteOutage(o)">Remove</button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </ng-container>
+        <table class="sb-table" *ngIf="!editingFreeze">
+          <thead><tr><th>Crew</th><th>Holds</th><th>Freeze from</th><th>Resume after</th><th>Label</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let o of freezeRows()">
+              <td>{{ o.crewName || '—' }}</td>
+              <td><span class="pill">{{ freezeShiftLabel(o.shift) }}</span></td>
+              <td>{{ o.startDate }}</td>
+              <td>{{ o.endDate }}</td>
+              <td class="muted">{{ o.label || '—' }}</td>
+              <td class="ta-r">
+                <button class="btn sm" (click)="editFreeze(o)">Edit</button>
+                <button class="btn sm danger" (click)="deleteFreeze(o)">Remove</button>
+              </td>
+            </tr>
+            <tr *ngIf="fetching() && freezeRows().length===0"><td colspan="6" class="muted">Loading…</td></tr>
+            <tr *ngIf="!fetching() && freezeRows().length===0"><td colspan="6" class="muted">No rotation freezes defined.</td></tr>
+          </tbody>
+        </table>
       </section>
 
       <section *ngIf="activeTab()==='schedule'">

@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { PasswordToggleDirective } from '../../../shared/password-toggle/password-toggle.directive';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, PasswordToggleDirective],
   template: `
     <div class="login-container">
       <div class="login-card">
@@ -41,6 +42,7 @@ import { AuthService } from '../../../services/auth.service';
               name="password"
               placeholder="Enter your password"
               required
+              appPasswordToggle
             />
             <a routerLink="/forgot-password" class="forgot-link">Forgot password?</a>
           </div>

@@ -378,6 +378,17 @@ class ScheduleMaterialisationServiceTest {
         return a;
     }
 
+    @Test
+    @DisplayName("materializeRange swallows a failure and returns 0 — never propagates (would poison the caller's tx)")
+    void materializeRangeNeverThrows() {
+        // A materialiser failure must not fail the authoring save that triggered the rematerialise:
+        // materializeRange (a nested @Transactional) has to catch internally so it can't mark the
+        // shared transaction rollback-only. Force a setup-phase failure and assert it returns 0 quietly.
+        when(assignmentRepo.findActiveOverlapping(any(), any())).thenThrow(new RuntimeException("boom"));
+        int written = service.materializeRange(DAY0, DAY0);   // must NOT throw
+        assertThat(written).isZero();
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static ArgumentCaptor<List<ShiftEntry>> listCaptor() {
         return ArgumentCaptor.forClass((Class) List.class);

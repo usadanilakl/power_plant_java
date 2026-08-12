@@ -208,6 +208,24 @@ public class ScheduleMaterialisationService {
             to = from.plusDays(MAX_RANGE_DAYS - 1);
         }
 
+        try {
+            return materializeWindow(from, to);
+        } catch (Exception e) {
+            // NEVER propagate. materializeRange is @Transactional and usually joins the authoring
+            // save's transaction; a throw here would mark that shared transaction rollback-only and
+            // fail the save itself — the "one bad record breaks every schedule edit" bug. Log the full
+            // cause so the offending data/config is pinpointable; the schedule just isn't updated this
+            // run (the next materialise retries). Per-day failures are already handled inside; this
+            // catches setup-phase failures (loaders, preload, etc.).
+            log.error("[ScheduleV2] materializeRange({}..{}) failed and was skipped — the triggering "
+                    + "authoring save still succeeded: {}", from, to, e.toString(), e);
+            return 0;
+        }
+    }
+
+    /** The materialisation work for an already-guarded, already-clamped window. May throw — {@link
+     *  #materializeRange} wraps it so a failure can never poison the caller's transaction. */
+    private int materializeWindow(LocalDate from, LocalDate to) {
         List<CrewAssignment> assignments = assignmentRepo.findActiveOverlapping(from, to);
         List<ScheduleEvent> events = eventRepo.findOverlapping(from, to);
         List<PtoRequest> ptos = ptoRepo.findApprovedOverlapping(from, to);
@@ -242,13 +260,26 @@ public class ScheduleMaterialisationService {
         Map<LocalDate, ShiftDay> existingByDate = shiftDayService.preloadRange(from, to);
 
         int written = 0;
+        int failedDays = 0;
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-            if (materializeDay(d, assignments, events, ptos,
-                    overridesByDate.getOrDefault(d, List.of()),
-                    signupsByDate.getOrDefault(d, List.of()),
-                    cellCache, onCall, relief, holidays, existingByDate, crewOverridesByCrew)) {
-                written++;
+            try {
+                if (materializeDay(d, assignments, events, ptos,
+                        overridesByDate.getOrDefault(d, List.of()),
+                        signupsByDate.getOrDefault(d, List.of()),
+                        cellCache, onCall, relief, holidays, existingByDate, crewOverridesByCrew)) {
+                    written++;
+                }
+            } catch (Exception e) {
+                // One bad day (bad record, unexpected null, etc.) must not abort the whole horizon —
+                // skip it, keep going, and log WHAT and WHERE so the offending data is pinpointable.
+                failedDays++;
+                log.error("[ScheduleV2] Materialisation failed for {} — skipped (other days continue): {}",
+                        d, e.toString(), e);
             }
+        }
+        if (failedDays > 0) {
+            log.warn("[ScheduleV2] {}..{}: {} day(s) failed to materialise and were skipped (see errors above).",
+                    from, to, failedDays);
         }
         log.info("[ScheduleV2] Materialised {}..{}: {} day rows changed "
                         + "({} assignments, {} events, {} PTO, {} overrides, {} signups)",
@@ -421,8 +452,8 @@ public class ScheduleMaterialisationService {
     }
 
     /** The shift code (D/N/O or null) a crew yields on a date from its rotation cells at its offset. */
-    /** The active outage/campaign pin for a crew on a date ({@code D}/{@code N}/{@code OFF}), or null. */
-    private static String pinnedCrewShift(Crew crew, LocalDate date,
+    /** The active rotation-freeze hold for a crew on a date ({@code D}/{@code N}/{@code OFF}), or null. */
+    private static String frozenCrewShift(Crew crew, LocalDate date,
                                           Map<Long, List<CrewShiftOverride>> crewOverrides) {
         if (crewOverrides == null || crew == null || crew.getId() == null) return null;
         List<CrewShiftOverride> list = crewOverrides.get(crew.getId());
@@ -437,22 +468,31 @@ public class ScheduleMaterialisationService {
     private String crewShiftFor(Crew crew, LocalDate date, Map<Long, List<PatternCell>> cellCache,
                                 Map<Long, List<CrewShiftOverride>> crewOverrides) {
         if (crew == null || Boolean.FALSE.equals(crew.getIsActive())) return null;
-        // Outage / campaign pin: a temporary per-crew fixed shift for a window overrides the rotation
-        // (e.g. crews A+B hold nights for a 3-week outage — no switching). The rotation resumes
-        // automatically after the window (cycle math is absolute-epoch-anchored). OFF drops the crew.
-        String pinned = pinnedCrewShift(crew, date, crewOverrides);
-        if (pinned != null) return CrewShiftOverride.Shift.OFF.equals(pinned) ? null : pinned;
+
+        // The crew's normal rotation shift for the day (D/N/O or null).
+        String normal = null;
         CrewRotation rot = crew.getRotation();
-        if (rot == null) return null;
-        Integer len = rot.getPatternLengthDays();
-        if (len == null || len <= 0) return null;
-        List<PatternCell> cells = cellCache.computeIfAbsent(
-                rot.getId() == null ? -1L : rot.getId(), k -> parseCells(rot.getRotationCells()));
-        int offset = crew.getOffsetDays() == null ? 0 : crew.getOffsetDays();
-        // Phase the cycle to the rotation's start date (dayIndex 0 = anchorDate); null = epoch day 0.
-        long anchor = rot.getAnchorDate() != null ? rot.getAnchorDate().toEpochDay() : 0L;
-        int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay() - anchor, offset, len);
-        return SchedulePatternMath.shiftFor(cells, cycleDay);
+        if (rot != null && rot.getPatternLengthDays() != null && rot.getPatternLengthDays() > 0) {
+            List<PatternCell> cells = cellCache.computeIfAbsent(
+                    rot.getId() == null ? -1L : rot.getId(), k -> parseCells(rot.getRotationCells()));
+            int offset = crew.getOffsetDays() == null ? 0 : crew.getOffsetDays();
+            // Phase the cycle to the rotation's start date (dayIndex 0 = anchorDate); null = epoch day 0.
+            long anchor = rot.getAnchorDate() != null ? rot.getAnchorDate().toEpochDay() : 0L;
+            int cycleDay = SchedulePatternMath.cycleDay(date.toEpochDay() - anchor, offset, rot.getPatternLengthDays());
+            normal = SchedulePatternMath.shiftFor(cells, cycleDay);
+        }
+
+        // Rotation freeze (outage): during the window the crew keeps its EXACT normal on/off pattern
+        // (same working days, same off days) but stops switching day<->night — every working day is
+        // held to the frozen shift. A frozen shift of OFF drops the crew entirely for the window. The
+        // rotation resumes automatically after the window (cycle math is absolute-epoch-anchored).
+        String frozen = frozenCrewShift(crew, date, crewOverrides);
+        if (frozen != null) {
+            if (CrewShiftOverride.Shift.OFF.equals(frozen)) return null;   // crew fully off this window
+            boolean workingDay = CrewRotation.Shift.DAY.equals(normal) || CrewRotation.Shift.NIGHT.equals(normal);
+            return workingDay ? frozen : null;   // hold the type on a working day; keep off-days off
+        }
+        return normal;
     }
 
     /**

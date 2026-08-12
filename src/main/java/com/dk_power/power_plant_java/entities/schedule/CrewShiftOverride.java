@@ -15,16 +15,17 @@ import org.hibernate.annotations.Where;
 import java.time.LocalDate;
 
 /**
- * Schedule v2 — a temporary per-crew shift override for a date window (the "outage schedule").
- * During an outage a crew often holds a single shift instead of following its rotation — e.g.
- * crews A+B stay on nights and C+D work days for three weeks, with no switching. For each day in
- * [{@link #startDate}, {@link #endDate}] the materialiser pins {@link #crew} to {@link #shift}
- * ({@code D}/{@code N}/{@code OFF}) and skips the normal {@link CrewRotation} cycle; the rotation
- * resumes automatically once the window ends (the cycle math is absolute-epoch-anchored, so a crew
- * picks up wherever its cycle would have been).
+ * Schedule v2 — a per-crew ROTATION FREEZE for a date window (used for outages / smooth transitions).
+ * During [{@link #startDate}, {@link #endDate}] the crew keeps its <b>exact normal on/off pattern</b>
+ * from its {@link CrewRotation} (same working days, same off days — still 2-on/2-off/5-on/5-off) but
+ * <b>stops switching day↔night</b>: every working day is held to {@link #shift} ({@code D} or
+ * {@code N}). {@code OFF} drops the crew from the schedule for the whole window. The rotation resumes
+ * automatically once the window ends (the cycle math is absolute-epoch-anchored, so the crew picks up
+ * wherever its cycle would have been).
  *
- * <p>Grouped for the UI by {@link #label} (the outage name) so a single outage can pin several
- * crews at once.
+ * <p>One row per crew — each carries its OWN {@code startDate}/{@code endDate} so crews can stop and
+ * resume rotating at different times (align to each crew's block boundary for a smooth hand-over).
+ * The optional {@link #label} just groups related freezes in the UI.
  */
 @Entity
 @Table(name = "crew_shift_override")

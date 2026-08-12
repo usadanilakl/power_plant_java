@@ -8,12 +8,13 @@ import { AuthService } from '../../auth/auth.service';
 import { ServerStatusService } from '../../services/server-status.service';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
+import { PasswordToggleDirective } from '../../shared/input-fields/password-toggle.directive';
 import { SignatureInputComponent } from '../../shared/input-fields/signature-input/signature-input.component';
 
 @Component({
   selector: 'app-user-profile-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MainLayoutComponent, RouterMenuComponent, SignatureInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, MainLayoutComponent, RouterMenuComponent, SignatureInputComponent, PasswordToggleDirective],
   templateUrl: './user-profile-page.component.html',
   styleUrl: './user-profile-page.component.css'
 })

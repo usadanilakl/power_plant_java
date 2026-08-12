@@ -5,6 +5,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { UserService } from '../../../services/user.service';
 import { UserDto } from '../../../models/user.model';
+import { PasswordToggleDirective } from '../../../shared/password-toggle/password-toggle.directive';
 
 interface UserForm {
   username: string;
@@ -25,7 +26,7 @@ interface UserForm {
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, PasswordToggleDirective],
   template: `
     <app-main-layout header="User Management">
       <ng-container header>
@@ -88,7 +89,7 @@ interface UserForm {
               </div>
               <div class="form-group">
                 <label>{{ editingUser ? 'New Password (leave blank to keep)' : 'Password' }}</label>
-                <input type="password" [(ngModel)]="form.password" name="password" [required]="!editingUser" />
+                <input type="password" [(ngModel)]="form.password" name="password" [required]="!editingUser" appPasswordToggle />
               </div>
             </div>
             <div class="form-row">

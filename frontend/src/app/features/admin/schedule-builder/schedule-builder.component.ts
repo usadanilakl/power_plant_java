@@ -114,13 +114,14 @@ export class ScheduleBuilderComponent implements OnInit {
   editingRelief: ReliefRotation | null = null;
   newReliefMemberId?: number;
 
-  // Outages — temporary per-crew shift pins for a date window (crews hold a shift, no rotation switching).
+  // Rotation freezes — per-crew: during the window the crew keeps its normal on/off pattern but holds
+  // one shift-type (no day/night switching). Each row has its OWN dates.
   crewShiftOverrides = signal<CrewShiftOverride[]>([]);
-  readonly OUTAGE_SHIFTS = [
-    { code: '', label: '— (rotation)' }, { code: 'D', label: 'Day' }, { code: 'N', label: 'Night' }, { code: 'OFF', label: 'Off' },
+  readonly FREEZE_SHIFTS = [
+    { code: 'D', label: 'Days' }, { code: 'N', label: 'Nights' }, { code: 'OFF', label: 'Off (no work)' },
   ];
-  /** Draft outage: a shared window + label, plus a per-crew shift pick ('' = leave the crew on its rotation). */
-  editingOutage: { label: string; startDate?: string; endDate?: string; crewShifts: Record<number, string> } | null = null;
+  /** Draft rotation-freeze for a single crew (crew + held shift + its own start/end). */
+  editingFreeze: CrewShiftOverride | null = null;
 
   readonly PTO_STATUSES = ['PENDING_MANUAL_REVIEW', 'PENDING', 'APPROVED', 'REJECTED', ''];
   ptoRequests = signal<PtoRequest[]>([]);
@@ -180,7 +181,7 @@ export class ScheduleBuilderComponent implements OnInit {
     if (t === 'oncall') this.loadOnCall();
     if (t === 'pto') this.loadPto();
     if (t === 'relief') this.loadRelief();
-    if (t === 'outages') this.loadOutages();
+    if (t === 'outages') this.loadFreezes();
   }
   private flash(m: string): void { this.message.set(m); setTimeout(() => this.message.set(null), 3500); }
   private errText(e: any): string { return e?.error?.message ?? e?.message ?? 'error'; }
@@ -493,53 +494,42 @@ export class ScheduleBuilderComponent implements OnInit {
     });
   }
 
-  // ---- outages (temporary per-crew shift pins) ----
-  loadOutages(): void {
+  // ---- rotation freezes (per-crew: hold shift-type over a window, keep the on/off pattern) ----
+  loadFreezes(): void {
     this.fetching.set(true);
     this.api.listCrewShiftOverrides().subscribe({
       next: r => { this.crewShiftOverrides.set(r.responseData ?? []); this.fetching.set(false); },
       error: e => { this.fetching.set(false); this.flash('Load failed: ' + this.errText(e)); },
     });
   }
-  newOutage(): void { this.editingOutage = { label: '', startDate: undefined, endDate: undefined, crewShifts: {} }; }
-  cancelOutage(): void { this.editingOutage = null; }
-  saveOutage(): void {
-    const o = this.editingOutage;
+  newFreeze(): void { this.editingFreeze = { label: '', crewId: undefined, shift: 'D', startDate: undefined, endDate: undefined, isActive: true }; }
+  editFreeze(o: CrewShiftOverride): void { this.editingFreeze = { ...o }; }
+  cancelFreeze(): void { this.editingFreeze = null; }
+  saveFreeze(): void {
+    const o = this.editingFreeze;
     if (!o) return;
+    if (o.crewId == null) { this.flash('Pick a crew'); return; }
     if (!o.startDate || !o.endDate) { this.flash('Pick a start and end date'); return; }
-    const rows = this.crews()
-      .filter(c => c.id != null && o.crewShifts[c.id!])
-      .map(c => this.api.saveCrewShiftOverride({
-        label: o.label || 'Outage', startDate: o.startDate, endDate: o.endDate,
-        crewId: c.id, shift: o.crewShifts[c.id!], isActive: true,
-      }));
-    if (!rows.length) { this.flash('Pick a shift for at least one crew'); return; }
+    if (!o.shift) { this.flash('Pick the held shift'); return; }
     this.loading.set(true);
-    forkJoin(rows).subscribe({
-      next: () => { this.loading.set(false); this.editingOutage = null; this.flash('Outage saved'); this.loadOutages(); },
+    this.api.saveCrewShiftOverride({ ...o, isActive: o.isActive ?? true }).subscribe({
+      next: () => { this.loading.set(false); this.editingFreeze = null; this.flash('Rotation freeze saved'); this.loadFreezes(); },
       error: e => { this.loading.set(false); this.flash('Save failed: ' + this.errText(e)); },
     });
   }
-  deleteOutage(o: CrewShiftOverride): void {
-    if (o.id == null || !confirm('Remove this crew pin?')) return;
+  deleteFreeze(o: CrewShiftOverride): void {
+    if (o.id == null || !confirm('Remove this rotation freeze?')) return;
     this.api.deleteCrewShiftOverride(o.id).subscribe({
-      next: () => { this.flash('Removed'); this.loadOutages(); },
+      next: () => { this.flash('Removed'); this.loadFreezes(); },
       error: e => this.flash('Delete failed: ' + this.errText(e)),
     });
   }
-  /** Group the flat crew-pins by outage (label + window) for the list. */
-  outageGroups = computed(() => {
-    const m = new Map<string, CrewShiftOverride[]>();
-    for (const o of this.crewShiftOverrides()) {
-      const k = (o.label || 'Outage') + '|' + (o.startDate ?? '') + '|' + (o.endDate ?? '');
-      const arr = m.get(k); if (arr) arr.push(o); else m.set(k, [o]);
-    }
-    return Array.from(m.values()).map(rows => ({
-      label: rows[0].label || 'Outage', startDate: rows[0].startDate, endDate: rows[0].endDate, rows,
-    }));
-  });
-  outageShiftLabel(code?: string): string {
-    return this.OUTAGE_SHIFTS.find(s => s.code === code)?.label ?? (code ?? '');
+  /** Freezes sorted by start date then crew — the flat list. */
+  freezeRows = computed(() =>
+    [...this.crewShiftOverrides()].sort((a, b) =>
+      (a.startDate ?? '').localeCompare(b.startDate ?? '') || (a.crewName ?? '').localeCompare(b.crewName ?? '')));
+  freezeShiftLabel(code?: string): string {
+    return this.FREEZE_SHIFTS.find(s => s.code === code)?.label ?? (code ?? '');
   }
 
   // ---- materialize ----

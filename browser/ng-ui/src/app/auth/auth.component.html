@@ -42,14 +42,14 @@
 
       <form [formGroup]="loginForm" (ngSubmit)="onSignIn()">
         <div class="form-group">
-          <label for="login-email">Email</label>
+          <label for="login-email">Email or Username</label>
           <input id="login-email" type="text" formControlName="email" autocomplete="username" readonly class="readonly-input">
         </div>
 
         <div class="form-group">
           <label for="login-password">Password</label>
           <input id="login-password" type="password" formControlName="password" autocomplete="current-password"
-                 placeholder="Enter your password">
+                 placeholder="Enter your password" appPasswordToggle>
         </div>
 
         <button type="submit" class="password-login-btn" [disabled]="loginForm.invalid || isLoading">
@@ -115,7 +115,7 @@
         @if (hasInternet) {
           <div class="form-group">
             <label for="signup-password">Password</label>
-            <input id="signup-password" type="password" formControlName="password" autocomplete="new-password" placeholder="Min 8 characters">
+            <input id="signup-password" type="password" formControlName="password" autocomplete="new-password" placeholder="Min 8 characters" appPasswordToggle>
             <div *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched" class="error-text">
               Password must be at least 8 characters.
             </div>

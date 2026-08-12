@@ -77,9 +77,16 @@ public class PwaAuthController {
     public ResponseEntity<?> refresh(@RequestBody RefreshRequest req) {
         try {
             var claims = jwtService.validateToken(req.token());
-            String email = claims.getSubject();
+            String email = jwtService.extractEmail(claims);
 
-            User user = userRepo.findFirstByEmailOrderByIdAsc(email);
+            // Email OR username signs a user in, so the subject of a username-only account is its
+            // username — try both before invalidating the session.
+            User user = email == null ? null : userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(email);
+            if (user == null) {
+                String username = jwtService.extractUsername(claims);
+                if (username == null) username = email;
+                if (username != null) user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+            }
             if (user == null) {
                 return ResponseEntity.status(401).body(Map.of(
                         "error", "INVALID_TOKEN", "message", "Token is no longer valid"));

@@ -5,12 +5,13 @@ import { Router } from '@angular/router';
 import { UserSetupService, PwaUserData } from '../../services/user-setup.service';
 import { ServerApiService } from '../../services/server-api.service';
 import { ServerStatusService } from '../../services/server-status.service';
+import { PasswordToggleDirective } from '../../shared/input-fields/password-toggle.directive';
 import { SignatureInputComponent } from '../../shared/input-fields/signature-input/signature-input.component';
 
 @Component({
   selector: 'app-user-setup-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SignatureInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, SignatureInputComponent, PasswordToggleDirective],
   templateUrl: './user-setup-page.component.html',
   styleUrl: './user-setup-page.component.css'
 })

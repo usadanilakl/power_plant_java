@@ -659,11 +659,11 @@ public class NgScheduleV2Service {
     }
 
     private void rematerialize() {
-        try {
-            materialisation.materializeDefaultHorizon();
-        } catch (Exception e) {
-            log.warn("[ScheduleV2] Materialisation after edit failed (authoring committed): {}", e.getMessage());
-        }
+        // Runs in THIS transaction so the materialised ShiftDay commits together with the authoring
+        // save. materializeRange never throws (it catches internally, see ScheduleMaterialisationService)
+        // — critical, because a nested @Transactional that throws marks the shared transaction
+        // rollback-only even when the caller catches it, which would fail the save itself.
+        materialisation.materializeDefaultHorizon();
     }
 
     // ---- mappers ------------------------------------------------------------

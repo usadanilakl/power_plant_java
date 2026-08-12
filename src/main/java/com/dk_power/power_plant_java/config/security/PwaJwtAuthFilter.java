@@ -77,7 +77,14 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             String email = jwtService.extractEmail(claims);
             boolean hubIssued = jwtService.isHubIssued(claims);
 
-            User user = userRepo.findFirstByEmailOrderByIdAsc(email);
+            User user = email == null ? null : userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(email);
+            if (user == null) {
+                // Accounts can sign in by email OR username, so a username-only account gets a token
+                // whose subject is its username — resolve that too before declaring the user gone.
+                String username = jwtService.extractUsername(claims);
+                if (username == null) username = email;
+                if (username != null) user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+            }
             if (user == null) {
                 if (!hubIssued) {
                     // Supabase-only user whose hub row doesn't exist yet: auto-provision it on this

@@ -9,7 +9,7 @@
       <form [formGroup]="form" (ngSubmit)="completeRegistration()">
         <div class="form-field">
           <label for="password">Password *</label>
-          <input id="password" type="password" formControlName="password" autocomplete="new-password" placeholder="Minimum 8 characters">
+          <input id="password" type="password" formControlName="password" autocomplete="new-password" placeholder="Minimum 8 characters" appPasswordToggle>
           <span class="error" *ngIf="getError('password')">{{ getError('password') }}</span>
         </div>
 
@@ -61,7 +61,7 @@
         @if (showPasswordField) {
           <div class="form-field">
             <label for="password">Password *</label>
-            <input id="password" type="password" formControlName="password" autocomplete="new-password" placeholder="Minimum 8 characters">
+            <input id="password" type="password" formControlName="password" autocomplete="new-password" placeholder="Minimum 8 characters" appPasswordToggle>
             <span class="error" *ngIf="getError('password')">{{ getError('password') }}</span>
             <span class="hint">Used for server account registration</span>
           </div>

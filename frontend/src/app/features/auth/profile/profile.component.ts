@@ -6,11 +6,12 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { ThemeService } from '../../../shared/theme-toggle/theme.service';
 import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
+import { PasswordToggleDirective } from '../../../shared/password-toggle/password-toggle.directive';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, PasswordToggleDirective],
   template: `
     <app-main-layout header="My Profile">
       <ng-container header>
@@ -95,15 +96,15 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
 
             <div class="form-group">
               <label for="currentPassword">Current Password</label>
-              <input id="currentPassword" type="password" [(ngModel)]="currentPassword" placeholder="Enter current password" />
+              <input id="currentPassword" type="password" [(ngModel)]="currentPassword" placeholder="Enter current password" appPasswordToggle />
             </div>
             <div class="form-group">
               <label for="newPassword">New Password</label>
-              <input id="newPassword" type="password" [(ngModel)]="newPassword" placeholder="Enter new password" (ngModelChange)="updateStrength()" />
+              <input id="newPassword" type="password" [(ngModel)]="newPassword" placeholder="Enter new password" (ngModelChange)="updateStrength()" appPasswordToggle />
             </div>
             <div class="form-group">
               <label for="confirmPassword">Confirm New Password</label>
-              <input id="confirmPassword" type="password" [(ngModel)]="confirmPassword" placeholder="Confirm new password" />
+              <input id="confirmPassword" type="password" [(ngModel)]="confirmPassword" placeholder="Confirm new password" appPasswordToggle />
             </div>
 
             <!-- Strength Meter -->
