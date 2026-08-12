@@ -27,25 +27,27 @@ test.describe('Authentication - Login/Logout', () => {
       expect(body.id).toBeDefined();
     });
 
-    test('should return 401 for wrong password', async () => {
+    test('should return 400 for wrong password', async () => {
       const response = await auth.login(AuthPage.ADMIN_EMAIL, 'wrong-password');
-      expect(response.status()).toBe(401);
+      // 400, not 401: a 401 on this same-origin endpoint makes the reverse proxy's
+      // WWW-Authenticate header raise the browser's native credential dialog (0004d8906).
+      expect(response.status()).toBe(400);
 
       const body = await response.json();
       expect(body.error).toBe('INVALID_CREDENTIALS');
     });
 
-    test('should return 401 for non-existent email', async () => {
+    test('should return 400 for non-existent email', async () => {
       const response = await auth.login('nobody@test.local', 'password');
-      expect(response.status()).toBe(401);
+      expect(response.status()).toBe(400);
 
       const body = await response.json();
       expect(body.error).toBe('INVALID_CREDENTIALS');
     });
 
-    test('should return 401 for empty credentials', async () => {
+    test('should return 400 for empty credentials', async () => {
       const response = await auth.login('', '');
-      expect(response.status()).toBe(401);
+      expect(response.status()).toBe(400);
     });
   });
 

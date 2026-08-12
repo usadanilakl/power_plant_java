@@ -37,11 +37,31 @@ public class PwaUserController {
             log.info("[PWA User] Registration request: pwaUserUuid={}, email={}", dto.getPwaUserUuid(), dto.getEmail());
             PwaRegistrationResult result = pwaUserService.registerPwaUser(dto);
             return ResponseEntity.ok(new NgApiResponse<>(result, result.getMessage()));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // A UNIQUE index rejected the row. The service pre-checks the ones it can, so reaching
+            // here means a concurrent registration or a column it doesn't guard — either way the
+            // user needs a sentence, not a Hibernate batch dump.
+            log.warn("[PWA User] Registration rejected by a unique constraint: email={} pwaUserUuid={} cause={}",
+                    dto.getEmail(), dto.getPwaUserUuid(), rootMessage(e));
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(
+                    PwaRegistrationResult.error("This account could not be created — some of these details are "
+                            + "already registered. Try signing in, or use a different email."),
+                    "Registration failed"));
         } catch (Exception e) {
             log.error("[PWA User] Registration failed: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(PwaRegistrationResult.error(e.getMessage()), "Registration failed"));
         }
+    }
+
+    /** Innermost cause message — the outer Spring/Hibernate wrappers repeat the whole SQL statement. */
+    private static String rootMessage(Throwable t) {
+        Throwable root = t;
+        while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+        String message = root.getMessage();
+        if (message == null) return root.getClass().getSimpleName();
+        int newline = message.indexOf('\n');
+        return newline > 0 ? message.substring(0, newline) : message;
     }
 
     @GetMapping("/status/{pwaUserUuid}")

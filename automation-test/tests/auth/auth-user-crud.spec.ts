@@ -175,7 +175,8 @@ test.describe('User Management (Admin CRUD)', () => {
 
       // Old password should fail
       const oldLoginResponse = await freshAuth.login(email, 'oldPassword');
-      expect(oldLoginResponse.status()).toBe(401);
+      // Rejected credentials answer 400, not 401 — see 0004d8906.
+      expect(oldLoginResponse.status()).toBe(400);
 
       await ctx.close();
     });

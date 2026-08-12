@@ -52,6 +52,21 @@ public interface UserRepo extends BaseRepository<User> {
 
     User findFirstByPwaUserUuidOrderByIdAsc(String pwaUserUuid);
 
+    // ── Unique-constraint oracles that SEE soft-deleted rows ──
+    // User carries @Where(clause = "deleted IS NOT TRUE"), so every derived query above is blind to
+    // soft-deleted rows — but the DB's UNIQUE indexes on pwa_user_uuid / email are not. A value held
+    // by a soft-deleted row therefore passes the JPA-level guard and then blows up as a 23505 on
+    // INSERT. These native queries count EVERY row, which is exactly what the index enforces.
+
+    @Query(value = "SELECT COUNT(*) FROM users WHERE pwa_user_uuid = :uuid", nativeQuery = true)
+    long countAnyByPwaUserUuidIncludingDeleted(@Param("uuid") String pwaUserUuid);
+
+    /** Exact-case on purpose: it models the DB index, which is case-sensitive, not identity. */
+    @Query(value = "SELECT COUNT(*) FROM users WHERE email = :email", nativeQuery = true)
+    long countAnyByEmailIncludingDeleted(@Param("email") String email);
+
+    boolean existsByEmailIgnoreCase(String email);
+
     // ── Dual-authority auth (Hub + Supabase) ──
 
     User findFirstBySupabaseUuidOrderByIdAsc(String supabaseUuid);

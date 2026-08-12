@@ -208,9 +208,13 @@ export class AuthComponent implements OnInit {
     this.errorMessage = null;
     const { name, email, phone, company, password, signature } = this.signupForm.value;
     const existingData = this.userSetupService.getUserData();
-    const pwaUserUuid = existingData?.uuid ?? crypto.randomUUID();
+    // The stored uuid belongs to whoever set this device up. A DIFFERENT person signing up here needs
+    // their own — reusing it made the hub treat them as the existing account (or collide on the
+    // uuid's unique index). Shared plant tablets hit this routinely.
+    const isSamePerson = !!existingData?.email && existingData.email.trim().toLowerCase() === String(email).trim().toLowerCase();
+    let pwaUserUuid = isSamePerson && existingData?.uuid ? existingData.uuid : crypto.randomUUID();
 
-    this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: false });
+    this.userSetupService.saveUserData({ uuid: pwaUserUuid, name, email, phone, company, signature: signature ?? undefined, registeredOnServer: false });
 
     if (!navigator.onLine) {
       // Truly offline (no hub AND no Supabase): keep basic info on the device; the user finishes signing
@@ -228,7 +232,7 @@ export class AuthComponent implements OnInit {
           // Hub was down — the account was created in Supabase. Sign the user in via Supabase so they
           // can use the app right now; the hub provisions the row and admin-approves (for plant access)
           // when it comes back, and full profile sync follows.
-          this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
+          this.userSetupService.saveUserData({ uuid: pwaUserUuid, name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
           this.authService.authenticate(email, password).subscribe({
             next: () => { this.isLoading = false; this.router.navigate([this.returnUrl]); },
             error: () => {
@@ -246,7 +250,10 @@ export class AuthComponent implements OnInit {
           return;
         }
         // Hub success — mark registered, upload signature, then sign in + sync + navigate.
-        this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
+        // The hub may have assigned a different uuid than we asked for; everything keyed on it
+        // (signature upload, status polling) must follow the hub's value.
+        if (outcome.pwaUserUuid) pwaUserUuid = outcome.pwaUserUuid;
+        this.userSetupService.saveUserData({ uuid: pwaUserUuid, name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
         if (signature) {
           this.serverApi.uploadSignatureByUuid(pwaUserUuid, signature).subscribe({
             error: (err: any) => console.error('[Auth] Signature upload failed:', err)
@@ -265,7 +272,7 @@ export class AuthComponent implements OnInit {
               this.step = 'pending_approval';
               this.errorMessage = null;
             } else {
-              this.errorMessage = err?.message || 'Registration failed. Please try again.';
+              this.errorMessage = this.registrationErrorText(err);
             }
           }
         });
@@ -276,10 +283,23 @@ export class AuthComponent implements OnInit {
           this.step = 'pending_approval';
           this.errorMessage = null;
         } else {
-          this.errorMessage = err?.message || 'Registration failed. Please try again.';
+          this.errorMessage = this.registrationErrorText(err);
         }
       }
     });
+  }
+
+  /**
+   * registerUserRaw preserves the HttpErrorResponse, so the hub's own explanation ("this email
+   * belongs to a closed account", …) is in the body. err.message is only Angular's
+   * "Http failure response for <url>: 400 Bad Request", which tells the user nothing.
+   */
+  private registrationErrorText(err: any): string {
+    const body = err?.error;
+    const serverMessage = body?.responseData?.message ?? body?.message;
+    if (typeof serverMessage === 'string' && serverMessage.trim()) return serverMessage;
+    if (typeof err?.message === 'string' && !/^Http failure/i.test(err.message)) return err.message;
+    return 'Registration failed. Please try again.';
   }
 
   onForgotPassword(): void {

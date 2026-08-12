@@ -63,4 +63,20 @@ public class RedTagAutomationProperties {
 
     /** Master switch — when false every automation entry point fails fast with a clear message. */
     private boolean enabled = true;
+
+    /**
+     * Whether to register the global ESC hotkey that pauses a running build.
+     *
+     * <p>Registering it is the ONLY eager SikuliX entry point in the app: it initialises the
+     * SikuliX runtime at startup — loading {@code opencv_java430.dll} plus JNA and installing an
+     * OS-wide keyboard hook — on every desktop, whether or not an automation is ever run. Every
+     * other SikuliX path is lazy ({@code SikuliDriver.screen()}, {@code OCR.readLines}).
+     *
+     * <p>Opt-in ({@code false} by default) so the native layer never enters the JVM on the
+     * many desktops that never run Red Tag. Set to {@code true} in the device config of a
+     * machine that actually runs automations and wants ESC-to-pause. Automation itself works
+     * either way — {@code SikuliDriver} loads SikuliX lazily when a build starts; only the
+     * global ESC pause depends on this flag.
+     */
+    private boolean hotkeyEnabled = false;
 }

@@ -39,6 +39,8 @@ export interface SignUpOutcome {
   viaSupabase: boolean;
   pendingApproval: boolean;
   message: string;
+  /** The uuid the hub stored — may differ from the one we sent. Persist it. */
+  pwaUserUuid?: string;
 }
 
 /**
@@ -159,6 +161,7 @@ export class AuthService {
         viaSupabase: false,
         pendingApproval: false,
         message: result?.message ?? 'Registered',
+        pwaUserUuid: result?.pwaUserUuid,
       } as SignUpOutcome)),
       catchError(err => {
         const { hubDown } = this.classifyHubError(err);

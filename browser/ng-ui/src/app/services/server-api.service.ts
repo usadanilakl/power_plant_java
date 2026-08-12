@@ -65,6 +65,12 @@ export interface PwaRegistrationResult {
   status: 'created' | 'already_exists' | 'email_taken' | 'error';
   message: string;
   isActive: boolean;
+  /**
+   * The uuid the hub actually stored. Differs from the one we sent when it was already taken (another
+   * account registered from this device, or a deleted row still holds it), so it must be persisted —
+   * the signature upload and status polling key on it.
+   */
+  pwaUserUuid?: string;
 }
 
 export interface PwaRegistrationStatus {

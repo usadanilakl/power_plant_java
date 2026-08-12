@@ -34,8 +34,9 @@ test.describe('Endpoint Protection', () => {
       const response = await page.request.post(`${backendUrl}/api/auth/login`, {
         data: { email: 'nobody@test.local', password: 'wrong' },
       });
-      // Should get 401 for bad credentials, not 403 for endpoint protection
-      expect(response.status()).toBe(401);
+      // Should get 400 for bad credentials, not 403 for endpoint protection. (400 rather than
+      // 401 so the proxy's WWW-Authenticate header can't trigger a native login dialog — 0004d8906.)
+      expect(response.status()).toBe(400);
       const body = await response.json();
       expect(body.error).toBe('INVALID_CREDENTIALS');
     });

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.automation.redtag.session;
 
+import com.dk_power.power_plant_java.sevice.automation.redtag.config.RedTagAutomationProperties;
 import com.dk_power.power_plant_java.sevice.automation.redtag.core.AutomationException;
 import com.dk_power.power_plant_java.sevice.automation.redtag.progress.RedTagProgressBroadcaster;
 import jakarta.annotation.PostConstruct;
@@ -37,6 +38,7 @@ import java.util.function.Supplier;
 public class StepEngine {
 
     private final RedTagProgressBroadcaster broadcaster;
+    private final RedTagAutomationProperties properties;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private volatile AutomationSession session;
@@ -54,9 +56,21 @@ public class StepEngine {
      * for Red Tag. A SikuliX global hotkey fires regardless of which window is
      * active. Wrapped in {@code try/catch} so the app still starts on a
      * headless host (hub/server profiles) where the keyboard hook can't bind.
+     *
+     * <p>Gated on {@code redtag.automation.enabled} + {@code redtag.automation.hotkey-enabled}
+     * because this call is the app's ONLY eager SikuliX entry point — it loads
+     * {@code opencv_java430.dll} + JNA and installs an OS-wide keyboard hook at startup on
+     * every desktop, including ones that never run an automation. Skipping it keeps the
+     * native layer out of the JVM entirely.
      */
     @PostConstruct
     void registerHotkeys() {
+        if (!properties.isEnabled() || !properties.isHotkeyEnabled()) {
+            log.info("[RedTag] Global ESC hotkey NOT registered (enabled={}, hotkey-enabled={}) "
+                            + "— SikuliX native layer stays unloaded on this device",
+                    properties.isEnabled(), properties.isHotkeyEnabled());
+            return;
+        }
         try {
             Env.addHotkey(Key.ESC, 0, new HotkeyListener() {
                 @Override

@@ -140,19 +140,49 @@ public class JwtService {
 
     // ── Signing (hub) ───────────────────────────────────────────────────────
 
+    /** Audience/purpose that mark a hub token as an interactive-session credential. */
+    public static final String SESSION_AUDIENCE = "pwa-session";
+    public static final String PURPOSE_SESSION = SESSION_AUDIENCE;
+
+    /**
+     * True when a verified hub token is allowed to establish or refresh an interactive session.
+     *
+     * <p>A valid hub signature is NOT sufficient on its own: {@link #generateIcalToken} mints a
+     * 90-day, RS256, {@code iss=power-plant-hub} token carrying the same {@code userId} claim, and
+     * that one is deliberately handed to third parties (it is pasted into Google/Apple Calendar as a
+     * {@code webcal://} URL). {@link #validateToken} sets no audience expectation, so without this
+     * check anything that resolves a user from {@code userId} would happily promote a leaked
+     * calendar link into a full session — and {@code /api/pwa/auth/refresh} would then reissue it as
+     * a fresh 72-hour token beyond the reach of the iCal revocation nonce.
+     *
+     * <p>Non-hub (Supabase) tokens are governed by their own issuer and audience and pass through.
+     */
+    public boolean isSessionToken(Claims claims) {
+        if (!isHubIssued(claims)) return true;
+        Object purpose = claims.get("purpose");
+        if (purpose instanceof String s && !s.isBlank()) return PURPOSE_SESSION.equals(s);
+        // Minted before the purpose claim existed. Those carried no audience, while every scoped
+        // hub token declares one — so "no audience" is the safe reading for a legacy session token.
+        var audience = claims.getAudience();
+        return audience == null || audience.isEmpty();
+    }
+
     public String generateToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
         // Login accepts an email OR a username (UserDetailsServiceImpl), so an account can legitimately
-        // have no email. Falling back to the username keeps the subject non-null, which is what the
-        // filter and the refresh endpoint resolve the user from.
+        // have no email — and a JWT with a null `sub` is malformed. Fall back to the username.
+        // NOTE: the subject is an identity LABEL only. Everything that resolves the account back from
+        // a token keys on the userId claim below (see PwaTokenUserResolver) precisely because
+        // username is not a unique column.
         String email = user.getEmail();
         String subject = (email == null || email.isBlank()) ? user.getUsername() : email;
         return Jwts.builder()
                 .issuer(hubIssuer)
                 .subject(subject)
+                .audience().add(SESSION_AUDIENCE).and()
                 .claim("email", user.getEmail())
-                .claim("username", user.getUsername())
+                .claim("purpose", PURPOSE_SESSION)
                 .claim("userId", user.getId())
                 .claim("roles", user.getRoles())
                 .claim("permissionLevel", user.getPermissionLevel())
@@ -373,14 +403,6 @@ public class JwtService {
         return claims.getSubject();
     }
 
-    /**
-     * The username on a hub token, when the account has one. Accounts can sign in by email OR
-     * username, so an email-keyed lookup alone misses username-only accounts.
-     */
-    public String extractUsername(Claims claims) {
-        Object username = claims.get("username");
-        return username instanceof String s && !s.isBlank() ? s : null;
-    }
 
     public boolean isHubIssued(Claims claims) {
         return hubIssuer.equals(claims.getIssuer());

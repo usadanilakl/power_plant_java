@@ -2,7 +2,6 @@ package com.dk_power.power_plant_java.config.security;
 
 import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.entities.users.User;
-import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -27,7 +26,7 @@ import java.util.Set;
 public class PwaJwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepo userRepo;
+    private final PwaTokenUserResolver tokenUserResolver;
     private final ObjectMapper objectMapper;
     private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
 
@@ -77,14 +76,7 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             String email = jwtService.extractEmail(claims);
             boolean hubIssued = jwtService.isHubIssued(claims);
 
-            User user = email == null ? null : userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(email);
-            if (user == null) {
-                // Accounts can sign in by email OR username, so a username-only account gets a token
-                // whose subject is its username — resolve that too before declaring the user gone.
-                String username = jwtService.extractUsername(claims);
-                if (username == null) username = email;
-                if (username != null) user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
-            }
+            User user = tokenUserResolver.resolve(claims);
             if (user == null) {
                 if (!hubIssued) {
                     // Supabase-only user whose hub row doesn't exist yet: auto-provision it on this

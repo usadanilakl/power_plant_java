@@ -31,6 +31,7 @@ public class PwaAuthController {
     private final UserRepo userRepo;
     private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
     private final com.dk_power.power_plant_java.sevice.auth.SupabaseAdminClient supabaseAdminClient;
+    private final com.dk_power.power_plant_java.config.security.PwaTokenUserResolver tokenUserResolver;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -79,14 +80,10 @@ public class PwaAuthController {
             var claims = jwtService.validateToken(req.token());
             String email = jwtService.extractEmail(claims);
 
-            // Email OR username signs a user in, so the subject of a username-only account is its
-            // username — try both before invalidating the session.
-            User user = email == null ? null : userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(email);
-            if (user == null) {
-                String username = jwtService.extractUsername(claims);
-                if (username == null) username = email;
-                if (username != null) user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
-            }
+            // Resolve by the token's userId claim (hub) / unique supabaseUuid+email (Supabase) — never
+            // by username, which is not unique. This path mints a NEW hub token, so a mismatched row
+            // here would hand out a durable session for the wrong person.
+            User user = tokenUserResolver.resolve(claims);
             if (user == null) {
                 return ResponseEntity.status(401).body(Map.of(
                         "error", "INVALID_TOKEN", "message", "Token is no longer valid"));

@@ -38,17 +38,31 @@ export class UserSetupService {
     }
   }
 
-  saveUserData(data: Omit<PwaUserData, 'uuid' | 'createdAt' | 'updatedAt'>): PwaUserData {
+  /**
+   * @param data pass `uuid` to claim a specific identifier — needed when a second person registers on
+   *        a device that already holds someone else's uuid, and when the hub reassigns one. Omit it
+   *        and the existing uuid is kept (a fresh one is minted only on first save).
+   */
+  saveUserData(data: Omit<PwaUserData, 'uuid' | 'createdAt' | 'updatedAt'> & { uuid?: string }): PwaUserData {
     const existing = this.getUserData();
     const userData: PwaUserData = {
       ...data,
       registeredOnServer: data.registeredOnServer ?? existing?.registeredOnServer ?? false,
-      uuid: existing?.uuid ?? crypto.randomUUID(),
+      uuid: data.uuid ?? existing?.uuid ?? crypto.randomUUID(),
       createdAt: existing?.createdAt ?? new Date(),
       updatedAt: existing ? new Date() : undefined
     };
     localStorage.setItem(this.storageKey, JSON.stringify(userData));
     return userData;
+  }
+
+  /** Point this device at a different account identifier (hub reassignment / account switch). */
+  setUuid(uuid: string): void {
+    const data = this.getUserData();
+    if (!data || !uuid || data.uuid === uuid) return;
+    data.uuid = uuid;
+    data.updatedAt = new Date();
+    localStorage.setItem(this.storageKey, JSON.stringify(data));
   }
 
   markRegistered(): void {
