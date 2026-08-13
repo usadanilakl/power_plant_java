@@ -210,21 +210,51 @@ public class FieldChangeCompactor {
 
         // Gate a key's compaction on its LATEST being safe to keep as the sole survivor:
         //  - terminal-good in apply-state (durably applied / no-op-superseded), OR
+        //  - terminal DEAD_LETTER (the hub permanently gave up applying it): the latest is never a victim,
+        //    so a catching-up node still pulls it; its older predecessors will never become the effective
+        //    value again, so collapsing that history reclaims the dead weight instead of pinning it forever.
+        //    This is the primary balloon fix — high-churn fields on soft-deleted/absent entities dead-letter
+        //    on apply, and the terminal-good-only gate kept their ENTIRE churn history indefinitely, OR
         //  - has NO apply-state row AND is older than minAgeHours. That covers changes the apply-state
-        //    never tracked (the pre-durable backlog) or whose terminal-good row was aged out — after the
-        //    grace window a deferral would have resolved, and a dead-lettered latest still HAS a row so it
-        //    is (correctly) excluded here, keeping its last-applied predecessor.
+        //    never tracked (the pre-durable backlog) or whose terminal-good row was aged out.
+        // Still (correctly) pinned: a TRACKED latest that is non-terminal (DEFERRED / FAILED_RETRYABLE /
+        // PENDING) — those are in-flight and either resolve to terminal-good or escalate to DEAD_LETTER, at
+        // which point they compact by one of the branches above.
         Set<UUID> terminalGood = new HashSet<>(applyStateRepo.findTerminalGoodIds(latestIds));
+        Set<UUID> deadLetter = new HashSet<>(applyStateRepo.findDeadLetterIds(latestIds));
         Set<UUID> tracked = new HashSet<>(applyStateRepo.findExistingChangeIds(latestIds));
         Instant graceCutoff = Instant.now().minus(minAgeHours, ChronoUnit.HOURS);
 
+        // For a DEAD_LETTER latest we collapse the churn history, but NOT a terminal-good predecessor: if an
+        // earlier change to this field was APPLIED, that value is the hub's real current state, and a node
+        // whose snapshot predates it (or that replays the log) would diverge to the CREATE default if it were
+        // dropped. Keep those victims; drop the rest. In the balloon case — churn on a soft-deleted/absent
+        // entity — nothing ever applied, so all victims are dropped and only the latest remains. Queried in
+        // bounded batches because a single stuck key's victim set can be large.
+        List<UUID> deadLetterVictims = new ArrayList<>();
+        for (UUID latestId : latestIds) {
+            if (deadLetter.contains(latestId)) deadLetterVictims.addAll(victimsByLatest.get(latestId));
+        }
+        Set<UUID> terminalGoodVictims = new HashSet<>();
+        for (int i = 0; i < deadLetterVictims.size(); i += deleteBatch) {
+            terminalGoodVictims.addAll(applyStateRepo.findTerminalGoodIds(
+                    deadLetterVictims.subList(i, Math.min(i + deleteBatch, deadLetterVictims.size()))));
+        }
+
         List<UUID> toDelete = new ArrayList<>();
         for (UUID latestId : latestIds) {
-            boolean compactable = terminalGood.contains(latestId)
+            List<UUID> victims = victimsByLatest.get(latestId);
+            boolean latestIsEffectiveValue = terminalGood.contains(latestId)
                     || (!tracked.contains(latestId)
                         && latestTsById.get(latestId) != null
                         && latestTsById.get(latestId).isBefore(graceCutoff));
-            if (compactable) toDelete.addAll(victimsByLatest.get(latestId));
+            if (latestIsEffectiveValue) {
+                toDelete.addAll(victims);                       // latest IS the effective value → collapse all
+            } else if (deadLetter.contains(latestId)) {
+                for (UUID v : victims) {                         // keep any APPLIED predecessor (hub's real value)
+                    if (!terminalGoodVictims.contains(v)) toDelete.add(v);
+                }
+            }
         }
         if (toDelete.isEmpty()) return 0;
 
@@ -232,7 +262,13 @@ public class FieldChangeCompactor {
         for (int i = 0; i < toDelete.size(); i += deleteBatch) {
             List<UUID> batch = toDelete.subList(i, Math.min(i + deleteBatch, toDelete.size()));
             try {
-                Integer n = transactionTemplate.execute(st -> fieldChangeRepository.deleteByIdIn(batch));
+                // Delete the superseded FieldChange rows AND their apply-state in one tx, so compaction never
+                // just migrates bloat into hub_change_apply_state (DEAD_LETTER apply-state is never aged out).
+                Integer n = transactionTemplate.execute(st -> {
+                    int fc = fieldChangeRepository.deleteByIdIn(batch);
+                    applyStateRepo.deleteByChangeIdIn(batch);
+                    return fc;
+                });
                 if (n != null) deleted += n;
             } catch (Exception e) {
                 // Each batch is its own short transaction, so a lock clash with a live syncExchange (H2

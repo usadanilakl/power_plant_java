@@ -143,6 +143,48 @@ class FieldChangeCompactorIT {
     }
 
     @Test
+    @DisplayName("dead-letter fix: RECENT terminal DEAD_LETTER latest compacts its pinned history (+ drops victim apply-state)")
+    void compactsSupersededWhenLatestDeadLetter() {
+        // A high-churn field on an entity the hub can't apply (soft-deleted/absent) → every write dead-letters.
+        // These are RECENT (within minAgeHours) so the age fallback CANNOT be the reason — the terminal
+        // DEAD_LETTER disposition alone must unpin the history. Before the fix all three rows were kept forever.
+        UUID old1 = change("ShiftDay", 1400, "lastSyncedAt", "t1", now.minusSeconds(30), "DEAD_LETTER");
+        UUID old2 = change("ShiftDay", 1400, "lastSyncedAt", "t2", now.minusSeconds(20), "DEAD_LETTER");
+        UUID latest = change("ShiftDay", 1400, "lastSyncedAt", "t3", now.minusSeconds(10), "DEAD_LETTER");
+
+        compactor.runCompaction();
+
+        assertThat(rowsFor("ShiftDay", 1400, "lastSyncedAt"))
+                .as("terminal dead-letter latest: keep the latest, drain the pinned history").isEqualTo(1);
+        assertThat(exists(latest)).as("the latest is always kept").isTrue();
+        assertThat(exists(old1)).isFalse();
+        assertThat(exists(old2)).isFalse();
+        // The victims' apply-state must be gone too — otherwise the bloat just moves to hub_change_apply_state.
+        assertThat(applyStateRepo.findExistingChangeIds(java.util.List.of(old1, old2)))
+                .as("victim apply-state removed with the FieldChange rows").isEmpty();
+        assertThat(applyStateRepo.findExistingChangeIds(java.util.List.of(latest)))
+                .as("the surviving latest keeps its apply-state").containsExactly(latest);
+    }
+
+    @Test
+    @DisplayName("dead-letter fix: KEEPS a terminal-good predecessor under a DEAD_LETTER latest (no divergence)")
+    void keepsAppliedPredecessorUnderDeadLetterLatest() {
+        // Entity is PRESENT; v1 applied (hub's real value), then newer un-appliable values dead-letter (e.g.
+        // an enum constant / payload the hub's code can't deserialize). Dropping v1 would strand a node whose
+        // snapshot predates it on the CREATE default — so v1 must survive alongside the latest.
+        UUID v1applied = change("Equipment", 1500, "voltage", "480", now.minusSeconds(30), "APPLIED");
+        UUID midDead = change("Equipment", 1500, "voltage", "bad1", now.minusSeconds(20), "DEAD_LETTER");
+        UUID latestDead = change("Equipment", 1500, "voltage", "bad2", now.minusSeconds(10), "DEAD_LETTER");
+
+        compactor.runCompaction();
+
+        assertThat(exists(v1applied)).as("the applied predecessor is the hub's real value — keep it").isTrue();
+        assertThat(exists(latestDead)).as("the latest is always kept").isTrue();
+        assertThat(exists(midDead)).as("a non-applied superseded dead-letter is dropped").isFalse();
+        assertThat(rowsFor("Equipment", 1500, "voltage")).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("age fallback: compacts an OLD untracked latest (pre-durable backlog / aged-out gate row)")
     void compactsOldUntrackedLatest() {
         // No apply-state rows at all (the pre-durable backlog), and the latest is older than minAgeHours.
