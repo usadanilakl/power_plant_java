@@ -658,6 +658,71 @@ public class AdminFunctionalitiesService {
     }
 
     /**
+     * DIAGNOSTIC (read-only, hub-only): explain a client's pending backlog. Answers "is the big pending
+     * number genuine deliverable data, or inflated by _entity_ markers + dead-letter-pinned history?".
+     * Returns raw vs distinct-field pending, the busiest (entityType, fieldName) buckets, and the hub
+     * apply-state dead-letter breakdown (the compaction-pin driver). Heavy full-scan queries — run ad hoc.
+     */
+    public Map<String, Object> pendingBreakdown(String machineId, int limit) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (!"hub".equalsIgnoreCase(syncRole)) {
+            result.put("success", false);
+            result.put("error", "Pending breakdown is a hub diagnostic; this instance is not a hub.");
+            return result;
+        }
+        if (machineId == null || machineId.isBlank()) {
+            result.put("success", false);
+            result.put("error", "machineId is required.");
+            return result;
+        }
+        int topN = Math.min(Math.max(limit, 1), 200);
+        long rawPending = fieldChangeRepository.countPendingChangesForExcludingOrigin(machineId);
+        long distinctFieldPending = fieldChangeRepository.countDistinctPendingFieldsFor(machineId);
+
+        List<Map<String, Object>> topFields = new ArrayList<>();
+        long entityMarkerPending = 0;
+        for (Object[] r : fieldChangeRepository.pendingBreakdownByField(machineId, PageRequest.of(0, topN))) {
+            String fieldName = (String) r[1];
+            long count = ((Number) r[2]).longValue();
+            if ("_entity_".equals(fieldName)) entityMarkerPending += count; // one exact group when present in top-N
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("entityType", r[0]);
+            row.put("fieldName", fieldName);
+            row.put("count", count);
+            topFields.add(row);
+        }
+
+        result.put("success", true);
+        result.put("machineId", machineId);
+        result.put("rawPending", rawPending);
+        result.put("distinctFieldPending", distinctFieldPending);
+        result.put("entityMarkerPendingInTopN", entityMarkerPending);
+        result.put("inflationFactor", distinctFieldPending > 0
+                ? Math.round((double) rawPending / distinctFieldPending * 100.0) / 100.0 : null);
+        result.put("topPendingFields", topFields);
+        result.put("totalFieldChanges", fieldChangeRepository.count());
+
+        // Hub apply-state dispositions — a large DEAD_LETTER count (esp. concentrated on one entityType that
+        // also tops topPendingFields) confirms the compaction pin: those keys' latest is DEAD_LETTER, so their
+        // whole superseded history is retained forever. See sync_catchup_perf / sync_dedup notes.
+        Map<String, Object> applyState = new LinkedHashMap<>();
+        applyState.put("deadLetter", hubChangeApplyStateRepo.countByDisposition("DEAD_LETTER"));
+        applyState.put("deferred", hubChangeApplyStateRepo.countByDisposition("DEFERRED"));
+        applyState.put("failedRetryable", hubChangeApplyStateRepo.countByDisposition("FAILED_RETRYABLE"));
+        applyState.put("pending", hubChangeApplyStateRepo.countByDisposition("PENDING"));
+        List<Map<String, Object>> dlByType = new ArrayList<>();
+        for (Object[] r : hubChangeApplyStateRepo.countDeadLetterByType(PageRequest.of(0, Math.min(topN, 30)))) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("entityType", r[0]);
+            row.put("count", ((Number) r[1]).longValue());
+            dlByType.add(row);
+        }
+        applyState.put("deadLetterByType", dlByType);
+        result.put("applyState", applyState);
+        return result;
+    }
+
+    /**
      * Operator cleanup (C): bulk dead-letter a KNOWN-stale orphan backlog on the hub — the apply-state
      * rows for an entity type that piled up unapplied before a registration gap was fixed and that
      * re-sync fresh from the source node (notably ShiftDay, ~1.5k rows). Flips PENDING/DEFERRED/

@@ -68,6 +68,19 @@ public class HubResyncService {
     private final ReentrantLock backupLock = new ReentrantLock();
     private volatile Path cachedBackupPath = null;
     private volatile Instant cachedBackupTime = null;
+    // Hub-receipt cutoff for the cached snapshot: every FieldChange the hub had RECEIVED (receivedAt) at/under
+    // this instant is in the snapshot, so a client that installs it can be marked synced up to here WITHOUT
+    // losing any change the hub received after the snapshot (those stay pending and arrive by normal pull).
+    // Compared against receivedAt (hub-local clock), NOT the origin's timestamp — an offline client's backlog
+    // carries an old timestamp but a post-snapshot receivedAt. Captured just before BACKUP TO, minus a safety
+    // margin for the gap between receivedAt assignment and commit visibility.
+    private volatile Instant cachedBackupCutoff = null;
+    private static final long BACKUP_CUTOFF_SAFETY_SECONDS = 10;
+
+    /** SyncOrder cutoff (max-safe timestamp) of the currently-cached client resync snapshot, or null if none. */
+    public Instant getCachedBackupCutoff() {
+        return cachedBackupCutoff;
+    }
 
     /**
      * Join tables to export for full database resync.
@@ -199,16 +212,20 @@ public class HubResyncService {
             String backupFileName = "hub_backup_" + System.currentTimeMillis() + ".zip";
             Path backupPath = backupDir.resolve(backupFileName);
 
+            // Capture the cutoff BEFORE the snapshot: everything with timestamp <= cutoff is committed and
+            // will be in the backup; the safety margin keeps changes committing around backup-start pending.
+            Instant cutoff = Instant.now().minusSeconds(BACKUP_CUTOFF_SAFETY_SECONDS);
             try (Connection conn = DriverManager.getConnection(datasourceUrl, datasourceUsername, datasourcePassword)) {
                 try (Statement stmt = conn.createStatement()) {
                     stmt.execute("BACKUP TO '" + backupPath.toString() + "'");
                 }
             }
 
-            log.info("H2 backup created at: {}", backupPath);
+            log.info("H2 backup created at: {} (sync cutoff {})", backupPath, cutoff);
 
             cachedBackupPath = backupPath;
             cachedBackupTime = Instant.now();
+            cachedBackupCutoff = cutoff;
 
             cleanupOldBackups(backupDir, backupPath);
             return backupPath;
@@ -266,6 +283,10 @@ public class HubResyncService {
             String h2Url = "jdbc:h2:file:" + tempDbPath + ";DB_CLOSE_ON_EXIT=TRUE";
 
             long startTime = System.currentTimeMillis();
+            // Cutoff captured BEFORE the PG→H2 copy starts, so any row with timestamp <= cutoff that ends up
+            // in the generated snapshot is safe to mark synced; rows committed during/after the copy stay
+            // pending and arrive by normal pull. Conservative (may re-pull a few), never loses data.
+            Instant cutoff = Instant.now().minusSeconds(BACKUP_CUTOFF_SAFETY_SECONDS);
 
             try (Connection h2Conn = DriverManager.getConnection(h2Url, "sa", "password")) {
                 // Create the id_seq sequence in H2
@@ -312,6 +333,7 @@ public class HubResyncService {
 
                 cachedBackupPath = backupPath;
                 cachedBackupTime = Instant.now();
+                cachedBackupCutoff = cutoff;
                 cleanupOldBackups(backupDir, backupPath);
 
                 // Clean up temp H2 files

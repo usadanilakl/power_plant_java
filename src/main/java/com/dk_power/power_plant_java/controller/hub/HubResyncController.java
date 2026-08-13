@@ -107,12 +107,18 @@ public class HubResyncController {
             long size = java.nio.file.Files.size(backupPath);
             log.info("Backup ready, size={} bytes, streaming from {}", size, backupPath);
 
-            return ResponseEntity.ok()
+            // SyncOrder cutoff of THIS snapshot — the client marks itself synced only up to here after the
+            // swap (bounded mark-synced), so hub changes committed after the snapshot are not silently
+            // dropped. Absent header (e.g. a legacy/edge path) → client falls back to unbounded mark-synced.
+            java.time.Instant cutoff = resyncService.getCachedBackupCutoff();
+            ResponseEntity.BodyBuilder resp = ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=hub_backup.zip")
                 .header("X-Backup-Format", "h2-backup")
+                .header("Access-Control-Expose-Headers", "X-Sync-Cutoff, X-Backup-Format")
                 .contentLength(size)
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new org.springframework.core.io.InputStreamResource(
+                .contentType(MediaType.APPLICATION_OCTET_STREAM);
+            if (cutoff != null) resp = resp.header("X-Sync-Cutoff", cutoff.toString());
+            return resp.body(new org.springframework.core.io.InputStreamResource(
                     java.nio.file.Files.newInputStream(backupPath)));
         } catch (Exception e) {
             log.error("Failed to create backup: {}", e.getMessage(), e);

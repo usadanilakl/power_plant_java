@@ -149,6 +149,15 @@ public interface HubChangeApplyStateRepo extends JpaRepository<HubChangeApplySta
     long countByDisposition(String disposition);
 
     /**
+     * DIAGNOSTIC: dead-letter apply-state rows grouped by entityType, busiest first (pass a Pageable to cap
+     * to top N). A type dominating here is what PINS the compaction log — its keys' latest change is a
+     * DEAD_LETTER (non-terminal-good), so the compactor keeps their entire superseded history forever.
+     */
+    @Query("SELECT s.entityType, COUNT(s) FROM HubChangeApplyState s WHERE s.disposition = 'DEAD_LETTER' "
+            + "GROUP BY s.entityType ORDER BY COUNT(s) DESC")
+    List<Object[]> countDeadLetterByType(Pageable pageable);
+
+    /**
      * Which of these change ids are TERMINAL-GOOD (the hub durably applied them). Compaction of a field
      * deletes a superseded value only once its REPLACEMENT (the SyncOrder-latest change) is confirmed
      * APPLIED/NOOP_SUPERSEDED here — otherwise, if the latest is a still-deferred change that never
@@ -158,9 +167,32 @@ public interface HubChangeApplyStateRepo extends JpaRepository<HubChangeApplySta
             + "AND s.disposition IN ('APPLIED', 'NOOP_SUPERSEDED')")
     List<UUID> findTerminalGoodIds(@Param("ids") Collection<UUID> ids);
 
+    /**
+     * Which of these change ids are TERMINAL DEAD_LETTER (the hub has permanently given up applying them).
+     * Compaction uses this to drain the SUPERSEDED history under a dead-lettered latest: the latest is a
+     * terminal give-up that will never become the effective applied value, so its older predecessor rows are
+     * dead weight kept forever by the terminal-good-only gate. The latest itself is still retained (it is
+     * never a victim), so a catching-up node still pulls the SyncOrder-latest value; only the collapsed
+     * history is dropped. This is what unpins the millions of rows behind high-churn fields on
+     * soft-deleted/absent entities (whose applies dead-letter).
+     */
+    @Query("SELECT s.changeId FROM HubChangeApplyState s WHERE s.changeId IN :ids "
+            + "AND s.disposition = 'DEAD_LETTER'")
+    List<UUID> findDeadLetterIds(@Param("ids") Collection<UUID> ids);
+
     /** Cleanup: terminal-good rows older than the cutoff (the change has long since converged). */
     @Modifying
     @Query("DELETE FROM HubChangeApplyState s WHERE s.disposition IN ('APPLIED', 'NOOP_SUPERSEDED') "
             + "AND s.appliedAt < :cutoff")
     int deleteTerminalGoodBefore(@Param("cutoff") Instant cutoff);
+
+    /**
+     * Delete apply-state rows for a set of change ids — used by compaction to drop the state of the
+     * superseded FieldChanges it deletes, so the bloat isn't merely moved from FIELD_CHANGE to this table
+     * (DEAD_LETTER apply-state is otherwise never cleaned). Only ever called with victim ids the compactor
+     * is deleting in the same transaction — never a surviving latest.
+     */
+    @Modifying
+    @Query("DELETE FROM HubChangeApplyState s WHERE s.changeId IN :ids")
+    int deleteByChangeIdIn(@Param("ids") Collection<UUID> ids);
 }

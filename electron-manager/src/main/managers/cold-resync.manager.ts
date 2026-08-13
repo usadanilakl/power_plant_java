@@ -76,7 +76,7 @@ export class ColdResyncManager {
     machineId: string,
     deviceNumber: number,
     onProgress: (msg: string, pct: number) => void
-  ): Promise<IpcResult> {
+  ): Promise<IpcResult & { syncCutoff?: string }> {
     const headers = { 'X-Machine-Id': machineId, 'X-Device-Number': String(deviceNumber) };
 
     try {
@@ -84,7 +84,9 @@ export class ColdResyncManager {
 
       onProgress('Downloading database...', 0);
       const backupZipPath = path.join(this.dbDir, 'backup_cold.zip');
-      await this.downloadFile(
+      // Capture the snapshot's SyncOrder cutoff from THIS download response — it must come from the same
+      // response as the bytes we install, so a bounded mark-synced can't clear changes newer than the snapshot.
+      const syncCutoff = await this.downloadFile(
         `${serverUrl}/api/resync/database/h2-backup`,
         backupZipPath,
         headers,
@@ -95,7 +97,7 @@ export class ColdResyncManager {
       );
 
       const zipStat = fs.statSync(backupZipPath);
-      console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB)`);
+      console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB), cutoff=${syncCutoff ?? 'none'}`);
 
       onProgress('Extracting database...', 70);
       this.extractDatabase(backupZipPath);
@@ -103,7 +105,7 @@ export class ColdResyncManager {
 
       this.persistSyncStatus();
       onProgress('Database synced', 100);
-      return { success: true };
+      return { success: true, syncCutoff };
     } catch (err: any) {
       return { success: false, error: err.message || 'Database sync failed' };
     }
@@ -293,12 +295,14 @@ export class ColdResyncManager {
   }
 
   /** Stream-download a file from a URL to disk */
+  // Resolves with the X-Sync-Cutoff response header (present on the h2-backup download) so the caller can
+  // do a BOUNDED mark-synced after the swap; undefined for downloads that don't carry it (files, etc.).
   private downloadFile(
     urlStr: string,
     destPath: string,
     extraHeaders: Record<string, string>,
     onProgress?: (bytesDownloaded: number, totalBytes: number) => void
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     return new Promise((resolve, reject) => {
       try {
         const endpoint = new URL(urlStr);
@@ -322,6 +326,8 @@ export class ColdResyncManager {
               return;
             }
 
+            const hdr = res.headers['x-sync-cutoff'];
+            const syncCutoff = typeof hdr === 'string' ? hdr : undefined;
             const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
             const writeStream = fs.createWriteStream(destPath);
             let bytesDownloaded = 0;
@@ -335,7 +341,7 @@ export class ColdResyncManager {
 
             writeStream.on('finish', () => {
               writeStream.close();
-              resolve();
+              resolve(syncCutoff);
             });
 
             writeStream.on('error', (err) => {

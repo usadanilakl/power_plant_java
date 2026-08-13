@@ -40,6 +40,24 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Query("SELECT COUNT(fc) FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId")
     long countPendingChangesForExcludingOrigin(@Param("machineId") String machineId);
 
+    // DIAGNOSTIC: the GENUINE deliverable backlog for a machine — distinct (entityType, entityId, fieldName)
+    // among pending rows, EXCLUDING the synthetic _entity_ CREATE/DELETE markers. The raw pending COUNT
+    // over-states this because it also counts one _entity_ marker per entity lifecycle event plus any
+    // not-yet-compacted history rows. Native subquery avoids JPQL COUNT(DISTINCT concat) type-coercion.
+    @Query(value = "SELECT COUNT(*) FROM (SELECT DISTINCT ENTITY_TYPE, ENTITY_ID, FIELD_NAME FROM FIELD_CHANGE "
+            + "WHERE (SYNCED_TO_MACHINES NOT LIKE CONCAT('%|', :machineId, '|%') OR SYNCED_TO_MACHINES IS NULL) "
+            + "AND ORIGIN_MACHINE_ID <> :machineId AND FIELD_NAME <> '_entity_') distinct_fields", nativeQuery = true)
+    long countDistinctPendingFieldsFor(@Param("machineId") String machineId);
+
+    // DIAGNOSTIC: pending rows grouped by (entityType, fieldName), busiest first — pass a Pageable to cap
+    // to the top N. A single (entityType, fieldName) dominating with millions is the dead-letter-pin
+    // signature (e.g. a high-churn field on a soft-deleted/absent entity whose latest never applies).
+    @Query("SELECT fc.entityType, fc.fieldName, COUNT(fc) FROM FieldChange fc "
+            + "WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) "
+            + "AND fc.originMachineId <> :machineId "
+            + "GROUP BY fc.entityType, fc.fieldName ORDER BY COUNT(fc) DESC")
+    List<Object[]> pendingBreakdownByField(@Param("machineId") String machineId, Pageable pageable);
+
     // Get changes since a timestamp, excluding a specific machine's own changes
     @Query("SELECT fc FROM FieldChange fc WHERE fc.timestamp > :since AND fc.originMachineId != :machineId ORDER BY fc.timestamp ASC")
     List<FieldChange> findChangesSince(@Param("since") Instant since, @Param("machineId") String excludeMachineId);
@@ -88,6 +106,24 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Query(value = "UPDATE FIELD_CHANGE SET SYNCED_TO_MACHINES = CONCAT(COALESCE(SYNCED_TO_MACHINES, ''), CONCAT('|', :machineId, '|')) " +
            "WHERE SYNCED_TO_MACHINES NOT LIKE CONCAT('%|', :machineId, '|%') OR SYNCED_TO_MACHINES IS NULL", nativeQuery = true)
     int markAllChangesSyncedTo(@Param("machineId") String machineId);
+
+    // BOUNDED mark-synced: mark synced to a machine ONLY the changes the hub had RECEIVED at/under a
+    // snapshot-time cutoff. Used after a wholesale DB-snapshot restore — the client has everything IN the
+    // snapshot, but changes the hub committed AFTER the snapshot MUST stay pending so normal incremental pull
+    // still delivers them (the unbounded markAllChangesSyncedTo would silently drop that window).
+    //
+    // Filter on receivedAt, NOT timestamp. receivedAt is the HUB's local receipt/creation time (single clock
+    // — set to hub-now when a client's change is stored, HubSyncService, and at construction for hub-own
+    // changes), so it tracks snapshot/commit visibility. timestamp is the ORIGIN's logical clock, preserved
+    // verbatim: an offline client's backlog carries an OLD timestamp yet arrives at the hub AFTER the snapshot
+    // — filtering on timestamp would mark it synced though it isn't in the snapshot = silent loss. A row with
+    // null receivedAt (legacy) simply isn't matched → stays pending → safe. JPQL avoids column-quoting the
+    // reserved word `timestamp`.
+    @Modifying
+    @Query("UPDATE FieldChange fc SET fc.syncedToMachines = CONCAT(COALESCE(fc.syncedToMachines, ''), CONCAT('|', :machineId, '|')) "
+            + "WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) "
+            + "AND fc.receivedAt <= :cutoff")
+    int markChangesSyncedToUpTo(@Param("machineId") String machineId, @Param("cutoff") Instant cutoff);
 
     // Remove a machine from syncedToMachines on all changes (used by reset endpoint)
     @Modifying

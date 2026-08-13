@@ -171,6 +171,12 @@ import { Subscription } from 'rxjs';
                     (click)="smartResync()">
               Smart Resync
             </button>
+            <button class="btn btn-info"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    title="Push local changes, then replace the DB from the hub snapshot and clear the hub's pending backlog for this client (no file sync). Use to recover a client stuck with a huge pending count."
+                    (click)="smartResyncDbOnly()">
+              Clear Backlog (DB)
+            </button>
           </div>
 
           <label class="toggle-option">
@@ -693,6 +699,36 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
       this.executeSync(['db', 'files'], { markHubSyncedAfter: true });
     } catch (err: any) {
       this.syncProgress = { phase: 'error', statusMessage: 'Smart resync failed: ' + (err?.message || err), progressPercent: 0 };
+      this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * DB-only variant of Smart Resync for recovering a client stuck with a huge pending backlog. Same
+   * non-destructive push guard (local changes are sent to the hub first, or it aborts), then a WHOLESALE
+   * DB-snapshot swap ONLY (no file sync) followed by the bounded post-swap mark-synced. The wholesale swap
+   * makes the millions of pending changes moot without the incremental catch-up that times out, and the
+   * bounded mark-synced clears them on the hub (up to the snapshot cutoff) without a per-change stream.
+   */
+  async smartResyncDbOnly(): Promise<void> {
+    if (this.syncInProgress) return;
+    this.syncProgress = { phase: 'stopping_sb' as any, statusMessage: 'Sending local changes to hub...', progressPercent: 0 };
+    this.syncInProgress = true;
+
+    try {
+      const resp = await fetch('http://localhost:8082/api/resync/smart-resync', { method: 'POST' });
+      const result = await resp.json();
+
+      if (!result.success) {
+        this.syncProgress = { phase: 'error', statusMessage: 'Failed: ' + result.message, progressPercent: 0 };
+        this.syncInProgress = false;
+        return;
+      }
+
+      this.syncInProgress = false; // reset so executeSync doesn't skip
+      this.executeSync(['db'], { markHubSyncedAfter: true });
+    } catch (err: any) {
+      this.syncProgress = { phase: 'error', statusMessage: 'DB-only resync failed: ' + (err?.message || err), progressPercent: 0 };
       this.syncInProgress = false;
     }
   }

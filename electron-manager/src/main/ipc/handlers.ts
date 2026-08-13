@@ -808,6 +808,7 @@ export class IpcHandlers {
         }
 
         // 3. Sync Database
+        let dbSyncCutoff: string | undefined;
         if (components.includes('db')) {
           sendProgress({ phase: 'db_download', statusMessage: 'Downloading database...', progressPercent: 30 });
           const dbResult = await this.coldResyncManager.syncDatabase(
@@ -819,6 +820,7 @@ export class IpcHandlers {
             })
           );
           if (!dbResult.success) throw new Error(dbResult.error || 'Database sync failed');
+          dbSyncCutoff = dbResult.syncCutoff;
         }
 
         // 4. Sync Files
@@ -865,24 +867,36 @@ export class IpcHandlers {
         // flow (markHubSyncedAfter). Failure is SAFE: pending just isn't cleared and the client catches up
         // incrementally.
         if (options?.markHubSyncedAfter && components.includes('db')) {
-          sendProgress({ phase: 'starting_sb', statusMessage: 'Notifying hub…', progressPercent: 97 });
-          await new Promise<void>((resolve) => {
-            try {
-              const u = new URL('/api/sync/changes/mark-all-synced', config.syncServerUrl);
-              const mod = u.protocol === 'https:' ? require('https') : require('http');
-              const req = mod.request({
-                hostname: u.hostname,
-                port: u.port || (u.protocol === 'https:' ? 443 : 80),
-                path: u.pathname,
-                method: 'POST',
-                headers: { 'X-Machine-Id': config.machineId },
-                timeout: 15000
-              }, (res: any) => { res.resume(); res.on('end', () => resolve()); });
-              req.on('error', (e: any) => { console.warn('mark-all-synced after resync failed (client will catch up incrementally):', e?.message || e); resolve(); });
-              req.on('timeout', () => { req.destroy(); console.warn('mark-all-synced after resync timed out'); resolve(); });
-              req.end();
-            } catch (e: any) { console.warn('mark-all-synced after resync error:', e?.message || e); resolve(); }
-          });
+          // Use the BOUNDED + async endpoint: mark synced only up to the snapshot's cutoff (so hub changes
+          // committed after the snapshot stay pending and still arrive by normal pull) and it returns 202
+          // immediately, so a multi-million-row backlog can't time us out.
+          // FAIL CLOSED: without the cutoff we cannot safely bound the mark, and the unbounded
+          // mark-all-synced would clear changes the hub committed after the snapshot (silent loss). If the
+          // X-Sync-Cutoff header didn't arrive (stripped by a proxy, or an older hub), SKIP the notify and let
+          // normal incremental pull reconcile — correct, just slower. Never fall back to mark-all-synced here.
+          if (!dbSyncCutoff) {
+            console.warn('resync: no X-Sync-Cutoff from hub — skipping mark-synced (incremental pull will reconcile the backlog)');
+          } else {
+            sendProgress({ phase: 'starting_sb', statusMessage: 'Notifying hub…', progressPercent: 97 });
+            const notifyPath = `/api/sync/changes/mark-synced-upto?cutoff=${encodeURIComponent(dbSyncCutoff)}`;
+            await new Promise<void>((resolve) => {
+              try {
+                const u = new URL(notifyPath, config.syncServerUrl);
+                const mod = u.protocol === 'https:' ? require('https') : require('http');
+                const req = mod.request({
+                  hostname: u.hostname,
+                  port: u.port || (u.protocol === 'https:' ? 443 : 80),
+                  path: u.pathname + u.search,
+                  method: 'POST',
+                  headers: { 'X-Machine-Id': config.machineId },
+                  timeout: 20000
+                }, (res: any) => { res.resume(); res.on('end', () => resolve()); });
+                req.on('error', (e: any) => { console.warn('hub mark-synced after resync failed (client will catch up incrementally):', e?.message || e); resolve(); });
+                req.on('timeout', () => { req.destroy(); console.warn('hub mark-synced after resync timed out'); resolve(); });
+                req.end();
+              } catch (e: any) { console.warn('hub mark-synced after resync error:', e?.message || e); resolve(); }
+            });
+          }
         }
 
         sendProgress({ phase: 'done', statusMessage: 'Sync complete', progressPercent: 100 });

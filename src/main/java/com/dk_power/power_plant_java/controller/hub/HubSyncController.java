@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.time.Instant;
 import java.util.*;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -162,6 +163,40 @@ public class HubSyncController {
         int marked = hubSyncService.markAllSyncedToClient(machineId);
         log.info("Marked all changes as synced for {} after full resync: {} changes", machineId, marked);
         return ResponseEntity.ok(Map.of("marked", marked, "machineId", machineId));
+    }
+
+    /**
+     * BOUNDED + ASYNC mark-synced after a wholesale DB-snapshot restore. Marks synced only changes with
+     * timestamp &lt;= the snapshot cutoff (so hub changes committed after the snapshot stay pending and are
+     * still delivered by normal pull), and runs the potentially multi-million-row UPDATE on a background
+     * virtual thread so the client never blocks/times out — returns 202 immediately. Idempotent + safe: a
+     * partial/aborted run just leaves rows pending. The cutoff is the X-Sync-Cutoff header the client got
+     * with the h2-backup it installed.
+     * POST /api/sync/changes/mark-synced-upto?cutoff=&lt;ISO-8601 instant&gt;
+     */
+    @PostMapping("/changes/mark-synced-upto")
+    public ResponseEntity<Map<String, Object>> markSyncedUpTo(
+            @RequestHeader("X-Machine-Id") String machineId,
+            @RequestParam("cutoff") String cutoff) {
+        final Instant cutoffInstant;
+        try {
+            cutoffInstant = Instant.parse(cutoff);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "cutoff must be an ISO-8601 instant (e.g. 2026-08-13T10:00:00Z)", "cutoff", cutoff));
+        }
+        // Off-request-thread so a multi-million-row backlog can't time out the client. The transactional
+        // work runs in HubSyncService (proxied bean call from the thread → its own tx).
+        Thread.ofVirtual().name("mark-synced-upto-" + machineId).start(() -> {
+            try {
+                int marked = hubSyncService.markSyncedToClientUpTo(machineId, cutoffInstant);
+                log.info("Bounded mark-synced complete for {} up to {}: {} changes", machineId, cutoffInstant, marked);
+            } catch (Exception e) {
+                log.error("Bounded mark-synced failed for {} up to {}: {}", machineId, cutoffInstant, e.getMessage(), e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of(
+                "status", "accepted", "machineId", machineId, "cutoff", cutoffInstant.toString()));
     }
 
     /**

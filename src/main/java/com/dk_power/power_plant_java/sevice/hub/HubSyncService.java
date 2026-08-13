@@ -198,6 +198,19 @@ public class HubSyncService {
         return marked;
     }
 
+    /**
+     * Bounded mark-synced after a wholesale DB-snapshot restore: mark synced ONLY the changes at/under the
+     * snapshot's SyncOrder cutoff. Hub changes committed AFTER the snapshot (timestamp &gt; cutoff) stay
+     * pending and are delivered by normal incremental pull — the unbounded {@link #markAllSyncedToClient}
+     * would silently drop that window. Idempotent; a partial/aborted run just leaves rows pending.
+     */
+    @Transactional
+    public int markSyncedToClientUpTo(String machineId, java.time.Instant cutoff) {
+        int marked = fieldChangeRepository.markChangesSyncedToUpTo(machineId, cutoff);
+        log.info("Marked {} changes (timestamp <= {}) as synced to {} (bounded resync)", marked, cutoff, machineId);
+        return marked;
+    }
+
     @Transactional
     public int clearSelfOriginatedChanges(String machineId) {
         int cleared = fieldChangeRepository.markOwnChangesSyncedTo(machineId);

@@ -206,6 +206,23 @@ public class NgAdminFunctionalitiesController {
         }
     }
 
+    // GET (read-only diagnostic) — explains what a client's pending backlog actually IS: genuine
+    // deliverable fields vs _entity_-marker / dead-letter-pinned inflation. Heavy full-scan; run ad hoc.
+    @GetMapping("/sync-queue/pending-breakdown")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> pendingBreakdown(
+            @RequestParam String machineId,
+            @RequestParam(defaultValue = "30") int limit) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.pendingBreakdown(machineId, limit);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Pending breakdown for " + machineId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error getting pending breakdown: " + e.getMessage()));
+        }
+    }
+
     // GET so it can be triggered by simply opening the URL in an authenticated admin browser
     // (avoids the CSRF token a POST needs). Compaction is idempotent, so a convenience GET is safe.
     @GetMapping("/sync-queue/compact")
