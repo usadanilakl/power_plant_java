@@ -202,6 +202,9 @@ export class UserDto extends BaseDto implements UserModel {
       { value: 'ROLE_CONTRACTOR', label: 'Contractor' },
       { value: 'ROLE_PLANT', label: 'Plant' },
       { value: 'ROLE_LOG_DIAGNOSTICS', label: 'Log diagnostics' },
+      // Instrumentation register + logs (PWA /instruments). Deliberately NOT implied by ROLE_PLANT —
+      // it is granted per user so I&C techs and calibration contractors can be authorized individually.
+      { value: 'ROLE_INSTRUMENTATION', label: 'Instrumentation' },
       // Read-only kiosk/display account (e.g. a wall monitor proxying the Maximo PM overview via the hub).
       { value: 'ROLE_KIOSK', label: 'Kiosk (read-only display)' },
       // Employer / group roles — gate access to schedule, contacts, chat.

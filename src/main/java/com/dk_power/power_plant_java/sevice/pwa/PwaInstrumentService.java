@@ -11,16 +11,13 @@ import com.dk_power.power_plant_java.repository.instrumentation.InstrumentRepo;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.InstrumentSharePointAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -32,34 +29,28 @@ public class PwaInstrumentService {
     private final InstrumentRepo instrumentRepo;
     private final EquipmentRepo equipmentRepo;
     private final InstrumentMapper instrumentMapper;
-    private final Object instrumentRefreshLock = new Object();
+    private final Object bootstrapLock = new Object();
 
-    @Value("${pwa.instrument.full-refresh-hours:24}")
-    private long fullRefreshHours;
-
-    private volatile Instant lastFullRefreshAt;
-    private volatile InstrumentSharePointAdapter.ProbeState lastProbeState;
-
+    /**
+     * Serves the register from H2 — never from SharePoint on the request thread.
+     *
+     * <p>H2 is already the maintained mirror: {@code InstrumentSharePointSyncable} pulls SharePoint
+     * changes on the hub's 30s orchestrator, and every non-hub node receives the same rows over
+     * field-level CRDT sync. Probing SharePoint here (as this used to) duplicated that work on the
+     * critical path of every phone opening the list, and serialized all callers behind one remote
+     * round-trip. It also meant {@code /state} (computed from H2) could describe data that
+     * {@code /get-all} did not serve; both now read the same source.</p>
+     *
+     * <p>The one case H2 cannot cover is a cold instance whose register was never populated — there
+     * we bootstrap from SharePoint once, synchronously, so first run is not an empty list.</p>
+     */
     public List<InstrumentDto> getAllInstruments() {
-        synchronized (instrumentRefreshLock) {
-            if (mustFullRefreshByAge()) {
-                return fetchFullFromSharePoint("age-window");
-            }
-
-            try {
-                InstrumentSharePointAdapter.ProbeState currentProbe = instrumentAdapter.getProbeState();
-                if (probeIndicatesChange(currentProbe)) {
-                    return fetchFullFromSharePoint("probe-change");
-                }
-
-                log.info("[PWA-Instrument] Probe unchanged (count={}, lastModified={}); serving H2 cache",
-                        currentProbe.itemCount(), currentProbe.lastModified());
-                return getCachedInstruments();
-            } catch (Exception e) {
-                log.warn("[PWA-Instrument] Probe failed, serving H2 cache: {}", e.getMessage());
-                return getCachedInstruments();
+        if (instrumentRepo.count() == 0) {
+            synchronized (bootstrapLock) {
+                if (instrumentRepo.count() == 0) return bootstrapFromSharePoint();
             }
         }
+        return getCachedInstruments();
     }
 
     public PwaInstrumentStateDto getInstrumentsState() {
@@ -165,47 +156,24 @@ public class PwaInstrumentService {
         return tag == null ? "" : tag.trim().toUpperCase();
     }
 
-    private boolean mustFullRefreshByAge() {
-        if (lastFullRefreshAt == null) return true;
-        long hours = Math.max(1, fullRefreshHours);
-        return Instant.now().isAfter(lastFullRefreshAt.plus(Duration.ofHours(hours)));
-    }
-
-    private boolean probeIndicatesChange(InstrumentSharePointAdapter.ProbeState currentProbe) {
-        if (currentProbe == null) return true;
-        if (lastProbeState == null) return true;
-        if (currentProbe.itemCount() != lastProbeState.itemCount()) return true;
-        return !Objects.equals(currentProbe.lastModified(), lastProbeState.lastModified());
-    }
-
-    private List<InstrumentDto> fetchFullFromSharePoint(String reason) {
+    /**
+     * One-time cold-start fill for an instance whose register is empty (fresh H2, no SharePoint
+     * sync run yet, no CRDT catch-up yet). Steady-state refresh is the orchestrator's job.
+     */
+    private List<InstrumentDto> bootstrapFromSharePoint() {
         try {
             List<InstrumentDto> spItems = instrumentAdapter.getAll();
             syncToH2(spItems);
-
-            lastFullRefreshAt = Instant.now();
-            lastProbeState = buildProbeState(spItems);
-
-            log.info("[PWA-Instrument] Full refresh complete (reason={}): {} instruments, probe={}/{}",
-                    reason, spItems.size(), lastProbeState.itemCount(), lastProbeState.lastModified());
-            return spItems;
+            log.info("[PWA-Instrument] Cold-start bootstrap from SharePoint: {} instruments", spItems.size());
+            return getCachedInstruments();
         } catch (Exception e) {
-            log.warn("[PWA-Instrument] Full refresh failed (reason={}), serving H2 cache: {}", reason, e.getMessage());
+            log.warn("[PWA-Instrument] Cold-start bootstrap failed, serving empty register: {}", e.getMessage());
             return getCachedInstruments();
         }
     }
 
-    private InstrumentSharePointAdapter.ProbeState buildProbeState(List<InstrumentDto> items) {
-        Instant maxModified = items.stream()
-                .map(InstrumentDto::getSpModifiedTime)
-                .filter(Objects::nonNull)
-                .max(Instant::compareTo)
-                .orElse(null);
-        return new InstrumentSharePointAdapter.ProbeState(items.size(), maxModified);
-    }
-
     private List<InstrumentDto> getCachedInstruments() {
-        return instrumentRepo.findAll().stream()
+        return instrumentRepo.findAll(Sort.by(Sort.Direction.ASC, "tagNumber")).stream()
                 .map(instrumentMapper::convertToDto)
                 .toList();
     }

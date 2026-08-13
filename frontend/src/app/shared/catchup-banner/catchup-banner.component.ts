@@ -45,7 +45,12 @@ interface CatchUpStatus {
     }
   `,
   styles: [`
-    .catchup-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 3000;
+    /* In-flow at the very top of the app (above <router-outlet>), so it PUSHES the page + its header
+       down instead of floating over them. The app headers are position:relative (normal flow), so an
+       in-flow bar is the clean, universal fix — no overlap on any page, and it only takes space while
+       shown (:host collapses to 0 height when the banner is hidden). */
+    :host { display: block; }
+    .catchup-banner { position: relative; width: 100%; box-sizing: border-box; z-index: 1;
       background: #1e3a5f; color: #fff; padding: 6px 14px 4px;
       box-shadow: 0 2px 6px rgba(0,0,0,.25); font-size: 13px; }
     .catchup-row { display: flex; align-items: center; gap: 10px; }

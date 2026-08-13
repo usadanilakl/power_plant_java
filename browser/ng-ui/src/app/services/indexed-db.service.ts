@@ -5,7 +5,7 @@ import { IJha, Jha } from '../models/permits/jha.model';
 import { Space } from '../models/permits/space.model';
 import { User } from '../models/auth/user.model';
 import { Instrument } from '../models/equipment/instrument.model';
-import { InstrumentLogEntry } from '../models/equipment/instrument-log.model';
+import { InstrumentLogEntry, InstrumentLogOutboxItem } from '../models/equipment/instrument-log.model';
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +17,7 @@ export class IndexedDbService extends Dexie {
   users!: Table<User, number>;
   instruments!: Table<Instrument, number>;
   instrumentLogs!: Table<InstrumentLogEntry, number>;
+  instrumentLogOutbox!: Table<InstrumentLogOutboxItem, number>;
 
   constructor() {
     // 1. Database Name
@@ -78,6 +79,13 @@ export class IndexedDbService extends Dexie {
     this.version(8).stores({
       instruments: '++id, tagNumber, sharepointId, localUuid, currentStatus, updatedAt',
       instrumentLogs: '++id, instrumentTagNumber, localUuid, status, date, time, createdAt, updatedAt'
+    });
+
+    // Version 9: Instrument log outbox — logs captured offline (or when every submission route
+    // failed) live here until a flush succeeds. Survives reload/app-close, unlike the old
+    // single-draft-in-localStorage + "please email it yourself" fallback.
+    this.version(9).stores({
+      instrumentLogOutbox: '++id, localUuid, instrumentTagNumber, createdAt'
     });
 
     // 3. Map tables to classes

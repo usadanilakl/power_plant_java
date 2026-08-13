@@ -359,6 +359,18 @@ export class AuthService {
   }
 
   /**
+   * True if the signed-in user may use the Instrumentation section. Mirrors the hub rule
+   * (SecurityConfig: ROLE_INSTRUMENTATION or ROLE_ADMIN on /api/pwa/secured/instruments/**) —
+   * deliberately NOT satisfied by ROLE_PLANT, since the role is granted per user.
+   */
+  isInstrumentation(): boolean {
+    const user = this.getAuthData()?.user;
+    if (!user) return false;
+    const roles = (user.roles ?? []).map(r => (r ?? '').toUpperCase());
+    return roles.some(r => r.includes('INSTRUMENTATION') || r.includes('ADMIN'));
+  }
+
+  /**
    * True when the signed-in user is registered but still awaiting admin approval — they have a working
    * tier-1 session but no plant role yet. Used to show a "pending approval" hint where plant tools would
    * be. (A regular approved contractor is isActive=true, so this is false for them.)

@@ -113,6 +113,12 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "ADMIN")
+                // Instrumentation register + logs carry their OWN role rather than riding on ROLE_PLANT:
+                // the whole point of ROLE_INSTRUMENTATION is that an admin grants it per user (I&C techs,
+                // contractors doing calibration work), so granting it implicitly to every plant operator
+                // would make the role meaningless. ADMIN is included as the usual superuser escape hatch.
+                .requestMatchers("/api/pwa/secured/instruments/**").hasAnyRole("INSTRUMENTATION", "ADMIN")
+                .requestMatchers("/api/pwa/secured/instrument-log/**").hasAnyRole("INSTRUMENTATION", "ADMIN")
                 // Read-only KIOSK role: an unattended display (e.g. a wall monitor whose own network can't
                 // reach Maximo) may GET Maximo data (the PM overview) but never write. Reads are @GetMapping
                 // and writes @PostMapping under this path, so a method-scoped matcher grants KIOSK read-only.

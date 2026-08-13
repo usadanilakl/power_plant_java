@@ -17,6 +17,21 @@ export interface IInstrumentLogEntry extends IBaseModel {
     attachments: IAttachment[];
 }
 
+/**
+ * A log captured on this device that the hub hasn't accepted yet (offline, or every submission
+ * route failed). Held in IndexedDB and retried; `localUuid` is minted before the first attempt so
+ * replays dedup server-side rather than creating duplicate log rows.
+ */
+export interface InstrumentLogOutboxItem {
+    id?: number;
+    localUuid: string;
+    instrumentTagNumber: string;
+    entry: IInstrumentLogEntry;
+    createdAt: string;
+    attempts: number;
+    lastError?: string;
+}
+
 export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implements IInstrumentLogEntry {
     localUuid?: string;
     instrumentTagNumber: string;
@@ -42,27 +57,33 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
         this.attachments = data.attachments ?? [];
     }
 
+    /**
+     * Mobile-first field order: the two things the tech is actually there to record — status and a
+     * comment — come first and are reachable without scrolling; identity and timestamps sit below,
+     * pre-filled. Tag and description are deliberately absent: the log screen renders them in its
+     * header, and `ReactiveFormComponent` merges the submitted value over the entity, so they still
+     * travel with the submission.
+     */
     getFormFields(): FormField[] {
         return [
-            { name: 'instrumentTagNumber', label: 'Instrument Tag Number', type: 'text', initialValue: this.instrumentTagNumber, readonly: true },
-            { name: 'instrumentDescription', label: 'Instrument Description', type: 'text', initialValue: this.instrumentDescription, readonly: true  },
             {
                 name: 'status',
                 label: 'Status',
-                type: 'select',
+                // radio-group, not a select: three big tap targets beat a native picker in gloves.
+                type: 'radio-group',
                 initialValue: this.status,
                 options: [
                     { value: 'Normal Operation', label: 'Normal Operation' },
                     { value: 'In Progress', label: 'In Progress' },
-                    { value: 'Disconnected/Removed', label: 'Disconnected/Removed' }
+                    { value: 'Disconnected/Removed', label: 'Disconnected / Removed' }
                 ]
             },
-            { name: 'date', label: 'Date', type: 'date', initialValue: this.date, validators: [] },
-            { name: 'time', label: 'Time', type: 'time', initialValue: this.time },
-            { name: 'name', label: 'Name', type: 'text', initialValue: this.name, placeholder: 'Your name' },
             { name: 'comment', label: 'Comment', type: 'textarea', initialValue: this.comment, placeholder: 'Add any notes or observations' },
-            { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true,
-              initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
+            { name: 'files', label: 'Photos / attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true,
+              initialValue: this.attachments.filter(a => a.type !== 'signature') },
+            { name: 'name', label: 'Name', type: 'text', initialValue: this.name, placeholder: 'Your name', group: { label: 'Logged by', orientation: 'horizontal' } },
+            { name: 'date', label: 'Date', type: 'date', initialValue: this.date, validators: [], group: { label: 'Logged by', orientation: 'horizontal' } },
+            { name: 'time', label: 'Time', type: 'time', initialValue: this.time, group: { label: 'Logged by', orientation: 'horizontal' } },
         ];
     }
 

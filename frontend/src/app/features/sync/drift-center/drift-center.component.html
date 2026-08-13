@@ -12,6 +12,8 @@
       <div class="chip"><span class="dot amber"></span><b>{{ typesDrifting() }}</b> types drifting</div>
       <div class="chip"><span class="dot red"></span><b>{{ totalDrift() }}</b> rows</div>
       <div class="chip">last scan <b>{{ fmt(lastScanAt()) }}</b></div>
+      <div class="chip"><span class="dot blue"></span><b>{{ outgoingPending() }}</b> outgoing pending</div>
+      <div class="chip"><span class="dot blue"></span><b>{{ incomingPending() }}</b> incoming pending</div>
       <button class="btn" [disabled]="scanning()" (click)="scanNow()">{{ scanning() ? 'Scanning…' : '⟳ Scan now' }}</button>
     </div>
   </div>

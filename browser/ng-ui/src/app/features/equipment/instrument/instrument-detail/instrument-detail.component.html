@@ -1,0 +1,67 @@
+<div class="detail-screen">
+
+  <div class="detail-header">
+    <button type="button" class="back-button" (click)="back()">← Instruments</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="hint">Loading instrument…</p>
+  } @else if (notFound()) {
+    <div class="not-found">
+      <h2>{{ tagNumber() }}</h2>
+      <p>No instrument with this tag is in the register on this device.</p>
+      <button type="button" class="primary-button" (click)="addThisInstrument()">
+        + Add {{ tagNumber() }} to the register
+      </button>
+      <button type="button" class="secondary-button" (click)="back()">Back to search</button>
+    </div>
+  } @else {
+    <div class="instrument-card">
+      <div class="card-top">
+        <span class="tag">{{ instrument()?.tagNumber }}</span>
+        <span [class]="statusClass(instrument()?.currentStatus)">
+          {{ instrument()?.currentStatus || 'Normal Operation' }}
+        </span>
+      </div>
+      <div class="card-desc">{{ instrument()?.description }}</div>
+      <div class="card-meta">
+        @if (instrument()?.location) { <span><b>Location</b> {{ instrument()?.location }}</span> }
+        @if (instrument()?.type) { <span><b>Type</b> {{ instrument()?.type }}</span> }
+        @if (instrument()?.vendor) { <span><b>Vendor</b> {{ instrument()?.vendor }}</span> }
+        @if (instrument()?.lastUpdatedDate) {
+          <span><b>Last log</b> {{ instrument()?.lastUpdatedDate }} {{ instrument()?.lastUpdatedTime }}
+            @if (instrument()?.lastUpdatedBy) { · {{ instrument()?.lastUpdatedBy }} }
+          </span>
+        }
+      </div>
+      @if (instrument()?.lastComment) {
+        <div class="card-comment">“{{ instrument()?.lastComment }}”</div>
+      }
+    </div>
+
+    <app-instrument-log-form [showTitle]="false"></app-instrument-log-form>
+
+    @if (logs().length > 0) {
+      <section class="history">
+        <h3 class="section-title">Log history</h3>
+        <ul class="history-list">
+          @for (log of visibleLogs(); track log.localUuid ?? logTimestamp(log) + log.name) {
+            <li class="history-item">
+              <div class="history-top">
+                <span [class]="statusClass(log.status)">{{ log.status }}</span>
+                <span class="history-when">{{ logTimestamp(log) }}</span>
+              </div>
+              <div class="history-who">{{ log.name }}</div>
+              @if (log.comment) { <div class="history-comment">{{ log.comment }}</div> }
+            </li>
+          }
+        </ul>
+        @if (logs().length > 5) {
+          <button type="button" class="link-button" (click)="toggleAllLogs()">
+            {{ showAllLogs() ? 'Show fewer' : 'Show all ' + logs().length + ' logs' }}
+          </button>
+        }
+      </section>
+    }
+  }
+</div>

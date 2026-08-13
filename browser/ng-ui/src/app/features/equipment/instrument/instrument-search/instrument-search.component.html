@@ -1,0 +1,105 @@
+<div class="search-screen">
+
+  <div class="search-bar">
+    <div class="search-row">
+      <input
+        #searchInput
+        type="search"
+        class="search-input"
+        inputmode="search"
+        autocapitalize="characters"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        placeholder="Search tag, description, location…"
+        [value]="query()"
+        (input)="onQueryChange($any($event.target).value)"
+        autofocus
+      >
+      @if (query()) {
+        <button type="button" class="clear-button" (click)="clearQuery()" aria-label="Clear search">×</button>
+      }
+      <button type="button" class="logic-button" (click)="toggleLogic()"
+              [title]="logic() === 'AND' ? 'All words must match' : 'Any word may match'">
+        {{ logic() }}
+      </button>
+    </div>
+    <div class="search-meta">
+      @if (hasQuery()) {
+        <span>{{ matchCount() }} match{{ matchCount() === 1 ? '' : 'es' }}</span>
+      } @else {
+        <span>{{ instruments().length }} instruments</span>
+      }
+      <button type="button" class="link-button" (click)="refresh()" [disabled]="isRefreshing()">
+        {{ isRefreshing() ? 'Refreshing…' : syncedLabel() }}
+      </button>
+    </div>
+  </div>
+
+  @if (isOffline()) {
+    <div class="banner offline">
+      Offline — showing the list saved on this device. New logs are queued and sent automatically.
+    </div>
+  }
+
+  @if (pendingLogs().length > 0) {
+    <div class="banner pending">
+      <span>{{ pendingLogs().length }} log{{ pendingLogs().length === 1 ? '' : 's' }} waiting to send</span>
+      <button type="button" class="link-button" (click)="flushOutbox()" [disabled]="isFlushing()">
+        {{ isFlushing() ? 'Sending…' : 'Send now' }}
+      </button>
+    </div>
+  }
+
+  @if (!hasQuery() && recentInstruments().length > 0) {
+    <h3 class="section-title">Recent</h3>
+    <ul class="result-list">
+      @for (instrument of recentInstruments(); track instrument.tagNumber) {
+        <li class="result-card" (click)="open(instrument)">
+          <div class="card-top">
+            <span class="tag">{{ instrument.tagNumber }}</span>
+            <span [class]="statusClass(instrument)">{{ instrument.currentStatus || 'Normal Operation' }}</span>
+          </div>
+          <div class="card-desc">{{ instrument.description }}</div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (hasQuery()) {
+    <ul class="result-list">
+      @for (instrument of results(); track instrument.tagNumber) {
+        <li class="result-card" (click)="open(instrument)">
+          <div class="card-top">
+            <span class="tag">{{ instrument.tagNumber }}</span>
+            <span [class]="statusClass(instrument)">{{ instrument.currentStatus || 'Normal Operation' }}</span>
+          </div>
+          <div class="card-desc">{{ instrument.description }}</div>
+          <div class="card-meta">
+            @if (instrument.location) { <span>{{ instrument.location }}</span> }
+            @if (instrument.type) { <span>{{ instrument.type }}</span> }
+            @if (lastActivity(instrument)) { <span>{{ lastActivity(instrument) }}</span> }
+          </div>
+        </li>
+      }
+    </ul>
+
+    @if (isTruncated()) {
+      <p class="truncation-note">
+        Showing the first {{ results().length }} of {{ matchCount() }}. Add another word to narrow it down.
+      </p>
+    }
+
+    <!-- Creating is the answer to a failed search, so it lives at the end of the results. -->
+    <button type="button" class="add-new-card" [class.prominent]="noMatches()" (click)="addNew()">
+      <span class="add-new-title">
+        {{ noMatches() ? 'No instrument matches “' + query() + '”' : 'Not the one you need?' }}
+      </span>
+      <span class="add-new-action">+ Add it as a new instrument</span>
+    </button>
+  }
+
+  @if (!hasQuery() && recentInstruments().length === 0) {
+    <p class="empty-hint">Type a tag number or a few words from the description to find an instrument.</p>
+  }
+</div>

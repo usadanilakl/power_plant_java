@@ -40,6 +40,12 @@ public class PwaInstrumentLogService {
 
     @Transactional
     public PwaSubmissionResult submitInstrumentLog(PwaInstrumentLogDto dto) {
+        // 0. Normalize the tag the same way the register does (trim + uppercase). Without this a log
+        //    for "pt-101" would miss the "PT-101" row in step 4 and mint a duplicate instrument.
+        if (dto.getInstrumentTagNumber() != null) {
+            dto.setInstrumentTagNumber(dto.getInstrumentTagNumber().trim().toUpperCase());
+        }
+
         // 1. Dedup by localUuid
         if (dto.getLocalUuid() != null && !dto.getLocalUuid().isEmpty()) {
             Optional<InstrumentLog> existing = instrumentLogRepo.findFirstByLocalUuidOrderByIdAsc(dto.getLocalUuid());
@@ -121,7 +127,7 @@ public class PwaInstrumentLogService {
 
     public List<InstrumentLogDto> getLogsByInstrument(String tagNumber) {
         if (tagNumber == null || tagNumber.isBlank()) return List.of();
-        return instrumentLogRepo.findAllByInstrumentTagNumber(tagNumber).stream()
+        return instrumentLogRepo.findTop50ByInstrumentTagNumberOrderByIdDesc(tagNumber.trim()).stream()
                 .map(logMapper::convertToDto)
                 .toList();
     }
@@ -132,6 +138,18 @@ public class PwaInstrumentLogService {
                 .toList();
     }
 
+    /**
+     * Rolls the submitted log up onto the instrument row (its "last log" summary, which step 6 then
+     * pushes to the SharePoint register).
+     *
+     * <p>Blank-guarded on every field the log merely <em>echoes</em> — description above all. The log
+     * form renders description read-only from the instrument, so a log arriving with it empty means
+     * the client didn't have it (offline replay, an older cached row, the Power Automate path), NOT
+     * that the user cleared it. Writing that blank through used to erase the description locally and
+     * then propagate the erasure to SharePoint. {@code lastComment} is the deliberate exception: it
+     * means "comment on the most recent log", so an empty comment must clear a stale one rather than
+     * leave an older comment masquerading as current.</p>
+     */
     private void upsertInstrumentLocally(PwaInstrumentLogDto dto) {
         Optional<Instrument> existing = instrumentRepo.findByTagNumber(dto.getInstrumentTagNumber());
         Instrument instrument;
@@ -141,15 +159,19 @@ public class PwaInstrumentLogService {
             instrument = new Instrument();
             instrument.setTagNumber(dto.getInstrumentTagNumber());
         }
-        instrument.setDescription(dto.getInstrumentDescription());
-        instrument.setCurrentStatus(dto.getStatus());
-        instrument.setLastUpdatedDate(dto.getDate());
-        instrument.setLastUpdatedTime(dto.getTime());
-        instrument.setLastUpdatedBy(dto.getName());
-        instrument.setLastComment(dto.getComment());
+        setIfNotBlank(dto.getInstrumentDescription(), instrument::setDescription);
+        setIfNotBlank(dto.getStatus(), instrument::setCurrentStatus);
+        setIfNotBlank(dto.getDate(), instrument::setLastUpdatedDate);
+        setIfNotBlank(dto.getTime(), instrument::setLastUpdatedTime);
+        setIfNotBlank(dto.getName(), instrument::setLastUpdatedBy);
+        instrument.setLastComment(dto.getComment() == null ? "" : dto.getComment().trim());
         instrumentRepo.saveAndFlush(instrument);
         log.info("[Instrument Submit] Instrument upserted locally: tagNumber={}, status={}",
                 dto.getInstrumentTagNumber(), dto.getStatus());
+    }
+
+    private static void setIfNotBlank(String value, java.util.function.Consumer<String> setter) {
+        if (value != null && !value.trim().isEmpty()) setter.accept(value.trim());
     }
 
     private String guessAttachmentType(String contentType) {

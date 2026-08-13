@@ -1,6 +1,6 @@
 <app-main-layout
   [isBottomMenuEnabled]="false"
-  [isSideMenuEnabled]="true"
+  [isSideMenuEnabled]="false"
 >
   <ng-container header>
     <div class="header-menus">
@@ -9,13 +9,7 @@
       </div>
     </div>
   </ng-container>
-  <ng-container left-menu>
-    <app-instrument-side-menu></app-instrument-side-menu>
-  </ng-container>
   <ng-container main-content>
     <router-outlet></router-outlet>
-  </ng-container>
-  <ng-container bottom-menu>
-    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
   </ng-container>
 </app-main-layout>

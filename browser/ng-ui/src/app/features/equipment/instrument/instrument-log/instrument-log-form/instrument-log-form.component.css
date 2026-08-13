@@ -88,6 +88,27 @@
   text-align: center;
 }
 
+.email-submit-section summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--secondary-text, #888);
+}
+
+/* Bigger tap targets for the status choices and the submit button on a phone. */
+:host ::ng-deep .radio-group label {
+  padding: 0.9rem 1rem;
+  font-size: 1rem;
+  min-width: 8rem;
+  text-align: center;
+}
+
+:host ::ng-deep form > div:last-of-type button[type="submit"] {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
 .email-submit-label {
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;

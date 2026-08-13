@@ -1,0 +1,226 @@
+:host {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.search-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0.75rem 2rem;
+}
+
+/* The search box stays reachable while the results scroll — on a phone it is the only control
+   that matters, and hunting back up a 60-card list to retype is the main friction we're removing. */
+.search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 0.75rem 0 0.5rem;
+  background: var(--main-background, var(--card-background, #fff));
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.85rem 0.9rem;
+  /* 16px minimum, or iOS zooms the whole page when the field takes focus. */
+  font-size: 16px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 10px;
+  background: var(--card-background, #fff);
+  color: var(--primary-text, #222);
+}
+
+.clear-button,
+.logic-button {
+  flex: 0 0 auto;
+  min-width: 3rem;
+  padding: 0.75rem 0.6rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 10px;
+  background: var(--card-background, #fff);
+  color: var(--primary-text, #222);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.logic-button {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.search-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--secondary-text, #777);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--accent-color, #007bff);
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  color: var(--secondary-text, #999);
+  cursor: default;
+}
+
+.banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.banner.offline {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.banner.pending {
+  background: #e7f1ff;
+  color: #0b4a8f;
+  border: 1px solid #99c2ff;
+}
+
+.section-title {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--secondary-text, #777);
+}
+
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.result-card {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 10px;
+  background: var(--card-background, #fff);
+  cursor: pointer;
+}
+
+.result-card:active {
+  background: var(--secondary-background, #f2f2f2);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tag {
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--primary-text, #222);
+  word-break: break-all;
+}
+
+.card-desc {
+  margin-top: 0.2rem;
+  font-size: 0.92rem;
+  color: var(--primary-text, #333);
+}
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.75rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--secondary-text, #777);
+}
+
+.status-chip {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-chip.normal {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.status-chip.progress {
+  background: #fff3cd;
+  color: #8a6d00;
+}
+
+.status-chip.removed {
+  background: #fdecea;
+  color: #b32d24;
+}
+
+.add-new-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border: 1px dashed var(--border-color, #bbb);
+  border-radius: 10px;
+  background: none;
+  color: var(--primary-text, #333);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.add-new-card.prominent {
+  border-style: solid;
+  border-color: var(--accent-color, #007bff);
+  background: var(--secondary-background, #f5f9ff);
+}
+
+.add-new-title {
+  font-size: 0.9rem;
+  color: var(--secondary-text, #666);
+}
+
+.add-new-action {
+  font-weight: 600;
+  color: var(--accent-color, #007bff);
+}
+
+.truncation-note,
+.empty-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: var(--secondary-text, #777);
+  text-align: center;
+}

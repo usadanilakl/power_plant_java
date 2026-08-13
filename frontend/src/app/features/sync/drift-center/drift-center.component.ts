@@ -7,6 +7,7 @@ import {
   DriftService, DriftRecord, DriftScanState, ThreeWayFieldDiff, ThreeWayFieldEntry,
   FileDriftReport, FileDriftEntry, FileDriftKind,
 } from '../../../services/drift.service';
+import { SyncStatusService } from '../../../services/sync-status.service';
 
 interface DriftRow { id: number; hub?: DriftRecord; sp?: DriftRecord; }
 
@@ -30,6 +31,7 @@ export class DriftCenterComponent implements OnInit {
   private drift = inject(DriftService);
   private destroyRef = inject(DestroyRef);
   private route = inject(ActivatedRoute);
+  private syncStatus = inject(SyncStatusService);
 
   overview = signal<DriftScanState[]>([]);
   selectedType = signal<string | null>(null);
@@ -38,6 +40,11 @@ export class DriftCenterComponent implements OnInit {
   busy = signal(false);
   scanning = signal(false);
   lastScanAt = signal<string | null>(null);
+
+  // Pending-backlog counts — restored from the retired Sync Overview tab. Sourced from SyncStatusService
+  // (kept warm app-wide by the header sync-indicator); we also fetch once on init so they render now.
+  outgoingPending = signal<number>(0);   // local FieldChanges not yet acked by the hub
+  incomingPending = signal<number>(0);   // hub changes queued for this client, not yet pulled
 
   selected = signal<Set<number>>(new Set());
   /** entityId -> human label for the drifted rows (from the backend SyncLabelService). */
@@ -112,6 +119,14 @@ export class DriftCenterComponent implements OnInit {
 
   ngOnInit(): void {
     this.reloadOverview();
+    // Restore the pending-backlog readout (from the retired Overview tab): subscribe to the shared
+    // SyncStatusService streams (kept warm by the header sync-indicator) + fetch once so they show now.
+    this.syncStatus.status$.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(s => this.outgoingPending.set(s?.pendingServerChanges ?? 0));
+    this.syncStatus.syncHealth$.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(h => this.incomingPending.set(h?.serverPendingChangesForClient ?? 0));
+    this.syncStatus.fetchStatus().subscribe();
+    this.syncStatus.fetchSyncHealthCheck().subscribe();
     // Honour a ?type= deep-link (sync badge / Activity / in-table links) on first load AND on re-navigation
     // to an already-open Drift Center. The observable (not snapshot) fires again when only the query param
     // changes; it wins over reloadOverview's "auto-select first drifting type" fallback.

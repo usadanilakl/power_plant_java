@@ -12,11 +12,16 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/home', label: 'Home' },
     { route: '/work-request', label: 'Work Request' },
     { route: '/jha', label: 'JHA' },
-    { route: '/instruments', label: 'Instrumentation' },
     { route: '/field-lists', label: 'Field Lists' },
     { route: '/inventory', label: 'Inventory' },
     { route: '/sds', label: 'SDS Chemicals' },
 ];
+
+/**
+ * Role-gated menu entries: shown only to users who can actually reach them, so nobody taps a link
+ * that bounces off a guard. Instrumentation needs ROLE_INSTRUMENTATION (or ROLE_ADMIN) on the hub.
+ */
+export const INSTRUMENTATION_MENU_ITEM: RouterMenuItem = { route: '/instruments', label: 'Instrumentation' };
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
     { route: './table', label: 'File Table' },

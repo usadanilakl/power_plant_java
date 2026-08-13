@@ -10,5 +10,12 @@ public interface InstrumentLogRepo extends BaseRepository<InstrumentLog> {
     Optional<InstrumentLog> findFirstByLocalUuidOrderByIdAsc(String localUuid);
     Optional<InstrumentLog> findFirstBySharepointIdOrderByIdAsc(String sharepointId);
     List<InstrumentLog> findAllByInstrumentTagNumber(String tagNumber);
+
+    /**
+     * Newest-first history for one instrument, bounded — the PWA detail screen shows recent activity,
+     * not the whole life of the tag, and an unbounded unordered fetch grows without limit as logs
+     * accumulate. Ordered by id (monotonic per node) rather than the free-text date/time columns.
+     */
+    List<InstrumentLog> findTop50ByInstrumentTagNumberOrderByIdDesc(String tagNumber);
     boolean existsBySharepointId(String sharepointId);
 }

@@ -11,6 +11,7 @@ import { userSetupGuard } from './guards/user-setup.guard';
 import { authGuard } from './auth/auth.guard';
 import { plantGuard } from './guards/plant.guard';
 import { plantGroupGuard } from './guards/plant-group.guard';
+import { instrumentationGuard } from './guards/instrumentation.guard';
 
 export const routes: Routes = [
     {
@@ -202,13 +203,18 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard, authGuard, plantGuard]
     },
     {
+      // Instrumentation. Search IS the landing screen (no chooser), and each instrument has its own
+      // URL so a QR sticker on the device can deep-link straight to its log form. `new` must precede
+      // `:tag` — first match wins, and otherwise "new" would resolve as a tag.
       path: 'instruments',
       loadComponent: () => import('./pages/instrument-page/instrument-page.component').then(m => m.InstrumentPageComponent),
-      canActivate: [standaloneGuard, userSetupGuard],
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, instrumentationGuard],
       children: [
-        { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', loadComponent: () => import('./features/equipment/instrument/instrument.component').then(m => m.InstrumentComponent) },
-        { path: 'new', loadComponent: () => import('./features/equipment/instrument/instrument-form/instrument-form.component').then(m => m.InstrumentFormComponent) }
+        { path: '', loadComponent: () => import('./features/equipment/instrument/instrument-search/instrument-search.component').then(m => m.InstrumentSearchComponent) },
+        { path: 'new', loadComponent: () => import('./features/equipment/instrument/instrument-create/instrument-create.component').then(m => m.InstrumentCreateComponent) },
+        // Pre-rework links pointed at /instruments/form; keep them landing somewhere sensible.
+        { path: 'form', redirectTo: '', pathMatch: 'full' },
+        { path: ':tag', loadComponent: () => import('./features/equipment/instrument/instrument-detail/instrument-detail.component').then(m => m.InstrumentDetailComponent) }
       ]
     },
 ];

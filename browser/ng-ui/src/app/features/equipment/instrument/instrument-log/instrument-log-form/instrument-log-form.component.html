@@ -1,6 +1,6 @@
 @if (emailFallbackData()) {
   <div class="email-fallback-banner">
-    <p><strong>Submission failed.</strong> All automatic methods unavailable. Please submit via email:</p>
+    <p><strong>This log could not be saved on the device.</strong> Please send it by email so it isn't lost:</p>
     <div class="email-fallback-actions">
       <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onFallbackEmailClick()">
         Open Email Client
@@ -26,14 +26,16 @@
 <app-reactive-form
   [entity]="entity()"
   [fields]="fields()"
-  [title]="'Instrumentation Log'"
+  [title]="showTitle() ? 'Instrumentation Log' : ''"
+  [submitButtonText]="'Submit log'"
   (formValueChange)="onAnyValueChange($event)"
   (formSubmit)="onSubmit($event)"
 >
 </app-reactive-form>
 
-<div class="email-submit-section">
-  <p class="email-submit-label">Or submit via email:</p>
+<details class="email-submit-section">
+  <summary>Submit by email instead</summary>
+  <p class="email-submit-label">Only needed if this device can't reach the plant systems at all — offline logs are queued and sent automatically.</p>
   <div class="email-submit-actions">
     <button class="email-button primary" (click)="submitViaEmail()">
       Open Email Client
@@ -42,4 +44,4 @@
       Open Gmail
     </button>
   </div>
-</div>
+</details>

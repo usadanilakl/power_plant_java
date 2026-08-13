@@ -12,8 +12,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Instrument register for the PWA. Sits under {@code /api/pwa/secured/**} (JWT required) and is
+ * further gated to ROLE_INSTRUMENTATION / ROLE_ADMIN by SecurityConfig — the register is plant
+ * equipment data, not an open submission endpoint like work-request/JHA.
+ */
 @RestController
-@RequestMapping("/api/pwa/instruments")
+@RequestMapping("/api/pwa/secured/instruments")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(originPatterns = {"https://dk-power.github.io", "https://jacksongeneration.github.io", "http://localhost:*", "http://127.0.0.1:*"}, allowCredentials = "true")

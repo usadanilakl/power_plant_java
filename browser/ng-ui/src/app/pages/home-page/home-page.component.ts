@@ -66,6 +66,21 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
             </section>
           }
 
+          @if (showInstrumentation) {
+            <section class="card-section">
+              <h2 class="section-title">Instrumentation</h2>
+              <div class="card-grid">
+                @for (card of instrumentationCards; track card.route) {
+                  <button class="home-card" (click)="navigate(card.route)">
+                    <span class="card-icon">{{ card.icon }}</span>
+                    <span class="card-title">{{ card.title }}</span>
+                    <span class="card-desc">{{ card.description }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
           @if (showPlantGroupCards) {
             <section class="card-section">
               <h2 class="section-title">Personnel</h2>
@@ -258,7 +273,6 @@ export class HomePageComponent {
   quickSubmitCards: HomeCard[] = [
     { title: 'Work Request', description: 'Submit and manage work requests', icon: '📋', route: '/work-request' },
     { title: 'JHA', description: 'Job Hazard Analysis forms', icon: '⚠️', route: '/jha' },
-    { title: 'Instrumentation', description: 'Instrument logs and status', icon: '🔧', route: '/instruments' },
     { title: 'Field Lists', description: 'Track insulation, leaks, winterization', icon: '📝', route: '/field-lists' },
     { title: 'Inventory', description: 'Track tools and equipment with QR codes', icon: '📦', route: '/inventory' },
     { title: 'SDS Chemicals', description: 'Record Safety Data Sheet chemicals', icon: '🧪', route: '/sds' }
@@ -269,6 +283,15 @@ export class HomePageComponent {
     { title: 'SDS Audit', description: 'Audit chemicals by location or alphabetically', icon: '✅', route: '/sds-audit' },
     { title: 'My Permits', description: 'View permit status and packages', icon: '🛡️', route: '/my-permits', requires: 'BASIC' },
     { title: 'Messages', description: 'Conversations with operators', icon: '💬', route: '/messages' }
+  ];
+
+  /**
+   * Instrumentation moved out of the no-login "Quick Submit" tier when the register became
+   * role-gated (ROLE_INSTRUMENTATION / ROLE_ADMIN) — showing a tile that bounces off the guard is
+   * worse than not showing it.
+   */
+  instrumentationCards: HomeCard[] = [
+    { title: 'Instrumentation', description: 'Search instruments and log status', icon: '🔧', route: '/instruments' }
   ];
 
   /**
@@ -291,6 +314,10 @@ export class HomePageComponent {
   get signedInCards(): HomeCard[] {
     if (!this.authService.isLoggedIn()) return [];
     return this.signedInCardsAll.filter(c => !c.requires || this.authService.hasPermission(c.requires));
+  }
+
+  get showInstrumentation(): boolean {
+    return this.authService.isLoggedIn() && this.authService.isInstrumentation();
   }
 
   get showPlantGroupCards(): boolean {

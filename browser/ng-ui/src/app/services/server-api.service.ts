@@ -324,7 +324,7 @@ export class ServerApiService {
   }
 
   getInstruments(): Observable<PwaInstrumentDto[]> {
-    return this.http.get<{ responseData: PwaInstrumentDto[] }>(`${this.baseUrl}/api/pwa/instruments/get-all`).pipe(
+    return this.http.get<{ responseData: PwaInstrumentDto[] }>(`${this.baseUrl}/api/pwa/secured/instruments/get-all`).pipe(
       timeout(10000),
       map(response => response.responseData),
       catchError(this.handleError)
@@ -332,7 +332,7 @@ export class ServerApiService {
   }
 
   getInstrumentsState(): Observable<PwaInstrumentStateDto> {
-    return this.http.get<{ responseData: PwaInstrumentStateDto }>(`${this.baseUrl}/api/pwa/instruments/state`).pipe(
+    return this.http.get<{ responseData: PwaInstrumentStateDto }>(`${this.baseUrl}/api/pwa/secured/instruments/state`).pipe(
       timeout(10000),
       map(response => response.responseData),
       catchError(this.handleError)
@@ -390,7 +390,7 @@ export class ServerApiService {
   }
 
   createInstrument(dto: PwaInstrumentDto): Observable<PwaSubmissionResult> {
-    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/instruments/create`, dto).pipe(
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/secured/instruments/create`, dto).pipe(
       timeout(15000),
       map(response => response.responseData),
       catchError(this.handleError)
@@ -398,7 +398,7 @@ export class ServerApiService {
   }
 
   submitInstrumentLog(dto: PwaInstrumentLogDto): Observable<PwaSubmissionResult> {
-    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/instrument-log/submit`, dto).pipe(
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/secured/instrument-log/submit`, dto).pipe(
       timeout(15000),
       map(response => response.responseData),
       catchError(this.handleError)
@@ -406,7 +406,7 @@ export class ServerApiService {
   }
 
   getInstrumentLogsByTag(tagNumber: string): Observable<PwaInstrumentLogDto[]> {
-    return this.http.get<{ responseData: PwaInstrumentLogDto[] }>(`${this.baseUrl}/api/pwa/instrument-log/by-instrument/${encodeURIComponent(tagNumber)}`).pipe(
+    return this.http.get<{ responseData: PwaInstrumentLogDto[] }>(`${this.baseUrl}/api/pwa/secured/instrument-log/by-instrument/${encodeURIComponent(tagNumber)}`).pipe(
       timeout(10000),
       map(response => response.responseData),
       catchError(this.handleError)

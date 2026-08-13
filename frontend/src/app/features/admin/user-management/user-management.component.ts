@@ -476,6 +476,7 @@ export class UserManagementComponent implements OnInit {
           'ROLE_CONTRACTOR',
           'ROLE_PLANT',
           'ROLE_LOG_DIAGNOSTICS',
+          'ROLE_INSTRUMENTATION',
         ];
         this.lotoRoles = ['CONTROL_AUTHORITY', 'LOTO_QUALIFIED', 'REQUESTOR', 'MANAGER'];
         this.roles = [...this.accessRoles, ...this.lotoRoles];

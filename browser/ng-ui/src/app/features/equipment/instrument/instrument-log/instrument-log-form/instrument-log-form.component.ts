@@ -1,10 +1,10 @@
-import { Component, computed, DestroyRef, inject, input } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
 import { InstrumentLocalStorageService } from '../../instrument-local-storage.service';
 import { InstrumentStateService } from '../../instrument-state.service';
 import { SubmissionOrchestratorService } from '../../../../../services/submission-orchestrator.service';
 import { FormField } from '../../../../../models/inputs/form-field.model';
 import { Instrument } from '../../../../../models/equipment/instrument.model';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormComponent } from "../../../../../shared/forms/reactive-form/reactive-form.component";
 import { InstrumentLogEntryLocalStorageService } from '../instrument-log-local-storage.service';
 import { InstrumentLogEntry } from '../../../../../models/equipment/instrument-log.model';
@@ -28,14 +28,20 @@ export class InstrumentLogFormComponent {
 
   entityInput = input<Instrument>();
   fieldsInput = input<FormField[]>();
+  /** The screen already shows the form title in its header; suppress the duplicate when embedded. */
+  showTitle = input<boolean>(true);
 
   private entityFromState = toSignal(this.instrumentStateService.selectedInstrument$, { initialValue: new Instrument() });
   entityInstrument = computed(() => this.entityInput() ?? this.entityFromState());
+
+  /** Bumped after each submit so `entity` recomputes off the now-cleared draft (localStorage isn't reactive). */
+  private resetToken = signal(0);
+
   entity = computed(() => {
+    this.resetToken();
     const baseEntry = this.entityInstrument()?.toLogEntry() ?? new InstrumentLogEntry();
-    const draft = this.instrumentLogEntryLocalStorageService.loadDraft();
-    const shouldUseDraft = !!draft && draft.instrumentTagNumber === baseEntry.instrumentTagNumber;
-    const entry = shouldUseDraft
+    const draft = this.instrumentLogEntryLocalStorageService.loadDraft(baseEntry.instrumentTagNumber);
+    const entry = draft
       ? new InstrumentLogEntry({ ...baseEntry, ...draft })
       : baseEntry;
     const userData = this.userSetupService.getUserData();
@@ -48,7 +54,7 @@ export class InstrumentLogFormComponent {
   private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());
 
-  // Fallback-specific (only shown after failed submission)
+  // Fallback-specific (only shown when even the outbox could not hold the entry)
   emailFallbackData = this.instrumentStateService.emailFallbackData;
   hasAttachments = computed(() => {
     const entry = this.emailFallbackData()?.entry;
@@ -58,7 +64,14 @@ export class InstrumentLogFormComponent {
 
   private currentDraft: InstrumentLogEntry | null = null;
 
-  constructor() { }
+  constructor() {
+    this.instrumentStateService.logSubmitted$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.currentDraft = null;
+        this.resetToken.update(v => v + 1);
+      });
+  }
 
   onAnyValueChange(instrumentLog: InstrumentLogEntry) {
     this.currentDraft = instrumentLog;
@@ -69,7 +82,7 @@ export class InstrumentLogFormComponent {
     this.instrumentStateService.submitLogForm(instrumentLog);
   }
 
-  // ---- Always-visible email submission (uses current form data) ----
+  // ---- Manual email escape hatch (collapsed; the outbox is the normal offline path) ----
 
   submitViaEmail() {
     const entry = this.currentDraft ?? this.entity();
@@ -87,7 +100,7 @@ export class InstrumentLogFormComponent {
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&cc=${cc}&su=${subject}&body=${body}`, '_blank');
   }
 
-  // ---- Fallback-specific handlers (after failed submission) ----
+  // ---- Fallback-specific handlers (only when the device could not even queue the log) ----
 
   onFallbackEmailClick() {
     if (this.hasAttachments()) this.downloadAttachments();

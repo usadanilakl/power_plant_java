@@ -1,7 +1,7 @@
 <nav class="router-menu" [ngClass]="layout()">
-  @if (menuItems()) {
+  @if (visibleItems()) {
     <ul>
-      @for (item of menuItems(); track item.route) {
+      @for (item of visibleItems(); track item.route) {
         <li>
           <a [routerLink]="item.route">{{ item.label }}</a>
         </li>

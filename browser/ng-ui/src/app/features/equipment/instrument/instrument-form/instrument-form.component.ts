@@ -1,10 +1,11 @@
-import { Component, computed, DestroyRef, inject, input } from '@angular/core';
-import { InstrumentStateService } from '../instrument-state.service';
+import { Component, computed, DestroyRef, inject, input, output } from '@angular/core';
+import { InstrumentStateService, InstrumentCreateOutcome } from '../instrument-state.service';
 import { Instrument } from '../../../../models/equipment/instrument.model';
 import { FormField } from '../../../../models/inputs/form-field.model';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { InstrumentLocalStorageService } from '../instrument-local-storage.service';
 import { ReactiveFormComponent } from "../../../../shared/forms/reactive-form/reactive-form.component";
+import { take } from 'rxjs';
 
 @Component({
   selector: 'app-instrument-form',
@@ -23,6 +24,9 @@ export class InstrumentFormComponent {
   formTitle = input<string>('Instrumentation Form');
   submitButtonText = input<string>('Submit');
 
+  /** Emitted once the create attempt resolves, so the host can route on to the new instrument. */
+  submitted = output<InstrumentCreateOutcome>();
+
   private entityFromState = toSignal(this.instrumentStateService.selectedInstrument$, { initialValue: new Instrument() });
   entity = computed(() => this.entityInput() ?? this.entityFromState());
 
@@ -31,12 +35,14 @@ export class InstrumentFormComponent {
 
   constructor() { }
 
-  onAnyValueChange(workRequest: Instrument) {
-    this.instrumentLocalStorageService.saveDraft(workRequest);
+  onAnyValueChange(instrument: Instrument) {
+    this.instrumentLocalStorageService.saveDraft(instrument);
   }
 
   onSubmit(instrument: Instrument) {
-    this.instrumentStateService.submitForm(instrument);
+    this.instrumentStateService.submitForm(instrument)
+      .pipe(take(1))
+      .subscribe(outcome => this.submitted.emit(outcome));
   }
 
 }

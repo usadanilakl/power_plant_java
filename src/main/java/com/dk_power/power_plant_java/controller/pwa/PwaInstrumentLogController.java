@@ -12,8 +12,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Instrument log submissions from the PWA. Under {@code /api/pwa/secured/**} (JWT required) and
+ * gated to ROLE_INSTRUMENTATION / ROLE_ADMIN by SecurityConfig, matching the register itself.
+ */
 @RestController
-@RequestMapping("/api/pwa/instrument-log")
+@RequestMapping("/api/pwa/secured/instrument-log")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(originPatterns = {"https://dk-power.github.io", "https://jacksongeneration.github.io", "http://localhost:*", "http://127.0.0.1:*"}, allowCredentials = "true")

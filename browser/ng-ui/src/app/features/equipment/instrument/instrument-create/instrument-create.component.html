@@ -1,0 +1,12 @@
+<div class="create-screen">
+  <div class="create-header">
+    <button type="button" class="back-button" (click)="back()">← Instruments</button>
+  </div>
+
+  <app-instrument-form
+    [entityInput]="entity()"
+    [formTitle]="'Add new instrument'"
+    [submitButtonText]="'Add instrument and log it'"
+    (submitted)="onSubmitted($event)"
+  ></app-instrument-form>
+</div>
