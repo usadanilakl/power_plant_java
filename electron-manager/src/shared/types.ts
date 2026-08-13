@@ -476,6 +476,9 @@ export interface ResourcePackStatus {
 export interface SyncOptions {
   /** When true, deletes all local files before downloading from server. Default: false (only download missing). */
   cleanFiles?: boolean;
+  /** Smart-resync only: after the DB/file snapshot is confirmed in place (post-swap, post-restart), tell the
+   *  hub this client is fully synced. Set ONLY by the smart-resync flow — never for a partial component sync. */
+  markHubSyncedAfter?: boolean;
 }
 
 export interface SyncExecuteProgress {

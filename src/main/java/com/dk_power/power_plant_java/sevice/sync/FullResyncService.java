@@ -405,8 +405,13 @@ public class FullResyncService {
                     null);
         }
 
-        // Step 2: Notify hub to mark all changes as synced (fire-and-forget)
-        notifyHubAllSynced();
+        // Step 2: (moved to AFTER the swap) The hub is told "this client is fully synced" by Electron ONLY
+        // after the DB/file snapshot is confirmed in place (post-swap, post-restart) — see the
+        // markHubSyncedAfter path in electron-manager IPC_SYNC_EXECUTE. Doing it HERE (before the swap)
+        // risked the hub marking the client caught-up while Electron's swap silently failed → permanently
+        // missed changes. If the post-swap notify ever fails, pending simply isn't cleared and the client
+        // catches up incrementally (safe); /api/sync/changes/reset/{machineId} restores full pending if a
+        // swap is aborted mid-way.
 
         // Step 3: Return success — frontend tells Electron to shut down,
         // sync DB + files from hub, and restart. Electron owns the full lifecycle.

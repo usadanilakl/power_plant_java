@@ -858,6 +858,33 @@ export class IpcHandlers {
           await this.springBoot.start();
         }
 
+        // After a smart-resync DB replace, tell the hub this client is now fully synced — ONLY here, AFTER
+        // the snapshot is confirmed in place (Spring Boot restarted on it). The old
+        // FullResyncService.smartResync did this BEFORE the swap, so a silently-failed swap could leave the
+        // hub believing the client was caught up → permanently missed changes. Gated to the smart-resync
+        // flow (markHubSyncedAfter). Failure is SAFE: pending just isn't cleared and the client catches up
+        // incrementally.
+        if (options?.markHubSyncedAfter && components.includes('db')) {
+          sendProgress({ phase: 'starting_sb', statusMessage: 'Notifying hub…', progressPercent: 97 });
+          await new Promise<void>((resolve) => {
+            try {
+              const u = new URL('/api/sync/changes/mark-all-synced', config.syncServerUrl);
+              const mod = u.protocol === 'https:' ? require('https') : require('http');
+              const req = mod.request({
+                hostname: u.hostname,
+                port: u.port || (u.protocol === 'https:' ? 443 : 80),
+                path: u.pathname,
+                method: 'POST',
+                headers: { 'X-Machine-Id': config.machineId },
+                timeout: 15000
+              }, (res: any) => { res.resume(); res.on('end', () => resolve()); });
+              req.on('error', (e: any) => { console.warn('mark-all-synced after resync failed (client will catch up incrementally):', e?.message || e); resolve(); });
+              req.on('timeout', () => { req.destroy(); console.warn('mark-all-synced after resync timed out'); resolve(); });
+              req.end();
+            } catch (e: any) { console.warn('mark-all-synced after resync error:', e?.message || e); resolve(); }
+          });
+        }
+
         sendProgress({ phase: 'done', statusMessage: 'Sync complete', progressPercent: 100 });
 
         // Persist sync time and refresh assessment

@@ -664,10 +664,10 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     return !a.jar.present || a.jar.updateAvailable || !a.db.present || !a.files.present || a.sync.stale || packsNeedSync;
   }
 
-  executeSync(components: SyncComponent[]): void {
+  executeSync(components: SyncComponent[], extra?: Partial<SyncOptions>): void {
     if (this.syncInProgress) return;
     this.syncProgress = null;
-    const options: SyncOptions = this.cleanFiles ? { cleanFiles: true } : {};
+    const options: SyncOptions = { ...(this.cleanFiles ? { cleanFiles: true } : {}), ...(extra ?? {}) };
     this.electronService.executeSync(components, options);
   }
 
@@ -687,9 +687,10 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Step 2: Electron handles shutdown → DB + files sync → restart
+      // Step 2: Electron handles shutdown → DB + files sync → restart → THEN notifies the hub we're synced
+      // (markHubSyncedAfter), so the hub is only told "caught up" once the snapshot is actually in place.
       this.syncInProgress = false; // reset so executeSync doesn't skip
-      this.executeSync(['db', 'files']);
+      this.executeSync(['db', 'files'], { markHubSyncedAfter: true });
     } catch (err: any) {
       this.syncProgress = { phase: 'error', statusMessage: 'Smart resync failed: ' + (err?.message || err), progressPercent: 0 };
       this.syncInProgress = false;
