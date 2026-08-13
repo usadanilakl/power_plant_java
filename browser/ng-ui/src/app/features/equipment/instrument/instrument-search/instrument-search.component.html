@@ -42,9 +42,9 @@
     </div>
   }
 
-  @if (pendingLogs().length > 0) {
+  @if (pendingCount() > 0) {
     <div class="banner pending">
-      <span>{{ pendingLogs().length }} log{{ pendingLogs().length === 1 ? '' : 's' }} waiting to send</span>
+      <span>{{ pendingCount() }} change{{ pendingCount() === 1 ? '' : 's' }} waiting to send</span>
       <button type="button" class="link-button" (click)="flushOutbox()" [disabled]="isFlushing()">
         {{ isFlushing() ? 'Sending…' : 'Send now' }}
       </button>
@@ -75,6 +75,9 @@
             <span [class]="statusClass(instrument)">{{ instrument.currentStatus || 'Normal Operation' }}</span>
           </div>
           <div class="card-desc">{{ instrument.description }}</div>
+          @if (instrument.pendingSync) {
+            <div class="pending-note">Added on this device — not sent yet</div>
+          }
           <div class="card-meta">
             @if (instrument.location) { <span>{{ instrument.location }}</span> }
             @if (instrument.type) { <span>{{ instrument.type }}</span> }

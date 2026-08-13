@@ -1,0 +1,65 @@
+/*
+ * Fixed to the bottom of the viewport, above the home indicator, and deliberately loud (amber, a
+ * pulsing dot). It must survive navigation and read as "unfinished business", not as a toast.
+ * Sits below modal/toast layers so it can never block a dialog the user is answering.
+ */
+.pending-pill {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  z-index: 900;
+
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: min(92vw, 26rem);
+  padding: 0.6rem 1rem;
+  border: 1px solid #e0a800;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #7a5c00;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+
+.pending-pill:active {
+  background: #ffe89a;
+}
+
+.pending-pill.sending {
+  border-color: #6c9bd2;
+  background: #e7f1ff;
+  color: #0b4a8f;
+}
+
+.pending-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pending-dot {
+  flex: 0 0 auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #d9534f;
+  animation: pending-pulse 1.8s ease-in-out infinite;
+}
+
+.pending-pill.sending .pending-dot {
+  background: #1e6fd9;
+}
+
+@keyframes pending-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending-dot { animation: none; }
+}

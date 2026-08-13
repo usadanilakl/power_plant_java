@@ -4,7 +4,7 @@ import { IWorkRequest, WorkRequest } from '../models/permits/work-request.model'
 import { IJha, Jha } from '../models/permits/jha.model';
 import { Space } from '../models/permits/space.model';
 import { User } from '../models/auth/user.model';
-import { Instrument } from '../models/equipment/instrument.model';
+import { Instrument, InstrumentCreateOutboxItem } from '../models/equipment/instrument.model';
 import { InstrumentLogEntry, InstrumentLogOutboxItem } from '../models/equipment/instrument-log.model';
 
 @Injectable({
@@ -18,6 +18,7 @@ export class IndexedDbService extends Dexie {
   instruments!: Table<Instrument, number>;
   instrumentLogs!: Table<InstrumentLogEntry, number>;
   instrumentLogOutbox!: Table<InstrumentLogOutboxItem, number>;
+  instrumentCreateOutbox!: Table<InstrumentCreateOutboxItem, number>;
 
   constructor() {
     // 1. Database Name
@@ -86,6 +87,13 @@ export class IndexedDbService extends Dexie {
     // single-draft-in-localStorage + "please email it yourself" fallback.
     this.version(9).stores({
       instrumentLogOutbox: '++id, localUuid, instrumentTagNumber, createdAt'
+    });
+
+    // Version 10: Instrument REGISTER outbox — new instruments added in the field with no
+    // connectivity. Kept in its own table (not merged with the log outbox) because the two replay in
+    // order: an instrument must exist before the logs written against it are sent.
+    this.version(10).stores({
+      instrumentCreateOutbox: '++id, localUuid, tagNumber, createdAt'
     });
 
     // 3. Map tables to classes

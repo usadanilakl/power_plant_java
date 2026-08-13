@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Instrument } from '../../../../models/equipment/instrument.model';
 import { InstrumentStateService } from '../instrument-state.service';
 import { InstrumentRecentsService } from '../instrument-recents.service';
-import { InstrumentLogOutboxService } from '../instrument-log/instrument-log-outbox.service';
+import { InstrumentOutboxService } from '../instrument-outbox.service';
 import { matchesTokens, SearchLogic, tokenizeQuery } from '../../../../shared/search/word-bucket-search';
 
 /**
@@ -24,7 +24,7 @@ export class InstrumentSearchComponent {
 
   private state = inject(InstrumentStateService);
   private recents = inject(InstrumentRecentsService);
-  private outbox = inject(InstrumentLogOutboxService);
+  private outbox = inject(InstrumentOutboxService);
   private router = inject(Router);
 
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
@@ -42,7 +42,7 @@ export class InstrumentSearchComponent {
   isOffline = this.state.isOffline;
   lastSyncedAt = this.state.lastSyncedAt;
 
-  pendingLogs = toSignal(this.outbox.pending$, { initialValue: [] });
+  pendingCount = this.outbox.pendingCount;
   isFlushing = this.outbox.isFlushing;
 
   private matches = computed(() => {
@@ -91,8 +91,9 @@ export class InstrumentSearchComponent {
     this.router.navigate(['/instruments', 'new'], typed ? { queryParams: { tag: typed } } : {});
   }
 
+  /** Explicit user request — bypasses the Power Automate refresh cooldown. */
   refresh() {
-    this.state.loadAllInstruments();
+    this.state.loadAllInstruments({ userInitiated: true });
   }
 
   flushOutbox() {

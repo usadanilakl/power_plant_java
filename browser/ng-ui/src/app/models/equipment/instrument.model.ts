@@ -16,6 +16,27 @@ export interface IInstrument extends IBaseModel {
     lastComment?: string;
     sharepointId?: string;
     localUuid?: string;
+    /**
+     * Device-only flag: this instrument was created offline and is still sitting in the outbox, so
+     * it exists in the local register but nowhere else yet. Never sent to the hub — the create DTO
+     * is built field by field — and cleared when the queued create lands.
+     */
+    pendingSync?: boolean;
+}
+
+/**
+ * An instrument created on this device that the hub hasn't accepted yet. Holds the exact create
+ * payload so the replay is byte-for-byte what the user submitted; `localUuid` is minted before the
+ * first attempt so a replay the hub already saw is recognised rather than duplicated.
+ */
+export interface InstrumentCreateOutboxItem {
+    id?: number;
+    localUuid: string;
+    tagNumber: string;
+    payload: IInstrument;
+    createdAt: string;
+    attempts: number;
+    lastError?: string;
 }
 
 export class Instrument extends BaseModel<IInstrument> implements IInstrument {
@@ -31,6 +52,7 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
     lastComment?: string;
     sharepointId?: string;
     localUuid?: string;
+    pendingSync?: boolean;
 
     constructor(data: Partial<IInstrument> = {}) {
         super(data);
@@ -46,6 +68,7 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
         this.lastComment = data.lastComment;
         this.sharepointId = data.sharepointId;
         this.localUuid = data.localUuid;
+        this.pendingSync = data.pendingSync;
     }
 
     getFormFields(): FormField[] {

@@ -121,23 +121,33 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
 
         @if (tab() === 'complete') {
           @if (done()) {
-            <div class="wd-success"><span class="wd-success-i">✓</span> Work order completed.</div>
-            @if (reorderLoading()) { <p class="wd-msg">Checking reorder levels…</p> }
-            @else if (reorderResult()?.sent) {
-              <div class="wd-reorder-done">✓ {{ reorderResult()?.message || 'Reorder email sent to the vendor.' }}</div>
-            } @else if (reorderLines().length) {
-              <div class="wd-reorder">
-                <h4 class="wd-reorder-h">Reorder needed — {{ reorderLines().length }} item(s) below target</h4>
-                <div class="wd-reorder-list">
-                  @for (l of reorderLines(); track l.reagent) {
-                    <div class="wd-reorder-row"><span class="wd-reorder-name">{{ l.reagent }}</span><span class="wd-reorder-qty">{{ l.inStock }} / {{ l.target }} · order {{ l.need }}</span></div>
-                  }
+            @if (woCloseFailed()) {
+              <!-- Form attached, but Maximo rejected the WO close. Do NOT claim completion — show the reason and a
+                   close-only retry (which sends no status memo, so it isn't blocked by the memo-length rejection). -->
+              <div class="wd-success wd-success-partial"><span class="wd-success-i">⚠</span> Form attached — work order not closed.</div>
+              <p class="wd-warn"><b>The form is attached ✓</b> and won't be sent again — but Maximo didn't close the work order: {{ woCloseErr() || 'the status change was rejected.' }} Fix the cause in Maximo (e.g. complete any open tasks), then close it here.</p>
+              <button class="wd-close-only" [disabled]="completing() || !canComplete()" (click)="completeWo()">
+                {{ completing() ? 'Closing…' : 'Complete work order (close only)' }}
+              </button>
+            } @else {
+              <div class="wd-success"><span class="wd-success-i">✓</span> Work order completed.</div>
+              @if (reorderLoading()) { <p class="wd-msg">Checking reorder levels…</p> }
+              @else if (reorderResult()?.sent) {
+                <div class="wd-reorder-done">✓ {{ reorderResult()?.message || 'Reorder email sent to the vendor.' }}</div>
+              } @else if (reorderLines().length) {
+                <div class="wd-reorder">
+                  <h4 class="wd-reorder-h">Reorder needed — {{ reorderLines().length }} item(s) below target</h4>
+                  <div class="wd-reorder-list">
+                    @for (l of reorderLines(); track l.reagent) {
+                      <div class="wd-reorder-row"><span class="wd-reorder-name">{{ l.reagent }}</span><span class="wd-reorder-qty">{{ l.inStock }} / {{ l.target }} · order {{ l.need }}</span></div>
+                    }
+                  </div>
+                  <button class="wd-complete" [disabled]="reorderSending()" (click)="sendReorder()">
+                    {{ reorderSending() ? 'Sending…' : '✉ Send reorder email to vendor' }}
+                  </button>
+                  @if (reorderResult() && !reorderResult()?.sent) { <p class="wd-err">{{ reorderResult()?.message }}</p> }
                 </div>
-                <button class="wd-complete" [disabled]="reorderSending()" (click)="sendReorder()">
-                  {{ reorderSending() ? 'Sending…' : '✉ Send reorder email to vendor' }}
-                </button>
-                @if (reorderResult() && !reorderResult()?.sent) { <p class="wd-err">{{ reorderResult()?.message }}</p> }
-              </div>
+              }
             }
           } @else if (queued()) {
             <div class="wd-success"><span class="wd-success-i">⏳</span> Saved on this device — it submits to Maximo when you reconnect.</div>
@@ -423,6 +433,8 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
     .wd-complete:disabled { opacity: 0.6; cursor: default; }
     .wd-success { text-align: center; padding: 2rem 1rem; color: var(--primary-text); font-size: 1.05rem; font-weight: 700; }
     .wd-success-i { display: block; width: 3rem; height: 3rem; line-height: 3rem; margin: 0 auto 0.6rem; border-radius: 50%; background: #27ae60; color: #fff; font-size: 1.7rem; }
+    .wd-success-partial { padding-bottom: 0.6rem; }
+    .wd-success-partial .wd-success-i { background: #e67e22; }
     .wd-reorder { border: 1px solid #e67e22; background: rgba(230,126,34,0.1); border-radius: 12px; padding: 0.9rem 1rem; margin-top: 0.5rem; }
     .wd-reorder-h { margin: 0 0 0.6rem; font-size: 0.92rem; color: #e67e22; font-weight: 800; }
     .wd-reorder-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.8rem; }

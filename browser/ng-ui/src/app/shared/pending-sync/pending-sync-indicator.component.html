@@ -1,0 +1,18 @@
+@if (count() > 0) {
+  <button
+    type="button"
+    class="pending-pill"
+    [class.sending]="isFlushing()"
+    (click)="onClick()"
+    [attr.aria-label]="'Unsynced changes on this device: ' + label() + '. Tap to send now.'"
+  >
+    <span class="pending-dot" aria-hidden="true"></span>
+    <span class="pending-text">
+      @if (isFlushing()) {
+        Sending {{ count() }} pending…
+      } @else {
+        {{ count() }} not sent — {{ label() }}
+      }
+    </span>
+  </button>
+}

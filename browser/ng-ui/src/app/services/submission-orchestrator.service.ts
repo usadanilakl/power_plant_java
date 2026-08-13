@@ -207,7 +207,12 @@ export class SubmissionOrchestratorService {
 
   // ====================== Instrument Fetch & Create ======================
 
-  fetchInstrumentsState(): Observable<InstrumentStateFetchResult> {
+  /**
+   * @param allowPowerAutomate pass false to keep a hub failure from spilling over into a Power
+   *        Automate call. Each PA hop is a metered Power Platform run that walks the whole
+   *        SharePoint list, so the caller throttles how often the fallback may be used.
+   */
+  fetchInstrumentsState(allowPowerAutomate = true): Observable<InstrumentStateFetchResult> {
     return this.serverApi.getInstrumentsState().pipe(
       map(state => ({
         success: true,
@@ -216,6 +221,10 @@ export class SubmissionOrchestratorService {
       })),
       catchError(serverError => {
         console.warn('[Orchestrator] Server fetch instrument state failed:', serverError.message);
+        if (!allowPowerAutomate) {
+          console.info('[Orchestrator] Power Automate state probe suppressed by refresh cooldown.');
+          return of({ success: false, method: 'cache' as const });
+        }
         if (!this.powerAutomate.isV2Configured('instrument')) {
           return of({ success: false, method: 'cache' as const });
         }
@@ -243,7 +252,8 @@ export class SubmissionOrchestratorService {
     );
   }
 
-  fetchInstruments(): Observable<FetchResult> {
+  /** @param allowPowerAutomate see {@link fetchInstrumentsState} — throttles the metered fallback. */
+  fetchInstruments(allowPowerAutomate = true): Observable<FetchResult> {
     return this.serverApi.getInstruments().pipe(
       map(instruments => ({
         success: true,
@@ -252,15 +262,29 @@ export class SubmissionOrchestratorService {
       })),
       catchError(serverError => {
         console.warn('[Orchestrator] Server fetch instruments failed, trying PA:', serverError.message);
+        if (!allowPowerAutomate) {
+          console.info('[Orchestrator] Power Automate list pull suppressed by refresh cooldown.');
+          return of({ success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] });
+        }
         if (!this.powerAutomate.isV2Configured('instrument')) {
           return of({ success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] });
         }
         return this.powerAutomate.submitV2('instrument', { actionType: 'getAllInstruments', data: {} }).pipe(
-          map(response => ({
-            success: true,
-            method: 'powerAutomate' as const,
-            instruments: (response.data || []) as PwaInstrumentDto[]
-          })),
+          map(response => {
+            const rows = (response.data || []) as PwaInstrumentDto[];
+            // The gateway answers HTTP 200 with {success:false} when it rejects a request (bad token,
+            // unauthorized target, unknown actionType), so an HTTP success is not a data success.
+            // Reporting that as a register of zero instruments would overwrite the caller's cached
+            // list with nothing — treat it as a failed fetch and let the cache stand.
+            if (response.success === false || rows.length === 0) {
+              return { success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] };
+            }
+            return {
+              success: true,
+              method: 'powerAutomate' as const,
+              instruments: rows
+            };
+          }),
           catchError(paError => {
             console.warn('[Orchestrator] PA fetch instruments failed:', paError.message);
             return of({ success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] });
@@ -323,7 +347,10 @@ export class SubmissionOrchestratorService {
             method: 'powerAutomate' as const,
             sharepointId: response.id,
             localUuid,
-            message: 'Instrument created via Power Automate.'
+            // Don't claim success when the flow/gateway said no — that message reaches the user.
+            message: response.success
+              ? 'Instrument created via Power Automate.'
+              : (response.message || 'Power Automate rejected the new instrument.')
           })),
           catchError(paError => {
             console.warn('[Orchestrator] PA create instrument failed:', paError.message);
@@ -420,12 +447,20 @@ export class SubmissionOrchestratorService {
       localUuid,
       attachments: dtoAttachments
     }).pipe(
-      map(() => ({
-        success: true,
-        method: 'powerAutomate' as const,
-        localUuid,
-        message: 'Instrument log submitted via Power Automate.'
-      })),
+      map(response => {
+        // A gateway rejection comes back as HTTP 200 with {success:false, message}. Reporting that as
+        // a successful submission would delete the log from the outbox — the one copy that exists.
+        // Throwing routes it into the catchError below, which keeps the entry retryable.
+        if (response && response.success === false) {
+          throw new Error(response.message || 'Power Automate rejected the instrument log');
+        }
+        return {
+          success: true,
+          method: 'powerAutomate' as const,
+          localUuid,
+          message: 'Instrument log submitted via Power Automate.'
+        };
+      }),
       catchError(paError => {
         console.warn('[Orchestrator] PA failed for instrument log:', paError.message);
         return this.tryServerEmail(

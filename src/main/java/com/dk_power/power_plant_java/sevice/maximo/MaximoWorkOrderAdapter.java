@@ -419,13 +419,25 @@ public class MaximoWorkOrderAdapter {
         try { return Double.parseDouble(s); } catch (NumberFormatException e) { return null; }
     }
 
+    /**
+     * Maximo WORKORDER.NP_STATUSMEMO max length on this instance. A longer changeStatus memo makes Maximo reject
+     * the ENTIRE status change with BMXAA4590E ("Could not change Work Order … status") wrapping a BMXAA4049E
+     * field-length error — so the WO silently never closes. A long PM form name (e.g. "Completed form: Emergency
+     * Eyewash & Safety Shower Inspection (SMP-06)") blows past it. Truncate the memo rather than fail the close.
+     */
+    private static final int MAX_STATUS_MEMO_LEN = 50;
+
     /** Change WO status via the changeStatus action method (e.g. COMP). */
     public void changeStatus(String href, String status, String memo) {
         if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
         if (status == null || status.isBlank()) throw new IllegalArgumentException("status is required");
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("status", status.trim().toUpperCase());
-        if (memo != null && !memo.isBlank()) body.put("memo", memo.trim());
+        if (memo != null && !memo.isBlank()) {
+            String m = memo.trim();
+            if (m.length() > MAX_STATUS_MEMO_LEN) m = m.substring(0, MAX_STATUS_MEMO_LEN).trim();
+            body.put("memo", m);
+        }
         access.invokeAction(access.osUrl(OS) + "/" + href, "wsmethod:changeStatus", body);
     }
 

@@ -12,12 +12,12 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { InstrumentLogEntryLocalStorageService } from "./instrument-log/instrument-log-local-storage.service";
 import { InstrumentDbService } from "./instrument-db.service";
 import { InstrumentLogDbService } from "./instrument-log/instrument-log-db.service";
-import { InstrumentLogOutboxService } from "./instrument-log/instrument-log-outbox.service";
+import { InstrumentOutboxService } from "./instrument-outbox.service";
 import { InstrumentRecentsService } from "./instrument-recents.service";
 
 /** Outcome of a create attempt, surfaced to the create screen so it can navigate on success. */
 export interface InstrumentCreateOutcome {
-  status: 'created' | 'merged' | 'cancelled' | 'failed';
+  status: 'created' | 'merged' | 'queued' | 'cancelled' | 'failed';
   tagNumber?: string;
   message?: string;
 }
@@ -47,10 +47,23 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
     private instrumentLogDraftStorage = inject(InstrumentLogEntryLocalStorageService);
     private instrumentDbService = inject(InstrumentDbService);
     private instrumentLogDbService = inject(InstrumentLogDbService);
-    private outbox = inject(InstrumentLogOutboxService);
+    private outbox = inject(InstrumentOutboxService);
     private recents = inject(InstrumentRecentsService);
     private readonly instrumentsStateCacheKey = 'instrument-state-version-v1';
     private readonly instrumentsSyncedAtKey = 'instrument-state-synced-at-v1';
+    private readonly paRefreshedAtKey = 'instrument-pa-refreshed-at-v1';
+
+    /**
+     * Minimum gap between register refreshes that fall through to Power Automate.
+     *
+     * The hub path is a single H2 read and stays unthrottled. A Power Automate refresh is a metered
+     * Power Platform run that walks the whole SharePoint list (~3000 rows) and can cost two runs —
+     * the version probe and the list pull — so every app open during a hub outage would otherwise
+     * bill a full sweep. The register changes rarely, and the local mirror covers the gap, so a
+     * fifteen-minute floor costs the user nothing. An explicit pull-to-refresh bypasses it: that is
+     * the user telling us the cached answer isn't good enough.
+     */
+    private readonly PA_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
     destroyRef = inject(DestroyRef);
 
     public allInstruments$ = this.allItems$;
@@ -80,6 +93,17 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
         this.observeInstrumentsFromDb();
         this.loadAllInstruments();
         void this.outbox.flush();
+
+        // A flush that landed anything means the hub now holds rows this device only had locally —
+        // pull the register back down so those rows carry their server-side identity (sharepointId,
+        // audit fields) instead of staying as local copies.
+        this.outbox.flushed$
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(landed => {
+                if (landed.instruments > 0) this.loadAllInstruments();
+                const selectedTag = this.getSelectedInstrument()?.tagNumber;
+                if (landed.logs > 0 && selectedTag) this.loadLogsForInstrument(selectedTag);
+            });
     }
 
     private observeInstrumentsFromDb() {
@@ -98,13 +122,14 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
      * whether anything is actually cached. Deciding that from an empty in-memory list (the old
      * behaviour, which raced the Dexie read) meant re-downloading all ~3000 rows on most cold starts.
      */
-    loadAllInstruments() {
+    loadAllInstruments(options?: { userInitiated?: boolean }) {
+        const allowPa = options?.userInitiated === true || this.paCooldownExpired();
         this.isRefreshing.set(true);
         this.instrumentDbService.getAllInstruments().pipe(
             take(1),
             switchMap(cached => {
                 if (cached.length > 0) this.allItemsSubject.next(cached);
-                return this.orchestrator.fetchInstrumentsState().pipe(
+                return this.orchestrator.fetchInstrumentsState(allowPa).pipe(
                     take(1),
                     switchMap(stateResult => {
                         const currentVersion = stateResult.state?.version;
@@ -115,7 +140,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                             return of({ success: true, method: 'cache' as const, instruments: [], stateVersion: currentVersion, upToDate: true });
                         }
 
-                        return this.orchestrator.fetchInstruments().pipe(
+                        return this.orchestrator.fetchInstruments(allowPa).pipe(
                             map(result => ({ ...result, stateVersion: currentVersion, upToDate: false }))
                         );
                     })
@@ -123,13 +148,32 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             })
         ).subscribe({
             next: (result: any) => {
+                // Stamp whenever the PA leg was reached at all — a failed fallback shouldn't be
+                // retried on a tighter loop than a successful one.
+                if (allowPa && result.method !== 'server' && result.method !== 'cache') {
+                    localStorage.setItem(this.paRefreshedAtKey, String(Date.now()));
+                }
                 if (result.upToDate) {
                     this.markSynced();
                     this.isRefreshing.set(false);
                     return;
                 }
                 if (result.success) {
-                    const instruments = result.instruments.map((dto: any) => new Instrument(dto));
+                    const instruments = (result.instruments ?? []).map((dto: any) => new Instrument(dto));
+
+                    // Never let an empty answer erase a populated mirror. An empty payload here is
+                    // almost always a failure wearing a success mask — a gateway that rejected the
+                    // request with HTTP 200, a Power Automate flow missing the getAllInstruments
+                    // case, or a hub whose register hasn't loaded yet. Wiping on that leaves a field
+                    // tech with an empty search screen and no way back offline, and the version gate
+                    // can't undo it (it needs a non-empty cache to engage).
+                    if (instruments.length === 0 && this.allItemsSubject.getValue().length > 0) {
+                        console.warn('[Instruments] Refresh returned an empty register; keeping the cached list.');
+                        this.isOffline.set(true);
+                        this.isRefreshing.set(false);
+                        return;
+                    }
+
                     this.allItemsSubject.next(instruments);
                     if (result.stateVersion) {
                         localStorage.setItem(this.instrumentsStateCacheKey, result.stateVersion);
@@ -155,6 +199,12 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                 if (this.allItemsSubject.getValue().length === 0) this.loadFromStaticJson();
             }
         });
+    }
+
+    private paCooldownExpired(): boolean {
+        const last = Number(localStorage.getItem(this.paRefreshedAtKey) ?? 0);
+        if (!last) return true;
+        return Date.now() - last > this.PA_REFRESH_COOLDOWN_MS;
     }
 
     private markSynced() {
@@ -239,8 +289,9 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
      * the log form for the tag they just added (the whole reason they were creating it).
      */
     submitForm(instrument: Instrument): Observable<InstrumentCreateOutcome> {
+        const tagNumber = (instrument.tagNumber ?? '').trim().toUpperCase();
         const dto: PwaInstrumentDto = {
-            tagNumber: (instrument.tagNumber ?? '').trim().toUpperCase(),
+            tagNumber,
             description: instrument.description,
             vendor: instrument.vendor,
             location: instrument.location,
@@ -249,11 +300,66 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             mergePolicy: 'none'
         };
         const outcome$ = new Subject<InstrumentCreateOutcome>();
-        this.submitInstrumentCreate(dto, false, outcome$);
+
+        // Offline is a normal field condition: queue the instrument, add it to the local register
+        // immediately, and let the user carry straight on to logging against it.
+        if (!navigator.onLine) {
+            void this.queueInstrument(instrument, tagNumber, 'Offline when created', outcome$);
+            return outcome$.asObservable();
+        }
+
+        this.submitInstrumentCreate(dto, false, outcome$, instrument);
         return outcome$.asObservable();
     }
 
-    private submitInstrumentCreate(dto: PwaInstrumentDto, mergeRetryUsed: boolean, outcome$: Subject<InstrumentCreateOutcome>) {
+    /**
+     * Parks a new instrument in the outbox and writes it into the local register marked
+     * `pendingSync`, so it is searchable and loggable on this device before it exists anywhere else.
+     */
+    private async queueInstrument(
+        instrument: Instrument,
+        tagNumber: string,
+        reason: string,
+        outcome$: Subject<InstrumentCreateOutcome>
+    ) {
+        try {
+            const localUuid = await this.outbox.enqueueInstrument(
+                { ...instrument, tagNumber, currentStatus: instrument.currentStatus || 'Normal Operation' } as any,
+                reason
+            );
+            const local = new Instrument({
+                ...instrument,
+                tagNumber,
+                localUuid,
+                currentStatus: instrument.currentStatus || 'Normal Operation',
+                pendingSync: true
+            });
+            await new Promise<void>((resolve, reject) =>
+                this.instrumentDbService.upsertByTag(local).pipe(take(1)).subscribe({ next: () => resolve(), error: reject }));
+
+            const merged = [...this.allItemsSubject.getValue().filter(i =>
+                (i.tagNumber ?? '').trim().toUpperCase() !== tagNumber), local];
+            this.allItemsSubject.next(merged);
+
+            this.globalMessageService.showMessage(
+                'Saved on this device — the instrument will be sent when you are back online.', 'orange', 5000);
+            outcome$.next({ status: 'queued', tagNumber });
+            outcome$.complete();
+        } catch (error: any) {
+            console.error('Failed to queue instrument:', error);
+            this.globalMessageService.showMessage(
+                'Could not save the instrument on this device. Please try again.', 'red', 7000);
+            outcome$.next({ status: 'failed', message: error?.message });
+            outcome$.complete();
+        }
+    }
+
+    private submitInstrumentCreate(
+        dto: PwaInstrumentDto,
+        mergeRetryUsed: boolean,
+        outcome$: Subject<InstrumentCreateOutcome>,
+        original: Instrument
+    ) {
         this.globalMessageService.showMessage('Creating instrument...', 'white', 20000);
         this.orchestrator.createInstrument(dto).pipe(
             takeUntilDestroyed(this.destroyRef)
@@ -271,31 +377,23 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                     ).then(userConfirmed => {
                         if (userConfirmed) {
                             const mergedDto: PwaInstrumentDto = { ...dto, mergePolicy: 'merge' };
-                            this.submitInstrumentCreate(mergedDto, true, outcome$);
+                            this.submitInstrumentCreate(mergedDto, true, outcome$, original);
                         } else {
                             this.globalMessageService.showMessage('Instrument creation canceled due to duplicate tag.', 'orange', 5000);
                             outcome$.next({ status: 'cancelled', tagNumber: dto.tagNumber });
                             outcome$.complete();
                         }
                     });
-                } else if (result.requiresEmail) {
-                    this.globalMessageService.showMessage(
-                        'All creation methods failed. Please submit via email.', 'red', 7000);
-                    outcome$.next({ status: 'failed', message: 'All creation methods failed.' });
-                    outcome$.complete();
                 } else {
-                    this.globalMessageService.showMessage(
-                        result.message || 'Creation failed.', 'red', 5000);
-                    outcome$.next({ status: 'failed', message: result.message });
-                    outcome$.complete();
+                    // Every live route failed (hub down, Power Automate rejected). Queue rather than
+                    // hand the user an email template — the retry is automatic and the instrument is
+                    // usable on this device meanwhile.
+                    void this.queueInstrument(original, dto.tagNumber, result.message ?? 'Creation failed', outcome$);
                 }
             },
             error: (err) => {
                 console.error('Instrument creation failed!', err);
-                this.globalMessageService.showMessage(
-                    'Failed to create instrument. Please try again.', 'red', 7000);
-                outcome$.next({ status: 'failed', message: err?.message });
-                outcome$.complete();
+                void this.queueInstrument(original, dto.tagNumber, err?.message ?? 'Network error', outcome$);
             }
         });
     }
@@ -365,7 +463,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
      */
     private async queueLog(instrumentLog: InstrumentLogEntry, reason: string) {
         try {
-            await this.outbox.enqueue(instrumentLog, reason);
+            await this.outbox.enqueueLog(instrumentLog, reason);
             this.finishSubmittedLog(instrumentLog);
             this.globalMessageService.showMessage(
                 'Saved on this device — it will be sent automatically when you are back online.', 'orange', 5000);

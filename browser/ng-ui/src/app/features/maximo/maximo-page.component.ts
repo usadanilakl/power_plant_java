@@ -38,7 +38,8 @@ type Tab = 'wo' | 'sr';
             </div>
           </div>
 
-          <input class="mx-search" type="search" placeholder="Search…"
+          <input class="mx-search" type="search"
+                 [placeholder]="tab() === 'wo' ? 'Search by WO # or text…' : 'Search…'"
                  [value]="search()" (input)="onSearch($event)">
 
           <div class="mx-filters">
@@ -257,7 +258,16 @@ export class MaximoPageComponent implements OnInit {
       switchMap(() => {
         this.loading.set(true); this.error.set(null);
         if (this.tab() === 'wo') {
-          return this.api.listWorkOrders({ status: this.status(), worktype: this.worktype(), location: this.locationFilter(), textContains: this.search() }).pipe(
+          // A term like "42927" or "J26-42927" (a run of ≥3 digits, no spaces) is a WO number → search wonum;
+          // anything else ("desiccant", "sample panel") is a text search over description. Maximo can't OR the
+          // two in one query, so we route rather than send both.
+          const term = this.search().trim();
+          const byNumber = /\d{3,}/.test(term) && !/\s/.test(term);
+          return this.api.listWorkOrders({
+            status: this.status(), worktype: this.worktype(), location: this.locationFilter(),
+            textContains: byNumber ? undefined : term,
+            wonumContains: byNumber ? term : undefined,
+          }).pipe(
             tap(list => { this.wos.set(list); this.loading.set(false); }),
             catchError(e => { this.fail(e); return of([]); })
           );

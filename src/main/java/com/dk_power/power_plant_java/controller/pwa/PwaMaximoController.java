@@ -91,6 +91,7 @@ public class PwaMaximoController {
             @RequestParam(value = "priority", required = false) String priority,
             @RequestParam(value = "reportedby", required = false) String reportedby,
             @RequestParam(value = "textContains", required = false) String textContains,
+            @RequestParam(value = "wonumContains", required = false) String wonumContains,
             @RequestParam(value = "siteid", required = false) String siteid,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         try {
@@ -102,6 +103,7 @@ public class PwaMaximoController {
             c.setPriority(priority);
             c.setReportedby(reportedby);
             c.setTextContains(textContains);
+            c.setWonumContains(wonumContains);
             c.setSiteid(siteid);
             List<MaximoWorkOrderDto> result = c.hasAnyFilter()
                     ? workOrders.listByCriteria(c, pageSize)

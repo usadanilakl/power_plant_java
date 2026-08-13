@@ -24,6 +24,11 @@
         </span>
       </div>
       <div class="card-desc">{{ instrument()?.description }}</div>
+      @if (instrument()?.pendingSync) {
+        <div class="pending-note">
+          Added on this device and not sent yet — logs you record here are queued behind it.
+        </div>
+      }
       <div class="card-meta">
         @if (instrument()?.location) { <span><b>Location</b> {{ instrument()?.location }}</span> }
         @if (instrument()?.type) { <span><b>Type</b> {{ instrument()?.type }}</span> }

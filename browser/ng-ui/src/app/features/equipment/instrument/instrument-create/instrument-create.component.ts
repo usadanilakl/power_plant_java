@@ -30,7 +30,10 @@ export class InstrumentCreateComponent {
   entity = computed(() => new Instrument({ tagNumber: this.prefilledTag() }));
 
   onSubmitted(outcome: InstrumentCreateOutcome) {
-    if ((outcome.status === 'created' || outcome.status === 'merged') && outcome.tagNumber) {
+    // 'queued' counts as done from here: the instrument is in the local register and the outbox, so
+    // the user can log against it immediately even with no signal.
+    const landed = outcome.status === 'created' || outcome.status === 'merged' || outcome.status === 'queued';
+    if (landed && outcome.tagNumber) {
       this.router.navigate(['/instruments', outcome.tagNumber]);
     }
   }

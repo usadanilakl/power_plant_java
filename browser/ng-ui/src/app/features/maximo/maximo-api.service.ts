@@ -8,7 +8,7 @@ import {
   PartsCheckoutRequest, PartsCheckoutResult, PhysicalObjectNode, ReorderLine, ReorderResult,
 } from './maximo.model';
 
-export interface WoQuery { status?: string; worktype?: string; location?: string; textContains?: string; pageSize?: number; }
+export interface WoQuery { status?: string; worktype?: string; location?: string; textContains?: string; wonumContains?: string; pageSize?: number; }
 export interface SrQuery { status?: string; location?: string; textContains?: string; pageSize?: number; }
 
 /**
@@ -27,6 +27,7 @@ export class MaximoApiService {
     if (q.worktype) params = params.set('worktype', q.worktype);
     if (q.location) params = params.set('location', q.location);
     if (q.textContains) params = params.set('textContains', q.textContains);
+    if (q.wonumContains) params = params.set('wonumContains', q.wonumContains);
     return this.http.get<{ responseData: MaximoWorkOrder[] }>(`${this.base}/work-orders`, { params }).pipe(
       timeout(30000),
       map(r => r.responseData ?? [])
