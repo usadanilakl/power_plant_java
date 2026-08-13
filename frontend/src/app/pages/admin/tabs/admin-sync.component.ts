@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import {
   AdminFunctionalitiesService,
   SyncQueueStatus,
+  PendingBacklogBreakdown,
   SyncAuditTypeSummary,
   SyncAuditRecentEntity,
   SyncAuditEntityReport,
@@ -145,6 +146,93 @@ import {
             <button class="danger-btn" (click)="clearAllChanges()" [disabled]="loading.syncAction">
               Clear ALL Changes
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client Backlog Diagnosis -->
+      <div class="admin-section backlog-section">
+        <h3>Client Backlog Diagnosis</h3>
+        <p class="description">
+          Explain a client's pending backlog: how much is GENUINE deliverable data vs inflation from
+          <code>_entity_</code> markers and dead-letter-pinned history. A single (entity, field) with a huge
+          count, matched by a large DEAD_LETTER count for that same type, means compaction is pinned — run
+          <strong>Compact Now</strong> after a fix. Hub-only; heavy full-scan, so run it ad hoc.
+        </p>
+
+        <div class="button-group">
+          <input type="text" [(ngModel)]="backlogMachineId" placeholder="Machine ID (e.g. OPI)" class="input-field">
+          <label>Top</label>
+          <input type="number" [(ngModel)]="backlogLimit" min="1" max="200" class="input-field input-small">
+          <button class="action-btn" (click)="loadPendingBreakdown()"
+                  [disabled]="loading.backlog || !backlogMachineId.trim()">
+            {{ loading.backlog ? 'Diagnosing…' : 'Diagnose Backlog' }}
+          </button>
+        </div>
+
+        <div class="error" *ngIf="errors.backlog">{{ errors.backlog }}</div>
+        <div class="error" *ngIf="backlogResult && !backlogResult.success">
+          {{ backlogResult.error || 'Not available (this is a hub-only diagnostic).' }}
+        </div>
+
+        <div class="result" *ngIf="backlogResult && backlogResult.success">
+          <div class="result-summary">
+            <span class="badge info">Machine: {{ backlogResult.machineId }}</span>
+            <span class="badge" [class.warning]="backlogResult.rawPending > 1000">
+              Raw pending rows: {{ backlogResult.rawPending | number }}
+            </span>
+            <span class="badge" [class.success]="backlogResult.distinctFieldPending <= 1000"
+                                [class.warning]="backlogResult.distinctFieldPending > 1000">
+              Genuine distinct fields: {{ backlogResult.distinctFieldPending | number }}
+            </span>
+            <span class="badge warning" *ngIf="backlogResult.inflationFactor && backlogResult.inflationFactor >= 3">
+              Inflation ×{{ backlogResult.inflationFactor }}
+            </span>
+            <span class="badge info">Hub total FieldChanges: {{ backlogResult.totalFieldChanges | number }}</span>
+          </div>
+
+          <div class="result-summary" *ngIf="backlogResult.applyState">
+            <span class="badge" [class.warning]="backlogResult.applyState.deadLetter > 0">
+              Dead-letter: {{ backlogResult.applyState.deadLetter | number }}
+            </span>
+            <span class="badge">Deferred: {{ backlogResult.applyState.deferred | number }}</span>
+            <span class="badge">Failed-retry: {{ backlogResult.applyState.failedRetryable | number }}</span>
+            <span class="badge">Pending: {{ backlogResult.applyState.pending | number }}</span>
+          </div>
+
+          <div class="details-section" *ngIf="backlogResult.topPendingFields?.length">
+            <h4>Busiest pending fields (top {{ backlogResult.topPendingFields.length }})</h4>
+            <div class="details-list">
+              <table>
+                <thead>
+                  <tr><th>Entity Type</th><th>Field</th><th>Pending Rows</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let f of backlogResult.topPendingFields">
+                    <td>{{ f.entityType }}</td>
+                    <td>{{ f.fieldName }}</td>
+                    <td>{{ f.count | number }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="details-section" *ngIf="backlogResult.applyState?.deadLetterByType?.length">
+            <h4>Dead-letter apply-state by type (compaction-pin driver)</h4>
+            <div class="details-list">
+              <table>
+                <thead>
+                  <tr><th>Entity Type</th><th>Dead-lettered</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let d of backlogResult.applyState.deadLetterByType">
+                    <td>{{ d.entityType }}</td>
+                    <td>{{ d.count | number }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -562,6 +650,7 @@ import {
     .sub-section { margin-bottom: 10px; }
     .sub-section h4 { color: #495057; margin-top: 0; margin-bottom: 8px; font-size: 15px; }
     .sync-section { border-left: 4px solid #007bff; }
+    .backlog-section { border-left: 4px solid #fd7e14; }
     .sync-audit-section { border-left: 4px solid #17a2b8; }
     .input-field { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
     .input-small { width: 70px; }
@@ -578,6 +667,7 @@ export class AdminSyncComponent implements OnInit {
     pwaSync: false,
     syncQueue: false,
     syncAction: false,
+    backlog: false,
     syncAuditTypes: false,
     syncAuditRecent: false,
     syncAuditEntity: false,
@@ -590,10 +680,14 @@ export class AdminSyncComponent implements OnInit {
   errors = {
     pwaSync: '',
     syncQueue: '',
-    syncAudit: ''
+    syncAudit: '',
+    backlog: ''
   };
 
   syncQueueStatus: SyncQueueStatus | null = null;
+  backlogResult: PendingBacklogBreakdown | null = null;
+  backlogMachineId: string = '';
+  backlogLimit: number = 30;
   syncAuditTypes: SyncAuditTypeSummary[] = [];
   recentSyncAuditEntities: SyncAuditRecentEntity[] = [];
   syncAuditReport: SyncAuditEntityReport | null = null;
@@ -707,6 +801,26 @@ export class AdminSyncComponent implements OnInit {
       error: (error) => {
         this.errors.syncQueue = error.error?.message || error.message || 'Failed to load sync queue status';
         this.loading.syncQueue = false;
+      }
+    });
+  }
+
+  loadPendingBreakdown() {
+    const machineId = this.backlogMachineId.trim();
+    if (!machineId) return;
+
+    this.loading.backlog = true;
+    this.errors.backlog = '';
+    this.backlogResult = null;
+
+    this.adminService.getPendingBreakdown(machineId, this.backlogLimit).subscribe({
+      next: (response) => {
+        this.backlogResult = response.responseData;
+        this.loading.backlog = false;
+      },
+      error: (error) => {
+        this.errors.backlog = error.error?.message || error.message || 'Failed to load backlog breakdown';
+        this.loading.backlog = false;
       }
     });
   }

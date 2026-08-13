@@ -169,6 +169,29 @@ export interface SyncQueueActionResult {
   affected: number;
 }
 
+/** Read-only diagnosis of a client's pending backlog (hub-only). */
+export interface PendingBacklogBreakdown {
+  success: boolean;
+  error?: string;
+  machineId: string;
+  /** Raw pending FieldChange rows (inflated by _entity_ markers + un-compacted history). */
+  rawPending: number;
+  /** GENUINE deliverable backlog: distinct (entityType, entityId, fieldName), excluding _entity_. */
+  distinctFieldPending: number;
+  entityMarkerPendingInTopN: number;
+  /** rawPending / distinctFieldPending (null if no distinct fields). */
+  inflationFactor: number | null;
+  topPendingFields: { entityType: string; fieldName: string; count: number }[];
+  totalFieldChanges: number;
+  applyState: {
+    deadLetter: number;
+    deferred: number;
+    failedRetryable: number;
+    pending: number;
+    deadLetterByType: { entityType: string; count: number }[];
+  };
+}
+
 export interface SyncAuditTypeSummary {
   entityType: string;
   changeCount: number;
@@ -484,6 +507,15 @@ export class AdminFunctionalitiesService {
   getSyncQueueStatus(): Observable<SpringApiResponse<SyncQueueStatus>> {
     return this.http.get<SpringApiResponse<SyncQueueStatus>>(
       `${this.apiUrl}/sync-queue/status`
+    );
+  }
+
+  /** Hub-only: diagnose a client's pending backlog (raw vs genuine, busiest fields, dead-letter drivers). */
+  getPendingBreakdown(machineId: string, limit: number = 30): Observable<SpringApiResponse<PendingBacklogBreakdown>> {
+    const params = new HttpParams().set('machineId', machineId).set('limit', limit.toString());
+    return this.http.get<SpringApiResponse<PendingBacklogBreakdown>>(
+      `${this.apiUrl}/sync-queue/pending-breakdown`,
+      { params }
     );
   }
 
