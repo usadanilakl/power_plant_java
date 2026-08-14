@@ -331,6 +331,20 @@ export class ServerApiService {
     );
   }
 
+  /**
+   * Incremental register sync. `since` must be a `lastModified` value previously returned by
+   * `getInstrumentsState()` — a server-derived cursor, so there is no client-clock skew.
+   */
+  getInstrumentChanges(since: string): Observable<PwaInstrumentDto[]> {
+    return this.http.get<{ responseData: PwaInstrumentDto[] }>(
+      `${this.baseUrl}/api/pwa/secured/instruments/changes?since=${encodeURIComponent(since)}`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
   getInstrumentsState(): Observable<PwaInstrumentStateDto> {
     return this.http.get<{ responseData: PwaInstrumentStateDto }>(`${this.baseUrl}/api/pwa/secured/instruments/state`).pipe(
       timeout(10000),

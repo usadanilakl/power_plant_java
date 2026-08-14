@@ -259,6 +259,9 @@ public class InstrumentSharePointAdapter {
 
     private Map<String, Object> toMap(InstrumentDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
+        // Title drives the item link in every default SharePoint view; without it the register reads
+        // as a list of blank rows. The tag is the instrument's identity, so that is the title.
+        map.put("Title", orEmpty(dto.getTagNumber()));
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
         map.put("Tag_x0020_Number", orEmpty(dto.getTagNumber()));
         map.put("Description", orEmpty(dto.getDescription()));

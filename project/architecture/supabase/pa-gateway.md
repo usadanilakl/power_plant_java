@@ -121,6 +121,12 @@ which by default aborts the run before this Condition. So:
    There is **no** `authorities` claim, and Supabase's top-level `role` is `"authenticated"`, not an app
    role — don't use those.)
 
+   > ⚠️ **The role to check is per target, not global.** Since 2026-08-14 the hub gates the
+   > `instrument` target on `ROLE_INSTRUMENTATION` / `ROLE_ADMIN`, **not** `ROLE_PLANT` — the role is
+   > granted per user (I&C techs, calibration contractors). A gateway still checking `ROLE_PLANT` for
+   > that target refuses the people the hub allows and admits the people it doesn't. See
+   > [instrumentation-power-automate-alignment.md](../pwa/instrumentation-power-automate-alignment.md) §5.
+
 - **If no** → **Response** action: Status Code `401`, Body
   `{ "success": false, "message": "Unauthorized" }`. Stop.
 - **If yes** → continue to the Switch (step 4).

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -51,6 +52,27 @@ public class PwaInstrumentService {
             }
         }
         return getCachedInstruments();
+    }
+
+    /**
+     * Instruments touched at or after {@code since} — the incremental half of the register sync.
+     *
+     * Every log submission rolls a summary onto its instrument row, which moves the register's
+     * {@code lastModified} and therefore its version. Under the old full-pull-on-version-change rule
+     * that meant one person logging anything forced every other device to re-download all ~3000 rows
+     * on its next open (and, on the Power Automate fallback, to do it as a metered SharePoint sweep).
+     * The delta carries only what actually moved — normally the single row that was just logged.
+     *
+     * <p>Deletions are deliberately not tracked here: soft-deleted rows vanish behind
+     * {@code @Where(deleted IS NOT TRUE)} and would silently linger on the client. The client instead
+     * compares its post-delta row count against {@code itemCount} from {@code /state} and falls back
+     * to a full pull when they disagree, which covers deletes and any other drift for free.</p>
+     */
+    public List<InstrumentDto> getInstrumentsChangedSince(LocalDateTime since) {
+        if (since == null) return getCachedInstruments();
+        return instrumentRepo.findByDateModifiedGreaterThanEqualOrderByDateModifiedAsc(since).stream()
+                .map(instrumentMapper::convertToDto)
+                .toList();
     }
 
     public PwaInstrumentStateDto getInstrumentsState() {

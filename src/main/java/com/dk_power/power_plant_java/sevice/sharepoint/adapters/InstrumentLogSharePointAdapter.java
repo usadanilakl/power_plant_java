@@ -29,6 +29,19 @@ public class InstrumentLogSharePointAdapter {
 
     private static final String LIST_TITLE = "Instrumentation Log";
 
+    private static final String TAG_FIELD_ENCODED = "Tag_x0020_Number";
+    private static final String TAG_FIELD_PLAIN = "TagNumber";
+
+    /**
+     * Which internal name this tenant's "Instrumentation Log" list actually uses for the tag column.
+     *
+     * The register list ("Instrumentation") uses the space-encoded {@code Tag_x0020_Number}, but the
+     * log list on the live tenant was created with a plain {@code TagNumber}. The retry below already
+     * recovered from that — at the cost of a rejected 400 round-trip and a logged ERROR on *every*
+     * submission. Latching the name the list actually accepted turns that into a one-off discovery.
+     */
+    private volatile String resolvedTagField = TAG_FIELD_ENCODED;
+
     public List<InstrumentLogDto> getAll() {
         return spService.executeWithFallback(
                 this::certGetAll,
@@ -95,19 +108,38 @@ public class InstrumentLogSharePointAdapter {
     }
 
     private String certCreate(InstrumentLogDto dto) {
-        Map<String, Object> body = toMap(dto);
+        String attempted = resolvedTagField;
         try {
-            return certAccess.createListItem(LIST_TITLE, body);
+            return certAccess.createListItem(LIST_TITLE, toMapWithTagField(dto, attempted));
         } catch (RuntimeException ex) {
             // Some environments have different internal names for "Tag Number" in Instrumentation Log.
             if (isMissingTagFieldError(ex)) {
-                log.warn("[InstrumentLog-Adapter] '{}' rejected field Tag_x0020_Number. Retrying with TagNumber.",
-                        LIST_TITLE);
-                Map<String, Object> retryBody = toMapWithTagField(dto, "TagNumber");
-                return certAccess.createListItem(LIST_TITLE, retryBody);
+                String alternate = TAG_FIELD_ENCODED.equals(attempted) ? TAG_FIELD_PLAIN : TAG_FIELD_ENCODED;
+                log.warn("[InstrumentLog-Adapter] '{}' rejected field {}. Retrying with {} and latching it for "
+                                + "subsequent writes.", LIST_TITLE, attempted, alternate);
+                String id = certAccess.createListItem(LIST_TITLE, toMapWithTagField(dto, alternate));
+                resolvedTagField = alternate;
+                return id;
             }
             throw ex;
         }
+    }
+
+    /**
+     * Human-readable Title so a log is identifiable straight from a SharePoint list view:
+     * {@code 01MBH02AA711S12 — In Progress (2026-08-14 19:09)}.
+     */
+    private String buildTitle(InstrumentLogDto dto) {
+        StringBuilder title = new StringBuilder(orEmpty(dto.getInstrumentTagNumber()));
+        if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
+            title.append(" — ").append(dto.getStatus().trim());
+        }
+        String when = (orEmpty(dto.getDate()) + " " + orEmpty(dto.getTime())).trim();
+        if (!when.isEmpty()) {
+            title.append(" (").append(when).append(")");
+        }
+        String result = title.toString().trim();
+        return result.isEmpty() ? "Instrument log" : result;
     }
 
     private List<PaAttachmentDto> certGetAttachments(String sharepointId) {
@@ -208,11 +240,14 @@ public class InstrumentLogSharePointAdapter {
     }
 
     private Map<String, Object> toMap(InstrumentLogDto dto) {
-        return toMapWithTagField(dto, "Tag_x0020_Number");
+        return toMapWithTagField(dto, resolvedTagField);
     }
 
     private Map<String, Object> toMapWithTagField(InstrumentLogDto dto, String tagFieldName) {
         Map<String, Object> map = new LinkedHashMap<>();
+        // Title is the column SharePoint shows as the item link in every default list view. Left
+        // unset it renders as a blank row that can only be identified by opening it.
+        map.put("Title", buildTitle(dto));
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
         map.put(tagFieldName, orEmpty(dto.getInstrumentTagNumber()));
         map.put("Description", orEmpty(dto.getInstrumentDescription()));

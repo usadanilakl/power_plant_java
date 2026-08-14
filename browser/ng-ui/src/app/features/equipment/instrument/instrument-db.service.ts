@@ -46,6 +46,38 @@ export class InstrumentDbService {
   }
 
   /**
+   * Applies a delta from the hub: each incoming row replaces the local one with the same tag, and
+   * anything new is added. Rows the delta doesn't mention are left alone — that is the whole point.
+   *
+   * A locally-created row that the delta now carries loses its `pendingSync` marker, since the hub
+   * having it is exactly what "synced" means.
+   */
+  upsertMany(items: Instrument[]): Observable<number> {
+    if (items.length === 0) return from(Promise.resolve(0));
+    return from(this.indexedDbService.transaction('rw', this.indexedDbService.instruments, async () => {
+      const tags = items.map(i => (i.tagNumber ?? '').trim().toUpperCase());
+      const existing = await this.indexedDbService.instruments.toArray();
+      const idByTag = new Map<string, number>();
+      for (const row of existing) {
+        idByTag.set((row.tagNumber ?? '').trim().toUpperCase(), row.id);
+      }
+
+      const rows = items.map((item, index) => {
+        const id = idByTag.get(tags[index]);
+        const { id: _ignored, ...rest } = item as any;
+        return (id === undefined ? rest : { ...rest, id }) as Instrument;
+      });
+      await this.indexedDbService.instruments.bulkPut(rows);
+      return rows.length;
+    }));
+  }
+
+  /** Row count of the local mirror — reconciles against the hub's reported count after a delta. */
+  count(): Observable<number> {
+    return from(this.indexedDbService.instruments.count());
+  }
+
+  /**
    * Drops the `pendingSync` marker once the queued create has been accepted, so the row stops
    * advertising itself as unsent without waiting for the next full register refresh.
    */

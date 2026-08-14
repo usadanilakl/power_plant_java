@@ -98,6 +98,11 @@ public class PwaInstrumentLogService {
                     for (PaAttachmentDto att : dto.getAttachments()) {
                         try {
                             logAdapter.addAttachment(sharepointId, att);
+                            // Logged on success too: without this, "did the attachment reach SharePoint?"
+                            // can only be answered by the ABSENCE of a warning, which is a poor signal.
+                            log.info("[Instrument Submit] Attachment uploaded to SharePoint: spId={}, fileName={}, bytes={}",
+                                    sharepointId, att.getFileName(),
+                                    att.getBase64Content() == null ? 0 : att.getBase64Content().length());
                         } catch (Exception attEx) {
                             log.warn("[Instrument Submit] Failed to upload attachment {} to SharePoint: {}",
                                     att.getFileName(), attEx.getMessage());

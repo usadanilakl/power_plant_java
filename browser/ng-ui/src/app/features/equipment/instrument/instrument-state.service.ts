@@ -52,6 +52,12 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
     private readonly instrumentsStateCacheKey = 'instrument-state-version-v1';
     private readonly instrumentsSyncedAtKey = 'instrument-state-synced-at-v1';
     private readonly paRefreshedAtKey = 'instrument-pa-refreshed-at-v1';
+    /**
+     * Hub-side `dateModified` of the newest row this device has seen. Server-derived, so it is
+     * immune to device clock skew; cleared whenever a Power Automate answer (different clock) or a
+     * reconciliation failure makes it untrustworthy.
+     */
+    private readonly deltaCursorKey = 'instrument-delta-cursor-v1';
 
     /**
      * Minimum gap between register refreshes that fall through to Power Automate.
@@ -140,8 +146,38 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                             return of({ success: true, method: 'cache' as const, instruments: [], stateVersion: currentVersion, upToDate: true });
                         }
 
+                        // Version moved. Usually that is one instrument summary changing because
+                        // somebody logged against it, so ask for the delta rather than the register.
+                        // Only the hub can answer a delta (its cursor is hub-side `dateModified`), and
+                        // only when we hold a cursor from a previous hub answer.
+                        const cursor = localStorage.getItem(this.deltaCursorKey);
+                        if (stateResult.success && stateResult.method === 'server' && cached.length > 0 && cursor) {
+                            return this.orchestrator.fetchInstrumentChanges(cursor).pipe(
+                                map(result => ({
+                                    ...result,
+                                    stateVersion: currentVersion,
+                                    serverCount: stateResult.state?.itemCount,
+                                    cursor: stateResult.state?.lastModified,
+                                    cursorTrusted: true,
+                                    upToDate: false,
+                                    delta: result.success
+                                }))
+                            );
+                        }
+
                         return this.orchestrator.fetchInstruments(allowPa).pipe(
-                            map(result => ({ ...result, stateVersion: currentVersion, upToDate: false }))
+                            map(result => ({
+                                ...result,
+                                stateVersion: currentVersion,
+                                serverCount: stateResult.state?.itemCount,
+                                cursor: stateResult.state?.lastModified,
+                                // Only a hub-issued lastModified is a valid delta cursor. Power
+                                // Automate reports SharePoint's `Modified`, a different clock on a
+                                // different store — cursoring the hub with it would skip rows.
+                                cursorTrusted: stateResult.method === 'server' && result.method === 'server',
+                                upToDate: false,
+                                delta: false
+                            }))
                         );
                     })
                 );
@@ -156,6 +192,10 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                 if (result.upToDate) {
                     this.markSynced();
                     this.isRefreshing.set(false);
+                    return;
+                }
+                if (result.success && result.delta) {
+                    void this.applyDelta(result);
                     return;
                 }
                 if (result.success) {
@@ -182,6 +222,11 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                         // load to re-check rather than trusting a version that describes other data.
                         localStorage.removeItem(this.instrumentsStateCacheKey);
                     }
+                    if (result.cursorTrusted) {
+                        this.rememberCursor(result.cursor);
+                    } else {
+                        localStorage.removeItem(this.deltaCursorKey);
+                    }
                     this.markSynced();
                     this.instrumentDbService.replaceAll(instruments).pipe(take(1)).subscribe({
                         error: (err) => console.error('Failed to cache instruments:', err)
@@ -199,6 +244,58 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                 if (this.allItemsSubject.getValue().length === 0) this.loadFromStaticJson();
             }
         });
+    }
+
+    /**
+     * Applies an incremental register update, then reconciles against the hub's row count.
+     *
+     * The delta cannot express deletions — a soft-deleted instrument simply stops being returned —
+     * so the count is the integrity check: if the local mirror and the hub disagree after applying
+     * the changes, something left the register (or drifted some other way) and only a full pull can
+     * put it right. That check costs nothing, since /state already reported the count.
+     */
+    private async applyDelta(result: any) {
+        try {
+            const changed = (result.instruments ?? []).map((dto: any) => new Instrument(dto));
+            if (changed.length > 0) {
+                await new Promise<void>((resolve, reject) =>
+                    this.instrumentDbService.upsertMany(changed).pipe(take(1))
+                        .subscribe({ next: () => resolve(), error: reject }));
+            }
+
+            const localCount = await new Promise<number>((resolve, reject) =>
+                this.instrumentDbService.count().pipe(take(1)).subscribe({ next: resolve, error: reject }));
+            const serverCount = Number(result.serverCount ?? -1);
+
+            if (serverCount >= 0 && localCount !== serverCount) {
+                console.info(`[Instruments] Delta left ${localCount} local vs ${serverCount} on the hub — full resync.`);
+                // Hands the refresh (and the isRefreshing flag) to the full pull it starts.
+                this.forceFullRefresh();
+                return;
+            }
+
+            this.rememberCursor(result.cursor);
+            if (result.stateVersion) {
+                localStorage.setItem(this.instrumentsStateCacheKey, result.stateVersion);
+            }
+            this.markSynced();
+            this.isRefreshing.set(false);
+            console.info(`[Instruments] Applied delta: ${changed.length} row(s) changed, ${localCount} total.`);
+        } catch (error) {
+            console.error('Failed to apply instrument delta:', error);
+            this.forceFullRefresh();
+        }
+    }
+
+    /** Drops the delta cursor so the next load takes the full-register path, then runs it. */
+    private forceFullRefresh() {
+        localStorage.removeItem(this.deltaCursorKey);
+        localStorage.removeItem(this.instrumentsStateCacheKey);
+        this.loadAllInstruments({ userInitiated: true });
+    }
+
+    private rememberCursor(cursor?: string | null) {
+        if (cursor) localStorage.setItem(this.deltaCursorKey, cursor);
     }
 
     private paCooldownExpired(): boolean {
@@ -437,6 +534,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             next: (result: SubmissionResult) => {
                 if (result.success) {
                     this.finishSubmittedLog(instrumentLog);
+                    this.applyLogToLocalInstrument(instrumentLog);
                     const messageColor = result.method === 'local' ? 'orange' : 'green';
                     this.globalMessageService.showMessage(
                         result.method === 'local'
@@ -465,6 +563,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
         try {
             await this.outbox.enqueueLog(instrumentLog, reason);
             this.finishSubmittedLog(instrumentLog);
+            this.applyLogToLocalInstrument(instrumentLog);
             this.globalMessageService.showMessage(
                 'Saved on this device — it will be sent automatically when you are back online.', 'orange', 5000);
         } catch (error) {
@@ -473,6 +572,44 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body, entry: instrumentLog });
             this.globalMessageService.showMessage(
                 'Could not save the log on this device. Please use the email fallback.', 'red', 10000);
+        }
+    }
+
+    /**
+     * Rolls a just-submitted log onto the local register row — the same summary the hub applies to
+     * the instrument (status, who/when, last comment).
+     *
+     * Without this the device that did the work was the one place the change wasn't visible: the log
+     * history updated, but the search list kept showing the previous status until the next full
+     * register download, so a second device looked more current than the one in the user's hand. A
+     * local patch is also the only option offline, where there is nothing to re-fetch.
+     */
+    private applyLogToLocalInstrument(instrumentLog: InstrumentLogEntry) {
+        const tag = (instrumentLog.instrumentTagNumber ?? '').trim().toUpperCase();
+        const current = this.allItemsSubject.getValue()
+            .find(i => (i.tagNumber ?? '').trim().toUpperCase() === tag);
+        if (!current) return;
+
+        const dateValue = instrumentLog.date instanceof Date
+            ? instrumentLog.date.toISOString().slice(0, 10)
+            : String(instrumentLog.date ?? '');
+
+        const patched = new Instrument({
+            ...current,
+            currentStatus: instrumentLog.status || current.currentStatus,
+            lastUpdatedDate: dateValue || current.lastUpdatedDate,
+            lastUpdatedTime: instrumentLog.time || current.lastUpdatedTime,
+            lastUpdatedBy: instrumentLog.name || current.lastUpdatedBy,
+            lastComment: instrumentLog.comment ?? ''
+        });
+
+        this.instrumentDbService.upsertByTag(patched).pipe(take(1)).subscribe({
+            error: err => console.error('Failed to update cached instrument after log:', err)
+        });
+        this.allItemsSubject.next(this.allItemsSubject.getValue()
+            .map(i => (i.tagNumber ?? '').trim().toUpperCase() === tag ? patched : i));
+        if (this.getSelectedInstrument()?.tagNumber === current.tagNumber) {
+            this.selectItem(patched);
         }
     }
 

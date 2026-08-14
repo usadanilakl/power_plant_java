@@ -252,6 +252,26 @@ export class SubmissionOrchestratorService {
     );
   }
 
+  /**
+   * Incremental register fetch. Hub-only by design: the cursor is the hub's own `dateModified`, which
+   * has no meaning against SharePoint's `Modified`, so a delta answered by Power Automate would be
+   * cursored against the wrong clock. When the hub can't answer, the caller falls back to the full
+   * (cooldown-throttled) pull rather than a delta with a borrowed cursor.
+   */
+  fetchInstrumentChanges(since: string): Observable<FetchResult> {
+    return this.serverApi.getInstrumentChanges(since).pipe(
+      map(instruments => ({
+        success: true,
+        method: 'server' as const,
+        instruments
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server instrument delta failed:', serverError.message);
+        return of({ success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] });
+      })
+    );
+  }
+
   /** @param allowPowerAutomate see {@link fetchInstrumentsState} — throttles the metered fallback. */
   fetchInstruments(allowPowerAutomate = true): Observable<FetchResult> {
     return this.serverApi.getInstruments().pipe(

@@ -19,8 +19,32 @@ From JG Portal (power_plant_java) user can:
     - add new instrumentaion items (single or bulk)
 
 Potential improvements:
-    - more efficient management of instrumentation list - set up a flag on sharepoint that is set when new item is added (or just check number of items, update PWA local DB only if different between PWA and SP)
-    - prevent creation of items with the same tag number - update instead.
+    - ~~more efficient management of instrumentation list~~ — DONE 2026-08-14: `/state` returns a
+      `count:lastModified` version, `/changes?since=` returns only what moved, and the client
+      reconciles on row count. See "Register sync" below.
+    - ~~prevent creation of items with the same tag number - update instead~~ — DONE: the hub
+      rejects a duplicate tag with `requiresMerge` and the client offers a field-by-field merge.
+
+## Register sync (2026-08-14)
+
+    SharePoint <-> hub H2  ->  /state (version)  ->  /changes?since= (delta)  ->  IndexedDB  ->  screens
+
+- The hub owns the register: its SharePoint syncable polls every 30s and CRDT sync levels the
+  desktops, so the PWA never reads SharePoint directly.
+- `/state` returns `count:lastModified`. Unchanged version = no transfer at all.
+- Changed version = fetch **only the delta** since the last hub-issued `lastModified`. Every log
+  submission moves its instrument's summary and therefore the register version, so without this one
+  person logging anything forced every device to re-download ~3200 rows on its next open.
+- The delta cannot express deletions (soft-deleted rows just stop appearing), so the client compares
+  its row count against the hub's `itemCount` and falls back to a full pull on any mismatch.
+- Power Automate answers are **never** used as a delta cursor — SharePoint's `Modified` is a
+  different clock. The PA path stays full-pull, throttled to once per 15 minutes per device.
+- Offline: logs *and* new instruments queue in an IndexedDB outbox and replay on reconnect
+  (instruments first). A queued instrument is written into the local register as `pendingSync` so it
+  is searchable and loggable immediately. An app-wide pill shows the unsent count until it drains.
+
+Power Automate must be kept in step with the hub — the outstanding differences are listed in
+[instrumentation-power-automate-alignment.md](instrumentation-power-automate-alignment.md).
 
 ## Proposed Relationship Model (Recommended)
 
