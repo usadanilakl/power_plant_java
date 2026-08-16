@@ -31,7 +31,9 @@ export interface FormField {
     | 'loto-standard-select'
     | 'work-area-select'
     | 'zero-energy-phrase-builder'
-    | 'user-select';
+    | 'user-select'
+    | 'maximo-location-picker'
+    | 'maximo-asset-picker';
   imageSrc?: string; // for type 'image' — a URL or base64 data URL of a read-only reference image
   validators?: ValidatorFn[];
   options?: Option[];
@@ -139,7 +141,9 @@ export interface RfFormField {
     | 'comment'
     | 'characteristics-editor'
     | 'hidden'
-    | 'user-select';
+    | 'user-select'
+    | 'maximo-location-picker'
+    | 'maximo-asset-picker';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select, multi-value-select, and characteristics-editor types

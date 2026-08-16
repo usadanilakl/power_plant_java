@@ -20,12 +20,10 @@ import java.util.Set;
 @Transactional
 public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepo userRepo;
+    private final com.dk_power.power_plant_java.sevice.users.LoginIdentifierResolver loginIdentifierResolver;
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(username);
-        if (user == null) {
-            user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
-        }
+        User user = loginIdentifierResolver.resolve(username);
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }

@@ -207,7 +207,16 @@ public class SharePointListProvisioner {
                         text("PwaId"), text("ListType"), text("Status"), text("Location"),
                         text("SpecificLocation"), note("Notes"), text("DateObserved"),
                         text("EquipmentTag"),
-                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone")),
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"),
+                        // Maximo picker fields (v1 sends location/assetnum on WO/SR create;
+                        // stored in SP too for cross-reference when hub is offline).
+                        text("MaximoLocation"), text("MaximoAssetnum"),
+                        // Insulation-contractor offline-close mechanism. When the contractor
+                        // marks an item complete via PWA→PA→SP (hub unreachable), these three
+                        // fields are set. Hub's SP-import polling picks up the change and
+                        // triggers Maximo WO COMP via bridge.complete. See project/features/
+                        // maximo/field-list-sr.md for the full offline-close flow.
+                        bool("ContractorCompleted"), text("ContractorCompletedBy"), text("ContractorCompletedAt")),
 
                 list("Inventory",
                         text("PwaId"), text("ItemType"), text("Status"), text("Location"),

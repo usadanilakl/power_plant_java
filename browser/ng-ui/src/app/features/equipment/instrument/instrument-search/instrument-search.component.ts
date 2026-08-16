@@ -1,7 +1,8 @@
 import { Component, computed, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Instrument } from '../../../../models/equipment/instrument.model';
+import { Instrument, InstrumentCreateOutboxItem } from '../../../../models/equipment/instrument.model';
+import { InstrumentLogOutboxItem } from '../../../../models/equipment/instrument-log.model';
 import { InstrumentStateService } from '../instrument-state.service';
 import { InstrumentRecentsService } from '../instrument-recents.service';
 import { InstrumentOutboxService } from '../instrument-outbox.service';
@@ -44,6 +45,13 @@ export class InstrumentSearchComponent {
 
   pendingCount = this.outbox.pendingCount;
   isFlushing = this.outbox.isFlushing;
+  isOnline = this.outbox.isOnline;
+  lastFlushError = this.outbox.lastFlushError;
+
+  /** Expanded view of the queue: what is held, how many attempts, and why it hasn't gone. */
+  showPending = signal(false);
+  pendingInstruments = toSignal(this.outbox.pendingInstruments$, { initialValue: [] as InstrumentCreateOutboxItem[] });
+  pendingLogs = toSignal(this.outbox.pendingLogs$, { initialValue: [] as InstrumentLogOutboxItem[] });
 
   private matches = computed(() => {
     const tokens = tokenizeQuery(this.query());
@@ -98,6 +106,20 @@ export class InstrumentSearchComponent {
 
   flushOutbox() {
     void this.outbox.flush();
+  }
+
+  togglePending() {
+    this.showPending.set(!this.showPending());
+  }
+
+  /** "3 min ago" — how long an item has been waiting, which is what makes a stuck queue obvious. */
+  waitingFor(createdAt: string): string {
+    const minutes = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h ago`;
+    return `${Math.floor(hours / 24)} d ago`;
   }
 
   statusClass(instrument: Instrument): string {

@@ -55,6 +55,8 @@ public class MaximoFieldListSyncJob {
     private final MaximoServiceRequestAdapter srAdapter;
     private final MaximoWorkOrderAdapter woAdapter;
     private final FieldListItemRepo repo;
+    private final com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo attachmentRepo;
+    private final MaximoAttachmentSyncService attachmentSync;
     private final PlatformTransactionManager txManager;
 
     @Value("${maximo.field-list.backfill-batch-size:20}")
@@ -101,6 +103,10 @@ public class MaximoFieldListSyncJob {
                     idsOf(repo.findDeletedWithPendingCancel()));
             List<Long> needsCompleteIds = fetchIdsInNewTx(() ->
                     idsOf(repo.findByMaximoCompletePendingTrueOrderByIdAsc()));
+            // Pending attachment uploads scoped to FieldListItem parents. Handled by the
+            // attachmentSync service (parent-must-be-routed check happens inside).
+            List<Long> needsAttachIds = fetchIdsInNewTx(() ->
+                    attachmentIdsOf(attachmentRepo.findByMaximoAttachPendingTrueAndEntityTypeOrderByIdAsc("FieldListItem")));
 
             int createdOk = drain(needsCreateIds, backfillBatchSize, false,
                     row -> bridge.submit(row), "create");
@@ -108,16 +114,50 @@ public class MaximoFieldListSyncJob {
                     row -> bridge.cancel(row, "Backfill retry"), "cancel");
             int completedOk = drain(needsCompleteIds, backfillBatchSize, false,
                     row -> bridge.complete(row, "Backfill retry"), "complete");
+            int attachedOk = drainAttachments(needsAttachIds, backfillBatchSize);
 
-            if (needsCreateIds.size() + needsCancelIds.size() + needsCompleteIds.size() > 0) {
-                log.info("[MaximoFieldList] Backfill: created {}/{}, cancelled {}/{}, completed {}/{}",
+            if (needsCreateIds.size() + needsCancelIds.size() + needsCompleteIds.size() + needsAttachIds.size() > 0) {
+                log.info("[MaximoFieldList] Backfill: created {}/{}, cancelled {}/{}, completed {}/{}, uploaded {}/{}",
                         createdOk, needsCreateIds.size(),
                         cancelledOk, needsCancelIds.size(),
-                        completedOk, needsCompleteIds.size());
+                        completedOk, needsCompleteIds.size(),
+                        attachedOk, needsAttachIds.size());
             }
         } catch (RuntimeException e) {
             log.warn("[MaximoFieldList] Backfill tick failed: {}", e.getMessage());
         }
+    }
+
+    /** Attachment backfill — each upload runs in its own REQUIRES_NEW tx (uploadOne saves inside). */
+    private int drainAttachments(List<Long> attachmentIds, int budget) {
+        int remaining = budget;
+        int okCount = 0;
+        for (Long attId : attachmentIds) {
+            if (remaining-- <= 0) break;
+            try {
+                Boolean ok = perRowTx.execute(status -> {
+                    try {
+                        return attachmentSync.uploadOne(attId);
+                    } catch (RuntimeException perRowEx) {
+                        status.setRollbackOnly();
+                        log.warn("[MaximoFieldList] Backfill upload failed for attId={}: {}",
+                                attId, perRowEx.getMessage());
+                        return Boolean.FALSE;
+                    }
+                });
+                if (Boolean.TRUE.equals(ok)) okCount++;
+            } catch (RuntimeException txEx) {
+                log.warn("[MaximoFieldList] Backfill upload tx commit failed for attId={}: {}",
+                        attId, txEx.getMessage());
+            }
+        }
+        return okCount;
+    }
+
+    private static List<Long> attachmentIdsOf(List<com.dk_power.power_plant_java.entities.permits.PermitAttachment> rows) {
+        List<Long> out = new java.util.ArrayList<>(rows.size());
+        for (var r : rows) out.add(r.getId());
+        return out;
     }
 
     /**

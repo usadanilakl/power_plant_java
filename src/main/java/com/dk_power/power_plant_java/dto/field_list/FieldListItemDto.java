@@ -53,4 +53,18 @@ public class FieldListItemDto {
     private Boolean maximoSyncPending;    // true = create failed, backfill will retry
     private Boolean maximoCancelPending;  // true = local delete but cancel failed
     private Boolean maximoCompletePending; // true = local Closed but WO COMP failed, backfill will retry
+
+    // Optional Maximo location + asset (spi:location, spi:assetnum on the SR/WO).
+    // Populated by the Maximo tree picker on the frontend (deferred wiring); accepted
+    // by the bridge on create when present. Null = ops assigns on triage.
+    private String maximoLocation;
+    private String maximoAssetnum;
+
+    // Contractor-close attribution (populated on SP-import from ContractorCompletedBy/At).
+    private String contractorCompletedBy;
+    private String contractorCompletedAt;
+    // The actual boolean column on SharePoint — the source of truth for "is this closed?".
+    // The By/At fields are attribution + timestamp but can lag or be blank; the syncable
+    // uses this boolean as the rising-edge signal so a true-with-blank-By still fires.
+    private Boolean contractorCompleted;
 }

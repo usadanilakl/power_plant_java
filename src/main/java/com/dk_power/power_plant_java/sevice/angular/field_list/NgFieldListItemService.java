@@ -73,6 +73,7 @@ public class NgFieldListItemService {
     }
 
     public FieldListItemDto save(FieldListItemDto dto) {
+        boolean isNewRecord = dto.getId() == null;
         FieldListItem entity;
         if (dto.getId() != null) {
             entity = repo.findById(dto.getId()).orElse(new FieldListItem());
@@ -103,7 +104,26 @@ public class NgFieldListItemService {
 
         mapper.resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
 
+        // Maximo picker fields — accepted from any /ng caller. Trim + null empty so the
+        // bridge cleanly sees "not provided" instead of empty-string.
+        entity.setMaximoLocation(nullIfBlankStr(dto.getMaximoLocation()));
+        entity.setMaximoAssetnum(nullIfBlankStr(dto.getMaximoAssetnum()));
+
         entity = repo.save(entity);
+
+        // Publish Submitted on NEW rows so the Maximo bridge routes them, same as the
+        // PWA-mobile path. Otherwise desktop-created field lists never reach Maximo
+        // and only mobile ones do — silent behavioral asymmetry between two frontends
+        // that write the same entity. AFTER_COMMIT listener + hub-only bean, so this
+        // is a no-op on desktops and when the feature is off.
+        // Updates (dto.id was set) DON'T re-publish — the row is already routed, and
+        // re-firing Submitted would either double-create (guarded by recordId
+        // idempotency in bridge.submit, so safe) or churn — better to keep the
+        // event's semantic as "brand new field list, evaluate for Maximo routing".
+        if (isNewRecord) {
+            events.publishEvent(new MaximoFieldListEvents.Submitted(entity.getId()));
+        }
+
         return mapper.convertToDto(entity);
     }
 
@@ -113,10 +133,13 @@ public class NgFieldListItemService {
         entity.setStatus(valueService.createValue("FieldListStatus", statusName));
         entity = repo.save(entity);
 
-        // Best-effort push to SharePoint
+        // Best-effort push to SharePoint. We send the FULL DTO (not just Status) because the
+        // PA flow's Update item action maps every column — a partial payload would set every
+        // omitted column to null on SP (Title/Location/Notes/etc. silently wiped). See
+        // FieldListItemSharePointAdapter.changeStatus_removed for the full explanation.
         if (entity.getSharepointId() != null) {
             try {
-                spAdapter.changeStatus(entity.getSharepointId(), statusName);
+                spAdapter.update(entity.getSharepointId(), mapper.convertToDto(entity));
             } catch (Exception e) {
                 log.warn("[FieldList] SP status change failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
             }
@@ -150,6 +173,12 @@ public class NgFieldListItemService {
         att.setOriginMachineId(syncConfig.getMachineId());
         att.setSyncedToServer(false);
         att = attachmentRepo.save(att);
+
+        // Publish AttachmentAdded — hub listener uploads to the parent Maximo record
+        // (WO doclink or SR doclink). No-op when the Maximo feature is off (listener
+        // bean absent) or the parent hasn't been routed yet (uploadOne marks pending
+        // and backfill retries).
+        events.publishEvent(new MaximoFieldListEvents.AttachmentAdded(entityId, att.getId()));
 
         // Best-effort push to SharePoint
         FieldListItem entity = repo.findById(entityId).orElse(null);
@@ -197,5 +226,9 @@ public class NgFieldListItemService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static String nullIfBlankStr(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 }

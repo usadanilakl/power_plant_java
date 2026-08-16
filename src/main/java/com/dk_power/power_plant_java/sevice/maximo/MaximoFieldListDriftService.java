@@ -3,10 +3,13 @@ package com.dk_power.power_plant_java.sevice.maximo;
 import com.dk_power.power_plant_java.dto.admin.MaximoFieldListDriftDto;
 import com.dk_power.power_plant_java.dto.admin.MaximoFieldListDriftRowDto;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
+import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
-import lombok.RequiredArgsConstructor;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -15,6 +18,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Builds the drift snapshot for the Maximo Field List bridge. Not gated by the same
@@ -27,11 +31,29 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MaximoFieldListDriftService {
 
     private final FieldListItemRepo repo;
+    private final PermitAttachmentRepo attachmentRepo;
+    // Bridge + attachment sync are Optional because the Maximo feature is flag-gated
+    // (@ConditionalOnExpression). When the feature is off, retry endpoints degrade
+    // to a no-op with a "feature disabled" message rather than throwing NPE.
+    private final Optional<MaximoFieldListBridge> bridge;
+    private final Optional<MaximoAttachmentSyncService> attachmentSync;
+    private final NgValueService valueService;
+
+    public MaximoFieldListDriftService(FieldListItemRepo repo,
+                                       PermitAttachmentRepo attachmentRepo,
+                                       Optional<MaximoFieldListBridge> bridge,
+                                       Optional<MaximoAttachmentSyncService> attachmentSync,
+                                       NgValueService valueService) {
+        this.repo = repo;
+        this.attachmentRepo = attachmentRepo;
+        this.bridge = bridge;
+        this.attachmentSync = attachmentSync;
+        this.valueService = valueService;
+    }
 
     /**
      * Terminal Maximo statuses — a record in one of these is done as far as Maximo is
@@ -86,6 +108,8 @@ public class MaximoFieldListDriftService {
         out.setCreatePending(bucket(createPendingRows, cap));
         out.setCancelPending(bucket(cancelPendingRows, cap));
         out.setCompletePending(bucket(completePendingRows, cap));
+        out.setAttachmentUploadPendingCount(
+                attachmentRepo.countByMaximoAttachPendingTrueAndEntityType("FieldListItem"));
         out.setMaximoClosedLocalOpen(bucket(maximoClosedLocalOpen, cap));
         out.setLocalClosedMaximoOpen(bucket(localClosedMaximoOpen, cap));
         return out;
@@ -151,5 +175,119 @@ public class MaximoFieldListDriftService {
         d.setSubmitterName(r.getSubmitterName());
         d.setDeleted(r.getDeleted());
         return d;
+    }
+
+    // ==================== Retry / resolve endpoints for admin drift panel ====================
+
+    /**
+     * Result of a resolve/retry action. {@code ok} = the operation was attempted and reported
+     * success; {@code message} carries a human-readable note for the admin toast. Feature-off
+     * ({@code bridge.isEmpty()}) returns ok=false with an explanatory message rather than throwing.
+     */
+    public record ResolveResult(boolean ok, String message) {}
+
+    /**
+     * Retry Maximo submit for a row stuck in create-pending. Loads the (live, managed) entity in a
+     * fresh writable tx so the bridge's own repo.save inside submit() persists — REQUIRES_NEW here
+     * matches the AFTER_COMMIT event-listener pattern the bridge was designed for.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ResolveResult retrySubmit(Long id) {
+        if (bridge.isEmpty()) return new ResolveResult(false, "Maximo feature disabled");
+        FieldListItem entity = repo.findById(id).orElse(null);
+        if (entity == null) return new ResolveResult(false, "Row not found: " + id);
+        boolean ok = bridge.get().submit(entity);
+        return new ResolveResult(ok, ok
+                ? "Submitted (or already routed) to Maximo"
+                : "Retry failed — flag stays pending; see hub log for details");
+    }
+
+    /**
+     * Retry Maximo cancel for a soft-deleted row stuck in cancel-pending. Uses the
+     * deleted-inclusive lookup because @Where(deleted=false) hides these from findById.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ResolveResult retryCancel(Long id) {
+        if (bridge.isEmpty()) return new ResolveResult(false, "Maximo feature disabled");
+        FieldListItem entity = repo.findByIdIncludingDeleted(id).orElse(null);
+        if (entity == null) return new ResolveResult(false, "Row not found: " + id);
+        boolean ok = bridge.get().cancel(entity, "Manual retry from Drift Center");
+        return new ResolveResult(ok, ok ? "Cancelled in Maximo" : "Retry failed — flag stays pending");
+    }
+
+    /**
+     * Retry Maximo WO COMP for a row stuck in complete-pending. No-op for SR-routed rows (bridge
+     * short-circuits on non-WO recordType).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ResolveResult retryComplete(Long id) {
+        if (bridge.isEmpty()) return new ResolveResult(false, "Maximo feature disabled");
+        FieldListItem entity = repo.findById(id).orElse(null);
+        if (entity == null) return new ResolveResult(false, "Row not found: " + id);
+        boolean ok = bridge.get().complete(entity, "Manual retry from Drift Center");
+        return new ResolveResult(ok, ok
+                ? "Completed WO in Maximo (or already terminal)"
+                : "Retry failed — flag stays pending or row is SR-routed");
+    }
+
+    /**
+     * Retry a single stuck attachment upload. Called with the {@code PermitAttachment} id
+     * (not the parent FieldListItem id) so the admin can retry a specific failed doclink
+     * from the attachment-pending bucket drill-down.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ResolveResult retryAttachment(Long attachmentId) {
+        if (attachmentSync.isEmpty()) return new ResolveResult(false, "Maximo feature disabled");
+        PermitAttachment att = attachmentRepo.findById(attachmentId).orElse(null);
+        if (att == null) return new ResolveResult(false, "Attachment not found: " + attachmentId);
+        try {
+            attachmentSync.get().uploadOne(attachmentId);
+            return new ResolveResult(true, "Attachment upload retried");
+        } catch (RuntimeException e) {
+            return new ResolveResult(false, "Retry failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Reconcile a Maximo-closed / local-open divergence by adopting Maximo's terminal state into
+     * the local FieldListItem. Sets local status to the configured completion status so the row
+     * drops out of the "open" buckets. Does NOT touch Maximo (that side is already terminal).
+     * Used when the admin has seen that Maximo COMP'd/CLOSED/CANCELLED the record via a route
+     * outside our bridge (ops closed the SR manually, etc.) and just wants the local mirror to
+     * catch up.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ResolveResult acceptMaximoStatus(Long id) {
+        FieldListItem entity = repo.findById(id).orElse(null);
+        if (entity == null) return new ResolveResult(false, "Row not found: " + id);
+        String maxStatus = entity.getMaximoStatus();
+        if (maxStatus == null || !MAXIMO_TERMINAL.contains(maxStatus)) {
+            return new ResolveResult(false, "Maximo status is not terminal: " + maxStatus);
+        }
+        // Adopt the equivalent local closed status. The bridge's wo-completion-status is what
+        // the LOCAL side calls "closed"; that's what should be reflected here regardless of
+        // whether Maximo COMP'd, CLOSED, or CANCELLED — from the local user's perspective the
+        // row is done. Value must exist (created lazily on first use, same as other flows).
+        entity.setStatus(valueService.createValue("FieldListStatus", LOCAL_CLOSED));
+        repo.save(entity);
+        return new ResolveResult(true, "Local status adopted from Maximo (" + maxStatus + " → " + LOCAL_CLOSED + ")");
+    }
+
+    /**
+     * Reconcile a local-closed / Maximo-open divergence by re-pushing the local Closed state to
+     * Maximo (i.e. re-firing the COMP call). Same as retryComplete but marks the row's complete-
+     * pending flag first so the backfill loop keeps retrying if the immediate attempt fails.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ResolveResult pushLocalClose(Long id) {
+        if (bridge.isEmpty()) return new ResolveResult(false, "Maximo feature disabled");
+        FieldListItem entity = repo.findById(id).orElse(null);
+        if (entity == null) return new ResolveResult(false, "Row not found: " + id);
+        entity.setMaximoCompletePending(Boolean.TRUE);
+        repo.save(entity);
+        boolean ok = bridge.get().complete(entity, "Manual push from Drift Center");
+        return new ResolveResult(ok, ok
+                ? "Local Closed pushed to Maximo (WO COMP)"
+                : "Push failed — pending flag set, backfill will retry");
     }
 }

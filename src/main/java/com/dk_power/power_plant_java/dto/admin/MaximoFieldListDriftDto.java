@@ -26,6 +26,12 @@ public class MaximoFieldListDriftDto {
     private BucketDto completePending;
 
     /**
+     * Count of PermitAttachments (on FieldListItem parents) queued for a Maximo doclink upload retry.
+     * Samples not shown here since attachment rows aren't FieldListItems; only the count is exposed.
+     */
+    private long attachmentUploadPendingCount;
+
+    /**
      * Rows where Maximo shows a terminal status (SR: CLOSED/CANCELLED; WO: COMP/CLOSE/CAN)
      * but the local FieldList is still in an open status. Ops closed it on their side, but
      * the PWA still shows the report open — someone should close it locally too.

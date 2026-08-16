@@ -83,6 +83,13 @@
                   [workAreaId]="form.get('workAreaMap')?.value?.id ?? null">
                 </app-equipment-picker>
               }
+              @case('maximo-tree-picker'){
+                <label class="field-label">{{ field.label }}</label>
+                <app-maximo-tree-picker
+                  mode="both"
+                  (selection)="onMaximoTreePicked(field.name, $event)">
+                </app-maximo-tree-picker>
+              }
               @case('form-array'){
               <app-form-array-input
                 [label]="field.label"

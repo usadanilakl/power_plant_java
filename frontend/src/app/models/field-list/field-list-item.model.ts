@@ -33,6 +33,10 @@ export interface FieldListItemModel extends BaseModel {
   maximoStatus: string | null;
   maximoSyncPending: boolean | null;
   maximoCancelPending: boolean | null;
+  // Maximo picker fields — populated by MaximoLocationPickerComponent in the form.
+  // Sent to backend on save; bridge uses them on Maximo WO/SR create (spi:location/spi:assetnum).
+  maximoLocation: string | null;
+  maximoAssetnum: string | null;
 }
 
 export type FieldListItemFieldName = keyof FieldListItemModel;
@@ -66,6 +70,8 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
   maximoStatus: string | null;
   maximoSyncPending: boolean | null;
   maximoCancelPending: boolean | null;
+  maximoLocation: string | null;
+  maximoAssetnum: string | null;
 
   constructor(data: Partial<FieldListItemModel> = {}) {
     super(data);
@@ -97,6 +103,8 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
     this.maximoStatus = data.maximoStatus ?? null;
     this.maximoSyncPending = data.maximoSyncPending ?? null;
     this.maximoCancelPending = data.maximoCancelPending ?? null;
+    this.maximoLocation = data.maximoLocation ?? null;
+    this.maximoAssetnum = data.maximoAssetnum ?? null;
   }
 
   override toJson(): any {
@@ -121,6 +129,8 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
       submitterName: this.submitterName,
       submitterEmail: this.submitterEmail,
       submitterPhone: this.submitterPhone,
+      maximoLocation: this.maximoLocation,
+      maximoAssetnum: this.maximoAssetnum,
     };
   }
 
@@ -157,6 +167,8 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
       maximoStatus: json.maximoStatus ?? null,
       maximoSyncPending: json.maximoSyncPending ?? null,
       maximoCancelPending: json.maximoCancelPending ?? null,
+      maximoLocation: json.maximoLocation ?? null,
+      maximoAssetnum: json.maximoAssetnum ?? null,
     });
   }
 
@@ -255,6 +267,13 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
       { name: 'submitterName', label: 'Submitter Name', type: 'text', initialValue: d.submitterName },
       { name: 'submitterEmail', label: 'Submitter Email', type: 'text', initialValue: d.submitterEmail },
       { name: 'submitterPhone', label: 'Submitter Phone', type: 'text', initialValue: d.submitterPhone },
+      // Maximo picker — searches plant hierarchy; emits the Maximo location code as a
+      // plain string via ControlValueAccessor. Optional; leave blank for ops to assign
+      // on Maximo triage. Assetnum is a plain text input alongside because the tree
+      // picker only emits location codes here (JG portal uses maximo-location-picker,
+      // not the tree picker).
+      { name: 'maximoLocation', label: 'Maximo Location', type: 'maximo-location-picker', initialValue: d.maximoLocation ?? '' },
+      { name: 'maximoAssetnum', label: 'Maximo Asset', type: 'maximo-asset-picker', initialValue: d.maximoAssetnum ?? '' },
     ];
 
     if (fields && fields.length > 0) {

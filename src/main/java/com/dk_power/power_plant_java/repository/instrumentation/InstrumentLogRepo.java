@@ -18,4 +18,7 @@ public interface InstrumentLogRepo extends BaseRepository<InstrumentLog> {
      */
     List<InstrumentLog> findTop50ByInstrumentTagNumberOrderByIdDesc(String tagNumber);
     boolean existsBySharepointId(String sharepointId);
+
+    /** Logs that never reached SharePoint — the outbound catch-up job's work list. */
+    List<InstrumentLog> findBySharepointIdIsNull();
 }

@@ -48,6 +48,7 @@ interface Attachment {
         [tableId]="'field-list-items'"
         [items]="items()"
         [columns]="columns()"
+        [driftEntityType]="'FieldListItem'"
         (selectedItemsEvent)="selectedItemsEvent.emit($event)"
         (rowDoubleClicked)="onRowDoubleClick($event)">
       </app-table>

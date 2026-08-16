@@ -623,6 +623,17 @@ export class FieldListComponent implements OnInit {
       locationName = formData.workAreaMap.name || '';
     }
 
+    // Unpack the Maximo tree picker's {assetnum, location} value into the two flat DTO
+    // fields the backend expects. Picker is optional — if not used, both stay empty and
+    // the bridge sees "not provided" (ops assigns on Maximo triage). See
+    // project/features/maximo/field-list-sr.md.
+    let maximoLocation = '';
+    let maximoAssetnum = '';
+    if (formData.maximoPicker && typeof formData.maximoPicker === 'object') {
+      maximoLocation = formData.maximoPicker.location || '';
+      maximoAssetnum = formData.maximoPicker.assetnum || '';
+    }
+
     // Auto-populate submitter details from user profile
     const userData = this.userSetup.getUserData();
 
@@ -637,6 +648,8 @@ export class FieldListComponent implements OnInit {
       locationName,
       specificLocation: formData.locationDetail || '',
       equipmentTag,
+      maximoLocation,
+      maximoAssetnum,
       submitterName: userData?.name || '',
       submitterEmail: userData?.email || '',
       submitterPhone: userData?.phone || '',

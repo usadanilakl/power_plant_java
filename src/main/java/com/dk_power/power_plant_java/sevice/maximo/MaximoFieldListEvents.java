@@ -31,4 +31,21 @@ public final class MaximoFieldListEvents {
 
     /** Field list status changed — if it matches wo-completion-status, COMP the WO. */
     public record StatusChanged(Long id, String newStatusName, String actor) {}
+
+    /**
+     * A PermitAttachment was saved for a FieldListItem — upload it to the Maximo record as a
+     * doclink. Handled by {@link MaximoAttachmentSyncService.uploadOne}. If the parent record
+     * isn't yet routed to Maximo (no maximoHref), the listener marks the attachment pending
+     * and the backfill loop retries after the row is routed.
+     */
+    public record AttachmentAdded(Long fieldListItemId, Long attachmentId) {}
+
+    /**
+     * The contractor closed the item OFFLINE via PWA→PA→SharePoint (hub unreachable at close
+     * time). Detected by SP-import polling when it sees {@code ContractorCompleted=true} on
+     * an SP row with a matching local FieldListItem. Handled by the listener which calls
+     * {@code bridge.complete()} to COMP the Maximo WO. Same idempotency as StatusChanged →
+     * no-op on already-terminal Maximo records.
+     */
+    public record ContractorClosed(Long fieldListItemId, String actor) {}
 }

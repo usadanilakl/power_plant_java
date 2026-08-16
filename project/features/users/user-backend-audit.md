@@ -14,7 +14,11 @@ Snapshot of the existing Spring Boot user infrastructure that informs the upcomi
 **Roles & permissions:**
 - `role` — **CSV string** holding all roles (e.g. `"ROLE_ADMIN,ROLE_PLANT"`).
 - Helper methods on entity: `getRoles()`, `setRoles()`, `hasRole()`, `addRole()`.
-- Defined access roles: `ROLE_ADMIN`, `ROLE_EMPLOYEE`, `ROLE_CONTRACTOR`, `ROLE_PLANT`.
+- Defined access roles: `ROLE_ADMIN`, `ROLE_EMPLOYEE`, `ROLE_CONTRACTOR`, `ROLE_PLANT`,
+  `ROLE_NAES`, `ROLE_JPOWER`, `ROLE_KIOSK`, `ROLE_LOG_DIAGNOSTICS`, `ROLE_INSTRUMENTATION`.
+  The last one is granted **per user** (I&C techs, calibration contractors) and is deliberately
+  NOT implied by `ROLE_PLANT` — it gates the whole Instrumentation section on both the PWA
+  (`/api/pwa/secured/instrument*`) and the desktop (`/ng/instrument*`).
 - **No `NAES` or `JPower` role exists today** — we'll need to add them.
 - LOTO roles (`CONTROL_AUTHORITY`, `LOTO_QUALIFIED`, `REQUESTOR`, `MANAGER`) live in same CSV via `LotoRole` enum.
 - `permissionLevel` — string enum `NONE`/`BASIC`/`OPERATOR` (PWA permit signing).

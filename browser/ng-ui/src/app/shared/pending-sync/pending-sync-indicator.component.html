@@ -3,13 +3,16 @@
     type="button"
     class="pending-pill"
     [class.sending]="isFlushing()"
+    [class.offline]="!isOnline()"
     (click)="onClick()"
-    [attr.aria-label]="'Unsynced changes on this device: ' + label() + '. Tap to send now.'"
+    [attr.aria-label]="(isOnline() ? 'Unsynced changes on this device: ' : 'Offline. Unsynced changes on this device: ') + label() + '. Tap for details.'"
   >
     <span class="pending-dot" aria-hidden="true"></span>
     <span class="pending-text">
       @if (isFlushing()) {
         Sending {{ count() }} pending…
+      } @else if (!isOnline()) {
+        Offline · {{ count() }} not sent
       } @else {
         {{ count() }} not sent — {{ label() }}
       }

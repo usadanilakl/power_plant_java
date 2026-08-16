@@ -11,6 +11,7 @@ import { FieldListItemDto } from '../../../../models/field-list/field-list-item.
     <app-rf-reactive-form
       [fields]="fields()"
       [entity]="entity()"
+      [driftEntityType]="'FieldListItem'"
       (formSubmit)="onSubmit($event)"
       (formDelete)="onDelete()">
     </app-rf-reactive-form>

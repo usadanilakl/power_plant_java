@@ -36,6 +36,17 @@
   color: #0b4a8f;
 }
 
+/* Offline reads as a state of the world, not an error the user caused — grey, not red. */
+.pending-pill.offline {
+  border-color: #9aa0a6;
+  background: #eceff1;
+  color: #37474f;
+}
+
+.pending-pill.offline .pending-dot {
+  background: #607d8b;
+}
+
 .pending-text {
   white-space: nowrap;
   overflow: hidden;

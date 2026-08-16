@@ -130,6 +130,38 @@ public class PwaInstrumentLogService {
         return PwaSubmissionResult.success(method, sharepointId, dto.getLocalUuid());
     }
 
+    /**
+     * Removes a log entry from SharePoint and soft-deletes it here. SharePoint first for the same
+     * resurrection reason as {@code PwaInstrumentService#deleteInstrument} — a row still present
+     * remotely comes straight back on the next pull.
+     *
+     * <p>Attachments stored against the log on this side are soft-deleted with it; SharePoint's own
+     * attachments go with the item into the site Recycle Bin.</p>
+     */
+    @Transactional
+    public void deleteLog(Long id) {
+        InstrumentLog entity = instrumentLogRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Instrument log not found: " + id));
+
+        String sharepointId = entity.getSharepointId();
+        if (sharepointId != null && !sharepointId.isBlank()) {
+            logAdapter.delete(sharepointId);
+            log.info("[Instrument Delete] Removed log from SharePoint: spId={}, tagNumber={}",
+                    sharepointId, entity.getInstrumentTagNumber());
+        }
+
+        attachmentRepo.findByEntityTypeAndEntityId("InstrumentLog", entity.getId())
+                .forEach(attachment -> {
+                    attachment.setDeleted(true);
+                    attachmentRepo.save(attachment);
+                });
+
+        entity.setDeleted(true);
+        instrumentLogRepo.save(entity);
+        log.info("[Instrument Delete] Soft-deleted log locally: id={}, tagNumber={}",
+                id, entity.getInstrumentTagNumber());
+    }
+
     public List<InstrumentLogDto> getLogsByInstrument(String tagNumber) {
         if (tagNumber == null || tagNumber.isBlank()) return List.of();
         return instrumentLogRepo.findTop50ByInstrumentTagNumberOrderByIdDesc(tagNumber.trim()).stream()

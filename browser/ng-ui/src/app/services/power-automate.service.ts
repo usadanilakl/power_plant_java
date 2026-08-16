@@ -15,6 +15,12 @@ export interface PaV2Request {
   /** Optional sub-entity discriminator for multi-list flows (e.g. Inventory: "item" | "usage"). */
   entity?: string;
   id?: string;
+  /**
+   * Client-minted id for the row being written, sent at the TOP level because that is where the
+   * flows read it (`triggerBody()?['localUuid']`) — the instrument register maps it to SharePoint's
+   * `PwaId` column, and the instrument log case reads it from here too.
+   */
+  localUuid?: string;
   data: Record<string, any>;
   attachments?: { fileName: string; contentType: string; base64Content: string }[];
 }

@@ -13,6 +13,9 @@ public interface InstrumentRepo extends BaseRepository<Instrument> {
     Optional<Instrument> findFirstByLocalUuidOrderByIdAsc(String localUuid);
     Optional<Instrument> findTopByOrderByDateModifiedDesc();
 
+    /** Rows that never reached SharePoint — the outbound catch-up job's work list. */
+    List<Instrument> findBySharepointIdIsNull();
+
     /**
      * Rows touched at or after a cursor, for the PWA's incremental register sync.
      *

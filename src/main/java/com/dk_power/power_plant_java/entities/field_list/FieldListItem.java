@@ -121,4 +121,30 @@ public class FieldListItem extends BaseAuditEntity {
      * closed is not drift-to-retry, just planner backlog.
      */
     private Boolean maximoCompletePending;
+
+    /**
+     * Optional Maximo LOCATIONS code (e.g. "00-FGS-VLV", "02-FDW-BFPMP"). When set, the
+     * bridge sends it on WO/SR create as spi:location. Frontend picker populates this
+     * (deferred wiring — backend accepts it whenever the field arrives in the DTO).
+     * Ops can also fill it in Maximo on triage if left null.
+     */
+    private String maximoLocation;
+
+    /**
+     * Optional Maximo asset number. Sent on SR create as spi:assetnum. When both maximoLocation
+     * and maximoAssetnum are set, Maximo uses the asset's location as the SR/WO location.
+     */
+    private String maximoAssetnum;
+
+    // === Insulation-contractor offline close mechanism ===
+    // Populated by the SP-import polling when it sees SharePoint's ContractorCompleted=true
+    // (the contractor closed the item via PWA→PA→SP while hub was unreachable). The hub's
+    // event listener uses this transition to fire bridge.complete() and COMP the WO on
+    // Maximo. See project/features/maximo/field-list-sr.md.
+
+    /** Contractor identity (Supabase user handle / email) from the PWA offline-close flow. */
+    private String contractorCompletedBy;
+
+    /** ISO datetime string of when the contractor closed the item offline. Matches DateObserved storage shape. */
+    private String contractorCompletedAt;
 }

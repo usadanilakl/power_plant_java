@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
     // Every per-entity attachment count (WorkRequestMapper, JobLog list, etc.) queries by
     // (entityType, entityId). Without this index that is a FULL SCAN of the multi-hundred-MB
     // base64 table — the hidden N+1 behind the JobLog getAll connection leak.
-    @Index(name = "idx_permit_attachment_entity", columnList = "entity_type, entity_id")
+    @Index(name = "idx_permit_attachment_entity", columnList = "entity_type, entity_id"),
+    @Index(name = "idx_permit_attachment_maximo_pending", columnList = "maximoAttachPending")
 })
 @DynamicUpdate  // only UPDATE dirty columns — avoids rewriting the ~1.3MB base64Content row on sync-flag-only saves
 @Getter
@@ -124,6 +125,20 @@ public class PermitAttachment {
         if (syncedToMachines == null || syncedToMachines.isEmpty()) return false;
         return syncedToMachines.contains("|" + machineId + "|");
     }
+
+    // === Maximo doclink state (populated only for attachments on Maximo-routed entities) ===
+    // See project/features/maximo/field-list-sr.md. Bridge is hub-only, so these are set
+    // only by the hub's MaximoAttachmentSyncService. Desktops see the values via CRDT sync
+    // but never write them. Null when the attachment isn't (yet) linked to a Maximo record.
+
+    /** Maximo doclinks id after successful upload. Idempotency key: upload skipped when non-null. */
+    private String maximoDoclinkId;
+
+    /**
+     * True when the Maximo doclink upload was attempted and failed (or the parent record
+     * doesn't have a maximoHref yet). Backfill sweeps for this and retries.
+     */
+    private Boolean maximoAttachPending;
 
     @PrePersist
     protected void onCreate() {

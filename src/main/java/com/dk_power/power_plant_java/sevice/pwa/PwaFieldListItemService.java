@@ -92,6 +92,10 @@ public class PwaFieldListItemService {
         // Resolve equipment/lotoPoint
         mapper.resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
 
+        // Maximo picker fields — accepted from PWA when the tree picker was used.
+        entity.setMaximoLocation(nullIfBlank(dto.getMaximoLocation()));
+        entity.setMaximoAssetnum(nullIfBlank(dto.getMaximoAssetnum()));
+
         // Timestamp
         String timeSubmitted = ZonedDateTime.now(ZoneId.of("America/Chicago"))
                 .format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a"));
@@ -125,8 +129,13 @@ public class PwaFieldListItemService {
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
                 attachment.setContentHash(contentHash);
-                attachmentRepo.save(attachment);
+                attachment = attachmentRepo.save(attachment);
                 saved++;
+                // Publish AttachmentAdded. The listener may fire BEFORE the parent row's
+                // Submitted event has routed it to Maximo — in that case uploadOne marks
+                // the attachment pending and the backfill picks it up. It's also
+                // re-published from onSubmitted's iterate-attachments path as a safety net.
+                events.publishEvent(new MaximoFieldListEvents.AttachmentAdded(entity.getId(), attachment.getId()));
             }
             log.info("[PWA FieldList] Saved {} attachments for localUuid={}", saved, dto.getLocalUuid());
         }
@@ -190,6 +199,12 @@ public class PwaFieldListItemService {
         }
 
         FieldListItem entity = existing.get();
+        // Capture prior status name so we can detect a rising edge and fire StatusChanged.
+        // Codex round 3: the earlier version silently changed status here without emitting
+        // any event → Maximo WO stayed open when PWA closed the row via this endpoint.
+        String priorStatusName = entity.getStatus() == null ? null : entity.getStatus().getName();
+        boolean statusChanged = false;
+
         if (dto.getTitle() != null) entity.setTitle(dto.getTitle());
         if (dto.getNotes() != null) entity.setNotes(dto.getNotes());
         if (dto.getDateObserved() != null) entity.setDateObserved(dto.getDateObserved());
@@ -197,6 +212,7 @@ public class PwaFieldListItemService {
         if (dto.getSpecificLocation() != null) entity.setSpecificLocation(dto.getSpecificLocation());
         if (dto.getStatusName() != null) {
             entity.setStatus(valueService.createValue("FieldListStatus", dto.getStatusName()));
+            statusChanged = !dto.getStatusName().equalsIgnoreCase(priorStatusName);
         }
         if (dto.getLocationName() != null) {
             entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
@@ -215,6 +231,14 @@ public class PwaFieldListItemService {
             } catch (Exception e) {
                 log.warn("[PWA FieldList] Failed to update SP: {}", e.getMessage());
             }
+        }
+
+        // Fire StatusChanged when status flipped. Listener filters by wo-completion-status
+        // (only Closed triggers WO COMP); bridge.complete is idempotent so a spurious fire
+        // for other statuses is a cheap no-op. Only fires when caller actually changed status.
+        if (statusChanged) {
+            events.publishEvent(new MaximoFieldListEvents.StatusChanged(
+                    entity.getId(), dto.getStatusName(), "pwa-update"));
         }
 
         return PwaSubmissionResult.success(
@@ -240,5 +264,9 @@ public class PwaFieldListItemService {
         if (contentType.startsWith("image/")) return "photo";
         if (contentType.contains("pdf")) return "document";
         return "file";
+    }
+
+    private static String nullIfBlank(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 }

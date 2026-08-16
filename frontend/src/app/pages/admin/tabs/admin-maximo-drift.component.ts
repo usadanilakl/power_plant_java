@@ -3,15 +3,27 @@ import { CommonModule, DatePipe } from '@angular/common';
 import {
   AdminMaximoFieldListDriftService,
   MaximoFieldListDrift,
-  MaximoFieldListDriftBucket
+  MaximoFieldListDriftBucket,
+  MaximoFieldListDriftRow,
+  MaximoFieldListResolveResult
 } from '../../../services/admin/admin-maximo-field-list-drift.service';
+import { Observable } from 'rxjs';
+import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
+
+type BucketKey =
+  | 'createPending'
+  | 'cancelPending'
+  | 'completePending'
+  | 'maximoClosedLocalOpen'
+  | 'localClosedMaximoOpen';
 
 interface BucketTile {
-  key: keyof Pick<MaximoFieldListDrift,
-    'createPending' | 'cancelPending' | 'maximoClosedLocalOpen' | 'localClosedMaximoOpen'>;
+  key: BucketKey;
   label: string;
   hint: string;
   severity: 'info' | 'warn' | 'danger';
+  /** Which row-level actions apply to rows in this bucket. */
+  actions: Array<'retrySubmit' | 'retryCancel' | 'retryComplete' | 'acceptMaximo' | 'pushLocalClose'>;
 }
 
 const BUCKETS: BucketTile[] = [
@@ -19,25 +31,36 @@ const BUCKETS: BucketTile[] = [
     key: 'createPending',
     label: 'Create backlog',
     hint: 'Rows whose initial Maximo create failed and are queued for backfill retry.',
-    severity: 'warn'
+    severity: 'warn',
+    actions: ['retrySubmit']
   },
   {
     key: 'cancelPending',
     label: 'Cancel backlog',
     hint: 'Locally-deleted rows whose Maximo cancel call failed. Backfill will retry.',
-    severity: 'warn'
+    severity: 'warn',
+    actions: ['retryCancel']
+  },
+  {
+    key: 'completePending',
+    label: 'WO COMP backlog',
+    hint: 'Local Closed but the WO COMP push failed. Backfill will retry.',
+    severity: 'warn',
+    actions: ['retryComplete']
   },
   {
     key: 'maximoClosedLocalOpen',
     label: 'Maximo closed / local open',
-    hint: 'Ops closed the record in Maximo but the local PWA still shows it open. Someone should close it locally.',
-    severity: 'info'
+    hint: 'Ops closed the record in Maximo (via a route outside our bridge) but the local mirror still shows open. Adopt Maximo status to catch up.',
+    severity: 'info',
+    actions: ['acceptMaximo']
   },
   {
     key: 'localClosedMaximoOpen',
     label: 'Local closed / WO still open',
-    hint: 'The wo-completion-status flip fired but bridge.complete() failed. WO is still in ops queue.',
-    severity: 'danger'
+    hint: 'The wo-completion-status flip fired but bridge.complete() failed silently. Push the local close to Maximo again.',
+    severity: 'danger',
+    actions: ['pushLocalClose']
   }
 ];
 
@@ -55,17 +78,20 @@ const BUCKETS: BucketTile[] = [
           </button>
         </div>
         <p class="description">
-          Health of the Field List → Maximo bridge. Rows in the buckets below are either stuck (backfill will retry),
-          or diverged (someone needs to reconcile). Bridge feature-flag: change
-          <code>maximo.field-list.enabled</code> in <code>application-secrets.properties</code> to enable or disable.
+          Health of the Field List → Maximo bridge. Rows in the buckets below are either stuck
+          (backfill will retry — click a row's action to retry now) or diverged (Maximo and local
+          disagree — the row-level action adopts one side or pushes the other). Bridge feature-flag:
+          <code>maximo.field-list.enabled</code> in <code>application-secrets.properties</code>.
           Empty buckets when the feature is off is expected.
         </p>
 
         <div class="error" *ngIf="error()">{{ error() }}</div>
+        <div class="toast" *ngIf="toast() as t" [class.ok]="t.ok" [class.bad]="!t.ok">{{ t.message }}</div>
 
         <ng-container *ngIf="snap() as s">
           <div class="meta">
             <span>Total routed to Maximo: <strong>{{ s.totalRoutedToMaximo }}</strong></span>
+            <span>Attachment upload backlog: <strong>{{ s.attachmentUploadPendingCount }}</strong></span>
             <span>Last refreshed: {{ s.computedAt | date:'medium' }}</span>
           </div>
 
@@ -100,6 +126,7 @@ const BUCKETS: BucketTile[] = [
                   <th>Maximo</th>
                   <th>Modified</th>
                   <th>Submitter</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,10 +142,20 @@ const BUCKETS: BucketTile[] = [
                     <span *ngIf="!r.maximoRecordType">—</span>
                     <span class="pill pending" *ngIf="r.maximoSyncPending">create pending</span>
                     <span class="pill pending" *ngIf="r.maximoCancelPending">cancel pending</span>
+                    <span class="pill pending" *ngIf="r.maximoCompletePending">complete pending</span>
                     <span class="pill deleted" *ngIf="r.deleted">deleted</span>
                   </td>
                   <td>{{ r.dateModified | date:'short' }}</td>
                   <td>{{ r.submitterName || '—' }}</td>
+                  <td>
+                    <button *ngFor="let a of actionsFor(key)"
+                            class="action-btn"
+                            [class.busy]="busyId() === r.id"
+                            [disabled]="busyId() != null"
+                            (click)="doAction(a, r)">
+                      {{ actionLabel(a) }}
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -138,7 +175,10 @@ const BUCKETS: BucketTile[] = [
     .description { color: #555; font-size: 13px; margin: 10px 0 20px; line-height: 1.5; }
     .description code { background: #f0f0f0; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
     .error { background: #fee; color: #900; padding: 10px; border-radius: 4px; margin: 10px 0; }
-    .meta { display: flex; gap: 24px; color: #666; font-size: 13px; margin-bottom: 14px; }
+    .toast { padding: 8px 12px; border-radius: 4px; margin: 8px 0; font-size: 13px; }
+    .toast.ok { background: #e6f4ea; color: #1e7e34; }
+    .toast.bad { background: #fef2f2; color: #b91c1c; }
+    .meta { display: flex; gap: 24px; color: #666; font-size: 13px; margin-bottom: 14px; flex-wrap: wrap; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px; }
     .card {
       background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px;
@@ -168,12 +208,19 @@ const BUCKETS: BucketTile[] = [
     .pill.pending { background: #fff3cd; color: #856404; }
     .pill.deleted { background: #f5c6cb; color: #721c24; }
     .empty { color: #999; font-style: italic; padding: 20px 0; text-align: center; }
-    button:not(.link) {
+    button:not(.link):not(.action-btn) {
       background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px;
       cursor: pointer; font-size: 13px;
     }
-    button:not(.link):disabled { background: #999; cursor: not-allowed; }
-    button:not(.link):hover:not(:disabled) { background: #218838; }
+    button:not(.link):not(.action-btn):disabled { background: #999; cursor: not-allowed; }
+    button:not(.link):not(.action-btn):hover:not(:disabled) { background: #218838; }
+    .action-btn {
+      background: #007bff; color: white; border: none; padding: 4px 10px; border-radius: 3px;
+      cursor: pointer; font-size: 12px; margin-right: 4px;
+    }
+    .action-btn:hover:not(:disabled) { background: #0056b3; }
+    .action-btn:disabled { background: #bbb; cursor: wait; }
+    .action-btn.busy { background: #999; }
   `]
 })
 export class AdminMaximoDriftComponent implements OnInit {
@@ -183,7 +230,9 @@ export class AdminMaximoDriftComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   snap = signal<MaximoFieldListDrift | null>(null);
-  selected = signal<BucketTile['key'] | null>(null);
+  selected = signal<BucketKey | null>(null);
+  busyId = signal<number | null>(null);
+  toast = signal<MaximoFieldListResolveResult | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -204,15 +253,56 @@ export class AdminMaximoDriftComponent implements OnInit {
     });
   }
 
-  select(key: BucketTile['key'] | null): void {
+  select(key: BucketKey | null): void {
     this.selected.set(this.selected() === key ? null : key);
   }
 
-  bucketOf(s: MaximoFieldListDrift, key: BucketTile['key']): MaximoFieldListDriftBucket {
+  bucketOf(s: MaximoFieldListDrift, key: BucketKey): MaximoFieldListDriftBucket {
     return s[key];
   }
 
-  labelFor(key: BucketTile['key']): string {
+  labelFor(key: BucketKey): string {
     return BUCKETS.find(b => b.key === key)?.label ?? key;
+  }
+
+  actionsFor(key: BucketKey): BucketTile['actions'] {
+    return BUCKETS.find(b => b.key === key)?.actions ?? [];
+  }
+
+  actionLabel(a: BucketTile['actions'][number]): string {
+    switch (a) {
+      case 'retrySubmit': return 'Retry submit';
+      case 'retryCancel': return 'Retry cancel';
+      case 'retryComplete': return 'Retry COMP';
+      case 'acceptMaximo': return 'Accept Maximo status';
+      case 'pushLocalClose': return 'Push local close';
+    }
+  }
+
+  doAction(a: BucketTile['actions'][number], r: MaximoFieldListDriftRow): void {
+    if (this.busyId() != null) return;
+    this.busyId.set(r.id);
+    this.toast.set(null);
+    let call$: Observable<SpringApiResponse<MaximoFieldListResolveResult>>;
+    switch (a) {
+      case 'retrySubmit': call$ = this.api.retrySubmit(r.id); break;
+      case 'retryCancel': call$ = this.api.retryCancel(r.id); break;
+      case 'retryComplete': call$ = this.api.retryComplete(r.id); break;
+      case 'acceptMaximo': call$ = this.api.acceptMaximoStatus(r.id); break;
+      case 'pushLocalClose': call$ = this.api.pushLocalClose(r.id); break;
+    }
+    call$.subscribe({
+      next: resp => {
+        const result = resp.responseData ?? { ok: false, message: resp.message ?? 'Unknown result' };
+        this.toast.set(result);
+        this.busyId.set(null);
+        // Reload snapshot so the successfully-resolved row drops out of its bucket.
+        if (result.ok) this.load();
+      },
+      error: e => {
+        this.toast.set({ ok: false, message: e?.error?.message ?? e?.message ?? 'Request failed' });
+        this.busyId.set(null);
+      }
+    });
   }
 }

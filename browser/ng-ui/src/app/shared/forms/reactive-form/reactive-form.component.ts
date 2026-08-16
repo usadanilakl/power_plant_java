@@ -15,6 +15,7 @@ import { FileInputComponent } from "../../input-fields/file-input/file-input.com
 import { SignatureInputComponent } from "../../input-fields/signature-input/signature-input.component";
 import { WorkAreaMapSelectComponent } from "../work-area-map-select/work-area-map-select.component";
 import { EquipmentPickerComponent } from "../equipment-picker/equipment-picker.component";
+import { MaximoTreePickerComponent } from "../../../features/maximo/maximo-tree-picker.component";
 
 @Component({
   selector: 'app-reactive-form',
@@ -33,6 +34,7 @@ import { EquipmentPickerComponent } from "../equipment-picker/equipment-picker.c
     SignatureInputComponent,
     WorkAreaMapSelectComponent,
     EquipmentPickerComponent,
+    MaximoTreePickerComponent,
 ],
   templateUrl: './reactive-form.component.html',
   styleUrl: './reactive-form.component.css'
@@ -317,6 +319,16 @@ export class ReactiveFormComponent {
       return new FormControl();
     }
     return control as FormControl;
+  }
+
+  /**
+   * Bridge the MaximoTreePicker's (selection) EventEmitter into the reactive form's
+   * FormControl for the given field. The picker doesn't implement ControlValueAccessor,
+   * so we manually push its emitted {assetnum, location} value into the form. Consumers
+   * unpack maximoLocation + maximoAssetnum from that object on submit.
+   */
+  onMaximoTreePicked(fieldName: string, event: { assetnum: string; location: string }): void {
+    this.form.get(fieldName)?.setValue(event);
   }
 
   private deepMerge(target: any, source: any): any {

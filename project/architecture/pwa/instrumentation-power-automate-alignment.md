@@ -12,21 +12,71 @@ changed from this repo.
 
 ---
 
-## 1. Set `Title` on both lists — REQUIRED
+## Payload keys vs SharePoint columns
 
-The hub now writes SharePoint's `Title` column, because an unset Title renders as a blank row in
-every default list view (the item link is the Title). The flow must match, or items created through
-the fallback are the blank ones.
+Every flow action has a left side and a right side, from unrelated naming schemes. **They are not the
+same and never have been** — verified field by field against the live flow on 2026-08-16:
 
-**Case `addInstrument`** — add to the *Create item* action:
+```
+   SharePoint column internal name   ←   expression reading the PWA's JSON payload
+   ------------------------------        --------------------------------------
+   Tag_x0020_Number                  ←   triggerBody()?['data']?['TagNumber']
+   PwaId                             ←   triggerBody()?['localUuid']
+   ^ fixed when the column was made       ^ chosen by the PWA's request body
+```
 
-| Column | Expression |
-|--------|-----------|
-| Title | `triggerBody()?['data']?['Tag_x0020_Number']` |
+Two blank fields on every PA-created instrument were traced to exactly this: the flow read
+`data.TagNumber` and top-level `localUuid`, while the PWA sent `data.Tag_x0020_Number` and
+`data.PwaId`. The five fields whose names already agreed came through fine. The PWA was changed to
+match the flow.
 
-(The hub sets the register's Title to the tag number.)
+| Case | Payload keys the flow reads |
+|---|---|
+| `addInstrument` | top-level `localUuid`; `data.{TagNumber, Description, Vendor, Location, Type, CurrentStatus}` |
+| `addInstrumentationLog` | top-level `localUuid` and `attachments`; `instrumentationLog.{instrumentTagNumber, instrumentDescription, status, date, time, name, comment}` |
+| `getAllInstruments` (response) | `{tagNumber, description, vendor, location, type, currentStatus, lastUpdatedDate, lastUpdatedTime, lastUpdatedBy, lastComment, sharepointId, pwaId}` |
 
-**Case `addInstrumentationLog`** — add to its *Create item* action:
+Column names are the flow's own business and differ per list — see §2.
+
+## 1. `addInstrument` — verified working 2026-08-16
+
+Current mapping in the flow's *Create item* on **`Instrumentation`**, all verified to persist:
+
+| SharePoint column | Expression |
+|---|---|
+| Title | `triggerBody()?['data']?['TagNumber']` |
+| Tag Number (`Tag_x0020_Number`) | `triggerBody()?['data']?['TagNumber']` |
+| PwaId | `triggerBody()?['localUuid']` |
+| Description | `triggerBody()?['data']?['Description']` |
+| Vendor | `triggerBody()?['data']?['Vendor']` |
+| Location | `triggerBody()?['data']?['Location']` |
+| Type | `triggerBody()?['data']?['Type']` |
+| CurrentStatus | `triggerBody()?['data']?['CurrentStatus']` |
+
+Title takes the tag number, matching the hub. Response: `200`,
+`{ "success": true, "id": "@{body('Create_item')?['ID']}" }`.
+
+Test body (exactly what the PWA sends):
+
+```json
+{ "actionType": "addInstrument", "localUuid": "test-uuid",
+  "data": { "TagNumber": "PT-101", "Description": "Test", "Vendor": "Acme",
+            "Location": "Turbine Hall", "Type": "Pressure",
+            "CurrentStatus": "Normal Operation" } }
+```
+
+### 1a. `addInstrument` is not idempotent — OPEN RISK
+
+It creates unconditionally. If a run creates the item but the caller never sees the response (see
+§6e), the PWA counts the create as failed, keeps it in the device outbox and retries — producing a
+**duplicate SharePoint row**. The hub path is protected (it dedups by tag and by localUuid); this
+path is not.
+
+Now that `PwaId` persists, the flow can close this: before creating, *Get items* on
+`Instrumentation` filtered `PwaId eq '@{triggerBody()?['localUuid']}'` (or on `Tag_x0020_Number`),
+and update instead of create when a row comes back — mirroring the hub's `upsertByTagNumber`.
+
+**Case `addInstrumentationLog`** → add `Title` to its *Create item* on **`Instrumentation Log`**:
 
 ```
 @{concat(
@@ -36,11 +86,7 @@ the fallback are the blank ones.
         triggerBody()?['instrumentationLog']?['time'], ')')}
 ```
 
-producing `01MBH02AA711S12 — In Progress (2026-08-14 19:09)`, which is exactly what the hub writes
-(`InstrumentLogSharePointAdapter#buildTitle`).
-
-Existing rows keep their blank Titles. Register rows self-heal — every log submission upserts the
-register item — but the log rows already in SharePoint need a manual backfill if you want them named.
+producing `01MBH02AA711S12 — In Progress (2026-08-14 19:09)`, exactly what the hub writes.
 
 ## 2. Tag column internal names differ PER LIST — do not "fix" this
 
@@ -50,6 +96,9 @@ Verified against the live tenant on 2026-08-14 (hub log, `spId=28` create):
 |------|--------------------------|
 | `Instrumentation` (register) | `Tag_x0020_Number` |
 | `Instrumentation Log` | `TagNumber` |
+
+These are **column** names. The register's *payload key* is separately also spelled
+`Tag_x0020_Number`, which is what makes this pair easy to misread — see the note above.
 
 The register really does use the `x0020`-encoded name and the log list really does not. The hub used
 to discover this the expensive way — it sent `Tag_x0020_Number` to the log list, ate a `400 The
@@ -70,7 +119,7 @@ register in SharePoint sees stale status with no indication.
 Add to the `addInstrumentationLog` case, after the log item is created — an *Update item* on the
 `Instrumentation` list for the row found by the existing "Get Inst By Tag" step:
 
-| Column | Expression |
+| SharePoint column | Expression (reads the payload) |
 |--------|-----------|
 | CurrentStatus | `triggerBody()?['instrumentationLog']?['status']` |
 | LastUpdatedDate | `triggerBody()?['instrumentationLog']?['date']` |
@@ -118,25 +167,63 @@ Update the gateway's condition for `target == 'instrument'` to accept
 `ROLE_INSTRUMENTATION` or `ROLE_ADMIN`, mirroring the hub. The role travels in the same claim the
 existing check reads (`claims.roles` for hub tokens, `claims.user_metadata.roles` for Supabase ones).
 
-## 6. Cases that must exist — VERIFY
+## 6. Live test results — 2026-08-16
 
-[instrument-flow-refactor.md](../supabase/instrument-flow-refactor.md) lists two of the four cases as
-"ADD", i.e. specified but not necessarily built. The PWA calls all four:
+All four cases were exercised directly against flow `832a87fa…` (bypassing the gateway). Two work as
+specified, two do not.
 
-| `actionType` | Used for | If missing |
+| `actionType` | Result | Response |
 |---|---|---|
-| `getAllInstruments` | register fallback | the offline list never refreshes while the hub is down |
-| `addInstrumentationLog` | log fallback | logs stay queued on the device until the hub returns |
-| `getState` | version probe | every PA refresh re-pulls the whole register instead of skipping |
-| `addInstrument` | new instrument fallback | new instruments stay queued until the hub returns |
+| `getState` | ✅ correct | `{"success":true,"data":[{"itemCount":3172,"lastModified":"…","version":"3172:…"}]}` |
+| `addInstrument` | ✅ correct | `{"success":true,"id":"3251"}` |
+| `getAllInstruments` | ❌ **broken** — see below | `{"success":true,"data":[…100 rows…]}` |
+| `addInstrumentationLog` | ⚠️ works, wrong response shape | `{"message":"success to submit entry"}` |
+| *(unknown action)* | ⚠️ `502 Bad Gateway`, empty body | no Response action on the Default case |
 
-Nothing is *lost* if the two "ADD" cases are missing — the device outbox holds the work and retries —
-but the fallback is only as good as the cases that exist. Worth confirming in the designer.
+### 6a. `getAllInstruments` truncation — FIXED 2026-08-16
 
-Also confirm `getAllInstruments` maps its Select to the PWA's **camelCase** keys (`tagNumber`,
-`description`, `vendor`, `location`, `type`, `currentStatus`, `lastUpdatedDate`, `lastUpdatedTime`,
-`lastUpdatedBy`, `lastComment`, `sharepointId`). The client casts the rows straight through with no
-field mapping, so raw SharePoint column names would yield a list of blank instruments.
+SharePoint's *Get items* defaulted to Top Count 100, so the flow answered 100 of 3172 rows while
+`getState` reported 3172. Top Count is now 5000 and the two agree (3174/3174 at last check, ~6s and
+~600 KB per pull).
+
+### 6b. Null `tagNumber` on every row — RESOLVED (my earlier diagnosis was wrong)
+
+I reported that the Select was reading the wrong column. It was not: after the Top Count change the
+same rows return their tags correctly, so the field was simply not being returned by *Get items*
+before. The read path needs no change.
+
+The one row still lacking a tag is the test instrument created by the broken write path — see the
+payload-key note at the top.
+
+### 6c. `addInstrumentationLog` doesn't return the standard shape — SHOULD FIX
+
+It returns `{"message":"success to submit entry"}` — no `success`, no `id`. The client currently
+treats "no explicit `success:false`" as success, so this works, but it is one edit away from a data
+loss: if the case ever returns `{"message":"…failed…"}` without `success:false`, the client would
+count a failed submission as delivered and delete the log from the device outbox — the only copy.
+
+Return `{"success": true, "id": "@{body('Create_item')?['ID']}"}`, matching `addInstrument`.
+
+### 6e. Runs that create but never respond — WATCH
+
+One `addInstrument` call returned `NoResponse` ("the server did not receive a response from an
+upstream server") **after successfully creating the item**. Observed while the flow was being edited,
+so it may have been a mid-save artifact rather than a standing defect — but the consequence is the
+duplicate-row risk in §1a, so it is worth confirming the Response action is reached on every path.
+
+### 6d. Default case has no Response — SHOULD FIX
+
+An unknown `actionType` produces `502 Bad Gateway` with an empty body (the run ends without
+responding). The client handles it as a transport failure and falls back correctly, so nothing
+breaks, but the error is misleading. Add the Response the refactor doc already specifies:
+`400 {"success": false, "message": "Unknown action"}`.
+
+### What the client now does about all this
+
+The PWA rejects a register answer that is empty, **short of the count `/state` reported** (5%
+tolerance), or **carries no tag numbers at all**, keeping the device's existing register instead.
+That is defence in depth, not a substitute for 6a/6b — while those are broken, the Power Automate
+register fallback simply does nothing.
 
 ## 7. The new incremental sync needs NO flow change — by design
 
@@ -160,7 +247,6 @@ once per app open. If PA volume still turns out to matter, the cheaper next step
 ## Priority
 
 1. §5 gateway roles — currently lets the wrong people through and blocks the right ones.
-2. §3 register update on the log case — silent stale status in SharePoint during a hub outage.
-3. §4 failure reporting — protects devices from losing their offline register.
-4. §1 Title — cosmetic but affects every SharePoint view.
+3. §3 register update on the log case — silent stale status in SharePoint during a hub outage.
+4. §4 failure reporting — protects devices from losing their offline register.
 5. §6 verification, §2 don't-break-this.

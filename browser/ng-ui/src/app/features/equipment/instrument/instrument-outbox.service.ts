@@ -40,6 +40,15 @@ export class InstrumentOutboxService {
   /** True while a flush is running — the UI shows "sending…" instead of offering another flush. */
   readonly isFlushing = signal(false);
 
+  /**
+   * Live network state. Owned here rather than read ad hoc from `navigator.onLine` because the
+   * indicator has to react the instant connectivity changes, and a one-shot read never re-renders.
+   */
+  readonly isOnline = signal(navigator.onLine);
+
+  /** Why the last flush attempt didn't clear the queue — surfaced verbatim to the user. */
+  readonly lastFlushError = signal<string | null>(null);
+
   readonly pendingInstruments$: Observable<InstrumentCreateOutboxItem[]> = from(liveQuery(() =>
     this.db.instrumentCreateOutbox.orderBy('createdAt').toArray()
   ));
@@ -57,7 +66,11 @@ export class InstrumentOutboxService {
   readonly pendingCount = computed(() => this.pendingInstrumentCount() + this.pendingLogCount());
 
   constructor() {
-    window.addEventListener('online', () => void this.flush());
+    window.addEventListener('online', () => {
+      this.isOnline.set(true);
+      void this.flush();
+    });
+    window.addEventListener('offline', () => this.isOnline.set(false));
     // Also on app start: the device may have been closed while holding queued work, and the user
     // shouldn't have to open the Instrumentation screen for it to be sent.
     void this.flush();
@@ -124,20 +137,30 @@ export class InstrumentOutboxService {
    */
   async flush(): Promise<{ instruments: number; logs: number }> {
     if (this.isFlushing()) return { instruments: 0, logs: 0 };
-    if (!navigator.onLine) return { instruments: 0, logs: 0 };
+    if (!navigator.onLine) {
+      this.lastFlushError.set('No connection — queued items will send automatically when you are back online.');
+      return { instruments: 0, logs: 0 };
+    }
     // The instrument endpoints are JWT-gated, and a 401 from a background flush would trip the auth
     // interceptor into logging the user out mid-task. Hold the queue until there's a live session —
     // nothing is lost, and the next flush (reconnect, app start, or the indicator) picks it up.
-    if (!this.auth.isLoggedIn()) return { instruments: 0, logs: 0 };
+    if (!this.auth.isLoggedIn()) {
+      this.lastFlushError.set('Your session has expired — sign in and the queued items will send.');
+      return { instruments: 0, logs: 0 };
+    }
 
-    const instrumentItems = await this.db.instrumentCreateOutbox.orderBy('createdAt').toArray();
-    const logItems = await this.db.instrumentLogOutbox.orderBy('createdAt').toArray();
-    if (instrumentItems.length === 0 && logItems.length === 0) return { instruments: 0, logs: 0 };
-
+    // Claim the flush BEFORE the first await. There are four callers (constructor, the online event,
+    // the state service, the indicator) and two of them can fire in the same tick on reconnect; if
+    // the flag were set after the reads, both would snapshot the same rows and submit them twice.
+    // The hub dedups on localUuid, but that check is a non-atomic read-then-insert, so two
+    // simultaneous submissions of one entry can still both get through.
     this.isFlushing.set(true);
     let instruments = 0;
     let logs = 0;
     try {
+      const instrumentItems = await this.db.instrumentCreateOutbox.orderBy('createdAt').toArray();
+      const logItems = await this.db.instrumentLogOutbox.orderBy('createdAt').toArray();
+      if (instrumentItems.length === 0 && logItems.length === 0) return { instruments: 0, logs: 0 };
       for (const item of instrumentItems) {
         try {
           const landed = await this.submitInstrumentOnce(item);
@@ -185,6 +208,11 @@ export class InstrumentOutboxService {
     } finally {
       this.isFlushing.set(false);
     }
+    // Anything still queued after a completed pass means the send was refused, not merely deferred —
+    // report the reason the backend actually gave rather than a generic failure.
+    const stuck = await this.firstStuckReason();
+    this.lastFlushError.set(stuck);
+
     if (instruments > 0 || logs > 0) this.flushedSubject.next({ instruments, logs });
     return { instruments, logs };
   }
@@ -227,6 +255,15 @@ export class InstrumentOutboxService {
         error: error => resolve({ success: false, message: error?.message ?? 'Network error' })
       });
     });
+  }
+
+  /** The error from the oldest still-queued entry — what the user needs to see first. */
+  private async firstStuckReason(): Promise<string | null> {
+    const instrument = await this.db.instrumentCreateOutbox.orderBy('createdAt').first();
+    if (instrument?.lastError) return `${instrument.tagNumber}: ${instrument.lastError}`;
+    const logRow = await this.db.instrumentLogOutbox.orderBy('createdAt').first();
+    if (logRow?.lastError) return `${logRow.instrumentTagNumber}: ${logRow.lastError}`;
+    return null;
   }
 
   private submitLogOnce(entry: InstrumentLogEntry) {

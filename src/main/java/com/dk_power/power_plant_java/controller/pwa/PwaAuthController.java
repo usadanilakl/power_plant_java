@@ -32,6 +32,7 @@ public class PwaAuthController {
     private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
     private final com.dk_power.power_plant_java.sevice.auth.SupabaseAdminClient supabaseAdminClient;
     private final com.dk_power.power_plant_java.config.security.PwaTokenUserResolver tokenUserResolver;
+    private final com.dk_power.power_plant_java.sevice.users.LoginIdentifierResolver loginIdentifierResolver;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -137,10 +138,9 @@ public class PwaAuthController {
             return ResponseEntity.badRequest().body(Map.of("status", "INVALID", "message", "Credential is required"));
         }
 
-        User user = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(req.credential().trim());
-        if (user == null) {
-            user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(req.credential().trim());
-        }
+        // Must accept exactly the same identifiers as sign-in — a credential rejected here never
+        // reaches the sign-in step at all, it sends the user to the registration form instead.
+        User user = loginIdentifierResolver.resolve(req.credential());
 
         if (user == null) {
             return ResponseEntity.ok(Map.of("status", "NOT_FOUND"));

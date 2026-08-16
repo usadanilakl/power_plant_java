@@ -43,6 +43,45 @@ Potential improvements:
   (instruments first). A queued instrument is written into the local register as `pendingSync` so it
   is searchable and loggable immediately. An app-wide pill shows the unsent count until it drains.
 
+## Access control
+
+Gated on **`ROLE_INSTRUMENTATION` or `ROLE_ADMIN`** — granted per user, deliberately not implied by
+`ROLE_PLANT`. Enforced in three places that must agree:
+
+| Layer | Rule |
+|---|---|
+| Hub, PWA API | `/api/pwa/secured/instruments/**`, `/api/pwa/secured/instrument-log/**` |
+| Hub, desktop API | `/ng/instruments/**`, `/ng/instrument-logs/**` (DELETE is ADMIN-only) |
+| PWA client | `instrumentationGuard` + `AuthService.isInstrumentation()`; the Home tile and menu entry are hidden without it |
+| Power Automate gateway | per-target condition on the `instrument` case — see the alignment doc §5 |
+
+The gateway matters because the Power Automate fallback bypasses the hub entirely; if it checks a
+different role than the hub, the fallback admits or refuses the wrong people.
+
+## Deletion
+
+`DELETE /ng/instruments/{id}` and `DELETE /ng/instrument-logs/{id}`, ADMIN-only.
+
+- **SharePoint first, then the local soft delete.** Reversing that order hides the row behind
+  `@Where(deleted = false)`, so the next SharePoint pull no longer matches it by tag and re-creates
+  it. An already-absent SharePoint item (404) counts as success so a half-completed delete stays
+  retryable.
+- Locally it is the standard soft delete (`deleted = true` via JPA), so the removal propagates to
+  every desktop over CRDT sync. In SharePoint it is a real delete, which lands in the site Recycle
+  Bin — restorable for 93 days.
+- **Logs are never cascaded.** Deleting an instrument leaves its logs intact: they record what
+  somebody observed at a point in time, and retiring the instrument doesn't unmake the observation.
+  Logs are keyed by tag string, not by FK, so they simply become historical. The one consequence is
+  that reusing a retired tag re-associates the old history with it — which is usually correct, since
+  the tag identifies the physical point.
+- Log deletion exists for genuine mistakes and test data, not as routine practice.
+
+## Outbound catch-up
+
+Both instrument syncables are pull-only. `InstrumentOutboundSharePointSync` (hub-only, every 60s)
+pushes any instrument or log still holding `sharepointId IS NULL`, so a SharePoint outage during
+submission self-heals instead of stranding the row in H2 forever.
+
 Power Automate must be kept in step with the hub — the outstanding differences are listed in
 [instrumentation-power-automate-alignment.md](instrumentation-power-automate-alignment.md).
 

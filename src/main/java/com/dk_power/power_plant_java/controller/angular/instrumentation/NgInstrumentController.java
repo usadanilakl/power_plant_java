@@ -61,6 +61,22 @@ public class NgInstrumentController {
         }
     }
 
+    /**
+     * Removes an instrument from SharePoint and soft-deletes it locally, in that order — see
+     * {@link PwaInstrumentService#deleteInstrument}. ADMIN-gated in SecurityConfig: it is the only
+     * destructive operation on the register.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<String>> delete(@PathVariable Long id) {
+        try {
+            pwaInstrumentService.deleteInstrument(id);
+            return ResponseEntity.ok(new NgApiResponse<>("deleted", "Instrument deleted"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to delete instrument: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<InstrumentDto>> getById(@PathVariable Long id) {
         try {

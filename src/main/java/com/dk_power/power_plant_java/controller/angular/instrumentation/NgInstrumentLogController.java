@@ -18,6 +18,7 @@ public class NgInstrumentLogController {
 
     private final InstrumentLogRepo instrumentLogRepo;
     private final InstrumentLogMapper logMapper;
+    private final com.dk_power.power_plant_java.sevice.pwa.PwaInstrumentLogService pwaInstrumentLogService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<InstrumentLogDto>>> getAll() {
@@ -40,6 +41,20 @@ public class NgInstrumentLogController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "Failed to get logs for " + tagNumber + ": " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Removes a log from SharePoint and soft-deletes it locally, with its attachments. ADMIN-gated.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<String>> delete(@PathVariable Long id) {
+        try {
+            pwaInstrumentLogService.deleteLog(id);
+            return ResponseEntity.ok(new NgApiResponse<>("deleted", "Instrument log deleted"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to delete instrument log: " + e.getMessage()));
         }
     }
 

@@ -24,6 +24,12 @@ public interface PermitAttachmentRepo extends JpaRepository<PermitAttachment, Lo
         String entityType, Long entityId, String fileName, String contentHash);
     List<PermitAttachment> findBySyncedToServerFalseOrSyncedToServerIsNull();
 
+    /** Attachments queued for a Maximo doclink upload retry — scoped to FieldListItem parents only. */
+    List<PermitAttachment> findByMaximoAttachPendingTrueAndEntityTypeOrderByIdAsc(String entityType);
+
+    /** Total pending-attachment count for the drift dashboard. */
+    long countByMaximoAttachPendingTrueAndEntityType(String entityType);
+
     @Query("SELECT a FROM PermitAttachment a WHERE a.syncedToMachines IS NULL OR a.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%')")
     List<PermitAttachment> findNotSyncedTo(@Param("machineId") String machineId);
 

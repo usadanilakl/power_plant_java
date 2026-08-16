@@ -74,6 +74,24 @@ public class InstrumentSharePointSyncable implements SharePointSyncable<Instrume
         Instant spModified = getSpModifiedTime(remote);
 
         Instrument existing = instrumentRepo.findFirstBySharepointIdOrderByIdAsc(spId).orElse(null);
+
+        // A row this node already holds but hasn't linked to SharePoint yet must be ADOPTED, not
+        // duplicated. That happens whenever an instrument reached SharePoint by a route that didn't
+        // go through this node: the PWA creating it via the Power Automate fallback while the hub was
+        // down, then the hub receiving the same instrument again from its own outbox replay. Matching
+        // on sharepointId alone would create a second row for the same tag, and the duplicate-merge
+        // service keys on sharepoint_id too, so nothing downstream would ever clean it up.
+        // InstrumentLogSharePointSyncable already falls back to localUuid for the same reason.
+        if (existing == null) {
+            existing = findUnlinkedLocalMatch(remote);
+            if (existing != null) {
+                existing.setSharepointId(spId);
+                instrumentRepo.save(existing);
+                log.info("[Instrument SP] Adopted local row id={} tagNumber={} into SharePoint id={}",
+                        existing.getId(), existing.getTagNumber(), spId);
+            }
+        }
+
         if (existing == null) {
             Instrument entity = instrumentMapper.fromSharePointDto(remote);
             instrumentRepo.save(entity);
@@ -104,6 +122,34 @@ public class InstrumentSharePointSyncable implements SharePointSyncable<Instrume
     @Override
     public String getSharepointId(InstrumentDto dto) {
         return dto.getSharepointId();
+    }
+
+    /**
+     * Finds a local row that is the same instrument as {@code remote} but carries no SharePoint link
+     * yet. Tries the PWA id first (exact, minted on the device before the first submission), then the
+     * tag number, which is the register's business key and is unique-enforced in SharePoint.
+     *
+     * <p>Only rows with no {@code sharepointId} are eligible — a row already linked to a different
+     * SharePoint item is a genuine duplicate for the merge service to resolve, not something to
+     * silently re-point.</p>
+     */
+    private Instrument findUnlinkedLocalMatch(InstrumentDto remote) {
+        String localUuid = remote.getLocalUuid();
+        if (localUuid != null && !localUuid.isBlank()) {
+            Instrument byUuid = instrumentRepo.findFirstByLocalUuidOrderByIdAsc(localUuid).orElse(null);
+            if (byUuid != null && isUnlinked(byUuid)) return byUuid;
+        }
+
+        String tagNumber = remote.getTagNumber();
+        if (tagNumber != null && !tagNumber.isBlank()) {
+            Instrument byTag = instrumentRepo.findByTagNumber(tagNumber.trim()).orElse(null);
+            if (byTag != null && isUnlinked(byTag)) return byTag;
+        }
+        return null;
+    }
+
+    private static boolean isUnlinked(Instrument entity) {
+        return entity.getSharepointId() == null || entity.getSharepointId().isBlank();
     }
 
     @Override

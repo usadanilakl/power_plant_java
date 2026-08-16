@@ -231,3 +231,66 @@
   font-weight: 600;
   color: #8a6d00;
 }
+
+.pending-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.banner.flush-error {
+  display: block;
+  background: #fdecea;
+  color: #b32d24;
+  border: 1px solid #f5b7b1;
+  font-size: 0.85rem;
+}
+
+.pending-list {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pending-item {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #cfe0f5;
+  border-left: 3px solid #4a86c8;
+  border-radius: 8px;
+  background: var(--card-background, #fff);
+}
+
+.pending-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--secondary-text, #777);
+}
+
+.pending-tag {
+  margin-top: 0.15rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-text, #222);
+  word-break: break-all;
+}
+
+.pending-error {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: #b32d24;
+}
+
+.pending-attempts {
+  color: var(--secondary-text, #888);
+}

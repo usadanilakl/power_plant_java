@@ -72,6 +72,17 @@ public class InstrumentLogSharePointAdapter {
         );
     }
 
+    /**
+     * Deletes a log item. SharePoint routes REST deletes to the site Recycle Bin, so this is
+     * recoverable for the site's retention window rather than immediate destruction. No Power
+     * Automate fallback: the flow has no delete case, and silently doing nothing would be worse than
+     * failing loudly on a delete.
+     */
+    public void delete(String sharepointId) {
+        certAccess.deleteListItem(LIST_TITLE, sharepointId);
+        log.info("[InstrumentLog-Adapter] Deleted log item {} from '{}'", sharepointId, LIST_TITLE);
+    }
+
     public void addAttachment(String sharepointId, PaAttachmentDto attachment) {
         spService.executeWithFallback(
                 () -> { certAccess.addListItemAttachment(LIST_TITLE, sharepointId, attachment.getFileName(),

@@ -56,6 +56,12 @@ public class PwaInsulationService {
      * failed, will retry" as distinct UX states. Returns false only when the row isn't a
      * WO-routed insulation item OR the bridge is absent (feature off) — Maximo API failures
      * are logged inside {@link MaximoFieldListBridge#complete} but surface as false too.
+     *
+     * Ownership model — SHARED POOL. Any authenticated {@code ROLE_INSULATION} user may close
+     * any active insulation WO. This matches the ops workflow: multiple contractors work
+     * off the same queue in parallel and pull whichever job is convenient. If per-contractor
+     * assignment becomes needed, add an assignment column on FieldListItem + filter in
+     * {@link #listActive} + verify {@code submitterHandle} against the assignment here.
      */
     public boolean markComplete(Long id, String submitterHandle) {
         FieldListItem entity = repo.findById(id).orElse(null);

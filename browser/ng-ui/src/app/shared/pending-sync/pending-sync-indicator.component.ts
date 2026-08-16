@@ -9,7 +9,8 @@ import { InstrumentOutboxService } from '../../features/equipment/instrument/ins
  * captured something offline and then walked away — to Home, to a work request, to a locked phone —
  * still sees that the plant doesn't have it yet. It appears the moment anything is queued and
  * disappears by itself the moment the queue drains; there is no dismiss, since dismissing would
- * defeat the purpose. Tapping it opens the queue's owning screen and forces a send attempt.
+ * defeat the purpose. Tapping it forces a send attempt and, if anything is still stuck, opens the
+ * screen that lists each item with the reason it hasn't gone.
  */
 @Component({
   selector: 'app-pending-sync-indicator',
@@ -26,6 +27,7 @@ export class PendingSyncIndicatorComponent {
   /** Aggregate across every queue that can hold offline work. Instruments are the only one today. */
   count = computed(() => this.instrumentOutbox.pendingCount());
   isFlushing = this.instrumentOutbox.isFlushing;
+  isOnline = this.instrumentOutbox.isOnline;
 
   instrumentCount = this.instrumentOutbox.pendingInstrumentCount;
   logCount = this.instrumentOutbox.pendingLogCount;
@@ -40,8 +42,11 @@ export class PendingSyncIndicatorComponent {
   });
 
   async onClick() {
-    await this.instrumentOutbox.flush();
-    // Still queued after the attempt — take them where they can see and retry the items.
+    // Offline there is nothing to attempt — go straight to the list so the user can see exactly what
+    // is held and why, rather than tapping a button that silently does nothing.
+    if (this.isOnline()) {
+      await this.instrumentOutbox.flush();
+    }
     if (this.instrumentOutbox.pendingCount() > 0) {
       void this.router.navigate(['/instruments']);
     }

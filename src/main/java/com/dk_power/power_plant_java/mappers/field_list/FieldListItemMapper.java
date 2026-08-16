@@ -82,6 +82,10 @@ public class FieldListItemMapper {
         dto.setMaximoSyncPending(entity.getMaximoSyncPending());
         dto.setMaximoCancelPending(entity.getMaximoCancelPending());
         dto.setMaximoCompletePending(entity.getMaximoCompletePending());
+        dto.setMaximoLocation(entity.getMaximoLocation());
+        dto.setMaximoAssetnum(entity.getMaximoAssetnum());
+        dto.setContractorCompletedBy(entity.getContractorCompletedBy());
+        dto.setContractorCompletedAt(entity.getContractorCompletedAt());
     }
 
     /**
@@ -168,7 +172,15 @@ public class FieldListItemMapper {
         }
 
         resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
+        // Maximo location + assetnum from the picker (blank/null strings preserved as null
+        // so the bridge sees "not provided" and skips setting spi:location / spi:assetnum).
+        entity.setMaximoLocation(nullIfBlank(dto.getMaximoLocation()));
+        entity.setMaximoAssetnum(nullIfBlank(dto.getMaximoAssetnum()));
         return entity;
+    }
+
+    private static String nullIfBlank(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 
     /**

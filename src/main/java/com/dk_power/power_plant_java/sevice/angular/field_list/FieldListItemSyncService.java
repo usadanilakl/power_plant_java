@@ -3,7 +3,9 @@ package com.dk_power.power_plant_java.sevice.angular.field_list;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFieldListEvents;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,17 @@ import java.util.List;
 public class FieldListItemSyncService implements SyncableService<FieldListItem> {
 
     private final FieldListItemRepo repo;
+    /**
+     * Publishes Maximo bridge events for rows that arrive via CRDT sync-apply. Without this,
+     * a row created on a desktop while the hub was offline would never reach Maximo when it
+     * eventually syncs to the hub — the user-facing service methods (NgFieldListItemService.save,
+     * PwaFieldListItemService.submitFieldListItem) publish events on direct writes, but the
+     * sync-apply path bypasses them.
+     *
+     * Bridge is hub-only and idempotent (early-returns if maximoRecordId is already set), so
+     * publishing here on desktops is a no-op and duplicate publishes on the hub are harmless.
+     */
+    private final ApplicationEventPublisher events;
 
     @Override
     public FieldListItem getEntity() { return new FieldListItem(); }
@@ -29,16 +42,25 @@ public class FieldListItemSyncService implements SyncableService<FieldListItem> 
     public List<FieldListItem> getAll() { return repo.findAll(); }
 
     @Override
-    public FieldListItem save(FieldListItem entity) { return repo.save(entity); }
+    public FieldListItem save(FieldListItem entity) {
+        FieldListItem saved = repo.save(entity);
+        maybePublishMaximoEvent(saved);
+        return saved;
+    }
 
     @Override
-    public FieldListItem saveAndFlush(FieldListItem entity) { return repo.saveAndFlush(entity); }
+    public FieldListItem saveAndFlush(FieldListItem entity) {
+        FieldListItem saved = repo.saveAndFlush(entity);
+        maybePublishMaximoEvent(saved);
+        return saved;
+    }
 
     @Override
     public void deleteById(Long id) {
         repo.findById(id).ifPresent(entity -> {
             entity.setDeleted(true);
             repo.save(entity);
+            maybePublishMaximoEvent(entity);
         });
     }
 
@@ -48,10 +70,16 @@ public class FieldListItemSyncService implements SyncableService<FieldListItem> 
     }
 
     @Override
-    public void processSyncItem(FieldListItem item) { repo.save(item); }
+    public void processSyncItem(FieldListItem item) {
+        FieldListItem saved = repo.save(item);
+        maybePublishMaximoEvent(saved);
+    }
 
     @Override
-    public void processSyncItems(List<FieldListItem> items) { repo.saveAll(items); }
+    public void processSyncItems(List<FieldListItem> items) {
+        List<FieldListItem> savedList = repo.saveAll(items);
+        for (FieldListItem s : savedList) maybePublishMaximoEvent(s);
+    }
 
     @Override
     public Page<FieldListItem> getAllSincePaginated(LocalDateTime lastSyncTime, Pageable pageable) {
@@ -61,5 +89,53 @@ public class FieldListItemSyncService implements SyncableService<FieldListItem> 
     @Override
     public Page<FieldListItem> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable) {
         return repo.findAllByDateModifiedBetween(since, until, pageable);
+    }
+
+    /**
+     * Decide which Maximo event (if any) to fire for a just-saved row. Runs on both the hub and
+     * desktops — on desktops the bridge bean is absent so the AFTER_COMMIT listener has no
+     * subscriber and the event is a no-op. On the hub, the bridge's own idempotency checks
+     * prevent duplicate work if the event was ALSO fired by the direct-service path.
+     *
+     * Three cases:
+     *   1. Row is soft-deleted AND has a Maximo record → Cancelled (cancel the Maximo record)
+     *   2. Row is live AND has no Maximo record → Submitted (route to Maximo for the first time)
+     *   3. Row is live AND WO-routed AND Maximo not terminal → StatusChanged (listener filters
+     *      by wo-completion-status; bridge.complete is idempotent on terminal state so a
+     *      spurious publish is a cheap no-op — needed because a status-to-Closed reaching the
+     *      hub only via CRDT sync would otherwise never COMP the WO).
+     */
+    private void maybePublishMaximoEvent(FieldListItem saved) {
+        if (saved == null || saved.getId() == null) return;
+        boolean deleted = Boolean.TRUE.equals(saved.getDeleted());
+        String href = saved.getMaximoHref();
+        String recId = saved.getMaximoRecordId();
+        if (deleted && href != null && !href.isBlank()) {
+            events.publishEvent(new MaximoFieldListEvents.Cancelled(saved.getId(),
+                    "Sync-applied soft-delete"));
+            return;
+        }
+        if (!deleted && (recId == null || recId.isBlank())) {
+            events.publishEvent(new MaximoFieldListEvents.Submitted(saved.getId()));
+            return;
+        }
+        // Already-routed live row: check whether local status warrants a WO COMP. Publishing
+        // covers the sync-arrived-status-flip case (desktop closes, syncs to hub, hub must
+        // COMP the WO). Filter on WO recordType + non-terminal Maximo status so we don't
+        // spam events for SR-routed rows or already-completed WOs.
+        if (!deleted
+                && "WO".equals(saved.getMaximoRecordType())
+                && saved.getStatus() != null && saved.getStatus().getName() != null
+                && !isMaximoTerminal(saved.getMaximoStatus())) {
+            events.publishEvent(new MaximoFieldListEvents.StatusChanged(
+                    saved.getId(), saved.getStatus().getName(), "sync-apply"));
+        }
+    }
+
+    private static boolean isMaximoTerminal(String status) {
+        if (status == null) return false;
+        return "COMP".equalsIgnoreCase(status)
+                || "CLOSE".equalsIgnoreCase(status)
+                || "CAN".equalsIgnoreCase(status);
     }
 }

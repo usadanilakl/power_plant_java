@@ -1,17 +1,21 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
+import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,7 +40,16 @@ import java.util.Optional;
 public class MaximoFieldListEventListener {
 
     private final MaximoFieldListBridge bridge;
+    private final MaximoAttachmentSyncService attachmentSync;
     private final FieldListItemRepo repo;
+    private final PermitAttachmentRepo attachmentRepo;
+    /**
+     * For re-publishing AttachmentAdded events after a Submitted event routes the parent row
+     * to Maximo. Any attachments that were saved BEFORE the row had a maximoHref get their
+     * upload retriggered here, so the whole PWA-submit-with-attachments-in-one-call flow
+     * doesn't need to coordinate attachment upload with the parent's route completion.
+     */
+    private final ApplicationEventPublisher events;
 
     /**
      * FieldListStatus name that triggers a WO COMP on Maximo. Read here (not in the
@@ -44,6 +57,32 @@ public class MaximoFieldListEventListener {
      */
     @Value("${maximo.field-list.wo-completion-status:Closed}")
     private String woCompletionStatus;
+
+    /**
+     * Comma-separated FieldListType names whose ContractorCompleted signal is allowed to
+     * COMP the Maximo WO. Only Insulation Removal today (only contractor-facing type on
+     * this tenant), but explicit config so adding new WO-routed types (e.g. Painting)
+     * doesn't accidentally grant contractor-close authority to them. A crafted PA update
+     * setting ContractorCompleted=true on a non-listed type is a no-op here.
+     * Case-insensitive match against {@code listType.name}. Blank = deny all.
+     */
+    @Value("${maximo.field-list.contractor-completable-types:Insulation Removal}")
+    private String contractorCompletableTypesRaw;
+
+    private java.util.Set<String> contractorCompletableTypes = java.util.Collections.emptySet();
+
+    @jakarta.annotation.PostConstruct
+    void parseContractorTypes() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (contractorCompletableTypesRaw != null) {
+            for (String s : contractorCompletableTypesRaw.split(",")) {
+                String t = s.trim().toLowerCase(java.util.Locale.ROOT);
+                if (!t.isEmpty()) out.add(t);
+            }
+        }
+        this.contractorCompletableTypes = out;
+        log.info("[MaximoFieldList] Contractor-completable types: {}", contractorCompletableTypes);
+    }
 
     // fallbackExecution=true so an event published outside any tx (self-invocation
     // bypassing the class-level proxy, or a future non-@Transactional caller) still
@@ -60,11 +99,27 @@ public class MaximoFieldListEventListener {
             log.warn("[MaximoFieldList] Submitted event for id={} but row not found", event.id());
             return;
         }
+        boolean routed;
         try {
-            bridge.submit(entity);
+            routed = bridge.submit(entity);
         } catch (RuntimeException e) {
             // Bridge is best-effort but if something escapes, don't let it propagate up.
             log.warn("[MaximoFieldList] onSubmitted id={} failed: {}", event.id(), e.getMessage());
+            routed = false;
+        }
+        // If the row is now routed (has a maximoHref), re-publish AttachmentAdded for any
+        // attachments that were saved BEFORE the row reached Maximo. Common case: PWA submit
+        // where the row + attachments were saved in the same transaction — the attachments'
+        // Submitted events (if any were published inline) may have run before the row's
+        // Submitted did. Re-firing here catches them up. maximoDoclinkId idempotency ensures
+        // no double-upload.
+        if (routed && entity.getMaximoHref() != null && !entity.getMaximoHref().isBlank()) {
+            List<PermitAttachment> atts = attachmentRepo.findByEntityTypeAndEntityId("FieldListItem", event.id());
+            for (PermitAttachment a : atts) {
+                if (a.getMaximoDoclinkId() == null || a.getMaximoDoclinkId().isBlank()) {
+                    events.publishEvent(new MaximoFieldListEvents.AttachmentAdded(event.id(), a.getId()));
+                }
+            }
         }
     }
 
@@ -127,6 +182,63 @@ public class MaximoFieldListEventListener {
             bridge.complete(entity, "Closed via " + event.newStatusName() + " by " + actor);
         } catch (RuntimeException e) {
             log.warn("[MaximoFieldList] onStatusChanged id={} failed: {}", event.id(), e.getMessage());
+        }
+    }
+
+    /**
+     * The contractor closed the field-list item OFFLINE via PWA→PA→SharePoint (hub was
+     * unreachable at close time). SP-import polling detected the ContractorCompleted
+     * transition. This handler COMPs the Maximo WO — same code path as the online
+     * StatusChanged→Closed flow, so idempotency guards prevent double-COMP if the local
+     * status also flipped to Closed via a separate path.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onContractorClosed(MaximoFieldListEvents.ContractorClosed event) {
+        if (event == null || event.fieldListItemId() == null) return;
+        log.info("[MaximoFieldList] EVENT onContractorClosed id={} actor={} — event listener fired",
+                event.fieldListItemId(), event.actor());
+        FieldListItem entity = repo.findAndLockById(event.fieldListItemId()).orElse(null);
+        if (entity == null) {
+            log.warn("[MaximoFieldList] ContractorClosed event for id={} but row not found",
+                    event.fieldListItemId());
+            return;
+        }
+        // Guard: contractor close is only valid for types explicitly opted in. Otherwise a
+        // crafted PWA→PA payload setting ContractorCompleted=true on any WO-routed row
+        // could COMP arbitrary WOs plant-wide. Today only Insulation Removal is a contractor
+        // workflow; if that ever grows, add the new type to contractor-completable-types.
+        String typeName = entity.getListType() == null ? null : entity.getListType().getName();
+        if (typeName == null
+                || !contractorCompletableTypes.contains(typeName.toLowerCase(java.util.Locale.ROOT))) {
+            log.warn("[MaximoFieldList] ContractorClosed id={} rejected — listType='{}' not in {}",
+                    event.fieldListItemId(), typeName, contractorCompletableTypes);
+            return;
+        }
+        String actor = event.actor() == null || event.actor().isBlank() ? "contractor" : event.actor();
+        try {
+            bridge.complete(entity, "Closed via SP by " + actor);
+        } catch (RuntimeException e) {
+            log.warn("[MaximoFieldList] onContractorClosed id={} failed: {}",
+                    event.fieldListItemId(), e.getMessage());
+        }
+    }
+
+    /**
+     * A PermitAttachment was saved on a FieldListItem — upload it to the parent Maximo
+     * record. See {@link MaximoAttachmentSyncService} for the upload/pending/retry logic.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onAttachmentAdded(MaximoFieldListEvents.AttachmentAdded event) {
+        if (event == null || event.attachmentId() == null) return;
+        log.info("[MaximoFieldList] EVENT onAttachmentAdded fieldListItemId={} attachmentId={}",
+                event.fieldListItemId(), event.attachmentId());
+        try {
+            attachmentSync.uploadOne(event.attachmentId());
+        } catch (RuntimeException e) {
+            log.warn("[MaximoFieldList] onAttachmentAdded attId={} failed: {}",
+                    event.attachmentId(), e.getMessage());
         }
     }
 }

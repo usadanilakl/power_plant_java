@@ -6,7 +6,8 @@ export interface FormField {
   label: string;
   type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' |
   'time' | 'checkbox-group' | 'checkbox' | 'radio' | 'file' | 'multi-input' |
-  'number' | 'radio-group' | 'form-array' | 'email' | 'password' | 'signature' | 'work-area-map' | 'equipment-picker';
+  'number' | 'radio-group' | 'form-array' | 'email' | 'password' | 'signature' | 'work-area-map' | 'equipment-picker' |
+  'maximo-tree-picker';
   validators?: ValidatorFn[];
   options?: Option[];
   multiple?: boolean;

@@ -1421,7 +1421,14 @@ public class FieldSyncService {
                         }
                     }
 
-                    entityManager.merge(entity);
+                    // Route through service.save() (not entityManager.merge) so any lifecycle logic
+                    // in the SyncableService fires — matches every other save-site in this file.
+                    // The Maximo bridge relies on this: FieldListItemSyncService.save publishes a
+                    // Submitted event that routes new insulation field-lists to Maximo. em.merge
+                    // bypasses that entirely and rows created via sync never reached Maximo.
+                    // Semantically equivalent — repo.save wraps persist/merge with the same flush
+                    // guarantee once we flush below.
+                    service.save(entity);
                     entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     log.debug("Created new entity {}#{} from sync", entityType, entityId);
                 }

@@ -85,6 +85,50 @@ public class PwaInstrumentService {
         return new PwaInstrumentStateDto(count, lastModified, version);
     }
 
+    /**
+     * Removes an instrument from SharePoint and soft-deletes it here.
+     *
+     * <p><b>Order is load-bearing.</b> SharePoint goes first: soft-deleting locally first would hide
+     * the row behind {@code @Where(deleted = false)}, so the next SharePoint pull wouldn't find it by
+     * tag and would cheerfully re-create it. If the SharePoint delete fails we abort without touching
+     * the local row, for the same reason — a half-done delete resurrects itself.</p>
+     *
+     * <p>Locally this is the project's normal soft delete ({@code deleted = true} through JPA, so the
+     * field-change listener fires and the removal reaches every desktop). In SharePoint it is a real
+     * delete, which lands the item in the site Recycle Bin — restorable for 93 days, so the
+     * recoverability a soft delete would buy is already there without teaching every consumer of the
+     * list to filter a flag.</p>
+     */
+    @Transactional
+    public void deleteInstrument(Long id) {
+        Instrument entity = instrumentRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + id));
+
+        String sharepointId = entity.getSharepointId();
+        if (sharepointId != null && !sharepointId.isBlank()) {
+            try {
+                instrumentAdapter.delete(sharepointId);
+                log.info("[PWA-Instrument] Deleted instrument from SharePoint: spId={}, tagNumber={}",
+                        sharepointId, entity.getTagNumber());
+            } catch (Exception e) {
+                // Already gone remotely is success, not failure: a previous attempt that deleted in
+                // SharePoint and then failed before committing the local flag would otherwise be
+                // permanently unretryable, since every retry would 404 on the same missing item.
+                if (isNotFound(e)) {
+                    log.info("[PWA-Instrument] SharePoint item {} already absent; completing local delete", sharepointId);
+                } else {
+                    throw e;
+                }
+            }
+        } else {
+            log.info("[PWA-Instrument] Instrument {} has no SharePoint id; local soft delete only", id);
+        }
+
+        entity.setDeleted(true);
+        instrumentRepo.save(entity);
+        log.info("[PWA-Instrument] Soft-deleted instrument locally: id={}, tagNumber={}", id, entity.getTagNumber());
+    }
+
     @Transactional
     public PwaSubmissionResult createInstrument(InstrumentDto dto) {
         String normalizedTag = normalizeTag(dto.getTagNumber());
@@ -176,6 +220,17 @@ public class PwaInstrumentService {
 
     private static String normalizeTag(String tag) {
         return tag == null ? "" : tag.trim().toUpperCase();
+    }
+
+    /** True when a SharePoint failure means "the item isn't there", which a delete can treat as done. */
+    private static boolean isNotFound(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            String message = t.getMessage();
+            if (message != null && (message.contains("404") || message.contains("Item does not exist"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

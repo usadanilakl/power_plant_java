@@ -201,16 +201,34 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                 if (result.success) {
                     const instruments = (result.instruments ?? []).map((dto: any) => new Instrument(dto));
 
-                    // Never let an empty answer erase a populated mirror. An empty payload here is
-                    // almost always a failure wearing a success mask — a gateway that rejected the
-                    // request with HTTP 200, a Power Automate flow missing the getAllInstruments
-                    // case, or a hub whose register hasn't loaded yet. Wiping on that leaves a field
-                    // tech with an empty search screen and no way back offline, and the version gate
-                    // can't undo it (it needs a non-empty cache to engage).
-                    if (instruments.length === 0 && this.allItemsSubject.getValue().length > 0) {
-                        console.warn('[Instruments] Refresh returned an empty register; keeping the cached list.');
+                    // A full-register answer has to actually be a full, usable register before it is
+                    // allowed to replace the local mirror. All three of these were observed live
+                    // against the Power Automate flow on 2026-08-16:
+                    //
+                    //   empty     — a gateway rejection arriving as HTTP 200, or a missing flow case
+                    //   truncated — SharePoint's Get items defaults to 100 rows with pagination off,
+                    //               so the flow answered 100 of 3172 while /state still said 3172
+                    //   untagged  — the flow's Select mapped the tag column wrong, so every row came
+                    //               back with a null tagNumber: unsearchable, unopenable, unloggable
+                    //
+                    // Any of them would silently destroy a working offline register, and the version
+                    // gate cannot undo it. `serverCount` comes from /state, so the truncation check
+                    // costs nothing; the 5% tolerance absorbs rows legitimately added or removed
+                    // between the two calls.
+                    const cachedCount = this.allItemsSubject.getValue().length;
+                    const serverCount = Number(result.serverCount ?? -1);
+                    const truncated = serverCount > 0 && instruments.length < serverCount * 0.95;
+                    const untagged = instruments.length > 0
+                        && !instruments.some((i: Instrument) => (i.tagNumber ?? '').trim().length > 0);
+
+                    if (instruments.length === 0 || truncated || untagged) {
+                        const reason = instruments.length === 0 ? 'empty'
+                            : truncated ? `truncated (${instruments.length} of ${serverCount})`
+                            : 'no tag numbers';
+                        console.warn(`[Instruments] Rejected register refresh — ${reason}; keeping what this device has.`);
                         this.isOffline.set(true);
                         this.isRefreshing.set(false);
+                        if (cachedCount === 0) this.loadFromStaticJson();
                         return;
                     }
 

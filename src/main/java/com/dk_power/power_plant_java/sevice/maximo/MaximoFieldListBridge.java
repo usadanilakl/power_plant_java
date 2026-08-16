@@ -126,18 +126,32 @@ public class MaximoFieldListBridge {
      * natural uniqueness constraint on custom-fielded submissions.
      */
     public boolean submit(FieldListItem entity) {
-        if (entity == null) return false;
-        if (entity.getMaximoRecordId() != null && !entity.getMaximoRecordId().isBlank()) {
-            // Already routed — Maximo owns the record, nothing to do. Clear any stale
-            // sync-pending flag left over from a "create-succeeded, save-failed" race
-            // (see catch-block below): the record id landing means the record really
-            // exists, so pending is a lie that would loop the backfill forever.
-            if (Boolean.TRUE.equals(entity.getMaximoSyncPending())) {
-                entity.setMaximoSyncPending(Boolean.FALSE);
-                try { repo.save(entity); } catch (RuntimeException ignore) { /* backfill retries */ }
+        if (entity == null || entity.getId() == null) return false;
+        // Concurrency guard (codex round 3): AFTER_COMMIT listeners handling two Submitted
+        // events for the same row (e.g. NgFieldListItemService direct-submit + CRDT sync-apply
+        // arriving nearly simultaneously) can both pass the pre-lock recordId==null check and
+        // both create a Maximo record → duplicate SR/WO. Take PESSIMISTIC_WRITE on the row so
+        // one submit proceeds and the other waits, then sees the id populated and no-ops.
+        // Same pattern the status-poll reconcile uses (findAndLockByMaximoRecord).
+        FieldListItem locked = repo.findAndLockById(entity.getId()).orElse(null);
+        if (locked == null) {
+            log.warn("[MaximoFieldList] submit id={} — row disappeared between event and lock", entity.getId());
+            return false;
+        }
+        if (locked.getMaximoRecordId() != null && !locked.getMaximoRecordId().isBlank()) {
+            // Already routed by us or a concurrent submit. Clear any stale sync-pending flag
+            // left over from a "create-succeeded, save-failed" race (see catch-block below):
+            // the record id landing means the record really exists, so pending is a lie that
+            // would loop the backfill forever.
+            if (Boolean.TRUE.equals(locked.getMaximoSyncPending())) {
+                locked.setMaximoSyncPending(Boolean.FALSE);
+                try { repo.save(locked); } catch (RuntimeException ignore) { /* backfill retries */ }
             }
             return true;
         }
+        // Work with the locked (managed) instance for the rest of the submit — persistCreated
+        // and markSyncPending both call repo.save on this reference.
+        entity = locked;
         // Wrap the entire submit — including the payload-building helpers — inside try:
         // any NPE from an unexpected entity shape (missing listType, null tag, etc.) must
         // NOT propagate out. This is a best-effort add-on to the PWA submit; an escape
@@ -165,10 +179,10 @@ public class MaximoFieldListBridge {
 
     private boolean createSr(FieldListItem entity) {
         CreateMaximoServiceRequestDto req = buildCreateDto(entity);
-        log.info("[MaximoFieldList] SR-SEND id={} description='{}' longDescriptionLen={} classstructureid={}",
+        log.info("[MaximoFieldList] SR-SEND id={} description='{}' longDescriptionLen={} classstructureid={} location={} assetnum={}",
                 entity.getId(), req.getDescription(),
                 req.getLongDescription() == null ? 0 : req.getLongDescription().length(),
-                req.getClassstructureid());
+                req.getClassstructureid(), req.getLocation(), req.getAssetnum());
         MaximoServiceRequestDto created = srAdapter.create(req);
         if (created == null || created.getTicketid() == null) {
             markSyncPending(entity, "empty SR response");
@@ -181,13 +195,14 @@ public class MaximoFieldListBridge {
         String worktype = worktypeFor(entity);
         String description = defaultIfBlank(entity.getTitle(), "Field List Report");
         String longDescription = buildLongDescription(entity);
-        log.info("[MaximoFieldList] WO-SEND id={} worktype={} description='{}' longDescriptionLen={}",
+        // Location from the entity (populated by frontend Maximo picker when used).
+        // Null falls through to ops-triage assignment.
+        String location = entity.getMaximoLocation();
+        log.info("[MaximoFieldList] WO-SEND id={} worktype={} description='{}' longDescriptionLen={} location={}",
                 entity.getId(), worktype, description,
-                longDescription == null ? 0 : longDescription.length());
-        // Location + siteid: we don't have a reliable FieldList→Maximo location map, so
-        // leave location null and let ops assign on triage. Siteid null falls back to the
-        // adapter's default (JG on this tenant).
-        MaximoWorkOrderDto created = woAdapter.create(description, longDescription, null, worktype, null);
+                longDescription == null ? 0 : longDescription.length(), location);
+        // Siteid null falls back to the adapter's default (JG on this tenant).
+        MaximoWorkOrderDto created = woAdapter.create(description, longDescription, location, worktype, null);
         if (created == null || created.getWonum() == null) {
             markSyncPending(entity, "empty WO response");
             return false;
@@ -297,7 +312,20 @@ public class MaximoFieldListBridge {
         if (entity == null) return false;
         if (!REC_TYPE_WO.equals(entity.getMaximoRecordType())) return false; // SR path doesn't auto-complete
         String href = entity.getMaximoHref();
-        if (href == null || href.isBlank()) return false;
+        if (href == null || href.isBlank()) {
+            // Row is WO-typed but the WO hasn't been created yet (create-and-close ordering
+            // race — codex round 3: SP-import of a new row that arrives already-closed
+            // publishes both Submitted and ContractorClosed in the same commit; if the close
+            // handler runs before the submit handler, href is still null here). Mark pending
+            // so the backfill loop retries once the parent has an href.
+            if (!Boolean.TRUE.equals(entity.getMaximoCompletePending())) {
+                entity.setMaximoCompletePending(Boolean.TRUE);
+                try { repo.save(entity); } catch (RuntimeException ignore) { /* backfill retries */ }
+            }
+            log.info("[MaximoFieldList] complete id={} deferred — no maximoHref yet (pending flag set)",
+                    entity.getId());
+            return false;
+        }
         // Idempotency: if the WO is already at a terminal status, don't try to COMP again.
         // Also clear any stale complete-pending flag so the backfill stops chasing it.
         String cur = entity.getMaximoStatus();
@@ -378,8 +406,10 @@ public class MaximoFieldListBridge {
         req.setDescription(defaultIfBlank(entity.getTitle(), "Field List Report"));
         req.setLongDescription(buildLongDescription(entity));
         req.setReportedby(null); // filled from submitter's Maximo personid when auth-scoped
-        req.setLocation(null);
-        req.setAssetnum(null);
+        // Location + assetnum from the entity (populated by the frontend Maximo picker when
+        // used). Both null = ops assigns on triage — same behavior as before.
+        req.setLocation(entity.getMaximoLocation());
+        req.setAssetnum(entity.getMaximoAssetnum());
         if (defaultClassstructureid != null && !defaultClassstructureid.isBlank()) {
             req.setClassstructureid(defaultClassstructureid.trim());
         }

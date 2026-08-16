@@ -36,4 +36,9 @@ public class PwaFieldListItemDto {
 
     // Attachments
     private List<PaAttachmentDto> attachments;
+
+    // Optional Maximo picker fields — sent when the PWA form's Maximo tree picker was used.
+    // Bridge sends them on WO/SR create as spi:location and spi:assetnum. Null = ops assigns.
+    private String maximoLocation;
+    private String maximoAssetnum;
 }

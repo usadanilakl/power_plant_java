@@ -62,12 +62,24 @@ public class FieldListItemSharePointAdapter {
         );
     }
 
-    public void changeStatus(String sharepointId, String status) {
-        spService.executeWithFallback(
-                () -> { certChangeStatus(sharepointId, status); return null; },
-                () -> { paChangeStatus(sharepointId, status); return null; },
-                "changeStatus FieldListItem"
-        );
+    /**
+     * REMOVED — {@code changeStatus(spId, status)} used to send a partial payload with only
+     * the Status column. The PA flow's Update item action maps every column, so a partial
+     * payload had every un-included column set to null on SharePoint (Title/Location/etc.
+     * silently wiped). Callers must now build a full {@link FieldListItemDto} from the
+     * current entity state, mutate the status on the DTO, and call {@link #update} instead.
+     * The Update item action's field mappings are safe when EVERY mapped column is present
+     * in the request; only OMITTED columns were the wipe hazard.
+     *
+     * Same failure mode applies to Cert path — updateListItem replaces all specified columns
+     * with the sent values, and PA-V2's flow-side merge doesn't reconstruct omitted columns.
+     * If you need per-field partial updates in the future, either add merge-with-current in
+     * the flow, or hit SP REST directly with MERGE semantics.
+     */
+    @SuppressWarnings("unused")
+    private void changeStatus_removed(String sharepointId, String status) {
+        throw new UnsupportedOperationException(
+                "changeStatus removed — build full FieldListItemDto and call update(spId, dto)");
     }
 
     public List<PaAttachmentDto> getAttachments(String sharepointId) {
@@ -132,11 +144,7 @@ public class FieldListItemSharePointAdapter {
         certAccess.updateListItem(LIST_TITLE, sharepointId, body);
     }
 
-    private void certChangeStatus(String sharepointId, String status) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("Status", status);
-        certAccess.updateListItem(LIST_TITLE, sharepointId, body);
-    }
+    // certChangeStatus removed — see class javadoc for changeStatus_removed rationale.
 
     // ====================== Power Automate path ======================
 
@@ -174,16 +182,7 @@ public class FieldListItemSharePointAdapter {
         }
     }
 
-    private void paChangeStatus(String sharepointId, String status) {
-        PaRequestDto req = new PaRequestDto();
-        req.setActionType("update");
-        req.setId(sharepointId);
-        req.setData(Map.of("Status", status));
-        PaResponseDto resp = v2Client.fieldList(req);
-        if (!resp.isSuccess()) {
-            throw new RuntimeException("PA-V2 changeStatus FieldListItem failed: " + resp.getMessage());
-        }
-    }
+    // paChangeStatus removed — see class javadoc for changeStatus_removed rationale.
 
     private List<PaAttachmentDto> paGetAttachments(String sharepointId) {
         PaRequestDto req = new PaRequestDto();
@@ -223,7 +222,34 @@ public class FieldListItemSharePointAdapter {
         dto.setSubmitterEmail(item.path("SubmitterEmail").asText(null));
         dto.setSubmitterPhone(item.path("SubmitterPhone").asText(null));
         dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
+        // Maximo picker fields (round-trip so cert path preserves them if PA also writes them).
+        dto.setMaximoLocation(item.path("MaximoLocation").asText(null));
+        dto.setMaximoAssetnum(item.path("MaximoAssetnum").asText(null));
+        // Contractor-close signals — set by PWA→PA offline-close flow. Hub uses these
+        // (via SharePointSyncable → ContractorClosed event) to trigger Maximo WO COMP.
+        // ContractorCompleted (boolean) is the authoritative "is closed" flag; By/At are
+        // attribution and may lag or be blank. Reading via helper handles the (rare) case
+        // where the column arrives as a string "true"/"false" via PA rather than a real bool.
+        dto.setContractorCompletedBy(item.path("ContractorCompletedBy").asText(null));
+        dto.setContractorCompletedAt(item.path("ContractorCompletedAt").asText(null));
+        dto.setContractorCompleted(isContractorCompleted(item));
         return dto;
+    }
+
+    /** True iff this SP-imported DTO indicates the contractor closed the item via PWA→PA. */
+    public static boolean isContractorCompleted(JsonNode item) {
+        if (item == null) return false;
+        JsonNode v = item.path("ContractorCompleted");
+        return v.asBoolean(false);
+    }
+
+    /** True iff this PA-map represents a contractor-completed item. */
+    public static boolean isContractorCompleted(Map<String, Object> map) {
+        if (map == null) return false;
+        Object v = map.get("ContractorCompleted");
+        if (v instanceof Boolean b) return b;
+        if (v instanceof String s) return "true".equalsIgnoreCase(s);
+        return false;
     }
 
     private FieldListItemDto mapFromPaResponse(Map<String, Object> map) {
@@ -245,6 +271,11 @@ public class FieldListItemSharePointAdapter {
         dto.setSubmitterEmail(str(map, "SubmitterEmail"));
         dto.setSubmitterPhone(str(map, "SubmitterPhone"));
         dto.setSpModifiedTime(parseInstant(str(map, "Modified")));
+        dto.setMaximoLocation(str(map, "MaximoLocation"));
+        dto.setMaximoAssetnum(str(map, "MaximoAssetnum"));
+        dto.setContractorCompletedBy(str(map, "ContractorCompletedBy"));
+        dto.setContractorCompletedAt(str(map, "ContractorCompletedAt"));
+        dto.setContractorCompleted(isContractorCompleted(map));
         return dto;
     }
 
@@ -262,6 +293,12 @@ public class FieldListItemSharePointAdapter {
         map.put("SubmitterEmail", orEmpty(dto.getSubmitterEmail()));
         map.put("SubmitterPhone", orEmpty(dto.getSubmitterPhone()));
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
+        map.put("MaximoLocation", orEmpty(dto.getMaximoLocation()));
+        map.put("MaximoAssetnum", orEmpty(dto.getMaximoAssetnum()));
+        // ContractorCompleted* fields are NOT written from the hub-side create/update path —
+        // only the PWA offline-close flow sets them. Hub reads them via SP-import and
+        // reacts by COMPing the Maximo WO. Excluded from toMap to avoid accidental
+        // hub-side overwrites (e.g. a hub update path resetting them to blank).
         return map;
     }
 

@@ -15,6 +15,8 @@ import { FormField, FormFieldGroup } from '../../../models/ui/form-field.model';
 import { CheckboxOnlyLabelComponent } from "../../checkbox-only-label/checkbox-only-label.component";
 import { WorkAreaSelectComponent } from '../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
 import { WorkAreaDto } from '../../../models/permits/work-area.model';
+import { MaximoLocationPickerComponent } from '../../../features/maximo/maximo-location-picker/maximo-location-picker.component';
+import { MaximoAssetPickerComponent } from '../../../features/maximo/maximo-asset-picker/maximo-asset-picker.component';
 import { DriftService, ThreeWayFieldEntry } from '../../../services/drift.service';
 
 @Component({
@@ -33,6 +35,8 @@ import { DriftService, ThreeWayFieldEntry } from '../../../services/drift.servic
     ValueFormComponent,
     CheckboxOnlyLabelComponent,
     WorkAreaSelectComponent,
+    MaximoLocationPickerComponent,
+    MaximoAssetPickerComponent,
 ],
   templateUrl: './smart-form.component.html',
   styleUrl: './smart-form.component.css'

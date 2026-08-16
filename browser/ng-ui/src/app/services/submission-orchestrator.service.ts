@@ -352,14 +352,20 @@ export class SubmissionOrchestratorService {
         }
         return this.powerAutomate.submitV2('instrument', {
           actionType: 'addInstrument',
+          // Top-level, matching the flow's PwaId mapping (and the log case, which also reads it here).
+          localUuid,
+          // PAYLOAD keys, not SharePoint column names — the flow's addInstrument case reads exactly
+          // these (`triggerBody()?['data']?['TagNumber']`, …) and maps them onto its own columns,
+          // which are spelled differently (`Tag_x0020_Number`, `PwaId`). Verified against the live
+          // flow 2026-08-16. Do NOT rename either side without editing the other in lockstep. See
+          // project/architecture/pwa/instrumentation-power-automate-alignment.md §1.
           data: {
-            Tag_x0020_Number: dto.tagNumber,
+            TagNumber: dto.tagNumber,
             Description: dto.description,
             Vendor: dto.vendor,
             Location: dto.location,
             Type: dto.type,
-            CurrentStatus: dto.currentStatus || 'Normal Operation',
-            PwaId: localUuid
+            CurrentStatus: dto.currentStatus || 'Normal Operation'
           }
         }).pipe(
           map(response => ({

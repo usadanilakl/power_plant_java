@@ -49,6 +49,7 @@ public class AuthController {
     private final com.dk_power.power_plant_java.sevice.auth.StepUpAuthService stepUpAuthService;
     private final com.dk_power.power_plant_java.sevice.auth.PinManagementService pinManagementService;
     private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
+    private final com.dk_power.power_plant_java.sevice.users.LoginIdentifierResolver loginIdentifierResolver;
 
     @Value("${email.graph.from:}")
     private String emailFrom;
@@ -337,10 +338,8 @@ public class AuthController {
         // Always return success to avoid leaking whether an email exists
         String genericMessage = "If an account with that email exists, a password reset link has been sent.";
 
-        User user = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(req.email());
-        if (user == null) {
-            user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(req.email());
-        }
+        // Same identifier set as sign-in, so "email me a link" works for anyone who can sign in.
+        User user = loginIdentifierResolver.resolve(req.email());
         if (user == null) {
             log.info("security.password.reset.requested_unknown credential={}", req.email());
             return ResponseEntity.ok(Map.of("message", genericMessage));

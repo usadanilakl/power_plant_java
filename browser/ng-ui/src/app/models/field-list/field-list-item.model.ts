@@ -70,6 +70,14 @@ export function fieldListFormFields(
       placeholder: 'Floor, column, etc.',
     },
     {
+      // Maximo plant-tree picker — emits {assetnum, location}. Optional; when set, sent to
+      // Maximo as spi:location + spi:assetnum on WO/SR create. Ops assigns on triage if left blank.
+      name: 'maximoPicker',
+      label: 'Maximo Location / Asset (optional)',
+      type: 'maximo-tree-picker',
+      initialValue: null,
+    },
+    {
       name: 'dateObserved',
       label: 'Date Observed',
       type: 'date',

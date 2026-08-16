@@ -44,11 +44,53 @@
 
   @if (pendingCount() > 0) {
     <div class="banner pending">
-      <span>{{ pendingCount() }} change{{ pendingCount() === 1 ? '' : 's' }} waiting to send</span>
-      <button type="button" class="link-button" (click)="flushOutbox()" [disabled]="isFlushing()">
+      <button type="button" class="pending-toggle" (click)="togglePending()">
+        {{ showPending() ? '▴' : '▾' }}
+        {{ pendingCount() }} change{{ pendingCount() === 1 ? '' : 's' }} waiting to send
+      </button>
+      <button type="button" class="link-button" (click)="flushOutbox()" [disabled]="isFlushing() || !isOnline()">
         {{ isFlushing() ? 'Sending…' : 'Send now' }}
       </button>
     </div>
+
+    @if (lastFlushError()) {
+      <div class="banner flush-error">{{ lastFlushError() }}</div>
+    }
+
+    @if (showPending()) {
+      <ul class="pending-list">
+        @for (item of pendingInstruments(); track item.localUuid) {
+          <li class="pending-item">
+            <div class="pending-head">
+              <span class="pending-kind">New instrument</span>
+              <span class="pending-when">{{ waitingFor(item.createdAt) }}</span>
+            </div>
+            <div class="pending-tag">{{ item.tagNumber }}</div>
+            @if (item.lastError) {
+              <div class="pending-error">
+                {{ item.lastError }}
+                @if (item.attempts > 0) { <span class="pending-attempts">· {{ item.attempts }} attempt{{ item.attempts === 1 ? '' : 's' }}</span> }
+              </div>
+            }
+          </li>
+        }
+        @for (item of pendingLogs(); track item.localUuid) {
+          <li class="pending-item">
+            <div class="pending-head">
+              <span class="pending-kind">Log</span>
+              <span class="pending-when">{{ waitingFor(item.createdAt) }}</span>
+            </div>
+            <div class="pending-tag">{{ item.instrumentTagNumber }} — {{ item.entry.status }}</div>
+            @if (item.lastError) {
+              <div class="pending-error">
+                {{ item.lastError }}
+                @if (item.attempts > 0) { <span class="pending-attempts">· {{ item.attempts }} attempt{{ item.attempts === 1 ? '' : 's' }}</span> }
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
   }
 
   @if (!hasQuery() && recentInstruments().length > 0) {

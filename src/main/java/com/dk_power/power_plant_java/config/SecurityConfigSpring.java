@@ -131,6 +131,10 @@ public class SecurityConfigSpring {
                 // this path (they close existing WO-routed insulation items only) — the submit
                 // path lives at /api/pwa/field-list-item/** and is PLANT+ADMIN only.
                 .requestMatchers("/api/pwa/secured/insulation/**").hasAnyRole("INSULATION", "PLANT", "ADMIN")
+                // Field-list drift signals for the PWA — same audience as the two writer paths above:
+                // plant submitters and insulation contractors both see drift badges on their list views
+                // (resolution lives in the JG Portal admin drift panel; this endpoint is read-only).
+                .requestMatchers("/api/pwa/secured/field-list-drift/**").hasAnyRole("INSULATION", "PLANT", "ADMIN")
                 // Read-only KIOSK role: an unattended display (e.g. a wall monitor whose own network can't
                 // reach Maximo) may GET Maximo data (the PM overview) but never write. Reads are @GetMapping
                 // and writes @PostMapping under this path, so a method-scoped matcher grants KIOSK read-only.
@@ -228,6 +232,25 @@ public class SecurityConfigSpring {
                 // the Maximo controllers, a Plant-role user reaches Maximo without needing a FULL access grant
                 // (e.g. off-LAN via the hub), while non-Plant users are denied.
                 .requestMatchers("/ng/maximo/**").hasAnyRole("PLANT", "ADMIN")
+
+                // Instrument/log deletion is the only destructive operation on the register, and it
+                // reaches SharePoint as well as H2 — ADMIN only. Must precede the general rule below.
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE,
+                        "/ng/instruments/**", "/ng/instrument-logs/**").hasRole("ADMIN")
+
+                // The desktop register screens carry the SAME role as the PWA. Without this they fell
+                // through to the blanket `anyRequest().authenticated()`, so any signed-in user —
+                // contractor included — could read the whole register and create instruments from the
+                // desktop API while being refused the identical operation on their phone.
+                .requestMatchers("/ng/instruments/**", "/ng/instrument-logs/**")
+                        .hasAnyRole("INSTRUMENTATION", "ADMIN")
+
+                // Field list desktop endpoints — mirror the PWA gate at /api/pwa/field-list-item/**.
+                // Rows here route to Maximo as SR/WO and land in SharePoint, so leaving them under
+                // the blanket `anyRequest().authenticated()` let any signed-in user — INSULATION
+                // contractors included — create/read/delete field lists plant-wide. Contractors have
+                // their own scoped surface at /api/pwa/secured/insulation/** for the close-only path.
+                .requestMatchers("/ng/field-list-items/**").hasAnyRole("PLANT", "ADMIN")
 
                 // Auth endpoints (must be logged in)
                 .requestMatchers("/api/auth/**").authenticated()

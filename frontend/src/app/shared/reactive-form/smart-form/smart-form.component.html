@@ -86,6 +86,20 @@
                   (workAreaSelected)="onWorkAreaSelected($event)"
                 ></app-work-area-select>
               }
+              @case('maximo-location-picker'){
+                <label class="field-label">{{ field.label }}</label>
+                <app-maximo-location-picker
+                  [freeText]="true"
+                  [formControl]="getFormControl(field.name)">
+                </app-maximo-location-picker>
+              }
+              @case('maximo-asset-picker'){
+                <label class="field-label">{{ field.label }}</label>
+                <app-maximo-asset-picker
+                  [freeText]="true"
+                  [formControl]="getFormControl(field.name)">
+                </app-maximo-asset-picker>
+              }
               @default {
                 <app-form-input
                   [label]="field.label"
