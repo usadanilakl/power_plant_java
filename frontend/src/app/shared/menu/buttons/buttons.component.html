@@ -1,4 +1,4 @@
-<div [ngClass]="'buttons-' + layout()">
+<div [ngClass]="['buttons-' + layout(), 'density-' + density()]">
   <button
     *ngFor="let button of buttons()"
     [ngClass]="[
@@ -8,7 +8,7 @@
     ]"
     [disabled]="button.disabled"
     (click)="onButtonClick(button)"
-    [matTooltip]="button.tooltip || ''"
+    [matTooltip]="tooltipOf(button)"
     [class.has-icon]="button.icon"
     [appGuide]="button.guideId || ''"
     [guideMessage]="button.guideMessage || ''"
@@ -16,6 +16,6 @@
     <mat-icon *ngIf="button.icon" class="button-icon">{{
       isString(button.icon) ? button.icon : button.icon()
     }}</mat-icon>
-    <span>{{ isString(button.name) ? button.name : button.name() }}</span>
+    <span class="button-label">{{ labelOf(button) }}</span>
   </button>
 </div>

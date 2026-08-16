@@ -29,6 +29,8 @@ import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
+import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
+import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.service';
 import { LotoPointBulkEditFormComponent } from '../loto-point-bulk-edit-form/loto-point-bulk-edit-form.component';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { RfLotoPointClickService } from './rf-loto-point-click.service';
@@ -66,6 +68,8 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   protected contextMenuService = inject(LotoPointContextMenuService);
   private tableUtilService = inject(TableUtilService);
   private destroyRef = inject(DestroyRef);
+  private selectionService = inject(TableSelectionService);
+  private bulkEditService = inject(LotoPointBulkEditService);
 
   // Inputs
   tableId = input<string>('rf-loto-point-table');
@@ -73,6 +77,8 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   isTableIsolated = input<boolean>(false);
   loadMoreEnabled = input<boolean>(true);
   enableDragDrop = input<boolean>(false);
+  /** With drag-drop on, set false to keep the list ordered but read-only. */
+  canReorder = input<boolean>(true);
   filterOutItems = input<FilterOutRules | undefined>();
   hoverDebounceTime = input<number>(0);
   hoveredItemId = input<number | null>(null);
@@ -260,8 +266,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     }
   });
 
-  private _initialized = false;
-
   /**
    * Monotonic token for "replace" loads (initial / search / sort). Each such
    * load captures the current value; its response is only applied if no newer
@@ -305,15 +309,11 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       this.columns.set(cols);
     });
 
-    // React to initialSearchCriteria changes after the first load (e.g. from query param updates)
-    effect(() => {
-      const criteria = this.initialSearchCriteria();
-      if (!this._initialized) return;
-      if (criteria && (criteria.query || (criteria.filters && Object.keys(criteria.filters).length > 0))) {
-        this.stateService.clearLotoPoints();
-        this.loadInitialDataWithCriteria(criteria);
-      }
-    });
+    // NOTE: no criteria-watching effect here on purpose. The shared table applies
+    // [initialSearchCriteria] through its normal search path and emits it on
+    // (search), which lands in onSearch() below — one fetch path for typed and
+    // programmatic searches alike. A second effect here re-fetched the same
+    // criteria in parallel with that emission and the two raced.
   }
 
   ngAfterViewInit(): void {
@@ -341,56 +341,14 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    // Only the no-criteria case loads here. Criteria-driven loads are owned by
-    // the initialSearchCriteria effect (which runs once after init and on every
-    // change) — loading them here too would fire a duplicate concurrent fetch
-    // and render every row twice.
+    // Only the no-criteria case loads here. A criteria-driven load arrives via
+    // the shared table's (search) emission — loading it here too would fire a
+    // duplicate concurrent fetch and render every row twice.
     const initialCriteria = this.initialSearchCriteria();
     const hasCriteria = !!(initialCriteria && (initialCriteria.query || (initialCriteria.filters && Object.keys(initialCriteria.filters).length > 0)));
     if (!hasCriteria) {
       this.loadInitialData();
     }
-    this._initialized = true;
-  }
-
-  /**
-   * Load initial batch of LOTO points with search criteria applied
-   */
-  private loadInitialDataWithCriteria(criteria: SearchCriteria): void {
-    if (this.inputItems()) return;
-
-    const seq = ++this.loadSeq;
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
-
-    const searchCriteria: SearchCriteria = {
-      ...criteria,
-      page: 1,
-      pageSize: 50,
-    };
-
-    this.stateService.setSearchCriteria(searchCriteria);
-
-    this.apiService
-      .searchLotoPoints(searchCriteria, 50)
-      .pipe(
-        tap((response) => {
-          if (seq !== this.loadSeq) return; // a newer load superseded this one
-          if (response.responseData?.content) {
-            this.stateService.addLotoPoints(response.responseData.content);
-            this.stateService.incrementPage();
-          }
-          this.isLoading.set(false);
-        }),
-        catchError((error) => {
-          console.error('Error loading LOTO points with criteria:', error);
-          this.errorMessage.set('Failed to load LOTO points');
-          this.isLoading.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
   }
 
   /**
@@ -680,7 +638,12 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // Clear selection after bulk edit
-    // The selection service should be available through the table
+    // Clear the selection AND the bulk-edit template so the next edit starts
+    // clean. Leaving them meant a later single-row edit re-applied the previous
+    // batch's field values to the whole previous selection.
+    this.selectionService.clearSelection();
+    this.currentSelection.set([]);
+    this.stateService.setSelectedLotoPoints([]);
+    this.bulkEditService.reset();
   }
 }

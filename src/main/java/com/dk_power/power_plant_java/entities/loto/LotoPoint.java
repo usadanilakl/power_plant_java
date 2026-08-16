@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.Where;
 
 import java.util.*;
@@ -48,7 +50,16 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Boolean isProcessed;
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
+    /*
+     * The Value / ZeroEnergy lookups below are all @Where-filtered on soft delete,
+     * and the Category/Value dedup soft-deletes the losing row when it merges
+     * duplicates. A LOTO point still holding a merged-away id would otherwise make
+     * Hibernate throw EntityNotFoundException while loading the PAGE — failing an
+     * entire search because of one stale reference. IGNORE reads it as null instead.
+     * Same treatment as BasePermitEntity; see the note there.
+     */
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "processing_status_id")
     private Value processingStatus;
     private String fileIds;
@@ -62,9 +73,11 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
      */
     private Long physicalObjectId;
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "normPos_id")
     private Value normPos;
 
@@ -81,18 +94,23 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     @Column(columnDefinition = "TEXT")
     private String zeroEnergyMethod;
     @ManyToOne
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "zero_energy_id")
     private ZeroEnergy zeroEnergy;
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "location_id")
     private Value location;
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "eq_type_id")
     private Value eqType;
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "systemValue_id")
     private Value systemValue;
     @ManyToOne()
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "vendor_id")
     private Value vendor;
     @ManyToOne

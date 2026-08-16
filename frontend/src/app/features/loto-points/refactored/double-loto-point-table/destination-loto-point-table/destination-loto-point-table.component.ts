@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RfLotoPointTableComponent } from "../../rf-loto-point-table/rf-loto-point-table.component";
+import { AuthService } from '../../../../../services/auth.service';
 import { DoubleLotoPointTableService } from '../double-loto-point-table.service';
 import { LotoPointDto, LotoPointFieldName } from '../../../../../models/loto/loto-point.model';
 import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
@@ -53,6 +54,18 @@ import { DoubleLotoPointContextMenuService } from '../double-loto-point-context-
 })
 export class DestinationLotoPointTableComponent {
   doubleTableService = inject(DoubleLotoPointTableService);
+  private authService = inject(AuthService);
+
+  /**
+   * Drag-to-reorder is only offered to Control Authority — the backing
+   * endpoint (NgLotoStandardService.reorderLotoPoints) is gated on
+   * CONTROL_AUTHORITY, so for anyone else a drag could only ever end in a
+   * rejected request and a visually reordered table that the server never
+   * accepted. The table stays drag-drop "enabled" either way so the points
+   * keep their procedure order (that flag is also what suppresses column
+   * sorting); only the dragging itself is withheld.
+   */
+  canReorder = computed(() => this.authService.isControlAuthority());
 
   /**
    * Explicit field list — 'removeFromStandard' is FIRST so the arrow

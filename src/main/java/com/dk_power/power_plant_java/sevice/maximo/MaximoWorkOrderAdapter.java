@@ -313,8 +313,19 @@ public class MaximoWorkOrderAdapter {
      * is silently dropped. New WOs come back at status WAPPR. Returns the created WO (with href + wonum).
      */
     public MaximoWorkOrderDto create(String description, String location, String worktype, String siteid) {
+        return create(description, null, location, worktype, siteid);
+    }
+
+    /**
+     * Full-form overload that also sets {@code spi:description_longdescription}. Kept as a separate
+     * signature so existing callers (parts checkout) don't need to pass null. Everything else is
+     * identical to the 4-arg form — same silent-drop rule for spi: prefix, same WAPPR-on-create.
+     */
+    public MaximoWorkOrderDto create(String description, String longDescription, String location, String worktype, String siteid) {
         Map<String, Object> payload = new LinkedHashMap<>();
         if (description != null && !description.isBlank()) payload.put("spi:description", description.trim());
+        if (longDescription != null && !longDescription.isBlank())
+            payload.put("spi:description_longdescription", longDescription.trim());
         if (location != null && !location.isBlank()) payload.put("spi:location", location.trim());
         if (worktype != null && !worktype.isBlank()) payload.put("spi:worktype", worktype.trim());
         payload.put("spi:siteid", (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite());

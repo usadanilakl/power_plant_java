@@ -285,9 +285,12 @@ public class SyncComparisonService {
         if (url == null || url.isEmpty()) {
             return ContentDriftSummary.builder().entityType(entityType).error("no sync server configured").build();
         }
-        Map<Long, String> local = computeLocalContentHashes(entityType);
-        String localDigest = SyncContentHasher.typeDigest(local);
-
+        // Probe the hub BEFORE hashing anything locally. computeLocalContentHashes() reads and hashes
+        // every row of the type; the old order did that first and then discarded all of it when the
+        // probe failed, so an off-network desktop paid the full cost for every type, every scan cycle,
+        // for nothing. Safe to reorder: fetchServerContentHashSummary needs only entityType + url, and
+        // the success path below is unchanged. Bonus — on the failure path this method now touches the
+        // DB not at all, so the read-only tx never acquires a connection.
         Object serverDigest = null;
         try {
             Map<String, Object> summary = fetchServerContentHashSummary(entityType, url);
@@ -295,6 +298,10 @@ public class SyncComparisonService {
         } catch (Exception e) {
             return ContentDriftSummary.builder().entityType(entityType).error("hub probe failed: " + e.getMessage()).build();
         }
+
+        Map<Long, String> local = computeLocalContentHashes(entityType);
+        String localDigest = SyncContentHasher.typeDigest(local);
+
         if (localDigest.equals(serverDigest)) {
             return ContentDriftSummary.builder().entityType(entityType)
                 .localCount(local.size()).serverCount(local.size()).inSync(true).build();

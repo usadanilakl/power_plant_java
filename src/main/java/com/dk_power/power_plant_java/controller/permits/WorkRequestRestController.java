@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
 import com.dk_power.power_plant_java.sevice.sync.WorkRequestHealService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -24,6 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/work-requests-api")
+@Slf4j
 @RequiredArgsConstructor
 public class WorkRequestRestController {
 
@@ -122,6 +124,12 @@ public class WorkRequestRestController {
                     batchDtos, entityPage.getPageable(), entityPage.getTotalElements());
             return ResponseEntity.ok(new NgApiResponse<>(dtoPage, "Search completed"));
         } catch (Exception e) {
+            // Log it. This used to fail silently: the table showed "no items found"
+            // and the only trace was a bare 400 in the browser console, with nothing
+            // server-side naming the filter or the cause.
+            log.error("Work request search failed. filters={} query={} sort={} {}",
+                    criteria.getFilters(), criteria.getQuery(),
+                    criteria.getSortColumn(), criteria.getSortDirection(), e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Search failed: " + e.getMessage()));
         }
     }

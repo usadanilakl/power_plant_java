@@ -66,7 +66,22 @@ public class FieldListItemMapper {
             dto.setAttachmentCount(
                 (int) attachmentRepo.countByEntityTypeAndEntityId("FieldListItem", entity.getId()));
         }
+        copyMaximoFields(entity, dto);
         return dto;
+    }
+
+    /**
+     * Copies the Maximo bridge state onto the DTO. Extracted into a helper because there
+     * are two nearly-identical convert paths (single vs batch) and forgetting to update
+     * both is a real hazard — this keeps them in sync.
+     */
+    private static void copyMaximoFields(FieldListItem entity, FieldListItemDto dto) {
+        dto.setMaximoRecordType(entity.getMaximoRecordType());
+        dto.setMaximoRecordId(entity.getMaximoRecordId());
+        dto.setMaximoStatus(entity.getMaximoStatus());
+        dto.setMaximoSyncPending(entity.getMaximoSyncPending());
+        dto.setMaximoCancelPending(entity.getMaximoCancelPending());
+        dto.setMaximoCompletePending(entity.getMaximoCompletePending());
     }
 
     /**
@@ -124,6 +139,7 @@ public class FieldListItemMapper {
             dto.setEquipmentId(entity.getEquipment().getId());
             dto.setEquipmentTag(entity.getEquipment().getTagNumber());
         }
+        copyMaximoFields(entity, dto);
         return dto;
     }
 

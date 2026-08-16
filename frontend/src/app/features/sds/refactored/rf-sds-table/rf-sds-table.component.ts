@@ -43,10 +43,15 @@ interface Attachment {
   ],
   template: `
     <div class="table-wrapper">
+      <!-- isTableIsolated: the state service loads the whole chemical list up front
+           (RfSdsStateService.loadAll), so filtering is client-side. Without this the
+           shared table skips its own filtering AND there is no (search) handler to do
+           it server-side, so the search box does nothing at all. -->
       <app-table
         [tableId]="'sds-chemicals'"
         [items]="items()"
         [columns]="columns()"
+        [isTableIsolated]="true"
         (selectedItemsEvent)="selectedItemsEvent.emit($event)"
         (rowDoubleClicked)="onRowDoubleClick($event)">
       </app-table>

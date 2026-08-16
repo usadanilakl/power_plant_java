@@ -109,7 +109,13 @@ export class RfWorkRequestStateService {
 
   addWorkRequests(items: WorkRequestDto[]): void {
     const current = this.allLoadedWorkRequestsSubject.value;
-    this.allLoadedWorkRequestsSubject.next([...current, ...items]);
+    // Dedup by id: a re-requested page (overlapping load-more, retry, reconnect
+    // refetch) would otherwise append the same rows again, and each append grows
+    // the list, which re-triggers load-more — the table never settles.
+    const seen = new Set(current.map(wr => wr.id));
+    const fresh = items.filter(wr => wr.id == null || !seen.has(wr.id));
+    if (fresh.length === 0) return;
+    this.allLoadedWorkRequestsSubject.next([...current, ...fresh]);
   }
 
   clearWorkRequests(): void {
@@ -117,43 +123,102 @@ export class RfWorkRequestStateService {
     this.currentPage = 1;
   }
 
+  /** Hard ceiling on a single refresh fetch, so a very long scrollback can't turn
+   *  a routine SSE reconnect into a multi-thousand-row request. */
+  private static readonly MAX_RELOAD_SIZE = 500;
+
+  /**
+   * Refresh what is currently on screen, in place.
+   * <p>
+   * Runs on every SSE reconnect (routine — the stream drops and backs off) and
+   * after the process dialog. It used to {@code clearWorkRequests()} and refetch
+   * page 1 only, so a user who had scrolled through several pages watched the
+   * table empty out and come back as a different, shorter list — read as "it
+   * suddenly re-renders, rows jump and reorder, like a pile of rows arrived"
+   * while nothing had actually changed. Now it refetches the SAME window and
+   * swaps it in as one emission: no empty frame, no lost pages, and rows that
+   * did not change keep their identity (and their scroll position).
+   */
   reloadData(): void {
-    this.clearWorkRequests();
+    const loadedCount = this.allLoadedWorkRequestsSubject.value.length;
+    const size = Math.min(
+      Math.max(this.pageSize, loadedCount),
+      RfWorkRequestStateService.MAX_RELOAD_SIZE
+    );
+
     const criteria = this.getCurrentSearchCriteria();
     const hasActiveState = criteria && (
       criteria.query ||
       criteria.sortColumn ||
       (criteria.filters && Object.keys(criteria.filters).length > 0)
     );
-    if (hasActiveState) {
-      this.apiService.searchWorkRequests({ ...criteria, page: 1, pageSize: this.pageSize }, this.pageSize).pipe(
-        tap(response => {
-          if (response.responseData?.content?.length) {
-            this.addWorkRequests(response.responseData.content);
-            this.incrementPage();
-          }
-        }),
-        catchError(error => {
-          console.error('Error reloading work requests:', error);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe();
-    } else {
-      this.apiService.getWorkRequests(1, this.pageSize).pipe(
-        tap(response => {
-          if (response.responseData?.content?.length) {
-            this.addWorkRequests(response.responseData.content);
-            this.incrementPage();
-          }
-        }),
-        catchError(error => {
-          console.error('Error reloading work requests:', error);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe();
+
+    const request$ = hasActiveState
+      ? this.apiService.searchWorkRequests({ ...criteria, page: 1, pageSize: size }, size)
+      : this.apiService.getWorkRequests(1, size);
+
+    request$.pipe(
+      tap(response => {
+        const content = response.responseData?.content;
+        // A failed/empty refresh must not wipe the table — keep what we have.
+        if (!content?.length) return;
+        this.setWorkRequests(content);
+      }),
+      catchError(error => {
+        console.error('Error reloading work requests:', error);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  /**
+   * Place a work request the loaded window doesn't contain yet.
+   * <p>
+   * The window is a SORTED, server-ordered slice. Dropping every unknown row at
+   * the head — which is what this used to do — meant each background sync update
+   * (the hub polls SharePoint every 30s and broadcasts what it finds) yanked an
+   * unrelated row to the top of the user's table, out of sort order. That reads
+   * as "rows reorder and jump for no reason".
+   *
+   * @returns the new list, or {@code null} when the row sorts past the end of
+   *          the loaded window — it belongs to a page that isn't loaded, so
+   *          showing it here would misstate the order.
+   */
+  private insertRespectingOrder(current: WorkRequestDto[], item: WorkRequestDto): WorkRequestDto[] | null {
+    if (current.length === 0) return [item];
+
+    const criteria = this.currentSearchCriteriaSubject.value;
+    const column = criteria?.sortColumn;
+    const direction = criteria?.sortDirection === 'ASC' ? 1 : -1;
+    const read = (o: any) => column?.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), o);
+
+    // No sort to honour (or a value we can't read) — keep the old behaviour so a
+    // freshly created request still shows up immediately.
+    if (!column || read(item) == null || read(current[0]) == null) {
+      return [item, ...current];
     }
+
+    const compare = (a: any, b: any): number => {
+      const x = read(a);
+      const y = read(b);
+      if (x === y) return 0;
+      return (x < y ? -1 : 1) * direction;
+    };
+
+    const at = current.findIndex((row) => compare(item, row) < 0);
+    return at === -1
+      ? null
+      : [...current.slice(0, at), item, ...current.slice(at)];
+  }
+
+  /**
+   * Replace the loaded window in a single emission and re-derive how many pages
+   * that represents, so the next load-more continues from the right offset.
+   */
+  private setWorkRequests(items: WorkRequestDto[]): void {
+    this.allLoadedWorkRequestsSubject.next([...items]);
+    this.currentPage = Math.max(1, Math.ceil(items.length / this.pageSize)) + 1;
   }
 
   updateWorkRequestInList(updatedItem: WorkRequestDto): void {
@@ -176,8 +241,11 @@ export class RfWorkRequestStateService {
           criteria.query
         );
         if (!hasActiveFilters) {
-          (updatedItem as any)._version = Date.now();
-          this.allLoadedWorkRequestsSubject.next([updatedItem, ...current]);
+          const placed = this.insertRespectingOrder(current, updatedItem);
+          if (placed) {
+            (updatedItem as any)._version = Date.now();
+            this.allLoadedWorkRequestsSubject.next(placed);
+          }
         }
       }
 

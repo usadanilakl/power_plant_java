@@ -111,15 +111,23 @@ export class TableSyncService {
     const end = this.dataService.viewport()!.getRenderedRange().end;
     const total = this.dataService.filteredItems().length;
 
-    if (end >= total - 5 && total > 0) {
-      // Trigger load more when within 5 items of the end
-      const searchCriteria = this.utilServce.buildSearchCriteria(
-        this.dataService.globalSearchQuery,
-        this.dataService.columnFilters(),
-        this.dataService.columnFilterLogic
-      );
-      this.dataService.loadMoreItems.set({ ...searchCriteria });
-    }
+    // Trigger load more when within 5 items of the end
+    if (total === 0 || end < total - 5) return;
+
+    // Ask at most once per list length. scrolledIndexChange also fires on
+    // re-render / resize / column-width sync, and on a list shorter than the
+    // viewport the test above never stops being true — so re-asking here
+    // refetches the same page in a loop (and, on tables whose state service
+    // appends without de-duplicating, grows the list on every pass).
+    if (total === this.dataService.lastLoadMoreLength) return;
+    this.dataService.lastLoadMoreLength = total;
+
+    const searchCriteria = this.utilServce.buildSearchCriteria(
+      this.dataService.globalSearchQuery,
+      this.dataService.columnFilters(),
+      this.dataService.columnFilterLogic
+    );
+    this.dataService.loadMoreItems.set({ ...searchCriteria });
   }
 
   synchronizeColumnWidths(): void {

@@ -183,18 +183,30 @@ if (-not (Test-Path -LiteralPath $planPath)) {
 }
 Write-Host "   plan    : $Plan"
 
-# Resolve claude.exe. The VS Code extension folder carries a version in its
-# name, so pick the most recently written one rather than hard-coding it.
+# Resolve claude.exe: explicit override, then a standalone install on PATH, then the
+# VS Code extension copy. The extension folder is version-stamped and changes on every
+# update, so it is the last resort and is picked by version number, not file date.
 $claudeExe = $env:CLAUDE_EXE
+if (-not $claudeExe) {
+    $claudeExe = (Get-Command claude -CommandType Application -ErrorAction SilentlyContinue |
+                  Select-Object -First 1).Source
+}
 if (-not $claudeExe) {
     $claudeExe = Get-ChildItem (Join-Path $env:USERPROFILE '.vscode\extensions') `
                     -Directory -Filter 'anthropic.claude-code-*' -ErrorAction SilentlyContinue |
-                 Sort-Object LastWriteTime -Descending |
-                 Select-Object -First 1 |
-                 ForEach-Object { Join-Path $_.FullName 'resources\native-binary\claude.exe' }
+                 ForEach-Object {
+                     $v = if ($_.Name -match 'claude-code-(\d+(?:\.\d+)*)') { [version]$Matches[1] } else { [version]'0.0.0' }
+                     [pscustomobject]@{ Version = $v; Path = Join-Path $_.FullName 'resources\native-binary\claude.exe' }
+                 } |
+                 Where-Object { Test-Path -LiteralPath $_.Path } |
+                 Sort-Object Version -Descending |
+                 Select-Object -First 1 -ExpandProperty Path
 }
 if (-not $claudeExe -or -not (Test-Path -LiteralPath $claudeExe)) {
-    Fail "Could not find claude.exe.`n   Set CLAUDE_EXE to its full path and retry."
+    Fail ("Could not find claude.exe.`n" +
+          "   Install a standalone build so it lands on PATH:`n" +
+          "     <extension path>\resources\native-binary\claude.exe install stable`n" +
+          "   Or set CLAUDE_EXE to its full path and retry.")
 }
 Write-Host "   claude  : $claudeExe"
 Write-Host "   effort  : $Effort"

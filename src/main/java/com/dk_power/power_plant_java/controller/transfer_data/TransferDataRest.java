@@ -4,7 +4,6 @@ import com.dk_power.power_plant_java.dto.data_transfer.*;
 import com.dk_power.power_plant_java.entities.data_transfer.*;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
-import com.dk_power.power_plant_java.sevice.memory_repo.DataLoadingService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +18,6 @@ import java.util.Map;
 @AllArgsConstructor
 public class TransferDataRest {
     private final DataDistributionService dataDistributionService;
-    private final DataLoadingService dataLoadingService;
 
 
     @GetMapping("/types")

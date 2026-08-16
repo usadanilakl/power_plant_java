@@ -43,4 +43,14 @@ public class FieldListItemDto {
 
     // Attachment count (for table display)
     private int attachmentCount;
+
+    // Maximo bridge state (nullable — populated only when the row was routed to Maximo).
+    // Powers the "Maximo" status badge in the field-list table so users see at a glance
+    // whether the row reached Maximo, what type it landed as, and its current status.
+    private String maximoRecordType;      // "SR" | "WO" | null
+    private String maximoRecordId;        // ticketid (SR) or wonum (WO)
+    private String maximoStatus;          // NEW/CLOSED/CANCELLED (SR) or WAPPR/APPR/INPRG/COMP/CLOSE/CAN (WO)
+    private Boolean maximoSyncPending;    // true = create failed, backfill will retry
+    private Boolean maximoCancelPending;  // true = local delete but cancel failed
+    private Boolean maximoCompletePending; // true = local Closed but WO COMP failed, backfill will retry
 }

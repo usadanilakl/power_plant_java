@@ -17,6 +17,14 @@ export class TableDataService {
   deleteItem = signal<string | undefined>(undefined);
   hoverDebounceTime = signal<number>(0);
   isDragAndDropEnabled = signal<boolean>(false);
+  /**
+   * Whether the user may actually change the order. Separate from
+   * {@link isDragAndDropEnabled}, which declares the table an ORDERED list
+   * (and therefore suppresses column sorting). A read-only viewer of an
+   * ordered list keeps drag-drop "enabled" — so the rows stay in their
+   * authoritative order — but cannot drag.
+   */
+  isReorderAllowed = signal<boolean>(true);
   filterOutItems = signal<FilterOutRules | undefined>(undefined);
   clickSetupInput = signal<ClickSetup>({
     applyTo: 'row',
@@ -31,6 +39,16 @@ export class TableDataService {
   globalFilterLogic: filterLogic = 'AND';
   isTableIsolated = signal<boolean>(false);
   currentSearchCriteria: SearchCriteria = { type: 'column', query: '', filters: {}, columnFilterLogic: {}, globalFilterLogic: 'AND' };
+
+  /**
+   * Row count at which the last "load more" was requested, or -1 for "none
+   * pending". The viewport re-emits scrolledIndexChange for reasons other than
+   * user scrolling (re-render, resize, width sync), and the near-the-end test
+   * is permanently true for any list shorter than the viewport — so without
+   * this the table re-requests the same page forever. Reset whenever the list
+   * is emptied (a fresh search) so pagination can start over.
+   */
+  lastLoadMoreLength = -1;
 
   excludedItemIds = new Set<any>();
   highlightedItemIds = new Set<any>();

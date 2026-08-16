@@ -1,5 +1,7 @@
 
-<div class="table-wrapper" [class.resizing]="resizeService.isResizing()">
+<div class="table-wrapper" [class.resizing]="resizeService.isResizing()"
+     [class.density-compact]="toolbarDensity() === 'compact'"
+     [class.density-icon]="toolbarDensity() === 'icon'">
 
   <div class="search-bar" style="display:flex; align-items:center; gap:8px;">
     <button
@@ -26,17 +28,17 @@
       (click)="clearAllFilters()"
       title="Clear all column filters and search"
     >
-      ✕ Clear filters
+      ✕<span class="cf-label"> Clear filters</span>
     </button>
   </div>
   
   <div class="table-controls">
     <!-- <ng-content select="[table-controls]"></ng-content> -->
-     <app-buttons [buttons]="controlsService.tableControlButtons()"></app-buttons>
+     <app-buttons [buttons]="controlsService.tableControlButtons()" [density]="toolbarDensity()"></app-buttons>
      @if (driftEntityType()) {
        <button class="drift-scan-btn" (click)="scanDrift()" [disabled]="driftScanning()"
                title="Re-check this list for hub / SharePoint drift now">
-         {{ driftScanning() ? 'Scanning…' : '⟳ Re-check drift' }}
+         <span class="dsb-glyph">{{ driftScanning() ? '⏳' : '⟳' }}</span><span class="dsb-label">{{ driftScanning() ? ' Scanning…' : ' Re-check drift' }}</span>
        </button>
        <span class="drift-checked" title="When drift was last checked for this list (auto-refreshes)">
          checked {{ driftFmt(driftLastCheck()) }}
@@ -46,6 +48,34 @@
        }
      }
   </div>
+
+  <!-- Reorder controls. Rendered by the table itself rather than through
+       TableControlsService so they survive a feature that replaces the control
+       buttons wholesale (most do). Only ordered, user-reorderable tables get
+       them — everything else renders nothing. -->
+  @if (dragService.isReorderEnabled()) {
+    <div class="reorder-bar" [class.sequencing]="dragService.sequenceMode()">
+      @if (!dragService.sequenceMode()) {
+        <button class="ro-btn ro-start" (click)="dragService.enterSequenceMode()"
+                title="Click rows one by one in the order you want them, then apply">
+          <span class="ro-glyph">⇅</span><span class="ro-label"> Set order by clicking</span>
+        </button>
+        @if (selectionService.selectedItems().length > 1) {
+          <span class="ro-hint">
+            {{ selectionService.selectedItems().length }} selected — drag any one of them to move them all
+          </span>
+        }
+      } @else {
+        <span class="ro-state">Click rows in the order you want them</span>
+        <span class="ro-count">{{ dragService.pickedCount() }} picked</span>
+        <button class="ro-btn ro-apply" [disabled]="dragService.pickedCount() < 2"
+                (click)="dragService.applySequence()">✓ Apply order</button>
+        <button class="ro-btn" [disabled]="!dragService.pickedCount()"
+                (click)="dragService.clearPicks()">Reset picks</button>
+        <button class="ro-btn ro-cancel" (click)="dragService.exitSequenceMode()">Cancel</button>
+      }
+    </div>
+  }
 
   @if (driftEntityType() && driftMissingRows().length) {
     <div class="drift-strip">
@@ -141,17 +171,25 @@
             [class.external-click]="externalClickedItemId() !== null && item.id === externalClickedItemId()"
             [ngStyle]="syncService.getRowStyle(item)"
             [class.ghost-row]="dragService.dragState().ghostRowIndex === item.index"
+            [class.pick-target]="dragService.sequenceMode()"
+            [class.picked]="dragService.pickPositionOf(item) !== null"
             (mousedown)="dragService.onMouseDown($event, item)"
             (mouseup)="dragService.onMouseUp($event)"
             (dragover)="dragService.onDragOver($event)"
-            (click)="clickService.onRowClick(item, $event)"
+            (click)="onRowClick(item, $event)"
             (auxclick)="$event.preventDefault(); $event.stopPropagation()"
             (contextmenu)="clickService.onRowRightClick(item, $event)"
             (mouseenter)="onRowMouseEnter(item, $event)"
             (mouseleave)="onRowMouseLeave()"
           >
             @if (showRowIndex()) {
-              <td class="row-index-cell" (mousedown)="$event.stopPropagation()">{{ i + 1 }}</td>
+              <td class="row-index-cell" (mousedown)="$event.stopPropagation()">
+                @if (dragService.pickPositionOf(item); as pick) {
+                  <span class="pick-badge" title="Position in the order you are building">{{ pick }}</span>
+                } @else {
+                  {{ i + 1 }}
+                }
+              </td>
             }
             @if (driftEntityType()) {
               <td class="sync-col" [style.width.px]="56"
@@ -240,7 +278,7 @@
 
   <div *ngIf="dataService.selectedItems().length > 0" class="selection-info">
     <span>{{ dataService.selectedItems().length }} item(s) selected</span>
-     <app-buttons [buttons]="controlsService.tableSelectionControls()"></app-buttons>
+     <app-buttons [buttons]="controlsService.tableSelectionControls()" [density]="toolbarDensity()"></app-buttons>
   </div>
 
   @if (driftPopover(); as pop) {

@@ -11,9 +11,10 @@ import com.dk_power.power_plant_java.mappers.field_list.FieldListItemMapper;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFieldListEvents;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.FieldListItemSharePointAdapter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +26,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PwaFieldListItemService {
 
@@ -34,6 +34,29 @@ public class PwaFieldListItemService {
     private final FieldListItemMapper mapper;
     private final PermitAttachmentRepo attachmentRepo;
     private final NgValueService valueService;
+    /**
+     * Publishes {@link MaximoFieldListEvents.Submitted} on save. The Maximo bridge is
+     * wired via an AFTER_COMMIT listener ({@code MaximoFieldListEventListener}) so its
+     * Maximo call and persist run OUTSIDE this service's transaction — the row is
+     * durable before the bridge touches it, which avoids the REQUIRES_NEW-can't-see-
+     * uncommitted-row bug that codex flagged. When the feature is off, no listener
+     * bean exists and the event is a no-op.
+     */
+    private final ApplicationEventPublisher events;
+
+    public PwaFieldListItemService(FieldListItemSharePointAdapter spAdapter,
+                                   FieldListItemRepo repo,
+                                   FieldListItemMapper mapper,
+                                   PermitAttachmentRepo attachmentRepo,
+                                   NgValueService valueService,
+                                   ApplicationEventPublisher events) {
+        this.spAdapter = spAdapter;
+        this.repo = repo;
+        this.mapper = mapper;
+        this.attachmentRepo = attachmentRepo;
+        this.valueService = valueService;
+        this.events = events;
+    }
 
     @Transactional
     public PwaSubmissionResult submitFieldListItem(PwaFieldListItemDto dto) {
@@ -74,9 +97,16 @@ public class PwaFieldListItemService {
                 .format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a"));
         dto.setTimeSubmitted(timeSubmitted);
 
-        // Save locally first
+        // Save locally first — always. H2 is the durable local record and the source
+        // of truth for CRDT sync to other hubs, regardless of downstream routing.
         entity = repo.saveAndFlush(entity);
         log.info("[PWA FieldList] Saved locally: id={}, localUuid={}", entity.getId(), dto.getLocalUuid());
+
+        // Optional Maximo route (v1 — see project/features/maximo/field-list-sr.md). Emit
+        // a Submitted event; MaximoFieldListEventListener picks it up AFTER this tx commits
+        // and calls the bridge outside the caller's transaction. When the feature is off
+        // the listener bean is absent → event is a no-op → behavior identical to pre-feature.
+        events.publishEvent(new MaximoFieldListEvents.Submitted(entity.getId()));
 
         // Save attachments with dedup
         if (dto.getAttachments() != null) {

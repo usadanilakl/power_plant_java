@@ -164,14 +164,18 @@ public class NgLotoPointController {
                 String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
 
                 searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
-            } else if (criteria.getType().equals(SearchCriteria.SearchType.SORT) && criteria.getSortColumn() != null) {
-                // Handle explicit sorting case
+            } else {
+                // Everything else (SORT, or a type whose matching payload is empty) still
+                // runs the search. Falling through without assigning left searchResults
+                // null, which the client reads as "no content" and renders an empty table
+                // instead of the unfiltered list.
+                String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
                 String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
                 searchResults = ngLotoPointService.complexSearch(
                         criteria,
                         page - 1,
                         pageSize,
-                        criteria.getSortColumn(),
+                        sortColumn,
                         sortDirection,
                         true
                 );

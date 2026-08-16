@@ -113,12 +113,24 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "ADMIN")
+                // Field List submission and retrieval (walkdown reports, insulation etc.). Formerly
+                // anonymous under /api/pwa/** — now plant-only because submissions route to Maximo
+                // as SR/WO and unauthenticated writes would let anyone create Maximo records.
+                // Insulation contractors get read/close via the dedicated /insulation path below,
+                // NOT via /field-list-item — they should not be creating new items.
+                .requestMatchers("/api/pwa/field-list-item/**").hasAnyRole("PLANT", "ADMIN")
                 // Instrumentation register + logs carry their OWN role rather than riding on ROLE_PLANT:
                 // the whole point of ROLE_INSTRUMENTATION is that an admin grants it per user (I&C techs,
                 // contractors doing calibration work), so granting it implicitly to every plant operator
                 // would make the role meaningless. ADMIN is included as the usual superuser escape hatch.
                 .requestMatchers("/api/pwa/secured/instruments/**").hasAnyRole("INSTRUMENTATION", "ADMIN")
                 .requestMatchers("/api/pwa/secured/instrument-log/**").hasAnyRole("INSTRUMENTATION", "ADMIN")
+                // Insulation contractor view — same per-user-granted-role model as INSTRUMENTATION.
+                // PLANT + ADMIN are included so plant supervisors can see the queue and close on
+                // behalf of a contractor if needed. Contractors CAN'T submit new field lists via
+                // this path (they close existing WO-routed insulation items only) — the submit
+                // path lives at /api/pwa/field-list-item/** and is PLANT+ADMIN only.
+                .requestMatchers("/api/pwa/secured/insulation/**").hasAnyRole("INSULATION", "PLANT", "ADMIN")
                 // Read-only KIOSK role: an unattended display (e.g. a wall monitor whose own network can't
                 // reach Maximo) may GET Maximo data (the PM overview) but never write. Reads are @GetMapping
                 // and writes @PostMapping under this path, so a method-scoped matcher grants KIOSK read-only.

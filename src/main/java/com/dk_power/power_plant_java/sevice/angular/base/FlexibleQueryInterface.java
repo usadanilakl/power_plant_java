@@ -209,20 +209,28 @@ public interface FlexibleQueryInterface {
                 basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters(), criteria.getColumnFilterLogic()));
             }
 
-            // Handle GLOBAL search - apply query across all searchable columns
-            if (criteria.getType() == SearchCriteria.SearchType.GLOBAL
-                    && criteria.getQuery() != null
-                    && !criteria.getQuery().trim().isEmpty()) {
+            // Handle GLOBAL search - apply query across all searchable columns.
+            // Goes in basePredicates (always AND-ed) rather than predicates, so it
+            // narrows the column filters instead of competing with them under the
+            // caller's andLogicIsEnabled flag.
+            //
+            // The two are deliberately NOT exclusive: the table UI keeps the global
+            // box and the column filters live at the same time, and its client-side
+            // path (TableSearchService.performSearch) ANDs them. Gating this branch
+            // on type==GLOBAL made the server honour whichever one the frontend's
+            // `type` happened to name and silently drop the other — so a search that
+            // worked became wrong the moment the user added the second kind of filter.
+            if (criteria.getQuery() != null && !criteria.getQuery().trim().isEmpty()) {
                 // Determine global filter logic (default to AND if not specified)
                 boolean useAndLogicForGlobal = !"OR".equalsIgnoreCase(criteria.getGlobalFilterLogic());
                 List<String> searchColumns = getGlobalSearchColumns();
                 Predicate globalPredicate = buildGlobalSearchPredicate(root, criteriaBuilder, criteria.getQuery(), useAndLogicForGlobal, searchColumns);
                 if (globalPredicate != null) {
-                    predicates.add(globalPredicate);
+                    basePredicates.add(globalPredicate);
                 }
             }
             // Handle COLUMN search - only if filters exist and are not empty
-            else if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
+            if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
                 predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters(), criteria.getColumnFilterLogic()));
             }
 
@@ -407,8 +415,13 @@ public interface FlexibleQueryInterface {
                 Class<?> fieldType = path.get(fieldName).getJavaType();
 
                 Predicate fieldPredicate;
-                if (value == null || value.isEmpty()) {
-                    fieldPredicate = criteriaBuilder.disjunction();
+                if (value == null || value.isBlank()) {
+                    // An empty filter is "no constraint on this column", NOT "match
+                    // nothing". disjunction() here is always-false, and since these
+                    // predicates get AND-ed it emptied the whole result set whenever a
+                    // blank value survived to the server (a whitespace-only box, or a
+                    // caller passing the filter map through verbatim).
+                    fieldPredicate = criteriaBuilder.conjunction();
                 } else if (Collection.class.isAssignableFrom(fieldType)) {
                     fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value, logic);
                 } else {
@@ -447,7 +460,7 @@ public interface FlexibleQueryInterface {
         // String: multi-word fuzzy/contains
         String trimmed = value == null ? "" : value.trim();
         if (trimmed.isEmpty()) {
-            return cb.disjunction(); // nothing to filter on
+            return cb.conjunction(); // nothing to filter on => no constraint
         }
 
         String[] tokens = trimmed.toLowerCase().split("\\s+"); // e.g. "pm cn" -> ["pm","cn"]
@@ -468,7 +481,7 @@ public interface FlexibleQueryInterface {
         }
 
         if (tokenPredicates.isEmpty()) {
-            return cb.disjunction();
+            return cb.conjunction(); // only blank tokens => no constraint
         }
 
         // AND between tokens -> all words must match somewhere

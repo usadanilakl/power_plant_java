@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, of, tap } from 'rxjs';
+import { catchError, map, of, Subject, switchMap, tap } from 'rxjs';
 import { TableComponent } from '../../../shared/table/refactored/table.component';
 import { TableSearchService } from '../../../shared/table/refactored/services/table-search.service';
 import { TableStateService } from '../../../shared/table/refactored/services/table-state.service';
@@ -86,9 +86,30 @@ export class UserTableComponent implements OnInit {
   columns = signal<Column[]>(UserDto.toTableColumns());
   errorMessage = signal<string | null>(null);
 
+  /**
+   * Search/sort requests. switchMap so a superseded request is cancelled rather
+   * than racing the current one — without it two quick keystrokes produced two
+   * fetches whose responses both appended, in completion order, so the older
+   * query's rows could land last and win.
+   */
+  private replaceFetch$ = new Subject<SearchCriteria>();
+
   ngOnInit(): void {
     // The page component owns the initial load via stateService.loadInitialPaginated().
-    // No-op here so a re-mounted table doesn't double-load.
+    // No initial fetch here so a re-mounted table doesn't double-load.
+    this.replaceFetch$.pipe(
+      switchMap(criteria => this.runFetch(criteria).pipe(
+        tap(rows => {
+          if (rows === null) return;
+          // Swap the rows in only once the winning response is here: clearing up
+          // front blanked the table on every keystroke.
+          this.stateService.clearLoaded();
+          this.stateService.addLoadedUsers(rows);
+          if (rows.length > 0) this.stateService.incrementPage();
+        }),
+      )),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
   }
 
   onRowDoubleClick(item: any): void {
@@ -106,8 +127,8 @@ export class UserTableComponent implements OnInit {
       pageSize: this.stateService.getPageSize(),
     };
     this.stateService.setSearchCriteria(merged);
-    this.stateService.clearLoaded();
-    this.fetchPage(merged, /* append */ false);
+    this.stateService.resetPage();
+    this.replaceFetch$.next(merged);
   }
 
   onSortChanged(event: { column: Column; isAscending: boolean }): void {
@@ -121,8 +142,8 @@ export class UserTableComponent implements OnInit {
       type: existing.type ?? ('sort' as any),
     };
     this.stateService.setSearchCriteria(criteria);
-    this.stateService.clearLoaded();
-    this.fetchPage(criteria, /* append */ false);
+    this.stateService.resetPage();
+    this.replaceFetch$.next(criteria);
   }
 
   onLoadMore(criteria: SearchCriteria | void): void {
@@ -138,7 +159,7 @@ export class UserTableComponent implements OnInit {
       page: this.stateService.getCurrentPage(),
       pageSize: this.stateService.getPageSize(),
     };
-    this.fetchPage(next, /* append */ true);
+    this.fetchNextPage(next);
   }
 
   loadUniqueItems(columnKey: string, searchString: string): void {
@@ -149,7 +170,8 @@ export class UserTableComponent implements OnInit {
     this.stateService.loadMoreUniqueItems(columnKey, searchString);
   }
 
-  private fetchPage(criteria: SearchCriteria, append: boolean): void {
+  /** Fetch one page. Emits the mapped rows, or null when the request failed. */
+  private runFetch(criteria: SearchCriteria) {
     this.errorMessage.set(null);
     const hasFilters = criteria.type === 'global'
       ? !!criteria.query
@@ -159,17 +181,23 @@ export class UserTableComponent implements OnInit {
       ? this.userService.searchUsers(criteria, this.stateService.getPageSize())
       : this.userService.getUsers(criteria.page ?? 1, this.stateService.getPageSize());
 
-    obs.pipe(
-      tap(res => {
-        const rows = ((res.responseData?.content as any[]) ?? []).map(u => UserDto.fromJson(u));
-        if (append) this.stateService.addLoadedUsers(rows);
-        else this.stateService.addLoadedUsers(rows); // already cleared; addLoadedUsers appends to [] which is fine
-        if (rows.length > 0) this.stateService.incrementPage();
-      }),
+    return obs.pipe(
+      map(res => ((res.responseData?.content as any[]) ?? []).map(u => UserDto.fromJson(u))),
       catchError(err => {
         console.error('[Users] table fetch failed:', err);
         this.errorMessage.set('Failed to load users');
         return of(null);
+      }),
+    );
+  }
+
+  /** Append the next page (load-more only — replacements go through replaceFetch$). */
+  private fetchNextPage(criteria: SearchCriteria): void {
+    this.runFetch(criteria).pipe(
+      tap(rows => {
+        if (!rows || rows.length === 0) return;
+        this.stateService.addLoadedUsers(rows);
+        this.stateService.incrementPage();
       }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe();

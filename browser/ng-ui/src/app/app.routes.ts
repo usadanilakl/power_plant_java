@@ -12,6 +12,7 @@ import { authGuard } from './auth/auth.guard';
 import { plantGuard } from './guards/plant.guard';
 import { plantGroupGuard } from './guards/plant-group.guard';
 import { instrumentationGuard } from './guards/instrumentation.guard';
+import { insulationGuard } from './guards/insulation.guard';
 
 export const routes: Routes = [
     {
@@ -217,4 +218,11 @@ export const routes: Routes = [
         { path: ':tag', loadComponent: () => import('./features/equipment/instrument/instrument-detail/instrument-detail.component').then(m => m.InstrumentDetailComponent) }
       ]
     },
+    {
+      // Insulation contractor queue. Simple flat list — no chooser, no nested routes. The guard
+      // gate matches the hub's /api/pwa/secured/insulation/** rule (ROLE_INSULATION or supervisor).
+      path: 'insulation',
+      loadComponent: () => import('./features/insulation/insulation-page.component').then(m => m.InsulationPageComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard, insulationGuard]
+    }
 ];

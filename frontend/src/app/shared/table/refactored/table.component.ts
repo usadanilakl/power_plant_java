@@ -150,6 +150,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
+  /** Set false to show an ordered (unsortable) list the user may not re-order. */
+  canReorder = input<boolean>(true);
   filterOutItems = input<FilterOutRules | undefined>();
   hoveredItemId = input<number | null>(null);
   /** ID of item to scroll to (triggered by external click events) */
@@ -266,6 +268,56 @@ export class TableComponent implements OnInit, AfterViewInit {
   /** Emitted when the user clears all filters — server-backed tables should reload. */
   filtersCleared = output<void>();
 
+  //====================== Adaptive toolbar density ======================
+  /**
+   * The control bar, the search bar and the selection bar all share the
+   * wrapper's height with the scroll viewport — and the viewport is the only
+   * one of them that can shrink to 0 (`overflow:hidden` zeroes its automatic
+   * minimum size). So every extra line a wrapping button row grows is taken
+   * straight out of the rows: the bars end up covering the table.
+   *
+   * The bars are therefore collapsed instead of allowed to wrap, in tiers.
+   * The tier is chosen from the table's OWN measured box rather than a
+   * `@media` query, because these tables live inside split panes, floating
+   * windows and dialogs that are far narrower than the browser viewport —
+   * a viewport-width media query simply never fires for them.
+   */
+  private hostRef = inject(ElementRef<HTMLElement>);
+  private measuredWidth = signal(0);
+  private measuredHeight = signal(0);
+  private densityObserver?: ResizeObserver;
+
+  toolbarDensity = computed<'normal' | 'compact' | 'icon'>(() => {
+    const w = this.measuredWidth();
+    const h = this.measuredHeight();
+    if (w === 0) return 'normal'; // not measured yet — start at the desktop look
+    if (w < 640) return 'icon';
+    if (w < 1000 || h < 600) return 'compact';
+    return 'normal';
+  });
+
+  private setupDensityObserver(): void {
+    const el = this.hostRef.nativeElement;
+    // Idempotent, matching TableSyncService: a re-mounted table must not stack
+    // observers on a service/component instance that outlives the view.
+    this.densityObserver?.disconnect();
+    this.densityObserver = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box) return;
+      // Whole pixels only — a drag-resize otherwise writes the signals (and so
+      // re-runs change detection) on every sub-pixel frame.
+      const w = Math.round(box.width);
+      const h = Math.round(box.height);
+      if (w !== this.measuredWidth()) this.measuredWidth.set(w);
+      if (h !== this.measuredHeight()) this.measuredHeight.set(h);
+    });
+    // observe() itself delivers the first measurement (after layout, before
+    // paint), so no synchronous read is needed here — and writing the signals
+    // from the observer rather than from inside the AfterViewInit hook keeps
+    // the first tier change out of the change-detection pass that created it.
+    this.densityObserver.observe(el);
+  }
+
   filterInputs = viewChildren(ColumnFilterInputComponent);
   headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
   tableContainerRef = viewChild<ElementRef<HTMLDivElement>>('tableContainer');
@@ -297,36 +349,50 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   private flagEffects = effect(() => {
     this.dataService.isDragAndDropEnabled.set(this.isDragAndDropEnabled());
+    this.dataService.isReorderAllowed.set(this.canReorder());
     this.dataService.isTableIsolated.set(this.isTableIsolated());
   });
 
-  /** Apply initial search criteria when provided - only updates UI state, does NOT trigger search event.
-   *  The parent component is responsible for loading data with initial criteria.
+  /**
+   * Apply a search criteria pushed in through {@code [initialSearchCriteria]}.
+   * <p>
+   * Runs the criteria through the SAME path a typed search takes: filter state,
+   * client-side re-filter, and the `search` output. It used to update the filter
+   * state only, which is why a programmatic search (LOTO builder OCR term, query
+   * param, dialog pre-filter) put the new term in the search box and left the
+   * rows on the previous query — the search itself was never triggered. Hosts
+   * therefore no longer need their own criteria-watching fetch effect; the
+   * `(search)` handler they already have covers it, and having exactly one
+   * fetch path removes the double-load the two used to race into.
+   * <p>
+   * Re-applies whenever the criteria CHANGES, never on a bare re-render:
+   * identical criteria are ignored so a change-detection pass can't restage a
+   * search (and re-clear the list underneath the user).
    */
-  private initialSearchCriteriaApplied = false;
+  private lastAppliedInitialCriteria: string | null = null;
   private initialSearchCriteriaEffect = effect(() => {
     const criteria = this.initialSearchCriteria();
-    // Only apply once when criteria is first provided
-    if (criteria && !this.initialSearchCriteriaApplied) {
-      this.initialSearchCriteriaApplied = true;
-      // Apply global search UI state if provided
-      if (criteria.type === 'global' && criteria.query) {
-        this.dataService.globalSearchQuery = criteria.query;
-        if (criteria.globalFilterLogic) {
-          this.dataService.globalFilterLogic = criteria.globalFilterLogic;
-        }
-      }
-      // Apply column filters UI state if provided
-      else if (criteria.type === 'column' && criteria.filters) {
-        this.dataService.columnFilters.set(criteria.filters);
-        if (criteria.columnFilterLogic) {
-          this.dataService.columnFilterLogic = criteria.columnFilterLogic;
-        }
-      }
-      // Update current search criteria for state tracking (but don't emit search event)
-      this.dataService.currentSearchCriteria = criteria;
-    }
+    const key = criteria ? JSON.stringify(criteria) : null;
+    if (!criteria || key === this.lastAppliedInitialCriteria) return;
+    this.lastAppliedInitialCriteria = key;
+    this.searchService.applyExternalCriteria(criteria);
+    this.syncColumnFilterInputs();
   });
+
+  /**
+   * Push the filter state back into the per-column filter boxes. They own their
+   * own text (no value input), so a criteria applied from outside would leave
+   * them showing the previous filter — or blank while the table is filtered.
+   */
+  private syncColumnFilterInputs(): void {
+    const filters = this.dataService.columnFilters();
+    const filterable = this.columns().filter((c) => c.filterable);
+    this.filterInputs().forEach((input, i) => {
+      const column = filterable[i];
+      if (!column) return;
+      input.setValue(filters[column.accessorKey || column.id] ?? '');
+    });
+  }
 
   private filterOutEffect = effect(() => {
     const rules = this.filterOutItems();
@@ -746,15 +812,34 @@ export class TableComponent implements OnInit, AfterViewInit {
       .subscribe(() => { if (++done === ids.length) { this.driftBusy.set(false); this.closeDriftPopover(); this.loadDrift(t); } }));
   }
 
+  /**
+   * Row click entry point. While the table is in click-to-order mode the click
+   * records a position instead of selecting/opening the row — routed here
+   * rather than inside TableClickService because features subclass that
+   * service's handlers and would each have to re-implement the guard.
+   */
+  onRowClick(item: any, event: MouseEvent): void {
+    if (this.dragService.sequenceMode()) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.dragService.pickItem(item);
+      return;
+    }
+    this.clickService.onRowClick(item, event);
+  }
+
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     this.syncService.initializeTable();
     this.syncService.setupResizeObserver();
     this.syncService.setupHorizontalScrollSync();
     this.resizeService.setupResizeListeners();
+    this.setupDensityObserver();
   }
 
   ngOnDestroy(): void {
+    this.densityObserver?.disconnect();
+    this.densityObserver = undefined;
     this.clickService.onDestroy();
     if (this.overlayHideTimer != null) {
       clearTimeout(this.overlayHideTimer);

@@ -13,5 +13,4 @@ public interface ExcelTransferService<
         R extends BaseRepository<E>,
         M extends BaseMapper> extends CrudService<E,D,R,M>
 {
-    List<E> transferExcelToDB();
 }

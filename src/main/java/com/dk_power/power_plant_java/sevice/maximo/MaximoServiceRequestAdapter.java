@@ -234,6 +234,47 @@ public class MaximoServiceRequestAdapter {
     }
 
     /**
+     * Maximo max length for the status-change memo (see WO adapter for the incident that established this).
+     * A longer memo makes Maximo reject the ENTIRE status change with BMXAA4590E wrapping BMXAA4049E —
+     * silently leaving the SR in its old state. Truncate rather than fail.
+     */
+    private static final int MAX_STATUS_MEMO_LEN = 50;
+
+    /**
+     * Change an SR's status via the {@code wsmethod:changeStatus} action. Mirrors the WO pattern.
+     * If the tenant doesn't expose the action on SR (some deployments only enable it on WO), catch
+     * and fall through to {@link #updateFields} with a direct {@code spi:status} MERGE-PATCH — which
+     * is confirmed to work via API probe. Terminal statuses observed on this tenant: CLOSED, CANCELLED.
+     */
+    public MaximoServiceRequestDto changeStatus(String href, String status, String memo) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (status == null || status.isBlank()) throw new IllegalArgumentException("status is required");
+        String cleanStatus = status.trim().toUpperCase();
+        String cleanMemo = null;
+        if (memo != null && !memo.isBlank()) {
+            String m = memo.trim();
+            cleanMemo = m.length() > MAX_STATUS_MEMO_LEN ? m.substring(0, MAX_STATUS_MEMO_LEN).trim() : m;
+        }
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", cleanStatus);
+            if (cleanMemo != null) body.put("memo", cleanMemo);
+            access.invokeAction(access.osUrl(OS) + "/" + href, "wsmethod:changeStatus", body);
+            log.info("[Maximo] SR {} status → {}", href, cleanStatus);
+        } catch (RuntimeException actionEx) {
+            log.warn("[Maximo] wsmethod:changeStatus rejected for SR {} ({}); falling back to MERGE-PATCH spi:status",
+                    href, actionEx.getMessage());
+            updateFields(href, Map.of("spi:status", cleanStatus));
+        }
+        return findByHref(href).orElse(null);
+    }
+
+    /** Convenience: cancel an SR by setting status to CANCELLED. */
+    public MaximoServiceRequestDto cancel(String href, String reason) {
+        return changeStatus(href, "CANCELLED", reason);
+    }
+
+    /**
      * Add a worklog note to an SR via an additive MERGE of one {@code spi:worklog} row. The SR worklog
      * READ sub-collection is {@code uxworklog}, but the inline WRITE key is the generic {@code spi:worklog}
      * (same as WOs) — if rows ever fail to persist on this instance, fall back to {@code spi:uxworklog}.

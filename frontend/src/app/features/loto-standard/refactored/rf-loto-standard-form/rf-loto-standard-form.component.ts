@@ -313,10 +313,15 @@ export class RfLotoStandardFormComponent {
    * user was seeing: LotoStandardPendingChange creation triggers an SSE
    * echo that refetches the (still-unmodified) standard, which would
    * otherwise clobber the optimistic re-order.
+   * <p>
+   * If the server rejects the reorder (e.g. the caller lacks the Control
+   * Authority role) the optimistic update is rolled back, so the table can't
+   * keep showing an order that was never persisted.
    */
   onLotoPointsReordered(reorderedLotoPoints: LotoPointDto[]): void {
     const currentEntity = this.entity();
     const approved = this.isApprovedStandard(currentEntity);
+    const previousLotoPoints = [...(currentEntity.lotoPoints || [])];
     if (!approved) {
       // Optimistic update runs even for unsaved (id=0) standards — pre-
       // existing behavior. Only the server persist is gated on id.
@@ -336,9 +341,18 @@ export class RfLotoStandardFormComponent {
         },
         error: (err) => {
           console.error('Failed to reorder LOTO points:', err);
+          if (!approved) this.restoreLotoPointOrder(previousLotoPoints);
           this.messageService.showError(err?.error?.message ?? err?.message ?? 'Failed to reorder LOTO points');
         }
       });
+  }
+
+  /** Put the pre-reorder point order back after a rejected/failed reorder. */
+  private restoreLotoPointOrder(previousLotoPoints: LotoPointDto[]): void {
+    this.stateService.setSelectedItem(new LotoStandardDto({
+      ...this.entity(),
+      lotoPoints: previousLotoPoints
+    }));
   }
 
   /**

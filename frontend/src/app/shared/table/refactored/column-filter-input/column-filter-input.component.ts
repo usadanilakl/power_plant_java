@@ -42,6 +42,18 @@ export class ColumnFilterInputComponent {
     });
   }
 
+  /**
+   * Externally set this input's text without emitting — used when a criteria is
+   * applied from outside the table (see TableComponent.syncColumnFilterInputs),
+   * so the box shows the filter that is actually in effect. The parent owns the
+   * search; emitting here would re-enter it.
+   */
+  setValue(value: string): void {
+    if (this.filterValue() === value) return;
+    this.filterValue.set(value);
+    this.filterDropdownOpen.set(false);
+  }
+
   /** Externally clear this input's text/dropdown without emitting (parent does the search). */
   reset(): void {
     this.filterValue.set('');

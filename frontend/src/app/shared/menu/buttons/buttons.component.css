@@ -116,10 +116,54 @@ button.guide-highlight {
   z-index: 100;
 }
 
-/* Mobile (<=768px): a wrapping button row grows tall and, inside fixed-height
-   containers like the table's selection bar, pushes content off-screen.
-   Collapse to a single horizontally-scrollable strip so the row stays one
-   line and all buttons remain reachable. Desktop layout unchanged. */
+/* ===== Density tiers =====
+   A wrapping button row grows one line at a time, and inside a host that
+   splits its height with content (the table's control / selection bars) every
+   extra line is stolen from the content. The host measures ITSELF and picks a
+   tier; the row never wraps below `normal`, it becomes a single horizontally
+   scrollable strip instead, and at `icon` the labels move into tooltips.
+   Driven by the host's own box, so it works in split panes and floating
+   windows that are far narrower than the browser viewport. */
+.buttons-row.density-compact,
+.buttons-row.density-icon {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.buttons-row.density-compact button,
+.buttons-row.density-icon button {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Keep the strip's own scrollbar from adding height on top of the buttons. */
+.buttons-row.density-compact::-webkit-scrollbar,
+.buttons-row.density-icon::-webkit-scrollbar {
+  height: 4px;
+}
+.buttons-row.density-compact::-webkit-scrollbar-thumb,
+.buttons-row.density-icon::-webkit-scrollbar-thumb {
+  background: var(--scroll-bar-color, #888);
+  border-radius: 2px;
+}
+
+/* Icon tier: drop the label ONLY where an icon can carry the meaning —
+   a button configured without an icon keeps its text or it would render
+   as an empty box. `tooltipOf()` promotes the dropped label to the tooltip. */
+.buttons-row.density-icon button.has-icon {
+  padding: 6px 9px;
+}
+
+.buttons-row.density-icon button.has-icon .button-label {
+  display: none;
+}
+
+/* Mobile (<=768px): same collapse, for hosts that don't set a density. */
 @media (max-width: 768px) {
   .buttons-row {
     flex-wrap: nowrap;

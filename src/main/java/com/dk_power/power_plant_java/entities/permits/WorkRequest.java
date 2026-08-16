@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.Where;
 
 import java.util.ArrayList;
@@ -56,7 +58,10 @@ public class WorkRequest extends BasePermitEntity {
     @Column(name = "submitter_company")
     private String submitterCompany;
 
+    // Same reason as the lookups in BasePermitEntity: Value is @Where-filtered on
+    // soft delete, so a merged/deleted category would otherwise fail the whole page.
     @ManyToOne
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "work_category_id")
     private Value workCategory;
 

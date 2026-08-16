@@ -186,6 +186,10 @@ export class TableSearchService {
     // Update the indices for virtual scrolling.
     this.utilService.updateItemIndices(filteredResult);
 
+    // An emptied list means the data was replaced (fresh search / clear), so
+    // pagination starts over — release the load-more guard.
+    if (filteredResult.length === 0) this.dataService.lastLoadMoreLength = -1;
+
     // Set the filtered items signal
     this.dataService.filteredItems.set(filteredResult);
 
@@ -193,7 +197,82 @@ export class TableSearchService {
     // This is crucial for accurate width calculation after filtering/sorting.
     setTimeout(() => {
       this.syncService.synchronizeColumnWidths();
+      this.clampViewportScroll(filteredResult.length);
     }, 50);
+  }
+
+  /**
+   * Keep the virtual viewport's scroll offset inside the new content.
+   * <p>
+   * A filter/search that shrinks the list leaves the viewport scrolled to an
+   * offset that no longer exists — cdk-virtual-scroll then renders an empty
+   * range and the table looks like it found nothing, even when rows matched.
+   * (Reproduces as: scroll a long list, filter down to a handful, get a blank
+   * table.) Runs after the DOM has the new rows so the spacer height is real.
+   */
+  private clampViewportScroll(newLength: number): void {
+    const viewport = this.dataService.viewport();
+    if (!viewport) return;
+    try {
+      const contentHeight = newLength * this.dataService.rowHeight;
+      const maxOffset = Math.max(0, contentHeight - viewport.getViewportSize());
+      if (viewport.measureScrollOffset() > maxOffset) {
+        viewport.scrollToOffset(maxOffset);
+        viewport.checkViewportSize();
+      }
+    } catch {
+      // Viewport detached mid-flight (table closed while a search was in
+      // progress) — nothing to correct.
+    }
+  }
+
+  /**
+   * Apply a criteria pushed in from OUTSIDE the table (the
+   * {@code [initialSearchCriteria]} input) as if the user had typed it: mirror
+   * it into the filter state, re-run the client-side filter, and publish it on
+   * the `search` output so a server-backed host fetches.
+   * <p>
+   * This used to update the filter state and stop there, so a programmatic
+   * search (LOTO builder OCR term, a query param, a dialog pre-filter) left the
+   * search box showing the new term while the rows stayed on the previous one —
+   * no search was ever triggered. Debounce is deliberately skipped: the caller
+   * has already decided the criteria, there is nothing to wait for.
+   */
+  applyExternalCriteria(criteria: SearchCriteria): void {
+    clearTimeout(this.searchDebounceTimer); // a pending keystroke must not undo this
+
+    this.dataService.globalSearchQuery = criteria.query ?? '';
+    this.dataService.columnFilters.set({ ...(criteria.filters ?? {}) });
+    if (criteria.globalFilterLogic) {
+      this.dataService.globalFilterLogic = criteria.globalFilterLogic;
+    }
+    if (criteria.columnFilterLogic) {
+      this.dataService.columnFilterLogic = criteria.columnFilterLogic;
+    }
+
+    // Publish the same SHAPE a typed search publishes — `query` and `filters`
+    // both always present. Hosts merge the emitted criteria over the one they
+    // already hold, so a caller that simply omits `filters` would otherwise
+    // leave the previous column filter silently in force.
+    const normalized: SearchCriteria = {
+      ...this.utilService.buildSearchCriteria(
+        this.dataService.globalSearchQuery,
+        this.dataService.columnFilters(),
+        this.dataService.columnFilterLogic,
+        this.dataService.globalFilterLogic
+      ),
+      ...(criteria.sortColumn
+        ? { sortColumn: criteria.sortColumn, sortDirection: criteria.sortDirection }
+        : {}),
+      page: 1,
+      ...(criteria.pageSize ? { pageSize: criteria.pageSize } : {}),
+    };
+
+    this.dataService.currentSearchCriteria = normalized;
+    // New query => pagination restarts.
+    this.dataService.lastLoadMoreLength = -1;
+    this.updateFilteredItems();
+    this.dataService.search.set(normalized);
   }
 
   onGlobalSearchChange(): void {
@@ -240,6 +319,8 @@ export class TableSearchService {
         this.dataService.currentSearchCriteria,
         this.dataService.tableId
       );
+      // New query => pagination restarts, so the previous load-more guard is stale.
+      this.dataService.lastLoadMoreLength = -1;
       this.updateFilteredItems();
       this.dataService.search.set({ ...searchCriteria });
     }, 400);

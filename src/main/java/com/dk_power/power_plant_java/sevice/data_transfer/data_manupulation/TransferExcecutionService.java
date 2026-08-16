@@ -7,15 +7,6 @@ import com.dk_power.power_plant_java.dto.data_transfer.PidJson;
 import java.util.List;
 
 public interface TransferExcecutionService {
-    void transferBypassFromExcel();
-    void transferHrsgPipeFromExcel();
-    void transferHrsgValvesFromExcel();
-    void transferKiewitPipeFromExcel();
-    void transferKiewitValveFromExcel();
-    void transferLotoPointsFromExcel();
-    void transferOldLotoPointsFromExcel();
-    void transferRevisedLotoPointsFromExcel();
-    void transferElTableFromExcel();
     List<PidJson> getPidsFromJson();
     List<HeatTraceJson> getHtFromJson();
     List<HighilightsJson> getHighlitsFromJson();

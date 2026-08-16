@@ -20,6 +20,16 @@ export interface ButtonConfig {
 
 export type ButtonColor = 'primary' | 'accent' | 'warn' | 'success' | 'info' | 'secondary' | 'danger';
 
+/**
+ * How much room the button row is allowed to take.
+ * - `normal` — full labels, row may wrap (desktop default).
+ * - `compact` — tighter padding/font, single non-wrapping strip.
+ * - `icon`   — as compact, plus labels are dropped on buttons that carry an
+ *              icon (the label moves into the tooltip so nothing is lost).
+ * The host decides the tier; the row never measures anything itself.
+ */
+export type ButtonDensity = 'normal' | 'compact' | 'icon';
+
 @Component({
   selector: 'app-buttons',
   standalone: true,
@@ -30,6 +40,22 @@ export type ButtonColor = 'primary' | 'accent' | 'warn' | 'success' | 'info' | '
 export class ButtonsComponent {
   buttons = input.required<ButtonConfig[]>();
   layout = input<'row' | 'column'>('row');
+  density = input<ButtonDensity>('normal');
+
+  /** Resolved label text (config allows a plain string or a signal). */
+  labelOf(button: ButtonConfig): string {
+    return this.isString(button.name) ? button.name : button.name();
+  }
+
+  /**
+   * Tooltip actually rendered. An explicit tooltip always wins; otherwise, when
+   * the label is hidden (icon density + the button has an icon) the label is
+   * promoted to the tooltip so an icon-only button is still identifiable.
+   */
+  tooltipOf(button: ButtonConfig): string {
+    if (button.tooltip) return button.tooltip;
+    return this.density() === 'icon' && button.icon ? this.labelOf(button) : '';
+  }
 
   onButtonClick(button: ButtonConfig): void {
     if (!button.disabled) {

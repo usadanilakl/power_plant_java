@@ -371,6 +371,19 @@ export class AuthService {
   }
 
   /**
+   * True if the signed-in user may use the Insulation contractor view. Mirrors the hub rule
+   * (SecurityConfig: ROLE_INSULATION, ROLE_PLANT, or ROLE_ADMIN on /api/pwa/secured/insulation/**).
+   * PLANT is included so plant supervisors see the contractor queue too — they can close
+   * WOs on behalf of a contractor if needed.
+   */
+  isInsulation(): boolean {
+    const user = this.getAuthData()?.user;
+    if (!user) return false;
+    const roles = (user.roles ?? []).map(r => (r ?? '').toUpperCase());
+    return roles.some(r => r.includes('INSULATION') || r.includes('PLANT') || r.includes('ADMIN'));
+  }
+
+  /**
    * True when the signed-in user is registered but still awaiting admin approval — they have a working
    * tier-1 session but no plant role yet. Used to show a "pending approval" hint where plant tools would
    * be. (A regular approved contractor is isActive=true, so this is false for them.)

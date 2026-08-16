@@ -81,6 +81,21 @@ const APP_BASE = `${environment.serverUrl}/angular/browser`;
             </section>
           }
 
+          @if (showInsulation) {
+            <section class="card-section">
+              <h2 class="section-title">Insulation</h2>
+              <div class="card-grid">
+                @for (card of insulationCards; track card.route) {
+                  <button class="home-card" (click)="navigate(card.route)">
+                    <span class="card-icon">{{ card.icon }}</span>
+                    <span class="card-title">{{ card.title }}</span>
+                    <span class="card-desc">{{ card.description }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
           @if (showPlantGroupCards) {
             <section class="card-section">
               <h2 class="section-title">Personnel</h2>
@@ -295,6 +310,14 @@ export class HomePageComponent {
   ];
 
   /**
+   * Insulation contractor queue — same per-user-granted-role model as instrumentation. Plant
+   * supervisors (ROLE_PLANT) see it too so they can close on behalf of a contractor if needed.
+   */
+  insulationCards: HomeCard[] = [
+    { title: 'Insulation', description: 'Active insulation items — mark complete when done', icon: '🧯', route: '/insulation' }
+  ];
+
+  /**
    * Tier 2b — Plant-affiliated groups only (Admin / Plant / NAES / JPower). Not visible to
    * contractors or unaffiliated users. See {@code project/features/users/communication/pwa-step-5-wiring.md}.
    */
@@ -318,6 +341,10 @@ export class HomePageComponent {
 
   get showInstrumentation(): boolean {
     return this.authService.isLoggedIn() && this.authService.isInstrumentation();
+  }
+
+  get showInsulation(): boolean {
+    return this.authService.isLoggedIn() && this.authService.isInsulation();
   }
 
   get showPlantGroupCards(): boolean {

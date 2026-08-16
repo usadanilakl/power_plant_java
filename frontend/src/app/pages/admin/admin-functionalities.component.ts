@@ -79,6 +79,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              [active]="rla7.isActive">
             DB Health
           </a>
+          <a mat-tab-link
+             routerLink="maximo-drift"
+             routerLinkActive
+             #rla8="routerLinkActive"
+             [active]="rla8.isActive">
+            Maximo Drift
+          </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>
           <router-outlet></router-outlet>

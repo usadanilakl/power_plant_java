@@ -9,9 +9,13 @@ import com.dk_power.power_plant_java.mappers.field_list.FieldListItemMapper;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoFieldListEvents;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.FieldListItemSharePointAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,12 @@ public class NgFieldListItemService {
     private final PermitAttachmentRepo attachmentRepo;
     private final FieldListItemSharePointAdapter spAdapter;
     private final SyncConfig syncConfig;
+    /**
+     * Emits Maximo bridge events; MaximoFieldListEventListener handles them AFTER commit
+     * so the bridge runs outside this service's tx. When the feature is off, the listener
+     * bean is absent → events are no-ops → behavior matches pre-feature.
+     */
+    private final ApplicationEventPublisher events;
 
     public List<FieldListItemDto> getAll() {
         return mapper.convertToDtos(repo.findAll());
@@ -111,7 +121,19 @@ public class NgFieldListItemService {
                 log.warn("[FieldList] SP status change failed for spId={}: {}", entity.getSharepointId(), e.getMessage());
             }
         }
+
+        // Publish StatusChanged; MaximoFieldListEventListener checks the wo-completion-status
+        // match on its own side (single source of truth for that config), then COMPs the WO
+        // AFTER this tx commits. No-op when the listener bean is absent (feature off).
+        events.publishEvent(new MaximoFieldListEvents.StatusChanged(entity.getId(), statusName, currentActor()));
+
         return mapper.convertToDto(entity);
+    }
+
+    /** Best-effort username from Spring Security for the Maximo memo string. */
+    private static String currentActor() {
+        Authentication a = SecurityContextHolder.getContext().getAuthentication();
+        return (a == null || a.getName() == null || a.getName().isBlank()) ? null : a.getName();
     }
 
     public PermitAttachment uploadAttachment(Long entityId, String fileName, String contentType, String base64Content) {
@@ -157,6 +179,10 @@ public class NgFieldListItemService {
             entity.setDeleted(true);
             repo.save(entity);
             log.info("[FieldList] Soft-delete saved for id={}", id);
+            // Publish Cancelled; MaximoFieldListEventListener runs AFTER commit, re-fetches
+            // the (now soft-deleted) row via findByIdIncludingDeleted, and cancels the
+            // Maximo record if maximoHref is set. Bridge-absent = no-op.
+            events.publishEvent(new MaximoFieldListEvents.Cancelled(id, "Retracted in PWA/hub"));
         });
     }
 

@@ -295,6 +295,10 @@ td {
   overflow: hidden;
   position: relative;
   display: flex;
+  /* `overflow:hidden` sets this flex item's automatic minimum size to 0, so
+     without a floor the bars above/below can squeeze the rows out of existence.
+     Two rows' worth keeps the table a table no matter how tight the pane. */
+  min-height: 96px;
 }
 
 .viewport {
@@ -456,33 +460,216 @@ td {
   background-color: var(--primary-text, #616161);
 }
 
-/* === Mobile (<=768px): keep the selection/bulk bar compact so it never eats
-   the table. On a phone the bulk-action buttons wrap into several rows, making
-   .selection-info tall enough to steal all the flex space from the scroll
-   viewport (which can shrink to 0 via min-height:0) — so it "covers" the rows.
-   Lock the bar to a fixed short height and let the buttons scroll inside it.
-   Companion rule lives in buttons.component.css (.buttons-row nowrap). === */
-@media (max-width: 768px) {
-  .selection-info {
-    min-height: 0;
-    height: 56px;
-    flex: 0 0 56px;      /* never grow, never shrink — the viewport keeps its space */
-    padding: 6px 8px;
-    gap: 8px;
-    overflow: hidden;    /* height is locked; buttons scroll internally */
-  }
+/* ==========================================================================
+   Reorder bar + click-to-order mode
+   Only rendered for ordered tables the user may re-order, so it costs nothing
+   everywhere else. Kept to one non-wrapping line for the same reason the other
+   bars are — see the density block below.
+   ========================================================================== */
+.reorder-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background-color: var(--secondary-background, #f9f9f9);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  font-size: 12px;
+  color: var(--secondary-text, #666);
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
 
-  .selection-info > span {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    font-size: 12px;
-  }
+.reorder-bar.sequencing {
+  background-color: color-mix(in srgb, var(--accent-color, #1976d2) 14%, transparent);
+  border-bottom-color: var(--accent-color, #1976d2);
+  color: var(--primary-text, #333);
+}
 
-  .selection-info app-buttons {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: block;
-  }
+.reorder-bar > * {
+  flex: 0 0 auto;
+}
+
+.ro-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  background-color: var(--primary-background, #fff);
+  color: var(--primary-text, #333);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ro-btn:hover:not(:disabled) { background-color: var(--hover-color, #f0f0f0); }
+.ro-btn:disabled { opacity: 0.45; cursor: default; }
+
+.ro-apply {
+  border-color: var(--accent-color, #1976d2);
+  color: var(--accent-color, #1976d2);
+  font-weight: 600;
+}
+
+.ro-state { font-weight: 600; }
+.ro-count {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: var(--accent-color, #1976d2);
+  color: var(--header-text, #fff);
+  font-weight: 600;
+}
+.ro-hint { font-style: italic; }
+
+/* Rows while picking: the whole list is a click target, and picked rows carry
+   their position number in the index column. */
+.table-body tbody tr.pick-target { cursor: pointer; }
+.table-body tbody tr.picked {
+  background-color: color-mix(in srgb, var(--accent-color, #1976d2) 22%, transparent) !important;
+  border-left: 4px solid var(--accent-color, #1976d2);
+}
+
+.pick-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background-color: var(--accent-color, #1976d2);
+  color: var(--header-text, #fff);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Adaptive toolbar density
+   --------------------------------------------------------------------------
+   The search bar, the control bar and the selection bar are siblings of the
+   scroll viewport in a column flex, and the viewport is the only one of the
+   four that can shrink to 0. So every line a wrapping button row grows is
+   taken out of the rows — which is how the bars end up covering the table and
+   leaving 2-3 rows visible.
+
+   The tier comes from the table's OWN measured box (ResizeObserver in
+   TableComponent), NOT a @media query: these tables sit in split panes,
+   floating windows and dialogs that are much narrower than the window, where
+   a viewport-width query never fires.
+
+     .density-compact  (< 1000px wide, or < 600px tall) — tight padding, bars
+                       stay a single line and scroll horizontally if needed.
+     .density-icon     (< 640px wide)                   — as above, plus the
+                       button labels move into tooltips (buttons.component.css).
+
+   Nothing below `normal` wraps, so the bars have a fixed, predictable height
+   and the rows keep the rest.
+   ========================================================================== */
+
+.density-compact .search-bar,
+.density-icon .search-bar {
+  padding: 6px 8px;
+}
+
+.density-compact .global-search,
+.density-icon .global-search {
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.density-compact .clear-all-filters-btn,
+.density-icon .clear-all-filters-btn {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.density-compact .table-controls,
+.density-icon .table-controls {
+  padding: 6px 8px;
+  gap: 8px;
+  flex-wrap: nowrap;      /* one line, always */
+  overflow-x: auto;       /* the band itself is the scroller here, so the */
+  overflow-y: hidden;     /* drift controls stay reachable past the buttons */
+  scrollbar-width: thin;
+}
+
+/* Everything in the band keeps its natural width: it must overflow into the
+   band's own scroll rather than squash, and a nested scroller inside
+   app-buttons would give the same overflow two scrollbars. */
+.density-compact .table-controls > *,
+.density-icon .table-controls > * {
+  flex: 0 0 auto;
+}
+
+.density-compact .table-controls::-webkit-scrollbar,
+.density-icon .table-controls::-webkit-scrollbar {
+  height: 4px;
+}
+.density-compact .table-controls::-webkit-scrollbar-thumb,
+.density-icon .table-controls::-webkit-scrollbar-thumb {
+  background: var(--scroll-bar-color, #888);
+  border-radius: 2px;
+}
+
+/* Header rows are chrome too — trim their padding under the same pressure. */
+.density-compact .header-content,
+.density-icon .header-content {
+  padding: 7px 10px;
+}
+
+/* Selection bar: the count must stay pinned and readable, so here the BUTTONS
+   scroll inside the bar rather than the bar scrolling as a whole. */
+.density-compact .selection-info,
+.density-icon .selection-info {
+  min-height: 0;
+  padding: 6px 8px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.density-compact .selection-info > span,
+.density-icon .selection-info > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.density-compact .selection-info app-buttons,
+.density-icon .selection-info app-buttons {
+  flex: 1 1 auto;
+  min-width: 0;          /* lets the inner strip actually overflow-and-scroll */
+  display: block;
+}
+
+/* Reorder bar: same collapse as the other bars. The hint text is the first
+   thing to go — the buttons it describes are still right there. */
+.density-compact .reorder-bar,
+.density-icon .reorder-bar {
+  padding: 5px 8px;
+  gap: 6px;
+}
+
+.density-icon .ro-hint,
+.density-icon .ro-state,
+.density-icon .ro-label {
+  display: none;
+}
+
+/* Drift readouts are informational; at icon density the width goes to controls.
+   The two labelled buttons lose their words the same way the app-buttons row
+   does — the glyph stays, the `title` keeps them identifiable. */
+.density-icon .drift-checked,
+.density-icon .drift-result,
+.density-icon .dsb-label,
+.density-icon .cf-label {
+  display: none;
+}
+
+.density-compact .drift-strip-list,
+.density-icon .drift-strip-list {
+  max-height: 120px;
 }
 
 /*========== Sticky columns (Column.sticky = 'left' | 'right') ==========*/

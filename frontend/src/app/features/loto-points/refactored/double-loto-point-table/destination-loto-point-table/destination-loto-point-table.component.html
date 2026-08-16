@@ -9,6 +9,7 @@
       [inputItems]="doubleTableService.currentSelectedItems()"
       [isTableIsolated]="true"
       [enableDragDrop]="true"
+      [canReorder]="canReorder()"
       [loadMoreEnabled]="false"
       [fieldsToDisplay]="destinationFields"
       (itemsReorderedEvent)="onItemsReordered($event)"

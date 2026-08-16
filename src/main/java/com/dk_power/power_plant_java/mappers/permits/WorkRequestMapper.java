@@ -11,12 +11,14 @@ import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class WorkRequestMapper implements BaseMapper {
     private final ModelMapper modelMapper;
@@ -165,9 +167,42 @@ public class WorkRequestMapper implements BaseMapper {
         permitAttachmentRepo.countByEntityTypeGroupedByEntityId("WorkRequest", ids)
             .forEach(row -> attachmentCounts.put((Long) row[0], ((Number) row[1]).intValue()));
 
-        return entities.stream()
-            .map(e -> convertToNgDto(e, idsWithJha.contains(e.getId()), attachmentCounts.getOrDefault(e.getId(), 0)))
-            .toList();
+        // Per-row isolation: one unmappable row must not fail the whole page. The
+        // caller turns any throw here into a 400, which the table renders as "no
+        // items found" — so a single bad association used to look like a search
+        // that legitimately matched nothing.
+        List<NgWorkRequestDto> dtos = new ArrayList<>(entities.size());
+        for (WorkRequest e : entities) {
+            try {
+                dtos.add(convertToNgDto(e, idsWithJha.contains(e.getId()), attachmentCounts.getOrDefault(e.getId(), 0)));
+            } catch (Exception ex) {
+                log.error("Work request {} could not be mapped; returning it without its associations", e.getId(), ex);
+                dtos.add(minimalNgDto(e, idsWithJha.contains(e.getId()), attachmentCounts.getOrDefault(e.getId(), 0)));
+            }
+        }
+        return dtos;
+    }
+
+    /**
+     * Last-resort DTO built from scalar columns only — no association is touched,
+     * so it cannot throw. The row still reaches the table (id, dates, requester,
+     * scope), just without status/work area/category.
+     */
+    private NgWorkRequestDto minimalNgDto(WorkRequest entity, boolean hasJha, int attachmentCount) {
+        NgWorkRequestDto dto = new NgWorkRequestDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setDateOfWorkToBePerformed(entity.getDateOfWorkToBePerformed());
+        dto.setTimeOfWorkToBePerformed(entity.getTimeOfWorkToBePerformed());
+        dto.setRequestedBy(entity.getRequestedBy());
+        dto.setCompany(entity.getCompany());
+        dto.setLocation(entity.getLocation());
+        dto.setWorkScope(entity.getWorkScope());
+        dto.setSharepointId(entity.getSharepointId());
+        dto.setLocalUuid(entity.getLocalUuid());
+        dto.setHasJha(hasJha);
+        dto.setAttachmentCount(attachmentCount);
+        return dto;
     }
 
     /** Core DTO mapping — no extra queries, all derived data passed in. */
