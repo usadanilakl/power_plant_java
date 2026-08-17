@@ -19,7 +19,17 @@ public class FieldListItemDto {
     private Long statusId;
     private String statusName;
     private Long locationId;
+    /**
+     * Display/SharePoint name of where the item was observed. On READ it is derived — the work
+     * area's name, falling back to the legacy Location Value for older rows — so the SP "Location"
+     * column and the list view keep working unchanged. On WRITE it is only a fallback used to
+     * resolve an existing work area by name; it never creates anything.
+     */
     private String locationName;
+
+    // Work area picked on the plant map. The id is authoritative; the name is the fallback.
+    private Long workAreaId;
+    private String workAreaName;
 
     // Equipment/LotoPoint reference (single tag — resolved server-side to LotoPoint or Equipment)
     private Long equipmentId;

@@ -117,17 +117,42 @@ public interface FieldListItemRepo extends BaseRepository<FieldListItem> {
 
     /**
      * Field lists actively waiting for insulation contractor work. Matches rows routed to Maximo
-     * as WOs (only insulation types route to WO on this tenant) whose Maximo status is still
-     * non-terminal — i.e. the contractor hasn't closed them yet. Used by the PWA insulation
-     * contractor view. Filter by listType.name allows other WO-routed types (if added later)
-     * to have their own dedicated views instead of sharing this one.
+     * as WOs (only insulation types route to WO on this tenant) that are ACTIVE from EITHER
+     * side's perspective: local status is Open/In Progress OR the cached maximoStatus is a
+     * non-terminal WO status. Rationale for the OR:
+     *   - After a LOCAL reopen (Maximo can't be uncomp'd via OSLC), local status flips to Open
+     *     but the maximoStatus cache stays "COMP" until the status-poll ticks. Without the OR
+     *     the reopened item never comes back into the queue — reopen would be meaningless.
+     *   - After ops reopens the WO in Maximo directly (COMP → WAPPR), the status-poll picks
+     *     up the change and maximoStatus flips back to WAPPR; the OR keeps that path working.
+     * Filter by listType.name allows other WO-routed types (if added later) to have their
+     * own dedicated views instead of sharing this one.
      */
     @org.springframework.data.jpa.repository.Query(
             "SELECT f FROM FieldListItem f WHERE f.listType.name = :listTypeName "
-                    + "AND f.maximoRecordType = 'WO' AND f.maximoStatus IN :openStatuses "
+                    + "AND f.maximoRecordType = 'WO' "
+                    + "AND (f.status.name IN :localOpen OR f.maximoStatus IN :maximoOpen) "
                     + "ORDER BY f.dateModified DESC"
     )
     List<FieldListItem> findActiveWoByListType(
             @org.springframework.data.repository.query.Param("listTypeName") String listTypeName,
-            @org.springframework.data.repository.query.Param("openStatuses") List<String> openStatuses);
+            @org.springframework.data.repository.query.Param("localOpen") List<String> localOpenStatuses,
+            @org.springframework.data.repository.query.Param("maximoOpen") List<String> maximoOpenStatuses);
+
+    /**
+     * Recently-CLOSED contractor items — mirrors {@link #findActiveWoByListType} but for the
+     * "recently closed" panel that gives a contractor an undo path (their item drops off
+     * the active list on complete; without this they can't find it to reopen). Filtered by
+     * Maximo terminal status + modified within the last {@code since} cutoff. Same listType
+     * gate so the two panels don't cross-contaminate.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT f FROM FieldListItem f WHERE f.listType.name = :listTypeName "
+                    + "AND f.maximoRecordType = 'WO' AND f.maximoStatus IN :terminalStatuses "
+                    + "AND f.dateModified >= :since ORDER BY f.dateModified DESC"
+    )
+    List<FieldListItem> findRecentlyClosedWoByListType(
+            @org.springframework.data.repository.query.Param("listTypeName") String listTypeName,
+            @org.springframework.data.repository.query.Param("terminalStatuses") List<String> terminalStatuses,
+            @org.springframework.data.repository.query.Param("since") java.time.LocalDateTime since);
 }

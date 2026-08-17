@@ -16,6 +16,14 @@ export interface PwaWorkAreaEntry {
   id: number;
   name: string;
   locationIds: number[];
+  /**
+   * `{ [locationId]: '01' | '02' }` — the unit whose equipment this area wants from that
+   * location. Locations are shared between units (one "Duct Burner" serves both), so without
+   * this a U1 area lists U2 equipment too. Absent entry = both units.
+   */
+  locationUnitFilters?: Record<string, string>;
+  /** Work-area type name, e.g. "Confined Space". Used by pickers that only accept certain types. */
+  areaTypeName?: string;
 }
 
 export interface PwaLocationEntry {
@@ -75,11 +83,7 @@ export class EquipmentDataService {
     this.serverApi.getWorkAreas().subscribe({
       next: (areas: any[]) => {
         if (areas && areas.length > 0) {
-          const mapped: PwaWorkAreaEntry[] = areas.map(a => ({
-            id: a.id,
-            name: a.name,
-            locationIds: a.locationIds || []
-          }));
+          const mapped: PwaWorkAreaEntry[] = areas.map(a => EquipmentDataService.toWorkAreaEntry(a));
           this.workAreas.set(mapped);
           localStorage.setItem('pwa_work_areas_ext', JSON.stringify(mapped));
         }
@@ -89,7 +93,7 @@ export class EquipmentDataService {
           // Supabase stores the raw hub shape, so map it to PwaWorkAreaEntry (as the live path does).
           this.loadWithSupabaseFallback<PwaWorkAreaEntry[]>('work_areas',
             'data/work-areas.json', 'pwa_work_areas_ext', areas => this.workAreas.set(areas),
-            raw => raw.map(a => ({ id: a.id, name: a.name, locationIds: a.locationIds || [] })));
+            raw => raw.map(a => EquipmentDataService.toWorkAreaEntry(a)));
         }
       }
     });
@@ -157,11 +161,54 @@ export class EquipmentDataService {
     }
   }
 
+  /** Normalize one raw hub/snapshot work-area row. Shared by the live and failover paths. */
+  private static toWorkAreaEntry(raw: any): PwaWorkAreaEntry {
+    return {
+      id: raw.id,
+      name: raw.name,
+      locationIds: raw.locationIds || [],
+      locationUnitFilters: raw.locationUnitFilters || {},
+      areaTypeName: raw.areaTypeName || '',
+    };
+  }
+
+  /**
+   * LOTO points this work area covers, honouring each location's unit pin.
+   *
+   * A location can be shared by both units, so the pin EXCLUDES THE OPPOSITE UNIT rather than
+   * whitelisting its own: pinning '01' drops 02* tags and keeps everything else — 01* tags plus
+   * 00* and any tag that doesn't open with a unit prefix at all. Only tags positively identified as
+   * the other unit are removed, so a filter can never silently hide equipment whose tag doesn't
+   * follow the 01/02 convention.
+   */
   getPointsForWorkArea(workAreaId: number): PwaLotoPointEntry[] {
     const area = this.workAreas().find(a => a.id === workAreaId);
     if (!area || !area.locationIds || area.locationIds.length === 0) return [];
+
+    const filters = area.locationUnitFilters ?? {};
     const locationIdSet = new Set(area.locationIds);
-    return this.lotoPoints().filter(lp => lp.locationId != null && locationIdSet.has(lp.locationId));
+
+    return this.lotoPoints().filter(lp => {
+      if (lp.locationId == null || !locationIdSet.has(lp.locationId)) return false;
+
+      const pinnedUnit = filters[String(lp.locationId)];
+      if (pinnedUnit !== '01' && pinnedUnit !== '02') return true; // no pin → both units
+
+      const otherUnit = pinnedUnit === '01' ? '02' : '01';
+      return EquipmentDataService.unitPrefixOf(lp.tagNumber) !== otherUnit;
+    });
+  }
+
+  /**
+   * Unit prefix of a LOTO tag: '01' for Unit 1, '02' for Unit 2, null for anything else (00*, tags
+   * that start with a letter, blank). Per the plant convention any tag opening with those two digits
+   * belongs to that unit. Single place to adjust if the convention ever widens.
+   */
+  private static unitPrefixOf(tagNumber: string | null | undefined): string | null {
+    const tag = (tagNumber ?? '').trim();
+    if (tag.startsWith('01')) return '01';
+    if (tag.startsWith('02')) return '02';
+    return null;
   }
 
   getPointsGroupedByEqType(points: PwaLotoPointEntry[]): Map<string, PwaLotoPointEntry[]> {

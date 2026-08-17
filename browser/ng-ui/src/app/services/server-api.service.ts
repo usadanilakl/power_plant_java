@@ -51,6 +51,23 @@ export interface PwaWorkRequestDto {
   attachments: { fileName: string; contentType: string; base64Content: string }[];
 }
 
+/**
+ * One work-area row as served by /api/pwa/work-request/work-areas and mirrored in the offline
+ * snapshot (work-areas.json / Supabase `work_areas`). Built server-side by
+ * PwaReferenceDataService.toWorkAreaMap.
+ */
+export interface PwaWorkAreaRow {
+  id: number;
+  name: string;
+  description: string;
+  isConfinedSpace?: boolean;
+  areaTypeId?: number | null;
+  areaTypeName?: string;
+  locationIds?: number[];
+  /** `{ [locationId]: '01' | '02' }` — which unit's equipment to surface for a shared location. */
+  locationUnitFilters?: Record<string, string>;
+}
+
 export interface PwaUserRegistrationDto {
   pwaUserUuid: string;
   name: string;
@@ -353,8 +370,8 @@ export class ServerApiService {
     );
   }
 
-  getWorkAreas(): Observable<{ id: number; name: string; description: string; isConfinedSpace?: boolean }[]> {
-    return this.http.get<{ responseData: { id: number; name: string; description: string; isConfinedSpace?: boolean }[] }>(
+  getWorkAreas(): Observable<PwaWorkAreaRow[]> {
+    return this.http.get<{ responseData: PwaWorkAreaRow[] }>(
       `${this.baseUrl}/api/pwa/work-request/work-areas`
     ).pipe(
       timeout(10000),
@@ -996,7 +1013,11 @@ export class ServerApiService {
       `${this.baseUrl}/api/pwa/field-list-item/submit`,
       payload
     ).pipe(
-      timeout(30000),
+      // 3 min — a field-list submission can carry a base64 photo (~1.37x the file). Over
+      // spotty mobile a 30s cap aborted the client before the server finished reading the
+      // body, and the orchestrator's PA fallback tried to send the same big body over the
+      // gateway (same fate). Matches server-side server.tomcat.connection-timeout=180000.
+      timeout(180000),
       map(response => response.responseData)
     );
   }
@@ -1006,7 +1027,7 @@ export class ServerApiService {
       `${this.baseUrl}/api/pwa/field-list-item/update`,
       payload
     ).pipe(
-      timeout(30000),
+      timeout(180000),
       map(response => response.responseData)
     );
   }
@@ -1019,6 +1040,21 @@ export class ServerApiService {
       timeout(15000),
       map(response => response.responseData || []),
       catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Fetch attachments (photos / docs) for a hub-side field-list item so the details dialog
+   * can show inline images. Never throws — a hub outage returns [] and the dialog just shows
+   * no images. base64Content comes back raw; caller wraps as `data:<contentType>;base64,`.
+   */
+  getFieldListAttachments(id: number): Observable<Array<{ id: number; fileName: string; contentType: string; base64Content: string }>> {
+    return this.http.get<{ responseData: Array<{ id: number; fileName: string; contentType: string; base64Content: string }> }>(
+      `${this.baseUrl}/api/pwa/secured/field-list/${id}/attachments`
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData || []),
+      catchError(() => of([] as Array<{ id: number; fileName: string; contentType: string; base64Content: string }>))
     );
   }
 

@@ -362,6 +362,80 @@ public class MaximoFieldListBridge {
         }
     }
 
+    // ============================== Update fields ==============================
+
+    /**
+     * Push editable descriptive fields (title/notes/location/asset) from the FieldListItem down
+     * to the corresponding Maximo record. Called after any PWA edit so the two views stay in
+     * sync — before this, ONLY status transitions (Closed → COMP) and soft-deletes made it
+     * to Maximo; descriptive edits stayed local + SP only.
+     *
+     * <p>Dispatches on {@code maximoRecordType}: SR uses {@link MaximoServiceRequestAdapter#updateFields}
+     * (whitelist MERGE), WO uses {@link MaximoWorkOrderAdapter#updateFields}. Best-effort:
+     * on failure we log a warning and return false. No pending flag — the row's local state
+     * is durable and the admin drift panel + status-poll reconcile catch the divergence.
+     */
+    public boolean updateFields(FieldListItem entity) {
+        if (entity == null) return false;
+        String href = entity.getMaximoHref();
+        if (href == null || href.isBlank()) return false; // not routed yet — nothing to update
+        String recType = entity.getMaximoRecordType();
+        String description = defaultIfBlank(entity.getTitle(), "Field List Report");
+        String longDescription = buildLongDescription(entity);
+        String location = entity.getMaximoLocation();
+        String assetnum = entity.getMaximoAssetnum();
+        try {
+            if (REC_TYPE_WO.equals(recType)) {
+                log.info("[MaximoFieldList] WO-UPDATE-SEND id={} wonum={} desc='{}' loc={} asset={}",
+                        entity.getId(), entity.getMaximoRecordId(), description, location, assetnum);
+                woAdapter.updateFields(href, description, longDescription, location, assetnum);
+            } else {
+                // Default to SR when recordType is null (backward compat with pre-WO rows).
+                Map<String, String> fields = new HashMap<>();
+                fields.put("spi:description", description);
+                if (longDescription != null) fields.put("spi:description_longdescription", longDescription);
+                if (location != null && !location.isBlank()) fields.put("spi:location", location);
+                if (assetnum != null && !assetnum.isBlank()) fields.put("spi:assetnum", assetnum);
+                log.info("[MaximoFieldList] SR-UPDATE-SEND id={} ticketid={} fields={}",
+                        entity.getId(), entity.getMaximoRecordId(), fields.keySet());
+                srAdapter.updateFields(href, fields);
+            }
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("[MaximoFieldList] Update {} failed for FieldListItem id={}: {}",
+                    recType == null ? REC_TYPE_SR : recType, entity.getId(), e.getMessage());
+            return false;
+        }
+    }
+
+    // ============================== Worklog append ==============================
+
+    /**
+     * Always add a worklog entry to a routed WO — unlike {@code changeStatus} + its
+     * {@code ensureWorklogPresent} helper (which skips if any worklog already exists),
+     * this method unconditionally writes a new row. Used by the "Save progress" flow so
+     * every contractor comment lands on Maximo's worklog history, and by the re-complete
+     * flow so a follow-up comment on an already-COMP WO isn't lost.
+     *
+     * <p>Best-effort: on failure logs a warning and returns false so the caller's other
+     * side effects (H2 note append, attachment upload) still run.
+     */
+    public boolean appendWorklog(FieldListItem entity, String note) {
+        if (entity == null || note == null || note.isBlank()) return false;
+        if (!REC_TYPE_WO.equals(entity.getMaximoRecordType())) return false;
+        String href = entity.getMaximoHref();
+        if (href == null || href.isBlank()) return false;
+        try {
+            woAdapter.reportActuals(href, null, note.trim(), null, "CLIENTNOTE");
+            log.info("[MaximoFieldList] Worklog appended to wonum={} for FieldListItem id={}",
+                    entity.getMaximoRecordId(), entity.getId());
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("[MaximoFieldList] appendWorklog failed for id={}: {}", entity.getId(), e.getMessage());
+            return false;
+        }
+    }
+
     // ============================== Read-back ==============================
 
     /**

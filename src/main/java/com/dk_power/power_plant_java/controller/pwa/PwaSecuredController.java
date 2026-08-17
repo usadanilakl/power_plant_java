@@ -41,6 +41,7 @@ public class PwaSecuredController {
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
+    private final com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo permitAttachmentRepo;
 
     @GetMapping("/my-permits")
     public ResponseEntity<?> getMyPermits() {
@@ -333,6 +334,33 @@ public class PwaSecuredController {
             items = fieldListItemService.getOpenItems();
         }
         return ResponseEntity.ok(new NgApiResponse<>(items, "Open items retrieved"));
+    }
+
+    /**
+     * Fetch attachments for a field-list item so the PWA details dialog can show inline images.
+     * Returns file metadata + base64 content — the PWA renders images directly in an &lt;img&gt;
+     * data URI. Non-image files (PDFs, docs) still come back so the client can show an icon.
+     */
+    @GetMapping("/field-list/{id}/attachments")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getFieldListAttachments(
+            @PathVariable Long id) {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(
+                new NgApiResponse<>(null, "NOT_AUTHENTICATED"));
+
+        List<com.dk_power.power_plant_java.entities.permits.PermitAttachment> atts =
+                permitAttachmentRepo.findByEntityTypeAndEntityId("FieldListItem", id);
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        for (var a : atts) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", a.getId());
+            row.put("fileName", a.getFileName());
+            row.put("contentType", a.getContentType());
+            // base64 stored raw — client wraps in `data:<contentType>;base64,` for <img>
+            row.put("base64Content", a.getBase64Content());
+            out.add(row);
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(out, out.size() + " attachment(s)"));
     }
 
     // ============ Inventory ============

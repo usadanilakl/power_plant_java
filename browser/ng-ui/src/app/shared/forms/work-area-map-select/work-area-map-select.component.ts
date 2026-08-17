@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, NgZone, OnDestroy, signal, ViewChild, OnInit
+  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, input, NgZone, OnDestroy, signal, ViewChild, OnInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -12,6 +12,7 @@ interface WorkAreaEntry {
   id: number;
   name: string;
   isConfinedSpace?: boolean;
+  areaTypeName?: string;
 }
 
 interface ShapeEntry {
@@ -26,6 +27,7 @@ interface AreaRef {
   id: number;
   name: string;
   isConfinedSpace?: boolean;
+  areaTypeName?: string;
 }
 
 interface ParsedShape {
@@ -58,6 +60,25 @@ interface ParsedShape {
   ],
 })
 export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit, OnDestroy {
+  /**
+   * Work-area types this picker accepts, by type name (case-insensitive). Empty / null — the
+   * default — accepts every type, so existing pickers are unaffected.
+   *
+   * Lets each host narrow the map to areas that make sense for its job. Areas that are not accepted
+   * are dropped from their shape, and a shape left with no acceptable area is not drawn at all.
+   */
+  allowedAreaTypes = input<string[] | null>(null);
+
+  /** Work-area types to drop, by type name (case-insensitive). Applied after allowedAreaTypes. */
+  excludedAreaTypes = input<string[] | null>(null);
+
+  /**
+   * Drop confined spaces. Uses the hub's `isConfinedSpace` flag (any confined-space hazard set on
+   * the area) OR an area type named "confined space", so it does not depend on how the area-type
+   * Value is spelled.
+   */
+  excludeConfinedSpaces = input<boolean>(false);
+
   @ViewChild('mapContainer') mapContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('zoomElement') zoomElement!: ElementRef<HTMLDivElement>;
   @ViewChild('mapImage') mapImage!: ElementRef<HTMLImageElement>;
@@ -71,6 +92,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   private elementRef = inject(ElementRef);
   private cleanupListeners: (() => void)[] = [];
   private overlayMovedToBody = false;
+  private hasFitOnce = false;
 
   shapes = signal<ParsedShape[]>([]);
   selectedAreaName = signal<string | null>(null);
@@ -98,6 +120,13 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   private scale = 1;
   private translateX = 0;
   private translateY = 0;
+  // Pinch/wheel scale clamps. Min is deliberately loose so the fit-scale (which can be
+  // as low as 0.1 for a large image in a small container on a narrow phone) still lives
+  // inside the allowed range — a min of 0.8 caused pinch-out from a small fit to snap
+  // UP to 0.8 (the clamp), making pinch feel broken. 0.05..12 is a comfortable range for
+  // the plant map without letting the user zoom to a dot or blow it up beyond usefulness.
+  private static readonly MIN_SCALE = 0.05;
+  private static readonly MAX_SCALE = 12;
 
   // Pan state
   private isPanning = false;
@@ -164,6 +193,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       listen('touchmove', (e: TouchEvent) => this.onTouchMove(e), { passive: false });
       listen('touchend', (e: TouchEvent) => this.onTouchEnd(e));
     });
+
   }
 
   private detachListeners(): void {
@@ -187,17 +217,43 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     }
   }
 
+  // ResizeObserver auto-refit was removed — it fired during transient layout changes
+  // (iOS keyboard open/close, address-bar hide/show, flex layout settling in the mobile
+  // overlay) and refit the map to a bad container size, shrinking it to a dot. Auto-fit
+  // now runs only on mount (image load + openOverlay); users hit "Fit to view" to refit
+  // after rotation.
+
   // --- Overlay ---
 
   openOverlay(): void {
     this.overlayOpen.set(true);
     document.body.style.overflow = 'hidden';
     this.resetZoom();
-    // Move overlay to body so transforms on parent containers don't break position:fixed
+    this.hasFitOnce = false; // fresh open → allow the load handler to compute the initial fit
+    // Move overlay to body so transforms on parent containers don't break position:fixed.
+    // Fit after layout is stable: DOM append → element pickup → double rAF for two frames
+    // of layout. A single setTimeout was firing before flex layout resolved container height
+    // on some devices, leaving the map at a tiny scale that pinch-zoom couldn't recover from.
     setTimeout(() => {
       this.moveOverlayToBody();
-      this.fitToContainer();
-    }, 50);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        // Cache-hit path: onImageLoaded may not fire (image already cached), so zoom-element
+        // may not have its explicit natural-size dimensions yet. Set them here too so the
+        // transform can scale a real box, not a 0×0 one.
+        this.sizeZoomElementToImage();
+        this.fitToContainer();
+      }));
+    }, 0);
+  }
+
+  /** Set .zoom-element to the image's natural pixel dimensions. See onImageLoaded comment. */
+  private sizeZoomElementToImage(): void {
+    const img = this.mapImage?.nativeElement;
+    const zoom = this.zoomElement?.nativeElement;
+    if (img && zoom && img.naturalWidth && img.naturalHeight) {
+      zoom.style.width = img.naturalWidth + 'px';
+      zoom.style.height = img.naturalHeight + 'px';
+    }
   }
 
   closeOverlay(): void {
@@ -303,8 +359,13 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   }
 
   private handleLoadedData(areas: WorkAreaEntry[], shapes: ShapeEntry[]): void {
-    const areaMap = new Map(areas.map(a => [a.id, a]));
-    const parsed = shapes.map(s => this.parseShape(s, areaMap));
+    const areaMap = new Map(this.acceptedAreas(areas).map(a => [a.id, a]));
+    // A shape whose every area was filtered out has nothing to offer this picker, so it is not
+    // drawn. parseShape's label/"Unknown" placeholders only stand in for shapes that never had
+    // areas — they must not resurrect a shape we deliberately emptied.
+    const parsed = shapes
+      .filter(s => this.hasAcceptedArea(s, areaMap))
+      .map(s => this.parseShape(s, areaMap));
     this.shapes.set(parsed);
     this.imageUrl.set('data/work-area-map-image.jpg');
     this.loading.set(false);
@@ -316,6 +377,39 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
         this.selectedShape.set(match);
       }
     }
+  }
+
+  /** Areas this picker accepts. With nothing configured, everything is accepted. */
+  private acceptedAreas(areas: WorkAreaEntry[]): WorkAreaEntry[] {
+    const allowed = this.normalizeTypeList(this.allowedAreaTypes());
+    const excluded = this.normalizeTypeList(this.excludedAreaTypes());
+    const dropConfinedSpaces = this.excludeConfinedSpaces();
+
+    if (allowed.length === 0 && excluded.length === 0 && !dropConfinedSpaces) return areas;
+
+    return areas.filter(area => {
+      const type = (area.areaTypeName ?? '').trim().toLowerCase();
+      if (allowed.length > 0 && !allowed.includes(type)) return false;
+      if (excluded.includes(type)) return false;
+      if (dropConfinedSpaces && (area.isConfinedSpace === true || type.includes('confined space'))) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private normalizeTypeList(types: string[] | null): string[] {
+    return (types ?? []).map(t => (t ?? '').trim().toLowerCase()).filter(Boolean);
+  }
+
+  /**
+   * Whether a shape still has at least one accepted area. Shapes that never had any area keep
+   * their label-only rendering (unfiltered pickers behave exactly as before).
+   */
+  private hasAcceptedArea(entry: ShapeEntry, areaMap: Map<number, WorkAreaEntry>): boolean {
+    const ids = entry.workAreaIds ?? [];
+    if (ids.length === 0) return true;
+    return ids.some(id => areaMap.has(id));
   }
 
   private parseShape(entry: ShapeEntry, areaMap: Map<number, WorkAreaEntry>): ParsedShape {
@@ -345,6 +439,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
         if (!areaEntry) return null;
         const ref: AreaRef = { id, name: areaEntry.name };
         if (areaEntry.isConfinedSpace) ref.isConfinedSpace = true;
+        if (areaEntry.areaTypeName) ref.areaTypeName = areaEntry.areaTypeName;
         return ref;
       })
       .filter((a): a is AreaRef => !!a);
@@ -430,7 +525,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   onWheel(event: WheelEvent): void {
     event.preventDefault();
     const factor = event.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.min(Math.max(0.8, this.scale * factor), 8);
+    const newScale = Math.min(Math.max(WorkAreaMapSelectComponent.MIN_SCALE, this.scale * factor), WorkAreaMapSelectComponent.MAX_SCALE);
 
     const container = this.mapContainer.nativeElement;
     const rect = container.getBoundingClientRect();
@@ -494,7 +589,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       this.applyTransform();
     } else if (event.touches.length === 2) {
       const newDistance = this.getTouchDistance(event.touches);
-      const newScale = Math.min(Math.max(0.8, this.initialPinchScale * (newDistance / this.initialPinchDistance)), 8);
+      const newScale = Math.min(Math.max(WorkAreaMapSelectComponent.MIN_SCALE, this.initialPinchScale * (newDistance / this.initialPinchDistance)), WorkAreaMapSelectComponent.MAX_SCALE);
 
       const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
       const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
@@ -568,26 +663,63 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.applyTransform();
   }
 
-  onImageLoaded(): void {
+  /** Public trigger for the "Fit to view" button — a manual escape hatch when the
+   *  automatic fit runs before layout is stable and leaves the image at a bad scale.
+   *  Also re-syncs zoom-element size to natural image dims in case the DOM was recreated. */
+  fitToContainerNow(): void {
+    this.sizeZoomElementToImage();
     this.fitToContainer();
   }
 
-  /** Scale the image so it fills the container width on overlay open */
+  onImageLoaded(): void {
+    // Give .zoom-element explicit natural dimensions so the child image renders at
+    // predictable size regardless of parent context. Was `display: inline-block` with the
+    // child `<img>` at `width: 100%` — a circular sizing dependency that resolved to 0×0
+    // on mobile Safari after moveOverlayToBody, making everything transform-scaled to a
+    // dot even when the fit math computed the right scale.
+    const img = this.mapImage?.nativeElement;
+    const zoom = this.zoomElement?.nativeElement;
+    if (img && zoom && img.naturalWidth && img.naturalHeight) {
+      zoom.style.width = img.naturalWidth + 'px';
+      zoom.style.height = img.naturalHeight + 'px';
+    }
+    // Cache-hit case: image `load` fires before container has settled its layout.
+    // rAF-once is enough here because the container is already in the DOM by the time
+    // the load event dispatches (unlike openOverlay which needs two frames to catch up
+    // to the flex layout that just changed).
+    requestAnimationFrame(() => this.fitToContainer());
+  }
+
+  /**
+   * Scale the image so it fits ENTIRELY within the container (both width and height),
+   * with a small padding so the shapes near edges aren't flush against the border.
+   * Old version only fit width — a wide container with a portrait-ish image (or a very
+   * short container after keyboard opens on mobile) left the image tiny because
+   * containerHeight was ignored. Also guards against a zero-width container (layout
+   * not-yet-settled): in that case we skip and rely on the ResizeObserver refit.
+   */
   private fitToContainer(): void {
     const container = this.mapContainer?.nativeElement;
     const img = this.mapImage?.nativeElement;
-    if (!container || !img || !img.naturalWidth) return;
+    if (!container || !img || !img.naturalWidth || !img.naturalHeight) return;
 
-    const containerWidth = container.clientWidth;
-    const imgWidth = img.naturalWidth;
-    const fitScale = containerWidth / imgWidth;
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) return; // container hasn't laid out — ResizeObserver will re-fire
 
-    if (fitScale > 0 && fitScale !== Infinity) {
-      this.scale = fitScale;
-      this.translateX = 0;
-      this.translateY = 0;
-      this.applyTransform();
-    }
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    // Fit-inside: whichever dimension runs out first bounds the scale. Small padding
+    // (0.98) prevents shapes on the extreme edges from being cut off by anti-aliasing.
+    const fitScale = Math.min(cw / iw, ch / ih) * 0.98;
+    if (fitScale <= 0 || !isFinite(fitScale)) return;
+
+    this.scale = fitScale;
+    // Center the fitted image inside the container so blank space is distributed evenly
+    // (before this the image was pinned to top-left, wasting space on wider containers).
+    this.translateX = Math.max(0, (cw - iw * fitScale) / 2);
+    this.translateY = Math.max(0, (ch - ih * fitScale) / 2);
+    this.applyTransform();
   }
 
   // --- Counter-scaling for shapes/labels at current zoom ---

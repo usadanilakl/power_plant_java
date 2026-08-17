@@ -265,15 +265,30 @@ export class WorkAreaMapComponent implements OnDestroy {
 
   // --- Context Menu Action Handlers ---
 
+  /**
+   * Edit the work area on this shape. With exactly one area we can go straight to
+   * its form; with several there is no "the" work area, so open the info window
+   * and let the user pick via that card's own Edit button (picking workAreaIds[0]
+   * silently edited an arbitrary area).
+   */
   private handleEditAction(shape: RfShape): void {
     const shapeDto = this.state.shapes().find(s => s.id === shape.id);
-    if (shapeDto && shapeDto.workAreaIds.length > 0) {
-      const wa = this.state.workAreas().find(w => shapeDto.workAreaIds.includes(w.id));
-      if (wa) {
-        this.state.openWorkAreaForm(wa);
-        return;
-      }
+    const areas = shapeDto
+      ? this.state.workAreas().filter(w => shapeDto.workAreaIds.includes(w.id))
+      : [];
+
+    if (areas.length === 1) {
+      this.state.selectShape(shape.id);
+      this.state.openWorkAreaForm(areas[0]);
+      return;
     }
+
+    if (areas.length > 1) {
+      this.state.selectShape(shape.id);
+      this.state.showShapeInfoWindow(shape.id);
+      return;
+    }
+
     this.handleAssignAction(shape);
   }
 

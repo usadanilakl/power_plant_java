@@ -269,6 +269,82 @@
           placeholder="Optional alias"
         />
       </div>
+
+      @if (formMode() === 'edit') {
+        <!-- References -->
+        <div class="ref-section">
+          <div class="ref-head">
+            <h4 class="ref-title">
+              References
+              @if (referenceCount() !== null) {
+                <span class="ref-count" [class.zero]="referenceCount() === 0">{{ referenceCount() }}</span>
+              }
+            </h4>
+            <button type="button" class="btn btn-link" [disabled]="referencesLoading()" (click)="refreshReferences()">
+              Refresh
+            </button>
+          </div>
+
+          @if (referencesLoading()) {
+            <p class="ref-hint">Checking what uses this value...</p>
+          } @else if (references() === null) {
+            <p class="ref-hint">References unknown.</p>
+          } @else if (references()!.totalCount === 0) {
+            <p class="ref-hint ref-ok">Nothing references this value — safe to delete.</p>
+          } @else {
+            @for (group of references()!.groups; track group.entityType + group.fieldName) {
+              <div class="ref-group">
+                <div class="ref-group-head">
+                  {{ group.entityType }}<span class="ref-field">.{{ group.fieldName }}</span>
+                  <span class="ref-count">{{ group.items.length }}</span>
+                </div>
+                <ul class="ref-list">
+                  @for (item of group.items; track item.entityType + item.entityId) {
+                    <li class="ref-item">
+                      <span class="ref-label">{{ item.entityLabel }}</span>
+                      <span class="ref-id">#{{ item.entityId }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Re-point -->
+        <div class="ref-section">
+          <h4 class="ref-title">Re-point references</h4>
+          <p class="ref-hint">Move everything above onto another value in this category.</p>
+          <select [ngModel]="repointTargetId()" (ngModelChange)="repointTargetId.set($event)">
+            <option [ngValue]="null">Select replacement value</option>
+            @for (v of repointTargets(); track v.id) {
+              <option [ngValue]="v.id">{{ v.name }}</option>
+            }
+          </select>
+          <button type="button" class="btn btn-primary ref-btn" [disabled]="!canRepoint()" (click)="submitRepoint()">
+            Re-point
+          </button>
+        </div>
+
+        <!-- Delete -->
+        <div class="ref-section ref-danger">
+          <h4 class="ref-title">Delete</h4>
+          <p class="ref-hint">
+            @if (canDeleteValue()) {
+              This value is unused and can be deleted.
+            } @else {
+              Disabled while references remain — re-point them first.
+            }
+          </p>
+          <button type="button" class="btn btn-danger ref-btn" [disabled]="!canDeleteValue()" (click)="submitSafeDelete()">
+            Delete value
+          </button>
+        </div>
+
+        @if (refMessage()) {
+          <p class="ref-message" [class.error]="refMessage()!.kind === 'error'">{{ refMessage()!.text }}</p>
+        }
+      }
     }
 
     <div class="form-actions">

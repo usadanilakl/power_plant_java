@@ -85,9 +85,7 @@ public class PwaFieldListItemService {
         }
         entity.setStatus(valueService.createValue("FieldListStatus",
                 dto.getStatusName() != null ? dto.getStatusName() : "Open"));
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        mapper.resolveWorkArea(entity, dto.getWorkAreaId(), dto.getWorkAreaName(), dto.getLocationName());
 
         // Resolve equipment/lotoPoint
         mapper.resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
@@ -214,12 +212,15 @@ public class PwaFieldListItemService {
             entity.setStatus(valueService.createValue("FieldListStatus", dto.getStatusName()));
             statusChanged = !dto.getStatusName().equalsIgnoreCase(priorStatusName);
         }
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        mapper.resolveWorkArea(entity, dto.getWorkAreaId(), dto.getWorkAreaName(), dto.getLocationName());
         if (dto.getEquipmentTag() != null) {
             mapper.resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
         }
+        // Maximo picker fields — read on update too so the PWA edit form can change them.
+        // Previously only the initial submit accepted these; a subsequent edit left the old
+        // values on the row. nullIfBlank normalises so a cleared field lands as SQL NULL.
+        if (dto.getMaximoLocation() != null) entity.setMaximoLocation(nullIfBlank(dto.getMaximoLocation()));
+        if (dto.getMaximoAssetnum() != null) entity.setMaximoAssetnum(nullIfBlank(dto.getMaximoAssetnum()));
 
         repo.save(entity);
 
@@ -239,6 +240,58 @@ public class PwaFieldListItemService {
         if (statusChanged) {
             events.publishEvent(new MaximoFieldListEvents.StatusChanged(
                     entity.getId(), dto.getStatusName(), "pwa-update"));
+        }
+
+        // Always fire Updated so descriptive field changes (title/notes/location/asset)
+        // propagate to the Maximo record when one exists. Listener no-ops if the row was
+        // never routed to Maximo (bridge.updateFields checks maximoHref). Cheap when off.
+        events.publishEvent(new MaximoFieldListEvents.Updated(entity.getId(),
+                dto.getSubmitterName() == null ? "pwa-user" : dto.getSubmitterName()));
+
+        // ============ Attachment sync ============
+        // Diff model: if the client sends keepAttachmentIds, delete any existing attachment
+        // whose id is NOT in the list. If NEW attachments are in dto.attachments, add them
+        // with the same dedup rule as submit. keepAttachmentIds=null means "don't touch"
+        // — supports field-only edits without forcing the client to enumerate attachment ids.
+        if (dto.getKeepAttachmentIds() != null) {
+            java.util.Set<Long> keep = new java.util.HashSet<>(dto.getKeepAttachmentIds());
+            java.util.List<PermitAttachment> existingAtts = attachmentRepo
+                    .findByEntityTypeAndEntityId("FieldListItem", entity.getId());
+            for (PermitAttachment a : existingAtts) {
+                if (a.getId() != null && !keep.contains(a.getId())) {
+                    attachmentRepo.delete(a);
+                    log.info("[PWA FieldList] Deleted attachment id={} from FieldListItem id={}",
+                            a.getId(), entity.getId());
+                }
+            }
+        }
+        if (dto.getAttachments() != null && !dto.getAttachments().isEmpty()) {
+            int added = 0;
+            for (com.dk_power.power_plant_java.dto.pa.PaAttachmentDto att : dto.getAttachments()) {
+                if (att == null || att.getBase64Content() == null) continue;
+                String contentHash = computeContentHash(att.getBase64Content());
+                // Dedup so re-sending the same file doesn't accumulate duplicates.
+                if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                        "FieldListItem", entity.getId(), att.getFileName(), contentHash)) {
+                    continue;
+                }
+                PermitAttachment attachment = new PermitAttachment();
+                attachment.setEntityType("FieldListItem");
+                attachment.setEntityId(entity.getId());
+                attachment.setFileName(att.getFileName());
+                attachment.setContentType(att.getContentType());
+                attachment.setBase64Content(att.getBase64Content());
+                attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+                attachment.setContentHash(contentHash);
+                attachment = attachmentRepo.save(attachment);
+                added++;
+                // Publish AttachmentAdded — hub listener uploads to Maximo doclinks like
+                // the submit flow. No-op when the Maximo feature is off.
+                events.publishEvent(new MaximoFieldListEvents.AttachmentAdded(entity.getId(), attachment.getId()));
+            }
+            if (added > 0) {
+                log.info("[PWA FieldList] Added {} attachment(s) to FieldListItem id={}", added, entity.getId());
+            }
         }
 
         return PwaSubmissionResult.success(

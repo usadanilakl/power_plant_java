@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,6 +40,23 @@ public class FieldListItem extends BaseAuditEntity {
     @JoinColumn(name = "status_id")
     private Value status;
 
+    /**
+     * Where the item was observed — the work area the submitter picked on the plant map.
+     *
+     * <p>This is the real home for that selection. It used to be funnelled into {@link #location}
+     * via {@code createValue("Location", workAreaName)}, which minted a Location Value named after
+     * every work area ever picked and polluted the Location taxonomy that LOTO points share.
+     * Mirrors {@code WorkRequest.workArea}, which always did it this way.
+     */
+    @ManyToOne
+    @JoinColumn(name = "work_area_id")
+    private WorkArea workArea;
+
+    /**
+     * Legacy / genuine Location Value link. Kept for rows written before {@link #workArea} existed
+     * (their location still reads through here) and for any future flow that picks a real Location
+     * from the LOTO taxonomy. NEVER auto-created from free text — see the mapper.
+     */
     @ManyToOne
     @JoinColumn(name = "location_id")
     private Value location;

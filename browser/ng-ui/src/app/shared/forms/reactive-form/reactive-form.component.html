@@ -73,7 +73,10 @@
               @case('work-area-map'){
                 <label class="field-label">{{ field.label }}</label>
                 <app-work-area-map-select
-                  [formControl]="getFormControl(field.name)">
+                  [formControl]="getFormControl(field.name)"
+                  [allowedAreaTypes]="field.allowedAreaTypes ?? null"
+                  [excludedAreaTypes]="field.excludedAreaTypes ?? null"
+                  [excludeConfinedSpaces]="field.excludeConfinedSpaces ?? false">
                 </app-work-area-map-select>
               }
               @case('equipment-picker'){
@@ -87,6 +90,8 @@
                 <label class="field-label">{{ field.label }}</label>
                 <app-maximo-tree-picker
                   mode="both"
+                  [assetnum]="form.get(field.name)?.value?.assetnum ?? ''"
+                  [location]="form.get(field.name)?.value?.location ?? ''"
                   (selection)="onMaximoTreePicked(field.name, $event)">
                 </app-maximo-tree-picker>
               }

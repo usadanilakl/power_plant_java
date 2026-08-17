@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ public class FieldListItemMapper {
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
     private final PermitAttachmentRepo attachmentRepo;
+    private final WorkAreaRepo workAreaRepo;
 
     public FieldListItemDto convertToDto(FieldListItem entity) {
         if (entity == null) return null;
@@ -51,10 +53,7 @@ public class FieldListItemMapper {
             dto.setStatusId(entity.getStatus().getId());
             dto.setStatusName(entity.getStatus().getName());
         }
-        if (entity.getLocation() != null) {
-            dto.setLocationId(entity.getLocation().getId());
-            dto.setLocationName(entity.getLocation().getName());
-        }
+        applyLocationFields(entity, dto);
         if (entity.getLotoPoint() != null) {
             dto.setLotoPointId(entity.getLotoPoint().getId());
             dto.setEquipmentTag(entity.getLotoPoint().getTagNumber());
@@ -132,10 +131,7 @@ public class FieldListItemMapper {
             dto.setStatusId(entity.getStatus().getId());
             dto.setStatusName(entity.getStatus().getName());
         }
-        if (entity.getLocation() != null) {
-            dto.setLocationId(entity.getLocation().getId());
-            dto.setLocationName(entity.getLocation().getName());
-        }
+        applyLocationFields(entity, dto);
         if (entity.getLotoPoint() != null) {
             dto.setLotoPointId(entity.getLotoPoint().getId());
             dto.setEquipmentTag(entity.getLotoPoint().getTagNumber());
@@ -145,6 +141,57 @@ public class FieldListItemMapper {
         }
         copyMaximoFields(entity, dto);
         return dto;
+    }
+
+    /**
+     * Read side of "where was this observed": expose the work area, and derive {@code locationName}
+     * from it so the SharePoint "Location" column and the list view need no changes. Rows written
+     * before the work-area link existed fall back to their legacy Location Value.
+     */
+    public void applyLocationFields(FieldListItem entity, FieldListItemDto dto) {
+        if (entity.getWorkArea() != null) {
+            dto.setWorkAreaId(entity.getWorkArea().getId());
+            dto.setWorkAreaName(entity.getWorkArea().getName());
+        }
+        if (entity.getLocation() != null) {
+            dto.setLocationId(entity.getLocation().getId());
+            dto.setLocationName(entity.getLocation().getName());
+        }
+        if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+            dto.setLocationName(dto.getWorkAreaName());
+        }
+    }
+
+    /**
+     * Write side: bind the picked work area, id first with a name fallback for a stale/absent id —
+     * the same contract {@code PwaWorkRequestService} uses.
+     *
+     * <p>Deliberately resolve-only. The previous code ran {@code createValue("Location", name)},
+     * which minted a Location Value for every work area name it saw and polluted the taxonomy that
+     * LOTO points and work areas share. An unmatched name now leaves the link null rather than
+     * inventing a record.
+     */
+    public void resolveWorkArea(FieldListItem entity, FieldListItemDto dto) {
+        resolveWorkArea(entity, dto.getWorkAreaId(), dto.getWorkAreaName(), dto.getLocationName());
+    }
+
+    /**
+     * Primitive overload — the /ng and PWA layers carry different DTO types for the same row, so the
+     * resolution rule lives here once instead of being copied into each service.
+     *
+     * <p>{@code legacyLocationName} is the pre-work-area payload field: older PWA builds (and offline
+     * drafts queued before this change) send only that, holding the work area's name.
+     */
+    public void resolveWorkArea(FieldListItem entity, Long workAreaId, String workAreaName, String legacyLocationName) {
+        if (workAreaId != null) {
+            workAreaRepo.findById(workAreaId).ifPresent(entity::setWorkArea);
+        }
+        if (entity.getWorkArea() == null) {
+            String name = workAreaName != null && !workAreaName.isBlank() ? workAreaName : legacyLocationName;
+            if (name != null && !name.isBlank()) {
+                workAreaRepo.findFirstByNameIgnoreCase(name).ifPresent(entity::setWorkArea);
+            }
+        }
     }
 
     public FieldListItem convertToEntity(FieldListItemDto dto) {
@@ -167,9 +214,7 @@ public class FieldListItemMapper {
         if (dto.getStatusName() != null) {
             entity.setStatus(valueService.createValue("FieldListStatus", dto.getStatusName()));
         }
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        resolveWorkArea(entity, dto);
 
         resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
         // Maximo location + assetnum from the picker (blank/null strings preserved as null

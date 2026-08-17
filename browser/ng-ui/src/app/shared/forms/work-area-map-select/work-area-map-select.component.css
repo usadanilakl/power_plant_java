@@ -205,17 +205,21 @@
 }
 
 .zoom-element {
-  position: relative;
-  display: inline-block;
+  position: absolute;
+  top: 0;
+  left: 0;
   transform-origin: 0 0;
   transition: none;
+  /* Width/height set explicitly from JS on image load. Was `display: inline-block` with no
+     explicit dimensions, and the child `<img>` had `width: 100%` — a circular sizing
+     dependency that resolved to 0×0 on mobile Safari after moveOverlayToBody, making the
+     transformed content invisible (a "dot") regardless of the transform scale. */
 }
 
 .map-image {
   display: block;
-  width: 100%;
-  height: auto;
   pointer-events: none;
+  /* Rendered at natural pixel size; the parent .zoom-element's transform scales it. */
 }
 
 /* --- Shape overlays --- */
@@ -280,7 +284,6 @@
 }
 
 .reset-btn {
-  align-self: flex-end;
   padding: 4px 12px;
   font-size: 12px;
   border: 1px solid #ccc;
@@ -291,6 +294,17 @@
 
 .reset-btn:hover {
   background: #f5f5f5;
+}
+
+.map-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.overlay-footer .reset-btn {
+  padding: 8px 14px;
+  font-size: 13px;
 }
 
 .cs-badge {

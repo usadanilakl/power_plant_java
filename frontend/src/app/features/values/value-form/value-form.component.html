@@ -1,35 +1,107 @@
-<!-- <button (click)="selectDeletingMode()">Delete</button>
-<button (click)="selectEditingMode()">Edit</button> -->
-
-<select [ngModel]="valueToEditId()" (ngModelChange)="onValueSelect($event)">
-  <option [ngValue]="null">Select a value</option>
-  @for (value of values(); track value.id) {
-    <option [ngValue]="value.id">{{ value.name }}</option>
-  }
-</select>
-
-@if (isEditing()) {
-  <div>
-    <label for="editingName">Name:</label>
-    <input id="editingName" [(ngModel)]="editingName" (ngModelChange)="onNameChange($event)" />
-  </div>
-  <div>
-    <label for="editingAlias">Alias:</label>
-    <input id="editingAlias" [(ngModel)]="editingAlias" (ngModelChange)="onAliasChange($event)" />
-  </div>
-  <button (click)="submitEdit()">Submit</button>
-  <button (click)="selectDeletingMode()">Delete</button>
-}
-
-@if (isDeleting()) {
-  <p>Select a value to transfer associated items before deleting:</p>
-
-    <select [ngModel]="transferValueId()" (ngModelChange)="onTransferValueSelect($event)">
+<div class="vf-container">
+  <label class="vf-label" for="valueSelect">Value</label>
+  <select id="valueSelect" [ngModel]="valueToEditId()" (ngModelChange)="onValueSelect($event)">
     <option [ngValue]="null">Select a value</option>
     @for (value of values(); track value.id) {
-        <option [ngValue]="value.id">{{ value.name }}</option>
+      <option [ngValue]="value.id">{{ value.name }}</option>
     }
-    </select>
-    <button (click)="submitDelete()" [disabled]="!transferValueId()">Submit Delete</button>
-    <button (click)="selectEditingMode()">Cancel</button>
-}
+  </select>
+
+  @if (valueToEditId()) {
+    <!-- Details -->
+    <section class="vf-section">
+      <h4 class="vf-section-title">Details</h4>
+      <div class="vf-field">
+        <label for="editingName">Name</label>
+        <input id="editingName" [ngModel]="editingName()" (ngModelChange)="onNameChange($event)" />
+      </div>
+      <div class="vf-field">
+        <label for="editingAlias">Alias</label>
+        <input id="editingAlias" [ngModel]="editingAlias()" (ngModelChange)="onAliasChange($event)" />
+      </div>
+      <div class="vf-meta">
+        <span>ID: {{ selectedValue()?.id }}</span>
+        <span>Category: {{ categoryAlias() }}</span>
+      </div>
+      <button class="vf-btn vf-btn-primary" [disabled]="busy() || !editingName()" (click)="submitEdit()">
+        Save changes
+      </button>
+    </section>
+
+    <!-- References -->
+    <section class="vf-section">
+      <div class="vf-section-head">
+        <h4 class="vf-section-title">
+          References
+          @if (referenceCount() !== null) {
+            <span class="vf-count" [class.zero]="referenceCount() === 0">{{ referenceCount() }}</span>
+          }
+        </h4>
+        <button class="vf-btn vf-btn-link" [disabled]="referencesLoading()" (click)="refreshReferences()">
+          Refresh
+        </button>
+      </div>
+
+      @if (referencesLoading()) {
+        <p class="vf-hint">Checking what uses this value...</p>
+      } @else if (references() === null) {
+        <p class="vf-hint">References unknown.</p>
+      } @else if (references()!.totalCount === 0) {
+        <p class="vf-hint vf-ok">Nothing references this value — safe to delete.</p>
+      } @else {
+        @for (group of references()!.groups; track group.entityType + group.fieldName) {
+          <div class="vf-ref-group">
+            <div class="vf-ref-head">
+              {{ group.entityType }}<span class="vf-ref-field">.{{ group.fieldName }}</span>
+              <span class="vf-count">{{ group.items.length }}</span>
+            </div>
+            <ul class="vf-ref-list">
+              @for (item of group.items; track item.entityType + item.entityId) {
+                <li class="vf-ref-item">
+                  <span class="vf-ref-label">{{ item.entityLabel }}</span>
+                  <span class="vf-ref-id">#{{ item.entityId }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      }
+    </section>
+
+    <!-- Re-point -->
+    <section class="vf-section">
+      <h4 class="vf-section-title">Re-point references</h4>
+      <p class="vf-hint">
+        Move everything above onto another value. Delete unlocks once nothing is left here.
+      </p>
+      <select [ngModel]="transferValueId()" (ngModelChange)="onTransferValueSelect($event)">
+        <option [ngValue]="null">Select replacement value</option>
+        @for (value of transferTargets(); track value.id) {
+          <option [ngValue]="value.id">{{ value.name }}</option>
+        }
+      </select>
+      <button class="vf-btn vf-btn-primary" [disabled]="!canRepoint()" (click)="submitRepoint()">
+        Re-point
+      </button>
+    </section>
+
+    <!-- Delete -->
+    <section class="vf-section vf-danger">
+      <h4 class="vf-section-title">Delete</h4>
+      <p class="vf-hint">
+        @if (canDelete()) {
+          This value is unused and can be deleted.
+        } @else {
+          Disabled while references remain — re-point them first.
+        }
+      </p>
+      <button class="vf-btn vf-btn-danger" [disabled]="!canDelete()" (click)="submitDelete()">
+        Delete value
+      </button>
+    </section>
+
+    @if (message()) {
+      <p class="vf-message" [class.error]="message()!.kind === 'error'">{{ message()!.text }}</p>
+    }
+  }
+</div>

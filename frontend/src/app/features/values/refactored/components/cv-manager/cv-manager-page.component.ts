@@ -16,6 +16,7 @@ import {
 import { TableComponent } from '../../../../../shared/table/table.component';
 import { Column } from '../../../../../models/column.model';
 import { RfPopupProjectionComponent } from '../../../../../shared/popup-projection/rf-popup-projection.component';
+import { ValueService, ValueReferenceReport } from '../../../../../services/value.service';
 
 type TabType = 'categories' | 'values' | 'zeroEnergy';
 type FormMode = 'create' | 'edit';
@@ -37,6 +38,8 @@ interface ZeroEnergyHealth {
 export class CvManagerPageComponent implements OnInit {
   private apiService = inject(CvManagerApiService);
   private http = inject(HttpClient);
+  /** Reference scan / re-point / gated delete — /ng/values endpoints. */
+  private valueService = inject(ValueService);
   private lotoPointsUrl = `${environment.apiUrl}/loto-points`;
 
   // Tab state
@@ -125,7 +128,9 @@ export class CvManagerPageComponent implements OnInit {
     { id: 'id', header: 'ID', accessorKey: 'id' },
     { id: 'name', header: 'Name', accessorKey: 'name' },
     { id: 'alias', header: 'Alias', accessorKey: 'alias' },
-    { id: 'category', header: 'Category', accessorKey: 'category.name' }
+    { id: 'category', header: 'Category', accessorKey: 'category.name' },
+    // Fed by one aggregate call for the whole list, not a lookup per row.
+    { id: 'refCount', header: 'Refs', accessorFn: (item: any) => String(this.referenceCountFor(item.id)) }
   ];
 
   ngOnInit() {
@@ -203,6 +208,22 @@ export class CvManagerPageComponent implements OnInit {
         this.isLoading.set(false);
       }
     });
+    this.loadReferenceCounts();
+  }
+
+  /**
+   * Reference counts for the whole list in one call. Failure is non-fatal — the column falls back
+   * to showing 0 rather than blocking the page, since it is informational.
+   */
+  private loadReferenceCounts() {
+    this.valueService.getValueReferenceCounts().subscribe({
+      next: response => this.referenceCounts.set(response.responseData ?? {}),
+      error: () => this.referenceCounts.set({})
+    });
+  }
+
+  referenceCountFor(valueId: number): number {
+    return this.referenceCounts()[String(valueId)] ?? 0;
   }
 
   // ==================== CATEGORY CRUD ====================
@@ -320,6 +341,116 @@ export class CvManagerPageComponent implements OnInit {
     this.editingValueId.set(value.id);
     this.errorMessage.set('');
     this.isFormOpen.set(true);
+    this.loadReferences(value.id);
+  }
+
+  // ===== References / re-point / gated delete =====
+
+  /** Everything pointing at the value being edited; null while unknown. */
+  /** {valueId: count} for the whole values list; missing key = 0. */
+  referenceCounts = signal<Record<string, number>>({});
+  references = signal<ValueReferenceReport | null>(null);
+  referencesLoading = signal(false);
+  repointTargetId = signal<number | null>(null);
+  refBusy = signal(false);
+  refMessage = signal<{ text: string; kind: 'ok' | 'error' } | null>(null);
+
+  referenceCount = computed(() => this.references()?.totalCount ?? null);
+
+  /** Candidate replacements: every other value in the same category. */
+  repointTargets = computed(() => {
+    const categoryId = this.valueFormCategoryId();
+    const editingId = this.editingValueId();
+    return this.values().filter(v => v.id !== editingId && (v.category?.id ?? null) === categoryId);
+  });
+
+  /**
+   * Delete unlocks only once nothing references the value. The server re-checks and answers 409,
+   * so this is the affordance, not the safety mechanism.
+   */
+  canDeleteValue = computed(() =>
+    this.formMode() === 'edit' &&
+    !this.referencesLoading() &&
+    !this.refBusy() &&
+    this.references() !== null &&
+    this.references()!.totalCount === 0
+  );
+
+  canRepoint = computed(() =>
+    this.repointTargetId() !== null &&
+    this.repointTargetId() !== this.editingValueId() &&
+    !this.refBusy() &&
+    (this.references()?.totalCount ?? 0) > 0
+  );
+
+  private loadReferences(valueId: number) {
+    this.references.set(null);
+    this.repointTargetId.set(null);
+    this.refMessage.set(null);
+    this.referencesLoading.set(true);
+    this.valueService.getValueReferences(valueId).subscribe({
+      next: response => {
+        this.references.set(response.responseData);
+        this.referencesLoading.set(false);
+      },
+      error: () => {
+        this.referencesLoading.set(false);
+        this.refMessage.set({ text: 'Could not load references — delete stays disabled.', kind: 'error' });
+      }
+    });
+  }
+
+  refreshReferences() {
+    const id = this.editingValueId();
+    if (id !== null) this.loadReferences(id);
+  }
+
+  /** Move every reference onto the chosen value, then re-check so Delete can unlock. */
+  submitRepoint() {
+    const id = this.editingValueId();
+    const targetId = this.repointTargetId();
+    if (!id || !targetId) return;
+
+    this.refBusy.set(true);
+    this.valueService.repointValue(id, targetId).subscribe({
+      next: response => {
+        this.refBusy.set(false);
+        const moved = response.responseData ?? 0;
+        this.refMessage.set({ text: `Re-pointed ${moved} reference${moved === 1 ? '' : 's'}.`, kind: 'ok' });
+        this.loadReferences(id);
+        this.loadValues();
+      },
+      error: () => {
+        this.refBusy.set(false);
+        this.refMessage.set({ text: 'Failed to re-point references.', kind: 'error' });
+      }
+    });
+  }
+
+  submitSafeDelete() {
+    const id = this.editingValueId();
+    if (!id || !this.canDeleteValue()) return;
+    if (!confirm(`Delete "${this.valueFormName()}"? Nothing references it.`)) return;
+
+    this.refBusy.set(true);
+    this.valueService.deleteValueIfUnreferenced(id).subscribe({
+      next: () => {
+        this.refBusy.set(false);
+        this.isFormOpen.set(false);
+        this.loadValues();
+      },
+      error: (err) => {
+        this.refBusy.set(false);
+        // 409 = references appeared since the last check; re-sync the list rather than guess.
+        this.refMessage.set({
+          text: err?.status === 409
+            ? 'Value still has references — refreshed the list below.'
+            : 'Failed to delete value.',
+          kind: 'error'
+        });
+        this.loadReferences(id);
+      }
+    });
   }
 
   saveValue() {

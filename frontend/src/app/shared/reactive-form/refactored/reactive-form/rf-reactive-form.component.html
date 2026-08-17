@@ -69,6 +69,12 @@
           [formControl]="getFormControl(field.name)"
           [categoryName]="field.categoryAlias ?? ''"
         ></app-searchable-multi-select-input>
+        } @case('location-unit-select'){
+        <app-location-unit-select
+          [options]="getFieldOptions(field.options)"
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+        ></app-location-unit-select>
         } @case('file'){
         <app-file-input
           [formControl]="getFormControl(field.name)"

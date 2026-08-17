@@ -34,14 +34,17 @@ public class NgValueService {
     private final NgFileService fileService;
     private final NgLotoPointService lotoPointService;
     private final ObjectProvider<WorkAreaGitHubPublisher> workAreaGitHubPublisherProvider;
+    /** Model-wide reference scan backing the delete gate and the repoint. @Lazy — it is a peer service. */
+    private final ValueReferenceService valueReferenceService;
 
-    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, NgEquipmentService equipmentService, @Lazy NgFileService fileService, NgLotoPointService lotoPointService, ObjectProvider<WorkAreaGitHubPublisher> workAreaGitHubPublisherProvider) {
+    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, NgEquipmentService equipmentService, @Lazy NgFileService fileService, NgLotoPointService lotoPointService, ObjectProvider<WorkAreaGitHubPublisher> workAreaGitHubPublisherProvider, @Lazy ValueReferenceService valueReferenceService) {
         this.categoryRepo = categoryRepo;
         this.valueRepo = valueRepo;
         this.equipmentService = equipmentService;
         this.fileService = fileService;
         this.lotoPointService = lotoPointService;
         this.workAreaGitHubPublisherProvider = workAreaGitHubPublisherProvider;
+        this.valueReferenceService = valueReferenceService;
     }
 
     // Create
@@ -201,17 +204,45 @@ public class NgValueService {
         return valueRepo.findById(id);
     }
 
-    // Delete
+    /**
+     * Find an existing Value in a category by name. NEVER creates — the counterpart to
+     * {@link #createValue(String, String)} for callers holding user-typed text, where minting a
+     * Value on every unseen spelling would corrupt the category's vocabulary.
+     */
+    public Optional<Value> findValueInCategory(String categoryName, String valueName) {
+        if (categoryName == null || valueName == null || valueName.isBlank()) {
+            return Optional.empty();
+        }
+        return categoryRepo.findByName(categoryName).stream()
+                .findFirst()
+                .map(category -> category.getValueByName(valueName.trim()))
+                .filter(java.util.Objects::nonNull);
+    }
+
+    /**
+     * Delete a Value if nothing references it.
+     *
+     * <p>Two prior defects, both fixed here because every value-management screen funnels into this
+     * method: the reference check only knew about Equipment, FileObject and LotoPoint — so a Value
+     * still used by FieldListItem, InventoryItem, WorkArea or anything else was deleted anyway,
+     * orphaning the FK — and the delete was a HARD {@code deleteById}, which neither honours the
+     * project's soft-delete convention nor emits a sync change.
+     *
+     * <p>The check is now the model-wide metamodel scan, and the delete is soft. Behaviour on
+     * "still referenced" is unchanged (no-op rather than throw) so existing callers keep working;
+     * callers that want the reason should use {@code ValueReferenceService.deleteIfUnreferenced}.
+     */
     public void deleteValue(Long id) {
         Value value = getValueById(id).orElseThrow(() -> new RuntimeException("Value not found"));
-        List<Equipment> associatedEq = equipmentService.findByValue(value);
-        List<FileObject> associatedFiles = fileService.findByValue(value);
-        List<LotoPoint> associatedLotoPoints = lotoPointService.findByValue(value);
-        if (associatedLotoPoints.isEmpty() && associatedFiles.isEmpty() && associatedEq.isEmpty()) {
-            valueRepo.deleteById(id);
-            publishPwaCategoriesIfRelevant(value.getCategory());
+        int references = valueReferenceService.findReferences(id).totalCount();
+        if (references > 0) {
+            log.warn("[Values] Refusing to delete value {} ({}) — {} reference(s) remain",
+                    id, value.getName(), references);
+            return;
         }
-
+        value.setDeleted(true);
+        valueRepo.save(value);
+        publishPwaCategoriesIfRelevant(value.getCategory());
     }
 
     // Move value to different category
@@ -377,21 +408,22 @@ public class NgValueService {
         return valueRepo.findById(system);
     }
 
+    /**
+     * Move every reference from one Value to another.
+     *
+     * <p>Delegates to the model-wide repoint. The previous implementation only walked Equipment,
+     * LotoPoint and FileObject, so a "transfer then delete" left FieldListItem / InventoryItem /
+     * WorkArea rows pointing at the value that was about to be deleted — and then returned
+     * {@code false} precisely when it HAD moved something, while reassigning the old value's
+     * category when it had not.
+     *
+     * @return true when the repoint completed (whether or not anything needed moving)
+     */
     public boolean moveItemsToNewValue(Long id, Long newId) {
-        Value oldValue = getValueById(id).orElseThrow(() -> new RuntimeException("Original Value not found"));
-        Value newValue = getValueById(newId).orElseThrow(() -> new RuntimeException("New Value not found"));
-
-        List<Equipment> equipment = equipmentService.refactorValues(oldValue, newValue);
-        List<LotoPoint> lotoPoints = lotoPointService.refactorValues(oldValue, newValue);
-        List<FileObject> fileObjects = fileService.refactorValues(oldValue, newValue);
-
-        if (equipment.isEmpty() && lotoPoints.isEmpty() && fileObjects.isEmpty()) {
-            oldValue.setCategory(newValue.getCategory());
-            return true;
-        }
-
-        return false;
-
+        getValueById(id).orElseThrow(() -> new RuntimeException("Original Value not found"));
+        getValueById(newId).orElseThrow(() -> new RuntimeException("New Value not found"));
+        valueReferenceService.repoint(id, newId);
+        return true;
     }
 
     public Value updateValueName(Long valueId, String newName) {

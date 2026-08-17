@@ -33,6 +33,14 @@ public final class MaximoFieldListEvents {
     public record StatusChanged(Long id, String newStatusName, String actor) {}
 
     /**
+     * Field list descriptive fields changed (title / notes / location / asset). Pushes the
+     * new values down to the Maximo record so a PWA edit propagates all the way — before
+     * this event, only status flips reached Maximo and description/location edits stayed
+     * local + SP only.
+     */
+    public record Updated(Long id, String actor) {}
+
+    /**
      * A PermitAttachment was saved for a FieldListItem — upload it to the Maximo record as a
      * doclink. Handled by {@link MaximoAttachmentSyncService.uploadOne}. If the parent record
      * isn't yet routed to Maximo (no maximoHref), the listener marks the attachment pending

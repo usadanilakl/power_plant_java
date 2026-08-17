@@ -210,6 +210,29 @@ public class MaximoWorkOrderAdapter {
         access.addChildren(access.osUrl(OS) + "/" + href, payload);
     }
 
+    /**
+     * Update editable WO fields (description / longDescription / location / assetnum) in one
+     * MERGE. Any null / blank value is skipped, so callers can partial-update. Used by the
+     * field-list bridge to propagate PWA-side edits to the Maximo WO record so the two views
+     * stay in sync (previously only status changes made it through — description/location
+     * edits from PWA stayed local + SP only).
+     *
+     * <p>Same root-scalar MERGE primitive as {@link #setTargetWindow}. spi: prefix is
+     * MANDATORY per {@link #create} — unprefixed keys are silently dropped by mxapiwodetail.
+     */
+    public void updateFields(String href, String description, String longDescription,
+                             String location, String assetnum) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (description != null && !description.isBlank()) payload.put("spi:description", description.trim());
+        if (longDescription != null && !longDescription.isBlank())
+            payload.put("spi:description_longdescription", longDescription.trim());
+        if (location != null && !location.isBlank()) payload.put("spi:location", location.trim());
+        if (assetnum != null && !assetnum.isBlank()) payload.put("spi:assetnum", assetnum.trim());
+        if (payload.isEmpty()) return; // nothing to update — silent no-op
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
     private static void addStr(List<String> conds, String field, String value) {
         if (value == null || value.isBlank()) return;
         conds.add("spi:" + field + "=\"" + escape(value) + "\"");
@@ -438,12 +461,40 @@ public class MaximoWorkOrderAdapter {
      */
     private static final int MAX_STATUS_MEMO_LEN = 50;
 
+    /**
+     * The Inventory Usage UDA that Maximo requires on every WO COMP (rolled out 2026-08-17 by
+     * ops). Discovered via live probe (see comment on {@link #ensureInventoryUsageFlag}). Field
+     * shown in the Maximo Web UI as "Inventory Usage" with values "N" (No) / "Y" (Yes).
+     */
+    static final String INV_USAGE_FIELD = "spi:invusage_xf";
+
     /** Change WO status via the changeStatus action method (e.g. COMP). */
     public void changeStatus(String href, String status, String memo) {
         if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
         if (status == null || status.isBlank()) throw new IllegalArgumentException("status is required");
+        String s = status.trim().toUpperCase();
+        // Maximo (post-2026-08-17) enforces two mandatory fields on the COMP transition:
+        //   1. spi:invusage_xf — Inventory Usage (Y/N)
+        //   2. at least one WOWORKLOG child row
+        // Without them, wsmethod:changeStatus rejects with BMXAA4590E wrapping a
+        // BMXAA5401E "required field" error and the WO silently never closes.
+        // Auto-fill both here so EVERY caller that hits COMP is safe, regardless of whether
+        // they invoked reportActuals first. Idempotent — the flag is a scalar upsert and
+        // ensureWorklogPresent short-circuits when the WO already has a worklog row.
+        if ("COMP".equals(s)) {
+            try {
+                ensureInventoryUsageFlag(href);
+            } catch (RuntimeException e) {
+                log.warn("[Maximo] Failed to set {} on {} before COMP: {}", INV_USAGE_FIELD, href, e.getMessage());
+            }
+            try {
+                ensureWorklogPresent(href, memo);
+            } catch (RuntimeException e) {
+                log.warn("[Maximo] Failed to ensure worklog on {} before COMP: {}", href, e.getMessage());
+            }
+        }
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("status", status.trim().toUpperCase());
+        body.put("status", s);
         if (memo != null && !memo.isBlank()) {
             String m = memo.trim();
             if (m.length() > MAX_STATUS_MEMO_LEN) m = m.substring(0, MAX_STATUS_MEMO_LEN).trim();
@@ -453,8 +504,59 @@ public class MaximoWorkOrderAdapter {
     }
 
     /**
+     * Set {@link #INV_USAGE_FIELD} to "Y" if the WO has any matusetrans row (materials used) or
+     * "N" otherwise. Auto-detection matches the Maximo Web UI behavior — ops sets the flag
+     * based on whether they issued parts against the WO. One extra Maximo call per COMP
+     * (listMaterials probe); acceptable since COMP is a low-frequency operation.
+     *
+     * <p>Field discovered by live probe against a completed WO 2026-08-17. Values verified: the
+     * ALN domain backing the field has exactly two entries — N (No) / Y (Yes).
+     */
+    public void ensureInventoryUsageFlag(String href) {
+        if (href == null || href.isBlank()) return;
+        boolean hasMaterials;
+        try {
+            hasMaterials = !listMaterials(href).isEmpty();
+        } catch (RuntimeException e) {
+            // Probe failed — default to "N" rather than block COMP. If it turns out the WO did
+            // have materials, ops corrects the flag in the Maximo Web UI in ~5 seconds. Better
+            // than a full COMP-failure loop.
+            log.warn("[Maximo] listMaterials probe failed for {} — defaulting invusage=N: {}", href, e.getMessage());
+            hasMaterials = false;
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put(INV_USAGE_FIELD, hasMaterials ? "Y" : "N");
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /**
+     * Guarantee the WO has at least one worklog before COMP. If the WO already has one (any
+     * child row on {@code /woworklog}), no-op. Otherwise add one with the caller-supplied memo
+     * (or {@code "Completed"} fallback) as the summary. Uses CLIENTNOTE logtype — matches the
+     * existing worklog conventions in {@link #reportActuals}.
+     */
+    public void ensureWorklogPresent(String href, String memo) {
+        if (href == null || href.isBlank()) return;
+        // Cheap presence probe — one field, one row is enough to know if a worklog exists.
+        boolean hasWorklog = false;
+        try {
+            Map<String, Object> body = access.getMap(
+                    access.osUrl(OS) + "/" + href + "/woworklog",
+                    Map.of("oslc.select", "spi:worklogid", "oslc.pageSize", "1"));
+            hasWorklog = !members(body).isEmpty();
+        } catch (RuntimeException e) {
+            log.debug("[Maximo] worklog presence probe failed for {}: {} — will add one anyway", href, e.getMessage());
+        }
+        if (hasWorklog) return;
+        String summary = (memo != null && !memo.isBlank()) ? memo.trim() : "Completed";
+        reportActuals(href, null, summary, null, "CLIENTNOTE");
+    }
+
+    /**
      * The full "complete work order" flow: record actuals (labor + worklog), then optionally
-     * change status (default COMP). Returns the refreshed WO. Labor codes must already be resolved.
+     * change status (default COMP). Returns the refreshed WO. Labor codes must already be
+     * resolved. The COMP path in {@link #changeStatus} takes care of the mandatory
+     * {@link #INV_USAGE_FIELD} + worklog fields — no need to duplicate that here.
      */
     public Optional<MaximoWorkOrderDto> completeWorkOrder(String href, CompleteWorkOrderRequest req) {
         assertDueForCompletion(href);

@@ -47,6 +47,23 @@ export interface FormField {
   fields?: FormField[];
   readonly?: boolean;
   placeholder?: string;
+  /**
+   * For 'work-area-map': restrict the map to these work-area type names (case-insensitive).
+   * Omit to show every area type.
+   */
+  allowedAreaTypes?: string[];
+  /**
+   * For 'work-area-map': drop these work-area type names (case-insensitive). Applied after
+   * `allowedAreaTypes`. Use when you want everything EXCEPT a few types.
+   */
+  excludedAreaTypes?: string[];
+  /**
+   * For 'work-area-map': drop confined spaces. Independent of how the area-type Value happens to be
+   * named — matches the hub's `isConfinedSpace` flag (any confined-space hazard set on the area) OR
+   * an area type named "confined space". Prefer this over spelling the type name in
+   * `excludedAreaTypes`, which silently no-ops if the name differs.
+   */
+  excludeConfinedSpaces?: boolean;
 }
 
 export interface FormFieldGroup {

@@ -225,6 +225,34 @@ public class MaximoFieldListEventListener {
     }
 
     /**
+     * A field-list item's descriptive fields changed (PWA edit or hub edit). Push the new
+     * values down to the Maximo record so title/notes/location/asset edits propagate all the
+     * way. Best-effort — a Maximo outage doesn't block the H2 save; the drift panel will
+     * surface any lingering divergence.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onUpdated(MaximoFieldListEvents.Updated event) {
+        if (event == null || event.id() == null) return;
+        log.info("[MaximoFieldList] EVENT onUpdated id={} actor={} — event listener fired",
+                event.id(), event.actor());
+        FieldListItem entity = repo.findById(event.id()).orElse(null);
+        if (entity == null) {
+            log.warn("[MaximoFieldList] Updated event for id={} but row not found", event.id());
+            return;
+        }
+        // No maximoHref → row wasn't routed to Maximo (SR/WO not created yet, or feature
+        // was off when the row was first submitted). Nothing to update; the bridge.updateFields
+        // early-returns on this case with no side effects.
+        if (entity.getMaximoHref() == null || entity.getMaximoHref().isBlank()) return;
+        try {
+            bridge.updateFields(entity);
+        } catch (RuntimeException e) {
+            log.warn("[MaximoFieldList] onUpdated id={} failed: {}", event.id(), e.getMessage());
+        }
+    }
+
+    /**
      * A PermitAttachment was saved on a FieldListItem — upload it to the parent Maximo
      * record. See {@link MaximoAttachmentSyncService} for the upload/pending/retry logic.
      */

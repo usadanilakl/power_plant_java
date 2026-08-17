@@ -15,6 +15,8 @@ export interface WorkAreaModel extends BaseModel {
   constantConfinedSpaceHazards: ConfinedSpaceHazards | null;
   constantLotoIds: number[];
   locationIds: number[];
+  /** `{ [locationId]: '01' | '02' }` — locations absent from the map are not unit-filtered. */
+  locationUnitFilters: Record<string, string>;
   shapeId: number | null;
 }
 
@@ -26,6 +28,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
   constantConfinedSpaceHazards: ConfinedSpaceHazards | null;
   constantLotoIds: number[];
   locationIds: number[];
+  locationUnitFilters: Record<string, string>;
   shapeId: number | null;
 
   constructor(data: Partial<WorkAreaModel> = {}) {
@@ -37,6 +40,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
     this.constantConfinedSpaceHazards = data.constantConfinedSpaceHazards ? new ConfinedSpaceHazards(data.constantConfinedSpaceHazards) : null;
     this.constantLotoIds = data.constantLotoIds ?? [];
     this.locationIds = data.locationIds ?? [];
+    this.locationUnitFilters = data.locationUnitFilters ?? {};
     this.shapeId = data.shapeId ?? null;
   }
 
@@ -50,6 +54,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
       constantConfinedSpaceHazards: this.constantConfinedSpaceHazards,
       constantLotoIds: this.constantLotoIds,
       locationIds: this.locationIds,
+      locationUnitFilters: this.locationUnitFilters,
       shapeId: this.shapeId,
     };
   }
@@ -66,6 +71,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
       constantConfinedSpaceHazards: json.constantConfinedSpaceHazards,
       constantLotoIds: json.constantLotoIds || [],
       locationIds: json.locationIds || [],
+      locationUnitFilters: json.locationUnitFilters || {},
       shapeId: json.shapeId,
     });
   }
@@ -101,16 +107,58 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
         initialValue: entity.constantLotoIds ?? [],
       },
       {
-        name: 'locationIds',
+        // Scratch control — deliberately NOT named `locationIds`/`locationUnitFilters`.
+        // The form's submit path deep-merges the entity with the form value, and merging two
+        // plain objects UNIONS their keys: a location removed here would be resurrected from
+        // the entity's own map. A name the entity does not carry gets assigned wholesale
+        // instead. onWorkAreaFormSubmit splits it back into locationIds + locationUnitFilters.
+        name: 'locationSelection',
         label: 'Locations',
-        type: 'multi-select',
+        type: 'location-unit-select',
         options: locationOptions,
-        initialValue: entity.locationIds ?? [],
+        initialValue: WorkAreaDto.toLocationSelection(entity),
       },
       ...WorkAreaDto.getHazardFields(entity.constantHazards),
       ...WorkAreaDto.getHotWorkMeasureFields(entity.constantHotWorkMeasures),
       ...WorkAreaDto.getConfinedSpaceHazardFields(entity.constantConfinedSpaceHazards),
     ];
+  }
+
+  /**
+   * Collapse `locationIds` + `locationUnitFilters` into the single map the
+   * location-unit-select control edits: every selected location gets an entry, defaulting to
+   * `both` when no unit is pinned.
+   */
+  static toLocationSelection(entity: WorkAreaDto): Record<string, string> {
+    const filters = entity.locationUnitFilters ?? {};
+    return (entity.locationIds ?? []).reduce<Record<string, string>>((acc, id) => {
+      const key = String(id);
+      const unit = filters[key];
+      acc[key] = unit === '01' || unit === '02' ? unit : 'both';
+      return acc;
+    }, {});
+  }
+
+  /**
+   * Inverse of {@link toLocationSelection}: the control's key set is the location selection, and
+   * only genuinely pinned units travel to the server (`both` is a UI default, not a filter).
+   */
+  static fromLocationSelection(
+    selection: Record<string, string> | null | undefined
+  ): { locationIds: number[]; locationUnitFilters: Record<string, string> } {
+    const locationIds: number[] = [];
+    const locationUnitFilters: Record<string, string> = {};
+
+    for (const [key, unit] of Object.entries(selection ?? {})) {
+      const id = Number(key);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      locationIds.push(id);
+      if (unit === '01' || unit === '02') {
+        locationUnitFilters[key] = unit;
+      }
+    }
+
+    return { locationIds, locationUnitFilters };
   }
 
   static getHazardFields(hazardsDto: SwHazards | null): RfFormField[] {
@@ -125,7 +173,8 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
       { name: 'constantHazards.egressAccess', label: 'Egress/Access', type: 'checkbox', initialValue: hazards.egressAccess, group },
       { name: 'constantHazards.fireHazard', label: 'Fire Hazard', type: 'checkbox', initialValue: hazards.fireHazard, group },
       { name: 'constantHazards.chemicalExposure', label: 'Chemical Exposure', type: 'checkbox', initialValue: hazards.chemicalExposure, group },
-      { name: 'constantHazards.confinedSpace', label: 'Confined Space', type: 'checkbox', initialValue: (hazards as any).confinedSpace ?? false, group },
+      // No 'confinedSpace' checkbox here: SwHazards has no such field, so the control
+      // could never persist. Confined-space profile lives in constantConfinedSpaceHazards.
       { name: 'constantHazards.highNoise', label: 'High Noise', type: 'checkbox', initialValue: hazards.highNoise, group },
       { name: 'constantHazards.dustParticulate', label: 'Dust/Particulate', type: 'checkbox', initialValue: hazards.dustParticulate, group },
       { name: 'constantHazards.combustibleDust', label: 'Combustible Dust', type: 'checkbox', initialValue: hazards.combustibleDust, group },

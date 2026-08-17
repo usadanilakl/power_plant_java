@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.ValueReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import java.util.Map;
 @RestrictedAllowed
 public class NgValueController {
     private final NgValueService ngValueService;
+    private final ValueReferenceService valueReferenceService;
 
     @GetMapping("/of-category/{alias}")
     public ResponseEntity<NgApiResponse<List<ValueDto>>> getNgValues(@PathVariable String alias) {
@@ -141,6 +143,70 @@ public class NgValueController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid value ID or name: " + e.getMessage(), e);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while updating the value: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Everything that references this Value, resolved to human labels and grouped by entity type.
+     * Backs the admin Value dialog so an operator can see exactly what is in the way before
+     * repointing or deleting.
+     */
+    @GetMapping("/{id}/references")
+    public ResponseEntity<NgApiResponse<ValueReferenceService.ValueReferenceReport>> getValueReferences(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    valueReferenceService.findReferences(id), "Value references retrieved", LocalDateTime.now()));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to load value references: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Reference count for every value, as {@code {valueId: count}} — one call backing the whole
+     * list. Values with no references are omitted, so the client treats "missing" as 0.
+     */
+    @GetMapping("/reference-counts")
+    public ResponseEntity<NgApiResponse<Map<Long, Integer>>> getValueReferenceCounts() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    valueReferenceService.referenceCounts(), "Reference counts retrieved", LocalDateTime.now()));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to load reference counts: " + e.getMessage(), e);
+        }
+    }
+
+    /** Move every reference from this Value onto another, leaving this one unreferenced. */
+    @PostMapping("/{id}/repoint/{targetId}")
+    public ResponseEntity<NgApiResponse<Integer>> repointValue(@PathVariable Long id, @PathVariable Long targetId) {
+        try {
+            int moved = valueReferenceService.repoint(id, targetId);
+            return ResponseEntity.ok(new NgApiResponse<>(moved, "Repointed " + moved + " reference(s)", LocalDateTime.now()));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to repoint value: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Soft-delete a Value that nothing references. Rejects with 409 while references remain — the
+     * UI greys the button out, but the gate is enforced here so the endpoint is safe on its own.
+     */
+    @DeleteMapping("/{id}/safe")
+    public ResponseEntity<NgApiResponse<String>> deleteValueIfUnreferenced(@PathVariable Long id) {
+        try {
+            valueReferenceService.deleteIfUnreferenced(id);
+            return ResponseEntity.ok(new NgApiResponse<>("Deleted", "Value deleted", LocalDateTime.now()));
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to delete value: " + e.getMessage(), e);
         }
     }
 

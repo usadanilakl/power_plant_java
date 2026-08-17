@@ -1,6 +1,6 @@
 import { Component, computed, DestroyRef, effect, ElementRef, forwardRef, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { RfFormField } from '../../../../models/ui/form-field.model';
 import { SearchableSelectInputComponent } from '../input-fields/searchable-select-input/searchable-select-input.component';
@@ -22,6 +22,7 @@ import { CommentInputComponent } from '../input-fields/comment-input/comment-inp
 import { CharacteristicsEditorComponent } from '../input-fields/characteristics-editor/characteristics-editor.component';
 import { WorkAreaSelectComponent } from '../../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
 import { LotoStandardSelectComponent } from '../input-fields/loto-standard-select/loto-standard-select.component';
+import { LocationUnitSelectComponent } from '../input-fields/location-unit-select/location-unit-select.component';
 import { RfUserSelectComponent } from '../../../../features/users/components/rf-user-select/rf-user-select.component';
 import { WorkAreaDto } from '../../../../models/permits/work-area.model';
 import { FormBuilderService } from '../services/form-builder.service';
@@ -60,6 +61,7 @@ import { DriftService, ThreeWayFieldEntry } from '../../../../services/drift.ser
     CharacteristicsEditorComponent,
     WorkAreaSelectComponent,
     LotoStandardSelectComponent,
+    LocationUnitSelectComponent,
     RfUserSelectComponent,
     GuideDirective,
   ],
@@ -102,6 +104,11 @@ export class RfReactiveFormComponent {
   // reconnect, lifecycle button responses) do NOT wipe user edits — see the
   // paired dirty-check in the patch effect below.
   private lastFieldsSignature = '';
+  // Identity of the entity the current FormGroup was built for. A different
+  // entity is a different form: it must rebuild even when the field structure
+  // is byte-identical, or controls (and their dirty flags) carry over from the
+  // previously edited row. `undefined` = nothing built yet.
+  private lastBuiltEntityId: number | undefined = undefined;
 
   // ===== Drift on the form (OPT-IN via driftEntityType) — mirrors SmartFormComponent. =====
   driftEntityType = input<string | undefined>(undefined);
@@ -124,16 +131,22 @@ export class RfReactiveFormComponent {
   groupedFields = computed(() => this.dataService.groupFields(this.fields()));
 
   constructor() {
-    // Rebuild the FormGroup only when the field STRUCTURE actually changes
-    // (names, types, nested shape) — NOT on every entity re-emission. Without
-    // this guard a background SSE echo would recompute fields() (initialValues
-    // are entity-derived) and wipe controls the user is mid-editing.
+    // Rebuild the FormGroup when the field STRUCTURE changes (names, types,
+    // nested shape) OR when we're pointed at a DIFFERENT entity — NOT on every
+    // entity re-emission. Without the structure guard a background SSE echo
+    // would recompute fields() (initialValues are entity-derived) and wipe
+    // controls the user is mid-editing.
     effect(() => {
       const fields = this.fields();
       if (!fields || fields.length === 0) return;
+      const entityId = this.entityIdentity();
       const sig = this.fieldStructureSignature(fields);
-      if (sig === this.lastFieldsSignature) return;
+      if (sig === this.lastFieldsSignature && !this.isDifferentEntity(entityId)) return;
       this.lastFieldsSignature = sig;
+      // Rebuilding with nothing bound (a structure change on a closed dialog) leaves the
+      // form holding blanks, so forget the tracked id — the next entity to arrive must
+      // rebuild to adopt its values rather than be mistaken for "already built".
+      this.lastBuiltEntityId = entityId === null ? undefined : entityId;
       this.isCreatingForm = true;
       this.createForm();
       this.isCreatingForm = false;
@@ -166,15 +179,79 @@ export class RfReactiveFormComponent {
             // Missing control: patch (may be a dynamic field the form doesn't own).
             // Present + dirty: user is editing — do NOT clobber.
             // Present + pristine: patch with new server value.
-            if (!ctrl) {
-              this.form.patchValue({ [name]: value }, { emitEvent: false });
-            } else if (!ctrl.dirty) {
-              ctrl.setValue(value, { emitEvent: false });
+            //
+            // Every write is isolated: a value that doesn't fit its control must
+            // not abort the fields after it. FormGroup.setValue() throws on ANY
+            // key mismatch (missing control for a supplied key, or a control
+            // with no supplied value), and forms routinely render a SUBSET of a
+            // nested POJO's keys — e.g. the WorkArea form shows 19 of SwHazards'
+            // 31 fields. That threw mid-loop and left every later field
+            // (locations, LOTO standards) un-patched.
+            try {
+              if (!ctrl) {
+                this.form.patchValue({ [name]: value }, { emitEvent: false });
+              } else if (!ctrl.dirty) {
+                this.patchControl(ctrl, value);
+              }
+            } catch (err) {
+              console.warn(`[RfReactiveForm] Skipped patching "${name}":`, err);
             }
           }
         }, 0);
       }
     });
+  }
+
+  /**
+   * Write a server value into one control.
+   *
+   * FormGroup/FormArray get patchValue (tolerates a partial overlap between the
+   * supplied object and the rendered controls); a leaf FormControl gets
+   * setValue. Both suppress events — the caller is applying server state, not a
+   * user edit.
+   */
+  private patchControl(ctrl: AbstractControl, value: any): void {
+    if (ctrl instanceof FormGroup || ctrl instanceof FormArray) {
+      if (value == null) return;
+      ctrl.patchValue(value, { emitEvent: false });
+    } else {
+      ctrl.setValue(value, { emitEvent: false });
+    }
+  }
+
+  /**
+   * Identity of the bound entity: its id (0 for an unsaved one), or null when no
+   * entity is bound at all. Reads the entity signal so the createForm effect
+   * tracks it.
+   *
+   * "No entity bound" (null) and "new unsaved entity" (0) must stay distinct: a
+   * host that closes a dialog typically rebinds `[entity]` to a bare `{}`, which
+   * is NOT a request to reset the form, whereas a real DTO with id 0 (the "New"
+   * button) is. A DTO always carries its own keys; `{}` does not.
+   */
+  private entityIdentity(): number | null {
+    const entity = this.entity();
+    if (!entity || Object.keys(entity).length === 0) return null;
+    const num = Number(entity.id);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  /**
+   * True when the bound entity has changed identity since the FormGroup was
+   * built, i.e. the form now points at a different row and must be rebuilt.
+   *
+   * Deliberately NOT true for the 0 → N transition: that is a freshly created
+   * entity receiving its server-assigned id after a save, and rebuilding there
+   * would discard edits made while the save was in flight. Every other
+   * transition (row → other row, row → new blank form, unbound → row) rebuilds,
+   * which resets both the values and the dirty flags the patch effect honours.
+   */
+  private isDifferentEntity(entityId: number | null): boolean {
+    if (entityId === null) return false;
+    const previous = this.lastBuiltEntityId;
+    if (previous === undefined) return true;
+    if (previous === 0 && entityId !== 0) return false;
+    return previous !== entityId;
   }
 
   /**

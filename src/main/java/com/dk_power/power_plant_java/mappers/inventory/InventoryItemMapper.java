@@ -79,11 +79,41 @@ public class InventoryItemMapper {
             dto.setStatusId(entity.getStatus().getId());
             dto.setStatusName(entity.getStatus().getName());
         }
+        applyLocationFields(entity, dto);
+        return dto;
+    }
+
+    /**
+     * Read side: {@code locationName} is the typed home location, falling back to the legacy
+     * Location Value for rows written before the text column existed. Keeps the SharePoint
+     * "Location" column and every display unchanged.
+     */
+    public void applyLocationFields(InventoryItem entity, InventoryItemDto dto) {
         if (entity.getLocation() != null) {
             dto.setLocationId(entity.getLocation().getId());
             dto.setLocationName(entity.getLocation().getName());
         }
-        return dto;
+        if (entity.getHomeLocation() != null && !entity.getHomeLocation().isBlank()) {
+            dto.setLocationName(entity.getHomeLocation());
+        }
+    }
+
+    /**
+     * Write side: store the typed text, and link a Location Value ONLY when the text already names
+     * one exactly.
+     *
+     * <p>The old {@code createValue("Location", name)} minted a Value per unseen spelling — with a
+     * free-text input that is one new Value per submission, permanently polluting the taxonomy
+     * shared with LOTO points and work areas. Resolve-only keeps the useful linkage without the
+     * damage; unmatched text simply stays text.
+     */
+    public void resolveLocation(InventoryItem entity, String locationName) {
+        if (locationName == null) return; // not supplied — leave whatever is stored alone
+        String trimmed = locationName.trim();
+        entity.setHomeLocation(trimmed.isEmpty() ? null : trimmed);
+        if (!trimmed.isEmpty()) {
+            valueService.findValueInCategory("Location", trimmed).ifPresent(entity::setLocation);
+        }
     }
 
     public InventoryItem convertToEntity(InventoryItemDto dto) {
@@ -111,9 +141,7 @@ public class InventoryItemMapper {
         if (dto.getStatusName() != null) {
             entity.setStatus(valueService.createValue("InventoryStatus", dto.getStatusName()));
         }
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        resolveLocation(entity, dto.getLocationName());
         return entity;
     }
 }

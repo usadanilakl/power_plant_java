@@ -29,6 +29,19 @@ interface OpenItem {
   submitterName: string;
   createdBy: string;
   attachmentCount: number;
+  // Additional fields returned by the hub (previously typed too tight to reach maximoLocation/
+  // maximoAssetnum, so the edit-form's Maximo picker opened empty even when the row had them).
+  sharepointId?: string;
+  localUuid?: string;
+  maximoLocation?: string;
+  maximoAssetnum?: string;
+  maximoRecordType?: string;
+  maximoRecordId?: string;
+  maximoStatus?: string;
+  // Work area id — needed by the equipment-picker to pre-filter its list to the area's
+  // equipment. Without it the picker opens with an empty results panel and the user has
+  // to re-pick the area to trigger the workAreaId binding on the form.
+  workAreaId?: number;
 }
 
 @Component({
@@ -75,6 +88,59 @@ interface OpenItem {
           <button class="back-button" (click)="backToSelect()">&#x2190; Back</button>
           <span class="header-title">New {{ presetListType() }} Item</span>
         </div>
+
+        <!-- Active items in this area — INLINE sticky bar, sits under the header and
+             scrolls with the form. Collapsed by default (compact one-line chip);
+             tap to expand a scrollable list. Was a position:fixed popup before which
+             (a) covered form fields and (b) drifted off-screen when the iOS keyboard
+             opened and shifted the visual viewport. -->
+        @if (areaName()) {
+          <div class="area-strip" [class.expanded]="areaPopupExpanded()">
+            <button class="area-strip-toggle"
+                    (click)="areaPopupExpanded.set(!areaPopupExpanded())"
+                    [attr.aria-expanded]="areaPopupExpanded()">
+              @if (loadingAreaItems()) {
+                <span class="area-strip-count">&#x231B; Loading...</span>
+              } @else {
+                <span class="area-strip-count"
+                      [class.zero]="areaItems().length === 0">
+                  {{ areaItems().length }}
+                </span>
+                <span class="area-strip-label">
+                  active in <strong>{{ areaName() }}</strong>
+                </span>
+              }
+              <span class="area-strip-chevron">
+                {{ areaPopupExpanded() ? '&#9652;' : '&#9662;' }}
+              </span>
+            </button>
+            @if (areaPopupExpanded() && !loadingAreaItems()) {
+              @if (areaItems().length === 0) {
+                <div class="area-strip-empty">No active items in this area.</div>
+              } @else {
+                <div class="area-strip-list">
+                  @for (item of areaItems(); track item.id) {
+                    <button class="area-strip-item"
+                            type="button"
+                            (click)="detailItem.set(item)">
+                      <div class="area-strip-item-line1">
+                        <span class="status-badge"
+                              [attr.data-status]="item.statusName">{{ item.statusName }}</span>
+                        <span class="area-strip-item-title">{{ item.title }}</span>
+                      </div>
+                      <div class="area-strip-item-line2">
+                        <span>{{ item.dateObserved }}</span>
+                        @if (item.equipmentTag) { <span>&middot; {{ item.equipmentTag }}</span> }
+                        @if (item.specificLocation) { <span>&middot; {{ item.specificLocation }}</span> }
+                      </div>
+                    </button>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+
         @if (fields().length > 0) {
           <app-reactive-form
             [fields]="fields()"
@@ -86,45 +152,6 @@ interface OpenItem {
           </app-reactive-form>
         }
       </div>
-
-      <!-- Area active items: minimized button or expanded popup -->
-      @if (areaName()) {
-        @if (!areaPopupExpanded()) {
-          <button class="area-fab" (click)="areaPopupExpanded.set(true)">
-            @if (loadingAreaItems()) {
-              &#x231B;
-            } @else {
-              &#x1F4CB; {{ areaItems().length }} item(s) in {{ areaName() }}
-            }
-          </button>
-        } @else {
-          <div class="area-popup">
-            <div class="area-popup-header">
-              <span class="area-popup-title">Active {{ presetListType() }} items in {{ areaName() }}</span>
-              <button class="area-popup-close" (click)="areaPopupExpanded.set(false)">&#x2212;</button>
-            </div>
-            @if (loadingAreaItems()) {
-              <div class="area-popup-loading">Loading...</div>
-            } @else if (areaItems().length === 0) {
-              <div class="area-popup-empty">No active items in this area</div>
-            } @else {
-              <div class="area-popup-list">
-                @for (item of areaItems(); track item.id) {
-                  <div class="area-popup-item" (click)="detailItem.set(item)">
-                    <div class="area-popup-item-title">{{ item.title }}</div>
-                    <div class="area-popup-item-meta">
-                      <span class="status-badge" [attr.data-status]="item.statusName">{{ item.statusName }}</span>
-                      <span>{{ item.dateObserved }}</span>
-                      @if (item.equipmentTag) { <span>{{ item.equipmentTag }}</span> }
-                    </div>
-                  </div>
-                }
-              </div>
-              <div class="area-popup-count">{{ areaItems().length }} active item(s)</div>
-            }
-          </div>
-        }
-      }
     }
 
     <!-- Edit form -->
@@ -134,6 +161,26 @@ interface OpenItem {
           <button class="back-button" (click)="openItemsList()">&#x2190; Back to List</button>
           <span class="header-title">Edit: {{ editingItem()?.title }}</span>
         </div>
+
+        <!-- Existing attachments (hub-item edit only). Each × removes it from the "keep"
+             set; on submit, everything NOT in the set is deleted server-side. New photos
+             go through the form's file input as normal. -->
+        @if (editExistingAtts().length > 0) {
+          <div class="edit-existing-atts">
+            <div class="edit-existing-label">Existing photos ({{ editExistingAtts().length }}) — tap × to remove:</div>
+            <div class="edit-existing-grid">
+              @for (img of editExistingAtts(); track img.id) {
+                <div class="edit-existing-cell">
+                  <img [src]="img.dataUrl" [alt]="img.fileName" class="edit-existing-thumb" />
+                  <button type="button" class="edit-existing-remove"
+                          (click)="removeExistingAtt(img.id)"
+                          [attr.aria-label]="'Remove ' + img.fileName">&times;</button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         @if (editFields().length > 0) {
           <app-reactive-form
             [fields]="editFields()"
@@ -192,18 +239,34 @@ interface OpenItem {
           <div class="items-count">{{ filteredOpenItems().length }} item(s)</div>
         }
 
-        <!-- Local-only items section -->
+        <!-- Local-only items section: items where the last submit attempt didn't confirm
+             (network out, both hub + PA down, etc.). Tap to open + retry. Delete removes
+             the local copy without submitting — for stale drafts the user gave up on. -->
         @if (localOnlyItems().length > 0) {
           <div class="local-section">
-            <h3 class="local-header">Local (not yet submitted)</h3>
-            @for (item of localOnlyItems(); track item.localUuid) {
-              <button class="history-item" (click)="editLocalItem(item)">
-                <div class="history-item-header">
-                  <span class="history-item-type">{{ item.listTypeName }}</span>
-                  <span class="history-item-status not-submitted">Local only</span>
-                </div>
-                <div class="history-item-title">{{ item.title }}</div>
+            <div class="local-header-row">
+              <h3 class="local-header">Local (not yet submitted) — {{ localOnlyItems().length }}</h3>
+              <button type="button" class="local-clear-all" (click)="clearAllLocal()"
+                      title="Delete every local-only item (does not submit)">
+                Clear all
               </button>
+            </div>
+            @for (item of localOnlyItems(); track item.localUuid) {
+              <div class="history-row">
+                <button class="history-item" (click)="editLocalItem(item)">
+                  <div class="history-item-header">
+                    <span class="history-item-type">{{ item.listTypeName }}</span>
+                    <span class="history-item-status not-submitted">Local only</span>
+                  </div>
+                  <div class="history-item-title">{{ item.title }}</div>
+                </button>
+                <button type="button" class="history-item-delete"
+                        (click)="deleteLocal(item)"
+                        title="Delete this local item (does not submit)"
+                        aria-label="Delete local item">
+                  &times;
+                </button>
+              </div>
             }
           </div>
         }
@@ -229,7 +292,35 @@ interface OpenItem {
               <div class="detail-notes">{{ detailItem()!.notes }}</div>
             }
           </div>
+
+          <!-- Image gallery. Non-image attachments (PDFs etc.) skipped in the grid but still
+               reported in the count so users know there's more than just what they see. -->
+          @if (detailImages().length > 0) {
+            <div class="detail-images">
+              @for (img of detailImages(); track img.id) {
+                <img [src]="img.dataUrl" [alt]="img.fileName"
+                     class="detail-thumb" (click)="openLightbox(img.dataUrl, $event)" />
+              }
+            </div>
+          } @else if (loadingAttachments()) {
+            <div class="detail-att-loading">Loading attachments…</div>
+          }
+
+          <div class="detail-actions">
+            <button type="button" class="detail-btn detail-btn-edit"
+                    (click)="editHubItem(detailItem()!)">
+              Edit
+            </button>
+          </div>
         </div>
+      </div>
+    }
+
+    <!-- Simple lightbox overlay for tapping a thumbnail. -->
+    @if (lightboxSrc()) {
+      <div class="lightbox" (click)="lightboxSrc.set(null)">
+        <img [src]="lightboxSrc()!" alt="Full size" class="lightbox-img" (click)="$event.stopPropagation()" />
+        <button class="lightbox-close" (click)="lightboxSrc.set(null)">&times;</button>
       </div>
     }
   `,
@@ -283,11 +374,21 @@ interface OpenItem {
     .local-section { margin-top: 16px; }
     .local-header { font-size: 13px; font-weight: 600; color: var(--secondary-text); margin: 0 0 8px; }
     .local-section, .empty-history { display: flex; flex-direction: column; gap: 8px; }
+    .local-header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .local-clear-all { background: none; border: 1px solid var(--border-color); border-radius: 6px;
+      padding: 4px 10px; font-size: 12px; color: var(--secondary-text); cursor: pointer; font-family: inherit; }
+    .local-clear-all:hover { border-color: var(--error-text, #b91c1c); color: var(--error-text, #b91c1c); }
     .empty-history { padding: 32px; text-align: center; color: var(--secondary-text); }
+    .history-row { display: flex; align-items: stretch; gap: 6px; }
+    .history-row .history-item { flex: 1; }
     .history-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px;
       border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-background);
       cursor: pointer; text-align: left; font-family: inherit; color: var(--primary-text); }
     .history-item:hover { border-color: var(--accent-color); }
+    .history-item-delete { flex: 0 0 auto; width: 40px; background: var(--card-background);
+      border: 1px solid var(--border-color); border-radius: 8px; color: var(--secondary-text);
+      font-size: 20px; line-height: 1; cursor: pointer; font-family: inherit; }
+    .history-item-delete:hover { border-color: var(--error-text, #b91c1c); color: var(--error-text, #b91c1c); }
     .history-item-header { display: flex; justify-content: space-between; align-items: center; }
     .history-item-type { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--accent-color); }
     .history-item-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--secondary-background); }
@@ -303,28 +404,69 @@ interface OpenItem {
     .detail-field strong { color: var(--secondary-text); display: inline-block; min-width: 80px; }
     .detail-notes { background: var(--secondary-background); padding: 10px 12px; border-radius: 6px;
       white-space: pre-wrap; font-size: 13px; margin-top: 4px; }
+    .edit-existing-atts { margin: 0 0 16px; padding: 12px; border: 1px solid var(--border-color);
+      border-radius: 8px; background: var(--card-background); }
+    .edit-existing-label { font-size: 13px; color: var(--secondary-text); margin-bottom: 8px; }
+    .edit-existing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+    .edit-existing-cell { position: relative; }
+    .edit-existing-thumb { width: 100%; aspect-ratio: 1; object-fit: cover;
+      border-radius: 6px; border: 1px solid var(--border-color); }
+    .edit-existing-remove { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px;
+      background: var(--error-text, #b91c1c); color: white; border: 2px solid var(--primary-background);
+      border-radius: 50%; font-size: 14px; line-height: 1; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; padding: 0; }
+    .edit-existing-remove:active { transform: scale(0.9); }
+    .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px; margin-top: 12px; }
+    .detail-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px;
+      border: 1px solid var(--border-color); cursor: pointer; }
+    .detail-att-loading { margin-top: 12px; font-size: 12px; color: var(--secondary-text); }
+    .detail-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .detail-btn { padding: 8px 16px; border-radius: 6px; border: none; font-family: inherit;
+      font-size: 14px; font-weight: 600; cursor: pointer; }
+    .detail-btn-edit { background: var(--accent-color); color: white; }
+    .detail-btn-edit:hover { opacity: 0.9; }
+    .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex;
+      align-items: center; justify-content: center; z-index: 10000; cursor: pointer; }
+    .lightbox-img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 4px; cursor: default; }
+    .lightbox-close { position: fixed; top: 12px; right: 12px; background: none; border: none;
+      color: white; font-size: 36px; cursor: pointer; z-index: 10001; padding: 8px 12px; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex;
       align-items: center; justify-content: center; z-index: 9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color);
       border-top-color: var(--accent-color); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .area-fab { position: fixed; bottom: 16px; right: 16px; padding: 10px 16px; background: var(--accent-color);
-      color: white; border: none; border-radius: 24px; font-size: 13px; font-family: inherit; cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 100; white-space: nowrap; }
-    .area-fab:hover { opacity: 0.9; }
-    .area-popup { position: fixed; bottom: 0; left: 0; right: 0; max-height: 40vh; overflow-y: auto;
-      background: var(--primary-background); border-top: 2px solid var(--accent-color);
-      box-shadow: 0 -4px 20px rgba(0,0,0,.15); z-index: 100; padding: 12px 16px; border-radius: 16px 16px 0 0; }
-    .area-popup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .area-popup-title { font-size: 14px; font-weight: 600; }
-    .area-popup-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--secondary-text); }
-    .area-popup-loading, .area-popup-empty { font-size: 13px; color: var(--secondary-text); padding: 8px 0; }
-    .area-popup-list { display: flex; flex-direction: column; gap: 6px; }
-    .area-popup-item { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; color: var(--primary-text); }
-    .area-popup-item:hover { border-color: var(--accent-color); }
-    .area-popup-item-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-    .area-popup-item-meta { display: flex; gap: 10px; font-size: 12px; color: var(--secondary-text); align-items: center; }
-    .area-popup-count { font-size: 11px; color: var(--secondary-text); text-align: right; padding-top: 6px; }
+    /* Area strip: in-flow sticky bar under the header showing "N active in <area>".
+       Not fixed-positioned — sticks with position: sticky under the sticky-header so it
+       never overlays form fields and never drifts when the mobile keyboard opens.
+       Collapsed = one line; expanded = list scrolls inside a max-height container. */
+    .area-strip { position: sticky; top: 48px; z-index: 9;
+      background: var(--card-background); border: 1px solid var(--border-color);
+      border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+    .area-strip.expanded { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .area-strip-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+      background: none; border: none; text-align: left; cursor: pointer; font-family: inherit;
+      color: var(--primary-text); font-size: 14px; }
+    .area-strip-toggle:hover { background: var(--secondary-background); }
+    .area-strip-count { display: inline-flex; align-items: center; justify-content: center;
+      min-width: 28px; height: 24px; padding: 0 8px; border-radius: 12px;
+      background: var(--accent-color); color: white; font-weight: 600; font-size: 13px; }
+    .area-strip-count.zero { background: var(--secondary-background); color: var(--secondary-text); }
+    .area-strip-label { flex: 1; font-size: 13px; color: var(--secondary-text); }
+    .area-strip-label strong { color: var(--primary-text); }
+    .area-strip-chevron { font-size: 10px; color: var(--secondary-text); }
+    .area-strip-empty { padding: 8px 12px 12px; font-size: 13px; color: var(--secondary-text);
+      border-top: 1px solid var(--border-color); }
+    .area-strip-list { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 12px;
+      max-height: 240px; overflow-y: auto; border-top: 1px solid var(--border-color);
+      -webkit-overflow-scrolling: touch; }
+    .area-strip-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
+      border: 1px solid var(--border-color); border-radius: 6px; background: var(--primary-background);
+      cursor: pointer; text-align: left; font-family: inherit; color: var(--primary-text); }
+    .area-strip-item:hover { border-color: var(--accent-color); }
+    .area-strip-item-line1 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+    .area-strip-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .area-strip-item-line2 { display: flex; gap: 6px; font-size: 12px; color: var(--secondary-text); flex-wrap: wrap; }
     @media (max-width: 768px) {
       .action-cards { grid-template-columns: 1fr 1fr; max-width: 400px; }
       .table-header { display: none; }
@@ -358,6 +500,16 @@ export class FieldListComponent implements OnInit {
   loadingOpenItems = signal(false);
   openItemsFilter = signal<string | null>(null);
   detailItem = signal<OpenItem | null>(null);
+
+  // Detail-dialog attachments (fetched lazily when detailItem is set).
+  detailImages = signal<Array<{ id: number; fileName: string; dataUrl: string }>>([]);
+  loadingAttachments = signal(false);
+  lightboxSrc = signal<string | null>(null);
+
+  // Edit-mode attachments (existing images on the hub-side item, plus the "keep" set that
+  // shrinks as the user removes thumbnails; only the remaining ids get sent as
+  // keepAttachmentIds on Update so the server can delete the removed ones).
+  editExistingAtts = signal<Array<{ id: number; fileName: string; dataUrl: string }>>([]);
 
   // Area items popup
   areaItems = signal<OpenItem[]>([]);
@@ -464,6 +616,103 @@ export class FieldListComponent implements OnInit {
 
   viewOpenItem(item: OpenItem): void {
     this.detailItem.set(item);
+    this.detailImages.set([]);
+    if (item?.id && item.id > 0) this.loadDetailAttachments(item.id);
+  }
+
+  /** Fetch attachments for the item currently in the details dialog. Never blocks; fail-quiet. */
+  private loadDetailAttachments(id: number): void {
+    this.loadingAttachments.set(true);
+    this.serverApi.getFieldListAttachments(id).subscribe({
+      next: atts => {
+        const images = (atts || [])
+          .filter(a => (a.contentType || '').startsWith('image/') && a.base64Content)
+          .map(a => ({
+            id: a.id,
+            fileName: a.fileName,
+            dataUrl: a.base64Content.startsWith('data:')
+              ? a.base64Content
+              : `data:${a.contentType};base64,${a.base64Content}`,
+          }));
+        this.detailImages.set(images);
+        this.loadingAttachments.set(false);
+      },
+      error: () => { this.detailImages.set([]); this.loadingAttachments.set(false); },
+    });
+  }
+
+  openLightbox(src: string, ev: MouseEvent): void {
+    ev.stopPropagation();
+    this.lightboxSrc.set(src);
+  }
+
+  /**
+   * Open an existing hub-side item in the same form used for creation, pre-filled. On submit,
+   * onUpdate calls updateFieldListItem which pushes to hub H2, SP, and (via the Updated event
+   * → bridge.updateFields) Maximo. So a PWA edit propagates all the way — matches the flow
+   * for local-only items (editLocalItem) but sets editingSubmitted=true to route through the
+   * update endpoint instead of a fresh submit.
+   */
+  editHubItem(item: OpenItem): void {
+    this.detailItem.set(null);
+    this.editingItem.set(item);
+    this.editingLocalUuid = (item as any).localUuid || '';
+    this.editingSubmitted.set(true); // hub-side row → PUT /update instead of POST /submit
+    // Map the OpenItem projection into the FORM's field-name shape (NOT the DTO's) — the
+    // form uses `locationDetail` (not `specificLocation`) and `maximoPicker` (not the flat
+    // maximoLocation/maximoAssetnum). Previously we passed the wrong keys, so the edit
+    // opened with those fields empty; if the user submitted without noticing, backend
+    // received empty strings and silently wiped the data.
+    // workAreaMap object is the shape the work-area-map field expects; we don't have
+    // coordinates for a hub-loaded row, so pass just the name (form's writeValue accepts
+    // string or {name}).
+    const maximoLoc = (item as any).maximoLocation || '';
+    const maximoAsset = (item as any).maximoAssetnum || '';
+    this.editEntity.set({
+      title: item.title,
+      notes: item.notes,
+      dateObserved: item.dateObserved,
+      timeObserved: item.timeObserved,
+      locationDetail: item.specificLocation,
+      equipmentTag: item.equipmentTag,
+      // Include the workAreaId (not just the name) so the equipment-picker's
+      // `[workAreaId]="form.get('workAreaMap')?.value?.id ?? null"` binding can pre-filter
+      // its list on dialog open. Without the id, the picker opens empty and the user has
+      // to change the area then change it back to trigger the filter.
+      workAreaMap: (item.workAreaId || item.locationName)
+        ? { id: item.workAreaId ?? null, name: item.locationName ?? '' }
+        : null,
+      maximoPicker: (maximoLoc || maximoAsset)
+        ? { location: maximoLoc, assetnum: maximoAsset }
+        : null,
+      listTypeName: item.listTypeName,
+      statusName: item.statusName,
+    });
+    this.editFields.set(fieldListFormFields(this.listTypeOptions, item.listTypeName));
+    // Prime the existing-attachments panel — user can remove any before submit; whatever
+    // remains gets sent as keepAttachmentIds so the server deletes the rest.
+    this.editExistingAtts.set([]);
+    if (item?.id && item.id > 0) {
+      this.serverApi.getFieldListAttachments(item.id).subscribe(atts => {
+        const imgs = (atts || [])
+          .filter(a => (a.contentType || '').startsWith('image/') && a.base64Content)
+          .map(a => ({
+            id: a.id,
+            fileName: a.fileName,
+            dataUrl: a.base64Content.startsWith('data:')
+              ? a.base64Content
+              : `data:${a.contentType};base64,${a.base64Content}`,
+          }));
+        this.editExistingAtts.set(imgs);
+      });
+    }
+    this.mode.set('edit');
+  }
+
+  /** Remove one existing attachment from the "keep" set — the deletion happens server-side
+   *  on submit (keepAttachmentIds excludes this id). Local mutation only; no network call. */
+  removeExistingAtt(id: number): void {
+    this.editExistingAtts.update(list => list.filter(a => a.id !== id));
   }
 
   private loadLocalOnlyItems(): void {
@@ -471,22 +720,49 @@ export class FieldListComponent implements OnInit {
     this.localOnlyItems.set(stored.filter((i: any) => !i.submitted));
   }
 
+  /**
+   * Delete ALL locally-stored not-yet-submitted items. Keeps submitted history rows so a
+   * successful submit's audit trail isn't wiped — only unsubmitted (localOnly) items go.
+   * User might want this if a stale batch of stuck local drafts is cluttering the view.
+   */
+  clearAllLocal(): void {
+    if (this.localOnlyItems().length === 0) return;
+    if (!confirm(`Delete all ${this.localOnlyItems().length} local-only item(s)? This cannot be undone.`)) return;
+    const stored = this.getStoredItems();
+    const kept = stored.filter((i: any) => i.submitted);
+    try {
+      localStorage.setItem('pwa_field_list_history', JSON.stringify(kept));
+    } catch { /* quota / disabled — nothing we can do */ }
+    this.loadLocalOnlyItems();
+    this.globalMessage.showSuccess('Local-only items cleared.');
+  }
+
+  /** Delete one local-only item without submitting. Uses localUuid as identity. */
+  deleteLocal(item: any): void {
+    if (!item?.localUuid) return;
+    if (!confirm(`Delete "${item.title || 'this item'}" from local queue? This cannot be undone.`)) return;
+    const stored = this.getStoredItems();
+    const kept = stored.filter((i: any) => i.localUuid !== item.localUuid);
+    try {
+      localStorage.setItem('pwa_field_list_history', JSON.stringify(kept));
+    } catch { /* quota / disabled */ }
+    this.loadLocalOnlyItems();
+  }
+
   private loadAreaItems(areaName: string): void {
     if (!this.authService.isLoggedIn() || !this.serverStatus.isOnline()) return;
 
     this.areaName.set(areaName);
     this.loadingAreaItems.set(true);
-    this.areaPopupExpanded.set(true);
-
+    // Auto-expand only when items land, not preemptively — the strip is inline now, so
+    // it's fine to show collapsed when empty and users don't need it. The old fixed
+    // popup pre-expanded because it would otherwise be missable off-screen.
     this.serverApi.getOpenFieldListItems(this.presetListType()).subscribe({
       next: items => {
         const filtered = items.filter((i: any) => i.locationName === areaName);
         this.areaItems.set(filtered);
         this.loadingAreaItems.set(false);
-        if (filtered.length === 0) {
-          // Auto-close after a short delay if no items
-          setTimeout(() => { if (this.areaItems().length === 0) this.areaPopupExpanded.set(false); }, 2000);
-        }
+        this.areaPopupExpanded.set(filtered.length > 0);
       },
       error: () => {
         this.areaItems.set([]);
@@ -554,23 +830,30 @@ export class FieldListComponent implements OnInit {
     const payload = this.buildPayload(formData);
     payload.localUuid = crypto.randomUUID();
 
-    this.orchestrator.submitFieldListItem(payload).subscribe({
-      next: (result) => {
-        payload.submitted = result.success;
-        this.saveToLocalHistory(payload);
-        if (result.success) {
-          this.clearDraft(this.presetListType());
-          this.globalMessage.showSuccess(result.message || `Submitted via ${result.method}`);
-          this.backToSelect();
-        } else {
-          this.globalMessage.showError(result.message || 'Submission failed. Item saved locally.');
-        }
-      },
-      error: () => {
-        payload.submitted = false;
-        this.saveToLocalHistory(payload);
-        this.globalMessage.showError('Submission failed. Item saved locally for retry.');
+    // Clear the draft and navigate away REGARDLESS of result. The localUuid guarantees
+    // idempotency on any retry (backend dedupes on it), and a submitted-but-flagged-as-
+    // failure case (e.g. server returned success but response body was malformed) still
+    // preserves the user's data via saveToLocalHistory below. Keeping the form open on
+    // "failure" was a source of confusion — user reported "submitted successfully but
+    // form didn't clear" for exactly this partial-success case.
+    const done = (result: { success: boolean; method?: string; message?: string } | null) => {
+      payload.submitted = !!result?.success;
+      this.saveToLocalHistory(payload);
+      this.clearDraft(this.presetListType());
+      if (result?.success) {
+        this.globalMessage.showSuccess(result.message || `Submitted via ${result.method}`);
+      } else {
+        // "Not confirmed" wording so the user knows their data is safe locally without
+        // implying it definitely didn't reach the server (which it often did — see the
+        // form-didn't-clear bug report). They can retry from the Local list if needed.
+        this.globalMessage.showError(result?.message ?? 'Submit not confirmed — saved locally for retry.');
       }
+      this.backToSelect();
+    };
+
+    this.orchestrator.submitFieldListItem(payload).subscribe({
+      next: (result) => done(result),
+      error: () => done(null),
     });
   }
 
@@ -581,30 +864,51 @@ export class FieldListComponent implements OnInit {
 
     const payload = this.buildPayload(formData);
     payload.localUuid = this.editingLocalUuid;
+    // Hub-side item (opened via editHubItem) may not have a localUuid — send sharepointId
+    // so PwaFieldListItemService.updateFieldListItem can look it up via the SP-id branch.
+    const spId = (this.editingItem() as any)?.sharepointId;
+    if (spId) (payload as any).sharepointId = spId;
+    // Attachment sync — only sent for hub-item edits (editingSubmitted=true) so the local-
+    // item path doesn't accidentally delete anything (local items don't have server-side
+    // attachments). Sending an empty array WOULD delete everything, so null-check the
+    // signal instead of using .length as the guard.
+    if (this.editingSubmitted() && this.editingItem()) {
+      (payload as any).keepAttachmentIds = this.editExistingAtts().map(a => a.id);
+    }
+    // Preserve current status on hub-item edits — the form doesn't have a status field, but
+    // buildPayload hardcodes `statusName: 'Open'` for the submit path. Sending that on an
+    // update would silently reset an In-Progress item back to Open. The insulation-close
+    // flow is the only path that intentionally changes status; keep it out of edits.
+    if (this.editingSubmitted() && this.editingItem()) {
+      payload.statusName = this.editingItem()!.statusName || payload.statusName;
+    }
 
     const wasSubmitted = this.editingSubmitted();
     const action$ = wasSubmitted
       ? this.orchestrator.updateFieldListItem(payload)
       : this.orchestrator.submitFieldListItem(payload);
 
-    action$.subscribe({
-      next: (result) => {
-        payload.submitted = result.success;
+    // Mirror onSubmit's always-clear behaviour so a partial-success / ambiguous result still
+    // exits the form. Local history bookkeeping only applies to items that started local (had
+    // a localUuid we know about); hub-item edits skip that.
+    const done = (result: { success: boolean; method?: string; message?: string } | null) => {
+      if (this.editingLocalUuid) {
+        payload.submitted = !!result?.success;
         this.updateLocalHistory(payload);
-        if (result.success) {
-          this.globalMessage.showSuccess(wasSubmitted
-            ? (result.message || 'Updated successfully')
-            : (result.message || 'Submitted successfully'));
-          this.backToSelect();
-        } else {
-          this.globalMessage.showError(result.message || 'Failed. Changes saved locally.');
-        }
-      },
-      error: () => {
-        payload.submitted = false;
-        this.updateLocalHistory(payload);
-        this.globalMessage.showError('Failed. Changes saved locally.');
       }
+      if (result?.success) {
+        this.globalMessage.showSuccess(wasSubmitted
+          ? (result.message || 'Updated successfully')
+          : (result.message || 'Submitted successfully'));
+      } else {
+        this.globalMessage.showError(result?.message ?? 'Save not confirmed — try again from the Open Items list.');
+      }
+      this.backToSelect();
+    };
+
+    action$.subscribe({
+      next: (result) => done(result),
+      error: () => done(null),
     });
   }
 
@@ -618,10 +922,18 @@ export class FieldListComponent implements OnInit {
       equipmentTag = formData.equipmentTag;
     }
 
-    let locationName = '';
+    // The map picker hands back {id, name}. Send BOTH: the hub binds the work area by id and only
+    // falls back to the name when the id is stale or missing (older offline drafts carry no id).
+    // locationName stays on the payload because it is what the SharePoint "Location" column reads.
+    let workAreaId: number | null = null;
+    let workAreaName = '';
     if (formData.workAreaMap && typeof formData.workAreaMap === 'object') {
-      locationName = formData.workAreaMap.name || '';
+      workAreaName = formData.workAreaMap.name || '';
+      workAreaId = typeof formData.workAreaMap.id === 'number' && formData.workAreaMap.id > 0
+        ? formData.workAreaMap.id
+        : null;
     }
+    const locationName = workAreaName;
 
     // Unpack the Maximo tree picker's {assetnum, location} value into the two flat DTO
     // fields the backend expects. Picker is optional — if not used, both stay empty and
@@ -646,6 +958,8 @@ export class FieldListComponent implements OnInit {
       dateObserved: formData.dateObserved || '',
       timeObserved: formData.timeObserved || '',
       locationName,
+      workAreaId,
+      workAreaName,
       specificLocation: formData.locationDetail || '',
       equipmentTag,
       maximoLocation,

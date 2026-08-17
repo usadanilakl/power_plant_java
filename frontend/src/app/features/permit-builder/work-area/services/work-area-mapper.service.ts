@@ -6,7 +6,11 @@ import { Option } from '../../../../models/option.model';
 @Injectable({ providedIn: 'root' })
 export class WorkAreaMapperService {
 
-  toFormFields(entity: WorkAreaDto, lotoStandardOptions: Option[] = []): RfFormField[] {
-    return WorkAreaDto.toFormFields(entity, lotoStandardOptions);
+  toFormFields(
+    entity: WorkAreaDto,
+    lotoStandardOptions: Option[] = [],
+    locationOptions: Option[] = []
+  ): RfFormField[] {
+    return WorkAreaDto.toFormFields(entity, lotoStandardOptions, locationOptions);
   }
 }

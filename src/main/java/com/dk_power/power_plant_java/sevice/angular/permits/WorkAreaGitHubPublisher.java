@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.repository.permits.WorkAreaMapShapeRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.sds.SdsChemicalRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.pwa.PwaReferenceDataService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -258,18 +259,11 @@ public class WorkAreaGitHubPublisher {
     }
 
     private String buildAreasJson() throws IOException {
+        // Same row shape as the live hub endpoint (PwaReferenceDataService.getWorkAreas) — this
+        // snapshot is the PWA's offline stand-in for it, so any field the picker relies on
+        // (areaTypeName, locationUnitFilters, isConfinedSpace) must be present in both.
         List<Map<String, Object>> areas = workAreaRepo.findAllWithLocations().stream()
-                .map(area -> {
-                    java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
-                    map.put("id", area.getId());
-                    map.put("name", area.getName() != null ? area.getName() : "");
-                    map.put("locationIds", area.getLocations() != null
-                            ? area.getLocations().stream()
-                                .map(com.dk_power.power_plant_java.entities.categories.Value::getId)
-                                .collect(Collectors.toList())
-                            : List.of());
-                    return (Map<String, Object>) map;
-                })
+                .map(PwaReferenceDataService::toWorkAreaMap)
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(areas);
     }

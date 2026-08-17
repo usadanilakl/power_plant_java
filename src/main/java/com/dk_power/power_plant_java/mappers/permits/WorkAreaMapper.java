@@ -79,6 +79,8 @@ public class WorkAreaMapper implements BaseMapper {
             );
         }
 
+        dto.setLocationUnitFilters(entity.getLocationUnitFilters());
+
         if (entity.getShape() != null) {
             dto.setShapeId(entity.getShape().getId());
         }

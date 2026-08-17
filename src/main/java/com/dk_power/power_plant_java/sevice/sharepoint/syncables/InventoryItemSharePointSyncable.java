@@ -152,8 +152,11 @@ public class InventoryItemSharePointSyncable implements SharePointSyncable<Inven
         if (fields.contains("status") && dto.getStatusName() != null) {
             entity.setStatus(valueService.createValue("InventoryStatus", dto.getStatusName()));
         }
+        // Free-text home location from SharePoint: store as text, link a Location Value only on an
+        // exact existing match. This path polls SP every 30s, so the old createValue here minted a
+        // Value for every spelling variant on a loop.
         if (fields.contains("location") && dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
+            mapper.resolveLocation(entity, dto.getLocationName());
         }
         if (fields.contains("description")) entity.setDescription(dto.getDescription());
         if (fields.contains("serialNumber")) entity.setSerialNumber(dto.getSerialNumber());

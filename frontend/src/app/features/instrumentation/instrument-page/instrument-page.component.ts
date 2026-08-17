@@ -3,13 +3,15 @@ import { Router } from '@angular/router';
 import { InstrumentTableComponent } from '../instrument-table/instrument-table.component';
 import { InstrumentLogTableComponent } from '../instrument-log-table/instrument-log-table.component';
 import { InstrumentDto } from '../../../models/instrumentation/instrument.model';
+import { InstrumentApiService } from '../../../services/instrumentation/instrument-api.service';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
+import { InstrumentDetailsDialogComponent } from '../instrument-details-dialog/instrument-details-dialog.component';
 
 @Component({
   selector: 'app-instrument-page',
   standalone: true,
-  imports: [MainLayoutComponent, RouterMenuComponent, InstrumentTableComponent, InstrumentLogTableComponent],
+  imports: [MainLayoutComponent, RouterMenuComponent, InstrumentTableComponent, InstrumentLogTableComponent, InstrumentDetailsDialogComponent],
   template: `
     <app-main-layout>
       <ng-container header>
@@ -29,7 +31,8 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 
           @if (!selectedInstrument()) {
             <app-instrument-table
-              (rowClickEvent)="onInstrumentClick($event)"
+              (rowDetailsRequested)="openDetails($event)"
+              (viewLogsRequested)="onInstrumentClick($event)"
             ></app-instrument-table>
           } @else {
             <app-instrument-log-table
@@ -37,6 +40,13 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
             ></app-instrument-log-table>
           }
         </div>
+
+        <app-instrument-details-dialog
+          [instrument]="detailsFor()"
+          (close)="closeDetails()"
+          (viewLogs)="onViewLogsFromDetails($event)"
+          (requestDelete)="onDeleteFromDetails($event)"
+        ></app-instrument-details-dialog>
       </ng-container>
     </app-main-layout>
   `,
@@ -94,7 +104,38 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 })
 export class InstrumentPageComponent {
   private router = inject(Router);
+  private instrumentApi = inject(InstrumentApiService);
   selectedInstrument = signal<InstrumentDto | null>(null);
+  /** Non-null opens the details dialog. Double-click and the context menu both land here. */
+  detailsFor = signal<InstrumentDto | null>(null);
+
+  openDetails(instrument: InstrumentDto): void {
+    this.detailsFor.set(instrument);
+  }
+
+  closeDetails(): void {
+    this.detailsFor.set(null);
+  }
+
+  /** From the dialog: close it and swap the page over to that instrument's full log table. */
+  onViewLogsFromDetails(instrument: InstrumentDto): void {
+    this.detailsFor.set(null);
+    this.selectedInstrument.set(instrument);
+  }
+
+  /**
+   * Single delete from the dialog. The table owns bulk delete (it has the selection); this path
+   * exists so the dialog is self-sufficient when you got there by double-click.
+   */
+  onDeleteFromDetails(instrument: InstrumentDto): void {
+    if (!confirm(`Delete instrument ${instrument.tagNumber}?
+
+This removes it from SharePoint and from the plant database.`)) return;
+    this.instrumentApi.delete(instrument.id).subscribe({
+      next: () => { this.detailsFor.set(null); window.location.reload(); },
+      error: err => alert(`Delete failed: ${err?.error?.message || err?.message || 'rejected'}`)
+    });
+  }
 
   onInstrumentClick(instrument: InstrumentDto): void {
     this.selectedInstrument.set(instrument);

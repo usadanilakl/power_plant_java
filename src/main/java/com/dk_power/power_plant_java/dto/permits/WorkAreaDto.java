@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -22,6 +23,11 @@ public class WorkAreaDto extends BaseDto {
     private ConfinedSpaceHazards constantConfinedSpaceHazards;
     private List<Long> constantLotoIds;
     private List<Long> locationIds;
+    /**
+     * Per-location unit filter, {@code {locationId: "01"|"02"}}. A location absent from the map
+     * is not unit-filtered (both units). See {@code WorkArea.locationUnitFiltersJson}.
+     */
+    private Map<String, String> locationUnitFilters;
     private Long shapeId;
     /** Plant tree anchor — the PhysicalObject node this work area is bound to (nullable). */
     private Long physicalObjectId;

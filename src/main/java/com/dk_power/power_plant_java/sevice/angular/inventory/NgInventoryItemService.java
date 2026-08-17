@@ -120,9 +120,7 @@ public class NgInventoryItemService {
         } else if (entity.getStatus() == null) {
             entity.setStatus(valueService.createValue("InventoryStatus", "Available"));
         }
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        mapper.resolveLocation(entity, dto.getLocationName());
 
         // QR token is generated server-side on first save and never changes
         if (entity.getQrToken() == null || entity.getQrToken().isBlank()) {

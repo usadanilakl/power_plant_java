@@ -295,10 +295,16 @@ public class FieldListItemSharePointAdapter {
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
         map.put("MaximoLocation", orEmpty(dto.getMaximoLocation()));
         map.put("MaximoAssetnum", orEmpty(dto.getMaximoAssetnum()));
-        // ContractorCompleted* fields are NOT written from the hub-side create/update path —
-        // only the PWA offline-close flow sets them. Hub reads them via SP-import and
-        // reacts by COMPing the Maximo WO. Excluded from toMap to avoid accidental
-        // hub-side overwrites (e.g. a hub update path resetting them to blank).
+        // ContractorCompleted* fields — conditional inclusion. Originally excluded from
+        // hub-side toMap to avoid an admin edit accidentally wiping these to blank on SP.
+        // Include them WHEN NON-NULL so the PWA insulation-complete flow (which runs
+        // hub-side when online) can stamp the same markers the offline SP-direct path sets,
+        // keeping the SP row consistent regardless of which path closed the item. A hub
+        // edit that doesn't touch these fields leaves the DTO nulls → they don't ship →
+        // existing SP values are preserved (the original wipe concern is still addressed).
+        if (dto.getContractorCompletedBy() != null) map.put("ContractorCompletedBy", dto.getContractorCompletedBy());
+        if (dto.getContractorCompletedAt() != null) map.put("ContractorCompletedAt", dto.getContractorCompletedAt());
+        if (dto.getContractorCompleted() != null) map.put("ContractorCompleted", dto.getContractorCompleted());
         return map;
     }
 

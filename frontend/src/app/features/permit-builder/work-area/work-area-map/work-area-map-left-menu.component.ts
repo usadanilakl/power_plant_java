@@ -5,9 +5,6 @@ import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { WorkAreaMapStateService } from './work-area-map-state.service';
 import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/work-area.model';
-import { LotoStandardService } from '../../../../services/loto/loto-standard.service';
-import { SharedDataService } from '../../../../services/shared-data.service';
-import { Option } from '../../../../models/option.model';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { NestedItem } from '../../../../models/ui/nested-item.model';
 import { WorkAreaNavTableComponent } from './work-area-nav-table.component';
@@ -426,20 +423,17 @@ import { WorkAreaGroupingCriteria, WorkAreaLeftMenuService } from '../services/w
 export class WorkAreaMapLeftMenuComponent implements OnInit {
   initialDisplayMode = input<'table' | 'toggle-menu'>('toggle-menu');
   state = inject(WorkAreaMapStateService);
-  private lotoStandardService = inject(LotoStandardService);
-  private sharedDataService = inject(SharedDataService);
   private contextMenuService = inject(WorkAreaContextMenuService);
   private leftMenuService = inject(WorkAreaLeftMenuService);
-  lotoStandardOptions = signal<Option[]>([]);
-  locationOptions = signal<Option[]>([]);
   currentDisplayMode = signal<'table' | 'toggle-menu'>('toggle-menu');
   selectedGrouping = signal<WorkAreaGroupingCriteria>('areaType');
   groupingOptions = this.leftMenuService.groupingOptions;
 
   ngOnInit(): void {
     this.currentDisplayMode.set(this.initialDisplayMode());
-    this.loadLotoStandards();
-    this.loadLocations();
+    // Location / LOTO-standard names are shared state (the info window resolves ids with them too),
+    // so the state service owns loading them.
+    this.state.loadReferenceOptions();
   }
 
   devTableColumns = computed(() => WorkAreaDto.toTableColumns());
@@ -477,7 +471,11 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
 
   workAreaFormFields = computed(() => {
     const editing = this.state.editingWorkArea();
-    return WorkAreaDto.toFormFields(editing ?? new WorkAreaDto(), this.lotoStandardOptions(), this.locationOptions());
+    return WorkAreaDto.toFormFields(
+      editing ?? new WorkAreaDto(),
+      this.state.lotoStandardOptions(),
+      this.state.locationOptions()
+    );
   });
 
   workAreaFormTitle = computed(() => {
@@ -587,9 +585,14 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
     dto.constantLotoIds = Array.isArray(formData.constantLotoIds)
       ? formData.constantLotoIds.map((id: any) => Number(id)).filter((id: number) => !Number.isNaN(id))
       : [];
-    dto.locationIds = Array.isArray(formData.locationIds)
-      ? formData.locationIds.map((id: any) => Number(id)).filter((id: number) => !Number.isNaN(id))
-      : [];
+
+    // Locations arrive as the location-unit-select scratch map; split it into the two
+    // wire fields. Assigned unconditionally so de-selecting every location persists.
+    const { locationIds, locationUnitFilters } = WorkAreaDto.fromLocationSelection(formData.locationSelection);
+    dto.locationIds = locationIds;
+    dto.locationUnitFilters = locationUnitFilters;
+    delete (dto as any).locationSelection;
+
     this.state.saveWorkArea(dto);
   }
 
@@ -602,36 +605,6 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
 
   setDisplayMode(mode: 'table' | 'toggle-menu'): void {
     this.currentDisplayMode.set(mode);
-  }
-
-  private loadLocations(): void {
-    this.sharedDataService.loadLocations().subscribe({
-      next: (locations) => {
-        const options = locations.map((loc) => ({
-          value: loc.id,
-          label: loc.name || `Location ${loc.id}`,
-        }));
-        this.locationOptions.set(options);
-      },
-      error: () => {
-        this.locationOptions.set([]);
-      }
-    });
-  }
-
-  private loadLotoStandards(): void {
-    this.lotoStandardService.getAllLotoStandards().subscribe({
-      next: (response) => {
-        const options = (response.responseData ?? []).map((standard) => ({
-          value: standard.id,
-          label: standard.name || `Standard ${standard.id}`,
-        }));
-        this.lotoStandardOptions.set(options);
-      },
-      error: () => {
-        this.lotoStandardOptions.set([]);
-      }
-    });
   }
 
   private buildGroupedWorkAreaItems(): NestedItem[] {

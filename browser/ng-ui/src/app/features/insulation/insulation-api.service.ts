@@ -103,8 +103,56 @@ export class InsulationApiService {
     return this.http.get<NgApiResponse<InsulationItem[]>>(`${this.base}/active`);
   }
 
-  markCompleteViaHub(id: number): Observable<NgApiResponse<boolean>> {
-    return this.http.post<NgApiResponse<boolean>>(`${this.base}/${id}/complete`, {});
+  /** Recently-closed insulation items — powers the "Show recently closed" toggle. Fail-quiet: */
+  listRecentClosedViaHub(days = 30): Observable<InsulationItem[]> {
+    return this.http.get<NgApiResponse<InsulationItem[]>>(`${this.base}/recent-closed?days=${days}`).pipe(
+      map(r => r.responseData ?? []),
+      catchError(() => of([] as InsulationItem[]))
+    );
+  }
+
+  /** Reopen a closed insulation item. Returns {ok, message} — message flags Maximo-remains-COMP. */
+  reopenViaHub(id: number): Observable<NgApiResponse<boolean>> {
+    return this.http.post<NgApiResponse<boolean>>(`${this.base}/${id}/reopen`, {});
+  }
+
+  /** Save contractor progress WITHOUT completing the WO — appends comment to Maximo worklog
+   *  and persists photos to H2 + SP + Maximo doclinks. Item stays in the active queue. */
+  saveProgressViaHub(id: number, comment?: string, attachments?: Array<{ fileName: string; contentType: string; base64Content: string }>): Observable<NgApiResponse<boolean>> {
+    const body: any = {};
+    if (comment && comment.trim()) body.comment = comment.trim();
+    if (attachments && attachments.length > 0) body.attachments = attachments;
+    return this.http.post<NgApiResponse<boolean>>(`${this.base}/${id}/save-progress`, body);
+  }
+
+  /** Live-refresh one item's Maximo status by probing the WO. Called on details-dialog open so
+   *  ops-side changes (COMP → WAPPR done directly in Maximo) don't need to wait ~60s for the
+   *  passive status-poll. Fail-quiet: on hub outage returns null and the dialog uses the stale
+   *  local snapshot rather than blocking the user. */
+  refreshMaximoStatus(id: number): Observable<InsulationItem | null> {
+    return this.http.post<NgApiResponse<InsulationItem>>(`${this.base}/${id}/refresh-status`, {}).pipe(
+      map(r => r.responseData ?? null),
+      catchError(() => of(null))
+    );
+  }
+
+  markCompleteViaHub(id: number, comment?: string, attachments?: Array<{ fileName: string; contentType: string; base64Content: string }>): Observable<NgApiResponse<boolean>> {
+    // Body is optional server-side; sending null-equivalents keeps the request compact.
+    const body: any = {};
+    if (comment && comment.trim()) body.comment = comment.trim();
+    if (attachments && attachments.length > 0) body.attachments = attachments;
+    return this.http.post<NgApiResponse<boolean>>(`${this.base}/${id}/complete`, body);
+  }
+
+  /** Attachments for a hub-side insulation item — powers the details dialog's image grid.
+   *  Fail-quiet on hub outage so the dialog just shows no images. */
+  getAttachments(id: number): Observable<Array<{ id: number; fileName: string; contentType: string; base64Content: string }>> {
+    return this.http.get<NgApiResponse<Array<{ id: number; fileName: string; contentType: string; base64Content: string }>>>(
+      `${this.base}/${id}/attachments`
+    ).pipe(
+      map(r => r.responseData ?? []),
+      catchError(() => of([] as Array<{ id: number; fileName: string; contentType: string; base64Content: string }>))
+    );
   }
 
   /**

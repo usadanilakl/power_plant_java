@@ -339,7 +339,17 @@ export class ReactiveFormComponent {
         const sourceValue = source[key];
         const targetValue = target[key];
 
-        if (this.isObject(sourceValue) && targetValue) {
+        // Merge recursively ONLY when BOTH sides are objects. The old check was
+        // `isObject(sourceValue) && targetValue` — that was truthy on a STRING targetValue,
+        // which then recursed into `deepMerge(string, object)`. The nested call did
+        // `output = { ...target }` on the string, producing a char-indexed object like
+        // {0:'P',1:'U',2:'M',3:'P',...} and losing every property from the source object.
+        // Symptom: the PWA equipment-picker emits {id, tagNumber, ...} on select but the
+        // entity carried the previous tag as a plain string, so the merged value came back
+        // as garbage {0:'O',1:'L',2:'D',...} — buildPayload then extracted `.tagNumber`
+        // (undefined) and shipped an empty equipmentTag, so the backend no-op'd. Verified
+        // via code trace 2026-08-18.
+        if (this.isObject(sourceValue) && this.isObject(targetValue)) {
           output[key] = this.deepMerge(targetValue, sourceValue);
         } else if (targetValue instanceof Date && typeof sourceValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sourceValue)) {
           // If target is a Date and source is a date-string, convert it back to a Date object.
@@ -347,6 +357,9 @@ export class ReactiveFormComponent {
           const [year, month, day] = sourceValue.split('-').map(Number);
           output[key] = new Date(year, month - 1, day);
         } else {
+          // Source wins on any type mismatch (including string→object which the recursive
+          // branch above used to corrupt). This is the correct "merge" semantic: the form's
+          // fresh value replaces the entity's stale value at this leaf.
           output[key] = sourceValue;
         }
       });

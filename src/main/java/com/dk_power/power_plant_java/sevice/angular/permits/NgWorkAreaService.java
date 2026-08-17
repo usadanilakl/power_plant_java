@@ -105,9 +105,42 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
             entity.setLocations(locations);
         }
 
+        applyLocationUnitFilters(entity, dto);
+
         WorkArea saved = workAreaRepo.save(entity);
         gitHubPublisher.publishAll();
         return workAreaMapper.convertToDto(saved);
+    }
+
+    /**
+     * Persist the per-location unit filter, pruned to the locations the area actually holds — a
+     * filter for a location that was just de-selected is dead weight that would silently come back
+     * to life if the location were re-added.
+     *
+     * <p>A {@code null} map on the DTO means "not supplied" (partial update): keep what is stored,
+     * still pruned. An empty map means "clear all filters".
+     */
+    private void applyLocationUnitFilters(WorkArea entity, WorkAreaDto dto) {
+        Map<String, String> requested = dto.getLocationUnitFilters() != null
+                ? dto.getLocationUnitFilters()
+                : entity.getLocationUnitFilters();
+
+        Set<String> allowedLocationIds = entity.getLocations() == null
+                ? Set.of()
+                : entity.getLocations().stream()
+                        .map(Value::getId)
+                        .filter(Objects::nonNull)
+                        .map(String::valueOf)
+                        .collect(Collectors.toSet());
+
+        Map<String, String> pruned = new LinkedHashMap<>();
+        requested.forEach((locationId, unit) -> {
+            if (locationId != null && allowedLocationIds.contains(locationId.trim())) {
+                pruned.put(locationId.trim(), unit);
+            }
+        });
+
+        entity.setLocationUnitFilters(pruned);
     }
 
     public List<WorkAreaDto> getAllDtoList() {

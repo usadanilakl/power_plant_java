@@ -5,14 +5,27 @@ import { WorkAreaDto, WorkAreaMapShapeDto, WorkAreaPermitCounts } from '../../..
 import { WorkAreaApiService } from '../services/work-area-api.service';
 import { RfRectangleShape, RfShape } from '../../../../shared/image/refactored/models/fr-shape.model';
 import { SyncUpdateService } from '../../../../services/sync/sync-update.service';
+import { SharedDataService } from '../../../../services/shared-data.service';
+import { LotoStandardService } from '../../../../services/loto/loto-standard.service';
+import { Option } from '../../../../models/option.model';
 
 export type WorkAreaMapMode = 'dev' | 'operator' | 'overview';
+
+/** A work area's location link, resolved for display: the location's name plus its unit pin. */
+export interface ResolvedLocation {
+  id: string;
+  name: string;
+  /** 'U1' / 'U2' when the link is pinned to a unit, '' when it covers both. */
+  unitLabel: string;
+}
 
 @Injectable()
 export class WorkAreaMapStateService {
   private api = inject(WorkAreaApiService);
   private destroyRef = inject(DestroyRef);
   private syncUpdateService = inject(SyncUpdateService);
+  private sharedDataService = inject(SharedDataService);
+  private lotoStandardService = inject(LotoStandardService);
 
   // --- Core state ---
   mode = signal<WorkAreaMapMode>('operator');
@@ -36,6 +49,21 @@ export class WorkAreaMapStateService {
   // --- Info Window ---
   showInfoWindow = signal(false);
   infoWindowWorkAreas = signal<WorkAreaDto[]>([]);
+
+  // --- Reference options (shared) ---
+  // Location and LOTO-standard names live here rather than in a single component because both the
+  // edit form (which needs them as dropdown options) and the read-only info window (which needs
+  // them to turn stored ids into readable names) depend on them.
+  locationOptions = signal<Option[]>([]);
+  lotoStandardOptions = signal<Option[]>([]);
+  private referenceOptionsRequested = false;
+
+  private locationNamesById = computed(
+    () => new Map(this.locationOptions().map(o => [String(o.value), o.label]))
+  );
+  private lotoStandardNamesById = computed(
+    () => new Map(this.lotoStandardOptions().map(o => [String(o.value), o.label]))
+  );
 
   constructor() {
     this.syncUpdateService.getEntityTypeUpdates$('WorkArea')
@@ -107,7 +135,62 @@ export class WorkAreaMapStateService {
 
   // --- Data Loading ---
 
+  /**
+   * Load the Location / LOTO-standard name lists once per page visit. `SharedDataService` caches
+   * with shareReplay so a repeat call is cheap, but the flag keeps a re-entrant caller from piling
+   * up LOTO-standard requests (that one is not cached).
+   */
+  loadReferenceOptions(): void {
+    if (this.referenceOptionsRequested) return;
+    this.referenceOptionsRequested = true;
+
+    this.sharedDataService.loadLocations()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: locations => this.locationOptions.set(
+          locations.map(loc => ({ value: loc.id, label: loc.name || `Location ${loc.id}` }))
+        ),
+        error: () => this.locationOptions.set([]),
+      });
+
+    this.lotoStandardService.getAllLotoStandards()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: response => this.lotoStandardOptions.set(
+          (response.responseData ?? []).map(std => ({ value: std.id, label: std.name || `Standard ${std.id}` }))
+        ),
+        error: () => this.lotoStandardOptions.set([]),
+      });
+  }
+
+  /** This area's locations as names + unit pins, for read-only display. */
+  resolvedLocations(area: WorkAreaDto): ResolvedLocation[] {
+    const names = this.locationNamesById();
+    const pins = area.locationUnitFilters ?? {};
+    return (area.locationIds ?? []).map(id => {
+      const key = String(id);
+      const pin = pins[key];
+      return {
+        id: key,
+        name: names.get(key) ?? `Location ${key}`,
+        unitLabel: pin === '01' ? 'U1' : pin === '02' ? 'U2' : '',
+      };
+    });
+  }
+
+  /** This area's LOTO standards by name, for read-only display. */
+  resolvedLotoStandardNames(area: WorkAreaDto): string[] {
+    const names = this.lotoStandardNamesById();
+    return (area.constantLotoIds ?? []).map(id => names.get(String(id)) ?? `Standard ${id}`);
+  }
+
+  /** Active permit counts for one area, or null when none are loaded (non-overview modes). */
+  permitCountsFor(workAreaId: number): WorkAreaPermitCounts | null {
+    return this.permitCounts().find(pc => pc.workArea?.id === workAreaId) ?? null;
+  }
+
   loadAll(): void {
+    this.loadReferenceOptions();
     this.isLoading.set(true);
     forkJoin({
       workAreas: this.api.getAll(),
@@ -336,9 +419,22 @@ export class WorkAreaMapStateService {
       id: 0,
       name: this.transformCounterpartText(base.name),
       description: this.transformCounterpartText(base.description ?? ''),
+      // A counterpart is the same area on the other unit, so its per-location unit
+      // pins flip with the name (U1 → U2). Locations themselves are unit-agnostic
+      // and carry over as-is.
+      locationUnitFilters: this.flipUnitFilters(base.locationUnitFilters),
       shapeId: null,
     }));
     this.formOpen.set(true);
+  }
+
+  /** Swap 01 ↔ 02 in a per-location unit-filter map; unpinned locations stay unpinned. */
+  private flipUnitFilters(filters: Record<string, string> | null | undefined): Record<string, string> {
+    return Object.entries(filters ?? {}).reduce<Record<string, string>>((acc, [locationId, unit]) => {
+      if (unit === '01') acc[locationId] = '02';
+      else if (unit === '02') acc[locationId] = '01';
+      return acc;
+    }, {});
   }
 
   private transformCounterpartText(value: string): string {

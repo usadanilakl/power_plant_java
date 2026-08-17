@@ -260,8 +260,12 @@ public class FieldListItemSharePointSyncable implements SharePointSyncable<Field
         if (fields.contains("status") && dto.getStatusName() != null) {
             entity.setStatus(valueService.createValue("FieldListStatus", dto.getStatusName()));
         }
+        // SharePoint's "Location" column carries the work area's NAME. Bind the work area by name
+        // (resolve-only) instead of minting a Location Value — this path polls SP every 30s on the
+        // hub, so the old createValue here recreated pollution continuously, even after the
+        // submission paths stopped producing it.
         if (fields.contains("location") && dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
+            mapper.resolveWorkArea(entity, dto.getWorkAreaId(), dto.getWorkAreaName(), dto.getLocationName());
         }
         if (fields.contains("specificLocation")) entity.setSpecificLocation(dto.getSpecificLocation());
         if (fields.contains("notes")) entity.setNotes(dto.getNotes());

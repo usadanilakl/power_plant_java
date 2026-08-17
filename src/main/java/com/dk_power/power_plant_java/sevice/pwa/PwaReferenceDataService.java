@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+
 /**
  * Shared producer for the PWA "reference data" the hub serves (LOTO points, locations, work areas),
  * used by the PWA controllers ({@code PwaFieldListItemController}, {@code PwaWorkRequestController}) so
@@ -49,21 +50,37 @@ public class PwaReferenceDataService {
 
     public List<Map<String, Object>> getWorkAreas() {
         return workAreaRepo.findAllWithLocations().stream()
-                .map(wa -> {
-                    Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("id", wa.getId());
-                    map.put("name", wa.getName() != null ? wa.getName() : "");
-                    map.put("description", wa.getDescription() != null ? wa.getDescription() : "");
-                    map.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
-                    map.put("locationIds", wa.getLocations() != null
-                            ? wa.getLocations().stream().map(v -> v.getId()).toList()
-                            : java.util.List.of());
-                    return map;
-                })
+                .map(PwaReferenceDataService::toWorkAreaMap)
                 .toList();
     }
 
-    public boolean hasConfinedSpaceHazards(WorkArea wa) {
+    /**
+     * One work-area row for PWA consumers. Shared with {@code WorkAreaGitHubPublisher} so the live
+     * hub payload and the offline (Supabase / static JSON) snapshot cannot drift apart — they had
+     * already diverged once, the snapshot omitting {@code description} and {@code isConfinedSpace}.
+     *
+     * <p>{@code areaTypeName} lets a picker restrict itself to certain kinds of area (an insulation
+     * -removal picker has no use for confined spaces); {@code locationUnitFilters} lets it narrow a
+     * shared location's equipment to one unit.
+     */
+    public static Map<String, Object> toWorkAreaMap(WorkArea wa) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", wa.getId());
+        map.put("name", wa.getName() != null ? wa.getName() : "");
+        map.put("description", wa.getDescription() != null ? wa.getDescription() : "");
+        map.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
+        map.put("areaTypeId", wa.getAreaType() != null ? wa.getAreaType().getId() : null);
+        map.put("areaTypeName", wa.getAreaType() != null && wa.getAreaType().getName() != null
+                ? wa.getAreaType().getName()
+                : "");
+        map.put("locationIds", wa.getLocations() != null
+                ? wa.getLocations().stream().map(v -> v.getId()).toList()
+                : List.of());
+        map.put("locationUnitFilters", wa.getLocationUnitFilters());
+        return map;
+    }
+
+    public static boolean hasConfinedSpaceHazards(WorkArea wa) {
         try {
             var h = wa.getConstantConfinedSpaceHazards();
             return h.isOxygenDeficiency() || h.isFlammableGas() || h.isCombustibleDust()

@@ -30,6 +30,22 @@ public class InventoryItem extends BaseAuditEntity {
     @JoinColumn(name = "status_id")
     private Value status;
 
+    /**
+     * Where the item normally lives, as typed by the submitter — FREE TEXT, matching the existing
+     * {@link #currentLocation} field beside it.
+     *
+     * <p>This used to be funnelled into {@link #location} through
+     * {@code createValue("Location", locationName)}, which turned every spelling a user typed
+     * ("Warehouse", "warehouse", "by the door") into a permanent Value in the Location taxonomy that
+     * LOTO points and work areas share. Free text is not a controlled vocabulary; it belongs here.
+     */
+    private String homeLocation;
+
+    /**
+     * Optional link to a real Location Value, kept for rows written before {@link #homeLocation}
+     * existed and set only when the typed text exactly matches an existing Location. NEVER
+     * auto-created — see {@code InventoryItemMapper.resolveLocation}.
+     */
     @ManyToOne
     @JoinColumn(name = "location_id")
     private Value location;

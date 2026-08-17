@@ -30,6 +30,9 @@ export function fieldListFormFields(
       label: 'Work Area',
       type: 'work-area-map',
       initialValue: null,
+      // Field-list work (insulation, leaks, winterization) is never confined-space entry, so those
+      // areas are noise here. Every other picker (work request, JHA) still shows all area types.
+      excludeConfinedSpaces: true,
     },
     presetListType
       ? {

@@ -61,9 +61,7 @@ public class PwaInventoryItemService {
         }
         entity.setStatus(valueService.createValue("InventoryStatus",
                 dto.getStatusName() != null ? dto.getStatusName() : "Available"));
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        mapper.resolveLocation(entity, dto.getLocationName());
 
         // Generate QR token if not provided
         if (entity.getQrToken() == null || entity.getQrToken().isBlank()) {
@@ -145,9 +143,7 @@ public class PwaInventoryItemService {
         if (dto.getStatusName() != null) {
             entity.setStatus(valueService.createValue("InventoryStatus", dto.getStatusName()));
         }
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        mapper.resolveLocation(entity, dto.getLocationName());
 
         repo.save(entity);
 

@@ -38,7 +38,17 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             // localhost auto-auth) AND the PWA (via JWT) can reach it. Without this prefix, PWA
             // calls to /api/chat/supabase-session hit the endpoint unauthenticated and the
             // controller returns 401 "Not authenticated" — even for legit plant-group users.
-            "/api/chat/"
+            "/api/chat/",
+            // Field-list submissions were tightened in SecurityConfigSpring from anonymous to
+            // hasAnyRole("PLANT","ADMIN") because writes route to Maximo as SR/WO (see comment
+            // above the requestMatchers line for /api/pwa/field-list-item). This filter was
+            // missed in that tightening: without the prefix here, this filter skips JWT parsing,
+            // SecurityContext stays anonymous, and Spring's role check 401s every request — even
+            // from a signed-in PLANT user with a valid Bearer token. The result was a "Both
+            // server and Power Automate unavailable" toast in the PWA even when the user was
+            // signed in. Adding the prefix makes the filter parse the JWT and populate roles so
+            // the security-config gate can actually see the caller's authorities.
+            "/api/pwa/field-list-item/"
     );
 
     @Override

@@ -28,4 +28,12 @@ export class InstrumentApiService {
   create(dto: InstrumentDto): Observable<SpringApiResponse<any>> {
     return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/create`, dto);
   }
+
+  /**
+   * Removes the instrument from SharePoint and soft-deletes it on the hub, in that order — see
+   * PwaInstrumentService#deleteInstrument. ADMIN-only server side, so a non-admin gets a 403.
+   */
+  delete(id: number): Observable<SpringApiResponse<string>> {
+    return this.http.delete<SpringApiResponse<string>>(`${this.apiUrl}/${id}`);
+  }
 }

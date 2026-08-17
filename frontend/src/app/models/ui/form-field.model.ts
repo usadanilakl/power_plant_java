@@ -138,6 +138,7 @@ export interface RfFormField {
     | 'zero-energy-phrase-builder'
     | 'loto-standard-select'
     | 'work-area-select'
+    | 'location-unit-select'
     | 'comment'
     | 'characteristics-editor'
     | 'hidden'

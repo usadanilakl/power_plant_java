@@ -82,7 +82,8 @@
         </div>
 
         <div class="overlay-footer">
-          <button type="button" class="reset-btn" (click)="resetZoom()">Reset View</button>
+          <button type="button" class="reset-btn" (click)="fitToContainerNow()">Fit to view</button>
+          <button type="button" class="reset-btn" (click)="resetZoom()">Reset</button>
           @if (selectedShape()) {
             <button type="button"
               class="confirm-btn"
@@ -145,7 +146,8 @@
             [src]="imageUrl()"
             alt="Plant Map"
             class="map-image"
-            draggable="false" />
+            draggable="false"
+            (load)="onImageLoaded()" />
 
           @for (shape of shapes(); track shape.entry.id) {
             <div
@@ -161,7 +163,10 @@
         </div>
       </div>
 
-      <button type="button" class="reset-btn" (click)="resetZoom()">Reset View</button>
+      <div class="map-controls">
+        <button type="button" class="reset-btn" (click)="fitToContainerNow()">Fit to view</button>
+        <button type="button" class="reset-btn" (click)="resetZoom()">Reset</button>
+      </div>
     }
   }
 </div>

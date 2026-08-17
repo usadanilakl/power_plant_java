@@ -19,8 +19,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }
   }
 
-  // Only redirect to login on 401 for explicitly secured paths
-  const securedPaths = ['/api/pwa/secured/', '/api/pwa/auth/me', '/api/pwa/auth/refresh'];
+  // Only redirect to login on 401 for explicitly secured paths. Field-list-item is here
+  // because the hub tightened it to hasAnyRole("PLANT","ADMIN") — without this entry, an
+  // expired-token user submitting a field list gets caught by the orchestrator's PA
+  // fallback (which also 401s at the gateway) and sees "Both server and Power Automate
+  // unavailable" instead of a login prompt. Matches PwaJwtAuthFilter.SECURED_PREFIXES.
+  const securedPaths = [
+    '/api/pwa/secured/',
+    '/api/pwa/auth/me',
+    '/api/pwa/auth/refresh',
+    '/api/pwa/field-list-item/',
+  ];
   const needsAuth = securedPaths.some(path => req.url.includes(path));
 
   return next(req).pipe(

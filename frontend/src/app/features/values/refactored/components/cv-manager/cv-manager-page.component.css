@@ -595,3 +595,113 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* ===== Value references / re-point / gated delete =====
+   Theme tokens only — this dialog renders over both light and dark themes. Note the app defines
+   --accent-color, NOT --primary-color. */
+.ref-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  background: var(--secondary-background, #f0f2f5);
+}
+
+.ref-head { display: flex; align-items: center; justify-content: space-between; }
+
+.ref-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-text, #212529);
+}
+
+.ref-hint { margin: 0; font-size: 12px; color: var(--secondary-text, #495057); }
+.ref-hint.ref-ok { color: #16a34a; font-weight: 500; }
+
+.ref-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--accent-color, #007bff);
+  color: var(--primary-background, #fff);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ref-count.zero { background: #16a34a; }
+
+.ref-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--primary-background, #fff);
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.ref-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-text, #212529);
+}
+
+.ref-field { font-weight: 400; color: var(--secondary-text, #495057); }
+
+.ref-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.ref-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--primary-text, #212529);
+}
+
+.ref-label { flex: 1; word-break: break-word; }
+.ref-id { font-size: 10px; color: var(--secondary-text, #495057); flex-shrink: 0; }
+
+.ref-btn { align-self: flex-start; }
+
+.ref-danger { border-color: rgba(220, 38, 38, 0.4); }
+
+.btn-danger { background: #dc2626; color: #fff; border: none; }
+.btn-danger:hover:not(:disabled) { background: #b91c1c; }
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-color, #007bff);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.ref-message {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--success-background, #c8e6c9);
+  color: var(--primary-text, #212529);
+}
+
+.ref-message.error { background: var(--error-background, #ffcdd2); }

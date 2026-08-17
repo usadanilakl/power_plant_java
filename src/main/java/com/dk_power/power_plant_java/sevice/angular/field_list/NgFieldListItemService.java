@@ -98,9 +98,7 @@ public class NgFieldListItemService {
         } else if (entity.getStatus() == null) {
             entity.setStatus(valueService.createValue("FieldListStatus", "Open"));
         }
-        if (dto.getLocationName() != null) {
-            entity.setLocation(valueService.createValue("Location", dto.getLocationName()));
-        }
+        mapper.resolveWorkArea(entity, dto);
 
         mapper.resolveEquipmentReference(entity, dto.getEquipmentTag(), null);
 
