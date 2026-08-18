@@ -37,8 +37,23 @@ export default defineConfig({
 
   projects: [
     {
+      // Desktop client + the Spring-served jgportal bundle.
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: '**/pwa/**',
+    },
+    {
+      /**
+       * The PWA, on a MOBILE device profile — this is load-bearing, not cosmetic. The bottom
+       * navigation is declared inside `@media (max-width: 768px)`, so under Desktop Chrome it is
+       * `display: none` and every navigation assertion would silently pass against nothing.
+       */
+      name: 'pwa',
+      testMatch: '**/pwa/**/*.spec.ts',
+      use: {
+        ...devices['Pixel 5'],
+        baseURL: config.pwaUrl,
+      },
     },
   ],
 });

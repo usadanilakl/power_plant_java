@@ -109,6 +109,8 @@ public class SecurityConfigSpring {
                 // Plant-group-gated read APIs (schedule + contacts) — see project/features/users/communication/pwa-step-5-wiring.md
                 .requestMatchers("/api/pwa/secured/schedule/**").hasAnyRole("ADMIN", "PLANT", "NAES", "JPOWER")
                 .requestMatchers("/api/pwa/secured/contacts/**").hasAnyRole("ADMIN", "PLANT", "NAES", "JPOWER")
+                // Contractor directory — same audience as contacts; it is contractor personal data.
+                .requestMatchers("/api/pwa/secured/contractors/**").hasAnyRole("ADMIN", "PLANT", "NAES", "JPOWER")
                 .requestMatchers("/api/pwa/secured/loto-standards/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
@@ -159,6 +161,15 @@ public class SecurityConfigSpring {
                 // planned Phase 3B route back to kiosk signup — wire it there, not here.
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN", "KIOSK")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pwa/secured/coverage-signup/**").hasAnyRole("PLANT", "ADMIN")
+                // Inventory and SDS were anonymous under the retired tier-1 model, where the PWA
+                // treated a name typed into localStorage as an identity. Both are plant data that
+                // now sits behind sign-in in the nav (see nav.model.ts), so the API must agree —
+                // otherwise the menu hides them while the endpoint still serves anyone who asks.
+                // Work Request and JHA stay anonymous on purpose: a contractor must be able to
+                // submit one before anybody has approved them for anything.
+                .requestMatchers("/api/pwa/inventory-item/**").hasAnyRole("PLANT", "ADMIN")
+                .requestMatchers("/api/pwa/sds-chemical/**").hasAnyRole("PLANT", "ADMIN")
+                .requestMatchers("/api/pwa/sds-audit/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/**").authenticated()
                 .requestMatchers("/api/pwa/auth/me", "/api/pwa/auth/refresh").authenticated()
 

@@ -21,4 +21,20 @@ export const config = {
    * so override this to '/' when pointing at the dev server.
    */
   angularBasePath: process.env.ANGULAR_BASE_PATH || '/angular/browser',
+
+  /**
+   * The PWA (browser/ng-ui) — the lab's third node, alongside the hub and the desktop client.
+   *
+   * Served by its own dev server rather than by Spring: it is a separate Angular application that
+   * ships to GitHub Pages in production, not part of the desktop bundle. Start it with
+   * `npm run start:lab` in browser/ng-ui, which points it at pwaBackendUrl below.
+   */
+  pwaUrl: process.env.PWA_URL || 'http://localhost:4200',
+
+  /**
+   * The backend the PWA talks to. It must be the HUB, not the desktop client — that is the only
+   * topology that exists in production, and pointing it at :8082 would test one that doesn't.
+   * Kept in step with browser/ng-ui/src/environments/environment.lab.ts.
+   */
+  pwaBackendUrl: process.env.PWA_BACKEND_URL || process.env.SYNC_SERVER_URL || 'http://localhost:8090',
 };

@@ -11,6 +11,7 @@ import {
 import { PersonnelCacheService } from '../../services/personnel-cache.service';
 import { AuthService } from '../../auth/auth.service';
 import { GlobalMessageService } from '../../services/global-message.service';
+import { ContractorDirectoryComponent } from '../../features/contractors/contractor-directory.component';
 import { PwaChatPanelComponent } from './pwa-chat-panel.component';
 
 type ShiftCode = 'D' | 'N' | 'OCM' | 'P' | 'T' | 'U' | 'L' | 'OFF' | '';
@@ -74,7 +75,8 @@ const VIEW_REVISIT_TTL_MS = 60_000;
 @Component({
   selector: 'app-personnel-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, PwaChatPanelComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, PwaChatPanelComponent,
+            ContractorDirectoryComponent],
   templateUrl: './personnel-page.component.html',
   styleUrl: './personnel-page.component.css',
 })
@@ -84,7 +86,7 @@ export class PersonnelPageComponent implements OnInit {
 
   private navRoute = inject(ActivatedRoute);
 
-  activeTab = signal<'schedule' | 'contacts' | 'chat'>('schedule');
+  activeTab = signal<'schedule' | 'contacts' | 'chat' | 'contractors'>('schedule');
   scheduleView = signal<'day' | 'month' | 'me' | 'year'>('day');
 
   private auth = inject(AuthService);
@@ -497,7 +499,8 @@ export class PersonnelPageComponent implements OnInit {
   ngOnInit(): void {
     // Honour ?tab= so the Personnel sub-section shortcuts open on the right tab.
     const requestedTab = this.navRoute.snapshot.queryParamMap.get('tab');
-    if (requestedTab === 'schedule' || requestedTab === 'contacts' || requestedTab === 'chat') {
+    if (requestedTab === 'schedule' || requestedTab === 'contacts' || requestedTab === 'chat'
+        || requestedTab === 'contractors') {
       this.selectTab(requestedTab);
     }
 
@@ -507,7 +510,7 @@ export class PersonnelPageComponent implements OnInit {
     this.refreshSelectedDate();
   }
 
-  selectTab(tab: 'schedule' | 'contacts' | 'chat'): void {
+  selectTab(tab: 'schedule' | 'contacts' | 'chat' | 'contractors'): void {
     this.activeTab.set(tab);
     if (tab === 'contacts' && this.contacts().length === 0) {
       const cached = this.cache.readContacts();

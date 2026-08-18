@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
@@ -545,6 +546,7 @@ export class InventoryComponent implements OnInit {
   private http = inject(HttpClient);
   private supabaseData = inject(SupabaseDataService);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
   qrScannerService = inject(QrScannerService);
   private bradyModal = inject(BradyPrinterModalService);
   private nativePrint = inject(NativePrintService);
@@ -587,24 +589,39 @@ export class InventoryComponent implements OnInit {
 
   private typeOptions: Option[] = [];
 
+  // Last deep link acted on, as 'scan:<token>' / 'mode:<name>'. The queryParamMap stream
+  // re-emits on any navigation that reuses this component, so without this guard an
+  // unrelated param change would re-open the scanner or re-run a lookup.
+  private lastDeepLink = '';
+
   ngOnInit(): void {
     this.loadTypes();
     this.fields.set(inventoryFormFields(this.typeOptions));
 
-    // Deep link: /inventory/form?scan={qrToken} — opened by scanning the QR
-    // label with a phone's native camera (hub redirects /qr/inv/{token} here).
-    const scanToken = this.route.snapshot.queryParamMap.get('scan');
-    if (scanToken) {
-      this.handleScan(scanToken);
-      return;
-    }
+    // Read deep links from the queryParamMap stream rather than the snapshot: the router
+    // menu that emits them sits on the Inventory page itself, so moving between the
+    // sub-sections reuses this component instance and never re-runs ngOnInit.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      const scanToken = params.get('scan');
+      const mode = params.get('mode');
+      const key = scanToken ? `scan:${scanToken}` : mode ? `mode:${mode}` : '';
+      if (!key || key === this.lastDeepLink) return;
+      this.lastDeepLink = key;
 
-    // Deep link: ?mode= from the Inventory sub-section shortcuts. Distinct from ?scan= above, which
-    // carries a QR token rather than naming a screen.
-    const mode = this.route.snapshot.queryParamMap.get('mode');
-    if (mode === 'scan') { this.openScanner(); }
-    else if (mode === 'new') { this.mode.set('new'); }
-    else if (mode === 'list') { this.mode.set('list'); }
+      // /inventory/form?scan={qrToken} — opened by scanning the QR label with a phone's
+      // native camera (hub redirects /qr/inv/{token} here).
+      if (scanToken) {
+        this.handleScan(scanToken);
+        return;
+      }
+
+      // ?mode= from the Inventory sub-section shortcuts. Each must route through the same
+      // entry point the on-screen action cards use — flipping mode() alone lands on an
+      // un-populated screen, because the list stays empty until openList() fetches it.
+      if (mode === 'scan') { this.openScanner(); }
+      else if (mode === 'new') { this.selectNew(); }
+      else if (mode === 'list') { this.openList(); }
+    });
   }
 
   private loadTypes(): void {

@@ -22,6 +22,15 @@ export class QrCodeService {
     return QRCode.toCanvas(canvas, data, finalOptions);
   }
 
+  /**
+   * PNG data URL. Needed where the QR has to become a file rather than pixels on screen — sharing
+   * it through the OS share sheet, or saving it to print.
+   */
+  toDataUrl(data: string, options?: QrCodeOptions): Promise<string> {
+    const finalOptions = { ...DEFAULT_QR_OPTIONS, ...options };
+    return QRCode.toDataURL(data, finalOptions);
+  }
+
   toSvgString(data: string, options?: QrCodeOptions): Promise<string> {
     const finalOptions: QRCode.QRCodeToStringOptions = {
       ...DEFAULT_QR_OPTIONS,

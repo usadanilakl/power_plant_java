@@ -117,9 +117,6 @@ export class NavAccessService {
   canSee(access: NavAccess): boolean {
     switch (access) {
       case 'public': return true;
-      // Verification against the SharePoint orientation list is not built yet. Signed-in users
-      // clearly satisfy "verified"; an unauthenticated visitor cannot until that flow exists.
-      case 'publicVerified': return this.auth.isLoggedIn();
       case 'auth': return this.auth.isLoggedIn();
       case 'basic': return this.auth.isLoggedIn() && this.auth.hasPermission('BASIC');
       case 'plant': return this.auth.isLoggedIn() && this.auth.isPlant();

@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.angular;
 
 import com.dk_power.power_plant_java.dto.users.ContractorChangeReportDto;
 import com.dk_power.power_plant_java.dto.users.ContractorDto;
+import com.dk_power.power_plant_java.sevice.users.ContractorDirectoryService;
 import com.dk_power.power_plant_java.dto.users.ContractorsImportRequest;
 import com.dk_power.power_plant_java.entities.users.ContractorChangeReport;
 import com.dk_power.power_plant_java.sevice.users.ContractorReconciler;
@@ -13,7 +14,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ng/contractors")
@@ -23,6 +26,7 @@ public class NgContractorController {
 
     private final ContractorSyncService contractorSyncService;
     private final ContractorReconciler contractorReconciler;
+    private final ContractorDirectoryService contractorDirectoryService;
 
     @PostMapping("/sync")
     public ResponseEntity<NgApiResponse<ContractorSyncService.ImportSummary>> sync(
@@ -34,6 +38,23 @@ public class NgContractorController {
             log.error("[Contractors] Sync failed", e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
+    }
+
+    /**
+     * Cached OnLocation directory — what the desktop asks for before falling back to its own pull,
+     * and the same data the PWA lookup reads.
+     *
+     * Distinct from {@link #list()}, which returns contractors as they exist in the User table
+     * (i.e. only what an admin has accepted). This one is the live roster.
+     */
+    @GetMapping("/directory")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> directory() {
+        ContractorDirectoryService.Directory dir = contractorDirectoryService.get();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("fetchedAt", dir.fetchedAt() == null ? null : dir.fetchedAt().toString());
+        body.put("source", dir.source().name());
+        body.put("contractors", dir.contractors());
+        return ResponseEntity.ok(new NgApiResponse<>(body, "Contractor directory"));
     }
 
     @GetMapping

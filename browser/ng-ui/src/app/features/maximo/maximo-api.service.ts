@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of, timeout } from 'rxjs';
+import { Observable, catchError, from, map, of, switchMap, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   CompleteWorkOrderRequest, CreateMaximoServiceRequest, MaximoDoclink, MaximoFormSubmission, MaximoFormTemplate,
@@ -10,6 +10,21 @@ import {
 
 export interface WoQuery { status?: string; worktype?: string; location?: string; textContains?: string; wonumContains?: string; pageSize?: number; }
 export interface SrQuery { status?: string; location?: string; textContains?: string; pageSize?: number; }
+
+/** Read a File into pure base64 (no data-URL prefix) for JSON upload. FileReader is reliable on iOS Safari,
+ *  unlike multipart FormData whose "file" part iOS drops in transit to the hub. */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const s = String(reader.result ?? '');
+      const marker = s.indexOf('base64,');
+      resolve(marker >= 0 ? s.slice(marker + 'base64,'.length) : s);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read the file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 /**
  * Mobile Maximo API. Calls the Plant-gated PWA endpoints on the hub (`/api/pwa/secured/maximo`), which proxy
@@ -179,11 +194,15 @@ export class MaximoApiService {
   /** Attach a photo/file to an SR (by href). Emits true on success; ERRORS on failure so the caller can
    *  surface the real Maximo message (the endpoint returns it in the response body). */
   uploadSrAttachment(href: string, file: File): Observable<boolean> {
-    const form = new FormData();
-    form.append('file', file, file.name);
+    // Base64 JSON, NOT multipart: iOS Safari intermittently drops the multipart "file" part in transit, so the
+    // hub rejects it with "Required part 'file' is not present" and Maximo never sees the photo. A JSON body has
+    // no multipart boundary to lose, so it arrives intact on iPhone the same as Android.
     const params = new HttpParams().set('hrefHex', this.hex(href));
-    return this.http.post(`${this.base}/service-requests/attachment`, form, { params }).pipe(
-      timeout(60000),
+    return from(fileToBase64(file)).pipe(
+      switchMap(dataBase64 => this.http.post(`${this.base}/service-requests/attachment`,
+        { fileName: file.name || 'photo.jpg', contentType: file.type || 'application/octet-stream', dataBase64 },
+        { params })),
+      timeout(120000),
       map(() => true)
     );
   }
@@ -260,11 +279,13 @@ export class MaximoApiService {
 
   /** Attach a photo/file to a work order. Emits true on success; ERRORS on failure (real message in the body). */
   uploadWoAttachment(href: string, file: File): Observable<boolean> {
-    const form = new FormData();
-    form.append('file', file, file.name);
+    // Base64 JSON, NOT multipart — see uploadSrAttachment: iOS Safari drops the multipart "file" part in transit.
     const params = new HttpParams().set('href', href);
-    return this.http.post(`${this.base}/work-orders/attachment`, form, { params }).pipe(
-      timeout(60000),
+    return from(fileToBase64(file)).pipe(
+      switchMap(dataBase64 => this.http.post(`${this.base}/work-orders/attachment`,
+        { fileName: file.name || 'photo.jpg', contentType: file.type || 'application/octet-stream', dataBase64 },
+        { params })),
+      timeout(120000),
       map(() => true)
     );
   }

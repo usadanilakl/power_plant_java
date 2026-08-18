@@ -45,20 +45,23 @@ export class AuthComponent implements OnInit {
   private returnUrl = '/home';
 
   ngOnInit(): void {
+    // Read this BEFORE the signed-in short-circuit below — that branch redirects too, and it
+    // must land on the deep link as well, not unconditionally on Home.
+    this.returnUrl = this.sanitizeReturnUrl(this.route.snapshot.queryParams['returnUrl']);
+
     if (this.authService.isLoggedIn()) {
       // Logged in — ensure local user data exists before navigating
       if (!this.userSetupService.isValid()) {
         this.authService.syncLocalUserData().subscribe(() => {
-          this.router.navigate(['/home']);
+          this.goToReturnUrl();
         });
       } else {
-        this.router.navigate(['/home']);
+        this.goToReturnUrl();
       }
       return;
     }
 
     const localData = this.userSetupService.getUserData();
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/home';
 
     if (this.route.snapshot.queryParams['reason'] === 'login_required') {
       this.errorMessage = 'Please sign in to access this feature.';
@@ -99,6 +102,34 @@ export class AuthComponent implements OnInit {
       this.loginForm.patchValue({ email: prefill });
       this.step = 'signin';
     }
+  }
+
+  /**
+   * Where to land once the user is authenticated. Guards hand us the blocked destination as a
+   * ?returnUrl= — for a QR sticker that is a full URL with a query string
+   * (/inventory/form?scan={token}), so it MUST go through navigateByUrl.
+   *
+   * router.navigate([url]) would not work here: it splits the string on '/' only and never parses
+   * '?', so the query string is glued onto the last path segment and percent-encoded
+   * (/inventory/form%3Fscan%3D{token}). That matches no route, the navigation fails, and the
+   * scanned item is lost.
+   */
+  private goToReturnUrl(): void {
+    // Only a thrown error falls back to Home. A `false` result means a guard already ruled on the
+    // destination (every guard on these routes either returns a UrlTree or redirects itself — e.g.
+    // plantGuard sends a non-Plant user to /home), and overriding that would fight its redirect.
+    this.router.navigateByUrl(this.returnUrl).catch(() => this.router.navigate(['/home']));
+  }
+
+  /**
+   * ?returnUrl= is attacker-controllable (it rides in on the link the user clicked), so only
+   * same-origin, root-relative paths are honoured. '//evil.com' is rejected as well: the browser
+   * reads a protocol-relative URL as another origin.
+   */
+  private sanitizeReturnUrl(raw: unknown): string {
+    const url = typeof raw === 'string' ? raw.trim() : '';
+    if (!url.startsWith('/') || url.startsWith('//')) return '/home';
+    return url;
   }
 
   onLookup(): void {
@@ -169,7 +200,7 @@ export class AuthComponent implements OnInit {
     ).subscribe({
       next: () => {
         this.isLoading = false;
-        this.router.navigate([this.returnUrl]);
+        this.goToReturnUrl();
       },
       error: (err) => {
         this.isLoading = false;
@@ -221,7 +252,7 @@ export class AuthComponent implements OnInit {
       // up (sets a password) when connectivity returns. Survives restarts — nothing sensitive stored.
       this.isLoading = false;
       this.successMessage = 'Saved. You can use the app now — finish signing up to set a password when you\'re back online.';
-      setTimeout(() => this.router.navigate([this.returnUrl]), 1500);
+      setTimeout(() => this.goToReturnUrl(), 1500);
       return;
     }
 
@@ -234,7 +265,7 @@ export class AuthComponent implements OnInit {
           // when it comes back, and full profile sync follows.
           this.userSetupService.saveUserData({ uuid: pwaUserUuid, name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
           this.authService.authenticate(email, password).subscribe({
-            next: () => { this.isLoading = false; this.router.navigate([this.returnUrl]); },
+            next: () => { this.isLoading = false; this.goToReturnUrl(); },
             error: () => {
               // Couldn't establish a session (rare) — account still exists; show the pending state.
               this.isLoading = false;
@@ -264,7 +295,7 @@ export class AuthComponent implements OnInit {
         ).subscribe({
           next: () => {
             this.isLoading = false;
-            this.router.navigate([this.returnUrl]);
+            this.goToReturnUrl();
           },
           error: (err) => {
             this.isLoading = false;

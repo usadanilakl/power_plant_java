@@ -10,13 +10,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   // Always attach token if available for any PWA API request
   const isPwaApi = req.url.includes('/api/pwa/');
-  if (isPwaApi) {
-    const token = authService.getToken();
-    if (token) {
-      req = req.clone({
-        setHeaders: { Authorization: `Bearer ${token}` }
-      });
-    }
+  const token = isPwaApi ? authService.getToken() : null;
+  if (token) {
+    req = req.clone({
+      setHeaders: { Authorization: `Bearer ${token}` }
+    });
   }
 
   // Only redirect to login on 401 for explicitly secured paths. Field-list-item is here
@@ -35,7 +33,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     tap({
       error: (error) => {
-        if (error.status === 401 && needsAuth) {
+        // Only bounce to login when a token we PRESENTED was rejected — that is what an expired
+        // session looks like. A signed-out visitor has no session to expire, and several of these
+        // paths are fetched on boot regardless (EquipmentDataService pulls the picker's loto-points
+        // and locations for the public Work Request form). Without this check, those background
+        // 401s threw every anonymous visitor straight out to the login page, so the welcome screen
+        // and the whole continue-without-signing-in path were unreachable.
+        if (error.status === 401 && needsAuth && token) {
           authService.logout();
           router.navigate(['/login']);
         }

@@ -320,6 +320,10 @@ export class AuthService {
   logout(): void {
     if (this.refreshTimer) { clearTimeout(this.refreshTimer); this.refreshTimer = null; }
     localStorage.removeItem(this.AUTH_STORAGE_KEY);
+    // Forget the person too, not just their session. These are shared plant phones and tablets:
+    // leaving the previous user's name/email/phone behind pre-filled the next person's submissions
+    // with it. clearUserData() previously had no callers at all.
+    this.userSetupService.clearUserData();
     this.authDataSubject.next(null);
   }
 

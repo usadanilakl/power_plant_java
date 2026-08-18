@@ -16,12 +16,6 @@
 export type NavAccess =
   /** Anyone, signed in or not. */
   | 'public'
-  /**
-   * Not signed in, but identified against the SharePoint orientation list (name/email/phone given
-   * on the landing page). The contractor-verification flow that backs this is NOT built yet, so
-   * entries on this tier stay hidden rather than being exposed as if they were public.
-   */
-  | 'publicVerified'
   /** Any signed-in account, including one pending admin approval. */
   | 'auth'
   /** Signed in with permissionLevel BASIC or OPERATOR. */
@@ -93,8 +87,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'SDS', icon: '🧪', slug: 'sds',
     items: [
-      // Public by design: a contractor must be able to reach a safety data sheet without an account.
-      { label: 'eBinder', icon: '📖', externalUrlKey: 'sdsEbinder', access: 'public', hubOnly: true },
+      { label: 'eBinder', icon: '📖', externalUrlKey: 'sdsEbinder', access: 'auth', hubOnly: true },
       { label: 'Add New', icon: '➕', route: '/sds', access: 'plant' },
       { label: 'Audit', icon: '✅', route: '/sds-audit', access: 'plant' },
       { label: 'Full Inventory', icon: '📚', route: '/sds', queryParams: { view: 'inventory' }, access: 'plant', planned: true },
@@ -103,11 +96,11 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     // Contractor-facing plant information. Every entry here is new build.
     label: 'Plant', icon: '🏭', slug: 'plant',
-    planned: true,
     items: [
-      { label: 'Map', icon: '🗺️', route: '/plant/map', access: 'publicVerified', planned: true },
-      { label: 'Emergency', icon: '🚨', route: '/plant/emergency', access: 'publicVerified', planned: true },
-      { label: 'Contacts & Information', icon: '📇', route: '/plant/contacts', access: 'publicVerified', planned: true },
+      { label: 'Orientation', icon: '🎓', route: '/plant/orientation', access: 'public' },
+      { label: 'Map', icon: '🗺️', route: '/plant/map', access: 'public', planned: true },
+      { label: 'Emergency', icon: '🚨', route: '/plant/emergency', access: 'public' },
+      { label: 'Contacts & Information', icon: '📇', route: '/plant/contacts', access: 'public' },
     ],
   },
   {
@@ -136,8 +129,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Schedule', icon: '📅', route: '/personnel', queryParams: { tab: 'schedule' }, access: 'plantGroup', hubOnly: true },
       { label: 'Contacts', icon: '📇', route: '/personnel', queryParams: { tab: 'contacts' }, access: 'plantGroup', hubOnly: true },
       { label: 'Chat', icon: '💬', route: '/personnel', queryParams: { tab: 'chat' }, access: 'plantGroup', hubOnly: true },
-      // Today only Electron pulls this from OnLocation; the hub-served version is still to be built.
-      { label: 'Contractors', icon: '🦺', route: '/personnel', queryParams: { tab: 'contractors' }, access: 'plantGroup', hubOnly: true, planned: true },
+      { label: 'Contractors', icon: '🦺', route: '/personnel', queryParams: { tab: 'contractors' }, access: 'plantGroup', hubOnly: true },
     ],
   },
   {

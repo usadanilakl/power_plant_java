@@ -48,7 +48,13 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             // server and Power Automate unavailable" toast in the PWA even when the user was
             // signed in. Adding the prefix makes the filter parse the JWT and populate roles so
             // the security-config gate can actually see the caller's authorities.
-            "/api/pwa/field-list-item/"
+            "/api/pwa/field-list-item/",
+            // Same reasoning as field-list above: these were tightened from anonymous to
+            // hasAnyRole in SecurityConfigSpring, so this filter has to parse the JWT and populate
+            // the authorities before Spring's role check runs.
+            "/api/pwa/inventory-item/",
+            "/api/pwa/sds-chemical/",
+            "/api/pwa/sds-audit/"
     );
 
     @Override

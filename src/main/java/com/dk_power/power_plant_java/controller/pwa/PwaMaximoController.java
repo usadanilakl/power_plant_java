@@ -36,7 +36,6 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
-import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -211,16 +210,32 @@ public class PwaMaximoController {
     /** Attach a photo/file to a work order (e.g. a field photo taken while performing a PM). */
     @PostMapping("/work-orders/attachment")
     public ResponseEntity<NgApiResponse<MaximoDoclinkDto>> uploadWoAttachment(
-            @RequestPart("file") MultipartFile file,
             @RequestParam("href") String href,
-            @RequestParam(value = "doctype", required = false, defaultValue = "Attachments") String doctype) {
+            @RequestParam(value = "doctype", required = false, defaultValue = "Attachments") String doctype,
+            @RequestBody AttachmentBody body) {
         try {
             MaximoDoclinkDto created = doclinks.upload("mxapiwodetail", href,
-                    file.getOriginalFilename(), file.getContentType(), file.getBytes(), doctype);
+                    body.fileName(), body.contentType(), body.decodeBytes(), doctype);
             return ResponseEntity.ok(new NgApiResponse<>(created, "uploaded"));
         } catch (Exception e) {
             log.warn("[PWA-Maximo] WO attachment upload failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Attachment failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Base64 file-upload body. The PWA sends attachments as a JSON body (NOT multipart/form-data): iOS Safari
+     * intermittently delivers the multipart POST to the hub with the "file" part missing
+     * (MissingServletRequestPartException — confirmed in prod), so Maximo never sees the photo. A plain JSON body
+     * has no multipart boundary/part to lose in transit, so it arrives intact on iOS the same as on Android.
+     */
+    public record AttachmentBody(String fileName, String contentType, String dataBase64) {
+        /** Decode the base64 payload, tolerating a {@code data:...;base64,} data-URL prefix and MIME whitespace. */
+        public byte[] decodeBytes() {
+            String b64 = dataBase64 == null ? "" : dataBase64;
+            int marker = b64.indexOf("base64,");
+            if (marker >= 0) b64 = b64.substring(marker + "base64,".length());
+            return java.util.Base64.getMimeDecoder().decode(b64);
         }
     }
 
@@ -344,13 +359,13 @@ public class PwaMaximoController {
     /** Attach a photo/file to a service request. Best-effort — caller uploads after create succeeds. */
     @PostMapping("/service-requests/attachment")
     public ResponseEntity<NgApiResponse<MaximoDoclinkDto>> uploadSrAttachment(
-            @RequestPart("file") MultipartFile file,
             @RequestParam(value = "href", required = false) String href,
             @RequestParam(value = "hrefHex", required = false) String hrefHex,
-            @RequestParam(value = "doctype", required = false, defaultValue = "Attachments") String doctype) {
+            @RequestParam(value = "doctype", required = false, defaultValue = "Attachments") String doctype,
+            @RequestBody AttachmentBody body) {
         try {
             MaximoDoclinkDto created = doclinks.upload("mxapisr", attachHref(href, hrefHex),
-                    file.getOriginalFilename(), file.getContentType(), file.getBytes(), doctype);
+                    body.fileName(), body.contentType(), body.decodeBytes(), doctype);
             return ResponseEntity.ok(new NgApiResponse<>(created, "uploaded"));
         } catch (Exception e) {
             log.warn("[PWA-Maximo] SR attachment upload failed: {}", e.getMessage());

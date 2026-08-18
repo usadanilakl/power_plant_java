@@ -101,6 +101,29 @@ export interface PwaLoginResponse {
   user: { id: number; name: string; email: string; role?: string; roles?: string[]; permissionLevel: string };
 }
 
+export interface PwaContractor {
+  onLocationMemberId?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  /** Orientation start (ISO yyyy-MM-dd). */
+  validFrom?: string;
+  /** Orientation expiry (ISO yyyy-MM-dd) — the field the lookup exists to answer. */
+  validTo?: string;
+  status?: string;
+}
+
+export interface PwaContractorDirectory {
+  /** When the hub last refreshed this. Null means it has never managed to. */
+  fetchedAt: string | null;
+  /** ONLOCATION | LOCAL_RECORDS | SNAPSHOT — how much the freshness can be trusted. */
+  source: string;
+  total: number;
+  contractors: PwaContractor[];
+}
+
 export interface PwaServerProfile {
   id: number;
   name: string;
@@ -563,6 +586,16 @@ export class ServerApiService {
       timeout(8000),
       map(response => response?.url ?? ''),
       catchError(() => of(''))
+    );
+  }
+
+  /**
+   * Contractor directory for lookup. Errors are NOT swallowed — the caller falls back to its own
+   * cached copy and needs to know the refresh failed so it can say so.
+   */
+  getContractors(): Observable<PwaContractorDirectory> {
+    return this.http.get<PwaContractorDirectory>(`${this.baseUrl}/api/pwa/secured/contractors`).pipe(
+      timeout(15000)
     );
   }
 

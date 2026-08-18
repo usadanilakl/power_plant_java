@@ -25,6 +25,12 @@
             <span class="tab-glyph" aria-hidden="true">💬</span>
             <span class="tab-label">Chat</span>
           </button>
+          <button class="tab" role="tab"
+                  [class.active]="activeTab() === 'contractors'"
+                  (click)="selectTab('contractors')">
+            <span class="tab-glyph" aria-hidden="true">🦺</span>
+            <span class="tab-label">Contractors</span>
+          </button>
         </div>
         <button class="btn-icon"
                 (click)="refreshCurrentView()"
@@ -680,6 +686,14 @@
       @if (activeTab() === 'chat') {
         <div class="tab-content chat-tab">
           <app-pwa-chat-panel></app-pwa-chat-panel>
+        </div>
+      }
+
+      <!-- Contractors tab: lookup for contacts and orientation dates. Self-contained — it owns its
+           own fetch, cache and staleness banner, so nothing here needs to know about it. -->
+      @if (activeTab() === 'contractors') {
+        <div class="tab-content">
+          <app-contractor-directory></app-contractor-directory>
         </div>
       }
     </div>

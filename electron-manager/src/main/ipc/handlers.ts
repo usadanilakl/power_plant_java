@@ -2533,9 +2533,35 @@ export class IpcHandlers {
   }
 
   private registerContractorHandlers(): void {
+    /**
+     * Contractor directory, hub first.
+     *
+     * The hub now polls OnLocation itself and serves a cached directory, so a desktop no longer
+     * needs to hold OnLocation credentials to show this list — and every desktop asking OnLocation
+     * on its own multiplied the API traffic by the number of installs.
+     *
+     * The direct pull stays as the fallback for a hub outage, which is the whole reason this desktop
+     * app keeps its own key. `source` travels back so the UI can say which answer it got.
+     */
     ipcMain.handle(events.IPC_CONTRACTORS_GET_LIVE, async () => {
       try {
-        return { success: true, data: await this.gateLogManager.getContractorDirectory() };
+        const hub = await backendGet('/ng/contractors/directory');
+        const contractors = hub?.responseData?.contractors ?? hub?.contractors;
+        if (Array.isArray(contractors) && contractors.length > 0) {
+          return {
+            success: true,
+            data: contractors,
+            source: 'hub',
+            fetchedAt: hub?.responseData?.fetchedAt ?? hub?.fetchedAt ?? null
+          };
+        }
+        console.warn('[Contractors] Hub returned no directory — falling back to a direct OnLocation pull');
+      } catch (err: any) {
+        console.warn(`[Contractors] Hub unavailable (${err.message}) — falling back to a direct OnLocation pull`);
+      }
+
+      try {
+        return { success: true, data: await this.gateLogManager.getContractorDirectory(), source: 'onlocation' };
       } catch (err: any) {
         return { success: false, error: err.message };
       }
