@@ -977,11 +977,26 @@ public class FileObjectSyncHandler {
                         "%d hub file(s) are permanently unavailable", outcome.permanentlyMissing()));
                     log.warn("file_sync.download_permanently_missing entityId={} missing={} downloaded={}",
                         task.getEntityId(), outcome.permanentlyMissing(), outcome.downloaded());
+                    pendingFileSyncRepository.save(task);
+                } else if (outcome.expectedButAbsent() > 0) {
+                    // The hub has no bytes for this FileObject YET, but its metadata says it SHOULD have files:
+                    // the origin client's upload rides a separate, slower queue and simply hasn't landed. Do NOT
+                    // mark this completed (that strands the file forever) — retry with backoff; once retries are
+                    // exhausted it becomes FAILED, and recoverFailedDownloads re-drives FAILED downloads every
+                    // 5 min until the bytes arrive.
+                    task.incrementRetry();
+                    if (task.getRetryCount() < MAX_RETRIES) {
+                        long delay = RETRY_DELAYS_MS[Math.min(task.getRetryCount() - 1, RETRY_DELAYS_MS.length - 1)];
+                        task.setStatus(SyncStatus.PENDING);
+                        task.scheduleRetry(delay);
+                        task.setLastError("hub has no bytes yet — origin upload pending");
+                    } else {
+                        task.markFailed("hub still has no bytes after retries — origin upload pending");
+                    }
+                    pendingFileSyncRepository.save(task);
                 } else {
                     task.markCompleted();
-                }
-                pendingFileSyncRepository.save(task);
-                if (outcome.permanentlyMissing() == 0) {
+                    pendingFileSyncRepository.save(task);
                     log.debug("Successfully downloaded files for FileObject #{}", task.getEntityId());
                 }
 
@@ -1160,10 +1175,25 @@ public class FileObjectSyncHandler {
      * Download files from sync server.
      * Throws exception on failure to trigger retry with exponential backoff.
      */
-    /** Outcome of a download attempt. Old-folder cleanup only runs on a FULL success (no failures). */
-    private record DownloadOutcome(int downloaded, int transientFailures, int permanentlyMissing) {
+    /** Outcome of a download attempt. Old-folder cleanup only runs on a FULL success (no failures).
+     *  expectedButAbsent>0 means the hub had NO bytes for an entity whose metadata says it SHOULD have files
+     *  (the origin's upload — a separate, slower queue — simply hasn't landed yet): retry, don't complete. */
+    private record DownloadOutcome(int downloaded, int transientFailures, int permanentlyMissing, int expectedButAbsent) {
         int failed() { return transientFailures + permanentlyMissing; }
         boolean fullSuccess() { return downloaded > 0 && failed() == 0; }
+    }
+
+    /** The hub returned no files for this entity. If its metadata says it SHOULD have files (extensions set),
+     *  the bytes just aren't uploaded yet (origin's separate queue) → signal expected-but-absent so the caller
+     *  RETRIES instead of permanently completing (which would strand the file forever). Otherwise it genuinely
+     *  has nothing → complete. This is the core "files never arrived / never self-healed" fix. */
+    private DownloadOutcome emptyHubResponseOutcome(FileObject fo) {
+        boolean expectsFiles = fo.getExtensions() != null && !fo.getExtensions().isBlank();
+        if (expectsFiles) {
+            log.warn("file_sync.hub_has_no_bytes_yet entityId={} extensions={} — origin upload lagging, will retry",
+                fo.getId(), fo.getExtensions());
+        }
+        return new DownloadOutcome(0, 0, 0, expectsFiles ? 1 : 0);
     }
 
     /** A 404/410 for a concrete file ID cannot be repaired by retrying the same queue task. */
@@ -1177,7 +1207,7 @@ public class FileObjectSyncHandler {
         FileObject fileObject = fileRepo.findById(task.getEntityId()).orElse(null);
         if (fileObject == null) {
             log.warn("FileObject #{} not found, skipping download", task.getEntityId());
-            return new DownloadOutcome(0, 0, 0); // Don't retry if entity doesn't exist
+            return new DownloadOutcome(0, 0, 0, 0); // Don't retry if entity doesn't exist
         }
 
         String listUrl = syncConfig.getSyncServerUrl() +
@@ -1200,16 +1230,14 @@ public class FileObjectSyncHandler {
             }
 
             if (response.getBody() == null) {
-                log.debug("No files found on server for FileObject #{}", task.getEntityId());
-                return new DownloadOutcome(0, 0, 0); // Empty response is OK - no files to download
+                return emptyHubResponseOutcome(fileObject); // retry if the entity SHOULD have files
             }
 
             Map<String, Object> body = response.getBody();
             List<Map<String, Object>> files = (List<Map<String, Object>>) body.get("files");
 
             if (files == null || files.isEmpty()) {
-                log.debug("No files to download for FileObject #{}", task.getEntityId());
-                return new DownloadOutcome(0, 0, 0); // No files is OK
+                return emptyHubResponseOutcome(fileObject); // retry if the entity SHOULD have files
             }
 
             log.debug("Downloading {} files for FileObject #{}", files.size(), task.getEntityId());
@@ -1239,7 +1267,7 @@ public class FileObjectSyncHandler {
                     transientFailureCount, task.getEntityId(), successCount, permanentlyMissingCount));
             }
 
-            return new DownloadOutcome(successCount, 0, permanentlyMissingCount);
+            return new DownloadOutcome(successCount, 0, permanentlyMissingCount, 0);
 
         } catch (Exception e) {
             log.error("Error downloading files for FileObject #{}: {}", task.getEntityId(), e.getMessage());
