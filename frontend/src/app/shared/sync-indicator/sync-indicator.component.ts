@@ -7,6 +7,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
 import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../services/sync-status.service';
@@ -80,10 +81,10 @@ import { DriftService } from '../../services/drift.service';
                   <span class="info-value">{{ syncStatus()?.pendingServerChanges ?? 0 }}</span>
                 </div>
               }
-              @if (serverPendingCount() > 0) {
+              @if (pendingDisplay() > 0) {
                 <div class="info-item">
                   <span class="info-label">Server Pending</span>
-                  <span class="info-value">{{ serverPendingCount() }}</span>
+                  <span class="info-value">{{ pendingDisplay() }}</span>
                 </div>
               }
               @if (recentUpdateCount() > 0) {
@@ -407,6 +408,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private syncUpdateService = inject(SyncUpdateService);
   private syncStatusService = inject(SyncStatusService);
   private driftService = inject(DriftService);
+  private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private elementRef = inject(ElementRef);
@@ -421,6 +423,17 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   syncHealthMessage = signal<string>('');
   suggestResync = signal<boolean>(false);
   serverPendingCount = signal<number>(0);
+  // LIVE catch-up status (polled every 4s from /api/field-sync/catchup-status). Authoritative when reachable:
+  // the health snapshot behind serverPendingCount only recomputes every ~5 min, so its number looked "frozen"
+  // during a catch-up. null = never polled / off-LAN (the endpoint is LAN-gated) → fall back to the snapshot.
+  catchUp = signal<{ inProgress: boolean; remaining: number } | null>(null);
+  // The number to show as "server pending / catching up": the live remaining while a catch-up runs, else 0.
+  // Falls back to the (stale) health count only when the live endpoint was never reachable (off-LAN client).
+  pendingDisplay = computed(() => {
+    const cu = this.catchUp();
+    if (cu) return cu.inProgress ? cu.remaining : 0;
+    return this.serverPendingCount();
+  });
   recentUpdateCount = signal<number>(0);
   syncEnabled = signal<boolean>(true);
   syncStatus = signal<SyncStatus | null>(null);
@@ -430,6 +443,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private updateTimer: any = null;
   private statusPollTimer: any = null;
   private driftSummaryTimer: any = null;
+  private catchUpTimer: any = null;
+  /** Consecutive catchup-status poll failures — after a couple we drop the live value so a transient error
+   *  can't leave a stale "catching up N" frozen on screen; we then fall back to the health snapshot. */
+  private catchUpFailures = 0;
 
   // NEW drift signal — the accurate content-hash counts (DriftService), replacing the old count/timestamp
   // "sync health" heuristic. Use the peer BREAKDOWN so HUB drift (real divergence) reads red while
@@ -454,7 +471,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     // Actively behind — the hub has changes for us we haven't applied yet (e.g. just reconnected
     // after being offline). This is a FRIENDLY, transient "catching up" state, not an error — it
     // avoids a normal reconnect catch-up reading as "Possibly Out of Sync" or silently as green.
-    if (this.serverPendingCount() > 0) return 'catching-up' as const;
+    // Prefer the LIVE catch-up signal when reachable (it flips off the instant the drain finishes),
+    // falling back to the ~5-min health snapshot only off-LAN where the live endpoint is blocked.
+    const cu = this.catchUp();
+    if (cu ? cu.inProgress : this.serverPendingCount() > 0) return 'catching-up' as const;
 
     // Server is available — decide sync state from the ACCURATE content-hash drift (not the old count/time
     // heuristic): HUB drift is real divergence → red; SharePoint-only drift (backup, not authoritative) or
@@ -508,7 +528,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     if (state === 'disconnected') return 'Cannot reach sync server';
     if (state === 'connecting') return 'Checking sync server status...';
     if (state === 'catching-up') {
-      const n = this.serverPendingCount();
+      const n = this.pendingDisplay();
       return n > 0 ? `Catching up — ${n} change${n === 1 ? '' : 's'} to apply` : 'Catching up…';
     }
     if (state === 'out-of-sync' || state === 'possibly-out-of-sync') {
@@ -561,6 +581,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       this.driftService.refreshSummary();
       this.driftService.refreshBreakdown();
     }, 60000);
+
+    // Poll the LIVE catch-up status every 4s (same source as the progress banner) so the popover's count
+    // actually ticks down during a catch-up instead of showing the ~5-min-stale health snapshot.
+    this.pollCatchUp();
+    this.catchUpTimer = setInterval(() => this.pollCatchUp(), 4000);
 
     // Subscribe to sync health check updates
     this.subscriptions.push(
@@ -720,6 +745,22 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     }, 30000);
   }
 
+  /** Poll the live catch-up status. The endpoint is permitAll and returns 200 with an idle body
+   *  (inProgress:false) off-LAN, so there is no 401 to special-case. After a couple of consecutive transient
+   *  failures we drop the live value and fall back to the health snapshot — otherwise a mid-catch-up blip
+   *  would leave the last "catching up N" frozen on screen (the very symptom this fix removes). */
+  private pollCatchUp(): void {
+    this.http.get<{ inProgress: boolean; remaining: number }>('/api/field-sync/catchup-status').subscribe({
+      next: (s) => {
+        this.catchUpFailures = 0;
+        this.catchUp.set(s ? { inProgress: !!s.inProgress, remaining: s.remaining ?? 0 } : null);
+      },
+      error: () => {
+        if (++this.catchUpFailures >= 2) this.catchUp.set(null);
+      }
+    });
+  }
+
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     if (this.isBrowser) {
@@ -727,6 +768,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       if (this.updateTimer) clearTimeout(this.updateTimer);
       if (this.statusPollTimer) clearInterval(this.statusPollTimer);
       if (this.driftSummaryTimer) clearInterval(this.driftSummaryTimer);
+      if (this.catchUpTimer) clearInterval(this.catchUpTimer);
       if (this.documentClickListener) {
         document.removeEventListener('click', this.documentClickListener);
       }
