@@ -15,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -96,7 +98,16 @@ public class HubFileService {
         }
         Path filePath = resolveWithinRoot(relativePath, entityType, entityId, originalFilename);
         Files.createDirectories(filePath.getParent());
-        Files.write(filePath, content);
+        // Collision-safety: the canonical path {ext}/{fileType}/{vendor}/{filename} is entity-id-agnostic, so a
+        // DIFFERENT FileObject sharing fileNumber+fileType+vendor+ext maps to the SAME path. A plain
+        // Files.write would TRUNCATE that other entity's bytes (silent data loss). Write collision-safely: if
+        // the canonical path is already held by different content, store this entity's copy under an
+        // entity-scoped path instead — both files preserved (worst case = recoverable file drift, never loss).
+        if ("FileObject".equals(entityType)) {
+            filePath = writeWithoutClobbering(filePath, content, hash, entityId, originalFilename);
+        } else {
+            Files.write(filePath, content);
+        }
 
         // Create tracking record
         HubSyncedFile syncedFile = new HubSyncedFile();
@@ -254,6 +265,38 @@ public class HubFileService {
             log.info("file_sync.rehomed_to_canonical entityId={} from={} to={}", entityId, source, target);
         } catch (IOException e) {
             log.warn("file_sync.rehome_failed entityId={}: {}", entityId, e.getMessage());
+        }
+    }
+
+    /**
+     * Write {@code content} to {@code canonical} WITHOUT ever truncating a DIFFERENT file already there.
+     * The canonical path is entity-id-agnostic, so two FileObjects sharing fileNumber+fileType+vendor+ext
+     * collide. Atomic create-if-absent (Files.move without REPLACE_EXISTING never clobbers); on an existing
+     * target holding the SAME bytes, share it; on an existing target with DIFFERENT bytes, store under an
+     * entity-scoped path instead. Returns the path actually written so the caller records the right storagePath.
+     */
+    private Path writeWithoutClobbering(Path canonical, byte[] content, String hash, Long entityId, String filename)
+            throws IOException {
+        Path tmp = Files.createTempFile(canonical.getParent(), ".up-", ".tmp");
+        try {
+            Files.write(tmp, content);
+            try {
+                Files.move(tmp, canonical); // no REPLACE_EXISTING → throws if occupied, never overwrites
+                return canonical;
+            } catch (FileAlreadyExistsException e) {
+                if (sameContent(canonical, hash)) {
+                    return canonical; // identical bytes already present — share the physical file
+                }
+                String name = (filename != null && !filename.isEmpty()) ? filename : "file";
+                Path scoped = resolveWithinRoot("FileObject/" + entityId + "/" + name, "FileObject", entityId, filename);
+                Files.createDirectories(scoped.getParent());
+                Files.move(tmp, scoped, StandardCopyOption.REPLACE_EXISTING); // this entity's OWN scoped path
+                log.warn("file_sync.canonical_collision entityId={} canonical={} held different content — stored at {}",
+                    entityId, canonical, scoped);
+                return scoped;
+            }
+        } finally {
+            Files.deleteIfExists(tmp);
         }
     }
 

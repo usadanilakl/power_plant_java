@@ -90,6 +90,33 @@ class HubFileServiceTest {
     }
 
     @Test
+    void newUploadDoesNotClobberADifferentEntityAtTheSameCanonicalPath() throws Exception {
+        // A and B are DISTINCT FileObjects that resolve to the SAME canonical path (shared fileNumber+type
+        // +vendor+ext). B's upload must NOT truncate A's already-stored bytes.
+        FileObject a = fileObjectWith(300L, "Spec", "Zeta", "SHARED-1");
+        FileObject b = fileObjectWith(301L, "Spec", "Zeta", "SHARED-1");
+        when(fileRepo.findById(300L)).thenReturn(Optional.of(a));
+        when(fileRepo.findById(301L)).thenReturn(Optional.of(b));
+        when(syncedFileRepository.findByFileHashAndEntityTypeAndEntityIdAndDeletedFalse(any(), any(), any()))
+            .thenReturn(Optional.empty());
+        when(syncedFileRepository.save(any(HubSyncedFile.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        HubFileService svc = service();
+        svc.storeFile(new MockMultipartFile("file", "SHARED-1.pdf", "application/pdf", "A-bytes".getBytes()),
+            "FileObject", 300L, "x/SHARED-1.pdf", "CLIENT-A");
+        Path canonical = tempDir.resolve("pdf/Spec/Zeta/SHARED-1.pdf");
+        assertThat(Files.readString(canonical)).isEqualTo("A-bytes");
+
+        // B uploads DIFFERENT bytes to the same canonical name.
+        svc.storeFile(new MockMultipartFile("file", "SHARED-1.pdf", "application/pdf", "B-bytes".getBytes()),
+            "FileObject", 301L, "x/SHARED-1.pdf", "CLIENT-A");
+
+        assertThat(Files.readString(canonical)).as("A's bytes survive B's colliding upload").isEqualTo("A-bytes");
+        assertThat(Files.readString(tempDir.resolve("FileObject/301/SHARED-1.pdf")))
+            .as("B is stored under its own entity-scoped path").isEqualTo("B-bytes");
+    }
+
+    @Test
     void relocateSkipsWhenCanonicalTargetHoldsADifferentFile() throws Exception {
         // Two distinct FileObjects can resolve to the same canonical path (shared fileNumber+type+vendor+ext).
         // Re-homing one must NEVER overwrite the other's bytes.

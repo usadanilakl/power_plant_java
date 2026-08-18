@@ -79,7 +79,15 @@ public class FileDriftScanScheduler {
             List<String> toPull = entries.stream()
                     .filter(e -> e.getKind() == FileDriftService.FileDriftKind.MISSING_LOCALLY
                             || e.getKind() == FileDriftService.FileDriftKind.SIZE_DIFFERS)
-                    .filter(e -> e.getFileObjectId() == null || !pushPairFileObjects.contains(e.getFileObjectId()))
+                    // Only auto-pull files that map to a LIVE FileObject. The hub manifest is a raw disk walk,
+                    // so it also lists orphans and the leftover bytes of soft-deleted entities (whose
+                    // HubSyncedFile is flagged deleted but the physical file remains). Auto-pulling those would
+                    // resurrect deleted files / import junk onto every client. Unmapped paths (fileObjectId
+                    // null — resolveOwners can't map them; deleted entities resolve to null via @Where) are
+                    // left report-only; a human can still pull them from the Drift Center if genuinely wanted.
+                    .filter(e -> e.getFileObjectId() != null)
+                    // Let push+relocate heal a mis-file pair; don't also pull its stale companion (a duplicate).
+                    .filter(e -> !pushPairFileObjects.contains(e.getFileObjectId()))
                     .map(FileDriftService.FileDriftEntry::getRelativePath)
                     .limit(healCap)
                     .collect(Collectors.toList());
