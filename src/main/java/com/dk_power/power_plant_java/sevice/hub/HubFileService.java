@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.hub;
 
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.hub.HubSyncedFile;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.hub.HubSyncedFileRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,12 +36,14 @@ import java.util.Optional;
 public class HubFileService {
 
     private final HubSyncedFileRepository syncedFileRepository;
+    private final FileRepo fileRepo;
 
     @Value("${files.root.path}")
     private String filesRootPath;
 
-    public HubFileService(HubSyncedFileRepository syncedFileRepository) {
+    public HubFileService(HubSyncedFileRepository syncedFileRepository, FileRepo fileRepo) {
         this.syncedFileRepository = syncedFileRepository;
+        this.fileRepo = fileRepo;
     }
 
     /**
@@ -59,6 +63,10 @@ public class HubFileService {
         if (existing.isPresent()) {
             HubSyncedFile existingFile = existing.get();
             existingFile.addSyncedMachine(machineId);
+            // Heal legacy mis-filing: the dedup check matches on hash+entity, not path, so a re-push of a
+            // file the hub stored at a non-canonical FALLBACK path would otherwise no-op and leave it drifting
+            // forever. If it's not already at the canonical path, relocate it now.
+            relocateToCanonicalIfNeeded(existingFile, entityType, entityId, file.getOriginalFilename());
             syncedFileRepository.save(existingFile);
             return new FileStoreResult(existingFile, false);
         }
@@ -70,11 +78,22 @@ public class HubFileService {
             extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1);
         }
 
-        // Store in profile-specific uploads directory using original path structure.
-        // The relative path is derived from CLIENT-supplied originalPath/originalFilename, so it
-        // must be contained inside the files root — a crafted path (".." / absolute) would otherwise
-        // let a client write anywhere on the hub's filesystem.
-        String relativePath = extractRelativePath(originalPath, originalFilename, entityType, entityId);
+        // Canonical hub storage path: mirror EXACTLY where the desktop stores the same file — under the
+        // FileObject's own {ext}/{fileType}/{vendor} folder (buildRelativeFolder) with the original filename
+        // (see FileObjectSyncHandler.downloadSingleFile). Deriving it from the hub's OWN replicated FileObject
+        // metadata (not the client's absolute path) keeps both sides' drift walks in agreement. The old
+        // client-path substring match filed non-standard layouts at a fallback path (FileObject/{id}/{name})
+        // that read as "missing on hub" even though the bytes were present. Falls back to the legacy
+        // client-path derivation for non-FileObject entities or when the FileObject lacks fileType/vendor.
+        // The relative path is still contained inside the files root (resolveWithinRoot) so a crafted client
+        // path can never write outside it.
+        String relativePath = null;
+        if ("FileObject".equals(entityType)) {
+            relativePath = canonicalFileObjectRelativePath(entityId, extension, originalFilename);
+        }
+        if (relativePath == null) {
+            relativePath = extractRelativePath(originalPath, originalFilename, entityType, entityId);
+        }
         Path filePath = resolveWithinRoot(relativePath, entityType, entityId, originalFilename);
         Files.createDirectories(filePath.getParent());
         Files.write(filePath, content);
@@ -168,6 +187,85 @@ public class HubFileService {
         Long totalBytes = syncedFileRepository.totalStorageUsed();
         long totalFiles = syncedFileRepository.count();
         return new StorageStats(totalBytes != null ? totalBytes : 0, totalFiles);
+    }
+
+    /**
+     * The canonical hub storage path for a FileObject's file — identical to where the desktop stores it:
+     * {ext}/{fileType}/{vendor}/{filename} (FileObject.buildRelativeFolder + the actual filename, preserving
+     * revision suffixes). Derived from the hub's own replicated FileObject metadata so both sides' drift
+     * walks agree. Returns null (→ caller uses the legacy fallback) when the FileObject isn't present yet or
+     * lacks fileType/vendor. Mirrors the client's ext default in FileObjectSyncHandler.downloadSingleFile.
+     */
+    private String canonicalFileObjectRelativePath(Long entityId, String extension, String originalFilename) {
+        if (originalFilename == null || originalFilename.isEmpty()) return null;
+        FileObject fo = fileRepo.findById(entityId).orElse(null);
+        if (fo == null) return null;
+        String ext = (extension != null && !extension.isEmpty()) ? extension : "pdf";
+        String relFolder = fo.buildRelativeFolder(ext); // {ext}/{fileType}/{vendor}, or null if type/vendor missing
+        if (relFolder == null || relFolder.isBlank()) return null;
+        return relFolder + "/" + originalFilename;
+    }
+
+    /**
+     * Heal a legacy mis-filing: if an already-stored FileObject file sits at a non-canonical fallback path
+     * (from the old client-abs-path derivation), move its bytes to the canonical
+     * {ext}/{fileType}/{vendor}/{filename} path and update the tracking row, so the drift walk stops
+     * reporting it as "missing on hub". No-op for non-FileObject entities, when already canonical, when the
+     * canonical path can't be computed (FileObject not present / lacks fileType-vendor), or when the source
+     * file is gone. Failure is logged and swallowed — the bytes stay where they are (no data loss).
+     */
+    private void relocateToCanonicalIfNeeded(HubSyncedFile existingFile, String entityType, Long entityId,
+                                             String uploadFilename) {
+        if (!"FileObject".equals(entityType)) return;
+        String filename = (uploadFilename != null && !uploadFilename.isEmpty())
+            ? uploadFilename : existingFile.getFileName();
+        String canonicalRel = canonicalFileObjectRelativePath(entityId, existingFile.getExtension(), filename);
+        if (canonicalRel == null) return;
+        String current = existingFile.getStoragePath();
+        if (current == null || current.isBlank()) return;
+        try {
+            Path target = resolveWithinRoot(canonicalRel, entityType, entityId, filename);
+            Path source = Path.of(current).toAbsolutePath().normalize();
+            if (source.equals(target)) return;      // already canonical
+            if (Files.notExists(source)) return;     // nothing to move
+            if (Files.exists(target)) {
+                // The canonical path {ext}/{fileType}/{vendor}/{filename} is deliberately entity-id-agnostic
+                // (it must match the desktop's buildRelativeFolder). So two DISTINCT FileObjects that share
+                // fileNumber+fileType+vendor+ext resolve to the SAME path — a known data-quality condition in
+                // this codebase. Overwriting would destroy the OTHER file's bytes and break its hash-checked
+                // downloads. Only "relocate" when the target already holds byte-identical content (harmless —
+                // just retire the legacy copy); otherwise SKIP and leave this copy where it is (drifting-but-safe
+                // beats destructive).
+                if (sameContent(target, existingFile.getFileHash())) {
+                    existingFile.setStoragePath(target.toString());
+                    try { Files.deleteIfExists(source); } catch (IOException ignore) { /* best effort */ }
+                    log.info("file_sync.rehome_dedup entityId={} canonical={} removedLegacy={}", entityId, target, source);
+                } else {
+                    log.warn("file_sync.rehome_skipped_collision entityId={} target={} holds different content — left at {}",
+                        entityId, target, source);
+                }
+                return;
+            }
+            Files.createDirectories(target.getParent());
+            // No REPLACE_EXISTING: target was just confirmed absent, so a concurrent create between the check
+            // and the move makes this THROW (caught below) rather than silently overwrite another file.
+            Files.move(source, target);
+            existingFile.setStoragePath(target.toString());
+            log.info("file_sync.rehomed_to_canonical entityId={} from={} to={}", entityId, source, target);
+        } catch (IOException e) {
+            log.warn("file_sync.rehome_failed entityId={}: {}", entityId, e.getMessage());
+        }
+    }
+
+    /** True if the file at {@code path} hashes to {@code expectedSha256} (byte-identical). Unknown/blank
+     *  expected hash or any read error → false, so the caller treats it as a collision and does NOT overwrite. */
+    private boolean sameContent(Path path, String expectedSha256) {
+        if (expectedSha256 == null || expectedSha256.isBlank()) return false;
+        try {
+            return expectedSha256.equals(computeSha256(Files.readAllBytes(path)));
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /**
