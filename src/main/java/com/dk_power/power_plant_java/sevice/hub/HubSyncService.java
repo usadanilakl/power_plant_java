@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -154,10 +153,11 @@ public class HubSyncService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FieldChange> getPendingChangesPaginated(String machineId, Pageable pageable) {
+    public org.springframework.data.domain.Slice<FieldChange> getPendingChangesPaginated(String machineId, Pageable pageable) {
         // Return pending changes WITHOUT marking as synced.
         // Client must call acknowledgeChanges() after successful apply.
         // Excludes changes that originated FROM this client — no point sending them back.
+        // Slice (not Page) so the batch fetch doesn't pay a full-table count per call — see the repo method.
         return fieldChangeRepository.findChangesNotSyncedToExcludingOrigin(machineId, pageable);
     }
 

@@ -13,8 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -101,15 +101,14 @@ public class HubSyncController {
 
         int safeSize = Math.min(size, 1000);
 
-        Page<FieldChange> changePage = hubSyncService.getPendingChangesPaginated(
+        // Slice, not Page: avoids a full-table count query per batch (the client reads no total header).
+        Slice<FieldChange> changePage = hubSyncService.getPendingChangesPaginated(
             machineId, PageRequest.of(page, safeSize));
 
         log.debug("Batch request from {}: page={}, size={}, returned={}, hasMore={}",
             machineId, page, safeSize, changePage.getNumberOfElements(), changePage.hasNext());
 
         return ResponseEntity.ok()
-            .header("X-Total-Count", String.valueOf(changePage.getTotalElements()))
-            .header("X-Total-Pages", String.valueOf(changePage.getTotalPages()))
             .header("X-Has-More", String.valueOf(changePage.hasNext()))
             .header("X-Page", String.valueOf(page))
             .body(changePage.getContent());
@@ -125,11 +124,10 @@ public class HubSyncController {
             @RequestParam(defaultValue = "500") int size) {
 
         int safeSize = Math.min(size, 1000);
-        Page<FieldChange> changePage = hubSyncService.getPendingChangesPaginated(
+        Slice<FieldChange> changePage = hubSyncService.getPendingChangesPaginated(
             machineId, PageRequest.of(0, safeSize));
 
         return ResponseEntity.ok()
-            .header("X-Total-Count", String.valueOf(changePage.getTotalElements()))
             .header("X-Has-More", String.valueOf(changePage.hasNext()))
             .body(changePage.getContent());
     }

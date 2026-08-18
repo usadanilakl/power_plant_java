@@ -33,8 +33,13 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     // PAGINATED: Get changes not yet synced to a machine, excluding changes that originated FROM that machine.
     // Used by hub when serving changes to a client — prevents sending a client's own changes back to it.
     // Total order for stable pagination (see above).
+    //
+    // Returns Slice, NOT Page: Page makes Spring Data auto-run a COUNT query on EVERY batch fetch to fill
+    // getTotalElements(), and that count is the non-sargable `NOT LIKE '%|machineId|%'` full scan of the whole
+    // history table — paid per batch, invisibly, dominating catch-up time. Slice needs only hasNext() (fetches
+    // size+1), which the batch endpoint already relies on; the client reads no total-count header.
     @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId ORDER BY fc.timestamp ASC, fc.originMachineId ASC, fc.id ASC")
-    Page<FieldChange> findChangesNotSyncedToExcludingOrigin(@Param("machineId") String machineId, Pageable pageable);
+    org.springframework.data.domain.Slice<FieldChange> findChangesNotSyncedToExcludingOrigin(@Param("machineId") String machineId, Pageable pageable);
 
     // COUNT: Pending changes for a machine, excluding its own changes (hub use)
     @Query("SELECT COUNT(fc) FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId")
