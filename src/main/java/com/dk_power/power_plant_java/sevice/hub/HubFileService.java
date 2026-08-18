@@ -284,20 +284,32 @@ public class HubFileService {
                 Files.move(tmp, canonical); // no REPLACE_EXISTING → throws if occupied, never overwrites
                 return canonical;
             } catch (FileAlreadyExistsException e) {
-                if (sameContent(canonical, hash)) {
-                    return canonical; // identical bytes already present — share the physical file
+                // Canonical path occupied. Overwrite ONLY if it's the same bytes, or THIS entity's own prior
+                // copy (a legitimate update of its file). If it holds a DIFFERENT entity's bytes (two entities
+                // share fileNumber+type+vendor+ext → same canonical path), never truncate — store scoped.
+                if (sameContent(canonical, hash) || canonicalBelongsToEntity(canonical, entityId)) {
+                    Files.move(tmp, canonical, StandardCopyOption.REPLACE_EXISTING);
+                    return canonical;
                 }
                 String name = (filename != null && !filename.isEmpty()) ? filename : "file";
                 Path scoped = resolveWithinRoot("FileObject/" + entityId + "/" + name, "FileObject", entityId, filename);
                 Files.createDirectories(scoped.getParent());
                 Files.move(tmp, scoped, StandardCopyOption.REPLACE_EXISTING); // this entity's OWN scoped path
-                log.warn("file_sync.canonical_collision entityId={} canonical={} held different content — stored at {}",
+                log.warn("file_sync.canonical_collision entityId={} canonical={} held a different entity's content — stored at {}",
                     entityId, canonical, scoped);
                 return scoped;
             }
         } finally {
             Files.deleteIfExists(tmp);
         }
+    }
+
+    /** Does this entity's OWN tracking already claim the canonical path? Then an occupied canonical path is
+     *  this entity updating its own file (safe to overwrite), not a collision with a different entity. */
+    private boolean canonicalBelongsToEntity(Path canonical, Long entityId) {
+        String cp = canonical.toString();
+        return syncedFileRepository.findByEntityTypeAndEntityIdAndDeletedFalse("FileObject", entityId).stream()
+            .anyMatch(f -> cp.equals(f.getStoragePath()));
     }
 
     /** True if the file at {@code path} hashes to {@code expectedSha256} (byte-identical). Unknown/blank

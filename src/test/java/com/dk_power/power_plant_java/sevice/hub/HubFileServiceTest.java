@@ -16,6 +16,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -114,6 +115,37 @@ class HubFileServiceTest {
         assertThat(Files.readString(canonical)).as("A's bytes survive B's colliding upload").isEqualTo("A-bytes");
         assertThat(Files.readString(tempDir.resolve("FileObject/301/SHARED-1.pdf")))
             .as("B is stored under its own entity-scoped path").isEqualTo("B-bytes");
+    }
+
+    @Test
+    void sameEntityReuploadOverwritesItsOwnCanonicalFileInsteadOfDrifting() throws Exception {
+        FileObject fo = fileObjectWith(400L, "PID", "Zeta", "UP-1");
+        when(fileRepo.findById(400L)).thenReturn(Optional.of(fo));
+        when(syncedFileRepository.findByFileHashAndEntityTypeAndEntityIdAndDeletedFalse(any(), any(), any()))
+            .thenReturn(Optional.empty());
+        when(syncedFileRepository.save(any(HubSyncedFile.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        HubFileService svc = service();
+        Path canonical = tempDir.resolve("pdf/PID/Zeta/UP-1.pdf");
+        svc.storeFile(new MockMultipartFile("file", "UP-1.pdf", "application/pdf", "v1".getBytes()),
+            "FileObject", 400L, "x/UP-1.pdf", "CLIENT-A");
+        assertThat(Files.readString(canonical)).isEqualTo("v1");
+
+        // The entity now owns the canonical path. A new version with the same name must OVERWRITE it (an
+        // update), not get shunted to a scoped path (which would create drift).
+        HubSyncedFile ownRow = new HubSyncedFile();
+        ownRow.setEntityType("FileObject");
+        ownRow.setEntityId(400L);
+        ownRow.setStoragePath(canonical.toString());
+        when(syncedFileRepository.findByEntityTypeAndEntityIdAndDeletedFalse("FileObject", 400L))
+            .thenReturn(List.of(ownRow));
+
+        svc.storeFile(new MockMultipartFile("file", "UP-1.pdf", "application/pdf", "v2".getBytes()),
+            "FileObject", 400L, "x/UP-1.pdf", "CLIENT-A");
+
+        assertThat(Files.readString(canonical)).as("own-file update overwrites canonical").isEqualTo("v2");
+        assertThat(Files.exists(tempDir.resolve("FileObject/400/UP-1.pdf")))
+            .as("no scoped duplicate for an own-file update").isFalse();
     }
 
     @Test

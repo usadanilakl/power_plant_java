@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +36,7 @@ public class FileDriftScanScheduler {
 
     private final FileDriftService fileDriftService;
     private final SyncConfig syncConfig;
+    private final FileRepo fileRepo;
 
     @Value("${sync.drift.files.scan-enabled:true}")
     private boolean enabled;
@@ -86,6 +89,12 @@ public class FileDriftScanScheduler {
                     // null — resolveOwners can't map them; deleted entities resolve to null via @Where) are
                     // left report-only; a human can still pull them from the Drift Center if genuinely wanted.
                     .filter(e -> e.getFileObjectId() != null)
+                    // ...and only when the drifting path is genuinely THIS FileObject's canonical path. Owner
+                    // resolution maps by filename→fileNumber alone, so an orphan / legacy mis-filed hub path
+                    // whose filename happens to match a live fileNumber would otherwise be auto-imported to
+                    // every client. Requiring the path to sit under the entity's own {ext}/{type}/{vendor}
+                    // folder rejects those.
+                    .filter(this::pullPathIsEntityCanonical)
                     // Let push+relocate heal a mis-file pair; don't also pull its stale companion (a duplicate).
                     .filter(e -> !pushPairFileObjects.contains(e.getFileObjectId()))
                     .map(FileDriftService.FileDriftEntry::getRelativePath)
@@ -111,5 +120,21 @@ public class FileDriftScanScheduler {
         } catch (Exception e) {
             log.warn("file_drift.scheduled_scan failed: {}", e.getMessage());
         }
+    }
+
+    /** True only when the drifting path sits under the resolved FileObject's own canonical folder
+     *  ({ext}/{fileType}/{vendor}) — so an orphan/mis-filed hub path that merely shares a filename with a
+     *  live fileNumber is NOT auto-imported. Any lookup miss → false (skip; a human can still pull manually). */
+    private boolean pullPathIsEntityCanonical(FileDriftService.FileDriftEntry e) {
+        Long id = e.getFileObjectId();
+        if (id == null) return false;
+        FileObject fo = fileRepo.findById(id).orElse(null);
+        if (fo == null) return false;
+        String rel = e.getRelativePath();
+        if (rel == null) return false;
+        int dot = rel.lastIndexOf('.');
+        String ext = dot >= 0 ? rel.substring(dot + 1) : "pdf";
+        String folder = fo.buildRelativeFolder(ext);
+        return folder != null && rel.startsWith(folder + "/");
     }
 }
