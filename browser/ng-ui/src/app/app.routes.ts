@@ -32,6 +32,14 @@ export const routes: Routes = [
     },
     { path: '', redirectTo: '/home', pathMatch: 'full' },
     {
+      // One landing page for every section, parameterised by slug. Access is enforced by the
+      // section's own items (NavAccessService) — an empty section renders the "not available" note
+      // rather than leaking what exists.
+      path: 'section/:slug',
+      loadComponent: () => import('./pages/section-page/section-page.component').then(m => m.SectionPageComponent),
+      canActivate: [standaloneGuard]
+    },
+    {
       path: 'home',
       loadComponent: () => import('./pages/home-page/home-page.component').then(m => m.HomePageComponent),
       canActivate: [standaloneGuard, userSetupGuard]

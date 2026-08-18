@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, debounceTime, switchMap } from 'rxjs';
 import { catchError, of, tap } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
@@ -214,6 +214,8 @@ export class MaximoPageComponent implements OnInit {
 
   readonly worktypes = WO_WORKTYPES;
 
+  private navRoute = inject(ActivatedRoute);
+
   tab = signal<Tab>('wo');
   search = signal('');
   status = signal('');
@@ -280,7 +282,19 @@ export class MaximoPageComponent implements OnInit {
     ).subscribe();
   }
 
-  ngOnInit(): void { this.reload$.next(); }
+  ngOnInit(): void {
+    // Before the first load, so the requested tab is what gets fetched.
+    this.applyTabFromUrl();
+    this.reload$.next();
+  }
+
+  /**
+   * Honour ?tab= so the Maximo sub-section shortcuts (Work Orders / Requests) land on the right tab.
+   */
+  private applyTabFromUrl(): void {
+    const requested = this.navRoute.snapshot.queryParamMap.get('tab');
+    if (requested === 'wo' || requested === 'sr') this.tab.set(requested);
+  }
 
   setTab(t: Tab): void { if (t === this.tab()) return; this.tab.set(t); this.status.set(''); this.locationFilter.set(''); this.submittedBy.set(''); this.reload$.next(); }
   setStatus(s: string): void { this.status.set(s); this.reload$.next(); }

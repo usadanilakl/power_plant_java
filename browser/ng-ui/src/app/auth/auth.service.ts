@@ -384,6 +384,17 @@ export class AuthService {
   }
 
   /**
+   * True if the signed-in user may EDIT qualifications. PLANT sees them read-only; ROLE_SAFETY is
+   * the role that can change them. Mirrors the hub rule on /api/pwa/secured/qualifications/**.
+   */
+  isSafety(): boolean {
+    const user = this.getAuthData()?.user;
+    if (!user) return false;
+    const roles = (user.roles ?? []).map(r => (r ?? '').toUpperCase());
+    return roles.some(r => r.includes('SAFETY') || r.includes('ADMIN'));
+  }
+
+  /**
    * True when the signed-in user is registered but still awaiting admin approval — they have a working
    * tier-1 session but no plant role yet. Used to show a "pending approval" hint where plant tools would
    * be. (A regular approved contractor is isActive=true, so this is false for them.)

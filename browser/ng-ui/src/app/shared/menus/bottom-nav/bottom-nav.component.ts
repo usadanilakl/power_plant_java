@@ -1,15 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { AuthService } from '../../../auth/auth.service';
 import { NavPreferencesService } from '../../../services/nav-preferences.service';
-
-interface NavItem {
-  label: string;
-  icon: string;
-  route: string;
-  /** Shown only when this returns true — keeps the bar in step with the user's access tier. */
-  visible: () => boolean;
-}
+import { NavAccessService, NavEntry, VisibleSection } from '../../../services/nav-access.service';
 
 /**
  * Mobile bottom navigation.
@@ -32,8 +24,9 @@ interface NavItem {
   imports: [RouterLink, RouterLinkActive],
   template: `
     <nav class="bn" role="navigation" aria-label="Main">
-      @for (item of primary(); track item.route) {
-        <a class="bn-tab" [routerLink]="item.route" routerLinkActive="active"
+      @for (item of primary(); track item.navKey) {
+        <a class="bn-tab" [routerLink]="item.route" [queryParams]="item.queryParams ?? null"
+           routerLinkActive="active"
            [routerLinkActiveOptions]="{ exact: item.route === '/home' }">
           <span class="bn-icon" aria-hidden="true">{{ item.icon }}</span>
           <span class="bn-label">{{ item.label }}</span>
@@ -70,7 +63,7 @@ interface NavItem {
             The top {{ tabCount }} appear in the bar. Move items with the arrows.
           </p>
           <ul class="bn-edit-list">
-            @for (item of visibleItems(); track item.route; let i = $index) {
+            @for (item of visibleItems(); track item.navKey; let i = $index) {
               @if (i === tabCount) {
                 <li class="bn-edit-divider"><span>below this line: in “More”</span></li>
               }
@@ -79,23 +72,45 @@ interface NavItem {
                 <span class="bn-edit-label">{{ item.label }}</span>
                 <button type="button" class="bn-edit-move" [disabled]="i === 0"
                         [attr.aria-label]="'Move ' + item.label + ' up'"
-                        (click)="move(item.route, -1)">▲</button>
+                        (click)="move(item.navKey, -1)">▲</button>
                 <button type="button" class="bn-edit-move" [disabled]="i === visibleItems().length - 1"
                         [attr.aria-label]="'Move ' + item.label + ' down'"
-                        (click)="move(item.route, 1)">▼</button>
+                        (click)="move(item.navKey, 1)">▼</button>
               </li>
             }
           </ul>
         } @else {
-          <div class="bn-sheet-grid">
-            @for (item of overflow(); track item.route) {
-              <a class="bn-sheet-item" [routerLink]="item.route" routerLinkActive="active"
-                 (click)="closeSheet()">
-                <span class="bn-sheet-icon" aria-hidden="true">{{ item.icon }}</span>
-                <span>{{ item.label }}</span>
-              </a>
-            }
-          </div>
+          @for (group of overflowSections(); track group.label) {
+            <h3 class="bn-sheet-section">{{ group.label }}</h3>
+            <div class="bn-sheet-grid">
+              @for (item of group.items; track item.navKey) {
+                @if (item.route) {
+                  <a class="bn-sheet-item" [routerLink]="item.route"
+                     [queryParams]="item.queryParams ?? null" routerLinkActive="active"
+                     (click)="closeSheet()">
+                    <span class="bn-sheet-icon" aria-hidden="true">{{ item.icon }}</span>
+                    <span>{{ item.label }}</span>
+                  </a>
+                } @else {
+                  <button type="button" class="bn-sheet-item" (click)="openExternal(item)">
+                    <span class="bn-sheet-icon" aria-hidden="true">{{ item.icon }}</span>
+                    <span>{{ item.label }} ↗</span>
+                  </button>
+                }
+              }
+            </div>
+          }
+          @if (overflowStandalone().length) {
+            <div class="bn-sheet-grid">
+              @for (item of overflowStandalone(); track item.navKey) {
+                <a class="bn-sheet-item" [routerLink]="item.route" routerLinkActive="active"
+                   (click)="closeSheet()">
+                  <span class="bn-sheet-icon" aria-hidden="true">{{ item.icon }}</span>
+                  <span>{{ item.label }}</span>
+                </a>
+              }
+            </div>
+          }
         }
       </div>
     }
@@ -191,6 +206,17 @@ interface NavItem {
       background: var(--border-color);
       margin: 4px auto 12px;
     }
+
+    .bn-sheet-section {
+      margin: 0.9rem 0 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--secondary-text, #888);
+    }
+
+    .bn-sheet-section:first-of-type { margin-top: 0.2rem; }
 
     .bn-sheet-grid {
       display: grid;
@@ -333,8 +359,8 @@ interface NavItem {
   `],
 })
 export class BottomNavComponent {
-  private auth = inject(AuthService);
   private router = inject(Router);
+  private navAccess = inject(NavAccessService);
   readonly prefs = inject(NavPreferencesService);
 
   /** How many of the ordered items become tabs; the rest fall into "More". */
@@ -344,50 +370,40 @@ export class BottomNavComponent {
   readonly editing = signal(false);
 
   /**
-   * Ordered by how often a phone user needs them: the first four visible entries become tabs.
-   * Plant staff get their field tools promoted; everyone else gets the quick-submit forms.
+   * Shortcuts this user may see, in their saved order. The list itself — labels, icons, sections and
+   * who may see each entry — lives in models/menu/nav.model.ts, shared with the top router menu so
+   * the two can no longer advertise different things.
    */
-  private readonly ITEMS: NavItem[] = [
-    { label: 'Home', icon: '🏠', route: '/home', visible: () => true },
-    { label: 'LOTO', icon: '🔒', route: '/loto', visible: () => this.isPlant() },
-    { label: 'Rounds', icon: '🔁', route: '/rounds', visible: () => this.isPlant() },
-    { label: 'Maximo', icon: '🏭', route: '/maximo', visible: () => this.isPlant() },
-    { label: 'Work Req', icon: '📋', route: '/work-request', visible: () => true },
-    { label: 'JHA', icon: '⚠️', route: '/jha', visible: () => true },
-    { label: 'Messages', icon: '💬', route: '/messages', visible: () => this.isLoggedIn() },
-    { label: 'Standards', icon: '📚', route: '/loto-standards', visible: () => this.isPlant() },
-    { label: 'My Permits', icon: '🛡️', route: '/my-permits', visible: () => this.hasBasic() },
-    { label: 'Personnel', icon: '👥', route: '/personnel', visible: () => this.isPlantGroup() },
-    { label: 'Instruments', icon: '🔧', route: '/instruments', visible: () => true },
-    { label: 'Field Lists', icon: '📝', route: '/field-lists', visible: () => true },
-    { label: 'Inventory', icon: '📦', route: '/inventory', visible: () => true },
-    { label: 'SDS', icon: '🧪', route: '/sds', visible: () => true },
-    { label: 'SDS Audit', icon: '✅', route: '/sds-audit', visible: () => this.isLoggedIn() },
-    { label: 'Quals', icon: '🏷️', route: '/qualification-management', visible: () => this.isPlant() },
-    { label: 'Profile', icon: '👤', route: '/user-profile', visible: () => this.isLoggedIn() },
-  ];
-
-  /**
-   * Items the current user can see, in their saved order.
-   *
-   * Recomputed on every navigation. AuthService exposes plain methods rather than signals, so this
-   * tracks the router instead — login/logout always routes, which is enough to keep the bar honest.
-   * Reading prefs.order() also makes this recompute the moment the user rearranges anything.
-   */
-  readonly visibleItems = computed<NavItem[]>(() => {
-    this.navTick();
+  readonly visibleItems = computed<NavEntry[]>(() => {
     this.prefs.order();
-    return this.prefs.apply(this.ITEMS.filter(i => i.visible()));
+    return this.prefs.apply(this.navAccess.shortcutCandidates());
   });
 
-  readonly primary = computed(() => this.visibleItems().slice(0, this.tabCount));
-  readonly overflow = computed(() => this.visibleItems().slice(this.tabCount));
+  /** Overflow shortcuts grouped under their section headings. */
+  readonly overflowSections = computed<VisibleSection[]>(() => {
+    const spare = new Set(this.overflow().map(i => i.navKey));
+    return this.navAccess.visibleSections()
+      .map(section => ({ ...section, items: section.items.filter(i => spare.has(i.navKey)) }))
+      .filter(section => section.items.length > 0);
+  });
 
-  private navTick = signal(0);
+  /** Overflow entries that belong to no section (Home / Profile). */
+  readonly overflowStandalone = computed<NavEntry[]>(() => {
+    const sectioned = new Set(this.navAccess.visibleItems().map(i => i.navKey));
+    return this.overflow().filter(i => !sectioned.has(i.navKey));
+  });
+
+  readonly primary = computed(() =>
+    this.visibleItems().filter(i => !!i.route).slice(0, this.tabCount));
+
+  readonly overflow = computed(() => {
+    const promoted = new Set(this.primary().map(i => i.navKey));
+    // An external entry has no route to promote, so it always lands in the sheet.
+    return this.visibleItems().filter(i => !promoted.has(i.navKey));
+  });
 
   constructor() {
     this.router.events.subscribe(() => {
-      this.navTick.update(n => n + 1);
       // Preferences are per-user; a login/logout routes, so this is where the key can change.
       this.prefs.syncToCurrentUser();
       // A tab tap navigates; never leave the sheet covering the screen it just opened.
@@ -411,14 +427,16 @@ export class BottomNavComponent {
    * Reorder one entry. The full visible list is passed through so the saved order stays complete —
    * persisting only the moved pair would lose the position of everything else.
    */
-  move(route: string, direction: -1 | 1): void {
-    this.prefs.move(this.visibleItems(), route, direction);
+  move(navKey: string, direction: -1 | 1): void {
+    this.prefs.move(this.visibleItems(), navKey, direction);
   }
 
   resetOrder(): void { this.prefs.reset(); }
 
-  private isLoggedIn(): boolean { return this.auth.isLoggedIn(); }
-  private isPlant(): boolean { return this.auth.isLoggedIn() && this.auth.isPlant(); }
-  private isPlantGroup(): boolean { return this.auth.isLoggedIn() && this.auth.isPlantGroup(); }
-  private hasBasic(): boolean { return this.auth.isLoggedIn() && this.auth.hasPermission('BASIC'); }
+  /** External entries (SDS eBinder) open in a new tab; the URL comes from the hub. */
+  openExternal(item: NavEntry): void {
+    const url = item.externalUrlKey ? this.navAccess.externalUrl(item.externalUrlKey) : '';
+    if (url) window.open(url, '_blank', 'noopener');
+    this.closeSheet();
+  }
 }

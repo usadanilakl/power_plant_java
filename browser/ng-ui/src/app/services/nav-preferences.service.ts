@@ -65,28 +65,31 @@ export class NavPreferencesService {
    * they keep their declared position relative to the saved block by being appended in declaration
    * order. Saved routes the user can no longer see are ignored rather than reserving a slot.
    */
-  apply<T extends { route: string }>(items: T[]): T[] {
+  apply<T extends { navKey: string }>(items: T[]): T[] {
     const saved = this.order();
     if (!saved.length) return items;
 
     const rank = new Map(saved.map((route, i) => [route, i]));
-    const known = items.filter(i => rank.has(i.route)).sort((a, b) => rank.get(a.route)! - rank.get(b.route)!);
-    const unknown = items.filter(i => !rank.has(i.route));
+    // Entries the user has never seen keep their declared position among the unknowns rather
+    // than being dropped.
+    const isKnown = (item: T) => rank.has(item.navKey);
+    const known = items.filter(isKnown).sort((a, b) => rank.get(a.navKey)! - rank.get(b.navKey)!);
+    const unknown = items.filter(i => !isKnown(i));
     return [...known, ...unknown];
   }
 
   /** Persist an explicit order (the full visible list, in the order the user arranged it). */
-  setOrder(items: { route: string }[]): void {
-    this.persist(items.map(i => i.route));
+  setOrder(items: { navKey: string }[]): void {
+    this.persist(items.map(i => i.navKey));
   }
 
   /**
    * Move one route one slot toward the front. `current` must be the full ordered list as the user
    * currently sees it, so the saved order stays complete rather than partial.
    */
-  move(current: { route: string }[], route: string, direction: -1 | 1): void {
-    const routes = current.map(i => i.route);
-    const from = routes.indexOf(route);
+  move(current: { navKey: string }[], navKey: string, direction: -1 | 1): void {
+    const routes = current.map(i => i.navKey);
+    const from = routes.indexOf(navKey);
     const to = from + direction;
     if (from < 0 || to < 0 || to >= routes.length) return;
     [routes[from], routes[to]] = [routes[to], routes[from]];

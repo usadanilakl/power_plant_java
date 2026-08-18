@@ -5,23 +5,9 @@ export interface RouterMenuItem{
 
 export type RouterMenuItems = RouterMenuItem[];
 
-// Main menu items
-// No-login "Quick Submit" tier — always available with just basic info.
-// (SDS Audit, Messages, My Permits require sign-in and live on the Home grid.)
-export const MAIN_MENU_ITEMS: RouterMenuItems = [
-    { route: '/home', label: 'Home' },
-    { route: '/work-request', label: 'Work Request' },
-    { route: '/jha', label: 'JHA' },
-    { route: '/field-lists', label: 'Field Lists' },
-    { route: '/inventory', label: 'Inventory' },
-    { route: '/sds', label: 'SDS Chemicals' },
-];
-
-/**
- * Role-gated menu entries: shown only to users who can actually reach them, so nobody taps a link
- * that bounces off a guard. Instrumentation needs ROLE_INSTRUMENTATION (or ROLE_ADMIN) on the hub.
- */
-export const INSTRUMENTATION_MENU_ITEM: RouterMenuItem = { route: '/instruments', label: 'Instrumentation' };
+// The app's MAIN menu now lives in ./nav.model.ts — one declaration shared by the bottom nav and
+// the top router menu, with each entry's section and access tier. The lists below are FEATURE-LOCAL
+// sub-navigation, passed explicitly to <app-router-menu [menuItems]="...">.
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
     { route: './table', label: 'File Table' },

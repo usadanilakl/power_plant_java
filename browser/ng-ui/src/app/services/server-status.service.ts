@@ -20,6 +20,16 @@ export class ServerStatusService {
   isOnline$ = this.isOnlineSubject.asObservable();
   isOnline = toSignal(this.isOnline$, { initialValue: false });
 
+  /**
+   * False until the first reachability probe has actually answered.
+   *
+   * isOnline starts at `false`, which is indistinguishable from a confirmed outage — callers that
+   * HIDE things when the hub is down (the nav's hubOnly entries) would blank half the menu for the
+   * first few seconds of every cold start, and permanently if the probe never resolves. Check this
+   * before treating `!isOnline()` as "the hub is down".
+   */
+  readonly reachabilityChecked = signal(false);
+
   /** Password held in memory only for same-session retry */
   private pendingPassword: string | null = null;
 
@@ -40,6 +50,7 @@ export class ServerStatusService {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(online => {
       this.isOnlineSubject.next(online);
+      this.reachabilityChecked.set(true);
       // Poll notifications when online and logged in
       if (online && this.authService.isLoggedIn()) {
         this.pollNotifications();
@@ -61,6 +72,7 @@ export class ServerStatusService {
   checkNow(): void {
     this.serverApi.isAvailable().pipe(take(1)).subscribe(online => {
       this.isOnlineSubject.next(online);
+      this.reachabilityChecked.set(true);
     });
   }
 

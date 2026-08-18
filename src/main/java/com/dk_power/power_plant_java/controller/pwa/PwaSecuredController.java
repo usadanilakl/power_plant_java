@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.springframework.beans.factory.annotation.Value;
+
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,6 +44,21 @@ public class PwaSecuredController {
     private final PasswordEncoder passwordEncoder;
     private final com.dk_power.power_plant_java.sevice.auth.SyncAtLoginService syncAtLoginService;
     private final com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo permitAttachmentRepo;
+
+    /**
+     * SDS eBinder (VelocityEHS ChemManagement) link. Served from here rather than compiled into the
+     * PWA because the URL carries an anonymous access token — the PWA bundle is published publicly
+     * on GitHub Pages, so a hardcoded link would hand that token to anyone who views source. Blank
+     * when unconfigured; the client simply hides the tile.
+     */
+    @Value("${sds.ebinder.url:}")
+    private String sdsEbinderUrl;
+
+    @GetMapping("/sds/ebinder-url")
+    public ResponseEntity<?> getSdsEbinderUrl() {
+        if (getCurrentUser() == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+        return ResponseEntity.ok(Map.of("url", sdsEbinderUrl == null ? "" : sdsEbinderUrl));
+    }
 
     @GetMapping("/my-permits")
     public ResponseEntity<?> getMyPermits() {

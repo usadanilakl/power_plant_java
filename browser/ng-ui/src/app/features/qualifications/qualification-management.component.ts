@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -1320,6 +1321,8 @@ export class QualificationManagementComponent implements OnInit {
   editingDefinitionSharepointId = signal<string | null>(null);
   assignmentDraft = signal<PwaQualificationDto>(this.blankAssignmentDraft());
   definitionDraft = signal<PwaQualificationDefinitionDto>(this.blankDefinitionDraft());
+  private navRoute = inject(ActivatedRoute);
+
   activeTab = signal<'people' | 'catalog' | 'report'>('people');
   reportSelectionKey = signal<string>('');
   personSeedDialogOpen = signal(false);
@@ -1337,6 +1340,11 @@ export class QualificationManagementComponent implements OnInit {
   selectedReportSummary = computed(() => this.buildReportSummary(this.selectedReportRows()));
 
   ngOnInit(): void {
+    // Honour ?tab= so the Qualifications sub-section shortcuts open on the right tab.
+    const requestedTab = this.navRoute.snapshot.queryParamMap.get('tab');
+    if (requestedTab === 'people' || requestedTab === 'catalog' || requestedTab === 'report') {
+      this.setTab(requestedTab);
+    }
     this.load();
   }
 

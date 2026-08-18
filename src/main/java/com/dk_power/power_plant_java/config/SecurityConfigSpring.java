@@ -112,7 +112,16 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/loto-standards/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
-                .requestMatchers("/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "ADMIN")
+                // Qualifications: the target model is READ-ONLY for plant staff, writable by ROLE_SAFETY.
+                // Reads are @GetMapping and writes are POST/PUT/DELETE under this path, so method-scoped
+                // matchers split the two (the GET rule must precede the write rule — first match wins).
+                //
+                // PLANT is still on the WRITE rule on purpose: ROLE_SAFETY was only just introduced and
+                // nobody holds it yet, so removing PLANT here would break qualification editing for
+                // every non-admin the moment this deploys. Drop "PLANT" from the write rule once the
+                // safety staff have been granted ROLE_SAFETY in the admin user screen.
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "SAFETY", "ADMIN")
+                .requestMatchers("/api/pwa/secured/qualifications/**").hasAnyRole("PLANT", "SAFETY", "ADMIN")
                 // Field List submission and retrieval (walkdown reports, insulation etc.). Formerly
                 // anonymous under /api/pwa/** — now plant-only because submissions route to Maximo
                 // as SR/WO and unauthenticated writes would let anyone create Maximo records.

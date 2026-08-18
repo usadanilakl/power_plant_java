@@ -226,7 +226,7 @@ public class NgUserController {
             "accessRoles", new String[]{
                 "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT",
                 "ROLE_NAES", "ROLE_JPOWER", "ROLE_KIOSK", "ROLE_LOG_DIAGNOSTICS",
-                "ROLE_INSTRUMENTATION"
+                "ROLE_INSTRUMENTATION", "ROLE_SAFETY"
             },
             "lotoRoles", new String[]{
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
@@ -235,6 +235,7 @@ public class NgUserController {
             "roles", new String[]{
                 "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT", "ROLE_KIOSK",
                 "ROLE_NAES", "ROLE_JPOWER", "ROLE_LOG_DIAGNOSTICS", "ROLE_INSTRUMENTATION",
+                "ROLE_SAFETY",
                 "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
             }
         ));

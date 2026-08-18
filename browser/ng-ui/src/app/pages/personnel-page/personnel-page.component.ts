@@ -1,3 +1,4 @@
+import { ActivatedRoute } from '@angular/router';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -80,6 +81,8 @@ const VIEW_REVISIT_TTL_MS = 60_000;
 export class PersonnelPageComponent implements OnInit {
   private api = inject(PersonnelApiService);
   private cache = inject(PersonnelCacheService);
+
+  private navRoute = inject(ActivatedRoute);
 
   activeTab = signal<'schedule' | 'contacts' | 'chat'>('schedule');
   scheduleView = signal<'day' | 'month' | 'me' | 'year'>('day');
@@ -492,6 +495,12 @@ export class PersonnelPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Honour ?tab= so the Personnel sub-section shortcuts open on the right tab.
+    const requestedTab = this.navRoute.snapshot.queryParamMap.get('tab');
+    if (requestedTab === 'schedule' || requestedTab === 'contacts' || requestedTab === 'chat') {
+      this.selectTab(requestedTab);
+    }
+
     // Cache-first render on Schedule (the default tab).
     const cachedToday = this.cache.readScheduleToday();
     if (cachedToday) this.selectedDay.set(cachedToday.data);

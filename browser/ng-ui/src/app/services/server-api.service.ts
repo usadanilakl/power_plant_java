@@ -553,6 +553,19 @@ export class ServerApiService {
 
   // ============ PWA Secured Profile ============
 
+  /**
+   * The SDS eBinder link, held by the hub rather than compiled into this bundle — the URL carries an
+   * anonymous access token and this app is published publicly. Resolves to '' when unconfigured or
+   * unreachable, and the caller hides the entry.
+   */
+  getSdsEbinderUrl(): Observable<string> {
+    return this.http.get<{ url: string }>(`${this.baseUrl}/api/pwa/secured/sds/ebinder-url`).pipe(
+      timeout(8000),
+      map(response => response?.url ?? ''),
+      catchError(() => of(''))
+    );
+  }
+
   getProfile(): Observable<PwaServerProfile> {
     return this.http.get<PwaServerProfile>(`${this.baseUrl}/api/pwa/secured/profile`).pipe(
       timeout(10000),

@@ -596,7 +596,15 @@ export class InventoryComponent implements OnInit {
     const scanToken = this.route.snapshot.queryParamMap.get('scan');
     if (scanToken) {
       this.handleScan(scanToken);
+      return;
     }
+
+    // Deep link: ?mode= from the Inventory sub-section shortcuts. Distinct from ?scan= above, which
+    // carries a QR token rather than naming a screen.
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    if (mode === 'scan') { this.openScanner(); }
+    else if (mode === 'new') { this.mode.set('new'); }
+    else if (mode === 'list') { this.mode.set('list'); }
   }
 
   private loadTypes(): void {

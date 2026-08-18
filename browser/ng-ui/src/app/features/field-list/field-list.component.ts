@@ -1,3 +1,4 @@
+import { ActivatedRoute } from '@angular/router';
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -485,6 +486,7 @@ export class FieldListComponent implements OnInit {
   private globalMessage = inject(GlobalMessageService);
   private supabaseData = inject(SupabaseDataService);
   private http = inject(HttpClient);
+  private navRoute = inject(ActivatedRoute);
 
   mode = signal<ViewMode>('select');
   fields = signal<FormField[]>([]);
@@ -534,6 +536,12 @@ export class FieldListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadListTypes();
+    // Deep link: ?type= from the Field List sub-section shortcuts. Applied after loadListTypes so
+    // the form is built with the option list already populated.
+    const requestedType = this.navRoute.snapshot.queryParamMap.get('type');
+    if (requestedType && this.listTypeOptions.some(o => o.value === requestedType)) {
+      this.selectNewWithType(requestedType);
+    }
   }
 
   private loadListTypes(): void {
