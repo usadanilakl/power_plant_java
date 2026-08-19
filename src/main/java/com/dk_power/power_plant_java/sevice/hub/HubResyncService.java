@@ -10,7 +10,9 @@ import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +76,9 @@ public class HubResyncService {
     private boolean warmBackupEnabled;
 
     private final ReentrantLock backupLock = new ReentrantLock();
+    /** Guards against two warm runs (startup listener + scheduled) overlapping — see warmClientResyncBackup. */
+    private final java.util.concurrent.atomic.AtomicBoolean warmInProgress =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
     private volatile Path cachedBackupPath = null;
     private volatile Instant cachedBackupTime = null;
     // Hub-receipt cutoff for the cached snapshot: every FieldChange the hub had RECEIVED (receivedAt) at/under
@@ -308,32 +313,60 @@ public class HubResyncService {
      * desktop. Keep {@code sync.backup.cache-duration-minutes} >= the warm interval so client pulls
      * that land between warm runs stay cache hits.
      */
+    /**
+     * Warm the client resync snapshot ONCE at hub startup, off the ready-event thread so a multi-minute
+     * BACKUP TO never delays readiness. This closes the cold window before the first @Scheduled run: a client
+     * directed to cold-resync right after a hub restart then gets a fast cache hit instead of a synchronous
+     * on-request BACKUP TO (which blocks the download with zero bytes flowing — the slow-DB-load the user saw).
+     * Reuses {@link #warmClientResyncBackup()}, which already locks, pauses SP writes, and swallows errors.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmClientResyncBackupOnStartup() {
+        if (!warmBackupEnabled) return;
+        Thread t = new Thread(this::warmClientResyncBackup, "resync-warm-startup");
+        t.setDaemon(true);
+        t.start();
+    }
+
     @Scheduled(fixedDelayString = "${sync.backup.warm-interval-ms:3600000}",
                initialDelayString = "${sync.backup.warm-initial-delay-ms:120000}")
     public void warmClientResyncBackup() {
         if (!warmBackupEnabled) return;
-        long start = System.currentTimeMillis();
-        // Force a fresh snapshot: invalidate the cache so getClientResyncBackup regenerates rather than
-        // returning the previous (about-to-expire) one. backupLock serializes against concurrent pulls.
-        backupLock.lock();
-        try {
-            cachedBackupTime = null;
-        } finally {
-            backupLock.unlock();
+        // Only ONE warm run at a time. Without this, the startup warm (ApplicationReadyEvent) and the first
+        // scheduled warm can overlap when a generation runs long: they'd force a redundant second BACKUP TO and,
+        // worse, race on the shared clientSyncInProgress flag (one run's set(false) clearing the other's
+        // set(true) mid-generation, un-pausing SharePoint writes during a BACKUP TO). Skipping the overlapping
+        // run is safe — the snapshot the in-progress run produces is exactly what the skipped one would make.
+        if (!warmInProgress.compareAndSet(false, true)) {
+            log.debug("resync.warm_backup skipped — another warm run is already in progress");
+            return;
         }
-        // BACKUP TO locks H2 tables; pause the 30s SharePoint poll's writes for the duration, exactly as the
-        // on-demand download path does — otherwise the hourly warm run can collide with an SP write and one
-        // side hits the 10s lock timeout.
-        sharePointSyncOrchestrator.setClientSyncInProgress(true);
         try {
-            Path p = getClientResyncBackup();
-            long mb = Files.exists(p) ? Files.size(p) / (1024 * 1024) : -1;
-            log.info("resync.warm_backup ready path={} sizeMB={} cutoff={} elapsedMs={}",
-                     p, mb, cachedBackupCutoff, System.currentTimeMillis() - start);
-        } catch (Exception e) {
-            log.warn("resync.warm_backup failed (clients fall back to on-demand backup): {}", e.toString());
+            long start = System.currentTimeMillis();
+            // Force a fresh snapshot: invalidate the cache so getClientResyncBackup regenerates rather than
+            // returning the previous (about-to-expire) one. backupLock serializes against concurrent pulls.
+            backupLock.lock();
+            try {
+                cachedBackupTime = null;
+            } finally {
+                backupLock.unlock();
+            }
+            // BACKUP TO locks H2 tables; pause the 30s SharePoint poll's writes for the duration, exactly as the
+            // on-demand download path does — otherwise the hourly warm run can collide with an SP write and one
+            // side hits the 10s lock timeout.
+            sharePointSyncOrchestrator.setClientSyncInProgress(true);
+            try {
+                Path p = getClientResyncBackup();
+                long mb = Files.exists(p) ? Files.size(p) / (1024 * 1024) : -1;
+                log.info("resync.warm_backup ready path={} sizeMB={} cutoff={} elapsedMs={}",
+                         p, mb, cachedBackupCutoff, System.currentTimeMillis() - start);
+            } catch (Exception e) {
+                log.warn("resync.warm_backup failed (clients fall back to on-demand backup): {}", e.toString());
+            } finally {
+                sharePointSyncOrchestrator.setClientSyncInProgress(false);
+            }
         } finally {
-            sharePointSyncOrchestrator.setClientSyncInProgress(false);
+            warmInProgress.set(false);
         }
     }
 

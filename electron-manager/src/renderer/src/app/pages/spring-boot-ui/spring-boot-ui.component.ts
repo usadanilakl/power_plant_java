@@ -24,6 +24,7 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
         <p class="placeholder-detail" *ngIf="status.state === 'stopping'">Shutting down...</p>
         <p class="placeholder-detail" *ngIf="status.state === 'error'">{{ status.error }}</p>
         <p class="placeholder-detail" *ngIf="status.state === 'stopped' && !isUpdating">Start {{ appName }} to view the application.</p>
+        <p class="placeholder-detail directive-banner" *ngIf="isUpdating && updateBannerMessage">{{ updateBannerMessage }}</p>
         <p class="placeholder-detail" *ngIf="isUpdating">{{ updateStatusMessage || 'Updating…' }} ({{ updateProgressPercent }}%)</p>
         <div class="placeholder-actions">
           <!-- Hidden mid-update: starting Spring Boot during a swap would corrupt it. -->
@@ -108,6 +109,16 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
       margin: 0;
     }
 
+    .directive-banner {
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--accent-soft, rgba(45,140,255,0.12));
+      border: 1px solid var(--accent-color, #2d8cff);
+      border-radius: 6px;
+      padding: 8px 12px;
+      max-width: 480px;
+    }
+
     .placeholder-actions {
       display: flex;
       gap: 12px;
@@ -124,6 +135,7 @@ export class SpringBootUiComponent implements OnInit, OnDestroy {
   isUpdating = false;
   updateStatusMessage = '';
   updateProgressPercent = 0;
+  updateBannerMessage = '';
   private sub?: Subscription;
   private unsubSyncProgress?: () => void;
 
@@ -143,6 +155,7 @@ export class SpringBootUiComponent implements OnInit, OnDestroy {
       this.isUpdating = p.phase !== 'done' && p.phase !== 'error';
       this.updateStatusMessage = p.error ? p.error : p.statusMessage;
       this.updateProgressPercent = p.progressPercent ?? 0;
+      this.updateBannerMessage = p.bannerMessage ?? '';
     });
   }
 

@@ -492,6 +492,13 @@ export interface SyncOptions {
   /** Smart-resync only: after the DB/file snapshot is confirmed in place (post-swap, post-restart), tell the
    *  hub this client is fully synced. Set ONLY by the smart-resync flow — never for a partial component sync. */
   markHubSyncedAfter?: boolean;
+  /** Boot-directive path: start Spring Boot at the end even if it wasn't running when the sync began. The
+   *  directive is applied BEFORE autoStart (so we don't start → stop → restart), so there is no prior process
+   *  to restart — this flag makes runSyncComponents start it once, cleanly, on the freshly-updated jar/db. */
+  startWhenDone?: boolean;
+  /** Optional message shown to the user for the whole run (the hub directive's `message`). Surfaced as a
+   *  persistent banner in the update progress UI. */
+  bannerMessage?: string;
 }
 
 export interface SyncExecuteProgress {
@@ -499,6 +506,9 @@ export interface SyncExecuteProgress {
   statusMessage: string;
   progressPercent: number;
   error?: string;
+  /** Persistent banner for the whole run (e.g. a hub directive's message). Unlike statusMessage (which
+   *  changes each phase), this stays constant so the renderer can show it above the phase progress. */
+  bannerMessage?: string;
 }
 
 // Window Layout

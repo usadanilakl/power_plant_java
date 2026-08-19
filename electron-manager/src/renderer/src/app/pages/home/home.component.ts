@@ -67,6 +67,10 @@ interface DashboardGridsterItem extends GridsterItem {
                Starting/stopping Spring Boot mid-swap would corrupt the update, so the buttons are gone,
                not merely disabled. -->
           <div class="sb-updating" *ngIf="isUpdating">
+            <div class="sb-updating-banner" *ngIf="updateBannerMessage">
+              <span class="material-icons">campaign</span>
+              <span>{{ updateBannerMessage }}</span>
+            </div>
             <div class="sb-updating-row">
               <span class="material-icons spin">sync</span>
               <span class="sb-updating-msg">{{ updateStatusMessage || 'Updating…' }}</span>
@@ -239,6 +243,10 @@ interface DashboardGridsterItem extends GridsterItem {
     .btn-sm { padding: 6px 12px; font-size: 12px; }
 
     .sb-updating { min-width: 320px; display: flex; flex-direction: column; gap: 6px; }
+    .sb-updating-banner { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+      padding: 8px 10px; border-radius: 6px; background: var(--accent-soft, rgba(45,140,255,0.12));
+      color: var(--text-color); border: 1px solid var(--accent-color, #2d8cff); }
+    .sb-updating-banner .material-icons { font-size: 18px; color: var(--accent-color, #2d8cff); }
     .sb-updating-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
     .sb-updating-msg { flex: 1; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sb-updating-pct { font-variant-numeric: tabular-nums; color: var(--text-muted, #888); font-weight: 600; }
@@ -345,6 +353,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   isUpdating = false;
   updateStatusMessage = '';
   updateProgressPercent = 0;
+  updateBannerMessage = ''; // hub directive's message, shown for the whole update run
 
   // Layout
   editMode = false;
@@ -529,6 +538,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.isUpdating = active;
       this.updateStatusMessage = p.error ? p.error : p.statusMessage;
       this.updateProgressPercent = p.progressPercent ?? 0;
+      this.updateBannerMessage = p.bannerMessage ?? '';
     });
 
     this.loadWeatherStatus();

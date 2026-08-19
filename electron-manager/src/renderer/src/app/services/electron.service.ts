@@ -396,6 +396,8 @@ export interface SyncExecuteProgress {
   statusMessage: string;
   progressPercent: number;
   error?: string;
+  /** Persistent banner for the whole run (e.g. a hub directive's message). */
+  bannerMessage?: string;
 }
 
 export interface WeatherStatus {

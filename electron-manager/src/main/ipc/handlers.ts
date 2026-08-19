@@ -832,14 +832,19 @@ export class IpcHandlers {
       const config = this.springBoot.getDeviceConfigManager().getConfig();
       if (!config) return { success: false, error: 'Device not configured' };
 
+      const banner = options?.bannerMessage;
       const sendProgress = (progress: SyncExecuteProgress) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send(events.IPC_SYNC_EXECUTE_PROGRESS, progress);
+          this.mainWindow.webContents.send(events.IPC_SYNC_EXECUTE_PROGRESS,
+            banner ? { ...progress, bannerMessage: banner } : progress);
         }
       };
 
       const needsDbOrFiles = components.includes('db') || components.includes('files');
       const sbWasRunning = this.springBoot.isRunning();
+      // Boot-directive path applies the update BEFORE Spring Boot starts, so there's no running process to
+      // restart — start it once at the end instead. Manual sync keeps the "restart only if it was running".
+      const startAtEnd = sbWasRunning || options?.startWhenDone === true;
 
       try {
         // 1. Stop Spring Boot if DB, files, or JAR sync requested
@@ -912,8 +917,9 @@ export class IpcHandlers {
           if (!rpResult.success) throw new Error(rpResult.error || 'Resource packs sync failed');
         }
 
-        // 6. Clear Chromium cache (stale Angular assets in iframe) and restart Spring Boot
-        if (needsStop && sbWasRunning) {
+        // 6. Clear Chromium cache (stale Angular assets in iframe) and (re)start Spring Boot. `startAtEnd` is
+        //    true when SB was running (restart) OR when the boot-directive path asked us to start it fresh.
+        if (needsStop && startAtEnd) {
           await session.defaultSession.clearCache();
           sendProgress({ phase: 'starting_sb', statusMessage: `Starting ${APP_DISPLAY_NAME}...`, progressPercent: 95 });
           await this.springBoot.start();
@@ -1007,7 +1013,7 @@ export class IpcHandlers {
    * uses bounded mark-synced. "electron" is left to the Electron self-update flow. Best-effort: on any error
    * the directive is NOT acked, so the hub re-offers it next boot.
    */
-  async applyBootDirective(policy: { id: string; actions: string[] }, serverUrl: string, machineId: string): Promise<void> {
+  async applyBootDirective(policy: { id: string; actions: string[]; message?: string }, serverUrl: string, machineId: string): Promise<void> {
     const wanted = new Set((policy.actions || []).map(a => a.toLowerCase()));
     const components: SyncComponent[] = (['jar', 'db', 'files'] as const).filter(c => wanted.has(c));
     if (components.length === 0) {
@@ -1015,8 +1021,25 @@ export class IpcHandlers {
       await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
       return;
     }
+    // Surface the admin's message: a one-time popup (what the user expects to "pop up") AND a persistent banner
+    // in the progress UI for the whole run. Fire-and-forget so it never blocks the update from starting.
+    const directiveMessage = (policy.message || '').trim();
+    if (directiveMessage && this.mainWindow && !this.mainWindow.isDestroyed()) {
+      dialog.showMessageBox(this.mainWindow, {
+        type: 'info',
+        title: `${APP_DISPLAY_NAME} update`,
+        message: `${APP_DISPLAY_NAME} is updating`,
+        detail: directiveMessage,
+        buttons: ['OK'],
+        noLink: true
+      }).catch(() => { /* window closed mid-update — ignore */ });
+    }
     console.log(`boot-directive: applying ${components.join(', ')} for id=${policy.id}`);
-    const result = await this.runSyncComponents(components, { markHubSyncedAfter: components.includes('db') });
+    const result = await this.runSyncComponents(components, {
+      markHubSyncedAfter: components.includes('db'),
+      startWhenDone: true,
+      bannerMessage: directiveMessage || undefined
+    });
     if (result.success) {
       await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
       console.log(`boot-directive: applied + reported id=${policy.id}`);

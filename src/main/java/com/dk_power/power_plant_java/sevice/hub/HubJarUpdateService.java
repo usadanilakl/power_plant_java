@@ -6,6 +6,8 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -41,9 +43,11 @@ public class HubJarUpdateService {
 
     private Path jarDirPath;
 
-    private String cachedChecksum;
-    private long cachedMtime;
-    private Path cachedJarPath;
+    /** Immutable checksum cache published atomically via a single volatile write, so a concurrent /check (e.g.
+     *  the startup pre-warm thread + a client request) can never observe a torn (checksum, mtime, path) combo
+     *  and return the wrong jar's checksum. */
+    private record ChecksumCache(String checksum, long mtime, Path jarPath) {}
+    private volatile ChecksumCache checksumCache;
 
     @PostConstruct
     public void init() {
@@ -54,6 +58,26 @@ public class HubJarUpdateService {
         } catch (IOException e) {
             log.warn("Could not create updates directory: {}", jarDirPath, e);
         }
+    }
+
+    /**
+     * Pre-compute the latest jar's SHA-256 at hub startup, off-thread, so the FIRST client /check after a jar
+     * swap or hub restart isn't stuck behind a cold ~659MB hash inside its short /check timeout (a source of
+     * the occasional slow jar update). {@link #getLatestJarInfo()} populates the same mtime-keyed cache
+     * {@link #getChecksum} reads. Best-effort — never blocks startup, never throws.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmChecksumOnStartup() {
+        Thread t = new Thread(() -> {
+            try {
+                getLatestJarInfo().ifPresent(info ->
+                    log.info("Jar checksum pre-warmed at startup: {} ({} bytes)", info.fileName(), info.fileSize()));
+            } catch (Exception e) {
+                log.warn("Jar checksum pre-warm failed (first /check will compute on demand): {}", e.toString());
+            }
+        }, "jar-checksum-warm");
+        t.setDaemon(true);
+        t.start();
     }
 
     public Optional<UpdateInfo> getLatestJarInfo() {
@@ -132,8 +156,9 @@ public class HubJarUpdateService {
     }
 
     private String getChecksum(Path jarPath, long mtime) throws IOException {
-        if (cachedChecksum != null && cachedMtime == mtime && jarPath.equals(cachedJarPath)) {
-            return cachedChecksum;
+        ChecksumCache c = checksumCache; // single volatile read — a consistent tuple or null
+        if (c != null && c.mtime() == mtime && jarPath.equals(c.jarPath())) {
+            return c.checksum();
         }
 
         log.info("Computing SHA-256 for: {} ({} MB)", jarPath.getFileName(),
@@ -148,10 +173,9 @@ public class HubJarUpdateService {
                     digest.update(buffer, 0, read);
                 }
             }
-            cachedChecksum = HexFormat.of().formatHex(digest.digest());
-            cachedMtime = mtime;
-            cachedJarPath = jarPath;
-            return cachedChecksum;
+            String checksum = HexFormat.of().formatHex(digest.digest());
+            checksumCache = new ChecksumCache(checksum, mtime, jarPath); // atomic publish of all three
+            return checksum;
         } catch (Exception e) {
             throw new IOException("Failed to compute checksum", e);
         }

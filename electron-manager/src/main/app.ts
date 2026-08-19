@@ -238,37 +238,51 @@ export default class App {
     // Clear Chromium HTTP cache so stale Angular assets from previous JAR aren't served
     await session.defaultSession.clearCache();
 
-    // If a JAR update is available, prompt user before starting — UNLESS a hub directive already covers the
-    // jar (below), in which case the directive is the authoritative update and a separate prompt would just
-    // double up. A db/files-only directive still lets the jar prompt through.
+    // Decide the boot path up front: is there a hub next-boot directive with ACTIONABLE components
+    // (jar/db/files) for this client? If so, the directive owns the update AND the (re)start — apply it BEFORE
+    // Spring Boot starts, so we don't start → immediately stop → restart, and so the jar-update prompt is
+    // never shown while a directive is in play (issues #2/#3). Otherwise fall back to the normal
+    // prompt-then-autostart path.
     const workingDir = getWorkingDir();
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
-    const directiveActions = (assessment?.jar?.updateInfo?.policy?.actions ?? []).map(a => a.toLowerCase());
-    const directiveHandlesJar = directiveActions.includes('jar');
-    if (assessment?.jar.updateAvailable && fs.existsSync(jarPath) && !directiveHandlesJar) {
-      const shouldUpdate = await App.promptForJarUpdate(assessment);
-      if (shouldUpdate) {
-        await App.downloadJarUpdate();
-      }
-    }
-
-    // Auto-start Spring Boot if JAR exists
-    if (fs.existsSync(jarPath)) {
-      await App.autoStart();
-    } else {
-      console.log('Spring Boot JAR not found — skipping auto-start');
-    }
-
-    // Apply a hub next-boot directive for this client (jar/db/files updates the admin queued), if any. Runs
-    // AFTER the normal start so runSyncComponents cleanly stops → applies → restarts the running Spring Boot,
-    // then reports back so it runs exactly once.
     const policy = assessment?.jar?.updateInfo?.policy;
     const deviceCfg = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager().getConfig();
-    if (policy?.actions?.length && assessment?.serverUrl && deviceCfg?.machineId) {
+    const directiveComponents = (policy?.actions ?? [])
+      .map(a => a.toLowerCase())
+      .filter(a => a === 'jar' || a === 'db' || a === 'files');
+    // Inlined (rather than a separate boolean) so TypeScript narrows policy/serverUrl/machineId to non-null.
+    if (directiveComponents.length > 0 && policy && assessment?.serverUrl && deviceCfg?.machineId) {
+      console.log(`boot-directive present (${directiveComponents.join(', ')}) — applying before auto-start`);
       try {
         await App.ipcHandlers.applyBootDirective(policy, assessment.serverUrl, deviceCfg.machineId);
       } catch (e) {
         console.warn('boot-directive apply failed:', e);
+      }
+      // Safety net: if the directive left Spring Boot stopped (apply failed, or nothing actually needed
+      // replacing), start it now so the app stays usable on the current jar/db.
+      if (fs.existsSync(jarPath) && !App.ipcHandlers.getSpringBootManager().isRunning()) {
+        await App.autoStart();
+      }
+    } else {
+      // No actionable directive — normal path: optional jar-update prompt, then auto-start.
+      if (assessment?.jar.updateAvailable && fs.existsSync(jarPath)) {
+        const shouldUpdate = await App.promptForJarUpdate(assessment);
+        if (shouldUpdate) {
+          await App.downloadJarUpdate();
+        }
+      }
+      if (fs.existsSync(jarPath)) {
+        await App.autoStart();
+      } else {
+        console.log('Spring Boot JAR not found — skipping auto-start');
+      }
+      // Ack a NON-actionable directive (e.g. electron-only) after start, exactly as before.
+      if (policy?.actions?.length && assessment?.serverUrl && deviceCfg?.machineId) {
+        try {
+          await App.ipcHandlers.applyBootDirective(policy, assessment.serverUrl, deviceCfg.machineId);
+        } catch (e) {
+          console.warn('boot-directive apply failed:', e);
+        }
       }
     }
 
