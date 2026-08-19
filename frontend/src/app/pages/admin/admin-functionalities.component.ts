@@ -45,6 +45,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
             Sync
           </a>
           <a mat-tab-link
+             routerLink="clients"
+             routerLinkActive
+             #rla9="routerLinkActive"
+             [active]="rla9.isActive">
+            Clients
+          </a>
+          <a mat-tab-link
              routerLink="sharepoint"
              routerLinkActive
              #rla3="routerLinkActive"

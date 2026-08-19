@@ -12,6 +12,7 @@ import { WebViewManager } from '../managers/webview.manager';
 import { UpdateManager } from '../managers/update.manager';
 import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
+import { ClientCommandManager } from '../managers/client-command.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
 import { MaximoOverviewManager } from '../managers/maximo-overview.manager';
 import { WebViewAmsManager } from '../managers/webview-ams.manager';
@@ -63,6 +64,7 @@ export class IpcHandlers {
   private updateManager: UpdateManager;
   private syncStatusManager: SyncStatusManager;
   private coldResyncManager: ColdResyncManager;
+  private clientCommandManager: ClientCommandManager;
   private gateLogManager: GateLogManager;
   private maximoOverviewManager: MaximoOverviewManager;
   private webViewAmsManager: WebViewAmsManager;
@@ -188,6 +190,13 @@ export class IpcHandlers {
 
     // Must init after springBoot so we can read the device config's profile
     this.coldResyncManager = new ColdResyncManager(this.springBoot.getDeviceConfigManager());
+    // Poll the hub for immediate commands (shutdown/restart) targeting this client and act on them. No-ops
+    // until the device config + hub URL are set, so starting it here is safe.
+    this.clientCommandManager = new ClientCommandManager(
+      () => this.springBoot.getDeviceConfigManager().getConfig(),
+      this.springBoot
+    );
+    this.clientCommandManager.start();
     this.sharepointManager = new SharePointManager();
     this.personnelManager = new PersonnelManager(this.sharepointManager);
 
@@ -287,6 +296,45 @@ export class IpcHandlers {
 
   public getColdResyncManager(): ColdResyncManager {
     return this.coldResyncManager;
+  }
+
+  /** Poll the LOCAL backend's health until it responds 200 or the timeout elapses. */
+  private async waitForLocalBackend(port: number, timeoutMs: number): Promise<boolean> {
+    const http = require('http');
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const ok = await new Promise<boolean>((resolve) => {
+        const req = http.request(
+          { hostname: 'localhost', port, path: '/actuator/health', method: 'GET', timeout: 4000 },
+          (res: any) => { res.resume(); resolve(res.statusCode === 200); });
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => { req.destroy(); resolve(false); });
+        req.end();
+      });
+      if (ok) return true;
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+    return false;
+  }
+
+  /** POST to the LOCAL backend and resolve with the response body (rejects on non-2xx). */
+  private httpPostLocal(port: number, pathAndQuery: string, timeoutMs: number = 30000): Promise<string> {
+    const http = require('http');
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        { hostname: 'localhost', port, path: pathAndQuery, method: 'POST', timeout: timeoutMs },
+        (res: any) => {
+          let data = '';
+          res.on('data', (c: any) => { data += c; });
+          res.on('end', () => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) resolve(data);
+            else reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
+          });
+        });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('request timed out')); });
+      req.end();
+    });
   }
 
   public getResourcePackManager(): ResourcePackManager {
@@ -770,8 +818,17 @@ export class IpcHandlers {
       }
     });
 
-    // Execute selective sync
-    ipcMain.handle(events.IPC_SYNC_EXECUTE, async (_event, components: SyncComponent[], options?: SyncOptions) => {
+    // Execute selective sync — delegates to the extracted method so the boot-directive auto-apply reuses it.
+    ipcMain.handle(events.IPC_SYNC_EXECUTE, async (_event, components: SyncComponent[], options?: SyncOptions) =>
+      this.runSyncComponents(components, options));
+  }
+
+  /**
+   * The full component-sync flow (jar / db / files / resource-packs): stop Spring Boot, apply, restart,
+   * bounded mark-synced, and rescue un-pushed local changes. Extracted from the IPC handler so the hub's
+   * boot-directive auto-apply ({@link applyBootDirective}) drives the SAME proven path.
+   */
+  async runSyncComponents(components: SyncComponent[], options?: SyncOptions): Promise<{ success: boolean; error?: string }> {
       const config = this.springBoot.getDeviceConfigManager().getConfig();
       if (!config) return { success: false, error: 'Device not configured' };
 
@@ -809,6 +866,7 @@ export class IpcHandlers {
 
         // 3. Sync Database
         let dbSyncCutoff: string | undefined;
+        let preswapAsidePath: string | undefined; // pre-swap DB copy, for local-change rescue after restart
         if (components.includes('db')) {
           sendProgress({ phase: 'db_download', statusMessage: 'Downloading database...', progressPercent: 30 });
           const dbResult = await this.coldResyncManager.syncDatabase(
@@ -821,6 +879,7 @@ export class IpcHandlers {
           );
           if (!dbResult.success) throw new Error(dbResult.error || 'Database sync failed');
           dbSyncCutoff = dbResult.syncCutoff;
+          preswapAsidePath = dbResult.preswapAsidePath;
         }
 
         // 4. Sync Files
@@ -899,6 +958,32 @@ export class IpcHandlers {
           }
         }
 
+        // Rescue this client's un-pushed local changes from the pre-swap DB copy, so a full swap can't lose
+        // work made while the hub was unreachable. Best-effort: wait for the just-restarted local backend to
+        // be ready, POST the preserve endpoint, then delete the aside. Any failure leaves the aside in place
+        // (retryable) and never blocks the sync from completing.
+        if (components.includes('db') && preswapAsidePath) {
+          sendProgress({ phase: 'starting_sb', statusMessage: 'Rescuing local changes…', progressPercent: 98 });
+          const localPort = this.springBoot.getStatus().port;
+          const ready = await this.waitForLocalBackend(localPort, 90000);
+          if (!ready) {
+            console.warn('preswap: local backend not ready in time — leaving aside for a later retry:', preswapAsidePath);
+          } else {
+            try {
+              // The preserve endpoint also marks the restored hub snapshot already-on-hub so the client
+              // doesn't re-push the hub's whole history back. Generous timeout: that bulk mark can update a
+              // large field_change table; the server-side work is idempotent, so a client-side timeout is
+              // safe to retry.
+              const body = await this.httpPostLocal(localPort,
+                `/api/resync/preserve-local-changes?asidePath=${encodeURIComponent(preswapAsidePath)}`, 180000);
+              console.log('preswap: preserve result:', body);
+              this.coldResyncManager.deleteAside(preswapAsidePath);
+            } catch (e: any) {
+              console.warn('preswap: preserve call failed (aside kept for retry):', e?.message || e);
+            }
+          }
+        }
+
         sendProgress({ phase: 'done', statusMessage: 'Sync complete', progressPercent: 100 });
 
         // Persist sync time and refresh assessment
@@ -914,6 +999,50 @@ export class IpcHandlers {
         sendProgress({ phase: 'error', statusMessage: error, progressPercent: 0, error });
         return { success: false, error };
       }
+  }
+
+  /**
+   * Apply a hub next-boot directive by running its actions through {@link runSyncComponents} and reporting
+   * back so it runs exactly once. Actions map to sync components (jar/db/files → same names); a "db" action
+   * uses bounded mark-synced. "electron" is left to the Electron self-update flow. Best-effort: on any error
+   * the directive is NOT acked, so the hub re-offers it next boot.
+   */
+  async applyBootDirective(policy: { id: string; actions: string[] }, serverUrl: string, machineId: string): Promise<void> {
+    const wanted = new Set((policy.actions || []).map(a => a.toLowerCase()));
+    const components: SyncComponent[] = (['jar', 'db', 'files'] as const).filter(c => wanted.has(c));
+    if (components.length === 0) {
+      // Nothing this path applies (e.g. an electron-only directive) — still ack so it isn't re-offered forever.
+      await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
+      return;
+    }
+    console.log(`boot-directive: applying ${components.join(', ')} for id=${policy.id}`);
+    const result = await this.runSyncComponents(components, { markHubSyncedAfter: components.includes('db') });
+    if (result.success) {
+      await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
+      console.log(`boot-directive: applied + reported id=${policy.id}`);
+    } else {
+      console.warn(`boot-directive: apply failed (${result.error}) — not acking; hub will re-offer next boot`);
+    }
+  }
+
+  /** POST /api/update/applied to the hub so a db/files directive runs once. Best-effort. */
+  private reportDirectiveApplied(serverUrl: string, machineId: string, id: string): Promise<void> {
+    return new Promise((resolve) => {
+      try {
+        const u = new URL('/api/update/applied', serverUrl);
+        const mod = u.protocol === 'https:' ? require('https') : require('http');
+        const payload = JSON.stringify({ id });
+        const req = mod.request({
+          hostname: u.hostname, port: u.port || (u.protocol === 'https:' ? 443 : 80),
+          path: u.pathname, method: 'POST',
+          headers: { 'X-Machine-Id': machineId, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+          timeout: 15000
+        }, (res: any) => { res.resume(); res.on('end', () => resolve()); });
+        req.on('error', () => resolve());
+        req.on('timeout', () => { req.destroy(); resolve(); });
+        req.write(payload);
+        req.end();
+      } catch { resolve(); }
     });
   }
 

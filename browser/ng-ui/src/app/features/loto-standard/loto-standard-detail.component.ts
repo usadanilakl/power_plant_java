@@ -78,8 +78,11 @@ type Tab = 'standard' | 'procedure';
                         <span><b>Isolate:</b> {{ p.isoPos?.name || p.isolatedPosition || '—' }}</span>
                         <span><b>Restore:</b> {{ p.normPos?.name || p.normalPosition || '—' }}</span>
                       </div>
-                      @if (p.specificLocation || p.location?.name) {
-                        <div class="d-point-loc">{{ p.specificLocation || p.location?.name }}</div>
+                      @if (p.location?.name || p.specificLocation) {
+                        <div class="d-point-loc">
+                          @if (p.location?.name) { <span><b>Location:</b> {{ p.location?.name }}</span> }
+                          @if (p.specificLocation) { <span><b>Specific:</b> {{ p.specificLocation }}</span> }
+                        </div>
                       }
                       @if (p.zeroEnergyMethod) {
                         <div class="d-point-ze"><b>Zero energy:</b> {{ p.zeroEnergyMethod }}</div>

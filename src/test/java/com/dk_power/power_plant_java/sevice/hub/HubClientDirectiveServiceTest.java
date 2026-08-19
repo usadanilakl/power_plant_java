@@ -128,4 +128,57 @@ class HubClientDirectiveServiceTest {
         service.clearDirective("M1");
         assertThat(service.effectiveDirectiveFor("M1")).isEmpty();
     }
+
+    // ==================== Immediate commands ====================
+
+    @Test
+    void issueCommand_unknownClient_throws() {
+        when(clientRepo.findById("ghost")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.issueCommand("ghost", "SHUTDOWN"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void issueCommand_invalidCommand_throws() {
+        clientExists();
+        assertThatThrownBy(() -> service.issueCommand("M1", "SELF_DESTRUCT"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void issueCommand_thenPending_returnsIt() {
+        clientExists();
+        String id = service.issueCommand("M1", "restart"); // case-insensitive
+        assertThat(id).startsWith("cmd-");
+        var cmd = service.pendingCommandFor("M1");
+        assertThat(cmd).isPresent();
+        assertThat(cmd.get().id()).isEqualTo(id);
+        assertThat(cmd.get().command()).isEqualTo("RESTART");
+    }
+
+    @Test
+    void markCommandApplied_matching_clears_stale_isNoop() {
+        clientExists();
+        String id = service.issueCommand("M1", "SHUTDOWN");
+        assertThat(service.markCommandApplied("M1", "cmd-stale")).isFalse();
+        assertThat(service.pendingCommandFor("M1")).isPresent(); // stale ack didn't clear it
+
+        assertThat(service.markCommandApplied("M1", id)).isTrue();
+        assertThat(service.pendingCommandFor("M1")).isEmpty();   // real ack cleared it
+    }
+
+    @Test
+    void clearCommand_removesOutstanding() {
+        clientExists();
+        service.issueCommand("M1", "SHUTDOWN");
+        assertThat(service.pendingCommandFor("M1")).isPresent();
+        service.clearCommand("M1");
+        assertThat(service.pendingCommandFor("M1")).isEmpty();
+    }
+
+    @Test
+    void pendingCommandFor_blankMachineId_isEmpty() {
+        assertThat(service.pendingCommandFor(null)).isEmpty();
+        assertThat(service.pendingCommandFor("  ")).isEmpty();
+    }
 }

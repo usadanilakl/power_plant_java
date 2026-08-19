@@ -12,7 +12,8 @@ import { LotoStandardStore } from './loto-standard-store.service';
 import { LotoWalkdownSyncService } from './loto-walkdown-sync.service';
 import {
   GLOBAL_ITEMS, GlobalItemDef, LOTO_STANDARD_STATUS, LotoPointRef, LotoStandard, POINT_CHECKS,
-  PointChecklist, PositionOptions, WalkdownDraft, orderedPoints, pointChecklistComplete, pointHasNegative,
+  PointChecklist, PositionOptions, WalkdownDraft, WalkdownGroupBy, WalkdownGroup,
+  groupPointsForWalkdown, orderedPoints, pointChecklistComplete, pointHasNegative,
 } from './loto-standard.model';
 import { WakeLockService } from '../../services/wake-lock.service';
 import { HapticsService } from '../../services/haptics.service';
@@ -81,8 +82,41 @@ type TransitionMode = 'verify' | 'walkdown' | null;
               }
             </div>
 
-            <!-- Points -->
+            <!-- Points — grouped summary list. Tap a row to open the per-point dialog. -->
             <h2 class="w-h2">Points ({{ completeCount() }}/{{ points().length }} complete)</h2>
+            <div class="w-groupbar" role="tablist" aria-label="Group and sort points">
+              <button class="w-groupbtn" [class.active]="groupBy() === 'install'" (click)="groupBy.set('install')">Install order</button>
+              <button class="w-groupbtn" [class.active]="groupBy() === 'removal'" (click)="groupBy.set('removal')">Removal order</button>
+              <button class="w-groupbtn" [class.active]="groupBy() === 'system'" (click)="groupBy.set('system')">System</button>
+              <button class="w-groupbtn" [class.active]="groupBy() === 'location'" (click)="groupBy.set('location')">Location</button>
+            </div>
+
+            @for (g of groups(); track g.key) {
+              <details class="w-group" [open]="isSingletonGroup() || g.status !== 'pass'">
+                <summary class="w-group-summary" [attr.data-status]="g.status">
+                  <span class="w-group-label">{{ g.label }}</span>
+                  <span class="w-group-meta">
+                    <span class="w-group-count">{{ g.points.length }}</span>
+                    <span class="w-group-badge" [attr.data-status]="g.status">{{ groupStatusLabel(g.status) }}</span>
+                  </span>
+                </summary>
+                <div class="w-group-list">
+                  @for (p of g.points; track p.id) {
+                    <button class="w-row" [attr.data-status]="rowStatus(p.id)" (click)="openPointDialog(p.id)">
+                      <span class="w-row-tag">{{ corrTag(p) || '—' }}</span>
+                      <span class="w-row-desc">{{ corrDesc(p) || '(no description)' }}</span>
+                      <span class="w-row-loc">{{ locName(p) || corrSpecific(p) || '—' }}</span>
+                      <span class="w-row-status" [attr.data-status]="rowStatus(p.id)">{{ rowStatusLabel(p.id) }}</span>
+                    </button>
+                  }
+                </div>
+              </details>
+            }
+
+            <!-- Legacy per-point cards removed — replaced by the grouped summary list above +
+                 the per-point dialog below. See the pre-refactor commit for the old markup.
+                 The block below is dead code and will be dropped in a follow-up sweep. -->
+            @if (false) { <div>
             @for (p of points(); track p.id) {
               <div class="w-point" [class.done]="pointComplete(p.id)">
                 <div class="w-point-head">
@@ -177,6 +211,7 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                   [pointLabel]="corrTag(p) || null" />
               </div>
             }
+            </div> }
 
             <!-- Submit -->
             <div class="w-finish">
@@ -217,6 +252,251 @@ type TransitionMode = 'verify' | 'walkdown' | null;
           @if (viewerPoint(); as vp) {
             <app-loto-drawing-viewer [standardId]="std()!.id" [pointId]="vp.pointId" [title]="vp.tag"
                                      (close)="closeDrawing()"></app-loto-drawing-viewer>
+          }
+
+          <!--
+            Per-point dialog. Opens when a row in the summary list is tapped. All Pass/Fail buttons,
+            inline value edits, and toggles operate on the point identified by activePointId(); the
+            existing corr* / setCorr* / setCheck helpers already do the right thing per pointId.
+          -->
+          @if (activePoint(); as ap) {
+            <div class="w-dialog-backdrop" (click)="closePointDialog()">
+              <div class="w-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+                <div class="w-dialog-head">
+                  <div class="w-dialog-title">
+                    <span class="w-tag">{{ corrTag(ap) || '—' }}</span>
+                    @if (corrDesc(ap)) { <span class="w-dialog-desc">{{ corrDesc(ap) }}</span> }
+                  </div>
+                  <button class="w-dialog-close" (click)="closePointDialog()" aria-label="Close">✕</button>
+                </div>
+
+                <div class="w-dialog-body">
+                  <!-- Drawing file — click to view, Pass/Fail = fileReferenceProvided -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (hasDrawing(ap.id)) {
+                        <button class="w-drawing-btn" (click)="openDrawing(ap)">📄 View drawing</button>
+                      } @else {
+                        <span class="w-flag-missing">⚠ No drawing on file</span>
+                      }
+                      <span class="w-field-caption">File reference provided</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'fileReferenceProvided') === true"
+                              (click)="setCheck(ap.id, 'fileReferenceProvided', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'fileReferenceProvided') === false"
+                              (click)="setCheck(ap.id, 'fileReferenceProvided', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Tag number -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <input class="w-inline-input" type="text" [value]="corrTag(ap)"
+                               (input)="setCorr(ap.id, 'tagNumber', $any($event.target).value)">
+                      } @else {
+                        <span class="w-inline-span">{{ corrTag(ap) || '—' }}</span>
+                      }
+                      <span class="w-field-caption">Tag numbers match (app / file / metal tag)</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'tagNumbersMatch') === true"
+                              (click)="setCheck(ap.id, 'tagNumbersMatch', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'tagNumbersMatch') === false"
+                              (click)="setCheck(ap.id, 'tagNumbersMatch', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Description (edit-only; no check) -->
+                  @if (canEdit()) {
+                    <div class="w-field-row w-field-editonly">
+                      <div class="w-field-value">
+                        <input class="w-inline-input" type="text" [value]="corrDesc(ap)"
+                               placeholder="Description"
+                               (input)="setCorr(ap.id, 'description', $any($event.target).value)">
+                        <span class="w-field-caption">Description</span>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Metal tag present (Labeled) — toggle + Pass/Fail -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <span class="w-mini-toggle">
+                          <button class="w-yn pass w-mini" [class.active]="corrLabeled(ap) === true"
+                                  (click)="setCorrFlag(ap.id, 'isLabeled', true)">Yes</button>
+                          <button class="w-yn fail w-mini" [class.active]="corrLabeled(ap) === false"
+                                  (click)="setCorrFlag(ap.id, 'isLabeled', false)">No</button>
+                        </span>
+                      } @else {
+                        <span class="w-inline-span">{{ corrLabeled(ap) === true ? 'Labeled' : corrLabeled(ap) === false ? 'Not labeled' : '—' }}</span>
+                      }
+                      <span class="w-field-caption">Metal tag present</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'metalTagPresent') === true"
+                              (click)="setCheck(ap.id, 'metalTagPresent', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'metalTagPresent') === false"
+                              (click)="setCheck(ap.id, 'metalTagPresent', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Isolation position -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <select class="w-inline-input" [value]="corrIso(ap)"
+                                (change)="setCorrPos(ap.id, 'isoPosId', $any($event.target).value)">
+                          <option value="">—</option>
+                          @for (o of positions().isoPos; track o.id) {
+                            <option [value]="o.id" [selected]="o.id === corrIso(ap)">{{ o.name }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <span class="w-inline-span">{{ isoName(ap) || '—' }}</span>
+                      }
+                      <span class="w-field-caption">Isolation position correct</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'isolationPositionCorrect') === true"
+                              (click)="setCheck(ap.id, 'isolationPositionCorrect', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'isolationPositionCorrect') === false"
+                              (click)="setCheck(ap.id, 'isolationPositionCorrect', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Restored position -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <select class="w-inline-input" [value]="corrNorm(ap)"
+                                (change)="setCorrPos(ap.id, 'normPosId', $any($event.target).value)">
+                          <option value="">—</option>
+                          @for (o of positions().normPos; track o.id) {
+                            <option [value]="o.id" [selected]="o.id === corrNorm(ap)">{{ o.name }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <span class="w-inline-span">{{ normName(ap) || '—' }}</span>
+                      }
+                      <span class="w-field-caption">Restored position correct</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'restoredPositionCorrect') === true"
+                              (click)="setCheck(ap.id, 'restoredPositionCorrect', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'restoredPositionCorrect') === false"
+                              (click)="setCheck(ap.id, 'restoredPositionCorrect', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Zero energy (edit-only; no check) -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      <span class="w-inline-span">{{ ap.zeroEnergyMethod || '—' }}</span>
+                      <span class="w-field-caption">Zero energy adequate</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'zeroEnergyAdequate') === true"
+                              (click)="setCheck(ap.id, 'zeroEnergyAdequate', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'zeroEnergyAdequate') === false"
+                              (click)="setCheck(ap.id, 'zeroEnergyAdequate', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Specific location -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <input class="w-inline-input" type="text" [value]="corrSpecific(ap)"
+                               placeholder="Specific location"
+                               (input)="setCorr(ap.id, 'specificLocation', $any($event.target).value)">
+                      } @else {
+                        <span class="w-inline-span">{{ corrSpecific(ap) || '—' }}</span>
+                      }
+                      <span class="w-field-caption">Specific location correct</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'specificLocationCorrect') === true"
+                              (click)="setCheck(ap.id, 'specificLocationCorrect', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'specificLocationCorrect') === false"
+                              (click)="setCheck(ap.id, 'specificLocationCorrect', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Location Value dropdown -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <select class="w-inline-input" [value]="corrLocation(ap)"
+                                (change)="setCorrPos(ap.id, 'locationId', $any($event.target).value)">
+                          <option value="">—</option>
+                          @for (o of positions().location; track o.id) {
+                            <option [value]="o.id" [selected]="o.id === corrLocation(ap)">{{ o.name }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <span class="w-inline-span">{{ locName(ap) || '—' }}</span>
+                      }
+                      <span class="w-field-caption">Location correct</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'locationCorrect') === true"
+                              (click)="setCheck(ap.id, 'locationCorrect', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'locationCorrect') === false"
+                              (click)="setCheck(ap.id, 'locationCorrect', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Lockable — toggle + Pass/Fail -->
+                  <div class="w-field-row">
+                    <div class="w-field-value">
+                      @if (canEdit()) {
+                        <span class="w-mini-toggle">
+                          <button class="w-yn pass w-mini" [class.active]="corrLockable(ap) === true"
+                                  (click)="setCorrFlag(ap.id, 'isLockable', true)">Yes</button>
+                          <button class="w-yn fail w-mini" [class.active]="corrLockable(ap) === false"
+                                  (click)="setCorrFlag(ap.id, 'isLockable', false)">No</button>
+                        </span>
+                      } @else {
+                        <span class="w-inline-span">{{ corrLockable(ap) === true ? 'Lockable' : corrLockable(ap) === false ? 'Not lockable' : '—' }}</span>
+                      }
+                      <span class="w-field-caption">Equipment lockable</span>
+                    </div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'equipmentLockable') === true"
+                              (click)="setCheck(ap.id, 'equipmentLockable', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'equipmentLockable') === false"
+                              (click)="setCheck(ap.id, 'equipmentLockable', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  <!-- Standalone: Equipment accessible (no field on the point card) -->
+                  <div class="w-field-row w-field-standalone">
+                    <div class="w-field-value"><span class="w-field-caption">Equipment accessible</span></div>
+                    <span class="w-check-btns">
+                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'equipmentAccessible') === true"
+                              (click)="setCheck(ap.id, 'equipmentAccessible', true)">Pass</button>
+                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'equipmentAccessible') === false"
+                              (click)="setCheck(ap.id, 'equipmentAccessible', false)">Fail</button>
+                    </span>
+                  </div>
+
+                  @if (pointNegative(ap.id)) {
+                    <textarea class="w-comment" rows="2" placeholder="Comment required — explain the failed check(s)"
+                              [value]="comment(ap.id)" (input)="setComment(ap.id, $any($event.target).value)"></textarea>
+                  }
+
+                  <app-loto-point-actions [pointId]="ap.id" [pointLabel]="corrTag(ap) || null" />
+                </div>
+
+                <div class="w-dialog-foot">
+                  <span class="w-dialog-status" [attr.data-status]="rowStatus(ap.id)">{{ rowStatusLabel(ap.id) }}</span>
+                  <button class="w-save" (click)="closePointDialog()">Done</button>
+                </div>
+              </div>
+            </div>
           }
 
           @if (flash()) { <div class="w-flash" [class.err]="flashErr()">{{ flash() }}</div> }
@@ -288,6 +568,69 @@ type TransitionMode = 'verify' | 'walkdown' | null;
     .w-sticky-warn { color: var(--warning-text); font-weight: 600; }
     .w-flash { position: fixed; bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--primary-text); color: var(--primary-background); padding: 0.6rem 1.1rem; border-radius: 999px; font-size: 0.85rem; box-shadow: 0 3px 12px rgba(0,0,0,0.3); z-index: 50; max-width: 90%; text-align: center; }
     .w-flash.err { background: var(--danger-solid); color: var(--on-solid); }
+
+    /* Group toolbar — 44px min-height chips so a glove-tap picks reliably. */
+    .w-groupbar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.4rem 0 0.75rem; }
+    .w-groupbtn { min-height: 40px; padding: 0.4rem 0.85rem; border: 1px solid var(--border-color); background: transparent; color: var(--secondary-text); border-radius: 999px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .w-groupbtn.active { background: var(--accent-color); border-color: var(--accent-color); color: var(--on-solid); }
+
+    /* Collapsible group. Header shows count + status roll-up badge. */
+    .w-group { border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 0.5rem; overflow: hidden; background: var(--card-bg, var(--secondary-background)); }
+    .w-group[open] > .w-group-summary { border-bottom: 1px solid var(--border-color); }
+    .w-group-summary { list-style: none; padding: 0.55rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; cursor: pointer; min-height: 44px; }
+    .w-group-summary::-webkit-details-marker { display: none; }
+    .w-group-summary::before { content: '▸'; color: var(--secondary-text); font-size: 0.8rem; margin-right: 0.4rem; transition: transform 0.15s; }
+    .w-group[open] > .w-group-summary::before { transform: rotate(90deg); display: inline-block; }
+    .w-group-label { font-weight: 700; color: var(--primary-text); font-size: 0.92rem; flex: 1; }
+    .w-group-meta { display: flex; align-items: center; gap: 0.5rem; }
+    .w-group-count { color: var(--secondary-text); font-size: 0.75rem; }
+    .w-group-badge { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap; }
+    .w-group-badge[data-status="pass"] { background: var(--success-solid); color: var(--on-solid); }
+    .w-group-badge[data-status="fail"] { background: var(--danger-solid); color: var(--on-solid); }
+    .w-group-badge[data-status="incomplete"] { background: var(--border-color); color: var(--primary-text); }
+    .w-group-list { display: flex; flex-direction: column; }
+
+    /* One-line point row — tap opens the dialog. */
+    .w-row { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr minmax(4rem, 8rem) minmax(4rem, auto); gap: 0.5rem; align-items: center; padding: 0.6rem 0.75rem; background: transparent; border: none; border-top: 1px solid var(--border-color); text-align: left; color: var(--primary-text); font: inherit; cursor: pointer; min-height: 44px; width: 100%; }
+    .w-group-list > .w-row:first-child { border-top: none; }
+    .w-row:hover { background: var(--hover-bg, rgba(255,255,255,0.03)); }
+    .w-row-tag { font-weight: 700; color: var(--primary-text); font-size: 0.88rem; }
+    .w-row-desc { color: var(--primary-text); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .w-row-loc { color: var(--secondary-text); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .w-row-status { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; text-align: center; justify-self: end; white-space: nowrap; }
+    .w-row-status[data-status="pass"] { background: var(--success-solid); color: var(--on-solid); }
+    .w-row-status[data-status="fail"] { background: var(--danger-solid); color: var(--on-solid); }
+    .w-row-status[data-status="incomplete"] { background: transparent; color: var(--secondary-text); border: 1px solid var(--border-color); }
+    .w-row[data-status="fail"] { border-left: 3px solid var(--danger-solid); }
+    .w-row[data-status="pass"] { border-left: 3px solid var(--success-solid); }
+
+    /* Per-point dialog. Full-height sheet on phones, centered card on wider viewports. */
+    .w-dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+    @media (min-width: 720px) { .w-dialog-backdrop { align-items: center; } }
+    .w-dialog { background: var(--primary-background); border-radius: 12px 12px 0 0; width: 100%; max-width: 720px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 -4px 20px rgba(0,0,0,0.4); }
+    @media (min-width: 720px) { .w-dialog { border-radius: 12px; max-height: 88vh; } }
+    .w-dialog-head { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); }
+    .w-dialog-title { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+    .w-dialog-desc { color: var(--secondary-text); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .w-dialog-close { background: transparent; border: none; color: var(--secondary-text); font-size: 1.2rem; min-height: 40px; min-width: 40px; cursor: pointer; }
+    .w-dialog-body { padding: 0.5rem 1rem 1rem; overflow-y: auto; flex: 1; }
+    .w-dialog-foot { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border-color); background: var(--primary-background); }
+    .w-dialog-status { font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.65rem; border-radius: 999px; }
+    .w-dialog-status[data-status="pass"] { background: var(--success-solid); color: var(--on-solid); }
+    .w-dialog-status[data-status="fail"] { background: var(--danger-solid); color: var(--on-solid); }
+    .w-dialog-status[data-status="incomplete"] { background: var(--border-color); color: var(--primary-text); }
+
+    /* Field row inside the dialog: value/edit on the left, Pass/Fail on the right. */
+    .w-field-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.65rem 0; border-bottom: 1px solid var(--border-color); }
+    .w-field-row:last-child { border-bottom: none; }
+    .w-field-row.w-field-standalone .w-field-value { color: var(--primary-text); font-weight: 500; }
+    .w-field-row.w-field-editonly { justify-content: flex-start; }
+    .w-field-value { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
+    .w-field-caption { font-size: 0.72rem; color: var(--secondary-text); text-transform: uppercase; letter-spacing: 0.02em; }
+    .w-inline-input { padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--secondary-background); color: var(--primary-text); font: inherit; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+    .w-inline-span { color: var(--primary-text); font-size: 0.9rem; font-weight: 500; overflow-wrap: anywhere; }
+    .w-mini-toggle { display: inline-flex; gap: 0.3rem; }
+    .w-yn.w-mini { min-height: 32px; min-width: 44px; font-size: 0.78rem; padding: 0.15rem 0.55rem; }
   `]
 })
 export class LotoStandardWalkdownComponent implements OnInit {
@@ -345,6 +688,66 @@ export class LotoStandardWalkdownComponent implements OnInit {
   readyToComplete = computed(() => this.allGlobalChecked() && this.allPointsComplete());
   /** With a pending transition, require completeness; with none, allow recording partial evidence. */
   canSubmit = computed(() => this.mode() === null ? true : this.readyToComplete());
+
+  // ── Grouped summary list + per-point dialog ──────────────────────────────
+  /** How the point list is grouped and sorted. Persisted only in-memory; a fresh open resets. */
+  groupBy = signal<WalkdownGroupBy>('install');
+  /** Groups computed from std + current draft answers — rebuilt on any draft/point change. */
+  groups = computed<WalkdownGroup[]>(() =>
+    groupPointsForWalkdown(this.std(), this.groupBy(), this.draft()?.pointResults ?? {})
+  );
+  /** For install/removal we render one group; auto-expand it so the "collapsible" chrome doesn't
+   *  add a needless tap when the list is already flat. */
+  isSingletonGroup = computed(() => this.groups().length === 1);
+
+  /**
+   * Whether inline field edits are allowed in the point dialog. TRUE when the standard is in a
+   * status where content changes are normal (Draft, New – Pending Reapproval, and — matching the
+   * existing corrections-during-walkdown UX — Verified). FALSE in Pending Verification: verifiers
+   * are checking, not authoring.
+   */
+  canEdit = computed<boolean>(() => {
+    const name = this.std()?.developmentStatus?.name;
+    return name === LOTO_STANDARD_STATUS.DRAFT
+        || name === LOTO_STANDARD_STATUS.NEW_PENDING_REAPPROVAL
+        || name === LOTO_STANDARD_STATUS.VERIFIED
+        || !name;
+  });
+
+  /** Which point's dialog is open (null = list view). */
+  activePointId = signal<number | null>(null);
+  activePoint = computed<LotoPointRef | null>(() => {
+    const id = this.activePointId();
+    if (id == null) return null;
+    return this.points().find(p => p.id === id) ?? null;
+  });
+  openPointDialog(pointId: number): void {
+    this.activePointId.set(pointId);
+    this.haptics.tap('tap');
+  }
+  closePointDialog(): void { this.activePointId.set(null); }
+
+  /** Row-level status for a point — pass when complete + all-Pass, fail when any Fail, else incomplete. */
+  rowStatus(pointId: number): 'pass' | 'fail' | 'incomplete' {
+    const c = this.draft()?.pointResults?.[String(pointId)];
+    if (pointHasNegative(c)) return 'fail';
+    if (pointChecklistComplete(c)) return 'pass';
+    return 'incomplete';
+  }
+  rowStatusLabel(pointId: number): string {
+    const s = this.rowStatus(pointId);
+    return s === 'pass' ? '✓ Pass' : s === 'fail' ? '✗ Fail' : '—';
+  }
+  groupStatusLabel(s: 'pass' | 'fail' | 'incomplete'): string {
+    return s === 'pass' ? '✓ Complete' : s === 'fail' ? '✗ Fail' : '⋯ Incomplete';
+  }
+
+  /** Effective Location Value name — pending correction wins over the persisted point value. */
+  locName(p: LotoPointRef): string {
+    const cid = this.draft()?.corrections?.[String(p.id)]?.locationId;
+    if (cid) return this.positions().location.find(o => o.id === cid)?.name ?? '';
+    return p.location?.name ?? '';
+  }
 
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');

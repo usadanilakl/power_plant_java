@@ -238,10 +238,14 @@ export default class App {
     // Clear Chromium HTTP cache so stale Angular assets from previous JAR aren't served
     await session.defaultSession.clearCache();
 
-    // If a JAR update is available, prompt user before starting
+    // If a JAR update is available, prompt user before starting — UNLESS a hub directive already covers the
+    // jar (below), in which case the directive is the authoritative update and a separate prompt would just
+    // double up. A db/files-only directive still lets the jar prompt through.
     const workingDir = getWorkingDir();
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
-    if (assessment?.jar.updateAvailable && fs.existsSync(jarPath)) {
+    const directiveActions = (assessment?.jar?.updateInfo?.policy?.actions ?? []).map(a => a.toLowerCase());
+    const directiveHandlesJar = directiveActions.includes('jar');
+    if (assessment?.jar.updateAvailable && fs.existsSync(jarPath) && !directiveHandlesJar) {
       const shouldUpdate = await App.promptForJarUpdate(assessment);
       if (shouldUpdate) {
         await App.downloadJarUpdate();
@@ -253,6 +257,19 @@ export default class App {
       await App.autoStart();
     } else {
       console.log('Spring Boot JAR not found — skipping auto-start');
+    }
+
+    // Apply a hub next-boot directive for this client (jar/db/files updates the admin queued), if any. Runs
+    // AFTER the normal start so runSyncComponents cleanly stops → applies → restarts the running Spring Boot,
+    // then reports back so it runs exactly once.
+    const policy = assessment?.jar?.updateInfo?.policy;
+    const deviceCfg = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager().getConfig();
+    if (policy?.actions?.length && assessment?.serverUrl && deviceCfg?.machineId) {
+      try {
+        await App.ipcHandlers.applyBootDirective(policy, assessment.serverUrl, deviceCfg.machineId);
+      } catch (e) {
+        console.warn('boot-directive apply failed:', e);
+      }
     }
 
     // Restore secondary windows that were open at last quit
@@ -605,6 +622,34 @@ export default class App {
   }
 
   /** Build full assessment (server reachable — includes remote checks) */
+  /** GET the hub's inbound-change count for this machine ({"count": n}); resolves -1 on any failure. */
+  private static fetchInboundCount(serverUrl: string, machineId: string): Promise<number> {
+    return new Promise((resolve) => {
+      try {
+        const u = new URL('/api/sync/changes/count', serverUrl);
+        const mod = u.protocol === 'https:' ? require('https') : require('http');
+        const req = mod.request({
+          hostname: u.hostname,
+          port: u.port || (u.protocol === 'https:' ? 443 : 80),
+          path: u.pathname,
+          method: 'GET',
+          headers: { 'X-Machine-Id': machineId },
+          timeout: 10000
+        }, (res: any) => {
+          let data = '';
+          res.on('data', (c: any) => { data += c; });
+          res.on('end', () => {
+            try { const j = JSON.parse(data); resolve(typeof j.count === 'number' ? j.count : -1); }
+            catch { resolve(-1); }
+          });
+        });
+        req.on('error', () => resolve(-1));
+        req.on('timeout', () => { req.destroy(); resolve(-1); });
+        req.end();
+      } catch { resolve(-1); }
+    });
+  }
+
   private static async performFullAssessment(deviceConfig: any, serverUrl: string): Promise<StartupAssessment> {
     const assessment = App.buildLocalAssessment(deviceConfig, serverUrl);
     assessment.serverReachable = true;
@@ -612,7 +657,7 @@ export default class App {
     // Check for JAR update
     try {
       const updateMgr = App.ipcHandlers.getUpdateManager();
-      const updateResult = await updateMgr.checkForUpdate(serverUrl);
+      const updateResult = await updateMgr.checkForUpdate(serverUrl, deviceConfig?.machineId);
       if (updateResult.success && updateResult.data) {
         assessment.jar.updateAvailable = updateResult.data.isNewer;
         assessment.jar.updateInfo = updateResult.data;
@@ -654,6 +699,22 @@ export default class App {
       console.log(`Resource packs: ${rpSummary || 'none'}`);
     } catch (err) {
       console.warn('Resource pack check failed:', err);
+    }
+
+    // Sync backlog: how many inbound changes the hub is holding for this client. A large backlog means a
+    // full DB swap (fast, served from the hub's warm backup) beats grinding through incremental catch-up —
+    // and the pre-swap preservation now protects local changes across that swap.
+    if (deviceConfig) {
+      try {
+        const count = await App.fetchInboundCount(serverUrl, deviceConfig.machineId);
+        if (count >= 0) {
+          const FULL_SWAP_BACKLOG_THRESHOLD = 50_000;
+          assessment.syncBacklog = { inboundCount: count, recommendFullSwap: count >= FULL_SWAP_BACKLOG_THRESHOLD };
+          console.log(`Sync backlog: ${count} inbound change(s)${count >= FULL_SWAP_BACKLOG_THRESHOLD ? ' — full DB swap recommended' : ''}`);
+        }
+      } catch (err) {
+        console.warn('Sync backlog check failed:', err);
+      }
     }
 
     // Check for Electron app update

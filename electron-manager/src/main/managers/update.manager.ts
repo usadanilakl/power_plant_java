@@ -24,7 +24,7 @@ export class UpdateManager {
   }
 
   /** Check the sync server for a newer JAR version */
-  public async checkForUpdate(serverUrl?: string): Promise<IpcResult<UpdateInfo>> {
+  public async checkForUpdate(serverUrl?: string, machineId?: string): Promise<IpcResult<UpdateInfo>> {
     const url = serverUrl || DEFAULT_SYNC_SERVER.url;
 
     return new Promise((resolve) => {
@@ -36,6 +36,9 @@ export class UpdateManager {
             port: endpoint.port || 80,
             path: endpoint.pathname,
             method: 'GET',
+            // Send the machine id so the hub can return THIS client's per-client directive (else it falls
+            // back to the global update-policy.json).
+            headers: machineId ? { 'X-Machine-Id': machineId } : {},
             timeout: 15000
           },
           (res) => {
@@ -45,10 +48,10 @@ export class UpdateManager {
             }
             let body = '';
             res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
-            res.on('end', () => {
+            res.on('end', async () => {
               try {
                 const serverInfo = JSON.parse(body);
-                const localChecksum = this.getLocalJarChecksum();
+                const localChecksum = await this.getLocalJarChecksum();
                 const isNewer = localChecksum !== serverInfo.checksum;
 
                 const info: UpdateInfo = {
@@ -56,7 +59,10 @@ export class UpdateManager {
                   fileSize: serverInfo.fileSize,
                   checksum: serverInfo.checksum,
                   lastModified: serverInfo.lastModified,
-                  isNewer
+                  isNewer,
+                  // Carry the hub's next-boot directive (per-client, or the global fallback) so the client
+                  // knows what it's been told to update. Applying it is handled by the boot flow.
+                  policy: serverInfo.policy || undefined
                 };
 
                 console.log(`Update check: server=${serverInfo.checksum?.substring(0, 12)}... local=${localChecksum?.substring(0, 12)}... newer=${isNewer}`);
@@ -167,13 +173,13 @@ export class UpdateManager {
 
             res.pipe(writeStream);
 
-            writeStream.on('finish', () => {
+            writeStream.on('finish', async () => {
               streamFinished = true;
               writeStream.close();
 
               onProgress?.({ phase: 'verifying' });
 
-              const downloadedChecksum = this.computeFileChecksum(tmpPath);
+              const downloadedChecksum = await this.computeFileChecksum(tmpPath);
               if (downloadedChecksum !== expectedChecksum) {
                 try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
                 const err = `Checksum mismatch: expected ${expectedChecksum.substring(0, 12)}... got ${downloadedChecksum.substring(0, 12)}...`;
@@ -242,8 +248,9 @@ export class UpdateManager {
     });
   }
 
-  /** Get SHA-256 checksum of the local JAR (cached by mtime) */
-  public getLocalJarChecksum(): string {
+  /** Get SHA-256 checksum of the local JAR (cached by mtime). Async so hashing a 600 MB+ jar doesn't
+   *  freeze the UI thread. */
+  public async getLocalJarChecksum(): Promise<string> {
     if (!fs.existsSync(this.jarPath)) return '';
 
     const stat = fs.statSync(this.jarPath);
@@ -251,7 +258,7 @@ export class UpdateManager {
       return this.cachedChecksum;
     }
 
-    this.cachedChecksum = this.computeFileChecksum(this.jarPath);
+    this.cachedChecksum = await this.computeFileChecksum(this.jarPath);
     this.cachedChecksumMtime = stat.mtimeMs;
     return this.cachedChecksum;
   }
@@ -268,11 +275,15 @@ export class UpdateManager {
     return fs.statSync(this.jarPath).size;
   }
 
-  /** Compute SHA-256 checksum of a file */
-  private computeFileChecksum(filePath: string): string {
-    const hash = crypto.createHash('sha256');
-    const data = fs.readFileSync(filePath);
-    hash.update(data);
-    return hash.digest('hex');
+  /** Compute SHA-256 by STREAMING (async): reads on the libuv threadpool and hashes in chunks, so a
+   *  600 MB+ jar never blocks the Electron main thread the way readFileSync + hash did. */
+  private computeFileChecksum(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256');
+      const stream = fs.createReadStream(filePath);
+      stream.on('data', (chunk) => hash.update(chunk));
+      stream.on('error', reject);
+      stream.on('end', () => resolve(hash.digest('hex')));
+    });
   }
 }

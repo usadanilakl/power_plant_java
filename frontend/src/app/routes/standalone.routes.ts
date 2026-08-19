@@ -6,6 +6,7 @@ import { AdminFunctionalitiesComponent } from '../pages/admin/admin-functionalit
 import { AdminFilesComponent } from '../pages/admin/tabs/admin-files.component';
 import { AdminLotoComponent } from '../pages/admin/tabs/admin-loto.component';
 import { AdminSyncComponent } from '../pages/admin/tabs/admin-sync.component';
+import { AdminClientsComponent } from '../pages/admin/tabs/admin-clients.component';
 import { AdminSharepointComponent } from '../pages/admin/tabs/admin-sharepoint.component';
 import { AdminFormsComponent } from '../pages/admin/tabs/admin-forms.component';
 import { AdminMigrationComponent } from '../pages/admin/tabs/admin-migration.component';
@@ -39,6 +40,7 @@ export const STANDALONE_ROUTES: Routes = [
       { path: 'files', component: AdminFilesComponent },
       { path: 'loto', component: AdminLotoComponent },
       { path: 'sync', component: AdminSyncComponent },
+      { path: 'clients', component: AdminClientsComponent },
       { path: 'sharepoint', component: AdminSharepointComponent },
       { path: 'forms', component: AdminFormsComponent },
       { path: 'migration', component: AdminMigrationComponent },

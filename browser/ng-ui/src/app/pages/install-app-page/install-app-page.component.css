@@ -23,3 +23,22 @@
 .install-button:hover {
   background-color: var(--accent-color-hover);
 }
+/* Manual steps shown where no install prompt exists — the common case on iOS. */
+.install-steps {
+  max-width: 22rem;
+  margin: 1rem auto;
+  text-align: left;
+}
+
+.install-steps ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.install-note {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}

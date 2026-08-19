@@ -5,6 +5,10 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
+import com.dk_power.power_plant_java.entities.sync.PendingFileSync;
+import com.dk_power.power_plant_java.repository.sync.PendingFileSyncRepository;
+import com.dk_power.power_plant_java.sevice.hub.HubClientDirectiveService;
+import org.springframework.beans.factory.ObjectProvider;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
@@ -30,9 +34,43 @@ public class SyncE2ETestService {
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
     private final LotoStandardRepo lotoStandardRepo;
+    private final PendingFileSyncRepository pendingFileSyncRepository;
+    /** Hub-only bean — absent on a client, so resolve lazily via a provider (null off-hub). */
+    private final ObjectProvider<HubClientDirectiveService> directiveProvider;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    /** Test-only: set a next-boot directive for a client (bypasses the admin UI so the round-trip can be
+     *  exercised in the lab). Hub-only. */
+    public Map<String, Object> issueTestDirective(String machineId, String actionsCsv) {
+        HubClientDirectiveService svc = directiveProvider.getIfAvailable();
+        if (svc == null) return Map.of("success", false, "message", "not a hub");
+        List<String> actions = Arrays.stream((actionsCsv == null ? "" : actionsCsv).split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        try {
+            String id = svc.setDirective(machineId, actions, false, "e2e test directive");
+            return Map.of("success", true, "directiveId", id, "machineId", machineId, "actions", actions);
+        } catch (Exception e) {
+            return Map.of("success", false, "message", e.getMessage());
+        }
+    }
+
+    /** Test-only: enqueue a file UPLOAD (for exercising the pre-swap file re-queue). */
+    @Transactional
+    public Map<String, Object> enqueueFileUpload(Long entityId, String fileNumber, String extensions) {
+        PendingFileSync p = pendingFileSyncRepository.save(
+                new PendingFileSync(entityId, PendingFileSync.SyncDirection.UPLOAD, fileNumber, extensions));
+        return Map.of("success", true, "id", p.getId(), "entityId", entityId);
+    }
+
+    /** Test-only: count active (PENDING/IN_PROGRESS) file UPLOADs. */
+    public Map<String, Object> pendingUploadStats() {
+        long pending = pendingFileSyncRepository.countByDirectionAndStatusIn(
+                PendingFileSync.SyncDirection.UPLOAD,
+                List.of(PendingFileSync.SyncStatus.PENDING, PendingFileSync.SyncStatus.IN_PROGRESS));
+        return Map.of("pendingUploads", pending);
+    }
 
     // ==================== SEED ENTITY GRAPH ====================
 
@@ -288,6 +326,76 @@ public class SyncE2ETestService {
 
         log.info("Seeded dedup scenario '{}': 2 categories, 4 values, 2 lotoPoints, 2 equipment", prefix);
         return result;
+    }
+
+    // ==================== NATURAL-KEY DIVERGENCE (reconciler test) ====================
+
+    /**
+     * Create a Category + Value with a FIXED (non-prefixed) name plus a LotoPoint referencing the Value,
+     * via normal saves (so they emit synced CREATEs). Run this with the SAME {@code name} on two nodes to
+     * reproduce the cross-node natural-key divergence {@link NaturalKeyDivergenceReconciler} heals: with
+     * deterministic-convergence OFF, whichever node's row reaches the hub first becomes the survivor, and the
+     * later node's CREATE is redirected onto it (recorded in {@code dedup_id_remap}). The LotoPoint gives the
+     * merge a reference to repoint. Test-only.
+     */
+    @Transactional
+    public Map<String, Object> seedNamed(String name) {
+        long start = System.currentTimeMillis();
+        Category cat = new Category(name);
+        cat.setName(name);
+        cat.setCreatedBy("sync-e2e-test");
+        cat = categoryRepo.save(cat);
+
+        Value val = new Value(name + "_V", "DVG");
+        val.setCategory(cat);
+        val.setCreatedBy("sync-e2e-test");
+        val = valueRepo.save(val);
+
+        LotoPoint lp = new LotoPoint();
+        lp.setName(name + "_LP");
+        lp.setTagNumber(name + "_LP");
+        lp.setDescription("divergence-test reference");
+        lp.setCreatedBy("sync-e2e-test");
+        lp.setEqType(val);
+        lp = lotoPointRepo.save(lp);
+
+        entityManager.flush();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("name", name);
+        result.put("categoryId", cat.getId());
+        result.put("valueId", val.getId());
+        result.put("lotoPointId", lp.getId());
+        result.put("durationMs", System.currentTimeMillis() - start);
+        log.info("Seeded named category/value '{}': cat={} val={} lp={}", name, cat.getId(), val.getId(), lp.getId());
+        return result;
+    }
+
+    /**
+     * Read {@code dedup_id_remap} (native — bypasses the entity layer) so a test can confirm a
+     * wrong-direction ({@code originalId < remappedId}) entry exists before reconcile and is gone after.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> dedupRemaps(String type) {
+        String sql = "SELECT entity_type, original_id, remapped_id FROM dedup_id_remap"
+                + (type != null ? " WHERE entity_type = :type" : "")
+                + " ORDER BY entity_type, original_id";
+        var q = entityManager.createNativeQuery(sql);
+        if (type != null) q.setParameter("type", type);
+        List<Object[]> rows = q.getResultList();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object[] row : rows) {
+            long original = ((Number) row[1]).longValue();
+            long remapped = ((Number) row[2]).longValue();
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("entityType", row[0]);
+            m.put("originalId", original);
+            m.put("remappedId", remapped);
+            m.put("wrongDirection", original < remapped);
+            out.add(m);
+        }
+        return out;
     }
 
     // ==================== SEED BULK ====================

@@ -65,6 +65,48 @@ public class SyncE2ETestController {
     }
 
     /**
+     * Create a Category+Value with a FIXED name (+ a LotoPoint ref). Call with the SAME name on two nodes
+     * (deterministic-convergence OFF) to reproduce the cross-node natural-key divergence the reconciler heals.
+     * POST /api/sync-e2e/seed/named  body: {"name":"DVGTEST"}
+     */
+    @PostMapping("/seed/named")
+    public ResponseEntity<Map<String, Object>> seedNamed(@RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(syncE2ETestService.seedNamed((String) request.get("name")));
+    }
+
+    /**
+     * Read dedup_id_remap (optionally filtered by entity type) to confirm a wrong-direction entry before
+     * reconcile and its absence after. GET /api/sync-e2e/dedup-remap?type=Value
+     */
+    @GetMapping("/dedup-remap")
+    public ResponseEntity<java.util.List<Map<String, Object>>> dedupRemaps(
+            @RequestParam(required = false) String type) {
+        return ResponseEntity.ok(syncE2ETestService.dedupRemaps(type));
+    }
+
+    /** Test-only: enqueue a file UPLOAD, to exercise the pre-swap file re-queue. */
+    @PostMapping("/enqueue-file-upload")
+    public ResponseEntity<Map<String, Object>> enqueueFileUpload(
+            @RequestParam Long entityId,
+            @RequestParam(required = false) String fileNumber,
+            @RequestParam(required = false) String ext) {
+        return ResponseEntity.ok(syncE2ETestService.enqueueFileUpload(entityId, fileNumber, ext));
+    }
+
+    /** Test-only: count active file UPLOADs (PENDING/IN_PROGRESS). */
+    @GetMapping("/pending-uploads")
+    public ResponseEntity<Map<String, Object>> pendingUploads() {
+        return ResponseEntity.ok(syncE2ETestService.pendingUploadStats());
+    }
+
+    /** Test-only: set a next-boot directive for a client (bypasses admin) to exercise the update round-trip. */
+    @PostMapping("/issue-directive")
+    public ResponseEntity<Map<String, Object>> issueDirective(
+            @RequestParam String machineId, @RequestParam String actions) {
+        return ResponseEntity.ok(syncE2ETestService.issueTestDirective(machineId, actions));
+    }
+
+    /**
      * Verify entity graph state for a given prefix.
      * GET /api/sync-e2e/verify/{prefix}
      */

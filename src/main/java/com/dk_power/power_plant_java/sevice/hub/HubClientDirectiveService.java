@@ -117,6 +117,78 @@ public class HubClientDirectiveService {
         return true;
     }
 
+    // ==================== Immediate commands (shutdown / restart a running client) ====================
+
+    /** Commands a running client's agent knows how to execute. */
+    private static final Set<String> ALLOWED_COMMANDS = Set.of("SHUTDOWN", "RESTART");
+
+    /** A command a running client should execute now. */
+    public record ClientCommand(String id, String command) {}
+
+    /**
+     * Issue an immediate command (SHUTDOWN / RESTART) to a running client. Mints a fresh id so the client
+     * executes it once (it acks the id via {@link #markCommandApplied}). Returns the new id.
+     * @throws IllegalArgumentException if the client is unknown or the command is not recognised.
+     */
+    @Transactional
+    public String issueCommand(String machineId, String command) {
+        HubClientInfo client = clientRepo.findById(machineId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown client: " + machineId));
+        String type = command == null ? "" : command.trim().toUpperCase();
+        if (!ALLOWED_COMMANDS.contains(type)) {
+            throw new IllegalArgumentException("Unknown command (allowed: " + ALLOWED_COMMANDS + ")");
+        }
+        String id = "cmd-" + UUID.randomUUID();
+        client.setPendingCommand(type);
+        client.setPendingCommandId(id);
+        client.setPendingCommandIssuedAt(Instant.now());
+        clientRepo.save(client);
+        log.info("hub.command.issued machine={} id={} command={}", machineId, id, type);
+        return id;
+    }
+
+    /** Cancel an outstanding command (before the client has executed it). */
+    @Transactional
+    public void clearCommand(String machineId) {
+        clientRepo.findById(machineId).ifPresent(client -> {
+            client.setPendingCommand(null);
+            client.setPendingCommandId(null);
+            client.setPendingCommandIssuedAt(null);
+            clientRepo.save(client);
+            log.info("hub.command.cleared machine={}", machineId);
+        });
+    }
+
+    /** The command this client should execute now, or empty when there is none outstanding. */
+    @Transactional(readOnly = true)
+    public Optional<ClientCommand> pendingCommandFor(String machineId) {
+        if (machineId == null || machineId.isBlank()) return Optional.empty();
+        return clientRepo.findById(machineId)
+                .filter(c -> c.getPendingCommand() != null && !c.getPendingCommand().isBlank())
+                .filter(c -> !Objects.equals(c.getPendingCommandId(), c.getLastAckedCommandId()))
+                .map(c -> new ClientCommand(c.getPendingCommandId(), c.getPendingCommand()));
+    }
+
+    /** Record that the client executed {@code commandId}. No-op (false) for a null/unknown machine or a
+     *  stale id that no longer matches the current command. */
+    @Transactional
+    public boolean markCommandApplied(String machineId, String commandId) {
+        if (machineId == null || commandId == null) return false;
+        Optional<HubClientInfo> found = clientRepo.findById(machineId);
+        if (found.isEmpty()) return false;
+        HubClientInfo client = found.get();
+        if (!Objects.equals(client.getPendingCommandId(), commandId)) {
+            log.info("hub.command.applied_stale machine={} reported={} current={} — ignored",
+                    machineId, commandId, client.getPendingCommandId());
+            return false;
+        }
+        client.setLastAckedCommandId(commandId);
+        client.setPendingCommandAckedAt(Instant.now());
+        clientRepo.save(client);
+        log.info("hub.command.applied machine={} id={}", machineId, commandId);
+        return true;
+    }
+
     /** All known clients (for the hub directive-management UI). */
     @Transactional(readOnly = true)
     public List<HubClientInfo> allClients() {

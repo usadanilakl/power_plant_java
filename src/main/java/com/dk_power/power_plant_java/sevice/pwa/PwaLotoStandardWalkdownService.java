@@ -258,6 +258,8 @@ public class PwaLotoStandardWalkdownService {
                 || Boolean.FALSE.equals(c.getTagNumbersMatch())
                 || Boolean.FALSE.equals(c.getIsolationPositionCorrect())
                 || Boolean.FALSE.equals(c.getRestoredPositionCorrect())
+                || Boolean.FALSE.equals(c.getLocationCorrect())
+                || Boolean.FALSE.equals(c.getSpecificLocationCorrect())
                 || Boolean.FALSE.equals(c.getEquipmentLockable())
                 || Boolean.FALSE.equals(c.getZeroEnergyAdequate());
     }

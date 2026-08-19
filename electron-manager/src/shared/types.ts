@@ -393,12 +393,22 @@ export interface DeviceRegistryResponse {
 }
 
 // Update management
+
+/** Hub-set next-boot directive for this client (per-client, else the global update-policy.json). */
+export interface UpdatePolicy {
+  id: string;
+  actions: string[];       // subset of jar,db,files,electron
+  mandatory: boolean;
+  message?: string;
+}
+
 export interface UpdateInfo {
   fileName: string;
   fileSize: number;
   checksum: string;        // SHA-256
   lastModified: string;    // ISO date
   isNewer: boolean;        // Compared to local JAR
+  policy?: UpdatePolicy;   // present when the hub has a next-boot directive for this client
 }
 
 export interface UpdateProgress {
@@ -461,6 +471,9 @@ export interface StartupAssessment {
   conflict: { detected: boolean; details?: string };
   resourcePacks?: ResourcePackStatus[];
   electron?: { updateAvailable: boolean; updateStaged: boolean; updateInfo?: ElectronUpdateInfo };
+  /** How far behind the hub this client is (inbound changes it hasn't pulled), and whether a full DB swap
+   *  is the faster path than incremental catch-up. Populated only when the server is reachable. */
+  syncBacklog?: { inboundCount: number; recommendFullSwap: boolean };
 }
 
 export type SyncComponent = 'jar' | 'db' | 'files' | 'resource-packs';

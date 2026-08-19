@@ -1,13 +1,31 @@
 <div class="install-container">
   <h1>Install Application</h1>
-  <p>For the best experience, please install this application to your device.</p>
+  <p>Installing puts the app on your home screen and lets it open full-screen.</p>
+
   <button *ngIf="showInstallButton" (click)="installPwa()" class="install-button">
     Install App
   </button>
-  <p *ngIf="!showInstallButton">
-    Installation is not available at the moment. You might have already installed it, or your browser may not support it.
-  </p>
-  <br>
+
+  <!-- iOS never fires beforeinstallprompt, so a button here could only ever be dead. These are the
+       actual steps, which is what someone on an iPhone needs to see instead. -->
+  <div *ngIf="isIos && showManualInstructions" class="install-steps">
+    <p><strong>On iPhone or iPad</strong></p>
+    <ol>
+      <li>Tap the <strong>Share</strong> button in Safari.</li>
+      <li>Choose <strong>Add to Home Screen</strong>.</li>
+      <li>Tap <strong>Add</strong>.</li>
+    </ol>
+    <p class="install-note">Safari can't install an app for you — this is the only way, and it works.</p>
+  </div>
+
+  <div *ngIf="!isIos && showManualInstructions && !showInstallButton" class="install-steps">
+    <p>Your browser isn't offering an install here.</p>
+    <p class="install-note">
+      Either it's already installed, or this browser doesn't support it. In Chrome, look for
+      <strong>Install</strong> or <strong>Add to Home screen</strong> in the browser menu.
+    </p>
+  </div>
+
   <br>
   <button (click)="bypassStandaloneMode()" class="install-button">Continue in Browser</button>
 </div>

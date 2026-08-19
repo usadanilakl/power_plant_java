@@ -23,6 +23,10 @@ export interface LotoPointRef {
   fileIds?: string;
   zeroEnergyMethod?: string;
   processingStatus?: LotoValueRef | null;
+  /** Free-text system on the LotoPoint (mirrors LotoPoint.system). Grouping fallback. */
+  system?: string | null;
+  /** System Value (dropdown) mirrors LotoPoint.systemValue — preferred over `system` when set. */
+  systemValue?: LotoValueRef | null;
 }
 
 export interface LotoStandard {
@@ -83,7 +87,7 @@ export interface GlobalItem {
   notes?: string;
 }
 
-/** Per-point field walkdown. The seven checks are tri-state: null = unanswered, true = pass, false = fail. */
+/** Per-point field walkdown. Each check is tri-state: null = unanswered, true = pass, false = fail. */
 export interface PointChecklist {
   fileReferenceProvided?: boolean | null;
   metalTagPresent?: boolean | null;
@@ -91,6 +95,10 @@ export interface PointChecklist {
   tagNumbersMatch?: boolean | null;
   isolationPositionCorrect?: boolean | null;
   restoredPositionCorrect?: boolean | null;
+  /** Value dropdown on the LotoPoint — the general Location Value looks correct in the field. */
+  locationCorrect?: boolean | null;
+  /** Free-text specificLocation on the LotoPoint — the on-site landmark matches. */
+  specificLocationCorrect?: boolean | null;
   equipmentLockable?: boolean | null;
   zeroEnergyAdequate?: boolean | null;
   comment?: string;
@@ -117,6 +125,8 @@ export const POINT_CHECKS: { key: keyof PointChecklist; label: string }[] = [
   { key: 'tagNumbersMatch',          label: 'Tag numbers match (app / file / metal tag)' },
   { key: 'isolationPositionCorrect', label: 'Isolation position correct' },
   { key: 'restoredPositionCorrect',  label: 'Restored position correct' },
+  { key: 'locationCorrect',          label: 'Location correct' },
+  { key: 'specificLocationCorrect',  label: 'Specific location correct' },
   { key: 'equipmentLockable',        label: 'Equipment lockable' },
   { key: 'zeroEnergyAdequate',       label: 'Zero energy adequate' },
 ];
@@ -175,6 +185,67 @@ export function pointChecklistComplete(c: PointChecklist | undefined): boolean {
 export function pointHasNegative(c: PointChecklist | undefined): boolean {
   if (!c) return false;
   return POINT_CHECKS.some(({ key }) => c[key] === false);
+}
+
+/** How the walkdown list is grouped/sorted. */
+export type WalkdownGroupBy = 'install' | 'removal' | 'system' | 'location';
+
+/** Roll-up verification status for a group of points. */
+export type GroupStatus = 'pass' | 'fail' | 'incomplete';
+
+export interface WalkdownGroup {
+  key: string;                // stable id used for @for track
+  label: string;              // display name ("System X", "Location Y", "Install order", …)
+  points: LotoPointRef[];
+  status: GroupStatus;
+}
+
+/**
+ * Group the standard's points using {@link WalkdownGroupBy}. install/removal are single-group
+ * "buckets" (all points in one ordered list); system/location split into one group per distinct
+ * value. Each group's roll-up {@link GroupStatus} looks at every point's checklist:
+ *  - pass         when every point is complete AND every answer is Pass
+ *  - fail         when at least one point has a Fail answer
+ *  - incomplete   otherwise (some points still unanswered, or the group is empty)
+ */
+export function groupPointsForWalkdown(
+  std: LotoStandard | null,
+  by: WalkdownGroupBy,
+  pointResults: Record<string, PointChecklist>
+): WalkdownGroup[] {
+  const rollup = (pts: LotoPointRef[]): GroupStatus => {
+    if (pts.length === 0) return 'incomplete';
+    let anyFail = false;
+    let allComplete = true;
+    for (const p of pts) {
+      const cl = pointResults[String(p.id)];
+      if (pointHasNegative(cl)) anyFail = true;
+      if (!pointChecklistComplete(cl)) allComplete = false;
+    }
+    if (anyFail) return 'fail';
+    if (!allComplete) return 'incomplete';
+    return 'pass';
+  };
+
+  if (by === 'install' || by === 'removal') {
+    const points = orderedPoints(std, by);
+    return [{ key: by, label: by === 'install' ? 'Installation order' : 'Removal order', points, status: rollup(points) }];
+  }
+
+  // system / location — one group per distinct value; unset points collect under "(Unassigned)".
+  const getKey = (p: LotoPointRef): string => by === 'system'
+    ? (p.systemValue?.name ?? p.system ?? '')
+    : (p.location?.name ?? '');
+  const buckets = new Map<string, LotoPointRef[]>();
+  for (const p of (std?.lotoPoints ?? [])) {
+    const raw = getKey(p);
+    const key = raw && raw.trim() ? raw.trim() : '(Unassigned)';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(p);
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a === '(Unassigned)' ? 1 : b === '(Unassigned)' ? -1 : a.localeCompare(b))
+    .map(([label, points]) => ({ key: by + ':' + label, label, points, status: rollup(points) }));
 }
 
 // ── Position options + in-field corrections ────────────────────────────────

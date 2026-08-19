@@ -112,6 +112,21 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
            "WHERE SYNCED_TO_MACHINES NOT LIKE CONCAT('%|', :machineId, '|%') OR SYNCED_TO_MACHINES IS NULL", nativeQuery = true)
     int markAllChangesSyncedTo(@Param("machineId") String machineId);
 
+    // After a full-DB cold-resync, a client's restored DB IS the hub's snapshot. Every FOREIGN-origin change in
+    // it is ALREADY on the hub (foreign changes only ever reach a client via the hub), so mark them
+    // synced-to-"SERVER" locally to stop the outbound loop re-pushing the hub's own history straight back
+    // (which spikes pending to ~100k + fires false OUT-OF-SYNC alarms). Restricted to origin <> me so it can
+    // NEVER touch a local change this client still owes the hub — a rescued or concurrent local edit — which
+    // makes it clock-skew safe (unlike a receivedAt <= cutoff bound that mixes the hub and client clocks).
+    // Own-origin snapshot rows deliberately stay pending and re-push once (small, id-deduped by the hub) — a
+    // safe over-approximation. Idempotent: rows already carrying |SERVER| are skipped. Appends the delimited
+    // |SERVER| token, matching FieldChange.addSyncedMachine (entries joined double-pipe, e.g. "|A||SERVER|").
+    @Modifying(clearAutomatically = true)
+    @Query(value = "UPDATE FIELD_CHANGE SET SYNCED_TO_MACHINES = CONCAT(COALESCE(SYNCED_TO_MACHINES, ''), '|SERVER|') " +
+           "WHERE ORIGIN_MACHINE_ID <> :machineId " +
+           "AND (SYNCED_TO_MACHINES NOT LIKE '%|SERVER|%' OR SYNCED_TO_MACHINES IS NULL)", nativeQuery = true)
+    int markForeignChangesSyncedToServer(@Param("machineId") String machineId);
+
     // BOUNDED mark-synced: mark synced to a machine ONLY the changes the hub had RECEIVED at/under a
     // snapshot-time cutoff. Used after a wholesale DB-snapshot restore — the client has everything IN the
     // snapshot, but changes the hub committed AFTER the snapshot MUST stay pending so normal incremental pull

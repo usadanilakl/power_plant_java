@@ -115,8 +115,11 @@ public class LotoStandardWalkdown {
     }
 
     /**
-     * Per-point field walkdown. The seven checks are tri-state {@link Boolean}: {@code null} = not yet
-     * answered, {@code true} = pass, {@code false} = fail. Any {@code false} ("negative") requires a comment.
+     * Per-point field walkdown. Each check is tri-state {@link Boolean}: {@code null} = not yet
+     * answered, {@code true} = pass, {@code false} = fail. Any {@code false} ("negative") requires
+     * a comment. Stored as a JSON blob so adding new fields is additive — old rows come back with
+     * the new fields null (unanswered) and the completeness / negative helpers pick them up
+     * without a migration.
      */
     @lombok.Data
     @lombok.NoArgsConstructor
@@ -128,6 +131,10 @@ public class LotoStandardWalkdown {
         private Boolean tagNumbersMatch;
         private Boolean isolationPositionCorrect;
         private Boolean restoredPositionCorrect;
+        /** Value dropdown on the LotoPoint — the general Location Value id looks correct in the field. */
+        private Boolean locationCorrect;
+        /** Free-text specificLocation on the LotoPoint — the on-site landmark matches what's on the point. */
+        private Boolean specificLocationCorrect;
         private Boolean equipmentLockable;
         private Boolean zeroEnergyAdequate;
         private String comment;

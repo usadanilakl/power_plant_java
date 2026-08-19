@@ -56,25 +56,52 @@ public class NgClientDirectiveController {
                 Map.of("machineId", machineId), "Directive cleared for " + machineId));
     }
 
-    public record SetDirectiveRequest(List<String> actions, boolean mandatory, String message) {}
+    /** Issue an immediate command (SHUTDOWN / RESTART) to a RUNNING client. */
+    @PostMapping("/{machineId}/command")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> issueCommand(
+            @PathVariable String machineId, @RequestBody IssueCommandRequest req) {
+        try {
+            String id = directiveService.issueCommand(machineId, req.command());
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    Map.of("commandId", id, "machineId", machineId, "command", req.command()),
+                    req.command() + " issued to " + machineId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 
-    /** Flattened client + directive view for the management table. */
+    /** Cancel an outstanding command before the client has executed it. */
+    @DeleteMapping("/{machineId}/command")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> clearCommand(@PathVariable String machineId) {
+        directiveService.clearCommand(machineId);
+        return ResponseEntity.ok(new NgApiResponse<>(
+                Map.of("machineId", machineId), "Command cleared for " + machineId));
+    }
+
+    public record SetDirectiveRequest(List<String> actions, boolean mandatory, String message) {}
+    public record IssueCommandRequest(String command) {}
+
+    /** Flattened client + directive + command view for the management table. */
     public record ClientDirectiveView(
             String machineId, String machineName, Integer deviceNumber, String status,
             Instant lastSeen, Instant lastSyncTime,
             String directiveActions, String directiveId, boolean directiveMandatory, String directiveMessage,
             Instant directiveSetAt, String lastAppliedDirectiveId, Instant directiveAppliedAt,
-            boolean directivePending) {
+            boolean directivePending,
+            String pendingCommand, Instant pendingCommandIssuedAt, boolean commandPending) {
 
         static ClientDirectiveView of(HubClientInfo c) {
             boolean pending = c.getDirectiveActions() != null && !c.getDirectiveActions().isBlank()
                     && !Objects.equals(c.getDirectiveId(), c.getLastAppliedDirectiveId());
+            boolean cmdPending = c.getPendingCommand() != null && !c.getPendingCommand().isBlank()
+                    && !Objects.equals(c.getPendingCommandId(), c.getLastAckedCommandId());
             return new ClientDirectiveView(
                     c.getMachineId(), c.getMachineName(), c.getDeviceNumber(),
                     c.getStatus() != null ? c.getStatus().name() : null,
                     c.getLastSeen(), c.getLastSyncTime(),
                     c.getDirectiveActions(), c.getDirectiveId(), Boolean.TRUE.equals(c.getDirectiveMandatory()), c.getDirectiveMessage(),
-                    c.getDirectiveSetAt(), c.getLastAppliedDirectiveId(), c.getDirectiveAppliedAt(), pending);
+                    c.getDirectiveSetAt(), c.getLastAppliedDirectiveId(), c.getDirectiveAppliedAt(), pending,
+                    c.getPendingCommand(), c.getPendingCommandIssuedAt(), cmdPending);
         }
     }
 }

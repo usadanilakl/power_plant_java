@@ -76,11 +76,21 @@ export class ColdResyncManager {
     machineId: string,
     deviceNumber: number,
     onProgress: (msg: string, pct: number) => void
-  ): Promise<IpcResult & { syncCutoff?: string }> {
+  ): Promise<IpcResult & { syncCutoff?: string; preswapAsidePath?: string }> {
     const headers = { 'X-Machine-Id': machineId, 'X-Device-Number': String(deviceNumber) };
 
     try {
       this.ensureDirectories();
+
+      // Preserve un-pushed local changes across the swap: copy the CURRENT DB aside before it's overwritten,
+      // so the post-swap /api/resync/preserve-local-changes routine can re-inject anything the hub never got.
+      // Best-effort — a copy failure must not block the resync (only the local-change rescue is skipped).
+      let preswapAsidePath: string | undefined;
+      try {
+        preswapAsidePath = await this.copyDbAside();
+      } catch (e: any) {
+        console.warn(`cold-resync: could not copy DB aside for change preservation: ${e?.message || e}`);
+      }
 
       onProgress('Downloading database...', 0);
       const backupZipPath = path.join(this.dbDir, 'backup_cold.zip');
@@ -100,14 +110,40 @@ export class ColdResyncManager {
       console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB), cutoff=${syncCutoff ?? 'none'}`);
 
       onProgress('Extracting database...', 70);
-      this.extractDatabase(backupZipPath);
+      await this.extractDatabase(backupZipPath);
       try { fs.unlinkSync(backupZipPath); } catch { /* ignore */ }
 
       this.persistSyncStatus();
       onProgress('Database synced', 100);
-      return { success: true, syncCutoff };
+      return { success: true, syncCutoff, preswapAsidePath };
     } catch (err: any) {
       return { success: false, error: err.message || 'Database sync failed' };
+    }
+  }
+
+  /**
+   * Copy the current DB file aside (a pre-swap snapshot) so un-pushed local changes can be rescued after the
+   * swap replaces it. Safe to call only while Spring Boot is stopped (the DB is unlocked then). Returns the
+   * aside path, or undefined if there's no DB to copy.
+   */
+  private async copyDbAside(): Promise<string | undefined> {
+    if (!fs.existsSync(this.dbPath)) return undefined;
+    const asidePath = path.join(this.dbDir, `${this.dbName}-preswap.mv.db`);
+    // Async copy (off the main thread via libuv) so a 1 GB+ DB doesn't freeze the UI.
+    await fs.promises.copyFile(this.dbPath, asidePath);
+    console.log(`cold-resync: copied pre-swap DB aside → ${asidePath} (${(fs.statSync(asidePath).size / 1024 / 1024).toFixed(1)} MB)`);
+    return asidePath;
+  }
+
+  /** Delete a pre-swap aside copy once its changes have been rescued (or on give-up). Best-effort. */
+  public deleteAside(asidePath: string): void {
+    try {
+      if (asidePath && fs.existsSync(asidePath)) {
+        fs.unlinkSync(asidePath);
+        console.log(`cold-resync: removed pre-swap aside ${asidePath}`);
+      }
+    } catch (e: any) {
+      console.warn(`cold-resync: could not remove aside ${asidePath}: ${e?.message || e}`);
     }
   }
 
@@ -246,25 +282,21 @@ export class ColdResyncManager {
    * H2's BACKUP TO creates a standard ZIP with the database file inside.
    * Uses extractEntryTo instead of getData() to avoid loading the entire DB into memory.
    */
-  private extractDatabase(zipPath: string): void {
-    const zip = new AdmZip(zipPath);
-    const entries = zip.getEntries();
-
-    console.log(`H2 backup ZIP entries: [${entries.map(e => `${e.entryName} (${e.header.size} bytes)`).join(', ')}]`);
-
-    // Find the .mv.db entry
-    const dbEntry = entries.find(e => e.entryName.endsWith('.mv.db'));
-    if (!dbEntry) {
-      throw new Error(`No .mv.db file found in H2 backup ZIP. Entries: ${entries.map(e => e.entryName).join(', ')}`);
-    }
-
-    // Remove existing db file if present (extractEntryTo won't overwrite by default)
+  private async extractDatabase(zipPath: string): Promise<void> {
+    // Remove existing db file if present (extract won't overwrite).
     if (fs.existsSync(this.dbPath)) {
-      fs.unlinkSync(this.dbPath);
+      await fs.promises.unlink(this.dbPath);
     }
 
-    // Extract using extractEntryTo — safer for large files than getData() which buffers everything
-    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, `${this.dbName}.mv.db`);
+    // Decompress OFF the main thread — adm-zip's extractEntryTo is synchronous and would freeze the Electron
+    // UI on a large DB. The worker runs the SAME adm-zip extract in a separate thread. If the worker can't
+    // run (packaging edge case), fall back to the in-process extract so the update still completes.
+    try {
+      await this.extractInWorker(zipPath, `${this.dbName}.mv.db`);
+    } catch (e: any) {
+      console.warn(`cold-resync: threaded extract unavailable (${e?.message || e}) — falling back to in-process extract`);
+      this.extractDatabaseSync(zipPath);
+    }
 
     // Verify extraction succeeded
     if (!fs.existsSync(this.dbPath)) {
@@ -274,7 +306,32 @@ export class ColdResyncManager {
     if (stat.size < 1024) {
       throw new Error(`Database file suspiciously small: ${stat.size} bytes`);
     }
-    console.log(`Extracted: ${dbEntry.entryName} (${dbEntry.header.size} bytes in ZIP) -> ${this.dbPath} (${(stat.size / 1024 / 1024).toFixed(1)} MB on disk)`);
+    console.log(`Extracted DB -> ${this.dbPath} (${(stat.size / 1024 / 1024).toFixed(1)} MB on disk)`);
+  }
+
+  /** Original synchronous extract — the fallback if the worker thread can't run. */
+  private extractDatabaseSync(zipPath: string): void {
+    const zip = new AdmZip(zipPath);
+    const dbEntry = zip.getEntries().find(e => e.entryName.endsWith('.mv.db'));
+    if (!dbEntry) {
+      throw new Error(`No .mv.db file found in H2 backup ZIP: ${zipPath}`);
+    }
+    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, `${this.dbName}.mv.db`);
+  }
+
+  /** Run the adm-zip extract in a worker thread so the decompression doesn't block the UI thread. */
+  private extractInWorker(zipPath: string, outName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Worker } = require('worker_threads');
+      const worker = new Worker(path.join(__dirname, 'unzip-worker.js'),
+        { workerData: { zipPath, destDir: this.dbDir, outName } });
+      let settled = false;
+      const done = (err?: Error) => { if (settled) return; settled = true; err ? reject(err) : resolve(); };
+      worker.on('message', (m: any) => (m && m.ok) ? done() : done(new Error((m && m.error) || 'unzip worker failed')));
+      worker.on('error', (e: any) => done(e instanceof Error ? e : new Error(String(e))));
+      worker.on('exit', (code: number) => { if (code !== 0) done(new Error(`unzip worker exited with code ${code}`)); });
+    });
   }
 
   /** Recursively calculate directory size */

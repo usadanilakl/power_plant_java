@@ -23,10 +23,12 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
         <p class="placeholder-detail" *ngIf="status.state === 'starting'">Starting up... please wait.</p>
         <p class="placeholder-detail" *ngIf="status.state === 'stopping'">Shutting down...</p>
         <p class="placeholder-detail" *ngIf="status.state === 'error'">{{ status.error }}</p>
-        <p class="placeholder-detail" *ngIf="status.state === 'stopped'">Start {{ appName }} to view the application.</p>
+        <p class="placeholder-detail" *ngIf="status.state === 'stopped' && !isUpdating">Start {{ appName }} to view the application.</p>
+        <p class="placeholder-detail" *ngIf="isUpdating">{{ updateStatusMessage || 'Updating…' }} ({{ updateProgressPercent }}%)</p>
         <div class="placeholder-actions">
+          <!-- Hidden mid-update: starting Spring Boot during a swap would corrupt it. -->
           <button class="btn btn-success"
-                  *ngIf="status.state === 'stopped' || status.state === 'error'"
+                  *ngIf="(status.state === 'stopped' || status.state === 'error') && !isUpdating"
                   (click)="start()">Start {{ appName }}</button>
           <a class="btn btn-secondary" routerLink="/">Go to Dashboard</a>
         </div>
@@ -119,7 +121,11 @@ export class SpringBootUiComponent implements OnInit, OnDestroy {
   appName = APP_DISPLAY_NAME;
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   sbUrl: SafeResourceUrl;
+  isUpdating = false;
+  updateStatusMessage = '';
+  updateProgressPercent = 0;
   private sub?: Subscription;
+  private unsubSyncProgress?: () => void;
 
   constructor(
     private electronService: ElectronService,
@@ -133,10 +139,16 @@ export class SpringBootUiComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.sub = this.electronService.appStatus$.subscribe(s => this.status = s);
+    this.unsubSyncProgress = this.electronService.onSyncExecuteProgress((p) => {
+      this.isUpdating = p.phase !== 'done' && p.phase !== 'error';
+      this.updateStatusMessage = p.error ? p.error : p.statusMessage;
+      this.updateProgressPercent = p.progressPercent ?? 0;
+    });
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.unsubSyncProgress?.();
   }
 
   async start(): Promise<void> {

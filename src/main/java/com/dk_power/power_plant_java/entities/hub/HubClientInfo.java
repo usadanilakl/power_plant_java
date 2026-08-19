@@ -53,6 +53,18 @@ public class HubClientInfo {
     /** When the client last reported the directive applied. */
     private Instant directiveAppliedAt;
 
+    // ---- Immediate hub→client command (applied WHILE RUNNING, not on next boot) ----
+    // Distinct from the next-boot directive above: this is polled by a running client's Electron agent and
+    // acted on now (stop / restart the local jar). Cleared once the client reports it executed.
+    /** "SHUTDOWN" | "RESTART", or null when there is no outstanding command. */
+    private String pendingCommand;
+    /** Unique id for the current command; the client keys "already executed" off this. */
+    private String pendingCommandId;
+    private Instant pendingCommandIssuedAt;
+    /** The commandId the client last reported executed — equal to pendingCommandId ⇒ nothing pending. */
+    private String lastAckedCommandId;
+    private Instant pendingCommandAckedAt;
+
     public enum ClientStatus {
         ONLINE, OFFLINE, SYNCING
     }

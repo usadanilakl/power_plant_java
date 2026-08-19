@@ -63,7 +63,20 @@ interface DashboardGridsterItem extends GridsterItem {
               {{ stateLabel }}
             </span>
           </div>
-          <div class="sb-controls">
+          <!-- While a full update / sync runs, replace the lifecycle controls with a live progress bar.
+               Starting/stopping Spring Boot mid-swap would corrupt the update, so the buttons are gone,
+               not merely disabled. -->
+          <div class="sb-updating" *ngIf="isUpdating">
+            <div class="sb-updating-row">
+              <span class="material-icons spin">sync</span>
+              <span class="sb-updating-msg">{{ updateStatusMessage || 'Updating…' }}</span>
+              <span class="sb-updating-pct">{{ updateProgressPercent }}%</span>
+            </div>
+            <div class="sb-updating-track">
+              <div class="sb-updating-fill" [style.width.%]="updateProgressPercent"></div>
+            </div>
+          </div>
+          <div class="sb-controls" *ngIf="!isUpdating">
             <button class="btn btn-success btn-sm"
                     [disabled]="status.state === 'running' || status.state === 'starting'"
                     (click)="start()">Start</button>
@@ -225,6 +238,16 @@ interface DashboardGridsterItem extends GridsterItem {
     .sb-controls { display: flex; gap: 8px; }
     .btn-sm { padding: 6px 12px; font-size: 12px; }
 
+    .sb-updating { min-width: 320px; display: flex; flex-direction: column; gap: 6px; }
+    .sb-updating-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .sb-updating-msg { flex: 1; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-updating-pct { font-variant-numeric: tabular-nums; color: var(--text-muted, #888); font-weight: 600; }
+    .sb-updating-track { height: 6px; border-radius: 3px; background: var(--border-color); overflow: hidden; }
+    .sb-updating-fill { height: 100%; background: var(--accent-color, #2d8cff); border-radius: 3px; transition: width .3s ease; }
+    .spin { animation: sb-spin 1s linear infinite; font-size: 18px; color: var(--accent-color, #2d8cff); }
+    @keyframes sb-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
     .sb-details {
       display: flex; gap: 20px; flex-wrap: wrap;
       margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);
@@ -315,6 +338,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   private unsubPjm?: () => void;
   private unsubGateLog?: () => void;
   private unsubSync?: () => void;
+  private unsubSyncProgress?: () => void;
+
+  // Full-update / component-sync in progress (boot directive or manual sync). While true the
+  // Spring Boot lifecycle buttons are locked — starting/stopping SB mid-swap corrupts the update.
+  isUpdating = false;
+  updateStatusMessage = '';
+  updateProgressPercent = 0;
 
   // Layout
   editMode = false;
@@ -491,6 +521,14 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.loadWorkRequestCount();
         this.loadMaximoOverview();
       }
+    });
+
+    // Lock the SB lifecycle buttons while a full update / component sync runs (boot directive or manual).
+    this.unsubSyncProgress = this.electronService.onSyncExecuteProgress((p) => {
+      const active = p.phase !== 'done' && p.phase !== 'error';
+      this.isUpdating = active;
+      this.updateStatusMessage = p.error ? p.error : p.statusMessage;
+      this.updateProgressPercent = p.progressPercent ?? 0;
     });
 
     this.loadWeatherStatus();
@@ -675,6 +713,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.unsubPjm?.();
     this.unsubGateLog?.();
     this.unsubSync?.();
+    this.unsubSyncProgress?.();
   }
 
   get stateLabel(): string {
