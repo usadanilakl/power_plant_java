@@ -323,6 +323,11 @@
           </div>
         </div>
       }
+      @if (pop.drift.hub) {
+        <div class="dp-sec">
+          <button class="dp-btn" [disabled]="driftBusy()" (click)="openFullCompare()">Compare side-by-side ↗</button>
+        </div>
+      }
       <div class="dp-sec dp-foot">
         <button class="dp-btn" [disabled]="driftBusy()" (click)="driftAck()">Acknowledge</button>
         @if (driftBusy()) { <span class="dp-busy">working…</span> }

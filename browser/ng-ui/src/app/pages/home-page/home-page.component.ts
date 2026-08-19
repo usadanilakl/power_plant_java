@@ -1,8 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
-import { NavTile, NavTileGridComponent } from '../../shared/menus/nav-tile-grid/nav-tile-grid.component';
+import { NavTile, NavTileGridComponent, NavTilePill } from '../../shared/menus/nav-tile-grid/nav-tile-grid.component';
 import { NavAccessService } from '../../services/nav-access.service';
+import { NavPreferencesService } from '../../services/nav-preferences.service';
 import { AuthService } from '../../auth/auth.service';
 
 /**
@@ -97,30 +98,67 @@ import { AuthService } from '../../auth/auth.service';
 export class HomePageComponent {
   private navAccess = inject(NavAccessService);
   private authService = inject(AuthService);
+  private prefs = inject(NavPreferencesService);
 
   /**
    * One tile per visible section. A section holding a single destination links straight to it —
    * SectionPageComponent would only redirect anyway.
    */
-  readonly tiles = computed<NavTile[]>(() =>
-    this.navAccess.visibleSections().map(section => {
-      const only = section.items.length === 1 ? section.items[0] : null;
+  readonly tiles = computed<NavTile[]>(() => {
+    // Reading pins/order here is what makes Home follow the same arrangement as the bar.
+    this.prefs.order();
+    const sections = this.prefs.apply(this.navAccess.sectionEntries());
+    const byKey = new Map(this.navAccess.visibleSections().map(s => [s.route, s]));
+
+    return sections.map(entry => {
+      const section = byKey.get(entry.navKey);
+      const items = section?.items ?? [];
+      const only = items.length === 1 ? items[0] : null;
       return {
-        label: section.label,
-        icon: section.icon,
-        description: this.describe(section.items.map(i => i.label)),
-        route: only?.route ?? section.route,
+        label: entry.label,
+        icon: entry.icon,
+        // A single-destination section has nothing to choose between — link straight through.
+        route: only?.route ?? entry.route,
         queryParams: only?.queryParams,
         externalUrlKey: only?.route ? undefined : only?.externalUrlKey,
+        pills: only ? undefined : this.pillsFor(items, entry.route!),
       };
-    }));
+    });
+  });
+
+  /** How many pills a card shows before it starts counting instead. */
+  private static readonly PILL_LIMIT = 4;
+
+  /**
+   * Sub-sections as tappable pills, capped so a card stays a card — a wall of pills buries the
+   * section name it belongs to.
+   *
+   * Anything beyond the cap becomes a "+N more" pill onto the section page rather than disappearing.
+   * Silently dropping them was the real problem: the card looked complete when it wasn't. Only
+   * Permits and Field List overflow today, and only for users holding the roles — pills are already
+   * filtered to what the viewer can reach.
+   *
+   * Deliberately not a horizontal scroller: that hides content behind a swipe nobody knows to try,
+   * inside a page that already scrolls the other way, on a device operated with gloves.
+   */
+  private pillsFor(
+    items: { label: string; icon: string; route?: string; queryParams?: Record<string, string> }[],
+    sectionRoute: string,
+  ): NavTilePill[] {
+    const routable = items.filter(i => !!i.route);
+    const limit = HomePageComponent.PILL_LIMIT;
+    const toPill = (i: typeof routable[number]): NavTilePill =>
+      ({ label: i.label, icon: i.icon, route: i.route!, queryParams: i.queryParams });
+
+    if (routable.length <= limit) return routable.map(toPill);
+
+    // Keep one slot for the counter, so the card never claims to show more than it does.
+    const shown = routable.slice(0, limit - 1).map(toPill);
+    return [...shown, { label: `+${routable.length - (limit - 1)} more`, route: sectionRoute }];
+  }
 
   /** Registered but awaiting admin approval — say so where the plant tools would be. */
   readonly isPendingApproval = computed(() => this.authService.isPendingApproval());
 
-  /** Sub-section names as the tile's subtitle, so the grid says what's inside without a click. */
-  private describe(labels: string[]): string {
-    if (labels.length <= 1) return '';
-    return labels.length <= 3 ? labels.join(' · ') : `${labels.slice(0, 3).join(' · ')} +${labels.length - 3}`;
-  }
+
 }

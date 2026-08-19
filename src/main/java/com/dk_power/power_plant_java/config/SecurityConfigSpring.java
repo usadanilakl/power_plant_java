@@ -231,6 +231,10 @@ public class SecurityConfigSpring {
                 .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/chat-audit/**").hasRole("ADMIN")
+                // Hub client registry + per-client next-boot directive (list/set/clear) — admin-only, like
+                // every other hub-admin NG surface. Without this it would fall through to anyRequest()
+                // .authenticated(), letting any signed-in user push a mandatory boot directive to any desktop.
+                .requestMatchers("/ng/sync/clients", "/ng/sync/clients/**").hasRole("ADMIN")
                 // Sanitized operational diagnostics are available to explicitly delegated support users
                 // without requiring the separate full-access grant checked by AccessGrantFilter.
                 .requestMatchers("/ng/log-diagnostics/**").hasAnyRole("ADMIN", "LOG_DIAGNOSTICS")

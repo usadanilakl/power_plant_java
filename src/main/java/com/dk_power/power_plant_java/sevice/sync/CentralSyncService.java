@@ -319,11 +319,11 @@ public class CentralSyncService {
 
         SyncResult result = new SyncResult();
         try {
-            // Check backlog size before committing to a long download
-            long pendingCount = getPendingChangeCountFromServer();
-            if (pendingCount < 0) {
-                throw new RuntimeException("Server unreachable");
-            }
+            // receiveIncomingChangesInBatches() already does the reachability + pending-count check itself
+            // (line ~538) and throws "Server unreachable" on failure — caught below. The pre-count that used
+            // to sit here was a SECOND identical NOT-LIKE(syncedToMachines) scan — an O(history) full-table
+            // count — run on every 15s poll for no added information. Dropped. (backlogTooLarge is a dead
+            // flag: never set true since BACKLOG_THRESHOLD was removed, so it stays false as initialized.)
             backlogTooLarge = false;
 
             BatchedReceiveResult receiveResult = receiveIncomingChangesInBatches();

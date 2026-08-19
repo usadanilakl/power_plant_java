@@ -81,6 +81,13 @@ export class DriftDotComponent {
 
   open(ev: MouseEvent): void {
     ev.stopPropagation();
-    this.router.navigate(['/sync/drift'], { queryParams: { type: this.entityType() } });
+    const id = this.entityId();
+    // Land on the focused local-vs-hub side-by-side for THIS row when we know which row it is; only fall
+    // back to the whole-type Drift Center when the dot was rendered without an id (rare — e.g. a header).
+    if (id != null && id !== '') {
+      this.router.navigate(['/sync/compare'], { queryParams: { type: this.entityType(), id } });
+    } else {
+      this.router.navigate(['/sync/drift'], { queryParams: { type: this.entityType() } });
+    }
   }
 }

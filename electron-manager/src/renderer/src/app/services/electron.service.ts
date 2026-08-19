@@ -787,12 +787,8 @@ interface ElectronAPI {
   chatGetSupabaseSession: () => Promise<IpcResult<ChatSupabaseSession>>;
 
   // Contractors
-  contractorsGetLive: () => Promise<IpcResult<ContractorEntry[]>>;
-  contractorsPushToBackend: () => Promise<IpcResult<{ responseData: { created: number; linked: number; updated: number; unchanged: number }; message: string }>>;
-  contractorsScan: () => Promise<IpcResult<{ responseData: ContractorReport; message: string }>>;
-  contractorsListReports: (status?: string) => Promise<IpcResult<{ responseData: ContractorReport[]; message: string }>>;
-  contractorsAcceptReport: (id: number) => Promise<IpcResult<{ responseData: ContractorReport; message: string }>>;
-  contractorsRejectReport: (id: number) => Promise<IpcResult<{ responseData: ContractorReport; message: string }>>;
+  contractorsGetLive: () => Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }>;
+  contractorsRefreshDirectory: () => Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }>;
 
   // WebView AMS — Rounds report scraper
   webViewAmsGetReports: () => Promise<IpcResult<WebViewAmsReport[]>>;
@@ -1289,35 +1285,20 @@ export class ElectronService implements OnDestroy {
 
   // Contractors
 
-  async contractorsGetLive(): Promise<IpcResult<ContractorEntry[]>> {
+  async contractorsGetLive(): Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.contractorsGetLive();
   }
 
-  async contractorsPushToBackend(): Promise<IpcResult<any>> {
+  async contractorsRefreshDirectory(): Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.contractorsPushToBackend();
+    return window.electronAPI!.contractorsRefreshDirectory();
   }
 
-  async contractorsScan(): Promise<IpcResult<{ responseData: ContractorReport; message: string }>> {
-    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.contractorsScan();
-  }
 
-  async contractorsListReports(status?: string): Promise<IpcResult<{ responseData: ContractorReport[]; message: string }>> {
-    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.contractorsListReports(status);
-  }
 
-  async contractorsAcceptReport(id: number): Promise<IpcResult<{ responseData: ContractorReport; message: string }>> {
-    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.contractorsAcceptReport(id);
-  }
 
-  async contractorsRejectReport(id: number): Promise<IpcResult<{ responseData: ContractorReport; message: string }>> {
-    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.contractorsRejectReport(id);
-  }
+
 
   // WebView AMS — Rounds report scraper
 

@@ -6,7 +6,13 @@ import { ServerStatusService } from './server-status.service';
 import { NAV_HOME, NAV_PROFILE, NAV_SECTIONS, NavAccess, NavItem, navKeyOf, sectionRoute } from '../models/menu/nav.model';
 
 /** A nav item carrying the stable key used to persist shortcut ordering. */
-export type NavEntry = NavItem & { navKey: string };
+export type NavEntry = NavItem & {
+  navKey: string;
+  /** True for a section's own landing page, false for a destination inside one. */
+  isSection?: boolean;
+  /** Section this entry belongs to — the heading it is grouped under. */
+  sectionLabel?: string;
+};
 
 /** A section with its items already filtered to what this user may see. */
 export interface VisibleSection {
@@ -65,7 +71,7 @@ export class NavAccessService {
         route: sectionRoute(section),
         items: section.items
           .filter(item => this.isItemVisible(item, online, urls))
-          .map(item => ({ ...item, navKey: navKeyOf(item) })),
+          .map(item => ({ ...item, navKey: navKeyOf(item), sectionLabel: section.label })),
       }))
       .filter(section => section.items.length > 0);
   });
@@ -83,15 +89,39 @@ export class NavAccessService {
   });
 
   /**
-   * Everything the shortcut bar may promote: Home first, then every sub-section, then Profile.
-   * Section landing pages are deliberately NOT here — the bar promotes destinations, and the sheet
-   * is where the section structure is shown.
+   * Sections that are worth pinning in their own right.
+   *
+   * A section holding a single destination is excluded: its landing page only redirects to that one
+   * item, so listing both put two identically-named rows in the editor with no way to tell them
+   * apart. The item is the real destination — pin that.
+   */
+  readonly pinnableSectionEntries = computed<NavEntry[]>(() =>
+    this.sectionEntries().filter(entry => (this.sectionBySlug(entry.navKey.split('/').pop() ?? '')?.items.length ?? 0) > 1));
+
+  /** Every section landing page, in declaration order — Home lists all of them. */
+  readonly sectionEntries = computed<NavEntry[]>(() =>
+    this.visibleSections().map(section => ({
+      label: section.label,
+      icon: section.icon,
+      route: section.route,
+      access: 'public' as const,
+      navKey: section.route,
+      isSection: true,
+      sectionLabel: section.label,
+    })));
+
+  /**
+   * Everything the bar may promote: Home, every SECTION, every destination inside one, then Profile.
+   *
+   * Sections were excluded at first on the reasoning that the bar promotes destinations. That was
+   * wrong for the common case — "take me to Permits" is exactly what someone wants a tab for, and a
+   * section is a real page now.
    */
   readonly shortcutCandidates = computed<NavEntry[]>(() => {
     const standalone = this.visibleStandalone();
     const home = standalone.filter(i => i.route === '/home');
     const trailing = standalone.filter(i => i.route !== '/home');
-    return [...home, ...this.visibleItems(), ...trailing];
+    return [...home, ...this.pinnableSectionEntries(), ...this.visibleItems(), ...trailing];
   });
 
   private isItemVisible(item: NavItem, online: boolean, urls: Record<string, string>): boolean {

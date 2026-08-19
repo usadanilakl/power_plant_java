@@ -1,119 +1,57 @@
 package com.dk_power.power_plant_java.controller.angular;
 
-import com.dk_power.power_plant_java.dto.users.ContractorChangeReportDto;
-import com.dk_power.power_plant_java.dto.users.ContractorDto;
 import com.dk_power.power_plant_java.sevice.users.ContractorDirectoryService;
-import com.dk_power.power_plant_java.dto.users.ContractorsImportRequest;
-import com.dk_power.power_plant_java.entities.users.ContractorChangeReport;
-import com.dk_power.power_plant_java.sevice.users.ContractorReconciler;
-import com.dk_power.power_plant_java.sevice.users.ContractorSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Contractor directory for the desktop app — read-only.
+ *
+ * <p>This used to also import contractors into the User table (a desktop push that wrote rows with
+ * no review) and run a nightly diff that parked changes for admin approval. Both are gone. The same
+ * OnLocation record reaching the User table by two doors, applied instantly through one and gated
+ * behind the other, meant the approval gate only guarded whichever door nobody used.
+ *
+ * <p>Contractors are now reference data, not accounts: OnLocation is pulled into a cache and read.
+ * Nothing here writes a User row.
+ */
 @RestController
 @RequestMapping("/ng/contractors")
 @RequiredArgsConstructor
 @Slf4j
 public class NgContractorController {
 
-    private final ContractorSyncService contractorSyncService;
-    private final ContractorReconciler contractorReconciler;
     private final ContractorDirectoryService contractorDirectoryService;
 
-    @PostMapping("/sync")
-    public ResponseEntity<NgApiResponse<ContractorSyncService.ImportSummary>> sync(
-            @RequestBody ContractorsImportRequest request) {
-        try {
-            ContractorSyncService.ImportSummary summary = contractorSyncService.importFromElectron(request);
-            return ResponseEntity.ok(new NgApiResponse<>(summary, "Contractors imported"));
-        } catch (Exception e) {
-            log.error("[Contractors] Sync failed", e);
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
+    /** Cached OnLocation directory — what the desktop reads before falling back to its own pull. */
+    @GetMapping("/directory")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> directory() {
+        return ResponseEntity.ok(new NgApiResponse<>(toBody(contractorDirectoryService.get()), "Contractor directory"));
     }
 
     /**
-     * Cached OnLocation directory — what the desktop asks for before falling back to its own pull,
-     * and the same data the PWA lookup reads.
-     *
-     * Distinct from {@link #list()}, which returns contractors as they exist in the User table
-     * (i.e. only what an admin has accepted). This one is the live roster.
+     * Force a pull from OnLocation now rather than waiting for the hourly job. Updates the one shared
+     * cache, so a refresh from any client is immediately visible to every other client.
      */
-    @GetMapping("/directory")
-    public ResponseEntity<NgApiResponse<Map<String, Object>>> directory() {
-        ContractorDirectoryService.Directory dir = contractorDirectoryService.get();
+    @PostMapping("/directory/refresh")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> refreshDirectory() {
+        return ResponseEntity.ok(new NgApiResponse<>(toBody(contractorDirectoryService.refresh()),
+                "Contractor directory refreshed"));
+    }
+
+    private Map<String, Object> toBody(ContractorDirectoryService.Directory dir) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("fetchedAt", dir.fetchedAt() == null ? null : dir.fetchedAt().toString());
         body.put("source", dir.source().name());
         body.put("contractors", dir.contractors());
-        return ResponseEntity.ok(new NgApiResponse<>(body, "Contractor directory"));
-    }
-
-    @GetMapping
-    public ResponseEntity<NgApiResponse<List<ContractorDto>>> list() {
-        return ResponseEntity.ok(new NgApiResponse<>(contractorSyncService.listContractors(), "Contractors listed"));
-    }
-
-    @PostMapping("/scan")
-    public ResponseEntity<NgApiResponse<ContractorChangeReportDto>> scan() {
-        try {
-            ContractorChangeReport report = contractorReconciler.scanNow();
-            return ResponseEntity.ok(new NgApiResponse<>(contractorSyncService.toDto(report), "Scan complete"));
-        } catch (Exception e) {
-            log.error("[Contractors] Scan failed", e);
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
-    }
-
-    @GetMapping("/reports")
-    public ResponseEntity<NgApiResponse<List<ContractorChangeReportDto>>> reports(
-            @RequestParam(required = false) String status) {
-        ContractorChangeReport.Status s = parseStatus(status);
-        List<ContractorChangeReportDto> dtos = contractorSyncService.listReports(s).stream()
-                .map(contractorSyncService::toDto)
-                .toList();
-        return ResponseEntity.ok(new NgApiResponse<>(dtos, "Reports listed"));
-    }
-
-    @PostMapping("/reports/{id}/accept")
-    public ResponseEntity<NgApiResponse<ContractorChangeReportDto>> accept(@PathVariable Long id) {
-        try {
-            ContractorChangeReport report = contractorSyncService.accept(id, currentUsername());
-            return ResponseEntity.ok(new NgApiResponse<>(contractorSyncService.toDto(report), "Report accepted"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
-    }
-
-    @PostMapping("/reports/{id}/reject")
-    public ResponseEntity<NgApiResponse<ContractorChangeReportDto>> reject(@PathVariable Long id) {
-        try {
-            ContractorChangeReport report = contractorSyncService.reject(id, currentUsername());
-            return ResponseEntity.ok(new NgApiResponse<>(contractorSyncService.toDto(report), "Report rejected"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
-    }
-
-    private ContractorChangeReport.Status parseStatus(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        try {
-            return ContractorChangeReport.Status.valueOf(raw.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    private String currentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth == null ? "system" : auth.getName();
+        return body;
     }
 }

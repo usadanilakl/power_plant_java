@@ -2567,50 +2567,33 @@ export class IpcHandlers {
       }
     });
 
-    ipcMain.handle(events.IPC_CONTRACTORS_PUSH_TO_BACKEND, async () => {
+    /**
+     * Ask the HUB to re-pull OnLocation now. The hub owns one shared cache, so this refreshes what
+     * the PWA and every other desktop sees too — unlike the local pull below, which only updates
+     * this machine. Falls back to the local pull when the hub cannot be reached.
+     */
+    ipcMain.handle(events.IPC_CONTRACTORS_REFRESH_DIRECTORY, async () => {
       try {
-        const contractors = await this.gateLogManager.getContractorDirectory();
-        const resp = await backendPost('/ng/contractors/sync', {
-          source: 'electron-onlocation',
-          contractors
-        });
-        return { success: true, data: resp };
+        const hub = await backendPost('/ng/contractors/directory/refresh', {});
+        const payload = hub?.responseData ?? hub;
+        const contractors = payload?.contractors;
+        if (Array.isArray(contractors) && contractors.length > 0) {
+          return { success: true, data: contractors, source: 'hub', fetchedAt: payload?.fetchedAt ?? null };
+        }
+        console.warn('[Contractors] Hub refresh returned nothing — falling back to a direct OnLocation pull');
+      } catch (err: any) {
+        console.warn(`[Contractors] Hub refresh failed (${err.message}) — falling back to a direct OnLocation pull`);
+      }
+      try {
+        return { success: true, data: await this.gateLogManager.getContractorDirectory(), source: 'onlocation' };
       } catch (err: any) {
         return { success: false, error: err.message };
       }
     });
 
-    ipcMain.handle(events.IPC_CONTRACTORS_SCAN, async () => {
-      try {
-        return { success: true, data: await backendPost('/ng/contractors/scan', {}) };
-      } catch (err: any) {
-        return { success: false, error: err.message };
-      }
-    });
 
-    ipcMain.handle(events.IPC_CONTRACTORS_LIST_REPORTS, async (_evt, status?: string) => {
-      try {
-        const qs = status ? `?status=${encodeURIComponent(status)}` : '';
-        return { success: true, data: await backendGet('/ng/contractors/reports' + qs) };
-      } catch (err: any) {
-        return { success: false, error: err.message };
-      }
-    });
 
-    ipcMain.handle(events.IPC_CONTRACTORS_ACCEPT_REPORT, async (_evt, id: number) => {
-      try {
-        return { success: true, data: await backendPost(`/ng/contractors/reports/${id}/accept`, {}) };
-      } catch (err: any) {
-        return { success: false, error: err.message };
-      }
-    });
 
-    ipcMain.handle(events.IPC_CONTRACTORS_REJECT_REPORT, async (_evt, id: number) => {
-      try {
-        return { success: true, data: await backendPost(`/ng/contractors/reports/${id}/reject`, {}) };
-      } catch (err: any) {
-        return { success: false, error: err.message };
-      }
-    });
+
   }
 }

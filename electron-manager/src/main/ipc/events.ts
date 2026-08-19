@@ -48,11 +48,7 @@ export const IPC_CHAT_GET_SUPABASE_SESSION = 'chat:get-supabase-session';
 
 // Contractors (invoke/handle)
 export const IPC_CONTRACTORS_GET_LIVE = 'contractors:get-live';
-export const IPC_CONTRACTORS_PUSH_TO_BACKEND = 'contractors:push-to-backend';
-export const IPC_CONTRACTORS_SCAN = 'contractors:scan';
-export const IPC_CONTRACTORS_LIST_REPORTS = 'contractors:list-reports';
-export const IPC_CONTRACTORS_ACCEPT_REPORT = 'contractors:accept-report';
-export const IPC_CONTRACTORS_REJECT_REPORT = 'contractors:reject-report';
+export const IPC_CONTRACTORS_REFRESH_DIRECTORY = 'contractors:refresh-directory';
 
 // WebView AMS — Excel report scraper (invoke/handle)
 export const IPC_WEBVIEW_AMS_GET_REPORTS = 'webview-ams:get-reports';

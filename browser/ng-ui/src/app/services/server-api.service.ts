@@ -593,6 +593,16 @@ export class ServerApiService {
    * Contractor directory for lookup. Errors are NOT swallowed — the caller falls back to its own
    * cached copy and needs to know the refresh failed so it can say so.
    */
+  /**
+   * Force the hub to pull OnLocation now and return the fresh list. Updates the hub's shared cache,
+   * so this refreshes what the desktops see too — not just this phone.
+   */
+  refreshContractors(): Observable<PwaContractorDirectory> {
+    return this.http.post<PwaContractorDirectory>(
+      `${this.baseUrl}/api/pwa/secured/contractors/refresh`, {}
+    ).pipe(timeout(30000));
+  }
+
   getContractors(): Observable<PwaContractorDirectory> {
     return this.http.get<PwaContractorDirectory>(`${this.baseUrl}/api/pwa/secured/contractors`).pipe(
       timeout(15000)

@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.hub;
 
 import com.dk_power.power_plant_java.entities.hub.HubSyncedFile;
 import com.dk_power.power_plant_java.repository.hub.HubSyncedFileRepository;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
 import com.dk_power.power_plant_java.sevice.sync.EntityTableRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
@@ -9,6 +10,8 @@ import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,8 @@ public class HubResyncService {
     private final HubSyncedFileRepository hubSyncedFileRepository;
     private final HubHealthStatsService healthStatsService;
     private final ObjectMapper objectMapper;
+    /** Pauses the 30s SharePoint poll's H2 writes while a BACKUP TO runs, avoiding table-lock contention. */
+    private final SharePointSyncOrchestrator sharePointSyncOrchestrator;
 
     @Value("${spring.datasource.url:jdbc:h2:file:./db/devdb}")
     private String datasourceUrl;
@@ -64,6 +69,9 @@ public class HubResyncService {
 
     @Value("${sync.backup.max-old-backups:3}")
     private int maxOldBackups;
+
+    @Value("${sync.backup.warm-enabled:true}")
+    private boolean warmBackupEnabled;
 
     private final ReentrantLock backupLock = new ReentrantLock();
     private volatile Path cachedBackupPath = null;
@@ -101,12 +109,14 @@ public class HubResyncService {
                              EntityTableRegistry entityTableRegistry,
                              HubSyncedFileRepository hubSyncedFileRepository,
                              HubHealthStatsService healthStatsService,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             @Lazy SharePointSyncOrchestrator sharePointSyncOrchestrator) {
         this.entityManager = entityManager;
         this.entityTableRegistry = entityTableRegistry;
         this.hubSyncedFileRepository = hubSyncedFileRepository;
         this.healthStatsService = healthStatsService;
         this.objectMapper = objectMapper;
+        this.sharePointSyncOrchestrator = sharePointSyncOrchestrator;
     }
 
     public ResyncHealth getHealth() {
@@ -257,6 +267,73 @@ public class HubResyncService {
         } else {
             log.info("Hub on H2 — serving direct H2 backup for client cold resync");
             return createH2Backup();
+        }
+    }
+
+    /**
+     * The resync snapshot PATH and its matching cutoff, read as ONE atomic pair under {@code backupLock}.
+     *
+     * <p>Callers that serve the snapshot to a client (and stamp the {@code X-Sync-Cutoff} header from the
+     * cutoff) MUST use this, not {@link #getClientResyncBackup()} + {@link #getCachedBackupCutoff()} as two
+     * separate reads: a concurrent regeneration (e.g. the hourly {@link #warmClientResyncBackup()}) can
+     * overwrite {@code cachedBackupPath}/{@code cachedBackupCutoff} between the two reads, handing back OLD
+     * bytes with a NEWER cutoff. The client would then mark itself synced past changes not in the file it
+     * installed — silent, permanent per-client data loss. Holding the (reentrant) lock across the ensure +
+     * both reads makes the pair consistent, since a regen also needs the lock.
+     */
+    public ClientBackupSnapshot getClientResyncBackupSnapshot() throws Exception {
+        backupLock.lock();
+        try {
+            Path path = getClientResyncBackup();          // ensures/regenerates under the (reentrant) lock
+            return new ClientBackupSnapshot(path, cachedBackupCutoff);  // both read while still holding it
+        } finally {
+            backupLock.unlock();
+        }
+    }
+
+    /** A resync snapshot file paired with the cutoff that belongs to exactly that file. */
+    public record ClientBackupSnapshot(Path path, Instant cutoff) {}
+
+    /**
+     * Pre-generate the client cold-resync snapshot on a schedule so a far-behind client's resync pull
+     * is a fast cache hit instead of a multi-minute synchronous BACKUP TO on the request thread.
+     *
+     * Safe by construction: {@link #getCachedBackupCutoff()} records the hub-receipt cutoff of the
+     * snapshot and the client is marked synced only up to that cutoff (bounded mark-synced), so any
+     * change the hub received after the snapshot stays pending and arrives by normal pull. An
+     * up-to-one-interval-old snapshot therefore only costs a slightly larger delta drain on the
+     * client — never data loss.
+     *
+     * Hub-only (the whole service is @ConditionalOnProperty sync.role=hub), so this never runs on a
+     * desktop. Keep {@code sync.backup.cache-duration-minutes} >= the warm interval so client pulls
+     * that land between warm runs stay cache hits.
+     */
+    @Scheduled(fixedDelayString = "${sync.backup.warm-interval-ms:3600000}",
+               initialDelayString = "${sync.backup.warm-initial-delay-ms:120000}")
+    public void warmClientResyncBackup() {
+        if (!warmBackupEnabled) return;
+        long start = System.currentTimeMillis();
+        // Force a fresh snapshot: invalidate the cache so getClientResyncBackup regenerates rather than
+        // returning the previous (about-to-expire) one. backupLock serializes against concurrent pulls.
+        backupLock.lock();
+        try {
+            cachedBackupTime = null;
+        } finally {
+            backupLock.unlock();
+        }
+        // BACKUP TO locks H2 tables; pause the 30s SharePoint poll's writes for the duration, exactly as the
+        // on-demand download path does — otherwise the hourly warm run can collide with an SP write and one
+        // side hits the 10s lock timeout.
+        sharePointSyncOrchestrator.setClientSyncInProgress(true);
+        try {
+            Path p = getClientResyncBackup();
+            long mb = Files.exists(p) ? Files.size(p) / (1024 * 1024) : -1;
+            log.info("resync.warm_backup ready path={} sizeMB={} cutoff={} elapsedMs={}",
+                     p, mb, cachedBackupCutoff, System.currentTimeMillis() - start);
+        } catch (Exception e) {
+            log.warn("resync.warm_backup failed (clients fall back to on-demand backup): {}", e.toString());
+        } finally {
+            sharePointSyncOrchestrator.setClientSyncInProgress(false);
         }
     }
 

@@ -102,15 +102,18 @@ public class HubResyncController {
         log.info("Database backup requested for client cold resync");
         sharePointSyncOrchestrator.setClientSyncInProgress(true);
         try {
-            // Always returns an H2 backup ZIP — generates from PG if needed
-            java.nio.file.Path backupPath = resyncService.getClientResyncBackup();
+            // Path + cutoff as ONE atomic pair — reading them separately would let a concurrent (now hourly)
+            // regeneration hand back OLD bytes with a NEWER cutoff, marking the client synced past changes not
+            // in the file it installs (silent data loss). See getClientResyncBackupSnapshot javadoc.
+            HubResyncService.ClientBackupSnapshot snapshot = resyncService.getClientResyncBackupSnapshot();
+            java.nio.file.Path backupPath = snapshot.path();
             long size = java.nio.file.Files.size(backupPath);
             log.info("Backup ready, size={} bytes, streaming from {}", size, backupPath);
 
             // SyncOrder cutoff of THIS snapshot — the client marks itself synced only up to here after the
             // swap (bounded mark-synced), so hub changes committed after the snapshot are not silently
             // dropped. Absent header (e.g. a legacy/edge path) → client falls back to unbounded mark-synced.
-            java.time.Instant cutoff = resyncService.getCachedBackupCutoff();
+            java.time.Instant cutoff = snapshot.cutoff();
             ResponseEntity.BodyBuilder resp = ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=hub_backup.zip")
                 .header("X-Backup-Format", "h2-backup")

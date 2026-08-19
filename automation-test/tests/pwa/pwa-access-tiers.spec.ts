@@ -149,6 +149,69 @@ test.describe('PWA access tiers', () => {
       expect(labels).toContain('LOTO Standards');
     });
 
+    test('section cards carry pills that jump straight to a sub-section', async ({ page }) => {
+      const pwa = new PwaPage(page);
+      await pwa.signIn(ADMIN_CREDENTIAL, ADMIN_PASSWORD);
+      await pwa.goto('/home');
+
+      const permits = page.locator('.tile', { hasText: 'Permits' });
+      const pill = permits.locator('.tile-pill', { hasText: 'Work Request' });
+      await expect(pill).toBeVisible();
+
+      // The pill is a destination, not decoration — it must skip the section page entirely.
+      await pill.click();
+      await expect(page).toHaveURL(/\/work-request/);
+    });
+
+    test('a card with more sub-sections than fit says so, and the counter opens the section', async ({ page }) => {
+      const pwa = new PwaPage(page);
+      await pwa.signIn(ADMIN_CREDENTIAL, ADMIN_PASSWORD);
+      await pwa.goto('/home');
+
+      // Permits holds six for an admin, so the card must account for the ones it cannot show
+      // rather than looking complete at four.
+      const permits = page.locator('.tile', { hasText: 'Permits' });
+      const more = permits.locator('.tile-pill.more');
+      await expect(more).toHaveText(/^\+\d+ more$/);
+
+      await more.click();
+      await expect(page).toHaveURL(/\/section\/permits$/);
+      // And the section page really does show everything the card could not.
+      expect((await pwa.tileLabels()).length).toBeGreaterThan(4);
+    });
+
+    test('the card itself still opens the section page', async ({ page }) => {
+      const pwa = new PwaPage(page);
+      await pwa.signIn(ADMIN_CREDENTIAL, ADMIN_PASSWORD);
+      await pwa.goto('/home');
+
+      await page.locator('.tile', { hasText: 'Permits' }).locator('.tile-main').click();
+      await expect(page).toHaveURL(/\/section\/permits$/);
+    });
+
+    test('a section can be pinned to the bar', async ({ page }) => {
+      const pwa = new PwaPage(page);
+      await pwa.signIn(ADMIN_CREDENTIAL, ADMIN_PASSWORD);
+      await pwa.goto('/home');
+
+      await page.getByRole('button', { name: 'More' }).click();
+      await page.getByRole('button', { name: /^Edit$/ }).click();
+
+      // The bar holds four and starts full, so make room first — pinning must refuse rather than
+      // silently evict, which is exactly what the free slot proves below.
+      const inBar = page.locator('.bn-edit-row.pinned').last();
+      const evicted = (await inBar.locator('.bn-edit-label').innerText()).trim();
+      await inBar.locator('.bn-edit-pin').click();
+
+      // Sections are pinnable now, which they were not — one tap, from wherever the row sits.
+      await page.getByRole('button', { name: /Add Rounds to the bar/i }).click();
+      await page.getByRole('button', { name: /^Done$/ }).click();
+      await page.locator('.bn-scrim').click({ force: true });
+
+      await expect(page.locator('.bn .bn-tab', { hasText: 'Rounds' })).toBeVisible();
+      await expect(page.locator('.bn .bn-tab', { hasText: evicted })).toHaveCount(0);
+    });
+
     test('deep links select the right tab', async ({ page }) => {
       const pwa = new PwaPage(page);
       await pwa.signIn(ADMIN_CREDENTIAL, ADMIN_PASSWORD);

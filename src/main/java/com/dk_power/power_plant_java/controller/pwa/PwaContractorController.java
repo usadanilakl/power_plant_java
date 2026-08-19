@@ -30,6 +30,18 @@ public class PwaContractorController {
 
     private final ContractorDirectoryService directoryService;
 
+    /**
+     * Pull from OnLocation now and return the result.
+     *
+     * Hits the same shared cache the desktops read, so a refresh from a phone updates what every
+     * other client sees — not just this one.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refresh() {
+        directoryService.refresh();
+        return list(null);
+    }
+
     /** @param q optional filter on name / company / email / title. */
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String q) {

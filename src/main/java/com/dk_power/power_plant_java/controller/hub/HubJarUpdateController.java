@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.hub;
 
+import com.dk_power.power_plant_java.sevice.hub.HubClientDirectiveService;
 import com.dk_power.power_plant_java.sevice.hub.HubJarUpdateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,12 +12,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -32,11 +37,16 @@ import java.util.Optional;
 public class HubJarUpdateController {
 
     private final HubJarUpdateService updateService;
+    private final HubClientDirectiveService directiveService;
 
     @GetMapping("/check")
-    public ResponseEntity<?> checkForUpdate() {
+    public ResponseEntity<?> checkForUpdate(
+            @RequestHeader(value = "X-Machine-Id", required = false) String machineId) {
         Optional<HubJarUpdateService.UpdateInfo> info = updateService.getLatestJarInfo();
-        Optional<HubJarUpdateService.UpdatePolicy> policy = updateService.getUpdatePolicy();
+        // Per-client directive (set by the hub for THIS machine) wins; fall back to the global
+        // update-policy.json when this client has no outstanding directive.
+        Optional<HubJarUpdateService.UpdatePolicy> policy = directiveService.effectiveDirectiveFor(machineId);
+        if (policy.isEmpty()) policy = updateService.getUpdatePolicy();
 
         // 404 only when there is genuinely nothing to say — no JAR AND no directive. A files/db-only
         // directive is legitimate without a NEW jar (the current jar stays in the dir), so a present
@@ -63,6 +73,23 @@ public class HubJarUpdateController {
             policy.map(p -> p.id() + " " + p.actions()).orElse("none"));
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * The client reports it finished applying a per-client directive. Idempotent: only marks the directive
+     * done when the reported id matches the client's current directive, so the db/files actions won't re-run
+     * on the next boot. Body: {@code {"id": "dir-..."}}.
+     */
+    @PostMapping("/applied")
+    public ResponseEntity<Map<String, Object>> reportApplied(
+            @RequestHeader(value = "X-Machine-Id", required = false) String machineId,
+            @RequestBody Map<String, String> body) {
+        String id = body != null ? body.get("id") : null;
+        boolean applied = directiveService.markApplied(machineId, id);
+        // Reflect the real outcome: a null/unknown machineId or a stale (superseded) id does NOT clear the
+        // directive, so reporting ok:true there would let the client believe a mandatory directive is done
+        // while the hub keeps re-issuing it every /check.
+        return ResponseEntity.ok(Map.of("ok", applied, "machineId", String.valueOf(machineId), "id", String.valueOf(id)));
     }
 
     @GetMapping("/download")

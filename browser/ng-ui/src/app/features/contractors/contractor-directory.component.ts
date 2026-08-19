@@ -31,8 +31,8 @@ interface CachedDirectory {
       <div class="cd-bar">
         <input class="cd-search" type="search" [(ngModel)]="query" (ngModelChange)="onQuery($event)"
                placeholder="Search name, company, email…" aria-label="Search contractors">
-        <button type="button" class="cd-refresh" (click)="refresh()" [disabled]="loading()"
-                aria-label="Refresh contractor list">
+        <button type="button" class="cd-refresh" (click)="refresh(true)" [disabled]="loading()"
+                aria-label="Refresh contractor list from OnLocation" title="Refresh from OnLocation">
           {{ loading() ? '…' : '↻' }}
         </button>
       </div>
@@ -204,9 +204,15 @@ export class ContractorDirectoryComponent {
     this.queryTerm.set(value ?? '');
   }
 
-  refresh(): void {
+  /**
+   * @param fromSource true when the user pressed refresh — asks the hub to pull OnLocation again
+   *        rather than re-reading its cache, which is what makes the button mean something. The
+   *        initial page load stays a plain read so opening the tab never triggers an external call.
+   */
+  refresh(fromSource = false): void {
     this.loading.set(true);
-    this.serverApi.getContractors().subscribe({
+    const request = fromSource ? this.serverApi.refreshContractors() : this.serverApi.getContractors();
+    request.subscribe({
       next: directory => {
         this.loading.set(false);
         this.refreshFailed.set(false);

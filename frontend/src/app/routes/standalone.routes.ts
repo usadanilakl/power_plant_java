@@ -18,6 +18,7 @@ import { SyncResyncComponent } from '../features/sync-resync/sync-resync.compone
 import { SharepointSyncComponent } from '../pages/sharepoint-sync/sharepoint-sync.component';
 import { SyncActivityComponent } from '../features/sync/sync-activity/sync-activity.component';
 import { DriftCenterComponent } from '../features/sync/drift-center/drift-center.component';
+import { SideBySideCompareComponent } from '../features/sync/side-by-side/side-by-side-compare.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
 import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
@@ -55,6 +56,7 @@ export const STANDALONE_ROUTES: Routes = [
     children: [
       { path: '', redirectTo: 'drift', pathMatch: 'full' },
       { path: 'drift', component: DriftCenterComponent },
+      { path: 'compare', component: SideBySideCompareComponent },
       { path: 'activity', component: SyncActivityComponent },
       { path: 'status', component: SyncMonitorComponent },
       { path: 'recovery', component: SyncResyncComponent },

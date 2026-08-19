@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, ContractorReport, PersonnelConfig, PersonnelStatusMeta, CoverageOpening, CoverageSignup, CoverageEligibilityDetail } from '../../services/electron.service';
+import { ElectronService, PersonnelStatus, PersonnelEntry, PersonnelContact, ContractorEntry, PersonnelConfig, PersonnelStatusMeta, CoverageOpening, CoverageSignup, CoverageEligibilityDetail } from '../../services/electron.service';
 import { ChatPanelComponent } from './chat-panel.component';
 
 /**
@@ -508,17 +508,13 @@ const GROUP_LABELS: Record<string, string> = {
               </span>
             </h2>
             <div class="header-actions">
-              <button class="btn btn-icon" (click)="loadContractors(true)" title="Refresh from OnLocation" [disabled]="contractorsLoading">
+              <button class="btn btn-icon" (click)="loadContractors(true)" title="Refresh from OnLocation via the hub" [disabled]="contractorsLoading">
                 <span class="material-icons" [class.spin]="contractorsLoading">refresh</span>
-              </button>
-              <button class="btn btn-primary" (click)="pushContractorsToBackend()" [disabled]="contractorPushing || contractors.length === 0">
-                {{ contractorPushing ? 'Pushing...' : 'Push to backend' }}
-              </button>
-              <button class="btn btn-primary" (click)="scanContractors()" [disabled]="contractorScanning">
-                {{ contractorScanning ? 'Scanning...' : 'Scan for changes' }}
               </button>
             </div>
           </div>
+
+          <div class="contractor-freshness" *ngIf="contractorSourceLabel()">{{ contractorSourceLabel() }}</div>
 
           <div *ngIf="contractorActionMessage" class="action-message">{{ contractorActionMessage }}</div>
 
@@ -563,39 +559,6 @@ const GROUP_LABELS: Record<string, string> = {
           </div>
         </div>
 
-        <div class="section" *ngIf="contractorReports.length > 0">
-          <h2 class="section-title">
-            <span class="material-icons section-icon">history</span>
-            Pending changes
-          </h2>
-          <div *ngFor="let r of contractorReports" class="report-card">
-            <div class="report-head">
-              <div>
-                <span class="report-status" [class]="'status-' + r.status.toLowerCase()">{{ r.status }}</span>
-                <span class="report-when">{{ r.runAt | date:'medium' }}</span>
-                <span class="report-summary">{{ r.summary }}</span>
-              </div>
-              <div *ngIf="r.status === 'PENDING'">
-                <button class="btn btn-primary" (click)="acceptReport(r.id)">Accept</button>
-                <button class="btn btn-icon" (click)="rejectReport(r.id)">Reject</button>
-              </div>
-            </div>
-            <div class="report-body" *ngIf="(r.added && r.added.length) || (r.removed && r.removed.length) || (r.changed && r.changed.length)">
-              <div *ngIf="r.added && r.added.length > 0">
-                <strong>Added ({{ r.added.length }}):</strong>
-                <span *ngFor="let a of r.added">{{ a.name }} &middot; {{ a.company }}; </span>
-              </div>
-              <div *ngIf="r.removed && r.removed.length > 0">
-                <strong>Removed ({{ r.removed.length }}):</strong>
-                <span *ngFor="let a of r.removed">{{ a.name }} &middot; {{ a.company }}; </span>
-              </div>
-              <div *ngIf="r.changed && r.changed.length > 0">
-                <strong>Changed ({{ r.changed.length }}):</strong>
-                <span *ngFor="let ch of r.changed">{{ ch.after.name }}; </span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Conversations Tab -->
@@ -1069,10 +1032,6 @@ export class PersonnelComponent implements OnInit {
   contractors: ContractorEntry[] = [];
   contractorsLoading = false;
   contractorsError = '';
-  contractorReports: ContractorReport[] = [];
-  contractorReportsLoading = false;
-  contractorScanning = false;
-  contractorPushing = false;
   contractorActionMessage = '';
 
   // Per-client auto-refresh config (persisted in personnel-config.json in the working dir).
@@ -1962,17 +1921,40 @@ export class PersonnelComponent implements OnInit {
     this.electronService.openExternal(getContactsUrl());
   }
 
+  contractorSource = '';
+  contractorFetchedAt: string | null = null;
+
+  /** Where the shown list came from, and how old it is — the desktop had no equivalent before. */
+  contractorSourceLabel(): string {
+    if (!this.contractors.length) return '';
+    const age = this.contractorFetchedAt
+      ? new Date(this.contractorFetchedAt).toLocaleString()
+      : '';
+    if (this.contractorSource === 'onlocation') {
+      return 'Pulled directly from OnLocation — the hub was unavailable, so this copy is local to this machine.';
+    }
+    if (this.contractorSource === 'hub') {
+      return age ? `From the hub, refreshed ${age}` : 'From the hub';
+    }
+    return '';
+  }
+
   async loadContractors(forceRefresh = false): Promise<void> {
     if (!forceRefresh && (this.contractors.length > 0 || this.contractorsLoading)) {
-      this.loadContractorReports();
       return;
     }
     this.contractorsLoading = true;
     this.contractorsError = '';
     try {
-      const result = await this.electronService.contractorsGetLive();
+      // forceRefresh asks the HUB to re-pull OnLocation, so the refreshed list is shared with the
+      // PWA and every other desktop rather than being local to this machine.
+      const result = forceRefresh
+        ? await this.electronService.contractorsRefreshDirectory()
+        : await this.electronService.contractorsGetLive();
       if (result.success && result.data) {
         this.contractors = result.data.sort((a, b) => a.name.localeCompare(b.name));
+        this.contractorSource = (result as any).source ?? '';
+        this.contractorFetchedAt = (result as any).fetchedAt ?? null;
       } else {
         this.contractorsError = result.error || 'Failed to load contractors';
       }
@@ -1981,75 +1963,12 @@ export class PersonnelComponent implements OnInit {
     } finally {
       this.contractorsLoading = false;
     }
-    this.loadContractorReports();
   }
 
-  async loadContractorReports(): Promise<void> {
-    this.contractorReportsLoading = true;
-    try {
-      const result = await this.electronService.contractorsListReports('PENDING');
-      // Backend wraps in NgApiResponse { responseData, message }
-      const payload: any = result.data;
-      this.contractorReports = payload?.responseData || [];
-    } catch {
-      this.contractorReports = [];
-    } finally {
-      this.contractorReportsLoading = false;
-    }
-  }
 
-  async pushContractorsToBackend(): Promise<void> {
-    this.contractorPushing = true;
-    this.contractorActionMessage = '';
-    try {
-      const result = await this.electronService.contractorsPushToBackend();
-      if (result.success) {
-        const summary: any = (result.data as any)?.responseData;
-        this.contractorActionMessage = summary
-          ? `Pushed: created=${summary.created}, linked=${summary.linked}, updated=${summary.updated}, unchanged=${summary.unchanged}`
-          : 'Push complete';
-      } else {
-        this.contractorActionMessage = `Push failed: ${result.error}`;
-      }
-    } catch (err: any) {
-      this.contractorActionMessage = `Push failed: ${err.message}`;
-    } finally {
-      this.contractorPushing = false;
-    }
-  }
 
-  async scanContractors(): Promise<void> {
-    this.contractorScanning = true;
-    this.contractorActionMessage = '';
-    try {
-      const result = await this.electronService.contractorsScan();
-      if (result.success) {
-        const report: any = (result.data as any)?.responseData;
-        this.contractorActionMessage = report?.summary
-          ? `Scan complete — ${report.summary}`
-          : 'Scan complete';
-        await this.loadContractorReports();
-      } else {
-        this.contractorActionMessage = `Scan failed: ${result.error}`;
-      }
-    } catch (err: any) {
-      this.contractorActionMessage = `Scan failed: ${err.message}`;
-    } finally {
-      this.contractorScanning = false;
-    }
-  }
 
-  async acceptReport(id: number): Promise<void> {
-    const result = await this.electronService.contractorsAcceptReport(id);
-    this.contractorActionMessage = result.success ? 'Report accepted' : `Accept failed: ${result.error}`;
-    await this.loadContractorReports();
-  }
 
-  async rejectReport(id: number): Promise<void> {
-    const result = await this.electronService.contractorsRejectReport(id);
-    this.contractorActionMessage = result.success ? 'Report rejected' : `Reject failed: ${result.error}`;
-    await this.loadContractorReports();
-  }
 
   /**
    * 'expired'   → validTo is before today

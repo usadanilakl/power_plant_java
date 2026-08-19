@@ -17,6 +17,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { timer, forkJoin } from 'rxjs';
 import { DriftService, RowDrift, DriftRecord, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../services/drift.service';
 import {
@@ -223,6 +224,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   driftEntityType = input<string | undefined>(undefined);
   private driftService = inject(DriftService);
   private driftDestroyRef = inject(DestroyRef);
+  private driftRouter = inject(Router);
   driftMap = signal<Map<number, RowDrift>>(new Map());
   driftScanning = signal(false);
   driftResultText = signal<string>(''); // visible readout of the last scan so we can see what happened
@@ -783,6 +785,15 @@ export class TableComponent implements OnInit, AfterViewInit {
     }
   }
   closeDriftPopover(): void { this.driftPopover.set(null); this.driftDiff.set(null); }
+
+  /** Leave the quick popover and open the focused full LOCAL-vs-HUB side-by-side for this row — the
+   *  readable surface for complex entities (LotoStandard etc.) where the popover's one-line diff isn't enough. */
+  openFullCompare(): void {
+    const pop = this.driftPopover(); const t = this.driftEntityType();
+    if (!pop || !t) return;
+    this.closeDriftPopover();
+    this.driftRouter.navigate(['/sync/compare'], { queryParams: { type: t, id: Number(pop.item.id) } });
+  }
 
   /** Reconcile the whole row (hub/local/SP), then re-scan the type so the badge reflects the new truth. */
   driftAct(kind: 'hub' | 'local' | 'sp'): void {

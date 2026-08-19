@@ -209,15 +209,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Contractors
   contractorsGetLive: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_GET_LIVE),
-  contractorsPushToBackend: (): Promise<IpcResult> =>
-    ipcRenderer.invoke(events.IPC_CONTRACTORS_PUSH_TO_BACKEND),
-  contractorsScan: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_SCAN),
-  contractorsListReports: (status?: string): Promise<IpcResult> =>
-    ipcRenderer.invoke(events.IPC_CONTRACTORS_LIST_REPORTS, status),
-  contractorsAcceptReport: (id: number): Promise<IpcResult> =>
-    ipcRenderer.invoke(events.IPC_CONTRACTORS_ACCEPT_REPORT, id),
-  contractorsRejectReport: (id: number): Promise<IpcResult> =>
-    ipcRenderer.invoke(events.IPC_CONTRACTORS_REJECT_REPORT, id),
+  contractorsRefreshDirectory: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_REFRESH_DIRECTORY),
 
   // WebView AMS — Excel report scraper
   webViewAmsGetReports: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_REPORTS),

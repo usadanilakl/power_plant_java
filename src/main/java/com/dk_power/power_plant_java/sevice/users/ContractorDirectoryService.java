@@ -41,8 +41,6 @@ public class ContractorDirectoryService {
     public enum Source {
         /** Straight from OnLocation. */
         ONLOCATION,
-        /** OnLocation was unreachable or unconfigured; these are the local User rows. */
-        LOCAL_RECORDS,
         /** Nothing fetched yet this run — the snapshot left over from a previous one. */
         SNAPSHOT
     }
@@ -50,12 +48,11 @@ public class ContractorDirectoryService {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Directory(Instant fetchedAt, Source source, List<ContractorDto> contractors) {
         public static Directory empty() {
-            return new Directory(null, Source.LOCAL_RECORDS, List.of());
+            return new Directory(null, Source.SNAPSHOT, List.of());
         }
     }
 
     private final SyncConfig syncConfig;
-    private final ContractorSyncService contractorSyncService;
     private final ObjectMapper objectMapper;
     /** OnLocationClient is {@code @ConditionalOnProperty} — absent on installs without the key. */
     private final ObjectProvider<OnLocationClient> onLocationClientProvider;
@@ -92,12 +89,10 @@ public class ContractorDirectoryService {
     }
 
     /**
-     * Pull from OnLocation, falling back to the local User rows.
+     * Pull from OnLocation into the cache.
      *
-     * <p>The fallback matters on installs where the hub has no OnLocation key: Electron pushes
-     * contractors into the User table anyway ({@code ContractorSyncService.importFromElectron}), so
-     * there is still a useful answer — just one whose freshness we cannot vouch for, which is why
-     * the source travels with it.
+     * <p>A failure keeps whatever we already had rather than blanking the screen — a slightly old
+     * list carrying an honest timestamp beats an empty one.
      */
     public Directory refresh() {
         OnLocationClient client = onLocationClientProvider.getIfAvailable();
@@ -112,14 +107,9 @@ public class ContractorDirectoryService {
                 log.warn("[ContractorDirectory] OnLocation fetch failed: {}", e.getMessage());
             }
         } else {
-            log.debug("[ContractorDirectory] OnLocation not configured (onlocation.api.key) — using local records");
+            log.warn("[ContractorDirectory] OnLocation is not configured (onlocation.api.key) — "
+                    + "the directory cannot be populated");
         }
-
-        List<ContractorDto> local = contractorSyncService.listContractors();
-        if (!local.isEmpty()) {
-            return store(new Directory(Instant.now(), Source.LOCAL_RECORDS, local));
-        }
-        // Nothing anywhere — keep whatever we already had rather than blanking the screen.
         return current;
     }
 

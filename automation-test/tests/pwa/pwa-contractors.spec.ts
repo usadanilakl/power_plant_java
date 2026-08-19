@@ -68,6 +68,22 @@ test.describe('Contractor lookup', () => {
     await expect(page.locator('.cd-status')).toContainText(/updated/i);
   });
 
+  test('the refresh button asks the hub to re-pull the source', async ({ page }) => {
+    let refreshCalls = 0;
+    await page.route('**/api/pwa/secured/contractors/refresh', route => {
+      refreshCalls++;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DIRECTORY) });
+    });
+    await openDirectory(page);
+
+    // The initial load must NOT hit the source — opening a tab should not trigger an external call.
+    expect(refreshCalls, 'opening the tab should only read the cache').toBe(0);
+
+    await page.locator('.cd-refresh').click();
+    await expect.poll(() => refreshCalls,
+      { message: 'pressing refresh must ask the hub to re-pull OnLocation' }).toBe(1);
+  });
+
   test('falls back to the cached copy and says so when the hub is unreachable', async ({ page }) => {
     // First visit populates the device cache.
     await openDirectory(page);

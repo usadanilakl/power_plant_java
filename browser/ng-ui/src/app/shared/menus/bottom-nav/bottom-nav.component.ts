@@ -47,7 +47,7 @@ import { NavAccessService, NavEntry, VisibleSection } from '../../../services/na
         <div class="bn-sheet-grip"></div>
 
         <div class="bn-sheet-head">
-          <span class="bn-sheet-title">{{ editing() ? 'Arrange menu' : 'All pages' }}</span>
+          <span class="bn-sheet-title">{{ editing() ? 'Customise menu' : 'All pages' }}</span>
           <span class="bn-sheet-head-actions">
             @if (editing() && prefs.isCustomised) {
               <button type="button" class="bn-sheet-btn" (click)="resetOrder()">Reset</button>
@@ -60,25 +60,58 @@ import { NavAccessService, NavEntry, VisibleSection } from '../../../services/na
 
         @if (editing()) {
           <p class="bn-sheet-hint">
-            The top {{ tabCount }} appear in the bar. Move items with the arrows.
+            Tap ☆ to put a page in the bar. Up to {{ tabCount }}.
           </p>
+
+          @if (pinMessage()) {
+            <p class="bn-sheet-hint" role="status" aria-live="polite">{{ pinMessage() }}</p>
+          }
+
+          <h3 class="bn-sheet-section">In the bar</h3>
+          @if (!barItems().length) {
+            <p class="bn-sheet-hint">Nothing pinned — the bar is showing the first few by default.</p>
+          }
           <ul class="bn-edit-list">
-            @for (item of visibleItems(); track item.navKey; let i = $index) {
-              @if (i === tabCount) {
-                <li class="bn-edit-divider"><span>below this line: in “More”</span></li>
-              }
-              <li class="bn-edit-row" [class.pinned]="i < tabCount">
+            @for (item of barItems(); track item.navKey; let i = $index) {
+              <li class="bn-edit-row pinned">
                 <span class="bn-edit-icon" aria-hidden="true">{{ item.icon }}</span>
                 <span class="bn-edit-label">{{ item.label }}</span>
                 <button type="button" class="bn-edit-move" [disabled]="i === 0"
-                        [attr.aria-label]="'Move ' + item.label + ' up'"
-                        (click)="move(item.navKey, -1)">▲</button>
-                <button type="button" class="bn-edit-move" [disabled]="i === visibleItems().length - 1"
-                        [attr.aria-label]="'Move ' + item.label + ' down'"
-                        (click)="move(item.navKey, 1)">▼</button>
+                        [attr.aria-label]="'Move ' + item.label + ' left'"
+                        (click)="movePin(item.navKey, -1)">▲</button>
+                <button type="button" class="bn-edit-move" [disabled]="i === barItems().length - 1"
+                        [attr.aria-label]="'Move ' + item.label + ' right'"
+                        (click)="movePin(item.navKey, 1)">▼</button>
+                <button type="button" class="bn-edit-pin on"
+                        [attr.aria-label]="'Remove ' + item.label + ' from the bar'"
+                        (click)="togglePin(item.navKey)">★</button>
               </li>
             }
           </ul>
+
+          <!-- Everything else, grouped, each pinnable in one tap from wherever it sits. -->
+          @for (group of editGroups(); track group.label) {
+            <h3 class="bn-sheet-section">{{ group.label }}</h3>
+            <ul class="bn-edit-list">
+              @for (item of group.items; track item.navKey) {
+                <li class="bn-edit-row">
+                  <span class="bn-edit-icon" aria-hidden="true">{{ item.icon }}</span>
+                  <span class="bn-edit-label">{{ item.label }}</span>
+                  @if (item.isSection) {
+                    <button type="button" class="bn-edit-move"
+                            [attr.aria-label]="'Move ' + item.label + ' to the top of Home'"
+                            (click)="sectionToTop(item.navKey)">⤒</button>
+                  }
+                  <button type="button" class="bn-edit-pin" [class.on]="prefs.isPinned(item.navKey)"
+                          [attr.aria-label]="(prefs.isPinned(item.navKey) ? 'Remove ' : 'Add ') + item.label
+                                             + (prefs.isPinned(item.navKey) ? ' from' : ' to') + ' the bar'"
+                          (click)="togglePin(item.navKey)">
+                    {{ prefs.isPinned(item.navKey) ? '★' : '☆' }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
         } @else {
           @for (group of overflowSections(); track group.label) {
             <h3 class="bn-sheet-section">{{ group.label }}</h3>
@@ -325,6 +358,20 @@ import { NavAccessService, NavEntry, VisibleSection } from '../../../services/na
       white-space: nowrap;
     }
 
+    .bn-edit-pin {
+      flex: none;
+      min-width: 2.4rem;
+      min-height: 2.4rem;
+      border: none;
+      background: none;
+      color: var(--secondary-text, #888);
+      font-size: 1.15rem;
+      cursor: pointer;
+    }
+
+    /* Pinned reads as filled and accented — the star alone is too subtle outdoors. */
+    .bn-edit-pin.on { color: var(--accent-color); }
+
     .bn-edit-move {
       flex: none;
       width: 44px;
@@ -393,14 +440,66 @@ export class BottomNavComponent {
     return this.overflow().filter(i => !sectioned.has(i.navKey));
   });
 
-  readonly primary = computed(() =>
-    this.visibleItems().filter(i => !!i.route).slice(0, this.tabCount));
+  /** The bar: pinned entries in pin order, or the head of the list when nothing is pinned. */
+  readonly primary = computed(() => {
+    this.prefs.pins();
+    return this.prefs.barItems(this.visibleItems(), this.tabCount);
+  });
+
+  /** Alias used by the editor, so the template reads as what it is. */
+  readonly barItems = computed(() => this.primary());
+
+  /**
+   * Everything not currently in the bar, grouped for the editor: Home/Profile, then sections, then
+   * each section's pages. Grouping matters now that sections are pinnable too — a flat list would
+   * put "Permits" and "Work Request" side by side with nothing saying how they relate.
+   */
+  readonly editGroups = computed<{ label: string; items: NavEntry[] }[]>(() => {
+    const pinned = new Set(this.primary().map(i => i.navKey));
+    const groups: { label: string; items: NavEntry[] }[] = [];
+
+    const standalone = this.navAccess.visibleStandalone().filter(i => !pinned.has(i.navKey));
+    if (standalone.length) groups.push({ label: 'General', items: standalone });
+
+    const sections = this.navAccess.pinnableSectionEntries().filter(i => !pinned.has(i.navKey));
+    if (sections.length) groups.push({ label: 'Sections', items: sections });
+
+    for (const section of this.navAccess.visibleSections()) {
+      const items = section.items.filter(i => !pinned.has(i.navKey));
+      if (items.length) groups.push({ label: section.label, items });
+    }
+    return groups;
+  });
 
   readonly overflow = computed(() => {
     const promoted = new Set(this.primary().map(i => i.navKey));
     // An external entry has no route to promote, so it always lands in the sheet.
     return this.visibleItems().filter(i => !promoted.has(i.navKey));
   });
+
+  /** Shown when a pin is refused, so a dead tap is never silent. */
+  readonly pinMessage = signal('');
+
+  togglePin(navKey: string): void {
+    // Adopt what the bar currently shows before the first explicit pin — otherwise pinning one
+    // entry makes the pin list authoritative and the other tabs vanish.
+    this.prefs.seedPins(this.primary());
+    if (!this.prefs.togglePin(navKey, this.tabCount)) {
+      this.pinMessage.set(`The bar holds ${this.tabCount}. Remove one first.`);
+      setTimeout(() => this.pinMessage.set(''), 3000);
+    } else {
+      this.pinMessage.set('');
+    }
+  }
+
+  movePin(navKey: string, direction: -1 | 1): void {
+    this.prefs.movePin(navKey, direction);
+  }
+
+  /** Promote a section to the top of Home — the long move arrows made tedious. */
+  sectionToTop(navKey: string): void {
+    this.prefs.moveToTop(this.navAccess.sectionEntries(), navKey);
+  }
 
   constructor() {
     this.router.events.subscribe(() => {
@@ -427,10 +526,6 @@ export class BottomNavComponent {
    * Reorder one entry. The full visible list is passed through so the saved order stays complete —
    * persisting only the moved pair would lose the position of everything else.
    */
-  move(navKey: string, direction: -1 | 1): void {
-    this.prefs.move(this.visibleItems(), navKey, direction);
-  }
-
   resetOrder(): void { this.prefs.reset(); }
 
   /** External entries (SDS eBinder) open in a new tab; the URL comes from the hub. */

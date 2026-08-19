@@ -99,11 +99,15 @@ import { DriftService } from '../../services/drift.service';
               <div class="resync-suggestion drift" (click)="goToDrift()"
                    title="Open the Drift Center to review and resolve">
                 @if (hubDrift() > 0) {
-                  {{ hubDrift() }} row{{ hubDrift() === 1 ? '' : 's' }} drifting from the hub — review in Drift Center →
-                } @else if (spDrift() > 0) {
-                  {{ spDrift() }} row{{ spDrift() === 1 ? '' : 's' }} missing on SharePoint — review in Drift Center →
+                  <div>{{ hubDrift() }} record{{ hubDrift() === 1 ? '' : 's' }} differ from the hub — review →</div>
                 } @else {
-                  {{ driftAcknowledged() }} acknowledged drift{{ driftAcknowledged() === 1 ? '' : 's' }} — review in Drift Center →
+                  <div class="in-sync-note">✓ In sync with the hub</div>
+                }
+                @if (spDrift() > 0) {
+                  <div>{{ spDrift() }} record{{ spDrift() === 1 ? '' : 's' }} not yet on the SharePoint backup — review →</div>
+                }
+                @if (driftAcknowledged() > 0) {
+                  <div>{{ driftAcknowledged() }} acknowledged (reviewed, not resolved) — review →</div>
                 }
               </div>
             }
@@ -331,6 +335,15 @@ import { DriftService } from '../../services/drift.service';
       cursor: pointer;
     }
 
+    .resync-suggestion.drift > div + div {
+      margin-top: 4px;
+    }
+
+    .resync-suggestion.drift .in-sync-note {
+      color: #2e7d32;
+      font-weight: 600;
+    }
+
     .resync-suggestion.drift:hover {
       background: rgba(255, 152, 0, 0.18);
     }
@@ -515,8 +528,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       case 'disabled': return 'Sync Disabled';
       case 'disconnected': return 'Server Unavailable';
       case 'connecting': return 'Checking...';
-      case 'out-of-sync': return 'Out of Sync';
-      case 'possibly-out-of-sync': return 'Possibly Out of Sync';
+      case 'out-of-sync': return 'Out of Sync with Hub';
+      // ORANGE only ever fires when hubDrift == 0 (hub drift → the RED out-of-sync state), so it must NOT
+      // read as "out of sync with the hub" — that's the exact header-vs-menu confusion. Name the real cause.
+      case 'possibly-out-of-sync':
+        return this.spDrift() > 0 ? 'Backup Sync Pending' : 'Drift Acknowledged';
       case 'catching-up': return 'Syncing…';
       case 'connected': return 'All Up to Date';
     }
@@ -533,9 +549,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     }
     if (state === 'out-of-sync' || state === 'possibly-out-of-sync') {
       const h = this.hubDrift(); const sp = this.spDrift(); const a = this.driftAcknowledged();
-      if (h > 0) return `${h} row${h === 1 ? '' : 's'} drifting from the hub — open the Drift Center`;
-      if (sp > 0) return `${sp} row${sp === 1 ? '' : 's'} missing on SharePoint (backup) — open the Drift Center`;
-      if (a > 0) return `${a} acknowledged drift${a === 1 ? '' : 's'} — review in the Drift Center`;
+      if (h > 0) return `${h} record${h === 1 ? '' : 's'} differ from the hub — open the Drift Center`;
+      // Hub is in sync here (h == 0); say so, so the clean hub view in the Drift Center isn't a surprise.
+      if (sp > 0) return `Hub is in sync. ${sp} record${sp === 1 ? '' : 's'} not yet on the SharePoint backup — open the Drift Center`;
+      if (a > 0) return `Hub is in sync. ${a} acknowledged item${a === 1 ? '' : 's'} awaiting resolution — open the Drift Center`;
       return this.syncHealthMessage();
     }
     if (state === 'connected') return 'Connected and synchronized';

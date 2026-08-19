@@ -30,9 +30,7 @@ import com.dk_power.power_plant_java.entities.scheduler.Flow;
 import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.entities.users.ShiftDay;
-import com.dk_power.power_plant_java.entities.users.ContractorChangeReport;
 import com.dk_power.power_plant_java.sevice.users.ShiftDaySyncService;
-import com.dk_power.power_plant_java.sevice.users.ContractorChangeReportSyncService;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramPlacementService;
 import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramConnectionService;
@@ -118,7 +116,6 @@ public class ServiceFacade {
             // Users
             @Lazy NgUserService ngUserService,
             @Lazy ShiftDaySyncService shiftDaySyncService,
-            @Lazy ContractorChangeReportSyncService contractorChangeReportSyncService,
             // Permits
             @Lazy NgSafeWorkService ngSafeWorkService,
             @Lazy NgHotWorkService ngHotWorkService,
@@ -232,7 +229,6 @@ public class ServiceFacade {
         // Users
         serviceMap.put(User.class.getSimpleName(), ngUserService);
         serviceMap.put(ShiftDay.class.getSimpleName(), shiftDaySyncService);
-        serviceMap.put(ContractorChangeReport.class.getSimpleName(), contractorChangeReportSyncService);
         // Permits
         serviceMap.put(SafeWork.class.getSimpleName(), ngSafeWorkService);
         serviceMap.put(WorkCategoryProfile.class.getSimpleName(), workCategoryProfileSyncService);
