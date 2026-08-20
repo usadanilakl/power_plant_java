@@ -262,6 +262,7 @@ export class IpcHandlers {
     this.registerNewsHandlers();
     this.registerPersonnelHandlers();
     this.registerContractorHandlers();
+    this.registerMaximoSourceHandlers();
     this.registerChatAuthHandlers();
   }
 
@@ -1278,7 +1279,9 @@ export class IpcHandlers {
           + '&pageSize=200'
           + (ids ? '&personids=' + encodeURIComponent(ids) : '');
         const envelope = await this.springBootApiGet(url);
-        return { success: true, data: envelope?.responseData ?? null };
+        // Pass the message through: it names the source that answered, and says so when the hub
+        // failed and this fell back to a local call that may legitimately be empty.
+        return { success: true, data: envelope?.responseData ?? null, notice: envelope?.message };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
@@ -2775,6 +2778,42 @@ export class IpcHandlers {
     return value.replace(/'/g, "''");
   }
 
+  /**
+   * Where this machine gets Maximo data. Proxied through the local backend rather than stored in
+   * Electron: the backend is what actually decides per request, and its endpoint is localhost-only,
+   * so the setting cannot be changed from another machine.
+   */
+  private registerMaximoSourceHandlers(): void {
+    ipcMain.handle(events.IPC_MAXIMO_SOURCE_GET, async () => {
+      try {
+        const resp = await backendGet('/ng/settings/maximo-source');
+        return { success: true, data: resp?.responseData ?? resp };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_MAXIMO_SOURCE_SET, async (_evt, patch: Record<string, string>) => {
+      try {
+        const resp = await backendPost('/ng/settings/maximo-source', patch);
+        return { success: true, data: resp?.responseData ?? resp };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    // Actually call the hub and say what happened — the overview widget renders a failed call and an
+    // empty-but-successful one identically, so it cannot be used to verify a connection.
+    ipcMain.handle(events.IPC_MAXIMO_SOURCE_TEST, async () => {
+      try {
+        const resp = await backendPost('/ng/settings/maximo-source/test', {});
+        return { success: true, data: resp?.responseData ?? resp };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+  }
+
   private registerContractorHandlers(): void {
     /**
      * Contractor directory, hub first.
@@ -2788,19 +2827,23 @@ export class IpcHandlers {
      */
     ipcMain.handle(events.IPC_CONTRACTORS_GET_LIVE, async () => {
       try {
-        const hub = await backendGet('/ng/contractors/directory');
-        const contractors = hub?.responseData?.contractors ?? hub?.contractors;
+        const resp = await backendGet('/ng/contractors/directory');
+        const payload = resp?.responseData ?? resp;
+        const contractors = payload?.contractors;
         if (Array.isArray(contractors) && contractors.length > 0) {
+          // Pass the backend's OWN source through rather than calling it 'hub'. The local backend
+          // relays the hub when it can, but may be serving a saved snapshot or its own OnLocation
+          // pull — and the desktop banner is supposed to say which.
           return {
             success: true,
             data: contractors,
-            source: 'hub',
-            fetchedAt: hub?.responseData?.fetchedAt ?? hub?.fetchedAt ?? null
+            source: String(payload?.source ?? 'backend').toLowerCase(),
+            fetchedAt: payload?.fetchedAt ?? null
           };
         }
-        console.warn('[Contractors] Hub returned no directory — falling back to a direct OnLocation pull');
+        console.warn('[Contractors] Local backend has no directory yet — falling back to a direct OnLocation pull');
       } catch (err: any) {
-        console.warn(`[Contractors] Hub unavailable (${err.message}) — falling back to a direct OnLocation pull`);
+        console.warn(`[Contractors] Local backend unavailable (${err.message}) — falling back to a direct OnLocation pull`);
       }
 
       try {
@@ -2817,11 +2860,16 @@ export class IpcHandlers {
      */
     ipcMain.handle(events.IPC_CONTRACTORS_REFRESH_DIRECTORY, async () => {
       try {
-        const hub = await backendPost('/ng/contractors/directory/refresh', {});
-        const payload = hub?.responseData ?? hub;
+        const resp = await backendPost('/ng/contractors/directory/refresh', {});
+        const payload = resp?.responseData ?? resp;
         const contractors = payload?.contractors;
         if (Array.isArray(contractors) && contractors.length > 0) {
-          return { success: true, data: contractors, source: 'hub', fetchedAt: payload?.fetchedAt ?? null };
+          return {
+            success: true,
+            data: contractors,
+            source: String(payload?.source ?? 'backend').toLowerCase(),
+            fetchedAt: payload?.fetchedAt ?? null
+          };
         }
         console.warn('[Contractors] Hub refresh returned nothing — falling back to a direct OnLocation pull');
       } catch (err: any) {

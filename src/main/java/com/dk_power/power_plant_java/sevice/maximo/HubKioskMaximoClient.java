@@ -1,12 +1,10 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
-import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.config.MaximoSourceConfig;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.maximo.MaximoOverviewDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +25,7 @@ import java.util.Map;
  * read-only kiosk account (ROLE_KIOSK) against the hub's Plant-gated PWA endpoint, caching the long-lived hub
  * JWT and re-logging-in on expiry or a 401/403.
  *
- * <p>Active only when {@code maximo.source=hub} (the kiosk profile). A normal desktop/hub leaves this off and
+ * <p>Used when the Maximo source is set to the hub (Settings, or {@code maximo.source}). Otherwise unused —
  * calls Maximo directly. The credential lives entirely in the backend (never the renderer), and the account is
  * read-only, so a leaked token can only view the overview.
  *
@@ -35,21 +33,18 @@ import java.util.Map;
  * than stale/estimated data.
  */
 @Service
-@ConditionalOnProperty(name = "maximo.source", havingValue = "hub")
 @RequiredArgsConstructor
 @Slf4j
 public class HubKioskMaximoClient {
 
     private final RestTemplate restTemplate;
-    private final SyncConfig syncConfig;
-
-    /** Public hub base URL (e.g. https://jgportal.jpowerusa.com). Falls back to sync.server.url when blank. */
-    @Value("${maximo.hub.url:}")
-    private String hubUrlConfig;
-    @Value("${hub.kiosk.email:}")
-    private String kioskEmail;
-    @Value("${hub.kiosk.password:}")
-    private String kioskPassword;
+    /**
+     * Connection settings come from here, not from @Value, so a kiosk can be pointed at the PUBLIC
+     * hub URL from its own Settings page. The credentials used to be readable only from a properties
+     * file baked into the jar, which meant a kiosk in the field could select the hub but never
+     * actually configure it.
+     */
+    private final MaximoSourceConfig sourceConfig;
 
     /** Refresh the token this many seconds before its stated expiry, to avoid using an about-to-expire token. */
     private static final long SKEW_SECONDS = 300;
@@ -57,13 +52,20 @@ public class HubKioskMaximoClient {
     private volatile String token;
     private volatile Instant tokenExpiry = Instant.EPOCH;
 
-    /** Startup breadcrumb: if this line appears in the kiosk's log, maximo.source=hub is in effect and the
-     *  overview is being proxied to the hub (not called directly). Absence => still running the direct path. */
-    @jakarta.annotation.PostConstruct
-    void logActive() {
-        String url = !isBlank(hubUrlConfig) ? hubUrlConfig : syncConfig.getSyncServerUrl();
-        log.info("[Kiosk] Maximo HUB-proxy ACTIVE (maximo.source=hub) — /ng/maximo/bundle/overview -> {} as {} (credential {})",
-                url, kioskEmail, isBlank(kioskPassword) ? "MISSING" : "set");
+    /** Whether this client could actually reach the hub if asked — used to explain a dead toggle. */
+    public boolean isConfigured() {
+        return !isBlank(sourceConfig.getHubUrl())
+                && !isBlank(sourceConfig.getHubEmail())
+                && !isBlank(sourceConfig.getHubPassword());
+    }
+
+    /** What is missing, for a UI that has to tell someone why the hub option will not work. */
+    public String missingConfig() {
+        StringBuilder sb = new StringBuilder();
+        if (isBlank(sourceConfig.getHubUrl())) sb.append("hub URL ");
+        if (isBlank(sourceConfig.getHubEmail())) sb.append("hub account email ");
+        if (isBlank(sourceConfig.getHubPassword())) sb.append("hub account password ");
+        return sb.toString().trim();
     }
 
     /**
@@ -97,13 +99,16 @@ public class HubKioskMaximoClient {
     /** Cached hub JWT for the kiosk account; logs in when missing/expired or when {@code force} is set. */
     private synchronized String bearer(boolean force) {
         if (!force && token != null && Instant.now().isBefore(tokenExpiry)) return token;
-        if (isBlank(kioskEmail) || isBlank(kioskPassword)) {
-            throw new IllegalStateException("hub.kiosk.email / hub.kiosk.password must be set when maximo.source=hub");
+        String email = sourceConfig.getHubEmail();
+        String password = sourceConfig.getHubPassword();
+        if (isBlank(email) || isBlank(password)) {
+            throw new IllegalStateException("the Maximo source is set to the hub, but the hub account "
+                    + "email/password are not set (Settings > Maximo Data Source)");
         }
         String url = hubUrl() + "/api/pwa/auth/login";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, String> body = Map.of("email", kioskEmail, "password", kioskPassword);
+        Map<String, String> body = Map.of("email", email, "password", password);
         @SuppressWarnings("rawtypes")
         ResponseEntity<Map> resp = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
         Map<?, ?> b = resp.getBody();
@@ -111,13 +116,20 @@ public class HubKioskMaximoClient {
         token = String.valueOf(b.get("token"));
         long expiresIn = (b.get("expiresIn") instanceof Number n) ? n.longValue() : 3600L;
         tokenExpiry = Instant.now().plusSeconds(Math.max(60L, expiresIn - SKEW_SECONDS));
-        log.info("[Kiosk] obtained hub JWT for {} (expires in ~{}s)", kioskEmail, expiresIn);
+        log.info("[Kiosk] obtained hub JWT for {} (expires in ~{}s)", email, expiresIn);
         return token;
     }
 
+    /**
+     * The hub base URL. A kiosk on plant WiFi must use the PUBLIC address — the internal 10.x sync
+     * URL does not route there — so this never silently falls back to sync.server.url.
+     */
     private String hubUrl() {
-        String url = !isBlank(hubUrlConfig) ? hubUrlConfig : syncConfig.getSyncServerUrl();
-        if (isBlank(url)) throw new IllegalStateException("maximo.hub.url (or sync.server.url) is not configured");
+        String url = sourceConfig.getHubUrl();
+        if (isBlank(url)) {
+            throw new IllegalStateException("the hub URL is not configured (Settings > Maximo Data "
+                    + "Source). Use the public address, e.g. https://jgportal.jpowerusa.com");
+        }
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 

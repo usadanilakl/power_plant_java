@@ -206,6 +206,9 @@ public class SecurityConfigSpring {
                 // LAN-only endpoints — only internal IPs can access
                 .requestMatchers(lanOnlyMatcher(
                     "/api/sync/", "/api/field-sync/", "/api/resync/",
+                    // Contractor directory for desktops — same LAN trust as sync, so a desktop needs
+                    // neither an OnLocation key nor a hub account to show it.
+                    "/api/contractors/",
                     "/api/files/", "/api/update/", "/api/electron-update/",
                     "/api/resource-packs/", "/api/sync-updates/",
                     "/api/sync-test/", "/api/sync-e2e/",
@@ -280,6 +283,10 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/auth/**").authenticated()
 
                 // App shutdown — localhost only, no auth (allows Electron to stop another user's instance)
+                // Maximo source toggle — changes how THIS machine behaves, so only this machine's
+                // own Electron shell may set it. Not under the /ng/config/** permitAll, which any
+                // LAN caller can reach.
+                .requestMatchers(localhostMatcher("/ng/settings/")).permitAll()
                 .requestMatchers(localhostMatcher("/server/stop")).permitAll()
 
                 // Rounds report ingest — the desktop WebView AMS scraper POSTs

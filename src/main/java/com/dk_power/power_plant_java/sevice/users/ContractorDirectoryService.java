@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.clients.OnLocationClient;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.users.ContractorDto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import java.io.File;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A read-only contractor directory for lookup: who they are, how to reach them, and when their
@@ -41,6 +43,8 @@ public class ContractorDirectoryService {
     public enum Source {
         /** Straight from OnLocation. */
         ONLOCATION,
+        /** Relayed from the hub — a desktop's normal source. */
+        HUB,
         /** Nothing fetched yet this run — the snapshot left over from a previous one. */
         SNAPSHOT
     }
@@ -54,6 +58,7 @@ public class ContractorDirectoryService {
 
     private final SyncConfig syncConfig;
     private final ObjectMapper objectMapper;
+    private final org.springframework.web.client.RestTemplate restTemplate;
     /** OnLocationClient is {@code @ConditionalOnProperty} — absent on installs without the key. */
     private final ObjectProvider<OnLocationClient> onLocationClientProvider;
 
@@ -69,7 +74,6 @@ public class ContractorDirectoryService {
      */
     @Scheduled(fixedDelayString = "${contractor.directory.refresh-ms:3600000}", initialDelay = 60_000)
     public void scheduledRefresh() {
-        if (!syncConfig.isHubMode()) return;
         try {
             refresh();
         } catch (Exception e) {
@@ -95,6 +99,15 @@ public class ContractorDirectoryService {
      * list carrying an honest timestamp beats an empty one.
      */
     public Directory refresh() {
+        // A desktop relays the hub's copy: only the hub holds the OnLocation credential, and every
+        // desktop polling OnLocation independently would multiply that API traffic by the install
+        // count. Falls through to a direct pull when the hub can't be reached AND this machine
+        // happens to have a key of its own.
+        if (!syncConfig.isHubMode()) {
+            Directory fromHub = fetchFromHub();
+            if (fromHub != null) return store(fromHub);
+        }
+
         OnLocationClient client = onLocationClientProvider.getIfAvailable();
         if (client != null) {
             try {
@@ -106,11 +119,40 @@ public class ContractorDirectoryService {
             } catch (Exception e) {
                 log.warn("[ContractorDirectory] OnLocation fetch failed: {}", e.getMessage());
             }
-        } else {
+        } else if (syncConfig.isHubMode()) {
             log.warn("[ContractorDirectory] OnLocation is not configured (onlocation.api.key) — "
-                    + "the directory cannot be populated");
+                    + "the hub cannot populate the directory");
+        } else {
+            log.warn("[ContractorDirectory] Hub unreachable and no local OnLocation key — "
+                    + "serving whatever was cached");
         }
         return current;
+    }
+
+    /** @return the hub's directory, or null when it can't be reached or has nothing. */
+    private Directory fetchFromHub() {
+        String hubUrl = syncConfig.getSyncServerUrl();
+        if (hubUrl == null || hubUrl.isBlank()) return null;
+        String base = hubUrl.endsWith("/") ? hubUrl.substring(0, hubUrl.length() - 1) : hubUrl;
+        try {
+            // No credential by design — /api/contractors/ is LAN-gated on the hub, the same trust
+            // this desktop already uses for sync.
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = restTemplate.getForObject(base + "/api/contractors/directory", Map.class);
+            if (body == null) return null;
+            Object rows = body.get("contractors");
+            if (!(rows instanceof List<?> list) || list.isEmpty()) return null;
+
+            List<ContractorDto> contractors = objectMapper.convertValue(list, new TypeReference<List<ContractorDto>>() {});
+            Object stamp = body.get("fetchedAt");
+            // Keep the HUB's timestamp, not ours: the question a client asks is how old the
+            // OnLocation data is, not when this desktop last copied it.
+            Instant fetchedAt = stamp == null ? Instant.now() : Instant.parse(String.valueOf(stamp));
+            return new Directory(fetchedAt, Source.HUB, contractors);
+        } catch (Exception e) {
+            log.debug("[ContractorDirectory] Hub fetch failed ({}) — falling back", e.getMessage());
+            return null;
+        }
     }
 
     private Directory store(Directory directory) {

@@ -48,6 +48,9 @@ export const IPC_CHAT_GET_SUPABASE_SESSION = 'chat:get-supabase-session';
 
 // Contractors (invoke/handle)
 export const IPC_CONTRACTORS_GET_LIVE = 'contractors:get-live';
+export const IPC_MAXIMO_SOURCE_GET = 'maximo:source-get';
+export const IPC_MAXIMO_SOURCE_SET = 'maximo:source-set';
+export const IPC_MAXIMO_SOURCE_TEST = 'maximo:source-test';
 export const IPC_CONTRACTORS_REFRESH_DIRECTORY = 'contractors:refresh-directory';
 
 // WebView AMS — Excel report scraper (invoke/handle)

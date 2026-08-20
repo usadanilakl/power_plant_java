@@ -2,8 +2,11 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { GlobalMessageService } from '../../services/global-message.service';
+import { QrScannerService } from '../../shared/qr-scanner/qr-scanner.service';
+import { QrScannerComponent } from '../../shared/qr-scanner/qr-scanner.component';
 import { LotoStandardApiService } from './loto-standard-api.service';
 import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.model';
 
@@ -23,7 +26,7 @@ import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.mod
 @Component({
   selector: 'app-loto-point-create',
   standalone: true,
-  imports: [MainLayoutComponent],
+  imports: [MainLayoutComponent, QrScannerComponent],
   template: `
     <app-main-layout [header]="editingId() ? 'Edit LOTO point' : 'New LOTO point'">
       <ng-container main-content>
@@ -40,6 +43,9 @@ import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.mod
               <input class="p-input" type="text" [value]="tag()" (input)="tag.set($any($event.target).value)"
                      placeholder="e.g. 89G-1/Q9" autofocus>
             </label>
+            <button class="p-btn-scan" [disabled]="checkingTag()" (click)="scanTag()">
+              📷 Scan tag QR
+            </button>
             @if (lookupError()) { <p class="p-msg p-error">{{ lookupError() }}</p> }
             @if (lookupMatches().length > 0) {
               <div class="p-matches">
@@ -153,6 +159,8 @@ import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.mod
             </div>
           }
         </div>
+        <!-- QR scanner overlay — service manages visibility; only rendered when isScannerVisible(). -->
+        <app-qr-scanner />
       </ng-container>
     </app-main-layout>
   `,
@@ -180,6 +188,8 @@ import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.mod
     .p-btn-primary { min-height: 52px; background: var(--success-solid); color: var(--on-solid); border: none; border-radius: 10px; padding: 0.9rem; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
     .p-btn-primary:disabled { opacity: 0.5; cursor: default; }
     .p-btn-secondary { min-height: 44px; background: transparent; border: 1px solid var(--border-color); color: var(--primary-text); border-radius: 10px; padding: 0.6rem; font: inherit; cursor: pointer; }
+    .p-btn-scan { min-height: 48px; margin: 0.5rem 0; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 10px; padding: 0.7rem; font: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+    .p-btn-scan:disabled { opacity: 0.5; cursor: default; }
     .p-flags { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.5rem 0.75rem; margin: 0.5rem 0; }
     .p-flag-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; }
     .p-flag-label { color: var(--primary-text); font-size: 0.9rem; }
@@ -194,6 +204,7 @@ export class LotoPointCreateComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private messageService = inject(GlobalMessageService);
+  private qr = inject(QrScannerService);
 
   editingId = signal<number | null>(null);
   addToStandardId = signal<number | null>(null);
@@ -245,6 +256,28 @@ export class LotoPointCreateComponent implements OnInit {
         this.phase.set('form');
       }
     }
+  }
+
+  /**
+   * Open the QR scanner. On success, extract the tag (either raw text OR JSON like
+   * {"tagNumber":"…"} — both are common encoding conventions in the field) and kick off the
+   * existence check. Result: walker can point-scan-check without typing.
+   */
+  scanTag(): void {
+    this.qr.openScanner().pipe(take(1)).subscribe(raw => {
+      if (!raw) return;
+      let extracted = raw.trim();
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && typeof parsed.tagNumber === 'string') {
+          extracted = parsed.tagNumber.trim();
+        }
+      } catch { /* not JSON — use raw string as-is */ }
+      if (!extracted) { this.messageService.showError('Scanned QR was empty.'); return; }
+      this.tag.set(extracted);
+      // Auto-run the lookup so the walker doesn't need a second tap after scanning.
+      this.checkTag();
+    });
   }
 
   checkTag(): void {

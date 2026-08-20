@@ -65,7 +65,12 @@ interface OverviewSection {
           <p class="feature-desc">{{ trackingLabel }}</p>
 
           <div class="no-wo" *ngIf="!overview || (!totalItems && status.state === 'running')">
-            {{ status.state === 'running' ? 'No work orders for the tracked people' : 'Requires ' + appName }}
+            <ng-container *ngIf="status.state === 'running'; else needsApp">
+              <!-- Without this, an unreachable hub looked exactly like a quiet week. -->
+              <span *ngIf="notice" class="ov-degraded">Couldn't reach the hub — showing this machine's own data.</span>
+              {{ notice ? '' : 'No work orders for the tracked people' }}
+            </ng-container>
+            <ng-template #needsApp>Requires {{ appName }}</ng-template>
           </div>
 
           <ng-container *ngIf="overview && totalItems > 0">
@@ -160,6 +165,8 @@ interface OverviewSection {
     .feature-desc { font-size: 11px; color: var(--text-muted); margin: 0; flex-shrink: 0; }
     .feature-status { font-size: 11px; color: var(--accent-success); flex-shrink: 0; }
     .feature-status.requires-sb { color: var(--text-muted); }
+    .ov-degraded { display: block; color: #E4A11B; font-weight: 600; margin-bottom: 0.25rem; }
+
     .no-wo { font-size: 12px; color: var(--accent-success); }
 
     .ov-tabs {
@@ -234,6 +241,8 @@ interface OverviewSection {
 export class MaximoWidgetComponent implements OnChanges {
   @Input() status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   @Input() overview: MaximoOverview | null = null;
+  /** Non-empty when the answer came from a degraded path (e.g. the hub was unreachable). */
+  @Input() notice = '';
   @Input() editMode = false;
   @Input() cols = 1;
   @Input() rows = 1;

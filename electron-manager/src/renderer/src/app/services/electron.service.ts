@@ -616,6 +616,32 @@ export interface ContractorEntry {
   status?: string;
 }
 
+/** Where this machine gets Maximo data, and whether each option can actually work here. */
+export interface MaximoSourceSetting {
+  source: 'local' | 'hub';
+  /** A local maximo.api-key is present. */
+  localAvailable: boolean;
+  /** Hub URL + kiosk credentials are all set. */
+  hubAvailable: boolean;
+  /** Which of those are missing, when hubAvailable is false. */
+  hubMissing: string;
+  /** Hub base URL. Must be the PUBLIC address on a kiosk — the internal 10.x address won't route. */
+  hubUrl: string;
+  hubEmail: string;
+  /** The password is never sent back, only whether one is stored. */
+  hubPasswordSet: boolean;
+  /** 'properties' = came from the jar's device-config; 'device' = entered on this machine. */
+  hubConfigSource: 'properties' | 'device';
+}
+
+/** Result of actually calling the hub. */
+export interface MaximoSourceTest {
+  ok: boolean;
+  hubUrl: string;
+  detail: string;
+  personCount?: number;
+}
+
 export interface ContractorReport {
   id: number;
   runAt: string;
@@ -741,7 +767,7 @@ interface ElectronAPI {
 
   // Maximo bundles
   maximoGetLeadOpSummary: (status?: string) => Promise<IpcResult<MaximoLeadOpSummary>>;
-  maximoGetOverview: () => Promise<IpcResult<MaximoOverview>>;
+  maximoGetOverview: () => Promise<IpcResult<MaximoOverview> & { notice?: string }>;
   maximoGetOverviewConfig: () => Promise<IpcResult<MaximoOverviewConfig>>;
   maximoSaveOverviewConfig: (config: MaximoOverviewConfig) => Promise<IpcResult>;
   maximoGetLaborPeople: () => Promise<IpcResult<MaximoLaborPerson[]>>;
@@ -791,6 +817,9 @@ interface ElectronAPI {
   // Contractors
   contractorsGetLive: () => Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }>;
   contractorsRefreshDirectory: () => Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }>;
+  maximoSourceGet: () => Promise<IpcResult<MaximoSourceSetting>>;
+  maximoSourceSet: (patch: Record<string, string>) => Promise<IpcResult<MaximoSourceSetting>>;
+  maximoSourceTest: () => Promise<IpcResult<MaximoSourceTest>>;
 
   // WebView AMS — Rounds report scraper
   webViewAmsGetReports: () => Promise<IpcResult<WebViewAmsReport[]>>;
@@ -1101,7 +1130,7 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.maximoGetLeadOpSummary(status);
   }
 
-  async maximoGetOverview(): Promise<IpcResult<MaximoOverview>> {
+  async maximoGetOverview(): Promise<IpcResult<MaximoOverview> & { notice?: string }> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.maximoGetOverview();
   }
@@ -1295,6 +1324,21 @@ export class ElectronService implements OnDestroy {
   async contractorsRefreshDirectory(): Promise<IpcResult<ContractorEntry[]> & { source?: 'hub' | 'onlocation'; fetchedAt?: string | null }> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.contractorsRefreshDirectory();
+  }
+
+  async maximoSourceGet(): Promise<IpcResult<MaximoSourceSetting>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoSourceGet();
+  }
+
+  async maximoSourceSet(patch: Record<string, string>): Promise<IpcResult<MaximoSourceSetting>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoSourceSet(patch);
+  }
+
+  async maximoSourceTest(): Promise<IpcResult<MaximoSourceTest>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoSourceTest();
   }
 
 

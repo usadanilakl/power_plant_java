@@ -31,10 +31,14 @@ public class OnLocationClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String apiKey;
     private final String baseUrl;
+    /** Numeric id of the OnLocation custom field holding the employer name (tenant-specific). */
+    private final String companyFieldId;
 
     public OnLocationClient(@Value("${onlocation.api.key}") String apiKey,
-                            @Value("${onlocation.base.url:https://api.whosonlocation.com/v1}") String baseUrl) {
+                            @Value("${onlocation.base.url:https://api.whosonlocation.com/v1}") String baseUrl,
+                            @Value("${onlocation.company.customfield.id:3135}") String companyFieldId) {
         this.apiKey = apiKey;
+        this.companyFieldId = companyFieldId;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
@@ -44,9 +48,6 @@ public class OnLocationClient {
      */
     public List<ContractorDto> getContractors() {
         JsonNode members = get("/sp/member");
-        JsonNode orgs = get("/sp/org");
-
-        Map<String, String> orgNames = indexOrgs(orgs);
         List<JsonNode> memberList = unwrap(members);
         List<ContractorDto> result = new ArrayList<>(memberList.size());
 
@@ -58,7 +59,7 @@ public class OnLocationClient {
                     .name(extractName(m))
                     .email(coalesce(asText(m, "email"), asText(m, "altemail")))
                     .phone(coalesce(asText(m, "mobile"), asText(m, "phone")))
-                    .company(extractCompany(m, orgNames))
+                    .company(extractCompany(m))
                     .title(asText(m, "title"))
                     .validFrom(asText(m, "valid_from"))
                     .validTo(asText(m, "valid_to"))
@@ -80,16 +81,6 @@ public class OnLocationClient {
         } catch (Exception e) {
             throw new RuntimeException("OnLocation parse failed for " + path + ": " + e.getMessage(), e);
         }
-    }
-
-    private Map<String, String> indexOrgs(JsonNode orgs) {
-        Map<String, String> map = new HashMap<>();
-        for (JsonNode o : unwrap(orgs)) {
-            String id = asText(o, "id");
-            String name = firstNonBlank(asText(o, "name"), asText(o, "company_name"), asText(o, "org_name"));
-            if (id != null && name != null) map.put(id, name);
-        }
-        return map;
     }
 
     /** OnLocation responses are usually a single-key wrapper around the array. */
@@ -118,16 +109,25 @@ public class OnLocationClient {
         return firstNonBlank(combine(first, last), "Unknown");
     }
 
-    private String extractCompany(JsonNode member, Map<String, String> orgNames) {
-        JsonNode spOrgs = member.get("sp_orgs");
-        if (spOrgs != null && spOrgs.isArray() && spOrgs.size() > 0) {
-            JsonNode primary = spOrgs.get(0);
-            String embedded = asText(primary, "name");
-            if (embedded != null && !embedded.isBlank()) return embedded;
-            String embeddedId = asText(primary, "id");
-            if (embeddedId != null && orgNames.containsKey(embeddedId)) return orgNames.get(embeddedId);
+    /**
+     * The contractor's employer.
+     *
+     * <p>NOT {@code sp_orgs} — that is the OnLocation *organization*, which for this tenant is the
+     * site itself: all 1764 members return "Jackson Generation", so using it made the column
+     * meaningless (and newer members carry an empty {@code sp_orgs} anyway). The employer lives in a
+     * per-tenant custom field, keyed by numeric id in the {@code customfields} object.
+     *
+     * <p>Returns null rather than a filler like "Contractor" when unset: most records are still
+     * blank in OnLocation, and a blank cell reads as "not recorded" while "Contractor" reads as a
+     * real answer.
+     */
+    private String extractCompany(JsonNode member) {
+        JsonNode custom = member.get("customfields");
+        if (custom != null && custom.isObject()) {
+            String value = asText(custom, companyFieldId);
+            if (value != null) return value;
         }
-        return firstNonBlank(asText(member, "company"), "Contractor");
+        return asText(member, "company");
     }
 
     private static String asText(JsonNode node, String field) {

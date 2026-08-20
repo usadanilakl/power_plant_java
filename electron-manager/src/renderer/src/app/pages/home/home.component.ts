@@ -161,7 +161,7 @@ interface DashboardGridsterItem extends GridsterItem {
               [newWorkRequestCount]="newWorkRequestCount"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
             <app-maximo-widget *ngSwitchCase="'maximo-lead-op'"
-              [status]="status" [overview]="maximoOverview" (changed)="loadMaximoOverview()"
+              [status]="status" [overview]="maximoOverview" [notice]="maximoNotice" (changed)="loadMaximoOverview()"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
             <app-external-links-widget *ngSwitchCase="'external-links'"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
@@ -332,6 +332,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   newWorkRequestCount: number | null = null;
   activeWorkRequestCount: number | null = null;
   maximoOverview: MaximoOverview | null = null;
+  /** Set when the answer came from a degraded path, e.g. the hub was unreachable. */
+  maximoNotice = '';
   weatherStatus: WeatherStatus | null = null;
   weatherForecast: WeatherForecast | null = null;
   perryStatus: PerryWeatherStatus | null = null;
@@ -657,6 +659,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       const result = await this.electronService.maximoGetOverview();
       if (result.success && result.data) this.maximoOverview = result.data;
+      // "local (hub unavailable: …)" — a degraded answer the widget must not render as "no work".
+      const notice = result.notice ?? '';
+      this.maximoNotice = notice.includes('hub unavailable') ? notice : '';
     } catch {}
   }
 

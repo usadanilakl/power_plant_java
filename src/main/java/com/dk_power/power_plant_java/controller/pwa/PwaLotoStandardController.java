@@ -241,6 +241,33 @@ public class PwaLotoStandardController {
         }
     }
 
+    /**
+     * Detach a point from a standard (soft — the LOTO point itself survives; only the
+     * standard's link is severed). Delegates to the desktop
+     * {@code removeLotoPointFromStandard} which handles CA gating + Approved-standard
+     * pending-review capture.
+     */
+    @DeleteMapping("/{standardId}/points/{pointId}")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> removePointFromStandard(
+            @PathVariable Long standardId, @PathVariable Long pointId) {
+        try {
+            // Method name is `removeLotoPointToStandard` in the desktop service (kept for
+            // consistency with the sibling `addLotoPointToStandard` naming quirk).
+            LotoStandardDto updated = lotoStandardService.removeLotoPointToStandard(pointId, String.valueOf(standardId));
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Point removed from standard"));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA removePointFromStandard failed (standard={}, point={})", standardId, pointId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to remove point: " + e.getMessage()));
+        }
+    }
+
     private LotoStandardDto safeDto(Long id) {
         try {
             return lotoStandardService.getDtoById(String.valueOf(id));

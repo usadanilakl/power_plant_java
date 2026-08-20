@@ -4,6 +4,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { ServerStatusService } from '../../services/server-status.service';
+import { PortalToBodyDirective } from '../../shared/portal-to-body.directive';
 import { LotoDrawingService } from './loto-drawing.service';
 import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
 import { LotoPointActionsComponent } from './loto-point-actions.component';
@@ -23,7 +24,7 @@ type TransitionMode = 'verify' | 'walkdown' | null;
 @Component({
   selector: 'app-loto-standard-walkdown',
   standalone: true,
-  imports: [MainLayoutComponent, LotoDrawingViewerComponent, LotoPointActionsComponent],
+  imports: [MainLayoutComponent, LotoDrawingViewerComponent, LotoPointActionsComponent, PortalToBodyDirective],
   template: `
     <app-main-layout [header]="'Verify / Walk down'">
       <ng-container main-content>
@@ -260,7 +261,7 @@ type TransitionMode = 'verify' | 'walkdown' | null;
             existing corr* / setCorr* / setCheck helpers already do the right thing per pointId.
           -->
           @if (activePoint(); as ap) {
-            <div class="w-dialog-backdrop" (click)="closePointDialog()">
+            <div class="w-dialog-backdrop" appPortalToBody (click)="closePointDialog()">
               <div class="w-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
                 <div class="w-dialog-head">
                   <div class="w-dialog-title">
@@ -510,6 +511,13 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                   }
 
                   <app-loto-point-actions [pointId]="ap.id" [pointLabel]="corrTag(ap) || null" />
+
+                  @if (canEdit() && std()?.id) {
+                    <button class="w-danger-btn" [disabled]="removingPointId() === ap.id"
+                            (click)="removePointFromStandard(ap.id)">
+                      {{ removingPointId() === ap.id ? 'Removing…' : '🗑 Remove point from this standard' }}
+                    </button>
+                  }
                 </div>
 
                 <div class="w-dialog-foot">
@@ -659,6 +667,9 @@ type TransitionMode = 'verify' | 'walkdown' | null;
     /* Persistent-verified row — accent border so it reads as the finishing action, not another check. */
     .w-verified-row { border-top: 2px solid var(--accent-color); margin-top: 0.4rem; padding-top: 0.6rem; }
     .w-verified-row .w-field-caption { color: var(--accent-color); }
+    .w-danger-btn { display: block; width: 100%; margin-top: 0.75rem; min-height: 44px; background: transparent; color: var(--danger-text); border: 1px solid var(--danger-solid); border-radius: 10px; padding: 0.55rem 0.75rem; font: inherit; font-weight: 600; cursor: pointer; }
+    .w-danger-btn:hover { background: var(--danger-solid); color: var(--on-solid); }
+    .w-danger-btn:disabled { opacity: 0.5; cursor: default; }
   `]
 })
 export class LotoStandardWalkdownComponent implements OnInit {
@@ -750,6 +761,9 @@ export class LotoStandardWalkdownComponent implements OnInit {
     return this.points().find(p => p.id === id) ?? null;
   });
   openPointDialog(pointId: number): void {
+    // The dialog's position-fixed + body-scroll-lock is handled by [appPortalToBody] on the
+    // .w-dialog-backdrop; the directive fires when @if creates the element and cleans up when
+    // it's destroyed. No need to touch scroll here.
     this.activePointId.set(pointId);
     this.haptics.tap('tap');
   }
@@ -775,6 +789,37 @@ export class LotoStandardWalkdownComponent implements OnInit {
     const cid = this.draft()?.corrections?.[String(p.id)]?.locationId;
     if (cid) return this.positions().location.find(o => o.id === cid)?.name ?? '';
     return p.location?.name ?? '';
+  }
+
+  /** Point id currently being removed (spinner + disable state on the button). */
+  removingPointId = signal<number | null>(null);
+  /**
+   * Detach a point from this standard. Only reachable in editable modes (Draft / New–Pending
+   * Reapproval / Verified — same as canEdit()). Confirms with the walker, calls the server,
+   * closes the dialog on success, and drops the point from the local list. Errors flash.
+   */
+  removePointFromStandard(pointId: number): void {
+    const s = this.std();
+    if (!s?.id) return;
+    if (this.removingPointId() !== null) return;
+    const p = this.points().find(x => x.id === pointId);
+    const label = p?.tagNumber ? `“${p.tagNumber}”` : `point #${pointId}`;
+    if (typeof confirm === 'function' && !confirm(`Remove ${label} from this standard? The LOTO point itself stays in the hub — only the standard's link is severed.`)) return;
+    this.removingPointId.set(pointId);
+    // HttpClient observables complete after one emission — the subscribe won't leak past navigation.
+    this.api.removePointFromStandard(s.id, pointId)
+      .subscribe({
+        next: (updated) => {
+          this.removingPointId.set(null);
+          if (updated) { this.std.set(updated); this.store.cacheStandard(updated); }
+          this.closePointDialog();
+          this.flashMsg('Point removed from standard.');
+        },
+        error: (err) => {
+          this.removingPointId.set(null);
+          this.flashMsg(err?.error?.message ?? err?.message ?? 'Remove failed', true);
+        },
+      });
   }
 
   ngOnInit(): void {

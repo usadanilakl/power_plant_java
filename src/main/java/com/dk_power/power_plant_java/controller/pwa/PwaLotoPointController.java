@@ -10,7 +10,6 @@ import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
-import com.dk_power.power_plant_java.entities.users.LotoRole;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
@@ -138,27 +137,47 @@ public class PwaLotoPointController {
     // ── Points-pile walkdown ────────────────────────────────────────────────
 
     /**
-     * Return a de-duplicated pile of LOTO points selected by any combination of criteria:
+     * Return a de-duplicated pile of LOTO points matching a combination of the desktop's most
+     * common table filters. Every param is optional — supplying none is a 400 (would otherwise
+     * dump every point in the plant). Provided params AND together.
+     *
      * <ul>
-     *   <li>{@code standardIds} — union of every point on the given LOTO standards</li>
-     *   <li>{@code locationId} — filter to points whose {@code location} Value id matches</li>
-     *   <li>{@code system}     — filter to points whose {@code system} free-text (LotoPointDto.system)
-     *       matches (case-insensitive). LotoPointDto doesn't ship the systemValue Value FK so the
-     *       string is what we key on for now.</li>
+     *   <li>{@code standardIds}    — union of every point on the given LOTO standards (seed set)</li>
+     *   <li>{@code locationId}     — {@code location} Value FK id match</li>
+     *   <li>{@code eqTypeId}       — {@code eqType} Value FK id match</li>
+     *   <li>{@code isoPosId}       — {@code isoPos} Value FK id match</li>
+     *   <li>{@code normPosId}      — {@code normPos} Value FK id match</li>
+     *   <li>{@code system}         — free-text system contains-match (case-insensitive)</li>
+     *   <li>{@code unit}           — exact match on the free-text unit column</li>
+     *   <li>{@code tagNumber}      — contains-match on tagNumber (case-insensitive)</li>
+     *   <li>{@code description}    — contains-match on description (case-insensitive)</li>
+     *   <li>{@code specificLocation} — contains-match on specificLocation (case-insensitive)</li>
      * </ul>
-     * When both a standardIds set and a location/system filter are supplied the location/system
-     * acts as a further filter on the pile. When only standardIds is empty and a filter is
-     * supplied we scan every non-deleted LOTO point (small dataset in practice — dozens per
-     * location, hundreds per system). Response is a fat {@link LotoPointDto} so the mobile
-     * dialog has isoPos/normPos/location/system/isLabeled/isLockable/isVerified without a
-     * second round-trip per point.
+     * Response is a fat {@link LotoPointDto} — same shape the standard walkdown already handles.
      */
     @GetMapping("/walkdown-pile")
     public ResponseEntity<NgApiResponse<List<LotoPointDto>>> walkdownPile(
             @RequestParam(required = false) List<Long> standardIds,
             @RequestParam(required = false) Long locationId,
-            @RequestParam(required = false) String system) {
+            @RequestParam(required = false) Long eqTypeId,
+            @RequestParam(required = false) Long isoPosId,
+            @RequestParam(required = false) Long normPosId,
+            @RequestParam(required = false) String system,
+            @RequestParam(required = false) String unit,
+            @RequestParam(required = false) String tagNumber,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String specificLocation) {
         try {
+            boolean anyFilter = (standardIds != null && !standardIds.isEmpty())
+                    || locationId != null || eqTypeId != null || isoPosId != null || normPosId != null
+                    || nonBlank(system) || nonBlank(unit) || nonBlank(tagNumber)
+                    || nonBlank(description) || nonBlank(specificLocation);
+            if (!anyFilter) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(List.of(), "Provide at least one filter"));
+            }
+
+            // Seed: if standardIds is provided, union of those standards' points. Otherwise scan all.
             java.util.LinkedHashMap<Long, LotoPointDto> byId = new java.util.LinkedHashMap<>();
             if (standardIds != null && !standardIds.isEmpty()) {
                 for (LotoStandard s : lotoStandardRepo.findAllById(standardIds)) {
@@ -168,29 +187,24 @@ public class PwaLotoPointController {
                         byId.putIfAbsent(p.getId(), lotoPointService.toDto(p));
                     }
                 }
-            } else if (locationId != null || (system != null && !system.isBlank())) {
-                // No standards selected → scan all points and filter. `findAll()` is bounded by
-                // the deleted-filter on the entity, so we don't drag soft-deleted rows.
-                for (LotoPointDto dto : lotoPointService.getAllDtos()) {
-                    if (matchesFilter(dto, locationId, system)) byId.putIfAbsent(dto.getId(), dto);
-                }
             } else {
-                return ResponseEntity.badRequest()
-                        .body(new NgApiResponse<>(List.of(), "Provide standardIds, locationId, or system"));
+                for (LotoPointDto dto : lotoPointService.getAllDtos()) {
+                    byId.putIfAbsent(dto.getId(), dto);
+                }
             }
-            // Apply location/system filter on top of standardIds too (further-narrow semantics).
+
             List<LotoPointDto> pile = new java.util.ArrayList<>(byId.values());
-            if (locationId != null || (system != null && !system.isBlank())) {
-                pile.removeIf(dto -> !matchesFilter(dto, locationId, system));
-            }
+            pile.removeIf(dto -> !matchesFilter(dto, locationId, eqTypeId, isoPosId, normPosId,
+                    system, unit, tagNumber, description, specificLocation));
             return ResponseEntity.ok(new NgApiResponse<>(pile, "OK"));
         } catch (Exception e) {
-            log.error("PWA walkdownPile failed (standards={}, location={}, system={})",
-                    standardIds, locationId, system, e);
+            log.error("PWA walkdownPile failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new NgApiResponse<>(List.of(), "Failed to load points: " + e.getMessage()));
         }
     }
+
+    private static boolean nonBlank(String s) { return s != null && !s.isBlank(); }
 
     /**
      * Distinct free-text `system` values across every LOTO point — for populating the
@@ -211,16 +225,74 @@ public class PwaLotoPointController {
         }
     }
 
-    private static boolean matchesFilter(LotoPointDto dto, Long locationId, String system) {
+    private static boolean matchesFilter(LotoPointDto dto,
+                                         Long locationId, Long eqTypeId, Long isoPosId, Long normPosId,
+                                         String system, String unit, String tagNumber,
+                                         String description, String specificLocation) {
         if (locationId != null) {
-            Long loc = dto.getLocation() != null ? dto.getLocation().getId() : null;
-            if (loc == null || !loc.equals(locationId)) return false;
+            Long v = dto.getLocation() != null ? dto.getLocation().getId() : null;
+            if (v == null || !v.equals(locationId)) return false;
         }
-        if (system != null && !system.isBlank()) {
+        if (eqTypeId != null) {
+            Long v = dto.getEqType() != null ? dto.getEqType().getId() : null;
+            if (v == null || !v.equals(eqTypeId)) return false;
+        }
+        if (isoPosId != null) {
+            Long v = dto.getIsoPos() != null ? dto.getIsoPos().getId() : null;
+            if (v == null || !v.equals(isoPosId)) return false;
+        }
+        if (normPosId != null) {
+            Long v = dto.getNormPos() != null ? dto.getNormPos().getId() : null;
+            if (v == null || !v.equals(normPosId)) return false;
+        }
+        if (nonBlank(system)) {
             String s = dto.getSystem();
-            if (s == null || !s.trim().equalsIgnoreCase(system.trim())) return false;
+            if (s == null || !s.trim().toLowerCase().contains(system.trim().toLowerCase())) return false;
+        }
+        if (nonBlank(unit)) {
+            String u = dto.getUnit();
+            if (u == null || !u.trim().equalsIgnoreCase(unit.trim())) return false;
+        }
+        if (nonBlank(tagNumber)) {
+            String t = dto.getTagNumber();
+            if (t == null || !t.toLowerCase().contains(tagNumber.trim().toLowerCase())) return false;
+        }
+        if (nonBlank(description)) {
+            String d = dto.getDescription();
+            if (d == null || !d.toLowerCase().contains(description.trim().toLowerCase())) return false;
+        }
+        if (nonBlank(specificLocation)) {
+            String s = dto.getSpecificLocation();
+            if (s == null || !s.toLowerCase().contains(specificLocation.trim().toLowerCase())) return false;
         }
         return true;
+    }
+
+    /**
+     * Options bundle for the "walk down by filter" picker on the PWA — distinct free-text unit
+     * values and the eqType Value list, so the picker can populate its dropdowns without pulling
+     * the whole point corpus twice. Systems + locations + positions are already served by other
+     * endpoints (/systems, /positions).
+     */
+    @GetMapping("/filter-options")
+    public ResponseEntity<NgApiResponse<java.util.Map<String, Object>>> filterOptions() {
+        try {
+            java.util.TreeSet<String> units = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            for (LotoPointDto dto : lotoPointService.getAllDtos()) {
+                if (dto.getUnit() != null && !dto.getUnit().isBlank()) units.add(dto.getUnit().trim());
+            }
+            java.util.Map<String, Object> options = new java.util.LinkedHashMap<>();
+            options.put("units", new java.util.ArrayList<>(units));
+            // eqType Values via the standard walkdown positions endpoint's shared helper —
+            // we don't inject that service here, so return an empty list and let the client
+            // hit the existing /positions endpoint if it wants eqType options too. Adding
+            // eqType server-side here would require another injection; keep this endpoint tight.
+            return ResponseEntity.ok(new NgApiResponse<>(options, "OK"));
+        } catch (Exception e) {
+            log.error("PWA filterOptions failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(java.util.Map.of(), "Failed: " + e.getMessage()));
+        }
     }
 
     /**

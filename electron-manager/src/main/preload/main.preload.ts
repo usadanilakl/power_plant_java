@@ -210,6 +210,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Contractors
   contractorsGetLive: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_GET_LIVE),
   contractorsRefreshDirectory: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_CONTRACTORS_REFRESH_DIRECTORY),
+  maximoSourceGet: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_MAXIMO_SOURCE_GET),
+  maximoSourceSet: (patch: Record<string, string>): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_MAXIMO_SOURCE_SET, patch),
+  maximoSourceTest: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_MAXIMO_SOURCE_TEST),
 
   // WebView AMS — Excel report scraper
   webViewAmsGetReports: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_REPORTS),

@@ -1930,13 +1930,16 @@ export class PersonnelComponent implements OnInit {
     const age = this.contractorFetchedAt
       ? new Date(this.contractorFetchedAt).toLocaleString()
       : '';
-    if (this.contractorSource === 'onlocation') {
-      return 'Pulled directly from OnLocation — the hub was unavailable, so this copy is local to this machine.';
+    switch (this.contractorSource) {
+      case 'hub':
+        return age ? `From the hub, refreshed ${age}` : 'From the hub';
+      case 'snapshot':
+        return age ? `Saved copy — the hub last refreshed this ${age}` : 'Saved copy — the hub has not been reached';
+      case 'onlocation':
+        return 'Pulled directly from OnLocation on this machine — the hub could not be reached.';
+      default:
+        return age ? `Refreshed ${age}` : '';
     }
-    if (this.contractorSource === 'hub') {
-      return age ? `From the hub, refreshed ${age}` : 'From the hub';
-    }
-    return '';
   }
 
   async loadContractors(forceRefresh = false): Promise<void> {

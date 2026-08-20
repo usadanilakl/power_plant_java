@@ -43,13 +43,31 @@ export class LotoStandardApiService {
 
   // ── Points-pile walkdown (LOTO Points, not standard-bound) ───────────────
 
-  /** Pile of LOTO points selected by standards / location / system. Fat DTOs — same shape as
-   *  the LotoStandard.lotoPoints[] entries the walkdown UI already handles. */
-  getPointsPile(opts: { standardIds?: number[]; locationId?: number | null; system?: string | null }): Observable<LotoPointRef[]> {
+  /** Pile of LOTO points selected by an arbitrary combination of the desktop's table filters.
+   *  Fat DTOs — same shape as the LotoStandard.lotoPoints[] entries the walkdown UI already handles. */
+  getPointsPile(opts: {
+    standardIds?: number[];
+    locationId?: number | null;
+    eqTypeId?: number | null;
+    isoPosId?: number | null;
+    normPosId?: number | null;
+    system?: string | null;
+    unit?: string | null;
+    tagNumber?: string | null;
+    description?: string | null;
+    specificLocation?: string | null;
+  }): Observable<LotoPointRef[]> {
     const params: string[] = [];
     if (opts.standardIds?.length) params.push(`standardIds=${opts.standardIds.join(',')}`);
     if (opts.locationId != null) params.push(`locationId=${opts.locationId}`);
+    if (opts.eqTypeId != null) params.push(`eqTypeId=${opts.eqTypeId}`);
+    if (opts.isoPosId != null) params.push(`isoPosId=${opts.isoPosId}`);
+    if (opts.normPosId != null) params.push(`normPosId=${opts.normPosId}`);
     if (opts.system && opts.system.trim()) params.push(`system=${encodeURIComponent(opts.system.trim())}`);
+    if (opts.unit && opts.unit.trim()) params.push(`unit=${encodeURIComponent(opts.unit.trim())}`);
+    if (opts.tagNumber && opts.tagNumber.trim()) params.push(`tagNumber=${encodeURIComponent(opts.tagNumber.trim())}`);
+    if (opts.description && opts.description.trim()) params.push(`description=${encodeURIComponent(opts.description.trim())}`);
+    if (opts.specificLocation && opts.specificLocation.trim()) params.push(`specificLocation=${encodeURIComponent(opts.specificLocation.trim())}`);
     const qs = params.length ? '?' + params.join('&') : '';
     return this.http.get<{ responseData: LotoPointRef[] }>(
       `${environment.serverUrl}/api/pwa/secured/loto-points/walkdown-pile${qs}`
@@ -61,6 +79,13 @@ export class LotoStandardApiService {
     return this.http.get<{ responseData: string[] }>(
       `${environment.serverUrl}/api/pwa/secured/loto-points/systems`
     ).pipe(timeout(20000), map(r => r.responseData ?? []));
+  }
+
+  /** Distinct free-text option lists (units for now) for the walkdown-pile filter picker. */
+  getPointFilterOptions(): Observable<{ units: string[] }> {
+    return this.http.get<{ responseData: { units?: string[] } }>(
+      `${environment.serverUrl}/api/pwa/secured/loto-points/filter-options`
+    ).pipe(timeout(15000), map(r => ({ units: r.responseData?.units ?? [] })));
   }
 
   /** Apply ONE correction to ONE point immediately (points-pile walkdown submits per-point). */
@@ -128,6 +153,20 @@ export class LotoStandardApiService {
   addPointToStandard(standardId: number, pointId: number): Observable<LotoStandard | null> {
     return this.http.post<{ responseData: LotoStandard }>(
       `${this.base}/${standardId}/add-point/${pointId}`, {}
+    ).pipe(timeout(20000), map(r => r.responseData ?? null));
+  }
+
+  /** Detach a point from a standard. Server enforces CA + editable-state rules. */
+  removePointFromStandard(standardId: number, pointId: number): Observable<LotoStandard | null> {
+    return this.http.delete<{ responseData: LotoStandard }>(
+      `${this.base}/${standardId}/points/${pointId}`
+    ).pipe(timeout(20000), map(r => r.responseData ?? null));
+  }
+
+  /** Detach a point from a Building-status LOTO permit. 409 if not Building. */
+  removePointFromInactivePermit(lotoId: number, pointId: number): Observable<any> {
+    return this.http.delete<{ responseData: any }>(
+      `${environment.serverUrl}/api/pwa/secured/loto/${lotoId}/points/${pointId}`
     ).pipe(timeout(20000), map(r => r.responseData ?? null));
   }
 

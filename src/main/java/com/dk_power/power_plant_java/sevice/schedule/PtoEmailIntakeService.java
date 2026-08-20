@@ -97,16 +97,27 @@ public class PtoEmailIntakeService {
         LocalDateTime pollStart = LocalDateTime.now();
         try {
             List<GraphEmailMessage> messages = apiEmailService.getMessagesSince(mailbox, lastPollTime, 100);
+            if (messages.isEmpty()) {
+                log.debug("[PtoIntake] Poll: no new messages in {} since {}", mailbox, lastPollTime);
+            } else {
+                log.info("[PtoIntake] Poll: fetched {} message(s) from {} since {}", messages.size(), mailbox, lastPollTime);
+            }
             int approved = 0;
             int staged = 0;
             for (GraphEmailMessage m : messages) {
-                Outcome o = ingest(m);
-                if (o == Outcome.APPROVED) approved++;
-                else if (o == Outcome.STAGED) staged++;
+                try {
+                    Outcome o = ingest(m);
+                    if (o == Outcome.APPROVED) approved++;
+                    else if (o == Outcome.STAGED) staged++;
+                } catch (Exception e) {
+                    // One bad email must not abort the whole batch — log it and continue.
+                    log.error("[PtoIntake] Failed to ingest message (subject='{}') — skipped: {}",
+                            m != null ? m.getSubject() : null, e.toString(), e);
+                }
             }
             lastPollTime = pollStart.minusSeconds(POLL_OVERLAP_SECONDS);
             if (approved > 0 || staged > 0) {
-                log.info("[PtoIntake] Polled {} messages: {} approved, {} staged for review",
+                log.info("[PtoIntake] Poll processed {} message(s): {} approved, {} staged for review",
                         messages.size(), approved, staged);
             }
         } catch (Exception e) {
@@ -120,28 +131,48 @@ public class PtoEmailIntakeService {
     Outcome ingest(GraphEmailMessage m) {
         if (m == null) return Outcome.SKIPPED;
         String subject = m.getSubject();
-        if (subject == null || !subjectPattern.matcher(subject).find()) return Outcome.SKIPPED;
+        if (subject == null || !subjectPattern.matcher(subject).find()) {
+            log.debug("[PtoIntake] Skip — subject does not match the time-off filter: '{}'", subject);
+            return Outcome.SKIPPED;
+        }
 
         String messageId = m.getInternetMessageId() != null ? m.getInternetMessageId() : m.getId();
-        if (messageId != null && ptoRepo.existsByEmailMessageId(messageId)) return Outcome.SKIPPED;
+        if (messageId != null && ptoRepo.existsByEmailMessageId(messageId)) {
+            log.debug("[PtoIntake] Skip — already processed (messageId={})", messageId);
+            return Outcome.SKIPPED;
+        }
 
         PtoEmailParser.ParsedPto p = PtoEmailParser.parse(subject, m.getBodyContent());
         if (p.isEmpty()) {
-            log.debug("[PtoIntake] Subject matched but nothing parsable — skipping: {}", subject);
+            log.info("[PtoIntake] Subject matched but NOTHING could be parsed from the body — skipping. "
+                    + "subject='{}'. A real WorkForce email must contain 'Employee <Last, First> has "
+                    + "submitted a time off request for MM/dd/yyyy to MM/dd/yyyy'.", subject);
             return Outcome.SKIPPED;
         }
+        log.debug("[PtoIntake] Parsed: name='{}', dates {}..{}, sourceId={}",
+                p.name(), p.startDate(), p.endDate(), p.sourceRequestId());
         if (p.sourceRequestId() != null && ptoRepo.existsBySourceRequestId(p.sourceRequestId())) {
+            log.debug("[PtoIntake] Skip — already processed (sourceRequestId={})", p.sourceRequestId());
             return Outcome.SKIPPED;
         }
 
         UserMatchService.Match match = p.hasName() ? userMatchService.match(p.name()) : null;
         User user = match != null ? match.user : null;
         double confidence = match != null ? match.confidence : 0.0;
+        if (p.hasName() && user != null) {
+            log.debug("[PtoIntake] Name '{}' matched user {} ({}) at confidence {}",
+                    p.name(), user.getId(), displayName(user), String.format("%.2f", confidence));
+        } else if (p.hasName()) {
+            log.info("[PtoIntake] Name '{}' did not resolve to any user — staging for manual review.", p.name());
+        }
 
         String dedupHash = null;
         if (user != null && p.hasDates()) {
             dedupHash = sha256(user.getId() + "|" + p.startDate() + "|" + p.endDate());
-            if (dedupHash != null && ptoRepo.existsByDedupHash(dedupHash)) return Outcome.SKIPPED;
+            if (dedupHash != null && ptoRepo.existsByDedupHash(dedupHash)) {
+                log.debug("[PtoIntake] Skip — already processed (user+dates dedup hash)");
+                return Outcome.SKIPPED;
+            }
         }
 
         boolean confident = user != null && confidence >= AUTO_MATCH_CONFIDENCE && p.hasDates();
@@ -274,6 +305,8 @@ public class PtoEmailIntakeService {
      */
     private void applyApproval(PtoRequest pto, User user) {
         List<CoverageRequestDto> coverage = createCoverageForPto(pto, user);
+        log.info("[PtoIntake] PTO #{}: created {} coverage request(s) for the vacated shift(s)",
+                pto.getId(), coverage.size());
         boolean needsReview = coverage.isEmpty() && user != null;
         if (needsReview) {
             log.warn("[PtoIntake] PTO #{} approved for {} ({}..{}) produced zero coverage runs — user may "
@@ -288,7 +321,14 @@ public class PtoEmailIntakeService {
         }
         if (pto.getStartDate() != null && pto.getEndDate() != null) {
             try {
-                materialisation.materializeRange(pto.getStartDate(), pto.getEndDate());
+                int rows = materialisation.materializeRange(pto.getStartDate(), pto.getEndDate());
+                if (materialisation.isActive()) {
+                    log.info("[PtoIntake] PTO #{}: schedule re-materialised {}..{} ({} day row(s) changed — person now shows PTO)",
+                            pto.getId(), pto.getStartDate(), pto.getEndDate(), rows);
+                } else {
+                    log.warn("[PtoIntake] PTO #{} recorded, but the SCHEDULE WAS NOT UPDATED — the v2 materialiser "
+                            + "is OFF (schedule.v2.enabled=false). Enable v2 so approved PTO shows on the grid.", pto.getId());
+                }
             } catch (Exception e) {
                 log.warn("[PtoIntake] Re-materialisation for PTO #{} failed (change committed): {}",
                         pto.getId(), e.getMessage());

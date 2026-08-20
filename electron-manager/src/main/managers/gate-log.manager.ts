@@ -123,11 +123,7 @@ export class GateLogManager {
       const name = member.name
         || [member.first_name, member.last_name].filter(Boolean).join(' ')
         || 'Unknown';
-      const spOrg = Array.isArray(member.sp_orgs) && member.sp_orgs.length > 0 ? member.sp_orgs[0] : null;
-      const company = spOrg?.name
-        || (spOrg?.id != null ? this.contractorOrgCache.get(spOrg.id) : undefined)
-        || member.company
-        || 'Contractor';
+      const company = GateLogManager.extractCompany(member);
       out.push({
         onLocationMemberId: String(id),
         name,
@@ -252,6 +248,22 @@ export class GateLogManager {
   // Cached contractor member + org directories (rarely change, expensive to fetch)
   private contractorMemberMap: Map<number, any> = new Map();  // id → member record
   private contractorOrgCache: Map<number, string> = new Map();
+
+  /**
+   * The contractor's employer.
+   *
+   * NOT sp_orgs - that is the OnLocation *organization*, which for this tenant is the site itself
+   * ("Jackson Generation" on every member), so using it made the column meaningless. Newer members
+   * carry an empty sp_orgs anyway. The employer lives in a per-tenant custom field keyed by numeric
+   * id. Returns '' when unset, so callers decide whether a placeholder is appropriate.
+   */
+  private static readonly COMPANY_CUSTOMFIELD_ID = '3135';
+
+  private static extractCompany(member: any): string {
+    const fromCustom = member?.customfields?.[GateLogManager.COMPANY_CUSTOMFIELD_ID];
+    if (typeof fromCustom === 'string' && fromCustom.trim()) return fromCustom.trim();
+    return typeof member?.company === 'string' ? member.company.trim() : '';
+  }
   private contractorDirCacheTime = 0;
   private static CONTRACTOR_DIR_CACHE_TTL = 60 * 60_000; // 1 hour
 
@@ -283,11 +295,8 @@ export class GateLogManager {
       const name = member
         ? (member.name || [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Unknown')
         : (mov.name || 'Unknown');
-      // Company: embedded in member's sp_orgs array
-      const spOrg = member && Array.isArray(member.sp_orgs) && member.sp_orgs.length > 0 ? member.sp_orgs[0] : null;
-      const company = spOrg?.name
-        || this.contractorOrgCache.get(mov.sp_org_id)
-        || member?.company || 'Contractor';
+      // 'Contractor' only as a display placeholder - this table always shows a company column.
+      const company = GateLogManager.extractCompany(member) || 'Contractor';
 
       const checkIn = this.convertOnLocationDate(mov.signed_in);
       const duration = checkIn ? this.calculateDuration(checkIn) : undefined;

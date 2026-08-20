@@ -5,6 +5,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { GlobalMessageService } from '../../services/global-message.service';
 import { HapticsService } from '../../services/haptics.service';
 import { WakeLockService } from '../../services/wake-lock.service';
+import { PortalToBodyDirective } from '../../shared/portal-to-body.directive';
 import { LotoDrawingService } from './loto-drawing.service';
 import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
 import { LotoPointActionsComponent } from './loto-point-actions.component';
@@ -36,7 +37,7 @@ import {
 @Component({
   selector: 'app-loto-points-walkdown',
   standalone: true,
-  imports: [MainLayoutComponent, LotoDrawingViewerComponent, LotoPointActionsComponent],
+  imports: [MainLayoutComponent, LotoDrawingViewerComponent, LotoPointActionsComponent, PortalToBodyDirective],
   template: `
     <app-main-layout [header]="'LOTO Points Walkdown'">
       <ng-container main-content>
@@ -97,11 +98,53 @@ import {
               }
             </div>
 
+            <details class="w-picker w-more-filters">
+              <summary>More filters (tag / description / positions / unit)</summary>
+              <label class="w-field-lbl">Tag contains
+                <input class="w-inline-input" type="text" [value]="pickedTag()" (input)="pickedTag.set($any($event.target).value)"
+                       placeholder="e.g. 89G">
+              </label>
+              <label class="w-field-lbl">Description contains
+                <input class="w-inline-input" type="text" [value]="pickedDescription()" (input)="pickedDescription.set($any($event.target).value)"
+                       placeholder="e.g. breaker">
+              </label>
+              <label class="w-field-lbl">Specific location contains
+                <input class="w-inline-input" type="text" [value]="pickedSpecificLocation()" (input)="pickedSpecificLocation.set($any($event.target).value)">
+              </label>
+              <label class="w-field-lbl">Unit
+                <select class="w-inline-input" [value]="pickedUnit() ?? ''" (change)="pickedUnit.set($any($event.target).value || null)">
+                  <option value="">— any —</option>
+                  @for (u of allUnits(); track u) {
+                    <option [value]="u" [selected]="u === pickedUnit()">{{ u }}</option>
+                  }
+                </select>
+              </label>
+              <label class="w-field-lbl">Isolation position
+                <select class="w-inline-input" [value]="pickedIsoPosId() ?? ''" (change)="pickedIsoPosId.set(numOrNull($any($event.target).value))">
+                  <option value="">— any —</option>
+                  @for (o of positions().isoPos; track o.id) {
+                    <option [value]="o.id" [selected]="o.id === pickedIsoPosId()">{{ o.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="w-field-lbl">Restored position
+                <select class="w-inline-input" [value]="pickedNormPosId() ?? ''" (change)="pickedNormPosId.set(numOrNull($any($event.target).value))">
+                  <option value="">— any —</option>
+                  @for (o of positions().normPos; track o.id) {
+                    <option [value]="o.id" [selected]="o.id === pickedNormPosId()">{{ o.name }}</option>
+                  }
+                </select>
+              </label>
+            </details>
+
             @if (loadPileError()) { <p class="w-msg w-error">{{ loadPileError() }}</p> }
 
             <button class="w-finish-btn" [disabled]="!canLoadPile() || loadingPile()" (click)="loadPile()">
               {{ loadingPile() ? 'Loading…' : 'Load points' }}
             </button>
+            @if (canLoadPile()) {
+              <button class="w-save w-save-secondary" (click)="clearFilters()">Clear all filters</button>
+            }
           } @else if (submitted()) {
             <div class="w-done">
               <div class="w-done-icon">✓</div>
@@ -160,7 +203,7 @@ import {
           <!-- Per-point dialog — same shape as loto-standard-walkdown, but every mutation
                is either in-memory (checks) or immediately saved via applyPointCorrection. -->
           @if (activePoint(); as ap) {
-            <div class="w-dialog-backdrop" (click)="closePointDialog()">
+            <div class="w-dialog-backdrop" appPortalToBody (click)="closePointDialog()">
               <div class="w-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
                 <div class="w-dialog-head">
                   <div class="w-dialog-title">
@@ -377,6 +420,8 @@ import {
     .w-h2 { font-size: 1rem; font-weight: 700; color: var(--primary-text); margin: 1rem 0 0.5rem; }
     .w-picker { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; background: var(--card-bg, var(--secondary-background)); }
     .w-picker .w-h2 { margin-top: 0; }
+    .w-more-filters summary { cursor: pointer; color: var(--accent-color); font-weight: 700; padding: 0.4rem 0; min-height: 44px; display: flex; align-items: center; }
+    .w-field-lbl { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.72rem; color: var(--secondary-text); text-transform: uppercase; letter-spacing: 0.02em; margin: 0.55rem 0; }
     .w-search { width: 100%; box-sizing: border-box; padding: 0.5rem 0.7rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--secondary-background); color: var(--primary-text); font: inherit; margin-bottom: 0.5rem; }
     .w-std-list { display: flex; flex-direction: column; gap: 0.25rem; max-height: 40vh; overflow-y: auto; }
     .w-std-row { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; padding: 0.4rem; border-radius: 6px; cursor: pointer; min-height: 44px; }
@@ -485,17 +530,43 @@ export class LotoPointsWalkdownComponent implements OnInit {
   }
 
   allSystems = signal<string[]>([]);
+  allUnits = signal<string[]>([]);
   loadingSystems = signal(true);
   pickedSystem = signal<string | null>(null);
   pickedLocationId = signal<number | null>(null);
+  pickedTag = signal('');
+  pickedDescription = signal('');
+  pickedSpecificLocation = signal('');
+  pickedUnit = signal<string | null>(null);
+  pickedIsoPosId = signal<number | null>(null);
+  pickedNormPosId = signal<number | null>(null);
   positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [] });
 
   canLoadPile = computed(() =>
     this.pickedStandardIds().size > 0
       || this.pickedLocationId() != null
-      || !!(this.pickedSystem() ?? '').trim());
+      || !!(this.pickedSystem() ?? '').trim()
+      || !!this.pickedTag().trim()
+      || !!this.pickedDescription().trim()
+      || !!this.pickedSpecificLocation().trim()
+      || !!(this.pickedUnit() ?? '').trim()
+      || this.pickedIsoPosId() != null
+      || this.pickedNormPosId() != null);
 
   numOrNull(v: string): number | null { return v ? Number(v) : null; }
+
+  clearFilters(): void {
+    this.pickedStandardIds.set(new Set());
+    this.pickedSystem.set(null);
+    this.pickedLocationId.set(null);
+    this.pickedTag.set('');
+    this.pickedDescription.set('');
+    this.pickedSpecificLocation.set('');
+    this.pickedUnit.set(null);
+    this.pickedIsoPosId.set(null);
+    this.pickedNormPosId.set(null);
+    this.loadPileError.set(null);
+  }
 
   // ── Pile / walkdown state ────────────────────────────────────────────────
   points = signal<LotoPointRef[]>([]);
@@ -522,7 +593,14 @@ export class LotoPointsWalkdownComponent implements OnInit {
     if (id == null) return null;
     return this.points().find(p => p.id === id) ?? null;
   });
-  openPointDialog(pointId: number): void { this.activePointId.set(pointId); this.haptics.tap('tap'); }
+  openPointDialog(pointId: number): void {
+    // [appPortalToBody] on the .w-dialog-backdrop moves it to <body> when @if creates it and
+    // locks background scroll — the fix pattern used by the Maximo WO detail modal. Without
+    // this the modal is trapped by main-layout's transformed ancestor (a new containing block
+    // for position:fixed) and would render outside the current viewport.
+    this.activePointId.set(pointId);
+    this.haptics.tap('tap');
+  }
   closePointDialog(): void { this.activePointId.set(null); }
 
   viewerPoint = signal<{ pointId: number; tag: string } | null>(null);
@@ -672,11 +750,13 @@ export class LotoPointsWalkdownComponent implements OnInit {
       stds: this.api.getAll().pipe(catchError(() => of([] as LotoStandard[]))),
       pos: this.api.getPositions().pipe(catchError(() => of(null))),
       sys: this.api.getPointSystems().pipe(catchError(() => of([] as string[]))),
-    }).subscribe(({ stds, pos, sys }) => {
+      opts: this.api.getPointFilterOptions().pipe(catchError(() => of({ units: [] as string[] }))),
+    }).subscribe(({ stds, pos, sys, opts }) => {
       this.allStandards.set(stds);
       this.loadingStandards.set(false);
       if (pos) this.positions.set(pos);
       this.allSystems.set(sys);
+      this.allUnits.set(opts.units);
       this.loadingSystems.set(false);
     });
   }
@@ -687,7 +767,13 @@ export class LotoPointsWalkdownComponent implements OnInit {
     this.api.getPointsPile({
       standardIds: [...this.pickedStandardIds()],
       locationId: this.pickedLocationId(),
+      isoPosId: this.pickedIsoPosId(),
+      normPosId: this.pickedNormPosId(),
       system: this.pickedSystem(),
+      unit: this.pickedUnit(),
+      tagNumber: this.pickedTag(),
+      description: this.pickedDescription(),
+      specificLocation: this.pickedSpecificLocation(),
     }).subscribe({
       next: (pts) => {
         this.loadingPile.set(false);

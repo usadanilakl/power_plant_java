@@ -6,6 +6,7 @@ import {
   DeviceConfig,
   DeviceRegistryEntry,
   APP_DISPLAY_NAME,
+  MaximoSourceSetting,
 } from '../../services/electron.service';
 
 @Component({
@@ -237,6 +238,53 @@ import {
         <div class="polling-status" *ngIf="pollingSaved">
           <span class="material-icons" style="font-size: 14px; color: var(--accent-success)">check</span>
           Settings saved. Will apply on next app launch.
+        </div>
+      </div>
+
+      <!-- Maximo Data Source -->
+      <div class="settings-section">
+        <h2 class="section-title">Maximo Data Source</h2>
+        <p class="section-desc">
+          Where this machine reads Maximo from. A kiosk with no Maximo API key of its own can borrow
+          the hub's. Either way, if the chosen source can't answer, the other one is tried before the
+          page gives up.
+        </p>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Source</span>
+            <span class="setting-desc">{{ maximoSourceDesc() }}</span>
+          </div>
+          <select class="form-input form-input-sm" [ngModel]="maximoSource"
+                  (ngModelChange)="setMaximoSource($event)" [disabled]="maximoBusy">
+            <option value="local">This machine</option>
+            <option value="hub">Hub</option>
+          </select>
+        </div>
+
+        <div *ngIf="maximoSource === 'hub'" class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.5rem">
+          <div class="setting-info">
+            <span class="setting-label">Hub connection</span>
+            <span class="setting-desc">{{ maximoHubOriginDesc() }}</span>
+          </div>
+          <input class="form-input" [(ngModel)]="maximoHubUrl" placeholder="https://jgportal.jpowerusa.com" />
+          <input class="form-input" [(ngModel)]="maximoHubEmail" placeholder="hub account email" autocomplete="off" />
+          <input class="form-input" type="password" [(ngModel)]="maximoHubPassword" autocomplete="new-password"
+                 [placeholder]="maximoHubPasswordSet ? 'password stored — type to replace' : 'hub account password'" />
+          <div style="display: flex; gap: 0.5rem">
+            <button class="btn btn-secondary btn-sm" (click)="saveMaximoHub()" [disabled]="maximoBusy">Save</button>
+            <button class="btn btn-secondary btn-sm" (click)="testMaximoHub()" [disabled]="maximoBusy">
+              {{ maximoBusy ? 'Testing…' : 'Test connection' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="polling-status" *ngIf="maximoMessage">
+          <span class="material-icons" style="font-size: 14px"
+                [style.color]="maximoError ? 'var(--accent-danger, #e05260)' : 'var(--accent-success)'">
+            {{ maximoError ? 'error_outline' : 'check' }}
+          </span>
+          {{ maximoMessage }}
         </div>
       </div>
 
@@ -605,6 +653,21 @@ export class SettingsComponent implements OnInit {
   weatherBugEnabled = false;
   weatherBugSaved = false;
 
+  // Maximo source lives in the BACKEND, not localStorage: the backend is what actually chooses per
+  // request, and its endpoint is localhost-only, so no other machine can flip this one.
+  maximoSource: 'local' | 'hub' = 'local';
+  maximoLocalAvailable = false;
+  maximoHubAvailable = false;
+  maximoHubMissing = '';
+  maximoHubUrl = '';
+  maximoHubEmail = '';
+  maximoHubPassword = '';
+  maximoHubPasswordSet = false;
+  maximoHubConfigSource: 'properties' | 'device' = 'properties';
+  maximoBusy = false;
+  maximoMessage = '';
+  maximoError = false;
+
   private static readonly POLLING_STORAGE_KEY = 'dk-polling-settings';
 
   constructor(private electronService: ElectronService) {}
@@ -618,11 +681,136 @@ export class SettingsComponent implements OnInit {
       this.setupProfile = this.deviceConfig.springProfile || 'prod';
     }
     this.loadPollingSettings();
+    void this.loadMaximoSource();
 
     const weather = await this.electronService.getWeatherEnabled();
     if (weather.success) {
       this.weatherBugEnabled = weather.enabled === true;
     }
+  }
+
+  private async loadMaximoSource(): Promise<void> {
+    const result = await this.electronService.maximoSourceGet();
+    if (result.success && result.data) {
+      this.applyMaximoSetting(result.data);
+    } else {
+      // The backend may simply not be up yet — say that rather than showing a default as if it were
+      // the real setting.
+      this.maximoError = true;
+      this.maximoMessage = 'Could not read the current setting from the backend.';
+    }
+  }
+
+  async setMaximoSource(next: 'local' | 'hub'): Promise<void> {
+    const previous = this.maximoSource;
+    this.maximoSource = next;
+    this.maximoBusy = true;
+    this.maximoMessage = '';
+
+    const result = await this.electronService.maximoSourceSet({ source: next });
+    this.maximoBusy = false;
+
+    if (result.success && result.data) {
+      this.applyMaximoSetting(result.data);
+      this.maximoError = false;
+      this.maximoMessage = next === 'hub'
+        ? 'Now reading Maximo from the hub. Takes effect immediately — no restart.'
+        : 'Now reading Maximo directly from this machine.';
+      setTimeout(() => this.maximoMessage = '', 5000);
+    } else {
+      // Put the dropdown back to what the backend is actually doing.
+      this.maximoSource = previous;
+      this.maximoError = true;
+      this.maximoMessage = result.error || 'Could not change the source.';
+    }
+  }
+
+  private applyMaximoSetting(setting: MaximoSourceSetting): void {
+    this.maximoSource = setting.source;
+    this.maximoLocalAvailable = setting.localAvailable;
+    this.maximoHubAvailable = setting.hubAvailable;
+    this.maximoHubMissing = setting.hubMissing || '';
+    this.maximoHubUrl = setting.hubUrl || '';
+    this.maximoHubEmail = setting.hubEmail || '';
+    this.maximoHubPasswordSet = !!setting.hubPasswordSet;
+    this.maximoHubConfigSource = setting.hubConfigSource ?? 'properties';
+    // Never repopulate the password box from the server; blank means "leave the stored one alone".
+    this.maximoHubPassword = '';
+  }
+
+  async saveMaximoHub(): Promise<void> {
+    this.maximoBusy = true;
+    this.maximoMessage = '';
+    const patch: Record<string, string> = {
+      hubUrl: this.maximoHubUrl.trim(),
+      hubEmail: this.maximoHubEmail.trim(),
+    };
+    // Only send a password when one was typed, so saving the URL doesn't wipe a stored credential.
+    if (this.maximoHubPassword) patch['hubPassword'] = this.maximoHubPassword;
+
+    const result = await this.electronService.maximoSourceSet(patch);
+    this.maximoBusy = false;
+    if (result.success && result.data) {
+      this.applyMaximoSetting(result.data);
+      this.maximoError = false;
+      this.maximoMessage = 'Hub connection saved.';
+    } else {
+      this.maximoError = true;
+      this.maximoMessage = result.error || 'Could not save the hub connection.';
+    }
+  }
+
+  async testMaximoHub(): Promise<void> {
+    this.maximoBusy = true;
+    this.maximoMessage = '';
+    const result = await this.electronService.maximoSourceTest();
+    this.maximoBusy = false;
+
+    if (!result.success || !result.data) {
+      this.maximoError = true;
+      this.maximoMessage = result.error || 'Could not run the test.';
+      return;
+    }
+    const t = result.data;
+    this.maximoError = !t.ok;
+    this.maximoMessage = t.ok
+      ? `Connected to ${t.hubUrl} — the hub is tracking ${t.personCount ?? 0} people.`
+      : `Could not reach ${t.hubUrl || 'the hub'}: ${t.detail}`;
+  }
+
+  /**
+   * Whether anything needs typing here at all. A provisioned kiosk already carries these in the jar,
+   * and the fields are only an override for a machine where that file didn't load.
+   */
+  maximoHubOriginDesc(): string {
+    if (this.maximoHubConfigSource === 'device') {
+      return 'Using values entered on this machine. Clear a box and save to go back to the built-in value.';
+    }
+    if (this.maximoHubAvailable) {
+      return 'Already configured by this install — nothing to enter. Fill these in only to point this machine somewhere else.';
+    }
+    return 'This install did not supply hub details. Enter the PUBLIC address (a kiosk on plant WiFi cannot route the internal 10.x address).';
+  }
+
+  /**
+   * Says what the current choice will actually do — including when it is configured for a source
+   * that cannot answer, which is exactly the kiosk case that used to fail silently.
+   */
+  maximoSourceDesc(): string {
+    if (this.maximoSource === 'hub') {
+      if (!this.maximoHubAvailable) {
+        const missing = this.maximoHubMissing ? ` (missing: ${this.maximoHubMissing})` : '';
+        return `Hub is selected but not configured${missing} — falling back to this machine.`;
+      }
+      return this.maximoLocalAvailable
+        ? 'Reading from the hub; falls back to this machine if the hub is unreachable.'
+        : 'Reading from the hub. This machine has no Maximo key of its own, so there is no fallback.';
+    }
+    if (!this.maximoLocalAvailable) {
+      const via = this.maximoHubAvailable ? ' — the hub can serve it instead.' : '.';
+      return `This machine has no Maximo API key${via}`;
+    }
+    return 'Reading Maximo directly from this machine.';
   }
 
   async saveWeatherBugEnabled(): Promise<void> {

@@ -41,6 +41,37 @@ public class PwaLotoController {
     // ── inactive-permit edit ────────────────────────────────────────────────
 
     /**
+     * Detach a LOTO point from a LOTO permit — allowed only while the permit is Building.
+     * Delegates to the desktop {@code removeLotoPointFromLoto} which handles CA gating
+     * + structurally-editable state check (rejects Active/Test/Closed) already; the
+     * Building-status gate here is just a cleaner 409 message before the delegate call.
+     */
+    @DeleteMapping("/{lotoId}/points/{pointId}")
+    public ResponseEntity<NgApiResponse<LotoDto>> removePointFromInactivePermit(
+            @PathVariable Long lotoId, @PathVariable Long pointId) {
+        try {
+            Loto loto = lotoRepo.findById(lotoId).orElse(null);
+            if (loto == null) return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new NgApiResponse<>(null, "LOTO not found: " + lotoId));
+            String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+            if (!"Building".equals(status)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new NgApiResponse<>(null,
+                        "This permit is " + status + " — points can only be removed while Building"));
+            }
+            LotoDto updated = lotoService.removeLotoPointFromLoto(pointId, lotoId);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Point removed from permit"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA removePointFromInactivePermit failed (loto={}, point={})", lotoId, pointId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to remove point: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Edit a LOTO permit's basic fields from the PWA — allowed ONLY while the permit is in
      * "Building" (i.e. inactive, pre-activation). Any other status is 409 with a hint.
      *

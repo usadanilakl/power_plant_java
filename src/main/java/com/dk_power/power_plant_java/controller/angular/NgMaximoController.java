@@ -82,9 +82,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RestrictedAllowed  // access is gated on ROLE_PLANT/ROLE_ADMIN (SecurityConfig); no separate FULL grant required
 // Active on any Maximo-configured node EXCEPT a kiosk. A kiosk runs the SAME shared jar, so maximo.api-key is
-// still baked in — but maximo.source=hub disables this direct controller and lets KioskMaximoOverviewController
+// still baked in — but selecting the hub source routes the overview through HubKioskMaximoClient
 // serve /bundle/overview via the hub proxy instead (no path collision; the baked-in api-key is simply unused).
-@ConditionalOnExpression("'${maximo.api-key:}'.length() > 0 and !'hub'.equals('${maximo.source:local}')")
+// Overview moved to MaximoOverviewController, which is always present and picks its source per
+// request — so this no longer has to be disabled for a kiosk to avoid a duplicate mapping.
+@ConditionalOnExpression("'${maximo.api-key:}'.length() > 0")
 public class NgMaximoController {
 
     private final MaximoAssetAdapter assets;
@@ -772,22 +774,6 @@ public class NgMaximoController {
             @RequestParam(value = "status", required = false) String status) {
         return ResponseEntity.ok(new NgApiResponse<>(
                 bundles.leadOperatorWorkOrders(pageSize, status), "ok"));
-    }
-
-    /**
-     * Overview for the Electron widget: a tracked people set's WOs bucketed by due status this ISO
-     * week (overdue / due this week / completed this week / upcoming). {@code mode=leads} (default)
-     * tracks the local Lead Operators; {@code mode=people} tracks the comma-separated {@code personids}.
-     */
-    @GetMapping("/bundle/overview")
-    public ResponseEntity<NgApiResponse<MaximoOverviewDto>> maximoOverview(
-            @RequestParam(value = "mode", defaultValue = "leads") String mode,
-            @RequestParam(value = "personids", required = false) String personids,
-            @RequestParam(value = "pageSize", defaultValue = "200") int pageSize) {
-        List<String> ids = (personids == null || personids.isBlank())
-                ? List.of()
-                : Arrays.stream(personids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
-        return ResponseEntity.ok(new NgApiResponse<>(bundles.overview(mode, ids, pageSize), "ok"));
     }
 
     /**

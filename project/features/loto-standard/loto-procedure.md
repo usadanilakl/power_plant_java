@@ -541,3 +541,30 @@ on. Each entry has: `personName`, `personRole`, `company`, `signOnTime`,
 - User onboarding (NEW — companion to this doc) — `project/features/users/onboarding.md`
 - Counterpart standard creation — `project/features/loto-standard/create-counterpart-loto-standard.md`
 - LOTO Point bulk add — `project/features/loto-standard/add-loto-point-in-bulk.md`
+
+
+Plant terminology: 
+LOTO Standard - general outline for equipment isolation (Template)
+LOTO Permit - specific isolation procedure for each job scope individually.
+
+Usage flow: LOTO Standard is used to generate LOTO Permit, LOTO Permit adjusted to specific job scope.
+
+
+Questions:
+1. The procedure states that Standard has to go through approval stages:
+  - Developing (done by one Lead Operator)
+  - Verifying (done by another Lead Operator)
+  - Test (First time use)
+  - Manager Walks it down and approves it (if test was a success)
+  - if any change needs to be made to the approved standard all steps has to be repeated
+
+  The questions:
+    1. What change qualifies as change:
+      - adding LOTO point
+      - removing LOTO point
+      - text adjustments (zero energy phrasing, loto point description, tag number adjustments)
+    2. "IF an approved/standardized LOTO listed in the LOTO index requires changes, THEN the LOTO is considered a “New” LOTO and therefore all of the required steps in this section shall be re-accomplished and approved by a SUPERVISOR/MANAGER as stated above." - does this mean:
+      a. We can generate a LOTO Permit from that LOTO Standard and only use as is (CANNOT add/remove points), if points are added/removed from the LOTO Permit - it is considered "NEW" and approval flow starts from the beginning?
+      b. We can generate a LOTO Permit from that LOTO Standard and add/remove points as needed per job scope (the Standard stays intact - all the changes were applied to the Permit, not the Standard) - the approval flow restart is not needed. 
+    3. Do all LOTOs have to become standards - can we build a LOTO (one person builds, one verifies) then the LOTO is used and never added to standards list? We would just follow the "NEW" flow up to the test, when LOTO is closed it is never re-used. 
+  
