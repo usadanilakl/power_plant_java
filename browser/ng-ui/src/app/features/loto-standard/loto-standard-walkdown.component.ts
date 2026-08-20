@@ -320,27 +320,28 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                     </div>
                   }
 
-                  <!-- Metal tag present (Labeled) — toggle + Pass/Fail -->
+                  <!-- Metal tag present (Labeled) — canEdit: Yes/No is authoritative and drives the
+                       metalTagPresent check. Read-only: value shown + Pass/Fail buttons for the verifier. -->
                   <div class="w-field-row">
-                    <div class="w-field-value">
-                      @if (canEdit()) {
-                        <span class="w-mini-toggle">
-                          <button class="w-yn pass w-mini" [class.active]="corrLabeled(ap) === true"
-                                  (click)="setCorrFlag(ap.id, 'isLabeled', true)">Yes</button>
-                          <button class="w-yn fail w-mini" [class.active]="corrLabeled(ap) === false"
-                                  (click)="setCorrFlag(ap.id, 'isLabeled', false)">No</button>
-                        </span>
-                      } @else {
-                        <span class="w-inline-span">{{ corrLabeled(ap) === true ? 'Labeled' : corrLabeled(ap) === false ? 'Not labeled' : '—' }}</span>
-                      }
+                    <div class="w-field-value w-field-value-wide">
                       <span class="w-field-caption">Metal tag present</span>
                     </div>
-                    <span class="w-check-btns">
-                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'metalTagPresent') === true"
-                              (click)="setCheck(ap.id, 'metalTagPresent', true)">Pass</button>
-                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'metalTagPresent') === false"
-                              (click)="setCheck(ap.id, 'metalTagPresent', false)">Fail</button>
-                    </span>
+                    @if (canEdit()) {
+                      <span class="w-mini-toggle">
+                        <button class="w-yn pass" [class.active]="corrLabeled(ap) === true"
+                                (click)="setFlagAndCheck(ap.id, 'isLabeled', 'metalTagPresent', true)">Yes</button>
+                        <button class="w-yn fail" [class.active]="corrLabeled(ap) === false"
+                                (click)="setFlagAndCheck(ap.id, 'isLabeled', 'metalTagPresent', false)">No</button>
+                      </span>
+                    } @else {
+                      <span class="w-inline-span w-value-inline">{{ corrLabeled(ap) === true ? 'Labeled' : corrLabeled(ap) === false ? 'Not labeled' : '—' }}</span>
+                      <span class="w-check-btns">
+                        <button class="w-yn pass" [class.active]="checkValue(ap.id, 'metalTagPresent') === true"
+                                (click)="setCheck(ap.id, 'metalTagPresent', true)">Pass</button>
+                        <button class="w-yn fail" [class.active]="checkValue(ap.id, 'metalTagPresent') === false"
+                                (click)="setCheck(ap.id, 'metalTagPresent', false)">Fail</button>
+                      </span>
+                    }
                   </div>
 
                   <!-- Isolation position -->
@@ -449,27 +450,28 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                     </span>
                   </div>
 
-                  <!-- Lockable — toggle + Pass/Fail -->
+                  <!-- Lockable — canEdit: Yes/No is authoritative and drives the equipmentLockable check.
+                       Read-only: value shown + Pass/Fail for the verifier. -->
                   <div class="w-field-row">
-                    <div class="w-field-value">
-                      @if (canEdit()) {
-                        <span class="w-mini-toggle">
-                          <button class="w-yn pass w-mini" [class.active]="corrLockable(ap) === true"
-                                  (click)="setCorrFlag(ap.id, 'isLockable', true)">Yes</button>
-                          <button class="w-yn fail w-mini" [class.active]="corrLockable(ap) === false"
-                                  (click)="setCorrFlag(ap.id, 'isLockable', false)">No</button>
-                        </span>
-                      } @else {
-                        <span class="w-inline-span">{{ corrLockable(ap) === true ? 'Lockable' : corrLockable(ap) === false ? 'Not lockable' : '—' }}</span>
-                      }
+                    <div class="w-field-value w-field-value-wide">
                       <span class="w-field-caption">Equipment lockable</span>
                     </div>
-                    <span class="w-check-btns">
-                      <button class="w-yn pass" [class.active]="checkValue(ap.id, 'equipmentLockable') === true"
-                              (click)="setCheck(ap.id, 'equipmentLockable', true)">Pass</button>
-                      <button class="w-yn fail" [class.active]="checkValue(ap.id, 'equipmentLockable') === false"
-                              (click)="setCheck(ap.id, 'equipmentLockable', false)">Fail</button>
-                    </span>
+                    @if (canEdit()) {
+                      <span class="w-mini-toggle">
+                        <button class="w-yn pass" [class.active]="corrLockable(ap) === true"
+                                (click)="setFlagAndCheck(ap.id, 'isLockable', 'equipmentLockable', true)">Yes</button>
+                        <button class="w-yn fail" [class.active]="corrLockable(ap) === false"
+                                (click)="setFlagAndCheck(ap.id, 'isLockable', 'equipmentLockable', false)">No</button>
+                      </span>
+                    } @else {
+                      <span class="w-inline-span w-value-inline">{{ corrLockable(ap) === true ? 'Lockable' : corrLockable(ap) === false ? 'Not lockable' : '—' }}</span>
+                      <span class="w-check-btns">
+                        <button class="w-yn pass" [class.active]="checkValue(ap.id, 'equipmentLockable') === true"
+                                (click)="setCheck(ap.id, 'equipmentLockable', true)">Pass</button>
+                        <button class="w-yn fail" [class.active]="checkValue(ap.id, 'equipmentLockable') === false"
+                                (click)="setCheck(ap.id, 'equipmentLockable', false)">Fail</button>
+                      </span>
+                    }
                   </div>
 
                   <!-- Standalone: Equipment accessible (no field on the point card) -->
@@ -486,6 +488,25 @@ type TransitionMode = 'verify' | 'walkdown' | null;
                   @if (pointNegative(ap.id)) {
                     <textarea class="w-comment" rows="2" placeholder="Comment required — explain the failed check(s)"
                               [value]="comment(ap.id)" (input)="setComment(ap.id, $any($event.target).value)"></textarea>
+                  }
+
+                  <!-- Persistent verified flag on the LotoPoint. Hidden until every check passes so a
+                       walker can't half-verify. Visible only in canEdit contexts (Draft, Verified,
+                       New-Pending-Reapproval) — verifiers in Pending Verification submit through the
+                       transition, not by flipping this flag. -->
+                  @if (canEdit() && rowStatus(ap.id) === 'pass') {
+                    <div class="w-field-row w-verified-row">
+                      <div class="w-field-value w-field-value-wide">
+                        <span class="w-field-caption">Point verified</span>
+                        <span class="w-hint">Persistent on the LOTO Point — visible to future permit builders.</span>
+                      </div>
+                      <span class="w-mini-toggle">
+                        <button class="w-yn pass" [class.active]="corrVerified(ap) === true"
+                                (click)="setCorrVerified(ap.id, true)">Yes</button>
+                        <button class="w-yn fail" [class.active]="corrVerified(ap) === false"
+                                (click)="setCorrVerified(ap.id, false)">No</button>
+                      </span>
+                    </div>
                   }
 
                   <app-loto-point-actions [pointId]="ap.id" [pointLabel]="corrTag(ap) || null" />
@@ -631,6 +652,13 @@ type TransitionMode = 'verify' | 'walkdown' | null;
     .w-inline-span { color: var(--primary-text); font-size: 0.9rem; font-weight: 500; overflow-wrap: anywhere; }
     .w-mini-toggle { display: inline-flex; gap: 0.3rem; }
     .w-yn.w-mini { min-height: 32px; min-width: 44px; font-size: 0.78rem; padding: 0.15rem 0.55rem; }
+    /* When canEdit hides the value column and the Yes/No toggle IS the answer, let the caption
+       stretch full width; the read-only branch reinstates a narrow value column via w-value-inline. */
+    .w-field-value-wide { flex: 1; }
+    .w-value-inline { color: var(--primary-text); font-size: 0.9rem; margin-right: 0.6rem; }
+    /* Persistent-verified row — accent border so it reads as the finishing action, not another check. */
+    .w-verified-row { border-top: 2px solid var(--accent-color); margin-top: 0.4rem; padding-top: 0.6rem; }
+    .w-verified-row .w-field-caption { color: var(--accent-color); }
   `]
 })
 export class LotoStandardWalkdownComponent implements OnInit {
@@ -906,6 +934,45 @@ export class LotoStandardWalkdownComponent implements OnInit {
       const cur = d.corrections[String(pointId)] ?? {};
       cleared = cur[field] === value;
       d.corrections[String(pointId)] = { ...cur, [field]: cleared ? null : value };
+    });
+    this.haptics.tap(cleared ? 'tap' : value ? 'success' : 'warn');
+  }
+
+  /**
+   * canEdit-mode setter that flips BOTH the durable physical flag AND the paired checklist answer
+   * in one tap. Yes ⇒ flag=true + check=Pass; No ⇒ flag=false + check=Fail; retap clears both
+   * (so the walker can back out an accidental tap without leaving an orphan Pass/Fail behind).
+   */
+  setFlagAndCheck(pointId: number, flagField: 'isLockable' | 'isLabeled',
+                  checkField: keyof PointChecklist, value: boolean): void {
+    let cleared = false;
+    this.patch(d => {
+      const cur = d.corrections[String(pointId)] ?? {};
+      cleared = cur[flagField] === value;
+      d.corrections[String(pointId)] = { ...cur, [flagField]: cleared ? null : value };
+      const cl = { ...(d.pointResults[String(pointId)] ?? {}) };
+      (cl[checkField] as boolean | null) = cleared ? null : value;
+      d.pointResults[String(pointId)] = cl;
+    });
+    this.haptics.tap(cleared ? 'tap' : value ? 'success' : 'warn');
+  }
+
+  /** Effective isVerified value for the dialog — pending correction wins over the point's current flag. */
+  corrVerified(p: LotoPointRef): boolean | null {
+    const cv = this.draft()?.corrections?.[String(p.id)]?.isVerified;
+    return cv === undefined ? (p.isVerified ?? null) : cv;
+  }
+  /**
+   * Set the persistent isVerified flag correction. Same clear-on-retap semantics as {@link setCorrFlag}.
+   * Only invoked from the dialog when every check passes (template gate + defensive check here).
+   */
+  setCorrVerified(pointId: number, value: boolean): void {
+    if (this.rowStatus(pointId) !== 'pass') return;
+    let cleared = false;
+    this.patch(d => {
+      const cur = d.corrections[String(pointId)] ?? {};
+      cleared = cur.isVerified === value;
+      d.corrections[String(pointId)] = { ...cur, isVerified: cleared ? null : value };
     });
     this.haptics.tap(cleared ? 'tap' : value ? 'success' : 'warn');
   }

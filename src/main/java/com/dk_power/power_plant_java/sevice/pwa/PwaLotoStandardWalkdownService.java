@@ -129,7 +129,7 @@ public class PwaLotoStandardWalkdownService {
                 WalkdownSubmitRequest.PointCorrectionInput c = e.getValue();
                 if (c != null) applyCorrection(e.getKey(), c.tagNumber(), c.description(),
                         c.isoPosId(), c.normPosId(), c.locationId(), c.specificLocation(),
-                        c.isLockable(), c.isLabeled());
+                        c.isLockable(), c.isLabeled(), c.isVerified());
             }
         }
 
@@ -185,8 +185,8 @@ public class PwaLotoStandardWalkdownService {
     public void applyCorrection(Long pointId, String tagNumber, String description,
                                 Long isoPosId, Long normPosId, Long locationId,
                                 String specificLocation,
-                                Boolean isLockable, Boolean isLabeled) {
-        // Corrections modify a LOTO point in place (tag/description/positions/location/flags).
+                                Boolean isLockable, Boolean isLabeled, Boolean isVerified) {
+        // Corrections modify a LOTO point in place (tag/description/positions/location/flags/verified).
         // Either a Control Authority (who owns build-time content) or a Manager
         // (who owns walkdown and might spot an in-field discrepancy) may apply
         // one — anyone lower is rejected.
@@ -201,6 +201,7 @@ public class PwaLotoStandardWalkdownService {
         if (specificLocation != null) p.setSpecificLocation(specificLocation);
         if (isLockable != null) p.setIsLockable(isLockable);
         if (isLabeled != null) p.setIsLabeled(isLabeled);
+        if (isVerified != null) p.setIsVerified(isVerified);
         lotoPointRepo.save(p);
     }
 

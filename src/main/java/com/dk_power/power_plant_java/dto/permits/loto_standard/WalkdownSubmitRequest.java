@@ -43,5 +43,8 @@ public record WalkdownSubmitRequest(
             Long locationId,
             String specificLocation,
             Boolean isLockable,
-            Boolean isLabeled) {}
+            Boolean isLabeled,
+            /** Persistent "point has been walked down and everything checks out" flag on LotoPoint.
+             *  Set by the walker once every per-point check passes; visible to future permit builders. */
+            Boolean isVerified) {}
 }

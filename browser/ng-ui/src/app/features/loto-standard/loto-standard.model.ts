@@ -18,8 +18,8 @@ export interface LotoPointRef {
   location?: LotoValueRef | null;
   specificLocation?: string;
   fluid?: string;
-  isLabeled?: boolean;
-  isLockable?: boolean;
+  isLabeled?: boolean | null;
+  isLockable?: boolean | null;
   fileIds?: string;
   zeroEnergyMethod?: string;
   processingStatus?: LotoValueRef | null;
@@ -27,6 +27,8 @@ export interface LotoPointRef {
   system?: string | null;
   /** System Value (dropdown) mirrors LotoPoint.systemValue — preferred over `system` when set. */
   systemValue?: LotoValueRef | null;
+  /** Persistent "point verified in the field" flag on LotoPoint (via BaseIdEntity.isVerified). */
+  isVerified?: boolean | null;
 }
 
 export interface LotoStandard {
@@ -270,6 +272,8 @@ export interface PointCorrection {
   isLockable?: boolean | null;
   /** Mirrors LotoPoint.isLabeled (permanent metal tag present). null = leave as is; true/false explicitly sets. */
   isLabeled?: boolean | null;
+  /** Mirrors LotoPoint.isVerified — persistent "walked-down and confirmed" flag. */
+  isVerified?: boolean | null;
 }
 
 // ── Offline draft + one-shot submit ────────────────────────────────────────

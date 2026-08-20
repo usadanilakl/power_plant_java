@@ -40,6 +40,15 @@ type Tab = 'standard' | 'procedure';
                 ✎ Correct points (tag / positions / locations)
               </button>
             }
+            @if (canEditPoints()) {
+              <!-- Draft/Reapproval-only authoring row: edit standard fields, attach a point (existing
+                   or new). The routes handle the CA/gate on the server side. -->
+              <div class="d-author-row">
+                <button class="d-author-btn" (click)="openEdit()">✎ Edit standard</button>
+                <button class="d-author-btn" (click)="openAddExistingPoint()">+ Add existing point</button>
+                <button class="d-author-btn" (click)="openAddNewPoint()">+ Create + add new point</button>
+              </div>
+            }
 
             <div class="d-tabs">
               <button class="d-tab" [class.active]="tab() === 'standard'" (click)="tab.set('standard')">Standard &amp; Points</button>
@@ -137,6 +146,10 @@ type Tab = 'standard' | 'procedure';
     /* Secondary action for Draft: same shape as the primary walkdown/verify button, muted color so
        it doesn't compete for attention when a verify/walkdown action would otherwise be primary. */
     .d-action-secondary { background: var(--accent-color); }
+    .d-author-row { display: grid; grid-template-columns: 1fr; gap: 0.4rem; margin-bottom: 0.75rem; }
+    @media (min-width: 480px) { .d-author-row { grid-template-columns: 1fr 1fr 1fr; } }
+    .d-author-btn { min-height: 44px; padding: 0.55rem 0.75rem; background: transparent; color: var(--primary-text); border: 1px solid var(--border-color); border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+    .d-author-btn:hover { border-color: var(--accent-color); }
     .d-tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; }
     .d-tab {
       background: none; border: none; padding: 0.6rem 0.4rem; font-size: 0.95rem; font-weight: 600; cursor: pointer;
@@ -251,6 +264,16 @@ export class LotoStandardDetailComponent implements OnInit {
 
   back(): void { this.router.navigate(['/loto-standards']); }
   openWalkdown(): void { this.router.navigate(['/loto-standards', this.std()!.id, 'walkdown']); }
+  openEdit(): void { this.router.navigate(['/loto-standards', this.std()!.id, 'edit']); }
+  /** "+ Add existing" — jump into the point-create flow's tag-lookup step; picking a match adds it here. */
+  openAddExistingPoint(): void {
+    this.router.navigate(['/loto-points/new'], { queryParams: { addToStandard: this.std()!.id } });
+  }
+  /** "+ Create + add" — same route as above, but the walker intends to create-not-pick.
+   *  The Continue button on the tag step attaches the newly-saved point to the standard. */
+  openAddNewPoint(): void {
+    this.router.navigate(['/loto-points/new'], { queryParams: { addToStandard: this.std()!.id } });
+  }
   badgeClass(): string {
     switch (this.phase()) {
       case 'Active': return 'd-badge b-active';

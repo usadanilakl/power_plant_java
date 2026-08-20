@@ -4,11 +4,22 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.base_dtos.CommentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.WalkdownSubmitRequest;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoStandard;
+import com.dk_power.power_plant_java.entities.users.LotoRole;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
+import com.dk_power.power_plant_java.sevice.pwa.PwaLotoStandardWalkdownService;
+
+import java.util.stream.Collectors;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +73,183 @@ public class PwaLotoPointController {
     private final NgLotoPointService lotoPointService;
     private final NgCommentService commentService;
     private final FileRepo fileRepo;
+    private final PwaLotoStandardWalkdownService walkdownService;
+    private final LotoStandardRepo lotoStandardRepo;
+    private final LotoPointRepo lotoPointRepo;
+    private final NgLotoStandardService lotoStandardService;
+
+    // ── Point creation + tag existence check + edit ──────────────────────────
+
+    /**
+     * Return every LOTO point whose tag exactly matches {@code tag} — case-sensitive, exactly as
+     * stored. The PWA creation flow calls this before showing the "fill in the rest" form so the
+     * walker can spot an already-existing point and pick it up instead of creating a duplicate.
+     * Empty list is a legitimate "tag is free" answer.
+     */
+    @GetMapping("/by-tag")
+    public ResponseEntity<NgApiResponse<List<LotoPointDto>>> findByTag(@RequestParam String tag) {
+        try {
+            if (tag == null || tag.isBlank()) {
+                return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Empty tag"));
+            }
+            List<LotoPointDto> matches = lotoPointRepo.findByTagNumber(tag.trim()).stream()
+                    .filter(p -> !Boolean.TRUE.equals(p.getDeleted()))
+                    .map(lotoPointService::toDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(new NgApiResponse<>(matches, "OK"));
+        } catch (Exception e) {
+            log.error("PWA findByTag failed for tag='{}'", tag, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(List.of(), "Failed to look up tag: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Create OR update a LOTO point (id-driven: id absent/zero → CREATE, id present → UPDATE).
+     * Delegates to the same {@code processLotoPointToDto} the desktop /ng/loto-points POST calls,
+     * which resolves Value FKs (isoPos/normPos/location/eqType/systemValue/vendor), equipment
+     * links, and zero-energy — a full round-trip through the desktop CRUD path.
+     *
+     * <p>Optional {@code addToStandardId} query parameter — when supplied AND the point ends up
+     * with a real id, wire it onto that standard in the same request. Convenience for the "add
+     * new point to standard from the PWA" flow.
+     */
+    @PostMapping
+    public ResponseEntity<NgApiResponse<LotoPointDto>> createOrUpdatePoint(
+            @RequestBody LotoPointIdDto lotoPoint,
+            @RequestParam(required = false) Long addToStandardId) {
+        try {
+            LotoPointDto saved = lotoPointService.processLotoPointToDto(lotoPoint);
+            if (addToStandardId != null && saved != null && saved.getId() != null) {
+                lotoStandardService.addLotoPointToStandard(saved.getId(), String.valueOf(addToStandardId));
+                // Re-fetch so the response reflects the standard linkage.
+                saved = lotoPointService.findDtoById(saved.getId()).orElse(saved);
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(saved, "LOTO point saved"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA createOrUpdatePoint failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to save point: " + e.getMessage()));
+        }
+    }
+
+    // ── Points-pile walkdown ────────────────────────────────────────────────
+
+    /**
+     * Return a de-duplicated pile of LOTO points selected by any combination of criteria:
+     * <ul>
+     *   <li>{@code standardIds} — union of every point on the given LOTO standards</li>
+     *   <li>{@code locationId} — filter to points whose {@code location} Value id matches</li>
+     *   <li>{@code system}     — filter to points whose {@code system} free-text (LotoPointDto.system)
+     *       matches (case-insensitive). LotoPointDto doesn't ship the systemValue Value FK so the
+     *       string is what we key on for now.</li>
+     * </ul>
+     * When both a standardIds set and a location/system filter are supplied the location/system
+     * acts as a further filter on the pile. When only standardIds is empty and a filter is
+     * supplied we scan every non-deleted LOTO point (small dataset in practice — dozens per
+     * location, hundreds per system). Response is a fat {@link LotoPointDto} so the mobile
+     * dialog has isoPos/normPos/location/system/isLabeled/isLockable/isVerified without a
+     * second round-trip per point.
+     */
+    @GetMapping("/walkdown-pile")
+    public ResponseEntity<NgApiResponse<List<LotoPointDto>>> walkdownPile(
+            @RequestParam(required = false) List<Long> standardIds,
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false) String system) {
+        try {
+            java.util.LinkedHashMap<Long, LotoPointDto> byId = new java.util.LinkedHashMap<>();
+            if (standardIds != null && !standardIds.isEmpty()) {
+                for (LotoStandard s : lotoStandardRepo.findAllById(standardIds)) {
+                    if (Boolean.TRUE.equals(s.getDeleted()) || s.getLotoPoints() == null) continue;
+                    for (LotoPoint p : s.getLotoPoints()) {
+                        if (p == null || Boolean.TRUE.equals(p.getDeleted())) continue;
+                        byId.putIfAbsent(p.getId(), lotoPointService.toDto(p));
+                    }
+                }
+            } else if (locationId != null || (system != null && !system.isBlank())) {
+                // No standards selected → scan all points and filter. `findAll()` is bounded by
+                // the deleted-filter on the entity, so we don't drag soft-deleted rows.
+                for (LotoPointDto dto : lotoPointService.getAllDtos()) {
+                    if (matchesFilter(dto, locationId, system)) byId.putIfAbsent(dto.getId(), dto);
+                }
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(List.of(), "Provide standardIds, locationId, or system"));
+            }
+            // Apply location/system filter on top of standardIds too (further-narrow semantics).
+            List<LotoPointDto> pile = new java.util.ArrayList<>(byId.values());
+            if (locationId != null || (system != null && !system.isBlank())) {
+                pile.removeIf(dto -> !matchesFilter(dto, locationId, system));
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(pile, "OK"));
+        } catch (Exception e) {
+            log.error("PWA walkdownPile failed (standards={}, location={}, system={})",
+                    standardIds, locationId, system, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(List.of(), "Failed to load points: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Distinct free-text `system` values across every LOTO point — for populating the
+     * "walk down by system" picker on the PWA. Cheap: iterates the fat DTO list once.
+     */
+    @GetMapping("/systems")
+    public ResponseEntity<NgApiResponse<List<String>>> distinctSystems() {
+        try {
+            java.util.TreeSet<String> systems = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            for (LotoPointDto dto : lotoPointService.getAllDtos()) {
+                if (dto.getSystem() != null && !dto.getSystem().isBlank()) systems.add(dto.getSystem().trim());
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(new java.util.ArrayList<>(systems), "OK"));
+        } catch (Exception e) {
+            log.error("PWA distinctSystems failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(List.of(), "Failed to load systems: " + e.getMessage()));
+        }
+    }
+
+    private static boolean matchesFilter(LotoPointDto dto, Long locationId, String system) {
+        if (locationId != null) {
+            Long loc = dto.getLocation() != null ? dto.getLocation().getId() : null;
+            if (loc == null || !loc.equals(locationId)) return false;
+        }
+        if (system != null && !system.isBlank()) {
+            String s = dto.getSystem();
+            if (s == null || !s.trim().equalsIgnoreCase(system.trim())) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Apply ONE point's correction immediately — the points-pile walkdown submits per-point as the
+     * walker taps Verified / edits inline, not in a batch (no standard-level draft to hang the
+     * evidence off). Uses the same {@link PwaLotoStandardWalkdownService#applyCorrection} the
+     * standard walkdown submit uses, so the role gate (CONTROL_AUTHORITY / MANAGER) and JPA
+     * plumbing (sync via FieldChangeEntityListener) are identical.
+     */
+    @PostMapping("/{pointId}/apply-correction")
+    public ResponseEntity<NgApiResponse<LotoPointDto>> applyPointCorrection(
+            @PathVariable Long pointId,
+            @RequestBody WalkdownSubmitRequest.PointCorrectionInput c) {
+        try {
+            if (c == null) return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Correction body required"));
+            walkdownService.applyCorrection(pointId, c.tagNumber(), c.description(),
+                    c.isoPosId(), c.normPosId(), c.locationId(), c.specificLocation(),
+                    c.isLockable(), c.isLabeled(), c.isVerified());
+            LotoPointDto fresh = lotoPointService.findDtoById(pointId).orElse(null);
+            return ResponseEntity.ok(new NgApiResponse<>(fresh, "Correction applied"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA applyPointCorrection failed for point {}", pointId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to apply correction: " + e.getMessage()));
+        }
+    }
 
     // ── Photos ─────────────────────────────────────────────────────────────
 

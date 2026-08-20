@@ -392,7 +392,7 @@ export interface SyncOptions {
 }
 
 export interface SyncExecuteProgress {
-  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'resource-packs' | 'starting_sb' | 'done' | 'error';
+  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'resource-packs' | 'starting_sb' | 'electron' | 'done' | 'error';
   statusMessage: string;
   progressPercent: number;
   error?: string;

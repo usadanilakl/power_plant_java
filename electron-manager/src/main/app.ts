@@ -249,7 +249,7 @@ export default class App {
     const deviceCfg = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager().getConfig();
     const directiveComponents = (policy?.actions ?? [])
       .map(a => a.toLowerCase())
-      .filter(a => a === 'jar' || a === 'db' || a === 'files');
+      .filter(a => a === 'jar' || a === 'db' || a === 'files' || a === 'electron');
     // Inlined (rather than a separate boolean) so TypeScript narrows policy/serverUrl/machineId to non-null.
     if (directiveComponents.length > 0 && policy && assessment?.serverUrl && deviceCfg?.machineId) {
       console.log(`boot-directive present (${directiveComponents.join(', ')}) — applying before auto-start`);

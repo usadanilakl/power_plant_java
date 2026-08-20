@@ -159,6 +159,17 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {
+      // Create-a-standard route BEFORE the :id catchall — otherwise "new" would be parsed as an id.
+      path: 'loto-standards/new',
+      loadComponent: () => import('./features/loto-standard/loto-standard-create.component').then(m => m.LotoStandardCreateComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'loto-standards/:id/edit',
+      loadComponent: () => import('./features/loto-standard/loto-standard-create.component').then(m => m.LotoStandardCreateComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
       path: 'loto-standards/:id',
       loadComponent: () => import('./features/loto-standard/loto-standard-detail.component').then(m => m.LotoStandardDetailComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]
@@ -166,6 +177,26 @@ export const routes: Routes = [
     {
       path: 'loto-standards/:id/walkdown',
       loadComponent: () => import('./features/loto-standard/loto-standard-walkdown.component').then(m => m.LotoStandardWalkdownComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
+      // Standard-independent walkdown of a PILE of LOTO points (pick standards / a location / a
+      // system → walk them down). Uses the same summary+dialog UX as the standard walkdown
+      // but saves per-tap and treats Pass/Fail as session-only.
+      path: 'loto-points-walkdown',
+      loadComponent: () => import('./features/loto-standard/loto-points-walkdown.component').then(m => m.LotoPointsWalkdownComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
+      // Create a new LOTO Point. Accepts ?addToStandard=<id> to attach the saved point to that
+      // standard in one round-trip (used by the standard-detail "add point" flow).
+      path: 'loto-points/new',
+      loadComponent: () => import('./features/loto-standard/loto-point-create.component').then(m => m.LotoPointCreateComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'loto-points/:id/edit',
+      loadComponent: () => import('./features/loto-standard/loto-point-create.component').then(m => m.LotoPointCreateComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {

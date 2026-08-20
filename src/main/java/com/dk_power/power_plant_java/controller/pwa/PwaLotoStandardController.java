@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.pwa;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardWalkdownDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.PointDrawingDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.PositionOptionsDto;
@@ -165,6 +166,79 @@ public class PwaLotoStandardController {
         String msg = transitioned ? "Submitted"
                 : (transitionMessage != null ? "Checklist saved; not finalized" : "Checklist saved");
         return ResponseEntity.ok(new NgApiResponse<>(new WalkdownSubmitResult(std, transitioned, transitionMessage), msg));
+    }
+
+    // ── Standard create / edit / add-point (PWA-authoring surface) ────────────
+
+    /**
+     * Create a new LOTO standard from the PWA. Delegates to the same {@code createStandard}
+     * the desktop /ng/loto-standards POST calls — the new standard lands in Draft with an
+     * empty points list. Role gate is enforced by the delegated service (Control Authority).
+     */
+    @PostMapping
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> create(@RequestBody LotoStandardIdDto body) {
+        try {
+            LotoStandardDto created = lotoStandardService.createStandard(body);
+            return ResponseEntity.ok(new NgApiResponse<>(created, "LOTO standard created"));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA createStandard failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to create standard: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Update an existing LOTO standard's basic fields (name / description / prose text) from the
+     * PWA. Delegates to the same {@code updateStandard} the desktop /ng/loto-standards PUT calls.
+     * Approved-standard changes route through the pending-review capture on the service side —
+     * the PWA doesn't need to know about that, the response reflects whatever the service does.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> update(
+            @PathVariable Long id, @RequestBody LotoStandardIdDto body) {
+        try {
+            body.setId(id);
+            LotoStandardDto updated = lotoStandardService.updateStandard(body);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "LOTO standard saved"));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA updateStandard failed for id={}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to save standard: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Attach an existing LOTO point to a standard. Delegates to the same
+     * {@code addLotoPointToStandard} the desktop uses — role gating + pending-change capture
+     * (for Approved standards) all handled there.
+     */
+    @PostMapping("/{standardId}/add-point/{pointId}")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> addPointToStandard(
+            @PathVariable Long standardId, @PathVariable Long pointId) {
+        try {
+            LotoStandardDto updated = lotoStandardService.addLotoPointToStandard(pointId, String.valueOf(standardId));
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Point added to standard"));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA addPointToStandard failed (standard={}, point={})", standardId, pointId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to add point: " + e.getMessage()));
+        }
     }
 
     private LotoStandardDto safeDto(Long id) {

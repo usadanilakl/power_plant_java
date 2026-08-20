@@ -27,6 +27,7 @@ import { DaEmailManager } from '../managers/da-email.manager';
 import { VoskManager } from '../managers/vosk.manager';
 import { backendGet, backendPost } from '../clients/backend-client';
 import { SyncUpdateManager } from '../managers/sync-update.manager';
+import { getWorkingDir } from '../paths';
 import { SharePointManager } from '../managers/sharepoint.manager';
 import { PersonnelManager } from '../managers/personnel.manager';
 import { NewsManager } from '../managers/news.manager';
@@ -1008,16 +1009,18 @@ export class IpcHandlers {
   }
 
   /**
-   * Apply a hub next-boot directive by running its actions through {@link runSyncComponents} and reporting
-   * back so it runs exactly once. Actions map to sync components (jar/db/files → same names); a "db" action
-   * uses bounded mark-synced. "electron" is left to the Electron self-update flow. Best-effort: on any error
-   * the directive is NOT acked, so the hub re-offers it next boot.
+   * Apply a hub next-boot directive. jar/db/files run through {@link runSyncComponents} (a "db" action uses
+   * bounded mark-synced); an "electron" action downloads + applies an Electron self-update, which swaps the
+   * whole install and RELAUNCHES via update.cmd. Order: jar/db/files first (app stays up), then ack, then
+   * electron LAST (it terminates the app, so nothing may run after a successful apply). Best-effort: if
+   * jar/db/files fail the directive is NOT acked and the hub re-offers next boot.
    */
   async applyBootDirective(policy: { id: string; actions: string[]; message?: string }, serverUrl: string, machineId: string): Promise<void> {
     const wanted = new Set((policy.actions || []).map(a => a.toLowerCase()));
     const components: SyncComponent[] = (['jar', 'db', 'files'] as const).filter(c => wanted.has(c));
-    if (components.length === 0) {
-      // Nothing this path applies (e.g. an electron-only directive) — still ack so it isn't re-offered forever.
+    const wantsElectron = wanted.has('electron');
+    if (components.length === 0 && !wantsElectron) {
+      // Nothing this path applies — still ack so it isn't re-offered forever.
       await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
       return;
     }
@@ -1034,17 +1037,105 @@ export class IpcHandlers {
         noLink: true
       }).catch(() => { /* window closed mid-update — ignore */ });
     }
-    console.log(`boot-directive: applying ${components.join(', ')} for id=${policy.id}`);
-    const result = await this.runSyncComponents(components, {
-      markHubSyncedAfter: components.includes('db'),
-      startWhenDone: true,
-      bannerMessage: directiveMessage || undefined
-    });
-    if (result.success) {
-      await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
-      console.log(`boot-directive: applied + reported id=${policy.id}`);
-    } else {
-      console.warn(`boot-directive: apply failed (${result.error}) — not acking; hub will re-offer next boot`);
+
+    // 1. jar/db/files (app stays up — runSyncComponents restarts Spring Boot at the end). SKIP the re-apply if
+    //    THIS exact directive already ran locally: the ack POST is best-effort (reportDirectiveApplied resolves
+    //    even on a network error/timeout), so a lost ack must NOT re-swap the DB on every boot. The persisted id
+    //    is the client-side mirror of the hub's lastAppliedDirectiveId.
+    const alreadyAppliedLocally = this.readLastAppliedDirectiveId() === policy.id;
+    if (components.length > 0 && !alreadyAppliedLocally) {
+      console.log(`boot-directive: applying ${components.join(', ')} for id=${policy.id}`);
+      const result = await this.runSyncComponents(components, {
+        markHubSyncedAfter: components.includes('db'),
+        startWhenDone: true,
+        bannerMessage: directiveMessage || undefined
+      });
+      if (!result.success) {
+        console.warn(`boot-directive: apply failed (${result.error}) — not acking; hub will re-offer next boot`);
+        return;
+      }
+      this.writeLastAppliedDirectiveId(policy.id); // persist AFTER success, BEFORE the (best-effort) ack
+    } else if (alreadyAppliedLocally && components.length > 0) {
+      console.log(`boot-directive ${policy.id}: jar/db/files already applied locally — skipping re-apply, re-acking`);
+    }
+
+    // 2. Ack (best-effort) — BEFORE any electron update, which terminates the app so we could never ack after.
+    //    The local guard above (not this ack) is what prevents a lost ack from re-swapping the DB next boot; the
+    //    electron step is separately version-checked so it never re-downloads either.
+    await this.reportDirectiveApplied(serverUrl, machineId, policy.id);
+    console.log(`boot-directive: applied + reported id=${policy.id}`);
+
+    // 3. Electron LAST — replaces the whole install and relaunches via update.cmd. Best-effort.
+    if (wantsElectron) {
+      await this.applyElectronDirective(serverUrl, directiveMessage);
+    }
+  }
+
+  /**
+   * Apply the "electron" action of a boot directive: if the hub has a newer Electron build, download it and
+   * hand off to {@link ElectronUpdateManager#applyUpdate} — which launches update.cmd, waits for us to exit,
+   * swaps the install, and RELAUNCHES the new build. We quit here so that hand-off can proceed. Best-effort:
+   * a no-newer-build or a download/apply failure just leaves the current app running (directive already acked).
+   */
+  private async applyElectronDirective(serverUrl: string, message: string): Promise<void> {
+    try {
+      const check = await this.electronUpdateManager.checkForUpdate(serverUrl);
+      if (!check.success || !check.data?.isNewer) {
+        console.log('boot-directive electron: no newer Electron available — nothing to apply');
+        return;
+      }
+      this.sendElectronDirectiveProgress('Downloading application update…', 0, message);
+      const dl = await this.electronUpdateManager.downloadUpdate(serverUrl, (p) => {
+        if (p.phase === 'downloading') {
+          this.sendElectronDirectiveProgress(`Downloading application update… ${p.percent ?? 0}%`, p.percent ?? 0, message);
+        }
+      });
+      if (!dl.success || !this.electronUpdateManager.isUpdateStaged()) {
+        console.warn(`boot-directive electron: download/stage failed (${dl.error || 'not staged'}) — skipping the Electron update`);
+        return;
+      }
+      const applied = this.electronUpdateManager.applyUpdate();
+      if (!applied.success) {
+        console.warn(`boot-directive electron: applyUpdate failed (${applied.error}) — skipping`);
+        return;
+      }
+      // update.cmd is now launched and waiting on our PID. Stop Spring Boot and exit so it can swap + relaunch.
+      this.sendElectronDirectiveProgress('Installing application update — restarting…', 100, message);
+      try { await this.springBoot.stop(); } catch { /* proceed to exit regardless */ }
+      app.exit(0);
+    } catch (e: any) {
+      console.warn('boot-directive electron: error applying Electron update:', e?.message || e);
+    }
+  }
+
+  /** Push a boot-directive Electron-update step into the same progress UI the sync flow uses. */
+  private sendElectronDirectiveProgress(statusMessage: string, progressPercent: number, bannerMessage: string): void {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      const progress: SyncExecuteProgress = { phase: 'electron', statusMessage, progressPercent };
+      if (bannerMessage) progress.bannerMessage = bannerMessage;
+      this.mainWindow.webContents.send(events.IPC_SYNC_EXECUTE_PROGRESS, progress);
+    }
+  }
+
+  /** Client-side mirror of the hub's lastAppliedDirectiveId — persisted so a lost ack can't re-apply a directive. */
+  private lastAppliedDirectivePath(): string {
+    return path.join(getWorkingDir(), 'last-applied-directive.txt');
+  }
+
+  private readLastAppliedDirectiveId(): string | null {
+    try {
+      const p = this.lastAppliedDirectivePath();
+      return fs.existsSync(p) ? (fs.readFileSync(p, 'utf8').trim() || null) : null;
+    } catch {
+      return null; // unreadable → treat as not-applied (worst case: one extra re-apply, never a skipped one)
+    }
+  }
+
+  private writeLastAppliedDirectiveId(id: string): void {
+    try {
+      fs.writeFileSync(this.lastAppliedDirectivePath(), id, 'utf8');
+    } catch (e: any) {
+      console.warn('boot-directive: could not persist last-applied id (a lost ack could re-apply):', e?.message || e);
     }
   }
 

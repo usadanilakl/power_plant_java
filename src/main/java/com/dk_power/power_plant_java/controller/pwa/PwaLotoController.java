@@ -1,14 +1,20 @@
 package com.dk_power.power_plant_java.controller.pwa;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_permit.PwaLotoDtos.*;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.PointDrawingDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.PositionOptionsDto;
+import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.repository.loto.LotoRepo;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaLotoDrawingService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaLotoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +35,45 @@ public class PwaLotoController {
 
     private final PwaLotoService service;
     private final PwaLotoDrawingService drawingService;
+    private final LotoRepo lotoRepo;
+    private final NgLotoService lotoService;
+
+    // ── inactive-permit edit ────────────────────────────────────────────────
+
+    /**
+     * Edit a LOTO permit's basic fields from the PWA — allowed ONLY while the permit is in
+     * "Building" (i.e. inactive, pre-activation). Any other status is 409 with a hint.
+     *
+     * <p>Behaves as a pass-through to {@link NgLotoService#updateAndConvert} — the desktop's
+     * defensive guards (archived-check, status-mismatch reject) apply automatically. This
+     * endpoint's contribution is the Building-only gate: verifiers on an Active/Test/Closed
+     * permit shouldn't be reshaping requestor/workScope/system in the field.
+     */
+    @PutMapping("/{id}/basic")
+    public ResponseEntity<NgApiResponse<LotoDto>> updateInactiveBasic(
+            @PathVariable Long id, @RequestBody LotoIdDto body) {
+        try {
+            Loto loto = lotoRepo.findById(id).orElse(null);
+            if (loto == null) return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new NgApiResponse<>(null, "LOTO not found: " + id));
+            String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+            if (!"Building".equals(status)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new NgApiResponse<>(null,
+                        "This permit is " + status + " — only Building permits can be edited from the PWA"));
+            }
+            body.setId(id);
+            LotoDto updated = lotoService.updateAndConvert(body);
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "Permit saved"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA updateInactiveBasic failed for loto {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to save permit: " + e.getMessage()));
+        }
+    }
 
     // ── read ──
 

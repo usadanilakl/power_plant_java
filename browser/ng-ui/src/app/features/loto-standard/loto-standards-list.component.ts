@@ -17,6 +17,16 @@ import { LotoStandard, statusPhase } from './loto-standard.model';
       </ng-container>
       <ng-container main-content>
         <div class="ls-container">
+          <div class="ls-cta-row">
+            <button class="ls-cta" (click)="openNewStandard()">+ New Standard</button>
+            <button class="ls-cta" (click)="openNewPoint()">+ New Point</button>
+          </div>
+          <!-- Standard-independent walkdown entry point. Cross-links to a mode that lets the walker
+               bulk-verify LOTO points across multiple standards or by location/system. -->
+          <button class="ls-points-cta" (click)="openPointsWalkdown()">
+            <span>🎯 Walk down LOTO points</span>
+            <span class="ls-points-cta-sub">Pick standards, a location, or a system</span>
+          </button>
           <input class="ls-search" type="search" placeholder="Search standards…"
                  [value]="search()" (input)="onSearch($event)">
 
@@ -70,6 +80,15 @@ import { LotoStandard, statusPhase } from './loto-standard.model';
     .ls-badge.b-verification { background: var(--warning-solid); }
     .ls-badge.b-draft { background: var(--secondary-text); }
     .ls-count { font-size: 0.8rem; color: var(--secondary-text); }
+    .ls-points-cta {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem;
+      width: 100%; padding: 0.85rem 1rem; margin-bottom: 0.8rem;
+      background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 12px;
+      font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: left;
+    }
+    .ls-points-cta-sub { font-size: 0.78rem; font-weight: 500; opacity: 0.85; }
+    .ls-cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.6rem; }
+    .ls-cta { min-height: 44px; padding: 0.7rem; background: var(--card-bg, var(--secondary-background)); color: var(--primary-text); border: 1px solid var(--accent-color); border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
   `]
 })
 export class LotoStandardsListComponent implements OnInit {
@@ -103,6 +122,9 @@ export class LotoStandardsListComponent implements OnInit {
 
   onSearch(e: Event): void { this.search.set((e.target as HTMLInputElement).value); }
   open(s: LotoStandard): void { this.router.navigate(['/loto-standards', s.id]); }
+  openPointsWalkdown(): void { this.router.navigate(['/loto-points-walkdown']); }
+  openNewStandard(): void { this.router.navigate(['/loto-standards/new']); }
+  openNewPoint(): void { this.router.navigate(['/loto-points/new']); }
   phase(s: LotoStandard): string { return statusPhase(s.developmentStatus?.name); }
   badgeClass(s: LotoStandard): string {
     switch (this.phase(s)) {

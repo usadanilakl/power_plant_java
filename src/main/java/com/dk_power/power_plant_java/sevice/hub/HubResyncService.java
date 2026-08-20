@@ -323,9 +323,21 @@ public class HubResyncService {
     @EventListener(ApplicationReadyEvent.class)
     public void warmClientResyncBackupOnStartup() {
         if (!warmBackupEnabled) return;
+        // Skip under spring-boot-devtools: a dev hub hot-restarts on every recompile, so a multi-minute
+        // startup BACKUP TO would never finish before the next restart (leaking a thread + holding backupLock
+        // each time). Production runs as a plain jar (no devtools) and warms normally.
+        if (isDevtoolsActive()) {
+            log.info("resync.warm_backup startup warm skipped — devtools active (dev hub restarts too often to warm)");
+            return;
+        }
         Thread t = new Thread(this::warmClientResyncBackup, "resync-warm-startup");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** True when running under spring-boot-devtools (beans are loaded by its RestartClassLoader). */
+    private boolean isDevtoolsActive() {
+        return getClass().getClassLoader().getClass().getName().contains("RestartClassLoader");
     }
 
     @Scheduled(fixedDelayString = "${sync.backup.warm-interval-ms:3600000}",

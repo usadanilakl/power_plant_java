@@ -68,6 +68,12 @@ public class HubJarUpdateService {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void warmChecksumOnStartup() {
+        // Skip under spring-boot-devtools (dev hub hot-restarts constantly — see HubResyncService). Prod runs
+        // as a plain jar and pre-warms normally.
+        if (getClass().getClassLoader().getClass().getName().contains("RestartClassLoader")) {
+            log.info("Jar checksum pre-warm skipped — devtools active");
+            return;
+        }
         Thread t = new Thread(() -> {
             try {
                 getLatestJarInfo().ifPresent(info ->
