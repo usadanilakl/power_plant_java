@@ -124,11 +124,21 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            filterChain.doFilter(request, response);
         } catch (Exception e) {
+            // ONLY token validation / user-resolution errors reach here. Previously
+            // filterChain.doFilter() sat INSIDE this try, so ANY downstream dispatch/controller failure
+            // (e.g. NoHandlerFoundException for an endpoint the deployed jar lacks, or a broken-jar
+            // NoClassDefFoundError wrapped as an exception) was mislabeled "INVALID_TOKEN" — masking the
+            // real error and making a hub/PWA version mismatch look like an auth failure. doFilter now
+            // runs OUTSIDE this catch.
             log.debug("[PWA JWT] Token validation failed: {}", e.getMessage());
             sendError(response, 401, "INVALID_TOKEN", "Token is invalid or expired");
+            return;
         }
+
+        // Token verified + security context established — proceed. Errors from here on (missing handler,
+        // controller exception) surface through Spring's normal error handling, not as a fake 401.
+        filterChain.doFilter(request, response);
     }
 
     /**
