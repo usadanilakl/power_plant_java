@@ -228,6 +228,16 @@ public class JwtService {
         userMetadata.put("hub_user_id", user.getId());
         if (user.getName() != null) userMetadata.put("name", user.getName());
 
+        // Authorisation claims ALSO go in app_metadata, and that is the one RLS should trust.
+        // A GoTrue-issued token's user_metadata is whatever the client posted to /auth/v1/signup,
+        // so a policy reading user_metadata cannot tell this hub-signed token apart from one a
+        // stranger minted for themselves. app_metadata is never client-writable, so the same
+        // policy expression is safe for both issuers.
+        Map<String, Object> appMetadata = new java.util.HashMap<>();
+        appMetadata.put("roles", user.getRoles());
+        appMetadata.put("is_active", Boolean.TRUE.equals(user.getIsActive()));
+        appMetadata.put("hub_user_id", user.getId());
+
         return Jwts.builder()
                 .issuer(supabaseIssuer.isEmpty() ? "supabase" : supabaseIssuer)
                 .subject(user.getSupabaseUuid())
@@ -235,6 +245,7 @@ public class JwtService {
                 .claim("role", "authenticated")
                 .claim("email", user.getEmail())
                 .claim("user_metadata", userMetadata)
+                .claim("app_metadata", appMetadata)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(supabaseHmacKey, Jwts.SIG.HS256)

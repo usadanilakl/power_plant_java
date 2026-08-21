@@ -168,6 +168,11 @@ public class SupabaseAdminClient {
         body.put("password", plaintextPassword);
         body.put("email_confirm", true);
         body.put("user_metadata", metadata == null ? Map.of() : metadata);
+        // Authorisation claims ALSO go to app_metadata, which only the service-role key can write.
+        // See appMetadataFor(). During the migration both are written so the old policies (reading
+        // user_metadata) keep working until the new ones are applied; user_metadata can stop
+        // carrying roles/is_active once every policy reads app_metadata.
+        appMetadataFrom(metadata).ifPresent(am -> body.put("app_metadata", am));
         try {
             JsonNode created = withRetry(() -> client.post()
                     .uri("/auth/v1/admin/users")
@@ -204,7 +209,13 @@ public class SupabaseAdminClient {
 
     public void updateUserMetadata(String uuid, Map<String, Object> metadata) {
         requireEnabled();
-        adminUpdate(uuid, Map.of("user_metadata", metadata == null ? Map.of() : metadata));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("user_metadata", metadata == null ? Map.of() : metadata);
+        // Mirror the authorisation claims into app_metadata (service-role only, unforgeable by a
+        // browser). This is also the BACKFILL: SupabaseReconciliationService calls this for every
+        // user on its 60s tick, so existing accounts gain app_metadata without a migration script.
+        appMetadataFrom(metadata).ifPresent(am -> body.put("app_metadata", am));
+        adminUpdate(uuid, body);
     }
 
     private void adminUpdate(String uuid, Map<String, Object> body) {
@@ -504,6 +515,45 @@ public class SupabaseAdminClient {
         putIfNotNull(md, "pwa_user_uuid", user.getPwaUserUuid());
         return md;
     }
+
+    /**
+     * The AUTHORISATION half of the mirror, written to {@code raw_app_meta_data}.
+     *
+     * <p>Why a second map: {@code user_metadata} is whatever the CLIENT sent to
+     * {@code POST /auth/v1/signup} — GoTrue copies the request's {@code data} object into it
+     * verbatim. Signups are open on this project ({@code disable_signup:false}, verified
+     * 2026-08-11), so anyone with the public anon key could register with
+     * {@code {"roles":["ROLE_ADMIN"],"is_active":true}} and any RLS policy reading
+     * {@code user_metadata} would believe them.
+     *
+     * <p>{@code app_metadata} is writable ONLY with the service-role key, so a browser cannot
+     * forge it. Every claim a policy makes an access decision on belongs here — never in
+     * {@code user_metadata}, which stays a display-only mirror (name, phone, company).
+     *
+     * <p>Deliberately narrow: only the fields the policies actually gate on.</p>
+     */
+    public static Map<String, Object> appMetadataFor(User user) {
+        Map<String, Object> md = new LinkedHashMap<>();
+        md.put("roles", user.getRoles());
+        md.put("is_active", Boolean.TRUE.equals(user.getIsActive()));
+        putIfNotNull(md, "permission_level", user.getPermissionLevel());
+        putIfNotNull(md, "hub_user_id", user.getId());
+        return md;
+    }
+
+    /** The authorisation subset of an already-built {@link #metadataFor(User)} map. */
+    private static java.util.Optional<Map<String, Object>> appMetadataFrom(Map<String, Object> metadata) {
+        if (metadata == null || metadata.isEmpty()) return java.util.Optional.empty();
+        Map<String, Object> md = new LinkedHashMap<>();
+        for (String k : AUTH_CLAIM_KEYS) {
+            if (metadata.containsKey(k)) md.put(k, metadata.get(k));
+        }
+        return md.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(md);
+    }
+
+    /** Claims a policy may gate on. These must live in app_metadata, never user_metadata. */
+    private static final String[] AUTH_CLAIM_KEYS =
+            { "roles", "is_active", "permission_level", "hub_user_id" };
 
     private static void putIfNotNull(Map<String, Object> m, String k, Object v) {
         if (v != null) m.put(k, v);
