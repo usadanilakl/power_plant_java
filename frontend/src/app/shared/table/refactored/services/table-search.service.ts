@@ -67,24 +67,40 @@ export class TableSearchService {
     }
   }
 
+  /**
+   * A column filter box can hold several picked values separated by "|"
+   * (multi-select). Values are OR-ed — the row matches if it matches ANY pick —
+   * while the words INSIDE one value follow that column's AND/OR toggle, so
+   * "Dan Schomig" stays one name rather than "dan" or "schomig".
+   * <p>
+   * The token rule now reads the same toggle the server reads. It used to be
+   * hard-coded to OR here while the server defaulted to AND, so an isolated
+   * (client-filtered) table and a server-backed one answered the same filter
+   * differently.
+   */
   private matchesColumnFilters(
     item: any,
     filters: { [key: string]: string }
   ): boolean {
-    const useAndLogic = false; // Toggle this to switch between AND/OR logic
-
     return Object.entries(filters).every(([key, value]) => {
       if (!value) return true;
 
-      const tokens = value.toLowerCase().trim().split(/\s+/);
+      const values = value
+        .split('|')
+        .map((v) => v.trim().toLowerCase())
+        .filter((v) => v.length > 0);
+      if (values.length === 0) return true; // separators only => no constraint
+
       const itemValue = this.utilService.getNestedProperty(item, key);
       const fieldValue = String(itemValue).toLowerCase();
+      const useAndLogic = this.dataService.columnFilterLogic[key] !== 'OR';
 
-      // Word-bucket: ALL tokens must be present in field (AND logic)
-      // OR: At least ONE token must be present in field (OR logic)
-      return useAndLogic
-        ? tokens.every((token) => fieldValue.includes(token))
-        : tokens.some((token) => fieldValue.includes(token));
+      return values.some((single) => {
+        const tokens = single.split(/\s+/).filter((t) => t.length > 0);
+        return useAndLogic
+          ? tokens.every((token) => fieldValue.includes(token))
+          : tokens.some((token) => fieldValue.includes(token));
+      });
     });
   }
 

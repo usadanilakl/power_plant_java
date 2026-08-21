@@ -252,11 +252,12 @@ export function groupPointsForWalkdown(
 
 // ── Position options + in-field corrections ────────────────────────────────
 
-/** isoPos / normPos / location Value option lists (mirror the desktop Value categories). */
+/** isoPos / normPos / location / eqType Value option lists (mirror the desktop Value categories). */
 export interface PositionOptions {
   isoPos: LotoValueRef[];
   normPos: LotoValueRef[];
   location: LotoValueRef[];
+  eqType: LotoValueRef[];
 }
 
 export interface PointCorrection {

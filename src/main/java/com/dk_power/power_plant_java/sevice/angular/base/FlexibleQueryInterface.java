@@ -449,7 +449,45 @@ public interface FlexibleQueryInterface {
 //        }
 //    }
 
+    /**
+     * Separator between the values of a MULTI-SELECT column filter. The filter box
+     * holds the picks as "Dan Schomig | Danil Klokov"; each value is matched on its
+     * own and the results are OR-ed, because that is what choosing several options
+     * in a dropdown means. A single-value filter never contains the separator, so
+     * it takes exactly the path it always took.
+     */
+    String FILTER_VALUE_SEPARATOR = "|";
+
+    /** Split a filter value into its individually-matched values, blanks dropped. */
+    default List<String> splitFilterValues(String value) {
+        if (value == null) return List.of();
+        return Arrays.stream(value.split(Pattern.quote(FILTER_VALUE_SEPARATOR)))
+                .map(String::trim)
+                .filter(v -> !v.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Match a column filter, which may carry several picked values. Values are
+     * OR-ed; the words INSIDE one value are combined by {@code logic}, so
+     * "Dan Schomig" stays one name instead of matching every "Dan".
+     */
     default Predicate handleSingleField(CriteriaBuilder cb, From<?, ?> from, String fieldName, String value, String logic) {
+        List<String> values = splitFilterValues(value);
+        if (values.isEmpty()) {
+            return cb.conjunction(); // nothing to filter on => no constraint
+        }
+        if (values.size() == 1) {
+            return handleSingleFieldValue(cb, from, fieldName, values.get(0), logic);
+        }
+        List<Predicate> perValue = values.stream()
+                .map(v -> handleSingleFieldValue(cb, from, fieldName, v, logic))
+                .collect(Collectors.toList());
+        return cb.or(perValue.toArray(new Predicate[0]));
+    }
+
+    /** Matches ONE value against the field. */
+    default Predicate handleSingleFieldValue(CriteriaBuilder cb, From<?, ?> from, String fieldName, String value, String logic) {
         Class<?> fieldType = from.get(fieldName).getJavaType();
 
         // Non-string: keep existing behavior
@@ -524,11 +562,19 @@ public interface FlexibleQueryInterface {
         Join<?, ?> join = from.join(fieldName, JoinType.LEFT);
         Class<?> elementType = join.getJavaType();
 
-        if (isStringNumberOrDate(elementType)) {
-            return criteriaBuilder.like(criteriaBuilder.lower(join.as(String.class)), "%" + value.toLowerCase() + "%");
-        } else {
-            return criteriaBuilder.equal(join.get("id"), value);
+        // Same multi-select contract as handleSingleField: OR across the picks.
+        List<String> values = splitFilterValues(value);
+        if (values.isEmpty()) return criteriaBuilder.conjunction();
+
+        List<Predicate> perValue = new ArrayList<>();
+        for (String single : values) {
+            if (isStringNumberOrDate(elementType)) {
+                perValue.add(criteriaBuilder.like(criteriaBuilder.lower(join.as(String.class)), "%" + single.toLowerCase() + "%"));
+            } else {
+                perValue.add(criteriaBuilder.equal(join.get("id"), single));
+            }
         }
+        return perValue.size() == 1 ? perValue.get(0) : criteriaBuilder.or(perValue.toArray(new Predicate[0]));
     }
 
     default Predicate handleSingleField(CriteriaBuilder criteriaBuilder, Path<?> path, String fieldName, String value) {

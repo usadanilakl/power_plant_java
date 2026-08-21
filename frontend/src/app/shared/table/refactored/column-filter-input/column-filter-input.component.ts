@@ -1,6 +1,6 @@
 
 import { CommonModule } from '@angular/common';
-import { Component, input, output, signal, ViewChild, ElementRef, effect, ChangeDetectorRef } from '@angular/core';
+import { Component, computed, input, output, signal, ViewChild, ElementRef, effect, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -27,6 +27,56 @@ export class ColumnFilterInputComponent {
   dropdownStyle = signal<{ [key: string]: string }>({});
   filterValue = signal<string>('');
 
+  /**
+   * Separator between the values of a multi-select filter. One filter box can
+   * hold several picks ("Dan Schomig | Danil Klokov"), which the search treats
+   * as OR — which is what picking several options in a dropdown means. Chosen
+   * because it survives a plain text box, needs no new state (the picks are
+   * parsed back out of the box), and no lookup value in this app contains it.
+   * Everything downstream — the emitted filter string, the criteria, the server
+   * predicate — keeps its existing shape, so a single pick behaves exactly as
+   * it did before.
+   */
+  static readonly VALUE_SEPARATOR = '|';
+
+  /** The picked values, parsed straight back out of the box. */
+  selectedValues = computed<string[]>(() => this.parseValues(this.filterValue()));
+
+  /**
+   * What the user is currently TYPING — the text after the last separator.
+   * Type-ahead and the server-side option lookup use this rather than the whole
+   * box, or the option list would go empty as soon as the first pick landed.
+   */
+  typedTerm = computed<string>(() => {
+    const raw = this.filterValue();
+    const at = raw.lastIndexOf(ColumnFilterInputComponent.VALUE_SEPARATOR);
+    return (at === -1 ? raw : raw.slice(at + 1)).trim();
+  });
+
+  private parseValues(raw: string): string[] {
+    return raw
+      .split(ColumnFilterInputComponent.VALUE_SEPARATOR)
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+  }
+
+  /** True when this option is already one of the picks (case-insensitive). */
+  isOptionSelected(option: string): boolean {
+    const target = (option ?? '').trim().toLowerCase();
+    return this.selectedValues().some((v) => v.toLowerCase() === target);
+  }
+
+  /**
+   * Write a set of picks back into the box. The trailing separator is
+   * deliberate: it leaves typedTerm() empty, so the dropdown immediately shows
+   * the full option list again and the next pick can be typed straight away.
+   */
+  private applyValues(values: string[]): void {
+    const next = values.length ? values.join(' | ') + ' | ' : '';
+    this.filterValue.set(next);
+    this.filterChange.emit(next);
+  }
+
   private closeDropdownTimeout: any;
 
   constructor(private cdr: ChangeDetectorRef) {
@@ -35,7 +85,7 @@ export class ColumnFilterInputComponent {
     // table itself filters — the two get visibly out of sync.
     effect(() => {
       const all = this.uniqueValues();
-      const q = this.filterValue().trim().toLowerCase();
+      const q = this.typedTerm().toLowerCase();
       this.filteredOptions.set(
         q ? all.filter(o => (o ?? '').toLowerCase().includes(q)) : all
       );
@@ -68,7 +118,7 @@ export class ColumnFilterInputComponent {
   onInputChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.filterValue.set(value);
-    this.loadInitialOptions.emit(value);
+    this.loadInitialOptions.emit(this.typedTerm());
     this.filterChange.emit(value);
   }
   
@@ -82,7 +132,7 @@ export class ColumnFilterInputComponent {
     const value = (event.target as HTMLInputElement).value;
     this.filterValue.set(value);
     this.filteredOptions.set([]);
-    this.loadInitialOptions.emit(value);
+    this.loadInitialOptions.emit(this.typedTerm());
     this.filterDropdownOpen.set(true);
     
     // Position the dropdown below the input
@@ -123,14 +173,27 @@ export class ColumnFilterInputComponent {
     }, 300);
   }
 
+  /**
+   * Toggle an option in or out of the picks, so the dropdown reads as a
+   * checklist. The dropdown deliberately STAYS OPEN — closing on the first
+   * click is what made this single-choice.
+   */
   selectOption(option: string): void {
-    this.filterValue.set(option);
-    this.filterChange.emit(option);
-    this.filterDropdownOpen.set(false);
+    const target = (option ?? '').trim();
+    if (!target) return;
+
+    const picked = this.selectedValues();
+    this.applyValues(
+      this.isOptionSelected(target)
+        ? picked.filter((v) => v.toLowerCase() !== target.toLowerCase())
+        : [...picked, target]
+    );
+
     if (this.closeDropdownTimeout) {
       clearTimeout(this.closeDropdownTimeout);
       this.closeDropdownTimeout = null;
     }
+    this.inputElement?.nativeElement.focus();
   }
 
   clearFilter(): void {
@@ -151,8 +214,7 @@ export class ColumnFilterInputComponent {
     
     // Trigger load more when user scrolls within 50px of the bottom
     if (scrollHeight - (scrollTop + clientHeight) < 50 && !this.isLoadingMore()) {
-      const currentSearchTerm = this.filterValue();
-      this.loadMoreOptions.emit(currentSearchTerm);
+      this.loadMoreOptions.emit(this.typedTerm());
     }
   }
 

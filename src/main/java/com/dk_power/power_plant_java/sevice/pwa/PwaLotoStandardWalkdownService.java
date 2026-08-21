@@ -85,7 +85,8 @@ public class PwaLotoStandardWalkdownService {
 
     @Transactional(readOnly = true)
     public PositionOptionsDto positionOptions() {
-        return new PositionOptionsDto(safeValues("isoPos"), safeValues("normPos"), safeValues("location"));
+        return new PositionOptionsDto(safeValues("isoPos"), safeValues("normPos"),
+                safeValues("location"), safeValues("eqType"));
     }
 
     private List<ValueDto> safeValues(String category) {

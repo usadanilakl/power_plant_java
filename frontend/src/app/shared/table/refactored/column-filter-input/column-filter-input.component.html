@@ -28,16 +28,22 @@
       class="options-list"
       (scroll)="onOptionsScroll($event)"
     >
-      <div 
-        *ngFor="let option of filteredOptions()" 
+      <div
+        *ngFor="let option of filteredOptions()"
         class="option"
+        [class.selected]="isOptionSelected(option)"
         (click)="selectOption(option)"
       >
-        {{ option }}
+        <span class="opt-check" aria-hidden="true">{{ isOptionSelected(option) ? '☑' : '☐' }}</span>
+        <span class="opt-text">{{ option }}</span>
       </div>
       
       <div *ngIf="filteredOptions().length === 0" class="option disabled">
         No options found
+      </div>
+
+      <div *ngIf="selectedValues().length > 1" class="option disabled multi-hint">
+        {{ selectedValues().length }} selected — rows matching ANY of them
       </div>
       
       <div *ngIf="isLoadingMore()" class="loading-indicator">

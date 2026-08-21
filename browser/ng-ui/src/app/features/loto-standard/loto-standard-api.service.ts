@@ -33,37 +33,41 @@ export class LotoStandardApiService {
     );
   }
 
-  /** isoPos / normPos / location Value options for in-field position corrections. */
+  /** isoPos / normPos / location / eqType Value options for in-field corrections + walkdown-pile filters. */
   getPositions(): Observable<PositionOptions> {
     return this.http.get<{ responseData: PositionOptions }>(`${this.base}/positions`).pipe(
       timeout(20000),
-      map(r => r.responseData ?? { isoPos: [], normPos: [], location: [] })
+      map(r => r.responseData ?? { isoPos: [], normPos: [], location: [], eqType: [] })
     );
   }
 
   // ── Points-pile walkdown (LOTO Points, not standard-bound) ───────────────
 
   /** Pile of LOTO points selected by an arbitrary combination of the desktop's table filters.
+   *  Multi-value filters (locationIds / eqTypeIds / systems) OR their contents inside the AND.
    *  Fat DTOs — same shape as the LotoStandard.lotoPoints[] entries the walkdown UI already handles. */
   getPointsPile(opts: {
     standardIds?: number[];
-    locationId?: number | null;
-    eqTypeId?: number | null;
+    locationIds?: number[];
+    eqTypeIds?: number[];
     isoPosId?: number | null;
     normPosId?: number | null;
-    system?: string | null;
+    systems?: string[];
     unit?: string | null;
     tagNumber?: string | null;
     description?: string | null;
     specificLocation?: string | null;
   }): Observable<LotoPointRef[]> {
     const params: string[] = [];
+    // Spring picks up ?foo=1,2 as List<Long> via the built-in comma-separated binder — matches
+    // the walkdown-pile endpoint's `@RequestParam(required=false) List<Long> locationIds` shape.
     if (opts.standardIds?.length) params.push(`standardIds=${opts.standardIds.join(',')}`);
-    if (opts.locationId != null) params.push(`locationId=${opts.locationId}`);
-    if (opts.eqTypeId != null) params.push(`eqTypeId=${opts.eqTypeId}`);
+    if (opts.locationIds?.length) params.push(`locationIds=${opts.locationIds.join(',')}`);
+    if (opts.eqTypeIds?.length) params.push(`eqTypeIds=${opts.eqTypeIds.join(',')}`);
     if (opts.isoPosId != null) params.push(`isoPosId=${opts.isoPosId}`);
     if (opts.normPosId != null) params.push(`normPosId=${opts.normPosId}`);
-    if (opts.system && opts.system.trim()) params.push(`system=${encodeURIComponent(opts.system.trim())}`);
+    const cleanSystems = (opts.systems ?? []).map(s => s?.trim()).filter(s => !!s) as string[];
+    for (const s of cleanSystems) params.push(`systems=${encodeURIComponent(s)}`);
     if (opts.unit && opts.unit.trim()) params.push(`unit=${encodeURIComponent(opts.unit.trim())}`);
     if (opts.tagNumber && opts.tagNumber.trim()) params.push(`tagNumber=${encodeURIComponent(opts.tagNumber.trim())}`);
     if (opts.description && opts.description.trim()) params.push(`description=${encodeURIComponent(opts.description.trim())}`);
@@ -71,7 +75,7 @@ export class LotoStandardApiService {
     const qs = params.length ? '?' + params.join('&') : '';
     return this.http.get<{ responseData: LotoPointRef[] }>(
       `${environment.serverUrl}/api/pwa/secured/loto-points/walkdown-pile${qs}`
-    ).pipe(timeout(30000), map(r => r.responseData ?? []));
+    ).pipe(timeout(60000), map(r => r.responseData ?? []));
   }
 
   /** Distinct free-text `system` values across every LOTO point — feeds the "walk down by system" picker. */

@@ -264,3 +264,47 @@
 .options-list::-webkit-scrollbar-thumb:hover {
   background: #555;
 } */
+
+/* ===== Multi-select options =====
+   The dropdown is a checklist: clicking toggles a value in or out of the box
+   instead of replacing it, and the box holds the picks separated by "|". */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opt-check {
+  flex: 0 0 auto;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--secondary-text);
+}
+
+.opt-text {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.option.selected {
+  background-color: color-mix(in srgb, var(--accent-color, #1976d2) 16%, transparent);
+  font-weight: 600;
+}
+
+.option.selected .opt-check {
+  color: var(--accent-color, #1976d2);
+}
+
+.multi-hint {
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+  font-style: italic;
+  padding: 6px 12px;
+  text-align: left;
+}
+
+/* .option became a flex row above, so the centred placeholder rows need the
+   flex equivalent of their text-align. */
+.option.disabled { justify-content: center; }
+.option.disabled.multi-hint { justify-content: flex-start; }

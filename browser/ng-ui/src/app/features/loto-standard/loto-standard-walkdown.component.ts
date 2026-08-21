@@ -689,7 +689,7 @@ export class LotoStandardWalkdownComponent implements OnInit {
   online = this.serverStatus.isOnline;
 
   std = signal<LotoStandard | null>(null);
-  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [] });
+  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [], eqType: [] });
   draft = signal<WalkdownDraft | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);

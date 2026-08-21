@@ -217,7 +217,7 @@ export class LotoPointCreateComponent implements OnInit {
   lookupError = signal<string | null>(null);
   lookupMatches = signal<LotoPointRef[]>([]);
 
-  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [] });
+  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [], eqType: [] });
   form = signal<Omit<Partial<LotoPointRef>, 'id'> & { id?: number | null }>({ id: null });
   submitting = signal(false);
   submitError = signal<string | null>(null);

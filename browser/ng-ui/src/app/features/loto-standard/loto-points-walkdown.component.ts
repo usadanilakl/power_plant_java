@@ -59,6 +59,17 @@ import {
               } @else {
                 <input class="w-search" type="search" placeholder="Filter standards…"
                        [value]="stdSearch()" (input)="stdSearch.set($any($event.target).value)">
+                <!-- Select-all / clear-all for the visible standards (respects the search filter). -->
+                <label class="w-std-row w-std-all">
+                  <input type="checkbox"
+                         [checked]="allVisibleStandardsPicked()"
+                         [indeterminate]="someVisibleStandardsPicked() && !allVisibleStandardsPicked()"
+                         (change)="toggleAllVisibleStandards($any($event.target).checked)">
+                  <span class="w-std-name">
+                    {{ allVisibleStandardsPicked() ? 'Clear all' : 'Select all' }}
+                    ({{ filteredStandards().length }})
+                  </span>
+                </label>
                 <div class="w-std-list">
                   @for (s of filteredStandards(); track s.id) {
                     <label class="w-std-row">
@@ -73,28 +84,43 @@ import {
             </div>
 
             <div class="w-picker">
-              <h2 class="w-h2">By Location</h2>
-              <select class="w-inline-input" [value]="pickedLocationId() ?? ''"
-                      (change)="pickedLocationId.set(numOrNull($any($event.target).value))">
-                <option value="">— select —</option>
+              <h2 class="w-h2">By Location (any of)</h2>
+              <select class="w-inline-input w-multi" multiple size="6"
+                      (change)="onMultiIds('location', $any($event.target))">
                 @for (o of positions().location; track o.id) {
-                  <option [value]="o.id" [selected]="o.id === pickedLocationId()">{{ o.name }}</option>
+                  <option [value]="o.id" [selected]="pickedLocationIds().includes(o.id)">{{ o.name }}</option>
                 }
               </select>
+              <p class="w-multi-hint">Tap to toggle. Multiple selected → OR match.</p>
             </div>
 
             <div class="w-picker">
-              <h2 class="w-h2">By System</h2>
+              <h2 class="w-h2">By Equipment Type (any of)</h2>
+              @if (positions().eqType.length === 0) {
+                <p class="w-msg">No equipment-type values configured.</p>
+              } @else {
+                <select class="w-inline-input w-multi" multiple size="6"
+                        (change)="onMultiIds('eqType', $any($event.target))">
+                  @for (o of positions().eqType; track o.id) {
+                    <option [value]="o.id" [selected]="pickedEqTypeIds().includes(o.id)">{{ o.name }}</option>
+                  }
+                </select>
+                <p class="w-multi-hint">Tap to toggle. Multiple selected → OR match.</p>
+              }
+            </div>
+
+            <div class="w-picker">
+              <h2 class="w-h2">By System (any of)</h2>
               @if (loadingSystems()) {
                 <p class="w-msg">Loading systems…</p>
               } @else {
-                <select class="w-inline-input" [value]="pickedSystem() ?? ''"
-                        (change)="pickedSystem.set($any($event.target).value || null)">
-                  <option value="">— select —</option>
+                <select class="w-inline-input w-multi" multiple size="6"
+                        (change)="onMultiStrings('system', $any($event.target))">
                   @for (s of allSystems(); track s) {
-                    <option [value]="s" [selected]="s === pickedSystem()">{{ s }}</option>
+                    <option [value]="s" [selected]="pickedSystems().includes(s)">{{ s }}</option>
                   }
                 </select>
+                <p class="w-multi-hint">Tap to toggle. Multiple selected → OR match.</p>
               }
             </div>
 
@@ -422,6 +448,9 @@ import {
     .w-picker .w-h2 { margin-top: 0; }
     .w-more-filters summary { cursor: pointer; color: var(--accent-color); font-weight: 700; padding: 0.4rem 0; min-height: 44px; display: flex; align-items: center; }
     .w-field-lbl { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.72rem; color: var(--secondary-text); text-transform: uppercase; letter-spacing: 0.02em; margin: 0.55rem 0; }
+    .w-multi { min-height: 8rem; padding: 0.25rem; }
+    .w-multi-hint { font-size: 0.72rem; color: var(--secondary-text); font-style: italic; margin: 0.35rem 0 0; }
+    .w-std-all { border-bottom: 1px solid var(--border-color); font-weight: 700; background: var(--secondary-background); }
     .w-search { width: 100%; box-sizing: border-box; padding: 0.5rem 0.7rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--secondary-background); color: var(--primary-text); font: inherit; margin-bottom: 0.5rem; }
     .w-std-list { display: flex; flex-direction: column; gap: 0.25rem; max-height: 40vh; overflow-y: auto; }
     .w-std-row { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; padding: 0.4rem; border-radius: 6px; cursor: pointer; min-height: 44px; }
@@ -532,20 +561,22 @@ export class LotoPointsWalkdownComponent implements OnInit {
   allSystems = signal<string[]>([]);
   allUnits = signal<string[]>([]);
   loadingSystems = signal(true);
-  pickedSystem = signal<string | null>(null);
-  pickedLocationId = signal<number | null>(null);
+  pickedSystems = signal<string[]>([]);
+  pickedLocationIds = signal<number[]>([]);
+  pickedEqTypeIds = signal<number[]>([]);
   pickedTag = signal('');
   pickedDescription = signal('');
   pickedSpecificLocation = signal('');
   pickedUnit = signal<string | null>(null);
   pickedIsoPosId = signal<number | null>(null);
   pickedNormPosId = signal<number | null>(null);
-  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [] });
+  positions = signal<PositionOptions>({ isoPos: [], normPos: [], location: [], eqType: [] });
 
   canLoadPile = computed(() =>
     this.pickedStandardIds().size > 0
-      || this.pickedLocationId() != null
-      || !!(this.pickedSystem() ?? '').trim()
+      || this.pickedLocationIds().length > 0
+      || this.pickedEqTypeIds().length > 0
+      || this.pickedSystems().length > 0
       || !!this.pickedTag().trim()
       || !!this.pickedDescription().trim()
       || !!this.pickedSpecificLocation().trim()
@@ -557,8 +588,9 @@ export class LotoPointsWalkdownComponent implements OnInit {
 
   clearFilters(): void {
     this.pickedStandardIds.set(new Set());
-    this.pickedSystem.set(null);
-    this.pickedLocationId.set(null);
+    this.pickedSystems.set([]);
+    this.pickedLocationIds.set([]);
+    this.pickedEqTypeIds.set([]);
     this.pickedTag.set('');
     this.pickedDescription.set('');
     this.pickedSpecificLocation.set('');
@@ -566,6 +598,42 @@ export class LotoPointsWalkdownComponent implements OnInit {
     this.pickedIsoPosId.set(null);
     this.pickedNormPosId.set(null);
     this.loadPileError.set(null);
+  }
+
+  // ── Multi-select helpers for <select multiple> — collect selected option values ──
+
+  /** Read every selected <option> value from a native multi-select and push it into the target signal. */
+  onMultiIds(field: 'location' | 'eqType', el: HTMLSelectElement): void {
+    const ids = Array.from(el.selectedOptions).map(o => Number(o.value)).filter(n => !Number.isNaN(n));
+    if (field === 'location') this.pickedLocationIds.set(ids);
+    else this.pickedEqTypeIds.set(ids);
+  }
+  onMultiStrings(field: 'system', el: HTMLSelectElement): void {
+    const vals = Array.from(el.selectedOptions).map(o => o.value).filter(s => !!s);
+    if (field === 'system') this.pickedSystems.set(vals);
+  }
+
+  // ── Select-all / clear-all standards (honors the current stdSearch filter) ──
+
+  allVisibleStandardsPicked(): boolean {
+    const vis = this.filteredStandards();
+    if (vis.length === 0) return false;
+    const picked = this.pickedStandardIds();
+    return vis.every(s => picked.has(s.id));
+  }
+  someVisibleStandardsPicked(): boolean {
+    const picked = this.pickedStandardIds();
+    return this.filteredStandards().some(s => picked.has(s.id));
+  }
+  toggleAllVisibleStandards(check: boolean): void {
+    const next = new Set(this.pickedStandardIds());
+    const vis = this.filteredStandards();
+    if (check) {
+      for (const s of vis) next.add(s.id);
+    } else {
+      for (const s of vis) next.delete(s.id);
+    }
+    this.pickedStandardIds.set(next);
   }
 
   // ── Pile / walkdown state ────────────────────────────────────────────────
@@ -766,10 +834,11 @@ export class LotoPointsWalkdownComponent implements OnInit {
     this.loadingPile.set(true);
     this.api.getPointsPile({
       standardIds: [...this.pickedStandardIds()],
-      locationId: this.pickedLocationId(),
+      locationIds: this.pickedLocationIds(),
+      eqTypeIds: this.pickedEqTypeIds(),
       isoPosId: this.pickedIsoPosId(),
       normPosId: this.pickedNormPosId(),
-      system: this.pickedSystem(),
+      systems: this.pickedSystems(),
       unit: this.pickedUnit(),
       tagNumber: this.pickedTag(),
       description: this.pickedDescription(),

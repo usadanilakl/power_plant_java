@@ -59,6 +59,77 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 
     List<LotoPoint> findByDataServiceItemId(UUID dataServiceItemId);
 
+    // ── PWA walkdown-pile queries (all filtering at the DB, no LazyInit, single round-trip) ──
+
+    /**
+     * Distinct non-blank system values across every active LOTO point — feeds the PWA "by system"
+     * picker. DB-side DISTINCT is a full table scan on a small column so it stays sub-second even
+     * on 10k+ points; the in-memory equivalent iterated {@code getAllDtos()} and took 20+s.
+     */
+    @Query("SELECT DISTINCT lp.system FROM LotoPoint lp " +
+           "WHERE lp.system IS NOT NULL AND lp.system <> '' " +
+           "AND (lp.deleted IS NULL OR lp.deleted = false) " +
+           "ORDER BY lp.system")
+    List<String> findDistinctSystems();
+
+    /** Distinct non-blank unit values (same reasoning as {@link #findDistinctSystems}). */
+    @Query("SELECT DISTINCT lp.unit FROM LotoPoint lp " +
+           "WHERE lp.unit IS NOT NULL AND lp.unit <> '' " +
+           "AND (lp.deleted IS NULL OR lp.deleted = false) " +
+           "ORDER BY lp.unit")
+    List<String> findDistinctUnits();
+
+    /**
+     * Union of all points on the given standards, with the FK relations eagerly loaded so a caller
+     * outside a Hibernate session can safely serialize them. Replaces the previous
+     * {@code standardRepo.findAllById(...).forEach(s -> s.getLotoPoints())} pattern which threw
+     * LazyInitializationException because {@code LotoStandard.lotoPoints} is @ManyToMany LAZY.
+     */
+    @Query("SELECT DISTINCT lp FROM LotoStandard s JOIN s.lotoPoints lp " +
+           "LEFT JOIN FETCH lp.isoPos LEFT JOIN FETCH lp.normPos " +
+           "LEFT JOIN FETCH lp.location LEFT JOIN FETCH lp.eqType " +
+           "WHERE s.id IN :standardIds " +
+           "AND (s.deleted IS NULL OR s.deleted = false) " +
+           "AND (lp.deleted IS NULL OR lp.deleted = false)")
+    List<LotoPoint> findPointsOnStandards(@Param("standardIds") Collection<Long> standardIds);
+
+    /**
+     * Filtered active LOTO points for the PWA walkdown pile. Every list/scalar param is optional:
+     * null (scalar) or empty (list) means "no restriction on this facet". Location/eqType/system
+     * accept multiple values with OR semantics (JPQL IN). Text params do case-insensitive
+     * contains-match. Eager-fetches the relations the mobile dialog reads.
+     *
+     * <p>The empty-list guard uses a size sentinel because JPQL treats an empty {@code IN ()} as
+     * a syntax error: callers pass a placeholder single-value list AND a flag telling the query
+     * to skip that filter. See {@code hasLocationIds}/{@code hasEqTypeIds}/{@code hasSystems}.
+     */
+    @Query("SELECT DISTINCT lp FROM LotoPoint lp " +
+           "LEFT JOIN FETCH lp.isoPos LEFT JOIN FETCH lp.normPos " +
+           "LEFT JOIN FETCH lp.location LEFT JOIN FETCH lp.eqType " +
+           "WHERE (lp.deleted IS NULL OR lp.deleted = false) " +
+           "  AND (:hasLocationIds = false OR (lp.location IS NOT NULL AND lp.location.id IN :locationIds)) " +
+           "  AND (:hasEqTypeIds = false OR (lp.eqType IS NOT NULL AND lp.eqType.id IN :eqTypeIds)) " +
+           "  AND (:hasSystems = false OR (lp.system IS NOT NULL AND LOWER(lp.system) IN :systems)) " +
+           "  AND (:isoPosId IS NULL OR (lp.isoPos IS NOT NULL AND lp.isoPos.id = :isoPosId)) " +
+           "  AND (:normPosId IS NULL OR (lp.normPos IS NOT NULL AND lp.normPos.id = :normPosId)) " +
+           "  AND (:unit IS NULL OR LOWER(lp.unit) = :unit) " +
+           "  AND (:tagNumber IS NULL OR LOWER(lp.tagNumber) LIKE CONCAT('%', :tagNumber, '%')) " +
+           "  AND (:description IS NULL OR LOWER(lp.description) LIKE CONCAT('%', :description, '%')) " +
+           "  AND (:specificLocation IS NULL OR LOWER(lp.specificLocation) LIKE CONCAT('%', :specificLocation, '%'))")
+    List<LotoPoint> findPointsForPile(
+            @Param("hasLocationIds") boolean hasLocationIds,
+            @Param("locationIds") Collection<Long> locationIds,
+            @Param("hasEqTypeIds") boolean hasEqTypeIds,
+            @Param("eqTypeIds") Collection<Long> eqTypeIds,
+            @Param("hasSystems") boolean hasSystems,
+            @Param("systems") Collection<String> systems,
+            @Param("isoPosId") Long isoPosId,
+            @Param("normPosId") Long normPosId,
+            @Param("unit") String unit,
+            @Param("tagNumber") String tagNumber,
+            @Param("description") String description,
+            @Param("specificLocation") String specificLocation);
+
 
 //    @Query("SELECT DISTINCT l.tagNumber FROM LotoPoint l WHERE " +
 //           "(:values IS NULL OR :values IS EMPTY OR " +
