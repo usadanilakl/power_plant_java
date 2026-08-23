@@ -1605,6 +1605,20 @@ public class FieldSyncService {
                 return false;
             }
 
+            // Apply-side security denylist. Some fields must never be written from an inbound sync
+            // change, however it arrives — see SyncFieldPolicy. FieldChanges carry no origin
+            // signature, so a forged/corrupted change to a denylisted field (e.g. User.supabaseUuid)
+            // is refused here, before ANY write branch below. Covers scalar, ManyToOne, ManyToMany
+            // and OneToMany, and the CREATE path (which also routes through applyFieldChange).
+            if (SyncFieldPolicy.isDenied(change.getEntityType(), change.getFieldName())) {
+                log.warn("sync.policy.denied {}.{} from origin={} (change {})",
+                        change.getEntityType(), change.getFieldName(),
+                        change.getOriginMachineId(), change.getId());
+                note(change, ChangeDisposition.DEAD_LETTER);
+                syncDeadLetterService.recordPolicyDenied(change);
+                return false;
+            }
+
             // Handle OneToMany relationships
             if ("OneToMany".equals(change.getRelationshipType())) {
                 // Check if this is a unidirectional @OneToMany with @JoinColumn (no mappedBy).

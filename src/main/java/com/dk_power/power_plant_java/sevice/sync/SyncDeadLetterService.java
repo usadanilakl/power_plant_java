@@ -29,6 +29,7 @@ public class SyncDeadLetterService {
 
     public static final String REASON_NO_SERVICE = "NO_SERVICE";
     public static final String REASON_UNKNOWN_FIELD = "UNKNOWN_FIELD";
+    public static final String REASON_POLICY_DENIED = "POLICY_DENIED";
     public static final String REASON_UNRESOLVED_AFTER_RETRIES = "UNRESOLVED_AFTER_RETRIES";
 
     private final SyncDeadLetterRepo repo;
@@ -59,6 +60,18 @@ public class SyncDeadLetterService {
         if (change == null) return;
         record(change.getEntityType(), change.getEntityId(), change.getId(), change.getFieldName(),
                 change.getOldValue(), change.getNewValue(), change.getOriginMachineId(), REASON_UNKNOWN_FIELD);
+    }
+
+    /**
+     * A change was refused by {@link SyncFieldPolicy} — an inbound write to a denylisted security
+     * field (e.g. {@code User.supabaseUuid}). Recorded so a forged/corrupted attempt is VISIBLE
+     * (this is a security signal, not a routine miss) and never silently retried.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordPolicyDenied(FieldChange change) {
+        if (change == null) return;
+        record(change.getEntityType(), change.getEntityId(), change.getId(), change.getFieldName(),
+                change.getOldValue(), change.getNewValue(), change.getOriginMachineId(), REASON_POLICY_DENIED);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
