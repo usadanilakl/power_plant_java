@@ -49,6 +49,10 @@ export class LogTableComponent implements OnInit {
     return this.stateService.currentColumnUniqueItems();
   });
 
+  currentColumnAllItems = computed(() => {
+    return this.stateService.currentColumnAllItems();
+  });
+
   constructor() {
     this.columns.set(this.mapperService.toTableColumns());
 

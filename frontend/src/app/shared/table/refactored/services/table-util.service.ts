@@ -84,16 +84,28 @@ export class TableUtilService {
     columns.forEach((column) => {
       if (!column.filterable) return;
 
-      const uniqueValues = new Set<string>();
+      // Dedupe case-insensitively but KEEP the original casing — these strings are
+      // shown to the user and are compared against real column values.
+      const uniqueValues = new Map<string, string>();
 
       items.forEach((item) => {
         const value = this.getCellValue(item, column);
         if (value !== null && value !== undefined && value !== '') {
-          uniqueValues.add(String(value).toLowerCase());
+          const text = String(value);
+          const key = text.toLowerCase();
+          if (!uniqueValues.has(key)) uniqueValues.set(key, text);
         }
       });
 
-      uniqueValuesMap.set(column.id, Array.from(uniqueValues).sort());
+      // Key by the SAME identifier the table emits when it asks for a column's options
+      // (table.component.html sends `column.accessorKey || column.id`). Keying by id
+      // alone meant every column whose accessorKey differs — any nested path such as
+      // `location.name` — looked itself up under a key that was never stored, so
+      // isolated tables showed an empty dropdown for exactly those columns.
+      uniqueValuesMap.set(
+        column.accessorKey || column.id,
+        Array.from(uniqueValues.values()).sort((a, b) => a.localeCompare(b))
+      );
     });
 
     return uniqueValuesMap;

@@ -13,6 +13,7 @@ import { LotoStandardLocalStorageService } from './rf-loto-standard-local-storag
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { SyncUpdateService, EntityUpdateEvent } from '../../../../services/sync/sync-update.service';
 import { AuthService, AuthUser } from '../../../../services/auth.service';
+import { COLUMN_OPTION_FETCH_SIZE } from '../../../../shared/table/refactored/models/table.types';
 
 @Injectable({
   providedIn: 'root',
@@ -53,6 +54,12 @@ export class RfLotoStandardStateService {
     { values: string[]; page: number; hasMore: boolean }
   >();
   currentColumnUniqueItems = signal<string[]>([]);
+  /**
+   * Every value the focused column has, IGNORING the active filters. Feeds the
+   * dropdown's "not in current view" section, so each column's list splits the
+   * same way no matter what is filtered.
+   */
+  currentColumnAllItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
   // Form state
@@ -496,27 +503,28 @@ export class RfLotoStandardStateService {
       ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
       : { type: 'column', filters: {} };
 
+    this.loadAllUniqueItems(columnKey, searchString);
+
     // Fetch from server with pagination
     this.apiService
-      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, 50)
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
-          if (
-            response.responseData?.content &&
-            response.responseData.content.length > 0
-          ) {
-            const uniqueValues = response.responseData.content;
-            this.setUniqueItems(String(columnKey), uniqueValues);
-            this.currentColumnUniqueItems.set(uniqueValues);
-            this.loadingUniqueItems.set(false);
+          // An EMPTY result is a valid answer and must be published. Keeping the
+          // previous column's values on empty left the dropdown labelling stale
+          // entries "In current view", and since the second section is computed as
+          // (all - inView) it also swallowed the very values it exists to show.
+          const uniqueValues = response.responseData?.content ?? [];
+          this.setUniqueItems(String(columnKey), uniqueValues);
+          this.currentColumnUniqueItems.set(uniqueValues);
+          this.loadingUniqueItems.set(false);
 
-            // Cache the results
-            this.uniqueValuesCache.set(cacheKey, {
-              values: uniqueValues,
-              page: 1,
-              hasMore: !response.responseData.last,
-            });
-          }
+          // Cache the results
+          this.uniqueValuesCache.set(cacheKey, {
+            values: uniqueValues,
+            page: 1,
+            hasMore: !response.responseData?.last,
+          });
         }),
         catchError((error) => {
           console.error(
@@ -524,6 +532,37 @@ export class RfLotoStandardStateService {
             error
           );
           this.loadingUniqueItems.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
+   * The same lookup with NO column filters applied — the column's full value set.
+   * Subtracting the filtered list from this gives the values the current filters
+   * are hiding; that difference is what the dropdown renders under "not in current
+   * view", so every column splits the same way. Paged like the filtered call, so a
+   * huge column stays cheap; the typed term still narrows it server-side.
+   */
+  private loadAllUniqueItems(columnKey: keyof LotoStandardDto, searchString: string): void {
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters: searchString && searchString.trim() !== ''
+        ? { [String(columnKey)]: searchString }
+        : {},
+    };
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(String(columnKey), criteria, 1, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap((response) => {
+          this.currentColumnAllItems.set(response.responseData?.content ?? []);
+        }),
+        catchError((error) => {
+          console.error(`Error loading all unique items for ${String(columnKey)}:`, error);
+          this.currentColumnAllItems.set([]);
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef)
@@ -554,7 +593,7 @@ export class RfLotoStandardStateService {
       : { type: 'column', filters: {} };
 
     this.apiService
-      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, 50)
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
           if (

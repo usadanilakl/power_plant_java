@@ -147,6 +147,41 @@ export class TableComponent implements OnInit, AfterViewInit {
   columns = input<Column[]>([]);
   isTableIsolated = input<boolean>(false);
   columnUniqueOptions = input<string[]>([]);
+  /**
+   * Every value the focused column has, ignoring the active filters. Optional:
+   * supply it and each column's dropdown splits into "in current view" /
+   * "not in current view"; leave it out and the dropdown stays single-section.
+   */
+  columnAllOptions = input<string[]>([]);
+
+
+  /**
+   * Column the server-side option lists currently belong to.
+   * <p>
+   * There is ONE columnUniqueOptions / columnAllOptions array per table, and every
+   * column's filter input binds the same one — whichever column loaded last wins. So
+   * opening column B showed column A's values until B's own response landed, and if B's
+   * request failed it showed A's values indefinitely. (Observed: a column whose rows were
+   * all empty had loaded, and the next column opened listed that column's single blank
+   * entry as its own "in current view".) Gate the arrays on the column they were fetched
+   * for so one column's answer can never render under another's dropdown.
+   */
+  private optionsColumnKey = signal<string | null>(null);
+
+  /** Server option list for this column, or nothing if the list belongs to another column. */
+  serverOptionsFor(column: Column, options: string[]): string[] {
+    return this.optionsColumnKey() === (column.accessorKey || column.id) ? options : [];
+  }
+
+  onLoadColumnOptions(columnKey: string, filter: string): void {
+    this.optionsColumnKey.set(columnKey);
+    this.searchService.onLoadColumnFilterOptions(columnKey, filter);
+  }
+
+  onLoadMoreColumnOptions(columnKey: string, filter: string): void {
+    this.optionsColumnKey.set(columnKey);
+    this.searchService.onLoadMoreColumnFilterOptions(columnKey, filter);
+  }
   isLoadingMore = input<boolean>(false);
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
@@ -503,15 +538,22 @@ export class TableComponent implements OnInit, AfterViewInit {
    * (the normal `search` output is suppressed for empty criteria, so it can't be
    * used to signal a clear).
    */
+  /**
+   * Clear the global search and every column filter.
+   * <p>
+   * The empty criteria goes out through the normal search channel. It used to
+   * only re-run the CLIENT-side filter and emit `filtersCleared` — which is a
+   * no-op on a server-backed table (they pass rows through untouched), and only
+   * one host in the app ever subscribed to that output. On every other table the
+   * boxes emptied while the rows stayed filtered, because nothing ever asked the
+   * server for the unfiltered list.
+   */
   clearAllFilters(): void {
-    this.dataService.globalSearchQuery = '';
-    this.dataService.columnFilters.set({});
-    this.filterInputs().forEach(input => input.reset());
     const criteria = this.utilService.buildSearchCriteria(
       '', {}, this.dataService.columnFilterLogic, this.dataService.globalFilterLogic);
-    this.dataService.currentSearchCriteria = criteria;
+    this.searchService.applyExternalCriteria(criteria);
+    this.filterInputs().forEach(input => input.reset());
     this.localStorageService.saveTableFilters(criteria, this.dataService.tableId);
-    this.searchService.updateFilteredItems();
     this.filtersCleared.emit();
   }
 

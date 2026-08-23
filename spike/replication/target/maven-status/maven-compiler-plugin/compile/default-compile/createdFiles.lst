@@ -1,0 +1,15 @@
+plant\repl\engine\FieldLog.class
+plant\repl\engine\Replica$1.class
+plant\repl\engine\FieldValue.class
+plant\repl\oplog\OpKind.class
+plant\repl\engine\Conflict.class
+plant\repl\merge\MergeKind.class
+plant\repl\clock\Hlc.class
+plant\repl\oplog\Operation.class
+plant\repl\clock\HybridLogicalClock.class
+plant\repl\clock\HybridLogicalClock$State.class
+plant\repl\engine\OrSetField.class
+plant\repl\engine\Replica.class
+plant\repl\merge\Merge.class
+plant\repl\model\MergeRegistry.class
+plant\repl\model\LotoPoint.class

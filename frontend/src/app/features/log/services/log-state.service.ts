@@ -6,6 +6,7 @@ import { LogApiService } from './log-api.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { COLUMN_OPTION_FETCH_SIZE } from '../../../shared/table/refactored/models/table.types';
 
 @Injectable({
   providedIn: 'root',
@@ -29,6 +30,12 @@ export class LogStateService {
     { values: string[]; page: number; hasMore: boolean }
   >();
   currentColumnUniqueItems = signal<string[]>([]);
+  /**
+   * Every value the focused column has, IGNORING the active filters. Feeds the
+   * dropdown's "not in current view" section, so each column's list splits the
+   * same way no matter what is filtered.
+   */
+  currentColumnAllItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
   addItems(items: CommentDto[]): void {
@@ -76,9 +83,10 @@ export class LogStateService {
     const filters: SearchCriteria = currentCriteria
       ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
       : { type: 'column', filters: {} };
+    this.loadAllUniqueItems(columnKey, searchString);
 
     this.apiService
-      .getFilteredUniqueValuesOfColumn(columnKey, filters, 1, 50)
+      .getFilteredUniqueValuesOfColumn(columnKey, filters, 1, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
           if (
@@ -113,6 +121,41 @@ export class LogStateService {
   }
 
   /**
+   * The same lookup with NO column filters applied - the column's full value set.
+   * Subtracting the filtered list from this gives the values the current filters
+   * are hiding, which is what feeds the dropdown's "not in current view" section
+   * so every column splits the same way. Paged like the filtered call, so a huge
+   * column stays cheap; the typed term still narrows it server-side.
+   */
+  private loadAllUniqueItems(columnKey: string, searchString: string): void {
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters:
+        searchString && searchString.trim() !== ''
+          ? { [String(columnKey)]: searchString }
+          : {},
+    };
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(String(columnKey), criteria, 1, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap((response) => {
+          this.currentColumnAllItems.set(response.responseData?.content ?? []);
+        }),
+        catchError((error) => {
+          console.error(
+            `Error loading all unique items for column ${columnKey}:`,
+            error
+          );
+          this.currentColumnAllItems.set([]);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
    * Load more unique items for a column (pagination)
    */
   loadMoreUniqueItems(
@@ -135,7 +178,7 @@ export class LogStateService {
       : { type: 'column', filters: {} };
 
     this.apiService
-      .getFilteredUniqueValuesOfColumn(columnKey, filters, nextPage, 50)
+      .getFilteredUniqueValuesOfColumn(columnKey, filters, nextPage, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
           if (

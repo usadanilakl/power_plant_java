@@ -1,0 +1,9 @@
+plant\repl\sim\ThreeWayConflictTest.class
+plant\repl\sim\ManualConflictTest.class
+plant\repl\sim\ResolutionTest.class
+plant\repl\sim\TestClock.class
+plant\repl\sim\Simulator.class
+plant\repl\sim\ReportedDefectsTest.class
+plant\repl\sim\ClockSkewTest.class
+plant\repl\sim\ConvergenceTest.class
+plant\repl\sim\OrSetTest.class

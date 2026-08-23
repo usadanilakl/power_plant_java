@@ -137,11 +137,12 @@
               </button>
               
               <app-column-filter-input
-                [uniqueValues]="columnUniqueOptions()"
+                [uniqueValues]="serverOptionsFor(column, columnUniqueOptions())"
+                [allValues]="serverOptionsFor(column, columnAllOptions())"
                 [isLoadingMore]="isLoadingMore()"
                 (filterChange)="searchService.onColumnFilterChange(column.accessorKey || column.id, $event)"
-                (loadMoreOptions)="searchService.onLoadMoreColumnFilterOptions(column.accessorKey || column.id,$event)"
-                (loadInitialOptions)="searchService.onLoadColumnFilterOptions(column.accessorKey || column.id,$event)"
+                (loadMoreOptions)="onLoadMoreColumnOptions(column.accessorKey || column.id, $event)"
+                (loadInitialOptions)="onLoadColumnOptions(column.accessorKey || column.id, $event)"
               ></app-column-filter-input>
             </div>
 

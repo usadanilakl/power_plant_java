@@ -76,6 +76,7 @@ export class RfJhaTableComponent implements OnInit {
   items = computed(() => this.inputItems() ?? this.items$());
 
   currentColumnUniqueItems = computed(() => this.stateService.currentColumnUniqueItems());
+  currentColumnAllItems = computed(() => this.stateService.currentColumnAllItems());
 
   constructor() {
     effect(() => {

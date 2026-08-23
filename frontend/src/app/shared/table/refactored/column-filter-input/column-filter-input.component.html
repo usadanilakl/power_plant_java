@@ -28,17 +28,40 @@
       class="options-list"
       (scroll)="onOptionsScroll($event)"
     >
+      <!-- Section 1: values present in the rows currently shown. -->
+      <div class="section-label" *ngIf="hiddenOptions().length && filteredOptions().length">
+        In current view
+      </div>
+
       <div
         *ngFor="let option of filteredOptions()"
         class="option"
         [class.selected]="isOptionSelected(option)"
+        (mousedown)="$event.preventDefault()"
         (click)="selectOption(option)"
       >
         <span class="opt-check" aria-hidden="true">{{ isOptionSelected(option) ? '☑' : '☐' }}</span>
         <span class="opt-text">{{ option }}</span>
       </div>
+
+      <!-- Section 2: values the active filters are hiding. Same split on every
+           column, so a dropdown means the same thing regardless of what is
+           filtered. Picking one widens this column (values are OR-ed). -->
+      <ng-container *ngIf="hiddenOptions().length">
+        <div class="section-label hidden-label">Not in current view</div>
+        <div
+          *ngFor="let option of hiddenOptions()"
+          class="option is-hidden-option"
+          [class.selected]="isOptionSelected(option)"
+          (mousedown)="$event.preventDefault()"
+          (click)="selectOption(option)"
+        >
+          <span class="opt-check" aria-hidden="true">{{ isOptionSelected(option) ? '☑' : '☐' }}</span>
+          <span class="opt-text">{{ option }}</span>
+        </div>
+      </ng-container>
       
-      <div *ngIf="filteredOptions().length === 0" class="option disabled">
+      <div *ngIf="filteredOptions().length === 0 && hiddenOptions().length === 0" class="option disabled">
         No options found
       </div>
 

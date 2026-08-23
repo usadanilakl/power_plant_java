@@ -75,12 +75,15 @@ import { RevisionInfo, deriveRevisionKey, buildRevisionFileDto } from '../servic
         }
       </ng-template>
 
+      <!-- (filtersCleared) intentionally not bound: clearing publishes an empty
+           criteria through (search), so binding both would fetch twice. -->
       <app-table
         [tableId]="tableId()"
         [items]="displayItems()"
         [columns]="columns()"
         [isTableIsolated]="isTableIsolated()"
         [columnUniqueOptions]="currentColumnUniqueItems()!"
+        [columnAllOptions]="currentColumnAllItems()"
         [isLoadingMore]="stateService.loadingUniqueItems()"
         [isDragAndDropEnabled]="enableDragDrop()"
         [hoverDebounceTime]="0"
@@ -95,7 +98,6 @@ import { RevisionInfo, deriveRevisionKey, buildRevisionFileDto } from '../servic
         (selectedItemsEvent)="selectedItemsEvent.emit($event)"
         (itemsReordered)="itemsReorderedEvent.emit($event)"
         (rowHoveredEvent)="rowHoveredEvent.emit($event)"
-        (filtersCleared)="onClearFilters()"
       ></app-table>
 
       <!-- Revision popover: lists the physical revisions of a document. -->
@@ -337,6 +339,9 @@ export class RfFileNavTableComponent implements OnInit {
   // table row per FileObject and nothing to collapse. The badge column simply
   // flags rows whose on-disk document has more than one revision.
   displayItems = computed<FileDto[]>(() => this.items());
+
+  /** Full value set for the focused column — drives the dropdown's second section. */
+  currentColumnAllItems = computed(() => this.stateService.currentColumnAllItems());
 
   currentColumnUniqueItems = computed(() => {
     if (this.uniqueOptionsMap() && this.columnInFocus()) {

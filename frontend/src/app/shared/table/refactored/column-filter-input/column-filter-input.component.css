@@ -308,3 +308,35 @@
    flex equivalent of their text-align. */
 .option.disabled { justify-content: center; }
 .option.disabled.multi-hint { justify-content: flex-start; }
+
+/* ===== Two-section option list =====
+   Every column's dropdown splits the same way: values present in the rows now
+   showing, then values the active filters are hiding. The split is identical
+   for the column being edited and for every other column, so what a dropdown
+   means never depends on which filters happen to be active. */
+.section-label {
+  padding: 5px 12px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--secondary-text);
+  background: var(--secondary-background);
+  border-top: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.section-label:first-child {
+  border-top: 0;
+}
+
+/* Muted, not disabled: still clickable — picking one is how you widen a filter. */
+.option.is-hidden-option .opt-text {
+  color: var(--secondary-text);
+}
+
+.option.is-hidden-option.selected .opt-text {
+  color: var(--primary-text);
+}

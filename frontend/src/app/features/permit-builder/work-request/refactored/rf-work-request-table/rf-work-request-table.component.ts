@@ -89,6 +89,8 @@ export class RfWorkRequestTableComponent implements OnInit {
 
   items = computed(() => this.inputItems() ?? this.items$());
 
+  currentColumnAllItems = computed(() => this.stateService.currentColumnAllItems());
+
   currentColumnUniqueItems = computed(() => {
     return this.stateService.currentColumnUniqueItems();
   });

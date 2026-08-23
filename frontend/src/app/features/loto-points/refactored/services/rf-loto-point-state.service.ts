@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { LotoPointLocalStorageService } from './rf-loto-point-local-storage.service';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { SyncUpdateService, EntityUpdateEvent } from '../../../../services/sync/sync-update.service';
+import { COLUMN_OPTION_FETCH_SIZE } from '../../../../shared/table/refactored/models/table.types';
 
 @Injectable({
   providedIn: 'root',
@@ -55,6 +56,14 @@ export class RfLotoPointStateService {
     { values: string[]; page: number; hasMore: boolean }
   >();
   currentColumnUniqueItems = signal<string[]>([]);
+  /**
+   * Every value the focused column has, IGNORING the active filters. Feeds the
+   * dropdown's "not in current view" section, so each column's list splits the
+   * same way no matter what is filtered.
+   */
+  currentColumnAllItems = signal<string[]>([]);
+  /** Paging cursor for the unfiltered list, so section 2 scrolls like section 1 does. */
+  private allItemsPageState: { key: string; page: number; hasMore: boolean } | null = null;
   loadingUniqueItems = signal<boolean>(false);
 
   constructor() {
@@ -413,10 +422,11 @@ export class RfLotoPointStateService {
     this.loadingUniqueItems.set(true);
 
     const filters = this.buildFiltersForUniqueValues(columnKey, searchString);
+    this.loadAllUniqueItems(columnKey, searchString);
 
     // Fetch from server with pagination
     this.apiService
-      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, 50)
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
           const uniqueValues = response.responseData?.content ?? [];
@@ -450,6 +460,78 @@ export class RfLotoPointStateService {
    *   - overrides the target column's filter with the user's typed text
    *     so the dropdown refines as they type.
    */
+  /**
+   * The same lookup with NO column filters applied — the column's full value set.
+   * Subtracting the filtered list from this gives the values the current filters
+   * are hiding. Paged like the filtered call, so a huge column stays cheap; the
+   * typed term still narrows it server-side.
+   */
+  private loadAllUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters: searchString && searchString.trim() !== ''
+        ? { [String(columnKey)]: searchString }
+        : {},
+    };
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(String(columnKey), criteria, 1, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap((response) => {
+          this.currentColumnAllItems.set(response.responseData?.content ?? []);
+          this.allItemsPageState = {
+            key: `${String(columnKey)}:${searchString}`,
+            page: 1,
+            hasMore: !response.responseData?.last,
+          };
+        }),
+        catchError((error) => {
+          console.error(`Error loading all unique items for ${String(columnKey)}:`, error);
+          this.currentColumnAllItems.set([]);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /** Next page of the column's full value set — the second dropdown section. */
+  private loadMoreAllUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+    const state = this.allItemsPageState;
+    const key = `${String(columnKey)}:${searchString}`;
+    if (!state || state.key !== key || !state.hasMore) return;
+
+    const nextPage = state.page + 1;
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters: searchString && searchString.trim() !== ''
+        ? { [String(columnKey)]: searchString }
+        : {},
+    };
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(String(columnKey), criteria, nextPage, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap((response) => {
+          const page = response.responseData?.content ?? [];
+          if (page.length) {
+            this.currentColumnAllItems.update((existing) => [...existing, ...page]);
+          }
+          this.allItemsPageState = {
+            key,
+            page: nextPage,
+            hasMore: !response.responseData?.last && page.length > 0,
+          };
+        }),
+        catchError((error) => {
+          console.error(`Error loading more values for ${String(columnKey)}:`, error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
   private buildFiltersForUniqueValues(
     columnKey: keyof LotoPointDto,
     searchString: string
@@ -484,11 +566,13 @@ export class RfLotoPointStateService {
       return; // No more items to load
     }
 
+    this.loadMoreAllUniqueItems(columnKey, searchString);
+
     const nextPage = cached.page + 1;
     const filters = this.buildFiltersForUniqueValues(columnKey, searchString);
 
     this.apiService
-      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, 50)
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
           if (
@@ -500,9 +584,12 @@ export class RfLotoPointStateService {
             const newValues = [...currentValues, ...uniqueValues];
 
             this.setUniqueItems(String(columnKey), newValues);
+            // Append ONLY the new page. `newValues` already contains everything cached,
+            // so appending it to a signal that also holds those values duplicated every
+            // entry each time the dropdown was scrolled.
             this.currentColumnUniqueItems.update((existing) => [
               ...existing,
-              ...newValues,
+              ...uniqueValues,
             ]);
             this.loadingUniqueItems.set(false);
 

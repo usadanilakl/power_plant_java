@@ -126,8 +126,14 @@ export class HomePageComponent {
     });
   });
 
-  /** How many pills a card shows before it starts counting instead. */
-  private static readonly PILL_LIMIT = 4;
+  /**
+   * How many pills a card shows before it starts counting instead.
+   *
+   * 8 rather than 4 because the split card gives the pills their own column and the labels are
+   * shortened, so a section's whole contents now fit. The largest section (Permits) holds 7, so
+   * "+N more" is effectively gone — it stays only as a guard against a future oversized section.
+   */
+  private static readonly PILL_LIMIT = 8;
 
   /**
    * Sub-sections as tappable pills, capped so a card stays a card — a wall of pills buries the
@@ -142,13 +148,16 @@ export class HomePageComponent {
    * inside a page that already scrolls the other way, on a device operated with gloves.
    */
   private pillsFor(
-    items: { label: string; icon: string; route?: string; queryParams?: Record<string, string> }[],
+    items: { label: string; shortLabel?: string; icon: string; route?: string; queryParams?: Record<string, string> }[],
     sectionRoute: string,
   ): NavTilePill[] {
     const routable = items.filter(i => !!i.route);
     const limit = HomePageComponent.PILL_LIMIT;
+    // shortLabel where declared, full name otherwise — and the full name always rides along for the
+    // tooltip and the accessible name, so shortening never costs anyone the real name.
     const toPill = (i: typeof routable[number]): NavTilePill =>
-      ({ label: i.label, icon: i.icon, route: i.route!, queryParams: i.queryParams });
+      ({ label: i.shortLabel ?? i.label, fullLabel: i.label, icon: i.icon,
+         route: i.route!, queryParams: i.queryParams });
 
     if (routable.length <= limit) return routable.map(toPill);
 

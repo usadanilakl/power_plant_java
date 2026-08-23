@@ -33,6 +33,18 @@ export type NavAccess =
 
 export interface NavItem {
   label: string;
+  /**
+   * Compact name for the pills on a Home section card, where width is the scarce resource.
+   *
+   * Derived by dropping the section name the card already shows — "Insulation Installation" inside
+   * the Insulation card is just "Installation" — or by using shorthand the plant already says out
+   * loud (WR, JHA, Quals, PMs). NOT invented abbreviations: these are read by contractors who open
+   * the app a few times a year, and a guessable-looking short form is worse than a wrapped one.
+   *
+   * Icon-only was considered and rejected: only 36 distinct icons cover 47 destinations, so 📋 would
+   * mean both Work Request and View Inventory. `label` stays the accessible name either way.
+   */
+  shortLabel?: string;
   icon: string;
   /** Internal router path. Absent only for externalUrlKey entries. */
   route?: string;
@@ -90,7 +102,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'eBinder', icon: '📖', externalUrlKey: 'sdsEbinder', access: 'auth', hubOnly: true },
       { label: 'Add New', icon: '➕', route: '/sds', access: 'plant' },
       { label: 'Audit', icon: '✅', route: '/sds-audit', access: 'plant' },
-      { label: 'Full Inventory', icon: '📚', route: '/sds', queryParams: { view: 'inventory' }, access: 'plant', planned: true },
+      { label: 'Full Inventory', shortLabel: 'Full List', icon: '📚', route: '/sds', queryParams: { view: 'inventory' }, access: 'plant', planned: true },
     ],
   },
   {
@@ -100,24 +112,24 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Orientation', icon: '🎓', route: '/plant/orientation', access: 'public' },
       { label: 'Map', icon: '🗺️', route: '/plant/map', access: 'public', planned: true },
       { label: 'Emergency', icon: '🚨', route: '/plant/emergency', access: 'public' },
-      { label: 'Contacts & Information', icon: '📇', route: '/plant/contacts', access: 'public' },
+      { label: 'Contacts & Information', shortLabel: 'Contacts', icon: '📇', route: '/plant/contacts', access: 'public' },
     ],
   },
   {
     label: 'Permits', icon: '🛡️', slug: 'permits',
     items: [
-      { label: 'Work Request', icon: '📋', route: '/work-request', access: 'public' },
+      { label: 'Work Request', shortLabel: 'WR', icon: '📋', route: '/work-request', access: 'public' },
       { label: 'JHA', icon: '⚠️', route: '/jha', access: 'public' },
-      { label: 'My Permits', icon: '🗂️', route: '/my-permits', access: 'basic', hubOnly: true },
+      { label: 'My Permits', shortLabel: 'Mine', icon: '🗂️', route: '/my-permits', access: 'basic', hubOnly: true },
       { label: 'Messages', icon: '💬', route: '/messages', access: 'auth', hubOnly: true },
       { label: 'LOTO', icon: '🔒', route: '/loto', access: 'plant', hubOnly: true },
-      { label: 'LOTO Standards', icon: '📚', route: '/loto-standards', access: 'plant', hubOnly: true },
+      { label: 'LOTO Standards', shortLabel: 'Standards', icon: '📚', route: '/loto-standards', access: 'plant', hubOnly: true },
     ],
   },
   {
     label: 'Maximo', icon: '🏗️', slug: 'maximo',
     items: [
-      { label: 'Work Orders', icon: '🔧', route: '/maximo', queryParams: { tab: 'wo' }, access: 'plant', hubOnly: true },
+      { label: 'Work Orders', shortLabel: 'WOs', icon: '🔧', route: '/maximo', queryParams: { tab: 'wo' }, access: 'plant', hubOnly: true },
       { label: 'Requests', icon: '📨', route: '/maximo', queryParams: { tab: 'sr' }, access: 'plant', hubOnly: true },
       { label: 'PMs', icon: '🗓️', route: '/maximo/pm', access: 'plant', hubOnly: true },
       { label: 'Parts', icon: '📦', route: '/maximo/parts', access: 'plant', hubOnly: true },
@@ -159,19 +171,19 @@ export const NAV_SECTIONS: NavSection[] = [
     // the server's list-type values.
     label: 'Field List', icon: '📝', slug: 'field-list',
     items: [
-      { label: 'Insulation Removal', icon: '🧯', route: '/field-lists', queryParams: { type: 'Insulation Removal' }, access: 'insulation' },
-      { label: 'Insulation Installation', icon: '🧱', route: '/field-lists', queryParams: { type: 'Insulation Installation' }, access: 'insulation' },
+      { label: 'Insulation Removal', shortLabel: 'Removal', icon: '🧯', route: '/field-lists', queryParams: { type: 'Insulation Removal' }, access: 'insulation' },
+      { label: 'Insulation Installation', shortLabel: 'Installation', icon: '🧱', route: '/field-lists', queryParams: { type: 'Insulation Installation' }, access: 'insulation' },
       { label: 'Leaks', icon: '💧', route: '/field-lists', queryParams: { type: 'Leaks' }, access: 'insulation' },
-      { label: 'Winterization', icon: '❄️', route: '/field-lists', queryParams: { type: 'Winterization' }, access: 'insulation' },
-      { label: 'Open Items', icon: '📂', route: '/insulation', access: 'insulation', hubOnly: true },
+      { label: 'Winterization', shortLabel: 'Winter', icon: '❄️', route: '/field-lists', queryParams: { type: 'Winterization' }, access: 'insulation' },
+      { label: 'Open Items', shortLabel: 'Open', icon: '📂', route: '/insulation', access: 'insulation', hubOnly: true },
     ],
   },
   {
     label: 'Inventory', icon: '📦', slug: 'inventory',
     items: [
       { label: 'Scan', icon: '📷', route: '/inventory', queryParams: { mode: 'scan' }, access: 'plant' },
-      { label: 'Add New Item', icon: '➕', route: '/inventory', queryParams: { mode: 'new' }, access: 'plant' },
-      { label: 'View Inventory', icon: '📋', route: '/inventory', queryParams: { mode: 'list' }, access: 'plant' },
+      { label: 'Add New Item', shortLabel: 'Add New', icon: '➕', route: '/inventory', queryParams: { mode: 'new' }, access: 'plant' },
+      { label: 'View Inventory', shortLabel: 'View', icon: '📋', route: '/inventory', queryParams: { mode: 'list' }, access: 'plant' },
     ],
   },
 ];

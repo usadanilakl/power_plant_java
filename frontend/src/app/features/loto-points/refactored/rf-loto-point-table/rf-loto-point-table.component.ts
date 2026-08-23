@@ -259,11 +259,16 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     return this.inputItems() ?? this.items$();
   });
 
+  /** Full value set for the focused column — drives the dropdown's second section. */
+  currentColumnAllItems = computed(() => this.stateService.currentColumnAllItems());
+
   currentColumnUniqueItems = computed(() => {
-    if(this.uniqueOptionsMap() && this.columnInFocus()) return this.uniqueOptionsMap()!.get(this.columnInFocus()!);
-    else{
-      return this.stateService.currentColumnUniqueItems();
+    // `?? []` matters: on an isolated table a column with no entry in the local map
+    // returned undefined, which reached the filter input as its options list.
+    if (this.uniqueOptionsMap() && this.columnInFocus()) {
+      return this.uniqueOptionsMap()!.get(this.columnInFocus()!) ?? [];
     }
+    return this.stateService.currentColumnUniqueItems();
   });
 
   /**

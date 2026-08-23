@@ -14,7 +14,18 @@ export class ColumnFilterInputComponent {
   @ViewChild('inputElement') inputElement?: ElementRef<HTMLInputElement>;
   @ViewChild('optionsList') optionsList?: ElementRef<HTMLDivElement>;
   
+  /**
+   * Distinct values the SERVER reports for this column under the active filters, paged —
+   * scrolling the dropdown fetches more. This is section 1.
+   */
   uniqueValues = input<string[]>([]);
+  /**
+   * Every value this column has, ignoring the active filters. Optional — a host
+   * that doesn't supply it simply gets the single-section dropdown it had before.
+   * What's here but not in {@link uniqueValues} is what the current filters are
+   * hiding, and it renders as the second section.
+   */
+  allValues = input<string[]>([]);
   isLoadingMore = input<boolean>(false);
   
   filterChange = output<string>();
@@ -24,6 +35,8 @@ export class ColumnFilterInputComponent {
 
   filterDropdownOpen = signal(false);
   filteredOptions = signal<string[]>([]);
+  /** Values that exist but are filtered out of the current rows. */
+  hiddenOptions = signal<string[]>([]);
   dropdownStyle = signal<{ [key: string]: string }>({});
   filterValue = signal<string>('');
 
@@ -84,11 +97,25 @@ export class ColumnFilterInputComponent {
     // server returned. Without this the option list stays the full set while the
     // table itself filters — the two get visibly out of sync.
     effect(() => {
-      const all = this.uniqueValues();
       const q = this.typedTerm().toLowerCase();
-      this.filteredOptions.set(
-        q ? all.filter(o => (o ?? '').toLowerCase().includes(q)) : all
-      );
+
+      // Section 1: the server's distinct values for this column under the active
+      // filters. Paged — scrolling fetches the next page, so the whole list is
+      // reachable rather than a fixed window.
+      const inView = this.uniqueValues();
+      this.filteredOptions.set(this.narrow(inView, q));
+
+      // Section 2: values the active filters are hiding — the column's full value set
+      // minus what section 1 already lists.
+      const shown = new Set(inView.map((o) => (o ?? '').toLowerCase()));
+      const hidden = new Map<string, string>();
+      for (const value of this.allValues()) {
+        const text = (value ?? '').trim();
+        if (!text) continue;
+        const key = text.toLowerCase();
+        if (!shown.has(key) && !hidden.has(key)) hidden.set(key, text);
+      }
+      this.hiddenOptions.set(this.narrow(Array.from(hidden.values()), q));
     });
   }
 
@@ -105,6 +132,12 @@ export class ColumnFilterInputComponent {
   }
 
   /** Externally clear this input's text/dropdown without emitting (parent does the search). */
+  private narrow(options: string[], query: string): string[] {
+    return query
+      ? options.filter((o) => (o ?? '').toLowerCase().includes(query))
+      : options;
+  }
+
   reset(): void {
     this.filterValue.set('');
     this.filteredOptions.set(this.uniqueValues());
@@ -129,8 +162,9 @@ export class ColumnFilterInputComponent {
       this.closeDropdownTimeout = null;
     }
 
-    const value = (event.target as HTMLInputElement).value;
-    this.filterValue.set(value);
+    // Deliberately does NOT re-seed filterValue from the DOM: onInputChange already
+    // mirrors typing, and reading it here clobbers any value set programmatically
+    // in the same tick (a pick, or TableComponent.syncColumnFilterInputs).
     this.filteredOptions.set([]);
     this.loadInitialOptions.emit(this.typedTerm());
     this.filterDropdownOpen.set(true);
@@ -193,7 +227,11 @@ export class ColumnFilterInputComponent {
       clearTimeout(this.closeDropdownTimeout);
       this.closeDropdownTimeout = null;
     }
-    this.inputElement?.nativeElement.focus();
+    // NOTE: do not call focus() here. The option's mousedown is preventDefault'ed
+    // (see the template) so focus never leaves the input in the first place, and
+    // re-focusing would fire onInputFocus synchronously — before change detection
+    // has written the new value into the DOM — which read the stale text straight
+    // back over the pick that had just been made.
   }
 
   clearFilter(): void {

@@ -17,6 +17,7 @@
     [items]="items()"
     [columns]="columns()"
     [columnUniqueOptions]="currentColumnUniqueItems()!"
+    [columnAllOptions]="currentColumnAllItems()"
     [isLoadingMore]="stateService.loadingUniqueItems()"
 
     (search)="onSearch($event)"

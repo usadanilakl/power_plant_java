@@ -20,7 +20,10 @@ export interface NavTile {
 }
 
 export interface NavTilePill {
+  /** Compact name shown on the pill. */
   label: string;
+  /** Full name, kept for the tooltip and the accessible name when `label` is shortened. */
+  fullLabel?: string;
   icon?: string;
   route: string;
   queryParams?: Record<string, string>;
@@ -40,8 +43,10 @@ export interface NavTilePill {
   template: `
     <div class="tile-grid">
       @for (tile of tiles(); track tile.label) {
-        <!-- A card, not a link: pills are anchors, and an anchor cannot legally nest inside one. -->
-        <div class="tile">
+        <!-- A card, not a link: pills are anchors, and an anchor cannot legally nest inside one.
+             Split layout — the section owns the left rail, its destinations the right. A card with
+             pills is therefore short and wide rather than tall, so more sections fit on a phone. -->
+        <div class="tile" [class.split]="!!tile.pills?.length">
           @if (tile.route) {
             <a class="tile-main" [routerLink]="tile.route" [queryParams]="tile.queryParams ?? null">
               <span class="tile-icon" aria-hidden="true">{{ tile.icon }}</span>
@@ -59,10 +64,13 @@ export interface NavTilePill {
           @if (tile.pills?.length) {
             <div class="tile-pills">
               @for (pill of tile.pills; track pill.label) {
+                <!-- title/aria carry the FULL name: the pill is shortened for width, not renamed. -->
                 <a class="tile-pill" [class.more]="!pill.icon"
+                   [title]="pill.fullLabel ?? pill.label"
+                   [attr.aria-label]="pill.fullLabel ?? pill.label"
                    [routerLink]="pill.route" [queryParams]="pill.queryParams ?? null">
-                  @if (pill.icon) { <span aria-hidden="true">{{ pill.icon }}</span> }
-                  <span>{{ pill.label }}</span>
+                  @if (pill.icon) { <span class="pill-icon" aria-hidden="true">{{ pill.icon }}</span> }
+                  <span class="pill-text">{{ pill.label }}</span>
                 </a>
               }
             </div>
@@ -74,10 +82,15 @@ export interface NavTilePill {
   styles: [`
     .tile-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      /* 300px, not 240: a split card spends ~120px on the section rail, and at 240 the pills were
+         pushed past the card's right edge. */
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 1rem;
       width: 100%;
       max-width: 800px;
+      /* Size each card to its own content. Stretching them to the tallest in the row left a
+         3-pill card as tall as a 6-pill one — the wasted height the split layout exists to remove. */
+      align-items: start;
     }
 
     .tile {
@@ -100,6 +113,9 @@ export interface NavTilePill {
 
     .tile:active { transform: translateY(0); }
 
+    /* A card WITH destinations becomes two columns: section rail | its pills. */
+    .tile.split { flex-direction: row; align-items: stretch; min-height: 5.5rem; }
+
     /* The card's own target — everything except the pills. */
     .tile-main {
       flex: 1;
@@ -116,6 +132,18 @@ export interface NavTilePill {
       font-family: inherit;
     }
 
+    /* Fixed rail so every card's icon column lines up down the page. Not a percentage: the pill
+       area should absorb the width difference, not the section name. */
+    .tile.split .tile-main {
+      flex: 0 0 7.5rem;
+      padding: 0.9rem 0.5rem;
+      gap: 0.3rem;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .tile.split .tile-icon { font-size: 2rem; }
+    .tile.split .tile-title { font-size: 0.95rem; line-height: 1.2; }
+
     .tile-pills {
       display: flex;
       flex-wrap: wrap;
@@ -123,6 +151,19 @@ export interface NavTilePill {
       padding: 0 0.75rem 0.75rem;
       justify-content: center;
     }
+
+    .tile.split .tile-pills {
+      flex: 1;
+      align-content: center;
+      justify-content: flex-start;
+      padding: 0.6rem;
+      gap: 0.3rem;
+      min-width: 0;
+    }
+
+    .pill-icon { flex: none; }
+    /* Truncate rather than wrap: a wrapped pill changes row height and breaks the grid rhythm. */
+    .pill-text { overflow: hidden; text-overflow: ellipsis; }
 
     .tile-pill {
       display: inline-flex;
@@ -165,6 +206,13 @@ export interface NavTilePill {
       .tile-grid { grid-template-columns: 1fr; max-width: 400px; }
       .tile { min-height: 100px; }
       .tile-main { padding: 1.25rem 1rem 0.75rem; }
+
+      /* Phone: a narrower rail, and pills may shrink — but never below a 32px tap target. */
+      .tile.split { min-height: 0; }
+      .tile.split .tile-main { flex: 0 0 5.75rem; padding: 0.7rem 0.35rem; }
+      .tile.split .tile-icon { font-size: 1.75rem; }
+      .tile.split .tile-title { font-size: 0.82rem; }
+      .tile.split .tile-pill { font-size: 0.74rem; padding: 0.3rem 0.5rem; max-width: 100%; }
     }
   `]
 })

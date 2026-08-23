@@ -9,6 +9,7 @@ import { tap, catchError } from 'rxjs/operators';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
 import { SyncUpdateService, EntityUpdateEvent } from '../../../../../services/sync/sync-update.service';
 import { ProcessWrDialogService } from '../../../../../shared/process-wr-dialog/process-wr-dialog.service';
+import { COLUMN_OPTION_FETCH_SIZE } from '../../../../../shared/table/refactored/models/table.types';
 
 @Injectable({
   providedIn: 'root',
@@ -43,6 +44,12 @@ export class RfWorkRequestStateService {
   private uniqueItemsCache = new Map<string, BehaviorSubject<any[]>>();
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
   currentColumnUniqueItems = signal<string[]>([]);
+  /**
+   * Every value the focused column has, IGNORING the active filters. Feeds the
+   * dropdown's "not in current view" section, so each column's list splits the
+   * same way no matter what is filtered.
+   */
+  currentColumnAllItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
   constructor() {
@@ -394,27 +401,62 @@ export class RfWorkRequestStateService {
       ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
       : { type: 'column', filters: {} };
 
+    this.loadAllUniqueItems(columnKey, searchString);
+
     this.apiService
-      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, 50)
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
-          if (response.responseData?.content && response.responseData.content.length > 0) {
-            const uniqueValues = response.responseData.content;
-            this.setUniqueItems(String(columnKey), uniqueValues);
-            this.currentColumnUniqueItems.set(uniqueValues);
-            this.loadingUniqueItems.set(false);
+          // An EMPTY result is a valid answer: publish it. Holding the previous column's
+          // values left them mislabelled "In current view" and, because the second
+          // section is (all - inView), swallowed the entries it exists to show. It also
+          // left loadingUniqueItems stuck true, which permanently blocks option paging.
+          const uniqueValues = response.responseData?.content ?? [];
+          this.setUniqueItems(String(columnKey), uniqueValues);
+          this.currentColumnUniqueItems.set(uniqueValues);
+          this.loadingUniqueItems.set(false);
 
-            const cacheKey = `${String(columnKey)}:${searchString}`;
-            this.uniqueValuesCache.set(cacheKey, {
-              values: uniqueValues,
-              page: 1,
-              hasMore: !response.responseData.last,
-            });
-          }
+          const cacheKey = `${String(columnKey)}:${searchString}`;
+          this.uniqueValuesCache.set(cacheKey, {
+            values: uniqueValues,
+            page: 1,
+            hasMore: !response.responseData?.last,
+          });
         }),
         catchError((error) => {
           console.error(`Error loading unique items for column ${String(columnKey)}:`, error);
           this.loadingUniqueItems.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
+   * The same lookup with NO column filters applied - the column's full value set.
+   * Subtracting the filtered list from this gives the values the current filters
+   * are hiding, which is what the dropdown's "not in current view" section shows,
+   * so every column splits the same way. Paged like the filtered call so a huge
+   * column stays cheap; the typed term still narrows it server-side.
+   */
+  private loadAllUniqueItems(columnKey: keyof WorkRequestDto, searchString: string): void {
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters: searchString && searchString.trim() !== ''
+        ? { [String(columnKey)]: searchString }
+        : {},
+    };
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(String(columnKey), criteria, 1, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap((response) => {
+          this.currentColumnAllItems.set(response.responseData?.content ?? []);
+        }),
+        catchError((error) => {
+          console.error(`Error loading all unique items for ${String(columnKey)}:`, error);
+          this.currentColumnAllItems.set([]);
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef)
@@ -439,7 +481,7 @@ export class RfWorkRequestStateService {
       : { type: 'column', filters: {} };
 
     this.apiService
-      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, 50)
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap((response) => {
           if (response.responseData?.content && response.responseData.content.length > 0) {

@@ -56,6 +56,7 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
         [items]="items()"
         [columns]="columns()"
         [columnUniqueOptions]="stateService.currentColumnUniqueItems()"
+        [columnAllOptions]="currentColumnAllItems()"
         [isLoadingMore]="stateService.loadingUniqueItems()"
         (search)="onSearch($event)"
         (sortChanged)="onSortChanged($event)"
@@ -84,6 +85,8 @@ export class UserTableComponent implements OnInit {
   items = computed(() => this.items$());
 
   columns = signal<Column[]>(UserDto.toTableColumns());
+  /** Unfiltered value set for the focused column — drives the dropdown's "not in current view" section. */
+  currentColumnAllItems = computed(() => this.stateService.currentColumnAllItems());
   errorMessage = signal<string | null>(null);
 
   /**

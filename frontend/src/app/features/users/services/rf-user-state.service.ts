@@ -6,6 +6,7 @@ import { UserService } from '../../../services/user.service';
 import { UserDto } from '../../../models/user.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { RfUserOptionService } from './rf-user-option.service';
+import { COLUMN_OPTION_FETCH_SIZE } from '../../../shared/table/refactored/models/table.types';
 
 @Injectable({ providedIn: 'root' })
 export class RfUserStateService {
@@ -34,6 +35,12 @@ export class RfUserStateService {
 
   /** Column-filter dropdown values for the currently-focused column. */
   currentColumnUniqueItems = signal<string[]>([]);
+  /**
+   * Every value the focused column has, IGNORING the active filters. Feeds the
+   * dropdown's "not in current view" section, so each column's list splits the
+   * same way no matter what is filtered.
+   */
+  currentColumnAllItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
 
@@ -275,9 +282,10 @@ export class RfUserStateService {
     this.loadingUniqueItems.set(true);
 
     const criteria = this.buildFiltersForUniqueValues(columnKey, searchString);
+    this.loadAllUniqueItems(columnKey, searchString);
 
     this.userService
-      .getFilteredUniqueValuesOfColumn(columnKey, criteria, 1, this.pageSize)
+      .getFilteredUniqueValuesOfColumn(columnKey, criteria, 1, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap(res => {
           const values = res.responseData?.content ?? [];
@@ -308,7 +316,7 @@ export class RfUserStateService {
     const criteria = this.buildFiltersForUniqueValues(columnKey, searchString);
 
     this.userService
-      .getFilteredUniqueValuesOfColumn(columnKey, criteria, nextPage, this.pageSize)
+      .getFilteredUniqueValuesOfColumn(columnKey, criteria, nextPage, COLUMN_OPTION_FETCH_SIZE)
       .pipe(
         tap(res => {
           const newValues = res.responseData?.content ?? [];
@@ -338,6 +346,36 @@ export class RfUserStateService {
   clearUniqueValuesCache(): void {
     this.uniqueValuesCache.clear();
     this.currentColumnUniqueItems.set([]);
+  }
+
+  /**
+   * The same lookup with NO column filters applied — the column's full value set.
+   * Subtracting the filtered list from this gives the values the current filters
+   * are hiding, which is what feeds the dropdown's "not in current view" section
+   * so every column splits the same way. Paged like the filtered call, so a huge
+   * column stays cheap; the typed term still narrows it server-side.
+   */
+  private loadAllUniqueItems(columnKey: string, searchString: string): void {
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters: searchString && searchString.trim() !== ''
+        ? { [columnKey]: searchString }
+        : {},
+    };
+
+    this.userService
+      .getFilteredUniqueValuesOfColumn(columnKey, criteria, 1, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap(res => {
+          this.currentColumnAllItems.set(res.responseData?.content ?? []);
+        }),
+        catchError(err => {
+          console.error(`[Users] all unique items load for ${columnKey} failed:`, err);
+          this.currentColumnAllItems.set([]);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe();
   }
 
   private buildFiltersForUniqueValues(columnKey: string, searchString: string): SearchCriteria {

@@ -88,6 +88,9 @@ export class RfFileTableComponent implements OnInit {
     return this.inputItems() ?? this.items$();
   });
 
+  /** Full value set for the focused column — drives the dropdown's second section. */
+  currentColumnAllItems = computed(() => this.stateService.currentColumnAllItems());
+
   currentColumnUniqueItems = computed(() => {
     if (this.uniqueOptionsMap() && this.columnInFocus()) return this.uniqueOptionsMap()!.get(this.columnInFocus()!);
     else {

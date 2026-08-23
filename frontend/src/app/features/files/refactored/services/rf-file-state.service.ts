@@ -21,6 +21,7 @@ import { FileLocalStorageService } from "./rf-file-local-storage.service";
 import { GlobalMessageService } from "../../../../shared/global-message/global-message.service";
 import { CurrentFileService } from "../../../../services/current-file.service";
 import { SyncUpdateService, EntityUpdateEvent } from "../../../../services/sync/sync-update.service";
+import { COLUMN_OPTION_FETCH_SIZE } from '../../../../shared/table/refactored/models/table.types';
 
 @Injectable({
   providedIn: 'root'
@@ -59,6 +60,12 @@ export class RfFileStateService {
   // Unique values cache with pagination metadata
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
   currentColumnUniqueItems = signal<string[]>([]);
+  /**
+   * Every value the focused column has, IGNORING the active filters. Feeds the
+   * dropdown's "not in current view" section, so each column's list splits the
+   * same way no matter what is filtered.
+   */
+  currentColumnAllItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
   // Reactive pipeline trigger for unique items loading
@@ -93,22 +100,24 @@ export class RfFileStateService {
         const filters: SearchCriteria = currentCriteria
           ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
           : { type: 'column', filters: {} };
+        this.loadAllUniqueItems(columnKey, searchString);
 
         return this.apiService.getFilteredUniqueValuesOfColumn(
-          columnKey, filters, 1, 50
+          columnKey, filters, 1, COLUMN_OPTION_FETCH_SIZE
         ).pipe(
           tap(response => {
-            if (response.responseData?.content?.length > 0) {
-              const uniqueValues = response.responseData.content;
-              this.setUniqueItems(columnKey, uniqueValues);
-              this.currentColumnUniqueItems.set(uniqueValues);
-              const cacheKey = `${columnKey}:${searchString}`;
-              this.uniqueValuesCache.set(cacheKey, {
-                values: uniqueValues,
-                page: 1,
-                hasMore: !response.responseData.last
-              });
-            }
+            // Publish empty results too — see the note in the LOTO standard service:
+            // holding the previous values on empty mislabels them "In current view"
+            // and corrupts the (all - inView) split.
+            const uniqueValues = response.responseData?.content ?? [];
+            this.setUniqueItems(columnKey, uniqueValues);
+            this.currentColumnUniqueItems.set(uniqueValues);
+            const cacheKey = `${columnKey}:${searchString}`;
+            this.uniqueValuesCache.set(cacheKey, {
+              values: uniqueValues,
+              page: 1,
+              hasMore: !response.responseData?.last
+            });
             this.loadingUniqueItems.set(false);
           }),
           catchError(error => {
@@ -609,6 +618,37 @@ export class RfFileStateService {
   }
 
   /**
+   * The same lookup with NO column filters applied — the column's full value set.
+   * Subtracting the filtered list from this gives the values the current filters
+   * are hiding, which is what the dropdown's "not in current view" section shows,
+   * so every column splits the same way. Paged like the filtered call, so a huge
+   * column stays cheap; the typed term still narrows it server-side.
+   */
+  private loadAllUniqueItems(columnKey: string, searchString: string): void {
+    const criteria: SearchCriteria = {
+      type: 'column',
+      filters: searchString && searchString.trim() !== ''
+        ? { [columnKey]: searchString }
+        : {},
+    };
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(columnKey, criteria, 1, COLUMN_OPTION_FETCH_SIZE)
+      .pipe(
+        tap((response) => {
+          this.currentColumnAllItems.set(response.responseData?.content ?? []);
+        }),
+        catchError((error) => {
+          console.error(`Error loading all unique items for ${columnKey}:`, error);
+          this.currentColumnAllItems.set([]);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
    * Load more unique items for a column (pagination)
    */
   loadMoreUniqueItems(columnKey: keyof FileDto, searchString: string): void {
@@ -632,7 +672,7 @@ export class RfFileStateService {
         String(columnKey),
         filters,
         nextPage,
-        50
+        COLUMN_OPTION_FETCH_SIZE
       )
       .pipe(
         tap((response) => {

@@ -150,7 +150,19 @@ public interface FlexibleQueryInterface {
                         for (String part : filterPathParts) {
                             filterPath = filterPath.get(part);
                         }
-                        filterPredicates.add(criteriaBuilder.like(criteriaBuilder.lower(filterPath.as(String.class)), "%" + filter.getValue().toLowerCase() + "%"));
+                        // Multi-select aware: OR across the picked values, exactly like
+                        // handleSingleField. Matching the raw "A | B | " as one literal
+                        // string is what emptied every other column's dropdown.
+                        final Path<?> valuePath = filterPath;
+                        List<Predicate> perValue = new ArrayList<>();
+                        for (String single : splitFilterValues(filter.getValue())) {
+                            perValue.add(criteriaBuilder.like(criteriaBuilder.lower(valuePath.as(String.class)), "%" + single.toLowerCase() + "%"));
+                        }
+                        if (!perValue.isEmpty()) {
+                            filterPredicates.add(perValue.size() == 1
+                                    ? perValue.get(0)
+                                    : criteriaBuilder.or(perValue.toArray(new Predicate[0])));
+                        }
                     }
                 }
 
@@ -458,6 +470,70 @@ public interface FlexibleQueryInterface {
      */
     String FILTER_VALUE_SEPARATOR = "|";
 
+    /**
+     * True when {@code path} resolves, on {@code rootType}, to a singular attribute we can
+     * actually put inside LOWER(CAST(... AS string)) — i.e. a basic column, or a basic
+     * column reached through to-one associations ("location.name").
+     * <p>
+     * A table column can be bound to something that is NOT such a path: a collection
+     * (equipmentList, pictures), a DTO-only/computed value, or a key that simply does not
+     * exist on the entity. Those used to be pasted into the JPQL anyway, and the resulting
+     * query blew up at createQuery() — taking the WHOLE dropdown down, not just that
+     * column's contribution. Skipping the filter instead degrades to "this one filter is
+     * ignored", which is recoverable and visible, rather than an empty list.
+     */
+    /**
+     * Resolve the column a dropdown is being built for into a path we can actually SELECT.
+     * <ul>
+     *   <li>a basic column -> itself;</li>
+     *   <li>a to-one association ("workCategory") -> its {@code name}, when it has a basic one
+     *       — which is what the table cell renders anyway;</li>
+     *   <li>anything else (a collection, or a key that exists only on the DTO such as
+     *       {@code hasJha} / {@code isVerified}) -> {@code null}, meaning "no options".</li>
+     * </ul>
+     * The raw key used to go straight into {@code SELECT DISTINCT e.<key>}. For an association
+     * Hibernate expands ORDER BY to the FK id while SELECT holds the entity and the database
+     * rejects the mismatch; for a DTO-only key the attribute cannot be resolved at all. Either
+     * way the request 400'd the moment that dropdown opened — which is exactly why some columns
+     * produced options and others never did.
+     */
+    default String resolveSelectablePath(EntityManager entityManager, Class<?> rootType, String columnName) {
+        if (columnName == null || columnName.isBlank()) return null;
+        if (isFilterablePath(entityManager, rootType, columnName)) return columnName;
+        String candidate = columnName + ".name";
+        if (isFilterablePath(entityManager, rootType, candidate)) {
+            log.debug("Column {} is an association; listing options from {}", columnName, candidate);
+            return candidate;
+        }
+        log.debug("Column {} has no selectable option path on {}", columnName, rootType.getSimpleName());
+        return null;
+    }
+
+    default boolean isFilterablePath(EntityManager entityManager, Class<?> rootType, String path) {
+        if (path == null || path.isBlank()) return false;
+        try {
+            jakarta.persistence.metamodel.ManagedType<?> current =
+                    entityManager.getMetamodel().managedType(rootType);
+            String[] parts = path.split(Pattern.quote("."));
+            for (int i = 0; i < parts.length; i++) {
+                jakarta.persistence.metamodel.Attribute<?, ?> attr = current.getAttribute(parts[i]);
+                if (attr.isCollection()) return false; // no LOWER() over a collection
+                boolean last = i == parts.length - 1;
+                jakarta.persistence.metamodel.Attribute.PersistentAttributeType kind =
+                        attr.getPersistentAttributeType();
+                if (last) {
+                    return kind == jakarta.persistence.metamodel.Attribute.PersistentAttributeType.BASIC;
+                }
+                Class<?> next = ((jakarta.persistence.metamodel.SingularAttribute<?, ?>) attr).getJavaType();
+                current = entityManager.getMetamodel().managedType(next);
+            }
+            return false;
+        } catch (Exception e) {
+            log.debug("Column path not filterable on {}: {} ({})", rootType.getSimpleName(), path, e.toString());
+            return false;
+        }
+    }
+
     /** Split a filter value into its individually-matched values, blanks dropped. */
     default List<String> splitFilterValues(String value) {
         if (value == null) return List.of();
@@ -747,50 +823,93 @@ public interface FlexibleQueryInterface {
                 boolean andLogicIsEnabled
         ) {
             String entityName = entityClass.getSimpleName();
-            String pathExpr = buildPathExpression(columnName);
+
+            // A column we cannot SELECT has no options — say so with an empty page instead of
+            // throwing, which used to 400 the dropdown (and, because every column shares one
+            // option list, every other dropdown on the same table with it).
+            String selectable = resolveSelectablePath(entityManager, entityClass, columnName);
+            if (selectable == null) {
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
 
             Map<String,String> filters = searchCriteria.getFilters() != null ? searchCriteria.getFilters() : Map.of();
             Map<String,String> filterLogic = searchCriteria.getColumnFilterLogic() != null ? searchCriteria.getColumnFilterLogic() : Map.of();
 
-            // For nested entities, we need to select the ID for ordering
-            String selectClause = pathExpr;
-            String orderByClause = pathExpr;
-            
-            if (columnName.contains(".")) {
-                // Nested path: include the foreign key in SELECT for DISTINCT + ORDER BY
-                String[] parts = columnName.split("\\.");
-                String relationName = parts[0];
-                selectClause = pathExpr + ", e." + relationName + ".id";
-                orderByClause = pathExpr;
+            // Nested path -> explicit LEFT JOIN. The implicit form ("e.location.name") compiles
+            // to an INNER join, so every row whose relation is null dropped out and its values
+            // never appeared in the option list.
+            String valueExpr;
+            String joinClause = "";
+            if (selectable.contains(".")) {
+                int cut = selectable.lastIndexOf('.');
+                String relationPath = selectable.substring(0, cut);
+                String leafName = selectable.substring(cut + 1);
+                joinClause = " LEFT JOIN e." + relationPath + " rel";
+                valueExpr = "rel." + leafName;
+            } else {
+                valueExpr = "e." + selectable;
             }
-        
+
             StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
-            jpql.append(selectClause)
+            jpql.append(valueExpr)
                     .append(" FROM ")
                     .append(entityName)
-                    .append(" e WHERE 1=1");
+                    .append(" e")
+                    .append(joinClause)
+                    .append(" WHERE 1=1");
         
             List<Object> params = new ArrayList<>();
             int paramIndex = 1;
+            // One clause per filtered column, joined below by the caller's AND/OR flag.
+            // That flag used to be accepted and never read, so OR mode behaved as AND.
+            List<String> columnClauses = new ArrayList<>();
         
             // Build WHERE clause for each filter field
             for (Map.Entry<String, String> filter : filters.entrySet()) {
                 String logic = getFilterLogicFromMap(filterLogic,filter.getKey());
-                if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-                    String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
-                    
-                    jpql.append(" AND (");
-                    for (int i = 0; i < tokens.length; i++) {
-                        if (i > 0) jpql.append(" "+logic+" ");
-                        jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
-                        params.add("%" + tokens[i] + "%");
-                        paramIndex++;
+                if (!isFilterablePath(entityManager, entityClass, filter.getKey())) {
+                    log.debug("Skipping non-filterable column in options query: {}", filter.getKey());
+                    continue;
+                }
+                // Multi-select: OR across the picked values; the words WITHIN one value are
+                // combined by that column's AND/OR logic. Splitting the raw value on
+                // whitespace alone turned "A | B" into tokens containing a literal "|", which
+                // matches nothing - so every column's dropdown came back empty.
+                List<String> values = splitFilterValues(filter.getValue());
+                if (!values.isEmpty()) {
+                    StringBuilder clause = new StringBuilder("(");
+                    for (int v = 0; v < values.size(); v++) {
+                        if (v > 0) clause.append(" OR ");   // multi-select: any picked value may match
+                        String[] tokens = values.get(v).toLowerCase().split("\\s+");
+                        clause.append("(");
+                        for (int i = 0; i < tokens.length; i++) {
+                            if (i > 0) clause.append(" ").append(logic).append(" ");
+                            // CAST keeps non-String columns working: LOWER() on a Long/Boolean/date is a
+                            // type error in HQL 6, which threw and took the whole dropdown down with it -
+                            // that is why some columns returned options and others returned nothing.
+                            clause.append("LOWER(CAST(e.").append(filter.getKey()).append(" AS string)) LIKE ?").append(paramIndex);
+                            params.add("%" + tokens[i] + "%");
+                            paramIndex++;
+                        }
+                        clause.append(")");
                     }
-                    jpql.append(")");
+                    clause.append(")");
+                    columnClauses.add(clause.toString());
                 }
             }
         
-            jpql.append(" ORDER BY ").append(orderByClause).append(" ASC");
+            if (!columnClauses.isEmpty()) {
+                jpql.append(" AND (")
+                    .append(String.join(andLogicIsEnabled ? " AND " : " OR ", columnClauses))
+                    .append(")");
+            }
+
+            // A row with no value contributes nothing to a value list. Without this the LEFT
+            // JOIN's null came back and String.valueOf turned it into the literal "null",
+            // which the dropdown offered as a pickable option.
+            jpql.append(" AND ").append(valueExpr).append(" IS NOT NULL");
+
+            jpql.append(" ORDER BY ").append(valueExpr).append(" ASC");
         
             log.debug("JPQL Query: {} | Parameters: {}", jpql, params);
         
@@ -807,44 +926,84 @@ public interface FlexibleQueryInterface {
             // Extract just the values (not the IDs used for ordering)
             List<String> values = new ArrayList<>();
             for (Object result : results) {
-                if (result instanceof Object[] arr) {
-                    // For nested: [value, id], take the first element
-                    values.add(String.valueOf(arr[0]));
-                } else {
-                    values.add(String.valueOf(result));
-                }
+                Object raw = (result instanceof Object[] arr) ? arr[0] : result;
+                if (raw == null) continue;
+                String value = String.valueOf(raw);
+                if (value.isBlank()) continue;
+                values.add(value);
             }
         
-            long total = getCountForUniqueValues(entityManager, entityName, columnName, filters, filterLogic);
+            long total = getCountForUniqueValues(entityManager, entityClass, entityName, columnName, filters, filterLogic, andLogicIsEnabled);
             
             return new PageImpl<>(values, pageable, total);
         }
     
-    private long getCountForUniqueValues(EntityManager entityManager, String entityName, 
-                                         String columnName, Map<String, String> filters, Map<String, String> filterLogic) {
+    private long getCountForUniqueValues(EntityManager entityManager, Class<?> entityClass, String entityName,
+                                         String columnName, Map<String, String> filters, Map<String, String> filterLogic,
+                                         boolean andLogicIsEnabled) {
+        // Count the same expression the value query lists, through the same LEFT JOIN.
+        // It used to count the FIRST path segment — the RELATION for a nested column — so the
+        // total bore no relation to the values returned, and it repeated the association /
+        // DTO-only-key crash that the value query now avoids.
+        String selectable = resolveSelectablePath(entityManager, entityClass, columnName);
+        if (selectable == null) return 0L;
+
+        String valueExpr;
+        String joinClause = "";
+        if (selectable.contains(".")) {
+            int cut = selectable.lastIndexOf('.');
+            joinClause = " LEFT JOIN e." + selectable.substring(0, cut) + " rel";
+            valueExpr = "rel." + selectable.substring(cut + 1);
+        } else {
+            valueExpr = "e." + selectable;
+        }
+
         StringBuilder jpql = new StringBuilder("SELECT COUNT(DISTINCT ");
-        jpql.append("e.").append(columnName.split("\\.")[0]);
-        jpql.append(") FROM ").append(entityName).append(" e WHERE 1=1");
+        jpql.append(valueExpr);
+        jpql.append(") FROM ").append(entityName).append(" e").append(joinClause).append(" WHERE 1=1");
     
         int paramIndex = 1;
         List<Object> params = new ArrayList<>();
+        List<String> columnClauses = new ArrayList<>();
         
         for (Map.Entry<String, String> filter : filters.entrySet()) {
-            if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-                String logic = getFilterLogicFromMap(filterLogic,filter.getKey());
-                String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
-                
-                jpql.append(" AND (");
-                for (int i = 0; i < tokens.length; i++) {
-                    if (i > 0) jpql.append(" "+logic+" ");
-                    jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
-                    params.add("%" + tokens[i] + "%");
-                    paramIndex++;
+            String logic = getFilterLogicFromMap(filterLogic,filter.getKey());
+            if (!isFilterablePath(entityManager, entityClass, filter.getKey())) continue;
+            // Multi-select: OR across the picked values; the words WITHIN one value are
+            // combined by that column's AND/OR logic. Splitting the raw value on
+            // whitespace alone turned "A | B" into tokens containing a literal "|", which
+            // matches nothing - so every column's dropdown came back empty.
+            List<String> values = splitFilterValues(filter.getValue());
+            if (!values.isEmpty()) {
+                StringBuilder clause = new StringBuilder("(");
+                for (int v = 0; v < values.size(); v++) {
+                    if (v > 0) clause.append(" OR ");   // multi-select: any picked value may match
+                    String[] tokens = values.get(v).toLowerCase().split("\\s+");
+                    clause.append("(");
+                    for (int i = 0; i < tokens.length; i++) {
+                        if (i > 0) clause.append(" ").append(logic).append(" ");
+                        // CAST keeps non-String columns working: LOWER() on a Long/Boolean/date is a
+                        // type error in HQL 6, which threw and took the whole dropdown down with it -
+                        // that is why some columns returned options and others returned nothing.
+                        clause.append("LOWER(CAST(e.").append(filter.getKey()).append(" AS string)) LIKE ?").append(paramIndex);
+                        params.add("%" + tokens[i] + "%");
+                        paramIndex++;
+                    }
+                    clause.append(")");
                 }
-                jpql.append(")");
+                clause.append(")");
+                columnClauses.add(clause.toString());
             }
         }
     
+        if (!columnClauses.isEmpty()) {
+            jpql.append(" AND (")
+                .append(String.join(andLogicIsEnabled ? " AND " : " OR ", columnClauses))
+                .append(")");
+        }
+
+        jpql.append(" AND ").append(valueExpr).append(" IS NOT NULL"); // match the value query
+
         Query query = entityManager.createQuery(jpql.toString());
         for (int i = 0; i < params.size(); i++) {
             query.setParameter(i + 1, params.get(i));

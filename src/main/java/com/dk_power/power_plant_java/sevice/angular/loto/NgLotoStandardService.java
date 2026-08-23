@@ -665,100 +665,19 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
         Page<LotoStandard> results;
 
-        if (criteria.getType() == SearchCriteria.SearchType.GLOBAL && criteria.getQuery() != null) {
-            // Global search across multiple fields
-            results = searchGlobally(criteria.getQuery(), pageable);
-        } else if (criteria.getType() == SearchCriteria.SearchType.COLUMN && criteria.getFilters() != null) {
-            // Column-specific search
-            results = searchByFilters(criteria.getFilters(), pageable, useAndLogic);
-        } else if (criteria.getType() == SearchCriteria.SearchType.SORT) {
-            // Just sorting, no filtering
-            results = lotoStandardRepo.findAll(pageable);
-        } else {
-            results = lotoStandardRepo.findAll(pageable);
-        }
+        // One path for every criteria shape, via the shared specification builder.
+        // The previous if/else-on-type dispatched to in-memory helpers that knew only
+        // name / description / id (every other column filtered to ZERO rows), matched
+        // the raw filter string (so multi-select never matched), could not combine a
+        // global query with column filters, and loaded the whole table on each search.
+        results = complexSearchWithPagination(lotoStandardRepo, criteria, pageable, useAndLogic);
 
         return results.map(lotoStandardMapper::convertToDto);
     }
 
-    /**
-     * Global search across name and description
-     */
-    private Page<LotoStandard> searchGlobally(String query, Pageable pageable) {
-        List<LotoStandard> all = lotoStandardRepo.findAll();
-        String lowerQuery = query.toLowerCase();
 
-        List<LotoStandard> filtered = all.stream()
-                .filter(standard ->
-                    (standard.getName() != null && standard.getName().toLowerCase().contains(lowerQuery)) ||
-                    (standard.getDescription() != null && standard.getDescription().toLowerCase().contains(lowerQuery))
-                )
-                .collect(Collectors.toList());
 
-        return paginateList(filtered, pageable);
-    }
 
-    /**
-     * Search by column filters
-     */
-    private Page<LotoStandard> searchByFilters(Map<String, String> filters, Pageable pageable, boolean useAndLogic) {
-        List<LotoStandard> all = lotoStandardRepo.findAll();
-
-        List<LotoStandard> filtered = all.stream()
-                .filter(standard -> matchesFilters(standard, filters, useAndLogic))
-                .collect(Collectors.toList());
-
-        return paginateList(filtered, pageable);
-    }
-
-    /**
-     * Check if standard matches filters
-     */
-    private boolean matchesFilters(LotoStandard standard, Map<String, String> filters, boolean useAndLogic) {
-        if (filters == null || filters.isEmpty()) {
-            return true;
-        }
-
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            String fieldName = filter.getKey();
-            String filterValue = filter.getValue();
-
-            if (filterValue == null || filterValue.isEmpty()) {
-                continue;
-            }
-
-            boolean matches = matchesFilter(standard, fieldName, filterValue);
-
-            if (useAndLogic && !matches) {
-                return false; // AND logic: all must match
-            } else if (!useAndLogic && matches) {
-                return true; // OR logic: at least one must match
-            }
-        }
-
-        return useAndLogic; // AND: all matched, OR: none matched
-    }
-
-    /**
-     * Check if a single field matches the filter
-     */
-    private boolean matchesFilter(LotoStandard standard, String fieldName, String filterValue) {
-        String lowerFilter = filterValue.toLowerCase();
-
-        switch (fieldName) {
-            case "name":
-                return standard.getName() != null &&
-                       standard.getName().toLowerCase().contains(lowerFilter);
-            case "description":
-                return standard.getDescription() != null &&
-                       standard.getDescription().toLowerCase().contains(lowerFilter);
-            case "id":
-                return standard.getId() != null &&
-                       standard.getId().toString().contains(lowerFilter);
-            default:
-                return false;
-        }
-    }
 
     /**
      * Get unique values for a column with filtering
@@ -770,49 +689,19 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
             int pageSize,
             boolean andLogicEnabled) {
 
-        List<LotoStandard> all = lotoStandardRepo.findAll();
-
-        // Apply filters if present
-        if (searchCriteria.getFilters() != null && !searchCriteria.getFilters().isEmpty()) {
-            all = all.stream()
-                    .filter(standard -> matchesFilters(standard, searchCriteria.getFilters(), andLogicEnabled))
-                    .collect(Collectors.toList());
-        }
-
-        // Extract unique values for the specified column
-        Set<String> uniqueValues = new HashSet<>();
-        for (LotoStandard standard : all) {
-            String value = getFieldValue(standard, column);
-            if (value != null && !value.isEmpty()) {
-                uniqueValues.add(value);
-            }
-        }
-
-        // Convert to sorted list
-        List<String> sortedValues = uniqueValues.stream()
-                .sorted()
-                .collect(Collectors.toList());
-
-        // Paginate
+        // Delegates to the shared implementation (the same one the LOTO POINT table
+        // uses). The hand-rolled version this replaces loaded every standard into
+        // memory and read the column through a switch that knew only name /
+        // description / id — every other column returned null, so its dropdown was
+        // permanently empty. It also matched the raw filter string, so a multi-select
+        // value ("A | B | ") matched nothing at all. The shared query resolves any
+        // persistent column generically and understands multi-select.
         Pageable pageable = PageRequest.of(page - 1, pageSize);
-        return paginateStringList(sortedValues, pageable);
+        return getFilteredUniqueValuesOfColumn(
+                entityManager, lotoStandardRepo, LotoStandard.class,
+                column, searchCriteria, pageable, andLogicEnabled);
     }
 
-    /**
-     * Get field value by column name
-     */
-    private String getFieldValue(LotoStandard standard, String fieldName) {
-        switch (fieldName) {
-            case "name":
-                return standard.getName();
-            case "description":
-                return standard.getDescription();
-            case "id":
-                return standard.getId() != null ? standard.getId().toString() : null;
-            default:
-                return null;
-        }
-    }
 
     /**
      * Get grouped LOTO standards
@@ -854,35 +743,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return PageRequest.of(page, pageSize, org.springframework.data.domain.Sort.by(direction, sortColumn));
     }
 
-    /**
-     * Helper: Paginate a list
-     */
-    private Page<LotoStandard> paginateList(List<LotoStandard> list, Pageable pageable) {
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), list.size());
 
-        if (start > list.size()) {
-            return new PageImpl<>(new ArrayList<>(), pageable, list.size());
-        }
-
-        List<LotoStandard> subList = list.subList(start, end);
-        return new PageImpl<>(subList, pageable, list.size());
-    }
-
-    /**
-     * Helper: Paginate a string list
-     */
-    private Page<String> paginateStringList(List<String> list, Pageable pageable) {
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), list.size());
-
-        if (start > list.size()) {
-            return new PageImpl<>(new ArrayList<>(), pageable, list.size());
-        }
-
-        List<String> subList = list.subList(start, end);
-        return new PageImpl<>(subList, pageable, list.size());
-    }
 
     // ── Development workflow ─────────────────────────────────────────────────
 
