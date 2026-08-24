@@ -39,4 +39,10 @@ public class MaximoWorkOrderDto {
     private String parent;
     /** spi:istask — true when this WO row is an internal task of a parent WO (completed independently). */
     private Boolean istask;
+    /** The WO's outage-type domain value (PLAN = Planned Outage, SNOW = Short Notice Outage Work); only
+     *  populated by the outage-items query (the attribute isn't on the shared select). */
+    private String outageType;
+    /** How many LOTO isolation notes this WO already has (worklog rows titled "LOTO ISOLATION"); populated by
+     *  the outage-items query from the inline worklog, so the card can show a "note added" indicator. */
+    private int lotoNoteCount;
 }

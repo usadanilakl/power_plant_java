@@ -82,8 +82,20 @@ public class JobLog extends BaseAuditEntity {
     public void removePackage(DailyPermitPackage pkg) {
         if (pkg == null) return;
         packages.remove(pkg);
-        if (pkg.getJobLog() == this) {
+        if (owns(pkg.getJobLog())) {
             pkg.setJobLog(null);
         }
+    }
+
+    /**
+     * Is that association pointing at THIS job? Compares ids, not references — see
+     * {@code DailyPermitPackage.owns} for the full reasoning. {@code DailyPermitPackage.jobLog} is
+     * {@code FetchType.LAZY}, so {@code ==} against a proxy is always false and the owning-side FK
+     * would never be cleared.
+     */
+    private boolean owns(JobLog other) {
+        if (other == null) return false;
+        if (other == this) return true;
+        return this.getId() != null && this.getId().equals(other.getId());
     }
 }

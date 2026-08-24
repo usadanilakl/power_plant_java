@@ -94,9 +94,16 @@ public interface FieldListItemRepo extends BaseRepository<FieldListItem> {
      * Rows where the Maximo record is at a terminal status but the local FieldListStatus is still open —
      * ops closed it in Maximo, the PWA still shows it open. Excludes soft-deleted rows so the cancel
      * backlog doesn't get double-counted here. Uses JPQL so {@code @Where(deleted != true)} applies.
+     *
+     * <p>LEFT JOIN on status so rows whose FieldListStatus Value got soft-deleted (or was never
+     * bound) don't silently disappear from the bucket — an unrouted-terminal-in-Maximo row with
+     * a null status is still drift the admin should see.
      */
     @org.springframework.data.jpa.repository.Query(
-            "SELECT f FROM FieldListItem f WHERE f.maximoStatus IN :maximoTerminal AND f.status.name IN :localOpen ORDER BY f.dateModified DESC"
+            "SELECT f FROM FieldListItem f LEFT JOIN f.status s "
+                    + "WHERE f.maximoStatus IN :maximoTerminal "
+                    + "AND (s IS NULL OR s.name IN :localOpen) "
+                    + "ORDER BY f.dateModified DESC"
     )
     List<FieldListItem> findMaximoClosedLocalOpen(
             @org.springframework.data.repository.query.Param("maximoTerminal") List<String> maximoTerminalStatuses,
@@ -108,12 +115,31 @@ public interface FieldListItemRepo extends BaseRepository<FieldListItem> {
      * lifecycles are planner-driven — an SR in NEW when we've marked the local Closed is expected, not drift.
      */
     @org.springframework.data.jpa.repository.Query(
-            "SELECT f FROM FieldListItem f WHERE f.maximoRecordType = 'WO' AND f.maximoStatus IN :maximoOpen "
-                    + "AND f.status.name = :localClosed ORDER BY f.dateModified DESC"
+            "SELECT f FROM FieldListItem f JOIN f.status s "
+                    + "WHERE f.maximoRecordType = 'WO' AND f.maximoStatus IN :maximoOpen "
+                    + "AND s.name = :localClosed "
+                    + "ORDER BY f.dateModified DESC"
     )
     List<FieldListItem> findLocalClosedMaximoOpen(
             @org.springframework.data.repository.query.Param("maximoOpen") List<String> maximoOpenStatuses,
             @org.springframework.data.repository.query.Param("localClosed") String localClosedStatus);
+
+    /**
+     * Rows that OUGHT to be in Maximo but aren't — listType in the caller-supplied "should route"
+     * set AND {@code maximoRecordId IS NULL} (no bridge submit ever succeeded). Includes both
+     * still-open rows AND terminal rows: closed-locally without a Maximo record is a common drift
+     * signal (item was closed before the bridge was enabled, or the bridge submit was skipped
+     * because the row was already terminal — see isLocallyTerminal guard). Excludes soft-deleted
+     * rows via {@code @Where}. LEFT JOIN status so null-status rows still show.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT f FROM FieldListItem f LEFT JOIN f.listType lt "
+                    + "WHERE f.maximoRecordId IS NULL "
+                    + "AND lt IS NOT NULL AND lt.name IN :listTypes "
+                    + "ORDER BY f.dateModified DESC"
+    )
+    List<FieldListItem> findLocalNotInMaximo(
+            @org.springframework.data.repository.query.Param("listTypes") List<String> listTypes);
 
     /**
      * Field lists actively waiting for insulation contractor work. Matches rows routed to Maximo

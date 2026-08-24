@@ -18,7 +18,8 @@ type BucketKey =
   | 'cancelPending'
   | 'completePending'
   | 'maximoClosedLocalOpen'
-  | 'localClosedMaximoOpen';
+  | 'localClosedMaximoOpen'
+  | 'localNotInMaximo';
 
 interface BucketTile {
   key: BucketKey;
@@ -64,6 +65,13 @@ const BUCKETS: BucketTile[] = [
     hint: 'The wo-completion-status flip fired but bridge.complete() failed silently. Push the local close to Maximo again.',
     severity: 'danger',
     actions: ['pushLocalClose']
+  },
+  {
+    key: 'localNotInMaximo',
+    label: 'Local present / not in Maximo',
+    hint: 'listType routes to Maximo but the row never got a Maximo record. Common causes: item existed before the bridge was enabled, or its Submitted event was suppressed because the row was already terminal (Closed/Cancelled) at import time. "Retry submit" here creates the Maximo record now.',
+    severity: 'warn',
+    actions: ['retrySubmit']
   }
 ];
 

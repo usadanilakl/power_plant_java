@@ -5,6 +5,7 @@ import { SafeWorkDto, SwHazards } from '../../../../models/permits/safe-work.mod
 import { HotWorkDto, HotWorkMeasures } from '../../../../models/permits/hot-work.model';
 import { ConfinedSpaceDto, ConfinedSpaceHazards } from '../../../../models/permits/confined-space.model';
 import { WorkRequestDto } from '../../../../models/permits/work-request.model';
+import { mergeHazardSources } from '../../../../models/permits/hazard-seeding';
 import { FormsModule } from '@angular/forms';
 import { ItemCarouselComponent } from "../../../../shared/item-carousel/item-carousel.component";
 import { WorkRequestDisplayComponent } from "../../work-request/work-request-display/work-request-display.component";
@@ -717,40 +718,22 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   }
 
   /**
-   * Seed a new permit's hazard block from everything already known about this job.
+   * Seed a new permit's hazard block from the work area's constants plus every work request in
+   * this package.
    *
-   * Two sources, both of which the operator would otherwise have to re-enter by hand:
-   *  - the work area's CONSTANT hazards — what is always true of that place;
-   *  - what each requester DECLARED on their own work request — what they can see today.
-   *
-   * Ticks are OR-ed: a hazard flagged by any source lands on the permit. Nothing here can UNtick
-   * something, so this only ever adds to what the operator sees, and they remain free to correct
-   * it. Only runs for a brand-new permit ($event.id is unset) — re-seeding a saved permit would
+   * Only ever called for a brand-new permit ($event.id is unset) — re-seeding a saved permit would
    * quietly resurrect hazards an operator had deliberately cleared.
+   *
+   * The merge itself lives in {@link mergeHazardSources} so it can be exercised as a pure function;
+   * this method's only job is to gather the sources in the right order.
    */
   private seedHazards<T extends object>(
     current: T | null | undefined,
     areaConstants: Partial<T> | null | undefined,
     fromWorkRequest: (wr: WorkRequestDto) => Partial<T> | null | undefined
   ): Partial<T> {
-    const declared = (this.currentPackage()?.workRequests ?? [])
-      .map(fromWorkRequest)
-      .filter((h): h is Partial<T> => !!h);
-
-    const merged: any = { ...(current ?? {}) };
-    for (const source of [areaConstants, ...declared]) {
-      if (!source) continue;
-      for (const [key, value] of Object.entries(source)) {
-        if (value === true) {
-          merged[key] = true;
-        } else if (typeof value === 'string' && value && !merged[key]) {
-          // Free-text companions (weather / voltage / other descriptions): first non-empty wins,
-          // so the area's own wording is not overwritten by a later blank.
-          merged[key] = value;
-        }
-      }
-    }
-    return merged as Partial<T>;
+    const declared = (this.currentPackage()?.workRequests ?? []).map(fromWorkRequest);
+    return mergeHazardSources(current, areaConstants, ...declared);
   }
 
   addLoto($event: LotoDto = new LotoDto()) {

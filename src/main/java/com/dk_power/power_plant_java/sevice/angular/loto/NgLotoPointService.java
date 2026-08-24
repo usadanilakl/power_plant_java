@@ -174,24 +174,18 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     public List<String> getRelatedImages(Long id) {
+        if (id == null || id <= 0) return List.of();
         Optional<LotoPoint> byId = findById(id);
-        if (byId.isPresent()) {
-            LotoPoint lotoPoint = byId.get();
-            Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
-            List<String> imageUrls = new ArrayList<>();
-            for (Equipment equipment : equipmentList) {
-                FileObject file = equipment.getMainFile();
-                if (file != null) {
-                    imageUrls.add(file.getFileLink());
-                }
+        if (byId.isEmpty()) return List.of();
+        Set<Equipment> equipmentList = byId.get().getEquipmentList();
+        List<String> imageUrls = new ArrayList<>();
+        for (Equipment equipment : equipmentList) {
+            FileObject file = equipment.getMainFile();
+            if (file != null) {
+                imageUrls.add(file.getFileLink());
             }
-//            if(imageUrls.isEmpty()){
-//                throw new RuntimeException("No related images found for LotoPoint with id: " + id);
-//            }
-//            System.out.println("Related images found for LotoPoint with id: " + id + " - " + imageUrls.size() + " images found. URLs: " + imageUrls);
-            return imageUrls;
         }
-        throw new RuntimeException("LotoPoint not found with id: " + id);
+        return imageUrls;
     }
 
     public LotoPoint convertIdDtoToEntity(LotoPointIdDto lotoPoint) {
@@ -724,29 +718,23 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     public List<FileDto> getRelatedFiles(Long id) {
+        if (id == null || id <= 0) return List.of();
         Optional<LotoPoint> byId = findById(id);
-        if (byId.isPresent()) {
-            LotoPoint lotoPoint = byId.get();
-            Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
-            List<FileDto> files = new ArrayList<>();
-            for (Equipment equipment : equipmentList) {
-                FileObject file = equipment.getMainFile();
-                if (file != null) {
-                    FileDto fileDto = new FileDto();
-                    fileDto.setId(file.getId());
-                    fileDto.setName(file.getName());
-                    fileDto.setExtensions(file.getExtensionsArray());
-                    fileDto.setFileLink(file.getFileLink());
-                    files.add(fileDto);
-                }
+        if (byId.isEmpty()) return List.of();
+        Set<Equipment> equipmentList = byId.get().getEquipmentList();
+        List<FileDto> files = new ArrayList<>();
+        for (Equipment equipment : equipmentList) {
+            FileObject file = equipment.getMainFile();
+            if (file != null) {
+                FileDto fileDto = new FileDto();
+                fileDto.setId(file.getId());
+                fileDto.setName(file.getName());
+                fileDto.setExtensions(file.getExtensionsArray());
+                fileDto.setFileLink(file.getFileLink());
+                files.add(fileDto);
             }
-//            if(imageUrls.isEmpty()){
-//                throw new RuntimeException("No related images found for LotoPoint with id: " + id);
-//            }
-//            System.out.println("Related images found for LotoPoint with id: " + id + " - " + files.size() + " images found.");
-            return files;
         }
-        throw new RuntimeException("LotoPoint not found with id: " + id);
+        return files;
     }
 
     public LotoPointIdDto toIdDto(LotoPoint lotoPoint) {

@@ -43,6 +43,7 @@ public class MaximoWorkOrderCriteria {
     private String descriptionPhrase;
     private String longDescriptionContains;   // AND word-bucket of LIKE %word% on spi:description_longdescription
     private String wonumContains;              // LIKE %...% on spi:wonum
+    private List<String> outageTypeIn;         // outage-type domain values (e.g. PLAN, SNOW); OSLC `in [...]`
     private String siteid;               // override default site
 
     /**
@@ -55,7 +56,8 @@ public class MaximoWorkOrderCriteria {
                 schedstartFrom, schedfinishTo, reportdateFrom, reportdateTo, statusdateFrom, statusdateTo,
                 textContains, descriptionContains, descriptionPhrase, longDescriptionContains, wonumContains)
                 || (statusIn != null && !statusIn.isEmpty())
-                || (leadIn != null && !leadIn.isEmpty());
+                || (leadIn != null && !leadIn.isEmpty())
+                || (outageTypeIn != null && !outageTypeIn.isEmpty());
     }
 
     private static boolean anyText(String... values) {

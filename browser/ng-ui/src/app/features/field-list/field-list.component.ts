@@ -1,4 +1,4 @@
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -487,6 +487,7 @@ export class FieldListComponent implements OnInit {
   private supabaseData = inject(SupabaseDataService);
   private http = inject(HttpClient);
   private navRoute = inject(ActivatedRoute);
+  private router = inject(Router);
 
   mode = signal<ViewMode>('select');
   fields = signal<FormField[]>([]);
@@ -601,8 +602,15 @@ export class FieldListComponent implements OnInit {
   }
 
   backToSelect(): void {
-    this.mode.set('select');
+    // Field List's sub-section home is the NAV_SECTIONS-driven /section/field-list page —
+    // it carries the current tiles (Insulation Removal / Installation / Leaks / Winterization
+    // / Open Items) and matches every other sub-section's back destination. The legacy
+    // in-component 'select' mode had its own card set that got out of sync (no Insulation
+    // Installation tile, old icons) and made "Back" from a form or open-items view feel
+    // like it landed on a different, obsolete page. detailItem is cleared to prevent a
+    // stale dialog resurfacing if the user re-enters via a route-navigation with query params.
     this.detailItem.set(null);
+    this.router.navigate(['/section/field-list']);
   }
 
   // ====================== Open items ======================

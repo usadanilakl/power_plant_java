@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.sevice.sync.OldWorkRequestExcelStatusServic
 import com.dk_power.power_plant_java.util.PermitDates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -43,9 +44,28 @@ public class WorkRequestExpiryService {
     private final OldWorkRequestExcelStatusService oldWorkRequestExcelStatusService;
     @Lazy private final CentralSyncService centralSyncService;
 
+    /**
+     * Kill switch for the expiry sweep. On by default — production wants it.
+     *
+     * <p>Exists because this sweep WRITES to SharePoint: it stamps "Expired" on the real list item
+     * of every overdue request it finds locally. That makes it actively dangerous on any instance
+     * that holds a copy of production data but is not the production hub — a lab, a replica, a
+     * restored backup. And it is easy to arm by accident: the guard below is
+     * {@code isHubMode() || !isServerAvailable()}, and {@code serverAvailable} starts false, so
+     * simply disabling sync on a test instance turns the sweep ON rather than off.
+     *
+     * <p>Set {@code permits.work-request.expiry.enabled=false} on anything that is not the hub.
+     */
+    @Value("${permits.work-request.expiry.enabled:true}")
+    private boolean expiryEnabled;
+
     @Scheduled(fixedDelay = 3600000, initialDelay = 60000) // every hour, 1 min initial delay
     @Transactional
     public void expireOverdueWorkRequests() {
+        if (!expiryEnabled) {
+            log.debug("[WR Expiry] Disabled via permits.work-request.expiry.enabled=false");
+            return;
+        }
         boolean shouldRunLocally = syncConfig.isHubMode() || !centralSyncService.isServerAvailable();
         if (!shouldRunLocally) {
             log.debug("[WR Expiry] Skipping local expiry because hub/server is available");

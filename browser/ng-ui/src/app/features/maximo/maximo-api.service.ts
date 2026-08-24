@@ -49,6 +49,33 @@ export class MaximoApiService {
     );
   }
 
+  /** Outage work orders (Outage Type = PLAN or SNOW), newest first. */
+  listOutageWorkOrders(pageSize = 300): Observable<MaximoWorkOrder[]> {
+    const params = new HttpParams().set('pageSize', String(pageSize));
+    return this.http.get<{ responseData: MaximoWorkOrder[] }>(`${this.base}/work-orders/outage`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /** A WO's LOTO isolation notes only (newest first). */
+  getLotoNotes(href: string): Observable<MaximoWorklog[]> {
+    const params = new HttpParams().set('href', href);
+    return this.http.get<{ responseData: MaximoWorklog[] }>(`${this.base}/work-orders/loto-notes`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
+  /** Add a LOTO isolation note to a WO. Returns the refreshed LOTO-notes list. */
+  addLotoNote(href: string, text: string): Observable<MaximoWorklog[]> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorklog[] }>(`${this.base}/work-orders/loto-note`, { text }, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? [])
+    );
+  }
+
   listServiceRequests(q: SrQuery = {}): Observable<MaximoServiceRequest[]> {
     let params = new HttpParams().set('pageSize', String(q.pageSize ?? 50));
     if (q.status) params = params.set('status', q.status);

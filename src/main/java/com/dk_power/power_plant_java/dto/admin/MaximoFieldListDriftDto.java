@@ -45,6 +45,14 @@ public class MaximoFieldListDriftDto {
      */
     private BucketDto localClosedMaximoOpen;
 
+    /**
+     * Rows whose listType is in the "should route to Maximo" set but {@code maximoRecordId}
+     * is null — bridge submit never succeeded (or was skipped because the row was already
+     * terminal at import time). Covers rows created before the bridge was enabled and rows
+     * whose original Submitted event was suppressed by the isLocallyTerminal guard.
+     */
+    private BucketDto localNotInMaximo;
+
     /** Total rows routed to Maximo (recordId not null) — for context alongside the buckets. */
     private long totalRoutedToMaximo;
 

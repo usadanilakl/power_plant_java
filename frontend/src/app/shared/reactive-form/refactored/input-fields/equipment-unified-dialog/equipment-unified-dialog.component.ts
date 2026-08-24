@@ -203,7 +203,7 @@ export class EquipmentUnifiedDialogComponent {
     // contextLotoPointId input is set — i.e. when the dialog opens for a specific point).
     effect(() => {
       const pointId = this.contextLotoPointId();
-      if (pointId == null) {
+      if (!pointId) {
         this.contextFiles.set([]);
         return;
       }

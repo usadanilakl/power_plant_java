@@ -32,6 +32,8 @@ export interface MaximoFieldListDrift {
   completePending: MaximoFieldListDriftBucket;
   maximoClosedLocalOpen: MaximoFieldListDriftBucket;
   localClosedMaximoOpen: MaximoFieldListDriftBucket;
+  /** Local rows whose listType routes to Maximo but were never submitted (maximoRecordId null). */
+  localNotInMaximo: MaximoFieldListDriftBucket;
   attachmentUploadPendingCount: number;
   totalRoutedToMaximo: number;
   computedAt: string;

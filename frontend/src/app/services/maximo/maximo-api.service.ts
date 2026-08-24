@@ -191,6 +191,30 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData ?? null));
   }
 
+  // ── Outage items (PLAN/SNOW work orders + LOTO isolation notes) ─────────────
+  /** Work orders flagged as outage work (Outage Type = PLAN or SNOW), newest first. */
+  listOutageWorkOrders(pageSize = 300): Observable<MaximoWorkOrder[]> {
+    const p = new HttpParams().set('pageSize', String(pageSize));
+    return this.http
+      .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/work-orders/outage`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** A WO's LOTO isolation notes only (newest first). */
+  getLotoNotes(href: string): Observable<MaximoWorklog[]> {
+    return this.http
+      .get<SpringApiResponse<MaximoWorklog[]>>(`${this.base}/work-orders/${encodeURIComponent(href)}/loto-notes`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Add a LOTO isolation note to a WO. Returns the refreshed LOTO-notes list. */
+  addLotoNote(href: string, text: string): Observable<MaximoWorklog[]> {
+    return this.http
+      .post<SpringApiResponse<MaximoWorklog[]>>(
+        `${this.base}/work-orders/${encodeURIComponent(href)}/loto-note`, { text })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   // ── Ticket→asset index (find WOs/SRs by equipment tag) ─────────────────────
   /** Search the SR/WO index by (partial) equipment tag number. */
   searchTicketIndex(tag: string, limit = 50): Observable<MaximoTicketAsset[]> {

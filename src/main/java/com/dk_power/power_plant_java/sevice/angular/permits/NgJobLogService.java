@@ -573,6 +573,8 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
      */
     private void detachWorkRequests(DailyPermitPackage pkg) {
         Set<WorkRequest> attached = new HashSet<>(pkg.getWorkRequests());
+        if (attached.isEmpty()) return;
+
         for (WorkRequest wr : attached) {
             pkg.removeWorkRequest(wr);
             String status = wr.getPermitStatus() != null ? wr.getPermitStatus().getName() : null;
@@ -582,6 +584,15 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
             workRequestRepo.save(wr);
             log.info("[JobLog] Detached WR {} from package {}", wr.getId(), pkg.getId());
         }
+
+        // Push the FK nulling to the database NOW, before the caller removes the package from the
+        // job. JobLog.packages is an orphanRemoval collection, and Hibernate's action queue runs
+        // OrphanRemovalAction BEFORE EntityUpdateAction — so without this flush the
+        // "delete from daily_permit_package" is issued while work_request.daily_permit_package_id
+        // still references it, and the whole operation dies on a foreign-key violation.
+        // (Safe when it happened — the transaction rolled back — but the package could never be
+        // removed at all.)
+        workRequestRepo.flush();
     }
 
     /** Human-readable job label for error messages. */

@@ -23,6 +23,10 @@ export interface MaximoWorkOrder {
   taskid?: string;
   parent?: string;
   istask?: boolean;
+  /** Outage-type domain value (PLAN / SNOW); only on outage-list rows. */
+  outageType?: string;
+  /** How many LOTO isolation notes this WO already has; on outage-list rows only. */
+  lotoNoteCount?: number;
 }
 
 export interface MaximoServiceRequest {

@@ -57,6 +57,10 @@ export interface MaximoWorkOrder {
   parent?: string;
   /** True when this row is an internal task (completed independently on the parent's Tasks tab). */
   istask?: boolean;
+  /** Outage-type domain value (PLAN = Planned Outage, SNOW = Short Notice Outage Work); only on outage-list rows. */
+  outageType?: string;
+  /** How many LOTO isolation notes this WO already has; on outage-list rows only. */
+  lotoNoteCount?: number;
 }
 
 /** One Maximo ticket (SR or WO) with the asset the tag matcher identified/suggested for it. */

@@ -45,6 +45,28 @@ public class MaximoFieldListDriftService {
     private final Optional<MaximoAttachmentSyncService> attachmentSync;
     private final NgValueService valueService;
 
+    /**
+     * ListTypes the bridge is configured to route to Maximo. Same source-of-truth as
+     * {@code MaximoFieldListBridge.routeToWoTypesRaw} — we read the property directly
+     * instead of asking the bridge bean because the bridge is Optional (absent when
+     * the feature is off, and the drift panel must still compute this bucket in that
+     * case — a "you have unrouted items" signal is useful pre-enable too).
+     */
+    @org.springframework.beans.factory.annotation.Value("${maximo.field-list.route-to-wo-types:}")
+    private String routeToWoTypesRaw;
+    private java.util.List<String> shouldRouteListTypes = java.util.Collections.emptyList();
+
+    @jakarta.annotation.PostConstruct
+    void parseRouteTypes() {
+        if (routeToWoTypesRaw == null || routeToWoTypesRaw.isBlank()) return;
+        java.util.List<String> parsed = new java.util.ArrayList<>();
+        for (String t : routeToWoTypesRaw.split(",")) {
+            String trimmed = t == null ? "" : t.trim();
+            if (!trimmed.isEmpty()) parsed.add(trimmed);
+        }
+        this.shouldRouteListTypes = java.util.Collections.unmodifiableList(parsed);
+    }
+
     public MaximoFieldListDriftService(FieldListItemRepo repo,
                                        PermitAttachmentRepo attachmentRepo,
                                        Optional<MaximoFieldListBridge> bridge,
@@ -103,6 +125,9 @@ public class MaximoFieldListDriftService {
         List<FieldListItem> completePendingRows = repo.findByMaximoCompletePendingTrueOrderByIdAsc();
         List<FieldListItem> maximoClosedLocalOpen = repo.findMaximoClosedLocalOpen(MAXIMO_TERMINAL, LOCAL_OPEN);
         List<FieldListItem> localClosedMaximoOpen = repo.findLocalClosedMaximoOpen(MAXIMO_WO_OPEN, LOCAL_CLOSED);
+        List<FieldListItem> localNotInMaximo = shouldRouteListTypes.isEmpty()
+                ? java.util.Collections.emptyList()
+                : repo.findLocalNotInMaximo(shouldRouteListTypes);
 
         MaximoFieldListDriftDto out = new MaximoFieldListDriftDto();
         out.setComputedAt(Instant.now());
@@ -114,6 +139,7 @@ public class MaximoFieldListDriftService {
                 attachmentRepo.countByMaximoAttachPendingTrueAndEntityType("FieldListItem"));
         out.setMaximoClosedLocalOpen(bucket(maximoClosedLocalOpen, cap));
         out.setLocalClosedMaximoOpen(bucket(localClosedMaximoOpen, cap));
+        out.setLocalNotInMaximo(bucket(localNotInMaximo, cap));
         return out;
     }
 

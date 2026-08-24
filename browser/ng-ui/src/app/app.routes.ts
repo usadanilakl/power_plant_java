@@ -122,6 +122,12 @@ export const routes: Routes = [
       loadComponent: () => import('./pages/field-list-page/field-list-page.component').then(m => m.FieldListPageComponent),
       canActivate: [standaloneGuard, authGuard, insulationGuard],
       children: [
+        // Empty child forwards to /form so ?type= / ?view= query params reach the
+        // FieldListComponent's ngOnInit, which routes into the create-form or
+        // open-items mode. Bare-URL (no query) landing on /field-lists/form now
+        // renders the legacy select-mode cards — kept only for compat; the back
+        // button and every nav tile bypass it. See backToSelect() for the
+        // sub-section home used on back-navigation.
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', loadComponent: () => import('./features/field-list/field-list.component').then(m => m.FieldListComponent) }
       ]
@@ -244,6 +250,11 @@ export const routes: Routes = [
     {
       path: 'maximo/parts',
       loadComponent: () => import('./features/maximo/maximo-parts-page.component').then(m => m.MaximoPartsPageComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'maximo/outage',
+      loadComponent: () => import('./features/maximo/maximo-outage-page.component').then(m => m.MaximoOutagePageComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {

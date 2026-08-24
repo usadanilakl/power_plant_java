@@ -200,9 +200,28 @@ public class DailyPermitPackage extends BaseAuditEntity {
     public void removeWorkRequest(WorkRequest workRequest) {
         if (workRequest == null) return;
         workRequests.remove(workRequest);
-        if (workRequest.getDailyPermitPackage() == this) {
+        if (owns(workRequest.getDailyPermitPackage())) {
             workRequest.setDailyPermitPackage(null);
         }
+    }
+
+    /**
+     * Is that association pointing at THIS package?
+     *
+     * <p>Compares ids, not references. {@code WorkRequest.dailyPermitPackage} is
+     * {@code FetchType.LAZY}, so the getter hands back a Hibernate proxy that is never the same
+     * object as {@code this} — a {@code ==} check is therefore always false, and the owning-side FK
+     * silently never gets cleared. That went unnoticed for as long as this collection was
+     * {@code cascade = ALL, orphanRemoval = true}: the work requests were deleted outright, so
+     * nobody needed the FK nulled. With the cascade removed the bug surfaced immediately as a
+     * foreign-key violation when a package was deleted while a request still referenced it.
+     *
+     * <p>{@code getId()} on an uninitialised proxy does not trigger a load, so this stays cheap.
+     */
+    private boolean owns(DailyPermitPackage other) {
+        if (other == null) return false;
+        if (other == this) return true;
+        return this.getId() != null && this.getId().equals(other.getId());
     }
 
     public void setSafeWorks(Set<SafeWork> safeWorks) {

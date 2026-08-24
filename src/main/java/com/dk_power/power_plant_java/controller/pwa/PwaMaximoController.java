@@ -263,6 +263,57 @@ public class PwaMaximoController {
         }
     }
 
+    // ── Outage items (planned / short-notice-outage WOs + LOTO isolation notes) ──
+    private static final List<String> OUTAGE_TYPES = List.of("PLAN", "SNOW");
+
+    /** Work orders flagged as outage work (Outage Type = PLAN or SNOW), newest first. */
+    @GetMapping("/work-orders/outage")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> outageWorkOrders(
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "300") int pageSize) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    workOrders.listByOutageType(OUTAGE_TYPES, siteid, pageSize), "ok"));
+        } catch (Exception e) {
+            // Error STATUS (not 200+empty) so the UI shows "failed to load" instead of "no items" when Maximo
+            // is unreachable (I/O timeout etc.).
+            log.warn("[PWA-Maximo] outage WO list failed: {}", e.getMessage());
+            return ResponseEntity.status(502).body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** A WO's LOTO isolation notes only (worklog rows tagged with the LOTO marker), newest first. */
+    @GetMapping("/work-orders/loto-notes")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> lotoNotes(@RequestParam("href") String href) {
+        try {
+            List<MaximoWorklogDto> notes = worklog.listForWo(href).stream()
+                    .filter(com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter::isLotoNote).toList();
+            return ResponseEntity.ok(new NgApiResponse<>(notes, "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] loto-notes failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Add a LOTO isolation note to a WO. Returns the refreshed LOTO-notes list. */
+    @PostMapping("/work-orders/loto-note")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> addLotoNote(
+            @RequestParam("href") String href, @RequestBody LotoNoteBody body) {
+        try {
+            if (body == null || body.text() == null || body.text().isBlank())
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "note text is required"));
+            workOrders.addLotoNote(href, body.text().trim());
+            List<MaximoWorklogDto> notes = worklog.listForWo(href).stream()
+                    .filter(com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter::isLotoNote).toList();
+            return ResponseEntity.ok(new NgApiResponse<>(notes, "added"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] add loto-note failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    public record LotoNoteBody(String text) {}
+
     // ── Service requests (= "work requests") ───────────────────────────────────
 
     /** Search service requests (newest-first when no filter). */

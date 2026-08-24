@@ -133,6 +133,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Requests', icon: '📨', route: '/maximo', queryParams: { tab: 'sr' }, access: 'plant', hubOnly: true },
       { label: 'PMs', icon: '🗓️', route: '/maximo/pm', access: 'plant', hubOnly: true },
       { label: 'Parts', icon: '📦', route: '/maximo/parts', access: 'plant', hubOnly: true },
+      { label: 'Outage Items', shortLabel: 'Outage', icon: '⚡', route: '/maximo/outage', access: 'plant', hubOnly: true },
     ],
   },
   {

@@ -41,6 +41,18 @@ public class MaximoWorkOrderAdapter {
 
     private final MaximoAccessService access;
 
+    /**
+     * WORKORDER attribute holding the outage-type domain (PLAN/SNOW). Configurable because it may be a custom
+     * field on some instances; default {@code outagetype} is the stock Maximo attribute. Overridable via
+     * {@code maximo.outage-type-attr} so a wrong name is a config change, not a rebuild.
+     */
+    @org.springframework.beans.factory.annotation.Value("${maximo.outage-type-attr:naes_outagetype}")
+    private String outageTypeAttr = "naes_outagetype";
+
+    /** Worklog title (description) that marks a note as a LOTO isolation note, so the outage view can show only
+     *  those. Kept server-side: callers add via {@link #addLotoNote} and filter via {@link #isLotoNote}. */
+    public static final String LOTO_NOTE_TITLE = "LOTO ISOLATION";
+
     public List<MaximoWorkOrderDto> listForAsset(String assetnum, int pageSize) {
         if (assetnum == null || assetnum.isBlank()) return List.of();
         MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
@@ -156,6 +168,7 @@ public class MaximoWorkOrderAdapter {
         addLikePhrase(conds, "description", c.getDescriptionPhrase());
         addLike(conds, "description_longdescription", c.getLongDescriptionContains());
         addLike(conds, "wonum", c.getWonumContains());
+        addStrIn(conds, outageTypeAttr, c.getOutageTypeIn());
         if (conds.isEmpty()) return null;
 
         String siteid = (c.getSiteid() != null && !c.getSiteid().isBlank())
@@ -329,6 +342,64 @@ public class MaximoWorkOrderAdapter {
 
         if (payload.isEmpty()) return;
         access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /**
+     * Work orders whose outage-type ({@link #outageTypeAttr}) is one of {@code types} (e.g. PLAN/SNOW), newest
+     * first. Self-contained (its own select + where) so that if the outage attribute is misconfigured on an
+     * instance, only this query fails — never the shared {@link #SELECT_FIELDS} used by every other WO query.
+     */
+    public List<MaximoWorkOrderDto> listByOutageType(List<String> types, String siteid, int pageSize) {
+        if (types == null || types.isEmpty()) return List.of();
+        List<String> conds = new ArrayList<>();
+        addStrIn(conds, outageTypeAttr, types);
+        String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+        addStr(conds, "siteid", site);
+        // Non-history only: outage WOs go to history (historyflag=1) the moment they CLOSE, and there are
+        // thousands of those. The operator view wants the OPEN outage work (APPR/INPRG/WMATL/WPCOND/…) — the
+        // same set Maximo's default WO list shows (~165), not the closed backlog.
+        addNum(conds, "historyflag", "0");
+        Map<String, String> params = new LinkedHashMap<>();
+        // Select the WO's worklog INLINE ({@code spi:worklog}, the write/inline key — the read sub-collection is
+        // "woworklog") so we can flag which WOs already have a LOTO note in this ONE query — no per-WO calls.
+        params.put("oslc.select", SELECT_FIELDS + ",spi:" + outageTypeAttr + ",spi:worklog{spi:description}");
+        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
+        params.put("oslc.where", String.join(" and ", conds));
+        params.put("oslc.orderBy", "-spi:reportdate");
+        List<Map<String, Object>> rows = members(access.getMap(access.osUrl(OS), params));
+        List<MaximoWorkOrderDto> out = new ArrayList<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            MaximoWorkOrderDto d = map(row);
+            d.setLotoNoteCount(countLotoNotes(row));
+            out.add(d);
+        }
+        return out;
+    }
+
+    /** Count LOTO isolation notes in a WO row's inline {@code spi:worklog} (rows titled {@link #LOTO_NOTE_TITLE}). */
+    @SuppressWarnings("unchecked")
+    private static int countLotoNotes(Map<String, Object> row) {
+        Object wl = row.get("spi:worklog");
+        if (!(wl instanceof List<?> list)) return 0;
+        int n = 0;
+        for (Object o : list) {
+            if (o instanceof Map<?, ?> m) {
+                Object desc = ((Map<String, Object>) m).get("spi:description");
+                if (desc != null && LOTO_NOTE_TITLE.equalsIgnoreCase(desc.toString().trim())) n++;
+            }
+        }
+        return n;
+    }
+
+    /** Add a LOTO isolation note to a WO: a worklog whose title is the {@link #LOTO_NOTE_TITLE} marker and whose
+     *  long text is the operator's isolation description. No labor, no status change. */
+    public void addLotoNote(String href, String isolationText) {
+        reportActuals(href, null, LOTO_NOTE_TITLE, isolationText, "CLIENTNOTE");
+    }
+
+    /** True when a worklog row is a LOTO isolation note (title == the marker), so the outage view can show only those. */
+    public static boolean isLotoNote(com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto w) {
+        return w != null && w.getDescription() != null && w.getDescription().trim().equalsIgnoreCase(LOTO_NOTE_TITLE);
     }
 
     /**
@@ -667,6 +738,7 @@ public class MaximoWorkOrderAdapter {
         d.setTaskid(str(row, "taskid"));
         d.setParent(str(row, "parent"));
         d.setIstask(MaximoOslcMapper.boolVal(row, "istask"));
+        d.setOutageType(str(row, outageTypeAttr));   // null unless the outage query selected it
         return d;
     }
 
