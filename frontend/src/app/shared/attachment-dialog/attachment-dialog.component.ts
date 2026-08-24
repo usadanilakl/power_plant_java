@@ -5,6 +5,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-projection.component';
 import { AttachmentDialogService } from './attachment-dialog.service';
 import { RfWorkRequestApiService } from '../../features/permit-builder/work-request/refactored/services/rf-work-request-api.service';
+import { RfJhaApiService } from '../../features/permit-builder/jha/refactored/services/rf-jha-api.service';
 
 interface Attachment {
   id: number;
@@ -250,6 +251,7 @@ interface Attachment {
 export class AttachmentDialogComponent {
   dialogService = inject(AttachmentDialogService);
   private wrApiService = inject(RfWorkRequestApiService);
+  private jhaApiService = inject(RfJhaApiService);
   private sanitizer = inject(DomSanitizer);
 
   attachments = signal<Attachment[]>([]);
@@ -277,7 +279,14 @@ export class AttachmentDialogComponent {
     if (!entityType || !entityId) return;
 
     this.isLoading.set(true);
-    this.wrApiService.getAttachments(entityId).subscribe({
+    // The dialog takes an entityType and then ignored it, always asking the work-request endpoint.
+    // Harmless while only work requests opened it; opening it for a JHA would have quietly shown
+    // the attachments of whichever work request happened to share that id.
+    const source$ = entityType === 'Jha'
+      ? this.jhaApiService.getAttachments(entityId)
+      : this.wrApiService.getAttachments(entityId);
+
+    source$.subscribe({
       next: (response) => {
         this.attachments.set(response.responseData || []);
         this.isLoading.set(false);

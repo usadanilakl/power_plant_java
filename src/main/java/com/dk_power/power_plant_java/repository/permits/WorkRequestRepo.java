@@ -22,6 +22,13 @@ public interface WorkRequestRepo extends PermitRepo<WorkRequest> {
     // PWA permit status
     List<WorkRequest> findBySubmitterEmailIgnoreCase(String email);
 
+    /**
+     * Requests whose status is one of the given names, case-insensitively.
+     * See {@code WorkRequestStatuses.OPEN} for the set the expiry and auto-close sweeps use.
+     */
+    @Query("SELECT wr FROM WorkRequest wr WHERE LOWER(wr.permitStatus.name) IN :statuses")
+    List<WorkRequest> findByPermitStatusNameInIgnoreCase(@Param("statuses") List<String> lowercaseStatuses);
+
     List<WorkRequest> findAllByDeletedFalseOrderByDateModifiedDesc();
 
     List<WorkRequest> findAllByIdInAndDeletedFalse(List<Long> ids);

@@ -6,6 +6,28 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+/**
+ * Brings SharePoint lists up to the shape the code expects.
+ *
+ * <h2>Re-running this is safe</h2>
+ * Every operation is additive and idempotent, by construction:
+ * <ul>
+ *   <li>a list is created only when {@code listExists} says it is absent;</li>
+ *   <li>a field is created only when {@code fieldExists} says it is absent — an existing column is
+ *       never altered, retyped or dropped, so its data is untouched;</li>
+ *   <li>an index is added only when {@code isFieldIndexed} says it is absent;</li>
+ *   <li>each field is attempted in its own try/catch, so one failure cannot abort the rest or
+ *       leave a list half-provisioned.</li>
+ * </ul>
+ * Nothing here deletes or overwrites. Adding a column to a definition below and re-running against
+ * a live list adds exactly that column and leaves every existing item's data alone — the new column
+ * simply reads empty on rows that predate it.
+ *
+ * <p><b>The one thing to get right on the consuming side:</b> those pre-existing rows will return
+ * an EMPTY value for the new column on the next sync pass, and the field-merge snapshot will see
+ * that as a change. Whatever applies the column locally must treat empty as "no opinion", never as
+ * "clear the local value" — see {@code WorkRequest.applyDeclaredHazardsEnvelope}.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -157,7 +179,12 @@ public class SharePointListProvisioner {
                         text("ForemanName"), text("FireWatchName"), text("SpaceToBeEntered"),
                         text("Status"), text("SubmitterName"), text("SubmitterEmail"),
                         text("MainWorkScope"), text("WorkAreaName"),
-                        text("SubmitterPhone"), text("SubmitterCompany"), text("TimeSubmitted")),
+                        text("SubmitterPhone"), text("SubmitterCompany"), text("TimeSubmitted"),
+                        // The requester's hazard declaration as one JSON envelope. A payload
+                        // column, not a queryable one - kept out of the default view because a
+                        // wall of JSON makes the list unreadable. See DeclaredHazards for why the
+                        // three blocks share a single column.
+                        payload("DeclaredHazards")),
 
                 list("JHA",
                         text("PwaId"), text("JobName"), text("Applicability"), text("AnalysisBy"),
@@ -351,15 +378,26 @@ public class SharePointListProvisioner {
 
     // ====================== Helpers ======================
 
-    private record FieldDef(String name, int typeKind, String lookupListTitle, String lookupFieldName) {}
+    private record FieldDef(String name, int typeKind, String lookupListTitle, String lookupFieldName,
+                            boolean hideFromDefaultView) {}
     private record ListDefinition(String title, List<FieldDef> fields) {}
 
-    private static FieldDef text(String name) { return new FieldDef(name, TEXT, null, null); }
-    private static FieldDef note(String name) { return new FieldDef(name, NOTE, null, null); }
-    private static FieldDef bool(String name) { return new FieldDef(name, BOOLEAN, null, null); }
+    private static FieldDef text(String name) { return new FieldDef(name, TEXT, null, null, false); }
+    private static FieldDef note(String name) { return new FieldDef(name, NOTE, null, null, false); }
+    private static FieldDef bool(String name) { return new FieldDef(name, BOOLEAN, null, null, false); }
     private static FieldDef lookup(String name, String targetListTitle, String targetFieldName) {
-        return new FieldDef(name, LOOKUP, targetListTitle, targetFieldName);
+        return new FieldDef(name, LOOKUP, targetListTitle, targetFieldName, false);
     }
+
+    /**
+     * A multi-line text column holding machine-readable JSON — created like {@link #note} but kept
+     * out of the list's default view. Humans read these through the app, and dropping a serialised
+     * blob into the default view pushes every readable column off the screen.
+     *
+     * <p>Only affects columns this provisioner CREATES. A field already present keeps whatever view
+     * configuration it has, because ensureFields skips it entirely.
+     */
+    private static FieldDef payload(String name) { return new FieldDef(name, NOTE, null, null, true); }
 
     private void addField(String listTitle, FieldDef field) {
         if (field.typeKind == LOOKUP) {
@@ -380,7 +418,9 @@ public class SharePointListProvisioner {
             try {
                 if (spAccess.fieldExists(def.title, field.name)) continue;
                 addField(def.title, field);
-                spAccess.addFieldToDefaultView(def.title, field.name);
+                if (!field.hideFromDefaultView) {
+                    spAccess.addFieldToDefaultView(def.title, field.name);
+                }
                 added.add(field.name);
                 log.info("[SP-Provision] Added field '{}' to '{}'", field.name, def.title);
             } catch (Exception e) {

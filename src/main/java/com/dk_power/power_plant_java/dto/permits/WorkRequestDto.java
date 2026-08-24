@@ -58,6 +58,12 @@ public class WorkRequestDto {
     private String workCategoryName;
     private String workAreaName;
 
+    /**
+     * The requester's hazard declaration, as one JSON envelope — SharePoint column
+     * {@code DeclaredHazards}. See {@code DeclaredHazards} for the shape and the reasoning.
+     */
+    private String declaredHazards;
+
     /** SP item's Modified datetime — used for field-level LWW merge. */
     private java.time.Instant spModifiedTime;
 

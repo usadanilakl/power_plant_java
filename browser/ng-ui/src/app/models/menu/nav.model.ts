@@ -172,10 +172,17 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Field List', icon: '📝', slug: 'field-list',
     items: [
       { label: 'Insulation Removal', shortLabel: 'Removal', icon: '🧯', route: '/field-lists', queryParams: { type: 'Insulation Removal' }, access: 'insulation' },
-      { label: 'Insulation Installation', shortLabel: 'Installation', icon: '🧱', route: '/field-lists', queryParams: { type: 'Insulation Installation' }, access: 'insulation' },
+      // Installation is the CONTRACTOR-side action: they see the list of removal items to
+      // work on and close them. Routes to /insulation (the queue), not /field-lists (which
+      // is the plant-side create form). Was pointing to the create form with a bogus type
+      // that didn't exist server-side — tapping it dumped the user on the field-list home.
+      { label: 'Insulation Installation', shortLabel: 'Installation', icon: '🧱', route: '/insulation', access: 'insulation', hubOnly: true },
       { label: 'Leaks', icon: '💧', route: '/field-lists', queryParams: { type: 'Leaks' }, access: 'insulation' },
       { label: 'Winterization', shortLabel: 'Winter', icon: '❄️', route: '/field-lists', queryParams: { type: 'Winterization' }, access: 'insulation' },
-      { label: 'Open Items', shortLabel: 'Open', icon: '📂', route: '/insulation', access: 'insulation', hubOnly: true },
+      // General field-list Open Items view (all types). Distinct from "Insulation
+      // Installation" above which routes to the /insulation contractor queue for
+      // WO-routed insulation items only.
+      { label: 'Open Items', shortLabel: 'Open', icon: '📂', route: '/field-lists', queryParams: { view: 'open' }, access: 'insulation' },
     ],
   },
   {

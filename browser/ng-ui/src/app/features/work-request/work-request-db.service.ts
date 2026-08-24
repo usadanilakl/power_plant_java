@@ -36,19 +36,17 @@ export class WorkRequestDbService {
     return from(this.updateWithQuotaRecovery(workRequest.id, changes));
   }
 
+  /**
+   * Upcoming requests that still need a JHA.
+   *
+   * This used to query `where('jhaStatus').equals('none')`, and nothing has ever written 'none' -
+   * the v2 schema upgrade backfilled 'required' and new records leave the field undefined, which a
+   * Dexie index skips entirely. The query therefore always returned an empty array, silently
+   * emptying the JHA transfer list. Same predicate as getWorkRequestsNeedingJha now, expressed the
+   * way that actually matches.
+   */
   getWorkRequestWithoutJha(): Observable<WorkRequest[]> {
-    return from(
-      liveQuery(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return this.indexedDbService.workRequests
-          .where('jhaStatus')
-          .equals('none')
-          .filter(workRequest => new Date(workRequest.dateOfWork) >= today && workRequest.status !== 'revoked')
-          .toArray();
-      })
-    );
+    return this.getWorkRequestsNeedingJha();
   }
 
   getWorkRequestsNeedingJha(): Observable<WorkRequest[]> {

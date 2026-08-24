@@ -61,14 +61,19 @@ export class JhaStateService {
       combineLatest([
         this.queryParamTransfersSubject.asObservable(),
         this.workRequestDbService.getWorkRequestWithoutJha().pipe(
+          // Only requests that actually have a SharePoint id can become a transfer - the transfer
+          // model is keyed by a numeric SharePoint id, and `+''` used to turn every local-only
+          // request into the id 0, so they all collided on one entry.
           map(workRequests =>
-            workRequests.map(workRequest =>
-              new JhaTransfer({
-                requestSharepointId: +workRequest.sharepointId,
-                workScope: workRequest.workScope,
-                dateOfWork: workRequest.dateOfWork
-              })
-            )
+            workRequests
+              .filter(workRequest => !!workRequest.sharepointId)
+              .map(workRequest =>
+                new JhaTransfer({
+                  requestSharepointId: +workRequest.sharepointId,
+                  workScope: workRequest.workScope,
+                  dateOfWork: workRequest.dateOfWork
+                })
+              )
           ),
           startWith([])
         )
@@ -195,7 +200,11 @@ export class JhaStateService {
       const selectedJha = this.getSelectedJha();
       const submittedWr = this.selectedWorkRequestSubject.value;
 
-      if (!selectedJha.workRequestSharepointId) {
+      // Either link identifies the parent request. PwaJhaService resolves the SharePoint id first
+      // and falls back to the PWA local id, so requiring a SharePoint id here was refusing JHAs the
+      // backend could have attached perfectly well - and it hit exactly the requests submitted
+      // while SharePoint was down.
+      if (!selectedJha.workRequestSharepointId && !selectedJha.workRequestLocalUuid) {
         this.globalMessageService.showMessage(
           'Please select a Work Request from the left panel before submitting a JHA.', 'red'
         );
@@ -320,7 +329,7 @@ export class JhaStateService {
       const selectedJha = this.getSelectedJha();
       const submittedWr = this.selectedWorkRequestSubject.value;
 
-      if (!selectedJha.workRequestSharepointId) {
+      if (!selectedJha.workRequestSharepointId && !selectedJha.workRequestLocalUuid) {
         this.globalMessageService.showMessage(
           'Please select a Work Request from the left panel before submitting a JHA.', 'red'
         );
@@ -402,12 +411,12 @@ export class JhaStateService {
 
     revokeSelected(){
       const jha = this.getSelectedJha();
-      if (!jha?.sharepointId) {
-        this.globalMessageService.showMessage('Cannot revoke: no SharePoint ID.', 'red');
+      if (!jha?.sharepointId && !jha?.localUuid) {
+        this.globalMessageService.showMessage('Cannot revoke: this JHA has not been submitted yet.', 'red');
         return;
       }
       this.globalMessageService.showMessage('Revoking JHA...', 'white', 20000);
-      this.submissionOrchestrator.revokeJha(jha.sharepointId, jha.localUuid || '').pipe(
+      this.submissionOrchestrator.revokeJha(jha.sharepointId || '', jha.localUuid || '').pipe(
         switchMap(result => {
           if (!result.success) {
             this.globalMessageService.showMessage(result.message || 'Revoke failed.', 'red');

@@ -19,7 +19,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.List;
@@ -387,8 +386,13 @@ public class PwaInsulationService {
     private static String sha256(String base64) {
         if (base64 == null) return "";
         try {
+            // Canonical content hash = SHA-256 of decoded bytes, matching AttachmentSyncHandler
+            // + PermitAttachmentSyncService + NgFieldListItemService. Previously hashed the
+            // base64 STRING which produced a different value than SP-import computed for the
+            // same file, so the SP round-trip couldn't dedup and created a duplicate
+            // PermitAttachment row (visible in the insulation dialog's photo grid).
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] h = md.digest(base64.getBytes(StandardCharsets.UTF_8));
+            byte[] h = md.digest(java.util.Base64.getDecoder().decode(base64));
             StringBuilder sb = new StringBuilder(h.length * 2);
             for (byte b : h) sb.append(String.format("%02x", b));
             return sb.toString();

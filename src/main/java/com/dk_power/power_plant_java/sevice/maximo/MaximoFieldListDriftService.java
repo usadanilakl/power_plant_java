@@ -1,5 +1,7 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
+import com.dk_power.power_plant_java.dto.admin.MaximoBulkCancelPreviewDto;
+import com.dk_power.power_plant_java.dto.admin.MaximoBulkCancelResultDto;
 import com.dk_power.power_plant_java.dto.admin.MaximoFieldListDriftDto;
 import com.dk_power.power_plant_java.dto.admin.MaximoFieldListDriftRowDto;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
@@ -289,5 +291,91 @@ public class MaximoFieldListDriftService {
         return new ResolveResult(ok, ok
                 ? "Local Closed pushed to Maximo (WO COMP)"
                 : "Push failed — pending flag set, backfill will retry");
+    }
+
+    // ==================== Bulk-cancel orphans ====================
+
+    /** Default Maximo statuses the admin usually wants to sweep — the "open on Maximo's side" set. */
+    private static final List<String> DEFAULT_ORPHAN_MAXIMO_STATUSES = List.of("WAPPR", "APPR", "WSCH", "INPRG");
+    /** Default local statuses the admin usually wants — the "terminal-locally" set. */
+    private static final List<String> DEFAULT_ORPHAN_LOCAL_STATUSES = List.of("Closed", "Cancelled");
+
+    /**
+     * Preview candidates for the "Bulk-cancel Maximo orphans" admin action. Returns rows
+     * matching the caller-picked Maximo statuses AND local statuses — the intersection is
+     * "Maximo WO in this state, but locally already done". Common cause: bridge was enabled
+     * after items already existed as Closed in H2 → next SP-import / CRDT save fired
+     * Submitted → bridge created WOs starting at WAPPR. Dry-read only.
+     */
+    @Transactional(readOnly = true)
+    public MaximoBulkCancelPreviewDto previewOrphans(List<String> maximoStatuses,
+                                                     List<String> localStatuses,
+                                                     int sampleLimit) {
+        List<String> mx = normaliseStatuses(maximoStatuses, DEFAULT_ORPHAN_MAXIMO_STATUSES);
+        List<String> loc = normaliseStatuses(localStatuses, DEFAULT_ORPHAN_LOCAL_STATUSES);
+        int cap = Math.max(1, Math.min(sampleLimit, 500));
+        List<FieldListItem> rows = repo.findMaximoWoOrphans(mx, loc);
+        MaximoBulkCancelPreviewDto out = new MaximoBulkCancelPreviewDto();
+        out.setCandidateCount(rows.size());
+        out.setSamples(toRowDtos(rows, cap));
+        out.setMaximoStatuses(mx);
+        out.setLocalStatuses(loc);
+        return out;
+    }
+
+    /**
+     * Execute the bulk cancel — for each row matching the same criteria as
+     * {@link #previewOrphans}, call {@code bridge.cancel} with a fixed reason. Per-row
+     * failures are captured (never abort the whole batch — a single bad WO shouldn't block
+     * cleanup of the rest). No-op with attempted=0 when the bridge is off.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public MaximoBulkCancelResultDto bulkCancelOrphans(List<String> maximoStatuses,
+                                                       List<String> localStatuses,
+                                                       String reason) {
+        MaximoBulkCancelResultDto out = new MaximoBulkCancelResultDto();
+        out.setFailures(new ArrayList<>());
+        if (bridge.isEmpty()) {
+            out.setAttempted(0);
+            log.warn("[MaximoBulkCancel] Skipped — Maximo bridge is not active on this node.");
+            return out;
+        }
+        List<String> mx = normaliseStatuses(maximoStatuses, DEFAULT_ORPHAN_MAXIMO_STATUSES);
+        List<String> loc = normaliseStatuses(localStatuses, DEFAULT_ORPHAN_LOCAL_STATUSES);
+        String memo = (reason == null || reason.isBlank())
+                ? "Bulk-cancel: erroneous Maximo route on bridge enablement"
+                : reason.trim();
+
+        List<FieldListItem> rows = repo.findMaximoWoOrphans(mx, loc);
+        out.setAttempted(rows.size());
+        int cancelled = 0;
+        for (FieldListItem entity : rows) {
+            try {
+                boolean ok = bridge.get().cancel(entity, memo);
+                if (ok) cancelled++;
+                else out.getFailures().add(new MaximoBulkCancelResultDto.Failure(
+                        entity.getId(), entity.getMaximoRecordId(), "bridge.cancel returned false"));
+            } catch (RuntimeException e) {
+                out.getFailures().add(new MaximoBulkCancelResultDto.Failure(
+                        entity.getId(), entity.getMaximoRecordId(), e.getMessage()));
+                log.warn("[MaximoBulkCancel] Cancel failed id={} wonum={}: {}",
+                        entity.getId(), entity.getMaximoRecordId(), e.getMessage());
+            }
+        }
+        out.setCancelled(cancelled);
+        out.setFailed(out.getFailures().size());
+        log.info("[MaximoBulkCancel] Done — attempted={} cancelled={} failed={}",
+                out.getAttempted(), out.getCancelled(), out.getFailed());
+        return out;
+    }
+
+    private static List<String> normaliseStatuses(List<String> input, List<String> fallback) {
+        if (input == null || input.isEmpty()) return fallback;
+        List<String> cleaned = input.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        return cleaned.isEmpty() ? fallback : cleaned;
     }
 }

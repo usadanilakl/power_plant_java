@@ -1,7 +1,29 @@
 import { Validators } from "@angular/forms";
 import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "./base.model";
-import { futureOrPresentDateValidator } from "../../shared/forms/validators/date.validators";
+import {
+  atLeastOneCheckedValidator,
+  futureOrPresentDateValidator,
+  futureTimeIfTodayValidator,
+} from "../../shared/forms/validators/date.validators";
+import {
+  ConfinedSpaceHazards,
+  HotWorkMeasures,
+  SwHazards,
+  CHROME_CONTENT_OPTIONS,
+  FUME_LEVEL_OPTIONS,
+  HotWorkProfile,
+  confinedSpaceHazardOptions,
+  declaredHazardsEnvelope,
+  hotWorkExposureScore,
+  hotWorkMeasureOptions,
+  hotWorkTypeOptions,
+  swHazardOptions,
+  tickedHotWorkTypes,
+  tickedConfinedSpaceHazards,
+  tickedHotWorkMeasures,
+  tickedSwHazards,
+} from "./permit-hazards.model";
 import { WorkRequestPa } from "./work-request-pa.model";
 import { Column } from "../inputs/column.model";
 import { IAttachment } from "./attachment.model";
@@ -29,6 +51,13 @@ export interface IWorkRequest extends IBaseModel {
   workCategoryName: string;
   workAreaId: number | null;
   workAreaName: string;
+  /** The requester could not place the work on the map and described it in words instead. */
+  workAreaUnknown: boolean;
+  declaredHazards: SwHazards;
+  declaredHotWorkMeasures: HotWorkMeasures;
+  declaredConfinedSpaceHazards: ConfinedSpaceHazards;
+  /** Type of hot work + Cr(VI) assessment. Only meaningful when isHotWorkRequired is 'Yes'. */
+  hotWorkProfile: HotWorkProfile;
   attachments: IAttachment[];
 }
 
@@ -54,6 +83,11 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   workCategoryName: string;
   workAreaId: number | null;
   workAreaName: string;
+  workAreaUnknown: boolean;
+  declaredHazards: SwHazards;
+  declaredHotWorkMeasures: HotWorkMeasures;
+  declaredConfinedSpaceHazards: ConfinedSpaceHazards;
+  hotWorkProfile: HotWorkProfile;
   attachments: IAttachment[];
 
   constructor(data: Partial<IWorkRequest> = {}) {
@@ -79,6 +113,13 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     this.workCategoryName = data.workCategoryName ?? '';
     this.workAreaId = data.workAreaId ?? null;
     this.workAreaName = data.workAreaName ?? '';
+    this.workAreaUnknown = data.workAreaUnknown ?? false;
+    // Always a concrete object, never null. The reactive form coerces a falsy checkbox-group value
+    // to [], which would flip the group into array mode and stop it writing back by key.
+    this.declaredHazards = new SwHazards(data.declaredHazards ?? {});
+    this.declaredHotWorkMeasures = new HotWorkMeasures(data.declaredHotWorkMeasures ?? {});
+    this.declaredConfinedSpaceHazards = new ConfinedSpaceHazards(data.declaredConfinedSpaceHazards ?? {});
+    this.hotWorkProfile = new HotWorkProfile(data.hotWorkProfile ?? {});
     this.attachments = data.attachments ?? [];
   }
 
@@ -92,9 +133,44 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         initialValue: `${this.dateOfWork.getFullYear()}-${String(this.dateOfWork.getMonth() + 1).padStart(2, '0')}-${String(this.dateOfWork.getDate()).padStart(2, '0')}`,
         validators: [Validators.required, futureOrPresentDateValidator()]
       },
-      { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork, validators: [Validators.required] },
-      { name: 'workAreaMap', label: 'Work Area', type: 'work-area-map', initialValue: this.workAreaId && this.workAreaName ? { id: this.workAreaId, name: this.workAreaName } : null, validators: [Validators.required] },
-      { name: 'locationDetail', label: 'Location Details', type: 'text', initialValue: this.getLocationDetail(), placeholder: 'Add more location details (optional)' },
+      { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork, validators: [Validators.required, futureTimeIfTodayValidator('dateOfWork')] },
+
+      // --- Where is the work? Map first, words as the fallback. ---
+      // The map is the preferred answer: it gives operators the area's constant hazards, its LOTO
+      // standards and the right job grouping. But a contractor who genuinely does not know which
+      // area they are in must still be able to submit - this used to be a hard `required`, and
+      // with no map data cached (first run, hub unreachable) the form simply could not be sent.
+      {
+        name: 'workAreaMap',
+        label: 'Work Area — tap your area on the map',
+        type: 'work-area-map',
+        initialValue: this.workAreaId && this.workAreaName ? { id: this.workAreaId, name: this.workAreaName } : null,
+        showWhen: { field: 'workAreaUnknown', value: false },
+        validators: [Validators.required],
+      },
+      {
+        name: 'locationDetail',
+        label: 'Location Details',
+        type: 'text',
+        initialValue: this.getLocationDetail(),
+        placeholder: 'Anything that helps us find you (optional)',
+        showWhen: { field: 'workAreaUnknown', value: false },
+      },
+      {
+        name: 'workAreaUnknown',
+        label: "I'm not sure which area this is — let me describe it instead",
+        type: 'checkbox',
+        initialValue: this.workAreaUnknown,
+      },
+      {
+        name: 'locationDescription',
+        label: 'Where is the work?',
+        type: 'textarea',
+        initialValue: this.workAreaUnknown ? this.locationOfWork : '',
+        placeholder: 'e.g. outside the Unit 2 turbine building, by the blue tanks near the north gate',
+        showWhen: { field: 'workAreaUnknown', value: true },
+        validators: [Validators.required],
+      },
       {
         name: 'workCategoryName',
         label: 'Main Work Scope',
@@ -126,6 +202,53 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         showWhen: { field: 'isHotWorkRequired', value: 'Yes' },
         validators: [Validators.required]
       },
+      // --- Hot work: what kind, and (for welding) the Cr(VI) assessment ---
+      // Two levels so the long assessment is only asked of the jobs that need it. The whole block
+      // hangs off the Hot Work radio; the Cr(VI) half hangs off Welding specifically, because
+      // welding is what liberates hexavalent chromium from chrome-bearing base metal.
+      {
+        name: 'hotWorkTypes',
+        label: 'What kind of hot work?',
+        type: 'checkbox-group',
+        initialValue: this.hotWorkProfile,
+        options: hotWorkTypeOptions(this.hotWorkProfile),
+        showWhen: { field: 'isHotWorkRequired', value: 'Yes' },
+        // Validators.required is no use on a checkbox-group: the value is an object, and {} is
+        // truthy, so it would pass with nothing ticked.
+        validators: [atLeastOneCheckedValidator()],
+        group: { label: 'Hot Work' },
+      },
+      {
+        name: 'hotWorkOtherDescription',
+        label: 'Describe the other hot work',
+        type: 'text',
+        initialValue: this.hotWorkProfile.otherDescription,
+        placeholder: 'e.g. thermal spraying',
+        showWhen: { field: 'hotWorkTypes', matches: (v: any) => v?.other === true },
+        validators: [Validators.required],
+        group: { label: 'Hot Work' },
+      },
+      {
+        name: 'hotWorkFumeLevel',
+        label: 'Hot Work Method',
+        type: 'radio-group',
+        initialValue: this.hotWorkProfile.fumeLevel,
+        options: FUME_LEVEL_OPTIONS,
+        showWhen: { field: 'hotWorkTypes', matches: (v: any) => v?.welding === true },
+        validators: [Validators.required],
+        group: { label: 'Welding — Hexavalent Chromium Assessment' },
+      },
+      {
+        name: 'hotWorkChromeContent',
+        label: 'Base Metal Chrome Content',
+        type: 'radio-group',
+        initialValue: this.hotWorkProfile.chromeContent,
+        options: CHROME_CONTENT_OPTIONS,
+        showWhen: { field: 'hotWorkTypes', matches: (v: any) => v?.welding === true },
+        validators: [Validators.required],
+        group: { label: 'Welding — Hexavalent Chromium Assessment' },
+      },
+
       {
         name: 'isConfinedSpaceEntryRequired',
         label: 'Confined Space Entry Required?',
@@ -143,8 +266,72 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         showWhen: { field: 'isConfinedSpaceEntryRequired', value: 'Yes' },
         validators: [Validators.required]
       },
+      // --- Hazards, in the same words the permits use ---
+      // What is ticked here seeds the Safe Work / Hot Work / Confined Space permits the operator
+      // generates, merged with the work area's own constant hazards. Hot Work and Confined Space
+      // only appear once the requester has said that work is involved, so the form stays short for
+      // the common case; `setupConditionalValidators` clears a hidden block's value for us.
+      {
+        name: 'declaredHazards',
+        label: 'Tick every hazard present where you will be working',
+        type: 'checkbox-group',
+        initialValue: this.declaredHazards,
+        options: swHazardOptions(this.declaredHazards),
+        group: { label: 'Safety Hazards' },
+      },
+      {
+        name: 'declaredHotWorkMeasures',
+        label: 'Confirm the hot work precautions in place',
+        type: 'checkbox-group',
+        initialValue: this.declaredHotWorkMeasures,
+        options: hotWorkMeasureOptions(this.declaredHotWorkMeasures),
+        showWhen: { field: 'isHotWorkRequired', value: 'Yes' },
+        group: { label: 'Hot Work Precautions' },
+      },
+      {
+        name: 'declaredConfinedSpaceHazards',
+        label: 'Tick every hazard present in the space',
+        type: 'checkbox-group',
+        initialValue: this.declaredConfinedSpaceHazards,
+        options: confinedSpaceHazardOptions(this.declaredConfinedSpaceHazards),
+        showWhen: { field: 'isConfinedSpaceEntryRequired', value: 'Yes' },
+        group: { label: 'Confined Space Hazards' },
+      },
+
       { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true, initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
     ];
+  }
+
+  /** The Cr(VI) worksheet score (fume x chrome), or 0 when not assessed. */
+  hotWorkExposureScore(): number {
+    return hotWorkExposureScore(this.hotWorkProfile);
+  }
+
+  /** Everything the requester declared, as readable labels — for summaries and the email fallback. */
+  declaredHazardSummary(): { group: string; items: string[] }[] {
+    const hotWorkItems: string[] = [];
+    if (this.isHotWorkRequired === 'Yes') {
+      hotWorkItems.push(...tickedHotWorkTypes(this.hotWorkProfile));
+      if (this.hotWorkProfile.other && this.hotWorkProfile.otherDescription) {
+        hotWorkItems.push(`Other: ${this.hotWorkProfile.otherDescription}`);
+      }
+      if (this.hotWorkProfile.welding) {
+        const fume = FUME_LEVEL_OPTIONS.find(o => o.value === this.hotWorkProfile.fumeLevel);
+        const chrome = CHROME_CONTENT_OPTIONS.find(o => o.value === this.hotWorkProfile.chromeContent);
+        if (fume) hotWorkItems.push(fume.label);
+        if (chrome) hotWorkItems.push(chrome.label);
+        const score = this.hotWorkExposureScore();
+        if (score > 0) hotWorkItems.push(`Cr(VI) exposure score: ${score}`);
+      }
+    }
+
+    const blocks = [
+      { group: 'Hot Work', items: hotWorkItems },
+      { group: 'Safety Hazards', items: tickedSwHazards(this.declaredHazards) },
+      { group: 'Hot Work Precautions', items: this.isHotWorkRequired === 'Yes' ? tickedHotWorkMeasures(this.declaredHotWorkMeasures) : [] },
+      { group: 'Confined Space Hazards', items: this.isConfinedSpaceEntryRequired === 'Yes' ? tickedConfinedSpaceHazards(this.declaredConfinedSpaceHazards) : [] },
+    ];
+    return blocks.filter(b => b.items.length > 0);
   }
 
 
@@ -153,7 +340,11 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       return [
         { id: 'workScope', header: 'Detailed Work Scope', accessorKey: 'workScope' },
         { id: 'company', header: 'Company', accessorKey: 'company' },
-        { id: 'workAreaName', header: 'Work Area', accessorKey: 'workAreaName' },
+        {
+          id: 'workAreaName',
+          header: 'Work Area',
+          accessorFn: (item: IWorkRequest) => item.workAreaName || (item.workAreaUnknown ? 'Not sure — described' : ''),
+        },
         { id: 'workCategoryName', header: 'Main Work Scope', accessorKey: 'workCategoryName' },
         { id: 'workRequestedBy', header: 'Requested By', accessorKey: 'workRequestedBy' },
         { id: 'locationOfWork', header: 'Location', accessorKey: 'locationOfWork' },
@@ -286,7 +477,12 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       IsConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired === 'Yes',
       ForemanName: this.foremanName,
       FireWatchName: this.fireWatchName,
-      SpaceToBeEntered: this.spaceToBeEntered
+      SpaceToBeEntered: this.spaceToBeEntered,
+      // This is the hub-is-down path, so SharePoint is the only place the declaration will exist
+      // until the hub polls the item back in.
+      DeclaredHazards: declaredHazardsEnvelope(
+        this.declaredHazards, this.declaredHotWorkMeasures, this.declaredConfinedSpaceHazards,
+        this.isHotWorkRequired === 'Yes' ? this.hotWorkProfile : null)
     });
   }
 
@@ -317,6 +513,15 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     for (const [label, value] of lines) {
       if (value) {
         body += `${label}: ${value}\n`;
+      }
+    }
+
+    // The email fallback is the last resort, so it has to carry the declaration too - an operator
+    // reading it needs the same hazards they would have seen in the app.
+    for (const block of this.declaredHazardSummary()) {
+      body += `\n${block.group}:\n`;
+      for (const item of block.items) {
+        body += `  - ${item}\n`;
       }
     }
 

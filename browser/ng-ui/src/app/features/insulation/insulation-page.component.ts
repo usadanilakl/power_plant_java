@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { switchMap, of } from 'rxjs';
@@ -34,10 +34,19 @@ interface NewPhoto {
         </button>
       </header>
 
-      <label class="toggle-row">
-        <input type="checkbox" [checked]="showClosed()" (change)="toggleShowClosed($event)" />
-        <span>Show recently closed (last 30 days)</span>
-      </label>
+      <div class="controls-row">
+        <label class="toggle-row">
+          <input type="checkbox" [checked]="showClosed()" (change)="toggleShowClosed($event)" />
+          <span>Show recently closed (last 30 days)</span>
+        </label>
+        <label class="sort-row">
+          <span>Sort:</span>
+          <select [value]="sortBy()" (change)="setSort($any($event.target).value)">
+            <option value="recent">Recent</option>
+            <option value="location">Location A→Z</option>
+          </select>
+        </label>
+      </div>
 
       @if (mode() === 'sharepoint') {
         <div class="offline-banner">
@@ -68,7 +77,7 @@ interface NewPhoto {
       }
 
       <ul class="items">
-        @for (item of items(); track trackFn(item)) {
+        @for (item of sortedItems(); track trackFn(item)) {
           <li class="item" (click)="openDetails(item)">
             <div class="item-head">
               <div class="item-title">{{ item.title || 'Untitled insulation item' }}</div>
@@ -223,12 +232,19 @@ interface NewPhoto {
     }
   `,
   styles: [`
-    :host { display: block; padding: 16px; max-width: 800px; margin: 0 auto; }
+    /* All neutral surfaces + text now use the app's CSS custom-property theme (defined in
+       styles.css) so the page reads correctly in dark mode too. Semantic status hues
+       (pill colors, offline banner amber, error red) keep their intent-carrying colors
+       but pick tokenised backgrounds/borders where the theme system exposes them. */
+    :host { display: block; padding: 16px; max-width: 800px; margin: 0 auto; color: var(--primary-text); }
     .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-    .page-head h1 { margin: 0 0 4px; font-size: 1.4rem; }
-    .sub { margin: 0; color: #555; font-size: 0.9rem; line-height: 1.4; }
-    .refresh { padding: 10px 16px; border: 1px solid #ccc; background: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    .page-head h1 { margin: 0 0 4px; font-size: 1.4rem; color: var(--primary-text); }
+    .sub { margin: 0; color: var(--secondary-text); font-size: 0.9rem; line-height: 1.4; }
+    .refresh { padding: 10px 16px; border: 1px solid var(--border-color); background: var(--card-background);
+      color: var(--primary-text); border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
+    .refresh:hover:not(:disabled) { border-color: var(--accent-color); color: var(--accent-color); }
     .refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+
     .offline-banner {
       display: flex; align-items: center; gap: 12px;
       background: #fff3cd; border: 1px solid #f0c674; border-radius: 6px;
@@ -241,96 +257,112 @@ interface NewPhoto {
     }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .queue-note {
-      background: #e3f2fd; color: #1565c0; padding: 10px 12px;
-      border-radius: 6px; margin-bottom: 14px; font-size: 0.85rem;
+      background: var(--secondary-background); color: var(--primary-text); padding: 10px 12px;
+      border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 14px; font-size: 0.85rem;
     }
-    .error { background: #fee; color: #900; padding: 12px; border-radius: 6px; margin: 12px 0; }
-    .empty { text-align: center; padding: 40px 20px; color: #666; }
-    .empty-icon { font-size: 3rem; color: #4caf50; margin-bottom: 12px; }
-    .empty-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
-    .empty-sub { font-size: 0.9rem; color: #888; }
+    .error { background: var(--error-bg); color: var(--error-text); padding: 12px; border-radius: 6px; margin: 12px 0; }
+    .empty { text-align: center; padding: 40px 20px; color: var(--secondary-text); }
+    .empty-icon { font-size: 3rem; color: var(--accent-color); margin-bottom: 12px; }
+    .empty-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; color: var(--primary-text); }
+    .empty-sub { font-size: 0.9rem; color: var(--secondary-text); }
+
+    /* Controls row — Show closed + Sort dropdown side by side. */
+    .controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 4px 0 14px; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem;
+      color: var(--secondary-text); cursor: pointer; user-select: none; }
+    .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-color); }
+    .sort-row { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--secondary-text); }
+    .sort-row select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px;
+      background: var(--card-background); color: var(--primary-text); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
+    .sort-row select:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color-shadow); }
+
     .items { list-style: none; padding: 0; margin: 0; }
-    .item { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; margin-bottom: 12px; transition: opacity 0.2s; }
+    .item {
+      background: var(--card-background); border: 1px solid var(--border-color); border-radius: 8px;
+      padding: 14px; margin-bottom: 12px; box-shadow: var(--card-shadow);
+      transition: opacity 0.2s, border-color 0.15s; cursor: pointer;
+    }
+    .item:hover { border-color: var(--accent-color); }
     .item.completing { opacity: 0.6; }
     .item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
-    .item-title { flex: 1 1 200px; font-weight: 600; color: #222; }
+    .item-title { flex: 1 1 200px; font-weight: 600; color: var(--primary-text); }
     .pill { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-family: ui-monospace, monospace; }
-    .pill.wo { background: #e3f2fd; color: #0d47a1; }
-    .pill.status { background: #f0f0f0; color: #555; }
-    .pill.status.status-wappr { background: #fff3cd; color: #856404; }
-    .pill.status.status-appr { background: #d1ecf1; color: #0c5460; }
-    .pill.status.status-inprg { background: #d4edda; color: #155724; }
-    .pill.sp { background: #f3e5f5; color: #6a1b9a; }
+    .pill.wo { background: rgba(33, 150, 243, 0.15); color: #1e88e5; }
+    .pill.status { background: var(--secondary-background); color: var(--secondary-text); }
+    .pill.status.status-wappr { background: rgba(255, 193, 7, 0.15); color: #f57c00; }
+    .pill.status.status-appr { background: rgba(33, 150, 243, 0.15); color: #1e88e5; }
+    .pill.status.status-inprg { background: rgba(76, 175, 80, 0.15); color: #388e3c; }
+    .pill.status.status-comp { background: rgba(158, 158, 158, 0.15); color: var(--secondary-text); }
+    .pill.status.status-can { background: rgba(244, 67, 54, 0.15); color: #d32f2f; }
+    .pill.sp { background: rgba(156, 39, 176, 0.15); color: #9c27b0; }
     .drift-badge {
       display: inline-flex; align-items: center; gap: 3px;
       padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;
-      background: #fff3cd; color: #856404; border: 1px solid #f0c674;
+      background: rgba(255, 193, 7, 0.15); color: #f57c00; border: 1px solid rgba(255, 193, 7, 0.4);
       cursor: help;
     }
-    .item-body { font-size: 0.9rem; color: #333; line-height: 1.5; }
+    .item-body { font-size: 0.9rem; color: var(--primary-text); line-height: 1.5; }
     .meta { margin: 2px 0; }
-    .label { color: #666; font-weight: 500; }
-    .notes { margin-top: 8px; padding: 8px 10px; background: #f8f8f8; border-left: 3px solid #ccc; border-radius: 3px; white-space: pre-wrap; }
-    .item-actions { margin-top: 12px; }
-    .complete-btn {
-      width: 100%; padding: 12px; border: none; border-radius: 6px; background: #4caf50; color: white;
-      font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.15s;
-    }
-    .complete-btn:hover:not(:disabled) { background: #43a047; }
-    .complete-btn:disabled { background: #999; cursor: not-allowed; }
-    .tap-hint { margin-top: 8px; font-size: 0.75rem; color: #888; font-style: italic; }
+    .label { color: var(--secondary-text); font-weight: 500; }
+    .notes { margin-top: 8px; padding: 8px 10px; background: var(--secondary-background);
+      border-left: 3px solid var(--border-color); border-radius: 3px; white-space: pre-wrap; color: var(--primary-text); }
+    .tap-hint { margin-top: 8px; font-size: 0.75rem; color: var(--secondary-text); font-style: italic; }
+
     /* Details dialog */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9999;
       display: flex; align-items: flex-end; justify-content: center; }
-    .modal-sheet { background: white; width: 100%; max-width: 640px; max-height: 92vh;
-      display: flex; flex-direction: column; border-radius: 12px 12px 0 0;
-      box-shadow: 0 -6px 24px rgba(0,0,0,0.3); overflow: hidden; }
+    .modal-sheet { background: var(--primary-background); color: var(--primary-text); width: 100%;
+      max-width: 640px; max-height: 92vh; display: flex; flex-direction: column;
+      border-radius: 12px 12px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,0.3); overflow: hidden; }
     @media (min-width: 641px) {
       .modal-backdrop { align-items: center; }
       .modal-sheet { border-radius: 12px; }
     }
     .modal-head { display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px; border-bottom: 1px solid #eee; background: #fafafa; }
-    .modal-title { font-size: 1.05rem; font-weight: 600; color: #222; margin: 0; }
-    .modal-close { background: none; border: none; font-size: 26px; line-height: 1; color: #666; cursor: pointer; padding: 0 4px; }
+      padding: 14px 16px; border-bottom: 1px solid var(--border-color); background: var(--secondary-background); }
+    .modal-title { font-size: 1.05rem; font-weight: 600; color: var(--primary-text); margin: 0; }
+    .modal-close { background: none; border: none; font-size: 26px; line-height: 1; color: var(--secondary-text); cursor: pointer; padding: 0 4px; }
+    .modal-close:hover { color: var(--primary-text); }
     .modal-body { padding: 14px 16px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
     .modal-pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-    .modal-meta { font-size: 0.88rem; color: #333; margin: 4px 0; }
-    .modal-meta .label { color: #666; font-weight: 500; margin-right: 4px; }
-    .modal-notes { margin: 10px 0; padding: 8px 10px; background: #f8f8f8; border-left: 3px solid #ccc;
-      border-radius: 3px; white-space: pre-wrap; font-size: 0.85rem; color: #333; }
+    .modal-meta { font-size: 0.88rem; color: var(--primary-text); margin: 4px 0; }
+    .modal-meta .label { color: var(--secondary-text); font-weight: 500; margin-right: 4px; }
+    .modal-notes { margin: 10px 0; padding: 8px 10px; background: var(--secondary-background);
+      border-left: 3px solid var(--border-color); border-radius: 3px; white-space: pre-wrap;
+      font-size: 0.85rem; color: var(--primary-text); }
     .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
       gap: 8px; margin: 12px 0; }
     .detail-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px;
-      border: 1px solid #ddd; cursor: pointer; }
-    .field-label { display: block; margin: 14px 0 6px; font-size: 0.85rem; font-weight: 600; color: #444; }
-    .field-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ccc;
+      border: 1px solid var(--border-color); cursor: pointer; }
+    .field-label { display: block; margin: 14px 0 6px; font-size: 0.85rem; font-weight: 600; color: var(--secondary-text); }
+    .field-input { width: 100%; box-sizing: border-box; padding: 10px 12px;
+      border: 1px solid var(--border-color); background: var(--card-background); color: var(--primary-text);
       border-radius: 6px; font-family: inherit; font-size: 0.95rem; resize: vertical; }
-    .field-file { display: block; margin-top: 4px; }
+    .field-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color-shadow); }
+    .field-file { display: block; margin-top: 4px; color: var(--primary-text); }
     .new-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
       gap: 8px; margin-top: 8px; }
     .new-photo-cell { position: relative; }
-    .new-photo-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+    .new-photo-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
     .new-photo-remove { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px;
-      background: #b91c1c; color: white; border: 2px solid white; border-radius: 50%;
-      font-size: 14px; line-height: 1; cursor: pointer; font-family: inherit;
+      background: var(--error-text); color: var(--primary-background); border: 2px solid var(--primary-background);
+      border-radius: 50%; font-size: 14px; line-height: 1; cursor: pointer; font-family: inherit;
       display: flex; align-items: center; justify-content: center; padding: 0; }
-    .modal-footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #eee; background: #fafafa; }
+    .modal-footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border-color); background: var(--secondary-background); }
     .footer-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-family: inherit;
       font-size: 0.95rem; font-weight: 600; cursor: pointer; }
-    .footer-btn-secondary { background: white; border: 1px solid #ccc; color: #444; }
+    .footer-btn-secondary { background: var(--card-background); border: 1px solid var(--border-color); color: var(--primary-text); }
+    .footer-btn-secondary:hover:not(:disabled) { border-color: var(--accent-color); color: var(--accent-color); }
     .footer-btn-primary { background: #4caf50; color: white; }
     .footer-btn-primary:hover:not(:disabled) { background: #43a047; }
-    .footer-btn-primary:disabled { background: #999; cursor: not-allowed; }
-    .footer-btn-reopen { background: #2196f3; color: white; }
-    .footer-btn-reopen:hover:not(:disabled) { background: #1976d2; }
-    .footer-btn-reopen:disabled { background: #999; cursor: not-allowed; }
+    .footer-btn-primary:disabled { background: var(--secondary-background); color: var(--secondary-text); cursor: not-allowed; }
+    .footer-btn-reopen { background: var(--accent-color); color: white; }
+    .footer-btn-reopen:hover:not(:disabled) { background: var(--accent-color-hover); }
+    .footer-btn-reopen:disabled { background: var(--secondary-background); color: var(--secondary-text); cursor: not-allowed; }
     .footer-btn-save { background: #ff9800; color: white; }
     .footer-btn-save:hover:not(:disabled) { background: #f57c00; }
-    .footer-btn-save:disabled { background: #d0d0d0; color: #888; cursor: not-allowed; }
-    .toggle-row { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px;
-      font-size: 0.9rem; color: #555; cursor: pointer; user-select: none; }
-    .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    .footer-btn-save:disabled { background: var(--secondary-background); color: var(--secondary-text); cursor: not-allowed; }
+
     .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex;
       align-items: center; justify-content: center; z-index: 10000; cursor: pointer; }
     .lightbox-img { max-width: 94vw; max-height: 94vh; object-fit: contain; border-radius: 4px; cursor: default; }
@@ -366,6 +398,21 @@ export class InsulationPageComponent implements OnInit {
   showClosed = signal(false);
   reopening = signal(false);
   saving = signal<string | null>(null);
+  /** Sort mode for the queue. `recent` is the server order (dateModified DESC); `location`
+   *  A→Z is a contractor's ask so items in the same area cluster. Kept local-only — no
+   *  need to persist across sessions yet. */
+  sortBy = signal<'recent' | 'location'>('recent');
+  /** Items rendered by the template — sorted view of the raw items() signal. */
+  sortedItems = computed(() => {
+    const list = this.items();
+    if (this.sortBy() === 'location') {
+      return [...list].sort((a, b) =>
+        (a.locationName ?? '').localeCompare(b.locationName ?? '', undefined, { sensitivity: 'base' })
+        || (a.specificLocation ?? '').localeCompare(b.specificLocation ?? '', undefined, { sensitivity: 'base' })
+      );
+    }
+    return list; // server already returns dateModified DESC
+  });
 
   ngOnInit(): void {
     // Prune anything the hub has already picked up so the queue-count is honest.
@@ -513,6 +560,10 @@ export class InsulationPageComponent implements OnInit {
     const on = (ev.target as HTMLInputElement).checked;
     this.showClosed.set(on);
     this.load(); // reload with the new inclusion flag
+  }
+
+  setSort(mode: string): void {
+    if (mode === 'recent' || mode === 'location') this.sortBy.set(mode);
   }
 
   /** Is this item currently closed on the Maximo side? Controls whether the Reopen button shows. */

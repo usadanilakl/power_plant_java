@@ -2,11 +2,13 @@ package com.dk_power.power_plant_java.sevice.angular.permits;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.enums.WorkRequestStatuses;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
 import com.dk_power.power_plant_java.sevice.sync.OldWorkRequestExcelStatusService;
+import com.dk_power.power_plant_java.util.PermitDates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -15,29 +17,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
 
 /**
- * Scheduled service that auto-expires Active work requests
+ * Scheduled service that auto-expires OPEN work requests (see {@code WorkRequestStatuses.OPEN})
  * where dateOfWorkToBePerformed + 1 day is in the past.
- * Hub-aware: only the hub runs expiry when online; clients run it when offline.
+ *
+ * <p>Also the reason SharePoint auto-close is disabled in the orchestrator: the incremental fetch
+ * cannot prove a request is gone, so closing overdue requests happens here on the date instead.
+ *
+ * <p>Hub-aware: only the hub runs expiry when online; clients run it when offline.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class WorkRequestExpiryService {
-    private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
-        DateTimeFormatter.ISO_LOCAL_DATE,
-        DateTimeFormatter.ofPattern("M/d/uuuu", Locale.US),
-        DateTimeFormatter.ofPattern("M/d/uu", Locale.US),
-        DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.US),
-        DateTimeFormatter.ofPattern("MM/dd/uu", Locale.US)
-    );
+    private static final List<String> OPEN_STATUSES_LOWER =
+        WorkRequestStatuses.OPEN.stream().map(String::toLowerCase).toList();
 
     private final WorkRequestRepo workRequestRepo;
     private final NgValueService valueService;
@@ -55,14 +52,17 @@ public class WorkRequestExpiryService {
             return;
         }
 
-        List<WorkRequest> activeWrs = workRequestRepo.findByPermitStatus_NameIgnoreCase("Active");
+        // Every OPEN status, not just "Active". A request the requester edited becomes "Updated"
+        // and one we asked for more detail on becomes "Pending More Info"; both used to fall out of
+        // this sweep entirely and sit in the queue forever.
+        List<WorkRequest> openWrs = workRequestRepo.findByPermitStatusNameInIgnoreCase(OPEN_STATUSES_LOWER);
         LocalDate today = LocalDate.now(ZoneId.of("America/Chicago"));
         int expired = 0;
 
-        for (WorkRequest wr : activeWrs) {
-            LocalDate workDate = parseDate(wr.getDateOfWorkToBePerformed());
+        for (WorkRequest wr : openWrs) {
+            LocalDate workDate = PermitDates.parse(wr.getDateOfWorkToBePerformed());
             if (workDate != null && !workDate.plusDays(1).isAfter(today)) {
-                wr.setPermitStatus(valueService.createValue("Permit Status", "Expired"));
+                wr.setPermitStatus(valueService.createValue("Permit Status", WorkRequestStatuses.EXPIRED));
                 workRequestRepo.save(wr);
                 if (wr.getSharepointId() != null) {
                     try {
@@ -82,30 +82,4 @@ public class WorkRequestExpiryService {
         }
     }
 
-    private LocalDate parseDate(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) return null;
-        String trimmed = dateStr.trim();
-
-        if (trimmed.contains("T")) {
-            try {
-                return LocalDateTime.parse(trimmed.replace("Z", "")).toLocalDate();
-            } catch (DateTimeParseException ignored) {
-                String datePart = trimmed.split("T", 2)[0];
-                if (!datePart.isBlank()) {
-                    trimmed = datePart;
-                }
-            }
-        }
-
-        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
-            try {
-                return LocalDate.parse(trimmed, formatter);
-            } catch (DateTimeParseException ignored) {
-                // Try the next supported date format.
-            }
-        }
-
-        log.warn("[WR Expiry] Failed to parse date '{}'", dateStr);
-        return null;
-    }
 }

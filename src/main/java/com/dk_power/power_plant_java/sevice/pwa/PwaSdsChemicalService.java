@@ -20,7 +20,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Optional;
 
@@ -167,8 +166,11 @@ public class PwaSdsChemicalService {
     private String computeContentHash(String base64Content) {
         if (base64Content == null) return "";
         try {
+            // Canonical content hash = SHA-256 of decoded bytes (matches
+            // AttachmentSyncHandler + PermitAttachmentSyncService). Prior string-hash broke
+            // SP round-trip dedup — duplicate PermitAttachment rows on the poll import.
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(base64Content.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = md.digest(java.util.Base64.getDecoder().decode(base64Content));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) sb.append(String.format("%02x", b));
             return sb.toString();

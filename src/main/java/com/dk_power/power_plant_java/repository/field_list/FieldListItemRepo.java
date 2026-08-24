@@ -155,4 +155,23 @@ public interface FieldListItemRepo extends BaseRepository<FieldListItem> {
             @org.springframework.data.repository.query.Param("listTypeName") String listTypeName,
             @org.springframework.data.repository.query.Param("terminalStatuses") List<String> terminalStatuses,
             @org.springframework.data.repository.query.Param("since") java.time.LocalDateTime since);
+
+    /**
+     * Rows that look like orphaned Maximo WOs — created accidentally when the bridge was
+     * first enabled against a repo of already-Closed items. Filter: maximoRecordType=WO
+     * AND maximoStatus IN a caller-supplied list (e.g. WAPPR/APPR) AND local status.name
+     * matches one of a caller-supplied list (usually "Closed"/"Cancelled"). Ordered by
+     * dateModified DESC so the admin sees the most-recent candidates first. Backs the
+     * Drift Center's "Bulk cancel Maximo orphans" panel.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT f FROM FieldListItem f WHERE f.maximoRecordType = 'WO' "
+                    + "AND f.maximoStatus IN :maximoStatuses "
+                    + "AND f.status.name IN :localStatuses "
+                    + "AND f.maximoRecordId IS NOT NULL "
+                    + "ORDER BY f.dateModified DESC"
+    )
+    List<FieldListItem> findMaximoWoOrphans(
+            @org.springframework.data.repository.query.Param("maximoStatuses") List<String> maximoStatuses,
+            @org.springframework.data.repository.query.Param("localStatuses") List<String> localStatuses);
 }

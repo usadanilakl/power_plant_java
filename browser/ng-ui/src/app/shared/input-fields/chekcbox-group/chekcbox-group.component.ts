@@ -21,6 +21,31 @@ export class ChekcboxGroupComponent implements ControlValueAccessor {
   @Input() options: Option[] = [];
   showPopup = false;
 
+  /**
+   * Unique DOM id for one option's checkbox.
+   *
+   * The id used to be the option's raw label, which is only unique while a page shows one group.
+   * Two hazard blocks on the same form both offer "Combustible Dust", and duplicate ids make every
+   * <label> point at whichever input the browser found first - so ticking one silently toggled the
+   * other. Scoping by the group's own label keeps them apart.
+   */
+  controlId(option: Option): string {
+    const raw = `${this.label}-${option.key ?? option.label}`;
+    return 'cbg-' + raw.replace(/[^a-zA-Z0-9_-]+/g, '-');
+  }
+
+  /**
+   * In object mode the source of truth is the bound value, not the option. Reading the option's
+   * own boolean works only while the caller rebuilds its options on every change; reading the
+   * value keeps the tick correct even when it does not.
+   */
+  isTicked(option: Option): boolean {
+    if (this.mode !== 'object') return !!option.value;
+    const key = option.key ?? option.label;
+    const stored = (this.value ?? {})[key];
+    return stored === undefined ? !!option.value : !!stored;
+  }
+
   value: any = {};
   mode: 'object' | 'array' = 'object';
 
@@ -60,7 +85,10 @@ export class ChekcboxGroupComponent implements ControlValueAccessor {
     const isChecked = checkbox.checked;
 
     if (this.mode === 'object') {
-      this.value[option.key ?? option.label] = isChecked;
+      // A NEW object, not a mutation. Angular's distinctUntilChanged on the form's valueChanges
+      // compares by reference, so mutating in place made the second tick in a group look like
+      // "no change" and never reached the draft save.
+      this.value = { ...this.value, [option.key ?? option.label]: isChecked };
     } else { // mode === 'array'
       if (isChecked) {
         this.value = [...this.value, option.value];
@@ -70,7 +98,6 @@ export class ChekcboxGroupComponent implements ControlValueAccessor {
     }
     
     this.onTouched();
-    console.log('Value sent to form',this.value);
     this.onChange(this.value);
   }
 

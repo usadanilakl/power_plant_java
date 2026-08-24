@@ -51,6 +51,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setLocalUuid(entity.getLocalUuid());
         dto.setWorkCategoryName(entity.getWorkCategory() != null ? entity.getWorkCategory().getName() : null);
         dto.setWorkAreaName(entity.getWorkArea() != null ? entity.getWorkArea().getName() : null);
+        dto.setDeclaredHazards(entity.getDeclaredHazardsEnvelope());
 
         return dto;
     }
@@ -128,17 +129,22 @@ public class WorkRequestMapper implements BaseMapper {
         workRequestDto.setLocation(ngWorkRequestDto.getLocation());
         workRequestDto.setAffectedEquipment(ngWorkRequestDto.getAffectedEquipment());
         workRequestDto.setWorkScope(ngWorkRequestDto.getWorkScope());
-        workRequestDto.setIsHotWorkRequired(ngWorkRequestDto.getIsHotWorkRequired()?"Yes":"No");
+        workRequestDto.setIsHotWorkRequired(yesNo(ngWorkRequestDto.getIsHotWorkRequired()));
         workRequestDto.setForeman(ngWorkRequestDto.getForeman());
         workRequestDto.setFireWatch(ngWorkRequestDto.getFireWatch());
-        workRequestDto.setIsLotoRequired(ngWorkRequestDto.getIsLotoRequired()?"Yes":"No");
-        workRequestDto.setIsConfinedSpaceEntryRequired(ngWorkRequestDto.getIsConfinedSpaceEntryRequired()?"Yes":"No");
+        workRequestDto.setIsLotoRequired(yesNo(ngWorkRequestDto.getIsLotoRequired()));
+        workRequestDto.setIsConfinedSpaceEntryRequired(yesNo(ngWorkRequestDto.getIsConfinedSpaceEntryRequired()));
         workRequestDto.setSpace(ngWorkRequestDto.getSpace());
         workRequestDto.setSharepointId(ngWorkRequestDto.getSharepointId());
         workRequestDto.setWorkCategoryName(ngWorkRequestDto.getWorkCategory() != null ? ngWorkRequestDto.getWorkCategory().getName() : null);
         workRequestDto.setWorkAreaName(ngWorkRequestDto.getWorkArea() != null ? ngWorkRequestDto.getWorkArea().getName() : null);
 
         return workRequestDto;
+    }
+
+    /** Unset reads as "No" — the Boolean flags are nullable, and unboxing one threw NPE. */
+    private static String yesNo(Boolean flag) {
+        return Boolean.TRUE.equals(flag) ? "Yes" : "No";
     }
 
     public NgWorkRequestDto convertToNgDto(WorkRequest entity) {
@@ -202,6 +208,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setLocalUuid(entity.getLocalUuid());
         dto.setHasJha(hasJha);
         dto.setAttachmentCount(attachmentCount);
+        dto.setAreaNotSpecified(true);
         return dto;
     }
 
@@ -240,6 +247,14 @@ public class WorkRequestMapper implements BaseMapper {
         if (entity.getDailyPermitPackage() != null) {
             dto.setDailyPermitPackageId(entity.getDailyPermitPackage().getId());
         }
+
+        dto.setAreaNotSpecified(entity.getWorkArea() == null);
+        dto.setSuggestedJobLogId(entity.getSuggestedJobLogId());
+        dto.setDeclaredHazards(entity.getDeclaredHazards());
+        dto.setDeclaredHotWorkMeasures(entity.getDeclaredHotWorkMeasures());
+        dto.setDeclaredConfinedSpaceHazards(entity.getDeclaredConfinedSpaceHazards());
+        dto.setHotWorkProfile(entity.getHotWorkProfile());
+        dto.setHotWorkExposureScore(entity.getHotWorkProfile().getExposureScore());
 
         return dto;
     }
@@ -288,6 +303,17 @@ public class WorkRequestMapper implements BaseMapper {
             entity.setWorkCategory(null);
         }
 
+        // Null means "this DTO carries no opinion", not "clear it". The Angular work-request form
+        // does not render the hazard blocks, so it round-trips them as null; an unguarded set would
+        // erase the requester's declaration the first time an operator saved any other field.
+        if (dto.getDeclaredHazards() != null) entity.setDeclaredHazards(dto.getDeclaredHazards());
+        if (dto.getDeclaredHotWorkMeasures() != null) entity.setDeclaredHotWorkMeasures(dto.getDeclaredHotWorkMeasures());
+        if (dto.getDeclaredConfinedSpaceHazards() != null) {
+            entity.setDeclaredConfinedSpaceHazards(dto.getDeclaredConfinedSpaceHazards());
+        }
+        if (dto.getHotWorkProfile() != null) entity.setHotWorkProfile(dto.getHotWorkProfile());
+        if (dto.getSuggestedJobLogId() != null) entity.setSuggestedJobLogId(dto.getSuggestedJobLogId());
+
         return entity;
     }
 
@@ -327,6 +353,10 @@ public class WorkRequestMapper implements BaseMapper {
         } else if (spDto.getLocation() != null && !spDto.getLocation().isBlank()) {
             workAreaRepo.findFirstByNameIgnoreCase(spDto.getLocation()).ifPresent(entity::setWorkArea);
         }
+        // The whole reason the SharePoint column exists: a request that reached SharePoint through
+        // the Power Automate fallback (hub unreachable) carries its declaration here and nowhere
+        // else. Without this line it would be lost the moment the hub polled the item in.
+        entity.applyDeclaredHazardsEnvelope(spDto.getDeclaredHazards());
 
         return entity;
     }
@@ -378,6 +408,7 @@ public class WorkRequestMapper implements BaseMapper {
         } else if (spDto.getLocation() != null && !spDto.getLocation().isBlank()) {
             workAreaRepo.findFirstByNameIgnoreCase(spDto.getLocation()).ifPresent(entity::setWorkArea);
         }
+        entity.applyDeclaredHazardsEnvelope(spDto.getDeclaredHazards());
     }
 
 

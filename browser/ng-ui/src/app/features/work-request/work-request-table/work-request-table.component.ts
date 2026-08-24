@@ -53,11 +53,17 @@ export class WorkRequestTableComponent {
     }
 
     const buttons: ButtonConfig[] = [];
-    if (item.sharepointId) {
+    // Editable as soon as it has reached the hub, with or without a SharePoint id. A request the
+    // hub accepted while SharePoint was down still has its local id, and that is what the update
+    // and revoke endpoints look up first - gating on sharepointId locked requesters out of their
+    // own submission for a reason that was never theirs.
+    const isSubmitted = !!item.sharepointId || item.submissionStatus === 'submitted';
+    if (isSubmitted) {
       buttons.push({ name: 'Edit', action: () => this.editSelected(), color: 'primary' });
-      if (this.authService.isLoggedIn()) {
-        buttons.push({ name: 'Message Operator', action: () => this.openMessageCompose(), color: 'primary' });
-      }
+    }
+    // Messaging is the exception: the conversation is keyed by SharePoint id on the hub side.
+    if (item.sharepointId && this.authService.isLoggedIn()) {
+      buttons.push({ name: 'Message Operator', action: () => this.openMessageCompose(), color: 'primary' });
     }
     if (item.jhaStatus !== 'Completed') {
       buttons.push({ name: 'Fill Out JHA', action: () => this.fillOutJha(), color: 'primary' });

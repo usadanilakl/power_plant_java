@@ -328,3 +328,27 @@
 .selected-panel-name .cs-badge {
   font-size: 11px;
 }
+
+
+/* Guidance above the map, and the "no map available" fallback. Both exist so the requester always
+   knows what to do next — the picker used to fail silently into an empty frame. */
+.map-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #555;
+}
+
+.unavailable-state {
+  padding: 0.9rem 1rem;
+  border: 1px dashed #c9a227;
+  border-radius: 8px;
+  background: #fdf6e3;
+  color: #6b5300;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.unavailable-state p {
+  margin: 0.4rem 0 0;
+}

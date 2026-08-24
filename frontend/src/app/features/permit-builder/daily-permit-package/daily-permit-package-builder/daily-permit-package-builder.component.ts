@@ -689,26 +689,68 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
     this.currentDailyPermitPackageService.createAndAttachWorkRequestsToPackage([request]);
   }
   addSafeWork($event: SafeWorkDto  = new SafeWorkDto()  ) {
-    // Pre-populate constant hazards from WorkArea if adding a new empty permit
-    const wa = this.parentJob()?.workArea;
-    if (!$event.id && wa?.constantHazards) {
-      $event.hazards = new SwHazards({ ...$event.hazards, ...wa.constantHazards });
+    if (!$event.id) {
+      $event.hazards = new SwHazards(this.seedHazards(
+        $event.hazards,
+        this.parentJob()?.workArea?.constantHazards,
+        wr => wr.declaredHazards));
     }
     this.currentDailyPermitPackageService.createAndAttachSafeWorksToPackage([$event]);
   }
   addHotWork($event: HotWorkDto = new HotWorkDto()) {
-    const wa = this.parentJob()?.workArea;
-    if (!$event.id && wa?.constantHotWorkMeasures) {
-      $event.measures = new HotWorkMeasures({ ...$event.measures, ...wa.constantHotWorkMeasures });
+    if (!$event.id) {
+      $event.measures = new HotWorkMeasures(this.seedHazards(
+        $event.measures,
+        this.parentJob()?.workArea?.constantHotWorkMeasures,
+        wr => wr.declaredHotWorkMeasures));
     }
     this.currentDailyPermitPackageService.createAndAttachHotWorksToPackage([$event]);
   }
   addConfinedSpace($event: ConfinedSpaceDto = new ConfinedSpaceDto()) {
-    const wa = this.parentJob()?.workArea;
-    if (!$event.id && wa?.constantConfinedSpaceHazards) {
-      $event.hazards = new ConfinedSpaceHazards({ ...$event.hazards, ...wa.constantConfinedSpaceHazards });
+    if (!$event.id) {
+      $event.hazards = new ConfinedSpaceHazards(this.seedHazards(
+        $event.hazards,
+        this.parentJob()?.workArea?.constantConfinedSpaceHazards,
+        wr => wr.declaredConfinedSpaceHazards));
     }
     this.currentDailyPermitPackageService.createAndAttachConfinedSpacesToPackage([$event]);
+  }
+
+  /**
+   * Seed a new permit's hazard block from everything already known about this job.
+   *
+   * Two sources, both of which the operator would otherwise have to re-enter by hand:
+   *  - the work area's CONSTANT hazards — what is always true of that place;
+   *  - what each requester DECLARED on their own work request — what they can see today.
+   *
+   * Ticks are OR-ed: a hazard flagged by any source lands on the permit. Nothing here can UNtick
+   * something, so this only ever adds to what the operator sees, and they remain free to correct
+   * it. Only runs for a brand-new permit ($event.id is unset) — re-seeding a saved permit would
+   * quietly resurrect hazards an operator had deliberately cleared.
+   */
+  private seedHazards<T extends object>(
+    current: T | null | undefined,
+    areaConstants: Partial<T> | null | undefined,
+    fromWorkRequest: (wr: WorkRequestDto) => Partial<T> | null | undefined
+  ): Partial<T> {
+    const declared = (this.currentPackage()?.workRequests ?? [])
+      .map(fromWorkRequest)
+      .filter((h): h is Partial<T> => !!h);
+
+    const merged: any = { ...(current ?? {}) };
+    for (const source of [areaConstants, ...declared]) {
+      if (!source) continue;
+      for (const [key, value] of Object.entries(source)) {
+        if (value === true) {
+          merged[key] = true;
+        } else if (typeof value === 'string' && value && !merged[key]) {
+          // Free-text companions (weather / voltage / other descriptions): first non-empty wins,
+          // so the area's own wording is not overwritten by a later blank.
+          merged[key] = value;
+        }
+      }
+    }
+    return merged as Partial<T>;
   }
 
   addLoto($event: LotoDto = new LotoDto()) {

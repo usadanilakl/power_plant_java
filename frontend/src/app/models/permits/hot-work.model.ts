@@ -391,3 +391,55 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     };
   }
 }
+
+/**
+ * What kind of hot work a requester declared, plus the hexavalent chromium (Cr(VI)) assessment.
+ *
+ * Mirrors the Java `HotWorkProfile` POJO. Declared by the requester on the work request, read here
+ * by the operator building the permits — this side never writes it.
+ */
+export class HotWorkProfile {
+  welding: boolean = false;
+  grinding: boolean = false;
+  torchCutting: boolean = false;
+  plasmaCutting: boolean = false;
+  arcGouging: boolean = false;
+  brazingSoldering: boolean = false;
+  openFlameHeating: boolean = false;
+  other: boolean = false;
+  otherDescription: string = '';
+
+  fumeLevel: string = '';
+  chromeContent: string = '';
+
+  constructor(data: Partial<HotWorkProfile> = {}) {
+    Object.assign(this, data ?? {});
+  }
+}
+
+/** Readable labels for the hot work types this profile has ticked. */
+export function hotWorkTypeLabels(p: HotWorkProfile | null | undefined): string[] {
+  if (!p) return [];
+  const labels: [keyof HotWorkProfile, string][] = [
+    ['welding', 'Welding'],
+    ['grinding', 'Grinding'],
+    ['torchCutting', 'Torch cutting'],
+    ['plasmaCutting', 'Plasma cutting'],
+    ['arcGouging', 'Arc gouging'],
+    ['brazingSoldering', 'Brazing / soldering'],
+    ['openFlameHeating', 'Open flame / heating'],
+  ];
+  const out = labels.filter(([k]) => p[k] === true).map(([, l]) => l);
+  if (p.other) out.push(p.otherDescription ? `Other: ${p.otherDescription}` : 'Other');
+  return out;
+}
+
+/** Worksheet tier as a readable phrase, e.g. "High (9)". Empty when unanswered. */
+export function hotWorkTierLabel(tier: string | null | undefined): string {
+  switch ((tier ?? '').toUpperCase()) {
+    case 'HIGH': return 'High (9)';
+    case 'MEDIUM': return 'Medium (3)';
+    case 'LOW': return 'Low (1)';
+    default: return '';
+  }
+}

@@ -1,9 +1,26 @@
 <div class="work-area-map-wrapper">
   @if (loading()) {
     <div class="loading-state">Loading map...</div>
-  } @else if (errorMessage()) {
-    <div class="error-state">{{ errorMessage() }}</div>
+  } @else if (errorMessage() || !hasShapes()) {
+    <!--
+      The map could not be loaded, or carries no areas. Say so plainly and point at the way
+      forward, because this control used to be a hard `required`: with no shapes to tap there was
+      no possible value, and the whole work request form became unsubmittable with no explanation.
+    -->
+    <div class="unavailable-state">
+      <strong>The plant map isn't available right now.</strong>
+      <p>
+        You can still send this request — tick
+        <em>"I'm not sure which area this is"</em> below and describe where you'll be working.
+        An operator will set the area for you.
+      </p>
+    </div>
   } @else {
+    <p class="map-hint">
+      Tap the area of the plant where you'll be working. This tells us the hazards and lock-outs
+      that already apply there. If you can't find it, tick <em>"I'm not sure which area this is"</em>
+      below and describe the spot instead.
+    </p>
 
     <!-- Mobile: trigger button -->
     @if (isMobile() && !overlayOpen()) {

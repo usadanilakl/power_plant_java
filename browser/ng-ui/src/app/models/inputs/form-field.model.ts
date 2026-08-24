@@ -40,9 +40,23 @@ export interface FormField {
     left?: boolean;
   };
   group?: FormFieldGroup;
+  /**
+   * Show (and validate) this field only while a condition on another field holds.
+   *
+   * `value` is the simple case: strict equality against that field's value.
+   *
+   * `matches` covers conditions equality cannot express — most usefully a checkbox-group, whose
+   * value is an object rather than a scalar. Supply one or the other; `matches` wins if both are
+   * given. The predicate receives the controlling field's CURRENT value, so it must tolerate
+   * `null` / `undefined` (a hidden controlling field is reset to undefined).
+   *
+   * Example — only ask for the Cr(VI) assessment when Welding is among the hot work types:
+   *   `showWhen: { field: 'hotWorkTypes', matches: v => v?.welding === true }`
+   */
   showWhen?: {
     field: string;
-    value: any;
+    value?: any;
+    matches?: (controllingValue: any) => boolean;
   };
   fields?: FormField[];
   readonly?: boolean;

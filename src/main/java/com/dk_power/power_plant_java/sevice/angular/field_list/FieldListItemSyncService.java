@@ -116,6 +116,15 @@ public class FieldListItemSyncService implements SyncableService<FieldListItem> 
             return;
         }
         if (!deleted && (recId == null || recId.isBlank())) {
+            // Guard: never route a locally-terminal row to Maximo. A Closed / Cancelled
+            // field-list has no work to log — pushing it creates a WAPPR WO that ops has to
+            // clean up. This bit us when enabling the bridge on a repo that already had
+            // Closed-in-SP items with no maximoRecordId: the next SP-import / CRDT save
+            // fired Submitted → bridge created WOs for every old April item.
+            // See comment on isLocallyTerminal for status-name convention.
+            if (isLocallyTerminal(saved.getStatus() == null ? null : saved.getStatus().getName())) {
+                return;
+            }
             events.publishEvent(new MaximoFieldListEvents.Submitted(saved.getId()));
             return;
         }
@@ -137,5 +146,16 @@ public class FieldListItemSyncService implements SyncableService<FieldListItem> 
         return "COMP".equalsIgnoreCase(status)
                 || "CLOSE".equalsIgnoreCase(status)
                 || "CAN".equalsIgnoreCase(status);
+    }
+
+    /**
+     * Local FieldListStatus names that mean "no work to do" from the plant's perspective.
+     * Kept as a small hard-coded set — the local Value list is stable and the mapping to the
+     * Maximo bridge's {@code wo-completion-status} setting doesn't need to be config-driven
+     * here (this check is a filter, not authoritative status logic).
+     */
+    public static boolean isLocallyTerminal(String name) {
+        if (name == null || name.isBlank()) return false;
+        return "Closed".equalsIgnoreCase(name) || "Cancelled".equalsIgnoreCase(name);
     }
 }

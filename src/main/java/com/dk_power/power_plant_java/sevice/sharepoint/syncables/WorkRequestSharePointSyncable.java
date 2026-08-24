@@ -3,10 +3,12 @@ package com.dk_power.power_plant_java.sevice.sharepoint.syncables;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.enums.WorkRequestStatuses;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgJobLogService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointFieldMergeService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncable;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
@@ -37,6 +39,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     private final WorkRequestSyncRepairService workRequestSyncRepairService;
     private final SharePointFieldMergeService fieldMergeService;
     private final TransactionTemplate transactionTemplate;
+    private final NgJobLogService jobLogService;
 
     private static final String ENTITY_TYPE = "WorkRequest";
     private static final String LIST_TITLE = "Work Requests";
@@ -64,6 +67,11 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         Map.entry("timeSubmitted", "TimeSubmitted"),
         Map.entry("workCategory", "MainWorkScope"),
         Map.entry("workArea", "WorkAreaName"),
+        // All three declared-hazard blocks ride in one SharePoint column, so they move as ONE
+        // last-writer-wins unit keyed on this field's change timestamp. Safe while the requester is
+        // the sole editor - the desktop work request form does not render the hazard blocks and
+        // SharePoint has no UI for them. See DeclaredHazards for the full reasoning.
+        Map.entry("declaredHazardsJson", "DeclaredHazards"),
         Map.entry("localUuid", "PwaId")
     );
 
@@ -126,8 +134,11 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     @Override
     @Transactional
     public void autoCloseAbsentRecords(Set<String> remoteSharepointIds, SyncResult result) {
-        List<WorkRequest> localActive = workRequestRepo.findByPermitStatus_NameIgnoreCase("Active");
-        for (WorkRequest local : localActive) {
+        // Every OPEN status - an edited ("Updated") or queried ("Pending More Info") request is
+        // just as gone from SharePoint as an untouched one.
+        List<WorkRequest> localOpen = workRequestRepo.findByPermitStatusNameInIgnoreCase(
+            WorkRequestStatuses.OPEN.stream().map(String::toLowerCase).toList());
+        for (WorkRequest local : localOpen) {
             String spId = local.getSharepointId();
             if (spId != null && !remoteSharepointIds.contains(spId.toLowerCase())) {
                 try {
@@ -184,6 +195,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         values.put("TimeSubmitted", dto.getTimeSubmitted());
         values.put("MainWorkScope", dto.getWorkCategoryName());
         values.put("WorkAreaName", dto.getWorkAreaName());
+        values.put("DeclaredHazards", dto.getDeclaredHazards());
         values.put("PwaId", dto.getLocalUuid());
         return values;
     }
@@ -224,6 +236,13 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             } else {
                 entity.setWorkCategory(null);
             }
+        }
+        if (fields.contains("declaredHazardsJson")) {
+            // applyDeclaredHazardsEnvelope ignores a blank envelope rather than clearing the local
+            // declaration. That matters most on the very first pass after the column is
+            // provisioned: every pre-existing SharePoint row returns empty for it, and treating
+            // empty as "cleared" would wipe every hazard set in the database in one cycle.
+            entity.applyDeclaredHazardsEnvelope(dto.getDeclaredHazards());
         }
         if (fields.contains("workArea")) {
             if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
@@ -301,6 +320,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             String remoteStatus = remote.getStatus() != null ? remote.getStatus() : "Active";
             entity.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
             workRequestRepo.save(entity);
+            recordJobSuggestion(entity);
             result.incrementCreated();
             log.debug("[WR Syncable] Created: spId={}", spId);
 
@@ -345,6 +365,28 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true, false);
+    }
+
+    /**
+     * Note the job this request most likely belongs to.
+     *
+     * <p>The same hint the PWA submit path records, so a request that reached us through SharePoint
+     * arrives in the operator's queue looking exactly like one that came through the hub. That
+     * parity is the point: the two paths used to diverge sharply - hub submissions were silently
+     * processed onto a job, SharePoint ones were not - and which one a contractor got depended on
+     * nothing they could see or control.
+     *
+     * <p>Advisory and best-effort; a failure here must never fail a sync item.
+     */
+    private void recordJobSuggestion(WorkRequest entity) {
+        try {
+            jobLogService.findSuggestedJob(entity).ifPresent(job -> {
+                entity.setSuggestedJobLogId(job.getId());
+                workRequestRepo.save(entity);
+            });
+        } catch (Exception e) {
+            log.debug("[WR Syncable] Job suggestion failed for WR id={}: {}", entity.getId(), e.getMessage());
+        }
     }
 
     private WorkRequest findByLocalUuid(String localUuid) {

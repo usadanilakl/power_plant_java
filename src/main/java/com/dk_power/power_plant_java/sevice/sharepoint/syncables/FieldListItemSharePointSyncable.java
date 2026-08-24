@@ -112,14 +112,24 @@ public class FieldListItemSharePointSyncable implements SharePointSyncable<Field
             result.incrementCreated();
             fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             syncAttachmentsSafely(entity.getId(), spId);
-            // Route to Maximo — this is the "PWA→PA→SP→hub-imports→Maximo" recovery path
-            // for offline submissions. Only fires on the hub (bridge is hub-only). Bridge
-            // is idempotent so we're safe even if the local sync path already published.
-            events.publishEvent(new MaximoFieldListEvents.Submitted(entity.getId()));
-            // If this row also arrived contractor-completed, fire the close event too. The
-            // listener REQUIRES_NEW tx runs after commit; bridge.complete's idempotency
-            // guards handle the case where the Submitted's WO-create is still in flight
-            // (won't be — same commit boundary; bridge.complete will see the maximoHref).
+            // Route to Maximo — the "PWA→PA→SP→hub-imports→Maximo" recovery path for offline
+            // submissions. Only fires on the hub (bridge is hub-only).
+            //
+            // Guard: skip Submitted when the imported row is ALREADY locally terminal
+            // ("Closed" / "Cancelled"). SP-import of an already-closed row shouldn't create
+            // a fresh WAPPR WO — that's what pushed the 24 old April items into Maximo when
+            // the bridge was first enabled (they existed in SP with Status=Closed but no
+            // maximoRecordId, next SP-poll fired Submitted → bridge created WOs).
+            String remoteStatus = remote.getStatusName();
+            if (!com.dk_power.power_plant_java.sevice.angular.field_list.FieldListItemSyncService.isLocallyTerminal(remoteStatus)) {
+                events.publishEvent(new MaximoFieldListEvents.Submitted(entity.getId()));
+            } else {
+                log.info("[FieldList-Sync] Skipping Maximo route for imported spId={} — remote status='{}' is terminal",
+                        spId, remoteStatus);
+            }
+            // Contractor-close event is still allowed on import — those SP rows carry
+            // ContractorCompleted=true and are usually terminal; the listener has a listType
+            // allowlist so it only acts on insulation.
             maybePublishContractorClose(entity.getId(), remote);
             return EntitySyncOutcome.CREATED;
         }

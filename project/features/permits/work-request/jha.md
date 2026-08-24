@@ -176,6 +176,29 @@ JHA is associated with its work request in three places:
 
 ---
 
+### Attaching a JHA to a work request that has no SharePoint id
+
+A work request the hub accepted while SharePoint was unreachable comes back with
+`method: "local"` and no `sharepointId`. `PwaJhaService.linkToWorkRequest` has always resolved the
+SharePoint id **first and the PWA `localUuid` second**, so such a request can carry a JHA perfectly
+well — but the PWA used to refuse at submit time unless a SharePoint id was present, which blocked
+exactly the requests most likely to need one. Either link now satisfies the check.
+
+The same applies to revoke: `POST /api/pwa/jha/revoke` and `POST /api/pwa/work-request/revoke`
+accept `sharepointId`, `localUuid`, or both, and skip the SharePoint call when there is no item
+there to update.
+
+### Local-first mirroring
+
+The JHA's attachments are copied onto its work request **in the local database before SharePoint is
+attempted**. That mirroring used to sit inside the SharePoint-success branch, so with SharePoint
+down the operator opening the work request saw no JHA at all — the one document they need in order
+to process it. The SharePoint copy is a separate, best-effort step.
+
+A JHA also gets `permitStatus = "Active"` locally on submit. Previously it had no status until a
+SharePoint round-trip, so it showed blank in the desktop table and was invisible to
+`getAllByStatus("Active")`.
+
 ### Remaining Work
 
 - [ ] Create SharePoint "JHA" list (see `pa-flow-setup-jha.md`)
@@ -184,4 +207,5 @@ JHA is associated with its work request in three places:
 - [ ] Test end-to-end: PWA → server → SharePoint → sync back
 - [ ] Add JHA to Server Sync entity list (sync-server codebase)
 - [ ] Verify JHA image attachment appears on both JHA and WR items in SharePoint
-- [ ] Cross-dedup: when WR merge happens, JHAs pointing to deleted WR should re-link to canonical WR
+- [x] Cross-dedup: JHAs pointing at a deduplicated WR re-link to the canonical one —
+      `WorkRequestMergeService.transferJhaLinks`

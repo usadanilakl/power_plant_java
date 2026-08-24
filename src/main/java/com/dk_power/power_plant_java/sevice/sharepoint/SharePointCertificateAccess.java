@@ -115,12 +115,26 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    /** SharePoint FieldTypeKind for "Multiple lines of text" (SPFieldMultiLineText). */
+    private static final int FIELD_TYPE_NOTE = 3;
+
     public void addFieldToList(String listTitle, String fieldName, int fieldTypeKind) {
         String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/fields";
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("Title", fieldName);
         body.put("FieldTypeKind", fieldTypeKind);
         body.put("Required", false);
+        if (fieldTypeKind == FIELD_TYPE_NOTE) {
+            // Plain text, explicitly. SPFieldMultiLineText.RichText is not false by default, and a
+            // rich-text column does not hand back what you put in it: SharePoint wraps the value in
+            // <div class="ExternalClass...">...</div> and HTML-encodes quotes. Every multi-line
+            // column this project creates holds machine-readable JSON (JobSteps, DeclaredHazards,
+            // Notes), which is read back with a straight parse and NO HTML stripping anywhere in
+            // the codebase - so rich text would not fail loudly, it would just make every parse
+            // return "nothing", silently discarding the payload.
+            body.put("RichText", false);
+            body.put("AppendOnly", false);
+        }
         try {
             String jsonBody = objectMapper.writeValueAsString(body);
             ResponseEntity<String> response = sendPostRequest(endpoint, jsonBody);

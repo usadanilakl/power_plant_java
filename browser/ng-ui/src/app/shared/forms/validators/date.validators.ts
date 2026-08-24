@@ -38,3 +38,56 @@ export function futureOrPresentDateValidator(): ValidatorFn {
     return null;
   };
 }
+/**
+ * Rejects a time already past, but only when the chosen date is today.
+ *
+ * The acceptance criteria say a work request may not be scheduled in the past. The date validator
+ * above enforces that at day granularity, so "today at 06:00" submitted at 15:00 sailed through -
+ * the request looked live, and then the expiry sweep closed it that same night.
+ *
+ * Reads the date from a sibling control, so it re-runs whenever the date changes.
+ */
+export function futureTimeIfTodayValidator(dateControlName: string): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const time = control.value;
+    if (!time || typeof time !== 'string') return null;
+
+    const dateControl = control.parent?.get(dateControlName);
+    const dateValue = dateControl?.value;
+    if (!dateValue) return null;
+
+    const dateStr = dateValue instanceof Date
+      ? `${dateValue.getFullYear()}-${String(dateValue.getMonth() + 1).padStart(2, '0')}-${String(dateValue.getDate()).padStart(2, '0')}`
+      : String(dateValue).slice(0, 10);
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (dateStr !== todayStr) return null;
+
+    const [hours, minutes] = time.split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+
+    const chosen = new Date();
+    chosen.setHours(hours, minutes, 0, 0);
+    return chosen < now ? { pastTime: { value: time } } : null;
+  };
+}
+
+/**
+ * Requires at least one box ticked in a checkbox-group.
+ *
+ * `Validators.required` is useless on these: the control's value is an object, and `{}` — every box
+ * unticked — is truthy, so required passes and the form submits with nothing selected. This checks
+ * the values instead of the container.
+ *
+ * Lives here beside the other cross-cutting validators rather than in a hazard-specific file,
+ * because it applies to any object-mode checkbox-group.
+ */
+export function atLeastOneCheckedValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+    if (!value || typeof value !== 'object') return { atLeastOneRequired: true };
+    const ticked = Object.values(value).some(v => v === true);
+    return ticked ? null : { atLeastOneRequired: true };
+  };
+}

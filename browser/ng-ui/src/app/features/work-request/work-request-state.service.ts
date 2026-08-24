@@ -43,14 +43,26 @@ export class WorkRequestStateService {
 
   addWorkRequestsToList(workRequests: WorkRequest[]): void {
     const currentWorkRequests = this.allWorkRequestsSubject.getValue();
-    const workRequestMap = new Map(currentWorkRequests.map(wr => [wr.sharepointId, wr]));
+    const workRequestMap = new Map(currentWorkRequests.map(wr => [this.listKey(wr), wr]));
 
     workRequests.forEach(newWr => {
-      workRequestMap.set(newWr.sharepointId, newWr);
+      workRequestMap.set(this.listKey(newWr), newWr);
     });
 
     const updatedWorkRequests = Array.from(workRequestMap.values());
     this.allWorkRequestsSubject.next(updatedWorkRequests);
+  }
+
+  /**
+   * Identity for the in-memory list.
+   *
+   * Keying on sharepointId alone collapsed every request that had not reached SharePoint onto the
+   * single key '' — so two failed or offline submissions overwrote each other and the second one
+   * simply vanished from the list until the page was reloaded from IndexedDB. localUuid is minted
+   * client-side at construction and is always present.
+   */
+  private listKey(wr: WorkRequest): string {
+    return wr.localUuid || (wr.sharepointId ? `sp:${wr.sharepointId}` : `id:${wr.id}`);
   }
 
   selectWorkRequest(workRequest: WorkRequest) {
@@ -210,12 +222,14 @@ export class WorkRequestStateService {
 
   revokeSelected(){
     const wr = this.getSelectedWorkRequest();
-    if (!wr?.sharepointId) {
-      this.globalMessageService.showMessage('Cannot revoke: no SharePoint ID.', 'red');
+    // Either id names the request on the hub. A request that never reached SharePoint is still a
+    // request the requester is entitled to withdraw.
+    if (!wr?.sharepointId && !wr?.localUuid) {
+      this.globalMessageService.showMessage('Cannot revoke: this request has not been submitted yet.', 'red');
       return;
     }
     this.globalMessageService.showMessage('Revoking request...', 'white', 20000);
-    this.orchestrator.revokeWorkRequest(wr.sharepointId, wr.localUuid || '').pipe(
+    this.orchestrator.revokeWorkRequest(wr.sharepointId || '', wr.localUuid || '').pipe(
       switchMap(result => {
         if (!result.success) {
           this.globalMessageService.showMessage(result.message || 'Revoke failed.', 'red');
@@ -245,8 +259,12 @@ export class WorkRequestStateService {
 
   editSelected() {
     const wr = this.getSelectedWorkRequest();
-    if (!wr?.sharepointId) {
-      this.globalMessageService.showMessage('Cannot edit: request not yet submitted to SharePoint.', 'red');
+    // The update endpoint resolves by localUuid first and falls back to sharepointId, so a request
+    // the hub holds without a SharePoint id is perfectly editable. Only a draft that has not been
+    // sent anywhere has nothing to update.
+    const isSubmitted = !!wr?.sharepointId || wr?.submissionStatus === 'submitted';
+    if (!isSubmitted) {
+      this.globalMessageService.showMessage('Cannot edit: this request has not been submitted yet.', 'red');
       return;
     }
     this.isEditing.set(true);

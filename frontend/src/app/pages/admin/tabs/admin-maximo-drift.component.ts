@@ -1,11 +1,14 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   AdminMaximoFieldListDriftService,
   MaximoFieldListDrift,
   MaximoFieldListDriftBucket,
   MaximoFieldListDriftRow,
-  MaximoFieldListResolveResult
+  MaximoFieldListResolveResult,
+  MaximoBulkCancelPreview,
+  MaximoBulkCancelResult
 } from '../../../services/admin/admin-maximo-field-list-drift.service';
 import { Observable } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
@@ -67,7 +70,7 @@ const BUCKETS: BucketTile[] = [
 @Component({
   selector: 'app-admin-maximo-drift',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [CommonModule, DatePipe, FormsModule],
   template: `
     <div class="admin-container">
       <div class="admin-section">
@@ -165,6 +168,105 @@ const BUCKETS: BucketTile[] = [
           </div>
         </ng-container>
       </div>
+
+      <!-- Bulk-cancel Maximo WO orphans — for cleaning up WOs that got created when the
+           bridge was first enabled against a repo that already had Closed items. Preview
+           first (dry-read), review candidates, execute to CAN them in Maximo. -->
+      <div class="admin-section" style="margin-top: 20px;">
+        <div class="section-head">
+          <h3>Bulk-cancel Maximo WO orphans</h3>
+        </div>
+        <p class="description">
+          Cancels Maximo WOs whose local FieldListItem is already in a terminal state.
+          Common cause: the Maximo bridge was enabled after items already existed as Closed
+          in H2 — the next SP-import / CRDT save routed them into Maximo as WAPPR WOs that
+          nobody wants to work.
+          <br><br>
+          <strong>Pick the Maximo statuses to sweep and the local statuses that qualify.</strong>
+          Preview first, review the candidates, then Execute — one Maximo <code>changeStatus → CAN</code>
+          call per row.
+        </p>
+
+        <div class="bulk-form">
+          <div class="bulk-row">
+            <div class="bulk-col">
+              <div class="bulk-label">Maximo statuses (WO side)</div>
+              <div class="bulk-checks">
+                <label *ngFor="let s of allMaximoStatuses">
+                  <input type="checkbox" [checked]="bulkMaximoStatuses.has(s)"
+                         (change)="toggleBulkMaximoStatus(s, $event)"> {{ s }}
+                </label>
+              </div>
+            </div>
+            <div class="bulk-col">
+              <div class="bulk-label">Local statuses (H2 side)</div>
+              <div class="bulk-checks">
+                <label *ngFor="let s of allLocalStatuses">
+                  <input type="checkbox" [checked]="bulkLocalStatuses.has(s)"
+                         (change)="toggleBulkLocalStatus(s, $event)"> {{ s }}
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="bulk-row">
+            <div class="bulk-col wide">
+              <div class="bulk-label">Cancel reason (sent to Maximo worklog memo, 50 char cap)</div>
+              <input type="text" class="bulk-reason" [(ngModel)]="bulkReason"
+                     placeholder="Bulk-cancel: erroneous Maximo route on bridge enablement" />
+            </div>
+          </div>
+          <div class="bulk-actions">
+            <button (click)="bulkPreview()" [disabled]="bulkBusy() != null || bulkMaximoStatuses.size === 0 || bulkLocalStatuses.size === 0">
+              {{ bulkBusy() === 'preview' ? 'Loading…' : 'Preview candidates' }}
+            </button>
+            <button *ngIf="bulkPreviewData() && bulkPreviewData()!.candidateCount > 0"
+                    class="danger"
+                    (click)="bulkExecute()"
+                    [disabled]="bulkBusy() != null">
+              {{ bulkBusy() === 'execute' ? 'Cancelling…' : ('Execute — cancel ' + bulkPreviewData()!.candidateCount + ' WO(s)') }}
+            </button>
+          </div>
+        </div>
+
+        <div class="toast" *ngIf="bulkResult() as r" [class.ok]="r.failed === 0" [class.bad]="r.failed > 0">
+          Attempted {{ r.attempted }} — cancelled {{ r.cancelled }}, failed {{ r.failed }}.
+          <ul *ngIf="r.failures?.length" style="margin: 6px 0 0 18px;">
+            <li *ngFor="let f of r.failures">#{{ f.id }} ({{ f.wonum || 'no wonum' }}): {{ f.error }}</li>
+          </ul>
+        </div>
+
+        <div class="drilldown" *ngIf="bulkPreviewData() as p">
+          <div class="drilldown-head">
+            <h4>Candidates ({{ p.samples.length }} of {{ p.candidateCount }} shown)</h4>
+          </div>
+          <table *ngIf="p.samples.length > 0; else emptyPreview">
+            <thead>
+              <tr>
+                <th>ID</th><th>Title</th><th>Type</th><th>Local status</th>
+                <th>Maximo</th><th>Modified</th><th>Submitter</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of p.samples">
+                <td>{{ r.id }}</td><td>{{ r.title }}</td>
+                <td>{{ r.listTypeName || '—' }}</td>
+                <td>{{ r.localStatus || '—' }}</td>
+                <td>
+                  <span class="rec-badge" *ngIf="r.maximoRecordType">
+                    {{ r.maximoRecordType }} {{ r.maximoRecordId }} • {{ r.maximoStatus || '?' }}
+                  </span>
+                  <span *ngIf="!r.maximoRecordType">—</span>
+                </td>
+                <td>{{ r.dateModified | date:'short' }}</td>
+                <td>{{ r.submitterName || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #emptyPreview>
+            <p class="empty">No candidates match the selected criteria.</p>
+          </ng-template>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -221,6 +323,26 @@ const BUCKETS: BucketTile[] = [
     .action-btn:hover:not(:disabled) { background: #0056b3; }
     .action-btn:disabled { background: #bbb; cursor: wait; }
     .action-btn.busy { background: #999; }
+
+    /* Bulk-cancel form */
+    .bulk-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+    .bulk-row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .bulk-col { flex: 1; min-width: 260px; }
+    .bulk-col.wide { flex: 100%; }
+    .bulk-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .bulk-checks { display: flex; gap: 12px; flex-wrap: wrap; }
+    .bulk-checks label {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #333;
+      padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .bulk-checks label:has(input:checked) { border-color: #007bff; background: #e7f0ff; color: #0056b3; }
+    .bulk-reason {
+      width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px;
+      font-family: inherit; font-size: 13px;
+    }
+    .bulk-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .bulk-actions button.danger { background: #dc3545; }
+    .bulk-actions button.danger:hover:not(:disabled) { background: #c82333; }
   `]
 })
 export class AdminMaximoDriftComponent implements OnInit {
@@ -233,6 +355,16 @@ export class AdminMaximoDriftComponent implements OnInit {
   selected = signal<BucketKey | null>(null);
   busyId = signal<number | null>(null);
   toast = signal<MaximoFieldListResolveResult | null>(null);
+
+  // Bulk-cancel panel state
+  readonly allMaximoStatuses = ['WAPPR', 'APPR', 'WSCH', 'INPRG', 'COMP', 'CLOSE', 'CAN'];
+  readonly allLocalStatuses = ['Open', 'In Progress', 'Closed', 'Cancelled'];
+  bulkMaximoStatuses = new Set<string>(['WAPPR', 'APPR', 'WSCH', 'INPRG']); // defaults matching server
+  bulkLocalStatuses = new Set<string>(['Closed', 'Cancelled']);
+  bulkReason = '';
+  bulkBusy = signal<'preview' | 'execute' | null>(null);
+  bulkPreviewData = signal<MaximoBulkCancelPreview | null>(null);
+  bulkResult = signal<MaximoBulkCancelResult | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -303,6 +435,74 @@ export class AdminMaximoDriftComponent implements OnInit {
         this.toast.set({ ok: false, message: e?.error?.message ?? e?.message ?? 'Request failed' });
         this.busyId.set(null);
       }
+    });
+  }
+
+  // ==================== Bulk-cancel handlers ====================
+
+  toggleBulkMaximoStatus(s: string, ev: Event): void {
+    const on = (ev.target as HTMLInputElement).checked;
+    const next = new Set(this.bulkMaximoStatuses);
+    if (on) next.add(s); else next.delete(s);
+    this.bulkMaximoStatuses = next;
+    // Any criteria change invalidates the stale preview + result.
+    this.bulkPreviewData.set(null);
+    this.bulkResult.set(null);
+  }
+
+  toggleBulkLocalStatus(s: string, ev: Event): void {
+    const on = (ev.target as HTMLInputElement).checked;
+    const next = new Set(this.bulkLocalStatuses);
+    if (on) next.add(s); else next.delete(s);
+    this.bulkLocalStatuses = next;
+    this.bulkPreviewData.set(null);
+    this.bulkResult.set(null);
+  }
+
+  bulkPreview(): void {
+    if (this.bulkBusy() != null) return;
+    this.bulkBusy.set('preview');
+    this.bulkResult.set(null);
+    this.api.bulkCancelPreview({
+      maximoStatuses: [...this.bulkMaximoStatuses],
+      localStatuses: [...this.bulkLocalStatuses],
+      sampleLimit: 100,
+    }).subscribe({
+      next: r => {
+        this.bulkPreviewData.set(r.responseData ?? null);
+        this.bulkBusy.set(null);
+      },
+      error: e => {
+        this.error.set(e?.error?.message ?? e?.message ?? 'Preview failed');
+        this.bulkBusy.set(null);
+      },
+    });
+  }
+
+  bulkExecute(): void {
+    const preview = this.bulkPreviewData();
+    if (!preview || preview.candidateCount === 0) return;
+    if (this.bulkBusy() != null) return;
+    if (!confirm(`Cancel ${preview.candidateCount} Maximo WO(s)? This calls changeStatus → CAN on each and can only be undone in the Maximo Web UI.`)) return;
+    this.bulkBusy.set('execute');
+    this.api.bulkCancelExecute({
+      maximoStatuses: [...this.bulkMaximoStatuses],
+      localStatuses: [...this.bulkLocalStatuses],
+      reason: (this.bulkReason || '').trim() || undefined,
+    }).subscribe({
+      next: r => {
+        this.bulkResult.set(r.responseData ?? null);
+        this.bulkBusy.set(null);
+        // Fresh preview after execute so the count reflects the just-cancelled rows leaving
+        // the query (they're now at CAN status).
+        this.bulkPreview();
+        // Refresh the main drift snapshot too — several buckets read the same rows.
+        this.load();
+      },
+      error: e => {
+        this.error.set(e?.error?.message ?? e?.message ?? 'Execute failed');
+        this.bulkBusy.set(null);
+      },
     });
   }
 }

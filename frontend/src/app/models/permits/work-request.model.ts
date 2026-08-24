@@ -6,6 +6,9 @@ import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
+import { SwHazards } from './safe-work.model';
+import { HotWorkMeasures, HotWorkProfile, hotWorkTypeLabels } from './hot-work.model';
+import { ConfinedSpaceHazards } from './confined-space.model';
 
 export type WorkRequestFieldName = keyof WorkRequestModel;
 
@@ -31,6 +34,18 @@ export interface WorkRequestModel extends BaseModel {
   workCategory: ValueDto | null;
   workArea: WorkAreaDto | null;
   dailyPermitPackageId: number | null;
+  /** Derived server-side: no work area is set, so somebody has to pick one before permits. */
+  areaNotSpecified: boolean | null;
+  /** Job the grouping-key match suggests. Advisory — nothing is attached until an operator says so. */
+  suggestedJobLogId: number | null;
+  /** Hazards the requester declared on the request itself. Seeds the generated permits. */
+  declaredHazards: SwHazards | null;
+  declaredHotWorkMeasures: HotWorkMeasures | null;
+  declaredConfinedSpaceHazards: ConfinedSpaceHazards | null;
+  /** Type of hot work + Cr(VI) assessment, as declared by the requester. */
+  hotWorkProfile: HotWorkProfile | null;
+  /** Derived server-side: the worksheet's fume x chrome product. 0 when not assessed. */
+  hotWorkExposureScore: number | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -55,6 +70,13 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   workCategory: ValueDto | null;
   workArea: WorkAreaDto | null;
   dailyPermitPackageId: number | null;
+  areaNotSpecified: boolean | null;
+  suggestedJobLogId: number | null;
+  declaredHazards: SwHazards | null;
+  declaredHotWorkMeasures: HotWorkMeasures | null;
+  declaredConfinedSpaceHazards: ConfinedSpaceHazards | null;
+  hotWorkProfile: HotWorkProfile | null;
+  hotWorkExposureScore: number | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -79,6 +101,15 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.workCategory = data.workCategory ? new ValueDto(data.workCategory) : null;
     this.workArea = data.workArea ? new WorkAreaDto(data.workArea) : null;
     this.dailyPermitPackageId = data.dailyPermitPackageId ?? null;
+    this.areaNotSpecified = data.areaNotSpecified ?? null;
+    this.suggestedJobLogId = data.suggestedJobLogId ?? null;
+    this.declaredHazards = data.declaredHazards ? new SwHazards(data.declaredHazards) : null;
+    this.declaredHotWorkMeasures = data.declaredHotWorkMeasures ? new HotWorkMeasures(data.declaredHotWorkMeasures) : null;
+    this.declaredConfinedSpaceHazards = data.declaredConfinedSpaceHazards
+      ? new ConfinedSpaceHazards(data.declaredConfinedSpaceHazards)
+      : null;
+    this.hotWorkProfile = data.hotWorkProfile ? new HotWorkProfile(data.hotWorkProfile) : null;
+    this.hotWorkExposureScore = data.hotWorkExposureScore ?? null;
   }
 
   // Serialization method
@@ -106,10 +137,28 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       workCategory: this.workCategory?.toJson() ?? null,
       workArea: this.workArea?.toJson() ?? null,
       dailyPermitPackageId: this.dailyPermitPackageId,
+      // areaNotSpecified is derived server-side and never sent back — including it would invite a
+      // reader to treat it as settable.
+      suggestedJobLogId: this.suggestedJobLogId,
+      declaredHazards: this.declaredHazards ? { ...this.declaredHazards } : null,
+      declaredHotWorkMeasures: this.declaredHotWorkMeasures ? { ...this.declaredHotWorkMeasures } : null,
+      declaredConfinedSpaceHazards: this.declaredConfinedSpaceHazards ? { ...this.declaredConfinedSpaceHazards } : null,
+      hotWorkProfile: this.hotWorkProfile ? { ...this.hotWorkProfile } : null,
+      // hotWorkExposureScore is derived server-side and never sent back.
     };
   }
 
   // Deserialization method (static)
+  /**
+   * "3 ticked" / "" for a hazard block, for table cells. Counting rather than listing keeps the
+   * column narrow; the full list is on the work request detail dialog.
+   */
+  static countTicked(source: any): string {
+    if (!source) return '';
+    const count = Object.values(source).filter(v => v === true).length;
+    return count > 0 ? `${count} ticked` : '';
+  }
+
   static override fromJson(json: any): WorkRequestDto {
     return new WorkRequestDto({
       ...super.fromJson(json),
@@ -134,6 +183,15 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
       workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
       dailyPermitPackageId: json.dailyPermitPackageId ?? null,
+      areaNotSpecified: json.areaNotSpecified ?? null,
+      suggestedJobLogId: json.suggestedJobLogId ?? null,
+      declaredHazards: json.declaredHazards ? new SwHazards(json.declaredHazards) : null,
+      declaredHotWorkMeasures: json.declaredHotWorkMeasures ? new HotWorkMeasures(json.declaredHotWorkMeasures) : null,
+      declaredConfinedSpaceHazards: json.declaredConfinedSpaceHazards
+        ? new ConfinedSpaceHazards(json.declaredConfinedSpaceHazards)
+        : null,
+      hotWorkProfile: json.hotWorkProfile ? new HotWorkProfile(json.hotWorkProfile) : null,
+      hotWorkExposureScore: json.hotWorkExposureScore ?? null,
     });
   }
 
@@ -294,6 +352,16 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       attachmentCount: { name: 'attachmentCount', label: 'Attachments', type: 'text', readonly: true, initialValue: dto.attachmentCount },
       workCategory: { name: 'workCategory', label: 'Main Work Scope', type: 'text', readonly: true, initialValue: dto.workCategory?.name ?? '' },
       dailyPermitPackageId: { name: 'dailyPermitPackageId', label: 'Package ID', type: 'text', readonly: true, initialValue: dto.dailyPermitPackageId },
+      // Read-only on the operator form. areaNotSpecified is derived server-side, the job suggestion
+      // is resolved in the Process dialog, and the hazard blocks belong to the requester - an
+      // operator edits those on the generated permits, not by rewriting what was declared.
+      areaNotSpecified: { name: 'areaNotSpecified', label: 'Area Not Set', type: 'text', readonly: true, initialValue: dto.areaNotSpecified },
+      suggestedJobLogId: { name: 'suggestedJobLogId', label: 'Suggested Job', type: 'text', readonly: true, initialValue: dto.suggestedJobLogId },
+      declaredHazards: { name: 'declaredHazards', label: 'Declared Hazards', type: 'text', readonly: true, initialValue: dto.declaredHazards },
+      declaredHotWorkMeasures: { name: 'declaredHotWorkMeasures', label: 'Declared Hot Work Precautions', type: 'text', readonly: true, initialValue: dto.declaredHotWorkMeasures },
+      declaredConfinedSpaceHazards: { name: 'declaredConfinedSpaceHazards', label: 'Declared Confined Space Hazards', type: 'text', readonly: true, initialValue: dto.declaredConfinedSpaceHazards },
+      hotWorkProfile: { name: 'hotWorkProfile', label: 'Hot Work Profile', type: 'text', readonly: true, initialValue: dto.hotWorkProfile },
+      hotWorkExposureScore: { name: 'hotWorkExposureScore', label: 'Cr(VI) Exposure Score', type: 'text', readonly: true, initialValue: dto.hotWorkExposureScore },
     };
 
     return fields.map(fieldName => allFields[fieldName]);
@@ -388,6 +456,41 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         accessorFn: (item: WorkRequestDto) => item.workCategory?.name ?? '',
       },
       dailyPermitPackageId: { id: 'dailyPermitPackageId', header: 'Package ID', accessorKey: 'dailyPermitPackageId' },
+      areaNotSpecified: {
+        id: 'areaNotSpecified',
+        header: 'Area Set?',
+        accessorFn: (item: WorkRequestDto) => (item.areaNotSpecified ? 'Not set' : 'Set'),
+        conditionalStyling: (item: any) =>
+          item.areaNotSpecified
+            ? { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' }
+            : { 'background-color': '', 'color': '' }
+      },
+      suggestedJobLogId: { id: 'suggestedJobLogId', header: 'Suggested Job', accessorKey: 'suggestedJobLogId' },
+      declaredHazards: {
+        id: 'declaredHazards',
+        header: 'Declared Hazards',
+        accessorFn: (item: WorkRequestDto) => WorkRequestDto.countTicked(item.declaredHazards),
+      },
+      declaredHotWorkMeasures: {
+        id: 'declaredHotWorkMeasures',
+        header: 'Declared Hot Work Precautions',
+        accessorFn: (item: WorkRequestDto) => WorkRequestDto.countTicked(item.declaredHotWorkMeasures),
+      },
+      declaredConfinedSpaceHazards: {
+        id: 'declaredConfinedSpaceHazards',
+        header: 'Declared Confined Space Hazards',
+        accessorFn: (item: WorkRequestDto) => WorkRequestDto.countTicked(item.declaredConfinedSpaceHazards),
+      },
+      hotWorkProfile: {
+        id: 'hotWorkProfile',
+        header: 'Hot Work Type',
+        accessorFn: (item: WorkRequestDto) => hotWorkTypeLabels(item.hotWorkProfile).join(', '),
+      },
+      hotWorkExposureScore: {
+        id: 'hotWorkExposureScore',
+        header: 'Cr(VI) Score',
+        accessorFn: (item: WorkRequestDto) => (item.hotWorkExposureScore ? String(item.hotWorkExposureScore) : ''),
+      },
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

@@ -18,12 +18,19 @@
     - Sets status to "Revoked" in local DB + SharePoint
 5. Processing
     - Open work Request
-    - Review work request
-    - Review JHA
+    - Review work request — including the work area, the work category and the hazards the
+      requester declared
+    - Review JHA — listed inline on the detail dialog; "View" opens its captured form image or
+      uploaded document
     - Request more info (if needed)
-    - Generate Permits
+    - Generate Permits — the requester's declared hazards are merged with the work area's constant
+      hazards to pre-tick the Safe Work / Hot Work / Confined Space permits
     - Update WR/JHA Status
     - Notify Submitter
+
+**A work request is never processed automatically.** It arrives `Active` and waits for an operator,
+whichever route it took in. The grouping-key match is recorded as `suggestedJobLogId` and shown
+pre-selected in the Process dialog — it does not attach anything and does not change the status.
 6. Notifying
 
 ## Processing Logic
@@ -61,7 +68,10 @@
     - Desktop: `POST /work-requests-api/revoke/{id}` via context menu with confirm dialog
 5. WR Table and Permit Monitor are providing way to view/sort/search WR
     - Both Table item and Permit Monitor WR item on click open WR Action Popup:
-        - Generate permits []()
+        - Process → opens the Process dialog, which is the ONE place a request joins a job. It
+          states the outcome of each choice before it is made: which job, how many packages are
+          already on it, its dates. If the request is already on a package it says so and offers to
+          open that job, rather than presenting choices it cannot honour.
         - Request more details
             - Sends email to submitter via EmailFacadeService
             - Saves OUTBOUND EmailCorrespondence record (entityType="WorkRequest", entityId=id)

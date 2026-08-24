@@ -47,6 +47,27 @@ public class WorkRequestSharePointAdapter {
         );
     }
 
+    /**
+     * The SharePoint item carrying this PWA id, or null.
+     *
+     * <p>Submit used to answer this by pulling the WHOLE list and scanning it in memory — once per
+     * submission, on the hub, on the request thread. The certificate path can answer it with a
+     * one-row $filter; only the Power Automate fallback, which has no filtering, still has to scan.
+     */
+    public WorkRequestDto findByLocalUuid(String localUuid) {
+        if (localUuid == null || localUuid.isBlank()) return null;
+        String escaped = localUuid.replace("'", "''");
+        String filter = "PwaId eq '" + escaped + "'";
+        List<WorkRequestDto> matches = spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                () -> paGetAll().stream()
+                        .filter(wr -> localUuid.equals(wr.getLocalUuid()))
+                        .collect(Collectors.toList()),
+                "findByLocalUuid WorkRequest"
+        );
+        return matches == null || matches.isEmpty() ? null : matches.get(0);
+    }
+
     private List<WorkRequestDto> certGetFiltered(String filter) {
         List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
         return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
@@ -238,6 +259,7 @@ public class WorkRequestSharePointAdapter {
         dto.setTimeSubmitted(item.path("TimeSubmitted").asText(null));
         dto.setWorkCategoryName(item.path("MainWorkScope").asText(null));
         dto.setWorkAreaName(item.path("WorkAreaName").asText(null));
+        dto.setDeclaredHazards(item.path("DeclaredHazards").asText(null));
         dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
         return dto;
     }
@@ -264,6 +286,7 @@ public class WorkRequestSharePointAdapter {
         dto.setLocalUuid(str(map, "PwaId"));
         dto.setWorkCategoryName(str(map, "MainWorkScope"));
         dto.setWorkAreaName(str(map, "WorkAreaName"));
+        dto.setDeclaredHazards(str(map, "DeclaredHazards"));
         return dto;
     }
 
@@ -297,6 +320,7 @@ public class WorkRequestSharePointAdapter {
         map.put("TimeSubmitted", orEmpty(dto.getTimeSubmitted()));
         map.put("MainWorkScope", orEmpty(dto.getWorkCategoryName()));
         map.put("WorkAreaName", orEmpty(dto.getWorkAreaName()));
+        map.put("DeclaredHazards", orEmpty(dto.getDeclaredHazards()));
         return map;
     }
 

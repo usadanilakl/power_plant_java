@@ -74,6 +74,9 @@ public class PermitAttachmentSyncService {
                 if (remote.getFileName() == null || remote.getFileName().isEmpty()) continue;
                 String contentHash = computeContentHash(remote.getBase64Content());
 
+                // Content-hash dedup: fast path for rows written with the same hash convention
+                // (this service + AttachmentSyncHandler + NgFieldListItemService all hash the
+                // DECODED bytes).
                 if (contentHash != null && !contentHash.isEmpty()) {
                     Optional<PermitAttachment> existing = attachmentRepo
                         .findFirstByEntityTypeAndEntityIdAndFileNameAndContentHashOrderByIdAsc(
@@ -81,7 +84,15 @@ public class PermitAttachmentSyncService {
                     if (existing.isPresent()) {
                         continue;
                     }
-                } else if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(
+                }
+                // Filename-only fallback. Covers the SP round-trip case where we pushed a
+                // photo via a PWA path (sevice/pwa/*, which historically hashed the base64
+                // STRING instead of decoded bytes), then this poll fetches it back — the
+                // two hashes disagree so the check above misses, and without this we'd
+                // create a duplicate PermitAttachment for the same file. Assumption: SP
+                // never legitimately serves a different-content-same-name attachment for
+                // the same list row, so filename-alone is a safe dedup key here.
+                if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(
                     entityType, entityId, remote.getFileName())) {
                     continue;
                 }

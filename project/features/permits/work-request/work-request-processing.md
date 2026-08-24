@@ -16,10 +16,14 @@ Angular: RfWorkRequestTableComponent + RfWorkRequestFormComponent
 
 ## Functionality
 
-1. **Scheduled SharePoint Sync** — `WorkRequestSyncService` runs every 2 min (configurable via `sharepoint.sync.interval`). Fetches all work requests from SharePoint, merges by `sharepointId`:
-   - New → creates local entity with status "Active"
-   - Existing → updates if SharePoint status changed
-   - Can be disabled via `sharepoint.sync.enabled=false`
+1. **Scheduled SharePoint Sync** — `WorkRequestSharePointSyncable`, driven by
+   `SharePointSyncOrchestrator` every 30s. **Incremental** fetch (`$filter=Modified gt …`), merged
+   field-by-field against a stored snapshot so a local edit is not clobbered by an unchanged
+   SharePoint column:
+   - New → creates local entity with the remote status (default "Active") and records a job suggestion
+   - Existing → applies only the SharePoint columns that actually changed and won the conflict check
+   - Auto-close is **skipped**: an incremental fetch never sees the full remote set, so absence
+     proves nothing. `WorkRequestExpiryService` closes overdue requests instead.
 2. **Manual Sync** — `POST /work-requests-api/sync` triggers immediate sync, returns change count
 3. **View Requests** — paginated table with search, sort, column filters via refactored [TableComponent](../../../../frontend/src/app/shared/table/refactored)
 4. **Status Changes** — `GET /work-requests-api/change-status/{id}/{status}` updates local DB + notifies SharePoint

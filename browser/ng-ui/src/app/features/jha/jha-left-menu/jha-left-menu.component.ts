@@ -28,7 +28,9 @@ export class JhaLeftMenuComponent {
   jhaColumns = new Jha().getTableColumns();
 
   private selectedWr = this.jhaStateService.selectedWorkRequestSignal;
-  highlightId = computed(() => this.selectedWr()?.sharepointId ?? null);
+  // localUuid, not sharepointId: local-only requests all share the empty SharePoint id, so
+  // selecting one used to highlight every one of them at once.
+  highlightId = computed(() => this.selectedWr()?.localUuid ?? null);
 
   // JHA action menu
   isActionMenuOpen = false;

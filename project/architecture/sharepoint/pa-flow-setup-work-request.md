@@ -29,8 +29,47 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
 | SubmitterPhone | Submitter Phone | Single line of text | |
 | SubmitterCompany | Submitter Company | Single line of text | |
 | TimeSubmitted | Time Submitted | Single line of text | Stores ISO 8601 timestamp |
+| MainWorkScope | Main Work Scope | Single line of text | Work category name |
+| WorkAreaName | Work Area Name | Single line of text | Work area name |
+| DeclaredHazards | Declared Hazards | Multiple lines of text | **Plain text.** JSON payload — see below |
 
 **Note:** The built-in `Title` column will be left as-is (SharePoint requires it). We'll auto-fill it with `WorkScope` in the flow.
+
+**Don't hand-create these.** `SharePointListProvisioner` owns this list's shape — run
+`POST /ng/sharepoint/provision-list?title=Work%20Requests` and it adds whatever is missing.
+It is safe against a live list with data: a field is created only when `fieldExists` says it is
+absent, so existing columns are never altered or dropped and existing items keep their values. The
+new column simply reads empty on rows that predate it. The table above is for **verifying** what
+provisioning produced, not for manual data entry.
+
+### About `DeclaredHazards`
+
+The requester's hazard declaration (Safe Work / Hot Work / Confined Space checkboxes), carried as
+one JSON envelope:
+
+```json
+{"hazards":{"highNoise":true,"slippery":true,...},
+ "hotWork":{"areaIsClean":true,...},
+ "confinedSpace":{"oxygenDeficiency":false,...}}
+```
+
+One column rather than three (or fifty-one booleans) because SharePoint never filters or reports on
+an individual hazard — the reporting surface for hazards is the permits. It is a payload, not a
+queryable field, and the provisioner deliberately keeps it out of the list's default view so a wall
+of JSON doesn't push every readable column off screen.
+
+**Sections get added to this envelope, not to new columns.** `hotWorkProfile` — the type of hot
+work plus the hexavalent chromium assessment — was added after this column already existed and
+needed no change here at all: no new list column, no schema property, no designer mapping. Both
+ends carry `@JsonIgnoreProperties(ignoreUnknown = true)`, so an older hub reading a newer envelope
+ignores the unknown key instead of failing, and a newer hub reading an older envelope gets null.
+Expect the envelope to grow; do not mint a column for each section.
+
+**Why the column has to exist at all:** when the hub is unreachable the PWA falls back to this
+Power Automate flow and writes straight to SharePoint. Without this column the declaration was
+silently dropped on that path — the requester saw "Submitted successfully", the hub later polled
+the item in, and an operator generated permits from an apparently hazard-free request. Empty and
+"contractor ticked nothing" were indistinguishable.
 
 ---
 
@@ -39,7 +78,134 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
 1. Go to **Power Automate** > **My flows** > **+ New flow** > **Instant cloud flow**
 2. Name: **Work Request V2**
 3. Trigger: **When an HTTP request is received**
-4. Click **Use sample payload to generate schema** and paste:
+4. Paste the schema below into the trigger's **Request Body JSON Schema** box.
+
+This is the live schema, verbatim, plus `DeclaredHazards`. It is stored in the flow's own
+formatting so that copying it back out and diffing against this block shows real drift and nothing
+else.
+
+> **Paste this schema directly — do not use "Use sample payload to generate schema" on a working
+> flow.** That button regenerates everything and infers each type from whatever you paste, so one
+> wrong-looking value silently retypes a field. The three `Is…Required` flags are exactly that
+> trap: the code sends real JSON booleans (`Boolean.TRUE.equals(...)` in `workRequestToMap`,
+> `IsLOTORequired: boolean` in `WorkRequestPa`), and a sample payload showing them as `"Yes"` /
+> `"No"` — as an earlier revision of this document did — retypes them to `string`.
+
+```json
+{
+    "type": "object",
+    "properties": {
+        "actionType": {
+            "type": "string"
+        },
+        "id": {},
+        "data": {
+            "type": "object",
+            "properties": {
+                "PwaId": {
+                    "type": "string"
+                },
+                "DateOfWork": {
+                    "type": "string"
+                },
+                "WorkRequestedBy": {
+                    "type": "string"
+                },
+                "Company": {
+                    "type": "string"
+                },
+                "LocationOfWork": {
+                    "type": "string"
+                },
+                "AffectedEquipment": {
+                    "type": "string"
+                },
+                "WorkScope": {
+                    "type": "string"
+                },
+                "IsLOTORequired": {
+                    "type": "boolean"
+                },
+                "IsHotWorkRequired": {
+                    "type": "boolean"
+                },
+                "IsConfinedSpaceEntryRequired": {
+                    "type": "boolean"
+                },
+                "ForemanName": {
+                    "type": "string"
+                },
+                "FireWatchName": {
+                    "type": "string"
+                },
+                "SpaceToBeEntered": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "SubmitterName": {
+                    "type": "string"
+                },
+                "SubmitterEmail": {
+                    "type": "string"
+                },
+                "SubmitterPhone": {
+                    "type": "string"
+                },
+                "SubmitterCompany": {
+                    "type": "string"
+                },
+                "TimeSubmitted": {
+                    "type": "string"
+                },
+                "MainWorkScope": {
+                    "type": "string"
+                },
+                "WorkAreaName": {
+                    "type": "string"
+                },
+                "DeclaredHazards": {
+                    "type": "string"
+                }
+            }
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fileName": {
+                        "type": "string"
+                    },
+                    "contentType": {
+                        "type": "string"
+                    },
+                    "base64Content": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "fileName",
+                    "contentType",
+                    "base64Content"
+                ]
+            }
+        }
+    }
+}
+```
+
+**Minimal edit instead:** open the trigger, click **Edit** beside the schema, and add one line
+inside `data.properties`:
+
+```json
+"DeclaredHazards": { "type": "string" }
+```
+
+<details>
+<summary>Sample payload — only for generating a schema from scratch on a BRAND-NEW flow</summary>
+
 
 ```json
 {
@@ -53,9 +219,9 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
     "LocationOfWork": "Turbine Hall",
     "AffectedEquipment": "Generator 1",
     "WorkScope": "Replace bearings",
-    "IsLOTORequired": "Yes",
-    "IsHotWorkRequired": "No",
-    "IsConfinedSpaceEntryRequired": "No",
+    "IsLOTORequired": true,
+    "IsHotWorkRequired": false,
+    "IsConfinedSpaceEntryRequired": false,
     "ForemanName": "",
     "FireWatchName": "",
     "SpaceToBeEntered": "",
@@ -64,7 +230,10 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
     "SubmitterEmail": "dk@company.com",
     "SubmitterPhone": "555-1234",
     "SubmitterCompany": "DK Power",
-    "TimeSubmitted": "2026-02-11T03:40:54Z"
+    "TimeSubmitted": "2026-02-11T03:40:54Z",
+    "MainWorkScope": "Mechanical",
+    "WorkAreaName": "Turbine Hall",
+    "DeclaredHazards": "{\"hazards\":{\"highNoise\":true,\"slippery\":true},\"hotWork\":null,\"confinedSpace\":null}"
   },
   "attachments": [
     {
@@ -76,9 +245,30 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
 }
 ```
 
-5. Click **Done** — the schema will be generated automatically
-6. Set **Method** to `POST`
-7. Copy the **HTTP POST URL** — this is your flow trigger URL
+</details>
+
+5. Set **Method** to `POST`
+6. Copy the **HTTP POST URL** — this is your flow trigger URL
+
+> **`DeclaredHazards` is a STRING, not an object.** The client sends the envelope already
+> serialised (`JSON.stringify` on the PWA side, Jackson on the hub side) and SharePoint stores it
+> verbatim in a plain-text column. In the sample above it is therefore an escaped string — keep it
+> that way. Paste it as a nested `{ }` object and the generator infers `"type": "object"`, the
+> SharePoint action then receives an object where it expects text, and item creation fails with a
+> type error that points at the column rather than at the schema.
+
+### How the trigger treats this schema
+
+Two things worth knowing:
+
+- **A missing property is not an error.** The generated schema carries no `additionalProperties:
+  false` and does not list these as `required`, so a payload containing `DeclaredHazards` was
+  already being accepted before this entry existed — the field simply never appeared in the
+  designer's dynamic-content picker, which is why it was easy to miss.
+- **`triggerBody()?['data']?['DeclaredHazards']` works either way.** Typed by hand as an
+  expression, it reads straight from the request body and does not consult the schema at all. The
+  schema entry is what makes the field *discoverable* and keeps the next person from concluding the
+  field does not exist. Add it.
 
 ---
 
@@ -147,6 +337,9 @@ Add these actions right after the trigger:
 | Submitter Phone | `triggerBody()?['data']?['SubmitterPhone']` |
 | Submitter Company | `triggerBody()?['data']?['SubmitterCompany']` |
 | Time Submitted | `triggerBody()?['data']?['TimeSubmitted']` |
+| Main Work Scope | `triggerBody()?['data']?['MainWorkScope']` |
+| Work Area Name | `triggerBody()?['data']?['WorkAreaName']` |
+| Declared Hazards | `triggerBody()?['data']?['DeclaredHazards']` |
 
 **Tip:** For Choice columns (LOTO Required, Hot Work Required, Confined Space Entry Required, Status), the value must match one of the defined choices exactly (e.g. `Yes`, `No`, `Active`). Ensure the client always sends valid values.
 
@@ -209,8 +402,14 @@ After the Create item action:
 | SubmitterPhone | `item()?['SubmitterPhone']` |
 | SubmitterCompany | `item()?['SubmitterCompany']` |
 | TimeSubmitted | `item()?['TimeSubmitted']` |
+| MainWorkScope | `item()?['MainWorkScope']` |
+| WorkAreaName | `item()?['WorkAreaName']` |
+| DeclaredHazards | `item()?['DeclaredHazards']` |
 
 **Note:** Choice columns return objects like `{"Value": "Yes"}`. Use `?['Value']` to extract the string.
+
+**Note:** `DeclaredHazards` is a plain multi-line text column, so it comes back as a raw string — do
+NOT add `?['Value']`, and do not try to parse it in the flow. The hub parses it.
 
 2. Add **Set variable**: `responseData` = `body('Select')`
 

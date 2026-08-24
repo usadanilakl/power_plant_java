@@ -1,8 +1,10 @@
 package com.dk_power.power_plant_java.entities.permits.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class HotWorkMeasures {
     private boolean areaIsClean;
     private boolean flammablesAreSecured;

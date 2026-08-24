@@ -99,6 +99,53 @@ public class NgMaximoFieldListDriftController {
         return okResult(driftService.pushLocalClose(id));
     }
 
+    /**
+     * Preview candidates for the bulk-cancel action — read-only, no Maximo calls made. Admin
+     * inspects the list, adjusts filters, then executes. Empty lists default to WAPPR/APPR/
+     * WSCH/INPRG on the Maximo side and Closed/Cancelled on the local side (the common
+     * "orphan created during bridge enablement" case).
+     */
+    @PostMapping("/bulk-cancel/preview")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.admin.MaximoBulkCancelPreviewDto>> bulkCancelPreview(
+            @org.springframework.web.bind.annotation.RequestBody BulkCancelRequest req) {
+        var preview = driftService.previewOrphans(
+                req.getMaximoStatuses(), req.getLocalStatuses(), req.getSampleLimit() > 0 ? req.getSampleLimit() : 100);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(new com.dk_power.power_plant_java.controller.angular.NgApiResponse<>(preview,
+                        preview.getCandidateCount() + " candidate(s)"));
+    }
+
+    /**
+     * Execute the bulk cancel — one MaximoFieldListBridge.cancel call per candidate row.
+     * Per-row failures are captured in the response; the batch continues past them so one bad
+     * WO doesn't block the rest. Requires the Maximo feature to be active on this node.
+     */
+    @PostMapping("/bulk-cancel/execute")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.admin.MaximoBulkCancelResultDto>> bulkCancelExecute(
+            @org.springframework.web.bind.annotation.RequestBody BulkCancelRequest req) {
+        var result = driftService.bulkCancelOrphans(
+                req.getMaximoStatuses(), req.getLocalStatuses(), req.getReason());
+        String msg = "Cancelled " + result.getCancelled() + " of " + result.getAttempted()
+                + (result.getFailed() > 0 ? " (" + result.getFailed() + " failed)" : "");
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(new com.dk_power.power_plant_java.controller.angular.NgApiResponse<>(result, msg));
+    }
+
+    /**
+     * Request body shared by preview + execute. Empty status lists fall back to service
+     * defaults; a caller-supplied reason threads into the Maximo cancel memo so ops sees a
+     * consistent audit trail.
+     */
+    @lombok.Data
+    public static class BulkCancelRequest {
+        private java.util.List<String> maximoStatuses;
+        private java.util.List<String> localStatuses;
+        private String reason;
+        private int sampleLimit;
+    }
+
     private static ResponseEntity<NgApiResponse<MaximoFieldListDriftService.ResolveResult>> okResult(
             MaximoFieldListDriftService.ResolveResult r) {
         return ResponseEntity.ok()

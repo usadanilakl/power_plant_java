@@ -30,7 +30,19 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @JoinColumn(name = "job_log_id")
     private JobLog jobLog;
 
-    @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    /**
+     * The requests this package was built from.
+     *
+     * <p>Deliberately NOT {@code cascade = ALL, orphanRemoval = true}, unlike the permit
+     * collections below. A Safe Work permit is created for its package and dies with it; a work
+     * request is a contractor's own document that existed before any package and outlives it.
+     *
+     * <p>With the owning cascade in place, removing a package from a job orphan-removed the package
+     * and cascaded REMOVE straight through to its work requests - a hard DELETE (these entities are
+     * soft-deleted everywhere else), which then replicated the deletion to every peer. Detaching
+     * now just clears the FK and hands the request back to the operator queue.
+     */
+    @OneToMany(mappedBy = "dailyPermitPackage", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @BatchSize(size = 50)
     private Set<WorkRequest> workRequests = new HashSet<>();
 

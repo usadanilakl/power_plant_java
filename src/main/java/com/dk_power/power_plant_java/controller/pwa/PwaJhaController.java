@@ -103,14 +103,16 @@ public class PwaJhaController {
     public ResponseEntity<NgApiResponse<PwaSubmissionResult>> revoke(
             @RequestBody java.util.Map<String, String> payload) {
         try {
-            String sharepointId = payload.get("sharepointId");
+            String sharepointId = payload.getOrDefault("sharepointId", "");
             String localUuid = payload.getOrDefault("localUuid", "");
-            if (sharepointId == null || sharepointId.isEmpty()) {
+            // Either id identifies the JHA. Demanding a SharePoint id locked requesters out of
+            // withdrawing anything they had submitted while SharePoint was unreachable.
+            if (sharepointId.isEmpty() && localUuid.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(new NgApiResponse<>(null, "sharepointId is required"));
+                        .body(new NgApiResponse<>(null, "sharepointId or localUuid is required"));
             }
-            log.info("[PWA JHA] Received JHA revoke: sharepointId={}", sharepointId);
-            pwaJhaService.revokeJha(sharepointId);
+            log.info("[PWA JHA] Received JHA revoke: sharepointId={}, localUuid={}", sharepointId, localUuid);
+            pwaJhaService.revokeJha(sharepointId, localUuid);
             return ResponseEntity.ok(new NgApiResponse<>(
                     PwaSubmissionResult.success("sharepoint", sharepointId, localUuid),
                     "JHA revoked"));

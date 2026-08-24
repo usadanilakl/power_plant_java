@@ -159,10 +159,24 @@ export class ReactiveFormComponent {
         } else {
           let value = this.getNestedValue(this.entity(), field.name);
 
+          // Controls are seeded from the entity by field name, which only works while every field
+          // name IS a property of the entity. Helper controls break that assumption on purpose:
+          // `workAreaMap`, `locationDetail` and the hot-work controls exist to drive the UI and are
+          // folded into nested model properties by the host afterwards, so the entity has nothing
+          // under those names and they came back undefined. Symptoms ranged from "editing a
+          // submitted request does not prefill the field" to, for a checkbox-group, `|| []` below
+          // flipping the control into ARRAY mode — where it writes by value instead of by key and
+          // silently records nothing for an object-shaped field.
+          if (value === undefined || value === null) {
+            value = field.initialValue ?? value;
+          }
+
           if (field.type === 'file') {
             value = field.initialValue ?? null;
           } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-            value = value || [];
+            // Still `[]` when neither the entity nor initialValue offered anything, so callers that
+            // never set initialValue keep the array-mode default they have always had.
+            value = value ?? [];
           } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
             value = value.id;
           }
@@ -230,7 +244,10 @@ export class ReactiveFormComponent {
       return true; // Always show if no condition is set
     }
     const control = this.form.get(field.showWhen.field);
-    return control ? control.value === field.showWhen.value : false;
+    if (!control) return false;
+    return field.showWhen.matches
+      ? field.showWhen.matches(control.value)
+      : control.value === field.showWhen.value;
   }
 
   private setupConditionalValidators(): void {
@@ -241,7 +258,7 @@ export class ReactiveFormComponent {
 
         if (controllingField && dependentControl) {
           // Function to update validators based on controlling field's value
-          const updateValidators = (value: any) => {
+          const updateValidators = () => {
             if (this.shouldShowField(field)) {
               dependentControl.setValidators(field.validators ?? []);
             } else {
@@ -251,13 +268,20 @@ export class ReactiveFormComponent {
             dependentControl.updateValueAndValidity({ emitEvent: false });
           };
 
-          // Subscribe to changes and automatically unsubscribe on component destruction
-          controllingField.valueChanges.pipe(
+          // A predicate condition is usually CHAINED - it reads a field that is itself conditional
+          // (e.g. "welding is ticked", where the types checkbox-group only appears when hot work is
+          // required). Hiding a controlling field resets it with `emitEvent: false`, so its own
+          // valueChanges never fires and a dependant listening only to it would keep a `required`
+          // validator attached while invisible: the form is then invalid with nothing on screen to
+          // fix. Watching the whole form catches that reset. Angular emits a control's valueChanges
+          // before bubbling to the parent form, so by the time this runs the reset has landed.
+          const source = field.showWhen.matches ? this.form.valueChanges : controllingField.valueChanges;
+          source.pipe(
             takeUntilDestroyed(this.destroyRef)
-          ).subscribe(updateValidators);
+          ).subscribe(() => updateValidators());
 
           // Run the check once initially
-          updateValidators(controllingField.value);
+          updateValidators();
         }
       }
     });
@@ -453,6 +477,10 @@ export class ReactiveFormComponent {
         return `Please enter a valid email address.`;
       case 'pastDate':
         return `Date for ${fieldName} cannot be in the past.`;
+      case 'pastTime':
+        return `${fieldName} is in the past. Pick a later time, or change the date.`;
+      case 'atLeastOneRequired':
+        return `Select at least one option for ${fieldName}.`;
       default:
         return `Invalid input for ${fieldName}.`;
     }

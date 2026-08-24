@@ -1,6 +1,10 @@
 package com.dk_power.power_plant_java.dto.pwa;
 
 import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
+import com.dk_power.power_plant_java.entities.permits.pojo.HotWorkMeasures;
+import com.dk_power.power_plant_java.entities.permits.pojo.HotWorkProfile;
+import com.dk_power.power_plant_java.entities.permits.pojo.SwHazards;
 import lombok.Data;
 
 import java.util.List;
@@ -37,6 +41,21 @@ public class PwaWorkRequestDto {
     private String workCategoryName;    // Resolved to Value entity on backend
     private Long workAreaId;            // WorkArea entity ID
     private String workAreaName;        // Denormalized area name for downstream integrations
+
+    /**
+     * Set when the requester could not place their work on the map. The map stays the preferred
+     * path; taking this escape hatch makes {@code locationOfWork} the only thing an operator has to
+     * go on, so the PWA requires a written description alongside it.
+     */
+    private Boolean workAreaUnknown;
+
+    // Hazards the requester declared. Same three shapes the SW / HW / CS permits carry, so the
+    // operator's generated permits can be seeded from them directly.
+    private SwHazards declaredHazards;
+    private HotWorkMeasures declaredHotWorkMeasures;
+    private ConfinedSpaceHazards declaredConfinedSpaceHazards;
+    /** Type of hot work + Cr(VI) assessment. Null unless hot work was declared. */
+    private HotWorkProfile hotWorkProfile;
 
     // Attachments (photos, signatures, documents)
     private List<PaAttachmentDto> attachments;

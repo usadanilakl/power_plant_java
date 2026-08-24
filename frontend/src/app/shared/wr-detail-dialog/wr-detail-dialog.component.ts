@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-projection.component';
 import { WrDetailDialogService } from './wr-detail-dialog.service';
@@ -7,6 +7,9 @@ import { CorrespondenceDialogService } from '../correspondence-dialog/correspond
 import { AttachmentDialogService } from '../attachment-dialog/attachment-dialog.service';
 import { ProcessWrDialogService } from '../process-wr-dialog/process-wr-dialog.service';
 import { WorkRequestDto } from '../../models/permits/work-request.model';
+import { JhaDto } from '../../models/permits/jha.model';
+import { hotWorkTierLabel, hotWorkTypeLabels } from '../../models/permits/hot-work.model';
+import { RfJhaApiService } from '../../features/permit-builder/jha/refactored/services/rf-jha-api.service';
 
 @Component({
   selector: 'app-wr-detail-dialog',
@@ -39,6 +42,14 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
               @if ((workRequest()!.attachmentCount ?? 0) > 0) {
                 <span class="attachment-badge">{{ workRequest()!.attachmentCount }} attachment(s)</span>
               }
+              <!-- The requester either could not place their work on the map or the request came
+                   in from a source that carries no area. Permits are seeded from the area's
+                   constant hazards and lock-outs, so this has to be settled before processing. -->
+              @if (workRequest()!.areaNotSpecified) {
+                <span class="area-missing-badge" title="Set the work area on the work request form before generating permits">
+                  Area not set
+                </span>
+              }
             </div>
 
             <!-- Detail grid -->
@@ -58,6 +69,16 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
               <div class="detail-row">
                 <span class="detail-label">Company</span>
                 <span class="detail-value">{{ workRequest()!.company || '---' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Work Area</span>
+                <span class="detail-value" [class.value-missing]="!workRequest()!.workArea?.name">
+                  {{ workRequest()!.workArea?.name || 'Not set — requester could not place it' }}
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Main Work Scope</span>
+                <span class="detail-value">{{ workRequest()!.workCategory?.name || '---' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Location</span>
@@ -109,6 +130,93 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
               </div>
             </div>
 
+            <!-- Hot work detail, including the hexavalent chromium worksheet. Surfaced next to the
+                 hazards because the score is what an operator needs when deciding controls and PPE
+                 for the Hot Work permit. -->
+            @if (workRequest()!.isHotWorkRequired && hotWorkTypes().length > 0) {
+              <div class="hazard-section">
+                <div class="section-title">Hot Work</div>
+                <div class="hazard-chips">
+                  @for (type of hotWorkTypes(); track type) {
+                    <span class="hazard-chip">{{ type }}</span>
+                  }
+                </div>
+                @if (workRequest()!.hotWorkProfile?.welding) {
+                  <div class="crvi-block">
+                    <div class="hazard-group">Hexavalent chromium assessment</div>
+                    @if (crviAssessed()) {
+                      <div class="crvi-row">
+                        <span class="crvi-label">Hot work method</span>
+                        <span class="crvi-value">{{ fumeLabel() }}</span>
+                      </div>
+                      <div class="crvi-row">
+                        <span class="crvi-label">Base metal chrome content</span>
+                        <span class="crvi-value">{{ chromeLabel() }}</span>
+                      </div>
+                      <div class="crvi-row score">
+                        <span class="crvi-label">Exposure score (method &times; chrome)</span>
+                        <span class="crvi-value score-value">{{ workRequest()!.hotWorkExposureScore }}</span>
+                      </div>
+                    } @else {
+                      <!-- Welding is declared but the worksheet was not completed. Say so rather
+                           than showing a 0, which would read as "assessed, and low". -->
+                      <div class="crvi-missing">
+                        Welding declared but the Cr(VI) worksheet was not completed &mdash; assess before issuing the Hot Work permit.
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- What the requester declared. These seed the Safe Work / Hot Work / Confined Space
+                 permits generated from this request, merged with the work area's own constants -
+                 so an operator reviewing here is seeing exactly what will be pre-ticked. -->
+            @if (declaredHazardBlocks().length > 0) {
+              <div class="hazard-section">
+                <div class="section-title">Declared by requester</div>
+                @for (block of declaredHazardBlocks(); track block.group) {
+                  <div class="hazard-block">
+                    <div class="hazard-group">{{ block.group }}</div>
+                    <div class="hazard-chips">
+                      @for (item of block.items; track item) {
+                        <span class="hazard-chip">{{ item }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Review JHA. The lifecycle calls for reviewing the JHA before generating permits,
+                 and the only signal here used to be a badge with nothing behind it - the operator
+                 had to leave for the separate JHA page and find it by hand. -->
+            @if (jhas().length > 0) {
+              <div class="jha-section">
+                <div class="section-title">JHA</div>
+                @for (jha of jhas(); track jha.id) {
+                  <div class="jha-row">
+                    <div class="jha-info">
+                      <span class="jha-name">{{ jha.jobName || 'JHA #' + jha.id }}</span>
+                      <span class="jha-meta">
+                        {{ jha.analysisBy || 'Unknown analyst' }}
+                        @if (jha.date) { · {{ jha.date }} }
+                        @if (jha.status) { · {{ jha.status }} }
+                      </span>
+                    </div>
+                    <button class="action-btn btn-jha" (click)="viewJha(jha)">
+                      <span class="material-icons">description</span> View
+                    </button>
+                  </div>
+                }
+              </div>
+            } @else if (workRequest()!.hasJha) {
+              <div class="jha-section">
+                <div class="section-title">JHA</div>
+                <p class="jha-empty">A JHA is linked to this request but could not be loaded.</p>
+              </div>
+            }
+
             <!-- Action buttons -->
             <div class="action-bar">
               <button class="action-btn btn-process"
@@ -125,6 +233,13 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
                       (click)="cancelPermit()"
                       [disabled]="actionInProgress()">
                 <span class="material-icons">cancel</span> Cancel Permit
+              </button>
+              <!-- The lifecycle lists Revoke as a work-request action, but it lived only in the
+                   table's right-click menu - invisible to anyone working from this dialog. -->
+              <button class="action-btn btn-revoke"
+                      (click)="revokeWorkRequest()"
+                      [disabled]="actionInProgress()">
+                <span class="material-icons">block</span> Revoke
               </button>
               <button class="action-btn btn-details"
                       (click)="requestMoreDetails()"
@@ -237,6 +352,82 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
       font-weight: 600;
     }
 
+    .value-missing { color: #b26a00; font-style: italic; }
+
+    .area-missing-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #fff3cd;
+      color: #92400e;
+      border: 1px solid #f0d38a;
+      font-weight: 600;
+      cursor: help;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--secondary-text, #6c757d);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+    }
+
+    .hazard-section, .jha-section {
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color, #dee2e6);
+    }
+
+    .hazard-block { margin-bottom: 8px; }
+    .hazard-group { font-size: 12px; font-weight: 600; color: var(--primary-text, #212529); margin-bottom: 4px; }
+    .hazard-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .hazard-chip {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: #fdeaea;
+      color: #922;
+      border: 1px solid #f2c9c9;
+    }
+
+    .crvi-block { margin-top: 8px; }
+    .crvi-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 3px 0;
+      font-size: 12px;
+    }
+    .crvi-label { color: var(--secondary-text, #6c757d); }
+    .crvi-value { color: var(--primary-text, #212529); font-weight: 500; }
+    .crvi-row.score { border-top: 1px solid var(--border-color, #dee2e6); margin-top: 4px; padding-top: 6px; }
+    .score-value { font-size: 14px; font-weight: 700; }
+    .crvi-missing {
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background: #fff3cd;
+      color: #92400e;
+      border: 1px solid #f0d38a;
+    }
+
+    .jha-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+    }
+    .jha-info { display: flex; flex-direction: column; min-width: 0; }
+    .jha-name { font-size: 13px; color: var(--primary-text, #212529); font-weight: 500; }
+    .jha-meta { font-size: 11px; color: var(--secondary-text, #6c757d); }
+    .jha-empty { font-size: 12px; color: var(--secondary-text, #6c757d); font-style: italic; margin: 0; }
+    .btn-jha { border-color: #4caf50; color: #2e7d32; flex-shrink: 0; }
+    .btn-jha:hover { background: #e8f5e9; }
+    .btn-revoke { border-color: #ad1457; color: #ad1457; }
+    .btn-revoke:hover { background: #fce4ec; }
+
     .action-bar {
       display: flex;
       flex-wrap: wrap;
@@ -298,10 +489,50 @@ export class WrDetailDialogComponent {
   private correspondenceDialogService = inject(CorrespondenceDialogService);
   private attachmentDialogService = inject(AttachmentDialogService);
   private processWrDialogService = inject(ProcessWrDialogService);
+  private jhaApiService = inject(RfJhaApiService);
 
   workRequest = signal<WorkRequestDto | null>(null);
+  jhas = signal<JhaDto[]>([]);
   isLoading = signal(false);
   actionInProgress = signal(false);
+
+  /**
+   * Labels for every hazard the requester ticked, grouped the way the permits group them.
+   *
+   * Derived from the raw boolean objects rather than a parallel label list on the server, so
+   * adding a hazard to the shared POJO surfaces here with no second place to update. Hot Work and
+   * Confined Space blocks are suppressed unless the request actually calls for that work - a stray
+   * tick under a "No" answer is noise, not a hazard.
+   */
+  declaredHazardBlocks = computed(() => {
+    const wr = this.workRequest();
+    if (!wr) return [];
+    const blocks = [
+      { group: 'Safety Hazards', source: wr.declaredHazards, include: true },
+      { group: 'Hot Work Precautions', source: wr.declaredHotWorkMeasures, include: !!wr.isHotWorkRequired },
+      { group: 'Confined Space Hazards', source: wr.declaredConfinedSpaceHazards, include: !!wr.isConfinedSpaceEntryRequired },
+    ];
+    return blocks
+      .filter(b => b.include && b.source)
+      .map(b => ({ group: b.group, items: WrDetailDialogComponent.tickedLabels(b.source) }))
+      .filter(b => b.items.length > 0);
+  });
+
+  /** Hot work types the requester ticked, as readable labels. */
+  hotWorkTypes = computed(() => hotWorkTypeLabels(this.workRequest()?.hotWorkProfile));
+
+  /** Was the Cr(VI) worksheet actually completed? A score of 0 means unanswered, not "low". */
+  crviAssessed = computed(() => (this.workRequest()?.hotWorkExposureScore ?? 0) > 0);
+
+  fumeLabel = computed(() => hotWorkTierLabel(this.workRequest()?.hotWorkProfile?.fumeLevel));
+  chromeLabel = computed(() => hotWorkTierLabel(this.workRequest()?.hotWorkProfile?.chromeContent));
+
+  /** Ticked keys, turned into something readable: `highNoise` -> `High Noise`. */
+  private static tickedLabels(source: any): string[] {
+    return Object.entries(source ?? {})
+      .filter(([, value]) => value === true)
+      .map(([key]) => key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim());
+  }
 
   private openSub = this.dialogService.onOpen$.subscribe(() => this.loadWorkRequest());
 
@@ -310,6 +541,7 @@ export class WrDetailDialogComponent {
     if (!id) return;
 
     this.isLoading.set(true);
+    this.jhas.set([]);
     this.wrApiService.getWorkRequestById(id).subscribe({
       next: (response) => {
         this.workRequest.set(
@@ -321,6 +553,44 @@ export class WrDetailDialogComponent {
         this.workRequest.set(null);
         this.isLoading.set(false);
       }
+    });
+    this.loadJhas(id);
+  }
+
+  private loadJhas(workRequestId: number): void {
+    this.jhaApiService.getJhasByWorkRequest(workRequestId).subscribe({
+      next: (response) => this.jhas.set((response.responseData ?? []).map(j => JhaDto.fromJson(j))),
+      // Best-effort: the rest of the dialog is still useful without it, and hasJha already tells
+      // the operator one exists.
+      error: () => this.jhas.set([])
+    });
+  }
+
+  /**
+   * Open a JHA's attachments — in practice the captured form image or the uploaded document, which
+   * is what an operator actually needs to read before generating permits.
+   */
+  viewJha(jha: JhaDto): void {
+    if (!jha.id) return;
+    this.attachmentDialogService.open('Jha', jha.id, `JHA — ${jha.jobName || '#' + jha.id}`);
+  }
+
+  revokeWorkRequest(): void {
+    const wr = this.workRequest();
+    if (!wr?.id) return;
+    const confirmed = confirm(
+      `Revoke this work request?\n\n` +
+      `Work Scope: ${wr.workScope}\nLocation: ${wr.location}`
+    );
+    if (!confirmed) return;
+    this.actionInProgress.set(true);
+    this.wrApiService.revokeWorkRequest(wr.id).subscribe({
+      next: () => {
+        this.actionInProgress.set(false);
+        this.dialogService.notifyAction();
+        this.close();
+      },
+      error: () => this.actionInProgress.set(false)
     });
   }
 

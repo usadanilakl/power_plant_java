@@ -18,7 +18,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -302,8 +301,13 @@ public class PwaFieldListItemService {
     private String computeContentHash(String base64Content) {
         if (base64Content == null) return "";
         try {
+            // Hash decoded bytes so this matches AttachmentSyncHandler,
+            // PermitAttachmentSyncService, NgFieldListItemService. Historic PWA hashing of
+            // the base64 STRING broke SP round-trip dedup (SP re-fetched the photo we just
+            // pushed, computed the canonical byte-hash, saw no match, and created a
+            // duplicate PermitAttachment row).
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(base64Content.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = md.digest(java.util.Base64.getDecoder().decode(base64Content));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) sb.append(String.format("%02x", b));
             return sb.toString();

@@ -5,11 +5,8 @@ import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
-import com.dk_power.power_plant_java.dto.permits.JobLogDto;
-import com.dk_power.power_plant_java.entities.permits.JobLog;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
-import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
@@ -26,6 +23,7 @@ import java.security.MessageDigest;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,7 +36,6 @@ public class PwaWorkRequestService {
     private final WorkRequestRepo workRequestRepo;
     private final PermitAttachmentRepo attachmentRepo;
     private final NgValueService valueService;
-    private final JobLogRepo jobLogRepo;
     private final WorkAreaRepo workAreaRepo;
     private final NgJobLogService ngJobLogService;
 
@@ -77,33 +74,12 @@ public class PwaWorkRequestService {
         log.info("[PWA Submit] Work request saved locally: id={}, localUuid={}, deleted={}",
                 entity.getId(), dto.getLocalUuid(), entity.getDeleted());
 
-        // Auto-link or create job based on (company + workArea + workCategory) grouping key
-        autoLinkOrCreateJob(entity);
+        // Record which job this request LOOKS like it belongs to. A hint for the operator - it does
+        // not attach anything and does not change the status.
+        recordJobSuggestion(entity);
 
         // Save attachments (with dedup by content hash)
-        if (dto.getAttachments() != null) {
-            int saved = 0;
-            for (PaAttachmentDto att : dto.getAttachments()) {
-                String contentHash = computeContentHash(att.getBase64Content());
-                if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
-                        "WorkRequest", entity.getId(), att.getFileName(), contentHash)) {
-                    log.debug("[PWA Submit] Skipping duplicate attachment: {} (hash={})", att.getFileName(), contentHash);
-                    continue;
-                }
-                PermitAttachment attachment = new PermitAttachment();
-                attachment.setEntityType("WorkRequest");
-                attachment.setEntityId(entity.getId());
-                attachment.setFileName(att.getFileName());
-                attachment.setContentType(att.getContentType());
-                attachment.setBase64Content(att.getBase64Content());
-                attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
-                attachment.setContentHash(contentHash);
-                attachmentRepo.save(attachment);
-                saved++;
-            }
-            log.info("[PWA Submit] Saved {} attachments ({} skipped as duplicates) for localUuid={}",
-                    saved, dto.getAttachments().size() - saved, dto.getLocalUuid());
-        }
+        List<PaAttachmentDto> newAttachments = persistNewAttachments(entity.getId(), dto.getAttachments(), "PWA Submit");
 
         // Attempt SharePoint submission via fallback chain (Certificate -> Power Automate)
         String sharepointId = null;
@@ -131,16 +107,7 @@ public class PwaWorkRequestService {
                         sharepointId, dto.getLocalUuid());
 
                 // Upload attachments to SharePoint
-                if (dto.getAttachments() != null) {
-                    for (PaAttachmentDto att : dto.getAttachments()) {
-                        try {
-                            wrAdapter.addAttachment(sharepointId, att);
-                        } catch (Exception attEx) {
-                            log.warn("[PWA Submit] Failed to upload attachment {} to SharePoint: {}",
-                                    att.getFileName(), attEx.getMessage());
-                        }
-                    }
-                }
+                uploadAttachments(sharepointId, newAttachments, "PWA Submit");
             } else {
                 log.warn("[PWA Submit] SharePoint returned null ID for localUuid={}", dto.getLocalUuid());
             }
@@ -185,6 +152,9 @@ public class PwaWorkRequestService {
         spDto.setSubmitterCompany(dto.getSubmitterCompany());
         spDto.setTimeSubmitted(dto.getTimeSubmitted());
         spDto.setWorkCategoryName(dto.getWorkCategoryName());
+        spDto.setDeclaredHazards(com.dk_power.power_plant_java.entities.permits.pojo.DeclaredHazards.toJson(
+                dto.getDeclaredHazards(), dto.getDeclaredHotWorkMeasures(),
+                dto.getDeclaredConfinedSpaceHazards(), dto.getHotWorkProfile()));
         if (dto.getWorkAreaId() != null) {
             workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(workArea -> spDto.setWorkAreaName(workArea.getName()));
         }
@@ -223,7 +193,29 @@ public class PwaWorkRequestService {
             entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
         }
 
+        applyDeclaredHazards(entity, dto);
+
         return entity;
+    }
+
+    /**
+     * Null means "this payload carries no opinion", so an older PWA build - or the Power Automate
+     * path, which has no hazard columns - cannot blank out a declaration by staying silent. A
+     * requester who ticks nothing sends an all-false object, which is a real answer and is stored.
+     */
+    private void applyDeclaredHazards(WorkRequest entity, PwaWorkRequestDto dto) {
+        if (dto.getDeclaredHazards() != null) {
+            entity.setDeclaredHazards(dto.getDeclaredHazards());
+        }
+        if (dto.getDeclaredHotWorkMeasures() != null) {
+            entity.setDeclaredHotWorkMeasures(dto.getDeclaredHotWorkMeasures());
+        }
+        if (dto.getDeclaredConfinedSpaceHazards() != null) {
+            entity.setDeclaredConfinedSpaceHazards(dto.getDeclaredConfinedSpaceHazards());
+        }
+        if (dto.getHotWorkProfile() != null) {
+            entity.setHotWorkProfile(dto.getHotWorkProfile());
+        }
     }
 
     private String guessAttachmentType(String contentType) {
@@ -236,28 +228,96 @@ public class PwaWorkRequestService {
     private String findExistingSharePointId(String localUuid) {
         if (localUuid == null || localUuid.isEmpty()) return null;
         try {
-            List<WorkRequestDto> existing = wrAdapter.getAll();
-            return existing.stream()
-                    .filter(wr -> localUuid.equals(wr.getLocalUuid()))
-                    .map(WorkRequestDto::getSharepointId)
-                    .findFirst()
-                    .orElse(null);
+            WorkRequestDto existing = wrAdapter.findByLocalUuid(localUuid);
+            return existing != null ? existing.getSharepointId() : null;
         } catch (Exception e) {
             log.warn("[PWA Submit] Could not check SharePoint for duplicates: {}", e.getMessage());
             return null;
         }
     }
 
+    /**
+     * Persist the attachments this call actually adds, and return them. Content-hash dedup means a
+     * replayed payload writes nothing new - and the returned list is what SharePoint should
+     * receive, so the two stores stay in step instead of SharePoint accumulating a fresh copy of
+     * every existing file each time the requester edits.
+     */
+    private List<PaAttachmentDto> persistNewAttachments(Long entityId, List<PaAttachmentDto> incoming, String logTag) {
+        if (incoming == null || incoming.isEmpty()) return List.of();
+
+        List<PaAttachmentDto> added = new ArrayList<>();
+        for (PaAttachmentDto att : incoming) {
+            String contentHash = computeContentHash(att.getBase64Content());
+            boolean alreadyStored = contentHash != null && !contentHash.isEmpty()
+                    ? attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                            "WorkRequest", entityId, att.getFileName(), contentHash)
+                    : attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(
+                            "WorkRequest", entityId, att.getFileName());
+            if (alreadyStored) {
+                log.debug("[{}] Skipping attachment already stored: {}", logTag, att.getFileName());
+                continue;
+            }
+            PermitAttachment attachment = new PermitAttachment();
+            attachment.setEntityType("WorkRequest");
+            attachment.setEntityId(entityId);
+            attachment.setFileName(att.getFileName());
+            attachment.setContentType(att.getContentType());
+            attachment.setBase64Content(att.getBase64Content());
+            attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+            attachment.setContentHash(contentHash);
+            attachmentRepo.save(attachment);
+            added.add(att);
+        }
+        log.info("[{}] Saved {} attachment(s) ({} already stored) for WR id={}",
+                logTag, added.size(), incoming.size() - added.size(), entityId);
+        return added;
+    }
+
+    /** Best-effort SharePoint upload; a failed file is logged, never fatal to the submission. */
+    private void uploadAttachments(String sharepointId, List<PaAttachmentDto> attachments, String logTag) {
+        if (sharepointId == null || sharepointId.isEmpty() || attachments == null) return;
+        for (PaAttachmentDto att : attachments) {
+            try {
+                wrAdapter.addAttachment(sharepointId, att);
+            } catch (Exception e) {
+                log.warn("[{}] Failed to upload attachment {} to SharePoint: {}",
+                        logTag, att.getFileName(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Revoke by SharePoint id, PWA local id, or both.
+     *
+     * <p>A request the hub accepted while SharePoint was unreachable has no SharePoint id, and the
+     * old signature could not name it — the requester could not withdraw their own submission. The
+     * local id identifies it either way; the SharePoint call is skipped when there is nothing there.
+     */
     @Transactional
-    public void revokeWorkRequest(String sharepointId) {
-        workRequestRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId).ifPresent(entity -> {
-            entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
-            workRequestRepo.save(entity);
-            log.info("[PWA Revoke] WR revoked locally: id={}, spId={}", entity.getId(), sharepointId);
-        });
+    public void revokeWorkRequest(String sharepointId, String localUuid) {
+        Optional<WorkRequest> found = Optional.empty();
+        if (sharepointId != null && !sharepointId.isEmpty()) {
+            found = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId);
+        }
+        if (found.isEmpty() && localUuid != null && !localUuid.isEmpty()) {
+            found = workRequestRepo.findFirstByLocalUuidOrderByIdAsc(localUuid);
+        }
+
+        WorkRequest entity = found.orElseThrow(() -> new IllegalArgumentException(
+                "Work request not found for sharepointId=" + sharepointId + " or localUuid=" + localUuid));
+
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
+        workRequestRepo.save(entity);
+        log.info("[PWA Revoke] WR revoked locally: id={}, spId={}", entity.getId(), entity.getSharepointId());
+
+        String spId = entity.getSharepointId() != null ? entity.getSharepointId() : sharepointId;
+        if (spId == null || spId.isEmpty()) {
+            log.info("[PWA Revoke] WR id={} has no SharePoint item to revoke", entity.getId());
+            return;
+        }
         try {
-            wrAdapter.changeStatus(sharepointId, "Revoked");
-            log.info("[PWA Revoke] WR revoked in SharePoint: spId={}", sharepointId);
+            wrAdapter.changeStatus(spId, "Revoked");
+            log.info("[PWA Revoke] WR revoked in SharePoint: spId={}", spId);
         } catch (Exception e) {
             log.warn("[PWA Revoke] Failed to revoke WR in SharePoint: {}", e.getMessage());
         }
@@ -295,28 +355,7 @@ public class PwaWorkRequestService {
         log.info("[PWA Update] WR updated locally: id={}, localUuid={}", entity.getId(), localUuid);
 
         // Save new attachments to DB (with dedup by content hash)
-        if (dto.getAttachments() != null && !dto.getAttachments().isEmpty()) {
-            int saved = 0;
-            for (PaAttachmentDto att : dto.getAttachments()) {
-                String contentHash = computeContentHash(att.getBase64Content());
-                if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
-                        "WorkRequest", entity.getId(), att.getFileName(), contentHash)) {
-                    continue;
-                }
-                PermitAttachment attachment = new PermitAttachment();
-                attachment.setEntityType("WorkRequest");
-                attachment.setEntityId(entity.getId());
-                attachment.setFileName(att.getFileName());
-                attachment.setContentType(att.getContentType());
-                attachment.setBase64Content(att.getBase64Content());
-                attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
-                attachment.setContentHash(contentHash);
-                attachmentRepo.save(attachment);
-                saved++;
-            }
-            log.info("[PWA Update] Saved {} new attachments ({} skipped as duplicates) for localUuid={}",
-                    saved, dto.getAttachments().size() - saved, localUuid);
-        }
+        List<PaAttachmentDto> newAttachments = persistNewAttachments(entity.getId(), dto.getAttachments(), "PWA Update");
 
         // Push to SharePoint
         String entitySpId = entity.getSharepointId();
@@ -324,20 +363,20 @@ public class PwaWorkRequestService {
             try {
                 WorkRequestDto spDto = convertToSharePointDto(dto);
                 spDto.setStatus(entity.getPermitStatus() != null ? entity.getPermitStatus().getName() : "Active");
+                // A payload that carries no declaration means "no opinion" everywhere else in this
+                // flow, so it must not blank the SharePoint copy either. Falling back to what the
+                // entity already holds keeps the two stores saying the same thing when an older PWA
+                // build - or the update half of a partial payload - omits the hazard blocks.
+                if (spDto.getDeclaredHazards() == null) {
+                    spDto.setDeclaredHazards(entity.getDeclaredHazardsEnvelope());
+                }
                 wrAdapter.update(entitySpId, spDto);
                 log.info("[PWA Update] WR updated in SharePoint: spId={}", entitySpId);
 
-                // Upload new attachments to SharePoint
-                if (dto.getAttachments() != null) {
-                    for (PaAttachmentDto att : dto.getAttachments()) {
-                        try {
-                            wrAdapter.addAttachment(entitySpId, att);
-                        } catch (Exception attEx) {
-                            log.warn("[PWA Update] Failed to upload attachment {} to SharePoint: {}",
-                                    att.getFileName(), attEx.getMessage());
-                        }
-                    }
-                }
+                // Upload only the attachments this save actually added. The edit form round-trips
+                // every existing attachment, so pushing dto.getAttachments() wholesale re-uploaded
+                // the entire set on every edit, and SharePoint, which does not dedup, kept them all.
+                uploadAttachments(entitySpId, newAttachments, "PWA Update");
             } catch (Exception e) {
                 log.warn("[PWA Update] Failed to update WR in SharePoint: {}", e.getMessage());
             }
@@ -376,6 +415,7 @@ public class PwaWorkRequestService {
         } else {
             entity.setWorkCategory(null);
         }
+        applyDeclaredHazards(entity, dto);
     }
 
     private PwaStatusResult toStatusResult(WorkRequest entity) {
@@ -388,29 +428,34 @@ public class PwaWorkRequestService {
         return result;
     }
 
-    private void autoLinkOrCreateJob(WorkRequest wr) {
+    /**
+     * Note which open job this request most likely belongs to, and stop there.
+     *
+     * <p>This used to run the operator's full process-into-a-job routine at submission time, which
+     * created a job and a daily permit package and flipped the request straight to "Processed" —
+     * before any operator had seen it. Two things went wrong with that. Requests that reached us
+     * through SharePoint instead of the hub were never auto-linked, so the same contractor action
+     * produced a different lifecycle depending on whether the hub happened to be up. And once a
+     * request already had a package, the operator's "Create New Job" button silently bound it back
+     * to the old job anyway, leaving a stray empty job behind.
+     *
+     * <p>So the match is recorded as a hint and the request stays "Active". The Process dialog is
+     * now the only place a request joins a job, and it shows this suggestion pre-selected.
+     */
+    private void recordJobSuggestion(WorkRequest wr) {
         if (wr.getWorkArea() == null || wr.getWorkCategory() == null || wr.getCompany() == null) {
-            log.info("[PWA] WR {} missing workArea, workCategory, or company — skipping auto-job", wr.getId());
+            log.debug("[PWA] WR {} has no work area / category / company — no job suggestion", wr.getId());
             return;
         }
-
         try {
-            Optional<JobLog> existingJob = jobLogRepo.findOpenJobByGroupingKey(
-                    wr.getCompany(), wr.getWorkArea().getId(), wr.getWorkCategory().getId());
-
-            if (existingJob.isPresent()) {
-                ngJobLogService.processWorkRequest(
-                        existingJob.get().getId().toString(), wr.getId().toString());
-                log.info("[PWA] WR {} auto-attached to existing Job {}", wr.getId(), existingJob.get().getId());
-            } else {
-                JobLogDto newJob = ngJobLogService.createJobFromWorkRequest(wr.getId().toString());
-                ngJobLogService.processWorkRequest(
-                        newJob.getId().toString(), wr.getId().toString());
-                log.info("[PWA] WR {} auto-created new Job {}", wr.getId(), newJob.getId());
-            }
+            ngJobLogService.findSuggestedJob(wr).ifPresent(job -> {
+                wr.setSuggestedJobLogId(job.getId());
+                workRequestRepo.save(wr);
+                log.info("[PWA] WR {} suggests Job {} ({})", wr.getId(), job.getId(), job.getPermitNumber());
+            });
         } catch (Exception e) {
-            log.error("[PWA] Auto-job linking failed for WR {}: {}", wr.getId(), e.getMessage());
-            // Non-fatal — WR is saved, operator can process manually
+            log.warn("[PWA] Job suggestion failed for WR {}: {}", wr.getId(), e.getMessage());
+            // Non-fatal — it is only a hint; the operator picks the job either way.
         }
     }
 

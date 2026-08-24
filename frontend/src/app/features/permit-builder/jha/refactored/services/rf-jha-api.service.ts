@@ -55,6 +55,13 @@ export class RfJhaApiService {
     );
   }
 
+  /** Every JHA linked to a work request. Backed by GET /jha-api/by-work-request/{id}. */
+  getJhasByWorkRequest(workRequestId: number): Observable<SpringApiResponse<JhaDto[]>> {
+    return this.http.get<SpringApiResponse<JhaDto[]>>(
+      `${this.apiUrl}/by-work-request/${workRequestId}`
+    );
+  }
+
   getEmpty(): Observable<SpringApiResponse<JhaDto>> {
     return this.http.get<SpringApiResponse<JhaDto>>(
       `${this.apiUrl}/empty`

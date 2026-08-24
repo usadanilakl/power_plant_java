@@ -43,6 +43,37 @@ export interface MaximoFieldListResolveResult {
   message: string;
 }
 
+/** Bulk-cancel preview — read-only. Samples drive the on-screen review table before executing. */
+export interface MaximoBulkCancelPreview {
+  candidateCount: number;
+  samples: MaximoFieldListDriftRow[];
+  maximoStatuses: string[];
+  localStatuses: string[];
+}
+
+export interface MaximoBulkCancelFailure {
+  id: number;
+  wonum: string | null;
+  error: string;
+}
+
+/** Bulk-cancel result — per-row failures are captured so the admin can retry/report. */
+export interface MaximoBulkCancelResult {
+  attempted: number;
+  cancelled: number;
+  failed: number;
+  failures: MaximoBulkCancelFailure[];
+}
+
+/** Request shape shared by preview + execute. Empty status lists = server defaults
+ *  (WAPPR/APPR/WSCH/INPRG on Maximo; Closed/Cancelled locally — the "orphan" case). */
+export interface MaximoBulkCancelRequest {
+  maximoStatuses?: string[];
+  localStatuses?: string[];
+  reason?: string;
+  sampleLimit?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminMaximoFieldListDriftService {
   private http = inject(HttpClient);
@@ -91,5 +122,17 @@ export class AdminMaximoFieldListDriftService {
   pushLocalClose(id: number): Observable<SpringApiResponse<MaximoFieldListResolveResult>> {
     return this.http.post<SpringApiResponse<MaximoFieldListResolveResult>>(
       `${this.apiUrl}/push-local-close/${id}`, {});
+  }
+
+  /** Preview bulk-cancel candidates (dry-read). Empty statuses = server defaults. */
+  bulkCancelPreview(req: MaximoBulkCancelRequest): Observable<SpringApiResponse<MaximoBulkCancelPreview>> {
+    return this.http.post<SpringApiResponse<MaximoBulkCancelPreview>>(
+      `${this.apiUrl}/bulk-cancel/preview`, req);
+  }
+
+  /** Execute the bulk cancel — one Maximo cancel per row. Batch-continues past failures. */
+  bulkCancelExecute(req: MaximoBulkCancelRequest): Observable<SpringApiResponse<MaximoBulkCancelResult>> {
+    return this.http.post<SpringApiResponse<MaximoBulkCancelResult>>(
+      `${this.apiUrl}/bulk-cancel/execute`, req);
   }
 }

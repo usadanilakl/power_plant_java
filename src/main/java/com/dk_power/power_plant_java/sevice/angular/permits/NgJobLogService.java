@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.sync.OldWorkRequestExcelStatusService;
+import com.dk_power.power_plant_java.util.PermitDates;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
@@ -47,6 +48,14 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final WorkRequestSharePointAdapter wrAdapter;
     private final OldWorkRequestExcelStatusService oldWorkRequestExcelStatusService;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * How far from a job's start date a work request may fall and still be considered part of it,
+     * when the job has no end date. Without a bound, a contractor's job stayed open indefinitely and
+     * absorbed every later request for the same area and category.
+     */
+    @org.springframework.beans.factory.annotation.Value("${permits.job.grouping-window-days:14}")
+    private long groupingWindowDays;
 
     @Override
     public JobLogRepo getRepo() {
@@ -100,6 +109,16 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId)).orElse(null);
         if (wr == null) throw new RuntimeException("WorkRequest not found: " + workRequestId);
 
+        // Refuse rather than build a job the request can never join. processWorkRequest below
+        // returns the request's EXISTING job when it already has a package, so calling this first
+        // used to persist a brand-new job - burning a permit number - that nothing was ever
+        // attached to, while the operator was shown the old job and told it was the new one.
+        if (wr.getDailyPermitPackage() != null) {
+            throw new IllegalStateException("Work request " + workRequestId
+                    + " is already in package " + wr.getDailyPermitPackage().getPermitNumber()
+                    + ". Remove it from that package before starting a new job for it.");
+        }
+
         JobLog job = new JobLog();
         job.setName(truncate(wr.getWorkScope(), 250));
         job.setWorkScope(wr.getWorkScope());
@@ -141,6 +160,12 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
                 && wrIds.contains(job.getOriginatingWorkRequest().getId())) {
             job.setOriginatingWorkRequest(null);
         }
+
+        // Hand the requests back before the package is removed. They were marked "Processed" when
+        // they went in, so leaving them that way would strand them: processed, but attached to
+        // nothing and absent from the operator queue. Returning them to "Active" puts them back
+        // where an operator can find and re-process them.
+        detachWorkRequests(pkg);
 
         job.removePackage(pkg);
         job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
@@ -262,17 +287,21 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
             jobLogRepo.save(source);
         }
 
-        source.removePackage(pkg);
-        target.addPackage(pkg);
+        // Reassign through the OWNING side (the package's job_log_id) and leave both in-memory
+        // collections alone. JobLog.packages is an orphanRemoval collection, so taking the package
+        // out of source.getPackages() schedules it for deletion at flush - and re-adding it to the
+        // target's collection does not cancel that. Moving the FK does the same job with none of
+        // the ambiguity; the collections are re-read below.
+        pkg.setJobLog(target);
         source.setDateModified(java.time.LocalDateTime.now());
         target.setDateModified(java.time.LocalDateTime.now());
-        dailyPermitPackageRepo.save(pkg);
+        dailyPermitPackageRepo.saveAndFlush(pkg);
         jobLogRepo.save(source);
         jobLogRepo.save(target);
 
-        JobLog updatedSource = getEntityById(sourceJobId);
-        JobLog updatedTarget = getEntityById(targetJobId);
-        return List.of(jobLogMapper.convertToDto(updatedSource), jobLogMapper.convertToDto(updatedTarget));
+        entityManager.refresh(source);
+        entityManager.refresh(target);
+        return List.of(jobLogMapper.convertToDto(source), jobLogMapper.convertToDto(target));
     }
 
     public JobLogDto mergeJobs(String sourceJobId, String targetJobId) {
@@ -290,22 +319,35 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         source.setOriginatingWorkRequest(null);
         jobLogRepo.save(source);
 
+        // Move through the owning side, for the same reason movePackageToJob does.
         Set<DailyPermitPackage> packagesToMove = new HashSet<>(source.getPackages());
         for (DailyPermitPackage pkg : packagesToMove) {
-            source.removePackage(pkg);
-            target.addPackage(pkg);
+            pkg.setJobLog(target);
             dailyPermitPackageRepo.save(pkg);
         }
         source.setDateModified(java.time.LocalDateTime.now());
         target.setDateModified(java.time.LocalDateTime.now());
         jobLogRepo.save(target);
+        entityManager.flush();
 
-        // Delete empty source job
-        JobLog emptySource = getEntityById(sourceJobId);
-        jobLogRepo.delete(emptySource);
+        // Re-read from the database, not the session, and refuse to delete while anything is still
+        // attached: JobLog.packages cascades ALL, so deleting a source that still owned packages
+        // would take them - and everything hanging off them - with it. Once the guard has proved
+        // the source is empty the delete has nothing left to cascade to.
+        //
+        // Deliberately a HARD delete, unlike almost everything else here: JobLog is the one permit
+        // entity that never re-declared BaseIdEntity's @Where(deleted = false) - a @Where on a
+        // @MappedSuperclass is not inherited - so a soft-deleted job would keep showing up in every
+        // job list. Merging is supposed to make the source disappear.
+        entityManager.refresh(source);
+        if (!source.getPackages().isEmpty()) {
+            throw new IllegalStateException("Merge aborted: job " + sourceJobId
+                    + " still holds " + source.getPackages().size() + " package(s)");
+        }
+        jobLogRepo.delete(source);
 
-        JobLog updatedTarget = getEntityById(targetJobId);
-        return jobLogMapper.convertToDto(updatedTarget);
+        entityManager.refresh(target);
+        return jobLogMapper.convertToDto(target);
     }
 
     public JobLogDto processWorkRequest(String jobId, String workRequestId) {
@@ -313,10 +355,19 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId))
                 .orElseThrow(() -> new RuntimeException("WorkRequest not found: " + workRequestId));
 
-        // Guard: if already processed, return existing job instead of creating duplicate
+        // Already in a package? Re-processing into the SAME job is a harmless replay (double
+        // click, retried request) and returns that job. Processing into a DIFFERENT job is the
+        // operator asking for something we cannot honour - it used to return the old job anyway,
+        // so the operator believed the request had moved when nothing had.
         if (wr.getDailyPermitPackage() != null) {
             JobLog existingJob = jobLogRepo.findByPackageId(wr.getDailyPermitPackage().getId()).orElse(null);
             if (existingJob != null) {
+                if (!existingJob.getId().equals(job.getId())) {
+                    throw new IllegalStateException("Work request " + workRequestId
+                            + " is already in package " + wr.getDailyPermitPackage().getPermitNumber()
+                            + " on job " + describe(existingJob)
+                            + ". Remove it from that package first, or open that job instead.");
+                }
                 return jobLogMapper.convertToDto(existingJob);
             }
         }
@@ -478,6 +529,66 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
 
         scored.sort((a, b) -> Double.compare((double) b.get("score"), (double) a.get("score")));
         return scored;
+    }
+
+    /**
+     * The open job a work request most likely belongs to, if any.
+     *
+     * <p>Matches on (company, work area, work category) exactly as the old auto-linker did, then
+     * adds the date bound it was missing: the request's work date must fall inside the job's
+     * start..end window, or within {@code permits.job.grouping-window-days} of its start when the
+     * job has no end date. A request with no readable work date matches nothing - guessing there
+     * is what let jobs accumulate unrelated work indefinitely.
+     *
+     * <p>Purely advisory. Nothing here attaches, creates, or changes a status.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Optional<JobLog> findSuggestedJob(WorkRequest wr) {
+        if (wr == null || wr.getCompany() == null
+                || wr.getWorkArea() == null || wr.getWorkCategory() == null) {
+            return Optional.empty();
+        }
+        LocalDate workDate = PermitDates.parse(wr.getDateOfWorkToBePerformed());
+        if (workDate == null) return Optional.empty();
+
+        return jobLogRepo.findOpenJobsByGroupingKey(
+                        wr.getCompany(), wr.getWorkArea().getId(), wr.getWorkCategory().getId())
+                .stream()
+                .filter(job -> coversDate(job, workDate))
+                .min(Comparator.comparing(JobLog::getId));
+    }
+
+    /** Does this job's date window contain the given date? */
+    private boolean coversDate(JobLog job, LocalDate workDate) {
+        LocalDate start = PermitDates.parse(job.getStartDate());
+        if (start == null) return false;
+        LocalDate end = PermitDates.parse(job.getEndDate());
+        if (end == null) end = start.plusDays(groupingWindowDays);
+        return !workDate.isBefore(start) && !workDate.isAfter(end);
+    }
+
+    /**
+     * Unhook a package's work requests and return them to the operator queue.
+     * Called before a package is removed, so the requests survive it.
+     */
+    private void detachWorkRequests(DailyPermitPackage pkg) {
+        Set<WorkRequest> attached = new HashSet<>(pkg.getWorkRequests());
+        for (WorkRequest wr : attached) {
+            pkg.removeWorkRequest(wr);
+            String status = wr.getPermitStatus() != null ? wr.getPermitStatus().getName() : null;
+            if ("Processed".equalsIgnoreCase(status)) {
+                wr.setPermitStatus(ngValueService.createValue("Permit Status", "Active"));
+            }
+            workRequestRepo.save(wr);
+            log.info("[JobLog] Detached WR {} from package {}", wr.getId(), pkg.getId());
+        }
+    }
+
+    /** Human-readable job label for error messages. */
+    private static String describe(JobLog job) {
+        if (job.getPermitNumber() != null && !job.getPermitNumber().isEmpty()) return job.getPermitNumber();
+        if (job.getName() != null && !job.getName().isEmpty()) return job.getName();
+        return "#" + job.getId();
     }
 
     private String truncate(String value, int maxLength) {

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { SubmissionOrchestratorService } from '../../../services/submission-orchestrator.service';
 import { WorkRequest } from '../../../models/permits/work-request.model';
+import { HotWorkProfile } from '../../../models/permits/permit-hazards.model';
 import { FormField } from '../../../models/inputs/form-field.model';
 import { Option } from '../../../models/inputs/option.model';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -113,6 +114,7 @@ export class WorkRequestFormComponent implements OnInit {
 
   onAnyValueChange(workRequest: WorkRequest) {
     this.applyMapValue(workRequest);
+    this.applyHotWorkProfile(workRequest);
     this.workRequestStateService.saveDraft(workRequest);
   }
 
@@ -120,6 +122,7 @@ export class WorkRequestFormComponent implements OnInit {
 
   onSubmit(workRequest: WorkRequest) {
     this.applyMapValue(workRequest);
+    this.applyHotWorkProfile(workRequest);
     if (this.isEditing()) {
       this.workRequestStateService.updateExistingRequest(workRequest);
     } else {
@@ -127,27 +130,110 @@ export class WorkRequestFormComponent implements OnInit {
     }
   }
 
-  /** Extract map {id, name} → workAreaId/workAreaName, compose locationOfWork */
+  /**
+   * Fold the four flat hot-work controls into the nested `hotWorkProfile` the model stores.
+   *
+   * Mirrors what applyMapValue does for the work-area controls, and for the same reason: the form
+   * is flat, the model is not. Runs on every value change and on submit, so it has to be
+   * idempotent and it has to handle answers being *withdrawn*, not just given.
+   *
+   * The withdrawals are the whole point:
+   *  - hot work switched back to "No" drops the entire profile, so a request cannot carry a stale
+   *    welding assessment into the permits an operator generates from it;
+   *  - un-ticking Welding clears the Cr(VI) answers, which would otherwise still be scored;
+   *  - un-ticking Other clears its free text.
+   */
+  private applyHotWorkProfile(workRequest: WorkRequest): void {
+    const fd = workRequest as any;
+
+    if (fd.isHotWorkRequired !== 'Yes') {
+      workRequest.hotWorkProfile = new HotWorkProfile();
+    } else {
+      const ticked = fd.hotWorkTypes && typeof fd.hotWorkTypes === 'object' ? fd.hotWorkTypes : {};
+      const profile = new HotWorkProfile({ ...ticked });
+      profile.otherDescription = profile.other ? (fd.hotWorkOtherDescription ?? '').trim() : '';
+      profile.fumeLevel = profile.welding ? (fd.hotWorkFumeLevel ?? '') : '';
+      profile.chromeContent = profile.welding ? (fd.hotWorkChromeContent ?? '') : '';
+      workRequest.hotWorkProfile = profile;
+    }
+
+    delete fd.hotWorkTypes;
+    delete fd.hotWorkOtherDescription;
+    delete fd.hotWorkFumeLevel;
+    delete fd.hotWorkChromeContent;
+  }
+
+  /**
+   * The area whose confined-space classification we last applied, or null if the current
+   * confined-space answer is the requester's own. Lets us undo an automatic "Yes" when they move to
+   * an area that is not a confined space, without ever overriding an answer they set themselves.
+   */
+  private autoConfinedSpaceAreaId: number | null = null;
+
+  /**
+   * Mirror a work area's confined-space classification onto the request.
+   *
+   * Selecting a confined space forces the flag on - that is a safety default and it stays. The
+   * subtle half is the reverse: a requester who picked a confined space by mistake and then
+   * corrected it used to keep the forced "Yes" forever, submitting a request that demanded a
+   * confined space permit for open ground. So an automatic "Yes" is withdrawn when the area
+   * changes, while a "Yes" the requester chose themselves is left strictly alone.
+   */
+  private applyAreaConfinedSpace(workRequest: WorkRequest, mapValue: any): void {
+    const areaId = mapValue.id as number;
+    if (areaId === this.autoConfinedSpaceAreaId) return;
+
+    if (mapValue.isConfinedSpace) {
+      workRequest.isConfinedSpaceEntryRequired = 'Yes';
+      workRequest.spaceToBeEntered = mapValue.name;
+      this.autoConfinedSpaceAreaId = areaId;
+    } else if (this.autoConfinedSpaceAreaId !== null) {
+      workRequest.isConfinedSpaceEntryRequired = 'No';
+      workRequest.spaceToBeEntered = '';
+      this.autoConfinedSpaceAreaId = null;
+    }
+  }
+
+  /**
+   * Fold the form's helper controls down into the fields the model actually stores.
+   *
+   * `workAreaMap`, `locationDetail` and `locationDescription` exist only to drive the UI; the model
+   * keeps `workAreaId` / `workAreaName` / `locationOfWork`. This runs on every value change and on
+   * submit, so it has to be idempotent and it has to handle a field being *cleared*, not just set.
+   */
   private applyMapValue(workRequest: WorkRequest): void {
-    const mapValue = (workRequest as any).workAreaMap;
-    if (mapValue && typeof mapValue === 'object' && mapValue.id !== undefined) {
-      workRequest.workAreaId = mapValue.id;
-      workRequest.workAreaName = mapValue.name;
-      // Auto-set confined space if work area is classified as confined space
-      if (mapValue.isConfinedSpace) {
-        workRequest.isConfinedSpaceEntryRequired = 'Yes';
-        workRequest.spaceToBeEntered = mapValue.name;
+    const unknownArea = (workRequest as any).workAreaUnknown === true;
+    workRequest.workAreaUnknown = unknownArea;
+
+    if (unknownArea) {
+      // They told us they cannot place it. Drop any area picked before they ticked the box, so we
+      // never send a half-remembered guess alongside "not sure".
+      workRequest.workAreaId = null;
+      workRequest.workAreaName = '';
+      workRequest.locationOfWork = ((workRequest as any).locationDescription ?? '').trim();
+      this.autoConfinedSpaceAreaId = null;
+    } else {
+      const mapValue = (workRequest as any).workAreaMap;
+      if (mapValue && typeof mapValue === 'object' && mapValue.id !== undefined) {
+        workRequest.workAreaId = mapValue.id;
+        workRequest.workAreaName = mapValue.name;
+        this.applyAreaConfinedSpace(workRequest, mapValue);
+      } else {
+        workRequest.workAreaId = null;
+        workRequest.workAreaName = '';
+      }
+
+      // Compose locationOfWork: map area name + optional user detail
+      const locationDetail = ((workRequest as any).locationDetail ?? '').trim();
+      if (workRequest.workAreaName) {
+        workRequest.locationOfWork = locationDetail
+          ? `${workRequest.workAreaName} - ${locationDetail}`
+          : workRequest.workAreaName;
+      } else if (locationDetail) {
+        workRequest.locationOfWork = locationDetail;
       }
     }
-    // Compose locationOfWork: map area name + optional user detail
-    const locationDetail = ((workRequest as any).locationDetail ?? '').trim();
-    if (workRequest.workAreaName) {
-      workRequest.locationOfWork = locationDetail
-        ? `${workRequest.workAreaName} - ${locationDetail}`
-        : workRequest.workAreaName;
-    } else if (locationDetail) {
-      workRequest.locationOfWork = locationDetail;
-    }
+
     // Extract equipment tag from picker value (object → string)
     const equipmentValue = workRequest.affectedEquipment;
     if (equipmentValue && typeof equipmentValue === 'object' && (equipmentValue as any).tagNumber) {
@@ -156,6 +242,7 @@ export class WorkRequestFormComponent implements OnInit {
     // Clean up virtual fields before saving
     delete (workRequest as any).workAreaMap;
     delete (workRequest as any).locationDetail;
+    delete (workRequest as any).locationDescription;
   }
 
   onEmailSent() {

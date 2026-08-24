@@ -536,9 +536,16 @@ export class FieldListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadListTypes();
-    // Deep link: ?type= from the Field List sub-section shortcuts. Applied after loadListTypes so
-    // the form is built with the option list already populated.
-    const requestedType = this.navRoute.snapshot.queryParamMap.get('type');
+    // Deep link: ?type= creates a new item of that type; ?view=open jumps straight to the
+    // Open Items list. Both come from Field List sub-section nav shortcuts. Applied after
+    // loadListTypes so the form / list is built with the option list already populated.
+    const params = this.navRoute.snapshot.queryParamMap;
+    const requestedView = params.get('view');
+    if (requestedView === 'open') {
+      this.openItemsList();
+      return;
+    }
+    const requestedType = params.get('type');
     if (requestedType && this.listTypeOptions.some(o => o.value === requestedType)) {
       this.selectNewWithType(requestedType);
     }

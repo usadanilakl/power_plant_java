@@ -133,14 +133,16 @@ public class PwaWorkRequestController {
     public ResponseEntity<NgApiResponse<PwaSubmissionResult>> revoke(
             @RequestBody java.util.Map<String, String> payload) {
         try {
-            String sharepointId = payload.get("sharepointId");
+            String sharepointId = payload.getOrDefault("sharepointId", "");
             String localUuid = payload.getOrDefault("localUuid", "");
-            if (sharepointId == null || sharepointId.isEmpty()) {
+            // Either id identifies the request. Demanding a SharePoint id locked requesters out of
+            // withdrawing anything submitted while SharePoint was unreachable.
+            if (sharepointId.isEmpty() && localUuid.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(new NgApiResponse<>(null, "sharepointId is required"));
+                        .body(new NgApiResponse<>(null, "sharepointId or localUuid is required"));
             }
-            log.info("[PWA] Received work request revoke: sharepointId={}", sharepointId);
-            pwaService.revokeWorkRequest(sharepointId);
+            log.info("[PWA] Received work request revoke: sharepointId={}, localUuid={}", sharepointId, localUuid);
+            pwaService.revokeWorkRequest(sharepointId, localUuid);
             return ResponseEntity.ok(new NgApiResponse<>(
                     PwaSubmissionResult.success("sharepoint", sharepointId, localUuid),
                     "Work request revoked"));

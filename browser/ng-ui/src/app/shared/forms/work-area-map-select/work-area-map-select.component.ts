@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, input, NgZone, OnDestroy, signal, ViewChild, OnInit
+  ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, input, NgZone, OnDestroy, signal, ViewChild, OnInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -95,6 +95,13 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   private hasFitOnce = false;
 
   shapes = signal<ParsedShape[]>([]);
+  /**
+   * Is there anything on the map to pick? False when the hub is unreachable AND no snapshot is
+   * cached — the bundled static work-areas.json / work-area-shapes.json ship empty, so an offline
+   * cold start legitimately has nothing to draw. The template says so instead of rendering a blank
+   * frame the requester cannot interact with.
+   */
+  hasShapes = computed(() => this.shapes().length > 0);
   selectedAreaName = signal<string | null>(null);
   selectedShape = signal<ParsedShape | null>(null);
   imageUrl = signal<string | null>(null);

@@ -48,6 +48,17 @@ export interface PwaWorkRequestDto {
   workCategoryName?: string;
   workAreaId?: number;
   workAreaName?: string;
+  /** The requester could not place the work on the map; locationOfWork is their description. */
+  workAreaUnknown?: boolean;
+  /**
+   * Hazards the requester declared. Keys match the Java POJOs exactly - see permit-hazards.model.ts.
+   * Sent as plain objects so an added hazard needs no change here.
+   */
+  declaredHazards?: Record<string, boolean>;
+  declaredHotWorkMeasures?: Record<string, boolean>;
+  declaredConfinedSpaceHazards?: Record<string, boolean>;
+  /** Type of hot work + Cr(VI) assessment. Mixed booleans and strings, hence the looser value type. */
+  hotWorkProfile?: Record<string, boolean | string>;
   attachments: { fileName: string; contentType: string; base64Content: string }[];
 }
 
@@ -976,6 +987,18 @@ export class ServerApiService {
       workCategoryName: workRequest.workCategoryName || undefined,
       workAreaId: workRequest.workAreaId || undefined,
       workAreaName: workRequest.workAreaName || undefined,
+      workAreaUnknown: workRequest.workAreaUnknown === true,
+      // Sent even when nothing is ticked: an all-false object is a real answer ("I checked, none of
+      // these apply"), and the backend treats only a MISSING value as "no opinion" so an older
+      // client cannot blank out a declaration by staying silent.
+      declaredHazards: { ...(workRequest.declaredHazards ?? {}) },
+      declaredHotWorkMeasures: { ...(workRequest.declaredHotWorkMeasures ?? {}) },
+      declaredConfinedSpaceHazards: { ...(workRequest.declaredConfinedSpaceHazards ?? {}) },
+      // Only when hot work is actually declared — a stale welding assessment left over from a
+      // request that was later switched to "no hot work" must not reach the permits.
+      hotWorkProfile: workRequest.isHotWorkRequired === 'Yes'
+        ? { ...(workRequest.hotWorkProfile ?? {}) }
+        : undefined,
       attachments: this.convertAttachments(workRequest.attachments)
     };
   }

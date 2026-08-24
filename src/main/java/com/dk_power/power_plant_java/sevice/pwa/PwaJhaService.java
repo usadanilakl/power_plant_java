@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -49,6 +50,10 @@ public class PwaJhaService {
         // Convert DTO to entity
         Jha entity = convertToEntity(dto);
         entity.setLocalUuid(dto.getLocalUuid());
+        // Status locally, now - not on the way back from SharePoint. Without this a JHA submitted
+        // while SharePoint was unreachable had a null status forever: blank in the desktop table,
+        // and missed by every getAllByStatus("Active") query.
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Active"));
         String timeSubmitted = ZonedDateTime.now(ZoneId.of("America/Chicago"))
                 .format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a"));
         entity.setTimeSubmitted(timeSubmitted);
@@ -69,9 +74,17 @@ public class PwaJhaService {
         log.info("[PWA JHA Submit] JHA saved locally: id={}, localUuid={}, deleted={}",
                 entity.getId(), dto.getLocalUuid(), entity.getDeleted());
 
-        // Save attachments
+        // Save attachments (content-hash dedup, same guard the work request path uses - without it
+        // a replayed submission wrote a second copy of every file)
         if (dto.getAttachments() != null) {
             for (PaAttachmentDto att : dto.getAttachments()) {
+                String contentHash = computeContentHash(att.getBase64Content());
+                boolean alreadyStored = contentHash != null && !contentHash.isEmpty()
+                        ? attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                                "Jha", entity.getId(), att.getFileName(), contentHash)
+                        : attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(
+                                "Jha", entity.getId(), att.getFileName());
+                if (alreadyStored) continue;
                 PermitAttachment attachment = new PermitAttachment();
                 attachment.setEntityType("Jha");
                 attachment.setEntityId(entity.getId());
@@ -79,10 +92,16 @@ public class PwaJhaService {
                 attachment.setContentType(att.getContentType());
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
-                attachment.setContentHash(computeContentHash(att.getBase64Content()));
+                attachment.setContentHash(contentHash);
                 attachmentRepo.save(attachment);
             }
         }
+
+        // Mirror onto the work request LOCALLY, before SharePoint is even attempted. This used to
+        // live inside the SharePoint-success branch below, so with SharePoint down the operator
+        // opening the work request saw no JHA at all - the one document they need in order to
+        // process it. The SharePoint copy is a separate, best-effort concern.
+        mirrorAttachmentsToWorkRequest(entity, dto.getAttachments());
 
         // Attempt SharePoint submission
         String sharepointId = null;
@@ -111,18 +130,13 @@ public class PwaJhaService {
                     }
                 }
 
-                // Also attach to the Work Request item in SharePoint (prefix with "JHA-" to avoid name collisions)
-                String wrSpId = dto.getWorkRequestSharepointId();
+                // Also attach to the Work Request item in SharePoint (prefix with "JHA-" to avoid
+                // name collisions). The local mirror already happened above.
+                String wrSpId = resolveWorkRequestSharepointId(entity, dto);
                 if (wrSpId != null && !wrSpId.isEmpty() && dto.getAttachments() != null) {
                     for (PaAttachmentDto att : dto.getAttachments()) {
                         try {
-                            PaAttachmentDto wrAtt = new PaAttachmentDto();
-                            wrAtt.setBase64Content(att.getBase64Content());
-                            wrAtt.setContentType(att.getContentType());
-                            String fn = att.getFileName();
-                            wrAtt.setFileName(fn.startsWith("JHA-") ? fn : "JHA-" + fn);
-                            wrAdapter.addAttachment(wrSpId, wrAtt);
-                            saveWorkRequestAttachmentFromJha(wrSpId, wrAtt);
+                            wrAdapter.addAttachment(wrSpId, prefixedForWorkRequest(att));
                         } catch (Exception attEx) {
                             log.warn("[PWA JHA Submit] Failed to upload attachment to WR {}: {}",
                                     att.getFileName(), attEx.getMessage());
@@ -204,16 +218,39 @@ public class PwaJhaService {
         return spDto;
     }
 
+    /**
+     * Revoke by SharePoint id, PWA local id, or both.
+     *
+     * <p>A JHA submitted while SharePoint was unreachable has no SharePoint id at all, and the old
+     * signature could not name it - so the requester could not withdraw their own submission. The
+     * local id identifies it either way; the SharePoint call is skipped when there is nothing there
+     * to update.
+     */
     @Transactional
-    public void revokeJha(String sharepointId) {
-        jhaRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId).ifPresent(entity -> {
-            entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
-            jhaRepo.save(entity);
-            log.info("[PWA JHA Revoke] JHA revoked locally: id={}, spId={}", entity.getId(), sharepointId);
-        });
+    public void revokeJha(String sharepointId, String localUuid) {
+        Optional<Jha> found = Optional.empty();
+        if (sharepointId != null && !sharepointId.isEmpty()) {
+            found = jhaRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId);
+        }
+        if (found.isEmpty() && localUuid != null && !localUuid.isEmpty()) {
+            found = jhaRepo.findFirstByLocalUuidOrderByIdAsc(localUuid);
+        }
+
+        Jha entity = found.orElseThrow(() -> new IllegalArgumentException(
+                "JHA not found for sharepointId=" + sharepointId + " or localUuid=" + localUuid));
+
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
+        jhaRepo.save(entity);
+        log.info("[PWA JHA Revoke] JHA revoked locally: id={}, spId={}", entity.getId(), entity.getSharepointId());
+
+        String spId = entity.getSharepointId() != null ? entity.getSharepointId() : sharepointId;
+        if (spId == null || spId.isEmpty()) {
+            log.info("[PWA JHA Revoke] JHA id={} has no SharePoint item to revoke", entity.getId());
+            return;
+        }
         try {
-            jhaAdapter.changeStatus(sharepointId, "Revoked");
-            log.info("[PWA JHA Revoke] JHA revoked in SharePoint: spId={}", sharepointId);
+            jhaAdapter.changeStatus(spId, "Revoked");
+            log.info("[PWA JHA Revoke] JHA revoked in SharePoint: spId={}", spId);
         } catch (Exception e) {
             log.warn("[PWA JHA Revoke] Failed to revoke JHA in SharePoint: {}", e.getMessage());
         }
@@ -225,20 +262,50 @@ public class PwaJhaService {
         return "document";
     }
 
-    private void saveWorkRequestAttachmentFromJha(String workRequestSharepointId, PaAttachmentDto wrAttachment) {
-        if (workRequestSharepointId == null || workRequestSharepointId.isEmpty() || wrAttachment == null) {
+    /** "JHA-"-prefixed copy of an attachment, so it does not collide with the WR's own files. */
+    private PaAttachmentDto prefixedForWorkRequest(PaAttachmentDto att) {
+        PaAttachmentDto wrAtt = new PaAttachmentDto();
+        wrAtt.setBase64Content(att.getBase64Content());
+        wrAtt.setContentType(att.getContentType());
+        String fn = att.getFileName();
+        wrAtt.setFileName(fn != null && fn.startsWith("JHA-") ? fn : "JHA-" + fn);
+        return wrAtt;
+    }
+
+    /**
+     * Copy the JHA's files onto its work request in the local database. Resolved through the FK the
+     * entity already carries, so it works for a request that has no SharePoint id yet.
+     */
+    private void mirrorAttachmentsToWorkRequest(Jha jha, List<PaAttachmentDto> attachments) {
+        if (attachments == null || attachments.isEmpty()) return;
+        com.dk_power.power_plant_java.entities.permits.WorkRequest wr = jha.getWorkRequest();
+        if (wr == null) {
+            log.debug("[PWA JHA Submit] JHA id={} is not linked to a local WR - nothing to mirror", jha.getId());
+            return;
+        }
+        for (PaAttachmentDto att : attachments) {
+            try {
+                saveWorkRequestAttachment(wr.getId(), prefixedForWorkRequest(att));
+            } catch (Exception e) {
+                log.warn("[PWA JHA Submit] Failed to mirror attachment {} onto WR {}: {}",
+                        att.getFileName(), wr.getId(), e.getMessage());
+            }
+        }
+    }
+
+    /** The work request's SharePoint id, preferring the linked entity over whatever the DTO claimed. */
+    private String resolveWorkRequestSharepointId(Jha jha, PwaJhaDto dto) {
+        if (jha.getWorkRequest() != null && jha.getWorkRequest().getSharepointId() != null) {
+            return jha.getWorkRequest().getSharepointId();
+        }
+        return dto.getWorkRequestSharepointId();
+    }
+
+    private void saveWorkRequestAttachment(Long wrId, PaAttachmentDto wrAttachment) {
+        if (wrId == null || wrAttachment == null) {
             return;
         }
 
-        Optional<com.dk_power.power_plant_java.entities.permits.WorkRequest> wrOpt =
-            workRequestRepo.findFirstBySharepointIdOrderByIdAsc(workRequestSharepointId);
-        if (wrOpt.isEmpty()) {
-            log.debug("[PWA JHA Submit] Local WR not found for spId={} when saving mirrored attachment",
-                workRequestSharepointId);
-            return;
-        }
-
-        Long wrId = wrOpt.get().getId();
         String fileName = wrAttachment.getFileName();
         String contentHash = computeContentHash(wrAttachment.getBase64Content());
 
