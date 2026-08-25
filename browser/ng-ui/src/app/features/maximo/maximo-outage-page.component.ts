@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { MaximoApiService } from './maximo-api.service';
+import { MaximoWoDetailComponent } from './maximo-wo-detail.component';
 import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
 
 /**
@@ -13,7 +14,7 @@ import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
 @Component({
   selector: 'app-maximo-outage-page',
   standalone: true,
-  imports: [MainLayoutComponent, DatePipe],
+  imports: [MainLayoutComponent, DatePipe, MaximoWoDetailComponent],
   template: `
     <app-main-layout [header]="'Outage Items'">
       <ng-container main-content>
@@ -72,6 +73,7 @@ import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
 
                 @if (expanded() === wo.href) {
                   <div class="oi-body">
+                    <button class="oi-detail-btn" (click)="detailWo.set(wo)">🗂 Full WO details — files · notes · dates · tasks</button>
                     <h4 class="oi-h">🔒 LOTO isolation notes</h4>
                     @if (notesLoading()[wo.href]) { <p class="oi-msg">Loading notes…</p> }
                     @else if (!(notes()[wo.href]?.length)) { <p class="oi-none">No isolation notes yet.</p> }
@@ -93,6 +95,9 @@ import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
                 }
               </div>
             }
+          }
+          @if (detailWo(); as d) {
+            <app-maximo-wo-detail [wo]="d" (close)="detailWo.set(null)" (completed)="load()"></app-maximo-wo-detail>
           }
         </div>
       </ng-container>
@@ -123,6 +128,7 @@ import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
     .oi-loc { font-size: 0.75rem; color: var(--secondary-text, #888); }
     .oi-caret { flex: 0 0 auto; color: var(--secondary-text, #888); }
     .oi-body { padding: 0.3rem 0.8rem 0.8rem; border-top: 1px solid var(--border-color); }
+    .oi-detail-btn { width: 100%; margin: 0.5rem 0 0.2rem; background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; padding: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
     .oi-h { margin: 0.5rem 0 0.4rem; font-size: 0.88rem; }
     .oi-note { border-left: 3px solid #EC407A; background: var(--card-bg, rgba(236,64,122,0.06)); border-radius: 0 6px 6px 0; padding: 0.4rem 0.6rem; margin-bottom: 0.4rem; }
     .oi-note-txt { white-space: pre-wrap; font-size: 0.86rem; }
@@ -180,6 +186,7 @@ export class MaximoOutagePageComponent implements OnInit {
   notesLoading = signal<Record<string, boolean>>({});
   draft = signal<Record<string, string>>({});
   saving = signal<string | null>(null);
+  detailWo = signal<MaximoWorkOrder | null>(null);   // the WO whose full tabbed detail sheet is open
 
   ngOnInit(): void { this.load(); }
 

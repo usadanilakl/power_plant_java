@@ -306,9 +306,12 @@ public class FileDriftService {
                     throw new IOException("refusing to write outside the files root: " + rel);
                 }
 
-                String encoded = encodePath(rel);
+                // Fetch via the QUERY-PARAM endpoint (path has no file extension) so IIS/ARR forwards it to
+                // the hub instead of its static-file handler 401-ing an extension-bearing proxied URL. See
+                // HubResyncController.downloadFromPermanentStorageByPath.
+                String encodedParam = java.net.URLEncoder.encode(rel, java.nio.charset.StandardCharsets.UTF_8);
                 ResponseEntity<byte[]> r = restTemplate.exchange(
-                        url + "/api/resync/files/permanent/" + encoded,
+                        url + "/api/resync/files/permanent-by-path?path=" + encodedParam,
                         HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
                 if (!r.getStatusCode().is2xxSuccessful() || r.getBody() == null) {
                     throw new IOException("hub returned " + r.getStatusCode());

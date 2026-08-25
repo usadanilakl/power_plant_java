@@ -1,8 +1,10 @@
 import {
-  Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild, computed, inject, signal,
+  Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild,
+  computed, inject, signal,
 } from '@angular/core';
 import { DrawingSource, LotoDrawingService } from './loto-drawing.service';
 import { PointDrawing } from './loto-standard.model';
+import { QrConnector } from '../qr/qr.model';
 
 interface DrawingFile {
   fileId: number;
@@ -18,6 +20,20 @@ interface DrawingFile {
  * it. The highlight border counter-scales with the zoom (via a CSS var) so it stays thin and never buries the
  * symbol. Reads image + descriptors from the offline cache (network fallback). Renders at <body> so
  * position:fixed anchors to the viewport regardless of a scrolled/transformed ancestor.
+ *
+ * <p>Two ways to feed it, so the same viewer serves the walkdown flows and the scanned-QR flow:</p>
+ * <ul>
+ *   <li><b>By entity</b> (default): pass {@link standardId} + {@link pointId} and it loads the point's
+ *       descriptors through {@link LotoDrawingService}, offline cache included.</li>
+ *   <li><b>By descriptor</b>: pass {@link drawings} directly. Used by the QR page, which resolved a
+ *       scanned tag through its own endpoint and already holds them. Image bytes still go through
+ *       LotoDrawingService, so the IndexedDB blob cache is shared with the walkdowns.</li>
+ * </ul>
+ *
+ * <p>Optionally overlays {@link connectors} — the off-page references drawn on the current drawing —
+ * as tap targets that emit {@link connectorTap}. The viewer stays free of navigation policy: it reports
+ * the tapped target file and the host decides what that means (the QR page swaps drawings and keeps a
+ * back stack).</p>
  */
 @Component({
   selector: 'app-loto-drawing-viewer',
@@ -26,6 +42,9 @@ interface DrawingFile {
     <div class="dv-backdrop" (click)="close.emit()">
       <div class="dv-modal" (click)="$event.stopPropagation()">
         <div class="dv-head">
+          @if (backLabel) {
+            <button class="dv-back" (click)="back.emit()">‹ {{ backLabel }}</button>
+          }
           <span class="dv-title">{{ title }} · drawing</span>
           <button class="dv-x" (click)="close.emit()" aria-label="Close">✕</button>
         </div>
@@ -66,6 +85,26 @@ interface DrawingFile {
                        [style.width.%]="r.width / imgW() * 100"
                        [style.height.%]="r.height / imgH() * 100"></div>
                 }
+                <!--
+                  Off-page references. Positioned from server-normalised fractions, so no image
+                  dimensions are involved and a connector cannot drift when the served JPG is a
+                  different size than the one it was drawn on. pointerdown is NOT intercepted —
+                  it must still reach the viewport so a drag that starts on a connector pans the
+                  drawing; the tap handler filters out drags after the fact (see onConnectorTap).
+                -->
+                @if (linksVisible()) {
+                  @for (c of currentConnectors(); track c.id) {
+                    <button type="button" class="dv-conn" [style.--s]="scale()"
+                            [style.left.%]="c.fx * 100"
+                            [style.top.%]="c.fy * 100"
+                            [style.width.%]="c.fw * 100"
+                            [style.height.%]="c.fh * 100"
+                            (click)="onConnectorTap(c, $event)"
+                            [attr.aria-label]="'Open drawing ' + (c.label || c.targetFileId)">
+                      <span class="dv-conn-label">{{ c.label || ('#' + c.targetFileId) }}</span>
+                    </button>
+                  }
+                }
               }
             </div>
           </div>
@@ -73,6 +112,10 @@ interface DrawingFile {
             <button (click)="zoomBy(0.8)" aria-label="Zoom out">−</button>
             @if (currentRects().length) { <button (click)="zoomToPoint()">◎ Point</button> }
             <button (click)="fit()">Fit</button>
+            @if (currentConnectors().length) {
+              <button [class.dv-off]="!linksVisible()" (click)="toggleLinks()"
+                      [attr.aria-pressed]="linksVisible()">⇢ Links</button>
+            }
             <button (click)="zoomBy(1.25)" aria-label="Zoom in">+</button>
           </div>
         }
@@ -83,7 +126,8 @@ interface DrawingFile {
     .dv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 0.5rem; }
     .dv-modal { background: var(--secondary-background, #1e1e1e); border-radius: 12px; width: min(96vw, 960px); max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
     .dv-head { display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border-color); }
-    .dv-title { font-weight: 700; color: var(--primary-text); font-size: 0.95rem; }
+    .dv-title { font-weight: 700; color: var(--primary-text); font-size: 0.95rem; flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dv-back { background: none; border: none; color: var(--accent-color); font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0 0.3rem 0 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .dv-x { background: none; border: none; color: var(--secondary-text, #888); font-size: 1.1rem; cursor: pointer; }
     .dv-msg { padding: 2.5rem 1rem; text-align: center; color: var(--secondary-text, #888); }
     .dv-err { color: #e74c3c; }
@@ -96,25 +140,59 @@ interface DrawingFile {
     .dv-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
     .dv-img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
     .dv-hl { position: absolute; border-style: solid; border-color: #ff3b30; border-width: calc(2px / var(--s, 1)); background: rgba(255,59,48,0.12); border-radius: calc(2px / var(--s, 1)); pointer-events: none; box-sizing: border-box; }
+    /* Connectors: blue so they never read as the red "you are here" highlight. Border and label
+       counter-scale with the zoom (same --s trick as .dv-hl) to stay a constant on-screen size. */
+    .dv-conn { position: absolute; padding: 0; box-sizing: border-box; background: rgba(21,101,192,0.16); border: calc(2px / var(--s, 1)) solid #1565c0; border-radius: calc(2px / var(--s, 1)); cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+    .dv-conn:active { background: rgba(21,101,192,0.34); }
+    .dv-conn-label { position: absolute; top: 100%; left: 50%; transform: translate(-50%, calc(2px / var(--s, 1))); font-size: calc(11px / var(--s, 1)); line-height: 1.1; font-weight: 700; color: #fff; background: #1565c0; border-radius: calc(3px / var(--s, 1)); padding: calc(1px / var(--s, 1)) calc(4px / var(--s, 1)); white-space: nowrap; pointer-events: none; }
+    .dv-controls button.dv-off { opacity: 0.45; }
     .dv-controls { display: flex; gap: 0.5rem; justify-content: center; padding: 0.55rem; border-top: 1px solid var(--border-color); }
     .dv-controls button { background: var(--card-bg, #2a2a2a); color: var(--primary-text); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem 0.9rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
   `]
 })
-export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
-  /** The entity id whose drawings to show — a standard id (default) or a LOTO permit id when source='permit'. */
-  @Input({ required: true }) standardId!: number;
-  @Input({ required: true }) pointId!: number;
+export class LotoDrawingViewerComponent implements OnInit, OnChanges, OnDestroy {
+  /**
+   * The entity id whose drawings to show — a standard id (default) or a LOTO permit id when
+   * source='permit'. Ignored when {@link drawings} is supplied.
+   *
+   * <p>Not `required` any more: the QR page has no standard or point to name, it has descriptors. Every
+   * other caller still passes both, and the pair is required whenever {@link drawings} is absent.</p>
+   */
+  @Input() standardId?: number;
+  @Input() pointId?: number;
   @Input() title = 'Point';
   /** Where the drawings come from — 'standard' (default) or 'permit'. */
   @Input() source: DrawingSource = 'standard';
+  /**
+   * Descriptors to show directly, bypassing the standard/point lookup. Replacing the array reloads the
+   * viewer (see ngOnChanges), which is how the QR page navigates from one drawing to the next.
+   */
+  @Input() drawings?: PointDrawing[] | null;
+  /**
+   * Off-page references to overlay, keyed by the file they are drawn on. Absent key = no overlay for
+   * that drawing, so a host can fill this in lazily as the operator switches tabs.
+   */
+  @Input() connectors: Record<number, QrConnector[]> = {};
+  /**
+   * Text for a back affordance in the header (e.g. the drawing a connector was tapped from). Absent =
+   * no back button, which is every caller that shows one drawing set and closes when done.
+   */
+  @Input() backLabel?: string | null;
   @Output() close = new EventEmitter<void>();
+  /** Back tapped. Separate from {@link close} so a host can distinguish "up one drawing" from "done". */
+  @Output() back = new EventEmitter<void>();
+  /** A connector was tapped — payload is the file it points at. Navigation policy belongs to the host. */
+  @Output() connectorTap = new EventEmitter<number>();
 
   @ViewChild('viewport') viewport?: ElementRef<HTMLElement>;
 
   private drawingService = inject(LotoDrawingService);
   private host = inject(ElementRef<HTMLElement>);
 
-  private drawings = signal<PointDrawing[]>([]);
+  /** The descriptor set actually being rendered — from the {@link drawings} input, else fetched by entity. */
+  private descriptors = signal<PointDrawing[]>([]);
+  /** Signal mirror of the {@link connectors} input, so the overlay computed re-runs when the host fills it. */
+  private connectorMap = signal<Record<number, QrConnector[]>>({});
   index = signal(0);
   imgUrl = signal<string | null>(null);
   loading = signal(true);
@@ -140,7 +218,7 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   /** Descriptors grouped into one entry per file, each carrying that file's highlight rectangles. */
   files = computed<DrawingFile[]>(() => {
     const byId = new Map<number, DrawingFile>();
-    for (const d of this.drawings()) {
+    for (const d of this.descriptors()) {
       let f = byId.get(d.fileId);
       if (!f) { f = { fileId: d.fileId, fileName: d.fileName, imageWidth: d.imageWidth, imageHeight: d.imageHeight, rects: [] }; byId.set(d.fileId, f); }
       if (d.imageWidth && !f.imageWidth) f.imageWidth = d.imageWidth;
@@ -153,12 +231,21 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   });
   private currentFile = computed<DrawingFile | null>(() => this.files()[this.index()] ?? null);
   currentRects = computed(() => this.currentFile()?.rects ?? []);
+  /** Connector overlay for the drawing on screen. Reads {@link connectorMap} so a late fill re-renders. */
+  currentConnectors = computed<QrConnector[]>(() => this.connectorMap()[this.currentFile()?.fileId ?? -1] ?? []);
+  /** Operator can hide the overlay: on a busy P&ID the boxes can sit on top of what they came to read. */
+  linksVisible = signal(true);
   imgW = computed(() => this.currentFile()?.imageWidth || this.natW() || 1);
   imgH = computed(() => this.currentFile()?.imageHeight || this.natH() || 1);
 
   private dragging = false;
   private lastX = 0;
   private lastY = 0;
+  /**
+   * Pixels travelled since the last pointerdown. A connector overlay sits inside the pan surface, so a
+   * drag that happens to start on one still ends in a click event — this is what tells the two apart.
+   */
+  private dragDistance = 0;
   private objectUrl: string | null = null;
 
   /** Live pointers by id — size 1 pans, size 2 pinches. */
@@ -178,9 +265,40 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     window.addEventListener('resize', this.onViewportResize);
     window.addEventListener('orientationchange', this.onViewportResize);
 
+    this.connectorMap.set(this.connectors ?? {});
+    await this.loadDescriptors();
+  }
+
+  /**
+   * Reacts to the host swapping what is on screen. Two distinct cases:
+   * <ul>
+   *   <li>{@link drawings} replaced — a different drawing set entirely (the QR page hopping through a
+   *       connector), so reset the framing and reload from the first file.</li>
+   *   <li>{@link connectors} replaced — same drawing, overlay filled in late; mirror it into the signal
+   *       and let the overlay re-render without disturbing the operator's zoom or pan.</li>
+   * </ul>
+   * Skipped on the first change: ngOnInit does that pass, and doing both would load twice.
+   */
+  async ngOnChanges(changes: SimpleChanges): Promise<void> {
+    if (changes['connectors'] && !changes['connectors'].firstChange) {
+      this.connectorMap.set(this.connectors ?? {});
+    }
+    if (changes['drawings'] && !changes['drawings'].firstChange) {
+      this.error.set(null);
+      this.index.set(0);
+      await this.loadDescriptors();
+    }
+  }
+
+  /** Take the descriptors from the input when given, else fetch the point's set (offline cache first). */
+  private async loadDescriptors(): Promise<void> {
+    this.loading.set(true);
     try {
-      const list = await this.drawingService.drawingsForPoint(this.standardId, this.pointId, this.source);
-      this.drawings.set(list);
+      const list = this.drawings
+        ?? (this.standardId != null && this.pointId != null
+              ? await this.drawingService.drawingsForPoint(this.standardId, this.pointId, this.source)
+              : []);
+      this.descriptors.set(list);
       if (!this.files().length) { this.error.set('No drawing linked to this point.'); this.loading.set(false); return; }
       await this.load(0);
     } catch {
@@ -209,6 +327,22 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   };
 
   async select(i: number): Promise<void> { if (i !== this.index()) await this.load(i); }
+
+  /** Hide/show the off-page reference overlay — on a dense P&ID the boxes can cover what was scanned. */
+  toggleLinks(): void { this.linksVisible.update(v => !v); }
+
+  /**
+   * Tapping an off-page reference asks the host to open the drawing it points at.
+   *
+   * <p>Ignored when the pointer travelled more than a few pixels: the connector lives inside the
+   * pan surface, so panning with a finger that happened to land on one would otherwise fire a
+   * navigation on release. 8px is below a deliberate tap and above touch jitter.</p>
+   */
+  onConnectorTap(c: QrConnector, e: Event): void {
+    e.stopPropagation();
+    if (this.dragDistance > 8) return;
+    this.connectorTap.emit(c.targetFileId);
+  }
 
   private async load(i: number): Promise<void> {
     this.loading.set(true);
@@ -314,6 +448,7 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
   onDown(e: PointerEvent): void {
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    this.dragDistance = 0;
 
     if (this.pointers.size === 2) {
       this.beginPinch();
@@ -331,6 +466,7 @@ export class LotoDrawingViewerComponent implements OnInit, OnDestroy {
     if (this.pointers.size >= 2) { this.updatePinch(); return; }
     if (!this.dragging) return;
 
+    this.dragDistance += Math.hypot(e.clientX - this.lastX, e.clientY - this.lastY);
     this.tx.set(this.tx() + (e.clientX - this.lastX));
     this.ty.set(this.ty() + (e.clientY - this.lastY));
     this.lastX = e.clientX;

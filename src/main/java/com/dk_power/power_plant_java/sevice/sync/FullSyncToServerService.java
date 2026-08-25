@@ -159,7 +159,8 @@ public class FullSyncToServerService {
     // stays excluded (per-node, re-minted by @PreUpdate).
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateModified", "objectType", "serialVersionUID",
-        "hibernateLazyInitializer", "handler"
+        "hibernateLazyInitializer", "handler",
+        "lastLoginDate" // per-device login timestamp, intentionally node-local (see UserRepo)
     );
 
     /**

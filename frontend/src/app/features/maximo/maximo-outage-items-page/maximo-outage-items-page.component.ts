@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoWorkOrder, MaximoWorklog } from '../../../models/maximo/maximo.models';
 
 /**
@@ -14,7 +15,7 @@ import { MaximoWorkOrder, MaximoWorklog } from '../../../models/maximo/maximo.mo
 @Component({
   selector: 'app-maximo-outage-items-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
   template: `
     <app-main-layout header="Maximo — Outage Items">
       <ng-container header>
@@ -76,6 +77,7 @@ import { MaximoWorkOrder, MaximoWorklog } from '../../../models/maximo/maximo.mo
 
                   @if (expanded() === wo.href) {
                     <div class="oi-body">
+                      <button class="oi-detail-btn" (click)="detailWo.set(wo)">🗂 Full WO details — attachments · notes · dates · tasks · history</button>
                       <div class="oi-meta">
                         @if (wo.targetStart) { <span>🗓 {{ wo.targetStart | date:'medium' }}</span> }
                         @if (wo.leadCraft) { <span>👷 {{ wo.leadCraft }}</span> }
@@ -110,6 +112,9 @@ import { MaximoWorkOrder, MaximoWorklog } from '../../../models/maximo/maximo.mo
               }
             </div>
           }
+          @if (detailWo(); as d) {
+            <app-maximo-detail-dialog [parent]="'wo'" [wo]="d" (completed)="load()" (closed)="detailWo.set(null)"></app-maximo-detail-dialog>
+          }
         </div>
       </ng-container>
     </app-main-layout>
@@ -139,6 +144,7 @@ import { MaximoWorkOrder, MaximoWorklog } from '../../../models/maximo/maximo.mo
     .oi-loc { font-size: 0.78rem; color: var(--secondary-text, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .oi-caret { text-align: center; color: var(--secondary-text, #888); }
     .oi-body { padding: 0.4rem 0.9rem 0.9rem; border-top: 1px solid var(--border-color); }
+    .oi-detail-btn { margin: 0.6rem 0 0.2rem; background: transparent; border: 1px solid var(--accent-color, #26C6DA); color: var(--accent-color, #26C6DA); border-radius: 8px; padding: 0.45rem 0.8rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
     .oi-meta { display: flex; flex-wrap: wrap; gap: 0.8rem; color: var(--secondary-text, #888); font-size: 0.8rem; margin: 0.5rem 0; }
     .oi-h { margin: 0.6rem 0 0.4rem; font-size: 0.9rem; }
     .oi-notes { list-style: none; padding: 0; margin: 0 0 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -198,6 +204,7 @@ export class MaximoOutageItemsPageComponent implements OnInit {
   notesLoading = signal<Record<string, boolean>>({});
   draft = signal<Record<string, string>>({});
   saving = signal<string | null>(null);
+  detailWo = signal<MaximoWorkOrder | null>(null);   // the WO whose full tabbed detail dialog is open
 
   ngOnInit(): void { this.load(); }
 

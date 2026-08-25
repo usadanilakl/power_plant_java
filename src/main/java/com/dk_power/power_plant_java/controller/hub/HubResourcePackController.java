@@ -63,6 +63,33 @@ public class HubResourcePackController {
 
         relativePath = URLDecoder.decode(relativePath, StandardCharsets.UTF_8);
 
+        return streamPackFile(name, relativePath);
+    }
+
+    /**
+     * Same bytes as {@link #downloadFile}, but the pack name and file path arrive as QUERY PARAMS so the
+     * request URL path is {@code /api/resource-packs/file-by-path} — no file extension. In production the
+     * hub sits behind IIS/ARR, whose static-file handler grabs extension-bearing proxied URLs (…/foo.png)
+     * under Windows Auth and returns 401 before ARR forwards them to the app. A no-extension URL path
+     * sidesteps that. Mirrors HubResyncController's permanent-by-path; the Electron resource-pack sync
+     * (resource-pack.manager.ts) uses this endpoint.
+     */
+    @GetMapping("/file-by-path")
+    public ResponseEntity<Resource> downloadFileByPath(
+        @RequestParam("name") String name,
+        @RequestParam("path") String relativePath
+    ) {
+        if (name == null || name.isBlank() || relativePath == null || relativePath.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        // @RequestParam already decoded once; handle a defensive double-encoding like the resync endpoint.
+        if (relativePath.contains("%")) {
+            try { relativePath = URLDecoder.decode(relativePath, StandardCharsets.UTF_8); } catch (Exception ignore) { }
+        }
+        return streamPackFile(name, relativePath);
+    }
+
+    private ResponseEntity<Resource> streamPackFile(String name, String relativePath) {
         Optional<Path> filePath = resourcePackService.getFilePath(name, relativePath);
         if (filePath.isEmpty()) {
             return ResponseEntity.notFound().build();

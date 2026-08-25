@@ -405,7 +405,11 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
      */
     @Transactional
     public int cleanupOrphans() {
-        return zeroEnergyRepo.deleteOrphans();
+        // Managed delete (not the bulk JPQL DELETE) so @PostRemove fires per row and the
+        // DELETE markers emit + sync, instead of stranding the orphans on other nodes.
+        List<ZeroEnergy> orphans = zeroEnergyRepo.findOrphans();
+        zeroEnergyRepo.deleteAll(orphans);
+        return orphans.size();
     }
 
     /**
@@ -715,10 +719,17 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         // Check if this new combination already exists as a different record
         Optional<ZeroEnergy> duplicate = zeroEnergyRepo.findByTemplateAndEquipmentIds(newTemplateId, newEquipmentIds).stream().findFirst();
         if (duplicate.isPresent() && !duplicate.get().getId().equals(existing.getId())) {
-            // Merge: move all LotoPoints from existing to duplicate, then delete existing
-            lotoPointRepo.reassignZeroEnergy(existing.getId(), duplicate.get().getId());
+            // Merge: move all LotoPoints from existing to duplicate via MANAGED saves (so each
+            // zeroEnergy FK repoint fires @PostUpdate and emits a FieldChange), then delete
+            // existing. NEVER the bulk reassignZeroEnergy JPQL — it bypassed the sync listener
+            // and left peers pointing at the deleted row (broken zero-energy method).
+            ZeroEnergy target = duplicate.get();
+            for (LotoPoint p : lotoPointRepo.findByZeroEnergyId(existing.getId())) {
+                p.setZeroEnergy(target);
+                lotoPointRepo.save(p);
+            }
             zeroEnergyRepo.deleteById(existing.getId());
-            return duplicate.get();
+            return target;
         }
 
         // Update in-place

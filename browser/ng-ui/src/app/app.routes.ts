@@ -206,6 +206,15 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {
+      // Where a scanned LOTO/equipment label lands: the hub's public /qr/{tag} redirects here.
+      // authGuard (not plantGuard) on purpose — plantGuard bounces silently to Home, and a QR scan
+      // that ends on an unexplained home screen is indistinguishable from a broken label. The API is
+      // still ROLE_PLANT-gated; the page turns that 403 into a sentence the scanner can act on.
+      path: 'qr/:tag',
+      loadComponent: () => import('./features/qr/qr-tag-page.component').then(m => m.QrTagPageComponent),
+      canActivate: [standaloneGuard, authGuard]
+    },
+    {
       path: 'loto',
       loadComponent: () => import('./features/loto-permit/loto-permit-list.component').then(m => m.LotoPermitListComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]

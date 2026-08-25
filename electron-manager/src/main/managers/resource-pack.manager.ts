@@ -123,6 +123,7 @@ export class ResourcePackManager {
 
       let downloaded = 0;
       let skipped = 0;
+      let failed = 0;
       const toDownload: PackFileEntry[] = [];
 
       // Determine which files need downloading
@@ -145,29 +146,40 @@ export class ResourcePackManager {
 
       onProgress(`${packName}: downloading ${toDownload.length} files...`, 5);
 
+      let processed = 0;
       for (const entry of toDownload) {
+        processed++;
         const localPath = path.join(packDir, entry.relativePath);
         const localDir = path.dirname(localPath);
         if (!fs.existsSync(localDir)) {
           fs.mkdirSync(localDir, { recursive: true });
         }
 
-        const encodedPath = entry.relativePath.split('/').map(encodeURIComponent).join('/');
+        // Query-param endpoint (no file extension in the URL path) so IIS/ARR forwards it instead of its
+        // static-file handler 401-ing an extension-bearing proxied URL under Windows Auth. Mirrors the
+        // cold-resync file pull + FileDriftService.pull. A failed download is warned + counted, not
+        // silently miscounted as a success (which previously let missing files masquerade as up-to-date).
+        const encodedName = encodeURIComponent(packName);
+        const encodedPath = encodeURIComponent(entry.relativePath);
         try {
           await this.downloadFile(
-            `${serverUrl}/api/resource-packs/file/${encodeURIComponent(packName)}/${encodedPath}`,
+            `${serverUrl}/api/resource-packs/file-by-path?name=${encodedName}&path=${encodedPath}`,
             localPath, headers
           );
+          downloaded++;
         } catch (err: any) {
+          failed++;
           console.warn(`Failed to download ${packName}/${entry.relativePath}: ${err.message}`);
         }
 
-        downloaded++;
-        const pct = 5 + Math.round((downloaded / toDownload.length) * 95);
-        onProgress(`${packName}: ${downloaded}/${toDownload.length} files`, pct);
+        const pct = 5 + Math.round((processed / toDownload.length) * 95);
+        onProgress(`${packName}: ${processed}/${toDownload.length} files`, pct);
       }
 
-      console.log(`Resource pack ${packName}: ${downloaded} downloaded, ${skipped} skipped`);
+      console.log(`Resource pack ${packName}: ${downloaded} downloaded, ${skipped} skipped, ${failed} failed`);
+      if (failed > 0) {
+        console.warn(`Resource pack ${packName}: ${failed} file(s) could not be downloaded from the hub.`);
+      }
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || `Failed to sync ${packName}` };

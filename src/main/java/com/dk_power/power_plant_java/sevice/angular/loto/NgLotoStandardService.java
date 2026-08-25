@@ -331,6 +331,16 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
             standard.removeLotoPoint(lotoPoint);
             lotoPoint.removeStandard(standard);
+            // Mirror addLotoPointToStandard: also drop the point from lotoPointOrder. This keeps the order
+            // map free of the now-stale id AND — critically for sync — dirties a SCALAR column so Hibernate
+            // issues an UPDATE to the loto_standard row. A pure @ManyToMany removal only changes the join
+            // table, so @PreUpdate/@PostUpdate never fire and FieldChangeTracker's M2M OR-Set capture never
+            // runs — the removal vanished locally but was never emitted to the hub (the reported regression;
+            // add still worked because it writes lotoPointOrder here). Touching the scalar restores the
+            // @PostUpdate that drives the M2M change emission.
+            Map<String, Integer> orderMap = standard.getLotoPointOrder();
+            orderMap.remove(lotoPoint.getId().toString());
+            standard.setLotoPointOrder(orderMap);
             return toDto(save(standard));
         } catch (Exception e) {
             throw new RuntimeException("Error removing LotoPoint from LotoStandard: " + e.getMessage(), e);

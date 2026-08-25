@@ -1,8 +1,12 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
+import com.dk_power.power_plant_java.entities.permits.Jha;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Dedup merge service for WorkRequest entities.
@@ -71,16 +75,16 @@ public class WorkRequestMergeService extends SharePointMergeTemplate<WorkRequest
      * the canonical one (if the canonical doesn't already have one).
      */
     private void transferDailyPermitPackageLink(Long duplicateId, Long canonicalId) {
-        int updated = entityManager.createNativeQuery(
-            "UPDATE work_request SET daily_permit_package_id = " +
-            "(SELECT daily_permit_package_id FROM work_request WHERE id = :dupId) " +
-            "WHERE id = :canId AND daily_permit_package_id IS NULL " +
-            "AND (SELECT daily_permit_package_id FROM work_request WHERE id = :dupId) IS NOT NULL")
-            .setParameter("dupId", duplicateId)
-            .setParameter("canId", canonicalId)
-            .executeUpdate();
-
-        if (updated > 0) {
+        // Managed re-point (not native SQL) so the FK change fires @PostUpdate and emits a
+        // FieldChange — mergeIfDuplicatesExist has already cleared SyncContext, so it syncs
+        // to desktops instead of leaving them half-merged. Same guard as the old native
+        // UPDATE: only fill the canonical's link when it has none and the duplicate has one.
+        WorkRequest canonical = entityManager.find(WorkRequest.class, canonicalId);
+        WorkRequest duplicate = entityManager.find(WorkRequest.class, duplicateId);
+        if (canonical == null || duplicate == null) return;
+        if (canonical.getDailyPermitPackage() == null && duplicate.getDailyPermitPackage() != null) {
+            canonical.setDailyPermitPackage(duplicate.getDailyPermitPackage());
+            entityManager.merge(canonical);
             log.info("[WorkRequest Merge] Transferred DailyPermitPackage link from ID={} to ID={}",
                 duplicateId, canonicalId);
         }
@@ -91,31 +95,39 @@ public class WorkRequestMergeService extends SharePointMergeTemplate<WorkRequest
      * Also sets linkedSharepointId for dedup-resilient association.
      */
     private void transferEmailCorrespondenceLinks(Long duplicateId, Long canonicalId, String sharepointId) {
-        int updated = entityManager.createNativeQuery(
-            "UPDATE email_correspondence SET entity_id = :canId, linked_sharepoint_id = :spId " +
-            "WHERE entity_type = 'WorkRequest' AND entity_id = :dupId")
-            .setParameter("canId", canonicalId)
-            .setParameter("spId", sharepointId)
+        // Re-point the polymorphic correspondence rows via managed saves so the entityId +
+        // linkedSharepointId changes emit FieldChanges. EmailCorrespondence is a tracked
+        // entity (@EntityListeners(FieldChangeEntityListener.class)); the old native UPDATE
+        // bypassed it, leaving desktops with correspondence still pointing at the deleted dup.
+        List<EmailCorrespondence> toMove = entityManager.createQuery(
+            "SELECT e FROM EmailCorrespondence e WHERE e.entityType = 'WorkRequest' AND e.entityId = :dupId",
+            EmailCorrespondence.class)
             .setParameter("dupId", duplicateId)
-            .executeUpdate();
-
-        if (updated > 0) {
+            .getResultList();
+        for (EmailCorrespondence e : toMove) {
+            e.setEntityId(canonicalId);
+            e.setLinkedSharepointId(sharepointId);
+            entityManager.merge(e);
+        }
+        if (!toMove.isEmpty()) {
             log.info("[WorkRequest Merge] Transferred {} EmailCorrespondence link(s) from WR ID={} to WR ID={} (SP:{})",
-                updated, duplicateId, canonicalId, sharepointId);
+                toMove.size(), duplicateId, canonicalId, sharepointId);
         }
 
-        // Also backfill linkedSharepointId on the canonical WR's existing correspondence
-        int backfilled = entityManager.createNativeQuery(
-            "UPDATE email_correspondence SET linked_sharepoint_id = :spId " +
-            "WHERE entity_type = 'WorkRequest' AND entity_id = :canId " +
-            "AND linked_sharepoint_id IS NULL")
-            .setParameter("spId", sharepointId)
+        // Also backfill linkedSharepointId on the canonical WR's existing correspondence.
+        List<EmailCorrespondence> toBackfill = entityManager.createQuery(
+            "SELECT e FROM EmailCorrespondence e WHERE e.entityType = 'WorkRequest' AND e.entityId = :canId " +
+            "AND e.linkedSharepointId IS NULL",
+            EmailCorrespondence.class)
             .setParameter("canId", canonicalId)
-            .executeUpdate();
-
-        if (backfilled > 0) {
+            .getResultList();
+        for (EmailCorrespondence e : toBackfill) {
+            e.setLinkedSharepointId(sharepointId);
+            entityManager.merge(e);
+        }
+        if (!toBackfill.isEmpty()) {
             log.info("[WorkRequest Merge] Backfilled linkedSharepointId on {} existing correspondence for WR ID={}",
-                backfilled, canonicalId);
+                toBackfill.size(), canonicalId);
         }
     }
 
@@ -140,15 +152,22 @@ public class WorkRequestMergeService extends SharePointMergeTemplate<WorkRequest
      * Transfer JHA foreign keys from a duplicate WorkRequest to the canonical one.
      */
     private void transferJhaLinks(Long duplicateId, Long canonicalId) {
-        int updated = entityManager.createNativeQuery(
-            "UPDATE jha SET work_request_id = :canId WHERE work_request_id = :dupId")
-            .setParameter("canId", canonicalId)
+        // Managed re-point so each JHA's workRequest FK change emits a FieldChange (Jha is a
+        // tracked BasePermitEntity). The old native bulk UPDATE left desktops with JHAs still
+        // pointing at the soft-deleted duplicate WR (orphaned under @Where(deleted=false)).
+        WorkRequest canonical = entityManager.find(WorkRequest.class, canonicalId);
+        if (canonical == null) return;
+        List<Jha> jhas = entityManager.createQuery(
+            "SELECT j FROM Jha j WHERE j.workRequest.id = :dupId", Jha.class)
             .setParameter("dupId", duplicateId)
-            .executeUpdate();
-
-        if (updated > 0) {
+            .getResultList();
+        for (Jha jha : jhas) {
+            jha.setWorkRequest(canonical);
+            entityManager.merge(jha);
+        }
+        if (!jhas.isEmpty()) {
             log.info("[WorkRequest Merge] Transferred {} JHA link(s) from WR ID={} to WR ID={}",
-                updated, duplicateId, canonicalId);
+                jhas.size(), duplicateId, canonicalId);
         }
     }
 }

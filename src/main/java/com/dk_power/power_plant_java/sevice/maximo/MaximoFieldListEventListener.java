@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
+import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +53,26 @@ public class MaximoFieldListEventListener {
     private final ApplicationEventPublisher events;
 
     /**
+     * Needed to un-suppress FieldChange emission around the bridge writes below.
+     * These handlers fire in AFTER_COMMIT on the SAME thread that applied an
+     * incoming sync batch (client-submitted field-list items), where
+     * {@link SyncContext#isSyncing()} is still {@code true} — which makes
+     * {@code FieldChangeEntityListener} SKIP @PostUpdate emission, so the Maximo
+     * wonum/status stamp on the (tracked) FieldListItem never syncs back to desktops.
+     */
+    private final SyncContext syncContext;
+
+    /**
+     * Needed to force a flush inside {@link #emittingMaximoStamp} while isSyncing is still
+     * cleared. The bridge stamps the FieldListItem with a bare {@code repo.save()} (no flush),
+     * so without an explicit flush the UPDATE would only flush at the handler's REQUIRES_NEW
+     * commit — after the wrapper's finally has restored isSyncing — and @PostUpdate would skip
+     * emission again.
+     */
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
+    /**
      * FieldListStatus name that triggers a WO COMP on Maximo. Read here (not in the
      * caller) so the caller doesn't need to know about the bridge's conventions.
      */
@@ -84,6 +105,43 @@ public class MaximoFieldListEventListener {
         log.info("[MaximoFieldList] Contractor-completable types: {}", contractorCompletableTypes);
     }
 
+    /**
+     * Run a Maximo bridge write with FieldChange emission FORCED ON, then restore
+     * the prior sync state. The bridge {@code repo.save()}s the FieldListItem to
+     * stamp maximoRecordId / maximoHref / maximoStatus (and wonum) — a tracked-entity
+     * update that MUST emit so desktops receive it. Because these handlers run in
+     * AFTER_COMMIT on the sync-apply thread, {@code isSyncing()} is still true here
+     * and would otherwise make {@code FieldChangeEntityListener} skip that emission.
+     * Clearing it is safe: the only writes inside are the bridge's own stamps (there
+     * is no incoming-change apply on this path to re-broadcast).
+     */
+    private <T> T emittingMaximoStamp(java.util.function.Supplier<T> action) {
+        boolean wasSyncing = syncContext.isSyncing();
+        if (wasSyncing) syncContext.endSync();
+        try {
+            T result = action.get();
+            // Flush NOW, while isSyncing is still cleared, so the bridge's repo.save() stamp
+            // (bare save, no flush of its own) fires @PostUpdate here and emits a FieldChange.
+            // Otherwise it would flush at REQUIRES_NEW commit, after the finally restores
+            // isSyncing, and emission would be skipped — the very gap this wrapper exists to close.
+            // NOTE: this flushes the whole persistence context; today each handler dirties only the
+            // one FieldListItem before this call, so that is exactly what we want.
+            try {
+                entityManager.flush();
+            } catch (RuntimeException flushEx) {
+                // A flush failure poisons this REQUIRES_NEW tx (it rolls back at commit either way).
+                // Log it distinctly so the caller's generic catch doesn't misattribute it to the
+                // bridge call, then rethrow so the rollback happens as before.
+                log.warn("[MaximoFieldList] stamp flush failed — tx will roll back, stamp not persisted/emitted: {}",
+                        flushEx.getMessage());
+                throw flushEx;
+            }
+            return result;
+        } finally {
+            if (wasSyncing) syncContext.startSync();
+        }
+    }
+
     // fallbackExecution=true so an event published outside any tx (self-invocation
     // bypassing the class-level proxy, or a future non-@Transactional caller) still
     // runs — silent drop would be a subtle sync gap. REQUIRES_NEW ensures we get a
@@ -101,7 +159,7 @@ public class MaximoFieldListEventListener {
         }
         boolean routed;
         try {
-            routed = bridge.submit(entity);
+            routed = emittingMaximoStamp(() -> bridge.submit(entity));
         } catch (RuntimeException e) {
             // Bridge is best-effort but if something escapes, don't let it propagate up.
             log.warn("[MaximoFieldList] onSubmitted id={} failed: {}", event.id(), e.getMessage());
@@ -145,12 +203,12 @@ public class MaximoFieldListEventListener {
             // Never made it to Maximo — nothing to cancel. Clear a stale flag if set.
             if (Boolean.TRUE.equals(entity.getMaximoCancelPending())) {
                 entity.setMaximoCancelPending(Boolean.FALSE);
-                try { repo.save(entity); } catch (RuntimeException ignore) { /* backfill re-checks */ }
+                try { emittingMaximoStamp(() -> { repo.save(entity); return null; }); } catch (RuntimeException ignore) { /* backfill re-checks */ }
             }
             return;
         }
         try {
-            bridge.cancel(entity, event.reason());
+            emittingMaximoStamp(() -> { bridge.cancel(entity, event.reason()); return null; });
         } catch (RuntimeException e) {
             log.warn("[MaximoFieldList] onCancelled id={} failed: {}", event.id(), e.getMessage());
         }
@@ -179,7 +237,7 @@ public class MaximoFieldListEventListener {
         }
         String actor = event.actor() == null || event.actor().isBlank() ? "user" : event.actor();
         try {
-            bridge.complete(entity, "Closed via " + event.newStatusName() + " by " + actor);
+            emittingMaximoStamp(() -> { bridge.complete(entity, "Closed via " + event.newStatusName() + " by " + actor); return null; });
         } catch (RuntimeException e) {
             log.warn("[MaximoFieldList] onStatusChanged id={} failed: {}", event.id(), e.getMessage());
         }
@@ -217,7 +275,7 @@ public class MaximoFieldListEventListener {
         }
         String actor = event.actor() == null || event.actor().isBlank() ? "contractor" : event.actor();
         try {
-            bridge.complete(entity, "Closed via SP by " + actor);
+            emittingMaximoStamp(() -> { bridge.complete(entity, "Closed via SP by " + actor); return null; });
         } catch (RuntimeException e) {
             log.warn("[MaximoFieldList] onContractorClosed id={} failed: {}",
                     event.fieldListItemId(), e.getMessage());
@@ -246,7 +304,7 @@ public class MaximoFieldListEventListener {
         // early-returns on this case with no side effects.
         if (entity.getMaximoHref() == null || entity.getMaximoHref().isBlank()) return;
         try {
-            bridge.updateFields(entity);
+            emittingMaximoStamp(() -> { bridge.updateFields(entity); return null; });
         } catch (RuntimeException e) {
             log.warn("[MaximoFieldList] onUpdated id={} failed: {}", event.id(), e.getMessage());
         }

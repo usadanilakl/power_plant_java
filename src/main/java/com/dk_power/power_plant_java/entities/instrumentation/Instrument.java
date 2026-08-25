@@ -22,7 +22,12 @@ import org.hibernate.annotations.Where;
 @Setter
 @Where(clause = "deleted IS NOT TRUE")
 public class Instrument extends BaseAuditEntity {
-    @Column(unique = true)
+    // NOT @Column(unique=true): the deterministic-coexist dedup path lets a duplicate tagNumber INSERT and
+    // coexist just long enough for the hub-only InstrumentMergeService to merge it (same pattern as
+    // Category/Value, which also have no DB uniqueness — merge-service convergence handles it). A unique
+    // index would turn that transient coexist into an INSERT poison-pill that aborts the whole apply batch.
+    // The existing idx_instrument_tag_number index (non-unique) still serves lookups. Existing DBs' stale
+    // unique index is dropped at startup by InstrumentTagUniqueConstraintFixer.
     private String tagNumber;
     private String description;
     private String vendor;

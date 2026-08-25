@@ -2,7 +2,6 @@ package com.dk_power.power_plant_java.repository.messaging;
 
 import com.dk_power.power_plant_java.entities.messaging.Message;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -60,15 +59,20 @@ public interface MessageRepo extends BaseRepository<Message> {
         @Param("senderId") Long senderId,
         @Param("sentAt") java.time.LocalDateTime sentAt);
 
-    @Modifying
+    /**
+     * Unread messages in a conversation NOT sent by the given user — the ones markRead flips.
+     * Callers load these and setIsRead(true)+save each so @PostUpdate fires and the read-state
+     * change emits a FieldChange (read receipts converge across the user's devices). The old
+     * bulk JPQL UPDATE was removed because it never triggered the listener, so read state
+     * silently diverged between nodes.
+     */
     @Query("""
-        UPDATE Message m
-        SET m.isRead = true
+        SELECT m FROM Message m
         WHERE m.conversation.id = :conversationId
           AND m.senderId <> :userId
           AND m.isRead = false
         """)
-    int markIncomingMessagesAsRead(
+    List<Message> findUnreadIncoming(
         @Param("conversationId") Long conversationId,
         @Param("userId") Long userId);
 }

@@ -83,7 +83,13 @@ public class FieldChangeTracker {
         // preserves the origin's value. dateModified STAYS excluded: @PreUpdate re-mints it on every
         // save, so it is legitimately per-node "last touched here" and would be clobbered on apply anyway.
         "dateModified", "objectType", "serialVersionUID",
-        "hibernateLazyInitializer", "handler"
+        "hibernateLazyInitializer", "handler",
+        // lastLoginDate: per-device login timestamp, intentionally node-local (written via
+        // native SQL in UserRepo, never emitted). Excluded here so it also never emits if a
+        // future managed save touches it — and stays out of drift comparisons (same string is
+        // excluded in SyncComparisonService/HubEntityComparisonService/SyncResolutionService/
+        // FullSyncToServerService/NgSyncResolutionController).
+        "lastLoginDate"
     );
 
     // ==================== FIELD CACHE ====================
@@ -184,6 +190,23 @@ public class FieldChangeTracker {
         if (field.isAnnotationPresent(ManyToMany.class)) return "ManyToMany";
         if (field.isAnnotationPresent(OneToOne.class)) return "OneToOne";
         return null;
+    }
+
+    /**
+     * Public, immutable view of the tracked-field classification for one entity class. Backed by the
+     * SAME cache the emission path uses (EXCLUDED_FIELDS + computeShouldTrackField + computeRelationshipType),
+     * so a consumer's field list can NEVER drift from what sync actually tracks. The Field is already
+     * setAccessible(true). Added for the sync-conformance harness (reuse, don't re-derive the rules).
+     */
+    public record TrackedFieldInfo(String fieldName, String relationshipType, boolean shouldTrack, Field field) {}
+
+    /** All fields of {@code clazz} (incl. inherited) with their tracking classification — see {@link TrackedFieldInfo}. */
+    public List<TrackedFieldInfo> getTrackedFields(Class<?> clazz) {
+        List<TrackedFieldInfo> out = new ArrayList<>();
+        for (CachedFieldInfo fi : getCachedFields(clazz)) {
+            out.add(new TrackedFieldInfo(fi.fieldName, fi.relationshipType, fi.shouldTrack, fi.field));
+        }
+        return out;
     }
     // ==================== END FIELD CACHE ====================
 

@@ -4,6 +4,8 @@ import com.dk_power.power_plant_java.entities.instrumentation.InstrumentLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * Dedup merge service for InstrumentLog entities by SharePoint ID.
  */
@@ -25,6 +27,18 @@ public class InstrumentLogMergeService extends SharePointMergeTemplate<Instrumen
     @Override
     protected void markDeleted(InstrumentLog entity) {
         entity.setDeleted(true);
+    }
+
+    /**
+     * Dedup on BOTH sharepoint_id and local_uuid: they identify genuinely different duplicate populations —
+     * sharepoint_id collisions come from the SP-import path, local_uuid collisions from CRDT/offline-retry
+     * submissions (which may still have a null sharepoint_id). A single key would silently miss one class.
+     */
+    @Override
+    protected List<NaturalKeySpec> naturalKeys() {
+        return List.of(
+                new NaturalKeySpec("sharepoint_id", "sharepointId"),
+                new NaturalKeySpec("local_uuid", "localUuid"));
     }
 
     @Override

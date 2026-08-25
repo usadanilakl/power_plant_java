@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.pwa;
 
+import com.dk_power.power_plant_java.dto.files.FileConnectorDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.PointDrawingDto;
+import com.dk_power.power_plant_java.dto.pwa.qr.QrConnectorDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -9,6 +11,7 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileConnectorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +24,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -47,6 +51,8 @@ public class PwaLotoDrawingService {
     private final LotoRepo lotoRepo;
     private final LotoPointRepo lotoPointRepo;
     private final FileRepo fileRepo;
+    /** Reused rather than re-querying: it already maps connectors and resolves the target file's number. */
+    private final NgFileConnectorService connectorService;
 
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
@@ -85,29 +91,86 @@ public class PwaLotoDrawingService {
             // the desktop uses; walking the lazy collection could otherwise come back empty.
             LotoPoint p = lotoPointRepo.findByIdWithEquipment(pointId);
             if (p == null || p.getEquipmentList() == null) continue;
-            List<PointDrawingDto> withRect = new ArrayList<>();
-            Map<Long, PointDrawingDto> noRect = new LinkedHashMap<>();
-            Set<Long> filesWithRect = new HashSet<>();
-            for (Equipment eq : p.getEquipmentList()) {
-                FileObject file = eq.getMainFile();
-                if (file == null || file.getId() == null) continue;
-                double[] rect = parseCoordinates(eq.getCoordinates());
-                double[] dims = parsePictureSize(eq.getOriginalPictureSize());
-                if (rect != null && dims != null) {
-                    withRect.add(new PointDrawingDto(p.getId(), file.getId(), file.getName(),
-                            dims[0], dims[1], rect[0], rect[1], rect[2], rect[3]));
-                    filesWithRect.add(file.getId());
-                } else {
-                    noRect.putIfAbsent(file.getId(), new PointDrawingDto(p.getId(), file.getId(), file.getName(),
-                            null, null, null, null, null, null));
-                }
-            }
-            out.addAll(withRect);
-            for (Map.Entry<Long, PointDrawingDto> e : noRect.entrySet()) {
-                if (!filesWithRect.contains(e.getKey())) out.add(e.getValue());
-            }
+            out.addAll(descriptorsFor(p.getId(), p.getEquipmentList()));
         }
         return out;
+    }
+
+    /**
+     * The shared descriptor builder: one entry per Equipment occurrence, stamped with {@code ownerId}.
+     *
+     * <p>Extracted from {@link #drawingsForPoints} so the QR resolver can reuse it verbatim for an
+     * <b>Equipment</b> match — a tag with no LOTO point still has drawings, and they are found exactly the
+     * same way (the Equipment IS the occurrence). For that fallback {@code ownerId} is the equipment id;
+     * the match's {@code type} tells the client which id space it is in.</p>
+     *
+     * <p>Highlight-suppression rule (unchanged): per owner, a file that has at least one drawn shape
+     * suppresses a duplicate no-highlight entry for the same file.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<PointDrawingDto> descriptorsFor(Long ownerId, Collection<Equipment> equipment) {
+        if (equipment == null) return List.of();
+        List<PointDrawingDto> withRect = new ArrayList<>();
+        Map<Long, PointDrawingDto> noRect = new LinkedHashMap<>();
+        Set<Long> filesWithRect = new HashSet<>();
+        for (Equipment eq : equipment) {
+            FileObject file = eq.getMainFile();
+            if (file == null || file.getId() == null) continue;
+            double[] rect = parseCoordinates(eq.getCoordinates());
+            double[] dims = parsePictureSize(eq.getOriginalPictureSize());
+            if (rect != null && dims != null) {
+                withRect.add(new PointDrawingDto(ownerId, file.getId(), file.getName(),
+                        dims[0], dims[1], rect[0], rect[1], rect[2], rect[3]));
+                filesWithRect.add(file.getId());
+            } else {
+                noRect.putIfAbsent(file.getId(), new PointDrawingDto(ownerId, file.getId(), file.getName(),
+                        null, null, null, null, null, null));
+            }
+        }
+        List<PointDrawingDto> out = new ArrayList<>(withRect);
+        for (Map.Entry<Long, PointDrawingDto> e : noRect.entrySet()) {
+            if (!filesWithRect.contains(e.getKey())) out.add(e.getValue());
+        }
+        return out;
+    }
+
+    /**
+     * Off-page references drawn on a file, normalised for the phone viewer.
+     *
+     * <p>Connectors store their shape with the same {@code coordinates} + {@code originalPictureSize}
+     * convention as Equipment (see {@code FileConnector}), so the parsers below apply unchanged. The
+     * rectangle is converted to fractions of the drawn-at image size here rather than on the client: the
+     * viewer places shapes in percentages, which stays correct even when the served JPG derivative is a
+     * different pixel size than the image the shape was drawn on.</p>
+     *
+     * <p>Rows that never got a usable shape (no coordinates, or no recorded picture size) are dropped —
+     * there is nowhere to draw them. Symbol/SVG rendering is deliberately not carried over from the
+     * desktop: on a phone, a labelled tap-target is the whole point.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<QrConnectorDto> connectorsForFile(Long fileId) {
+        if (fileId == null) return List.of();
+        List<QrConnectorDto> out = new ArrayList<>();
+        for (FileConnectorDto c : connectorService.findBySourceFile(fileId)) {
+            if (c.getTargetFileId() == null) continue; // orphan — nothing to navigate to
+            double[] rect = parseCoordinates(c.getCoordinates());
+            double[] dims = parsePictureSize(c.getOriginalPictureSize());
+            if (rect == null || dims == null) continue;
+            out.add(new QrConnectorDto(c.getId(), c.getTargetFileId(), connectorLabel(c),
+                    rect[0] / dims[0], rect[1] / dims[1], rect[2] / dims[0], rect[3] / dims[1]));
+        }
+        return out;
+    }
+
+    /**
+     * Display text for a connector chip. Mirrors the desktop mapper's fallback chain (explicit label →
+     * target file number → target file name → "#id"), resolved here so the client needs no second fetch.
+     */
+    private String connectorLabel(FileConnectorDto c) {
+        if (c.getLabel() != null && !c.getLabel().isBlank()) return c.getLabel();
+        if (c.getTargetFileNumber() != null && !c.getTargetFileNumber().isBlank()) return c.getTargetFileNumber();
+        if (c.getTargetFileName() != null && !c.getTargetFileName().isBlank()) return c.getTargetFileName();
+        return "Drawing #" + c.getTargetFileId();
     }
 
     /** The JPG bytes for a file, resolved from disk under the uploads root. */

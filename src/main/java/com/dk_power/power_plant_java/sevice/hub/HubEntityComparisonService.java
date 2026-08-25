@@ -43,7 +43,8 @@ public class HubEntityComparisonService {
 
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
-        "hibernateLazyInitializer", "handler"
+        "hibernateLazyInitializer", "handler",
+        "lastLoginDate" // per-device login timestamp, intentionally node-local (see UserRepo)
     );
 
     public HubEntityComparisonService(JdbcTemplate jdbcTemplate,

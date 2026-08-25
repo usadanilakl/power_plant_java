@@ -7,7 +7,6 @@ import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -781,16 +780,13 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     long countByZeroEnergyId(@Param("zeroEnergyId") Long zeroEnergyId);
 
     /**
-     * Reassigns all LOTO points from one ZeroEnergy to another.
-     * Used when merging ZeroEnergy items.
-     *
-     * @param sourceId The source ZeroEnergy ID to reassign from
-     * @param targetId The target ZeroEnergy ID to reassign to
-     * @return Number of LOTO points reassigned
+     * All LOTO points referencing a given ZeroEnergy. Used by the ZeroEnergy merge to
+     * re-point them onto the surviving row via MANAGED saves (setZeroEnergy + save), so
+     * @PostUpdate fires and the FK repoint emits a FieldChange and syncs. The old bulk
+     * {@code reassignZeroEnergy} JPQL was removed because it bypassed the sync listener,
+     * leaving peers pointing at the deleted ZeroEnergy (broken zero-energy method).
      */
-    @Modifying
-    @Query("UPDATE LotoPoint lp SET lp.zeroEnergy.id = :targetId WHERE lp.zeroEnergy.id = :sourceId")
-    int reassignZeroEnergy(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
+    List<LotoPoint> findByZeroEnergyId(Long zeroEnergyId);
 
     // ── Conflict detection queries ──
 

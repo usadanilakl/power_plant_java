@@ -114,6 +114,11 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/loto-standards/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
+                // Scanned-QR tag resolver + drawing/connector lookup (PwaQrController). Same bar as the LOTO
+                // endpoints above: the /qr/{tag} redirect on the hub is public so any phone camera can follow
+                // it, but the P&IDs behind it are plant data. Without this rule it would fall through to
+                // /api/pwa/secured/** .authenticated(), which would hand drawings to any signed-in contractor.
+                .requestMatchers("/api/pwa/secured/qr/**").hasAnyRole("PLANT", "ADMIN")
                 // Qualifications: the target model is READ-ONLY for plant staff, writable by ROLE_SAFETY.
                 // Reads are @GetMapping and writes are POST/PUT/DELETE under this path, so method-scoped
                 // matchers split the two (the GET rule must precede the write rule — first match wins).
@@ -211,7 +216,7 @@ public class SecurityConfigSpring {
                     "/api/contractors/",
                     "/api/files/", "/api/update/", "/api/electron-update/",
                     "/api/resource-packs/", "/api/sync-updates/",
-                    "/api/sync-test/", "/api/sync-e2e/",
+                    "/api/sync-test/", "/api/sync-e2e/", "/api/sync-conformance/",
                     "/api/data-integrity/", "/api/backup/",
                     "/api/attachments/",
                     "/h2-console/",

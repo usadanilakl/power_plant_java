@@ -150,7 +150,13 @@ public class NgConversationService implements NgCrudService<Conversation, Conver
     public void markRead(Long conversationId) {
         Long currentUserId = messagingUserContextService.getCurrentUserIdRequired();
         Conversation conversation = getAccessibleConversation(conversationId, currentUserId);
-        messageRepo.markIncomingMessagesAsRead(conversationId, currentUserId);
+        // Managed saves (not a bulk JPQL UPDATE) so each isRead flip fires @PostUpdate and emits
+        // a FieldChange — read receipts then converge across the user's devices instead of
+        // silently diverging. Only the actually-unread incoming messages are touched.
+        for (Message m : messageRepo.findUnreadIncoming(conversationId, currentUserId)) {
+            m.setIsRead(true);
+            messageRepo.save(m);
+        }
 
         if (currentUserId.equals(conversation.getInitiatorId())) {
             conversation.setInitiatorUnreadCount(0);

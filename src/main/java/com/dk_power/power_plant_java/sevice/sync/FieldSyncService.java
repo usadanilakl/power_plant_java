@@ -55,6 +55,23 @@ public class FieldSyncService {
     private final InstrumentLogMergeService instrumentLogMergeService;
     private final ConversationMergeService conversationMergeService;
     private final MessageMergeService messageMergeService;
+    // Permit SharePointMergeTemplate services added to runMergeCascade (2026-08-25) so their
+    // deterministic-coexist dedup runs PROMPTLY on the hub after each apply, not only on the
+    // SharePointSyncOrchestrator 30s poll (which is skipped entirely when sharepoint.sync.enabled=false).
+    private final LotoMergeService lotoMergeService;
+    private final SafeWorkMergeService safeWorkMergeService;
+    private final HotWorkMergeService hotWorkMergeService;
+    private final ConfinedSpaceMergeService confinedSpaceMergeService;
+    private final EnergizedWorkPermitMergeService energizedWorkPermitMergeService;
+    private final ExcavationPermitMergeService excavationPermitMergeService;
+    private final VentingPermitMergeService ventingPermitMergeService;
+    // 2026-08-25: Maximo + PhysicalObject dedup services. Not SharePointSyncable / not in the SP poll at all,
+    // so runMergeCascade is their ONLY hub-side merge trigger.
+    private final RecurringPmMergeService recurringPmMergeService;
+    private final MaximoTicketAssetMergeService maximoTicketAssetMergeService;
+    private final MaximoFormTemplateMergeService maximoFormTemplateMergeService;
+    private final MaximoFormSubmissionMergeService maximoFormSubmissionMergeService;
+    private final PhysicalObjectMergeService physicalObjectMergeService;
     private final DedupKeyResolver dedupKeyResolver;
     private final SyncDeadLetterService syncDeadLetterService;
     private final MembershipCrdtService membershipCrdtService;
@@ -103,6 +120,28 @@ public class FieldSyncService {
     // Default FALSE = current behavior (a no-op to ship); enabled per-cluster after lab validation.
     @org.springframework.beans.factory.annotation.Value("${sync.dedup.deterministic-convergence.enabled:false}")
     private boolean deterministicDedupConvergence;
+
+    /**
+     * Natural-key types that use the deterministic COEXIST path: an incoming duplicate CREATE is allowed
+     * to INSERT and coexist, then a hub-only merge service dedups the pair with managed JPA mutations that
+     * EMIT synced FieldChanges (so every node, INCLUDING the origin, converges). A type qualifies ONLY if
+     * it has such an emitting hub-only merge whose grouping key MATCHES this natural key. Deliberately
+     * EXCLUDED (they keep the old silent redirect): Instrument/InstrumentLog (merge groups by sharepoint_id
+     * but the natural key is tagNumber/localUuid — mismatch; Instrument.tagNumber is also @Column(unique)
+     * so a coexisting INSERT would violate the unique index), and RecurringPm / MaximoTicketAsset /
+     * MaximoFormTemplate / MaximoFormSubmission / PhysicalObject (no merge service at all — would coexist
+     * forever). See memory sync_emission_gap_audit_2026_08_24 for the per-type analysis.
+     */
+    private static final java.util.Set<String> DETERMINISTIC_COEXIST_TYPES = java.util.Set.of(
+            "Category", "Value", "WorkRequest", "Jha", "EmailCorrespondence", "User", "Conversation",
+            "Loto", "SafeWork", "HotWork", "ConfinedSpace",
+            "EnergizedWorkPermit", "ExcavationPermit", "VentingPermit",
+            // 2026-08-25 batch: Instrument (keyed on tag_number, unique constraint dropped), InstrumentLog
+            // (dual key sharepoint_id+local_uuid), and the Maximo natural-key types now have emitting hub-only
+            // merge services (RecurringPm/MaximoTicketAsset/MaximoFormTemplate/MaximoFormSubmission/
+            // PhysicalObject). STILL EXCLUDED: none remaining — every NATURAL_KEYS type now coexists.
+            "Instrument", "InstrumentLog",
+            "RecurringPm", "MaximoTicketAsset", "MaximoFormTemplate", "MaximoFormSubmission", "PhysicalObject");
 
     // Set by the applyIncomingChanges overload; if non-null, deferred change ids are collected here
     // so the caller can avoid acking them (D6). Plain field is safe under applyChangesLock.
@@ -178,6 +217,18 @@ public class FieldSyncService {
             InstrumentLogMergeService instrumentLogMergeService,
             ConversationMergeService conversationMergeService,
             MessageMergeService messageMergeService,
+            LotoMergeService lotoMergeService,
+            SafeWorkMergeService safeWorkMergeService,
+            HotWorkMergeService hotWorkMergeService,
+            ConfinedSpaceMergeService confinedSpaceMergeService,
+            EnergizedWorkPermitMergeService energizedWorkPermitMergeService,
+            ExcavationPermitMergeService excavationPermitMergeService,
+            VentingPermitMergeService ventingPermitMergeService,
+            RecurringPmMergeService recurringPmMergeService,
+            MaximoTicketAssetMergeService maximoTicketAssetMergeService,
+            MaximoFormTemplateMergeService maximoFormTemplateMergeService,
+            MaximoFormSubmissionMergeService maximoFormSubmissionMergeService,
+            PhysicalObjectMergeService physicalObjectMergeService,
             DedupKeyResolver dedupKeyResolver,
             SyncDeadLetterService syncDeadLetterService,
             MembershipCrdtService membershipCrdtService) {
@@ -207,6 +258,18 @@ public class FieldSyncService {
         this.instrumentLogMergeService = instrumentLogMergeService;
         this.conversationMergeService = conversationMergeService;
         this.messageMergeService = messageMergeService;
+        this.lotoMergeService = lotoMergeService;
+        this.safeWorkMergeService = safeWorkMergeService;
+        this.hotWorkMergeService = hotWorkMergeService;
+        this.confinedSpaceMergeService = confinedSpaceMergeService;
+        this.energizedWorkPermitMergeService = energizedWorkPermitMergeService;
+        this.excavationPermitMergeService = excavationPermitMergeService;
+        this.ventingPermitMergeService = ventingPermitMergeService;
+        this.recurringPmMergeService = recurringPmMergeService;
+        this.maximoTicketAssetMergeService = maximoTicketAssetMergeService;
+        this.maximoFormTemplateMergeService = maximoFormTemplateMergeService;
+        this.maximoFormSubmissionMergeService = maximoFormSubmissionMergeService;
+        this.physicalObjectMergeService = physicalObjectMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
         this.syncDeadLetterService = syncDeadLetterService;
         this.membershipCrdtService = membershipCrdtService;
@@ -939,6 +1002,21 @@ public class FieldSyncService {
             instrumentLogMergeService.mergeIfDuplicatesExist();
             conversationMergeService.mergeIfDuplicatesExist();
             messageMergeService.mergeIfDuplicatesExist();
+            // Permit types (2026-08-25): each is in the deterministic-coexist gate now, so a coexisting
+            // sharepoint_id duplicate must be merged HERE (promptly, hub-only) — the SharePointSyncOrchestrator
+            // 30s poll that used to be their only merge trigger is skipped when sharepoint.sync.enabled=false.
+            lotoMergeService.mergeIfDuplicatesExist();
+            safeWorkMergeService.mergeIfDuplicatesExist();
+            hotWorkMergeService.mergeIfDuplicatesExist();
+            confinedSpaceMergeService.mergeIfDuplicatesExist();
+            energizedWorkPermitMergeService.mergeIfDuplicatesExist();
+            excavationPermitMergeService.mergeIfDuplicatesExist();
+            ventingPermitMergeService.mergeIfDuplicatesExist();
+            recurringPmMergeService.mergeIfDuplicatesExist();
+            maximoTicketAssetMergeService.mergeIfDuplicatesExist();
+            maximoFormTemplateMergeService.mergeIfDuplicatesExist();
+            maximoFormSubmissionMergeService.mergeIfDuplicatesExist();
+            physicalObjectMergeService.mergeIfDuplicatesExist();
             // Reload remap table — merges may have persisted new remaps
             idRemapTable = loadPersistentRemaps();
         } catch (RuntimeException e) {
@@ -1137,10 +1215,15 @@ public class FieldSyncService {
                 // loser's deletion remapped onto it). Drop ONLY the deletion changes (ack them superseded);
                 // other field changes still legitimately merge into the survivor. The survivor's lifecycle
                 // is governed only by changes targeting its OWN id. Flag-gated + SCOPED to Category/Value:
-                // those are the only types that use the coexist+deterministic-merge path where the remap
-                // target is a merge-tombstoned dead duplicate. Every OTHER natural-key type (WorkRequest,
-                // Jha, User, …) still uses the old keep-local redirect, where a user's delete of a redirected
-                // id is a REAL delete that must reach the survivor — dropping it there would lose the delete.
+                // those are the types whose deterministic merge (ValueReferenceRepointService) WRITES a
+                // dedup_id_remap, so a loser's delete would resolve THROUGH that remap onto the survivor and
+                // destroy it — hence dropped here. WorkRequest also coexists+deterministically-merges now,
+                // but its WorkRequestMergeService does NOT write a dedup_id_remap (it re-points children via
+                // managed saves and soft-deletes the loser by its own id), so a WR change never resolves to
+                // a different targetEntityId and never reaches this block — no drop needed. The remaining
+                // natural-key types (Jha, User, …) still use the old keep-local redirect, where a user's
+                // delete of a redirected id is a REAL delete that must reach the survivor — dropping it
+                // there would lose the delete.
                 if (deterministicDedupConvergence
                         && ("Category".equals(entityType) || "Value".equals(entityType))) {
                     List<FieldChange> kept = new ArrayList<>(changes.size());
@@ -1320,17 +1403,29 @@ public class FieldSyncService {
                     Long existingDupId = dedupKeyResolver.findExistingByNaturalKey(
                         entityType, entityId, changes, idRemapTable);
 
-                    // Deterministic-convergence path (flag-gated, Category/Value only): do NOT silently
-                    // redirect the incoming CREATE onto whatever row this node happened to already have.
-                    // The old redirect recorded its keep-local decision only in dedup_id_remap (native,
-                    // unsynced), so two nodes that independently created the same natural key kept
-                    // DIFFERENT survivors forever. Instead let the incoming row INSERT and coexist; the
-                    // hub's deterministic (smallest-id) CategoryValueMergeService then merges the pair and
-                    // emits SYNCED tombstone+repoint that EVERY node applies — so the whole cluster
-                    // converges on the smallest id regardless of arrival order (no silent divergence).
+                    // Deterministic-convergence path (flag-gated): do NOT silently redirect the incoming
+                    // CREATE onto whatever row this node happened to already have. The old redirect
+                    // recorded its keep-local decision only in dedup_id_remap (native, UNSYNCED, per-node),
+                    // so two nodes that independently created the same natural key kept DIFFERENT survivors
+                    // forever — and worse, the ORIGIN node (which never re-applies its own creates) never
+                    // computed the remap at all, so it stayed diverged from the rest of the cluster
+                    // (lab-confirmed 2026-08-25: a client that made a sharepoint_id duplicate offline kept
+                    // its own row while hub+peers remapped to the survivor). Instead let the incoming row
+                    // INSERT and coexist; the hub-only deterministic (smallest-id) merge service then merges
+                    // the pair with REAL managed JPA mutations (setDeleted + re-point) that emit SYNCED
+                    // FieldChanges EVERY node applies — origin included — so the whole cluster converges on
+                    // the smallest id regardless of arrival order (no silent divergence).
+                    //
+                    // The exact set is DETERMINISTIC_COEXIST_TYPES (declared near the top). Every member has
+                    // a hub-only merge service that re-points children + soft-deletes the loser via MANAGED
+                    // JPA saves that EMIT synced FieldChanges (so the origin converges too). None of them
+                    // write a dedup_id_remap, so the Cat/Value-scoped loser-delete-drop block above correctly
+                    // does not apply to them (their loser's soft-delete targets its own id, never remaps onto
+                    // the survivor). Excluded types (key mismatch / unique constraint / no merge) keep the
+                    // old redirect — see the DETERMINISTIC_COEXIST_TYPES javadoc.
                     boolean deterministicCoexist = existingDupId != null
                         && deterministicDedupConvergence
-                        && ("Category".equals(entityType) || "Value".equals(entityType));
+                        && DETERMINISTIC_COEXIST_TYPES.contains(entityType);
 
                     if (deterministicCoexist) {
                         log.info("dedup.deterministic: {}#{} coexists with existing #{}; hub merge will converge (smallest-id wins)",
@@ -1708,11 +1803,16 @@ public class FieldSyncService {
             // Remap the informational-binder FKs into PhysicalObject (plain-Long soft FKs, not @ManyToOne, matching
             // the FileObject soft-FK convention). PhysicalObject IS a dedup candidate (maximoKey), so a dedup on the
             // referenced node must be honored here or the link dangles. Extend the entity set as more bindings are added.
+            // Every entity that binds to a PhysicalObject via a plain Long physicalObjectId FK. RoundIssue +
+            // RoundQuestion were a real gap here (2026-08-25): a persisted PhysicalObject remap left their
+            // binder links dangling. DiagramPlacement's polymorphic sourceEntityId binding is re-pointed by
+            // PhysicalObjectMergeService.transferRelationships (managed saves) rather than this apply-time patch.
             String bindingEntityType = entity.getClass().getSimpleName();
             if (value instanceof Long rawFk
                     && "physicalObjectId".equals(change.getFieldName())
                     && ("FileObject".equals(bindingEntityType) || "WorkArea".equals(bindingEntityType)
-                        || "LotoPoint".equals(bindingEntityType))) {
+                        || "LotoPoint".equals(bindingEntityType) || "RoundIssue".equals(bindingEntityType)
+                        || "RoundQuestion".equals(bindingEntityType))) {
                 Long remapped = DedupKeyResolver.resolveRemappedId("PhysicalObject", rawFk, idRemapTable);
                 if (!remapped.equals(rawFk)) {
                     log.debug("Remapped {}.physicalObjectId {} -> {}", bindingEntityType, rawFk, remapped);

@@ -92,6 +92,12 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Query("SELECT COUNT(fc) FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL)")
     long countPendingChangesFor(@Param("machineId") String machineId);
 
+    // Sync-conformance harness: every FieldChange emitted for one entity after a cutoff. The emission
+    // assertion is "did the listener produce ANY row for this (entityType, entityId) since I mutated it?"
+    // — a pure @ManyToMany/@OneToMany collection change that fails to fire @PostUpdate produces ZERO rows,
+    // which IS the defect the harness detects.
+    List<FieldChange> findByEntityTypeAndEntityIdAndTimestampAfter(String entityType, Long entityId, Instant since);
+
     // Count total changes
     long count();
 

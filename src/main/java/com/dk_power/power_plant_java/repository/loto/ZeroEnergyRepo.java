@@ -2,7 +2,6 @@ package com.dk_power.power_plant_java.repository.loto;
 
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -41,13 +40,8 @@ public interface ZeroEnergyRepo extends BaseRepository<ZeroEnergy> {
            "WHERE NOT EXISTS (SELECT 1 FROM LotoPoint lp WHERE lp.zeroEnergy = ze)")
     List<ZeroEnergy> findOrphans();
 
-    /**
-     * Deletes all ZeroEnergy items not referenced by any LotoPoint.
-     *
-     * @return Number of deleted items
-     */
-    @Modifying
-    @Query("DELETE FROM ZeroEnergy ze " +
-           "WHERE NOT EXISTS (SELECT 1 FROM LotoPoint lp WHERE lp.zeroEnergy = ze)")
-    int deleteOrphans();
+    // NOTE: the old bulk `deleteOrphans()` JPQL DELETE was removed — it purged rows without
+    // loading them, so @PostRemove never fired and no DELETE marker was emitted, leaving the
+    // orphans stranded on every other node. Callers now delete via findOrphans() + deleteAll(),
+    // which fires @PostRemove per row so the deletes sync.
 }

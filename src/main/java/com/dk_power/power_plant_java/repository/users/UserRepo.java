@@ -13,6 +13,11 @@ import java.time.LocalDateTime;
 
 public interface UserRepo extends BaseRepository<User> {
 
+    // lastLoginDate is intentionally NODE-LOCAL: these native UPDATEs write it without firing
+    // @PostUpdate, so no FieldChange is emitted, and "lastLoginDate" is in every EXCLUDED_FIELDS
+    // set (FieldChangeTracker + the sync/drift comparison services) so it never syncs and never
+    // shows as drift. Each device keeps its own "last login here" timestamp. Do NOT convert these
+    // to managed saves expecting the value to propagate.
     @Modifying
     @Transactional
     @Query(value = "UPDATE users SET last_login_date = :date WHERE email = :email", nativeQuery = true)

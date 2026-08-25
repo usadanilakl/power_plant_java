@@ -186,7 +186,10 @@ export class ColdResyncManager {
 
       let downloaded = 0;
       let skipped = 0;
+      let failed = 0;
+      let processed = 0;
       for (const entry of manifest) {
+        processed++;
         let relativePath = entry.relativePath;
         if (relativePath.startsWith('uploads-prod/')) {
           relativePath = relativePath.substring('uploads-prod/'.length);
@@ -199,7 +202,7 @@ export class ColdResyncManager {
 
         if (fs.existsSync(localPath)) {
           skipped++;
-          downloaded++;
+          onProgress(`Downloading files... (${processed}/${manifest.length})`, 5 + Math.round((processed / manifest.length) * 95));
           continue;
         }
 
@@ -207,21 +210,34 @@ export class ColdResyncManager {
           fs.mkdirSync(localDir, { recursive: true });
         }
 
-        const encodedPath = entry.relativePath.split('/').map(encodeURIComponent).join('/');
+        // Fetch via the QUERY-PARAM endpoint — the file path rides in ?path= so the URL path carries no
+        // file extension. In production the hub sits behind IIS/ARR, whose static-file handler intercepts
+        // an extension-bearing proxied URL (…/foo.pdf) under Windows Auth and 401s it BEFORE forwarding.
+        // The old `/permanent/<path>.pdf` form hit exactly that 401; because a failed download here is only
+        // warned-and-skipped (not retried, and previously miscounted as "downloaded"), those files silently
+        // never arrived and resurfaced later as file drift. A no-extension URL path sidesteps IIS, and this
+        // is the same endpoint FileDriftService.pull uses on the backend.
+        const encodedParam = encodeURIComponent(entry.relativePath);
         try {
-          await this.downloadFile(`${serverUrl}/api/resync/files/permanent/${encodedPath}`, localPath, headers);
+          await this.downloadFile(`${serverUrl}/api/resync/files/permanent-by-path?path=${encodedParam}`, localPath, headers);
+          downloaded++;
         } catch (err: any) {
+          failed++;
           console.warn(`Failed to download file: ${entry.relativePath} — ${err.message}`);
         }
 
-        downloaded++;
-        const pct = 5 + Math.round((downloaded / manifest.length) * 95);
-        onProgress(`Downloading files... (${downloaded}/${manifest.length})`, pct);
+        const pct = 5 + Math.round((processed / manifest.length) * 95);
+        onProgress(`Downloading files... (${processed}/${manifest.length})`, pct);
       }
 
-      console.log(`Files sync: ${downloaded - skipped} downloaded, ${skipped} skipped`);
+      console.log(`Files sync: ${downloaded} downloaded, ${skipped} skipped, ${failed} failed`);
+      if (failed > 0) {
+        // Do NOT fail the whole cold resync for per-file misses — the DB is already in place and the
+        // file-drift detector will re-attempt these. But make the loss LOUD instead of silent.
+        console.warn(`Cold resync: ${failed} file(s) could not be downloaded from the hub; file-drift repair will retry them.`);
+      }
       this.persistSyncStatus();
-      onProgress('Files synced', 100);
+      onProgress(failed > 0 ? `Files synced (${failed} failed)` : 'Files synced', 100);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Files sync failed' };

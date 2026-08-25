@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.loto.zero_energy;
 
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.mappers.ZeroEnergyMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -126,7 +127,11 @@ public class ZeroEnergyServiceImpl implements ZeroEnergyService {
 
     @Override
     public int cleanupOrphans() {
-        return zeroEnergyRepo.deleteOrphans();
+        // Managed delete (not the bulk JPQL DELETE) so @PostRemove fires per row and the
+        // DELETE markers emit + sync, instead of stranding the orphans on other nodes.
+        List<ZeroEnergy> orphans = zeroEnergyRepo.findOrphans();
+        zeroEnergyRepo.deleteAll(orphans);
+        return orphans.size();
     }
 
     @Override
@@ -145,8 +150,15 @@ public class ZeroEnergyServiceImpl implements ZeroEnergyService {
 
         ZeroEnergy target = targetOpt.get();
 
-        // Reassign all LotoPoints from source to target
-        int count = lotoPointRepo.reassignZeroEnergy(sourceId, targetId);
+        // Reassign all LotoPoints from source to target via MANAGED saves so each zeroEnergy
+        // FK repoint fires @PostUpdate and emits a FieldChange (the old bulk reassignZeroEnergy
+        // JPQL bypassed the sync listener, leaving peers pointing at the deleted source row).
+        int count = 0;
+        for (LotoPoint p : lotoPointRepo.findByZeroEnergyId(sourceId)) {
+            p.setZeroEnergy(target);
+            lotoPointRepo.save(p);
+            count++;
+        }
 
         // Delete the source
         zeroEnergyRepo.deleteById(sourceId);

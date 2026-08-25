@@ -46,7 +46,8 @@ public class SyncComparisonService {
     private static final ConcurrentHashMap<Class<?>, List<FieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
-        "hibernateLazyInitializer", "handler"
+        "hibernateLazyInitializer", "handler",
+        "lastLoginDate" // per-device login timestamp, intentionally node-local (see UserRepo)
     );
 
     public SyncComparisonService(SyncConfig syncConfig,

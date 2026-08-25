@@ -276,6 +276,39 @@ public class HubResyncController {
             .body(resource);
     }
 
+    /**
+     * Same bytes as {@link #downloadFromPermanentStorage}, but the file path arrives as a QUERY PARAM so the
+     * request URL path is {@code /api/resync/files/permanent-by-path} — no file extension. In production the
+     * hub sits behind IIS/ARR, whose static-file handler grabs extension-bearing proxied URLs (…/foo.pdf)
+     * under Windows Auth and returns 401 before ARR forwards them to the app (confirmed: the app itself
+     * authorizes /files/permanent/** fine — it returns 404, not 401, for a missing file with no proxy). A
+     * no-extension URL path sidesteps that. The file-content drift PULL uses this endpoint.
+     */
+    @GetMapping("/files/permanent-by-path")
+    public ResponseEntity<Resource> downloadFromPermanentStorageByPath(
+            @RequestParam("path") String relativePath,
+            @RequestHeader(value = "X-Machine-Id", required = false) String machineId) {
+        if (relativePath == null || relativePath.isBlank()) return ResponseEntity.badRequest().build();
+        String decodedPath = relativePath; // @RequestParam already decoded once; handle a double-encoding defensively
+        if (decodedPath.contains("%")) {
+            try { decodedPath = java.net.URLDecoder.decode(decodedPath, "UTF-8"); } catch (Exception ignore) { }
+        }
+        log.debug("Permanent file download (by-path): {} (machine: {})", decodedPath, machineId);
+        Optional<byte[]> content = resyncService.loadFromUploads(decodedPath);
+        if (content.isEmpty() && !decodedPath.equals(relativePath)) {
+            content = resyncService.loadFromUploads(relativePath);
+        }
+        if (content.isEmpty()) return ResponseEntity.notFound().build();
+        String fileName = Paths.get(decodedPath).getFileName().toString();
+        String contentType = determineContentType(fileName);
+        ByteArrayResource resource = new ByteArrayResource(content.get());
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+            .contentType(MediaType.parseMediaType(contentType))
+            .contentLength(content.get().length)
+            .body(resource);
+    }
+
     // ==================== Bulk Import ====================
 
     @GetMapping("/import/safety-check")
