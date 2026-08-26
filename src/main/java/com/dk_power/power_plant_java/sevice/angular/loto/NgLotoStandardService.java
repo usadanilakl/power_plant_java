@@ -58,6 +58,10 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     private final com.dk_power.power_plant_java.repository.permits.WorkAreaRepo workAreaRepo;
     private final com.dk_power.power_plant_java.repository.loto.RedTagStandardRepo redTagStandardRepo;
     private final com.dk_power.power_plant_java.repository.loto.LotoStandardWalkdownRepo lotoStandardWalkdownRepo;
+    // Explicit relationship-change emitter for collection edits that don't dirty a scalar (a pure @ManyToMany
+    // change touches only the join table, so @PostUpdate never fires and nothing syncs). See updateStandard.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker fieldChangeTracker;
 
     public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService, LotoStandardApprovalEventRepo approvalEventRepo, LotoStandardPendingChangeRepo pendingChangeRepo, NgValueService ngValueService, UserRepo userRepo, ObjectMapper objectMapper,
                                   com.dk_power.power_plant_java.repository.loto.LotoRepo lotoRepo,
@@ -545,18 +549,33 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
                     captureFieldProposal(existing, null, "lotoPoints (replace)", oldIds, newIdsStr);
                 } else {
                     existing.setLotoPoints(newPoints);
+                    // Rebuild lotoPointOrder to match the new list. This keeps the order map correct AND —
+                    // critically — dirties a SCALAR column so Hibernate UPDATEs the loto_standard row and
+                    // @PostUpdate fires, letting the M2M OR-Set capture emit the membership change. A pure
+                    // setLotoPoints() replace changes only the join table → @PostUpdate never fires → the new
+                    // point list never syncs to the hub (a remove-point sibling). See removeLotoPointToStandard.
+                    Map<String, Integer> rebuiltOrder = new java.util.LinkedHashMap<>();
+                    int ord = 1;
+                    for (LotoPoint p : newPoints) if (p.getId() != null) rebuiltOrder.put(String.valueOf(p.getId()), ord++);
+                    existing.setLotoPointOrder(rebuiltOrder);
                 }
             }
         }
 
         // Groups never participate in pending review — applied directly regardless of status.
         if (standardIdDto.getGroups() != null) {
+            java.util.Set<Long> beforeGroupIds = existing.getGroups() == null ? new HashSet<>()
+                : existing.getGroups().stream().map(com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity::getId).collect(Collectors.toSet());
             Set<com.dk_power.power_plant_java.entities.categories.Value> newGroups = standardIdDto.getGroups().stream()
                 .filter(Objects::nonNull)
                 .map(id -> entityManager.find(com.dk_power.power_plant_java.entities.categories.Value.class, id))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(HashSet::new));
             existing.setGroups(newGroups);
+            java.util.Set<Long> afterGroupIds = newGroups.stream().map(com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity::getId).collect(Collectors.toSet());
+            // Groups have no order-map scalar to piggyback on, so a groups-only edit dirties nothing → emit the
+            // membership change explicitly (same pattern as NgLotoPointService.processLotoPoint).
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(existing, "groups", beforeGroupIds, afterGroupIds, "ManyToMany");
         }
 
         entityManager.flush();

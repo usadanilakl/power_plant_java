@@ -359,21 +359,40 @@ public class MaximoWorkOrderAdapter {
         // thousands of those. The operator view wants the OPEN outage work (APPR/INPRG/WMATL/WPCOND/…) — the
         // same set Maximo's default WO list shows (~165), not the closed backlog.
         addNum(conds, "historyflag", "0");
-        Map<String, String> params = new LinkedHashMap<>();
-        // Select the WO's worklog INLINE ({@code spi:worklog}, the write/inline key — the read sub-collection is
-        // "woworklog") so we can flag which WOs already have a LOTO note in this ONE query — no per-WO calls.
-        params.put("oslc.select", SELECT_FIELDS + ",spi:" + outageTypeAttr + ",spi:worklog{spi:description}");
-        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
-        params.put("oslc.where", String.join(" and ", conds));
-        params.put("oslc.orderBy", "-spi:reportdate");
-        List<Map<String, Object>> rows = members(access.getMap(access.osUrl(OS), params));
+        String where = String.join(" and ", conds);
+        String baseSelect = SELECT_FIELDS + ",spi:" + outageTypeAttr;
+
+        // Enrich with the WO's worklog INLINE so we can flag which WOs already have a LOTO note in this ONE query
+        // (no per-WO calls). Select the collection BY NAME ("spi:worklog") — NOT the OSLC brace sub-select
+        // "spi:worklog{spi:description}": Spring's UriComponentsBuilder misreads "{...}" as a URI-template variable,
+        // leaves the braces unencoded, and URI construction then throws "Illegal character {" so the whole query
+        // fails (the 502). If the enriched select is rejected for any reason, fall back to the plain query so the
+        // list ALWAYS loads — the badge just won't populate.
+        List<Map<String, Object>> rows;
+        boolean enriched = true;
+        try {
+            rows = members(access.getMap(access.osUrl(OS), outageParams(baseSelect + ",spi:worklog", where, pageSize)));
+        } catch (RuntimeException e) {
+            log.warn("[Maximo] outage worklog-enrich failed ({}) — loading without LOTO counts", e.getMessage());
+            rows = members(access.getMap(access.osUrl(OS), outageParams(baseSelect, where, pageSize)));
+            enriched = false;
+        }
         List<MaximoWorkOrderDto> out = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) {
             MaximoWorkOrderDto d = map(row);
-            d.setLotoNoteCount(countLotoNotes(row));
+            if (enriched) d.setLotoNoteCount(countLotoNotes(row));
             out.add(d);
         }
         return out;
+    }
+
+    private static Map<String, String> outageParams(String select, String where, int pageSize) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("oslc.select", select);
+        params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
+        params.put("oslc.where", where);
+        params.put("oslc.orderBy", "-spi:reportdate");
+        return params;
     }
 
     /** Count LOTO isolation notes in a WO row's inline {@code spi:worklog} (rows titled {@link #LOTO_NOTE_TITLE}). */
