@@ -35,6 +35,10 @@ public class HeatTraceServiceImpl implements HeatTraceService {
     private final EquipmentService equipmentService;
     private final FileService fileService;
     private final DataDistributionService dataDistributionService;
+    // Explicit relationship-change emitter — HeatTrace's equipmentList/pid @ManyToMany replace dirties no
+    // scalar, so @PostUpdate never fires and the change wouldn't sync. See the save(dto) override below.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker fieldChangeTracker;
 
     public HeatTraceServiceImpl(HeatTraceRepo heatTraceRepo, HeatTraceMapper heatTraceMapper, SessionFactory sessionFactory, HtBreakerService htBreakerService, HtPanelService htPanelService, EquipmentService equipmentService, FileService fileService, @Lazy DataDistributionService dataDistributionService) {
         this.heatTraceRepo = heatTraceRepo;
@@ -70,6 +74,30 @@ public class HeatTraceServiceImpl implements HeatTraceService {
     @Override
     public SessionFactory getSessionFactory() {
         return sessionFactory;
+    }
+
+    @Override
+    public HeatTrace save(HeatTraceDto dto) {
+        java.util.Set<Long> beforeEq = new java.util.HashSet<>();
+        java.util.Set<Long> beforePid = new java.util.HashSet<>();
+        if (dto.getId() != null) {
+            HeatTrace prior = getEntityById(dto.getId());
+            if (prior != null) {
+                if (prior.getEquipmentList() != null) for (var e : prior.getEquipmentList()) if (e != null && e.getId() != null) beforeEq.add(e.getId());
+                if (prior.getPid() != null) for (var p : prior.getPid()) if (p != null && p.getId() != null) beforePid.add(p.getId());
+            }
+        }
+        HeatTrace saved = save(convertToEntity(dto)); // same as the base CrudService.save(dto)
+        if (dto.getId() != null && saved != null) {
+            java.util.Set<Long> afterEq = new java.util.HashSet<>();
+            java.util.Set<Long> afterPid = new java.util.HashSet<>();
+            if (saved.getEquipmentList() != null) for (var e : saved.getEquipmentList()) if (e != null && e.getId() != null) afterEq.add(e.getId());
+            if (saved.getPid() != null) for (var p : saved.getPid()) if (p != null && p.getId() != null) afterPid.add(p.getId());
+            // Owning @ManyToMany replace dirties no scalar → @PostUpdate silent. Emit both memberships explicitly.
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(saved, "equipmentList", beforeEq, afterEq, "ManyToMany");
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(saved, "pid", beforePid, afterPid, "ManyToMany");
+        }
+        return saved;
     }
 
     @Override

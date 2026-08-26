@@ -9,8 +9,9 @@
       </div>
     </div>
     <div class="chips">
-      <div class="chip"><span class="dot amber"></span><b>{{ typesDrifting() }}</b> types drifting</div>
-      <div class="chip"><span class="dot red"></span><b>{{ totalDrift() }}</b> rows</div>
+      <div class="chip" title="Entity types with any hub or SharePoint drift"><span class="dot amber"></span><b>{{ typesDrifting() }}</b> types drifting</div>
+      <div class="chip" title="Rows that actually DIFFER from the hub — the sync issues to resolve"><span class="dot red"></span><b>{{ hubDrift() }}</b> hub drift</div>
+      <div class="chip" title="Rows not yet copied to the SharePoint BACKUP — normal backup lag, not a sync problem"><span class="dot gray"></span><b>{{ spBackupPending() }}</b> not backed up (SP)</div>
       <div class="chip">last scan <b>{{ fmt(lastScanAt()) }}</b></div>
       <div class="chip"><span class="dot blue"></span><b>{{ outgoingPending() }}</b> outgoing pending</div>
       <div class="chip"><span class="dot blue"></span><b>{{ incomingPending() }}</b> incoming pending</div>
@@ -24,19 +25,19 @@
   <div class="dc-breakdown">
     <button class="bd-item hub" [class.on]="kindFilter() === 'hubDiffers'" (click)="filterBy('hubDiffers')"
             [title]="'Row exists on both, but the content differs from the hub — click to filter. All types: ' + breakdown().hubDiffers">
-      <span class="bd-n">{{ selectedType() ? typeCounts().hubDiffers : breakdown().hubDiffers }}</span><span class="bd-l">differ from hub</span>
+      <span class="bd-n">{{ singleTypeSelected() ? typeCounts().hubDiffers : breakdown().hubDiffers }}</span><span class="bd-l">differ from hub</span>
     </button>
     <button class="bd-item pull" [class.on]="kindFilter() === 'onHubNotLocal'" (click)="filterBy('onHubNotLocal')"
             [title]="'The hub has these rows, this node doesn\'t — Use Hub pulls them. Click to filter. All types: ' + breakdown().onHubNotLocal">
-      <span class="bd-n">{{ selectedType() ? typeCounts().onHubNotLocal : breakdown().onHubNotLocal }}</span><span class="bd-l">on hub, not here</span>
+      <span class="bd-n">{{ singleTypeSelected() ? typeCounts().onHubNotLocal : breakdown().onHubNotLocal }}</span><span class="bd-l">on hub, not here</span>
     </button>
     <button class="bd-item push" [class.on]="kindFilter() === 'localNotOnHub'" (click)="filterBy('localNotOnHub')"
             [title]="'This node has these rows, the hub doesn\'t — Keep Local pushes them. Click to filter. All types: ' + breakdown().localNotOnHub">
-      <span class="bd-n">{{ selectedType() ? typeCounts().localNotOnHub : breakdown().localNotOnHub }}</span><span class="bd-l">here, not on hub</span>
+      <span class="bd-n">{{ singleTypeSelected() ? typeCounts().localNotOnHub : breakdown().localNotOnHub }}</span><span class="bd-l">here, not on hub</span>
     </button>
     <button class="bd-item sp" [class.on]="kindFilter() === 'sharePoint'" (click)="filterBy('sharePoint')"
             [title]="'Rows missing on SharePoint — click to filter. All types: ' + breakdown().sharePoint">
-      <span class="bd-n">{{ selectedType() ? typeCounts().sharePoint : breakdown().sharePoint }}</span><span class="bd-l">not on SharePoint</span>
+      <span class="bd-n">{{ singleTypeSelected() ? typeCounts().sharePoint : breakdown().sharePoint }}</span><span class="bd-l">not on SharePoint</span>
     </button>
     @if (filtering()) {
       <button class="bd-clear" (click)="clearFilters()" title="Show every drifted row again">✕ clear filter</button>
@@ -66,12 +67,31 @@
         }
       </div>
 
+      <!-- One combined list of every drifting row, across all types (item 3). -->
+      @if (driftingTypes().length) {
+        <div class="type all-row" [class.on]="isAllMode()" (click)="selectAll()">
+          <div class="tinfo">
+            <div class="nm">▤ All drifting</div>
+            <div class="meta">every type in one list</div>
+          </div>
+          <span class="cnt warn">{{ totalDrift() }}</span>
+        </div>
+      }
+
       <div class="rail-h">Drifting</div>
       @for (o of driftingTypes(); track o.entityType) {
         <div class="type" [class.on]="selectedType() === o.entityType" (click)="selectType(o.entityType)">
           <div class="tinfo">
             <div class="nm">{{ o.entityType }}</div>
             <div class="meta">{{ o.spBacked ? 'hub + SP' : 'hub' }} · {{ fmt(o.lastScannedAt) }}</div>
+            <!-- Split of the flagged count by drift kind (item 4) so the rail says WHAT kind of drift, not just how much. -->
+            @if (typeSplit(o.entityType).length) {
+              <div class="tsplit">
+                @for (s of typeSplit(o.entityType); track s.label) {
+                  <span class="tsplit-i {{ s.cls }}">{{ s.n }} {{ s.label }}</span>
+                }
+              </div>
+            }
           </div>
           <span class="cnt warn">{{ o.flaggedCount }}</span>
         </div>
@@ -199,6 +219,62 @@
               </table>
             </div>
           }
+        }
+      } @else if (isAllMode()) {
+        <!-- ===== "All" — every drifting row, all types, one list (item 3) ===== -->
+        <div class="main-h">
+          <h3>▤ All drifting</h3>
+          <span class="tag">
+            @if (kindFilter()) { {{ allViewRowsFiltered().length }} of {{ allViewRows().length }} }
+            @else { {{ allViewRows().length }} rows · {{ typesDrifting() }} types }
+          </span>
+        </div>
+        @if (loadingRecords()) {
+          <div class="pad">Loading every type…</div>
+        } @else if (!allViewRows().length) {
+          <div class="pad">Nothing drifting anywhere — every type is in sync. 🎉</div>
+        } @else if (!allViewRowsFiltered().length) {
+          <div class="pad">No rows match this filter.
+            <button class="btn xs ghost" (click)="clearFilters()">Show all {{ allViewRows().length }}</button>
+          </div>
+        } @else {
+          <div class="tbl-scroll">
+            <table>
+              <thead><tr>
+                <th>Type</th><th>Entity</th><th>Drift</th><th>Detail</th><th class="ra">Actions</th>
+              </tr></thead>
+              <tbody>
+                @for (row of allViewRowsFiltered(); track row.key) {
+                  <tr class="rowclick" (click)="openInType(row)" title="Open in its type view to compare and resolve">
+                    <td><span class="tag">{{ row.type }}</span></td>
+                    <td>
+                      @if (allLabel(row)) { <span class="ename">{{ allLabel(row) }}</span> }
+                      <span class="id">#{{ row.id }}</span>
+                    </td>
+                    <td>
+                      @if (row.hub) { <span class="badge h">H</span> }
+                      @if (row.sp) { <span class="badge s">SP</span> }
+                    </td>
+                    <td class="detail">
+                      @if (row.hub) { <span class="k">{{ kindText(row.hub) }}</span> }
+                      @if (row.hub && row.sp) { <span> · </span> }
+                      @if (row.sp) { <span class="k">missing on SharePoint</span> }
+                    </td>
+                    <td class="ra"><div class="rowacts" (click)="$event.stopPropagation()">
+                      <button class="btn xs ghost" (click)="openInType(row)">Compare ▸</button>
+                      @if (row.hub) {
+                        <button class="btn xs hub" [disabled]="busy()" (click)="actAll(row,'hub')">Use Hub</button>
+                        <button class="btn xs loc" [disabled]="busy()" (click)="actAll(row,'local')">Keep Local</button>
+                      }
+                      @if (row.sp) {
+                        <button class="btn xs sp" [disabled]="busy()" (click)="actAll(row,'sp')">☁ Push</button>
+                      }
+                    </div></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         }
       } @else {
       @if (visibleSelected().length > 0) {

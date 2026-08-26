@@ -1561,19 +1561,31 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         // Transfer equipment associations from removePoint to keepPoint
         if (removePoint.getEquipmentList() != null) {
             for (Equipment equipment : new HashSet<>(removePoint.getEquipmentList())) {
+                Set<Long> beforeIds = lotoPointIds(equipment);
                 equipment.getLotoPoints().remove(removePoint);
                 equipment.addLotoPoint(keepPoint);
                 equipmentService.save(equipment);
+                // Equipment owns the equipment<->lotoPoint join; the reassignment dirties no Equipment scalar,
+                // so @PostUpdate never fires — emit the membership change explicitly (like processLotoPoint).
+                fieldChangeTracker.trackRelationshipUpdateInCurrentTx(equipment, "lotoPoints", beforeIds, lotoPointIds(equipment), "ManyToMany");
             }
         }
 
         // Transfer LOTO standard associations
         if (removePoint.getLotoStandards() != null) {
             for (LotoStandard standard : new HashSet<>(removePoint.getLotoStandards())) {
-                standard.getLotoPoints().remove(removePoint);
-                if (!standard.getLotoPoints().contains(keepPoint)) {
-                    standard.getLotoPoints().add(keepPoint);
+                // getLotoPoints() returns a SORTED COPY — mutating it never touches the persistent list. Use the
+                // entity's own mutators so the swap actually persists, then rebuild lotoPointOrder (a scalar) so
+                // the flush UPDATEs the row, @PostUpdate fires, and the membership change syncs. Previously this
+                // both failed to persist AND failed to emit → standards silently lost the point on merge.
+                standard.removeLotoPoint(removePoint);
+                if (standard.getLotoPoints().stream().noneMatch(p -> keepId.equals(p.getId()))) {
+                    standard.addLotoPoint(keepPoint);
                 }
+                java.util.Map<String, Integer> order = new java.util.LinkedHashMap<>();
+                int i = 1;
+                for (LotoPoint p : standard.getLotoPoints()) if (p.getId() != null) order.put(String.valueOf(p.getId()), i++);
+                standard.setLotoPointOrder(order);
             }
         }
 

@@ -5,11 +5,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of } from 'rxjs';
 import {
   DriftService, DriftRecord, DriftScanState, ThreeWayFieldDiff, ThreeWayFieldEntry,
-  FileDriftReport, FileDriftEntry, FileDriftKind,
+  FileDriftReport, FileDriftEntry, FileDriftKind, TypeBreakdown,
 } from '../../../services/drift.service';
 import { SyncStatusService } from '../../../services/sync-status.service';
 
 interface DriftRow { id: number; hub?: DriftRecord; sp?: DriftRecord; }
+/** A row in the cross-type "All" view — carries its own type so actions never rely on a single selectedType.
+ *  Keyed by `type#id` because entity ids collide across types (LotoPoint 5 and WorkArea 5 both exist). */
+interface AllRow { key: string; type: string; id: number; hub?: DriftRecord; sp?: DriftRecord; }
 
 /** The four buckets the breakdown strip counts — and now filters by. Mirrors the backend's
  *  DriftDetectionService.breakdown() keys so a chip's count and its filter can't diverge. */
@@ -62,6 +65,47 @@ export class DriftCenterComponent implements OnInit {
   totalDrift = computed(() => this.overview().reduce((s, o) => s + o.flaggedCount, 0));
   /** Direction/peer breakdown of what's drifting (from the service signal). */
   breakdown = computed(() => this.drift.breakdown());
+  /** REAL hub-sync drift (differs + only-on-hub + only-here). This is the urgent count — the red one. */
+  hubDrift = computed(() => {
+    const b = this.breakdown();
+    return (b.hubDiffers || 0) + (b.onHubNotLocal || 0) + (b.localNotOnHub || 0);
+  });
+  /** Rows simply not yet copied to the SharePoint BACKUP — normal backup lag, NOT a sync problem. Informational. */
+  spBackupPending = computed(() => this.breakdown().sharePoint || 0);
+
+  /** The "All" pseudo-type: one combined list of every drifting row across every entity type. */
+  readonly ALL = '__ALL__';
+  isAllMode = computed(() => this.selectedType() === this.ALL);
+  /** True only when a REAL entity type is selected (not "All", not files) — gates the per-type chip counts. */
+  singleTypeSelected = computed(() => !!this.selectedType() && !this.isAllMode());
+
+  /** Per-type split of the flagged count by drift kind (item 4) — feeds the little colored chips in the rail. */
+  typeBreakdown = signal<Record<string, TypeBreakdown>>({});
+
+  /** Backing records + labels for the cross-type "All" view (item 3). Kept separate from the single-type
+   *  `records`/`labels` so mixed-type ids can never collide with the per-type machinery. */
+  allViewRecords = signal<DriftRecord[]>([]);
+  allViewLabels = signal<Map<string, string>>(new Map());
+
+  /** Every drifted row across all types, grouped by `type#id`, sorted by type then id. */
+  allViewRows = computed<AllRow[]>(() => {
+    const byKey = new Map<string, AllRow>();
+    for (const r of this.allViewRecords()) {
+      if (r.fieldName !== '_entity_') continue;
+      const key = r.entityType + '#' + r.entityId;
+      const row = byKey.get(key) ?? { key, type: r.entityType, id: r.entityId };
+      if (r.peer === 'HUB') row.hub = r; else if (r.peer === 'SHAREPOINT') row.sp = r;
+      byKey.set(key, row);
+    }
+    return [...byKey.values()].sort((a, b) => a.type.localeCompare(b.type) || a.id - b.id);
+  });
+
+  /** The combined list after the breakdown-chip filter (a clicked chip narrows "All" the same as a type view).
+   *  AllRow is structurally a DriftRow (id/hub/sp), so the same matchesKind() decides membership. */
+  allViewRowsFiltered = computed<AllRow[]>(() => {
+    const kind = this.kindFilter();
+    return kind ? this.allViewRows().filter(r => this.matchesKind(r, kind)) : this.allViewRows();
+  });
 
   /** Every drifted row of the selected type — the unfiltered set. Label loading and the chip counts read
    *  THIS, never the filtered view, so searching by name still works after a filter narrows the table. */
@@ -138,6 +182,9 @@ export class DriftCenterComponent implements OnInit {
 
   private reloadOverview(): void {
     this.drift.refreshBreakdown();
+    // Per-type split (item 4) — one call feeds every drifting type's colored chips in the rail.
+    this.drift.breakdownByType().pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(b => this.typeBreakdown.set(b));
     this.drift.overview$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(list => {
       this.overview.set(list);
       const latest = list.map(o => o.lastScannedAt).filter(Boolean).sort().pop();
@@ -161,8 +208,12 @@ export class DriftCenterComponent implements OnInit {
     this.loadRecords();
   }
 
+  /** Jump straight to the combined cross-type list. */
+  selectAll(): void { this.selectType(this.ALL); }
+
   private loadRecords(): void {
     const t = this.selectedType(); if (!t) return;
+    if (t === this.ALL) { this.loadAllView(); return; } // the "All" pseudo-type has its own loader
     this.loadingRecords.set(true);
     this.drift.statusRecords(t).pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(recs => {
@@ -170,6 +221,70 @@ export class DriftCenterComponent implements OnInit {
         this.loadingRecords.set(false);
         this.loadLabels(t);
       });
+  }
+
+  // ==================== "All" cross-type view (item 3) ====================
+
+  private loadAllView(): void {
+    this.loadingRecords.set(true);
+    this.drift.statusAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(recs => {
+      this.allViewRecords.set(recs);
+      this.loadingRecords.set(false);
+      this.loadAllLabels();
+    });
+  }
+
+  /** Resolve labels for the combined list — batched per type, stored keyed by `type#id` so ids can't collide. */
+  private loadAllLabels(): void {
+    const byType = new Map<string, number[]>();
+    for (const r of this.allViewRows()) {
+      const arr = byType.get(r.type) ?? []; arr.push(r.id); byType.set(r.type, arr);
+    }
+    byType.forEach((ids, type) => {
+      this.drift.labels(type, ids).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(m => {
+        this.allViewLabels.update(prev => {
+          const n = new Map(prev); m.forEach((v, k) => n.set(type + '#' + k, v)); return n;
+        });
+      });
+    });
+  }
+
+  /** Human label for an All-view row; '' until it loads (the id + type are always shown beside it). */
+  allLabel(row: AllRow): string {
+    const l = this.allViewLabels().get(row.key);
+    return !l || l === '#' + row.id ? '' : l;
+  }
+
+  /** Open one combined-list row in its own type view, with the compare drawer up — that's where the full
+   *  per-type resolve actions live, and switching to the real type keeps every id/label unambiguous. */
+  openInType(row: AllRow): void {
+    this.selectType(row.type);
+    this.openCompare(row.id);
+  }
+
+  /** Reconcile one combined-list row using ITS type (never selectedType, which is the "All" sentinel here). */
+  actAll(row: AllRow, kind: 'hub' | 'local' | 'sp'): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    const call = kind === 'hub' ? this.drift.acceptHub(row.type, row.id)
+      : kind === 'local' ? this.drift.keepLocal(row.type, row.id) : this.drift.pushToSp(row.type, row.id);
+    call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.drift.scanType(row.type).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+        this.busy.set(false); this.reloadOverview(); this.loadAllView();
+      });
+    });
+  }
+
+  /** Per-type drift split (item 4) — the non-zero kinds as {cls,n,label} for the rail chips. */
+  typeSplit(entityType: string): { cls: string; n: number; label: string }[] {
+    const b = this.typeBreakdown()[entityType];
+    if (!b) return [];
+    const out: { cls: string; n: number; label: string }[] = [];
+    if (b.hubDiffers) out.push({ cls: 'hub', n: b.hubDiffers, label: 'differ' });
+    if (b.onHubNotLocal) out.push({ cls: 'pull', n: b.onHubNotLocal, label: 'on hub' });
+    if (b.localNotOnHub) out.push({ cls: 'push', n: b.localNotOnHub, label: 'here only' });
+    if (b.sharePoint) out.push({ cls: 'sp', n: b.sharePoint, label: 'SP' });
+    return out;
   }
 
   /** Resolve human labels for the drifted rows so the list reads "01-VCND100 · #123", not "#123".

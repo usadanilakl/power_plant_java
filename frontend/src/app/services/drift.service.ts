@@ -40,6 +40,14 @@ export interface RowDrift {
   sp?: DriftRecord;
 }
 
+/** Per-type split of active drift by kind — mirrors backend DriftDetectionService.breakdownByType(). */
+export interface TypeBreakdown {
+  hubDiffers: number;
+  onHubNotLocal: number;
+  localNotOnHub: number;
+  sharePoint: number;
+}
+
 /** Per-type scan bookkeeping (mirrors backend DriftScanState) — powers green-on-load + the Drift Center. */
 export interface DriftScanState {
   entityType: string;
@@ -267,6 +275,18 @@ export class DriftService {
   statusRecords(entityType: string): Observable<DriftRecord[]> {
     return this.http.get<NgApiResponse<DriftRecord[]>>(`${this.base}/status/${entityType}`)
       .pipe(map(r => r?.responseData ?? []), catchError(() => of([])));
+  }
+
+  /** Every active ROW record across all types — powers the Drift Center "All" view (one list, mixed types). */
+  statusAll(): Observable<DriftRecord[]> {
+    return this.http.get<NgApiResponse<DriftRecord[]>>(`${this.base}/status-all`)
+      .pipe(map(r => r?.responseData ?? []), catchError(() => of([])));
+  }
+
+  /** Per-type split of active drift by kind — `entityType -> {hubDiffers, onHubNotLocal, localNotOnHub, sharePoint}`. */
+  breakdownByType(): Observable<Record<string, TypeBreakdown>> {
+    return this.http.get<NgApiResponse<Record<string, TypeBreakdown>>>(`${this.base}/breakdown-by-type`)
+      .pipe(map(r => r?.responseData ?? {}), catchError(() => of({})));
   }
 
   /** Per-type scan overview as an observable (for the Drift Center to (re)load on demand). */

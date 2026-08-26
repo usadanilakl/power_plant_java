@@ -101,6 +101,18 @@ public class NgDriftController {
         return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.breakdown(), "OK"));
     }
 
+    /** Per-type breakdown by drift kind — {@code entityType -> {hubDiffers, onHubNotLocal, localNotOnHub, sharePoint}}. */
+    @GetMapping("/breakdown-by-type")
+    public ResponseEntity<NgApiResponse<Map<String, Map<String, Long>>>> breakdownByType() {
+        return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.breakdownByType(), "OK"));
+    }
+
+    /** All active ROW records across every type — the Drift Center "All" view. */
+    @GetMapping("/status-all")
+    public ResponseEntity<NgApiResponse<List<DriftRecord>>> statusAll() {
+        return ResponseEntity.ok(new NgApiResponse<>(driftDetectionService.allActiveRowRecords(), "OK"));
+    }
+
     /**
      * Friendly labels (id -> tag/name/description) for HUB-ONLY rows the local list can't render — used by the
      * "missing from local" strip so a row reads "01-VCND100" instead of a bare id. One batched hub call

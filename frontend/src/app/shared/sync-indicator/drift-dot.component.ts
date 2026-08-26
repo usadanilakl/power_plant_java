@@ -85,7 +85,9 @@ export class DriftDotComponent {
     // Land on the focused local-vs-hub side-by-side for THIS row when we know which row it is; only fall
     // back to the whole-type Drift Center when the dot was rendered without an id (rare — e.g. a header).
     if (id != null && id !== '') {
-      this.router.navigate(['/sync/compare'], { queryParams: { type: this.entityType(), id } });
+      // Carry where we came from so the compare view can return the user to THIS page after they resolve,
+      // instead of stranding them in the Drift Center (they opened the dot to fix a row and keep working).
+      this.router.navigate(['/sync/compare'], { queryParams: { type: this.entityType(), id, returnUrl: this.router.url } });
     } else {
       this.router.navigate(['/sync/drift'], { queryParams: { type: this.entityType() } });
     }

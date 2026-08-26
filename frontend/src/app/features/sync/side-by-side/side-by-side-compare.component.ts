@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../services/drift.service';
 
@@ -24,7 +24,7 @@ import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../se
     <div class="sbs">
       <header class="sbs-head">
         <div class="sbs-title">
-          <a class="back" routerLink="/sync/drift" [queryParams]="{ type: entityType() }" title="Back to Drift Center">←</a>
+          <a class="back" (click)="goBack()" [title]="returnUrl() ? 'Back to where you were' : 'Back to Drift Center'">←</a>
           <div>
             <h2>Compare · Local vs Hub</h2>
             <div class="sub">{{ entityType() || '—' }} <span class="idpill">#{{ entityId() || '—' }}</span></div>
@@ -72,8 +72,16 @@ import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../se
               </div>
 
               <div class="c-val" [class.on]="!f.localHubMatch">
-                <div class="v">{{ drift.valueText(f, 'local') }}</div>
-                @if (drift.valueRaw(f, 'local')) { <div class="raw">{{ drift.valueRaw(f, 'local') }}</div> }
+                @if (isRel(f)) {
+                  <ul class="members">
+                    @for (m of members(f, 'local'); track m.id) {
+                      <li [class.only]="m.onlyHere" [title]="'id #' + m.id">{{ m.label }}</li>
+                    } @empty { <li class="empty">— none —</li> }
+                  </ul>
+                } @else {
+                  <div class="v">{{ drift.valueText(f, 'local') }}</div>
+                  @if (drift.valueRaw(f, 'local')) { <div class="raw">{{ drift.valueRaw(f, 'local') }}</div> }
+                }
               </div>
 
               <div class="c-act">
@@ -86,8 +94,16 @@ import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../se
               </div>
 
               <div class="c-val" [class.on]="!f.localHubMatch">
-                <div class="v">{{ drift.valueText(f, 'hub') }}</div>
-                @if (drift.valueRaw(f, 'hub')) { <div class="raw">{{ drift.valueRaw(f, 'hub') }}</div> }
+                @if (isRel(f)) {
+                  <ul class="members hub">
+                    @for (m of members(f, 'hub'); track m.id) {
+                      <li [class.only]="m.onlyHere" [title]="'id #' + m.id">{{ m.label }}</li>
+                    } @empty { <li class="empty">— none —</li> }
+                  </ul>
+                } @else {
+                  <div class="v">{{ drift.valueText(f, 'hub') }}</div>
+                  @if (drift.valueRaw(f, 'hub')) { <div class="raw">{{ drift.valueRaw(f, 'hub') }}</div> }
+                }
               </div>
 
               @if (diff()?.spBacked) {
@@ -103,7 +119,7 @@ import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../se
     .sbs { padding:16px 18px; max-width:1200px; margin:0 auto; color:#222; }
     .sbs-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
     .sbs-title { display:flex; gap:12px; align-items:flex-start; }
-    .back { text-decoration:none; font-size:22px; line-height:1; color:#555; padding:2px 8px; border-radius:6px; }
+    .back { text-decoration:none; font-size:22px; line-height:1; color:#555; padding:2px 8px; border-radius:6px; cursor:pointer; }
     .back:hover { background:#eee; color:#111; }
     h2 { margin:0; font-size:18px; }
     .sub { color:#666; font-size:13px; margin-top:2px; }
@@ -135,6 +151,12 @@ import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../se
     .c-val.on { background:#fff8ec; }
     .c-val .v { word-break:break-word; white-space:pre-wrap; }
     .c-val .raw { font-family:monospace; font-size:11px; color:#8b97a3; margin-top:3px; word-break:break-all; }
+    /* Relationship member list — EVERY member, one line each, no "+N more". */
+    .members { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px; }
+    .members li { padding:4px 9px; border-radius:5px; font-size:12.5px; line-height:1.35; border-left:3px solid #dbe1e7; background:#f6f8fa; word-break:break-word; }
+    .members li.only { border-left-color:#2874a6; background:#eaf3fb; color:#1a4d73; font-weight:600; }   /* local-only: this desktop has it, hub doesn't */
+    .members.hub li.only { border-left-color:#c47b1e; background:#fdf3e6; color:#8a5412; }                 /* hub-only: hub has it, this desktop is missing it */
+    .members li.empty { color:#9aa7b2; font-style:italic; border-left-color:transparent; background:transparent; padding-left:0; }
     .c-act { display:flex; flex-direction:column; gap:5px; align-items:stretch; justify-content:center; padding:8px 10px; border-right:1px solid #eef1f4; }
     .mini { border:1px solid #cfd6dd; background:#fff; border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer; white-space:nowrap; }
     .mini:hover:not(:disabled) { background:#f4f7fa; }
@@ -149,14 +171,19 @@ import { DriftService, ThreeWayFieldDiff, ThreeWayFieldEntry } from '../../../se
 })
 export class SideBySideCompareComponent {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   readonly drift = inject(DriftService);
 
   readonly entityType = signal('');
   readonly entityId = signal(0);
+  /** Where the user came from (the page whose drift dot they clicked) — returned to after resolving. */
+  readonly returnUrl = signal('');
   readonly diff = signal<ThreeWayFieldDiff | null>(null);
   readonly loading = signal(false);
   readonly diffsOnly = signal(true);
+  /** id -> "tag - description" for EVERY member of every relationship field on this entity (local ∪ hub). */
+  readonly memberLabels = signal<Map<number, string>>(new Map());
   readonly busyField = signal<string | null>(null);
   readonly rowBusy = signal(false);
   readonly note = signal('');
@@ -183,6 +210,7 @@ export class SideBySideCompareComponent {
       const switched = type !== this.entityType() || id !== this.entityId();
       this.entityType.set(type);
       this.entityId.set(id);
+      this.returnUrl.set(pm.get('returnUrl') ?? '');
       // Switching to a different entity must not carry over the previous row's note/busy flags (the component
       // instance is reused across queryParams-only navigations).
       if (switched) { this.note.set(''); this.busyField.set(null); this.rowBusy.set(false); }
@@ -203,7 +231,58 @@ export class SideBySideCompareComponent {
     this.drift.fieldDiff(t, id).subscribe(d => {
       if (!this.stillCurrent(t, id)) return; // a newer navigation superseded this request
       this.diff.set(d); this.loading.set(false);
+      this.loadMemberLabels(d);
     });
+  }
+
+  /** Fetch "tag - description" labels for every member id of every relationship field, so the member list
+   *  can render each point in full (no "+N more"). Grouped by refType → 0-1 calls per referenced type. */
+  private loadMemberLabels(d: ThreeWayFieldDiff | null): void {
+    this.memberLabels.set(new Map());
+    if (!d) return;
+    const byType = new Map<string, Set<number>>();
+    for (const f of d.fields ?? []) {
+      if (!f.refType) continue;
+      const ids = [...this.parseIds(f.localValue), ...this.parseIds(f.hubValue)];
+      if (!ids.length) continue;
+      if (!byType.has(f.refType)) byType.set(f.refType, new Set<number>());
+      ids.forEach(x => byType.get(f.refType!)!.add(x));
+    }
+    const types = [...byType.keys()];
+    if (!types.length) return;
+    const merged = new Map<number, string>();
+    let pending = types.length;
+    for (const rt of types) {
+      this.drift.labels(rt, [...byType.get(rt)!]).subscribe(m => {
+        m.forEach((v, k) => merged.set(k, v));
+        if (--pending === 0) this.memberLabels.set(new Map(merged));
+      });
+    }
+  }
+
+  /** True for a relationship (collection/FK) field — rendered as a member list, not a blob. */
+  isRel(f: ThreeWayFieldEntry): boolean { return !!f.refType; }
+
+  private parseIds(raw?: string): number[] {
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.map(Number).filter(n => !isNaN(n));
+      const n = Number(arr); if (!isNaN(n)) return [n];
+    } catch { const n = Number(raw); if (!isNaN(n) && raw.trim() !== '') return [n]; }
+    return [];
+  }
+
+  /** Every member of ONE side, each flagged {@code onlyHere} = present on this side but not the other (a drift). */
+  members(f: ThreeWayFieldEntry, side: 'local' | 'hub'): { id: number; label: string; onlyHere: boolean }[] {
+    const local = new Set(this.parseIds(f.localValue));
+    const hub = new Set(this.parseIds(f.hubValue));
+    const mine = side === 'local' ? local : hub;
+    const other = side === 'local' ? hub : local;
+    const lbls = this.memberLabels();
+    return [...mine]
+      .map(id => ({ id, label: lbls.get(id) || ('#' + id), onlyHere: !other.has(id) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }
 
   useHub(f: ThreeWayFieldEntry): void { this.acceptField(f, 'hub'); }
@@ -247,6 +326,13 @@ export class SideBySideCompareComponent {
       if (!this.stillCurrent(t, id)) return;
       this.rowBusy.set(false); this.note.set(`Pushed the local ${t} to the hub.`); this.reload();
     });
+  }
+
+  /** Return to the page the user came from (item 6), or the Drift Center if we weren't told where. */
+  goBack(): void {
+    const url = this.returnUrl();
+    if (url) this.router.navigateByUrl(url);
+    else this.router.navigate(['/sync/drift'], { queryParams: { type: this.entityType() } });
   }
 
   /** camelCase field name → readable label ("isoPos" → "Iso Pos"). */

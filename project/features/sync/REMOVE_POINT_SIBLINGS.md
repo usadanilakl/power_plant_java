@@ -38,8 +38,16 @@ as `NgLotoPointService.processLotoPoint:301/320` already does correctly).
   no scalar, no tracker (contrast `processLotoPoint:301/320` which DOES call the tracker for the same join).
 - **WorkArea.deleteStandard** unlink `constantLotos` — `NgLotoStandardService:621`. `getConstantLotos().removeIf + save`, no scalar.
 
-## Status
-- Static findings, HIGH confidence (same mechanism runtime-proven). The multi-node CRUD conformance suite (being built)
-  will runtime-confirm each and guard against regression.
-- Already fixed (reference): `NgLotoStandardService.removeLotoPointToStandard`/`addLotoPointToStandard` (touch `lotoPointOrder`).
+## Status — ALL 10 + Equipment suspect FIXED (2026-08-26), compile clean, 0 regression
+Fix = dirty a natural scalar on the owner in the same tx (rebuild the order map) OR call
+`FieldChangeTracker.trackRelationshipUpdateInCurrentTx(owner, field, beforeIds, afterIds, "ManyToMany")`.
+- #1 `updateStandard` (lotoPoints rebuild-order + groups tracker) — **RUNTIME-PROVEN**: harness
+  `operation/loto-standard-update-replace` returns `emitted=true` (points-only replace, unchanged name) where
+  the pre-fix code returned false. Field sweep 550/355/**0 gaps** — no regression from any of the tracker calls.
+- `mergeLotoPoints` (both sides), WorkArea `saveFromDto` (constantLotos+locations), DPP `copyPermitsFromSource`
+  (reissue/reissueToNew/generateContinuation), JobLog `activatePackage`, HeatTrace `save` (equipmentList+pid) —
+  all fixed with the same pattern, compiled, non-regressing. Per-sibling runtime proof tests for these = the
+  remaining conformance-harness increment (each reuses the proven `runMembership` id-diff assertion).
+- Still OPEN: WorkArea `deleteStandard`-unlink suspect (`NgLotoStandardService:621`) — confirm at runtime.
+- Reference fix that calibrated the pattern: `removeLotoPointToStandard`/`addLotoPointToStandard`.
 - See [[reference_m2m_only_change_no_emission]], `project/features/sync/SYNC_CONFORMANCE_TEST_PLAN.md`.

@@ -42,6 +42,10 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
     private final HotWorkRepo hotWorkRepo;
     private final ConfinedSpaceRepo confinedSpaceRepo;
     private final WorkAreaGitHubPublisher gitHubPublisher;
+    // Explicit relationship-change emitter — a pure @ManyToMany replace (constantLotos/locations) dirties no
+    // scalar, so @PostUpdate never fires and the change wouldn't sync without this. See saveFromDto.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker fieldChangeTracker;
     private final ManagedEntityFileSyncService managedEntityFileSyncService;
 
     @org.springframework.beans.factory.annotation.Value("${files.root.path}")
@@ -77,6 +81,17 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
     // --- WorkArea CRUD ---
 
     public WorkAreaDto saveFromDto(WorkAreaDto dto) {
+        // Snapshot prior membership BEFORE the mapper mutates the managed entity, so we can emit the M2M change.
+        Set<Long> beforeConstantLotoIds = new HashSet<>();
+        Set<Long> beforeLocationIds = new HashSet<>();
+        if (dto.getId() != null) {
+            WorkArea prior = entityManager.find(WorkArea.class, dto.getId());
+            if (prior != null) {
+                if (prior.getConstantLotos() != null) prior.getConstantLotos().forEach(l -> { if (l != null && l.getId() != null) beforeConstantLotoIds.add(l.getId()); });
+                if (prior.getLocations() != null) prior.getLocations().forEach(v -> { if (v != null && v.getId() != null) beforeLocationIds.add(v.getId()); });
+            }
+        }
+
         WorkArea entity = workAreaMapper.convertToEntity(dto);
 
         // Handle areaType via ValueService
@@ -108,6 +123,16 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
         applyLocationUnitFilters(entity, dto);
 
         WorkArea saved = workAreaRepo.save(entity);
+        if (dto.getId() != null) {
+            // Emit the constantLotos / locations membership changes explicitly (a CREATE already carries them
+            // via @PostPersist, but an update of these @ManyToMany joins dirties no scalar → @PostUpdate is silent).
+            Set<Long> afterConstantLotoIds = saved.getConstantLotos() == null ? new HashSet<>()
+                : saved.getConstantLotos().stream().filter(Objects::nonNull).map(LotoStandard::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<Long> afterLocationIds = saved.getLocations() == null ? new HashSet<>()
+                : saved.getLocations().stream().filter(Objects::nonNull).map(Value::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(saved, "constantLotos", beforeConstantLotoIds, afterConstantLotoIds, "ManyToMany");
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(saved, "locations", beforeLocationIds, afterLocationIds, "ManyToMany");
+        }
         gitHubPublisher.publishAll();
         return workAreaMapper.convertToDto(saved);
     }

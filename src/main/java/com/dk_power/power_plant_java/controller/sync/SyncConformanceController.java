@@ -82,4 +82,16 @@ public class SyncConformanceController {
     public ResponseEntity<List<ConformanceResult>> lotoStandardMembership() {
         return ResponseEntity.ok(ops.lotoStandardMembership());
     }
+
+    /** Proof for the updateStandard sibling: points-only replace with unchanged name must now emit + converge. */
+    @PostMapping("/operation/loto-standard-update-replace")
+    public ResponseEntity<List<ConformanceResult>> lotoStandardUpdateReplace() {
+        return ResponseEntity.ok(ops.lotoStandardUpdateReplace());
+    }
+
+    /** Proof for the drift-restore bug: removing a point that's in the collection but missing from lotoPointOrder must emit. */
+    @PostMapping("/operation/loto-standard-stale-order-remove")
+    public ResponseEntity<List<ConformanceResult>> lotoStandardStaleOrderRemove() {
+        return ResponseEntity.ok(ops.lotoStandardStaleOrderRemove());
+    }
 }

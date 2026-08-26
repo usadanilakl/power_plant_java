@@ -309,6 +309,42 @@ public class DriftDetectionService {
         return m;
     }
 
+    /**
+     * PER-TYPE version of {@link #breakdown()}: {@code entityType -> {hubDiffers, onHubNotLocal, localNotOnHub,
+     * sharePoint}}. Lets the Drift Center split each type's single flaggedCount into WHAT KIND of drift it is,
+     * so a row that's only "not backed up to SharePoint" reads differently from a genuine hub-sync difference.
+     */
+    public Map<String, Map<String, Long>> breakdownByType() {
+        Map<String, long[]> agg = new java.util.LinkedHashMap<>(); // [hubDiffers, onHubNotLocal, localNotOnHub, sharePoint]
+        for (DriftRecord r : repo.findByStatusIn(ACTIVE)) {
+            if (!DriftRecord.ROW.equals(r.getFieldName())) continue;
+            long[] c = agg.computeIfAbsent(r.getEntityType(), k -> new long[4]);
+            if (r.getPeer() == DriftPeer.SHAREPOINT) { c[3]++; continue; }
+            if (r.getKind() == DriftKind.DIFFERING) c[0]++;
+            else if (r.getKind() == DriftKind.MISSING_LOCALLY) c[1]++;
+            else if (r.getKind() == DriftKind.MISSING_ON_PEER) c[2]++;
+        }
+        Map<String, Map<String, Long>> out = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, long[]> e : agg.entrySet()) {
+            Map<String, Long> m = new java.util.LinkedHashMap<>();
+            m.put("hubDiffers", e.getValue()[0]);
+            m.put("onHubNotLocal", e.getValue()[1]);
+            m.put("localNotOnHub", e.getValue()[2]);
+            m.put("sharePoint", e.getValue()[3]);
+            out.put(e.getKey(), m);
+        }
+        return out;
+    }
+
+    /** All active ROW-level drift records across EVERY type — powers the Drift Center "All" view (item 3). */
+    public List<DriftRecord> allActiveRowRecords() {
+        List<DriftRecord> out = new java.util.ArrayList<>();
+        for (DriftRecord r : repo.findByStatusIn(ACTIVE)) {
+            if (DriftRecord.ROW.equals(r.getFieldName())) out.add(r);
+        }
+        return out;
+    }
+
     /** Small mutable tally returned by a scan. */
     public static class DriftScanResult {
         public int typesScanned;

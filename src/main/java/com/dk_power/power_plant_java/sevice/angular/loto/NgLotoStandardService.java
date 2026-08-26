@@ -297,13 +297,18 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
                 return toDto(standard);
             }
 
+            java.util.Set<Long> beforeIds = standard.getLotoPoints().stream().map(LotoPoint::getId).filter(Objects::nonNull).collect(Collectors.toSet());
             standard.addLotoPoint(lotoPoint);
             lotoPoint.addLotoStandard(standard);
             Map<String, Integer> orderMap = standard.getLotoPointOrder();
             int maxOrder = orderMap.values().stream().mapToInt(Integer::intValue).max().orElse(0);
             orderMap.put(lotoPoint.getId().toString(), maxOrder + 1);
             standard.setLotoPointOrder(orderMap);
-            return toDto(save(standard));
+            LotoStandardDto dto = toDto(save(standard));
+            // Emit the membership change explicitly (robust vs. a stale/unchanged lotoPointOrder — see removeLotoPointToStandard).
+            java.util.Set<Long> afterIds = standard.getLotoPoints().stream().map(LotoPoint::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(standard, "lotoPoints", beforeIds, afterIds, "ManyToMany");
+            return dto;
         } catch (Exception e) {
             throw new RuntimeException("Error adding LotoPoint to LotoStandard: " + e.getMessage(), e);
         }
@@ -333,19 +338,22 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
                 return toDto(standard);
             }
 
+            java.util.Set<Long> beforeIds = standard.getLotoPoints().stream().map(LotoPoint::getId).filter(Objects::nonNull).collect(Collectors.toSet());
             standard.removeLotoPoint(lotoPoint);
             lotoPoint.removeStandard(standard);
-            // Mirror addLotoPointToStandard: also drop the point from lotoPointOrder. This keeps the order
-            // map free of the now-stale id AND — critically for sync — dirties a SCALAR column so Hibernate
-            // issues an UPDATE to the loto_standard row. A pure @ManyToMany removal only changes the join
-            // table, so @PreUpdate/@PostUpdate never fire and FieldChangeTracker's M2M OR-Set capture never
-            // runs — the removal vanished locally but was never emitted to the hub (the reported regression;
-            // add still worked because it writes lotoPointOrder here). Touching the scalar restores the
-            // @PostUpdate that drives the M2M change emission.
+            // Keep the order map free of the now-stale id (data correctness).
             Map<String, Integer> orderMap = standard.getLotoPointOrder();
             orderMap.remove(lotoPoint.getId().toString());
             standard.setLotoPointOrder(orderMap);
-            return toDto(save(standard));
+            LotoStandardDto dto = toDto(save(standard));
+            // Emit the membership change EXPLICITLY — do NOT rely on lotoPointOrder changing. A drift-restore
+            // ("Use Hub") re-adds a point to the JOIN TABLE (native SQL) without touching lotoPointOrder, so the
+            // rebuilt order map equals the stale one → no scalar change → @PostUpdate never fires → the removal
+            // silently doesn't sync. This is why fresh add/remove worked but a drift-restored point did not.
+            // trackRelationshipUpdateInCurrentTx emits the OR-Set delta regardless of scalar dirtiness.
+            java.util.Set<Long> afterIds = standard.getLotoPoints().stream().map(LotoPoint::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(standard, "lotoPoints", beforeIds, afterIds, "ManyToMany");
+            return dto;
         } catch (Exception e) {
             throw new RuntimeException("Error removing LotoPoint from LotoStandard: " + e.getMessage(), e);
         }
@@ -548,16 +556,17 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
                 if (approved) {
                     captureFieldProposal(existing, null, "lotoPoints (replace)", oldIds, newIdsStr);
                 } else {
+                    java.util.Set<Long> beforeIds = existing.getLotoPoints().stream().map(LotoPoint::getId).filter(Objects::nonNull).collect(Collectors.toSet());
                     existing.setLotoPoints(newPoints);
-                    // Rebuild lotoPointOrder to match the new list. This keeps the order map correct AND —
-                    // critically — dirties a SCALAR column so Hibernate UPDATEs the loto_standard row and
-                    // @PostUpdate fires, letting the M2M OR-Set capture emit the membership change. A pure
-                    // setLotoPoints() replace changes only the join table → @PostUpdate never fires → the new
-                    // point list never syncs to the hub (a remove-point sibling). See removeLotoPointToStandard.
+                    // Keep the order map correct.
                     Map<String, Integer> rebuiltOrder = new java.util.LinkedHashMap<>();
                     int ord = 1;
                     for (LotoPoint p : newPoints) if (p.getId() != null) rebuiltOrder.put(String.valueOf(p.getId()), ord++);
                     existing.setLotoPointOrder(rebuiltOrder);
+                    // Emit the membership change EXPLICITLY — robust even when lotoPointOrder is already consistent
+                    // (e.g. after a drift-restore that only touched the join table). See removeLotoPointToStandard.
+                    java.util.Set<Long> afterIds = newPoints.stream().map(LotoPoint::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+                    fieldChangeTracker.trackRelationshipUpdateInCurrentTx(existing, "lotoPoints", beforeIds, afterIds, "ManyToMany");
                 }
             }
         }

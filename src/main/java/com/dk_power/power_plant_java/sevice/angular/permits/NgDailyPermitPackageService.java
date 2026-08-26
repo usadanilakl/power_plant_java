@@ -46,6 +46,10 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final DailyPermitPackageRepo dailyPermitPackageRepo;
+    // Explicit relationship-change emitter — a pure package/job <-> loto @ManyToMany edit dirties no scalar,
+    // so @PostUpdate never fires and the change wouldn't sync. See copyPermitsFromSource / activatePackage.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker fieldChangeTracker;
     private final DailyPermitPackageMapper dailyPermitPackageMapper;
     private final RedTagAutomationService redTagAutomationService;
 
@@ -590,6 +594,8 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         target.setEnergizedWorkPermits(new HashSet<>());
         target.setExcavationPermits(new HashSet<>());
         target.setVentingPermits(new HashSet<>());
+        java.util.Set<Long> beforeLotoIds = new java.util.HashSet<>();
+        if (target.getLotos() != null) for (Loto l : target.getLotos()) if (l != null && l.getId() != null) beforeLotoIds.add(l.getId());
         target.getLotos().clear();
 
         // Copy SafeWorks
@@ -740,6 +746,12 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
         // Associate same LOTOs
         target.getLotos().addAll(source.getLotos());
+        // DailyPermitPackage owns the package<->loto join; clear+addAll dirties no package scalar → @PostUpdate
+        // is silent (reissue / reissueToNew / generateContinuation all route here, so the copied LOTO
+        // associations never synced). Emit the membership change explicitly.
+        java.util.Set<Long> afterLotoIds = new java.util.HashSet<>();
+        for (Loto l : target.getLotos()) if (l != null && l.getId() != null) afterLotoIds.add(l.getId());
+        fieldChangeTracker.trackRelationshipUpdateInCurrentTx(target, "lotos", beforeLotoIds, afterLotoIds, "ManyToMany");
     }
 
     public DailyPermitPackageDto reissuePermitsByWorkRequestId(String workRequestId) {
@@ -892,9 +904,16 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         // Attach LOTOs to the parent Job when package is activated
         pkg = getEntityById(id);
         if (pkg.getJobLog() != null && pkg.getLotos() != null) {
+            var job = pkg.getJobLog();
+            java.util.Set<Long> beforeJobLotoIds = new java.util.HashSet<>();
+            if (job.getLotos() != null) for (Loto l : job.getLotos()) if (l != null && l.getId() != null) beforeJobLotoIds.add(l.getId());
             for (var loto : pkg.getLotos()) {
-                pkg.getJobLog().attachLoto(loto);
+                job.attachLoto(loto);
             }
+            // JobLog owns job_log_lotos; attachLoto dirties no JobLog scalar → @PostUpdate silent. Emit explicitly.
+            java.util.Set<Long> afterJobLotoIds = new java.util.HashSet<>();
+            if (job.getLotos() != null) for (Loto l : job.getLotos()) if (l != null && l.getId() != null) afterJobLotoIds.add(l.getId());
+            fieldChangeTracker.trackRelationshipUpdateInCurrentTx(job, "lotos", beforeJobLotoIds, afterJobLotoIds, "ManyToMany");
         }
 
         if (isReactivation) {

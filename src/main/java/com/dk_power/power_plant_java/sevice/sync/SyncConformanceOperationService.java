@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
@@ -114,6 +115,119 @@ public class SyncConformanceOperationService {
             }
         } catch (Exception e) {
             results.add(new ConformanceResult("LotoStandard", standardId, "lotoPoints", "ManyToMany", "membership",
+                    false, null, true, "setup/error: " + rootMsg(e)));
+        } finally {
+            teardown(standardId, p1, p2, caw.seededId());
+        }
+        return results;
+    }
+
+    /**
+     * Proof for the updateStandard sibling: seed a standard with 2 points, then call the REAL updateStandard
+     * with a REDUCED point list but UNCHANGED name/description — the exact bug condition (name/description are
+     * !Objects.equals-guarded, so a points-only replace used to dirty no scalar → @PostUpdate silent → the new
+     * point list never synced). Asserts the lotoPoints membership change now emits.
+     */
+    public List<ConformanceResult> lotoStandardUpdateReplace() {
+        conformance.assertIsolatedOrThrow();
+        List<ConformanceResult> results = new ArrayList<>();
+        String prefix = "SYNC_CONFORMANCE_U_" + System.nanoTime();
+        CaUser caw = findOrSeedCaUser(prefix);
+        if (caw == null || caw.user() == null) {
+            results.add(new ConformanceResult("LotoStandard", null, "lotoPoints", "ManyToMany", "update-replace-points",
+                    false, null, true, "skipped: no CONTROL_AUTHORITY user available"));
+            return results;
+        }
+        Long standardId = null, p1 = null, p2 = null;
+        try {
+            LotoPoint lp1 = newPoint(prefix + "_P1");
+            LotoPoint lp2 = newPoint(prefix + "_P2");
+            p1 = lp1.getId();
+            p2 = lp2.getId();
+            LotoStandard ls = new LotoStandard();
+            ls.setName(prefix + "_Standard");
+            ls.setDescription("conformance throwaway");
+            ls.addLotoPoint(lp1);
+            ls.addLotoPoint(lp2);
+            Map<String, Integer> order = new LinkedHashMap<>();
+            order.put(String.valueOf(p1), 1);
+            order.put(String.valueOf(p2), 2);
+            ls.setLotoPointOrder(order);
+            ls = lotoStandardRepo.saveAndFlush(ls);
+            standardId = ls.getId();
+            final Long sid = standardId;
+            final Long point1 = p1;
+            final String sameName = ls.getName();
+            Authentication prev = SecurityContextHolder.getContext().getAuthentication();
+            try {
+                SecurityContextHolder.getContext().setAuthentication(
+                        new UsernamePasswordAuthenticationToken(caw.user().getUsername(), null, List.of()));
+                results.add(runMembership("update-replace-points", sid, () -> {
+                    LotoStandardIdDto dto = new LotoStandardIdDto();
+                    dto.setId(sid);
+                    dto.setName(sameName);                          // UNCHANGED — the emission-skipping guard
+                    dto.setLotoPoints(new ArrayList<>(List.of(point1))); // drop point2
+                    lotoStandardService.updateStandard(dto);
+                }));
+            } finally {
+                SecurityContextHolder.getContext().setAuthentication(prev);
+            }
+        } catch (Exception e) {
+            results.add(new ConformanceResult("LotoStandard", standardId, "lotoPoints", "ManyToMany", "update-replace-points",
+                    false, null, true, "setup/error: " + rootMsg(e)));
+        } finally {
+            teardown(standardId, p1, p2, caw.seededId());
+        }
+        return results;
+    }
+
+    /**
+     * Proof for the DRIFT-RESTORE bug: seed a standard whose collection holds point2 but whose lotoPointOrder
+     * is STALE (missing point2) — exactly the state a drift "Use Hub" leaves (it re-adds to the join table via
+     * native SQL without touching lotoPointOrder). Then remove point2 via the real service. With the old
+     * scalar-rebuild fix this emitted NOTHING (rebuilt order == stale order → no @PostUpdate); with the explicit
+     * tracker it must now emit. This is the case the user hit: drift-restored points wouldn't remove from the hub.
+     */
+    public List<ConformanceResult> lotoStandardStaleOrderRemove() {
+        conformance.assertIsolatedOrThrow();
+        List<ConformanceResult> results = new ArrayList<>();
+        String prefix = "SYNC_CONFORMANCE_D_" + System.nanoTime();
+        CaUser caw = findOrSeedCaUser(prefix);
+        if (caw == null || caw.user() == null) {
+            results.add(new ConformanceResult("LotoStandard", null, "lotoPoints", "ManyToMany", "stale-order-remove",
+                    false, null, true, "skipped: no CONTROL_AUTHORITY user available"));
+            return results;
+        }
+        Long standardId = null, p1 = null, p2 = null;
+        try {
+            LotoPoint lp1 = newPoint(prefix + "_P1");
+            LotoPoint lp2 = newPoint(prefix + "_P2");
+            p1 = lp1.getId();
+            p2 = lp2.getId();
+            LotoStandard ls = new LotoStandard();
+            ls.setName(prefix + "_Standard");
+            ls.setDescription("conformance throwaway");
+            ls.addLotoPoint(lp1);
+            ls.addLotoPoint(lp2);
+            // STALE order map — only p1. Collection holds p1 AND p2, but lotoPointOrder omits p2 (drift-restore state).
+            Map<String, Integer> stale = new LinkedHashMap<>();
+            stale.put(String.valueOf(p1), 1);
+            ls.setLotoPointOrder(stale);
+            ls = lotoStandardRepo.saveAndFlush(ls);
+            standardId = ls.getId();
+            final Long sid = standardId;
+            final Long point2 = p2;
+            Authentication prev = SecurityContextHolder.getContext().getAuthentication();
+            try {
+                SecurityContextHolder.getContext().setAuthentication(
+                        new UsernamePasswordAuthenticationToken(caw.user().getUsername(), null, List.of()));
+                results.add(runMembership("stale-order-remove", sid, () ->
+                        lotoStandardService.removeLotoPointToStandard(point2, String.valueOf(sid))));
+            } finally {
+                SecurityContextHolder.getContext().setAuthentication(prev);
+            }
+        } catch (Exception e) {
+            results.add(new ConformanceResult("LotoStandard", standardId, "lotoPoints", "ManyToMany", "stale-order-remove",
                     false, null, true, "setup/error: " + rootMsg(e)));
         } finally {
             teardown(standardId, p1, p2, caw.seededId());
