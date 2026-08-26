@@ -135,6 +135,26 @@ export class TableResizeService {
     }
   }
 
+  /**
+   * Seed a width that did not come from a drag — a restored preference. Goes in the same
+   * map a drag writes to, which is the map getColumnWidth() reads FIRST, so a restored
+   * width renders exactly like a dragged one and nothing has to mutate the host's Column
+   * objects (several hosts memoize one column array and share it across tables — writing
+   * a width onto it leaked that width into every other table using the same array).
+   */
+  setStoredWidth(columnId: string, width: number): void {
+    if (width > 0) this.columnWidths.set(columnId, width);
+  }
+
+  /**
+   * Forget every stored width so columns fall back to what their host declared.
+   * Without this "Reset layout" could clear the saved preference and still render the
+   * dragged widths for the rest of the session, because this map is read first.
+   */
+  clearStoredWidths(): void {
+    this.columnWidths.clear();
+  }
+
   getColumnWidth(columnId: string): number {
     return (
       this.columnWidths.get(columnId) ||

@@ -447,6 +447,31 @@ public class MaximoWorkOrderAdapter {
         return map(created);
     }
 
+    /** Create a WO from an arbitrary spi-field map (each key MUST be spi-prefixed or it is silently dropped);
+     *  defaults {@code spi:siteid}. New WO comes back WAPPR. Used by TOI/TMOD create (needs assetnum + longdesc). */
+    public MaximoWorkOrderDto create(Map<String, Object> spiFields) {
+        Map<String, Object> payload = new LinkedHashMap<>(spiFields);
+        payload.putIfAbsent("spi:siteid", access.defaultSite());
+        Map<String, Object> created = access.postJson(access.osUrl(OS), null, payload);
+        log.info("[Maximo] Created WO wonum={}", str(created, "wonum"));
+        return map(created);
+    }
+
+    /** Update a WO's description via a MERGE scalar write (used to flip the TOI/TMOD active↔closed marker). */
+    public void setDescription(String href, String description) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spi:description", description == null ? "" : description.trim());
+        access.addChildren(access.osUrl(OS) + "/" + href, payload);
+    }
+
+    /** MERGE-update a WO's scalar fields (each key must be spi-prefixed). No-op if the map is empty. */
+    public void updateFields(String href, Map<String, Object> spiFields) {
+        if (href == null || href.isBlank()) throw new IllegalArgumentException("href is required");
+        if (spiFields == null || spiFields.isEmpty()) return;
+        access.addChildren(access.osUrl(OS) + "/" + href, new LinkedHashMap<>(spiFields));
+    }
+
     /**
      * Issue material lines against a WO (matusetrans actuals). One additive MERGE call; positive
      * quantity = issue. {@code storeroom} defaults to WAREHOUSE1 when blank. No-op if no lines.

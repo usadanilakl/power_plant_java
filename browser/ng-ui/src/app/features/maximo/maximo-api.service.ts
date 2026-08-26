@@ -7,6 +7,7 @@ import {
   MaximoInventoryItem, MaximoLocation, MaximoOverview, MaximoServiceRequest, MaximoWorkOrder, MaximoWorklog,
   PartsCheckoutRequest, PartsCheckoutResult, PhysicalObjectNode, ReorderLine, ReorderResult,
 } from './maximo.model';
+import { ToiCreateRequest, ToiUpdateRequest } from './toi.model';
 
 export interface WoQuery { status?: string; worktype?: string; location?: string; textContains?: string; wonumContains?: string; pageSize?: number; }
 export interface SrQuery { status?: string; location?: string; textContains?: string; pageSize?: number; }
@@ -74,6 +75,41 @@ export class MaximoApiService {
       timeout(30000),
       map(r => r.responseData ?? [])
     );
+  }
+
+  // ── TOI/TMOD ────────────────────────────────────────────────────────────────
+  /** All TOI/TMOD records (active + closed); caller splits into tabs by the description marker. */
+  listTois(pageSize = 300): Observable<MaximoWorkOrder[]> {
+    const params = new HttpParams().set('pageSize', String(pageSize));
+    return this.http.get<{ responseData: MaximoWorkOrder[] }>(`${this.base}/tois`, { params }).pipe(
+      timeout(30000), map(r => r.responseData ?? []));
+  }
+  createToi(req: ToiCreateRequest): Observable<MaximoWorkOrder | null> {
+    return this.http.post<{ responseData: MaximoWorkOrder }>(`${this.base}/tois`, req).pipe(
+      timeout(30000), map(r => r.responseData ?? null));
+  }
+  closeToi(href: string, closedBy: string, comments: string): Observable<MaximoWorkOrder | null> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorkOrder }>(`${this.base}/tois/close`, { closedBy, comments }, { params }).pipe(
+      timeout(30000), map(r => r.responseData ?? null));
+  }
+  updateToi(href: string, req: ToiUpdateRequest): Observable<MaximoWorkOrder | null> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorkOrder }>(`${this.base}/tois/update`, req, { params }).pipe(
+      timeout(30000), map(r => r.responseData ?? null));
+  }
+  /** All worklog notes on a WO (the TOI/TMOD log). */
+  getWoWorklog(href: string): Observable<MaximoWorklog[]> {
+    const params = new HttpParams().set('href', href);
+    return this.http.get<{ responseData: MaximoWorklog[] }>(`${this.base}/work-orders/worklog`, { params }).pipe(
+      timeout(30000), map(r => r.responseData ?? []));
+  }
+  /** Add a free-text note to a WO's log. Returns the refreshed worklog list. */
+  addWoNote(href: string, text: string): Observable<MaximoWorklog[]> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorklog[] }>(`${this.base}/work-orders/worklog`,
+      { summary: 'Note', details: text, logtype: 'CLIENTNOTE' }, { params }).pipe(
+      timeout(30000), map(r => r.responseData ?? []));
   }
 
   listServiceRequests(q: SrQuery = {}): Observable<MaximoServiceRequest[]> {

@@ -122,6 +122,33 @@ public class PwaLotoController {
         }
     }
 
+    // ── WO ↔ LOTO linking ──────────────────────────────────────────────────────
+    @GetMapping("/active-light")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>>> activeLotos() {
+        try { return ok(new NgApiResponse<>(lotoService.findActiveLight(), "ok")); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+    @GetMapping("/{id}/links")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>> lotoLinks(@PathVariable Long id) {
+        try { return ok(new NgApiResponse<>(lotoService.findLinkById(id), "ok")); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+    @GetMapping("/for-wonum")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>>> lotosForWonum(@RequestParam("wonum") String wonum) {
+        try { return ok(new NgApiResponse<>(lotoService.findByWonum(wonum), "ok")); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+    @PostMapping("/{id}/link-wo")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>> linkWo(@PathVariable Long id, @RequestParam("wonum") String wonum) {
+        try { return ok(new NgApiResponse<>(lotoService.linkWo(id, wonum), "linked")); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage())); }
+    }
+    @PostMapping("/{id}/unlink-wo")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>> unlinkWo(@PathVariable Long id, @RequestParam("wonum") String wonum) {
+        try { return ok(new NgApiResponse<>(lotoService.unlinkWo(id, wonum), "unlinked")); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage())); }
+    }
+
     @GetMapping("/positions")
     public ResponseEntity<NgApiResponse<PositionOptionsDto>> positions() {
         return ok(new NgApiResponse<>(service.positions(), "positions"));

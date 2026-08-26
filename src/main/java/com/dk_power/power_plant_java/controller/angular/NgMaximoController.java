@@ -26,6 +26,10 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryCatalogService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoToiService;
+import com.dk_power.power_plant_java.dto.maximo.ToiCreateRequest;
+import com.dk_power.power_plant_java.dto.maximo.ToiCloseRequest;
+import com.dk_power.power_plant_java.dto.maximo.ToiUpdateRequest;
 import com.dk_power.power_plant_java.sevice.maximo.PmAssignmentService;
 import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import com.dk_power.power_plant_java.dto.maximo.MaximoAssetDto;
@@ -99,6 +103,7 @@ public class NgMaximoController {
     private final MaximoInventoryAdapter inventory;
     private final MaximoInventoryCatalogService inventoryCatalog;
     private final MaximoPartsCheckoutService partsCheckout;
+    private final MaximoToiService toiService;
     private final RecurringPmService recurringPms;
     private final PmAssignmentService pmAssignments;
     private final MaximoTicketIndexService ticketIndex;
@@ -475,6 +480,67 @@ public class NgMaximoController {
     }
 
     public record LotoNoteRequest(String text) {}
+
+    // ── TOI/TMOD (Temporary Operation Instruction / Temporary Modification) records ──────────
+
+    /** All TOI/TMOD records (active + closed); the UI splits them into Active/Closed tabs by the marker. */
+    @GetMapping("/tois")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> tois(
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "300") int pageSize) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.list(siteid, pageSize), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] TOI list failed: {}", e.getMessage());
+            return ResponseEntity.status(502).body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Create a TOI/TMOD (WAPPR WO + the risk-assessment/instruction form as the first worklog note). */
+    @PostMapping("/tois")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> createToi(@RequestBody ToiCreateRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.create(req), "created"));
+        } catch (Exception e) {
+            log.warn("[Maximo] TOI create failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Edit a TOI/TMOD's WO fields (title/description, instructions, location, asset, worktype). */
+    @PostMapping("/tois/{href}/update")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> updateToi(
+            @PathVariable String href, @RequestBody ToiUpdateRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.update(href, req), "updated"));
+        } catch (Exception e) {
+            log.warn("[Maximo] TOI update on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Close a TOI/TMOD (records who closed it + comments, flips the marker to CLOSED). */
+    @PostMapping("/tois/{href}/close")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> closeToi(
+            @PathVariable String href, @RequestBody ToiCloseRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.close(href, req), "closed"));
+        } catch (Exception e) {
+            log.warn("[Maximo] TOI close on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** A WO's worklog notes (newest first, as the adapter returns them) — used by the TOI/TMOD log view. */
+    @GetMapping("/work-orders/{href}/worklog")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> woWorklog(@PathVariable String href) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(worklog.listForWo(href), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] WO worklog list on {} failed: {}", href, e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
 
     // ---- Work-order materials (issue list + return/correction) -----------
 

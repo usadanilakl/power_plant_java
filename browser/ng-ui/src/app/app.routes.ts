@@ -55,6 +55,14 @@ export const routes: Routes = [
       data: { page: 'contacts' },
       canActivate: [standaloneGuard]
     },
+    {
+      // Equipment Finder — the one plant-gated entry in an otherwise contractor-facing section.
+      // plantGuard (unlike the /qr scan route) because it is reached from a nav tile that is already
+      // hidden from non-plant users, so a bounce here can only follow a hand-typed URL.
+      path: 'plant/equipment-finder',
+      loadComponent: () => import('./features/equipment-finder/equipment-finder-page.component').then(m => m.EquipmentFinderPageComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
     { path: '', redirectTo: '/home', pathMatch: 'full' },
     {
       // One landing page for every section, parameterised by slug. Access is enforced by the
@@ -264,6 +272,11 @@ export const routes: Routes = [
     {
       path: 'maximo/outage',
       loadComponent: () => import('./features/maximo/maximo-outage-page.component').then(m => m.MaximoOutagePageComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
+      path: 'maximo/toi',
+      loadComponent: () => import('./features/maximo/maximo-toi-page.component').then(m => m.MaximoToiPageComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {

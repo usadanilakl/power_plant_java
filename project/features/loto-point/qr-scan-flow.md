@@ -53,6 +53,10 @@ over from the desktop — on a phone a labelled tap-target is the whole point.
 Tapping one loads the target drawing as a browse frame (no highlight, since nothing on it was
 scanned) and pushes a back frame, so a hop is undoable without leaving the scan.
 
+That behaviour lives in `QrDrawingHostComponent`, not in this page — the
+[Equipment Finder](equipment-finder.md) hosts the same component to open a row it found by filter
+rather than by scan, via `GET /api/pwa/secured/qr/item/{type}/{id}`.
+
 ## Offline
 
 Two caches, already in place for the walkdown flows:

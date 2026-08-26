@@ -9,9 +9,10 @@ import { PortalToBodyDirective } from '../../shared/portal-to-body.directive';
 import { LotoDrawingService } from './loto-drawing.service';
 import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
 import { LotoPointActionsComponent } from './loto-point-actions.component';
+import { LotoPointApiService } from './loto-point-api.service';
 import { LotoStandardApiService } from './loto-standard-api.service';
 import {
-  LotoPointRef, LotoStandard, PointChecklist, PointCorrection,
+  LotoPointRef, LotoStandard, PointChecklist, PointCorrection, PointDrawing,
   PositionOptions, WalkdownGroup, WalkdownGroupBy, groupPointsForWalkdown,
   pointChecklistComplete, pointHasNegative,
 } from './loto-standard.model';
@@ -189,6 +190,7 @@ import {
             <div class="w-groupbar" role="tablist" aria-label="Group and sort points">
               <button class="w-groupbtn" [class.active]="groupBy() === 'system'" (click)="groupBy.set('system')">System</button>
               <button class="w-groupbtn" [class.active]="groupBy() === 'location'" (click)="groupBy.set('location')">Location</button>
+              <button class="w-groupbtn" [class.active]="groupBy() === 'eqType'" (click)="groupBy.set('eqType')">Equipment type</button>
             </div>
 
             @for (g of groups(); track g.key) {
@@ -425,7 +427,7 @@ import {
           }
 
           @if (viewerPoint(); as vp) {
-            <app-loto-drawing-viewer [standardId]="0" [pointId]="vp.pointId" [title]="vp.tag"
+            <app-loto-drawing-viewer [drawings]="drawingsForPoint(vp.pointId)" [title]="vp.tag"
                                      (close)="viewerPoint.set(null)"></app-loto-drawing-viewer>
           }
 
@@ -535,6 +537,7 @@ import {
 })
 export class LotoPointsWalkdownComponent implements OnInit {
   private api = inject(LotoStandardApiService);
+  private pointApi = inject(LotoPointApiService);
   private drawingService = inject(LotoDrawingService);
   private messageService = inject(GlobalMessageService);
   private haptics = inject(HapticsService);
@@ -672,8 +675,19 @@ export class LotoPointsWalkdownComponent implements OnInit {
   closePointDialog(): void { this.activePointId.set(null); }
 
   viewerPoint = signal<{ pointId: number; tag: string } | null>(null);
-  hasDrawing(_pid: number): boolean { return false; /* points-pile mode: precache not tied to a standard */ }
-  openDrawing(_p: LotoPointRef): void { /* no-op — drawings require a standard scope */ }
+  /**
+   * Descriptors per point, resolved once after the pile loads via {@link LotoPointApiService.getDrawingsForPoints}.
+   * The points-pile isn't tied to one standard, so we bypass the standard-scoped precache and pass descriptors
+   * straight into {@code <app-loto-drawing-viewer [drawings]>} — the viewer's per-file image bytes still flow
+   * through {@link LotoDrawingService.imageObjectUrl}, so the blob cache is shared with the standard walkdown.
+   */
+  private pointDrawings = signal<Record<number, PointDrawing[]>>({});
+  hasDrawing(pointId: number): boolean { return (this.pointDrawings()[pointId]?.length ?? 0) > 0; }
+  drawingsForPoint(pointId: number): PointDrawing[] { return this.pointDrawings()[pointId] ?? []; }
+  openDrawing(p: LotoPointRef): void {
+    if (!this.hasDrawing(p.id)) return;
+    this.viewerPoint.set({ pointId: p.id, tag: this.corrTag(p) || String(p.id) });
+  }
 
   flash = signal<string | null>(null);
   flashErr = signal(false);
@@ -851,6 +865,8 @@ export class LotoPointsWalkdownComponent implements OnInit {
         // Fresh session — start with empty checklist + no pending corrections.
         this.pointResults.set({});
         this.corrections.set({});
+        this.pointDrawings.set({});
+        this.loadDrawingsForPile();
       },
       error: (err) => {
         this.loadingPile.set(false);
@@ -863,8 +879,31 @@ export class LotoPointsWalkdownComponent implements OnInit {
     this.points.set([]);
     this.pointResults.set({});
     this.corrections.set({});
+    this.pointDrawings.set({});
     this.submitted.set(false);
     this.activePointId.set(null);
+  }
+
+  /**
+   * Fetch drawing descriptors for every point in the pile in one round-trip and index them by point id.
+   * Fire-and-forget: a failure just leaves {@code pointDrawings} empty, which the UI already handles
+   * ("No drawing on file"). The viewer's image bytes still route through {@link LotoDrawingService}, so
+   * the shared IndexedDB blob cache is populated on first open.
+   */
+  private loadDrawingsForPile(): void {
+    const ids = this.points().map(p => p.id).filter(id => id != null);
+    if (!ids.length) return;
+    this.pointApi.getDrawingsForPoints(ids).subscribe({
+      next: (list) => {
+        const byPoint: Record<number, PointDrawing[]> = {};
+        for (const d of list ?? []) {
+          if (d.pointId == null) continue;
+          (byPoint[d.pointId] ??= []).push(d);
+        }
+        this.pointDrawings.set(byPoint);
+      },
+      error: () => { /* keep the "no drawing" UI — nothing else depends on this */ },
+    });
   }
 
   finish(): void { this.submitted.set(true); }

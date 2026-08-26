@@ -8,6 +8,16 @@ import {
   VerifySubmitRequest, WalkdownStartRequest, WalkdownSubmitRequest,
 } from './loto-permit.model';
 
+/** Lightweight LOTO for the WO↔LOTO link pickers (mirrors backend LotoLinkDto). */
+export interface LotoLink {
+  id: number;
+  permitNumber: string;
+  status: string;            // Building / Active / Test / Closed
+  equipmentSystem?: string;
+  lotoRequestor?: string;
+  linkedWonums: string[];
+}
+
 /**
  * Mobile LOTO permit API. Calls the Plant-gated PWA endpoints on the hub (`/api/pwa/secured/loto`). The JWT
  * interceptor attaches the bearer token. Read endpoints + a grab per phase + one batch submit per flow.
@@ -20,6 +30,31 @@ export class LotoPermitApiService {
   list(): Observable<PwaLotoListItem[]> {
     return this.http.get<{ responseData: PwaLotoListItem[] }>(`${this.base}/list`)
       .pipe(timeout(30000), map(r => r.responseData ?? []));
+  }
+
+  // ── WO ↔ LOTO linking ──
+  lotoLinks(lotoId: number): Observable<LotoLink | null> {
+    return this.http.get<{ responseData: LotoLink }>(`${this.base}/${lotoId}/links`)
+      .pipe(timeout(30000), map(r => r.responseData ?? null));
+  }
+  activeLotos(): Observable<LotoLink[]> {
+    return this.http.get<{ responseData: LotoLink[] }>(`${this.base}/active-light`)
+      .pipe(timeout(30000), map(r => r.responseData ?? []));
+  }
+  lotosForWonum(wonum: string): Observable<LotoLink[]> {
+    const params = new HttpParams().set('wonum', wonum);
+    return this.http.get<{ responseData: LotoLink[] }>(`${this.base}/for-wonum`, { params })
+      .pipe(timeout(30000), map(r => r.responseData ?? []));
+  }
+  linkWo(lotoId: number, wonum: string): Observable<LotoLink | null> {
+    const params = new HttpParams().set('wonum', wonum);
+    return this.http.post<{ responseData: LotoLink }>(`${this.base}/${lotoId}/link-wo`, {}, { params })
+      .pipe(timeout(30000), map(r => r.responseData ?? null));
+  }
+  unlinkWo(lotoId: number, wonum: string): Observable<LotoLink | null> {
+    const params = new HttpParams().set('wonum', wonum);
+    return this.http.post<{ responseData: LotoLink }>(`${this.base}/${lotoId}/unlink-wo`, {}, { params })
+      .pipe(timeout(30000), map(r => r.responseData ?? null));
   }
 
   getDetail(id: number): Observable<PwaLotoDetail | null> {

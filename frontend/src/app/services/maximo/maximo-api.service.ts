@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
+import { ToiCreateRequest, ToiUpdateRequest } from '../../models/maximo/toi.model';
 import {
   CompleteWorkOrderRequest,
   CreateMaximoServiceRequest,
@@ -212,6 +213,39 @@ export class MaximoApiService {
     return this.http
       .post<SpringApiResponse<MaximoWorklog[]>>(
         `${this.base}/work-orders/${encodeURIComponent(href)}/loto-note`, { text })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
+  // ── TOI/TMOD ────────────────────────────────────────────────────────────────
+  /** All TOI/TMOD records (active + closed); caller splits into tabs by the description marker. */
+  listTois(pageSize = 300): Observable<MaximoWorkOrder[]> {
+    const p = new HttpParams().set('pageSize', String(pageSize));
+    return this.http.get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/tois`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+  createToi(req: ToiCreateRequest): Observable<MaximoWorkOrder | null> {
+    return this.http.post<SpringApiResponse<MaximoWorkOrder>>(`${this.base}/tois`, req)
+      .pipe(map(r => r.responseData ?? null));
+  }
+  closeToi(href: string, closedBy: string, comments: string): Observable<MaximoWorkOrder | null> {
+    return this.http.post<SpringApiResponse<MaximoWorkOrder>>(
+      `${this.base}/tois/${encodeURIComponent(href)}/close`, { closedBy, comments })
+      .pipe(map(r => r.responseData ?? null));
+  }
+  updateToi(href: string, req: ToiUpdateRequest): Observable<MaximoWorkOrder | null> {
+    return this.http.post<SpringApiResponse<MaximoWorkOrder>>(
+      `${this.base}/tois/${encodeURIComponent(href)}/update`, req)
+      .pipe(map(r => r.responseData ?? null));
+  }
+  /** All worklog notes on a WO (the TOI/TMOD log). */
+  getWoWorklog(href: string): Observable<MaximoWorklog[]> {
+    return this.http.get<SpringApiResponse<MaximoWorklog[]>>(`${this.base}/work-orders/${encodeURIComponent(href)}/worklog`)
+      .pipe(map(r => r.responseData ?? []));
+  }
+  /** Add a free-text note to a WO's log. Returns the refreshed worklog list. */
+  addWoNote(href: string, text: string): Observable<MaximoWorklog[]> {
+    return this.http.post<SpringApiResponse<MaximoWorklog[]>>(
+      `${this.base}/work-orders/${encodeURIComponent(href)}/worklog`, { summary: 'Note', details: text, logtype: 'CLIENTNOTE' })
       .pipe(map(r => r.responseData ?? []));
   }
 

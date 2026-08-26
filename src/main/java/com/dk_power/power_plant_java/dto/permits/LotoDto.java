@@ -32,4 +32,6 @@ public class LotoDto extends BasePermitDto {
     private Integer boxNumber;
     private Boolean wasModifiedDuringActive;
     private String closeDisposition;
+    /** Comma-separated Maximo WO numbers linked to this LOTO. */
+    private String linkedWonums;
 }

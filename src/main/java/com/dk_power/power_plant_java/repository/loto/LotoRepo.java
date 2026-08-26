@@ -36,4 +36,15 @@ public interface LotoRepo extends PermitRepo<Loto> {
      * permits survive with a null source rather than an orphan pointer.
      */
     List<Loto> findBySourceStandard_Id(Long sourceStandardId);
+
+    /** Not-closed permits (Building/Active/Test, or null status), for the WO→LOTO picker. */
+    @Query("SELECT l FROM Loto l WHERE l.deleted = false " +
+           "AND (l.permitStatus IS NULL OR l.permitStatus.name IN ('Building', 'Active', 'Test'))")
+    List<Loto> findActiveNotClosed();
+
+    /** Prefilter for "LOTOs linked to this WO": a substring match on the comma-joined list. Case-sensitive (Maximo
+     *  wonums are uppercase); the caller confirms each hit with {@code Loto.isLinkedTo(wonum)} (case-insensitive,
+     *  delimiter-safe) to avoid partial-number false positives. */
+    @Query("SELECT l FROM Loto l WHERE l.deleted = false AND l.linkedWonums LIKE concat('%', ?1, '%')")
+    List<Loto> findByLinkedWonumLike(String wonum);
 }

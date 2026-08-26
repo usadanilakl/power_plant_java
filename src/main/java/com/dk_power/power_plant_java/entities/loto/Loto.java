@@ -70,6 +70,15 @@ public class Loto extends BasePermitEntity {
     @Column(name = "close_disposition", length = 32)
     private String closeDisposition;
 
+    /**
+     * Comma-separated Maximo WO numbers linked to this LOTO (e.g. {@code "J26-41830,J26-42010"}). A plain VARCHAR
+     * (NOT @Lob — a CLOB can't be used with {@code lower()}/LIKE in the link-lookup query) sized for many WOs.
+     * Scalar so it syncs as ONE field (no M2M snapshot race). Many-to-many: a LOTO may cover several WOs, and a
+     * WO's linked LOTOs are found by querying LOTOs whose {@code linkedWonums} contains that wonum.
+     */
+    @Column(length = 4000)
+    private String linkedWonums;
+
 
     /*********************************************************************************************************************
      * TRANSIENT FIELDS
@@ -89,6 +98,35 @@ public class Loto extends BasePermitEntity {
     @Column(columnDefinition = "TEXT")
     private String lotoPointOrder;
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    // ── Linked Maximo work orders ─────────────────────────────────────────────
+    public java.util.List<String> linkedWonumList() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (linkedWonums == null || linkedWonums.isBlank()) return out;
+        for (String s : linkedWonums.split(",")) { String t = s.trim(); if (!t.isEmpty()) out.add(t); }
+        return out;
+    }
+    /** Add a WO number if not already linked (case-insensitive). Returns true if it was newly added. */
+    public boolean linkWonum(String wonum) {
+        if (wonum == null || wonum.isBlank()) return false;
+        String w = wonum.trim();
+        java.util.List<String> l = linkedWonumList();
+        if (l.stream().anyMatch(x -> x.equalsIgnoreCase(w))) return false;
+        l.add(w);
+        this.linkedWonums = String.join(",", l);
+        return true;
+    }
+    /** Remove a WO number (case-insensitive). Returns true if it was present. */
+    public boolean unlinkWonum(String wonum) {
+        if (wonum == null || wonum.isBlank()) return false;
+        java.util.List<String> l = linkedWonumList();
+        boolean removed = l.removeIf(x -> x.equalsIgnoreCase(wonum.trim()));
+        if (removed) this.linkedWonums = l.isEmpty() ? null : String.join(",", l);
+        return removed;
+    }
+    public boolean isLinkedTo(String wonum) {
+        return wonum != null && linkedWonumList().stream().anyMatch(x -> x.equalsIgnoreCase(wonum.trim()));
+    }
 
     // Getter
     public Map<String, Integer> getLotoPointOrder() {

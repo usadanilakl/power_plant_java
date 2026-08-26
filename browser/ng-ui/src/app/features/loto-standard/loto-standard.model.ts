@@ -27,6 +27,8 @@ export interface LotoPointRef {
   system?: string | null;
   /** System Value (dropdown) mirrors LotoPoint.systemValue — preferred over `system` when set. */
   systemValue?: LotoValueRef | null;
+  /** Equipment-type Value on the LotoPoint — used by the walkdown for grouping. */
+  eqType?: LotoValueRef | null;
   /** Persistent "point verified in the field" flag on LotoPoint (via BaseIdEntity.isVerified). */
   isVerified?: boolean | null;
 }
@@ -190,7 +192,7 @@ export function pointHasNegative(c: PointChecklist | undefined): boolean {
 }
 
 /** How the walkdown list is grouped/sorted. */
-export type WalkdownGroupBy = 'install' | 'removal' | 'system' | 'location';
+export type WalkdownGroupBy = 'install' | 'removal' | 'system' | 'location' | 'eqType';
 
 /** Roll-up verification status for a group of points. */
 export type GroupStatus = 'pass' | 'fail' | 'incomplete';
@@ -234,10 +236,12 @@ export function groupPointsForWalkdown(
     return [{ key: by, label: by === 'install' ? 'Installation order' : 'Removal order', points, status: rollup(points) }];
   }
 
-  // system / location — one group per distinct value; unset points collect under "(Unassigned)".
+  // system / location / eqType — one group per distinct value; unset points collect under "(Unassigned)".
   const getKey = (p: LotoPointRef): string => by === 'system'
     ? (p.systemValue?.name ?? p.system ?? '')
-    : (p.location?.name ?? '');
+    : by === 'eqType'
+      ? (p.eqType?.name ?? '')
+      : (p.location?.name ?? '');
   const buckets = new Map<string, LotoPointRef[]>();
   for (const p of (std?.lotoPoints ?? [])) {
     const raw = getKey(p);

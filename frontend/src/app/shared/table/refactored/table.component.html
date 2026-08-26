@@ -35,6 +35,12 @@
   <div class="table-controls">
     <!-- <ng-content select="[table-controls]"></ng-content> -->
      <app-buttons [buttons]="controlsService.tableControlButtons()" [density]="toolbarDensity()"></app-buttons>
+     <button class="columns-btn" (click)="toggleColumnPanel($event)"
+             [class.active]="columnPanelOpen()"
+             title="Choose which columns show, and drag to reorder them">
+       <span class="cb-glyph">▦</span><span class="cb-label"> Columns</span>
+       @if (hiddenColumnCount()) { <span class="cb-count">{{ hiddenColumnCount() }} hidden</span> }
+     </button>
      @if (driftEntityType()) {
        <button class="drift-scan-btn" (click)="scanDrift()" [disabled]="driftScanning()"
                title="Re-check this list for hub / SharePoint drift now">
@@ -116,7 +122,7 @@
           @if (driftEntityType()) {
             <th class="sync-col-h" [style.width.px]="56" title="Hub / SharePoint sync status">Sync</th>
           }
-          <th *ngFor="let column of columns()"
+          <th *ngFor="let column of visibleColumns()"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
               class="sortable-header">
             <div class="header-content" (click)="sortService.sortColumn(column, true)">
@@ -215,7 +221,7 @@
               </td>
             }
             <td
-              *ngFor="let column of columns()"
+              *ngFor="let column of visibleColumns()"
               [attr.data-column-id]="column.id"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
               [ngStyle]="clickService.getCellStyleWithHover(item, column)"
@@ -281,6 +287,44 @@
     <span>{{ dataService.selectedItems().length }} item(s) selected</span>
      <app-buttons [buttons]="controlsService.tableSelectionControls()" [density]="toolbarDensity()"></app-buttons>
   </div>
+
+  @if (columnPanelOpen()) {
+    <div class="columns-backdrop" (click)="columnPanelOpen.set(false)"></div>
+    <div class="columns-panel"
+         [style.left.px]="columnPanelPos().x"
+         [style.top.px]="columnPanelPos().y">
+      <div class="cp-head">
+        <span>Columns</span>
+        <span class="cp-head-count">{{ visibleColumns().length }} of {{ columns().length }} shown</span>
+        <button class="cp-x" (click)="columnPanelOpen.set(false)" title="Close">✕</button>
+      </div>
+
+      <div class="cp-list" cdkDropList (cdkDropListDropped)="onColumnReorder($event)">
+        @for (row of columnPanelRows(); track row.column.id) {
+          <div class="cp-row" cdkDrag [class.cp-hidden]="!row.visible">
+            <span class="cp-grip" cdkDragHandle title="Drag to reorder">⠿</span>
+            <label class="cp-label">
+              <input
+                type="checkbox"
+                [checked]="row.visible"
+                [disabled]="row.visible && !canHideMore()"
+                (change)="toggleColumnVisibility(row.column)"
+              />
+              <span class="cp-name" [title]="row.column.header">{{ row.column.header }}</span>
+              @if (isColumnFiltered(row.column)) {
+                <span class="cp-filtered" title="This column has an active filter — it stays in effect while hidden">filtered</span>
+              }
+            </label>
+          </div>
+        }
+      </div>
+
+      <div class="cp-foot">
+        <button class="cp-btn" (click)="showAllColumns()" [disabled]="!hiddenColumnCount()">Show all</button>
+        <button class="cp-btn" (click)="resetColumnLayout()">Reset layout</button>
+      </div>
+    </div>
+  }
 
   @if (driftPopover(); as pop) {
     <div class="drift-backdrop" (click)="closeDriftPopover()"></div>

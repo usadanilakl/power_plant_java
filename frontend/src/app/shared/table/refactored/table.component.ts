@@ -24,6 +24,7 @@ import {
   CdkVirtualScrollViewport,
   ScrollingModule,
 } from '@angular/cdk/scrolling';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Column } from '../../../models/column.model';
@@ -43,7 +44,10 @@ import {
 import { TableControlsService } from './services/table-controls.service';
 import { TableDataService } from './services/table-data.service';
 import { TableUtilService } from './services/table-util.service';
-import { TableLocalStorageService } from './services/table-local-storage.service';
+import {
+  TableColumnPrefs,
+  TableLocalStorageService,
+} from './services/table-local-storage.service';
 
 export interface ClickSetup {
   applyTo: 'row' | 'cell';
@@ -65,6 +69,9 @@ export interface FilterOutRules {
     ScrollingModule,
     ColumnFilterInputComponent,
     ButtonsComponent,
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle,
   ],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css',
@@ -355,6 +362,208 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.densityObserver.observe(el);
   }
 
+  //====================== Column layout (order / visibility / width) ======================
+  /**
+   * The user's own column layout for THIS table, on top of the column set the host
+   * declares through [columns]. Host stays the source of truth for which columns exist
+   * and how they render; this only decides which of them show, in what order, and how
+   * wide — so a host changing its field list can never be broken by a saved preference.
+   * <p>
+   * Persisted per tableId. Tables that don't set a tableId keep their layout for the
+   * session only (see TableLocalStorageService.getColumnPrefs for why).
+   */
+  private columnPrefs = signal<TableColumnPrefs>({});
+  columnPanelOpen = signal<boolean>(false);
+
+  /**
+   * Storage identity for this table's layout: the tableId PLUS a fingerprint of the
+   * column set the host declared.
+   * <p>
+   * tableId alone is not unique enough. Several wrappers give it a component-level
+   * DEFAULT (rf-loto-point-table defaults to 'rf-loto-point-table'), and hosts that never
+   * override it all write to that one key — so hiding a column on the Tag Number screen
+   * also hid it inside the Equipment editor, which renders the same wrapper with a
+   * different field list. Folding the declared ids into the key keeps those screens apart,
+   * and has the useful side effect that changing a host's field list starts a fresh
+   * layout rather than applying a preference saved against columns that no longer exist.
+   */
+  private prefsKey = computed(() => {
+    const tableId = this.tableId();
+    if (!tableId) return '';
+    const ids = this.columns().map((c) => c.id).join('|');
+    let hash = 5381;
+    for (let i = 0; i < ids.length; i++) hash = ((hash << 5) + hash + ids.charCodeAt(i)) | 0;
+    return `${tableId}~${(hash >>> 0).toString(36)}`;
+  });
+
+  /**
+   * What actually renders: hidden columns removed, the rest in the user's order.
+   * <p>
+   * Columns absent from the saved order keep their declared order AFTER the ordered ones,
+   * so a column added to a host's field list later simply appears at the end instead of
+   * vanishing because it isn't mentioned in a preference saved months ago.
+   */
+  visibleColumns = computed<Column[]>(() => {
+    const declared = this.columns();
+    const prefs = this.columnPrefs();
+    const hidden = new Set(prefs.hidden ?? []);
+    let shown = declared.filter((c) => !hidden.has(c.id));
+
+    // Floor: a saved preference must never leave a table with no columns at all. The
+    // interactive guard only runs when the user clicks, so a preference saved against a
+    // different column set could otherwise hide every column this host declares and
+    // render an empty grid with no way back except Reset.
+    if (shown.length === 0) shown = declared;
+
+    const order = prefs.order ?? [];
+    if (order.length === 0) return shown;
+
+    const rank = new Map(order.map((id, i) => [id, i]));
+    return [...shown].sort((a, b) => {
+      const ra = rank.has(a.id) ? rank.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const rb = rank.has(b.id) ? rank.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return declared.indexOf(a) - declared.indexOf(b); // stable for unlisted columns
+    });
+  });
+
+  /**
+   * Push saved widths into the resize service instead of onto the Column objects, and
+   * re-push whenever they change. getColumnWidth() reads that map first, so this renders
+   * identically to a drag while leaving the host's column array untouched.
+   */
+  private widthApplyEffect = effect(() => {
+    const widths = this.columnPrefs().widths ?? {};
+    Object.entries(widths).forEach(([id, width]) => this.resizeService.setStoredWidth(id, width));
+  });
+
+  /** Every declared column plus whether it is currently shown — drives the panel. */
+  columnPanelRows = computed<{ column: Column; visible: boolean }[]>(() => {
+    const hidden = new Set(this.columnPrefs().hidden ?? []);
+    const order = this.columnPrefs().order ?? [];
+    const rank = new Map(order.map((id, i) => [id, i]));
+    const declared = this.columns();
+    return [...declared]
+      .sort((a, b) => {
+        const ra = rank.has(a.id) ? rank.get(a.id)! : Number.MAX_SAFE_INTEGER;
+        const rb = rank.has(b.id) ? rank.get(b.id)! : Number.MAX_SAFE_INTEGER;
+        if (ra !== rb) return ra - rb;
+        return declared.indexOf(a) - declared.indexOf(b);
+      })
+      .map((column) => ({ column, visible: !hidden.has(column.id) }));
+  });
+
+  /** How many declared columns the user has hidden — shown on the Columns button. */
+  hiddenColumnCount = computed(
+    () => this.columns().filter((c) => (this.columnPrefs().hidden ?? []).includes(c.id)).length
+  );
+
+  /** Guard so the last visible column can't be hidden, leaving an unusable table. */
+  canHideMore = computed(() => this.visibleColumns().length > 1);
+
+  /**
+   * Screen position for the panel. It is position:FIXED and anchored to the button's
+   * screen rect for the same reason the drift popover is — .table-wrapper is
+   * overflow:hidden, so an absolutely positioned panel is clipped the moment the table
+   * is shorter than the panel, which is most of the time in a split pane.
+   */
+  columnPanelPos = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  toggleColumnPanel(event?: MouseEvent): void {
+    const opening = !this.columnPanelOpen();
+    if (opening && event) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      const width = 260;
+      const maxHeight = Math.round(window.innerHeight * 0.6);
+      this.columnPanelPos.set({
+        // Keep it on screen when the button sits near an edge.
+        x: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+        y: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - maxHeight - 8)),
+      });
+    }
+    this.columnPanelOpen.set(opening);
+  }
+
+  toggleColumnVisibility(column: Column): void {
+    const hidden = new Set(this.columnPrefs().hidden ?? []);
+    if (hidden.has(column.id)) {
+      hidden.delete(column.id);
+    } else {
+      if (!this.canHideMore()) return;
+      hidden.add(column.id);
+    }
+    this.updatePrefs({ hidden: Array.from(hidden) });
+    // The filter boxes are shared by position, so whichever column now sits in each seat
+    // has to be re-seeded — otherwise showing a column again leaves it displaying the
+    // text of whatever used to occupy that slot.
+    this.refreshFilterInputs();
+  }
+
+  /** True when this column carries an active filter — surfaced in the panel so hiding it
+   *  never becomes invisible state. The filter is deliberately NOT cleared on hide: some
+   *  are set by the host through [initialSearchCriteria] (the counterpart dialog pins a
+   *  unit that way), and dropping those would quietly widen the host's own query. */
+  isColumnFiltered(column: Column): boolean {
+    return !!this.dataService.columnFilters()[column.accessorKey || column.id];
+  }
+
+  private refreshFilterInputs(): void {
+    // After the view has re-rendered with the new column set.
+    setTimeout(() => this.syncColumnFilterInputs(), 0);
+  }
+
+  /** Drag-reorder inside the panel. Ordering the panel rows orders the table. */
+  onColumnReorder(event: CdkDragDrop<unknown>): void {
+    const ids = this.columnPanelRows().map((r) => r.column.id);
+    moveItemInArray(ids, event.previousIndex, event.currentIndex);
+    this.updatePrefs({ order: ids });
+  }
+
+  showAllColumns(): void {
+    this.updatePrefs({ hidden: [] });
+    this.refreshFilterInputs();
+  }
+
+  /** Back to exactly what the host declared — order, visibility and widths. */
+  resetColumnLayout(): void {
+    // Clearing the stored widths is what actually restores them on screen: the resize
+    // service's map is read before the column's declared width, so dropping the saved
+    // preference alone left every dragged column at its dragged size.
+    this.resizeService.clearStoredWidths();
+    this.columnPrefs.set({});
+    this.localStorageService.clearColumnPrefs(this.prefsKey());
+    this.refreshFilterInputs();
+  }
+
+  private updatePrefs(patch: Partial<TableColumnPrefs>): void {
+    const next = { ...this.columnPrefs(), ...patch };
+    this.columnPrefs.set(next);
+    this.localStorageService.saveColumnPrefs(next, this.prefsKey());
+  }
+
+
+  /** Load this table's saved layout whenever the table identity changes. */
+  private columnPrefsEffect = effect(() => {
+    this.columnPrefs.set(this.localStorageService.getColumnPrefs(this.prefsKey()) ?? {});
+  });
+
+  /**
+   * Persist widths when a drag-resize finishes. Watching the flag keeps the resize
+   * service unaware of storage; it just reports whether a resize is in progress.
+   */
+  private wasResizing = false;
+  private widthPersistEffect = effect(() => {
+    const resizing = this.resizeService.isResizing();
+    if (this.wasResizing && !resizing) {
+      const widths: { [id: string]: number } = { ...(this.columnPrefs().widths ?? {}) };
+      this.visibleColumns().forEach((c) => {
+        widths[c.id] = this.resizeService.getColumnWidth(c.id);
+      });
+      this.updatePrefs({ widths });
+    }
+    this.wasResizing = resizing;
+  });
+
   filterInputs = viewChildren(ColumnFilterInputComponent);
   headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
   tableContainerRef = viewChild<ElementRef<HTMLDivElement>>('tableContainer');
@@ -370,7 +579,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
 
   private columnsEffect = effect(() => {
-    const columns = this.columns();
+    const columns = this.visibleColumns();
     const tableId = this.tableId();
     this.dataService.columns.set(columns);
     this.dataService.tableId = tableId;
@@ -423,7 +632,10 @@ export class TableComponent implements OnInit, AfterViewInit {
    */
   private syncColumnFilterInputs(): void {
     const filters = this.dataService.columnFilters();
-    const filterable = this.columns().filter((c) => c.filterable);
+    // visibleColumns(), not columns(): filterInputs is positional against what the
+    // template actually rendered, so hiding or reordering a column would otherwise
+    // put each box's text one seat off.
+    const filterable = this.visibleColumns().filter((c) => c.filterable);
     this.filterInputs().forEach((input, i) => {
       const column = filterable[i];
       if (!column) return;

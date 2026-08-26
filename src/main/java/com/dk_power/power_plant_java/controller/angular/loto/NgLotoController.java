@@ -88,6 +88,60 @@ public class NgLotoController {
         }
     }
 
+    // ── WO ↔ LOTO linking ──────────────────────────────────────────────────────
+    /** Not-closed LOTOs (Building/Active/Test) for the WO→LOTO picker. */
+    @GetMapping("/active-light")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>>> activeLotos() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.findActiveLight(), "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** One LOTO's link summary (its linked WOs) — for the LOTO-side "Linked Work Orders" panel. */
+    @GetMapping("/{id}/links")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>> lotoLinks(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.findLinkById(id), "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** LOTOs already linked to a given Maximo WO number. */
+    @GetMapping("/for-wonum")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>>> lotosForWonum(
+            @RequestParam("wonum") String wonum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.findByWonum(wonum), "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Link a WO number to a LOTO. Returns the refreshed link summary. */
+    @PostMapping("/{id}/link-wo")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>> linkWo(
+            @PathVariable Long id, @RequestParam("wonum") String wonum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.linkWo(id, wonum), "linked"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Unlink a WO number from a LOTO. */
+    @PostMapping("/{id}/unlink-wo")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.LotoLinkDto>> unlinkWo(
+            @PathVariable Long id, @RequestParam("wonum") String wonum) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.unlinkWo(id, wonum), "unlinked"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/search")
     public ResponseEntity<NgApiResponse<Page<LotoDto>>> searchFiles(
             @RequestBody SearchCriteria criteria,

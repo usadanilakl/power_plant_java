@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.pwa;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.pwa.qr.QrFileInfoDto;
+import com.dk_power.power_plant_java.dto.pwa.qr.QrMatchDto;
 import com.dk_power.power_plant_java.dto.pwa.qr.QrTagResultDto;
 import com.dk_power.power_plant_java.sevice.pwa.PwaQrService;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,22 @@ public class PwaQrController {
             log.error("[PWA-QR] Tag lookup failed: tagNumber={}, error={}", tagNumber, e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(new QrTagResultDto(tagNumber, List.of()), "Lookup failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Drawings for one specific item by type + id — how the Equipment Finder opens a row it already
+     * identified. Unlike the tag lookup, this cannot resolve to something other than what was tapped.
+     */
+    @GetMapping("/item/{type}/{id}")
+    public ResponseEntity<NgApiResponse<QrMatchDto>> resolveItem(@PathVariable String type, @PathVariable Long id) {
+        try {
+            QrMatchDto match = qrService.resolveItem(type, id);
+            if (match == null) return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(new NgApiResponse<>(match, match.drawings().size() + " drawing(s)"));
+        } catch (Exception e) {
+            log.error("[PWA-QR] Item lookup failed: type={}, id={}, error={}", type, id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
 

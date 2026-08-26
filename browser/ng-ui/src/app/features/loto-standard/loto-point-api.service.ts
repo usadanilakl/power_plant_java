@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, timeout } from 'rxjs';
+import { Observable, map, of, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LotoPointPhoto, LotoPointComment } from './loto-standard.model';
+import { LotoPointPhoto, LotoPointComment, PointDrawing } from './loto-standard.model';
 
 /**
  * Mobile LOTO Point actions. Sits on top of
@@ -87,5 +87,19 @@ export class LotoPointApiService {
         `${this.base}/${pointId}/comments/${commentId}`,
       )
       .pipe(timeout(20000), map(() => undefined));
+  }
+
+  // ── Drawings (points-pile walkdown) ───────────────────────────────────
+
+  /**
+   * Per-point drawing descriptors (file + highlight rectangle) for a set of LOTO points.
+   * Standard-scope-free equivalent of {@code LotoStandardApiService.getDrawings(standardId)},
+   * used by the points-pile walkdown where the pile isn't tied to a single standard.
+   */
+  getDrawingsForPoints(pointIds: number[]): Observable<PointDrawing[]> {
+    if (!pointIds.length) return of([]);
+    return this.http
+      .post<{ responseData: PointDrawing[] }>(`${this.base}/drawings`, { pointIds })
+      .pipe(timeout(30000), map(r => r.responseData ?? []));
   }
 }

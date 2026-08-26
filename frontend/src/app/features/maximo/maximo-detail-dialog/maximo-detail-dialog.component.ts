@@ -13,6 +13,7 @@ import { MaximoAssetPickerComponent } from '../maximo-asset-picker/maximo-asset-
 import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-location-picker.component';
 import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
+import { MaximoWoLotoLinkComponent } from '../maximo-wo-loto-link/maximo-wo-loto-link.component';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { FormField } from '../../../models/ui/form-field.model';
 import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult, computeReorderLines, isInventoryForm } from '../../../models/maximo/maximo-form.models';
@@ -41,7 +42,7 @@ const EDITABLE_SR_STATUSES = ['NEW', 'QUEUED', 'INPROG', 'PENDING'];
 @Component({
   selector: 'app-maximo-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoSchedulePeekComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoLocationTreePickerComponent, MaximoAttachmentsComponent, SmartFormComponent],
+  imports: [CommonModule, FormsModule, MaximoPersonPickerComponent, MaximoSchedulePeekComponent, MaximoAssetPickerComponent, MaximoLocationPickerComponent, MaximoLocationTreePickerComponent, MaximoAttachmentsComponent, SmartFormComponent, MaximoWoLotoLinkComponent],
   templateUrl: './maximo-detail-dialog.component.html',
   styleUrl: './maximo-detail-dialog.component.css'
 })

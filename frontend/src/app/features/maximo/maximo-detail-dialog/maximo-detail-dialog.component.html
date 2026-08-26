@@ -157,6 +157,9 @@
             <button (click)="cancelReschedule()" [disabled]="rescheduling()">Cancel</button>
           </div>
         </div>
+
+        <!-- Linked LOTO(s) — WO only -->
+        <app-maximo-wo-loto-link *ngIf="isWo && wo?.wonum" [wonum]="wo!.wonum"></app-maximo-wo-loto-link>
       </div>
 
       <!-- Notes tab -->

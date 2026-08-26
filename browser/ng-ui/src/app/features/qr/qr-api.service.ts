@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { QrFileInfo, QrTagResult } from './qr.model';
+import { QrFileInfo, QrMatch, QrTagResult } from './qr.model';
 
 /** Thrown when the hub answered 403 — a signed-in account without plant access. Distinct from offline. */
 export class QrForbiddenError extends Error {}
@@ -26,6 +26,7 @@ export class QrApiService {
 
   private readonly TAG_CACHE = 'qr-tag-cache-v1';
   private readonly FILE_CACHE = 'qr-file-cache-v1';
+  private readonly ITEM_CACHE = 'qr-item-cache-v1';
   private readonly MAX_ENTRIES = 40;
 
   /**
@@ -44,6 +45,27 @@ export class QrApiService {
     } catch (e) {
       if (e instanceof HttpErrorResponse && e.status === 403) throw new QrForbiddenError('No plant access');
       return this.read<QrTagResult>(this.TAG_CACHE, tag.toLowerCase());
+    }
+  }
+
+  /**
+   * Drawings for one specific item, addressed by type + id — how the Equipment Finder opens a row.
+   *
+   * Deliberately not a tag lookup: a finder row can be equipment whose tag ALSO belongs to a LOTO
+   * point, and resolving by tag would open the point instead of the thing that was tapped.
+   */
+  async resolveItem(type: string, id: number): Promise<QrMatch | null> {
+    const key = `${type}:${id}`;
+    try {
+      const r = await firstValueFrom(
+        this.http.get<{ responseData: QrMatch }>(`${this.base}/item/${type}/${id}`).pipe(timeout(20000))
+      );
+      const match = r?.responseData ?? null;
+      if (match) this.write(this.ITEM_CACHE, key, match);
+      return match;
+    } catch (e) {
+      if (e instanceof HttpErrorResponse && e.status === 403) throw new QrForbiddenError('No plant access');
+      return this.read<QrMatch>(this.ITEM_CACHE, key);
     }
   }
 

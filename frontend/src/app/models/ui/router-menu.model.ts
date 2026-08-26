@@ -178,6 +178,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/maximo/service-requests', label: 'Service Requests', icon: 'support_agent', iconColor: '#FFA726' },
             { route: '/maximo/work-orders', label: 'Work Orders', icon: 'assignment', iconColor: '#66BB6A' },
             { route: '/maximo/outage-items', label: 'Outage Items', icon: 'bolt', iconColor: '#EC407A' },
+            { route: '/maximo/toi', label: 'TOI / TMOD', icon: 'rule', iconColor: '#7E57C2' },
             { route: '/maximo/parts-checkout', label: 'Parts Checkout', icon: 'inventory_2', iconColor: '#AB47BC' },
             { route: '/maximo/inventory', label: 'Inventory', icon: 'warehouse', iconColor: '#26A69A' },
             { route: '/maximo/pm-scheduling', label: 'PM Scheduling', icon: 'event_repeat', iconColor: '#42A5F5' },

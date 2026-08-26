@@ -10,6 +10,7 @@ import { LotoPermitApiService } from './loto-permit-api.service';
 import { LotoPermitStore } from './loto-permit-store.service';
 import { LotoPermitSyncService } from './loto-permit-sync.service';
 import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto-permit.model';
+import { LotoWoLinkComponent } from './loto-wo-link.component';
 import { GlobalMessageService } from '../../services/global-message.service';
 
 /**
@@ -21,7 +22,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
 @Component({
   selector: 'app-loto-permit-phase',
   standalone: true,
-  imports: [FormsModule, MainLayoutComponent, LotoDrawingViewerComponent],
+  imports: [FormsModule, MainLayoutComponent, LotoDrawingViewerComponent, LotoWoLinkComponent],
   template: `
     <app-main-layout [header]="mode() === 'HANG' ? 'Hang LOTO' : 'Verify LOTO'">
       <ng-container main-content>
@@ -37,6 +38,8 @@ import { GlobalMessageService } from '../../services/global-message.service';
               <div class="ph-title">{{ d.permitNumber || ('Permit #' + d.id) }}</div>
               <div class="ph-sub">{{ d.equipmentSystem }} · {{ doneCount() }}/{{ d.points.length }} {{ mode() === 'HANG' ? 'hung' : 'verified' }}</div>
             </div>
+
+            <app-loto-wo-link [lotoId]="d.id"></app-loto-wo-link>
 
             @if (mode() === 'VERIFY' && !d.canVerifyAny) {
               <div class="ph-blocked">

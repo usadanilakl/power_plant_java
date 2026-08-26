@@ -113,6 +113,9 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Map', icon: '🗺️', route: '/plant/map', access: 'public', planned: true },
       { label: 'Emergency', icon: '🚨', route: '/plant/emergency', access: 'public' },
       { label: 'Contacts & Information', shortLabel: 'Contacts', icon: '📇', route: '/plant/contacts', access: 'public' },
+      // Plant-gated, unlike the rest of this section: it searches LOTO points and equipment and opens
+      // P&IDs. hubOnly — it is a live query with no offline cache (the drawings it opens do cache).
+      { label: 'Equipment Finder', shortLabel: 'Finder', icon: '🔎', route: '/plant/equipment-finder', access: 'plant', hubOnly: true },
     ],
   },
   {
@@ -134,6 +137,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'PMs', icon: '🗓️', route: '/maximo/pm', access: 'plant', hubOnly: true },
       { label: 'Parts', icon: '📦', route: '/maximo/parts', access: 'plant', hubOnly: true },
       { label: 'Outage Items', shortLabel: 'Outage', icon: '⚡', route: '/maximo/outage', access: 'plant', hubOnly: true },
+      { label: 'TOI / TMOD', shortLabel: 'TOI', icon: '📋', route: '/maximo/toi', access: 'plant', hubOnly: true },
     ],
   },
   {

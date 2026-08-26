@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.base_dtos.CommentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.PointDrawingDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.WalkdownSubmitRequest;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -14,6 +15,7 @@ import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
+import com.dk_power.power_plant_java.sevice.pwa.PwaLotoDrawingService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaLotoStandardWalkdownService;
 
 import java.util.stream.Collectors;
@@ -71,6 +73,7 @@ public class PwaLotoPointController {
     private final NgCommentService commentService;
     private final FileRepo fileRepo;
     private final PwaLotoStandardWalkdownService walkdownService;
+    private final PwaLotoDrawingService drawingService;
     private final LotoPointRepo lotoPointRepo;
     private final NgLotoStandardService lotoStandardService;
 
@@ -233,6 +236,28 @@ public class PwaLotoPointController {
 
     private static boolean nonBlank(String s) { return s != null && !s.isBlank(); }
     private boolean nonBlankInstance(String s) { return nonBlank(s); }
+
+    /**
+     * Every point→drawing occurrence for a set of LOTO point ids. Standard-scope-free equivalent of
+     * {@code PwaLotoStandardController#drawings(id)}; the points-pile walkdown selects points without
+     * a single standard context, so it can't reuse the per-standard resolver. Body is
+     * {@code { "pointIds": [1, 2, 3] }} — POST rather than a long querystring since the pile can be
+     * hundreds of points.
+     */
+    @PostMapping("/drawings")
+    public ResponseEntity<NgApiResponse<List<PointDrawingDto>>> drawingsForPoints(@RequestBody Map<String, List<Long>> body) {
+        try {
+            List<Long> pointIds = body != null ? body.get("pointIds") : null;
+            if (pointIds == null || pointIds.isEmpty()) {
+                return ResponseEntity.ok(new NgApiResponse<>(List.of(), "No point ids"));
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(drawingService.drawingsForPoints(pointIds), "Drawings"));
+        } catch (Exception e) {
+            log.error("PWA drawingsForPoints failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(List.of(), "Failed to load drawings: " + e.getMessage()));
+        }
+    }
 
     /**
      * Distinct free-text `system` values across every active LOTO point — DB-side DISTINCT (one

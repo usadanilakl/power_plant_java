@@ -73,6 +73,11 @@ import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
 
                 @if (expanded() === wo.href) {
                   <div class="oi-body">
+                    <div class="oi-meta">
+                      @if (wo.targetStart) { <span>🗓 {{ wo.targetStart | date:'medium' }}</span> }
+                      @if (wo.leadCraft) { <span>👷 {{ wo.leadCraft }}</span> }
+                      @if (wo.worktype) { <span>🏷 {{ wo.worktype }}</span> }
+                    </div>
                     <button class="oi-detail-btn" (click)="detailWo.set(wo)">🗂 Full WO details — files · notes · dates · tasks</button>
                     <h4 class="oi-h">🔒 LOTO isolation notes</h4>
                     @if (notesLoading()[wo.href]) { <p class="oi-msg">Loading notes…</p> }
@@ -128,6 +133,7 @@ import { MaximoWorkOrder, MaximoWorklog } from './maximo.model';
     .oi-loc { font-size: 0.75rem; color: var(--secondary-text, #888); }
     .oi-caret { flex: 0 0 auto; color: var(--secondary-text, #888); }
     .oi-body { padding: 0.3rem 0.8rem 0.8rem; border-top: 1px solid var(--border-color); }
+    .oi-meta { display: flex; flex-wrap: wrap; gap: 0.7rem; color: var(--secondary-text, #888); font-size: 0.78rem; margin: 0.5rem 0; }
     .oi-detail-btn { width: 100%; margin: 0.5rem 0 0.2rem; background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; padding: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
     .oi-h { margin: 0.5rem 0 0.4rem; font-size: 0.88rem; }
     .oi-note { border-left: 3px solid #EC407A; background: var(--card-bg, rgba(236,64,122,0.06)); border-radius: 0 6px 6px 0; padding: 0.4rem 0.6rem; margin-bottom: 0.4rem; }

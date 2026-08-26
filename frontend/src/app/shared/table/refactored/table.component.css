@@ -722,3 +722,202 @@ td {
   color: var(--muted-text, #98a2b3);
 }
 
+
+/* ==========================================================================
+   Column layout panel (visibility + drag reorder)
+   Rendered by the table itself, like the reorder bar, so it survives a feature
+   that replaces the control buttons wholesale.
+   ========================================================================== */
+.columns-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  background-color: var(--primary-background, #fff);
+  color: var(--primary-text, #333);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.columns-btn:hover { background-color: var(--hover-color, #f0f0f0); }
+.columns-btn.active {
+  border-color: var(--accent-color, #1976d2);
+  color: var(--accent-color, #1976d2);
+}
+.cb-count {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background-color: var(--accent-color, #1976d2);
+  color: var(--header-text, #fff);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.columns-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+}
+
+.columns-panel {
+  /* fixed, not absolute: .table-wrapper is overflow:hidden and would clip it */
+  position: fixed;
+  z-index: 901;
+  width: 290px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--primary-background, #fff);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.cp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-text, #333);
+}
+.cp-head-count {
+  flex: 1 1 auto;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--secondary-text, #888);
+}
+.cp-x {
+  flex: 0 0 auto;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--secondary-text, #888);
+  font-size: 13px;
+}
+
+.cp-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.cp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 10px;
+  min-height: 30px;
+  background: var(--primary-background, #fff);
+  color: var(--primary-text, #333);
+}
+.cp-row:hover { background: var(--hover-color, #f5f5f5); }
+.cp-row.cp-hidden .cp-name { color: var(--secondary-text, #999); }
+
+/* styles.css sets `input, select { width:100%; padding:10px; border:1px solid #ddd }`
+   for form fields. Inherited by these checkboxes it stretched each one across the row,
+   pushed the column name into a sliver at the right edge, and drew a green focus ring
+   on whichever row was last clicked. Reset it to an actual checkbox. */
+.cp-label input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  accent-color: var(--accent-color, #1976d2);
+  box-shadow: none;
+  cursor: pointer;
+}
+.cp-label input[type='checkbox']:focus,
+.cp-label input[type='checkbox']:focus-visible {
+  border: 0;
+  box-shadow: none;
+  outline: 2px solid var(--accent-color, #1976d2);
+  outline-offset: 1px;
+}
+.cp-label input[type='checkbox']:disabled { cursor: default; opacity: 0.5; }
+
+.cp-grip {
+  flex: 0 0 auto;
+  cursor: grab;
+  color: var(--secondary-text, #999);
+  opacity: 0.55;
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+}
+.cp-row:hover .cp-grip { opacity: 1; }
+.cp-grip:active { cursor: grabbing; }
+
+.cp-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-width: 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+.cp-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* CDK drag feedback */
+.cp-row.cdk-drag-preview {
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+.cp-row.cdk-drag-placeholder { opacity: 0.35; }
+.cp-list.cdk-drop-list-dragging .cp-row:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cp-foot {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+.cp-btn {
+  flex: 1 1 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  background: var(--primary-background, #fff);
+  color: var(--primary-text, #333);
+  font-size: 12px;
+  cursor: pointer;
+}
+.cp-btn:hover:not(:disabled) { background: var(--hover-color, #f0f0f0); }
+.cp-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* Same collapse as the other controls when the table is narrow. */
+.density-icon .cb-label,
+.density-icon .cb-count { display: none; }
+
+/* A hidden column can still be filtering the table — say so rather than leaving it
+   as invisible state (the filter is kept on purpose; some are set by the host). */
+.cp-filtered {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--warning-background, #ffe0b2);
+  color: var(--primary-text, #333);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}

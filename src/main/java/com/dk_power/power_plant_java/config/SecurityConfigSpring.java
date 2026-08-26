@@ -119,6 +119,9 @@ public class SecurityConfigSpring {
                 // it, but the P&IDs behind it are plant data. Without this rule it would fall through to
                 // /api/pwa/secured/** .authenticated(), which would hand drawings to any signed-in contractor.
                 .requestMatchers("/api/pwa/secured/qr/**").hasAnyRole("PLANT", "ADMIN")
+                // Equipment Finder — searches LOTO points + equipment and opens their P&IDs through the
+                // QR resolver above, so it carries the same audience.
+                .requestMatchers("/api/pwa/secured/equipment-finder/**").hasAnyRole("PLANT", "ADMIN")
                 // Qualifications: the target model is READ-ONLY for plant staff, writable by ROLE_SAFETY.
                 // Reads are @GetMapping and writes are POST/PUT/DELETE under this path, so method-scoped
                 // matchers split the two (the GET rule must precede the write rule — first match wins).

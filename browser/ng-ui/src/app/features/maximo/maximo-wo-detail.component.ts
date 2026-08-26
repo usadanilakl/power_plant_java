@@ -5,6 +5,7 @@ import { MaximoOfflineStore } from './maximo-offline.service';
 import { MaximoSyncService } from './maximo-sync.service';
 import { MaximoWoFilesComponent } from './maximo-wo-files.component';
 import { MaximoWoNotesComponent } from './maximo-wo-notes.component';
+import { MaximoWoLotoLinkComponent } from './maximo-wo-loto-link.component';
 import {
   COMPLETABLE_WO_STATUSES, MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, MaximoWorkOrder,
   ReorderLine, ReorderResult, statusClass,
@@ -20,7 +21,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
 @Component({
   selector: 'app-maximo-wo-detail',
   standalone: true,
-  imports: [DatePipe, MaximoWoFilesComponent, MaximoWoNotesComponent],
+  imports: [DatePipe, MaximoWoFilesComponent, MaximoWoNotesComponent, MaximoWoLotoLinkComponent],
   template: `
     <div class="wd-backdrop" (click)="close.emit()">
       <div class="wd-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Work order ' + wo.wonum" (click)="$event.stopPropagation()">
@@ -65,6 +66,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
             <dt>Target start</dt><dd>{{ (wo.targetStart | date:'medium') || '—' }}</dd>
             @if (wo.pmnum) { <dt>PM</dt><dd>{{ wo.pmnum }}</dd> }
           </dl>
+          <app-maximo-wo-loto-link [wonum]="wo.wonum"></app-maximo-wo-loto-link>
         }
 
         @if (tab() === 'tasks') {

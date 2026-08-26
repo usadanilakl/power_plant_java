@@ -110,6 +110,42 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return this.findById(id).map(this::toDto);
     }
 
+    // ── WO ↔ LOTO linking ──────────────────────────────────────────────────────
+    /** Link a Maximo WO number to a LOTO (idempotent). Goes through JPA so the change syncs. */
+    @org.springframework.transaction.annotation.Transactional
+    public com.dk_power.power_plant_java.dto.permits.LotoLinkDto linkWo(Long id, String wonum) {
+        Loto loto = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("LOTO " + id + " not found"));
+        if (loto.linkWonum(wonum)) repo.save(loto);   // scalar change dirties the row → @PostUpdate syncs it
+        return toLink(loto);
+    }
+    @org.springframework.transaction.annotation.Transactional
+    public com.dk_power.power_plant_java.dto.permits.LotoLinkDto unlinkWo(Long id, String wonum) {
+        Loto loto = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("LOTO " + id + " not found"));
+        if (loto.unlinkWonum(wonum)) repo.save(loto);
+        return toLink(loto);
+    }
+    /** LOTOs linked to a given WO number (exact, delimiter-safe). */
+    public List<com.dk_power.power_plant_java.dto.permits.LotoLinkDto> findByWonum(String wonum) {
+        if (wonum == null || wonum.isBlank()) return List.of();
+        return repo.findByLinkedWonumLike(wonum.trim()).stream()
+                .filter(l -> l.isLinkedTo(wonum.trim()))
+                .map(this::toLink).toList();
+    }
+    /** Not-closed LOTOs for the WO→LOTO picker. */
+    public List<com.dk_power.power_plant_java.dto.permits.LotoLinkDto> findActiveLight() {
+        return repo.findActiveNotClosed().stream().map(this::toLink).toList();
+    }
+    /** One LOTO's link summary (its linked WOs) — for the LOTO-side "Linked Work Orders" panel. */
+    public com.dk_power.power_plant_java.dto.permits.LotoLinkDto findLinkById(Long id) {
+        return repo.findById(id).map(this::toLink)
+                .orElseThrow(() -> new IllegalArgumentException("LOTO " + id + " not found"));
+    }
+    private com.dk_power.power_plant_java.dto.permits.LotoLinkDto toLink(Loto l) {
+        String status = l.getPermitStatus() != null ? l.getPermitStatus().getName() : null;
+        return new com.dk_power.power_plant_java.dto.permits.LotoLinkDto(
+                l.getId(), l.getPermitNumber(), status, l.getEquipmentSystem(), l.getLotoRequestor(), l.linkedWonumList());
+    }
+
     public Page<LotoDto> complexSearch(String searchString, int page, int size) {
         Map<String, String> searchCriteria = new HashMap<>();
         searchCriteria.put("docNum", searchString);

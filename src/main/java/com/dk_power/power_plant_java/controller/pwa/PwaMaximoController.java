@@ -34,6 +34,10 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoToiService;
+import com.dk_power.power_plant_java.dto.maximo.ToiCreateRequest;
+import com.dk_power.power_plant_java.dto.maximo.ToiCloseRequest;
+import com.dk_power.power_plant_java.dto.maximo.ToiUpdateRequest;
 import com.dk_power.power_plant_java.sevice.maximo.RecurringPmService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +72,7 @@ public class PwaMaximoController {
     private final MaximoLocationAdapter locations;
     private final MaximoInventoryCatalogService inventoryCatalog;
     private final MaximoPartsCheckoutService partsCheckout;
+    private final MaximoToiService toiService;
     private final MaximoDoclinksAdapter doclinks;
     private final MaximoWorklogAdapter worklog;
     private final MaximoBundleService bundles;
@@ -313,6 +318,56 @@ public class PwaMaximoController {
     }
 
     public record LotoNoteBody(String text) {}
+
+    // ── TOI/TMOD (Temporary Operation Instruction / Temporary Modification) records ──────────
+
+    /** All TOI/TMOD records (active + closed); the UI splits them into Active/Closed tabs by the marker. */
+    @GetMapping("/tois")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> tois(
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "300") int pageSize) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.list(siteid, pageSize), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] TOI list failed: {}", e.getMessage());
+            return ResponseEntity.status(502).body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Create a TOI/TMOD (WAPPR WO + the risk-assessment/instruction form as the first worklog note). */
+    @PostMapping("/tois")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> createToi(@RequestBody ToiCreateRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.create(req), "created"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] TOI create failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Edit a TOI/TMOD's WO fields (title/description, instructions, location, asset, worktype). {@code href} query param. */
+    @PostMapping("/tois/update")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> updateToi(
+            @RequestParam("href") String href, @RequestBody ToiUpdateRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.update(href, req), "updated"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] TOI update failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Close a TOI/TMOD (records who closed it + comments, flips the marker to CLOSED). {@code href} query param. */
+    @PostMapping("/tois/close")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> closeToi(
+            @RequestParam("href") String href, @RequestBody ToiCloseRequest req) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(toiService.close(href, req), "closed"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] TOI close failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
 
     // ── Service requests (= "work requests") ───────────────────────────────────
 

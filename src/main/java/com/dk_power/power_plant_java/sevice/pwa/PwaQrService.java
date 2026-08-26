@@ -75,6 +75,31 @@ public class PwaQrService {
     }
 
     /**
+     * The drawings for one specific item, addressed the way the Equipment Finder holds it: by type and
+     * id rather than by tag.
+     *
+     * <p>Deliberately NOT a tag lookup. A finder row can be an equipment whose tag ALSO belongs to a
+     * LOTO point, and {@link #resolveTag} would answer with the point — opening something other than
+     * what the operator tapped. Same {@link QrMatchDto} shape either way, so the client hosts the
+     * result in the same viewer.</p>
+     *
+     * @return null when the id does not resolve (deleted or wrong type), for a clean 404.
+     */
+    @Transactional(readOnly = true)
+    public QrMatchDto resolveItem(String type, Long id) {
+        if ("equipment".equalsIgnoreCase(type)) {
+            Equipment eq = equipmentRepo.findById(id).orElse(null);
+            if (eq == null) return null;
+            return new QrMatchDto("equipment", eq.getId(), eq.getTagNumber(), eq.getDescription(),
+                    drawingService.descriptorsFor(eq.getId(), List.of(eq)));
+        }
+        LotoPoint p = lotoPointRepo.findById(id).orElse(null);
+        if (p == null) return null;
+        return new QrMatchDto("lotoPoint", p.getId(), p.getTagNumber(), p.getDescription(),
+                drawingService.drawingsForPoints(List.of(p.getId())));
+    }
+
+    /**
      * A drawing plus the off-page references drawn on it. Used both when the viewer opens a file the tag
      * landed on and when the operator taps a connector to hop to the drawing it points at, so
      * drawing-to-drawing navigation needs nothing else.
