@@ -1,6 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
+import { EquipmentPickerComponent } from '../../shared/forms/equipment-picker/equipment-picker.component';
+import { WorkAreaMapSelectComponent } from '../../shared/forms/work-area-map-select/work-area-map-select.component';
+import { PwaLotoPointEntry } from '../../services/equipment-data.service';
 import { LotoStandardApiService } from '../loto-standard/loto-standard-api.service';
 import { QrApiService, QrForbiddenError } from '../qr/qr-api.service';
 import { QrDrawingHostComponent } from '../qr/qr-drawing-host.component';
@@ -33,13 +37,29 @@ import {
 @Component({
   selector: 'app-equipment-finder-page',
   standalone: true,
-  imports: [MainLayoutComponent, QrDrawingHostComponent],
+  imports: [
+    FormsModule, MainLayoutComponent, QrDrawingHostComponent, WorkAreaMapSelectComponent,
+    EquipmentPickerComponent,
+  ],
   template: `
     <app-main-layout [header]="'Equipment Finder'">
       <ng-container main-content>
         <div class="ef-container">
 
-          <div class="ef-filters">
+          <div class="ef-tabs" role="tablist" aria-label="Equipment finder view">
+            <button type="button" class="ef-tab" role="tab"
+                    [class.active]="activeTab() === 'filters'"
+                    [attr.aria-selected]="activeTab() === 'filters'"
+                    (click)="activeTab.set('filters')">Filters</button>
+            <button type="button" class="ef-tab" role="tab"
+                    [class.active]="activeTab() === 'map'"
+                    [attr.aria-selected]="activeTab() === 'map'"
+                    (click)="activeTab.set('map')">Map</button>
+          </div>
+
+          @if (activeTab() === 'filters') {
+          <div class="ef-filter-pane">
+            <div class="ef-filters">
             @for (f of fields; track f.key) {
               <div class="ef-filter">
                 <div class="ef-filter-head">
@@ -106,7 +126,7 @@ import {
             <p class="ef-msg ef-notice">{{ notice() }}</p>
           }
 
-          @if (result(); as r) {
+            @if (result(); as r) {
             @if (!r.items.length) {
               <p class="ef-msg">Nothing matched those filters.</p>
             } @else {
@@ -139,6 +159,32 @@ import {
                 }
               </div>
             }
+            }
+          </div>
+          } @else {
+            <div class="ef-map-pane">
+              <app-work-area-map-select
+                pickerPurpose="equipment"
+                [ngModel]="selectedWorkArea"
+                (ngModelChange)="onWorkAreaSelected($event)">
+              </app-work-area-map-select>
+
+              <div class="ef-map-equipment">
+                @if (selectedWorkArea?.id) {
+                  <p class="ef-map-selection">
+                    <strong>{{ selectedWorkArea?.name }}</strong>
+                    <span>Browse equipment by type and Location Value, or search by tag and description.</span>
+                  </p>
+                }
+                <app-equipment-picker #mapEquipmentPicker
+                  [workAreaId]="selectedWorkArea?.id ?? null"
+                  (pointSelected)="openMapPoint($event)">
+                </app-equipment-picker>
+                @if (notice() && noticeKey()) {
+                  <p class="ef-msg ef-notice">{{ notice() }}</p>
+                }
+              </div>
+            </div>
           }
         </div>
       </ng-container>
@@ -150,7 +196,18 @@ import {
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; }
-    .ef-container { padding: 1rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    .ef-container { padding: 1rem; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    .ef-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 1rem;
+      border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg, #2a2a2a); }
+    .ef-tab { padding: 0.65rem 1rem; border: none; border-radius: 7px; background: transparent;
+      color: var(--secondary-text, #888); font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+    .ef-tab.active { background: var(--accent-color); color: #fff; }
+    .ef-filter-pane { max-width: 720px; margin: 0 auto; }
+    .ef-map-pane { display: flex; flex-direction: column; gap: 0.9rem; }
+    .ef-map-equipment { max-width: 720px; width: 100%; margin: 0 auto; }
+    .ef-map-selection { display: flex; flex-direction: column; gap: 0.2rem; margin: 0 0 0.55rem;
+      color: var(--primary-text); font-size: 0.9rem; }
+    .ef-map-selection span { color: var(--secondary-text, #888); font-size: 0.78rem; }
     .ef-filters { display: flex; flex-direction: column; gap: 0.75rem; }
     .ef-filter { display: flex; flex-direction: column; gap: 0.35rem; }
     .ef-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
@@ -191,11 +248,15 @@ import {
   `]
 })
 export class EquipmentFinderPageComponent implements OnInit {
+  @ViewChild('mapEquipmentPicker') mapEquipmentPicker?: EquipmentPickerComponent;
+
   private api = inject(EquipmentFinderApiService);
   private qrApi = inject(QrApiService);
   private lotoApi = inject(LotoStandardApiService);
 
   readonly fields = FINDER_FIELDS;
+  activeTab = signal<'filters' | 'map'>('filters');
+  selectedWorkArea: { id: number; name: string } | null = null;
 
   /** Value names for the boxes that have a known list — see {@link loadOptions}. */
   options = signal<Record<FinderFieldKey, string[]>>(this.byField<string[]>(() => []));
@@ -219,6 +280,26 @@ export class EquipmentFinderPageComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.loadOptions();
+  }
+
+  /** Open the area-filtered picker after a shape resolves to one concrete work area. */
+  onWorkAreaSelected(area: { id: number; name: string } | null): void {
+    this.selectedWorkArea = area;
+    this.clearNotice();
+    if (area?.id) requestAnimationFrame(() => this.mapEquipmentPicker?.open());
+  }
+
+  /** A map result is a LOTO point, so it can enter the same type+id drawing flow as filter results. */
+  openMapPoint(point: PwaLotoPointEntry): void {
+    void this.open({
+      type: 'lotoPoint',
+      id: point.id,
+      tagNumber: point.tagNumber,
+      description: point.description,
+      eqType: point.eqType,
+      specificLocation: point.specificLocation,
+      hasDrawing: true,
+    });
   }
 
   /**

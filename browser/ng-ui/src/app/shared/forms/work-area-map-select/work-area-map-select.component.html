@@ -9,18 +9,29 @@
     -->
     <div class="unavailable-state">
       <strong>The plant map isn't available right now.</strong>
-      <p>
-        You can still send this request — tick
-        <em>"I'm not sure which area this is"</em> below and describe where you'll be working.
-        An operator will set the area for you.
-      </p>
+      @if (pickerPurpose() === 'equipment') {
+        <p>Use the Filters tab to find equipment by tag number, description, type, or location.</p>
+      } @else {
+        <p>
+          You can still send this request — tick
+          <em>"I'm not sure which area this is"</em> below and describe where you'll be working.
+          An operator will set the area for you.
+        </p>
+      }
     </div>
   } @else {
-    <p class="map-hint">
-      Tap the area of the plant where you'll be working. This tells us the hazards and lock-outs
-      that already apply there. If you can't find it, tick <em>"I'm not sure which area this is"</em>
-      below and describe the spot instead.
-    </p>
+    @if (pickerPurpose() === 'equipment') {
+      <p class="map-hint">
+        Tap a work area to browse its equipment. You can then narrow the list by Location Value,
+        tag-number words, or description words.
+      </p>
+    } @else {
+      <p class="map-hint">
+        Tap the area of the plant where you'll be working. This tells us the hazards and lock-outs
+        that already apply there. If you can't find it, tick <em>"I'm not sure which area this is"</em>
+        below and describe the spot instead.
+      </p>
+    }
 
     <!-- Mobile: trigger button -->
     @if (isMobile() && !overlayOpen()) {
@@ -42,41 +53,46 @@
           <button type="button" class="overlay-close-btn" aria-label="Close map" (click)="closeOverlay()">&times;</button>
         </div>
 
-        @if (selectedShape()) {
-          <div class="selected-panel">
-            @if (selectedShape()!.areas.length > 1) {
-              <div class="selected-panel-multi">
-                <span class="selected-panel-prompt">This area contains multiple zones:</span>
-                @for (area of selectedShape()!.areas; track area.id) {
-                  <button type="button"
-                    class="area-option-btn"
-                    [class.active]="selectedAreaName() === area.name"
-                    [class.confined-space]="area.isConfinedSpace"
-                    (click)="setArea(area)">
-                    {{ area.name }}
-                    @if (area.isConfinedSpace) {
-                      <span class="cs-badge">Confined Space</span>
-                    }
-                  </button>
-                }
-              </div>
-            } @else {
-              <div class="selected-panel-name">
-                {{ selectedShape()!.areaNames[0] }}
-                @if (selectedShape()!.areas[0].isConfinedSpace) {
-                  <span class="cs-badge">Confined Space</span>
-                }
-              </div>
-            }
-            @if (selectedShape()!.entry.label) {
-              <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
-            }
-          </div>
-        }
-
         <div
           #mapContainer
           class="map-container overlay-map">
+
+          @if (selectedShape()) {
+            <div class="selected-panel map-selection-popover"
+                 (mousedown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()"
+                 (touchstart)="$event.stopPropagation()" (touchmove)="$event.stopPropagation()"
+                 (touchend)="$event.stopPropagation()">
+              @if (selectedShape()!.areas.length > 1) {
+                <div class="selected-panel-multi">
+                  <span class="selected-panel-prompt">This area contains multiple zones:</span>
+                  <div class="area-option-list">
+                    @for (area of selectedShape()!.areas; track area.id) {
+                      <button type="button"
+                        class="area-option-btn"
+                        [class.active]="selectedAreaName() === area.name"
+                        [class.confined-space]="area.isConfinedSpace"
+                        (click)="setArea(area)">
+                        {{ area.name }}
+                        @if (area.isConfinedSpace) {
+                          <span class="cs-badge">Confined Space</span>
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div class="selected-panel-name">
+                  {{ selectedShape()!.areaNames[0] }}
+                  @if (selectedShape()!.areas[0].isConfinedSpace) {
+                    <span class="cs-badge">Confined Space</span>
+                  }
+                </div>
+              }
+              @if (selectedShape()!.entry.label) {
+                <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
+              }
+            </div>
+          }
 
           <div #zoomElement class="zoom-element">
             <img
@@ -121,41 +137,46 @@
 
     <!-- Desktop: inline map -->
     @if (!isMobile()) {
-      @if (selectedShape()) {
-        <div class="selected-panel">
-          @if (selectedShape()!.areas.length > 1) {
-            <div class="selected-panel-multi">
-              <span class="selected-panel-prompt">Select work area:</span>
-              @for (area of selectedShape()!.areas; track area.id) {
-                <button type="button"
-                  class="area-option-btn"
-                  [class.active]="selectedAreaName() === area.name"
-                  [class.confined-space]="area.isConfinedSpace"
-                  (click)="setArea(area)">
-                  {{ area.name }}
-                  @if (area.isConfinedSpace) {
-                    <span class="cs-badge">Confined Space</span>
-                  }
-                </button>
-              }
-            </div>
-          } @else {
-            <div class="selected-panel-name">
-              {{ selectedShape()!.areaNames[0] }}
-              @if (selectedShape()!.areas[0].isConfinedSpace) {
-                <span class="cs-badge">Confined Space</span>
-              }
-            </div>
-          }
-          @if (selectedShape()!.entry.label) {
-            <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
-          }
-        </div>
-      }
-
       <div
         #mapContainer
         class="map-container">
+
+        @if (selectedShape()) {
+          <div class="selected-panel map-selection-popover"
+               (mousedown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()"
+               (touchstart)="$event.stopPropagation()" (touchmove)="$event.stopPropagation()"
+               (touchend)="$event.stopPropagation()">
+            @if (selectedShape()!.areas.length > 1) {
+              <div class="selected-panel-multi">
+                <span class="selected-panel-prompt">Select work area:</span>
+                <div class="area-option-list">
+                  @for (area of selectedShape()!.areas; track area.id) {
+                    <button type="button"
+                      class="area-option-btn"
+                      [class.active]="selectedAreaName() === area.name"
+                      [class.confined-space]="area.isConfinedSpace"
+                      (click)="setArea(area)">
+                      {{ area.name }}
+                      @if (area.isConfinedSpace) {
+                        <span class="cs-badge">Confined Space</span>
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="selected-panel-name">
+                {{ selectedShape()!.areaNames[0] }}
+                @if (selectedShape()!.areas[0].isConfinedSpace) {
+                  <span class="cs-badge">Confined Space</span>
+                }
+              </div>
+            }
+            @if (selectedShape()!.entry.label) {
+              <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
+            }
+          </div>
+        }
 
         <div #zoomElement class="zoom-element">
           <img

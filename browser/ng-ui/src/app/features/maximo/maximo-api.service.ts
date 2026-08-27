@@ -50,6 +50,12 @@ export class MaximoApiService {
     );
   }
 
+  /** Distinct work-type codes actually in use (dynamic from Maximo), for the filter dropdown. */
+  listWorktypes(): Observable<string[]> {
+    return this.http.get<{ responseData: string[] }>(`${this.base}/work-orders/worktypes`).pipe(
+      timeout(30000), map(r => r.responseData ?? []));
+  }
+
   /** Outage work orders (Outage Type = PLAN or SNOW), newest first. */
   listOutageWorkOrders(pageSize = 300): Observable<MaximoWorkOrder[]> {
     const params = new HttpParams().set('pageSize', String(pageSize));

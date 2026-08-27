@@ -119,6 +119,18 @@ public class PwaMaximoController {
         }
     }
 
+    /** Distinct work-type codes actually in use (dynamic from Maximo — the domain OS is blocked), for the filter. */
+    @GetMapping("/work-orders/worktypes")
+    public ResponseEntity<NgApiResponse<List<String>>> worktypes(
+            @RequestParam(value = "siteid", required = false) String siteid) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(workOrders.distinctWorktypes(siteid), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] worktypes failed: {}", e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
     /** Child tasks of a work order (istask=1 rows), for the Tasks tab. {@code wonum} is the parent's number. */
     @GetMapping("/work-orders/{wonum}/tasks")
     public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> workOrderTasks(@PathVariable String wonum) {

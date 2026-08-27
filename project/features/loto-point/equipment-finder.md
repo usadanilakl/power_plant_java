@@ -3,6 +3,12 @@
 Find a LOTO point or a piece of equipment from what you can remember about it, then open its P&ID
 with that item highlighted. Lives under the Plant section at `/plant/equipment-finder`.
 
+The page has two entry tabs:
+
+- **Filters** — the five-field server search described below.
+- **Map** — select a Work Area, then browse the LOTO points associated through that area's Location
+  Values. Selecting a point opens the same drawing flow as a Filters result.
+
 ## Filters
 
 Five boxes, each a **bucket of words** with its own AND/OR mode:
@@ -60,6 +66,26 @@ Capped at 200 rows (max 500 on request), but the counts returned are of the **fu
 list says "showing first 200" instead of silently truncating. `hasDrawing` is resolved in one query per
 type rather than per row — walking each point's equipment collection would drag every Equipment and its
 eager `mainFile` into memory just to render a badge.
+
+## Map equipment picker
+
+The shared equipment picker used by Field List items, Work Requests, and the Finder Map tab opens as
+a browser modal in the top layer. It therefore stays in the current viewport even when its trigger is
+inside a scrolled or transformed form component.
+
+For a selected Work Area it shows equipment grouped by Equipment Type. When that area contains more
+than one Location Value, a horizontal tab row narrows the groups to **All** or one Location. Common
+leading words are removed from the visible tab labels (`HRSG Lower West/East/North` becomes
+`West / East / North`); the full Value name remains available as the tab title.
+
+Both the area list and the **Search all equipment** view use two independent word buckets:
+
+- Tag number
+- Description
+
+Words inside either bucket default to AND (`all`) and can be switched to OR (`any`). If both buckets
+are populated they combine with AND, matching the main Finder semantics. Area/location filtering is
+applied before these word buckets.
 
 ## Opening a row
 

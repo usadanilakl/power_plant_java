@@ -10,6 +10,9 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
 import com.dk_power.power_plant_java.sevice.angular.loto.LotoImportService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
+import com.dk_power.power_plant_java.sevice.loto.LotoBypassService;
+import com.dk_power.power_plant_java.sevice.loto.LotoBypassService.BypassRequest;
+import com.dk_power.power_plant_java.entities.loto.LotoBypassAudit;
 import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,7 @@ import java.util.Set;
 public class NgLotoController {
     private final NgLotoService ngLotoService;
     private final LotoImportService lotoImportService;
+    private final LotoBypassService lotoBypassService;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<LotoDto>>> getPaginatedFiles(
@@ -550,6 +554,97 @@ public class NgLotoController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error assigning locks: " + e.getMessage()));
         }
+    }
+
+    /** Move a LOTO to a different lock box. Body: {@code { "boxNumber": 42 }}. CA-only. */
+    @PutMapping("/{id}/change-box")
+    public ResponseEntity<NgApiResponse<LotoDto>> changeBox(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Integer newBoxNumber = intOrNull(body, "boxNumber");
+            if (newBoxNumber == null || newBoxNumber <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(null, "boxNumber is required"));
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    ngLotoService.changeBox(id, newBoxNumber),
+                    "LOTO moved to box " + newBoxNumber));
+        } catch (SecurityException se) {
+            return ResponseEntity.status(403).body(new NgApiResponse<>(null, se.getMessage()));
+        } catch (IllegalArgumentException iae) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, iae.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /*********************************************************************************************************************
+     * RED TAG BYPASS — Control-Authority-only, skips normal lifecycle gates.
+     * Used when Red Tag is the source of truth (LOTOs it shows should override
+     * local state) and the normal Approve → Hang → Verify → Activate walk is
+     * not appropriate. Every call writes one {@link LotoBypassAudit} row.
+     ******************************************************************************************************************/
+
+    /**
+     * Manual bypass triggered from the "Red Tag Bypass" button on the LOTO form.
+     * Accepts any subset of {@code targetStatus / workScope / lotoRequestor /
+     * boxNumber / redTagNum}; {@code reason} is required.
+     */
+    @PostMapping("/{id}/red-tag-bypass")
+    public ResponseEntity<NgApiResponse<LotoDto>> redTagBypass(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            BypassRequest req = new BypassRequest(
+                    id,
+                    strOrNull(body, "targetStatus"),
+                    strOrNull(body, "workScope"),
+                    strOrNull(body, "lotoRequestor"),
+                    intOrNull(body, "boxNumber"),
+                    strOrNull(body, "redTagNum"),
+                    strOrNull(body, "reason"),
+                    "MANUAL");
+            lotoBypassService.bypass(req);
+            // Refetch as DTO so the client gets the same shape as other lifecycle endpoints.
+            LotoDto refreshed = ngLotoService.findDtoById(id).orElse(null);
+            return ResponseEntity.ok(new NgApiResponse<>(refreshed, "Red Tag bypass applied"));
+        } catch (SecurityException se) {
+            return ResponseEntity.status(403).body(new NgApiResponse<>(null, se.getMessage()));
+        } catch (IllegalArgumentException iae) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, iae.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Audit timeline for one LOTO — newest first. Used by the "Bypass history" side panel. */
+    @GetMapping("/{id}/bypass-audit")
+    public ResponseEntity<NgApiResponse<List<LotoBypassAudit>>> bypassAudit(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    lotoBypassService.auditForLoto(id), "Bypass audit"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    private static String strOrNull(Map<String, Object> body, String key) {
+        if (body == null) return null;
+        Object v = body.get(key);
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private static Integer intOrNull(Map<String, Object> body, String key) {
+        if (body == null) return null;
+        Object v = body.get(key);
+        if (v == null) return null;
+        if (v instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(String.valueOf(v).trim()); }
+        catch (NumberFormatException e) { return null; }
     }
 
     @GetMapping("/usage-monitor")

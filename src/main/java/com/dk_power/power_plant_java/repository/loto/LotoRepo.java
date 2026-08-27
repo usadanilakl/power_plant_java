@@ -47,4 +47,16 @@ public interface LotoRepo extends PermitRepo<Loto> {
      *  delimiter-safe) to avoid partial-number false positives. */
     @Query("SELECT l FROM Loto l WHERE l.deleted = false AND l.linkedWonums LIKE concat('%', ?1, '%')")
     List<Loto> findByLinkedWonumLike(String wonum);
+
+    /**
+     * Light projection of every non-deleted LOTO for the Red-Tag state-sync
+     * reconciler. Skips snapshots / points / personnel hydration — the
+     * reconciler only needs id + permitStatus + a few scalar fields for
+     * matching, and a full {@code findAll()} would fire {@code @PostLoad}
+     * and cascade fetches on many hundreds of rows.
+     */
+    @Query("SELECT new com.dk_power.power_plant_java.sevice.automation.redtag.statesync.LocalLotoView("
+            + "l.id, l.permitNumber, l.permitStatus.name, l.redTagNum, l.boxNumber, l.workScope, l.lotoRequestor) "
+            + "FROM Loto l WHERE l.deleted = false")
+    List<com.dk_power.power_plant_java.sevice.automation.redtag.statesync.LocalLotoView> findAllForReconcile();
 }

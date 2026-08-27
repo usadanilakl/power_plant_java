@@ -447,6 +447,50 @@ public class MaximoWorkOrderAdapter {
         return map(created);
     }
 
+    private volatile List<String> worktypeCache = null;
+    private volatile long worktypeCacheAt = 0L;
+    private static final long WORKTYPE_TTL_MS = 10 * 60 * 1000;
+
+    /**
+     * Work-type codes that must ALWAYS appear in the filter even if no WO uses them yet (e.g. a newly-added
+     * worktype). Overridable via {@code maximo.curated-worktypes} (comma-separated). Maximo's worktype domain OS
+     * (MXDOMAIN) is access-blocked here, so a brand-new code can't be discovered from WOs OR the domain — it has
+     * to be listed here. ADD THE WINTERIZATION CODE HERE once confirmed (it isn't in any WO yet).
+     */
+    @org.springframework.beans.factory.annotation.Value("${maximo.curated-worktypes:PM,CM,INS,PRO,WAR,SAF,REG,MOC,WINT}")
+    private String curatedWorktypesCsv = "PM,CM,INS,PRO,WAR,SAF,REG,MOC,WINT";
+
+    /**
+     * The work-type codes for the filter: the distinct codes actually in use (derived from real WOs, since the
+     * domain OS is blocked) UNION the curated always-show set (so newly-added-but-unused codes still appear).
+     * Sorted, cached 10 min.
+     */
+    public List<String> distinctWorktypes(String siteid) {
+        long now = System.currentTimeMillis();
+        List<String> cached = worktypeCache;
+        if (cached != null && (now - worktypeCacheAt) < WORKTYPE_TTL_MS) return cached;
+        java.util.TreeSet<String> set = new java.util.TreeSet<>();
+        for (String c : curatedWorktypesCsv.split(",")) { String t = c.trim(); if (!t.isEmpty()) set.add(t); }
+        try {
+            String site = (siteid != null && !siteid.isBlank()) ? siteid : access.defaultSite();
+            Map<String, String> params = new LinkedHashMap<>();
+            params.put("oslc.select", "spi:worktype");
+            params.put("oslc.where", "spi:siteid=\"" + escape(site) + "\"");
+            params.put("oslc.pageSize", "2000");
+            params.put("oslc.orderBy", "-spi:reportdate");
+            for (Map<String, Object> row : members(access.getMap(access.osUrl(OS), params))) {
+                String wt = str(row, "worktype");
+                if (wt != null && !wt.isBlank()) set.add(wt.trim());
+            }
+        } catch (RuntimeException e) {
+            log.warn("[Maximo] worktype discovery failed ({}) — using curated set only", e.getMessage());
+        }
+        List<String> out = new ArrayList<>(set);
+        worktypeCache = out;
+        worktypeCacheAt = now;
+        return out;
+    }
+
     /** Create a WO from an arbitrary spi-field map (each key MUST be spi-prefixed or it is silently dropped);
      *  defaults {@code spi:siteid}. New WO comes back WAPPR. Used by TOI/TMOD create (needs assetnum + longdesc). */
     public MaximoWorkOrderDto create(Map<String, Object> spiFields) {

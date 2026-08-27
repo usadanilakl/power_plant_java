@@ -135,8 +135,16 @@ export class LotoDto extends BasePermitDto implements LotoModel {
    * REQUESTOR or CONTROL_AUTHORITY role) to render the requestor field as a
    * select instead of a free-text input.
    */
-  static toFormFields(dto: LotoDto, opts?: { requestorOptions?: Option[] }): FormField[] {
+  static toFormFields(dto: LotoDto, opts?: {
+    requestorOptions?: Option[];
+    boxOptions?: Option[];
+    boxReadonly?: boolean;
+  }): FormField[] {
     const requestorOptions = opts?.requestorOptions;
+    const boxOptions = opts?.boxOptions
+      ?? (dto.boxNumber != null
+        ? [{ value: dto.boxNumber, label: `Box #${dto.boxNumber}` }]
+        : []);
     const fields: FormField[] = [
       {
         name: 'equipmentSystem',
@@ -165,16 +173,11 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       },
       {
         name: 'boxNumber',
-        label: 'Box Number',
-        type: 'number',
-        initialValue: dto.boxNumber?.toString() || ''
-      },
-      {
-        name: 'lotoBox',
         label: 'LOTO Box',
         type: 'select',
-        initialValue: dto.lotoBox?.id,
-        options: dto.lotoBox ? [{ value: dto.lotoBox.id, label: `Box #${dto.lotoBox.number}` }] : []
+        initialValue: dto.boxNumber,
+        options: boxOptions,
+        readonly: opts?.boxReadonly ?? false
       },
       {
         name: 'isVerified',

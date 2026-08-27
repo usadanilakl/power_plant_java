@@ -79,4 +79,28 @@ public class RedTagAutomationProperties {
      * global ESC pause depends on this flag.
      */
     private boolean hotkeyEnabled = false;
+
+    // -----------------------------------------------------------------------
+    // State-sync flow tuning (LOTO Procedures list scrape).
+    // -----------------------------------------------------------------------
+
+    /** Vertical distance (pixels) from the expanded tab bottom to the first row. */
+    private int stateSyncRowsTopPadding = 4;
+    /** Height of the OCR scan region below the expanded tab, in pixels. */
+    private int stateSyncRowsRegionHeight = 700;
+    /** Ticks to scroll the row area by between OCR passes when scraping. */
+    private int stateSyncScrollTicks = 5;
+    /** Pixels above/below a LOTO-number anchor included in its row cell. */
+    private int stateSyncCellVerticalPadding = 2;
+    /** Fallback row height when the current OCR pass exposes only one anchor. */
+    private int stateSyncDefaultRowHeight = 32;
+    /** Maximum row band height; protects a missed anchor from swallowing later rows. */
+    private int stateSyncMaxRowHeight = 64;
+    /**
+     * How many consecutive scroll passes may return zero new rows before the
+     * scrape considers the tab exhausted.
+     */
+    private int stateSyncEmptyScrollLimit = 2;
+    /** Hard upper bound on rows scraped in one pass, as a runaway guard. */
+    private int stateSyncMaxRows = 2000;
 }

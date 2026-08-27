@@ -512,6 +512,58 @@
                   title="Drag a dot to reshape the run; drag a small midpoint dot to add a bend; double-click a dot to remove it">
             {{ pipeEdit() ? '✓ Editing route — drag the dots' : '✎ Edit route' }}
           </button>
+          <button class="flow-reverse-btn" [class.on]="pipe.flowReversed" (click)="reverseSelectedPipeFlow()"
+                  title="Reverse the animated flow on this existing pipe section without changing its route or connections">
+            ⇄ {{ pipe.flowReversed ? 'Section flow reversed' : 'Reverse section flow' }}
+          </button>
+        </div>
+        <div class="pipe-links">
+          <h4>Pipe connections</h4>
+          <div class="pipe-link-list" *ngIf="selectedPipeLinks().length; else noPipeLinks">
+            <div class="pipe-link-row" *ngFor="let link of selectedPipeLinks()">
+              <span class="pipe-link-end">{{ link.at === 'start' ? 'Start' : 'End' }}</span>
+              <span class="pipe-link-arrow">→</span>
+              <span class="pipe-link-target" [title]="link.targetLabel">
+                {{ link.targetLabel }}<ng-container *ngIf="link.targetAt"> ({{ link.targetAt }})</ng-container>
+              </span>
+              <button type="button" class="pipe-unlink" (click)="disconnectPipeLink(link.linkId)"
+                      [disabled]="connectionBusy()" title="Break this connection at both pipe sections">×</button>
+            </div>
+          </div>
+          <ng-template #noPipeLinks><p class="hint">No assigned pipe connections.</p></ng-template>
+
+          <div class="pipe-connect-form" *ngIf="connectablePipes().length; else noConnectablePipes">
+            <label>This pipe end
+              <select [(ngModel)]="connectThisEnd">
+                <option value="start">Start (first drawn point)</option>
+                <option value="end">End (last drawn point)</option>
+              </select>
+            </label>
+            <label>Existing pipe
+              <select [(ngModel)]="connectTargetPipeId">
+                <option [ngValue]="null">Choose a pipe…</option>
+                <option *ngFor="let candidate of connectablePipes()" [ngValue]="candidate.id">{{ candidate.label }}</option>
+              </select>
+            </label>
+            <label>Its end
+              <select [(ngModel)]="connectTargetEnd">
+                <option value="start">Start (first drawn point)</option>
+                <option value="end">End (last drawn point)</option>
+              </select>
+            </label>
+            <label class="toggle replace-links">
+              <input type="checkbox" [(ngModel)]="connectReplace" />
+              Replace every existing connection on both chosen ends
+            </label>
+            <button type="button" class="pipe-connect-btn" (click)="connectExistingPipes()"
+                    [disabled]="!connectTargetPipeId || connectionBusy()">
+              {{ connectionBusy() ? 'Saving…' : 'Connect existing pipes' }}
+            </button>
+          </div>
+          <ng-template #noConnectablePipes>
+            <p class="hint">Open or zoom into another section once so its pipes can be selected here.</p>
+          </ng-template>
+          <p class="hint">Leave “replace” off to add a tee/branch. Turn it on to break the old assignments and reconnect both ends.</p>
         </div>
         <div class="fittings-pal">
           <h4>Add fitting</h4>

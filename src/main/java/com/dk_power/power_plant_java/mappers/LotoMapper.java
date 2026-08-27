@@ -98,6 +98,20 @@ public LotoDto convertToDto(Loto loto){
     if(loto.getBoxNumber()!=null && loto.getBoxNumber()!=0) dto.setBoxNumber(loto.getBoxNumber() );
     dto.setWasModifiedDuringActive(loto.getWasModifiedDuringActive());
     dto.setCloseDisposition(loto.getCloseDisposition());
+    // equipmentSystem correction. The block above only assigned it from
+    // {@code loto.getSystem().getName()} — the Value FK — which is rarely
+    // populated. Meanwhile the actual string column {@code loto.equipmentSystem}
+    // is what the LOTO form writes to on save (see updateEntityFromDto /
+    // updateLotoFromDto below). When {@code system} was null the DTO went
+    // out with {@code equipmentSystem = null}, so the form re-opened blank
+    // after a page refresh — the "Equipment/System didn't repopulate" defect.
+    // Prefer the plain column; only fall back to the FK name when the column
+    // is blank AND a legacy Value carries a name.
+    String eqSys = loto.getEquipmentSystem();
+    if (eqSys == null || eqSys.isBlank()) {
+        if (loto.getSystem() != null) eqSys = loto.getSystem().getName();
+    }
+    if (eqSys != null) dto.setEquipmentSystem(eqSys);
 
     if(loto.getSnapshots()!=null && !loto.getSnapshots().isEmpty()) {
         dto.setSnapshots(loto.getSnapshots().stream()

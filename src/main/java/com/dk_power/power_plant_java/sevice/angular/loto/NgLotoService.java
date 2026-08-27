@@ -533,6 +533,22 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return toDto(repo.save(loto));
     }
 
+    /**
+     * Move a LOTO to a different lock box. CA-only. Detaches the current box
+     * (repaint to Closed), releases the old locks, links the new box, auto-assigns
+     * locks against the new box's home + singles for the remainder, and paints
+     * the new box with the LOTO's CURRENT status colour (Active LOTOs stay
+     * Active-colored, not reset to Building).
+     */
+    @Transactional
+    public LotoDto changeBox(Long lotoId, Integer newBoxNumber) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
+        Loto loto = repo.findById(lotoId)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        lotoBoxService.changeBox(lotoAssignmentService, loto, newBoxNumber);
+        return toDto(repo.save(loto));
+    }
+
     @Transactional
     public LotoDto changeStatus(Long lotoId, String newStatus) {
         // Status transitions (Active, Test, Modification, Closed) are CA-only.

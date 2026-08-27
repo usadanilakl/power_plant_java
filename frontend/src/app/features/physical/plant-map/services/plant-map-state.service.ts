@@ -61,9 +61,11 @@ export interface PipeGeo {
   aEnd?: number; bEnd?: number;   // PhysicalObject ids the two ends anchor to (cross-area follow)
   nodeId?: number;                // the pipe's PhysicalObject id
   localId?: number;               // its DiagramPlacement localId on the parent's diagram (stable across saves)
+  placementId?: number;           // JPA id of that placement (allows safe updates when its canvas is nested/off-screen)
   groupId?: string;               // shared across the segments of ONE logical pipe that runs through several sections
   continuesFrom?: number;         // the SECTION node this segment was continued from (backward "jump to origin")
   ports?: PipePort[];             // cross-section connectors (source end ↔ destination start), matched by linkId
+  flowReversed?: boolean;         // visual-flow direction override for this already-drawn section
 }
 
 /** sourceEntityType for a real pipe's placement (a pipe is drawn as a routed line, not a box). Distinct from
@@ -423,15 +425,16 @@ export class PlantMapStateService {
     const pipes: PipeGeo[] = placements
       .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
       .map(p => {
-        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any } = {};
+        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; flowReversed?: boolean } = {};
         try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
         return {
           id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
-          nodeId: p.sourceEntityId!, localId: p.localId!,
+          nodeId: p.sourceEntityId!, localId: p.localId!, placementId: p.id,
           points: Array.isArray(geo.points) ? geo.points : [],
           fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
           aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
           continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
+          flowReversed: geo.flowReversed ?? undefined,
           color: p.color || undefined, width: p.lineWidth || undefined,
           name: p.label || p.name || 'Pipe',
         } as PipeGeo;
@@ -866,7 +869,7 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
-          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId, continuesFrom: p.continuesFrom, ports: p.ports }),
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId, continuesFrom: p.continuesFrom, ports: p.ports, flowReversed: p.flowReversed }),
           color: p.color, lineWidth: p.width,
           name: p.name || 'Pipe', label: p.name || 'Pipe',
           x: minX, y: minY,

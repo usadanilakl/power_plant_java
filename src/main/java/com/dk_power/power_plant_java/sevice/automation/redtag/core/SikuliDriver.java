@@ -131,6 +131,11 @@ public class SikuliDriver {
         return match;
     }
 
+    /** Double-clicks an offset from the centre of an already located match. */
+    public void doubleClickOffset(Match match, int dx, int dy) {
+        match.offset(dx, dy).doubleClick();
+    }
+
     /**
      * Finds an anchor pattern and clicks at a pixel offset from its centre —
      * the standard way to target an input field next to its label.
@@ -242,6 +247,57 @@ public class SikuliDriver {
             m.y += region.y;
         }
         return lines;
+    }
+
+    // --- Drag and drop -------------------------------------------------------
+
+    /**
+     * Drags from the centre of the {@code from} pattern to the centre of the
+     * {@code to} pattern. Used by the LOTO-list state-sync flow to group
+     * (drag Status column → yellow grouping band) and to reset the grouped
+     * view when a target status tab is buried (drag Status out then back).
+     *
+     * @return the destination match, in case the caller wants its coordinates
+     */
+    public Match dragDrop(RedTagPattern from, RedTagPattern to) {
+        Match src = find(from);
+        Match dst = find(to);
+        try {
+            int result = screen().dragDrop(src, dst);
+            if (result < 1) {
+                throw new AutomationException(
+                        "Drag from '" + from.getDescription()
+                                + "' to '" + to.getDescription() + "' returned " + result,
+                        from.name(), null);
+            }
+        } catch (FindFailed e) {
+            throw new AutomationException(
+                    "Drag from '" + from.getDescription()
+                            + "' to '" + to.getDescription() + "' failed: " + e.getMessage(),
+                    from.name(), e);
+        }
+        return dst;
+    }
+
+    /**
+     * Drags from the centre of the {@code from} pattern to an absolute location.
+     * Used when the drop target isn't a pattern (e.g. dragging a column header
+     * off-screen or into an area that has no distinctive image).
+     */
+    public void dragDropTo(RedTagPattern from, Location destination) {
+        Match src = find(from);
+        try {
+            int result = screen().dragDrop(src, destination);
+            if (result < 1) {
+                throw new AutomationException(
+                        "Drag from '" + from.getDescription() + "' to " + destination
+                                + " returned " + result, from.name(), null);
+            }
+        } catch (FindFailed e) {
+            throw new AutomationException(
+                    "Drag from '" + from.getDescription() + "' to " + destination
+                            + " failed: " + e.getMessage(), from.name(), e);
+        }
     }
 
     // --- Mouse wheel ---------------------------------------------------------

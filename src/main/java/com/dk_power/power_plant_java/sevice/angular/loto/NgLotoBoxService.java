@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.esp.LedStrip;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
+import com.dk_power.power_plant_java.repository.loto.LockRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
@@ -32,11 +33,13 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     private final LedStripService ledStripService;
     private final EspRefreshDispatcher espRefreshDispatcher;
     private final LotoRepo lotoRepo;
+    private final LockRepo lockRepo;
 
     public NgLotoBoxService(LotoBoxRepo lotoBoxRepo, SessionFactory sessionFactory,
                            EntityManager entityManager, LotoBoxMapper lotoBoxMapper,
                            LedStripService ledStripService,
-                           EspRefreshDispatcher espRefreshDispatcher, LotoRepo lotoRepo) {
+                           EspRefreshDispatcher espRefreshDispatcher, LotoRepo lotoRepo,
+                           LockRepo lockRepo) {
         this.lotoBoxRepo = lotoBoxRepo;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
@@ -44,6 +47,7 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         this.ledStripService = ledStripService;
         this.espRefreshDispatcher = espRefreshDispatcher;
         this.lotoRepo = lotoRepo;
+        this.lockRepo = lockRepo;
     }
 
     @Override
@@ -236,6 +240,107 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         return lotoBoxRepo.findAvailableBoxes().stream()
                 .map(lotoBoxMapper::convertToDto)
                 .toList();
+    }
+
+    /**
+     * Moves an existing LOTO from its current box to {@code newBoxNumber}
+     * atomically:
+     * <ol>
+     *   <li>frees the old box (unlink LOTO, repaint to Closed);</li>
+     *   <li>releases the old locks (per {@link com.dk_power.power_plant_java.sevice.loto.loto_box.LotoAssignmentService#releaseLocks});</li>
+     *   <li>links the new box to the LOTO + auto-assigns locks based on the LOTO's point count;</li>
+     *   <li>paints the new box with the LOTO's CURRENT permit status colour
+     *       (Active LOTOs stay Active-colored, not reset to Building).</li>
+     * </ol>
+     *
+     * <p>Fills the gap where the LOTO form had no way to correct an
+     * auto-assigned box without manually editing box_number — which left the
+     * old box still linked in the DB and both boxes lit at once. Callers should
+     * check the LOTO is CA-editable before invoking.
+     */
+    public LotoBox changeBox(com.dk_power.power_plant_java.sevice.loto.loto_box.LotoAssignmentService assignmentService,
+                             Loto loto, Integer newBoxNumber) {
+        if (loto == null) throw new IllegalArgumentException("LOTO required");
+        if (newBoxNumber == null || newBoxNumber <= 0) {
+            throw new IllegalArgumentException("New box number required");
+        }
+        LotoBox current = loto.getLotoBox();
+        if (current != null && newBoxNumber.equals(current.getNumber())) {
+            // Heal a stale scalar left by older direct-update paths even when
+            // the relationship already points at the requested physical box.
+            if (!newBoxNumber.equals(loto.getBoxNumber())) {
+                loto.setBoxNumber(newBoxNumber);
+                lotoRepo.save(loto);
+            }
+            return current; // no-op
+        }
+        LotoBox target = lotoBoxRepo.findByNumber(newBoxNumber);
+        if (target == null) {
+            throw new RuntimeException("LotoBox not found with number: " + newBoxNumber);
+        }
+        if (target.getLoto() != null && !target.getLoto().getId().equals(loto.getId())) {
+            throw new RuntimeException("LotoBox " + newBoxNumber + " is already assigned to LOTO "
+                    + target.getLoto().getPermitNumber());
+        }
+
+        // 1. Release old locks (returns every lock currently on the LOTO to inventory).
+        assignmentService.releaseLocks(loto);
+
+        // 2. Unlink and repaint the old box. releaseBox handles paint-to-Closed
+        //    + save + ESP refresh so the old LED goes dark before we light the new one.
+        if (current != null) {
+            releaseBox(current);
+        }
+
+        // 3. Link the new box.
+        target.setLoto(loto);
+        loto.setLotoBox(target);
+        loto.setBoxNumber(target.getNumber());
+        lotoBoxRepo.save(target);
+        lotoRepo.save(loto);
+
+        // 4. Re-assign locks against the new box based on the LOTO's current point count.
+        int pointCount = loto.getLotoPointDtos() != null ? loto.getLotoPointDtos().size() : 0;
+        if (pointCount > 0) {
+            // autoAssign would pick its OWN box — but the LOTO is already linked
+            // to `target`, so its box-picking path is skipped by the ≤5 branch
+            // if pointCount ≤ 5 (finds a no-set box and links it — wrong).
+            // Instead: pull locks directly from the target's home + singles for
+            // the remainder, mirroring assignWithSet but with the target we chose.
+            java.util.List<com.dk_power.power_plant_java.entities.loto.Lock> setLocks =
+                    lockRepoFor(target).findAvailableLocksByHomeBox(target.getNumber());
+            int setLocksToUse = Math.min(setLocks.size(), pointCount);
+            for (int i = 0; i < setLocksToUse; i++) {
+                com.dk_power.power_plant_java.entities.loto.Lock lock = setLocks.get(i);
+                lock.setLoto(loto);
+                lockRepoFor(target).save(lock);
+            }
+            int remaining = pointCount - setLocksToUse;
+            if (remaining > 0) {
+                java.util.List<com.dk_power.power_plant_java.entities.loto.Lock> singles =
+                        lockRepoFor(target).findAvailableSingleLocks();
+                if (singles.size() < remaining) {
+                    throw new RuntimeException("Not enough single locks to move LOTO to box "
+                            + newBoxNumber + ". Need " + remaining + ", have " + singles.size());
+                }
+                for (int i = 0; i < remaining; i++) {
+                    com.dk_power.power_plant_java.entities.loto.Lock lock = singles.get(i);
+                    lock.setLoto(loto);
+                    lockRepoFor(target).save(lock);
+                }
+            }
+        }
+
+        // 5. Paint the new box with the LOTO's CURRENT status (not Building).
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : "Building";
+        updateBoxColorForStatus(target, status);
+
+        return target;
+    }
+
+    /** Cached lock-repo accessor. Kept as a helper so the change-box branch stays tidy. */
+    private com.dk_power.power_plant_java.repository.loto.LockRepo lockRepoFor(LotoBox unused) {
+        return lockRepo;
     }
 
     public LotoBox assignBoxToLoto(Loto loto, Integer requestedBoxNumber) {

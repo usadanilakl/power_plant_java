@@ -26,6 +26,7 @@ import { CvManagerPageComponent } from '../features/values/refactored/components
 import { WorkCategoryProfileAdminComponent } from '../features/permit-builder/work-category-profile/work-category-profile-admin.component';
 import { E2eTestPageComponent } from '../pages/e2e-test/e2e-test-page.component';
 import { Model3dPageComponent } from '../features/model-3d/model-3d-page.component';
+import { RedTagSyncPageComponent } from '../features/red-tag-sync/red-tag-sync-page.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
@@ -71,6 +72,8 @@ export const STANDALONE_ROUTES: Routes = [
   { path: 'trash', component: TrashComponent },
   // 3D Model manager
   { path: '3d-models', component: Model3dPageComponent },
+  // Red Tag → local state sync (scrape + diff + apply)
+  { path: 'red-tag-sync', component: RedTagSyncPageComponent },
   // E2E Test page (visible only when test.ui.enabled=true on backend)
   { path: 'e2e-test', component: E2eTestPageComponent },
   // Redirects for old bookmarked routes

@@ -31,6 +31,19 @@ export interface PwaLocationEntry {
   name: string;
 }
 
+export type EquipmentFilterMode = 'AND' | 'OR';
+
+export interface EquipmentWordBucket {
+  terms: string[];
+  mode: EquipmentFilterMode;
+}
+
+/** Tag and description are separate buckets; populated buckets combine with AND. */
+export interface EquipmentPointFilters {
+  tagNumber?: EquipmentWordBucket;
+  description?: EquipmentWordBucket;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EquipmentDataService {
 
@@ -199,6 +212,22 @@ export class EquipmentDataService {
     });
   }
 
+  /** Location Value tabs for a work area, in the same order as the area relationship. */
+  getLocationsForWorkArea(workAreaId: number): PwaLocationEntry[] {
+    const area = this.workAreas().find(a => a.id === workAreaId);
+    if (!area?.locationIds?.length) return [];
+
+    const byId = new Map(this.locations().map(location => [location.id, location]));
+    return area.locationIds
+      .map(id => byId.get(id) ?? { id, name: `Location ${id}` })
+      .filter((location, index, all) => all.findIndex(item => item.id === location.id) === index);
+  }
+
+  getLocationName(locationId: number | null | undefined): string {
+    if (locationId == null) return '';
+    return this.locations().find(location => location.id === locationId)?.name ?? '';
+  }
+
   /**
    * Unit prefix of a LOTO tag: '01' for Unit 1, '02' for Unit 2, null for anything else (00*, tags
    * that start with a letter, blank). Per the plant convention any tag opening with those two digits
@@ -230,6 +259,32 @@ export class EquipmentDataService {
 
   searchAllPoints(query: string): PwaLotoPointEntry[] {
     return this.searchPoints(query);
+  }
+
+  /**
+   * Apply Equipment Finder-style word buckets locally. Terms within a field use that field's
+   * AND/OR mode; tag and description buckets always combine with AND.
+   */
+  filterPoints(
+    filters: EquipmentPointFilters,
+    points?: PwaLotoPointEntry[],
+    limit?: number,
+  ): PwaLotoPointEntry[] {
+    const source = points ?? this.lotoPoints();
+    const active = (Object.entries(filters) as [keyof EquipmentPointFilters, EquipmentWordBucket | undefined][])
+      .filter((entry): entry is [keyof EquipmentPointFilters, EquipmentWordBucket] =>
+        !!entry[1]?.terms.some(term => !!term.trim()));
+
+    if (active.length === 0) return limit == null ? source : source.slice(0, limit);
+
+    const matches = source.filter(point => active.every(([field, bucket]) => {
+      const value = (point[field] ?? '').toLowerCase();
+      const terms = bucket.terms.map(term => term.trim().toLowerCase()).filter(Boolean);
+      return bucket.mode === 'OR'
+        ? terms.some(term => value.includes(term))
+        : terms.every(term => value.includes(term));
+    }));
+    return limit == null ? matches : matches.slice(0, limit);
   }
 
   private matchesTokens(lp: PwaLotoPointEntry, tokens: string[]): boolean {

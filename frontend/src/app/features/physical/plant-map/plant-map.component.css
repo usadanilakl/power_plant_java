@@ -389,6 +389,32 @@
 .route-edit-btn { width: 100%; margin-top: 6px; padding: 5px 8px; font-size: 12px; background: #1c2230; color: #cfe6ff;
   border: 1px solid #2c3547; border-radius: 5px; cursor: pointer; }
 .route-edit-btn.on { background: #15334f; border-color: #7cc6ff; color: #fff; }
+.flow-reverse-btn { width: 100%; padding: 5px 8px; font-size: 12px; background: #22262c; color: #cfd8e0;
+  border: 1px solid #3a3f47; border-radius: 3px; cursor: pointer; }
+.flow-reverse-btn:hover { background: #2c313a; }
+.flow-reverse-btn.on { background: #3b2f16; border-color: #d8a94a; color: #ffe0a3; }
+.pipe-links { display: flex; flex-direction: column; gap: 6px; }
+.pipe-link-list { display: flex; flex-direction: column; gap: 4px; }
+.pipe-link-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 5px;
+  padding: 5px 6px; background: #20242a; border: 1px solid #343a43; border-radius: 3px; }
+.pipe-link-end { color: #9fd0ff; font-size: 10px; text-transform: uppercase; }
+.pipe-link-arrow { color: #70869e; }
+.pipe-link-target { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d7dee7; }
+.pipe-unlink { width: 22px; height: 22px; padding: 0; border: 1px solid #633; border-radius: 3px;
+  background: #3c2020; color: #ffb0b0; cursor: pointer; }
+.pipe-unlink:hover:not([disabled]) { background: #542626; }
+.pipe-unlink[disabled] { opacity: 0.5; cursor: default; }
+.pipe-connect-form { display: flex; flex-direction: column; gap: 6px; padding: 7px; background: #181b20;
+  border: 1px solid #303640; border-radius: 4px; }
+.pipe-connect-form > label:not(.toggle) { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: center;
+  gap: 6px; color: #8fa3b8; font-size: 11px; }
+.pipe-connect-form select { width: 100%; min-width: 0; box-sizing: border-box; background: #22262c; color: #e6e6e6;
+  border: 1px solid #444c57; border-radius: 3px; padding: 4px 5px; font: inherit; }
+.replace-links { align-items: flex-start; line-height: 1.25; }
+.pipe-connect-btn { padding: 6px 9px; border: 1px solid #2e7d4a; border-radius: 3px; background: #1c4a2a;
+  color: #b7f0cf; cursor: pointer; font: inherit; }
+.pipe-connect-btn:hover:not([disabled]) { background: #245d35; }
+.pipe-connect-btn[disabled] { opacity: 0.5; cursor: default; }
 .run-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 6px; }
 .run-jumps .run-lbl { font-size: 11px; color: #8aa0b6; width: 100%; }
 .run-chip { background: #143050; color: #bcd8f5; border: 1px solid #2c4a6a; border-radius: 10px; padding: 2px 9px; font-size: 12px; cursor: pointer; }

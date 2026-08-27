@@ -39,7 +39,10 @@ public class Loto extends BasePermitEntity {
     /*********************************************************************************************************************
      * PRESISTED FIELDS
      ******************************************************************************************************************/
-    @OneToOne(mappedBy = "loto", cascade = CascadeType.ALL, orphanRemoval = true)
+    // LotoBox is durable inventory, not a child record owned by a permit.
+    // orphanRemoval (and CascadeType.REMOVE via ALL) caused a box row to be
+    // physically deleted whenever a permit moved to a different box.
+    @OneToOne(mappedBy = "loto", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private LotoBox lotoBox;
     @OneToMany(mappedBy = "loto")
     private List<Lock> locks;

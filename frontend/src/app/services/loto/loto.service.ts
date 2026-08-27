@@ -116,6 +116,14 @@ export class LotoService {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/status`, { status });
   }
 
+  /** Move a LOTO through the atomic box/lock/LED backend workflow. */
+  changeBox(lotoId: number, boxNumber: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/change-box`,
+      { boxNumber }
+    );
+  }
+
   signOn(lotoId: number, entry: PersonnelSignEntry): Observable<SpringApiResponse<LotoDto>> {
     return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/sign-on`, entry);
   }

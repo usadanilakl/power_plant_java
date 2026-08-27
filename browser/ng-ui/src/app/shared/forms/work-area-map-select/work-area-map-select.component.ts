@@ -60,6 +60,9 @@ interface ParsedShape {
   ],
 })
 export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit, OnDestroy {
+  /** Adjusts helper copy when the map is used to find equipment instead of filling a work form. */
+  pickerPurpose = input<'work-area' | 'equipment'>('work-area');
+
   /**
    * Work-area types this picker accepts, by type name (case-insensitive). Empty / null — the
    * default — accepts every type, so existing pickers are unaffected.

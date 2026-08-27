@@ -281,7 +281,22 @@ export const WO_STATUSES = ['', 'WAPPR', 'APPR', 'INPRG', 'COMP', 'CLOSE', 'CAN'
 /** SR status choices. */
 export const SR_STATUSES = ['', 'NEW', 'QUEUED', 'INPROG', 'PENDING', 'RESOLVED', 'CLOSED'] as const;
 /** Work-type choices for a WO filter. */
-export const WO_WORKTYPES = ['', 'CM', 'PM', 'EM', 'INSP'] as const;
+/** Fallback worktype codes, used only when the dynamic fetch from Maximo fails or the backend is old. These are
+ *  the codes actually present on live JG work orders (verified against Maximo), plus WIN for the newly-added
+ *  Winterization type (which has no WOs yet, so it can't be auto-discovered). The backend property
+ *  `maximo.curated-worktypes` is the source of truth once the backend is deployed. */
+export const WO_WORKTYPES = ['', 'PM', 'CM', 'INS', 'PRO', 'WAR', 'SAF', 'REG', 'MOC', 'WINT'] as const;
+/** Friendly labels for known worktype codes; unknown codes render as the raw code. WINT/INS come from the
+ *  Field List → Maximo worktype mapping (maximo.field-list.wo-worktype-mappings). */
+export const WO_WORKTYPE_LABELS: Record<string, string> = {
+  PM: 'Preventive Maintenance', CM: 'Corrective Maintenance', INS: 'Insulation',
+  PRO: 'Project', WAR: 'Warranty', SAF: 'Safety', REG: 'Regulatory',
+  MOC: 'Management of Change', WINT: 'Winterization', EM: 'Emergency', INSP: 'Inspection',
+};
+export function worktypeLabel(code: string): string {
+  if (!code) return 'Any type';
+  return WO_WORKTYPE_LABELS[code] ? `${code} — ${WO_WORKTYPE_LABELS[code]}` : code;
+}
 
 /** A colour class for a status chip (grouped, not per-status). */
 export function statusClass(status: string | undefined): string {

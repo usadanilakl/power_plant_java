@@ -10,7 +10,7 @@ import { MaximoWoDetailComponent } from './maximo-wo-detail.component';
 import { MaximoWoFilesComponent } from './maximo-wo-files.component';
 import { MaximoTreePickerComponent } from './maximo-tree-picker.component';
 import {
-  MaximoServiceRequest, MaximoWorkOrder, SR_STATUSES, WO_STATUSES, WO_WORKTYPES, statusClass,
+  MaximoServiceRequest, MaximoWorkOrder, SR_STATUSES, WO_STATUSES, WO_WORKTYPES, worktypeLabel, statusClass,
 } from './maximo.model';
 
 type Tab = 'wo' | 'sr';
@@ -50,7 +50,7 @@ type Tab = 'wo' | 'sr';
             </select>
             @if (tab() === 'wo') {
               <select [value]="worktype()" (change)="setWorktype($any($event.target).value)">
-                @for (w of worktypes; track w) { <option [value]="w">{{ w || 'Any type' }}</option> }
+                @for (o of worktypeOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
               </select>
             }
             <input class="mx-subby" type="text" placeholder="Submitted by…"
@@ -214,7 +214,13 @@ export class MaximoPageComponent implements OnInit {
   private api = inject(MaximoApiService);
   private router = inject(Router);
 
-  readonly worktypes = WO_WORKTYPES;
+  /** Work-type codes fetched live from Maximo (the domain OS is blocked, so this is derived from real WOs). */
+  dynamicWorktypes = signal<string[]>([]);
+  /** Filter options: dynamic codes from Maximo, or the corrected static fallback, each with a friendly label. */
+  worktypeOptions = computed(() => {
+    const codes = this.dynamicWorktypes().length ? ['', ...this.dynamicWorktypes()] : [...WO_WORKTYPES];
+    return codes.map(c => ({ value: c, label: worktypeLabel(c) }));
+  });
 
   private navRoute = inject(ActivatedRoute);
 
@@ -288,6 +294,8 @@ export class MaximoPageComponent implements OnInit {
     // Before the first load, so the requested tab is what gets fetched.
     this.applyTabFromUrl();
     this.reload$.next();
+    // Live work-type list from Maximo (falls back to the static list if this fails).
+    this.api.listWorktypes().subscribe({ next: wt => { if (wt.length) this.dynamicWorktypes.set(wt); }, error: () => {} });
   }
 
   /**

@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
 import { AuthService } from '../../../services/auth.service';
@@ -22,6 +23,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { RfLotoPrintService } from '../../../services/ui/rf-loto-print.service';
+import { LotoBoxService } from '../../loto/loto-boxes/loto-box-grid/loto-box.service';
+import { LotoBoxDto } from '../../../models/loto/loto-box.model';
 
 @Component({
   selector: 'app-rf-loto-form',
@@ -753,6 +756,8 @@ export class RfLotoFormComponent {
   private router = inject(Router);
   private messageService = inject(GlobalMessageService);
   private printService = inject(RfLotoPrintService);
+  private lotoBoxService = inject(LotoBoxService);
+  private destroyRef = inject(DestroyRef);
 
   showStandardSelector = signal(false);
   isPrintingPids = signal(false);
@@ -805,6 +810,17 @@ export class RfLotoFormComponent {
   });
 
   entity = computed(() => this.currentService.selectedItem() ?? new LotoDto());
+  private availableBoxes = signal<LotoBoxDto[]>([]);
+  private boxMoveInFlight = false;
+  private queuedPayloadDuringBoxMove: any | null = null;
+  private boxOptionsEffect = effect(() => {
+    const lotoId = this.entity().id;
+    if (!lotoId) {
+      this.availableBoxes.set([]);
+      return;
+    }
+    this.loadAvailableBoxes();
+  });
   fields = computed(() => {
     // lotoRequestor is persisted as a name string — build options whose
     // value equals the label so the existing storage format is preserved.
@@ -818,7 +834,28 @@ export class RfLotoFormComponent {
         seen.add(o.label);
         return true;
       });
-    return LotoDto.toFormFields(this.entity(), { requestorOptions }) as RfFormField[];
+    const current = this.entity();
+    const boxesByNumber = new Map<number, LotoBoxDto>();
+    if (current.lotoBox?.number != null) {
+      boxesByNumber.set(current.lotoBox.number, current.lotoBox);
+    }
+    if (current.boxNumber != null && !boxesByNumber.has(current.boxNumber)) {
+      boxesByNumber.set(current.boxNumber, new LotoBoxDto({ number: current.boxNumber }));
+    }
+    for (const box of this.availableBoxes()) {
+      if (box.number != null) boxesByNumber.set(box.number, box);
+    }
+    const boxOptions = [...boxesByNumber.values()]
+      .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
+      .map(box => ({
+        value: box.number,
+        label: `Box #${box.number}${box.setSize ? ` — set of ${box.setSize}` : ''}`,
+      }));
+    return LotoDto.toFormFields(current, {
+      requestorOptions,
+      boxOptions,
+      boxReadonly: !this.authService.isControlAuthority(),
+    }) as RfFormField[];
   });
   statusName = computed(() => this.entity().permitStatus?.name || 'Building');
 
@@ -851,9 +888,16 @@ export class RfLotoFormComponent {
     const sig = this.signatureOf(payload);
     if (sig === this.lastAutoSaveSignature) return;
     this.lastAutoSaveSignature = sig;
+
+    const requestedBox = this.requestedBoxNumber(payload);
+    if (requestedBox != null && requestedBox !== this.entity().boxNumber) {
+      this.persistWithAtomicBoxMove(payload, requestedBox);
+      return;
+    }
+
     this.autoSaveStatus.set('Saving…');
     this.currentService.processLotoChanges(
-      payload,
+      this.withCurrentBox(payload),
       () => this.autoSaveStatus.set('Saved'),
       err => {
         // Reset the signature so the next identical-looking change still fires (the
@@ -885,7 +929,155 @@ export class RfLotoFormComponent {
   onSubmit(formData: any): void {
     const id = formData?.id ?? this.entity().id;
     const payload = { ...formData, id };
-    this.currentService.processLotoChanges(payload);
+    const requestedBox = this.requestedBoxNumber(payload);
+    if (requestedBox != null && requestedBox !== this.entity().boxNumber) {
+      this.persistWithAtomicBoxMove(payload, requestedBox);
+      return;
+    }
+    this.currentService.processLotoChanges(this.withCurrentBox(payload));
+  }
+
+  /** Load target choices. The assigned box is added separately because it is not "available". */
+  private loadAvailableBoxes(): void {
+    this.lotoBoxService.getAvailableBoxes().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: response => this.availableBoxes.set(
+        (response.responseData ?? []).map(box => LotoBoxDto.fromJson(box, true))
+      ),
+      error: err => {
+        this.availableBoxes.set([]);
+        this.messageService.showError(
+          err?.error?.message ?? err?.message ?? 'Could not load available LOTO boxes'
+        );
+      },
+    });
+  }
+
+  /**
+   * Save simultaneous non-box edits first, then perform the physical box move
+   * through its dedicated transaction. The ordinary update payload is forced
+   * back to the current box so it can never move only the scalar/FK.
+   */
+  private persistWithAtomicBoxMove(payload: any, requestedBox: number): void {
+    if (this.boxMoveInFlight) {
+      // Preserve edits made during the HTTP round trip; the response handler
+      // saves them against the newly assigned box before declaring success.
+      this.queuedPayloadDuringBoxMove = payload;
+      return;
+    }
+    this.boxMoveInFlight = true;
+    this.autoSaveStatus.set('Moving box…');
+
+    const ordinaryPayload = this.withCurrentBox(payload);
+    const hasOtherChanges = this.signatureOf(ordinaryPayload) !== this.signatureOf(this.entity());
+    const move = () => this.moveBox(requestedBox);
+
+    if (hasOtherChanges) {
+      this.currentService.processLotoChanges(
+        ordinaryPayload,
+        move,
+        err => this.finishBoxMoveError(err)
+      );
+    } else {
+      move();
+    }
+  }
+
+  private moveBox(boxNumber: number): void {
+    const lotoId = this.entity().id;
+    if (!lotoId) {
+      this.finishBoxMoveError(new Error('Select a LOTO before changing its box'));
+      return;
+    }
+    this.lotoService.changeBox(lotoId, boxNumber).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: response => {
+        const updated = response.responseData ? LotoDto.fromJson(response.responseData) : null;
+        if (updated) {
+          this.currentService.updateLotoInList(updated);
+          this.currentService.setCurrentLoto(updated);
+          this.lastAutoSaveSignature = this.signatureOf(updated);
+        } else {
+          this.currentService.setCurrentLotoById(lotoId);
+        }
+        this.currentService.reloadLotos();
+        this.loadAvailableBoxes();
+        this.boxMoveInFlight = false;
+        if (updated && this.drainQueuedPayload(updated)) return;
+        this.autoSaveStatus.set('Box moved');
+        setTimeout(() => {
+          if (this.autoSaveStatus() === 'Box moved') this.autoSaveStatus.set('');
+        }, 1500);
+      },
+      error: err => this.finishBoxMoveError(err),
+    });
+  }
+
+  private finishBoxMoveError(err: any): void {
+    this.boxMoveInFlight = false;
+    this.queuedPayloadDuringBoxMove = null;
+    this.lastAutoSaveSignature = '';
+    this.autoSaveStatus.set('Box move failed');
+    this.messageService.showError(err?.error?.message ?? err?.message ?? 'Could not change LOTO box');
+    const lotoId = this.entity().id;
+    if (lotoId) this.currentService.setCurrentLotoById(lotoId);
+  }
+
+  private requestedBoxNumber(payload: any): number | null {
+    const value = payload?.boxNumber;
+    if (value == null || value === '') return null;
+    const number = Number(value);
+    return Number.isInteger(number) && number > 0 ? number : null;
+  }
+
+  private withCurrentBox(payload: any): any {
+    return this.withBox(payload, this.entity());
+  }
+
+  private withBox(payload: any, current: LotoDto): any {
+    return {
+      ...payload,
+      boxNumber: current.boxNumber,
+      lotoBox: current.lotoBox,
+    };
+  }
+
+  /** Save edits queued while a move was in flight, then honor a newer box choice if present. */
+  private drainQueuedPayload(updated: LotoDto): boolean {
+    const queued = this.queuedPayloadDuringBoxMove;
+    this.queuedPayloadDuringBoxMove = null;
+    if (!queued) return false;
+
+    const ordinaryPayload = this.withBox(queued, updated);
+    const requestedBox = this.requestedBoxNumber(queued);
+    const hasOtherChanges = this.signatureOf(ordinaryPayload) !== this.signatureOf(updated);
+    const finish = () => {
+      if (requestedBox != null && requestedBox !== updated.boxNumber) {
+        this.boxMoveInFlight = true;
+        this.autoSaveStatus.set('Moving box…');
+        this.moveBox(requestedBox);
+        return;
+      }
+      this.lastAutoSaveSignature = this.signatureOf(ordinaryPayload);
+      this.autoSaveStatus.set('Saved');
+      setTimeout(() => {
+        if (this.autoSaveStatus() === 'Saved') this.autoSaveStatus.set('');
+      }, 1500);
+    };
+
+    if (hasOtherChanges) {
+      this.autoSaveStatus.set('Saving…');
+      this.currentService.processLotoChanges(
+        ordinaryPayload,
+        finish,
+        err => this.finishBoxMoveError(err)
+      );
+    } else {
+      finish();
+    }
+    return true;
   }
 
   onDelete(): void {

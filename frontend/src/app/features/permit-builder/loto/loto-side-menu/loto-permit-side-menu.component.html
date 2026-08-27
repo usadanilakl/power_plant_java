@@ -13,10 +13,36 @@
           (click)="buildInRedTag()">
     {{ isBuildingInRedTag() ? 'Starting…' : 'Build in Red Tag' }}
   </button>
+  <button class="import-btn" (click)="openRedTagSync()"
+          title="Pull the LOTO list from Red Tag and reconcile against local state">
+    Sync from Red Tag
+  </button>
+  <button class="import-btn bypass-btn" (click)="openBypassDialog()"
+          title="Force a LOTO status change without the normal gates (Control Authority only)">
+    Red Tag Bypass
+  </button>
+  <button class="import-btn" data-testid="change-box-button" (click)="openChangeBoxDialog()"
+          title="Move the LOTO to a different lock box (Control Authority only)">
+    Change Box
+  </button>
 </div>
 
 <app-red-tag-automation-panel></app-red-tag-automation-panel>
 
 @if (showImportDialog()) {
   <app-loto-import-dialog (closeDialog)="closeImportDialog()"></app-loto-import-dialog>
+}
+
+@if (showBypassDialog() && currentLotoService.selectedItem()?.id; as lotoId) {
+  <app-red-tag-bypass-dialog
+    [lotoId]="lotoId"
+    [currentStatus]="currentLotoService.selectedItem()?.permitStatus?.name"
+    (closed)="onBypassClosed($event)"></app-red-tag-bypass-dialog>
+}
+
+@if (showChangeBoxDialog() && currentLotoService.selectedItem()?.id; as lotoId) {
+  <app-change-box-dialog
+    [lotoId]="lotoId"
+    [currentBoxNumber]="currentLotoService.selectedItem()?.boxNumber"
+    (closed)="onChangeBoxClosed($event)"></app-change-box-dialog>
 }

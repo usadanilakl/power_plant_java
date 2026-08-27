@@ -28,6 +28,7 @@ import {
 import { DiagramPlacementApiService } from '../../diagram-builder/services/diagram-placement-api.service';
 import { DiagramAlignmentService, ShapeRect, ShapeUpdate } from '../../diagram-builder/services/diagram-alignment.service';
 import { AlignmentType, DistributeType } from '../../diagram-builder/models/diagram-placement.model';
+import { tracePipeFlow } from './pipe-flow-graph';
 
 /** One child of a nested container (in the container's OWN diagram coords) — for recursive zoom-nesting.
  *  For a LEVELED container, children from ALL levels are composited (view-from-top): `floor` = its level index,
@@ -492,13 +493,15 @@ export class PlantMapComponent implements OnDestroy {
               floor: s.floor, dim: s.floor < topFloor, // lower decks shown faint, beneath the top
             });
           } else if (p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null) {
-            let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any } = {};
+            let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; flowReversed?: boolean } = {};
             try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
             cpipes.push({
               id: 'pipe-' + p.sourceEntityId, parentId: containerId, nodeId: p.sourceEntityId, localId: p.localId ?? undefined,
+              placementId: p.id ?? undefined,
               points: Array.isArray(geo.points) ? geo.points : [], fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
               aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
               continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
+              flowReversed: geo.flowReversed ?? undefined,
               color: p.color || undefined, width: p.lineWidth || undefined, name: p.label || p.name || 'Pipe',
             } as PipeGeo);
           }
@@ -825,6 +828,50 @@ export class PlantMapComponent implements OnDestroy {
 
   selectedPipe = computed(() => this.pipeGeos().find(p => p.id === this.selectedPipeId()) ?? null);
 
+  // Existing-pipe connection manager. Connections are endpoint ports paired by linkId, so they work equally for
+  // two pipes on one canvas and for a parent pipe joined to a pipe inside a nested shape/section.
+  connectThisEnd: 'start' | 'end' = 'end';
+  connectTargetPipeId: string | null = null;
+  connectTargetEnd: 'start' | 'end' = 'start';
+  connectReplace = false;
+  connectionBusy = signal(false);
+
+  connectablePipes = computed(() => {
+    const selected = this.selectedPipe();
+    if (!selected) return [];
+    return this.pipeGeos()
+      .filter(pipe => pipe.id !== selected.id && pipe.points.length >= 2)
+      .map(pipe => ({
+        id: pipe.id,
+        label: `${pipe.name || 'Pipe'} — ${this.nameOf(pipe.parentId)}`,
+        parentId: pipe.parentId,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+
+  selectedPipeLinks = computed(() => {
+    const selected = this.selectedPipe();
+    if (!selected) return [];
+    const all = this.pipeGeos();
+    return (selected.ports ?? []).map(port => {
+      const counterparts = all.filter(pipe =>
+        pipe.id !== selected.id && (pipe.ports ?? []).some(otherPort => otherPort.linkId === port.linkId));
+      const target = counterparts[0];
+      const targetPort = target?.ports?.find(otherPort => otherPort.linkId === port.linkId);
+      const sectionId = target?.parentId ?? port.section ?? null;
+      return {
+        linkId: port.linkId,
+        at: port.at,
+        targetPipeId: target?.id ?? null,
+        targetAt: targetPort?.at ?? null,
+        targetLabel: target
+          ? `${target.name || 'Pipe'} — ${this.nameOf(target.parentId)}`
+          : sectionId != null ? this.nameOf(sectionId) : 'Counterpart not loaded',
+        sectionId,
+      };
+    });
+  });
+
   /** Jumps to the OTHER sections of the selected pipe's cross-section run (same groupId): the section it was
    *  continued FROM (⇠, always available — stored on the segment) + any other loaded segments' sections (⇢). */
   pipeRunJumps = computed<{ target: number; label: string; dir: 'from' | 'to' }[]>(() => {
@@ -887,110 +934,18 @@ export class PlantMapComponent implements OnDestroy {
     return out;
   });
 
-  // ── flow-graph geometry helpers ──
-  private pathAlong(points: { x: number; y: number }[]): number[] {
-    const a = [0];
-    for (let i = 1; i < points.length; i++) a.push(a[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
-    return a;
-  }
-  private projAlong(points: { x: number; y: number }[], cum: number[], pos: { x: number; y: number }): number {
-    let best = Infinity, along = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      const pr = this.projectOnSeg(pos, points[i], points[i + 1]);
-      const d = (pr.x - pos.x) ** 2 + (pr.y - pos.y) ** 2;
-      if (d < best) { best = d; along = cum[i] + Math.hypot(pr.x - points[i].x, pr.y - points[i].y); }
-    }
-    return along;
-  }
-  private pointAt(points: { x: number; y: number }[], cum: number[], along: number): { x: number; y: number } {
-    for (let i = 0; i < points.length - 1; i++) {
-      if (along <= cum[i + 1] || i === points.length - 2) {
-        const t = (along - cum[i]) / Math.max(1e-6, cum[i + 1] - cum[i]);
-        return { x: points[i].x + t * (points[i + 1].x - points[i].x), y: points[i].y + t * (points[i + 1].y - points[i].y) };
-      }
-    }
-    return points[points.length - 1];
-  }
-  private slicePath(points: { x: number; y: number }[], cum: number[], a1: number, a2: number): { x: number; y: number }[] {
-    const out = [this.pointAt(points, cum, a1)];
-    for (let i = 0; i < points.length; i++) if (cum[i] > a1 + 0.5 && cum[i] < a2 - 0.5) out.push(points[i]);
-    out.push(this.pointAt(points, cum, a2));
-    return out;
-  }
-
   /** Visual-flow result: pipeId → the pipe's FLOWING sub-segments (a pipe can have several — e.g. a bypass leaves
    *  one segment dry). Built as a NODE-EDGE graph: each pipe is split at its endpoints, valves and junctions;
-   *  edges are the sub-segments; nodes merge by position within a section and by linkId across sections. BFS from
+   *  edges are the sub-segments; nodes merge by position within a section and every linkId across sections. BFS from
    *  the source spreads through junctions and OPEN valves; a CLOSED valve is a barrier → flow routes around via a
-   *  bypass. Each edge is oriented toward a blocking valve, else lower-depth→higher-depth (downhill from source). */
+   *  bypass. An endpoint may carry several independent links; all of them remain traversable. */
   flowResult = computed<Map<string, { segsStr: string[]; segsPath: { x: number; y: number }[][] }>>(() => {
-    const out = new Map<string, { segsStr: string[]; segsPath: { x: number; y: number }[][] }>();
-    if (!this.flowMode()) return out;
-    const all = this.pipeGeos().filter(p => p.points.length >= 2);
-    const srcPipe = all.find(p => p.id === this.flowSource());
-    if (!srcPipe) return out;
-    const isValve = (f: PipeFitting) => this.fittingByKey.get(f.type)?.cat === 'valve';
-    const posKey = (parentId: number, p: { x: number; y: number }) => `${parentId}:${Math.round(p.x / 3)}_${Math.round(p.y / 3)}`;
-    const endNode = (pipe: PipeGeo, atStart: boolean) => {
-      const port = (pipe.ports ?? []).find(pp => pp.at === (atStart ? 'start' : 'end'));
-      return port ? 'port-' + port.linkId : posKey(pipe.parentId, atStart ? pipe.points[0] : pipe.points[pipe.points.length - 1]);
-    };
-    type Edge = { id: string; pipeId: string; a: string; b: string; path: { x: number; y: number }[] };
-    const edges: Edge[] = [];
-    const barrier = new Set<string>(); // closed-valve node ids
-    let eid = 0;
-    for (const p of all) {
-      const cum = this.pathAlong(p.points);
-      const pois: { along: number; node: string }[] = [
-        { along: 0, node: endNode(p, true) }, { along: cum[cum.length - 1], node: endNode(p, false) },
-      ];
-      for (const f of (p.fittings ?? [])) {
-        if (!isValve(f)) continue;
-        const node = `${p.id}:v:${f.id}`;
-        pois.push({ along: this.projAlong(p.points, cum, f.at), node });
-        if (f.closed) barrier.add(node);
-      }
-      for (const q of all) { // same-section junctions: another pipe's endpoint landing on this pipe
-        if (q.id === p.id || q.parentId !== p.parentId) continue;
-        for (const eq of [q.points[0], q.points[q.points.length - 1]]) {
-          const n = this.nearestOnPipe(p.points, eq);
-          if (n && Math.hypot(n.x - eq.x, n.y - eq.y) <= 4) pois.push({ along: this.projAlong(p.points, cum, eq), node: posKey(p.parentId, eq) });
-        }
-      }
-      pois.sort((x, y) => x.along - y.along);
-      const dd: { along: number; node: string }[] = [];
-      for (const poi of pois) if (!dd.length || poi.along - dd[dd.length - 1].along > 1) dd.push(poi);
-      for (let i = 0; i < dd.length - 1; i++)
-        edges.push({ id: 'e' + eid++, pipeId: p.id, a: dd[i].node, b: dd[i + 1].node, path: this.slicePath(p.points, cum, dd[i].along, dd[i + 1].along) });
-    }
-    const nodeEdges = new Map<string, Edge[]>();
-    const push = (node: string, e: Edge) => { const arr = nodeEdges.get(node); if (arr) arr.push(e); else nodeEdges.set(node, [e]); };
-    for (const e of edges) { push(e.a, e); push(e.b, e); }
-    // BFS from the source pipe's start node
-    const depth = new Map<string, number>([[endNode(srcPipe, true), 0]]);
-    const reached = new Set<string>();
-    const queue = [endNode(srcPipe, true)];
-    while (queue.length) {
-      const N = queue.shift()!;
-      if (barrier.has(N)) continue;         // a closed valve is a barrier — reached, but flow can't pass through it
-      const d = depth.get(N)!;
-      for (const e of (nodeEdges.get(N) ?? [])) {
-        reached.add(e.id);
-        const M = e.a === N ? e.b : e.a;
-        if (!depth.has(M)) { depth.set(M, d + 1); queue.push(M); }
-      }
-    }
-    for (const e of edges) {
-      if (!reached.has(e.id)) continue;
-      const aBar = barrier.has(e.a), bBar = barrier.has(e.b);
-      const forward = aBar !== bBar ? bBar : (depth.get(e.a) ?? Infinity) <= (depth.get(e.b) ?? Infinity); // toward a blocking valve, else downhill
-      const path = forward ? e.path : [...e.path].reverse();
-      const entry = out.get(e.pipeId) ?? { segsStr: [], segsPath: [] };
-      entry.segsPath.push(path);
-      entry.segsStr.push(path.map(pt => `${pt.x},${pt.y}`).join(' '));
-      out.set(e.pipeId, entry);
-    }
-    return out;
+    if (!this.flowMode()) return new Map();
+    return tracePipeFlow(
+      this.pipeGeos(),
+      this.flowSource(),
+      fitting => this.fittingByKey.get(fitting.type)?.cat === 'valve',
+    );
   });
   flowOf(id: string) { return this.flowResult().get(id) ?? null; }
   /** Toggle a valve fitting open/closed (visual flow sim), persisting it. */
@@ -1043,6 +998,161 @@ export class PlantMapComponent implements OnDestroy {
   }
   setPipeColor(color: string) { const id = this.selectedPipeId(); if (id != null) { this.pipeGeos.update(l => l.map(p => (p.id === id ? { ...p, color } : p))); this.savePipes(); } }
   setPipeWidth(width: number) { const id = this.selectedPipeId(); if (id != null) { this.pipeGeos.update(l => l.map(p => (p.id === id ? { ...p, width } : p))); this.savePipes(); } }
+  reverseSelectedPipeFlow() {
+    const id = this.selectedPipeId();
+    if (id == null || !this.selectedPipeOnCanvas()) return;
+    this.pipeGeos.update(list => list.map(pipe =>
+      pipe.id === id ? { ...pipe, flowReversed: !pipe.flowReversed } : pipe));
+    this.savePipes();
+  }
+
+  private pipeGeometryJson(pipe: PipeGeo): string {
+    return JSON.stringify({
+      points: pipe.points,
+      fittings: pipe.fittings ?? [],
+      aEnd: pipe.aEnd,
+      bEnd: pipe.bEnd,
+      groupId: pipe.groupId,
+      continuesFrom: pipe.continuesFrom,
+      ports: pipe.ports,
+      flowReversed: pipe.flowReversed,
+    });
+  }
+
+  /** Persist changed pipes on the current canvas through its serialized save chain and update nested/off-screen
+   *  placements individually, avoiding a destructive complete-set save against a canvas that is not open. */
+  private async persistChangedPipes(pipeIds: Set<string>) {
+    const currentParent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    const changed = this.pipeGeos().filter(pipe => pipeIds.has(pipe.id));
+    if (changed.some(pipe => pipe.parentId === currentParent)) this.savePipes();
+    await Promise.all(changed
+      .filter(pipe => pipe.parentId !== currentParent)
+      .map(pipe => this.persistOffCanvasPipe(pipe)));
+  }
+
+  private async persistOffCanvasPipe(pipe: PipeGeo) {
+    let placementId = pipe.placementId;
+    if (placementId == null) {
+      const knownParent = this.nodeById().get(pipe.parentId);
+      const parent = knownParent ?? await firstValueFrom(this.nodesApi.getNode(pipe.parentId));
+      if (parent?.diagramId == null) throw new Error(`No diagram found for ${this.nameOf(pipe.parentId)}.`);
+      const placements = (await firstValueFrom(this.placementApi.getByDiagram(parent.diagramId)))?.responseData ?? [];
+      const placement = placements.find(item => item.sourceEntityType === PIPE_SRC && item.sourceEntityId === pipe.nodeId);
+      placementId = placement?.id;
+      if (placementId == null) throw new Error(`Could not find the saved placement for ${pipe.name || 'pipe'}.`);
+      const resolvedId = placementId;
+      this.pipeGeos.update(list => list.map(item => item.id === pipe.id ? { ...item, placementId: resolvedId } : item));
+    }
+    await firstValueFrom(this.placementApi.update(placementId, { svgPath: this.pipeGeometryJson(pipe) }));
+  }
+
+  /** Remove a stale counterpart that is not currently in pipeGeos but whose section id was saved on the port. */
+  private async pruneUnloadedPipeLink(sectionId: number, linkId: string) {
+    const knownSection = this.nodeById().get(sectionId);
+    const section = knownSection ?? await firstValueFrom(this.nodesApi.getNode(sectionId));
+    if (section?.diagramId == null) return;
+    const placements = (await firstValueFrom(this.placementApi.getByDiagram(section.diagramId)))?.responseData ?? [];
+    await Promise.all(placements
+      .filter(item => item.id != null && item.sourceEntityType === PIPE_SRC && item.svgPath?.includes(linkId))
+      .map(async item => {
+        let geometry: any;
+        try { geometry = JSON.parse(item.svgPath || '{}'); } catch { return; }
+        if (!Array.isArray(geometry.ports) || !geometry.ports.some((port: PipePort) => port.linkId === linkId)) return;
+        geometry.ports = geometry.ports.filter((port: PipePort) => port.linkId !== linkId);
+        await firstValueFrom(this.placementApi.update(item.id!, { svgPath: JSON.stringify(geometry) }));
+      }));
+  }
+
+  async connectExistingPipes() {
+    const selected = this.selectedPipe();
+    const target = this.pipeGeos().find(pipe => pipe.id === this.connectTargetPipeId);
+    if (!selected || !target || !this.selectedPipeOnCanvas() || selected.id === target.id) return;
+
+    const selectedLinks = new Set((selected.ports ?? [])
+      .filter(port => port.at === this.connectThisEnd).map(port => port.linkId));
+    const targetLinks = new Set((target.ports ?? [])
+      .filter(port => port.at === this.connectTargetEnd).map(port => port.linkId));
+    if ([...selectedLinks].some(linkId => targetLinks.has(linkId))) {
+      this.st.error.set('Those two pipe ends are already connected.');
+      return;
+    }
+
+    this.connectionBusy.set(true);
+    this.st.error.set(null);
+    const before = this.pipeGeos();
+    const removedLinks = this.connectReplace
+      ? new Set<string>([...selectedLinks, ...targetLinks])
+      : new Set<string>();
+    const changedIds = new Set<string>([selected.id, target.id]);
+    for (const pipe of before) {
+      if ((pipe.ports ?? []).some(port => removedLinks.has(port.linkId))) changedIds.add(pipe.id);
+    }
+    const loadedSectionsByLink = new Map<string, Set<number>>();
+    for (const linkId of removedLinks) {
+      loadedSectionsByLink.set(linkId, new Set(before
+        .filter(pipe => (pipe.ports ?? []).some(port => port.linkId === linkId))
+        .map(pipe => pipe.parentId)));
+    }
+    const remoteHints = before.flatMap(pipe => (pipe.ports ?? [])
+      .filter(port => removedLinks.has(port.linkId) && port.section != null)
+      .map(port => ({ linkId: port.linkId, sectionId: port.section! })));
+
+    const linkId = 'lnk-' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+    const groupId = selected.groupId ?? target.groupId
+      ?? ('grp-' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36));
+    this.pipeGeos.set(before.map(pipe => {
+      const ports = (pipe.ports ?? []).filter(port => !removedLinks.has(port.linkId));
+      if (pipe.id === selected.id) {
+        return { ...pipe, groupId, ports: [...ports, { linkId, at: this.connectThisEnd, section: target.parentId }] };
+      }
+      if (pipe.id === target.id) {
+        return { ...pipe, groupId, ports: [...ports, { linkId, at: this.connectTargetEnd, section: selected.parentId }] };
+      }
+      return ports.length === (pipe.ports ?? []).length ? pipe : { ...pipe, ports };
+    }));
+
+    try {
+      await this.persistChangedPipes(changedIds);
+      const currentParent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+      await Promise.all(remoteHints
+        .filter((hint, index, all) => all.findIndex(other => other.linkId === hint.linkId && other.sectionId === hint.sectionId) === index)
+        .filter(hint => hint.sectionId !== currentParent && !loadedSectionsByLink.get(hint.linkId)?.has(hint.sectionId))
+        .map(hint => this.pruneUnloadedPipeLink(hint.sectionId, hint.linkId)));
+      this.connectTargetPipeId = null;
+    } catch (error: any) {
+      this.st.error.set(error?.message || 'Could not save the pipe connection.');
+    } finally {
+      this.connectionBusy.set(false);
+    }
+  }
+
+  async disconnectPipeLink(linkId: string) {
+    if (this.connectionBusy()) return;
+    const before = this.pipeGeos();
+    const affected = before.filter(pipe => (pipe.ports ?? []).some(port => port.linkId === linkId));
+    if (!affected.length) return;
+    const loadedSections = new Set(affected.map(pipe => pipe.parentId));
+    const remoteSections = [...new Set(affected.flatMap(pipe => (pipe.ports ?? [])
+      .filter(port => port.linkId === linkId && port.section != null)
+      .map(port => port.section!)))];
+    this.pipeGeos.set(before.map(pipe => {
+      const ports = (pipe.ports ?? []).filter(port => port.linkId !== linkId);
+      return ports.length === (pipe.ports ?? []).length ? pipe : { ...pipe, ports };
+    }));
+    this.connectionBusy.set(true);
+    this.st.error.set(null);
+    try {
+      await this.persistChangedPipes(new Set(affected.map(pipe => pipe.id)));
+      const currentParent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+      await Promise.all(remoteSections
+        .filter(sectionId => sectionId !== currentParent && !loadedSections.has(sectionId))
+        .map(sectionId => this.pruneUnloadedPipeLink(sectionId, linkId)));
+    } catch (error: any) {
+      this.st.error.set(error?.message || 'Could not disconnect the pipe sections.');
+    } finally {
+      this.connectionBusy.set(false);
+    }
+  }
   async deletePipe(id: string) {
     const pipe = this.pipeGeos().find(p => p.id === id);
     if (!pipe) return;

@@ -63,6 +63,56 @@ public enum RedTagPattern {
     LOTO_NUMBER_COLUMN_HEADER("loto/loto-number-column-header.png",
             "The 'LOTO Number' column header in the procedures list (permit-number probe)"),
 
+    // ---- LOTO Procedures list — status-grouped tabs & column drag targets ----
+    // Used by the state-sync flow to pull Active/Canceled/Closed/Inactive LOTOs
+    // back into the local system. Each status has two crops:
+    //   *_COLLAPSED — tab strip with a "+" glyph on the left (row group hidden)
+    //   *_EXPANDED  — tab strip with a "-" glyph on the left (row group visible)
+    // Presence of the "expanded" variant is how the flow confirms an expand click
+    // landed; the "collapsed" variant is the anchor for the click itself
+    // (a fixed negative dx offset lands on the "+" at the left edge).
+    LIST_STATUS_ACTIVE_COLLAPSED("loto-list/status-active-collapsed.png",
+            "'Status : ACTIVE' tab strip, collapsed (+ glyph on left)", 0.85),
+    LIST_STATUS_ACTIVE_EXPANDED("loto-list/status-active-expanded.png",
+            "'Status : ACTIVE' tab strip, expanded (- glyph on left)", 0.85),
+    LIST_STATUS_CANCELED_COLLAPSED("loto-list/status-canceled-collapsed.png",
+            "'Status : CANCELED' tab strip, collapsed", 0.85),
+    LIST_STATUS_CANCELED_EXPANDED("loto-list/status-canceled-expanded.png",
+            "'Status : CANCELED' tab strip, expanded", 0.85),
+    LIST_STATUS_CLOSED_COLLAPSED("loto-list/status-closed-collapsed.png",
+            "'Status : CLOSED' tab strip, collapsed", 0.85),
+    LIST_STATUS_CLOSED_EXPANDED("loto-list/status-closed-expanded.png",
+            "'Status : CLOSED' tab strip, expanded", 0.85),
+    LIST_STATUS_INACTIVE_COLLAPSED("loto-list/status-inactive-collapsed.png",
+            "'Status : INACTIVE' tab strip, collapsed", 0.85),
+    LIST_STATUS_INACTIVE_EXPANDED("loto-list/status-inactive-expanded.png",
+            "'Status : INACTIVE' tab strip, expanded", 0.85),
+    // The plain 'Status' column header, shown when Status is in the column strip
+    // (NOT grouped). Anchor for the drag-into-yellow-band grouping trick and
+    // the reset "drag out then back" trick when a target tab is buried.
+    LIST_STATUS_COLUMN_HEADER("loto-list/status-column-header.png",
+            "The 'Status' column header in the LOTO Procedures grid (drag anchor)", 0.85),
+    // The empty grouping band — shown when no column is grouped. Presence of
+    // this pattern means we are NOT grouped by anything and need to drag the
+    // Status column into it.
+    LIST_GROUPING_BAND_EMPTY("loto-list/grouping-yellow-band-empty.png",
+            "Empty yellow grouping band: 'Drag a column header here to group by that column'", 0.80),
+
+    // ---- LOTO Procedures list — column headers (X-anchors for cell OCR) ----
+    // The state-sync scrape locates each of these once at open-list time and
+    // uses their x/width to slice the row area into vertical strips per column.
+    // OCR'ing each strip separately produces one line per row per column, which
+    // then zip into RedTagRow — far more reliable than OCR'ing whole-row text
+    // and hoping the columns can be split by whitespace.
+    LIST_COL_LOTO_NUMBER("loto-list/col-loto-number.png",
+            "'LOTO Number' column header — anchor for column-1 strip OCR", 0.85),
+    LIST_COL_JOB_DESCRIPTION("loto-list/col-job-description.png",
+            "'Job Description' column header — anchor for column-2 strip OCR", 0.85),
+    LIST_COL_LOCK_BOX_DESCRIPTION("loto-list/col-lock-box-description.png",
+            "'Lock Box Description' column header — anchor for column-3 strip OCR", 0.85),
+    LIST_COL_OWNER_PHOTOS("loto-list/col-owner-photos.png",
+            "'Owner Photos' column header (holds owner/requestor name) — anchor for column-4 strip OCR", 0.85),
+
     // ---- 'Add Device' dialog ------------------------------------------------
     ADD_DEVICE_TITLE("add-device/title.png",
             "The 'Add Device' dialog title bar"),
