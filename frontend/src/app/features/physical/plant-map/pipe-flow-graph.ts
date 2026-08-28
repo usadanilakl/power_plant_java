@@ -5,6 +5,12 @@ export interface PipeFlowResult {
   segsPath: { x: number; y: number }[][];
 }
 
+export interface EquipmentPortNetwork {
+  objectId: number;
+  circuit: string;
+  portIds: string[];
+}
+
 interface FlowEdge {
   id: string;
   pipeId: string;
@@ -91,6 +97,7 @@ export function tracePipeFlow(
   pipes: PipeGeo[],
   sourcePipeId: string | null,
   isValve: (fitting: PipeFitting) => boolean,
+  equipmentNetworks: EquipmentPortNetwork[] = [],
 ): Map<string, PipeFlowResult> {
   const result = new Map<string, PipeFlowResult>();
   const all = pipes.filter(pipe => pipe.points.length >= 2);
@@ -115,6 +122,25 @@ export function tracePipeFlow(
   for (const pipe of all) {
     for (const port of pipe.ports ?? []) {
       addAlias(endpointNode(pipe, port.at === 'start'), `port-${port.linkId}`);
+    }
+    if (pipe.startAttachment) {
+      addAlias(endpointNode(pipe, true), `equipment-port-${pipe.startAttachment.objectId}-${pipe.startAttachment.portId}`);
+    }
+    if (pipe.endAttachment) {
+      addAlias(endpointNode(pipe, false), `equipment-port-${pipe.endAttachment.objectId}-${pipe.endAttachment.portId}`);
+    }
+  }
+  for (const network of equipmentNetworks) {
+    const circuit = network.circuit.trim();
+    if (!circuit || network.portIds.length < 2) continue;
+    const portIds = new Set(network.portIds);
+    const hasDetailedInternalRoute = all.some(pipe => pipe.parentId === network.objectId
+      && ((pipe.startAttachment?.objectId === network.objectId && portIds.has(pipe.startAttachment.portId))
+        || (pipe.endAttachment?.objectId === network.objectId && portIds.has(pipe.endAttachment.portId))));
+    if (hasDetailedInternalRoute) continue;
+    const networkNode = `equipment-network-${network.objectId}-${circuit}`;
+    for (const portId of network.portIds) {
+      addAlias(networkNode, `equipment-port-${network.objectId}-${portId}`);
     }
   }
 

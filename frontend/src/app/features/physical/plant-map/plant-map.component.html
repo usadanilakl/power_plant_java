@@ -1,4 +1,4 @@
-<app-main-layout header="Plant Map">
+<app-main-layout header="Plant Map" [mainContentPadding]="false">
   <ng-container header>
     <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
@@ -7,21 +7,16 @@
 
       <!-- ── Left rail ── -->
       <aside class="rail">
-        <nav class="crumbs" *ngIf="st.breadcrumb().length">
-          <ng-container *ngFor="let c of st.breadcrumb(); let last = last">
-            <a class="crumb" [class.here]="last" (click)="navigate(c.id)">{{ c.name || c.tagNumber || ('#'+c.id) }}</a>
-            <span class="sep" *ngIf="!last">›</span>
-          </ng-container>
-        </nav>
-
         <div class="tree-nav" *ngIf="treeRows().length">
-          <span class="lbl">Jump to — the whole tree</span>
-          <ul class="tree">
+          <span class="lbl">Plant hierarchy</span>
+          <ul class="tree" #treeList>
             <li *ngFor="let r of treeRows()" [class.here]="isCurrentTreeNode(r.node.id)"
-                [style.paddingLeft.px]="4 + r.depth * 12" (click)="navigate(r.node.id)"
+                [class.selected]="isSelectedTreeNode(r.node.id)" [attr.data-node-id]="r.node.id"
+                [style.paddingLeft.px]="4 + r.depth * 12" (click)="onTreeNodeClick(r.node, $event)"
                 [title]="r.node.name || ('#'+r.node.id)">
               <span class="twist" [class.leaf]="!r.hasKids" (click)="toggleTreeExpand(r.node.id, $event)">{{ r.hasKids ? (r.open ? '▾' : '▸') : '·' }}</span>
               <span class="tname">{{ r.node.name || r.node.tagNumber || ('#'+r.node.id) }}</span>
+              <button type="button" class="topen" (click)="$event.stopPropagation(); navigate(r.node.id)" title="Open this object">↳</button>
             </li>
           </ul>
         </div>
@@ -103,21 +98,69 @@
               </label>
               <button class="ghost-btn" (click)="clearBackground()">Clear</button>
             </div>
+            <div class="bg-actions">
+              <button class="ghost-btn" [class.on]="backgroundAdjustMode()" (click)="toggleBackgroundAdjust()">
+                {{ backgroundAdjustMode() ? 'Done adjusting' : 'Adjust image' }}
+              </button>
+              <button class="ghost-btn" (click)="setBackgroundLocked(!st.backgroundTransform().locked)">
+                {{ st.backgroundTransform().locked ? 'Unlock' : 'Lock' }}
+              </button>
+              <button class="ghost-btn" (click)="fitBackground('contain')">Fit</button>
+              <button class="ghost-btn" (click)="fitBackground('fill')">Fill</button>
+              <button class="ghost-btn" (click)="fitBackgroundToSelection()" [disabled]="!st.selectedBox()">Fit shape</button>
+              <button class="ghost-btn" (click)="resetBackgroundTransform()">Reset</button>
+            </div>
+            <div class="bg-transform-fields">
+              <label>X <input type="number" [ngModel]="st.backgroundTransform().x"
+                              (ngModelChange)="patchBackgroundTransform({x: +$event || 0})" /></label>
+              <label>Y <input type="number" [ngModel]="st.backgroundTransform().y"
+                              (ngModelChange)="patchBackgroundTransform({y: +$event || 0})" /></label>
+              <label>W% <input type="number" min="5" [ngModel]="st.backgroundTransform().scaleX * 100"
+                               (ngModelChange)="setBackgroundScale('x', $event)" /></label>
+              <label>H% <input type="number" min="5" [ngModel]="st.backgroundTransform().scaleY * 100"
+                               (ngModelChange)="setBackgroundScale('y', $event)" /></label>
+              <label>Rotate <input type="number" [ngModel]="st.backgroundTransform().rotation"
+                                  (ngModelChange)="patchBackgroundTransform({rotation: +$event || 0})" /></label>
+            </div>
+            <label class="toggle bg-aspect">
+              <input type="checkbox" [checked]="st.backgroundTransform().aspectLocked"
+                     (change)="patchBackgroundTransform({aspectLocked: $any($event.target).checked})" />
+              Lock proportions
+            </label>
           </div>
         </div>
 
         <div class="tip">
           <strong>Tips</strong>
           Double-click a box to drill inside. A node with <em>levels</em> opens on its top level — peel down
-          with the Levels list. Select a box and drag its corner to resize.
+          with the Levels list. Navigate mode pans safely through objects; switch to <em>Arrange</em> to move or resize.
         </div>
       </aside>
 
       <!-- ── Stage ── -->
       <section class="stage">
+        <nav class="canvas-path" *ngIf="st.breadcrumb().length">
+          <button type="button" class="up" (click)="goUpOneLevel()" [disabled]="!canGoUp()" title="Up one level">↑</button>
+          <div class="canvas-crumbs">
+            <ng-container *ngFor="let c of st.breadcrumb(); let last = last">
+              <button type="button" class="canvas-crumb" [class.here]="last" [disabled]="last"
+                      (click)="navigate(c.id)" [title]="c.name || c.tagNumber || ('#'+c.id)">
+                {{ c.name || c.tagNumber || ('#'+c.id) }}
+              </button>
+              <span class="sep" *ngIf="!last">›</span>
+            </ng-container>
+          </div>
+          <span class="canvas-floor" *ngIf="st.canvasNode() as canvasNode">
+            <ng-container *ngIf="canvasNode.id !== st.currentNode()?.id">Level: {{ canvasNode.name || canvasNode.tagNumber || ('#'+canvasNode.id) }}</ng-container>
+          </span>
+        </nav>
         <div class="bar">
           <strong>{{ st.currentNode()?.name || 'Plant Map' }}</strong>
           <span class="chip" *ngIf="st.currentNode()?.type as t" [style.background]="color(t)">{{ t }}</span>
+          <span class="interaction-mode" *ngIf="st.currentDiagramId()">
+            <button type="button" [class.on]="!arrangeMode()" (click)="setArrangeMode(false)" title="Select objects and pan safely through them">Navigate</button>
+            <button type="button" [class.on]="arrangeMode()" (click)="setArrangeMode(true)" title="Move, resize, and connect object footprints">Arrange</button>
+          </span>
           <span class="muted" *ngIf="st.loading()">loading…</span>
           <span class="muted save" *ngIf="st.saving()">saving…</span>
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
@@ -129,6 +172,12 @@
             <button *ngIf="pipeDraft().length >= 2" (click)="finishPipe()">finish</button>
             <button *ngIf="continuing()" (click)="cancelContinue()" title="finish the whole run">done</button>
             <button *ngIf="!continuing()" (click)="togglePipeMode()" title="exit pipe tool">✕</button>
+          </span>
+          <span class="pipe-connect-banner" *ngIf="pipeConnect() as connect">
+            <ng-container *ngIf="connect.sourceEnd == null"><b>Connect:</b> choose Start or End on the highlighted pipe.</ng-container>
+            <ng-container *ngIf="connect.sourceEnd != null && !pipeConnectPending()"><b>{{ connect.sourceEnd | titlecase }} selected:</b> click an equipment port or another pipe endpoint.</ng-container>
+            <ng-container *ngIf="pipeConnectPending()">Review the connection card on the canvas.</ng-container>
+            <button type="button" (click)="cancelPipeConnect()">Cancel</button>
           </span>
           <span class="layer" *ngIf="st.currentDiagramId() && systems().length">
             <span class="lbl2">Layer</span>
@@ -177,18 +226,30 @@
           <button class="pipe-tool" type="button" *ngIf="st.selectedLocalIds().length" [disabled]="duplicating()"
                   (click)="duplicateSelection()" title="Duplicate the selection as new objects (Ctrl+D)">{{ duplicating() ? '…' : '⧉ Copy' }}</button>
           <button class="zoom-btn" *ngIf="st.currentDiagramId()" (click)="resetView()" title="reset view (fit)">{{ (zoom() * 100) | number:'1.0-0' }}%</button>
-          <span class="hint2">left-drag = pan · shift-drag = select · wheel = zoom · right-drag = draw footprint · dbl-click = drill</span>
+          <span class="hint2" *ngIf="!arrangeMode()">drag anywhere = pan · click = select · space-drag = pan · dbl-click = open</span>
+          <span class="hint2" *ngIf="arrangeMode()">drag shape = move · corner = resize · space-drag = pan</span>
         </div>
 
         <ng-container *ngIf="st.currentDiagramId(); else entry">
           <div class="scroll" #viewport [class.pipe-mode]="pipeMode() || !!fittingType()"
+               [class.arrange-mode]="arrangeMode()" [class.space-pan]="spacePanning()"
+               [class.bg-adjusting]="backgroundAdjustMode() && !st.backgroundTransform().locked"
                (pointerdown)="onCanvasDown($event)" (wheel)="onWheel($event)" (contextmenu)="$event.preventDefault()">
             <div class="content" #content [class.snap-on]="snapGrid()"
                  [style.width.px]="canvasSize().w" [style.height.px]="canvasSize().h"
-                 [style.transform]="contentTransform()">
+                 [style.transform]="contentTransform()" [style.--inv-zoom]="inverseZoom()">
 
-              <img *ngIf="st.backgroundUrl() as bg" class="bg-image" [src]="bg" (load)="onBgLoad($event)"
-                   [style.opacity]="st.backgroundOpacity()" draggable="false" alt="" />
+              <div *ngIf="st.backgroundUrl() as bg" class="bg-frame"
+                   [class.adjusting]="backgroundAdjustMode()" [class.locked]="st.backgroundTransform().locked"
+                   [style.left.px]="st.backgroundTransform().x" [style.top.px]="st.backgroundTransform().y"
+                   [style.width.px]="backgroundFrame()?.w" [style.height.px]="backgroundFrame()?.h"
+                   [style.transform]="'rotate(' + st.backgroundTransform().rotation + 'deg)'"
+                   (pointerdown)="onBackgroundDown($event)">
+                <img class="bg-image" [src]="bg" (load)="onBgLoad($event)"
+                     [style.opacity]="st.backgroundOpacity()" draggable="false" alt="" />
+                <span class="bg-resize" *ngIf="backgroundAdjustMode() && !st.backgroundTransform().locked"
+                      (pointerdown)="onBackgroundResizeDown($event)" title="Resize reference image"></span>
+              </div>
 
               <div class="boundary" *ngIf="st.boundary() as bd"
                    [style.left.px]="bd.x" [style.top.px]="bd.y" [style.width.px]="bd.w" [style.height.px]="bd.h">
@@ -203,23 +264,11 @@
               </div>
 
               <svg class="wires" [attr.width]="canvasSize().w" [attr.height]="canvasSize().h">
-                <g *ngFor="let w of wires()">
-                  <polyline class="wire-hit" [attr.points]="w.points" (pointerdown)="onWireDown($event, w.id)" />
-                  <polyline class="wire" [class.sel]="w.sel" [attr.points]="w.points"
-                            [attr.stroke]="w.color" [attr.stroke-width]="w.sel ? w.width + 3 : w.width" />
-                  <polyline class="wire-hl" [attr.points]="w.points" [attr.stroke-width]="w.width * 0.32 + 0.5" />
-                  <ng-container *ngIf="w.sel">
-                    <circle *ngFor="let m of w.segMids" class="wp-add" [attr.cx]="m.x" [attr.cy]="m.y" r="4.5"
-                            (pointerdown)="onWpAddDown($event, w.id, m.index)" />
-                    <circle *ngFor="let h of w.wpHandles" class="wp" [attr.cx]="h.x" [attr.cy]="h.y" r="5.5"
-                            (pointerdown)="onWpDown($event, w.id, h.index)" (dblclick)="removeWaypoint(w.id, h.index)" />
-                  </ng-container>
-                </g>
-                <line *ngIf="tempWire() as t" [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2"
-                      class="wire temp" />
                 <!-- pipes: a tube (colored line + bright centre sheen, rounded elbows) — a routed PhysicalObject -->
-                <g *ngFor="let p of viewPipes()" [class.flow-src]="flowMode() && flowSource() === p.id">
-                  <polyline class="opipe-hit" [attr.points]="p.points" (pointerdown)="onPipeDown($event, p.id)" />
+                <g *ngFor="let p of viewPipes()" [class.flow-src]="flowMode() && flowSource() === p.id"
+                   [class.connect-source]="isPipeConnectSource(p.id)" [class.connect-candidate]="isPipeConnectCandidate(p.id)"
+                   [class.connect-hover]="isPipeConnectHover(p.id)" [class.pipe-hover]="isPipeBodyHover(p.id)"
+                   [class.locate-pulse]="canvasPulseNodeId() === p.nodeId">
                   <polyline class="opipe" [class.sel]="p.sel"
                             [class.flow-off]="flowMode() && !flowOf(p.id)"
                             [attr.points]="p.points" [attr.stroke]="p.color" [attr.stroke-width]="p.sel ? p.width + 3 : p.width" />
@@ -229,8 +278,11 @@
                   </ng-container>
                 </g>
                 <!-- nested pipes: a descendant container's pipes, mapped into its footprint as you zoom in -->
-                <g *ngFor="let np of nestedItems().pipes">
-                  <polyline class="opipe" [class.flow-off]="flowMode() && !np.flowSegs?.length" [attr.points]="np.points" [attr.stroke]="np.color" [attr.stroke-width]="np.width" />
+                <g *ngFor="let np of nestedItems().pipes" [class.connect-source]="isPipeConnectSource(np.id)"
+                   [class.connect-candidate]="isPipeConnectCandidate(np.id)" [class.connect-hover]="isPipeConnectHover(np.id)"
+                   [class.pipe-hover]="isPipeBodyHover(np.id)" [class.locate-pulse]="canvasPulseNodeId() === np.nodeId">
+                  <polyline class="opipe" [class.sel]="selectedPipeId() === np.id" [class.flow-off]="flowMode() && !np.flowSegs?.length"
+                            [attr.points]="np.points" [attr.stroke]="np.color" [attr.stroke-width]="selectedPipeId() === np.id ? np.width + 2 : np.width" />
                   <polyline class="opipe-hl" [attr.points]="np.points" [attr.stroke-width]="np.width * 0.34 + 0.4" />
                   <polyline *ngFor="let s of np.flowSegs" class="opipe-flow" [attr.points]="s" [attr.stroke-width]="np.width * 0.6 + 0.5" />
                 </g>
@@ -253,7 +305,8 @@
                                isTiny(b) && !isEditingBox(b) ? 'tiny' : '',
                                boxShape(b) === 'run' && runVertical(b) ? 'run-v' : '',
                                layerActive() && boxInActiveSystem(b) ? 'hot' : '',
-                               layerActive() && !boxInActiveSystem(b) ? 'cold' : '']"
+                               layerActive() && !boxInActiveSystem(b) ? 'cold' : '',
+                               canvasPulseNodeId() === b.childId ? 'locate-pulse' : '']"
                    [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.width" [style.height.px]="b.height"
                    [style.borderColor]="boxColor(b)" [style.background]="boxFill(b)"
                    (pointerdown)="onBoxDown($event, b)" (dblclick)="onBoxDblClick(b)">
@@ -277,13 +330,13 @@
                 <span class="chev" *ngIf="boxHasChildren(b)" title="double-click to drill in">›</span>
                 <span class="rename-h" *ngIf="isSelected(b) && !isEditingBox(b)"
                       (pointerdown)="startRenameBox(b, $event)" title="rename">✎</span>
-                <span class="port" (pointerdown)="onPortDown($event, b)" title="drag to another box to connect"></span>
                 <span class="resize" (pointerdown)="onResizeDown($event, b)"></span>
               </div>
 
               <!-- recursive zoom-nesting: real, labeled descendant items that appear as you zoom in. Single-click
                    shows its info; double-click jumps straight to it (any depth); drag empty space to pan. -->
               <div class="nest" *ngFor="let n of nestedItems().items" [ngClass]="'shape-' + n.shape" [class.dim]="n.dim"
+                   [class.sel]="st.selectedNestedNode()?.id === n.childId" [class.locate-pulse]="canvasPulseNodeId() === n.childId"
                    [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.w" [style.height.px]="n.h"
                    [style.borderColor]="n.color" [style.background]="nestFill(n)" [style.zIndex]="4 + n.depth"
                    (click)="onNestClick(n)" (dblclick)="navigate(n.childId)" [title]="n.name || ('#' + n.childId)">
@@ -293,11 +346,18 @@
               <!-- top interaction layer: fittings + nested pipe/fitting hit targets, ABOVE the nested container
                    boxes so they stay clickable (a fitting overlapped by a container no longer gets swallowed). -->
               <svg class="top-layer" [attr.width]="canvasSize().w" [attr.height]="canvasSize().h">
-                <!-- nested pipes: transparent hit target — single-click = info, double-click = drill to the object -->
-                <polyline *ngFor="let np of nestedItems().pipes" class="opipe-hit" [attr.points]="np.points"
-                          (pointerdown)="$event.stopPropagation(); onNestPipeClick(np)" (dblclick)="np.nodeId && navigate(np.nodeId)" />
+                <!-- One topmost, screen-space hit corridor for current and nested pipes. Proximity picking chooses
+                     the nearest route when hit corridors overlap, instead of relying on SVG stacking order. -->
+                <polyline *ngFor="let pipe of visiblePipes()" class="opipe-hit visible-pipe-hit"
+                          [attr.points]="pipe.points" [style.stroke-width]="pipeHitWidth()"
+                          (pointerdown)="onVisiblePipeDown($event)" (pointermove)="onVisiblePipeMove($event)"
+                          (pointerleave)="clearVisiblePipeHover()"
+                          (dblclick)="!pipeConnect() && pipe.nested && pipe.nodeId && navigate(pipe.nodeId)">
+                  <title>{{ pipe.name }} — {{ pipe.nested ? 'nested pipe' : 'pipe' }}</title>
+                </polyline>
                 <!-- current-canvas fittings (click = select, drag = slide along the pipe) -->
                 <g *ngFor="let f of viewFittings()" class="fitting" [class.sel]="f.sel" [class.closed]="f.closed" [class.valve]="f.isValve"
+                   [class.locate-pulse]="canvasPulseNodeId() === f.nodeId"
                    [attr.transform]="'translate(' + f.x + ',' + f.y + ')'"
                    (pointerdown)="onFittingDown($event, f.id, f.pipeId)">
                   <circle r="12" class="fit-bg" [attr.stroke]="f.color" />
@@ -311,6 +371,7 @@
                 </g>
                 <!-- nested fittings (from a descendant pipe), scaled down — single-click = info, double = drill -->
                 <g *ngFor="let nf of nestedItems().fittings" class="fitting nested" [class.valve]="nf.isValve" [class.closed]="nf.closed"
+                   [class.locate-pulse]="canvasPulseNodeId() === nf.nodeId"
                    [attr.transform]="'translate(' + nf.x + ',' + nf.y + ') scale(' + nf.size + ')'"
                    (pointerdown)="onNestFittingClick(nf, $event)" (dblclick)="nf.nodeId && navigate(nf.nodeId)">
                   <circle r="12" class="fit-bg" [attr.stroke]="nf.color" />
@@ -323,13 +384,35 @@
                      / came from another section. Double-click jumps to the counterpart; single-click selects the pipe. -->
                 <g *ngFor="let c of pipeConnectors()" class="pipe-conn" [class.in]="c.dir === 'in'" [class.hl]="c.linkId === highlightedLink()"
                    [attr.transform]="'translate(' + c.x + ',' + c.y + ')'"
-                   (pointerdown)="$event.stopPropagation(); selectPipe(c.pipeId)" (dblclick)="jumpConnector(c)">
+                   (pointerdown)="onPipeConnectorDown($event, c.pipeId)" (dblclick)="jumpConnector(c)">
                   <title>{{ (c.dir === 'in' ? 'Came from ' : 'Continues in ') + (c.label || '(other area)') + (c.target != null ? ' — double-click to jump' : '') }}</title>
                   <circle r="11" class="pipe-conn-bg" />
                   <path class="pipe-conn-arrow" d="M-3.5,-4.5 L4.5,0 L-3.5,4.5 Z" [attr.transform]="'rotate(' + c.angle + ')'" />
                 </g>
                 <!-- junction dots where a pipe tees onto / connects into another -->
                 <circle *ngFor="let j of pipeJunctions()" class="pipe-junction" [attr.cx]="j.x" [attr.cy]="j.y" r="3.5" />
+                <!-- Direct connection mode: endpoint handles for the chosen source and every visible target pipe. -->
+                <g *ngFor="let h of connectionEndpointHandles()" class="pipe-end-handle"
+                   [class.source-choice]="h.role === 'source-choice'" [class.source-selected]="h.role === 'source-selected'"
+                   [class.target]="h.role === 'target'" [class.hover]="isPipeConnectHover(h.pipeId)"
+                   [attr.transform]="'translate(' + h.point.x + ',' + h.point.y + ')'"
+                   (pointerdown)="onConnectionEndpointDown($event, h)"
+                   (pointerenter)="setPipeConnectHover(h.pipeId)" (pointerleave)="setPipeConnectHover(null)">
+                  <circle r="10" />
+                  <text x="0" y="0">{{ h.end === 'start' ? 'S' : 'E' }}</text>
+                  <title>{{ h.name }} — {{ h.end }}</title>
+                </g>
+                <!-- Explicit equipment nozzles. The same port bridges the parent route and the internal route. -->
+                <g *ngFor="let port of equipmentPortHandles()" class="equipment-port"
+                   [class.inlet]="port.role === 'inlet'" [class.outlet]="port.role === 'outlet'"
+                   [class.boundary-port]="port.owner === 'boundary'" [class.sel]="isEquipmentPortSelected(port)"
+                   [attr.transform]="'translate(' + port.x + ',' + port.y + ')'"
+                   (pointerdown)="onEquipmentPortDown($event, port)">
+                  <circle class="equipment-port-halo" [attr.r]="11 * inverseZoom()"></circle>
+                  <circle class="equipment-port-dot" [attr.r]="5 * inverseZoom()"></circle>
+                  <text [attr.transform]="'scale(' + inverseZoom() + ')'" x="9" y="-7">{{ port.label }}</text>
+                  <title>{{ port.label }} · {{ port.circuit || 'no internal circuit' }} · {{ port.role }}</title>
+                </g>
                 <!-- route-edit handles for the selected pipe: drag a vertex to move it, double-click to remove a
                      bend; drag a small midpoint dot to add a bend. -->
                 <ng-container *ngIf="pipeEdit()">
@@ -343,6 +426,42 @@
               <!-- pipe labels at the route midpoint -->
               <div class="opipe-lbl" *ngFor="let p of viewPipes()" [class.sel]="p.sel"
                    [style.left.px]="p.mid.x" [style.top.px]="p.mid.y" (click)="selectPipe(p.id)">{{ p.name }}</div>
+              <div class="pipe-hover-label" *ngIf="hoveredVisiblePipe() as hover"
+                   [style.left.px]="hover.mid.x" [style.top.px]="hover.mid.y">
+                {{ hover.name }}<span *ngIf="hover.nested"> · {{ hierarchyPathLabel(hover.parentId) }}</span>
+              </div>
+
+              <!-- Context toolbar appears for current and nested visible pipes alike. -->
+              <div class="pipe-quick" *ngIf="selectedPipeToolbar() as quick"
+                   [style.left.px]="quick.mid.x" [style.top.px]="quick.mid.y"
+                   (pointerdown)="$event.stopPropagation()">
+                <span class="pipe-quick-name" [title]="selectedPipePath()">{{ quick.name }}</span>
+                <button type="button" (click)="beginPipeConnect(quick.id)" title="Connect this pipe by picking endpoints on the canvas">Connect</button>
+                <button type="button" (click)="traceSelectedPipe()" title="Trace flow starting from this pipe">Flow</button>
+                <button type="button" (click)="reverseSelectedPipeFlow()" title="Reverse animated flow on this section">Reverse</button>
+                <button type="button" *ngIf="quick.nested" (click)="openSelectedPipeSection()" title="Open the section that owns this nested pipe">Open section</button>
+                <button type="button" class="close" (click)="selectPipe(null)" title="Clear selection">×</button>
+              </div>
+
+              <div class="pipe-connect-confirm" *ngIf="pipeConnectionConfirmation() as confirm"
+                   [style.left.px]="confirm.x" [style.top.px]="confirm.y"
+                   (pointerdown)="$event.stopPropagation()">
+                <strong>{{ confirm.reconnect ? 'Move connection' : 'Connect pipe ends' }}</strong>
+                <span>{{ confirm.sourceLabel }} → {{ confirm.targetLabel }}</span>
+                <div class="confirm-actions" *ngIf="!confirm.reconnect; else reconnectConfirm">
+                  <button type="button" class="primary" (click)="confirmPipeConnection('branch')" [disabled]="connectionBusy()">
+                    {{ confirm.hasConflict ? 'Add branch' : 'Connect' }}
+                  </button>
+                  <button type="button" *ngIf="confirm.hasConflict" (click)="confirmPipeConnection('replace-ends')" [disabled]="connectionBusy()">Replace endpoint links</button>
+                  <button type="button" (click)="pipeConnectPending.set(null)">Cancel</button>
+                </div>
+                <ng-template #reconnectConfirm>
+                  <div class="confirm-actions">
+                    <button type="button" class="primary" (click)="confirmPipeConnection('reconnect')" [disabled]="connectionBusy()">Move here</button>
+                    <button type="button" (click)="pipeConnectPending.set(null)">Cancel</button>
+                  </div>
+                </ng-template>
+              </div>
 
               <div class="rubber" *ngIf="rubber() as r"
                    [style.left.px]="r.x" [style.top.px]="r.y" [style.width.px]="r.w" [style.height.px]="r.h"></div>
@@ -376,12 +495,56 @@
       </section>
 
       <!-- ── Inspector ── -->
-      <aside class="inspector" *ngIf="st.selectedChild() || st.selectedEdge() || selectedPipe() || selectedFitting()">
+      <aside class="inspector" *ngIf="st.selectedChild() || selectedPipe() || selectedFitting()">
        <ng-container *ngIf="st.selectedChild() as c">
         <header>
           <h3>{{ c.name || ('#'+c.id) }}</h3>
           <span class="chip" *ngIf="c.type as t" [style.background]="color(t)">{{ t }}</span>
         </header>
+
+        <div class="equipment-ports" *ngIf="st.selectedBox() as portBox">
+          <div class="port-section-head">
+            <div>
+              <h4>Pipe connection points ({{ portBox.ports.length }})</h4>
+              <span class="sub">Place and configure nozzles on this shape</span>
+            </div>
+            <button type="button" class="pipe-connect-btn" [class.on]="portPlacementBoxLocalId() === portBox.localId"
+                    (click)="portPlacementBoxLocalId() === portBox.localId ? cancelPortPlacement() : beginPortPlacement()">
+              {{ portPlacementBoxLocalId() === portBox.localId ? 'Cancel' : '+ Place connector' }}
+            </button>
+          </div>
+          <p class="hint" *ngIf="portPlacementBoxLocalId() === portBox.localId">Click the exact location on the shape perimeter. Drag it later while in Arrange mode.</p>
+          <p class="hint" *ngIf="!portBox.ports.length && portPlacementBoxLocalId() !== portBox.localId">Select “Place connector”, then click the shape edge.</p>
+          <div class="equipment-port-columns" *ngIf="portBox.ports.length">
+            <span>Name</span><span>Direction</span><span>Circuit</span><span></span>
+          </div>
+          <div class="equipment-port-row" *ngFor="let port of portBox.ports"
+               [class.sel]="selectedEquipmentPort()?.portId === port.id"
+               (click)="selectedEquipmentPort.set({objectId: portBox.childId, portId: port.id, boxLocalId: portBox.localId})">
+            <input class="port-label" [ngModel]="port.label"
+                   (ngModelChange)="updateEquipmentPort(portBox.localId, port.id, {label: $event})"
+                   (click)="$event.stopPropagation()" title="Port/nozzle label" />
+            <select [ngModel]="port.role"
+                    (ngModelChange)="updateEquipmentPort(portBox.localId, port.id, {role: $event})"
+                    (click)="$event.stopPropagation()">
+              <option value="inlet">Inlet</option>
+              <option value="outlet">Outlet</option>
+              <option value="bidirectional">Either</option>
+            </select>
+            <input class="port-circuit" [ngModel]="port.circuit"
+                   (ngModelChange)="updateEquipmentPort(portBox.localId, port.id, {circuit: $event})"
+                   (click)="$event.stopPropagation()" placeholder="e.g. A" title="Ports with the same circuit are internally connected" />
+            <button type="button" class="pipe-unlink" (click)="$event.stopPropagation(); deleteEquipmentPort(portBox.localId, port.id)"
+                    title="Delete connector and detach its pipes">×</button>
+          </div>
+          <p class="hint" *ngIf="portBox.ports.length">Give logically connected ports the same circuit. Draw internal pipes when their detailed routing should control flow.</p>
+        </div>
+
+        <div class="equipment-port-location" *ngIf="!st.selectedBox()">
+          <strong>Pipe connection points</strong>
+          <span>This is a nested preview. Edit its connectors on the map where this shape is placed.</span>
+          <button type="button" *ngIf="c.parentId != null" (click)="navigate(c.parentId)">Open containing map</button>
+        </div>
 
         <div class="edit">
           <div class="frow"><span class="lbl">Name</span><input [(ngModel)]="editName" (blur)="autoSaveEdit()" (keyup.enter)="autoSaveEdit()" /></div>
@@ -405,6 +568,19 @@
                     [class.on]="(bx.shape || 'rect') === s.key" (click)="setShape(s.key)" [title]="s.label">
               <span class="shp" [ngClass]="'shp-' + s.key"></span>
             </button>
+          </div>
+          <span class="sub">Footprint size</span>
+          <div class="size-presets">
+            <button *ngFor="let size of boxSizePresets" type="button"
+                    (click)="setSelectedBoxSize(size.w, size.h)" [title]="size.w + ' × ' + size.h">
+              {{ size.label }}
+            </button>
+          </div>
+          <div class="size-fields">
+            <label>W <input type="number" min="6" [ngModel]="bx.width"
+                            (ngModelChange)="setSelectedBoxDimension('width', $event)" /></label>
+            <label>H <input type="number" min="6" [ngModel]="bx.height"
+                            (ngModelChange)="setSelectedBoxDimension('height', $event)" /></label>
           </div>
           <span class="sub">Equipment badge</span>
           <div class="glyph-grid">
@@ -439,40 +615,12 @@
           <button class="danger" (click)="deleteSelectedObject()">Delete object</button>
         </div>
 
-        <div class="links" *ngIf="st.selectedBox()">
-          <h4>Connections ({{ selectedConnections().length }})</h4>
-          <ul class="conn">
-            <li *ngFor="let l of selectedConnections()">
-              <span class="arrow">↔</span> {{ l.name }}
-              <button class="x" (click)="st.disconnect(l.edgeLocalId)" title="disconnect">×</button>
-            </li>
-            <li class="muted" *ngIf="!selectedConnections().length">Drag the side dot to another box to link.</li>
-          </ul>
+        <div class="links legacy-links" *ngIf="st.selectedBox() && st.edges().length">
+          <h4>Migrating old connections ({{ st.edges().length }})</h4>
+          <p class="hint">These are being converted to explicit equipment ports and routed pipes.</p>
         </div>
 
         <ng-container *ngTemplateOutlet="objectLinks"></ng-container>
-       </ng-container>
-
-       <!-- Pipe (connection) inspector -->
-       <ng-container *ngIf="st.selectedEdge() as e">
-        <header><h3>Pipe</h3><span class="chip pipe-chip" [style.background]="e.color || '#7c94b0'">pipe</span></header>
-        <div class="appearance">
-          <h4>Service color</h4>
-          <div class="swatches">
-            <button *ngFor="let sc of serviceColors" type="button" class="sw"
-                    [style.background]="sc" [class.on]="e.color === sc" (click)="setEdgeColor(sc)"></button>
-            <input class="pick" type="color" [value]="e.color || '#7c94b0'"
-                   (input)="setEdgeColor($any($event.target).value)" title="custom color" />
-          </div>
-          <div class="frow"><span class="lbl">Width</span>
-            <input type="range" min="1" max="12" [value]="e.width || 2"
-                   (input)="setEdgeWidth(+$any($event.target).value)" />
-            <span class="wval">{{ e.width || 2 }}px</span>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="danger" (click)="st.disconnect(e.localId)">Remove pipe</button>
-        </div>
        </ng-container>
 
        <!-- Pipe (routed) inspector -->
@@ -481,6 +629,7 @@
           <h3>{{ pipe.name || 'Pipe' }}</h3>
           <span class="chip pipe-chip" [style.background]="pipe.color || '#5b9bd5'">pipe</span>
         </header>
+        <p class="pipe-location" [title]="selectedPipePath()">{{ selectedPipePath() }}</p>
         <div class="run-jumps" *ngIf="pipeRunJumps().length">
           <span class="run-lbl">Same run, other areas:</span>
           <button *ngFor="let j of pipeRunJumps()" class="run-chip" (click)="navigate(j.target)"
@@ -488,7 +637,7 @@
             {{ j.dir === 'from' ? '⇠' : '⇢' }} {{ j.label }}
           </button>
         </div>
-        <p class="tip" *ngIf="!selectedPipeOnCanvas()">This pipe lives in another area — <b>Open object ↳</b> to edit its route here.</p>
+        <p class="tip" *ngIf="!selectedPipeOnCanvas()">This nested pipe is selected through its parent view. You can connect, trace, reverse, or manage its links here. Open its section to reshape the route.</p>
         <ng-container *ngIf="selectedPipeOnCanvas()">
         <div class="edit">
           <div class="frow"><span class="lbl">Name</span>
@@ -512,10 +661,27 @@
                   title="Drag a dot to reshape the run; drag a small midpoint dot to add a bend; double-click a dot to remove it">
             {{ pipeEdit() ? '✓ Editing route — drag the dots' : '✎ Edit route' }}
           </button>
-          <button class="flow-reverse-btn" [class.on]="pipe.flowReversed" (click)="reverseSelectedPipeFlow()"
-                  title="Reverse the animated flow on this existing pipe section without changing its route or connections">
-            ⇄ {{ pipe.flowReversed ? 'Section flow reversed' : 'Reverse section flow' }}
+        </div>
+        </ng-container>
+        <div class="pipe-equipment-links">
+          <h4>Equipment-port attachments</h4>
+          <div class="pipe-end-attachment">
+            <span>Start</span><strong>{{ pipeAttachmentLabel(pipe.startAttachment) }}</strong>
+            <button type="button" *ngIf="pipe.startAttachment" class="pipe-unlink" (click)="detachSelectedPipePort('start')">Detach</button>
+          </div>
+          <div class="pipe-end-attachment">
+            <span>End</span><strong>{{ pipeAttachmentLabel(pipe.endAttachment) }}</strong>
+            <button type="button" *ngIf="pipe.endAttachment" class="pipe-unlink" (click)="detachSelectedPipePort('end')">Detach</button>
+          </div>
+          <p class="hint">Use Connect on canvas, choose Start or End, then click an equipment port. Dragging an endpoint onto a port in Edit route also snaps it.</p>
+        </div>
+        <div class="pipe-primary-actions">
+          <button type="button" class="pipe-connect-btn" (click)="beginPipeConnect()" [disabled]="!canConnectSelectedPipe() || connectionBusy()">Connect on canvas</button>
+          <button type="button" (click)="traceSelectedPipe()">Trace flow</button>
+          <button type="button" class="flow-reverse-btn" [class.on]="pipe.flowReversed" (click)="reverseSelectedPipeFlow()">
+            ⇄ {{ pipe.flowReversed ? 'Flow reversed' : 'Reverse flow' }}
           </button>
+          <button type="button" *ngIf="!selectedPipeOnCanvas()" (click)="openSelectedPipeSection()">Open section</button>
         </div>
         <div class="pipe-links">
           <h4>Pipe connections</h4>
@@ -526,45 +692,19 @@
               <span class="pipe-link-target" [title]="link.targetLabel">
                 {{ link.targetLabel }}<ng-container *ngIf="link.targetAt"> ({{ link.targetAt }})</ng-container>
               </span>
+              <button type="button" class="pipe-reconnect" (click)="beginPipeReconnect(link.linkId, link.at)"
+                      [disabled]="!canConnectSelectedPipe() || connectionBusy()">Reconnect</button>
               <button type="button" class="pipe-unlink" (click)="disconnectPipeLink(link.linkId)"
                       [disabled]="connectionBusy()" title="Break this connection at both pipe sections">×</button>
             </div>
           </div>
           <ng-template #noPipeLinks><p class="hint">No assigned pipe connections.</p></ng-template>
 
-          <div class="pipe-connect-form" *ngIf="connectablePipes().length; else noConnectablePipes">
-            <label>This pipe end
-              <select [(ngModel)]="connectThisEnd">
-                <option value="start">Start (first drawn point)</option>
-                <option value="end">End (last drawn point)</option>
-              </select>
-            </label>
-            <label>Existing pipe
-              <select [(ngModel)]="connectTargetPipeId">
-                <option [ngValue]="null">Choose a pipe…</option>
-                <option *ngFor="let candidate of connectablePipes()" [ngValue]="candidate.id">{{ candidate.label }}</option>
-              </select>
-            </label>
-            <label>Its end
-              <select [(ngModel)]="connectTargetEnd">
-                <option value="start">Start (first drawn point)</option>
-                <option value="end">End (last drawn point)</option>
-              </select>
-            </label>
-            <label class="toggle replace-links">
-              <input type="checkbox" [(ngModel)]="connectReplace" />
-              Replace every existing connection on both chosen ends
-            </label>
-            <button type="button" class="pipe-connect-btn" (click)="connectExistingPipes()"
-                    [disabled]="!connectTargetPipeId || connectionBusy()">
-              {{ connectionBusy() ? 'Saving…' : 'Connect existing pipes' }}
-            </button>
-          </div>
-          <ng-template #noConnectablePipes>
-            <p class="hint">Open or zoom into another section once so its pipes can be selected here.</p>
-          </ng-template>
-          <p class="hint">Leave “replace” off to add a tee/branch. Turn it on to break the old assignments and reconnect both ends.</p>
+          <button type="button" class="pipe-connect-btn" (click)="beginPipeConnect()"
+                  [disabled]="!canConnectSelectedPipe() || connectionBusy()">Pick endpoints on canvas</button>
+          <p class="hint">The selected pipe and every visible nested pipe can be connected directly. Hover a target to highlight it.</p>
         </div>
+        <ng-container *ngIf="selectedPipeOnCanvas()">
         <div class="fittings-pal">
           <h4>Add fitting</h4>
           <div class="fit-row">
@@ -583,8 +723,8 @@
         </ng-container>
         <div class="actions">
           <button *ngIf="pipe.nodeId" (click)="navigate(pipe.nodeId)" title="Open this pipe as an object (files, properties, Maximo, its fittings)">Open object ↳</button>
-          <button *ngIf="selectedPipeOnCanvas()" (click)="pipeMode.set(true)"
-                  title="Branch or connect — turns on the pipe tool; then click ON this pipe to tee a branch off it, or draw a new pipe and end it on a pipe to connect">Branch / connect ⑂</button>
+          <button *ngIf="selectedPipeOnCanvas()" (click)="togglePipeMode()"
+                  title="Draw a new physical branch route starting from this pipe">Draw branch ⑂</button>
           <button *ngIf="selectedPipeOnCanvas()" (click)="continuePipe()"
                   title="Run this pipe into a neighbouring area — then drill into that section and keep drawing the same run">Continue in another area ⇢</button>
           <button class="danger" *ngIf="selectedPipeOnCanvas()" (click)="deletePipe(pipe.id)">Delete pipe</button>

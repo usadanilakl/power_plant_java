@@ -18,7 +18,23 @@ export interface MapBox {
   glyph: string;     // equipment-kind badge key (persists as DiagramPlacement.symbolId)
   color: string;     // explicit box color (persists as DiagramPlacement.color)
   showChildren: boolean; // render the child's interior as a mini-map (persists as DiagramPlacement.locked)
+  ports: EquipmentPort[];
 }
+
+export type EquipmentPortRole = 'inlet' | 'outlet' | 'bidirectional';
+
+/** A user-placed physical nozzle/connector. Coordinates are normalized to the equipment footprint. */
+export interface EquipmentPort {
+  id: string;
+  label: string;
+  circuit: string;
+  role: EquipmentPortRole;
+  x: number;
+  y: number;
+}
+
+/** Stable reference shared by a parent pipe and an internal pipe at the same equipment boundary. */
+export interface EquipmentPortRef { objectId: number; portId: string; }
 
 /** A link between two boxes — a pipe ROUTE (persists as a DiagramConnection). */
 export interface MapEdge {
@@ -37,8 +53,8 @@ export interface GhostBox {
   shape: FootprintShape; color: string; floor: number; name: string; childId: number;
 }
 
-const DEFAULT_W = 150;
-const DEFAULT_H = 72;
+const DEFAULT_W = 96;
+const DEFAULT_H = 48;
 
 /** A fitting on a pipe (valve/instrument/drain/vent/spray) — anchored to a point along the path. Each fitting is
  *  its OWN PhysicalObject (nodeId, a child of the pipe node); its on-pipe geometry rides the parent pipe's placement. */
@@ -65,8 +81,23 @@ export interface PipeGeo {
   groupId?: string;               // shared across the segments of ONE logical pipe that runs through several sections
   continuesFrom?: number;         // the SECTION node this segment was continued from (backward "jump to origin")
   ports?: PipePort[];             // cross-section connectors (source end ↔ destination start), matched by linkId
+  startAttachment?: EquipmentPortRef;
+  endAttachment?: EquipmentPortRef;
+  legacyEdgeLocalId?: number;
   flowReversed?: boolean;         // visual-flow direction override for this already-drawn section
 }
+
+export interface BackgroundTransform {
+  x: number; y: number;
+  scaleX: number; scaleY: number;
+  rotation: number;
+  locked: boolean;
+  aspectLocked: boolean;
+}
+
+const DEFAULT_BACKGROUND_TRANSFORM: BackgroundTransform = {
+  x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, locked: true, aspectLocked: true,
+};
 
 /** sourceEntityType for a real pipe's placement (a pipe is drawn as a routed line, not a box). Distinct from
  *  'PhysicalObject' so pipes are auto-excluded everywhere boxes are read (loadCanvas boxes, ghosts, boundary,
@@ -127,11 +158,13 @@ export class PlantMapStateService {
 
   // ── parent boundary (this node's footprint, from its box on the parent's canvas) ──
   boundary = signal<{ x: number; y: number; w: number; h: number } | null>(null);
+  boundaryPorts = signal<EquipmentPort[]>([]);
 
   // ── reference underlay (satellite / plot plan traced beneath the footprints) ──
   /** Servable URL of the current canvas's reference image (a synced file, shared across devices; null = none). */
   backgroundUrl = signal<string | null>(null);
   backgroundOpacity = signal(0.55);
+  backgroundTransform = signal<BackgroundTransform>({ ...DEFAULT_BACKGROUND_TRANSFORM });
   private bgLocalId: number | null = null;   // stable localId of the __bg__ metadata placement
   private bgExt: string | null = null;        // stored so the metadata row records the image's extension
 
@@ -159,7 +192,6 @@ export class PlantMapStateService {
   error = signal<string | null>(null);
 
   private nextPlacementLocalId = 1;
-  private nextConnectionLocalId = 1;
   private saveTimer: any = null;
   private dirty = false;
   private saveRetries = 0; // bounded self-retry so a transient save failure doesn't strand a write (e.g. migration's blob-drop)
@@ -252,6 +284,22 @@ export class PlantMapStateService {
 
   private msg(e: any): string { return e?.error?.message ?? e?.message ?? String(e); }
 
+  private equipmentPortsFromJson(svgPath?: string | null): EquipmentPort[] {
+    let raw: any;
+    try { raw = svgPath ? JSON.parse(svgPath) : null; } catch { return []; }
+    if (!Array.isArray(raw?.equipmentPorts)) return [];
+    return raw.equipmentPorts
+      .filter((port: any) => port && typeof port.id === 'string')
+      .map((port: any, index: number) => ({
+        id: port.id,
+        label: typeof port.label === 'string' && port.label.trim() ? port.label : `P${index + 1}`,
+        circuit: typeof port.circuit === 'string' ? port.circuit : '',
+        role: port.role === 'inlet' || port.role === 'outlet' ? port.role : 'bidirectional',
+        x: Math.max(0, Math.min(1, Number.isFinite(port.x) ? port.x : 1)),
+        y: Math.max(0, Math.min(1, Number.isFinite(port.y) ? port.y : 0.5)),
+      }));
+  }
+
   // ── loading ──────────────────────────────────────────────────────────────
 
   /** Open a node: load its identity + breadcrumb, then show its canvas — its TOP level if it has levels
@@ -267,6 +315,7 @@ export class PlantMapStateService {
     this.canvasNode.set(null);
     this.childWorkAreas.set(new Map());
     this.boundary.set(null);
+    this.boundaryPorts.set([]);
     this.clearBackgroundState();
     try {
       const [node, breadcrumb, children] = await Promise.all([
@@ -406,6 +455,7 @@ export class PlantMapStateService {
         glyph: p.symbolId || 'none',
         color: p.color || poColor(childById.get(p.sourceEntityId!)?.type),
         showChildren: p.locked ?? false,
+        ports: this.equipmentPortsFromJson(p.svgPath),
       }));
     const boxByLocal = new Set(boxes.map(b => b.localId));
     const edges: MapEdge[] = connections
@@ -425,7 +475,7 @@ export class PlantMapStateService {
     const pipes: PipeGeo[] = placements
       .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
       .map(p => {
-        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; flowReversed?: boolean } = {};
+        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; startAttachment?: EquipmentPortRef; endAttachment?: EquipmentPortRef; legacyEdgeLocalId?: number; flowReversed?: boolean } = {};
         try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
         return {
           id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
@@ -434,6 +484,8 @@ export class PlantMapStateService {
           fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
           aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
           continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
+          startAttachment: geo.startAttachment ?? undefined, endAttachment: geo.endAttachment ?? undefined,
+          legacyEdgeLocalId: geo.legacyEdgeLocalId ?? undefined,
           flowReversed: geo.flowReversed ?? undefined,
           color: p.color || undefined, width: p.lineWidth || undefined,
           name: p.label || p.name || 'Pipe',
@@ -449,7 +501,21 @@ export class PlantMapStateService {
     const bg = placements.find(p => p.sourceEntityType === BG_SRC && p.localId != null);
     this.bgLocalId = bg?.localId ?? null;
     if (bg) {
-      try { const j = JSON.parse(bg.svgPath || '{}'); this.backgroundOpacity.set(typeof j.opacity === 'number' ? j.opacity : 0.55); if (j.ext) this.bgExt = j.ext; }
+      try {
+        const j = JSON.parse(bg.svgPath || '{}');
+        this.backgroundOpacity.set(typeof j.opacity === 'number' ? j.opacity : 0.55);
+        if (j.ext) this.bgExt = j.ext;
+        const transform = j.transform ?? {};
+        this.backgroundTransform.set({
+          x: Number.isFinite(transform.x) ? transform.x : 0,
+          y: Number.isFinite(transform.y) ? transform.y : 0,
+          scaleX: Number.isFinite(transform.scaleX) && transform.scaleX > 0 ? transform.scaleX : 1,
+          scaleY: Number.isFinite(transform.scaleY) && transform.scaleY > 0 ? transform.scaleY : 1,
+          rotation: Number.isFinite(transform.rotation) ? transform.rotation : 0,
+          locked: transform.locked !== false,
+          aspectLocked: transform.aspectLocked !== false,
+        });
+      }
       catch { this.backgroundOpacity.set(0.55); }
     }
 
@@ -465,7 +531,6 @@ export class PlantMapStateService {
       boxes.reduce((m, b) => Math.max(m, b.localId), 0),
       pipes.reduce((m, p) => Math.max(m, p.localId ?? 0), 0),
       legacy?.localId ?? 0, bg?.localId ?? 0) + 1;
-    this.nextConnectionLocalId = edges.reduce((m, e) => Math.max(m, e.localId), 0) + 1;
     this.dirty = false;
     this.pipesLoadNodeId.set(this.canvasNode()?.id ?? null);
     this.pipesLoadSeq.update(n => n + 1); // pipes + identity now settled → let the component apply them once
@@ -487,6 +552,7 @@ export class PlantMapStateService {
       if (!p || !p.width || !p.height) return;
       const scale = 1100 / Math.max(p.width, p.height);
       this.boundary.set({ x: 24, y: 24, w: Math.round(p.width * scale), h: Math.round(p.height * scale) });
+      this.boundaryPorts.set(this.equipmentPortsFromJson(p.svgPath));
     } catch { /* no boundary */ }
   }
 
@@ -654,7 +720,7 @@ export class PlantMapStateService {
       x: x ?? 60 + (n % 6) * 40, y: y ?? 60 + (n % 6) * 34,
       width: DEFAULT_W, height: DEFAULT_H,
       shape,
-      glyph: 'none', color: poColor(this.childById().get(childId)?.type), showChildren: false,
+      glyph: 'none', color: poColor(this.childById().get(childId)?.type), showChildren: false, ports: [],
     };
     this.boxes.update(list => [...list, box]);
     this.selectBox(localId);
@@ -682,71 +748,29 @@ export class PlantMapStateService {
     this.scheduleSave();
   }
 
-  /** Connect two boxes (ignores self-links and duplicates). Returns the new edge's localId. */
-  connect(sourceLocalId: number, targetLocalId: number): number | null {
-    if (sourceLocalId === targetLocalId) return null;
-    const exists = this.edges().some(e =>
-      (e.sourceLocalId === sourceLocalId && e.targetLocalId === targetLocalId) ||
-      (e.sourceLocalId === targetLocalId && e.targetLocalId === sourceLocalId));
-    if (exists) return null;
-    const localId = this.nextConnectionLocalId++;
-    this.edges.update(list => [...list, { localId, sourceLocalId, targetLocalId }]);
-    this.scheduleSave();
-    return localId;
-  }
-
-  /** Patch a pipe/connection's style (color / width). */
-  patchEdge(localId: number, patch: Partial<Pick<MapEdge, 'color' | 'width'>>) {
-    this.edges.update(list => list.map(e => (e.localId === localId ? { ...e, ...patch } : e)));
-    this.scheduleSave();
-  }
-
-  /** Insert a route bend (waypoint) into a pipe at `index`. */
-  insertWaypoint(localId: number, index: number, x: number, y: number) {
-    this.edges.update(list => list.map(e => {
-      if (e.localId !== localId) return e;
-      const wps = [...(e.waypoints ?? [])];
-      wps.splice(Math.max(0, Math.min(index, wps.length)), 0, { x, y });
-      return { ...e, waypoints: wps };
-    }));
-    this.scheduleSave();
-  }
-
-  /** Move an existing route bend. */
-  moveWaypoint(localId: number, index: number, x: number, y: number) {
-    this.edges.update(list => list.map(e => {
-      if (e.localId !== localId) return e;
-      const wps = [...(e.waypoints ?? [])];
-      if (index < 0 || index >= wps.length) return e;
-      wps[index] = { x, y };
-      return { ...e, waypoints: wps };
-    }));
-    this.scheduleSave();
-  }
-
-  /** Delete a route bend (double-click a handle). */
-  removeWaypoint(localId: number, index: number) {
-    this.edges.update(list => list.map(e => {
-      if (e.localId !== localId) return e;
-      const wps = [...(e.waypoints ?? [])];
-      if (index < 0 || index >= wps.length) return e;
-      wps.splice(index, 1);
-      return { ...e, waypoints: wps.length ? wps : undefined };
-    }));
-    this.scheduleSave();
-  }
-
-  disconnect(edgeLocalId: number) {
-    this.edges.update(list => list.filter(e => e.localId !== edgeLocalId));
-    if (this.selectedEdgeLocalId() === edgeLocalId) this.selectedEdgeLocalId.set(null);
-    this.scheduleSave();
-  }
-
   // ── reference underlay (satellite / plot plan) ──────────────────────────────
   // The image BYTES are a synced file on disk (NgPlantMapBackgroundService); the opacity/ext METADATA rides the
   // diagram as a tiny '__bg__' placement (see doSave / loadCanvas). Shared across devices.
 
-  private clearBackgroundState() { this.backgroundUrl.set(null); this.bgLocalId = null; this.bgExt = null; this.backgroundOpacity.set(0.55); }
+  private clearBackgroundState() {
+    this.backgroundUrl.set(null);
+    this.bgLocalId = null;
+    this.bgExt = null;
+    this.backgroundOpacity.set(0.55);
+    this.backgroundTransform.set({ ...DEFAULT_BACKGROUND_TRANSFORM });
+  }
+
+  patchBoxPorts(localId: number, ports: EquipmentPort[]) {
+    this.boxes.update(list => list.map(box => box.localId === localId ? { ...box, ports } : box));
+    this.scheduleSave();
+  }
+
+  /** Complete the one-time side-dot wire migration. The next complete-set save removes the old diagram rows. */
+  clearLegacyEdges() {
+    this.edges.set([]);
+    this.selectedEdgeLocalId.set(null);
+    this.scheduleSave();
+  }
 
   /** Fetch the current canvas's background URL (lazily pulling the bytes to this device if a peer uploaded them). */
   private async loadBackground(did: number) {
@@ -778,6 +802,7 @@ export class PlantMapStateService {
   async clearBackgroundImage() {
     const did = this.currentDiagramId();
     this.backgroundUrl.set(null); this.bgLocalId = null; this.bgExt = null;
+    this.backgroundTransform.set({ ...DEFAULT_BACKGROUND_TRANSFORM });
     if (did != null) { try { await firstValueFrom(this.bgApi.delete(did)); } catch { /* ignore */ } }
     this.scheduleSave();                                  // stop emitting __bg__ → soft-deleted
   }
@@ -785,6 +810,11 @@ export class PlantMapStateService {
   setBackgroundOpacity(o: number) {
     this.backgroundOpacity.set(o);
     if (this.backgroundUrl()) this.scheduleSave();        // persist opacity onto the __bg__ row (debounced)
+  }
+
+  setBackgroundTransform(patch: Partial<BackgroundTransform>) {
+    this.backgroundTransform.update(value => ({ ...value, ...patch }));
+    if (this.backgroundUrl()) this.scheduleSave();
   }
 
   // ── persistence ───────────────────────────────────────────────────────────
@@ -855,6 +885,7 @@ export class PlantMapStateService {
           color: b.color || poColor(child?.type),
           symbolId: b.glyph || 'none',
           locked: b.showChildren,
+          svgPath: JSON.stringify({ equipmentPorts: b.ports ?? [] }),
         };
       });
       // Each pipe = one real placement (sourceEntityType='Pipe', sourceEntityId = the pipe's PhysicalObject),
@@ -869,7 +900,7 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
-          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId, continuesFrom: p.continuesFrom, ports: p.ports, flowReversed: p.flowReversed }),
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId, continuesFrom: p.continuesFrom, ports: p.ports, startAttachment: p.startAttachment, endAttachment: p.endAttachment, legacyEdgeLocalId: p.legacyEdgeLocalId, flowReversed: p.flowReversed }),
           color: p.color, lineWidth: p.width,
           name: p.name || 'Pipe', label: p.name || 'Pipe',
           x: minX, y: minY,
@@ -895,7 +926,7 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: BG_SRC, type: 'bg', name: BG_SRC,
-          svgPath: JSON.stringify({ opacity: this.backgroundOpacity(), ext: this.bgExt }),
+          svgPath: JSON.stringify({ opacity: this.backgroundOpacity(), ext: this.bgExt, transform: this.backgroundTransform() }),
           x: 0, y: 0, width: 0, height: 0,
         });
       }
