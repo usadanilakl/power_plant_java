@@ -80,11 +80,14 @@ export interface ConfinedSpaceModel extends BaseModel {
   issuedTo: string | null;
   duration: string | null;
   lotoNum: string | null;
+  permitNumber: string | null;
   hotWorkNum: string | null;
   ventilation: boolean;
   blankFlanged: boolean;
   meterModel: string | null;
   meterNum: string | null;
+  meterCalDate: string | null;
+  meterBumpTest: string | null;
   calibrated: boolean;
   oxygen: string | null;
   lel: string | null;
@@ -108,11 +111,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   issuedTo: string | null;
   duration: string | null;
   lotoNum: string | null;
+  permitNumber: string | null;
   hotWorkNum: string | null;
   ventilation: boolean;
   blankFlanged: boolean;
   meterModel: string | null;
   meterNum: string | null;
+  meterCalDate: string | null;
+  meterBumpTest: string | null;
   calibrated: boolean;
   oxygen: string | null;
   lel: string | null;
@@ -136,11 +142,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     this.issuedTo = data.issuedTo ?? null;
     this.duration = data.duration ?? '12 hours';
     this.lotoNum = data.lotoNum ?? null;
+    this.permitNumber = data.permitNumber ?? null;
     this.hotWorkNum = data.hotWorkNum ?? null;
     this.ventilation = data.ventilation ?? false;
     this.blankFlanged = data.blankFlanged ?? false;
     this.meterModel = data.meterModel ?? "RKI GX-3R PRO";
     this.meterNum = data.meterNum ?? null;
+    this.meterCalDate = data.meterCalDate ?? null;
+    this.meterBumpTest = data.meterBumpTest ?? null;
     this.calibrated = data.calibrated ?? true;
     this.oxygen = data?.oxygen ?? null;
     this.lel = data?.lel ?? null;
@@ -166,17 +175,22 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       issuedTo: this.issuedTo,
       duration: this.duration,
       lotoNum: this.lotoNum,
+      permitNumber: this.permitNumber,
       hotWorkNum: this.hotWorkNum,
       ventilation: this.ventilation,
       blankFlanged: this.blankFlanged,
       meterModel: this.meterModel,
       meterNum: this.meterNum,
+      meterCalDate: this.meterCalDate,
+      meterBumpTest: this.meterBumpTest,
       calibrated: this.calibrated,
       oxygen: this.oxygen,
       lel: this.lel,
       hydrogenSulfide: this.hydrogenSulfide,
       carbonMonoxide: this.carbonMonoxide,
       ammonia: this.ammonia,
+      timeOfSample: this.timeOfSample,
+      testerInitials: this.testerInitials,
       hazards: this.hazards,
       ppe: this.ppe,
       precautions: this.precautions,
@@ -194,18 +208,23 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       workScope: json.workScope || null,
       issuedTo: json.issuedTo || null,
       duration: json.duration || null,
+      permitNumber: json.permitNumber ?? null,
       lotoNum: json.lotoNum || null,
       hotWorkNum: json.hotWorkNum || null,
       ventilation: json.ventilation || false,
       blankFlanged: json.blankFlanged || false,
       meterModel: json.meterModel || "RKI GX-3R PRO",
       meterNum: json.meterNum || null,
+      meterCalDate: json.meterCalDate ?? null,
+      meterBumpTest: json.meterBumpTest ?? null,
       calibrated: json.calibrated || false,
       oxygen: json.oxygen || null,
       lel: json.lel || null,
       hydrogenSulfide: json.hydrogenSulfide || null,
       carbonMonoxide: json.carbonMonoxide || null,
       ammonia: json.ammonia || null,
+      timeOfSample: json.timeOfSample ?? null,
+      testerInitials: json.testerInitials ?? null,
       hazards: json.hazards || new ConfinedSpaceHazards(),
       ppe: json.ppe || new ConfinedSpacePpe(),
       precautions: json.precautions || new ConfinedSpacePrecautions(),
@@ -227,7 +246,9 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     fields: (ConfinedSpaceFieldName | 'workArea')[] = [
       'csType',
       'space', 'date', 'time', 'workScope', 'issuedTo', 'duration', 'meterModel',
-      'meterNum', 'calibrated',
+      'meterNum', 'calibrated', 'permitNumber', 'meterCalDate', 'meterBumpTest',
+      'oxygen', 'lel', 'hydrogenSulfide', 'carbonMonoxide', 'ammonia',
+      'timeOfSample', 'testerInitials',
       ...Object.keys(ConfinedSpaceDto.getHazardFields(null)) as ConfinedSpaceFieldName[],
       ...Object.keys(ConfinedSpaceDto.getPpeFields(null)) as ConfinedSpaceFieldName[],
       ...Object.keys(ConfinedSpaceDto.getPrecautionFields(null)) as ConfinedSpaceFieldName[]
@@ -319,6 +340,9 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         type: 'checkbox', 
         initialValue: dto.calibrated 
       },
+      permitNumber: { name: 'permitNumber', label: 'Permit #', type: 'text', initialValue: dto.permitNumber },
+      meterCalDate: { name: 'meterCalDate', label: 'Meter Cal Date', type: 'date', initialValue: dto.meterCalDate },
+      meterBumpTest: { name: 'meterBumpTest', label: 'Meter Bump Test', type: 'text', initialValue: dto.meterBumpTest },
       oxygen: { name: 'oxygen', label: 'Oxygen', type: 'text', initialValue: dto.oxygen },
       lel: { name: 'lel', label: 'LEL', type: 'text', initialValue: dto.lel },
       hydrogenSulfide: { name: 'hydrogenSulfide', label: 'H2S', type: 'text', initialValue: dto.hydrogenSulfide },
@@ -349,6 +373,9 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       workScope: { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope' },
       issuedTo: { id: 'issuedTo', header: 'Issued To', accessorKey: 'issuedTo' },
       duration: { id: 'duration', header: 'Duration', accessorKey: 'duration' },
+      permitNumber: { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
+      meterCalDate: { id: 'meterCalDate', header: 'Meter Cal Date', accessorKey: 'meterCalDate' },
+      meterBumpTest: { id: 'meterBumpTest', header: 'Meter Bump Test', accessorKey: 'meterBumpTest' },
       lotoNum: { id: 'lotoNum', header: 'LOTO Number', accessorKey: 'lotoNum' },
       hotWorkNum: { id: 'hotWorkNum', header: 'Hot Work Number', accessorKey: 'hotWorkNum' },
       ventilation: { 

@@ -203,3 +203,58 @@ Convention:
 revoke/cancel state checks, and only LOTO has a real FSM). For SafeWork the gate was not even
 buildable before, because `permitStatus` was mapped in neither mapper direction so the client never
 received it — fixed in the same session.
+
+## RESOLVED 2026-08-29 — Confined Space built
+
+Seeded as **three** `PrintableForm` rows from one authoring source:
+
+| formType | pages | size |
+|---|---|---|
+| `ConfinedSpace` | 1–2 | 8.5 × 11 |
+| `ConfinedSpaceReclassified` | 1–2 | 8.5 × 11 |
+| `ConfinedSpaceEntryRecord` | 1 | 11 × 8.5 (landscape) |
+
+`seedConfinedSpaceForm(name, reclassified)` emits both portrait variants, so the layout has a
+single author and the two rows cannot drift. The four variant branches are exactly the four
+differences off the master: title-bar colour/wording, section 7, the attendant rail
+(RED "REQUIRED" vs BLUE "OPTIONAL"), and the cancel-line typo — reproduced verbatim in both
+spellings per #55's reproduce-the-document rule.
+
+**Closes #45** — `CurrentConfinedSpaceService` is now `csType`-reactive: it subscribes to
+`selectedConfinedSpace$` and swaps the paper form, caching per type. The old
+`getPrimaryFormByType('ConfinedSpace')` ran once in the constructor, so a Reclassified permit
+printed the Permit-Required sheet.
+
+**Closes #46** — `csType` maps both directions.
+
+**Closes #49** — `meterCalDate` / `meterBumpTest` added through entity → DTO → mapper (both
+directions) → Angular model → form field → table column, and the two grid rows are now bound
+rather than ruled blanks. `calibrated` untouched.
+
+**Closes #53** — bound to the generated `permitNumber`, not `redTagNum`, matching the Hot Work
+correction. This required *adding* `permitNumber` to the Angular Confined Space model: it exists on
+`BasePermitEntity`/`BasePermitDto` and is generated server-side, but the client model never declared
+it, so it was dropped on every round trip and was unbindable.
+
+**Supersedes #50** — the assumption there was wrong. `precautions.lockOutTagOut` and
+`precautions.hotWorkPermit` are **text** on `ConfinedSpacePrecautions`, not booleans, so they seed
+as labelled write-in lines with no tick. A filled permit number *is* the mark. Seeding them as
+checkboxes would have written a boolean into a String slot.
+
+57. Widget type must match `toFormFields`, not just the field name. Three bindings had drifted
+    (`time` and `timeOfSample` seeded `text` against model `time`; `workScope` seeded `text`
+    against `textarea`). Centralised in `csFieldType(key)` so the loops cannot drift again.
+58. `lotoNum` / `hotWorkNum` are **DTO-only** — no entity column. `RedTagStepExecutionService`
+    sets them on the same `csRef` during the `cs-open` step that `ConfinedSpaceBuildFlow` later
+    reads, so that path is correct and was **not** changed. They are deliberately absent from
+    `toFormFields`, which is why the paper form binds the persisted `precautions.*` pair instead.
+
+**Verification** (the standing two-part check, plus a third): 49 bindings — 0 unresolved against
+`toFormFields`, 0 missing from the default `fields` array that gates option merging, 0 widget-type
+mismatches. Prefixed bindings are 11 hazards + 12 PPE + 8 precautions = 31, matching the POJO field
+counts set-for-set. All 18 scalars confirmed present in entity, DTO, both mapper directions,
+`toJson` and `fromJson`.
+
+**Not yet done:** nothing is seeded into any database — run it from Admin → Forms, where the three
+new types now appear in the dropdown automatically (they are registered in `SEED_TYPES`). The
+rendered output has not been eyeballed against the screenshots.

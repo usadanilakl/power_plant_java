@@ -14,4 +14,6 @@ public class PlantMapTopologyAttachRequest {
     /** Optional deterministic key, used while migrating old off-page connectors. */
     private String connectionKey;
     private String kind;
+    /** Explicit junction-to-junction join: preserve and union every existing participant. */
+    private boolean mergeJunctions;
 }

@@ -410,31 +410,11 @@
   cursor: pointer; padding: 3px 6px; font: 11px/1.2 system-ui, sans-serif; }
 .pipe-quick button:hover { background: #34404c; border-color: #6684a2; }
 .pipe-quick button.on { background: #194c35; border-color: #4b9a70; color: #caffdc; }
-.pipe-quick button.move { cursor: grab; border-color: #557b98; color: #dff3ff; }
-.pipe-quick button.move:active { cursor: grabbing; }
 .pipe-quick button.close { color: #aeb8c2; padding-inline: 5px; }
-.connection-dock { position: absolute; top: 12px; right: 12px; z-index: 30; width: min(310px, calc(100% - 24px));
-  box-sizing: border-box; display: flex; flex-direction: column; gap: 7px; padding: 10px;
-  border: 1px solid #4c7b61; border-radius: 6px; background: rgba(18, 28, 23, 0.98); color: #dff5e7;
-  box-shadow: 0 5px 18px rgba(0,0,0,0.58); font: 11px system-ui, sans-serif; }
-.connection-dock > span { color: #afc8b8; overflow-wrap: anywhere; }
-.confirm-actions { display: flex; gap: 5px; flex-wrap: wrap; }
-.confirm-actions button { border: 1px solid #465249; border-radius: 3px; background: #252d28; color: #dce7df;
-  cursor: pointer; padding: 4px 7px; font: 11px system-ui, sans-serif; }
-.confirm-actions button.primary { background: #1f663b; border-color: #3c9b61; color: #e5ffed; }
-.confirm-actions button:hover:not([disabled]) { filter: brightness(1.2); }
-.confirm-actions button[disabled] { opacity: 0.5; cursor: default; }
-.connection-dock > strong, .connection-dock ng-container > strong { color: #dff5e7; font-size: 12px; }
-.endpoint-current-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 5px;
-  padding: 4px; border: 1px solid #51472d; border-radius: 3px; background: #262319; }
-.connection-kind { color: #c6a95f; text-transform: uppercase; font-size: 8px; }
-.connection-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.endpoint-current-row button, .pipe-disconnect { border: 1px solid #794747; border-radius: 3px; background: #432626;
+.pipe-disconnect { border: 1px solid #794747; border-radius: 3px; background: #432626;
   color: #ffc2c2; cursor: pointer; padding: 3px 6px; font: 9px system-ui, sans-serif; }
-.endpoint-current-row button:hover:not([disabled]), .pipe-disconnect:hover:not([disabled]) { background: #5a3030; }
-.endpoint-current-row button[disabled], .pipe-disconnect[disabled] { opacity: 0.5; cursor: default; }
-.endpoint-none { color: #9c927a; font-style: italic; }
-.endpoint-pick-hint { color: #a49d89; font-size: 9px; }
+.pipe-disconnect:hover:not([disabled]) { background: #5a3030; }
+.pipe-disconnect[disabled] { opacity: 0.5; cursor: default; }
 
 .pipe-banner { background: #143a2a; color: #b7f0cf; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .pipe-banner .psnap { display: inline-flex; align-items: center; gap: 3px; }
@@ -467,6 +447,19 @@
 .pipe-end-handle.source-selected circle { fill: #164a72; stroke: #8ed2ff; stroke-width: 3; }
 .pipe-end-handle.target circle { fill: #173326; stroke: #55c986; }
 .pipe-end-handle.target.hover circle, .pipe-end-handle.target:hover circle { fill: #1e6a3e; stroke: #93f7bb; stroke-width: 3; }
+.top-layer .pipe-body-handle { pointer-events: none; }
+.pipe-body-handle { cursor: crosshair; }
+.pipe-body-handle circle { fill: #17202a; stroke: #7cc6ff; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.pipe-body-handle path { fill: none; stroke: #e8f5ff; stroke-width: 1.5; pointer-events: none; vector-effect: non-scaling-stroke; }
+.pipe-body-handle.source-choice circle { animation: endpointPulse 1.1s ease-in-out infinite; }
+.pipe-body-handle.source-selected circle { fill: #164a72; stroke: #8ed2ff; stroke-width: 3; }
+.pipe-body-handle.target circle { fill: #173326; stroke: #55c986; }
+.pipe-body-handle.target:hover circle { fill: #1e6a3e; stroke: #93f7bb; stroke-width: 3; }
+.pipe-crossover { pointer-events: none; }
+.pipe-crossover circle { fill: #191919; stroke: none; }
+.pipe-crossover path { fill: none; stroke-linecap: round; }
+.pipe-crossover-case { stroke: #191919; }
+.pipe-crossover-sheen { stroke: rgba(255,255,255,0.5); }
 .equipment-port { cursor: grab; }
 .equipment-port:active { cursor: grabbing; }
 .equipment-port-halo { fill: transparent; stroke: transparent; }

@@ -62,8 +62,19 @@ public class NgPlantMapTopologyService {
         }
 
         List<PlantMapTopologyConnection> all = repo.findAllForUpdate();
+        PlantMapTopologyConnection sourceConnection = findContaining(all, terminal);
+        PlantMapTopologyConnection targetConnection = target == null ? null : findContaining(all, target);
         PlantMapTopologyConnection destination = chooseDestination(all, request, target);
+        if (request.isMergeJunctions() && !EQUIPMENT.equals(destination.getKind())) {
+            if (sourceConnection != null && EQUIPMENT.equals(sourceConnection.getKind())) destination = sourceConnection;
+            else if (targetConnection != null && EQUIPMENT.equals(targetConnection.getKind())) destination = targetConnection;
+        }
         consolidateSameKey(all, destination);
+
+        if (request.isMergeJunctions()) {
+            mergeConnectionInto(sourceConnection, destination);
+            mergeConnectionInto(targetConnection, destination);
+        }
 
         detachFromOtherConnections(all, terminal, destination);
         if (target != null) detachFromOtherConnections(all, target, destination);
@@ -73,6 +84,18 @@ public class NgPlantMapTopologyService {
         if (target != null) addIfMissing(terminals, target);
         writeTerminals(destination, terminals);
         return toDto(repo.save(destination));
+    }
+
+    private void mergeConnectionInto(
+        PlantMapTopologyConnection source,
+        PlantMapTopologyConnection destination
+    ) {
+        if (source == null || source == destination
+            || Objects.equals(source.getConnectionKey(), destination.getConnectionKey())) return;
+        List<PlantMapTopologyTerminalDto> merged = readTerminals(destination);
+        for (PlantMapTopologyTerminalDto participant : readTerminals(source)) addIfMissing(merged, participant);
+        writeTerminals(destination, merged);
+        softDelete(source);
     }
 
     /** Detaches only this participant. A non-equipment junction with fewer than two ends no longer represents a connection. */

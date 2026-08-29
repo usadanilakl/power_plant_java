@@ -29,6 +29,8 @@ export interface PlantMapTopologyAttachRequest {
   equipmentPort?: { objectId: number; portId: string };
   connectionKey?: string;
   kind?: PlantMapConnectionKind;
+  /** Explicit body-junction joins merge every participant instead of moving one terminal out of its old junction. */
+  mergeJunctions?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

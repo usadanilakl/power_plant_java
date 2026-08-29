@@ -54,7 +54,7 @@ export class EntityLoaderService {
   }
 
   getSupportedFormTypes(): string[] {
-    return ['SafeWork', 'HotWork', 'ConfinedSpace', 'EnergizedWorkPermit', 'ExcavationPermit', 'VentingPermit', 'Loto', 'Jha', 'JobStep', 'WorkRequest'];
+    return ['SafeWork', 'HotWork', 'ConfinedSpace', 'ConfinedSpaceReclassified', 'ConfinedSpaceEntryRecord', 'EnergizedWorkPermit', 'ExcavationPermit', 'VentingPermit', 'Loto', 'Jha', 'JobStep', 'WorkRequest'];
   }
 
   isFormTypeSupported(formType: string): boolean {

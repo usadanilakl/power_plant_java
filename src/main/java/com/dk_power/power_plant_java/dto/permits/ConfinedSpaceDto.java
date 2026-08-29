@@ -35,6 +35,17 @@ public class ConfinedSpaceDto extends BasePermitDto {
     private String meterModel;
     private String meterNum;
     private boolean calibrated;
+    private String meterCalDate;
+    private String meterBumpTest;
+    // On the entity since day one, but absent here and from the mapper, so Jackson discarded
+    // every gas reading on save and returned 200. The atmospheric grid could not be bound.
+    private String oxygen;
+    private String lel;
+    private String hydrogenSulfide;
+    private String carbonMonoxide;
+    private String ammonia;
+    private String timeOfSample;
+    private String testerInitials;
     private ConfinedSpaceHazards hazards;
     private ConfinedSpacePpe ppe;
     private ConfinedSpacePrecautions precautions;

@@ -82,6 +82,8 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
           { value: 'EnergizedWorkPermit', label: 'Energized Work Permit' },
           { value: 'ExcavationPermit', label: 'Excavation Permit' },
           { value: 'VentingPermit', label: 'Venting Permit' },
+          { value: 'ConfinedSpaceReclassified', label: 'Confined Space (Reclassified)' },
+          { value: 'ConfinedSpaceEntryRecord', label: 'Confined Space Entry/Exit Record' },
           { value: 'WorkRequest', label: 'Work Request' },
           { value: 'Loto', label: 'LOTO' },
           { value: 'Jha', label: 'JHA' },

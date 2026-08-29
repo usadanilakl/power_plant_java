@@ -45,6 +45,35 @@ describe('tracePipeFlow', () => {
     expect(result.get(header.id)?.segsStr.sort()).toEqual(['50,0 0,0', '50,0 100,0']);
   });
 
+  it('keeps visual body crossings isolated until both body taps share an explicit junction', () => {
+    const horizontal: PipeGeo = {
+      ...pipe(1, 10, 0, 10),
+      flowDirection: 'forward',
+      taps: [{ id: 'cross-h', at: { x: 5, y: 0 } }],
+    };
+    const vertical: PipeGeo = {
+      id: 'pipe-2', nodeId: 2, parentId: 10,
+      points: [{ x: 5, y: -5 }, { x: 5, y: 5 }],
+      taps: [{ id: 'cross-v', at: { x: 5, y: 0 } }],
+    };
+    const supply = port(100, 'supply', [terminal(1, 'A', 10)]);
+
+    const disconnected = tracePipeFlow(
+      [horizontal, vertical], [supply],
+      [{ objectId: 100, portId: 'supply', role: 'supply' }], () => false,
+    );
+    expect([...disconnected.keys()]).toEqual(['pipe-1']);
+
+    const connected = tracePipeFlow(
+      [horizontal, vertical], [
+        supply,
+        junction('cross', [terminal(1, 'T:cross-h', 10), terminal(2, 'T:cross-v', 10)]),
+      ],
+      [{ objectId: 100, portId: 'supply', role: 'supply' }], () => false,
+    );
+    expect([...connected.keys()].sort()).toEqual(['pipe-1', 'pipe-2']);
+  });
+
   it('follows every branch in one canonical junction', () => {
     const source = { ...pipe(1, 10, 0, 10), flowDirection: 'forward' as const };
     const branchB = { ...pipe(2, 20, 20, 30), flowDirection: 'forward' as const };

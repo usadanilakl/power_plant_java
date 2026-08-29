@@ -4,7 +4,7 @@ import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { ConfinedSpaceService } from "../permits/confined-space.service";
-import { PrintableFormService } from "../forms/printable-form.service";
+import { PrintableFormService, PrintableFormType } from "../forms/printable-form.service";
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
 
 @Injectable({
@@ -27,9 +27,19 @@ export class CurrentConfinedSpaceService {
     isPaperViewActive = signal<boolean>(false);
     selectedItem = toSignal(this.selectedConfinedSpaceSubject.asObservable(), { initialValue: new ConfinedSpaceDto() });
 
+    /** Cache per form type so switching back and forth does not re-fetch. */
+    private paperFormCache = new Map<string, PrintableFormDto>();
+
     constructor() {
         this.loadConfinedSpaces();
-        this.loadPaperForm();
+        // The two classifications are separate PrintableForm rows (the Reclassified sheet carries
+        // section 7 and a different attendant rail), so the paper form has to follow the selection
+        // rather than being fetched once for 'ConfinedSpace'.
+        this.selectedConfinedSpace$.pipe(
+            takeUntilDestroyed(this.destroyRef)
+        ).subscribe(dto => this.loadPaperForm(
+            dto?.csType === 'RECLASSIFIED' ? 'ConfinedSpaceReclassified' : 'ConfinedSpace'
+        ));
     }
 
     private normalizeConfinedSpace(item: Partial<ConfinedSpaceDto> | null | undefined): ConfinedSpaceDto {
@@ -52,17 +62,23 @@ export class CurrentConfinedSpaceService {
             console.log('Confined spaces loaded:', response.responseData);
         });
     }
-    private loadPaperForm() {
-        this.printableFormService.getPrimaryFormByType('ConfinedSpace').pipe(
+    private loadPaperForm(formType: PrintableFormType) {
+        const cached = this.paperFormCache.get(formType);
+        if (cached) {
+            this.paperFormSubject.next(cached);
+            return;
+        }
+        this.printableFormService.getPrimaryFormByType(formType).pipe(
             takeUntilDestroyed(this.destroyRef),
             catchError(err => {
-                console.error('Error loading paper form:', err);
+                console.error(`Error loading paper form ${formType}:`, err);
                 return of(null);
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
-                // console.log('Paper form loaded:', response.responseData);
+                const form = this.normalizePaperForm(response.responseData);
+                this.paperFormCache.set(formType, form);
+                this.paperFormSubject.next(form);
             }
         });
     }

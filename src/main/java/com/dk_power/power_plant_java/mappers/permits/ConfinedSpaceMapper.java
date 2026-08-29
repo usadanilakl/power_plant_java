@@ -41,6 +41,18 @@ public class ConfinedSpaceMapper implements BaseMapper {
         dto.setMeterModel(entity.getMeterModel());
         dto.setMeterNum(entity.getMeterNum());
         dto.setCalibrated(entity.isCalibrated());
+        dto.setMeterCalDate(entity.getMeterCalDate());
+        dto.setMeterBumpTest(entity.getMeterBumpTest());
+        // csType was mapped in NEITHER direction: `grep setCsType` returned zero hits, so every
+        // row stayed PERMIT_REQUIRED and selecting 'Reclassified' silently did nothing.
+        if (entity.getCsType() != null) dto.setCsType(entity.getCsType());
+        dto.setOxygen(entity.getOxygen());
+        dto.setLel(entity.getLel());
+        dto.setHydrogenSulfide(entity.getHydrogenSulfide());
+        dto.setCarbonMonoxide(entity.getCarbonMonoxide());
+        dto.setAmmonia(entity.getAmmonia());
+        dto.setTimeOfSample(entity.getTimeOfSample());
+        dto.setTesterInitials(entity.getTesterInitials());
         dto.setRedTagNum(entity.getRedTagNum());
 
         try {
@@ -81,7 +93,19 @@ public class ConfinedSpaceMapper implements BaseMapper {
         entity.setMeterModel(dto.getMeterModel());
         entity.setMeterNum(dto.getMeterNum());
         entity.setCalibrated(dto.isCalibrated());
+        if (dto.getMeterCalDate() != null) entity.setMeterCalDate(dto.getMeterCalDate());
+        if (dto.getMeterBumpTest() != null) entity.setMeterBumpTest(dto.getMeterBumpTest());
         if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
+        // Guarded: the DTO field-initialises to PERMIT_REQUIRED, so an explicit null must not
+        // blank a Reclassified permit.
+        if (dto.getCsType() != null) entity.setCsType(dto.getCsType());
+        if (dto.getOxygen() != null) entity.setOxygen(dto.getOxygen());
+        if (dto.getLel() != null) entity.setLel(dto.getLel());
+        if (dto.getHydrogenSulfide() != null) entity.setHydrogenSulfide(dto.getHydrogenSulfide());
+        if (dto.getCarbonMonoxide() != null) entity.setCarbonMonoxide(dto.getCarbonMonoxide());
+        if (dto.getAmmonia() != null) entity.setAmmonia(dto.getAmmonia());
+        if (dto.getTimeOfSample() != null) entity.setTimeOfSample(dto.getTimeOfSample());
+        if (dto.getTesterInitials() != null) entity.setTesterInitials(dto.getTesterInitials());
 
         try {
             if (dto.getHazards() != null) entity.setHazards(dto.getHazards());

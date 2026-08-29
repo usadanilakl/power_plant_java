@@ -50,6 +50,10 @@ public class ConfinedSpace extends BasePermitEntity {
     private String meterModel;
     private String meterNum;
     private boolean calibrated;
+    /** Atmospheric grid rows "Meter Cal Date" and "Meter Bump Test" (DECISIONS.md #49). The
+     *  existing boolean `calibrated` is a different question and is left alone. */
+    private String meterCalDate;
+    private String meterBumpTest;
     private String oxygen;
     private String lel;
     private String hydrogenSulfide;

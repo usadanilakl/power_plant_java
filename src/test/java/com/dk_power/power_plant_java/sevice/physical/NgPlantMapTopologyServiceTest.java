@@ -93,6 +93,30 @@ class NgPlantMapTopologyServiceTest {
     }
 
     @Test
+    void explicitJunctionMergePreservesEveryExistingBranch() throws Exception {
+        PlantMapTopologyConnection left = connection(
+            "junction:left", "PIPE_JUNCTION",
+            terminal(10L, "T:left-tap", 1L), terminal(11L, "A", 1L)
+        );
+        PlantMapTopologyConnection right = connection(
+            "junction:right", "PIPE_JUNCTION",
+            terminal(20L, "T:right-tap", 1L), terminal(21L, "B", 1L)
+        );
+        when(repo.findAllForUpdate()).thenReturn(List.of(left, right));
+        PlantMapTopologyAttachRequest request = new PlantMapTopologyAttachRequest();
+        request.setTerminal(terminal(20L, "T:right-tap", 1L));
+        request.setTargetTerminal(terminal(10L, "T:left-tap", 1L));
+        request.setMergeJunctions(true);
+
+        PlantMapTopologyConnectionDto result = service.attach(request);
+
+        assertThat(result.getConnectionKey()).isEqualTo("junction:left");
+        assertThat(result.getTerminals()).extracting(PlantMapTopologyTerminalDto::getPipeNodeId)
+            .containsExactlyInAnyOrder(10L, 11L, 20L, 21L);
+        assertThat(right.getDeleted()).isTrue();
+    }
+
+    @Test
     void equipmentPortAcceptsMultiplePipeEndsAndDetachRemovesOnlyTheSelectedEnd() throws Exception {
         PlantMapTopologyConnection equipment = connection(
             "equipment:70:P1", "EQUIPMENT_PORT",
