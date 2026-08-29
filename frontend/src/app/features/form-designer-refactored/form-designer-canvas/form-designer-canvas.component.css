@@ -230,3 +230,53 @@
     flex: 1;
   }
 }
+
+/* ---- Traced reference image -------------------------------------------------------------
+   Sits inside the scaled sheet so it zooms with the containers, and below .form-content so it
+   can never intercept a drag. Designer-only: no renderer outside this canvas draws it. */
+.form-backdrop {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.calibration-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  cursor: crosshair;
+  background: rgba(0, 123, 255, 0.06);
+}
+
+.calibration-hint {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 3px;
+  background: #007bff;
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.backdrop-controls .backdrop-opacity {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.backdrop-controls .backdrop-opacity input {
+  flex: 1;
+  min-width: 0;
+}
+
+.backdrop-controls button.active {
+  background: #007bff;
+  color: #fff;
+}

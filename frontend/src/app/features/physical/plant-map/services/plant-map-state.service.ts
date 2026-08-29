@@ -85,6 +85,13 @@ export interface PipeGeo {
   localId?: number;               // its DiagramPlacement localId on the parent's diagram (stable across saves)
   placementId?: number;           // JPA id of that placement (allows safe updates when its canvas is nested/off-screen)
   groupId?: string;               // shared across the segments of ONE logical pipe that runs through several sections
+  /** Set only on automatically generated child-continuation segments, so deleting the transit port can cascade
+   * through generated artifacts without ever deleting the user's original pipe. */
+  generatedByBoundaryPort?: EquipmentPortRef;
+  /** Unique identity of one generated cross-boundary chain; unlike groupId it is never shared by sibling runs. */
+  generatedContinuationId?: string;
+  /** Original pipe whose connection action created this chain. */
+  generatedFromPipeNodeId?: number;
   /** @deprecated Migration input only. */
   continuesFrom?: number;
   /** @deprecated Migration input only. */
@@ -486,7 +493,7 @@ export class PlantMapStateService {
     const pipes: PipeGeo[] = placements
       .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
       .map(p => {
-        let geo: { points?: any; fittings?: any; taps?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; startAttachment?: EquipmentPortRef; endAttachment?: EquipmentPortRef; legacyEdgeLocalId?: number; flowDirection?: PipeFlowDirection; flowReversed?: boolean } = {};
+        let geo: { points?: any; fittings?: any; taps?: any; aEnd?: number; bEnd?: number; groupId?: string; generatedByBoundaryPort?: EquipmentPortRef; generatedContinuationId?: string; generatedFromPipeNodeId?: number; continuesFrom?: number; ports?: any; startAttachment?: EquipmentPortRef; endAttachment?: EquipmentPortRef; legacyEdgeLocalId?: number; flowDirection?: PipeFlowDirection; flowReversed?: boolean } = {};
         try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
         return {
           id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
@@ -495,6 +502,9 @@ export class PlantMapStateService {
           fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
           taps: Array.isArray(geo.taps) ? geo.taps : [],
           aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
+          generatedByBoundaryPort: geo.generatedByBoundaryPort ?? undefined,
+          generatedContinuationId: geo.generatedContinuationId ?? undefined,
+          generatedFromPipeNodeId: geo.generatedFromPipeNodeId ?? undefined,
           continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
           startAttachment: geo.startAttachment ?? undefined, endAttachment: geo.endAttachment ?? undefined,
           legacyEdgeLocalId: geo.legacyEdgeLocalId ?? undefined,
@@ -913,7 +923,11 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
-          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], taps: p.taps ?? [], groupId: p.groupId, legacyEdgeLocalId: p.legacyEdgeLocalId, flowDirection: p.flowDirection }),
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], taps: p.taps ?? [], groupId: p.groupId,
+            generatedByBoundaryPort: p.generatedByBoundaryPort,
+            generatedContinuationId: p.generatedContinuationId,
+            generatedFromPipeNodeId: p.generatedFromPipeNodeId,
+            legacyEdgeLocalId: p.legacyEdgeLocalId, flowDirection: p.flowDirection }),
           color: p.color, lineWidth: p.width,
           name: p.name || 'Pipe', label: p.name || 'Pipe',
           x: minX, y: minY,

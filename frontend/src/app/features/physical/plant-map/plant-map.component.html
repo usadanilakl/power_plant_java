@@ -160,19 +160,17 @@
           <span class="muted" *ngIf="st.loading()">loading…</span>
           <span class="muted save" *ngIf="st.saving()">saving…</span>
           <span class="error" *ngIf="st.error()">{{ st.error() }}</span>
-          <span class="pipe-banner" *ngIf="pipeMode()" [class.continuing]="continuing()">
-            <ng-container *ngIf="continuing() as cont">⇢ Continuing <b>{{ cont.name }}</b> — drill into the next area, then <b>start drawing at the connection point</b></ng-container>
+          <span class="pipe-banner" *ngIf="pipeMode()">
             <ng-container *ngIf="pipeExtension() as extension"><b>Extending end {{ extension.end === 'start' ? 'A' : 'B' }}:</b> click to add elbows to this pipe</ng-container>
-            <ng-container *ngIf="!continuing() && !pipeExtension()">🔧 Pipe: click to lay the route; use Connect afterward to assign its ends</ng-container>
+            <ng-container *ngIf="!pipeExtension()">🔧 Pipe: draw the route normally; crossing a child outline continues it inside automatically</ng-container>
             <span *ngIf="pipeDraft().length >= 2"> · right-click / Enter to finish</span> · Esc clears
             <label class="psnap"><input type="checkbox" [checked]="pipeSnap()" (change)="pipeSnap.set($any($event.target).checked)" /> 90°</label>
             <button *ngIf="pipeDraft().length >= 2" (click)="finishPipe()">finish</button>
-            <button *ngIf="continuing()" (click)="cancelContinue()" title="finish the whole run">done</button>
-            <button *ngIf="!continuing()" (click)="togglePipeMode()" title="exit pipe tool">✕</button>
+            <button (click)="togglePipeMode()" title="exit pipe tool">✕</button>
           </span>
           <span class="pipe-connect-banner" *ngIf="pipeConnect() as connect">
             <ng-container *ngIf="!pipeConnectHasSource()"><b>Connect:</b> choose A, B, or any body position on the highlighted pipe.</ng-container>
-            <ng-container *ngIf="connect.sourceEnd != null"><b>End {{ connect.sourceEnd === 'start' ? 'A' : 'B' }} selected:</b> click A, B, or a pipe body. Child crossings create a boundary continuation automatically.</ng-container>
+            <ng-container *ngIf="connect.sourceEnd != null"><b>End {{ connect.sourceEnd === 'start' ? 'A' : 'B' }} selected:</b> click A, B, or a pipe body in the same section.</ng-container>
             <ng-container *ngIf="connect.sourceEnd == null && connect.sourcePoint"><b>Body junction selected:</b> click another pipe to finish; click empty canvas first to add elbows to a new branch.</ng-container>
             <button type="button" (click)="cancelPipeConnect()">Cancel</button>
           </span>
@@ -366,6 +364,14 @@
                           (dblclick)="!pipeConnect() && pipe.nested && pipe.nodeId && navigate(pipe.nodeId)">
                   <title>{{ pipe.name }} — {{ pipe.nested ? 'nested pipe' : 'pipe' }}</title>
                 </polyline>
+                <!-- Selection always identifies the route's geometric ends. Edit/Connect provide their own
+                     interactive A/B handles, so this passive label layer yields to those modes. -->
+                <g *ngFor="let end of (!pipeEdit() && !pipeConnect() ? selectedPipeEndLabels() : [])"
+                   class="selected-pipe-end-label"
+                   [attr.transform]="'translate(' + end.point.x + ',' + end.point.y + ') scale(' + inverseZoom() + ')'">
+                  <circle r="6.5" />
+                  <text x="0" y="0">{{ end.label }}</text>
+                </g>
                 <!-- current-canvas fittings (click = select, drag = slide along the pipe) -->
                 <g *ngFor="let f of viewFittings()" class="fitting" [class.sel]="f.sel" [class.closed]="f.closed" [class.valve]="f.isValve"
                    [class.locate-pulse]="canvasPulseNodeId() === f.nodeId"
@@ -759,8 +765,6 @@
           <button *ngIf="pipe.nodeId" (click)="navigate(pipe.nodeId)" title="Open this pipe as an object (files, properties, Maximo, its fittings)">Open object ↳</button>
           <button *ngIf="selectedPipeOnCanvas()" (click)="togglePipeMode()"
                   title="Draw another route, then use Connect on canvas to assign its junction">Draw new pipe ⑂</button>
-          <button *ngIf="selectedPipeOnCanvas()" (click)="continuePipe()"
-                  title="Run this pipe into a neighbouring area — then drill into that section and keep drawing the same run">Continue in another area ⇢</button>
           <button class="danger" *ngIf="selectedPipeOnCanvas()" (click)="deletePipe(pipe.id)">Delete pipe</button>
         </div>
         <!-- the pipe IS a PhysicalObject: same Systems / Safety / Maximo / Documents sections as any object -->

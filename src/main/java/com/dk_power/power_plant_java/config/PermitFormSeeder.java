@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,27 @@ public class PermitFormSeeder {
     // primary of the same formType first. Saving via the repo is what produced two IS_PRIMARY=TRUE
     // Loto rows, which makes findByFormTypeAndIsPrimary throw and takes the paper form offline.
     private final PrintableFormService printableFormService;
+
+    /**
+     * Paint order for the containers of the form currently being seeded.
+     *
+     * <p>{@code PrintableForm.formContainers} is a {@code HashSet}, so the order containers reach
+     * the browser is arbitrary — NOT the order they were created in. Without an explicit z-index
+     * the renderer falls back to DOM order, which means a section-wrapping box can land on top of
+     * the fields it surrounds and silently swallow every click inside it: the values still render,
+     * but nothing is clickable or fillable. That is exactly how the first Confined Space and Safe
+     * Work rebuilds failed. The designer-built masters set a z-index on every container, which is
+     * why they have always worked; seeded forms now do the same.
+     */
+    private int zOrder = 1;
+
+    private FormContainer stack(FormContainer c) {
+        Map<String, Object> s = c.getStyleJson() == null
+                ? new HashMap<>() : new HashMap<>(c.getStyleJson());
+        s.put("zIndex", String.valueOf(zOrder++));
+        c.setStyleJson(s);
+        return c;
+    }
 
     private static final int M = 20; // margin
     private static final int FW = 776; // full width (816 - 2 * margin)
@@ -67,7 +89,8 @@ public class PermitFormSeeder {
      * @throws IllegalArgumentException if formType is unknown
      */
     @Transactional
-    public PrintableForm seedForm(String formType, String formName) {
+    public synchronized PrintableForm seedForm(String formType, String formName) {
+        zOrder = 1;
         if (!SEED_TYPES.containsKey(formType)) {
             throw new IllegalArgumentException("Unknown form type: " + formType + ". Available: " + SEED_TYPES.keySet());
         }
@@ -1137,428 +1160,468 @@ public class PermitFormSeeder {
         }
     }
 
-    // ========== CONFINED SPACE PERMIT (SMP-7, 2 variants + a shared landscape page 3) ==========
+    // ================= DESIGNER-GEOMETRY PAPER FORMS =================
+    // The forms the operator built by hand in the designer render correctly, and they all use a
+    // 7.7 x 10.15in page (739 x 974px at 96dpi) with a distinct construction: a bordered box per
+    // SECTION carrying the section title, full-width row bands inside it, underline-only form
+    // fields, and a coloured vertical "sider" rail. The first seeded rebuild of Confined Space
+    // invented its own 8.5x11 grid instead and looked nothing like the master. These helpers
+    // reproduce the designer shape exactly so seeded and hand-built forms are indistinguishable.
+
+    private static final int DW = 739;   // designer page width  (px)
+    private static final int DH = 974;   // designer page height (px)
+    private static final int DL = 19;    // left edge of the printed frame
+    private static final int DR = 737;   // right edge
+    private static final int RAIL = 18;  // width of the coloured sider
+    private static final int DSX = 36;   // x of a section box (just right of the rail)
+    private static final int DSW = 701;  // width of a section box (36 + 701 = 737)
+
+    private PrintableForm designerForm(String name, String formType) {
+        PrintableForm f = new PrintableForm();
+        f.setName(name);
+        f.setFormType(formType);
+        f.setIsPrimary(true);
+        f.setSize(Map.of("width", 7.7, "height", 10.15));
+        return f;
+    }
 
     /**
-     * Confined Space Permit. The Permit-Required and Reclassified forms are the SAME layout with
-     * four differences, so one method emits both — a layout fix lands on each by construction and
-     * they cannot drift. Conditional containers were not an option: the runtime renderer has no
-     * visibility mechanism at all, and difference #3 is a swap rather than a hide.
+     * Base style for a designer container.
      *
-     * <ol>
-     *   <li>title bar: red "Confined Space Permit" vs yellow "RECLASSIFIED Confined Space Permit"</li>
-     *   <li>section 7 Reclassification Certification: Reclassified only</li>
-     *   <li>attendant-log rail: RED "REQUIRED" vs BLUE "OPTIONAL"</li>
-     *   <li>cancel-section typo, reproduced verbatim per the controlled document</li>
-     * </ol>
-     *
-     * <p>Page 3 is genuinely landscape (1274x983 in the master) so it is a separate
-     * PrintableForm — same split as the LOTO sign-on sheet.
+     * <p>Per-side border widths are ALWAYS written explicitly. {@code FormContainerDto}'s
+     * constructor spreads a default of {@code 1px} onto all four sides, so a style that omits a
+     * side does not get "no border" — it gets a hairline. Every earlier "why is there a line
+     * there" bug in the seeded forms traces back to that.
+     */
+    private Map<String, Object> dStyle(String top, String right, String bottom, String left) {
+        Map<String, Object> s = new HashMap<>();
+        s.put("position", "absolute");
+        s.put("display", "flex");
+        s.put("borderStyle", "solid");
+        s.put("borderWidth", "1px");
+        s.put("borderColor", "black");
+        s.put("borderRadius", "0px");
+        s.put("boxSizing", "border-box");
+        s.put("backgroundColor", "transparent");
+        s.put("borderTopWidth", top);
+        s.put("borderRightWidth", right);
+        s.put("borderBottomWidth", bottom);
+        s.put("borderLeftWidth", left);
+        return s;
+    }
+
+    private Map<String, Object> dNone()  { return dStyle("0px", "0px", "0px", "0px"); }
+    private Map<String, Object> dBox()   { return dStyle("1px", "1px", "1px", "1px"); }
+    private Map<String, Object> dUnder() { return dStyle("0px", "0px", "1px", "0px"); }
+
+    private Map<String, Object> dBg(Map<String, Object> s, String colour) {
+        s.put("backgroundColor", colour); return s;
+    }
+    private Map<String, Object> dBold(Map<String, Object> s) { s.put("fontWeight", "bold"); return s; }
+    private Map<String, Object> dItalic(Map<String, Object> s) { s.put("fontStyle", "italic"); return s; }
+    private Map<String, Object> dMid(Map<String, Object> s) {
+        s.put("justifyContent", "center"); s.put("alignItems", "center"); return s;
+    }
+    private Map<String, Object> dLeft(Map<String, Object> s) {
+        s.put("justifyContent", "flex-start"); s.put("alignItems", "center"); return s;
+    }
+    /** Content style. The designer forms store fontSize as a NUMBER here, not a px string. */
+    private Map<String, Object> fs(int size) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("fontSize", size);
+        return m;
+    }
+    private Map<String, Object> fsPre(int size) {
+        Map<String, Object> m = fs(size);
+        m.put("whiteSpace", "pre-wrap");
+        return m;
+    }
+
+    private FormContainer dText(int x, int y, int w, int h, String content, int page,
+                                Map<String, Object> style, Map<String, Object> cstyle) {
+        FormContainer c = new FormContainer();
+        c.setContentType("text");
+        c.setContentJson(content);
+        c.setPositionJson(Map.of("x", x, "y", y));
+        c.setSizeJson(Map.of("width", w, "height", h));
+        c.setPageNumber(page);
+        c.setLocked(true);
+        c.setStyleJson(style);
+        if (cstyle != null) c.setContentStyleJson(cstyle);
+        return stack(c);
+    }
+
+    private FormContainer dField(int x, int y, int w, int h, String name, String type, int page,
+                                 Map<String, Object> style, Map<String, Object> cstyle) {
+        FormContainer c = new FormContainer();
+        c.setContentType("formField");
+        Map<String, Object> content = new HashMap<>();
+        content.put("name", name);
+        content.put("type", type);
+        content.put("label", "");
+        content.put("options", new ArrayList<>());
+        c.setContentJson(content);
+        c.setPositionJson(Map.of("x", x, "y", y));
+        c.setSizeJson(Map.of("width", w, "height", h));
+        c.setPageNumber(page);
+        c.setLocked(true);
+        c.setStyleJson(style);
+        if (cstyle != null) c.setContentStyleJson(cstyle);
+        return stack(c);
+    }
+
+    /** Light fill the designer masters use behind every operator-fillable cell. */
+    private static final String INK = "#dce6f7";
+
+    /** An underlined, lightly filled input — the standard write-on cell. */
+    private FormContainer dInput(int x, int y, int w, int h, String name, String type, int page) {
+        return dField(x, y, w, h, name, type, page, dBg(dUnder(), INK), fs(12));
+    }
+    /** A tick box. 18x18 with a full border, matching the designer masters. */
+    private FormContainer dTick(int x, int y, String name, int page) {
+        return dField(x, y, 18, 18, name, "checkbox", page, dBg(dBox(), INK), fs(12));
+    }
+    /** A ruled blank with nothing bound behind it. */
+    private FormContainer dRule(int x, int y, int w, int h, int page) {
+        return dText(x, y, w, h, "", page, dUnder(), fs(12));
+    }
+    /** A plain label. */
+    private FormContainer dLbl(int x, int y, int w, int h, String s, int page) {
+        return dText(x, y, w, h, s, page, dLeft(dNone()), fs(12));
+    }
+    /** A vertical coloured rail. */
+    private FormContainer dRail(int y, int h, String label, String bg, String fg, int page) {
+        Map<String, Object> st = dMid(dBg(dBox(), bg));
+        st.put("color", fg);
+        st.put("writingMode", "vertical-rl");
+        st.put("transform", "rotate(180deg)");
+        st.put("fontWeight", "bold");
+        return dText(DL, y, RAIL, h, label, page, st, fs(11));
+    }
+    /** A bordered section box whose content is its title, sitting top-left. */
+    private FormContainer dSection(int x, int y, int w, int h, String title, int page) {
+        return dText(x, y, w, h, title, page, dBold(dBox()), fs(15));
+    }
+
+    // ========== CONFINED SPACE PERMIT (SMP-7) ==========
+
+    /**
+     * Both Confined Space variants come out of this one method. The Permit-Required and
+     * RECLASSIFIED sheets are the same document with four differences, so emitting them from a
+     * single layout means a fix lands on both and they cannot drift apart. Conditional containers
+     * were not an option — the printable-form renderer has no visibility mechanism at all.
      */
     private PrintableForm seedConfinedSpaceForm(String name, boolean reclassified) {
-        PrintableForm form = createForm(name, reclassified ? "ConfinedSpaceReclassified" : "ConfinedSpace");
-        seedConfinedSpacePage1(form, reclassified);
-        seedConfinedSpacePage2(form, reclassified);
+        PrintableForm form = designerForm(name,
+                reclassified ? "ConfinedSpaceReclassified" : "ConfinedSpace");
+        csPage1(form, reclassified);
+        csPage2(form, reclassified);
         PrintableForm saved = printableFormService.save(form);
-        log.info("Seeded ConfinedSpace paper form ({}): {}", reclassified ? "Reclassified" : "Permit-Required", name);
+        log.info("Seeded Confined Space paper form ({}): {}",
+                reclassified ? "Reclassified" : "Permit-Required", name);
         return saved;
     }
 
-    private void seedConfinedSpacePage1(PrintableForm form, boolean reclassified) {
+    private void csPage1(PrintableForm f, boolean rc) {
         int p = 1;
-        int y = M;
-        String G = "frozen:header";
-        int railW = 22;
-        int cx0 = M + railW + 2;            // content starts right of the green rail
-        int contentW = FW - railW - 2;
 
-        // --- Title ---
-        form.addFormContainer(text(cx0, y, contentW, 22,
-                reclassified ? "RECLASSIFIED Confined Space Permit (SMP-7)" : "Confined Space Permit (SMP-7)", p,
-                merge(bold(13), merge(centered(), merge(boxed(), Map.of(
-                        "backgroundColor", reclassified ? "#ffff00" : "#e8140c",
-                        "color", reclassified ? "black" : "white"))))));
-        y += 22;
-        form.addFormContainer(text(cx0, y, contentW, 14,
-                "Completed permit must be posted on job site - valid only for indicated date & time", p,
-                merge(centered(), merge(boxed(), Map.of("fontSize", "8px", "backgroundColor", "#d9d9d9")))));
-        y += 16;
-        int railTop = y;
+        // --- Title -------------------------------------------------------------------------
+        Map<String, Object> title = dMid(dBg(dBox(), rc ? "#ffff00" : "#e8140c"));
+        title.put("fontWeight", "bold");
+        title.put("color", rc ? "black" : "white");
+        f.addFormContainer(dText(DL, 0, DR - DL, 30,
+                (rc ? "RECLASSIFIED Confined Space Permit (SMP-7)" : "Confined Space Permit (SMP-7)"),
+                p, title, fs(20)));
+        f.addFormContainer(dText(DL, 28, DR - DL, 15,
+                "Completed permit must be posted on job site - valid only for indicated date & time",
+                p, dMid(dBg(dBox(), "#d9d9d9")), fs(12)));
 
-        // --- 1. General information ---
-        form.addFormContainer(text(cx0, y, contentW, 16, "1. GENERAL INFORMATION", p, bold(10)));
-        y += 16;
-        int rightX = cx0 + 480;
-        String[][] left = {{"Space to be Entered:", "space"}, {"Purpose for Entry:", "workScope"},
-                           {"Issued to:", "issuedTo"}};
-        String[][] right = {{"Permit #:", "permitNumber"}, {"Date of Entry:", "date"},
-                            {"Start Time:", "time"}, {"Authorized Duration:", "duration"}};
-        int ly = y;
-        for (String[] r : left) {
-            form.addFormContainer(text(cx0, ly, 120, 16, r[0], p, small()));
-            form.addFormContainer(field(cx0 + 122, ly, 350, 16, r[1], csFieldType(r[1]), p));
-            ly += 17;
-        }
-        int ry = y;
-        for (String[] r : right) {
-            form.addFormContainer(text(rightX, ry, 110, 16, r[0], p, small()));
-            form.addFormContainer(field(rightX + 112, ry, contentW - 592, 16, r[1], csFieldType(r[1]), p));
-            ry += 17;
-        }
-        y = Math.max(ly, ry) + 4;
+        // --- 1. General information --------------------------------------------------------
+        f.addFormContainer(dSection(DSX, 43, DSW, 78, "1. GENERAL INFORMATION", p));
+        f.addFormContainer(dText(498, 45, 60, 15, "Permit #:", p, dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dInput(560, 45, 175, 15, "permitNumber", "text", p));
 
-        // --- Communication plan (static contact block on the right) ---
-        form.addFormContainer(text(cx0, y, 470, 16,
-                "Communication Plan:  3-way-radio________, Voice________", p, merge(bold(9), boxed())));
-        form.addFormContainer(text(cx0, y + 18, 60, 16, "Other", p, small()));
-        form.addFormContainer(blank(cx0 + 62, y + 18, 406, 16, p));
-        int commX = cx0 + 474;
-        String[] contact = {"Control Room #: 779-242-6151, 779-242-6148", "Radio: Ch#1 (J-PWR1)",
-                            "Cell Phone #: 815-839-3330"};
-        for (int i = 0; i < contact.length; i++) {
-            form.addFormContainer(text(commX + 4, y + 2 + i * 16, contentW - 478, 15, contact[i], p, bold(9)));
-        }
-        form.addFormContainer(text(commX + 4, y + 50, 46, 15, "Other:", p, bold(9)));
-        form.addFormContainer(blank(commX + 52, y + 50, contentW - 530, 15, p));
-        form.addFormContainer(text(commX, y, contentW - 474, 68, "", p, boxed()));
-        y += 72;
+        f.addFormContainer(dLbl(38, 63, 130, 15, "Space to be Entered:", p));
+        f.addFormContainer(dInput(170, 63, 282, 15, "space", "text", p));
+        f.addFormContainer(dLbl(38, 82, 130, 15, "Purpose for Entry:", p));
+        f.addFormContainer(dInput(170, 82, 282, 15, "workScope", "textarea", p));
+        f.addFormContainer(dLbl(38, 101, 130, 15, "Issued to:", p));
+        f.addFormContainer(dInput(170, 101, 282, 15, "issuedTo", "text", p));
 
-        // --- 2. Hazards | 3. Required precautions ---
-        int halfX = cx0 + 470;
-        form.addFormContainer(text(cx0, y, 130, 14, "2. HAZARDS", p, bold(10)));
-        form.addFormContainer(text(cx0, y + 14, 460, 12,
+        f.addFormContainer(dLbl(498, 63, 80, 15, "Date of Entry:", p));
+        f.addFormContainer(dInput(580, 63, 155, 15, "date", "date", p));
+        f.addFormContainer(dLbl(498, 82, 70, 15, "Start Time:", p));
+        f.addFormContainer(dInput(570, 82, 165, 15, "time", "time", p));
+        f.addFormContainer(dLbl(498, 101, 112, 15, "Authorized Duration:", p));
+        f.addFormContainer(dInput(612, 101, 123, 15, "duration", "text", p));
+
+        // --- Communication plan / emergency contacts ---------------------------------------
+        f.addFormContainer(dText(DSX, 121, 366, 78, "", p, dBox(), null));
+        f.addFormContainer(dText(40, 124, 356, 18,
+                "Communication Plan:  3-way-radio________, Voice________", p,
+                dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dText(40, 168, 45, 16, "Other", p, dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dRule(86, 168, 306, 16, p));
+
+        f.addFormContainer(dText(402, 121, 335, 78, "", p, dBox(), null));
+        f.addFormContainer(dText(406, 124, 325, 17, "Control Room #: 779-242-6151, 779-242-6148",
+                p, dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dText(406, 143, 325, 17, "Radio: Ch#1 (J-PWR1)", p,
+                dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dText(406, 162, 325, 17, "Cell Phone #: 815-839-3330", p,
+                dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dText(406, 181, 45, 16, "Other:", p, dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dRule(452, 181, 279, 16, p));
+
+        // --- 2. Hazards | 3. Required precautions ------------------------------------------
+        f.addFormContainer(dSection(DSX, 199, 389, 182, "2. HAZARDS", p));
+        f.addFormContainer(dText(39, 219, 380, 14,
                 "(check hazards - astmospheric hazards must be monitored if checked)", p,
-                Map.of("fontSize", "7px")));
-        form.addFormContainer(text(halfX + 4, y, 300, 14, "3. REQUIRED PRECAUTIONS", p, bold(10)));
-        form.addFormContainer(text(halfX + 4, y + 14, contentW - 478, 12,
-                "Hazard eliminated or isolated by any of the following", p, Map.of("fontSize", "7px")));
-        int hy = y + 28;
-        String[][] hz1 = {{"oxygenDeficiency", "Oxygen deficiency or enrichment"},
+                dLeft(dNone()), fs(10)));
+        f.addFormContainer(dSection(425, 199, 312, 182, "3. REQUIRED PRECAUTIONS", p));
+        f.addFormContainer(dText(428, 219, 305, 14,
+                "Hazard eliminated or isolated by any of the following", p, dLeft(dNone()), fs(10)));
+
+        // Left hazard column
+        String[][] hzL = {{"oxygenDeficiency", "Oxygen deficiency or enrichment"},
                           {"flammableGas", "Flammable gases or vapors"},
                           {"combustibleDust", "Combustible dust levels"},
                           {"toxicGas", "Toxic gas or vapors"},
                           {"rotatingEquipment", "Rotating Equipment"},
                           {"electricalShock", "Electrical shock"},
                           {"entrapment", "Entrapment"}};
-        String[][] hz2 = {{"engulfment", "Engulfment"}, {"heatStress", "Heat Stress"}};
-        int y1 = hy, y2 = hy;
-        for (String[] h : hz1) y1 = csCheck(form, cx0, y1, 250, "hazards." + h[0], h[1], p);
-        for (String[] h : hz2) y2 = csCheck(form, cx0 + 256, y2, 210, "hazards." + h[0], h[1], p);
-        y2 = csCheckWriteIn(form, cx0 + 256, y2, 210, "hazards.other", "Other", "hazards.otherDescription", p);
+        int hy = 236;
+        for (String[] h : hzL) {
+            f.addFormContainer(dTick(41, hy, "hazards." + h[0], p));
+            f.addFormContainer(dLbl(63, hy + 1, 200, 16, h[1], p));
+            hy += 20;
+        }
+        // Right hazard column
+        String[][] hzR = {{"engulfment", "Engulfment"}, {"heatStress", "Heat Stress"}};
+        int hy2 = 236;
+        for (String[] h : hzR) {
+            f.addFormContainer(dTick(271, hy2, "hazards." + h[0], p));
+            f.addFormContainer(dLbl(293, hy2 + 1, 120, 16, h[1], p));
+            hy2 += 20;
+        }
+        f.addFormContainer(dTick(271, hy2, "hazards.other", p));
+        f.addFormContainer(dLbl(293, hy2 + 1, 40, 16, "Other", p));
+        f.addFormContainer(dInput(334, hy2 + 1, 82, 16, "hazards.otherDescription", "text", p));
 
-        int py = hy;
-        // lockOutTagOut / hotWorkPermit are text on the POJO -- they hold the referenced permit
-        // number, so a filled value IS the check. Write-in rows, not checkboxes.
-        py = csWriteIn(form, halfX + 4, py, contentW - 478, "Lockout/Tagout  #", "precautions.lockOutTagOut", p);
+        // Precautions: the two permit-number references are TEXT on the POJO, not booleans, so a
+        // filled number is the mark. They print as write-in lines, not tick boxes.
+        f.addFormContainer(dLbl(428, 236, 105, 15, "Lockout/Tagout (#", p));
+        f.addFormContainer(dInput(535, 236, 185, 15, "precautions.lockOutTagOut", "text", p));
+        f.addFormContainer(dLbl(722, 236, 12, 15, ")", p));
+        f.addFormContainer(dLbl(428, 255, 110, 15, "Hot Work Permit (#", p));
+        f.addFormContainer(dInput(540, 255, 180, 15, "precautions.hotWorkPermit", "text", p));
+        f.addFormContainer(dLbl(722, 255, 12, 15, ")", p));
+
         String[][] pr = {{"ventilation", "Ventilation"}, {"blankFlanged", "Blank Flanged"},
                          {"doubleBlockAndBleed", "Double Block & Bleed"}, {"barriers", "Barriers"}};
-        for (String[] r : pr) py = csCheck(form, halfX + 4, py, contentW - 478, "precautions." + r[0], r[1], p);
-        py = csWriteIn(form, halfX + 4, py, contentW - 478, "Hot Work Permit  #", "precautions.hotWorkPermit", p);
-        py = csCheckWriteIn(form, halfX + 4, py, contentW - 478, "precautions.other", "Other",
-                "precautions.otherDescription", p);
-        y = Math.max(Math.max(y1, y2), py) + 4;
+        int py = 275;
+        for (String[] r : pr) {
+            f.addFormContainer(dTick(430, py, "precautions." + r[0], p));
+            f.addFormContainer(dLbl(452, py + 1, 200, 16, r[1], p));
+            py += 20;
+        }
+        f.addFormContainer(dTick(430, py, "precautions.other", p));
+        f.addFormContainer(dLbl(452, py + 1, 40, 16, "Other", p));
+        f.addFormContainer(dInput(494, py + 1, 229, 16, "precautions.otherDescription", "text", p));
 
-        // --- 4. Required PPE and equipment ---
-        form.addFormContainer(text(cx0, y, 260, 14, "4. REQUIRED PPE AND EQUIP.", p, bold(10)));
-        form.addFormContainer(text(cx0 + 264, y, 200, 14, "- check if required", p, small()));
-        y += 16;
-        int pw = contentW / 3;
+        // --- 4. Required PPE and equipment -------------------------------------------------
+        f.addFormContainer(dSection(DSX, 381, DSW, 104, "4. REQUIRED PPE AND EQUIP.", p));
+        f.addFormContainer(dText(290, 383, 160, 16, "- check if required", p, dLeft(dNone()), fs(12)));
         String[][] pe1 = {{"faceShield", "Face Shield"}, {"fcfi", "GCFI"},
-                          {"lovVoltageTools", "Low Voltage Tools"}, {"explosionProofTools", "Explosion Proof Tools"}};
+                          {"lovVoltageTools", "Low Voltage Tools"},
+                          {"explosionProofTools", "Explosion Proof Tools"}};
         String[][] pe2 = {{"nonSparkingTools", "Non-Sparking Tools"}, {"fallProtection", "Fall Protection"},
                           {"retrievalSystem", "Retrieval System"}, {"lifeline", "Lifeline"}};
         String[][] pe3 = {{"personalAtmosphericMeter", "Personal Atmospheric Meter"}, {"tripod", "Tripod"}};
-        int e1 = y, e2 = y, e3 = y;
-        for (String[] e : pe1) e1 = csCheck(form, cx0, e1, pw - 4, "ppe." + e[0], e[1], p);
-        for (String[] e : pe2) e2 = csCheck(form, cx0 + pw, e2, pw - 4, "ppe." + e[0], e[1], p);
-        for (String[] e : pe3) e3 = csCheck(form, cx0 + pw * 2, e3, pw - 4, "ppe." + e[0], e[1], p);
-        e3 = csCheckWriteIn(form, cx0 + pw * 2, e3, pw - 4, "ppe.other", "Other", "ppe.otherDescription", p);
-        y = Math.max(Math.max(e1, e2), e3) + 4;
+        int ey = 401;
+        for (String[] e : pe1) {
+            f.addFormContainer(dTick(41, ey, "ppe." + e[0], p));
+            f.addFormContainer(dLbl(63, ey + 1, 170, 16, e[1], p));
+            ey += 20;
+        }
+        ey = 401;
+        for (String[] e : pe2) {
+            f.addFormContainer(dTick(231, ey, "ppe." + e[0], p));
+            f.addFormContainer(dLbl(253, ey + 1, 170, 16, e[1], p));
+            ey += 20;
+        }
+        ey = 401;
+        for (String[] e : pe3) {
+            f.addFormContainer(dTick(417, ey, "ppe." + e[0], p));
+            f.addFormContainer(dLbl(439, ey + 1, 200, 16, e[1], p));
+            ey += 20;
+        }
+        f.addFormContainer(dTick(417, ey, "ppe.other", p));
+        f.addFormContainer(dLbl(439, ey + 1, 40, 16, "Other", p));
+        f.addFormContainer(dInput(481, ey + 1, 242, 16, "ppe.otherDescription", "text", p));
 
-        // --- 5. Atmospheric testing / monitoring ---
-        form.addFormContainer(text(cx0, y, 300, 14, "5. ATMOSPHERIC TESTING/MONITORING", p, bold(10)));
-        y += 15;
-        form.addFormContainer(text(cx0, y, contentW, 12,
+        // --- 5. Atmospheric testing / monitoring -------------------------------------------
+        f.addFormContainer(dSection(DSX, 485, DSW, 20, "5. ATMOSPHERIC TESTING/MONITORING", p));
+        f.addFormContainer(dText(DSX, 505, DSW, 16,
                 "Note: Continuous monitoring required for all Confined Space entries.", p,
-                merge(centered(), Map.of("fontSize", "8px", "fontWeight", "bold", "fontStyle", "italic"))));
-        y += 13;
-        form.addFormContainer(text(cx0, y, contentW, 12,
-                "Document test results for Permit-Required spaces at 2-hour intervals and prior to each entry after the space has been vacated.",
-                p, merge(centered(), Map.of("fontSize", "7px", "fontStyle", "italic"))));
-        y += 11;
-        form.addFormContainer(text(cx0, y, contentW, 12,
-                "Document test results for Reclassifed Spaces once per shift.", p,
-                merge(centered(), Map.of("fontSize", "7px", "fontStyle", "italic"))));
-        y += 14;
+                dBold(dItalic(dMid(dBox()))), fs(12)));
+        f.addFormContainer(dText(DSX, 521, DSW, 26,
+                "Document test results for Permit-Required spaces at 2-hour intervals and prior to each entry after the space has been vacated.\n"
+                        + "Document test results for Reclassifed Spaces once per shift.", p,
+                dItalic(dMid(dBox())), fsPre(11)));
 
-        // Grid: only the Initial Test Results column is bound; the master leaves the other four
-        // blank because the entity stores exactly one reading set (DECISIONS.md #15/#47).
-        int gLabelW = 130, gLimitW = 120;
-        int gCols = 5;
-        int gColW = (contentW - gLabelW - gLimitW) / gCols;
-        String[] gHdr = {"Atmospheric Survey", "Acceptable Limits", "Initial Test Results",
+        int gy = 547, gHdrH = 32, gRowH = 16;
+        int[] gx = {36, 185, 334, 416, 498, 580, 662, 737};
+        String[] gHdr = {"Atmospheric Survey", "Acceptable Limits", "Initial Test\nResults",
                          "Test Results", "Test Results", "Test Results", "Test Results"};
-        int[] gW = {gLabelW, gLimitW, gColW, gColW, gColW, gColW, gColW};
-        int gx = cx0;
-        for (int i = 0; i < gHdr.length; i++) {
-            form.addFormContainer(text(gx, y, gW[i], 26, gHdr[i], p,
-                    merge(bold(8), merge(centered(), merge(boxed(), Map.of("whiteSpace", "normal"))))));
-            gx += gW[i];
-        }
-        y += 26;
-        // {row label, acceptable-limit text, bound field or "" for a hand-filled cell}
+        // Only the Initial Test Results column is bound: the entity stores one reading set and the
+        // master leaves the later four columns blank for hand-entry (DECISIONS.md #15/#47).
         String[][] rows = {
-            {"Date", "", "date"},
-            {"Meter Make/Model", "", "meterModel"},
-            {"Meter Serial #", "", "meterNum"},
-            {"Meter Cal Date", "Past 30 Days", "meterCalDate"},
-            {"Meter Bump Test", "Performed Daily (Y/N)", "meterBumpTest"},
-            {"Oxygen", ">19.5%<23.6%", "oxygen"},
-            {"Flammablility", "<10% of LFL", "lel"},
-            {"Hydrogen Sulfide", "<10 ppm", "hydrogenSulfide"},
-            {"Carbon Monoxide", "<35 ppm", "carbonMonoxide"},
-            {"Other", "", "ammonia"},
-            {"Time of Sample", "", "timeOfSample"},
-            {"Tester Initials", "", "testerInitials"},
+            {"Date",             "",                      "date"},
+            {"Meter Make/Model", "",                      "meterModel"},
+            {"Meter Serial #",   "",                      "meterNum"},
+            {"Meter Cal Date",   "Past 30 Days",          "meterCalDate"},
+            {"Meter Bump Test",  "Performed Daily (Y/N)", "meterBumpTest"},
+            {"Oxygen",           ">19.5%<23.6%",          "oxygen"},
+            {"Flammablility",    "<10% of LFL",           "lel"},
+            {"Hydrogen Sulfide", "<10 ppm",               "hydrogenSulfide"},
+            {"Carbon Monoxide",  "<35 ppm",               "carbonMonoxide"},
+            {"Other",            "",                      "ammonia"},
+            {"Time of Sample",   "",                      "timeOfSample"},
+            {"Tester Initials",  "",                      "testerInitials"},
         };
+        int gridH = gHdrH + rows.length * gRowH;
+        for (int i = 0; i < gHdr.length; i++) {
+            f.addFormContainer(dText(gx[i], gy, gx[i + 1] - gx[i], gHdrH, gHdr[i], p,
+                    dMid(dBox()), fsPre(12)));
+        }
+        int ry = gy + gHdrH;
         for (String[] r : rows) {
-            gx = cx0;
-            form.addFormContainer(text(gx, y, gLabelW, 18, r[0], p,
-                    merge(small(), merge(boxed(), centered()))));
-            gx += gLabelW;
-            Map<String, Object> limitStyle = merge(small(), merge(boxed(), centered()));
-            if (r[1].isEmpty()) limitStyle.put("backgroundColor", "#a6a6a6");
-            form.addFormContainer(text(gx, y, gLimitW, 18, r[1], p, limitStyle));
-            gx += gLimitW;
-            if (r[2].isEmpty()) {
-                form.addFormContainer(box(gx, y, gColW, 18, p));
-            } else {
-                form.addFormContainer(field(gx, y, gColW, 18, r[2], csFieldType(r[2]), p));
+            f.addFormContainer(dText(gx[0], ry, gx[1] - gx[0], gRowH, r[0], p, dMid(dBox()), fs(12)));
+            Map<String, Object> lim = dMid(dBox());
+            if (r[1].isEmpty()) dBg(lim, "#a6a6a6");
+            f.addFormContainer(dText(gx[1], ry, gx[2] - gx[1], gRowH, r[1], p, lim, fs(12)));
+            f.addFormContainer(dField(gx[2], ry, gx[3] - gx[2], gRowH, r[2],
+                    csFieldType(r[2]), p, dBg(dBox(), INK), fs(12)));
+            for (int c = 3; c < 7; c++) {
+                f.addFormContainer(dText(gx[c], ry, gx[c + 1] - gx[c], gRowH, "", p, dBox(), null));
             }
-            gx += gColW;
-            for (int c = 1; c < gCols; c++) {
-                form.addFormContainer(box(gx, y, gColW, 18, p));
-                gx += gColW;
-            }
-            y += 18;
+            ry += gRowH;
         }
-        y += 4;
 
-        // --- 6. Entry authorization ---
-        form.addFormContainer(text(cx0, y, 260, 14, "6. ENTRY AUTHORIZATION", p, bold(10)));
-        y += 15;
-        form.addFormContainer(text(cx0, y, contentW, 14,
+        // --- 6. Entry authorization --------------------------------------------------------
+        int s6 = gy + gridH;
+        f.addFormContainer(dSection(DSX, s6, DSW, 86, "6. ENTRY AUTHORIZATION", p));
+        f.addFormContainer(dText(39, s6 + 20, 694, 18,
                 "I certify that conditions in this space are acceptable for entry as long as they remain as discussed in the pre-job briefing.",
-                p, merge(bold(8), Map.of("fontStyle", "italic"))));
-        y += 26;
-        y = csSignatureRow(form, cx0, y, contentW, p);
+                p, dBold(dItalic(dLeft(dNone()))), fs(12)));
+        csSignRow(f, s6 + 65, p);
 
-        // Green rail down the left edge of everything above
-        form.addFormContainer(text(M, railTop, railW, y - railTop, "Required for ALL Confined Space Entries", p,
-                merge(bold(8), merge(boxed(), merge(centered(), Map.of(
-                        "backgroundColor", "#92d050", "color", "black",
-                        "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
+        int railBottom = s6 + 86;
 
-        // --- 7. Reclassification certification: Reclassified variant only ---
-        if (reclassified) {
-            int secTop = y + 2;
-            form.addFormContainer(text(cx0, secTop, contentW, 14, "7. RECLASSIFICATION CERTIFICATION", p, bold(10)));
-            form.addFormContainer(text(cx0, secTop + 15, contentW, 40,
-                    "I have reviewed this certificate and because all hazards have been eliminated and the atmosphere found to be "
-                    + "within acceptable limits without the use of forced air ventilation. I authorize that this space is a "
-                    + "reclassified confined space. Cancellation of this certification shall immediately occur if the limit of a "
-                    + "hazard is exceeded, the authorized duration is exceeded, or any additional cancellation condition is occurs.",
-                    p, merge(bold(8), Map.of("whiteSpace", "normal"))));
-            int after = csSignatureRow(form, cx0, secTop + 60, contentW, p);
-            form.addFormContainer(text(M, secTop, railW, after - secTop, "REQUIRED", p,
-                    merge(bold(8), merge(boxed(), merge(centered(), Map.of(
-                            "backgroundColor", "#ffff00", "color", "black",
-                            "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
+        // --- 7. Reclassification certification (RECLASSIFIED only) -------------------------
+        if (rc) {
+            int s7 = railBottom;
+            f.addFormContainer(dSection(DSX, s7, DSW, 116, "7. RECLASSIFICATION CERTIFICATION", p));
+            f.addFormContainer(dText(39, s7 + 19, 694, 56,
+                    "I have reviewed this certificate and because all hazards have been eliminated and the atmosphere found to be within "
+                            + "acceptable limits without the use of forced air ventilation. I authorize that this space is a reclassified confined space. "
+                            + "Cancellation of this certification shall immediately occur if the limit of a hazard is exceeded, the authorized duration is "
+                            + "exceeded, or any additional cancellation condition is occurs.",
+                    p, dBold(dLeft(dNone())), fsPre(12)));
+            csSignRow(f, s7 + 95, p);
+            f.addFormContainer(dRail(s7, 116, "REQUIRED", "#ffff00", "black", p));
         }
+
+        // Green rail beside everything that applies to every entry
+        f.addFormContainer(dRail(43, railBottom - 43,
+                "Required for ALL Confined Space Entries", "#92d050", "black", p));
     }
 
-    private void seedConfinedSpacePage2(PrintableForm form, boolean reclassified) {
+    private void csPage2(PrintableForm f, boolean rc) {
         int p = 2;
-        int y = M;
-        int railW = 22;
-        int cx0 = M + railW + 2;
-        int contentW = FW - railW - 2;
 
-        form.addFormContainer(text(cx0, y, 130, 18, "CONFINED SPACE:", p, merge(bold(10), boxed())));
-        form.addFormContainer(field(cx0 + 132, y, 300, 18, "space", "text", p));
-        form.addFormContainer(text(cx0 + 440, y, 80, 18, "PERMIT #:", p, merge(bold(10), boxed())));
-        form.addFormContainer(field(cx0 + 522, y, contentW - 522, 18, "permitNumber", "text", p));
-        y += 22;
+        f.addFormContainer(dText(DL, 0, 489, 20, "CONFINED SPACE:", p, dBold(dLeft(dBox())), fs(13)));
+        f.addFormContainer(dInput(162, 2, 343, 16, "space", "text", p));
+        f.addFormContainer(dText(507, 0, DR - 507, 20, "PERMIT #:", p, dBold(dLeft(dBox())), fs(13)));
+        f.addFormContainer(dInput(584, 2, 150, 16, "permitNumber", "text", p));
 
-        int reqTop = y;
-        form.addFormContainer(text(cx0, y, contentW, 14,
-                "RESCUE SERVICES ESTABLISHED & AVAILABLE: ____YES____NO  RESCUE TEAM________________, TIME________", p,
-                merge(bold(9), Map.of("whiteSpace", "normal"))));
-        y += 15;
-        form.addFormContainer(text(cx0, y, contentW, 14,
-                "CONTACT NAME: ____________________, CONTACT PHONE #________________________________", p,
-                merge(bold(9), Map.of("whiteSpace", "normal"))));
-        y += 17;
+        // --- Rescue services + 12. Attendant log -------------------------------------------
+        int top = 20;
+        f.addFormContainer(dText(DSX, top, DSW, 34, "", p, dBox(), null));
+        f.addFormContainer(dText(39, top + 1, 695, 16,
+                "RESCUE SERVICES ESTABLISHED & AVAILABLE: ____YES____NO   RESCUE TEAM_________________________, TIME________",
+                p, dBold(dLeft(dNone())), fs(12)));
+        f.addFormContainer(dText(39, top + 17, 695, 16,
+                "CONTACT NAME: ______________________________, CONTACT PHONE #____________________________________________",
+                p, dBold(dLeft(dNone())), fs(12)));
 
-        // 12. Attendant log - unbound: no attendant collection exists on the entity
-        form.addFormContainer(text(cx0, y, contentW, 15, "12. ATTENDANT LOG", p, merge(bold(10), boxed())));
-        y += 15;
-        String[] aHdr = {"Attendant Name (Print)", "Time On Duty", "Time Off Duty", "Time On Duty", "Time Off Duty"};
-        int[] aW = {contentW - 4 * 110, 110, 110, 110, 110};
-        int ax = cx0;
+        int logTop = top + 34;
+        f.addFormContainer(dText(DSX, logTop, DSW, 18, "12. ATTENDANT LOG", p,
+                dBold(dLeft(dBox())), fs(13)));
+        // Unbound: no attendant collection exists on the entity, so this stays hand-filled.
+        int[] ax = {36, 421, 501, 581, 661, 737};
+        String[] aHdr = {"Attendant Name (Print)", "Time On Duty", "Time Off Duty",
+                         "Time On Duty", "Time Off Duty"};
+        int ay = logTop + 18;
         for (int i = 0; i < aHdr.length; i++) {
-            form.addFormContainer(text(ax, y, aW[i], 18, aHdr[i], p,
-                    merge(small(), merge(boxed(), centered()))));
-            ax += aW[i];
+            f.addFormContainer(dText(ax[i], ay, ax[i + 1] - ax[i], 18, aHdr[i], p, dMid(dBox()), fs(12)));
         }
-        y += 18;
+        ay += 18;
         for (int r = 0; r < 7; r++) {
-            ax = cx0;
-            for (int w : aW) { form.addFormContainer(box(ax, y, w, 18, p)); ax += w; }
-            y += 18;
+            for (int i = 0; i < 5; i++) {
+                f.addFormContainer(dText(ax[i], ay, ax[i + 1] - ax[i], 18, "", p, dBox(), null));
+            }
+            ay += 18;
         }
-        int attendantBottom = y;
-        form.addFormContainer(text(M, reqTop, railW, attendantBottom - reqTop,
-                reclassified ? "OPTIONAL" : "REQUIRED", p,
-                merge(bold(8), merge(boxed(), merge(centered(), Map.of(
-                        "backgroundColor", reclassified ? "#2e75b6" : "#e8140c", "color", "white",
-                        "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
-        y += 6;
+        // The Permit-Required sheet marks the rescue/attendant block REQUIRED in red; the
+        // RECLASSIFIED sheet leaves it unmarked.
+        if (!rc) f.addFormContainer(dRail(top, ay - top, "REQUIRED", "#e8140c", "white", p));
 
-        // Special instructions - OPTIONAL (blue rail) on both variants
-        int siTop = y;
-        form.addFormContainer(text(cx0, y, contentW, 18, "SPECIAL INSTRUCTIONS AND NOTES", p,
-                merge(bold(10), boxed())));
-        y += 18;
+        // --- Special instructions (OPTIONAL on both) ---------------------------------------
+        int siTop = ay + 4;
+        f.addFormContainer(dText(DSX, siTop, DSW, 34, "SPECIAL INSTRUCTIONS AND NOTES", p,
+                dBold(dLeft(dBox())), fs(13)));
+        int sy = siTop + 34;
         for (int r = 0; r < 6; r++) {
-            form.addFormContainer(box(cx0, y, contentW, 26, p));
-            y += 26;
+            f.addFormContainer(dText(DSX, sy, DSW, 40, "", p, dBg(dBox(), INK), null));
+            sy += 40;
         }
-        form.addFormContainer(text(M, siTop, railW, y - siTop, "OPTIONAL", p,
-                merge(bold(8), merge(boxed(), merge(centered(), Map.of(
-                        "backgroundColor", "#2e75b6", "color", "white",
-                        "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
-        y += 6;
+        f.addFormContainer(dRail(siTop, sy - siTop, "OPTIONAL", "#2e75b6", "white", p));
 
-        // 14. Permit cancelled / closed - REQUIRED (green rail)
-        int cnTop = y;
-        form.addFormContainer(text(cx0, y, contentW, 15, "14. PERMIT CANCELED/CLOSED", p, merge(bold(10), boxed())));
-        y += 17;
-        // The two variants print this line with different typos; both reproduced verbatim.
-        form.addFormContainer(blank(cx0, y, 60, 14, p));
-        form.addFormContainer(text(cx0 + 64, y, 300, 14,
-                reclassified ? "All Personal Exited Space" : "All Personell Excited Space", p, small()));
-        y += 16;
-        form.addFormContainer(blank(cx0, y, 60, 14, p));
-        form.addFormContainer(text(cx0 + 64, y, 300, 14, "Space Closed and/or Barricaded", p, small()));
-        form.addFormContainer(blank(cx0 + 370, y, 50, 14, p));
-        form.addFormContainer(text(cx0 + 424, y, 300, 14, "Performed Contractor Post Entry Critque", p, small()));
-        y += 20;
-        form.addFormContainer(text(cx0, y, 190, 16, "Reason Permit Cancelled/Closed:", p, small()));
-        form.addFormContainer(blank(cx0 + 192, y, contentW - 192, 16, p));
-        y += 22;
-        y = csSignatureRow(form, cx0, y, contentW, p);
-        form.addFormContainer(text(cx0, y, 70, 16, "Comments:", p, small()));
-        form.addFormContainer(blank(cx0 + 72, y, contentW - 72, 16, p));
-        y += 18;
-        form.addFormContainer(blank(cx0 + 72, y, contentW - 72, 16, p));
-        y += 18;
-        form.addFormContainer(text(M, cnTop, railW, y - cnTop, "REQUIRED", p,
-                merge(bold(8), merge(boxed(), merge(centered(), Map.of(
-                        "backgroundColor", "#92d050", "color", "black",
-                        "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
+        // --- 14. Permit cancelled / closed (REQUIRED on both) ------------------------------
+        int cTop = sy + 4;
+        f.addFormContainer(dText(DSX, cTop, DSW, 18, "14. PERMIT CANCELED/CLOSED", p,
+                dBold(dLeft(dBox())), fs(13)));
+        int cy = cTop + 20;
+        // The two variants carry different typos on this line. Both are reproduced verbatim:
+        // the controlled document is the authority, not the spelling.
+        f.addFormContainer(dRule(38, cy, 60, 16, p));
+        f.addFormContainer(dLbl(100, cy, 240, 16,
+                rc ? "All Personal Exited Space" : "All Personell Excited Space", p));
+        f.addFormContainer(dRule(410, cy + 16, 60, 16, p));
+        f.addFormContainer(dLbl(472, cy + 16, 262, 16, "Performed Contractor Post Entry Critque", p));
+        f.addFormContainer(dRule(38, cy + 16, 60, 16, p));
+        f.addFormContainer(dLbl(100, cy + 16, 240, 16, "Space Closed and/or Barricaded", p));
+
+        int ry2 = cy + 40;
+        f.addFormContainer(dLbl(38, ry2, 170, 16, "Reason Permit Cancelled/Closed:", p));
+        f.addFormContainer(dRule(210, ry2, 524, 16, p));
+        csSignRow(f, ry2 + 40, p);
+        f.addFormContainer(dLbl(38, ry2 + 44, 70, 16, "Comments:", p));
+        f.addFormContainer(dRule(110, ry2 + 44, 624, 16, p));
+        f.addFormContainer(dRule(110, ry2 + 62, 624, 16, p));
+        f.addFormContainer(dRail(cTop, (ry2 + 80) - cTop, "REQUIRED", "#92d050", "black", p));
     }
 
-    /**
-     * Page 3 - the entry/exit and FME records. Genuinely landscape on the master (1274x983), so it
-     * is its own PrintableForm at 11x8.5 and PrintService passes {landscape}. Shared by both
-     * variants, and entirely hand-filled: no attendant/entrant/FME collection exists on the entity.
-     */
-    private PrintableForm seedConfinedSpaceEntryRecordForm(String name) {
-        PrintableForm form = new PrintableForm();
-        form.setName(name);
-        form.setFormType("ConfinedSpaceEntryRecord");
-        form.setIsPrimary(true);
-        form.setSize(Map.of("width", 11, "height", 8.5));   // landscape
-
-        int p = 1;
-        int pageW = 1056, pageH = 816;                       // 11x8.5in at 96dpi
-        int m = 20;
-        int w = pageW - 2 * m;
-        int railW = 22;
-        int half = w / 2;
-
-        form.addFormContainer(text(m + railW + 4, m, half - railW - 8, 16,
-                "CONFINED SPACE ENTRY AND EXIT RECORD        SMP-07", p, merge(bold(9), centered())));
-        form.addFormContainer(text(m + half + railW + 4, m, half - railW - 8, 16,
-                "CONFINED SPACE FME RECORD        STD-MMP-08", p, merge(bold(9), centered())));
-
-        int y = m + 18;
-        form.addFormContainer(text(m + railW + 4, y, half - railW - 8, 16, "Name of Attendant(s):", p,
-                merge(bold(9), Map.of("color", "#cc0000"))));
-        y += 18;
-
-        int rowsTop = y;
-        String[] eHdr = {"Entrant Name", "Company", "Time In", "Time Out"};
-        int[] eW = {half - railW - 8 - 3 * 90, 90, 90, 90};
-        int ex = m + railW + 4;
-        for (int i = 0; i < eHdr.length; i++) {
-            form.addFormContainer(text(ex, y, eW[i], 20, eHdr[i], p,
-                    merge(bold(8), merge(boxed(), centered()))));
-            ex += eW[i];
-        }
-        String[] fHdr = {"Material/Tool", "Quantity"};
-        int[] fW = {half - railW - 8 - 90, 90};
-        int fx = m + half + railW + 4;
-        for (int i = 0; i < fHdr.length; i++) {
-            form.addFormContainer(text(fx, y, fW[i], 20, fHdr[i], p,
-                    merge(bold(8), merge(boxed(), centered()))));
-            fx += fW[i];
-        }
-        y += 20;
-
-        int rowH = 40;
-        int nRows = (pageH - m - 30 - y) / rowH;
-        for (int r = 0; r < nRows; r++) {
-            ex = m + railW + 4;
-            for (int cw : eW) { form.addFormContainer(box(ex, y, cw, rowH, p)); ex += cw; }
-            fx = m + half + railW + 4;
-            for (int cw : fW) { form.addFormContainer(box(fx, y, cw, rowH, p)); fx += cw; }
-            y += rowH;
-        }
-
-        form.addFormContainer(text(m, rowsTop, railW, y - rowsTop, "Safety Procedure", p,
-                merge(bold(9), merge(boxed(), merge(centered(), Map.of(
-                        "backgroundColor", "#e8140c", "color", "white",
-                        "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
-        form.addFormContainer(text(m + half, rowsTop, railW, y - rowsTop, "FME Procedure", p,
-                merge(bold(9), merge(boxed(), merge(centered(), Map.of(
-                        "backgroundColor", "#2e9bd6", "color", "white",
-                        "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
-
-        form.addFormContainer(text(m + 200, y + 4, 180, 16, "Confined Space Permit #:", p, small()));
-        form.addFormContainer(field(m + 384, y + 4, 220, 16, "permitNumber", "text", p));
-
-        PrintableForm saved = printableFormService.save(form);
-        log.info("Seeded ConfinedSpace entry/exit record (landscape): {}", name);
-        return saved;
-    }
-
-    // ---- Confined Space layout helpers ----
-
-    /** The CS forms print a ruled write-on line before each label rather than a square. */
-    private int csCheck(PrintableForm form, int x, int y, int w, String key, String label, int page) {
-        form.addFormContainer(field(x, y + 2, TICK_BOX, TICK_BOX, key, "checkbox", page));
-        form.addFormContainer(text(x + TICK_GAP, y + 4, w - TICK_GAP, 16, label, page, small()));
-        return y + TICK_BOX + 2;
-    }
-
-    private int csCheckWriteIn(PrintableForm form, int x, int y, int w, String key, String label,
-                               String descKey, int page) {
-        form.addFormContainer(field(x, y + 2, TICK_BOX, TICK_BOX, key, "checkbox", page));
-        form.addFormContainer(text(x + TICK_GAP, y + 4, 120, 16, label, page, small()));
-        form.addFormContainer(field(x + TICK_GAP + 122, y + 4, w - TICK_GAP - 126, 16, descKey, "text", page));
-        return y + TICK_BOX + 2;
+    /** Entry Supervisor name / signature / date-time. Repeated in sections 6, 7 and 14. */
+    private void csSignRow(PrintableForm f, int y, int page) {
+        f.addFormContainer(dText(39, y, 260, 18, "Entry Supervisor Name: (Print)", page,
+                dStyle("1px", "0px", "0px", "0px"), fs(12)));
+        f.addFormContainer(dText(328, y, 230, 18, "Entry Supervisor Signature: (Sign)", page,
+                dStyle("1px", "0px", "0px", "0px"), fs(12)));
+        f.addFormContainer(dText(585, y, 150, 18, "Date & Time", page,
+                dStyle("1px", "0px", "0px", "0px"), fs(12)));
     }
 
     /** Widget type for a Confined Space binding, kept in step with ConfinedSpaceDto.toFormFields. */
@@ -1571,319 +1634,395 @@ public class PermitFormSeeder {
         };
     }
 
-    /** A labelled write-on line with no tick, for the text-typed precaution references. */
-    private int csWriteIn(PrintableForm form, int x, int y, int w, String label, String key, int page) {
-        form.addFormContainer(text(x, y + 4, 130, 16, label, page, small()));
-        form.addFormContainer(field(x + 132, y + 4, w - 136, 16, key, "text", page));
-        return y + TICK_BOX + 2;
-    }
-
-    /** Entry Supervisor name / signature / date-time — repeated in sections 6, 7 and 14. */
-    private int csSignatureRow(PrintableForm form, int x, int y, int w, int page) {
-        int third = w / 3;
-        form.addFormContainer(blank(x, y - 14, third - 20, 14, page));
-        form.addFormContainer(text(x, y, third - 20, 14, "Entry Supervisor Name: (Print)", page, small()));
-        form.addFormContainer(blank(x + third, y - 14, third - 20, 14, page));
-        form.addFormContainer(text(x + third, y, third - 20, 14, "Entry Supervisor Signature: (Sign)", page, small()));
-        form.addFormContainer(blank(x + third * 2, y - 14, third - 20, 14, page));
-        form.addFormContainer(text(x + third * 2, y, third - 20, 14, "Date & Time", page, small()));
-        return y + 18;
-    }
-
-    // ========== SAFE WORK PERMIT (SMP-17 Rev 1, 2 pages) ==========
-
     /**
-     * Safe Work Permit, transcribed from the current paper form.
-     *
-     * <p>All 72 hazard/permit/PPE bindings were verified 1:1 across SwHazards/SwPermits/SwPpe ->
-     * Java DTO -> SafeWorkMapper (both directions) -> Angular class -> fromJson -> toFormFields.
-     * The binding prefix is {@code hazards.} / {@code permits.} / {@code ppe.} — NOT
-     * {@code swHazards.} — because that is the shape {@code getHazardFields()} emits.
-     *
-     * <p>Containers carry a {@code groupId} identifying their section, so the agreed edit-lock
-     * policy ("Active freezes scope/hazards/PPE, operational sections stay writable") can be
-     * applied later without re-authoring the form. See DECISIONS.md.
+     * Page 3 — entry/exit and FME records. Genuinely landscape on the master, so it is its own
+     * PrintableForm rather than a rotated portrait page, and is shared by both variants. Entirely
+     * hand-filled: no entrant or FME collection exists on the entity.
      */
-    private PrintableForm seedSafeWorkForm(String name) {
-        PrintableForm form = createForm(name, "SafeWork");
-        seedSafeWorkPage1(form);
-        seedSafeWorkPage2(form);
+    private PrintableForm seedConfinedSpaceEntryRecordForm(String name) {
+        PrintableForm form = new PrintableForm();
+        form.setName(name);
+        form.setFormType("ConfinedSpaceEntryRecord");
+        form.setIsPrimary(true);
+        form.setSize(Map.of("width", 10.15, "height", 7.7));   // landscape twin of the portrait page
+        int p = 1;
+        int pw = 974, ph = 739;
+
+        int leftRail = 8, midRail = 470;
+        int lx0 = leftRail + 22, lx1 = 660;          // left table spans lx0..lx1
+        int rx0 = midRail + 22, rx1 = pw - 8;        // right table
+
+        form.addFormContainer(dText(lx0, 6, lx1 - lx0, 18,
+                "CONFINED SPACE ENTRY AND EXIT RECORD        SMP-07", p, dMid(dNone()), fs(13)));
+        form.addFormContainer(dText(rx0, 6, rx1 - rx0, 18,
+                "CONFINED SPACE FME RECORD        STD-MMP-08", p, dMid(dNone()), fs(13)));
+
+        Map<String, Object> att = dLeft(dNone());
+        att.put("color", "#cc0000");
+        att.put("fontWeight", "bold");
+        form.addFormContainer(dText(lx0, 26, lx1 - lx0, 18, "Name of Attendant(s):", p, att, fs(13)));
+
+        int top = 46;
+        int[] ecx = {lx0, 330, 430, 530, lx1};
+        String[] eHdr = {"Entrant Name", "Company", "Time In", "Time Out"};
+        int[] fcx = {rx0, rx1 - 90, rx1};
+        String[] fHdr = {"Material/Tool", "Quantity"};
+        for (int i = 0; i < eHdr.length; i++) {
+            form.addFormContainer(dText(ecx[i], top, ecx[i + 1] - ecx[i], 20, eHdr[i], p,
+                    dBold(dMid(dBox())), fs(12)));
+        }
+        for (int i = 0; i < fHdr.length; i++) {
+            form.addFormContainer(dText(fcx[i], top, fcx[i + 1] - fcx[i], 20, fHdr[i], p,
+                    dBold(dMid(dBox())), fs(12)));
+        }
+
+        int rowH = 40, y = top + 20;
+        int nRows = (ph - 34 - y) / rowH;
+        for (int r = 0; r < nRows; r++) {
+            for (int i = 0; i < 4; i++) {
+                form.addFormContainer(dText(ecx[i], y, ecx[i + 1] - ecx[i], rowH, "", p, dBox(), null));
+            }
+            for (int i = 0; i < 2; i++) {
+                form.addFormContainer(dText(fcx[i], y, fcx[i + 1] - fcx[i], rowH, "", p, dBox(), null));
+            }
+            y += rowH;
+        }
+
+        Map<String, Object> r1 = dMid(dBg(dBox(), "#e8140c"));
+        r1.put("color", "white"); r1.put("fontWeight", "bold");
+        r1.put("writingMode", "vertical-rl"); r1.put("transform", "rotate(180deg)");
+        form.addFormContainer(dText(leftRail, top, 20, y - top, "Safety Procedure", p, r1, fs(13)));
+        Map<String, Object> r2 = dMid(dBg(dBox(), "#2e9bd6"));
+        r2.put("color", "white"); r2.put("fontWeight", "bold");
+        r2.put("writingMode", "vertical-rl"); r2.put("transform", "rotate(180deg)");
+        form.addFormContainer(dText(midRail, top, 20, y - top, "FME Procedure", p, r2, fs(13)));
+
+        form.addFormContainer(dText(300, y + 6, 160, 16, "Confined Space Permit #:", p,
+                dLeft(dNone()), fs(12)));
+        form.addFormContainer(dInput(462, y + 6, 200, 16, "permitNumber", "text", p));
+
         PrintableForm saved = printableFormService.save(form);
-        log.info("Seeded SafeWork paper form (2 pages): {}", name);
+        log.info("Seeded Confined Space entry/exit record (landscape): {}", name);
         return saved;
     }
 
-    private void seedSafeWorkPage1(PrintableForm form) {
+    // ========== SAFE WORK PERMIT (Std SMP-17, Revision 1) ==========
+
+    /**
+     * Safe Work Permit, rebuilt on the designer geometry (739 x 974) to match the controlled
+     * SMP-17 Rev 1 master. Page 2 is the continuation of the sign on/off roster, which is where
+     * the master overflows.
+     */
+    private PrintableForm seedSafeWorkForm(String name) {
+        PrintableForm form = designerForm(name, "SafeWork");
+        swPage1(form);
+        swPage2(form);
+        PrintableForm saved = printableFormService.save(form);
+        log.info("Seeded Safe Work paper form: {}", name);
+        return saved;
+    }
+
+    /** Column x-boundaries of the sign on / sign off roster, shared by both pages. */
+    private static final int[] SW_ROSTER = {0, 260, 375, 437, 499, 561, 623, DW};
+    private static final String[] SW_ROSTER_HDR = {"Sign and Print Name", "Company", "Sign On\nDate",
+            "Sign On\nTime", "Sign Off\nDate", "Sign Off\nTime", "Work\nCompleted"};
+
+    private void swPage1(PrintableForm f) {
         int p = 1;
-        int y = M;
 
-        // --- Header ---
-        form.addFormContainer(text(M, y, 200, 44, "NAES SAFE", p, merge(bold(14), merge(centered(), boxed()))));
-        form.addFormContainer(text(M + 200, y, FW - 200, 22, "Safety Manual Procedure – 17", p,
-                merge(bold(12), boxed())));
-        form.addFormContainer(text(M + 200, y + 22, FW - 200, 22, "Safe Work Permit  -  Jackson Generation", p,
-                merge(bold(12), boxed())));
-        y += 48;
+        // --- Masthead -----------------------------------------------------------------------
+        f.addFormContainer(dText(0, 0, 240, 76, "NAES", p, dBold(dMid(dBox())), fs(20)));
+        f.addFormContainer(dText(239, 0, DW - 239, 38, "Safety Manual Procedure – 17", p,
+                dBold(dLeft(dBox())), fs(15)));
+        f.addFormContainer(dText(239, 38, DW - 239, 38, "Safe Work Permit  -  Jackson Generation", p,
+                dBold(dLeft(dBox())), fs(15)));
 
-        // --- Issue row ---
-        form.addFormContainer(text(M, y, 90, 22, "Date Issued:", p, merge(small(), boxed())));
-        form.addFormContainer(gid(field(M + 92, y, 90, 22, "date", "date", p), "frozen:header"));
-        form.addFormContainer(text(M + 184, y, 90, 22, "Time Issued:", p, merge(small(), boxed())));
-        form.addFormContainer(gid(field(M + 276, y, 80, 22, "time", "text", p), "frozen:header"));
-        form.addFormContainer(text(M + 358, y, 230, 22, "Company/Person Performing Work", p,
-                merge(small(), merge(boxed(), centered()))));
-        form.addFormContainer(gid(field(M + 590, y, 60, 22, "companyPerson", "text", p), "frozen:header"));
-        form.addFormContainer(text(650, y, 80, 22, "Permit Number", p, merge(small(), boxed())));
-        form.addFormContainer(gid(field(732, y, 64, 22, "permitNumber", "text", p), "frozen:header"));
-        y += 26;
-
-        form.addFormContainer(text(M, y, 160, 22, "Specific Location of Work:", p, merge(small(), boxed())));
-        form.addFormContainer(gid(field(M + 162, y, FW - 162, 22, "location", "text", p), "frozen:header"));
-        y += 24;
-        form.addFormContainer(text(M, y, 200, 22, "Description Of Work to be Performed:", p, merge(small(), boxed())));
-        form.addFormContainer(gid(field(M + 202, y, FW - 202, 22, "workScope", "textarea", p), "frozen:header"));
-        y += 26;
-
-        // --- Hazards: three columns ---
-        y = sectionBarLight(form, "IDENTIFY SAFETY HAZARDS", y, p);
-        int colW = FW / 3;
-        int c1 = M, c2 = M + colW, c3 = M + colW * 2;
-        String G = "frozen:hazards";
-
-        String[][] h1 = {
-            {"highTemp", "*High Temperature (>140F)"}, {"highPressure", "*High Pressure (>100 psi)"},
-            {"hazardousFlammablePipingMaint", "*Hazardous or Flamable Piping Maint."},
-            {"electricalTesting599V", "*Electrical Testing > 599V"},
-            {"energized", "**Energized Electrical Work (>50V)"}, {"storedEnergy", "Stored Energy (LOTO)"},
-            {"eyeHazard", "Eye Hazard"}, {"egressAccess", "Egress & Access Hazard"},
-            {"ergonomicHazard", "Ergonomic Hazards"},
-        };
-        String[][] h2 = {
-            {"fallingObject", "Falling Object Hazard"}, {"highNoise", "High Noise"},
-            {"dustParticulate", "Dust/Particulate"}, {"combustibleDust", "Combustible Dust"},
-            {"fireHazard", "Fire/Explosion Hazard"}, {"hotSurface", "Hot Surfaces"},
-            {"slippery", "Slip/Trip/Fall Hazards"}, {"ventilationRequired", "Ventilation Req'd (Mech/Natural)"},
-            {"lightingRestrictions", "Lighting/Visibility restrictions"},
-            {"exposedRotatingParts", "Exposed Rotating Parts"},
-        };
-        String[][] h3 = {
-            {"chemicalExposure", "Possible Chemical Exposure"}, {"liftingHazard", "Lifting Hazard"},
-            {"handTraps", "Hand Traps"}, {"heatColdStress", "Heat/Cold Stress"},
-            {"elevatedSurface", "Elevated Work Surface"}, {"environmental", "Environmental Concern"},
-        };
-        int yy = checkColumn(form, h1, c1, y, colW, p, G);
-        checkColumn(form, h2, c2, y, colW, p, G);
-        int y3 = checkColumn(form, h3, c3, y, colW, p, G);
-
-        // col-3 tail: three items that carry a write-in beside them
-        y3 = checkWithWriteIn(form, c3, y3, colW, "weatherHazards", "Weather Hazards",
-                "weatherHazardDescription", p, G);
-        y3 = checkWithWriteIn(form, c3, y3, colW, "testingTroubleshooting50V", "Testing/Troubleshooting>50V",
-                "voltageDescription", p, G);
-        y3 = checkRow(form, c3, y3, colW, "hexavalentChromium", "Hexavalent Chromium (Cr(VI))", p, G);
-        y3 = checkWithWriteIn(form, c3, y3, colW, "other", "Other", "otherDescription", p, G);
-
-        // col-1 footnotes (static)
-        form.addFormContainer(text(c1, yy, colW - 4, 12, "* REQUIRES PLANT MANAGER APPROVAL", p, bold(8)));
-        form.addFormContainer(text(c1, yy + 12, colW - 4, 12, "**REQUIRES ENERGIZED ELECTRICAL WP", p, bold(8)));
-        y = Math.max(y3, yy + 26) + 4;
-
-        // --- Required permits / tests / actions ---
-        y = sectionBarLight(form, "REQUIRED PERMITS/TESTS/ACTIONS", y, p);
-        String GP = "frozen:permits";
-        int yp1 = y, yp2 = y, yp3 = y;
-        yp1 = checkWithWriteIn(form, c1, yp1, colW, "lotoRequired", "LOTO Required #", "lotoDescription", p, GP);
-        yp1 = checkWithWriteIn(form, c1, yp1, colW, "hotWork", "Hot Work Permit #", "hotWorkDescription", p, GP);
-        yp1 = checkWithWriteIn(form, c1, yp1, colW, "confinedSpace", "Confined Space #", "confinedSpaceDescription", p, GP);
-        yp1 = checkRow(form, c1, yp1, colW, "excavationPermit", "Excavation Permit", p, GP);
-        yp1 = checkWithWriteIn(form, c1, yp1, colW, "energizedPermit", "Energized Electrical WP", "energizedPermitDescription", p, GP);
-
-        yp2 = checkWithWriteIn(form, c2, yp2, colW, "ventingPurging", "Venting/Purging Procedure", "ventingPurgingDescription", p, GP);
-        yp2 = checkRow(form, c2, yp2, colW, "jha", "JHA", p, GP);
-        yp2 = checkRow(form, c2, yp2, colW, "gasTesting", "Air Monitoring within Safe Limits", p, GP);
-        yp2 = checkRow(form, c2, yp2, colW, "liftPlan", "Lift Plan", p, GP);
-
-        yp3 = checkRow(form, c3, yp3, colW, "confSpaceRescuePlanReview", "Conf. Space Rescue Plan Review", p, GP);
-        yp3 = checkRow(form, c3, yp3, colW, "fallRescuePlan", "Fall Rescue Plan", p, GP);
-        yp3 = checkWithWriteIn(form, c3, yp3, colW, "other", "Other", "otherDescription", p, GP);
-        y = Math.max(yp1, Math.max(yp2, yp3)) + 4;
-
-        // --- PPE: four columns ---
-        y = sectionBarLight(form, "PROTECTIVE EQUIPMENT REQUIRED", y, p);
-        String GE = "frozen:ppe";
-        int qw = FW / 4;
-        int q1 = M, q2 = M + qw, q3 = M + qw * 2, q4 = M + qw * 3;
-        int yq1 = y, yq2 = y, yq3 = y, yq4 = y;
-        for (String[] it : new String[][]{{"hardhat","Hardhat"},{"safetyGlasses","Safety Glasses"},
-                {"hearingProtection","Hearing Protection"},{"boots","Protective Footwear"},
-                {"weldingPpe","Welding PPE"}}) {
-            yq1 = checkRow(form, q1, yq1, qw, it[0], it[1], p, GE);
+        // --- Issue block --------------------------------------------------------------------
+        int[] ix = {0, 120, 239, 618, DW};
+        String[] ihdr = {"Date Issued:", "Time Issued:", "Company/Person Performing Work", "Permit Number"};
+        for (int i = 0; i < ihdr.length; i++) {
+            Map<String, Object> st = (i == 2) ? dMid(dBox()) : dLeft(dBox());
+            f.addFormContainer(dText(ix[i], 76, ix[i + 1] - ix[i], 18, ihdr[i], p, st, fs(12)));
         }
-        yq2 = checkWithWriteIn(form, q2, yq2, qw, "respiratorDustMask", "Respirator/Dust Mask", "respiratorType", p, GE);
-        yq2 = checkWithWriteIn(form, q2, yq2, qw, "gloves", "Protective Gloves", "glovesType", p, GE);
-        yq2 = checkRow(form, q2, yq2, qw, "gasMonitor", "Air Monitor", p, GE);
-        yq2 = checkRow(form, q2, yq2, qw, "tyvekSuit", "Tyvek Suit", p, GE);
-
-        yq3 = checkRow(form, q3, yq3, qw, "acidSuit", "Acid Suit/Rainsuit", p, GE);
-        yq3 = checkRow(form, q3, yq3, qw, "barricade", "Barricade/Rope Off", p, GE);
-        yq3 = checkRow(form, q3, yq3, qw, "faceShield", "Face Shield/Goggles", p, GE);
-        yq3 = checkWithWriteIn(form, q3, yq3, qw, "arcFlashPpe", "Arc Flash/Shock PPE", "classCalRating", p, GE);
-        yq3 = checkRow(form, q3, yq3, qw, "gfi", "GFCI", p, GE);
-
-        yq4 = checkRow(form, q4, yq4, qw, "purgingVentilation", "Purging/Ventilation", p, GE);
-        yq4 = checkWithWriteIn(form, q4, yq4, qw, "fallProtection", "Fall Protection(Restraint/Lanyard/SRL)", "fallClearance", p, GE);
-        yq4 = checkWithWriteIn(form, q4, yq4, qw, "other", "Other", "otherDescription", p, GE);
-        y = Math.max(Math.max(yq1, yq2), Math.max(yq3, yq4)) + 6;
-
-        // --- Special instructions ---
-        form.addFormContainer(text(M, y, 120, 20, "Special Instructions:", p, merge(small(), bold(9))));
-        form.addFormContainer(gid(field(M + 122, y, FW - 122, 34, "specialInstructions", "textarea", p),
-                "frozen:instructions"));
-        y += 38;
-
-        // --- Approval row ---
-        form.addFormContainer(text(M, y, 190, 34,
-                "The work scope has been reviewed, pre-job briefing held, and the work may proceed", p,
-                merge(bold(8), merge(boxed(), merge(centered(), Map.of("whiteSpace", "normal"))))));
-        form.addFormContainer(text(M + 192, y, 200, 16, "Work Authority", p, small()));
-        form.addFormContainer(text(M + 192, y + 16, 12, 18, "X", p, bold(10)));
-        form.addFormContainer(blank(M + 206, y + 16, 186, 18, p));
-        form.addFormContainer(text(M + 394, y, 200, 16, "Plant Manager (as Required)", p, small()));
-        form.addFormContainer(text(M + 394, y + 16, 12, 18, "X", p, bold(10)));
-        form.addFormContainer(blank(M + 408, y + 16, 186, 18, p));
-        form.addFormContainer(text(M + 596, y, 180, 16, "Requestor", p, small()));
-        form.addFormContainer(text(M + 596, y + 16, 12, 18, "X", p, bold(10)));
-        form.addFormContainer(gid(field(M + 610, y + 16, 166, 18, "requestedBy", "text", p), "ops:signoff"));
-        y += 38;
-
-        // --- Sign-on table: unbound (decision #26 -- no repeating store exists yet) ---
-        String[] cols = {"Sign and Print Name", "Company", "Sign On Date", "Sign On Time",
-                         "Sign Off Date", "Sign Off Time", "Work Completed"};
-        int[] w = {200, 150, 78, 78, 78, 78, 114};
-        int x = M;
-        for (int i = 0; i < cols.length; i++) {
-            form.addFormContainer(text(x, y, w[i], 22, cols[i], p,
-                    merge(bold(8), merge(boxed(), merge(centered(), Map.of("whiteSpace", "normal"))))));
-            x += w[i];
+        String[][] ifld = {{"date", "date"}, {"time", "time"},
+                           {"companyPerson", "text"}, {"permitNumber", "text"}};
+        for (int i = 0; i < ifld.length; i++) {
+            f.addFormContainer(dField(ix[i], 94, ix[i + 1] - ix[i], 19, ifld[i][0], ifld[i][1], p,
+                    dBg(dBox(), INK), fs(12)));
         }
-        y += 22;
-        for (int r = 0; r < 7; r++) {
-            x = M;
-            for (int i = 0; i < cols.length - 1; i++) {
-                form.addFormContainer(box(x, y, w[i], 20, p));
-                x += w[i];
+
+        f.addFormContainer(dText(0, 113, DW, 18, "Specific Location of Work:", p,
+                dLeft(dBox()), fs(12)));
+        f.addFormContainer(dField(150, 114, DW - 152, 16, "location", "text", p, dBg(dNone(), INK), fs(12)));
+        f.addFormContainer(dText(0, 131, DW, 18, "Description Of Work to be Performed:", p,
+                dLeft(dBox()), fs(12)));
+        f.addFormContainer(dField(212, 132, DW - 214, 16, "workScope", "textarea", p,
+                dBg(dNone(), INK), fs(12)));
+
+        // --- IDENTIFY SAFETY HAZARDS --------------------------------------------------------
+        f.addFormContainer(dText(0, 149, DW, 10, "", p, dBg(dBox(), "#c6c3c3"), null));
+        f.addFormContainer(dText(0, 159, DW, 19, "IDENTIFY SAFETY HAZARDS", p,
+                dBold(dMid(dBox())), fs(14)));
+
+        int hzTop = 178, hzH = 195;
+        int[] hcx = {0, 244, 494, DW};
+        for (int i = 0; i < 3; i++) {
+            f.addFormContainer(dText(hcx[i], hzTop, hcx[i + 1] - hcx[i], hzH, "", p, dBox(), null));
+        }
+        String[][] swH1 = {{"highTemp", "*High Temperature (>140F)"},
+                           {"highPressure", "*High Pressure (>100 psi)"},
+                           {"hazardousFlammablePipingMaint", "*Hazardous or Flamable Piping Maint."},
+                           {"electricalTesting599V", "*Electrical Testing > 599V"},
+                           {"energized", "**Energized Electrical Work (>50V)"},
+                           {"storedEnergy", "Stored Energy (LOTO)"},
+                           {"eyeHazard", "Eye Hazard"},
+                           {"egressAccess", "Egress & Access Hazard"},
+                           {"ergonomicHazard", "Ergonomic Hazards"}};
+        String[][] swH2 = {{"fallingObject", "Falling Object Hazard"},
+                           {"highNoise", "High Noise"},
+                           {"dustParticulate", "Dust/Particulate"},
+                           {"combustibleDust", "Combustible Dust"},
+                           {"fireHazard", "Fire/Explosion Hazard"},
+                           {"hotSurface", "Hot Surfaces"},
+                           {"slippery", "Slip/Trip/Fall Hazards"},
+                           {"ventilationRequired", "Ventilation Req’d (Mech/Natural)"},
+                           {"lightingRestrictions", "Lighting/Visibility restrictions"},
+                           {"exposedRotatingParts", "Exposed Rotating Parts"}};
+        String[][] swH3 = {{"chemicalExposure", "Possible Chemical Exposure"},
+                           {"liftingHazard", "Lifting Hazard"},
+                           {"handTraps", "Hand Traps"},
+                           {"heatColdStress", "Heat/Cold Stress"},
+                           {"elevatedSurface", "Elevated Work Surface"},
+                           {"environmental", "Environmental Concern"}};
+        int hy = 181, pitch = 17;
+        for (String[] h : swH1) {
+            f.addFormContainer(dTick(8, hy, "hazards." + h[0], p));
+            f.addFormContainer(dLbl(30, hy + 1, 210, 16, h[1], p));
+            hy += pitch;
+        }
+        f.addFormContainer(dText(4, hy + 2, 236, 14, "* REQUIRES PLANT MANAGER APPROVAL", p,
+                dBold(dLeft(dNone())), fs(11)));
+        f.addFormContainer(dText(4, hy + 16, 236, 14, "**REQUIRES ENERGIZED ELECTRICAL WP", p,
+                dBold(dLeft(dNone())), fs(11)));
+
+        hy = 181;
+        for (String[] h : swH2) {
+            f.addFormContainer(dTick(252, hy, "hazards." + h[0], p));
+            f.addFormContainer(dLbl(274, hy + 1, 216, 16, h[1], p));
+            hy += pitch;
+        }
+        hy = 181;
+        for (String[] h : swH3) {
+            f.addFormContainer(dTick(502, hy, "hazards." + h[0], p));
+            f.addFormContainer(dLbl(524, hy + 1, 210, 16, h[1], p));
+            hy += pitch;
+        }
+        // Column 3 tail: three ticks that each carry a write-in.
+        f.addFormContainer(dTick(502, hy, "hazards.weatherHazards", p));
+        f.addFormContainer(dLbl(524, hy + 1, 100, 16, "Weather Hazards", p));
+        f.addFormContainer(dInput(624, hy + 1, 110, 16, "hazards.weatherHazardDescription", "text", p));
+        hy += pitch;
+        f.addFormContainer(dTick(502, hy, "hazards.testingTroubleshooting50V", p));
+        f.addFormContainer(dLbl(524, hy + 1, 210, 16, "Testing/Troubleshooting>50V", p));
+        hy += pitch;
+        f.addFormContainer(dLbl(524, hy + 1, 55, 16, "Voltage", p));
+        f.addFormContainer(dInput(579, hy + 1, 155, 16, "hazards.voltageDescription", "text", p));
+        hy += pitch;
+        f.addFormContainer(dTick(502, hy, "hazards.hexavalentChromium", p));
+        f.addFormContainer(dLbl(524, hy + 1, 210, 16, "Hexavalent Chromium (Cr(VI))", p));
+        hy += pitch;
+        f.addFormContainer(dTick(502, hy, "hazards.other", p));
+        f.addFormContainer(dLbl(524, hy + 1, 40, 16, "Other", p));
+        f.addFormContainer(dInput(564, hy + 1, 170, 16, "hazards.otherDescription", "text", p));
+
+        // --- REQUIRED PERMITS/TESTS/ACTIONS -------------------------------------------------
+        int pmTop = hzTop + hzH;                       // 383
+        f.addFormContainer(dText(0, pmTop, DW, 10, "", p, dBg(dBox(), "#c6c3c3"), null));
+        f.addFormContainer(dText(0, pmTop + 10, DW, 19, "REQUIRED PERMITS/TESTS/ACTIONS", p,
+                dBold(dMid(dBox())), fs(14)));
+        int pmBox = pmTop + 29, pmH = 96;
+        int[] pcx = {0, 304, 502, DW};
+        for (int i = 0; i < 3; i++) {
+            f.addFormContainer(dText(pcx[i], pmBox, pcx[i + 1] - pcx[i], pmH, "", p, dBox(), null));
+        }
+        // Column 1: each entry references another permit by number.
+        String[][] swP1 = {{"lotoRequired", "LOTO Required #", "permits.lotoDescription"},
+                           {"hotWork", "Hot Work Permit #", "permits.hotWorkDescription"},
+                           {"confinedSpace", "Confined Space #", "permits.confinedSpaceDescription"},
+                           {"excavationPermit", "Excavation Permit", ""},
+                           {"energizedPermit", "Energized Electrical WP", "permits.energizedPermitDescription"}};
+        int py = pmBox + 3;
+        for (String[] r : swP1) {
+            f.addFormContainer(dTick(8, py, "permits." + r[0], p));
+            f.addFormContainer(dLbl(30, py + 1, 130, 16, r[1], p));
+            if (r[2].isEmpty()) {
+                // No backing text field exists for the excavation reference on SwPermits, so this
+                // one stays a ruled blank rather than being bound to an unrelated slot.
+                f.addFormContainer(dRule(162, py + 1, 136, 16, p));
+            } else {
+                f.addFormContainer(dInput(162, py + 1, 136, 16, r[2], "text", p));
             }
-            form.addFormContainer(box(x, y, 40, 20, p));
-            form.addFormContainer(text(x + 42, y + 2, 30, 16, "Yes", p, small()));
-            form.addFormContainer(box(x + 72, y, 40, 20, p));
-            y += 20;
+            py += 18;
         }
-        y += 4;
-
-        form.addFormContainer(text(M, y, 300, 20, "Safe Work Permit Released.  Work Authority:", p, bold(9)));
-        form.addFormContainer(blank(M + 302, y, 260, 20, p));
-        form.addFormContainer(text(590, y, 70, 20, "Date/Time:", p, bold(9)));
-        form.addFormContainer(blank(662, y, 134, 20, p));
-        y += 24;
-
-        form.addFormContainer(text(M, y, FW, 14,
-                "Std SMP-17 Form Safe Work Permit        Revision 1        1 of 2", p, small()));
-    }
-
-    /** Page 2 is the sign-on/sign-off sheet: unbound ruled rows. */
-    private void seedSafeWorkPage2(PrintableForm form) {
-        int p = 2;
-        int y = M;
-
-        form.addFormContainer(text(M, y, 200, 44, "NAES SAFE", p, merge(bold(14), merge(centered(), boxed()))));
-        form.addFormContainer(text(M + 200, y, FW - 200, 22, "Safety Manual Procedure – 17", p, merge(bold(12), boxed())));
-        form.addFormContainer(text(M + 200, y + 22, FW - 200, 22, "Safe Work Permit  -  Jackson Generation", p, merge(bold(12), boxed())));
-        y += 52;
-
-        form.addFormContainer(text(M, y, FW, 24, "SAFE WORK PERMIT SIGN-ON/SIGN-OFF SHEET", p,
-                merge(bold(14), centered())));
-        y += 26;
-        form.addFormContainer(text(300, y, 50, 20, "SWP#", p, merge(bold(10), centered())));
-        form.addFormContainer(gid(field(352, y, 180, 20, "permitNumber", "text", p), "frozen:header"));
-        y += 24;
-
-        form.addFormContainer(text(M + 320, y, 160, 16, "SIGN-ON", p, merge(bold(9), centered())));
-        form.addFormContainer(text(M + 480, y, 160, 16, "SIGN-OFF", p, merge(bold(9), centered())));
-        y += 16;
-
-        String[] cols = {"NAME", "COMPANY", "DATE", "TIME", "DATE", "TIME"};
-        int[] w = {250, 246, 80, 80, 80, 40};
-        int x = M;
-        for (int i = 0; i < cols.length; i++) {
-            form.addFormContainer(text(x, y, w[i], 20, cols[i], p,
-                    merge(bold(8), merge(boxed(), centered()))));
-            x += w[i];
+        String[][] swP2 = {{"ventingPurging", "Venting/Purging Procedure"}, {"jha", "JHA"},
+                           {"gasTesting", "Air Monitoring within Safe Limits"}, {"liftPlan", "Lift Plan"}};
+        py = pmBox + 3;
+        for (String[] r : swP2) {
+            f.addFormContainer(dTick(308, py, "permits." + r[0], p));
+            f.addFormContainer(dLbl(330, py + 1, 170, 16, r[1], p));
+            py += 18;
         }
-        y += 20;
-        int rows = Math.min(28, (1056 - M - 30 - y) / 24);
-        for (int r = 0; r < rows; r++) {
-            x = M;
-            for (int i = 0; i < cols.length; i++) {
-                form.addFormContainer(box(x, y, w[i], 24, p));
-                x += w[i];
-            }
-            y += 24;
+        String[][] swP3 = {{"confSpaceRescuePlanReview", "Conf. Space Rescue Plan Review"},
+                           {"fallRescuePlan", "Fall Rescue Plan"}};
+        py = pmBox + 3;
+        for (String[] r : swP3) {
+            f.addFormContainer(dTick(510, py, "permits." + r[0], p));
+            f.addFormContainer(dLbl(532, py + 1, 202, 16, r[1], p));
+            py += 18;
         }
-        form.addFormContainer(text(M, y + 4, FW, 14,
-                "Std SMP-17 Form Safe Work Permit        Revision 1        2 of 2", p, small()));
-    }
+        f.addFormContainer(dTick(510, pmBox + 75, "permits.other", p));
+        f.addFormContainer(dLbl(532, pmBox + 76, 40, 16, "Other", p));
+        f.addFormContainer(dInput(574, pmBox + 76, 160, 16, "permits.otherDescription", "text", p));
 
-    // ---- checkbox-column helpers ----
+        // --- PROTECTIVE EQUIPMENT REQUIRED --------------------------------------------------
+        int peTop = pmBox + pmH;                        // 508
+        f.addFormContainer(dText(0, peTop, DW, 10, "", p, dBg(dBox(), "#c6c3c3"), null));
+        f.addFormContainer(dText(0, peTop + 10, DW, 19, "PROTECTIVE EQUIPMENT REQUIRED", p,
+                dBold(dMid(dBox())), fs(14)));
+        int peBox = peTop + 29, peH = 124;
+        int[] ecx = {0, 165, 320, 505, DW};
+        for (int i = 0; i < 4; i++) {
+            f.addFormContainer(dText(ecx[i], peBox, ecx[i + 1] - ecx[i], peH, "", p, dBox(), null));
+        }
+        String[][] swE1 = {{"hardhat", "Hardhat"}, {"safetyGlasses", "Safety Glasses"},
+                           {"hearingProtection", "Hearing Protection"}, {"boots", "Protective Footwear"},
+                           {"weldingPpe", "Welding PPE"}};
+        int ey = peBox + 4;
+        for (String[] e : swE1) {
+            f.addFormContainer(dTick(8, ey, "ppe." + e[0], p));
+            f.addFormContainer(dLbl(30, ey + 1, 130, 16, e[1], p));
+            ey += 20;
+        }
+        // Column 2 pairs two ticks with a "Type" write-in each.
+        ey = peBox + 4;
+        f.addFormContainer(dTick(173, ey, "ppe.respiratorDustMask", p));
+        f.addFormContainer(dLbl(195, ey + 1, 122, 16, "Respirator/Dust Mask", p));
+        f.addFormContainer(dLbl(173, ey + 19, 32, 16, "Type", p));
+        f.addFormContainer(dInput(205, ey + 19, 110, 16, "ppe.respiratorType", "text", p));
+        f.addFormContainer(dTick(173, ey + 38, "ppe.gloves", p));
+        f.addFormContainer(dLbl(195, ey + 39, 122, 16, "Protective Gloves", p));
+        f.addFormContainer(dLbl(173, ey + 57, 32, 16, "Type", p));
+        f.addFormContainer(dInput(205, ey + 57, 110, 16, "ppe.glovesType", "text", p));
+        f.addFormContainer(dTick(173, ey + 76, "ppe.gasMonitor", p));
+        f.addFormContainer(dLbl(195, ey + 77, 122, 16, "Air Monitor", p));
+        f.addFormContainer(dTick(173, ey + 94, "ppe.tyvekSuit", p));
+        f.addFormContainer(dLbl(195, ey + 95, 122, 16, "Tyvek Suit", p));
 
-    /** Emit a run of checkbox+label rows down one column. Returns the new y. */
-    private int checkColumn(PrintableForm form, String[][] items, int x, int y, int w, int page, String group) {
-        for (String[] it : items) y = checkRow(form, x, y, w, it[0], it[1], page, group);
-        return y;
-    }
+        ey = peBox + 4;
+        String[][] swE3 = {{"acidSuit", "Acid Suit/Rainsuit"}, {"barricade", "Barricade/Rope Off"},
+                           {"faceShield", "Face Shield/Goggles"}, {"arcFlashPpe", "Arc Flash/Shock PPE"}};
+        for (String[] e : swE3) {
+            f.addFormContainer(dTick(328, ey, "ppe." + e[0], p));
+            f.addFormContainer(dLbl(350, ey + 1, 150, 16, e[1], p));
+            ey += 20;
+        }
+        f.addFormContainer(dLbl(328, ey, 92, 16, "Class/Cal Rating:", p));
+        f.addFormContainer(dInput(420, ey, 80, 16, "ppe.classCalRating", "text", p));
+        f.addFormContainer(dTick(328, ey + 19, "ppe.gfi", p));
+        f.addFormContainer(dLbl(350, ey + 20, 150, 16, "GFCI", p));
 
-    private int checkRow(PrintableForm form, int x, int y, int w, String key, String label,
-                         int page, String group) {
-        String prefix = group.endsWith("hazards") ? "hazards." : group.endsWith("permits") ? "permits." : "ppe.";
-        form.addFormContainer(gid(field(x, y, TICK_BOX, TICK_BOX, prefix + key, "checkbox", page), group));
-        form.addFormContainer(text(x + TICK_GAP, y + 2, w - TICK_GAP - 4, 18, label, page,
-                merge(small(), Map.of("whiteSpace", "normal"))));
-        return y + TICK_BOX;
-    }
+        ey = peBox + 4;
+        f.addFormContainer(dTick(509, ey, "ppe.purgingVentilation", p));
+        f.addFormContainer(dLbl(531, ey + 1, 203, 16, "Purging/Ventilation", p));
+        f.addFormContainer(dTick(509, ey + 20, "ppe.fallProtection", p));
+        f.addFormContainer(dText(531, ey + 21, 203, 16, "Fall Protection(Restraint/Lanyard/SRL)", p,
+                dLeft(dNone()), fs(11)));
+        f.addFormContainer(dLbl(509, ey + 40, 88, 16, "Fall Clearance", p));
+        f.addFormContainer(dInput(597, ey + 40, 137, 16, "ppe.fallClearance", "text", p));
+        f.addFormContainer(dTick(509, ey + 78, "ppe.other", p));
+        f.addFormContainer(dLbl(531, ey + 79, 40, 16, "Other", p));
+        f.addFormContainer(dInput(573, ey + 79, 161, 16, "ppe.otherDescription", "text", p));
 
-    /** Checkbox + label + a short ruled write-in bound to its own description field. */
-    private int checkWithWriteIn(PrintableForm form, int x, int y, int w, String key, String label,
-                                 String descKey, int page, String group) {
-        String prefix = group.endsWith("hazards") ? "hazards." : group.endsWith("permits") ? "permits." : "ppe.";
-        form.addFormContainer(gid(field(x, y, TICK_BOX, TICK_BOX, prefix + key, "checkbox", page), group));
-        form.addFormContainer(text(x + TICK_GAP, y + 2, w - TICK_GAP - 4, 18, label, page,
-                merge(small(), Map.of("whiteSpace", "normal"))));
-        form.addFormContainer(gid(field(x + TICK_GAP, y + TICK_BOX, w - TICK_GAP - 4, 16,
-                prefix + descKey, "text", page), group));
-        return y + TICK_BOX + 18;
-    }
+        // --- Special instructions -----------------------------------------------------------
+        int siTop = peBox + peH;                        // 649
+        f.addFormContainer(dText(0, siTop, DW, 58, "", p, dBox(), null));
+        f.addFormContainer(dLbl(4, siTop + 2, 160, 16, "Special Instructions:", p));
+        f.addFormContainer(dField(4, siTop + 20, DW - 8, 34, "specialInstructions", "textarea", p,
+                dBg(dNone(), INK), fs(12)));
 
-    /** A lighter section bar than the inverted one used on Hot Work. */
-    private int sectionBarLight(PrintableForm form, String label, int y, int page) {
-        form.addFormContainer(text(M, y, FW, 20, label, page,
-                merge(bold(11), merge(centered(), Map.of("backgroundColor", "#d9d9d9")))));
-        return y + 22;
+        // --- Authorisation row --------------------------------------------------------------
+        int auTop = siTop + 58;                         // 707
+        int[] acx = {0, 185, 368, 551, DW};
+        f.addFormContainer(dText(acx[0], auTop, acx[1] - acx[0], 54,
+                "The work scope has been reviewed, pre-job briefing held, and the work may proceed",
+                p, dBold(dMid(dBox())), fsPre(11)));
+        String[] au = {"Work Authority", "Plant Manager (as Required)", "Requestor"};
+        for (int i = 0; i < au.length; i++) {
+            f.addFormContainer(dText(acx[i + 1], auTop, acx[i + 2] - acx[i + 1], 54, "", p, dBox(), null));
+            f.addFormContainer(dLbl(acx[i + 1] + 4, auTop + 2, acx[i + 2] - acx[i + 1] - 8, 16, au[i], p));
+            f.addFormContainer(dLbl(acx[i + 1] + 4, auTop + 26, 12, 18, "X", p));
+            f.addFormContainer(dRule(acx[i + 1] + 18, auTop + 26, acx[i + 2] - acx[i + 1] - 26, 18, p));
+        }
+        // The Requestor cell is the one signature the record actually stores.
+        f.addFormContainer(dField(acx[3] + 18, auTop + 26, acx[4] - acx[3] - 26, 18,
+                "requestedBy", "text", p, dBg(dUnder(), INK), fs(12)));
+
+        // --- Sign on / sign off roster ------------------------------------------------------
+        int rTop = auTop + 54;                          // 761
+        swRoster(f, rTop, 7, p);
+
+        int foot = rTop + 36 + 7 * 18;                  // 923
+        f.addFormContainer(dText(0, foot, DW, 18,
+                "Safe Work Permit Released.  Work Authority: ______________________________   Date/Time: ______________________",
+                p, dBold(dLeft(dBox())), fs(12)));
+        f.addFormContainer(dText(0, foot + 20, 400, 14, "Std SMP-17 Form Safe Work Permit      Revision 1",
+                p, dLeft(dNone()), fs(11)));
+        f.addFormContainer(dText(DW - 120, foot + 20, 116, 14, "1 of 2", p, dMid(dNone()), fs(11)));
     }
 
     /**
-     * Tag a container with its section, and reproduce the paper's colour coding.
-     *
-     * <p>The Hot Work form frames each input in the colour of whoever fills it — teal for the
-     * permit issuer, purple for the person performing the work / fire watch — and prints a legend
-     * saying so. That is information, not decoration, so the frame is part of the form. The same
-     * tag drives the agreed per-section edit lock.
+     * Page 2 is the roster continuation. The master overflows the page-1 table, and the operator
+     * confirmed the sign on/off table is what carries over.
      */
-    private boolean isTickBox(FormContainer c) {
-        Object content = c.getContentJson();
-        if (content instanceof Map<?, ?> m) {
-            Object t = m.get("type");
-            return "checkbox".equals(t) || "radio".equals(t);
+    private void swPage2(PrintableForm f) {
+        int p = 2;
+        f.addFormContainer(dText(0, 0, 500, 20, "Safe Work Permit  -  Sign On / Sign Off (continued)",
+                p, dBold(dLeft(dBox())), fs(13)));
+        f.addFormContainer(dText(500, 0, 120, 20, "Permit Number", p, dLeft(dBox()), fs(12)));
+        f.addFormContainer(dField(620, 0, DW - 620, 20, "permitNumber", "text", p,
+                dBg(dBox(), INK), fs(12)));
+
+        int rTop = 24;
+        int rows = 30;
+        swRoster(f, rTop, rows, p);
+        int foot = rTop + 36 + rows * 18;
+        f.addFormContainer(dText(0, foot + 6, 400, 14, "Std SMP-17 Form Safe Work Permit      Revision 1",
+                p, dLeft(dNone()), fs(11)));
+        f.addFormContainer(dText(DW - 120, foot + 6, 116, 14, "2 of 2", p, dMid(dNone()), fs(11)));
+    }
+
+    /**
+     * The sign on / sign off roster. Unbound: {@code PersonnelSignEntry} exists on the package,
+     * not on SafeWork, so the paper rows stay hand-filled and the two cannot disagree.
+     */
+    private void swRoster(PrintableForm f, int top, int rows, int page) {
+        for (int i = 0; i < SW_ROSTER_HDR.length; i++) {
+            f.addFormContainer(dText(SW_ROSTER[i], top, SW_ROSTER[i + 1] - SW_ROSTER[i], 36,
+                    SW_ROSTER_HDR[i], page, dBold(dMid(dBox())), fsPre(12)));
         }
-        return false;
+        int y = top + 36;
+        for (int r = 0; r < rows; r++) {
+            for (int i = 0; i < SW_ROSTER_HDR.length; i++) {
+                f.addFormContainer(dText(SW_ROSTER[i], y, SW_ROSTER[i + 1] - SW_ROSTER[i], 18, "",
+                        page, dBox(), null));
+            }
+            // "Work Completed" is a Yes/No pair of ticks, hand-marked per signatory.
+            f.addFormContainer(dText(SW_ROSTER[6] + 4, y + 3, 12, 12, "", page, dBg(dBox(), INK), null));
+            f.addFormContainer(dText(SW_ROSTER[6] + 18, y + 1, 28, 16, "Yes", page, dLeft(dNone()), fs(11)));
+            f.addFormContainer(dText(SW_ROSTER[6] + 56, y + 3, 12, 12, "", page, dBg(dBox(), INK), null));
+            f.addFormContainer(dText(SW_ROSTER[6] + 70, y + 1, 28, 16, "No", page, dLeft(dNone()), fs(11)));
+            y += 18;
+        }
     }
 
     private FormContainer gid(FormContainer c, String group) {
@@ -2323,7 +2462,7 @@ public class PermitFormSeeder {
         Map<String, Object> merged = paperStyle();
         if (style != null) merged.putAll(style);
         c.setStyleJson(merged);
-        return c;
+        return stack(c);
     }
 
     private FormContainer field(int x, int y, int w, int h, String name, String type, int page) {
@@ -2342,7 +2481,7 @@ public class PermitFormSeeder {
         } else {
             c.setStyleJson(paperStyle());
         }
-        return c;
+        return stack(c);
     }
 
     private Map<String, Object> paperStyle() {

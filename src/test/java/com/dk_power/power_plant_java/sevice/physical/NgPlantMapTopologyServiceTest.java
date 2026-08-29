@@ -5,7 +5,11 @@ import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyAttachRequest;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyConnectionDto;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyTerminalDto;
 import com.dk_power.power_plant_java.entities.physical.PlantMapTopologyConnection;
+import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.entities.diagrams.DiagramPlacement;
+import com.dk_power.power_plant_java.repository.diagrams.DiagramPlacementRepo;
 import com.dk_power.power_plant_java.repository.physical.PlantMapTopologyConnectionRepo;
+import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,13 +29,17 @@ class NgPlantMapTopologyServiceTest {
 
     @Mock
     private PlantMapTopologyConnectionRepo repo;
+    @Mock
+    private PhysicalObjectRepo physicalObjectRepo;
+    @Mock
+    private DiagramPlacementRepo placementRepo;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private NgPlantMapTopologyService service;
 
     @BeforeEach
     void setUp() {
-        service = new NgPlantMapTopologyService(repo, objectMapper);
+        service = new NgPlantMapTopologyService(repo, objectMapper, physicalObjectRepo, placementRepo);
         lenient().when(repo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -183,6 +191,93 @@ class NgPlantMapTopologyServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getTerminals()).extracting(PlantMapTopologyTerminalDto::getPipeNodeId)
             .containsExactlyInAnyOrder(10L, 20L);
+    }
+
+    @Test
+    void deletingPipeRemovesEveryDynamicTerminalPlacementAndPhysicalSubtree() throws Exception {
+        PlantMapTopologyConnection junction = connection(
+            "junction:pipe", "PIPE_JUNCTION",
+            terminal(10L, "A", 1L), terminal(10L, "T:branch", 1L), terminal(20L, "B", 1L)
+        );
+        DiagramPlacement placement = new DiagramPlacement();
+        placement.setSourceEntityType("Pipe");
+        placement.setSourceEntityId(10L);
+        PhysicalObject pipe = new PhysicalObject(); pipe.setId(10L);
+        PhysicalObject fitting = new PhysicalObject(); fitting.setId(11L);
+        when(placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", 10L)).thenReturn(List.of(placement));
+        when(repo.findAllForUpdate()).thenReturn(List.of(junction));
+        when(physicalObjectRepo.findById(10L)).thenReturn(java.util.Optional.of(pipe));
+        when(physicalObjectRepo.findByParentId(10L)).thenReturn(List.of(fitting));
+        when(physicalObjectRepo.findByParentId(11L)).thenReturn(List.of());
+
+        service.deletePipe(10L);
+
+        assertThat(placement.getDeleted()).isTrue();
+        assertThat(pipe.getDeleted()).isTrue();
+        assertThat(fitting.getDeleted()).isTrue();
+        assertThat(junction.getDeleted()).isTrue();
+    }
+
+    @Test
+    void deletingGeneratedSegmentRemovesOnlyItsContinuationChain() {
+        DiagramPlacement first = pipePlacement(10L, "run-1", "continuation-1", 100L, "port-1", 99L);
+        DiagramPlacement second = pipePlacement(20L, "run-1", "continuation-1", 200L, "port-2", 99L);
+        DiagramPlacement sibling = pipePlacement(30L, "run-1", "continuation-2", 300L, "port-3", 99L);
+        PhysicalObject firstPipe = new PhysicalObject(); firstPipe.setId(10L);
+        PhysicalObject secondPipe = new PhysicalObject(); secondPipe.setId(20L);
+        when(placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", 10L)).thenReturn(List.of(first));
+        when(placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", 20L)).thenReturn(List.of(second));
+        when(placementRepo.findAll()).thenReturn(List.of(first, second, sibling));
+        when(repo.findAllForUpdate()).thenReturn(List.of());
+        when(physicalObjectRepo.findById(10L)).thenReturn(java.util.Optional.of(firstPipe));
+        when(physicalObjectRepo.findById(20L)).thenReturn(java.util.Optional.of(secondPipe));
+        when(physicalObjectRepo.findByParentId(10L)).thenReturn(List.of());
+        when(physicalObjectRepo.findByParentId(20L)).thenReturn(List.of());
+
+        service.deletePipe(10L);
+
+        assertThat(first.getDeleted()).isTrue();
+        assertThat(second.getDeleted()).isTrue();
+        assertThat(sibling.getDeleted()).isNotEqualTo(true);
+        assertThat(firstPipe.getDeleted()).isTrue();
+        assertThat(secondPipe.getDeleted()).isTrue();
+    }
+
+    @Test
+    void deletingOriginalPipeAlsoRemovesItsGeneratedContinuation() {
+        DiagramPlacement original = new DiagramPlacement();
+        original.setSourceEntityType("Pipe"); original.setSourceEntityId(99L); original.setSvgPath("{}");
+        DiagramPlacement generated = pipePlacement(10L, "run-1", "continuation-1", 100L, "port-1", 99L);
+        PhysicalObject originalPipe = new PhysicalObject(); originalPipe.setId(99L);
+        PhysicalObject generatedPipe = new PhysicalObject(); generatedPipe.setId(10L);
+        when(placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", 99L)).thenReturn(List.of(original));
+        when(placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", 10L)).thenReturn(List.of(generated));
+        when(placementRepo.findAll()).thenReturn(List.of(original, generated));
+        when(repo.findAllForUpdate()).thenReturn(List.of());
+        when(physicalObjectRepo.findById(99L)).thenReturn(java.util.Optional.of(originalPipe));
+        when(physicalObjectRepo.findById(10L)).thenReturn(java.util.Optional.of(generatedPipe));
+        when(physicalObjectRepo.findByParentId(99L)).thenReturn(List.of());
+        when(physicalObjectRepo.findByParentId(10L)).thenReturn(List.of());
+
+        service.deletePipe(99L);
+
+        assertThat(original.getDeleted()).isTrue();
+        assertThat(generated.getDeleted()).isTrue();
+        assertThat(originalPipe.getDeleted()).isTrue();
+        assertThat(generatedPipe.getDeleted()).isTrue();
+    }
+
+    private DiagramPlacement pipePlacement(
+        Long pipeId, String groupId, String continuationId, Long ownerId, String portId, Long generatedFrom
+    ) {
+        DiagramPlacement placement = new DiagramPlacement();
+        placement.setSourceEntityType("Pipe");
+        placement.setSourceEntityId(pipeId);
+        placement.setSvgPath("{\"groupId\":\"" + groupId + "\",\"generatedContinuationId\":\""
+            + continuationId + "\",\"generatedFromPipeNodeId\":" + generatedFrom
+            + ",\"generatedByBoundaryPort\":{\"objectId\":" + ownerId
+            + ",\"portId\":\"" + portId + "\"}}");
+        return placement;
     }
 
     private PlantMapTopologyConnection connection(

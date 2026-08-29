@@ -1,11 +1,16 @@
 package com.dk_power.power_plant_java.sevice.physical;
 
 import com.dk_power.power_plant_java.dto.physical.PlantMapEquipmentPortRefDto;
+import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyAuditDto;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyAttachRequest;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyConnectionDto;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyTerminalDto;
 import com.dk_power.power_plant_java.entities.physical.PlantMapTopologyConnection;
+import com.dk_power.power_plant_java.entities.diagrams.DiagramPlacement;
+import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
+import com.dk_power.power_plant_java.repository.diagrams.DiagramPlacementRepo;
 import com.dk_power.power_plant_java.repository.physical.PlantMapTopologyConnectionRepo;
+import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -17,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 
 @Service
@@ -28,6 +35,8 @@ public class NgPlantMapTopologyService {
 
     private final PlantMapTopologyConnectionRepo repo;
     private final ObjectMapper objectMapper;
+    private final PhysicalObjectRepo physicalObjectRepo;
+    private final DiagramPlacementRepo placementRepo;
 
     public List<PlantMapTopologyConnectionDto> getAll() {
         // The same deterministic equipment key can be created independently on offline devices. It is still one
@@ -119,10 +128,252 @@ public class NgPlantMapTopologyService {
     }
 
     public void deleteEquipmentPort(Long objectId, String portId) {
+        // Generated continuation segments declare their owning boundary port. Removing any port in that generated
+        // run removes every generated segment and transit port, while leaving the user's original parent pipe.
+        GeneratedContinuationRef generatedRef = null;
+        for (DiagramPlacement placement : placementRepo.findAll()) {
+            if (!"Pipe".equals(placement.getSourceEntityType())) continue;
+            Map<String, Object> geo = readGeometry(placement);
+            Map<?, ?> owner = geo.get("generatedByBoundaryPort") instanceof Map<?, ?> map ? map : null;
+            if (owner != null && Objects.equals(asLong(owner.get("objectId")), objectId)
+                && Objects.equals(String.valueOf(owner.get("portId")), portId)) {
+                generatedRef = generatedContinuationRef(geo);
+                break;
+            }
+        }
+        if (generatedRef != null) {
+            deleteGeneratedContinuation(generatedRef);
+            return;
+        }
+        softDeleteEquipmentConnection(objectId, portId);
+    }
+
+    /** Transactional pipe deletion: topology, placement, fitting children and pipe identity are one operation. */
+    public void deletePipe(Long pipeNodeId) {
+        deletePipeCascade(pipeNodeId, new HashSet<>());
+    }
+
+    private void deletePipeCascade(Long pipeNodeId, Set<Long> deleting) {
+        List<DiagramPlacement> placements = placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", pipeNodeId);
+        if (placements.isEmpty()) throw new IllegalArgumentException("Plant Map pipe not found: " + pipeNodeId);
+        GeneratedContinuationRef generatedRef = placements.stream().map(this::readGeometry)
+            .map(this::generatedContinuationRef).filter(Objects::nonNull).findFirst().orElse(null);
+        if (generatedRef != null) {
+            deleteGeneratedContinuation(generatedRef, deleting);
+            return;
+        }
+        if (!deleting.add(pipeNodeId)) return;
+        deleteDependentContinuations(pipeNodeId, deleting);
+        deletePipeRecord(pipeNodeId, placements);
+    }
+
+    private void deleteGeneratedContinuation(GeneratedContinuationRef ref) {
+        deleteGeneratedContinuation(ref, new HashSet<>());
+    }
+
+    private void deleteGeneratedContinuation(GeneratedContinuationRef ref, Set<Long> deleting) {
+        List<DiagramPlacement> generated = placementRepo.findAll().stream()
+            .filter(placement -> "Pipe".equals(placement.getSourceEntityType()))
+            .filter(placement -> matchesGeneratedContinuation(readGeometry(placement), ref))
+            .toList();
+        Map<String, PlantMapEquipmentPortRefDto> owners = new LinkedHashMap<>();
+        for (DiagramPlacement placement : generated) {
+            Map<?, ?> owner = (Map<?, ?>) readGeometry(placement).get("generatedByBoundaryPort");
+            Long ownerId = asLong(owner.get("objectId"));
+            String ownerPortId = String.valueOf(owner.get("portId"));
+            if (ownerId != null && !blank(ownerPortId)) {
+                PlantMapEquipmentPortRefDto ownerRef = new PlantMapEquipmentPortRefDto();
+                ownerRef.setObjectId(ownerId);
+                ownerRef.setPortId(ownerPortId);
+                owners.put(equipmentKey(ownerId, ownerPortId), ownerRef);
+            }
+        }
+        for (Long pipeNodeId : generated.stream().map(DiagramPlacement::getSourceEntityId)
+            .filter(Objects::nonNull).distinct().toList()) {
+            if (!deleting.add(pipeNodeId)) continue;
+            deleteDependentContinuations(pipeNodeId, deleting);
+            deletePipeRecord(pipeNodeId,
+                placementRepo.findBySourceEntityTypeAndSourceEntityId("Pipe", pipeNodeId));
+        }
+        for (PlantMapEquipmentPortRefDto owner : owners.values()) {
+            removeEquipmentPortDefinition(owner.getObjectId(), owner.getPortId());
+            softDeleteEquipmentConnection(owner.getObjectId(), owner.getPortId());
+        }
+    }
+
+    private GeneratedContinuationRef generatedContinuationRef(Map<String, Object> geo) {
+        if (!(geo.get("generatedByBoundaryPort") instanceof Map<?, ?>)) return null;
+        String continuationId = geo.get("generatedContinuationId") == null
+            ? null : String.valueOf(geo.get("generatedContinuationId"));
+        String legacyGroup = geo.get("groupId") == null ? null : String.valueOf(geo.get("groupId"));
+        return blank(continuationId) && blank(legacyGroup) ? null
+            : new GeneratedContinuationRef(continuationId, legacyGroup);
+    }
+
+    private boolean matchesGeneratedContinuation(Map<String, Object> geo, GeneratedContinuationRef ref) {
+        if (!(geo.get("generatedByBoundaryPort") instanceof Map<?, ?>)) return false;
+        if (!blank(ref.id())) return Objects.equals(ref.id(), geo.get("generatedContinuationId"));
+        return Objects.equals(ref.legacyGroup(), geo.get("groupId"));
+    }
+
+    private void deleteDependentContinuations(Long sourcePipeNodeId, Set<Long> deleting) {
+        Set<GeneratedContinuationRef> dependents = placementRepo.findAll().stream()
+            .filter(placement -> "Pipe".equals(placement.getSourceEntityType()))
+            .map(this::readGeometry)
+            .filter(geo -> Objects.equals(asLong(geo.get("generatedFromPipeNodeId")), sourcePipeNodeId))
+            .map(this::generatedContinuationRef)
+            .filter(Objects::nonNull)
+            .collect(java.util.stream.Collectors.toSet());
+        for (GeneratedContinuationRef dependent : dependents) {
+            deleteGeneratedContinuation(dependent, deleting);
+        }
+    }
+
+    private void deletePipeRecord(Long pipeNodeId, List<DiagramPlacement> placements) {
+        detachPipe(pipeNodeId);
+        for (DiagramPlacement placement : placements) {
+            placement.setDeleted(true);
+            placementRepo.save(placement);
+        }
+        PhysicalObject pipe = physicalObjectRepo.findById(pipeNodeId).orElse(null);
+        if (pipe != null) softDeletePhysicalSubtree(pipe);
+    }
+
+    private record GeneratedContinuationRef(String id, String legacyGroup) {}
+
+    /** Remove all logical terminals for a pipe without requiring the client to know its dynamic T:* tap ids. */
+    public void detachPipe(Long pipeNodeId) {
+        for (PlantMapTopologyConnection connection : repo.findAllForUpdate()) {
+            List<PlantMapTopologyTerminalDto> terminals = readTerminals(connection);
+            int before = terminals.size();
+            terminals.removeIf(terminal -> Objects.equals(terminal.getPipeNodeId(), pipeNodeId));
+            if (terminals.size() == before) continue;
+            saveAfterRemoval(connection, terminals);
+        }
+    }
+
+    /** Remove topology and placements referring to an object being deleted. */
+    public void deleteEquipmentObject(Long objectId) {
+        Set<GeneratedContinuationRef> generatedContinuations = new HashSet<>();
+        for (DiagramPlacement placement : placementRepo.findAll()) {
+            if (!"Pipe".equals(placement.getSourceEntityType())) continue;
+            Map<String, Object> geo = readGeometry(placement);
+            Map<?, ?> owner = geo.get("generatedByBoundaryPort") instanceof Map<?, ?> map ? map : null;
+            if (owner != null && Objects.equals(asLong(owner.get("objectId")), objectId)) {
+                GeneratedContinuationRef ref = generatedContinuationRef(geo);
+                if (ref != null) generatedContinuations.add(ref);
+            }
+        }
+        generatedContinuations.forEach(this::deleteGeneratedContinuation);
+        for (PlantMapTopologyConnection connection : repo.findAllForUpdate()) {
+            if (EQUIPMENT.equals(connection.getKind()) && Objects.equals(connection.getEquipmentObjectId(), objectId)) {
+                softDelete(connection);
+            }
+        }
+        for (DiagramPlacement placement : placementRepo.findAll().stream()
+            .filter(item -> "PhysicalObject".equals(item.getSourceEntityType())
+                && Objects.equals(item.getSourceEntityId(), objectId)).toList()) {
+            placement.setDeleted(true);
+            placementRepo.save(placement);
+        }
+    }
+
+    /** Explicit repair tool for JSON-based references that cannot be protected by relational foreign keys. */
+    public PlantMapTopologyAuditDto auditOrphans() {
+        Set<Long> nodeIds = physicalObjectRepo.findAll().stream().map(PhysicalObject::getId).collect(java.util.stream.Collectors.toSet());
+        List<DiagramPlacement> placements = placementRepo.findAll();
+        Map<Long, Set<String>> tapsByPipe = new LinkedHashMap<>();
+        Set<Long> placedPipes = new HashSet<>();
+        int deletedPlacements = 0;
+        for (DiagramPlacement placement : placements) {
+            if (!"Pipe".equals(placement.getSourceEntityType()) || placement.getSourceEntityId() == null) continue;
+            if (!nodeIds.contains(placement.getSourceEntityId())) {
+                placement.setDeleted(true); placementRepo.save(placement); deletedPlacements++; continue;
+            }
+            placedPipes.add(placement.getSourceEntityId());
+            Set<String> taps = tapsByPipe.computeIfAbsent(placement.getSourceEntityId(), ignored -> new HashSet<>());
+            Object rawTaps = readGeometry(placement).get("taps");
+            if (rawTaps instanceof List<?> list) for (Object item : list) if (item instanceof Map<?, ?> map && map.get("id") != null) {
+                taps.add(String.valueOf(map.get("id")));
+            }
+        }
+        Set<String> equipmentPorts = new HashSet<>();
+        for (DiagramPlacement placement : placements) {
+            if (!"PhysicalObject".equals(placement.getSourceEntityType()) || placement.getSourceEntityId() == null) continue;
+            Object ports = readGeometry(placement).get("equipmentPorts");
+            if (ports instanceof List<?> list) for (Object item : list) if (item instanceof Map<?, ?> map && map.get("id") != null) {
+                equipmentPorts.add(equipmentKey(placement.getSourceEntityId(), String.valueOf(map.get("id"))));
+            }
+        }
+        int scanned = 0, removed = 0, deleted = 0;
+        for (PlantMapTopologyConnection connection : repo.findAllForUpdate()) {
+            scanned++;
+            if (EQUIPMENT.equals(connection.getKind()) && !equipmentPorts.contains(connection.getConnectionKey())) {
+                removed += readTerminals(connection).size(); softDelete(connection); deleted++; continue;
+            }
+            List<PlantMapTopologyTerminalDto> terminals = readTerminals(connection);
+            int before = terminals.size();
+            terminals.removeIf(terminal -> terminal == null || terminal.getEnd() == null
+                || !nodeIds.contains(terminal.getSectionId())
+                || !nodeIds.contains(terminal.getPipeNodeId()) || !placedPipes.contains(terminal.getPipeNodeId())
+                || (terminal.getEnd().startsWith("T:")
+                    && !tapsByPipe.getOrDefault(terminal.getPipeNodeId(), Set.of()).contains(terminal.getEnd().substring(2))));
+            removed += before - terminals.size();
+            boolean willDelete = (!EQUIPMENT.equals(connection.getKind()) && terminals.size() < 2) || terminals.isEmpty();
+            saveAfterRemoval(connection, terminals);
+            if (willDelete) deleted++;
+        }
+        return new PlantMapTopologyAuditDto(scanned, removed, deleted, deletedPlacements);
+    }
+
+    private void saveAfterRemoval(PlantMapTopologyConnection connection, List<PlantMapTopologyTerminalDto> terminals) {
+        if ((!EQUIPMENT.equals(connection.getKind()) && terminals.size() < 2) || terminals.isEmpty()) softDelete(connection);
+        else { writeTerminals(connection, terminals); repo.save(connection); }
+    }
+
+    private void softDeleteEquipmentConnection(Long objectId, String portId) {
         String key = equipmentKey(objectId, portId);
-        repo.findAllForUpdate().stream()
-            .filter(connection -> Objects.equals(key, connection.getConnectionKey()))
+        repo.findAllForUpdate().stream().filter(connection -> Objects.equals(key, connection.getConnectionKey()))
             .forEach(this::softDelete);
+    }
+
+    private void softDeletePhysicalSubtree(PhysicalObject node) {
+        for (PhysicalObject child : physicalObjectRepo.findByParentId(node.getId())) softDeletePhysicalSubtree(child);
+        node.setDeleted(true);
+        physicalObjectRepo.save(node);
+    }
+
+    private void removeEquipmentPortDefinition(Long objectId, String portId) {
+        for (DiagramPlacement placement : placementRepo.findAll().stream()
+            .filter(item -> "PhysicalObject".equals(item.getSourceEntityType())
+                && Objects.equals(item.getSourceEntityId(), objectId)).toList()) {
+            try {
+                com.fasterxml.jackson.databind.node.ObjectNode root = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    objectMapper.readTree(placement.getSvgPath() == null ? "{}" : placement.getSvgPath());
+                com.fasterxml.jackson.databind.node.ArrayNode filtered = objectMapper.createArrayNode();
+                if (root.path("equipmentPorts").isArray()) for (com.fasterxml.jackson.databind.JsonNode port : root.path("equipmentPorts")) {
+                    if (!Objects.equals(port.path("id").asText(), portId)) filtered.add(port);
+                }
+                root.set("equipmentPorts", filtered);
+                placement.setSvgPath(objectMapper.writeValueAsString(root));
+                placementRepo.save(placement);
+            } catch (Exception exception) {
+                throw new IllegalStateException("Could not update equipment ports for object " + objectId, exception);
+            }
+        }
+    }
+
+    private Map<String, Object> readGeometry(DiagramPlacement placement) {
+        try {
+            return objectMapper.readValue(placement.getSvgPath() == null ? "{}" : placement.getSvgPath(),
+                new TypeReference<Map<String, Object>>() {});
+        } catch (Exception ignored) { return new LinkedHashMap<>(); }
+    }
+
+    private Long asLong(Object value) {
+        if (value instanceof Number number) return number.longValue();
+        try { return value == null ? null : Long.valueOf(String.valueOf(value)); }
+        catch (NumberFormatException ignored) { return null; }
     }
 
     private PlantMapTopologyConnection chooseDestination(

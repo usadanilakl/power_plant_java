@@ -64,11 +64,28 @@ export class FormRendererComponent {
     effect(() => {
       const def = this.formDefinition();
       const data = this.formData();
-      if (def) {
-        this.form = this.renderingService.createFormFromDefinition(def, data, this.form);
-        this.subscribeToFormChanges();
-      }
+      if (!def) return;
+
+      const rebuilt = this.renderingService.createFormFromDefinition(def, data, this.form);
+      // Editing auto-saves, and the saved permit is echoed straight back in through `formData`,
+      // which re-runs this effect. Swapping in a new FormGroup replaces every control instance, so
+      // the focused input is destroyed and re-created: the caret jumps out of the field mid-entry.
+      // When the echo carries nothing the form does not already hold, keep the live group.
+      if (this.sameValues(this.form, rebuilt)) return;
+
+      this.form = rebuilt;
+      this.subscribeToFormChanges();
     });
+  }
+
+  /** Value-equality of two form groups; a throw (cyclic value) means "assume different". */
+  private sameValues(a: FormGroup | null, b: FormGroup): boolean {
+    if (!a) return false;
+    try {
+      return JSON.stringify(a.getRawValue()) === JSON.stringify(b.getRawValue());
+    } catch {
+      return false;
+    }
   }
 
   private subscribeToFormChanges(): void {

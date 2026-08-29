@@ -8,6 +8,7 @@ import {
   OnDestroy,
   OnInit,
   PLATFORM_ID,
+  effect,
   signal,
   ViewChild,
 } from '@angular/core';
@@ -23,6 +24,7 @@ import { FormStateService } from '../services/form-state.service';
 import { DesignerInteractionService } from '../services/designer-interaction.service';
 import { ContainerOperationsService } from '../services/container-operations.service';
 import { CoordinateService } from '../services/coordinate.service';
+import { FormBackdropService } from '../services/form-backdrop.service';
 import { EntityLoaderService } from '../services/entity-loader.service';
 
 import { ContainerRendererComponent } from '../container-renderer/container-renderer.component';
@@ -50,12 +52,14 @@ import { PageNavigatorComponent } from '../page-navigator/page-navigator.compone
 export class FormDesignerCanvasComponent implements OnInit, OnDestroy {
   @ViewChild('centerPanel') centerPanel!: ElementRef;
   @ViewChild('formContent') formContentElement!: ElementRef<HTMLDivElement>;
+  @ViewChild('designArea') designArea!: ElementRef<HTMLDivElement>;
 
   formState = inject(FormStateService);
   stateService = inject(DesignerInteractionService);
   private operationsService = inject(ContainerOperationsService);
   private coordinateService = inject(CoordinateService);
   private entityLoaderService = inject(EntityLoaderService);
+  backdrop = inject(FormBackdropService);
 
   menuPosition = MenuPosition;
 
@@ -77,7 +81,15 @@ export class FormDesignerCanvasComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+    // The backdrop is per form AND per page: page 2 of a permit is a different sheet and wants a
+    // different reference image.
+    effect(() => {
+      const id = this.currentForm().id;
+      const page = this.formState.currentPage();
+      if (isPlatformBrowser(this.platformId)) this.backdrop.select(id, page);
+    });
+  }
 
   ngOnInit(): void {
     const formType = this.currentForm().formType ?? 'SafeWork';
@@ -143,6 +155,50 @@ export class FormDesignerCanvasComponent implements OnInit, OnDestroy {
     this.fitToPanel();
   }
 
+  // ==================== Backdrop (designer-only tracing layer) ====================
+
+  onBackdropFileChosen(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.backdrop.loadFile(file, this.formSize().width, this.formSize().height)
+        .catch(err => console.error('Could not load backdrop image:', err));
+    }
+    // Reset so re-picking the same file fires change again.
+    input.value = '';
+  }
+
+  /** Paste a screenshot straight onto the sheet — the usual way one of these arrives. */
+  @HostListener('document:paste', ['$event'])
+  onPaste(event: ClipboardEvent): void {
+    const item = Array.from(event.clipboardData?.items ?? [])
+      .find(i => i.type.startsWith('image/'));
+    if (!item) return;
+    const file = item.getAsFile();
+    if (!file) return;
+    event.preventDefault();
+    this.backdrop.loadFile(file, this.formSize().width, this.formSize().height)
+      .catch(err => console.error('Could not paste backdrop image:', err));
+  }
+
+  onOpacity(event: Event): void {
+    this.backdrop.update({ opacity: Number((event.target as HTMLInputElement).value) });
+  }
+
+  startCalibration(): void {
+    if (this.backdrop.calibrationStep() > 0) this.backdrop.cancelCalibration();
+    else this.backdrop.startCalibration();
+  }
+
+  onCalibrationClick(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const point = this.coordinateService.getScaledCoordinates(
+      event, this.designArea.nativeElement, this.formScale(),
+    );
+    this.backdrop.calibrationClick(point, this.formSize().width, this.formSize().height);
+  }
+
   getFormContainerStyle(): any {
     return this.coordinateService.getFormContainerStyle(this.formSize(), this.formScale());
   }
@@ -194,6 +250,11 @@ export class FormDesignerCanvasComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.backdrop.calibrationStep() > 0) {
+      this.backdrop.cancelCalibration();
+      event.preventDefault();
+      return;
+    }
     const selected = this.formState.selectedContainers();
     if (selected.length === 0) return;
 

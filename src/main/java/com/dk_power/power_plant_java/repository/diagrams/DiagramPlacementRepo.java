@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface DiagramPlacementRepo extends BaseRepository<DiagramPlacement> {
     List<DiagramPlacement> findByDiagramIdOrderByLocalIdAsc(Long diagramId);
+    List<DiagramPlacement> findBySourceEntityTypeAndSourceEntityId(String sourceEntityType, Long sourceEntityId);
     void deleteByDiagramId(Long diagramId);
 }

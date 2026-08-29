@@ -258,3 +258,139 @@ counts set-for-set. All 18 scalars confirmed present in entity, DTO, both mapper
 **Not yet done:** nothing is seeded into any database — run it from Admin → Forms, where the three
 new types now appear in the dropdown automatically (they are registered in `SEED_TYPES`). The
 rendered output has not been eyeballed against the screenshots.
+
+## REBUILT 2026-08-29 — Confined Space and Safe Work, on the designer geometry
+
+The first seeded rebuild of Confined Space was rejected on sight: *"my old form I built manually
+[is] way closer to the screenshot."* That was correct, and the reason was structural, not cosmetic.
+
+**What the hand-built masters do that the seeder did not.** Dumping `printable_form` 1000008193
+(Confined Space, 201 containers) and 1000008169 (Safe Work Main, 205) out of `proddb` showed a
+completely different construction:
+
+| | designer-built masters | first seeded attempt |
+|---|---|---|
+| page size | **7.7 × 10.15in** (739 × 974px) | 8.5 × 11in (816 × 1056) |
+| section | one **bordered box carrying the title**, content laid inside it | loose text runs, no box |
+| rails | a `Sider` container, `writingMode: vertical-rl` | invented per form |
+| fields | **underline-only**, light fill | full box |
+| font size | `contentStyle.fontSize` as a **number** | `style.fontSize` as a `px` string |
+| borders | **all four side widths always explicit** | shorthand only |
+
+That last row is the one that keeps biting. `FormContainerDto`'s constructor spreads a default of
+`borderTopWidth/Right/Bottom/Left = 1px`, so a style that merely omits a side does not get "no
+border" — it gets a hairline that no amount of `borderStyle` tweaking removes.
+
+**Decision: adopt the designer geometry wholesale.** New helpers (`designerForm`, `dStyle`/`dBox`/
+`dUnder`/`dNone`, `dText`/`dField`/`dInput`/`dTick`/`dRule`/`dLbl`/`dRail`/`dSection`) reproduce the
+hand-built shape exactly, so seeded and hand-built forms are now indistinguishable in construction.
+Content follows the **new** SMP masters (the hand-built forms are the previous revision — they still
+carry `8. NOT-PERMIT CANCELLATION/CLOSURE` where the current master has `14. PERMIT CANCELED/CLOSED`,
+and they lack the Communication Plan block that moved onto page 1).
+
+**Confined Space** — 49 bindings, two variants from one method, plus the landscape page 3.
+**Safe Work** — 79 bindings, rebuilt to SMP-17 Rev 1; page 2 is the sign on/off continuation.
+
+59. Geometry is now verified mechanically, not by eye: a reflective harness calls the layout
+    methods on a bare `PrintableForm` and asserts every container falls inside 739 × 974. It
+    caught the RECLASSIFIED page overflowing by 3px (section 7 was 120 tall at y=857), which no
+    amount of reading the code would have shown.
+60. Re-seeding is safe. `PrintableFormService#save` calls `resetPrimary`, which demotes every other
+    form of that `formType` before promoting the new one — so seeding over the earlier attempt
+    cannot produce the two-primaries state that makes `findByFormTypeAndIsPrimary` throw and takes
+    the paper form offline.
+61. `permits.ventingPurgingDescription` is deliberately **unbound on paper**. The previous revision
+    printed "Venting/Purging Required #____"; SMP-17 Rev 1 dropped the write-in and prints only the
+    tick. The field stays reachable on the web form. Same reasoning inverted for the Excavation
+    reference: the master *does* print a write-in there but `SwPermits` has no matching text field,
+    so it seeds as a ruled blank rather than being bound to an unrelated slot.
+
+**Verification.** Confined Space 49 bindings / Safe Work 79 bindings; both 0 unresolved, 0 missing
+from the default `fields` array that gates option merging, 0 widget-type mismatches. Group coverage
+against the POJOs: CS 11 hazards + 12 PPE + 8 precautions = 31/31; SW 32 hazards + 17/18 permits +
+22 PPE. Page extents: CS 737×857, RECLASSIFIED 737×973, SW 739×957 / 739×620 — all inside 739×974.
+
+**Not verified:** neither form has been rendered since the rebuild, and there is no screenshot of
+Safe Work page 2 — the roster continuation is 30 rows by choice, not by measurement.
+
+## ADDED 2026-08-29 — designer backdrop (trace a form from its screenshot)
+
+Load or paste a photo/screenshot of the paper form behind the designer sheet and place containers
+directly over it. Motivated by the Confined Space rebuild, where geometry was guessed from an image
+by eye and had to be recovered from the database instead.
+
+62. **Not a FormContainer, despite `image` already being a supported `contentType`.** Reusing it
+    was the obvious move and is the wrong one. A container is a CRDT-synced row: a full-page
+    screenshot is several hundred KB of base64 that would sit in `content_json`, replicate over SSE
+    to every desktop, print on the finished permit, appear in the container list, and be draggable
+    and deletable by accident. This database has already been inflated once by exactly that kind of
+    base64 write-amplification. (For the record: zero `image` containers exist in prod today.)
+63. **Storage is IndexedDB on the authoring machine**, keyed `formId:page` — survives reload, never
+    syncs, never prints, never leaves the designer canvas. A full or unavailable IndexedDB degrades
+    to "backdrop does not persist" rather than breaking the designer.
+64. **Per page, not per form.** Page 2 of a permit is a different sheet and wants its own reference.
+65. **Two-point calibration, not fit-to-sheet.** Eyeballing the fit leaves a scale error that
+    compounds down the page — containers traced near the bottom land progressively wrong. The
+    operator clicks the form's top-left and bottom-right printed corners and the transform is
+    solved so that rectangle maps onto the sheet. Degenerate clicks (same point, or dragged the
+    wrong way) are rejected rather than throwing the image off the sheet. `Fit` and `Stretch`
+    remain as coarse starting points.
+
+**Where it lives.** `services/form-backdrop.service.ts` plus a layer, overlay and toolbar group in
+`form-designer-canvas`. The layer sits inside the scaled sheet so it zooms with the containers, is
+`pointer-events: none` so it cannot intercept a drag, and paints below `.form-content`. Absolutely
+positioned containers resolve against `.form-content`'s padding box, so container coordinates and
+backdrop coordinates share one origin — the sheet's top-left — with no 20px padding offset.
+
+Controls: Load / paste (Ctrl+V) / Clear / Show-Hide / Align (calibrate) / opacity / Fit / Stretch /
+2% zoom steps / 1px nudge. Escape cancels calibration.
+
+**Known interaction:** containers with an opaque `backgroundColor` (the designer masters use
+`#f9f9f9`) will hide the backdrop behind them. Toggle `Hide`/`Show` when checking alignment against
+existing work.
+
+## FIXED 2026-08-29 — dead fields on the seeded Confined Space and Safe Work forms
+
+Reported after first render: *"a lot of fields are not working - all the unchecked checkboxes are
+not interactive. some fields are not fillable."* Values displayed correctly; clicks did nothing.
+
+**Root cause: seeded containers carried no `zIndex`, and `PrintableForm.formContainers` is a
+`HashSet`.** `FormContainer` overrides neither `equals` nor `hashCode`, so iteration order is
+identity-hash order — arbitrary, and emphatically not creation order. With no z-index the renderer
+stacks by DOM order, so a section-wrapping box could arrive *after* the fields it surrounds and
+paint on top of them. The box is a plain `div` with no `pointer-events: none`, so it swallowed
+every click inside its rectangle. Rendering was unaffected, which is why the form looked right in a
+screenshot while half of it was dead.
+
+The designer-built masters set an explicit z-index on all 201 containers, which is exactly why they
+have never shown this. The rebuild adopted their section-box construction but not their z-order.
+
+66. **Fix: stamp a monotonically increasing `zIndex` on every seeded container**, in creation order,
+    reset per form in `seedForm` (now `synchronized`, so two concurrent admin seeds cannot
+    interleave the counter). Applied in all four container factories — `text`/`field` and
+    `dText`/`dField` — so the legacy forms get it too. This is the designer's own convention, and
+    it makes stacking independent of how the collection happens to serialise.
+67. **Rejected: `pointer-events: none` on non-field containers.** It would have been a belt-and-
+    braces second layer, but container `style` is shared with the designer canvas, where
+    `.draggable-container` needs to receive clicks to select and drag. It would have fixed the
+    paper form by breaking authoring.
+68. **Not changed: the `HashSet` itself.** Switching to `LinkedHashSet` + `@OrderBy` would make
+    wire order deterministic, but it is an entity change that touches sync, and with explicit
+    z-indexes the ordering no longer matters.
+
+**Two further defects the new guard caught**, both invisible in review:
+- Safe Work PPE column 3 ran 9px past its section box, putting the `GFCI` tick underneath the
+  Special Instructions panel. Hazards had slack to donate, so `hzH` 205→195 and `peH` 112→124; the
+  page total still fell from 957 to 959 within the 974 budget.
+- Long labels wrapped and overlapped the row beneath: Confined Space `Lockout/Tagout (#` and
+  `Hot Work Permit (#` (onto Ventilation), Safe Work `Energized Electrical WP`,
+  `Air Monitoring within Safe Limits`, and `Fall Protection(Restraint/Lanyard/SRL)` — the last is
+  the longest label on the sheet and is the one place that drops to 11px.
+
+**Guard: `PermitFormLayoutTest`.** Drives each layout method reflectively against a seeder built
+with null dependencies (they touch no collaborator, so no Spring context is needed) and asserts, per
+page: every container has a z-index, nothing runs past the page edge, and — simulating the browser
+hit test — no field's centre is covered by anything with a higher z-index. Covers Confined Space,
+Reclassified, Safe Work and Hot Work, on their respective page sizes. It reproduced both defects
+above before the fix. Tests are skipped by default; run with
+`mvn test -DskipTests=false -Dtest=PermitFormLayoutTest`.

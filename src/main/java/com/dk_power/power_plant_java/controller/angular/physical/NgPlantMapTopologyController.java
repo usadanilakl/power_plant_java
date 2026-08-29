@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.angular.physical;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyAttachRequest;
+import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyAuditDto;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyConnectionDto;
 import com.dk_power.power_plant_java.dto.physical.PlantMapTopologyTerminalDto;
 import com.dk_power.power_plant_java.sevice.physical.NgPlantMapTopologyService;
@@ -55,5 +56,18 @@ public class NgPlantMapTopologyController {
         service.deleteEquipmentPort(objectId, portId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
             .body(new NgApiResponse<>(null, "Equipment connector removed successfully", LocalDateTime.now()));
+    }
+
+    @DeleteMapping("/pipe/{pipeNodeId}")
+    public ResponseEntity<NgApiResponse<Void>> deletePipe(@PathVariable Long pipeNodeId) {
+        service.deletePipe(pipeNodeId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+            .body(new NgApiResponse<>(null, "Pipe and its topology removed successfully", LocalDateTime.now()));
+    }
+
+    @PostMapping("/audit-orphans")
+    public ResponseEntity<NgApiResponse<PlantMapTopologyAuditDto>> auditOrphans() {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+            .body(new NgApiResponse<>(service.auditOrphans(), "Plant Map topology audit complete", LocalDateTime.now()));
     }
 }

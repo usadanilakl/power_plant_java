@@ -35,6 +35,44 @@
           <button (click)="ungroupSelection()" title="Ungroup Selection">Ungroup</button>
         </div>
 
+        <div class="control-group backdrop-controls">
+          <h4 class="group-title">Backdrop</h4>
+          <input #backdropFile type="file" accept="image/*" hidden
+                 (change)="onBackdropFileChosen($event)">
+          <div class="button-row">
+            <button (click)="backdropFile.click()" title="Load a photo or screenshot of the paper form">Load</button>
+            <button (click)="backdrop.clear()" [disabled]="!backdrop.current()" title="Remove the backdrop">Clear</button>
+          </div>
+          @if (backdrop.current(); as bd) {
+            <div class="button-row">
+              <button (click)="backdrop.update({ visible: !bd.visible })"
+                      [title]="bd.visible ? 'Hide backdrop' : 'Show backdrop'">{{ bd.visible ? 'Hide' : 'Show' }}</button>
+              <button (click)="startCalibration()"
+                      [class.active]="backdrop.calibrationStep() > 0"
+                      title="Click the form's two opposite corners to align it exactly">Align</button>
+            </div>
+            <label class="backdrop-opacity" title="Backdrop opacity">
+              Opacity
+              <input type="range" min="0.05" max="1" step="0.05" [value]="bd.opacity"
+                     (input)="onOpacity($event)">
+            </label>
+            <div class="button-row">
+              <button (click)="backdrop.fitToSheet(formSize().width, formSize().height)" title="Fit keeping aspect ratio">Fit</button>
+              <button (click)="backdrop.stretchToSheet(formSize().width, formSize().height)" title="Stretch edge to edge">Stretch</button>
+            </div>
+            <div class="button-row">
+              <button (click)="backdrop.zoom(1 / 1.02)" title="Shrink 2%">-</button>
+              <button (click)="backdrop.nudge(0, -1)" title="Nudge up">↑</button>
+              <button (click)="backdrop.zoom(1.02)" title="Grow 2%">+</button>
+            </div>
+            <div class="button-row">
+              <button (click)="backdrop.nudge(-1, 0)" title="Nudge left">←</button>
+              <button (click)="backdrop.nudge(0, 1)" title="Nudge down">↓</button>
+              <button (click)="backdrop.nudge(1, 0)" title="Nudge right">→</button>
+            </div>
+          }
+        </div>
+
         <div class="control-group alignment-controls">
           <h4 class="group-title">Align</h4>
           <div class="button-row">
@@ -75,6 +113,19 @@
       <div class="form-container" #designArea [ngStyle]="getFormContainerStyle()">
         <div class="grid-background"></div>
 
+        @if (backdrop.current(); as bd) {
+          @if (bd.visible) {
+            <div class="form-backdrop"
+              [style.left.px]="bd.x"
+              [style.top.px]="bd.y"
+              [style.width.px]="bd.width"
+              [style.height.px]="bd.height"
+              [style.opacity]="bd.opacity"
+              [style.background-image]="'url(' + bd.dataUrl + ')'">
+            </div>
+          }
+        }
+
         @if (stateService.selectionBox(); as box) {
           <div class="selection-box"
             [style.left.px]="box.x"
@@ -102,6 +153,16 @@
             </div>
           }
         </div>
+
+        @if (backdrop.calibrationStep() > 0) {
+          <div class="calibration-overlay" (mousedown)="onCalibrationClick($event)">
+            <span class="calibration-hint">
+              {{ backdrop.calibrationStep() === 1
+                  ? 'Click the TOP-LEFT corner of the form in the image'
+                  : 'Now click the BOTTOM-RIGHT corner' }}
+            </span>
+          </div>
+        }
       </div>
     </div>
 

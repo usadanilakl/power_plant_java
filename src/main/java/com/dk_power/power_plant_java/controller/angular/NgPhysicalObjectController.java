@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.diagrams.DiagramDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.physical.PhysicalObject;
 import com.dk_power.power_plant_java.sevice.physical.PhysicalObjectAggregateService;
+import com.dk_power.power_plant_java.sevice.physical.NgPlantMapTopologyService;
 import com.dk_power.power_plant_java.entities.physical.PhysicalObjectType;
 import com.dk_power.power_plant_java.repository.physical.PhysicalObjectRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -60,6 +61,7 @@ public class NgPhysicalObjectController {
     private final ValueRepo valueRepo;
     private final WorkAreaRepo workAreaRepo;
     private final PhysicalObjectAggregateService aggregateService;
+    private final NgPlantMapTopologyService plantMapTopologyService;
 
     /** Whole hierarchy as a flat list of nodes (id + parentId + hasChildren); the frontend assembles the tree. */
     @GetMapping("/tree")
@@ -151,6 +153,7 @@ public class NgPhysicalObjectController {
      * (cheap, recoverable); the node's shape on its parent's canvas simply stops resolving on next open.
      */
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable Long id) {
         PhysicalObject n = repo.findById(id).orElse(null);
         if (n == null) return ResponseEntity.ok(new NgApiResponse<>(null, "not found"));
@@ -158,6 +161,7 @@ public class NgPhysicalObjectController {
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "cannot delete: node has children — delete or move them first"));
         }
+        plantMapTopologyService.deleteEquipmentObject(id);
         n.setDeleted(true);
         repo.save(n);
         return ResponseEntity.ok(new NgApiResponse<>(null, "deleted"));

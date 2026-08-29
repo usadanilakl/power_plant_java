@@ -33,6 +33,13 @@ export interface PlantMapTopologyAttachRequest {
   mergeJunctions?: boolean;
 }
 
+export interface PlantMapTopologyAudit {
+  scannedConnections: number;
+  removedTerminals: number;
+  deletedConnections: number;
+  deletedOrphanPipePlacements: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PlantMapTopologyApiService {
   private http = inject(HttpClient);
@@ -60,5 +67,13 @@ export class PlantMapTopologyApiService {
     return this.http.delete<SpringApiResponse<void>>(
       `${this.baseUrl}/equipment/${objectId}/${encodeURIComponent(portId)}`,
     );
+  }
+
+  deletePipe(pipeNodeId: number): Observable<SpringApiResponse<void>> {
+    return this.http.delete<SpringApiResponse<void>>(`${this.baseUrl}/pipe/${pipeNodeId}`);
+  }
+
+  auditOrphans(): Observable<SpringApiResponse<PlantMapTopologyAudit>> {
+    return this.http.post<SpringApiResponse<PlantMapTopologyAudit>>(`${this.baseUrl}/audit-orphans`, {});
   }
 }

@@ -419,8 +419,6 @@
 .pipe-banner { background: #143a2a; color: #b7f0cf; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .pipe-banner .psnap { display: inline-flex; align-items: center; gap: 3px; }
 .pipe-banner button { background: #1c4a2a; border: 0; color: #9fe6a4; cursor: pointer; font: inherit; border-radius: 3px; padding: 1px 6px; }
-.pipe-banner.continuing { background: #143050; color: #bcd8f5; }
-.pipe-banner.continuing button { background: #1c3a5a; color: #9fc8ee; }
 .pipe-connect-banner { background: #17334b; color: #cce7ff; padding: 3px 8px; border: 1px solid #315c7e;
   border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; gap: 7px; }
 .pipe-connect-banner button { border: 0; border-radius: 3px; background: #264c69; color: #e2f2ff; cursor: pointer; padding: 2px 6px; }
@@ -447,6 +445,11 @@
 .pipe-end-handle.source-selected circle { fill: #164a72; stroke: #8ed2ff; stroke-width: 3; }
 .pipe-end-handle.target circle { fill: #173326; stroke: #55c986; }
 .pipe-end-handle.target.hover circle, .pipe-end-handle.target:hover circle { fill: #1e6a3e; stroke: #93f7bb; stroke-width: 3; }
+.selected-pipe-end-label { pointer-events: none; }
+.selected-pipe-end-label circle { fill: #17202a; stroke: #a9d4ff; stroke-width: 1.5; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px #000); }
+.selected-pipe-end-label text { fill: #f4f9ff; font: 700 8px system-ui, sans-serif; text-anchor: middle;
+  dominant-baseline: central; }
 .top-layer .pipe-body-handle { pointer-events: none; }
 .pipe-body-handle { cursor: crosshair; }
 .pipe-body-handle circle { fill: #17202a; stroke: #7cc6ff; stroke-width: 2; vector-effect: non-scaling-stroke; }
