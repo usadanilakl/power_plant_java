@@ -96,14 +96,7 @@
 .hint2 { color: #777; font-size: 11px; margin-left: 8px; }
 .zoom-btn { margin-left: auto; background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 12px; }
 .zoom-btn:hover { background: #333; }
-.interaction-mode { display: inline-flex; border: 1px solid #414a54; border-radius: 5px; overflow: hidden; }
-.interaction-mode button { border: 0; border-right: 1px solid #414a54; background: #23282e; color: #aebac5;
-  padding: 3px 8px; cursor: pointer; font: inherit; font-size: 11px; }
-.interaction-mode button:last-child { border-right: 0; }
-.interaction-mode button.on { background: #17405e; color: #e3f3ff; }
-
 .scroll { flex: 1 1 auto; overflow: hidden; background: #191919; min-height: 0; cursor: grab; touch-action: none; position: relative; }
-.scroll.arrange-mode { cursor: default; }
 .scroll.space-pan, .scroll.space-pan .box { cursor: grab !important; }
 .follow-overlay { position: absolute; top: 10px; left: 10px; z-index: 20; display: flex; align-items: center; gap: 6px;
   flex-wrap: wrap; max-width: 62%; background: rgba(20,58,42,0.92); border: 1px solid #2e7d4a; border-radius: 6px; padding: 4px 8px; }
@@ -126,8 +119,8 @@
 /* per-pipe stroke/width come from [attr] bindings — keep them OUT of CSS so they aren't overridden. */
 /* thin bright centre-line → gives the pipe a rounded, tube-like sheen. */
 /* route edit handles (visible only when the pipe is selected) */
-.wp { fill: #fff; stroke: #7cc6ff; stroke-width: 2; cursor: grab; }
-.wp-add { fill: rgba(124,198,255,0.55); stroke: #7cc6ff; stroke-width: 1; cursor: crosshair; opacity: 0.55; }
+.wp { fill: #fff; stroke: #7cc6ff; stroke-width: 2; cursor: grab; vector-effect: non-scaling-stroke; }
+.wp-add { fill: rgba(124,198,255,0.55); stroke: #7cc6ff; stroke-width: 1; cursor: crosshair; opacity: 0.55; vector-effect: non-scaling-stroke; }
 .wp-add:hover { opacity: 1; }
 
 /* ── Footprints (plan-view shapes) ── the fill + border color read by system/type, the shape reads the
@@ -136,8 +129,6 @@
   cursor: pointer; user-select: none; touch-action: none;
   display: flex; align-items: center; justify-content: center; text-align: center;
   box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
-.arrange-mode .box { cursor: move; }
-.arrange-mode .box:active { cursor: grabbing; }
 .box.sel { box-shadow: 0 0 0 2px #7cc6ff, 0 2px 8px rgba(0,0,0,0.45); z-index: 3; }
 
 /* shape variants (fill comes from the inline background; border-radius clips it to the footprint) */
@@ -209,6 +200,12 @@
 .box .rename-h { position: absolute; top: 4px; right: 22px; color: #7cc6ff; font-size: 12px; line-height: 1;
   cursor: pointer; z-index: 3; transform: scale(var(--inv-zoom)); transform-origin: top right; }
 .box .rename-h:hover { color: #cfe6ff; }
+.box .move-h { position: absolute; left: 50%; top: 0; width: 22px; height: 22px; display: flex; align-items: center;
+  justify-content: center; color: #eaf6ff; background: #17405e; border: 2px solid #9ad7ff; border-radius: 50%;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.55); cursor: move; z-index: 5; touch-action: none;
+  transform: translate(-50%, -62%) scale(var(--inv-zoom)); transform-origin: center; font: 700 13px/1 system-ui, sans-serif; }
+.box .move-h:hover { background: #24638e; }
+.box .move-h:active { cursor: grabbing; }
 .box .wa-badge { position: absolute; bottom: 3px; left: 6px; font-size: 11px; line-height: 1; color: #ffca28; text-shadow: 0 0 2px #000; z-index: 2;
   transform: scale(var(--inv-zoom)); transform-origin: bottom left; }
 .box .resize { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; cursor: nwse-resize; touch-action: none;
@@ -217,9 +214,7 @@
 .box.sel .resize { width: 20px; height: 20px; background: linear-gradient(135deg, transparent 42%, #7cc6ff 42%); }
 /* round/capsule shapes: nudge the resize grip inward so it lands on the outline, not the empty corner */
 .box.shape-circle .resize, .box.shape-run .resize { right: 3px; bottom: 3px; }
-.box .resize { display: none; }
-.arrange-mode .box .resize { display: block; }
-.arrange-mode .box .resize { transform: scale(var(--inv-zoom)); transform-origin: bottom right; }
+.box .resize { transform: scale(var(--inv-zoom)); transform-origin: bottom right; }
 
 .box.locate-pulse, .nest.locate-pulse { animation: locateShape 0.55s ease-in-out 3; }
 @keyframes locateShape { 50% { box-shadow: 0 0 0 5px rgba(126,231,135,0.9), 0 0 18px rgba(126,231,135,0.65); } }
@@ -377,17 +372,16 @@
 .opipe-hl { fill: none; pointer-events: none; stroke: rgba(255,255,255,0.5); stroke-linecap: round; stroke-linejoin: round; } /* tube sheen */
 .opipe-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; stroke-linecap: round; stroke-linejoin: round; }
 .visible-pipe-hit { pointer-events: stroke; }
-/* ── visual flow sim: animated dashes on flowing pipes; blocked/unreached greyed; source glows ── */
+/* ── nominal flow: animated dashes on reached pipe segments; unreached routes are dimmed ── */
 .opipe-flow { fill: none; pointer-events: none; stroke: #eaf6ff; stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 6 16; animation: flowdash 0.7s linear infinite; opacity: 0.95; }
 .opipe-flow.reversed { animation-direction: reverse; }
 @keyframes flowdash { to { stroke-dashoffset: -22; } }
-.opipe.flow-off { opacity: 0.25; }                                            /* not reached from the source */
-.opipe.flow-blocked { stroke: #ef5350 !important; opacity: 0.6; stroke-dasharray: 4 6; } /* a closed valve blocks it */
-.flow-src .opipe { filter: drop-shadow(0 0 5px #7cc6ff); }                    /* the chosen source pipe */
+.opipe.flow-off { opacity: 0.25; }                                            /* not reached from a Supply port */
 .connect-source .opipe { filter: drop-shadow(0 0 6px #48a9ff); opacity: 1 !important; }
 .connect-candidate .opipe { filter: drop-shadow(0 0 2px rgba(84, 211, 145, 0.65)); }
 .connect-hover .opipe { filter: drop-shadow(0 0 7px #55e69a); stroke: #55e69a !important; opacity: 1 !important; }
+.current-connection .opipe { filter: drop-shadow(0 0 7px #f3c969); stroke: #f3c969 !important; opacity: 1 !important; }
 .pipe-hover .opipe { filter: drop-shadow(0 0 6px #7ee787); stroke: #7ee787 !important; opacity: 1 !important; }
 .locate-pulse .opipe { animation: locatePipe 0.55s ease-in-out 3; }
 @keyframes locatePipe { 50% { filter: drop-shadow(0 0 10px #7ee787); stroke: #b4ffc0; } }
@@ -411,22 +405,36 @@
 .pipe-quick { position: absolute; transform: translate(-50%, calc(-100% - 18px)) scale(var(--inv-zoom)); transform-origin: center bottom; display: flex; align-items: center;
   gap: 3px; z-index: 18; padding: 4px; border: 1px solid #40546a; border-radius: 5px; background: rgba(18, 24, 31, 0.96);
   box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; }
-.pipe-quick-name { max-width: 130px; overflow: hidden; text-overflow: ellipsis; color: #dceeff; font-weight: 600; padding: 0 4px; }
+.pipe-quick-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; color: #dceeff; font-weight: 600; padding: 0 4px; }
 .pipe-quick button { border: 1px solid #3b4653; border-radius: 3px; background: #252c34; color: #d8e1ea;
   cursor: pointer; padding: 3px 6px; font: 11px/1.2 system-ui, sans-serif; }
 .pipe-quick button:hover { background: #34404c; border-color: #6684a2; }
+.pipe-quick button.on { background: #194c35; border-color: #4b9a70; color: #caffdc; }
+.pipe-quick button.move { cursor: grab; border-color: #557b98; color: #dff3ff; }
+.pipe-quick button.move:active { cursor: grabbing; }
 .pipe-quick button.close { color: #aeb8c2; padding-inline: 5px; }
-.pipe-connect-confirm { position: absolute; transform: translate(-50%, calc(-100% - 18px)) scale(var(--inv-zoom)); transform-origin: center bottom; z-index: 20;
-  width: 245px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 9px;
+.connection-dock { position: absolute; top: 12px; right: 12px; z-index: 30; width: min(310px, calc(100% - 24px));
+  box-sizing: border-box; display: flex; flex-direction: column; gap: 7px; padding: 10px;
   border: 1px solid #4c7b61; border-radius: 6px; background: rgba(18, 28, 23, 0.98); color: #dff5e7;
-  box-shadow: 0 5px 18px rgba(0,0,0,0.58); }
-.pipe-connect-confirm > span { color: #afc8b8; font-size: 11px; overflow-wrap: anywhere; }
+  box-shadow: 0 5px 18px rgba(0,0,0,0.58); font: 11px system-ui, sans-serif; }
+.connection-dock > span { color: #afc8b8; overflow-wrap: anywhere; }
 .confirm-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .confirm-actions button { border: 1px solid #465249; border-radius: 3px; background: #252d28; color: #dce7df;
   cursor: pointer; padding: 4px 7px; font: 11px system-ui, sans-serif; }
 .confirm-actions button.primary { background: #1f663b; border-color: #3c9b61; color: #e5ffed; }
 .confirm-actions button:hover:not([disabled]) { filter: brightness(1.2); }
 .confirm-actions button[disabled] { opacity: 0.5; cursor: default; }
+.connection-dock > strong, .connection-dock ng-container > strong { color: #dff5e7; font-size: 12px; }
+.endpoint-current-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 5px;
+  padding: 4px; border: 1px solid #51472d; border-radius: 3px; background: #262319; }
+.connection-kind { color: #c6a95f; text-transform: uppercase; font-size: 8px; }
+.connection-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.endpoint-current-row button, .pipe-disconnect { border: 1px solid #794747; border-radius: 3px; background: #432626;
+  color: #ffc2c2; cursor: pointer; padding: 3px 6px; font: 9px system-ui, sans-serif; }
+.endpoint-current-row button:hover:not([disabled]), .pipe-disconnect:hover:not([disabled]) { background: #5a3030; }
+.endpoint-current-row button[disabled], .pipe-disconnect[disabled] { opacity: 0.5; cursor: default; }
+.endpoint-none { color: #9c927a; font-style: italic; }
+.endpoint-pick-hint { color: #a49d89; font-size: 9px; }
 
 .pipe-banner { background: #143a2a; color: #b7f0cf; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .pipe-banner .psnap { display: inline-flex; align-items: center; gap: 3px; }
@@ -468,6 +476,8 @@
 .equipment-port.boundary-port .equipment-port-dot { stroke: #d7e9f8; stroke-dasharray: 2 1; }
 .equipment-port.sel .equipment-port-dot, .equipment-port:hover .equipment-port-dot {
   stroke: #fff; stroke-width: 3; filter: drop-shadow(0 0 4px #7cc6ff); }
+.equipment-port.current-connection .equipment-port-dot { fill: #ffd166; stroke: #fff0b3; stroke-width: 3;
+  filter: drop-shadow(0 0 5px #f3c969); }
 .equipment-port text { fill: #e6edf3; stroke: #12151a; stroke-width: 3px; paint-order: stroke; font: 700 9px system-ui, sans-serif;
   pointer-events: none; }
 @keyframes endpointPulse { 50% { r: 13; filter: drop-shadow(0 0 5px #54b8ff); } }
@@ -476,7 +486,7 @@
 .pipe-conn-bg { fill: #143050; stroke: #7cc6ff; stroke-width: 2; }
 .pipe-conn.in .pipe-conn-bg { fill: #143a2a; stroke: #3fbf7f; }
 .pipe-conn-arrow { fill: #bcd8f5; }
-.pipe-junction { fill: #cfe6ff; stroke: #12151a; stroke-width: 1; pointer-events: none; } /* tee/connection node */
+.pipe-junction { fill: #cfe6ff; stroke: #12151a; stroke-width: 1; pointer-events: none; vector-effect: non-scaling-stroke; } /* tee/connection node */
 .pipe-conn.in .pipe-conn-arrow { fill: #baf0d0; }
 .pipe-conn:hover .pipe-conn-bg { filter: brightness(1.35); }
 /* the counterpart connector pulses after you jump through a link, so you can see where the run continues */
@@ -486,13 +496,21 @@
   50% { stroke-width: 5; filter: drop-shadow(0 0 6px #ffd54f) brightness(1.6); }
 }
 .pipe-vtx-h { cursor: move; }
+.pipe-vtx-h.endpoint { fill: #173d29; stroke: #7ee787; stroke-width: 3; cursor: crosshair; filter: drop-shadow(0 0 4px #55a96a); }
+.pipe-end-label { fill: #effff3; font: 700 7px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .route-edit-btn { width: 100%; margin-top: 6px; padding: 5px 8px; font-size: 12px; background: #1c2230; color: #cfe6ff;
   border: 1px solid #2c3547; border-radius: 5px; cursor: pointer; }
 .route-edit-btn.on { background: #15334f; border-color: #7cc6ff; color: #fff; }
-.flow-reverse-btn { width: 100%; padding: 5px 8px; font-size: 12px; background: #22262c; color: #cfd8e0;
-  border: 1px solid #3a3f47; border-radius: 3px; cursor: pointer; }
-.flow-reverse-btn:hover { background: #2c313a; }
-.flow-reverse-btn.on { background: #3b2f16; border-color: #d8a94a; color: #ffe0a3; }
+.flow-status { padding: 2px 7px; border: 1px solid #42617a; border-radius: 10px; color: #bee1ff; background: #1a3244; font-size: 10px; }
+.pipe-flow-setup { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid #384b5d;
+  border-radius: 5px; background: #1b242c; }
+.pipe-flow-setup h4 { margin: 0 0 2px; color: #b9dcf7; }
+.flow-setup-label { color: #8fa7bb; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.flow-choice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+.flow-choice button { min-width: 0; padding: 5px 3px; border: 1px solid #3d4a55; border-radius: 3px;
+  background: #252b31; color: #c9d3dc; cursor: pointer; font: 10px system-ui, sans-serif; }
+.flow-choice button:hover { background: #303943; }
+.flow-choice button.on { border-color: #6db6e8; background: #17405e; color: #ecf8ff; }
 .pipe-location { margin: -6px 0 0; color: #8398ad; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pipe-primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .pipe-primary-actions button { min-width: 0; padding: 6px 7px; border: 1px solid #3a444f; border-radius: 3px;
@@ -500,7 +518,6 @@
 .pipe-primary-actions button:hover:not([disabled]) { background: #313a44; }
 .pipe-primary-actions button[disabled] { opacity: 0.5; cursor: default; }
 .pipe-primary-actions .pipe-connect-btn { background: #1c4a2a; border-color: #2e7d4a; color: #b7f0cf; }
-.pipe-primary-actions .flow-reverse-btn { width: auto; }
 .pipe-links { display: flex; flex-direction: column; gap: 6px; }
 .pipe-link-list { display: flex; flex-direction: column; gap: 4px; }
 .pipe-link-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: 5px;
@@ -516,6 +533,7 @@
   color: #b9dcf6; cursor: pointer; font: 10px system-ui, sans-serif; }
 .pipe-reconnect:hover:not([disabled]) { background: #284961; }
 .pipe-reconnect[disabled] { opacity: 0.5; cursor: default; }
+.pipe-disconnect.compact { white-space: nowrap; }
 .pipe-connect-btn { padding: 6px 9px; border: 1px solid #2e7d4a; border-radius: 3px; background: #1c4a2a;
   color: #b7f0cf; cursor: pointer; font: inherit; }
 .pipe-connect-btn:hover:not([disabled]) { background: #245d35; }
@@ -588,7 +606,7 @@
 .port-section-head .sub { display: block; color: #8fa3b5; font-size: 9px; line-height: 1.25; }
 .port-section-head .pipe-connect-btn { flex: 0 0 auto; }
 .port-section-head h4, .pipe-equipment-links h4 { margin: 0; }
-.equipment-port-columns { display: grid; grid-template-columns: 52px 78px minmax(0, 1fr) 24px; gap: 4px;
+.equipment-port-columns { display: grid; grid-template-columns: 52px 82px minmax(0, 1fr) 78px 24px; gap: 4px;
   padding: 0 5px; color: #8194a5; font-size: 8px; text-transform: uppercase; }
 .equipment-port-location { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 8px;
   border: 1px dashed #496273; border-radius: 6px; background: #1d252c; color: #9eafbd; font-size: 10px; }
@@ -596,7 +614,7 @@
 .equipment-port-location button { border: 1px solid #45677f; border-radius: 3px; background: #20384a; color: #d7edff;
   padding: 4px 7px; cursor: pointer; font: inherit; }
 .equipment-port-location button:hover { background: #294b63; }
-.equipment-port-row { display: grid; grid-template-columns: 52px 78px minmax(0, 1fr) 24px; gap: 4px; padding: 5px;
+.equipment-port-row { display: grid; grid-template-columns: 52px 82px minmax(0, 1fr) 78px 24px; gap: 4px; padding: 5px;
   border: 1px solid #343a43; border-radius: 4px; background: #20242a; }
 .equipment-port-row.sel { border-color: #7cc6ff; background: #182d40; }
 .equipment-port-row input, .equipment-port-row select { min-width: 0; width: 100%; box-sizing: border-box; background: #171b20;

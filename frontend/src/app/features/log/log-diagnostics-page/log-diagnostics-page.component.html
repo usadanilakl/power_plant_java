@@ -33,7 +33,7 @@
         type="button"
         class="btn-refresh"
         (click)="refresh()"
-        [disabled]="refreshing"
+        [disabled]="loading || refreshing || loadingOlder"
         aria-label="Refresh log events now"
       >
         {{ refreshing ? 'Refreshing...' : 'Refresh' }}

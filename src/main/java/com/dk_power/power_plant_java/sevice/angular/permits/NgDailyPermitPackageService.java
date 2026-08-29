@@ -614,6 +614,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             HotWorkDto dto = hotWorkMapper.convertToDto(hw);
             dto.setId(null); dto.setDate(date);
             dto.setWorkScope(workScope); dto.setRedTagNum(null);
+            clearHotWorkExecutionState(dto);
             HotWork newHw = hotWorkMapper.convertToEntity(dto);
             newHw.setPermitStatus(buildingStatus);
             newHw.setPermitNumber(permitNumberGenerator.generate(date));
@@ -1533,4 +1534,42 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return true;
     }
 
+
+    /**
+     * A copied package is a NEW day's permit, so nothing that records the previous day's execution
+     * may carry over. Before the 2026-08-27 revision this did not matter — the mapper carried so
+     * few fields that execution state was dropped by accident. Now that approvals, the ACTIVE HOT
+     * WORK window and the whole cancellation/monitoring block round-trip properly, a copy would
+     * otherwise arrive pre-signed, pre-started and pre-cancelled.
+     *
+     * <p>Deliberately preserved: the checklist ({@code measures}), {@code workType}, meter details
+     * and the fire-protection state — those describe the job setup, not its execution.
+     */
+    private void clearHotWorkExecutionState(HotWorkDto dto) {
+        dto.setIssuerSignature(null);
+        dto.setApprovedDate(null);
+        dto.setApprovedTime(null);
+        dto.setActualStartTime(null);
+        dto.setActualEndTime(null);
+        dto.setCancelRequestorName(null);
+        dto.setCancelRequestorSignature(null);
+        dto.setCancelRequestorDate(null);
+        dto.setCancelRequestorTime(null);
+        dto.setCancelFireWatchName(null);
+        dto.setCancelFireWatchSignature(null);
+        dto.setCancelFireWatchDate(null);
+        dto.setCancelFireWatchTime(null);
+        dto.setFireMonitorName(null);
+        dto.setFireMonitorSignature(null);
+        dto.setFireMonitorDate(null);
+        dto.setFireMonitorTime(null);
+        dto.setWorkCompleted(false);
+        dto.setCancelledBy(null);
+        dto.setCancelledDate(null);
+        dto.setCancelledTime(null);
+        // Air-test readings are time-of-day specific and must be retaken.
+        dto.setTimeOfInitialTest(null);
+        dto.setInitialTestInitials(null);
+        dto.setInitialTestResult(null);
+    }
 }

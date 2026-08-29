@@ -15,6 +15,8 @@ export interface TableColumnPrefs {
   order?: string[];
   /** Column ids the user hid. */
   hidden?: string[];
+  /** Column ids pinned to the left edge, in pin order. */
+  pinned?: string[];
   /** Column id -> pixel width, so a resize survives a reload. */
   widths?: { [columnId: string]: number };
 }

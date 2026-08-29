@@ -416,10 +416,17 @@ export class TableComponent implements OnInit, AfterViewInit {
     if (shown.length === 0) shown = declared;
 
     const order = prefs.order ?? [];
-    if (order.length === 0) return shown;
-
     const rank = new Map(order.map((id, i) => [id, i]));
+    const pinned = prefs.pinned ?? [];
+    const pinRank = new Map(pinned.map((id, i) => [id, i]));
+
+    // Pinned columns lead, in the order they were pinned: a frozen column has to be
+    // adjacent to the left edge, so one sitting mid-table could not park anywhere
+    // sensible. Everything else keeps the user's order, then the declared order.
     return [...shown].sort((a, b) => {
+      const pa = pinRank.has(a.id) ? pinRank.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const pb = pinRank.has(b.id) ? pinRank.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      if (pa !== pb) return pa - pb;
       const ra = rank.has(a.id) ? rank.get(a.id)! : Number.MAX_SAFE_INTEGER;
       const rb = rank.has(b.id) ? rank.get(b.id)! : Number.MAX_SAFE_INTEGER;
       if (ra !== rb) return ra - rb;
@@ -442,9 +449,17 @@ export class TableComponent implements OnInit, AfterViewInit {
     const hidden = new Set(this.columnPrefs().hidden ?? []);
     const order = this.columnPrefs().order ?? [];
     const rank = new Map(order.map((id, i) => [id, i]));
+    const pinned = this.columnPrefs().pinned ?? [];
+    const pinRank = new Map(pinned.map((id, i) => [id, i]));
     const declared = this.columns();
+    // Same comparator visibleColumns() uses, pinned rank included: the panel is how the
+    // order is edited, so listing it in a different order than the table renders makes
+    // every drag land somewhere the user did not aim for.
     return [...declared]
       .sort((a, b) => {
+        const pa = pinRank.has(a.id) ? pinRank.get(a.id)! : Number.MAX_SAFE_INTEGER;
+        const pb = pinRank.has(b.id) ? pinRank.get(b.id)! : Number.MAX_SAFE_INTEGER;
+        if (pa !== pb) return pa - pb;
         const ra = rank.has(a.id) ? rank.get(a.id)! : Number.MAX_SAFE_INTEGER;
         const rb = rank.has(b.id) ? rank.get(b.id)! : Number.MAX_SAFE_INTEGER;
         if (ra !== rb) return ra - rb;
@@ -452,6 +467,122 @@ export class TableComponent implements OnInit, AfterViewInit {
       })
       .map((column) => ({ column, visible: !hidden.has(column.id) }));
   });
+
+  //====================== Pinned (frozen) columns ======================
+  /**
+   * Width of the two fixed columns the table renders ahead of the data columns. They
+   * have to freeze along with the pinned ones — a pinned column parked at x=100 while the
+   * index column scrolled away would leave a gap of scrolled content beside it.
+   */
+  private static readonly ROW_INDEX_WIDTH = 44;
+  private static readonly SYNC_COL_WIDTH = 56;
+
+  pinnedIds = computed<string[]>(() => this.columnPrefs().pinned ?? []);
+  hasPinnedColumns = computed(() => this.pinnedIds().length > 0);
+
+  isColumnPinned(column: Column): boolean {
+    return this.pinnedIds().includes(column.id);
+  }
+
+  /** Offset of the leading fixed columns, so the first pinned data column starts after them. */
+  private leadingPinWidth(): number {
+    return (
+      (this.showRowIndex() ? TableComponent.ROW_INDEX_WIDTH : 0) +
+      (this.driftEntityType() ? TableComponent.SYNC_COL_WIDTH : 0)
+    );
+  }
+
+  /** Left offset for the sync column (it sits after the row-index column). */
+  syncColumnLeft(): number {
+    return this.showRowIndex() ? TableComponent.ROW_INDEX_WIDTH : 0;
+  }
+
+  /**
+   * Distance from the left edge at which this pinned column parks — the leading fixed
+   * columns plus every pinned column before it.
+   * <p>
+   * Computed per call rather than memoised because the widths come from the resize
+   * service's plain Map, which is not reactive; the template already re-reads
+   * getColumnWidth() for every cell on every pass, so this follows a drag the same way.
+   * Pinned counts are small, so the walk is cheap.
+   */
+  pinnedLeft(column: Column): number {
+    let offset = this.leadingPinWidth();
+    for (const candidate of this.visibleColumns()) {
+      if (candidate.id === column.id) break;
+      if (this.isColumnPinned(candidate)) offset += this.resizeService.getColumnWidth(candidate.id);
+    }
+    return offset;
+  }
+
+  /** The rightmost pinned column carries the seam shadow. Precomputed: the template asks
+   *  this for every header cell and every body cell of every rendered row. */
+  private lastPinnedId = computed<string | null>(() => {
+    const pinned = this.visibleColumns().filter((c) => this.isColumnPinned(c));
+    return pinned.length ? pinned[pinned.length - 1].id : null;
+  });
+
+  isLastPinnedColumn(column: Column): boolean {
+    return this.lastPinnedId() === column.id;
+  }
+
+  togglePin(column: Column): void {
+    const pinned = this.pinnedIds().filter((id) => id !== column.id);
+    if (!this.isColumnPinned(column)) pinned.push(column.id);
+    this.updatePrefs({ pinned });
+    // Pinning reorders the table, so the shared-by-position filter boxes move seats.
+    this.refreshFilterInputs();
+  }
+
+  /**
+   * Inline style for a body cell.
+   * <p>
+   * A sticky cell paints nothing of its own, so the scrolling rows slide UNDER it unless
+   * it carries an opaque background. Class-based row states are handled in CSS; the one
+   * thing CSS cannot reach is the inline highlight {@link TableSyncService#getRowStyle}
+   * puts on the {@code <tr>} — an inline background on the row never paints the cell. So
+   * for pinned cells the row's own style is merged in underneath the cell style.
+   */
+  cellStyle(item: any, column: Column): { [key: string]: string } {
+    const cellStyle = this.clickService.getCellStyleWithHover(item, column);
+    if (!this.isColumnPinned(column)) return cellStyle;
+
+    // Merge only the keys the cell actually sets. Mappers express "no styling" as
+    // { 'background-color': '', 'color': '' }, and spreading those blanks over the row
+    // highlight cleared it — the frozen cell went plain while the rest of the row stayed
+    // highlighted.
+    const merged: { [key: string]: string } = { ...this.syncService.getRowStyle(item) };
+    Object.entries(cellStyle).forEach(([key, value]) => {
+      if (value !== '' && value != null) merged[key] = value;
+    });
+    return merged;
+  }
+
+  /**
+   * Row highlight for the row-index and sync cells. They carry no cell styling of their
+   * own, so once frozen they showed the plain pinned background while the rest of the row
+   * was highlighted. Only needed while pinned — unfrozen, the row paints through them.
+   */
+  leadingCellStyle(item: any): { [key: string]: string } {
+    return this.hasPinnedColumns() ? this.syncService.getRowStyle(item) : {};
+  }
+
+  /**
+   * Width both <table> elements are sized to.
+   * <p>
+   * Summed from the SAME source the cells render with. dataService.totalTableWidth() sums
+   * Column.width, but a cell's width comes from resizeService.getColumnWidth(), which
+   * prefers its own map — so a restored width preference made the table's declared width
+   * disagree with the sum of its cells, and table-layout:fixed redistributed the
+   * difference, pushing every pinned column's computed offset off its real edge.
+   */
+  renderedTableWidth(): number {
+    const columns = this.visibleColumns().reduce(
+      (sum, c) => sum + this.resizeService.getColumnWidth(c.id),
+      0
+    );
+    return columns + this.leadingPinWidth();
+  }
 
   /** How many declared columns the user has hidden — shown on the Columns button. */
   hiddenColumnCount = computed(
@@ -492,7 +623,10 @@ export class TableComponent implements OnInit, AfterViewInit {
       if (!this.canHideMore()) return;
       hidden.add(column.id);
     }
-    this.updatePrefs({ hidden: Array.from(hidden) });
+    // A hidden column must not keep a pin: it would hold a slot in the frozen block
+    // that nothing renders into, pushing every other pinned column's offset out.
+    const pinned = this.pinnedIds().filter((id) => !hidden.has(id));
+    this.updatePrefs({ hidden: Array.from(hidden), pinned });
     // The filter boxes are shared by position, so whichever column now sits in each seat
     // has to be re-seeded — otherwise showing a column again leaves it displaying the
     // text of whatever used to occupy that slot.
@@ -516,7 +650,11 @@ export class TableComponent implements OnInit, AfterViewInit {
   onColumnReorder(event: CdkDragDrop<unknown>): void {
     const ids = this.columnPanelRows().map((r) => r.column.id);
     moveItemInArray(ids, event.previousIndex, event.currentIndex);
-    this.updatePrefs({ order: ids });
+    // Pinned columns are sorted by their position in `pinned`, which takes precedence
+    // over `order` — so their new relative order has to be written back there too, or
+    // dragging one pinned column past another looked like it did nothing.
+    const pinned = ids.filter((id) => this.pinnedIds().includes(id));
+    this.updatePrefs({ order: ids, pinned });
   }
 
   showAllColumns(): void {

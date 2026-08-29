@@ -1,4 +1,5 @@
 import type { PipeFitting, PipeGeo } from './services/plant-map-state.service';
+import type { PlantMapTopologyConnection } from './services/plant-map-topology-api.service';
 
 export interface PipeFlowResult {
   segsStr: string[];
@@ -11,18 +12,28 @@ export interface EquipmentPortNetwork {
   portIds: string[];
 }
 
+export interface FlowBoundaryPort {
+  objectId: number;
+  portId: string;
+  role: 'supply' | 'consumer';
+}
+
 interface FlowEdge {
   id: string;
   pipeId: string;
   a: string;
   b: string;
   path: { x: number; y: number }[];
+  direction: 'forward' | 'reverse' | 'both';
 }
 
 function pathAlong(points: { x: number; y: number }[]): number[] {
   const distances = [0];
-  for (let i = 1; i < points.length; i++) {
-    distances.push(distances[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+  for (let index = 1; index < points.length; index++) {
+    distances.push(distances[index - 1] + Math.hypot(
+      points[index].x - points[index - 1].x,
+      points[index].y - points[index - 1].y,
+    ));
   }
   return distances;
 }
@@ -31,11 +42,10 @@ function projectOnSegment(
   point: { x: number; y: number },
   a: { x: number; y: number },
   b: { x: number; y: number },
-): { x: number; y: number } {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
+) {
+  const dx = b.x - a.x, dy = b.y - a.y;
   const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared === 0) return { ...a };
+  if (!lengthSquared) return { ...a };
   const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared));
   return { x: a.x + t * dx, y: a.y + t * dy };
 }
@@ -45,26 +55,25 @@ function projectedDistance(
   cumulative: number[],
   position: { x: number; y: number },
 ): number {
-  let bestDistance = Infinity;
-  let along = 0;
-  for (let i = 0; i < points.length - 1; i++) {
-    const projection = projectOnSegment(position, points[i], points[i + 1]);
+  let bestDistance = Infinity, along = 0;
+  for (let index = 0; index < points.length - 1; index++) {
+    const projection = projectOnSegment(position, points[index], points[index + 1]);
     const distance = (projection.x - position.x) ** 2 + (projection.y - position.y) ** 2;
     if (distance < bestDistance) {
       bestDistance = distance;
-      along = cumulative[i] + Math.hypot(projection.x - points[i].x, projection.y - points[i].y);
+      along = cumulative[index] + Math.hypot(projection.x - points[index].x, projection.y - points[index].y);
     }
   }
   return along;
 }
 
-function pointAt(points: { x: number; y: number }[], cumulative: number[], along: number): { x: number; y: number } {
-  for (let i = 0; i < points.length - 1; i++) {
-    if (along <= cumulative[i + 1] || i === points.length - 2) {
-      const t = (along - cumulative[i]) / Math.max(1e-6, cumulative[i + 1] - cumulative[i]);
+function pointAt(points: { x: number; y: number }[], cumulative: number[], along: number) {
+  for (let index = 0; index < points.length - 1; index++) {
+    if (along <= cumulative[index + 1] || index === points.length - 2) {
+      const t = (along - cumulative[index]) / Math.max(1e-6, cumulative[index + 1] - cumulative[index]);
       return {
-        x: points[i].x + t * (points[i + 1].x - points[i].x),
-        y: points[i].y + t * (points[i + 1].y - points[i].y),
+        x: points[index].x + t * (points[index + 1].x - points[index].x),
+        y: points[index].y + t * (points[index + 1].y - points[index].y),
       };
     }
   }
@@ -72,179 +81,138 @@ function pointAt(points: { x: number; y: number }[], cumulative: number[], along
 }
 
 function slicePath(
-  points: { x: number; y: number }[],
-  cumulative: number[],
-  from: number,
-  to: number,
-): { x: number; y: number }[] {
+  points: { x: number; y: number }[], cumulative: number[], from: number, to: number,
+) {
   const path = [pointAt(points, cumulative, from)];
-  for (let i = 0; i < points.length; i++) {
-    if (cumulative[i] > from + 0.5 && cumulative[i] < to - 0.5) path.push(points[i]);
+  for (let index = 0; index < points.length; index++) {
+    if (cumulative[index] > from + 0.5 && cumulative[index] < to - 0.5) path.push(points[index]);
   }
   path.push(pointAt(points, cumulative, to));
   return path;
 }
 
 /**
- * Trace the visual pipe network from one source.
- *
- * A physical endpoint always has its own positional graph node. Every cross-section
- * port on that endpoint is then added as an alias to its shared link node. Keeping
- * all aliases is important: one endpoint may legitimately fan out to several other
- * sections, and older traversal code silently retained only its first port.
+ * Deterministic nominal-flow trace over the canonical topology graph.
+ * Pipes are links, never sources or destinations. Supply/consumer semantics belong to ports; A/B direction is
+ * an explicit link constraint. Visual proximity is ignored, so moving lines cannot silently change topology.
  */
 export function tracePipeFlow(
   pipes: PipeGeo[],
-  sourcePipeId: string | null,
+  topology: PlantMapTopologyConnection[],
+  boundaries: FlowBoundaryPort[],
   isValve: (fitting: PipeFitting) => boolean,
   equipmentNetworks: EquipmentPortNetwork[] = [],
 ): Map<string, PipeFlowResult> {
   const result = new Map<string, PipeFlowResult>();
-  const all = pipes.filter(pipe => pipe.points.length >= 2);
-  const sourcePipe = all.find(pipe => pipe.id === sourcePipeId);
-  if (!sourcePipe) return result;
+  const all = pipes.filter(pipe => pipe.nodeId != null && pipe.points.length >= 2);
+  if (!all.length) return result;
 
-  const positionKey = (parentId: number, point: { x: number; y: number }) =>
-    `${parentId}:${Math.round(point.x / 3)}_${Math.round(point.y / 3)}`;
-  const endpointNode = (pipe: PipeGeo, atStart: boolean) =>
-    positionKey(pipe.parentId, atStart ? pipe.points[0] : pipe.points[pipe.points.length - 1]);
-
+  const terminalNode = (pipeNodeId: number, end: string) => `terminal:${pipeNodeId}:${end}`;
+  const junctionNode = (connectionKey: string) => `junction:${connectionKey}`;
+  const equipmentKey = (objectId: number, portId: string) => `${objectId}:${portId}`;
   const aliases = new Map<string, Set<string>>();
-  const addAlias = (a: string, b: string) => {
-    if (a === b) return;
-    const aa = aliases.get(a) ?? new Set<string>();
-    const bb = aliases.get(b) ?? new Set<string>();
-    aa.add(b);
-    bb.add(a);
-    aliases.set(a, aa);
-    aliases.set(b, bb);
+  const addAlias = (left: string, right: string) => {
+    if (left === right) return;
+    const leftAliases = aliases.get(left) ?? new Set<string>();
+    const rightAliases = aliases.get(right) ?? new Set<string>();
+    leftAliases.add(right); rightAliases.add(left);
+    aliases.set(left, leftAliases); aliases.set(right, rightAliases);
   };
-  for (const pipe of all) {
-    for (const port of pipe.ports ?? []) {
-      addAlias(endpointNode(pipe, port.at === 'start'), `port-${port.linkId}`);
-    }
-    if (pipe.startAttachment) {
-      addAlias(endpointNode(pipe, true), `equipment-port-${pipe.startAttachment.objectId}-${pipe.startAttachment.portId}`);
-    }
-    if (pipe.endAttachment) {
-      addAlias(endpointNode(pipe, false), `equipment-port-${pipe.endAttachment.objectId}-${pipe.endAttachment.portId}`);
+
+  const equipmentConnections = new Map<string, PlantMapTopologyConnection>();
+  for (const connection of topology) {
+    const junction = junctionNode(connection.connectionKey);
+    for (const terminal of connection.terminals) addAlias(junction, terminalNode(terminal.pipeNodeId, terminal.end));
+    if (connection.kind === 'EQUIPMENT_PORT'
+      && connection.equipmentObjectId != null && connection.equipmentPortId) {
+      equipmentConnections.set(equipmentKey(connection.equipmentObjectId, connection.equipmentPortId), connection);
     }
   }
+
+  // A shared circuit is the equipment's logical internal path only when no detailed internal pipe is attached.
   for (const network of equipmentNetworks) {
-    const circuit = network.circuit.trim();
-    if (!circuit || network.portIds.length < 2) continue;
-    const portIds = new Set(network.portIds);
-    const hasDetailedInternalRoute = all.some(pipe => pipe.parentId === network.objectId
-      && ((pipe.startAttachment?.objectId === network.objectId && portIds.has(pipe.startAttachment.portId))
-        || (pipe.endAttachment?.objectId === network.objectId && portIds.has(pipe.endAttachment.portId))));
+    if (!network.circuit.trim() || network.portIds.length < 2) continue;
+    const connections = network.portIds
+      .map(portId => equipmentConnections.get(equipmentKey(network.objectId, portId)))
+      .filter((connection): connection is PlantMapTopologyConnection => !!connection);
+    const hasDetailedInternalRoute = connections.some(connection => connection.terminals.some(terminal =>
+      all.some(pipe => pipe.nodeId === terminal.pipeNodeId && pipe.parentId === network.objectId)));
     if (hasDetailedInternalRoute) continue;
-    const networkNode = `equipment-network-${network.objectId}-${circuit}`;
-    for (const portId of network.portIds) {
-      addAlias(networkNode, `equipment-port-${network.objectId}-${portId}`);
-    }
+    const networkNode = `equipment-network:${network.objectId}:${network.circuit.trim().toLowerCase()}`;
+    for (const connection of connections) addAlias(networkNode, junctionNode(connection.connectionKey));
   }
 
   const edges: FlowEdge[] = [];
   const barriers = new Set<string>();
-  let edgeId = 0;
+  let edgeIndex = 0;
   for (const pipe of all) {
     const cumulative = pathAlong(pipe.points);
     const pointsOfInterest: { along: number; node: string }[] = [
-      { along: 0, node: endpointNode(pipe, true) },
-      { along: cumulative[cumulative.length - 1], node: endpointNode(pipe, false) },
+      { along: 0, node: terminalNode(pipe.nodeId!, 'A') },
+      { along: cumulative[cumulative.length - 1], node: terminalNode(pipe.nodeId!, 'B') },
     ];
-
+    for (const tap of pipe.taps ?? []) {
+      pointsOfInterest.push({
+        along: projectedDistance(pipe.points, cumulative, tap.at),
+        node: terminalNode(pipe.nodeId!, `T:${tap.id}`),
+      });
+    }
     for (const fitting of pipe.fittings ?? []) {
       if (!isValve(fitting)) continue;
-      const node = `${pipe.id}:v:${fitting.id}`;
+      const node = `${pipe.id}:valve:${fitting.id}`;
       pointsOfInterest.push({ along: projectedDistance(pipe.points, cumulative, fitting.at), node });
       if (fitting.closed) barriers.add(node);
     }
-
-    for (const other of all) {
-      if (other.id === pipe.id || other.parentId !== pipe.parentId) continue;
-      for (const endpoint of [other.points[0], other.points[other.points.length - 1]]) {
-        let nearest: { x: number; y: number } | null = null;
-        let nearestDistance = Infinity;
-        for (let i = 0; i < pipe.points.length - 1; i++) {
-          const projection = projectOnSegment(endpoint, pipe.points[i], pipe.points[i + 1]);
-          const distance = (projection.x - endpoint.x) ** 2 + (projection.y - endpoint.y) ** 2;
-          if (distance < nearestDistance) {
-            nearest = projection;
-            nearestDistance = distance;
-          }
-        }
-        if (nearest && Math.hypot(nearest.x - endpoint.x, nearest.y - endpoint.y) <= 4) {
-          pointsOfInterest.push({
-            along: projectedDistance(pipe.points, cumulative, endpoint),
-            node: positionKey(pipe.parentId, endpoint),
-          });
-        }
-      }
-    }
-
-    pointsOfInterest.sort((a, b) => a.along - b.along);
-    const distinct: { along: number; node: string }[] = [];
-    for (const item of pointsOfInterest) {
-      if (!distinct.length || item.along - distinct[distinct.length - 1].along > 1) distinct.push(item);
-    }
-    for (let i = 0; i < distinct.length - 1; i++) {
+    pointsOfInterest.sort((left, right) => left.along - right.along);
+    const distinct = pointsOfInterest.filter((item, index) => !index
+      || item.along - pointsOfInterest[index - 1].along > 1);
+    for (let index = 0; index < distinct.length - 1; index++) {
       edges.push({
-        id: `e${edgeId++}`,
-        pipeId: pipe.id,
-        a: distinct[i].node,
-        b: distinct[i + 1].node,
-        path: slicePath(pipe.points, cumulative, distinct[i].along, distinct[i + 1].along),
+        id: `edge:${edgeIndex++}`, pipeId: pipe.id,
+        a: distinct[index].node, b: distinct[index + 1].node,
+        path: slicePath(pipe.points, cumulative, distinct[index].along, distinct[index + 1].along),
+        direction: pipe.flowDirection ?? (pipe.flowReversed ? 'reverse' : 'both'),
       });
     }
   }
 
   const nodeEdges = new Map<string, FlowEdge[]>();
-  const addEdge = (node: string, edge: FlowEdge) => {
-    const existing = nodeEdges.get(node);
-    if (existing) existing.push(edge);
-    else nodeEdges.set(node, [edge]);
-  };
   for (const edge of edges) {
-    addEdge(edge.a, edge);
-    addEdge(edge.b, edge);
+    nodeEdges.set(edge.a, [...(nodeEdges.get(edge.a) ?? []), edge]);
+    nodeEdges.set(edge.b, [...(nodeEdges.get(edge.b) ?? []), edge]);
   }
+  const boundaryNodes = (role: 'supply' | 'consumer') => new Set(boundaries
+    .filter(boundary => boundary.role === role)
+    .map(boundary => equipmentConnections.get(equipmentKey(boundary.objectId, boundary.portId)))
+    .filter((connection): connection is PlantMapTopologyConnection => !!connection)
+    .map(connection => junctionNode(connection.connectionKey)));
+  const sourceNodes = boundaryNodes('supply');
+  const consumerNodes = boundaryNodes('consumer');
+  if (!sourceNodes.size) return result;
 
-  const sourceNode = endpointNode(sourcePipe, true);
-  const depth = new Map<string, number>([[sourceNode, 0]]);
-  const reachedEdges = new Set<string>();
-  const queue = [sourceNode];
+  const reached = new Set<string>(sourceNodes);
+  const reachedEdges = new Map<string, boolean>();
+  const queue = [...sourceNodes];
   while (queue.length) {
     const node = queue.shift()!;
     if (barriers.has(node)) continue;
-    const nodeDepth = depth.get(node)!;
-
+    if (consumerNodes.has(node) && !sourceNodes.has(node)) continue;
     for (const alias of aliases.get(node) ?? []) {
-      if (!depth.has(alias)) {
-        depth.set(alias, nodeDepth);
-        queue.push(alias);
-      }
+      if (!reached.has(alias)) { reached.add(alias); queue.push(alias); }
     }
     for (const edge of nodeEdges.get(node) ?? []) {
-      reachedEdges.add(edge.id);
-      const otherNode = edge.a === node ? edge.b : edge.a;
-      if (!depth.has(otherNode)) {
-        depth.set(otherNode, nodeDepth + 1);
-        queue.push(otherNode);
-      }
+      const forward = edge.a === node;
+      if ((forward && edge.direction === 'reverse') || (!forward && edge.direction === 'forward')) continue;
+      if (!reachedEdges.has(edge.id)) reachedEdges.set(edge.id, forward);
+      const next = forward ? edge.b : edge.a;
+      if (!reached.has(next)) { reached.add(next); queue.push(next); }
     }
   }
 
-  const pipeById = new Map(all.map(pipe => [pipe.id, pipe]));
   for (const edge of edges) {
-    if (!reachedEdges.has(edge.id)) continue;
-    const aBarrier = barriers.has(edge.a);
-    const bBarrier = barriers.has(edge.b);
-    const followsTraversal = aBarrier !== bBarrier
-      ? bBarrier
-      : (depth.get(edge.a) ?? Infinity) <= (depth.get(edge.b) ?? Infinity);
-    const reversedByUser = !!pipeById.get(edge.pipeId)?.flowReversed;
-    const path = followsTraversal !== reversedByUser ? edge.path : [...edge.path].reverse();
+    const forward = reachedEdges.get(edge.id);
+    if (forward == null) continue;
+    const path = forward ? edge.path : [...edge.path].reverse();
     const entry = result.get(edge.pipeId) ?? { segsStr: [], segsPath: [] };
     entry.segsPath.push(path);
     entry.segsStr.push(path.map(point => `${point.x},${point.y}`).join(' '));

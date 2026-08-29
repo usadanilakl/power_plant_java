@@ -120,6 +120,7 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
 
   private loadedAdditionalPages = false;
   private activeRequestId = 0;
+  private queryInFlight = false;
   private copyMessageTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly manualRefresh$ = new Subject<void>();
   private readonly loadOlder$ = new Subject<void>();
@@ -141,7 +142,7 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
   }
 
   get canLoadOlder(): boolean {
-    return this.hasMore && !!this.nextCursor && !this.loadingOlder;
+    return this.hasMore && !!this.nextCursor && !this.queryInFlight;
   }
 
   get loadOlderLabel(): string {
@@ -175,19 +176,22 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
     );
 
     const manualCommands$ = this.manualRefresh$.pipe(
+      filter(() => !this.queryInFlight),
       withLatestFrom(this.filterState$),
       map(([, state]) => ({ behavior: 'refresh', state }) satisfies QueryCommand),
     );
 
     const pollingCommands$ = interval(10_000).pipe(
-      filter(() => this.autoRefresh && this.documentVisible),
+      // A slow first scan on a busy hub can legitimately exceed one polling interval.
+      // Do not let a background tick cancel it and leave the page permanently empty.
+      filter(() => this.autoRefresh && this.documentVisible && !this.queryInFlight),
       withLatestFrom(this.filterState$),
       map(([, state]) => ({ behavior: 'refresh', state }) satisfies QueryCommand),
     );
 
     const olderCommands$ = this.loadOlder$.pipe(
       withLatestFrom(this.filterState$),
-      filter(() => !!this.nextCursor),
+      filter(() => !!this.nextCursor && !this.queryInFlight),
       map(([, state]) => ({
         behavior: 'append',
         state,
@@ -295,6 +299,7 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
   private executeQuery(command: QueryCommand) {
     const requestId = ++this.activeRequestId;
     const startedAt = Date.now();
+    this.queryInFlight = true;
     this.loading = command.behavior === 'replace';
     this.refreshing = command.behavior === 'refresh';
     this.loadingOlder = command.behavior === 'append';
@@ -333,6 +338,7 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
       }),
       finalize(() => {
         if (requestId !== this.activeRequestId) return;
+        this.queryInFlight = false;
         this.loading = false;
         this.refreshing = false;
         this.loadingOlder = false;

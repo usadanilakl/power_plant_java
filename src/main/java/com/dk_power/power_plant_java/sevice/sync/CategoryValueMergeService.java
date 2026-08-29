@@ -307,6 +307,18 @@ public class CategoryValueMergeService {
 
                     entityManager.flush();
 
+                    // The JPA repoint above only reaches LIVE owners (@Where hides soft-deleted rows), but the
+                    // verify count below is native SQL and sees ALL rows. A soft-deleted owner still carrying the
+                    // dup Value FK (a work_request/field_list_item that was soft-deleted earlier) counts as a
+                    // dangling reference and aborts every merge for this name forever — a hub-wide inbound-sync
+                    // retry storm (confirmed in prod 2026-08-28: work_request.permit_status_id,
+                    // field_list_item.list_type_id/status_id). Repoint/clear those stragglers via native SQL: a
+                    // soft-deleted owner carries no synced state, so no FieldChange emission is needed. This
+                    // mirrors the Category straggler sweep, generalised over the whole FK map so repoint and the
+                    // verify count can't drift apart. Runs inside this pair tx, so it rolls back with the pair.
+                    valueReferenceRepointService.sweepResidualReferences(dupId, canonicalId, refMeta);
+                    entityManager.flush();
+
                     // Synthetic FieldChange emission inside this pair tx.
                     // Tracker uses MANDATORY propagation so rows join the tx;
                     // if any entry returns empty or throws, the whole pair

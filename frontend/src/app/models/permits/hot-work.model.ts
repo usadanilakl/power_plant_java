@@ -30,6 +30,20 @@ export class HotWorkMeasures {
   }
 }
 
+/** "Work Type" checkbox group, 2026-08-27 revision. "griding" matches the printed spelling. */
+export class HotWorkType {
+  welding: boolean = false;
+  griding: boolean = false;
+  cutting: boolean = false;
+  brazing: boolean = false;
+  other: boolean = false;
+  otherDescription: string = '';
+
+  constructor(data: Partial<HotWorkType> = {}) {
+    Object.assign(this, data);
+  }
+}
+
 export type HotWorkFieldName = keyof HotWorkModel;
 
 export interface HotWorkModel extends BaseModel {
@@ -51,6 +65,41 @@ export interface HotWorkModel extends BaseModel {
   redTagNum: string | null;
   /** This app's own permit number, from PermitNumberGenerator (D%02d-yy-MM-dd-%03d). Printed. */
   permitNumber: string | null;
+
+  // ---- 2026-08-27 revision ----
+  initialTestInitials: string | null;
+  fireProtectionApprovalDateTime: string | null;
+  contMeterModel: string | null;
+  contMeterNum: string | null;
+  contMeterCalDate: string | null;
+  fireWatch1Hour: boolean;
+  fireWatch30Min: boolean;
+  fireWatchNotRequired: boolean;
+  issuerSignature: string | null;
+  approvedDate: string | null;
+  approvedTime: string | null;
+  actualStartTime: string | null;
+  actualEndTime: string | null;
+  cancelRequestorName: string | null;
+  cancelRequestorSignature: string | null;
+  cancelRequestorDate: string | null;
+  cancelRequestorTime: string | null;
+  cancelFireWatchName: string | null;
+  cancelFireWatchSignature: string | null;
+  cancelFireWatchDate: string | null;
+  cancelFireWatchTime: string | null;
+  fireMonitoringMethod: string | null;
+  fireMonitorName: string | null;
+  fireMonitorSignature: string | null;
+  fireMonitorDate: string | null;
+  fireMonitorTime: string | null;
+  cancelledBy: string | null;
+  cancelledDate: string | null;
+  cancelledTime: string | null;
+  fireProtectionInService: boolean;
+  fireProtectionNotInService: boolean;
+  workCompleted: boolean;
+  workType: HotWorkType | null;
   permitStatus: ValueDto;
 }
 
@@ -71,6 +120,39 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   initialTestResult: string;
   redTagNum: string | null;
   permitNumber: string | null;
+  initialTestInitials: string | null;
+  fireProtectionApprovalDateTime: string | null;
+  contMeterModel: string | null;
+  contMeterNum: string | null;
+  contMeterCalDate: string | null;
+  fireWatch1Hour: boolean;
+  fireWatch30Min: boolean;
+  fireWatchNotRequired: boolean;
+  issuerSignature: string | null;
+  approvedDate: string | null;
+  approvedTime: string | null;
+  actualStartTime: string | null;
+  actualEndTime: string | null;
+  cancelRequestorName: string | null;
+  cancelRequestorSignature: string | null;
+  cancelRequestorDate: string | null;
+  cancelRequestorTime: string | null;
+  cancelFireWatchName: string | null;
+  cancelFireWatchSignature: string | null;
+  cancelFireWatchDate: string | null;
+  cancelFireWatchTime: string | null;
+  fireMonitoringMethod: string | null;
+  fireMonitorName: string | null;
+  fireMonitorSignature: string | null;
+  fireMonitorDate: string | null;
+  fireMonitorTime: string | null;
+  cancelledBy: string | null;
+  cancelledDate: string | null;
+  cancelledTime: string | null;
+  fireProtectionInService: boolean;
+  fireProtectionNotInService: boolean;
+  workCompleted: boolean;
+  workType: HotWorkType | null;
   permitStatus: ValueDto;
 
   constructor(data: Partial<HotWorkModel> = {}) {
@@ -91,6 +173,39 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this. initialTestResult = data.initialTestResult ?? '';
     this.redTagNum = data.redTagNum ?? null;
     this.permitNumber = data.permitNumber ?? null;
+    this.initialTestInitials = data.initialTestInitials ?? null;
+    this.fireProtectionApprovalDateTime = data.fireProtectionApprovalDateTime ?? null;
+    this.contMeterModel = data.contMeterModel ?? null;
+    this.contMeterNum = data.contMeterNum ?? null;
+    this.contMeterCalDate = data.contMeterCalDate ?? null;
+    this.fireWatch1Hour = data.fireWatch1Hour ?? false;
+    this.fireWatch30Min = data.fireWatch30Min ?? false;
+    this.fireWatchNotRequired = data.fireWatchNotRequired ?? false;
+    this.issuerSignature = data.issuerSignature ?? null;
+    this.approvedDate = data.approvedDate ?? null;
+    this.approvedTime = data.approvedTime ?? null;
+    this.actualStartTime = data.actualStartTime ?? null;
+    this.actualEndTime = data.actualEndTime ?? null;
+    this.cancelRequestorName = data.cancelRequestorName ?? null;
+    this.cancelRequestorSignature = data.cancelRequestorSignature ?? null;
+    this.cancelRequestorDate = data.cancelRequestorDate ?? null;
+    this.cancelRequestorTime = data.cancelRequestorTime ?? null;
+    this.cancelFireWatchName = data.cancelFireWatchName ?? null;
+    this.cancelFireWatchSignature = data.cancelFireWatchSignature ?? null;
+    this.cancelFireWatchDate = data.cancelFireWatchDate ?? null;
+    this.cancelFireWatchTime = data.cancelFireWatchTime ?? null;
+    this.fireMonitoringMethod = data.fireMonitoringMethod ?? null;
+    this.fireMonitorName = data.fireMonitorName ?? null;
+    this.fireMonitorSignature = data.fireMonitorSignature ?? null;
+    this.fireMonitorDate = data.fireMonitorDate ?? null;
+    this.fireMonitorTime = data.fireMonitorTime ?? null;
+    this.cancelledBy = data.cancelledBy ?? null;
+    this.cancelledDate = data.cancelledDate ?? null;
+    this.cancelledTime = data.cancelledTime ?? null;
+    this.fireProtectionInService = data.fireProtectionInService ?? false;
+    this.fireProtectionNotInService = data.fireProtectionNotInService ?? false;
+    this.workCompleted = data.workCompleted ?? false;
+    this.workType = data.workType ? new HotWorkType(data.workType) : new HotWorkType();
     this.permitStatus = data.permitStatus ?? new ValueDto();
   }
 
@@ -113,6 +228,39 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       initialTestResult: this.initialTestResult,
       redTagNum: this.redTagNum,
       permitNumber: this.permitNumber,
+      initialTestInitials: this.initialTestInitials,
+      fireProtectionApprovalDateTime: this.fireProtectionApprovalDateTime,
+      contMeterModel: this.contMeterModel,
+      contMeterNum: this.contMeterNum,
+      contMeterCalDate: this.contMeterCalDate,
+      fireWatch1Hour: this.fireWatch1Hour,
+      fireWatch30Min: this.fireWatch30Min,
+      fireWatchNotRequired: this.fireWatchNotRequired,
+      issuerSignature: this.issuerSignature,
+      approvedDate: this.approvedDate,
+      approvedTime: this.approvedTime,
+      actualStartTime: this.actualStartTime,
+      actualEndTime: this.actualEndTime,
+      cancelRequestorName: this.cancelRequestorName,
+      cancelRequestorSignature: this.cancelRequestorSignature,
+      cancelRequestorDate: this.cancelRequestorDate,
+      cancelRequestorTime: this.cancelRequestorTime,
+      cancelFireWatchName: this.cancelFireWatchName,
+      cancelFireWatchSignature: this.cancelFireWatchSignature,
+      cancelFireWatchDate: this.cancelFireWatchDate,
+      cancelFireWatchTime: this.cancelFireWatchTime,
+      fireMonitoringMethod: this.fireMonitoringMethod,
+      fireMonitorName: this.fireMonitorName,
+      fireMonitorSignature: this.fireMonitorSignature,
+      fireMonitorDate: this.fireMonitorDate,
+      fireMonitorTime: this.fireMonitorTime,
+      cancelledBy: this.cancelledBy,
+      cancelledDate: this.cancelledDate,
+      cancelledTime: this.cancelledTime,
+      fireProtectionInService: this.fireProtectionInService,
+      fireProtectionNotInService: this.fireProtectionNotInService,
+      workCompleted: this.workCompleted,
+      workType: this.workType,
       permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
@@ -136,6 +284,39 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       initialTestResult: json.initialTestResult ?? '',
       redTagNum: json.redTagNum ?? null,
       permitNumber: json.permitNumber ?? null,
+      initialTestInitials: json.initialTestInitials ?? null,
+      fireProtectionApprovalDateTime: json.fireProtectionApprovalDateTime ?? null,
+      contMeterModel: json.contMeterModel ?? null,
+      contMeterNum: json.contMeterNum ?? null,
+      contMeterCalDate: json.contMeterCalDate ?? null,
+      fireWatch1Hour: json.fireWatch1Hour ?? false,
+      fireWatch30Min: json.fireWatch30Min ?? false,
+      fireWatchNotRequired: json.fireWatchNotRequired ?? false,
+      issuerSignature: json.issuerSignature ?? null,
+      approvedDate: json.approvedDate ?? null,
+      approvedTime: json.approvedTime ?? null,
+      actualStartTime: json.actualStartTime ?? null,
+      actualEndTime: json.actualEndTime ?? null,
+      cancelRequestorName: json.cancelRequestorName ?? null,
+      cancelRequestorSignature: json.cancelRequestorSignature ?? null,
+      cancelRequestorDate: json.cancelRequestorDate ?? null,
+      cancelRequestorTime: json.cancelRequestorTime ?? null,
+      cancelFireWatchName: json.cancelFireWatchName ?? null,
+      cancelFireWatchSignature: json.cancelFireWatchSignature ?? null,
+      cancelFireWatchDate: json.cancelFireWatchDate ?? null,
+      cancelFireWatchTime: json.cancelFireWatchTime ?? null,
+      fireMonitoringMethod: json.fireMonitoringMethod ?? null,
+      fireMonitorName: json.fireMonitorName ?? null,
+      fireMonitorSignature: json.fireMonitorSignature ?? null,
+      fireMonitorDate: json.fireMonitorDate ?? null,
+      fireMonitorTime: json.fireMonitorTime ?? null,
+      cancelledBy: json.cancelledBy ?? null,
+      cancelledDate: json.cancelledDate ?? null,
+      cancelledTime: json.cancelledTime ?? null,
+      fireProtectionInService: json.fireProtectionInService ?? false,
+      fireProtectionNotInService: json.fireProtectionNotInService ?? false,
+      workCompleted: json.workCompleted ?? false,
+      workType: json.workType ? new HotWorkType(json.workType) : new HotWorkType(),
       permitStatus: ValueDto.fromJson(json.permitStatus),
     });
   }
@@ -146,6 +327,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       'meterModel', 'meterNum', 'meterCalDate', 'specialInstructions', 'measures',
       'isAirMonitoringRegisteredOnConfinedSpace', 'isFireWatchRequired',
       'timeOfInitialTest', 'initialTestResult', 'redTagNum', 'permitNumber',
+      'initialTestInitials', 'fireProtectionApprovalDateTime', 'contMeterModel', 'contMeterNum', 'contMeterCalDate', 'fireWatch1Hour', 'fireWatch30Min', 'fireWatchNotRequired', 'issuerSignature', 'approvedDate', 'approvedTime', 'actualStartTime', 'actualEndTime', 'cancelRequestorName', 'cancelRequestorSignature', 'cancelRequestorDate', 'cancelRequestorTime', 'cancelFireWatchName', 'cancelFireWatchSignature', 'cancelFireWatchDate', 'cancelFireWatchTime', 'fireMonitoringMethod', 'fireMonitorName', 'fireMonitorSignature', 'fireMonitorDate', 'fireMonitorTime', 'cancelledBy', 'cancelledDate', 'cancelledTime', 'fireProtectionInService', 'fireProtectionNotInService', 'workCompleted', 'workType',
       'isVerified', 'name', 'objectType'
     ].includes(key);
   }
@@ -153,10 +335,27 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   static toFormFields(
     dto: HotWorkDto,
     locationOptions: Option[] = [],
-    fields: (HotWorkFieldName | 'workArea')[] = [
-      'location', 'date', 'workScope', 'foreman', 'fireWatch',
-      'meterModel', 'meterNum', 'specialInstructions',
+    fields: (HotWorkFieldName | 'workArea' | string)[] = [
+      // Order drives the web SmartForm layout; it also gates which seeded paper-form containers
+      // get their options merged in (see hot-work-paper-form.component.ts), so every bound cell
+      // on the printed form MUST appear here or it renders without options.
+      'permitNumber', 'location', 'date',
+      'workType.welding', 'workType.griding', 'workType.cutting', 'workType.brazing',
+      'workType.other', 'workType.otherDescription',
       ...Object.keys(HotWorkDto.getMeasureFields(null)) as HotWorkFieldName[],
+      'fireProtectionInService', 'fireProtectionNotInService', 'fireProtectionApprovalDateTime',
+      'meterModel', 'meterNum', 'meterCalDate', 'timeOfInitialTest',
+      'initialTestInitials', 'initialTestResult',
+      'contMeterModel', 'contMeterNum', 'contMeterCalDate',
+      'isAirMonitoringRegisteredOnConfinedSpace', 'fireWatch1Hour', 'fireWatch30Min', 'fireWatchNotRequired',
+      'foreman', 'fireWatch', 'specialInstructions', 'workScope',
+      'issuerSignature', 'approvedDate', 'approvedTime',
+      'actualStartTime', 'actualEndTime',
+      'cancelRequestorName', 'cancelRequestorSignature', 'cancelRequestorDate', 'cancelRequestorTime',
+      'cancelFireWatchName', 'cancelFireWatchSignature', 'cancelFireWatchDate', 'cancelFireWatchTime',
+      'fireMonitoringMethod',
+      'fireMonitorName', 'fireMonitorSignature', 'fireMonitorDate', 'fireMonitorTime',
+      'workCompleted', 'cancelledBy', 'cancelledDate', 'cancelledTime',
     ]
   ): FormField[] {
     const measureFields = HotWorkDto.getMeasureFields(dto.measures);
@@ -275,10 +474,49 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         type: 'text',
         initialValue: dto.permitNumber
       },
+      // ---- 2026-08-27 revision ----
+      initialTestInitials: { name: 'initialTestInitials', label: 'Initial Test Initials', type: 'text', initialValue: dto.initialTestInitials },
+      fireProtectionApprovalDateTime: { name: 'fireProtectionApprovalDateTime', label: 'Fire Protection Approval Date Time', type: 'date', initialValue: dto.fireProtectionApprovalDateTime },
+      contMeterModel: { name: 'contMeterModel', label: 'Cont Meter Model', type: 'text', initialValue: dto.contMeterModel },
+      contMeterNum: { name: 'contMeterNum', label: 'Cont Meter Num', type: 'text', initialValue: dto.contMeterNum },
+      contMeterCalDate: { name: 'contMeterCalDate', label: 'Cont Meter Cal Date', type: 'date', initialValue: dto.contMeterCalDate },
+      fireWatch1Hour: { name: 'fireWatch1Hour', label: 'Fire Watch 1 Hour', type: 'checkbox', initialValue: dto.fireWatch1Hour },
+      fireWatch30Min: { name: 'fireWatch30Min', label: 'Fire Watch 30 Min', type: 'checkbox', initialValue: dto.fireWatch30Min },
+      fireWatchNotRequired: { name: 'fireWatchNotRequired', label: 'Fire Watch Not Required', type: 'checkbox', initialValue: dto.fireWatchNotRequired },
+      issuerSignature: { name: 'issuerSignature', label: 'Issuer Signature', type: 'text', initialValue: dto.issuerSignature },
+      approvedDate: { name: 'approvedDate', label: 'Approved Date', type: 'date', initialValue: dto.approvedDate },
+      approvedTime: { name: 'approvedTime', label: 'Approved Time', type: 'time', initialValue: dto.approvedTime },
+      actualStartTime: { name: 'actualStartTime', label: 'Actual Start Time', type: 'time', initialValue: dto.actualStartTime },
+      actualEndTime: { name: 'actualEndTime', label: 'Actual End Time', type: 'time', initialValue: dto.actualEndTime },
+      cancelRequestorName: { name: 'cancelRequestorName', label: 'Cancel Requestor Name', type: 'text', initialValue: dto.cancelRequestorName },
+      cancelRequestorSignature: { name: 'cancelRequestorSignature', label: 'Cancel Requestor Signature', type: 'text', initialValue: dto.cancelRequestorSignature },
+      cancelRequestorDate: { name: 'cancelRequestorDate', label: 'Cancel Requestor Date', type: 'date', initialValue: dto.cancelRequestorDate },
+      cancelRequestorTime: { name: 'cancelRequestorTime', label: 'Cancel Requestor Time', type: 'time', initialValue: dto.cancelRequestorTime },
+      cancelFireWatchName: { name: 'cancelFireWatchName', label: 'Cancel Fire Watch Name', type: 'text', initialValue: dto.cancelFireWatchName },
+      cancelFireWatchSignature: { name: 'cancelFireWatchSignature', label: 'Cancel Fire Watch Signature', type: 'text', initialValue: dto.cancelFireWatchSignature },
+      cancelFireWatchDate: { name: 'cancelFireWatchDate', label: 'Cancel Fire Watch Date', type: 'date', initialValue: dto.cancelFireWatchDate },
+      cancelFireWatchTime: { name: 'cancelFireWatchTime', label: 'Cancel Fire Watch Time', type: 'time', initialValue: dto.cancelFireWatchTime },
+      fireMonitoringMethod: { name: 'fireMonitoringMethod', label: 'Fire Monitoring Method', type: 'text', initialValue: dto.fireMonitoringMethod },
+      fireMonitorName: { name: 'fireMonitorName', label: 'Fire Monitor Name', type: 'text', initialValue: dto.fireMonitorName },
+      fireMonitorSignature: { name: 'fireMonitorSignature', label: 'Fire Monitor Signature', type: 'text', initialValue: dto.fireMonitorSignature },
+      fireMonitorDate: { name: 'fireMonitorDate', label: 'Fire Monitor Date', type: 'date', initialValue: dto.fireMonitorDate },
+      fireMonitorTime: { name: 'fireMonitorTime', label: 'Fire Monitor Time', type: 'time', initialValue: dto.fireMonitorTime },
+      cancelledBy: { name: 'cancelledBy', label: 'Cancelled By', type: 'text', initialValue: dto.cancelledBy },
+      cancelledDate: { name: 'cancelledDate', label: 'Cancelled Date', type: 'date', initialValue: dto.cancelledDate },
+      cancelledTime: { name: 'cancelledTime', label: 'Cancelled Time', type: 'time', initialValue: dto.cancelledTime },
+      fireProtectionInService: { name: 'fireProtectionInService', label: 'Fire Protection In Service', type: 'checkbox', initialValue: dto.fireProtectionInService },
+      fireProtectionNotInService: { name: 'fireProtectionNotInService', label: 'Fire Protection NOT In Service', type: 'checkbox', initialValue: dto.fireProtectionNotInService },
+      workCompleted: { name: 'workCompleted', label: 'Work Completed', type: 'checkbox', initialValue: dto.workCompleted },
+      'workType.welding': { name: 'workType.welding', label: 'Welding', type: 'checkbox', initialValue: dto.workType?.welding ?? false },
+      'workType.griding': { name: 'workType.griding', label: 'Griding', type: 'checkbox', initialValue: dto.workType?.griding ?? false },
+      'workType.cutting': { name: 'workType.cutting', label: 'Cutting', type: 'checkbox', initialValue: dto.workType?.cutting ?? false },
+      'workType.brazing': { name: 'workType.brazing', label: 'Brazing', type: 'checkbox', initialValue: dto.workType?.brazing ?? false },
+      'workType.other': { name: 'workType.other', label: 'Other', type: 'checkbox', initialValue: dto.workType?.other ?? false },
+      'workType.otherDescription': { name: 'workType.otherDescription', label: 'Other (describe)', type: 'text', initialValue: dto.workType?.otherDescription ?? '' },
       ...measureFields,
     };
   
-    return fields.map(fieldName => allFields[fieldName]);
+    return fields.map(fieldName => allFields[fieldName]).filter(Boolean);
   }
 
   static toTableColumns(fields: HotWorkFieldName[] = ['date', 'location', 'workScope', 'foreman', 'fireWatch']): Column[] {
@@ -294,6 +532,39 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       meterCalDate: { id: 'meterCalDate', header: 'Meter Cal Date', accessorKey: 'meterCalDate' },
       redTagNum: { id: 'redTagNum', header: 'Red Tag #', accessorKey: 'redTagNum' },
       permitNumber: { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
+      initialTestInitials: { id: 'initialTestInitials', header: 'Initial Test Initials', accessorKey: 'initialTestInitials' },
+      fireProtectionApprovalDateTime: { id: 'fireProtectionApprovalDateTime', header: 'Fire Protection Approval Date Time', accessorKey: 'fireProtectionApprovalDateTime' },
+      contMeterModel: { id: 'contMeterModel', header: 'Cont Meter Model', accessorKey: 'contMeterModel' },
+      contMeterNum: { id: 'contMeterNum', header: 'Cont Meter Num', accessorKey: 'contMeterNum' },
+      contMeterCalDate: { id: 'contMeterCalDate', header: 'Cont Meter Cal Date', accessorKey: 'contMeterCalDate' },
+      fireWatch1Hour: { id: 'fireWatch1Hour', header: 'Fire Watch 1 Hour', accessorKey: 'fireWatch1Hour' },
+      fireWatch30Min: { id: 'fireWatch30Min', header: 'Fire Watch 30 Min', accessorKey: 'fireWatch30Min' },
+      fireWatchNotRequired: { id: 'fireWatchNotRequired', header: 'Fire Watch Not Required', accessorKey: 'fireWatchNotRequired' },
+      issuerSignature: { id: 'issuerSignature', header: 'Issuer Signature', accessorKey: 'issuerSignature' },
+      approvedDate: { id: 'approvedDate', header: 'Approved Date', accessorKey: 'approvedDate' },
+      approvedTime: { id: 'approvedTime', header: 'Approved Time', accessorKey: 'approvedTime' },
+      actualStartTime: { id: 'actualStartTime', header: 'Actual Start Time', accessorKey: 'actualStartTime' },
+      actualEndTime: { id: 'actualEndTime', header: 'Actual End Time', accessorKey: 'actualEndTime' },
+      cancelRequestorName: { id: 'cancelRequestorName', header: 'Cancel Requestor Name', accessorKey: 'cancelRequestorName' },
+      cancelRequestorSignature: { id: 'cancelRequestorSignature', header: 'Cancel Requestor Signature', accessorKey: 'cancelRequestorSignature' },
+      cancelRequestorDate: { id: 'cancelRequestorDate', header: 'Cancel Requestor Date', accessorKey: 'cancelRequestorDate' },
+      cancelRequestorTime: { id: 'cancelRequestorTime', header: 'Cancel Requestor Time', accessorKey: 'cancelRequestorTime' },
+      cancelFireWatchName: { id: 'cancelFireWatchName', header: 'Cancel Fire Watch Name', accessorKey: 'cancelFireWatchName' },
+      cancelFireWatchSignature: { id: 'cancelFireWatchSignature', header: 'Cancel Fire Watch Signature', accessorKey: 'cancelFireWatchSignature' },
+      cancelFireWatchDate: { id: 'cancelFireWatchDate', header: 'Cancel Fire Watch Date', accessorKey: 'cancelFireWatchDate' },
+      cancelFireWatchTime: { id: 'cancelFireWatchTime', header: 'Cancel Fire Watch Time', accessorKey: 'cancelFireWatchTime' },
+      fireMonitoringMethod: { id: 'fireMonitoringMethod', header: 'Fire Monitoring Method', accessorKey: 'fireMonitoringMethod' },
+      fireMonitorName: { id: 'fireMonitorName', header: 'Fire Monitor Name', accessorKey: 'fireMonitorName' },
+      fireMonitorSignature: { id: 'fireMonitorSignature', header: 'Fire Monitor Signature', accessorKey: 'fireMonitorSignature' },
+      fireMonitorDate: { id: 'fireMonitorDate', header: 'Fire Monitor Date', accessorKey: 'fireMonitorDate' },
+      fireMonitorTime: { id: 'fireMonitorTime', header: 'Fire Monitor Time', accessorKey: 'fireMonitorTime' },
+      cancelledBy: { id: 'cancelledBy', header: 'Cancelled By', accessorKey: 'cancelledBy' },
+      cancelledDate: { id: 'cancelledDate', header: 'Cancelled Date', accessorKey: 'cancelledDate' },
+      cancelledTime: { id: 'cancelledTime', header: 'Cancelled Time', accessorKey: 'cancelledTime' },
+      fireProtectionInService: { id: 'fireProtectionInService', header: 'Fire Protection In Service', accessorKey: 'fireProtectionInService' },
+      fireProtectionNotInService: { id: 'fireProtectionNotInService', header: 'Fire Protection NOT In Service', accessorKey: 'fireProtectionNotInService' },
+      workCompleted: { id: 'workCompleted', header: 'Work Completed', accessorKey: 'workCompleted' },
+      workType: { id: 'workType', header: 'Work Type', accessorKey: 'workType' },
       specialInstructions: { id: 'specialInstructions', header: 'Special Instructions', accessorKey: 'specialInstructions' },
       measures: { 
         id: 'measures', 

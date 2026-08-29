@@ -144,7 +144,17 @@ public class SdsOutboundSharePointSync {
                 fieldMergeService.updateSnapshot(entityType, spId, localValues);
                 pushed++;
             } catch (Exception e) {
-                log.warn("[SDS Outbound] Update failed for spId={}: {}", spId, e.getMessage());
+                if (SharepointAccessService.isItemGone(e)) {
+                    // The SP row was hard-deleted out from under us. The snapshot never advances,
+                    // so `changed` stays non-empty and this record would re-fail every 60s forever.
+                    // Clear the stale id — same "stop retrying this one" move as pushDeletes — and
+                    // let pushCreates re-create the item (with its attachments) on the next sweep.
+                    log.warn("[SDS Outbound] SP item {} no longer exists for chemical id={}; clearing "
+                            + "sharepointId so it is re-created on the next sweep", spId, entity.getId());
+                    repo.clearSharepointId(entity.getId());
+                } else {
+                    log.warn("[SDS Outbound] Update failed for spId={}: {}", spId, e.getMessage());
+                }
             }
         }
         if (pushed > 0) log.info("[SDS Outbound] Updated {} SDS chemical(s) in SharePoint", pushed);

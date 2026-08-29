@@ -32,6 +32,7 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
                       <div class="pl-meta">
                         @if (it.equipmentSystem) { <span class="pl-chip">{{ it.equipmentSystem }}</span> }
                         @if (it.requestor) { <span class="pl-chip">{{ it.requestor }}</span> }
+                        @if (it.status) { <span class="pl-chip">{{ it.status }}</span> }
                         <span class="pl-chip">{{ it.pointCount }} pts</span>
                         @if (b.phase === 'HANG') { <span class="pl-chip">{{ it.hungCount }}/{{ it.pointCount }} hung</span> }
                         @if (b.phase === 'VERIFY') { <span class="pl-chip">{{ it.verifiedCount }}/{{ it.pointCount }} verified</span> }
@@ -50,6 +51,35 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
                 } @empty { <p class="pl-empty">Nothing {{ b.empty }}.</p> }
               </div>
             }
+
+            <!--
+              Everything with no step available to this user right now. These were dropped by the
+              server before they could ever render, which hid every Building permit awaiting CA
+              approval and every Active one with nothing left to do. They open read-only.
+            -->
+            <div class="pl-sec">
+              <div class="pl-sec-h">Other permits <span class="pl-count">{{ others().length }}</span></div>
+              @for (it of others(); track it.id) {
+                <div class="pl-card">
+                  <div class="pl-body" (click)="view(it)">
+                    <div class="pl-name">{{ it.permitNumber || ('Permit #' + it.id) }}</div>
+                    <div class="pl-meta">
+                      @if (it.status) { <span class="pl-chip">{{ it.status }}</span> }
+                      @if (it.equipmentSystem) { <span class="pl-chip">{{ it.equipmentSystem }}</span> }
+                      @if (it.requestor) { <span class="pl-chip">{{ it.requestor }}</span> }
+                      <span class="pl-chip">{{ it.pointCount }} pts</span>
+                      <span class="pl-chip">{{ it.hungCount }}/{{ it.pointCount }} hung</span>
+                      <span class="pl-chip">{{ it.verifiedCount }}/{{ it.pointCount }} verified</span>
+                    </div>
+                  </div>
+                  <button class="pl-go view" (click)="view(it)">View</button>
+                </div>
+              } @empty { <p class="pl-empty">Nothing else to show.</p> }
+            </div>
+
+            <button class="pl-closed" (click)="toggleClosed()" [disabled]="loading()">
+              {{ includeClosed() ? 'Hide closed permits' : 'Show closed permits' }}
+            </button>
           }
         </div>
       </ng-container>
@@ -75,6 +105,7 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
     .pl-go { flex: none; min-height: 48px; background: var(--accent-color); color: var(--on-solid); border: none; border-radius: 8px; padding: 10px 16px; font-size: 15px; font-weight: 600; }
     .pl-go:disabled { opacity: 0.5; }
     .pl-empty { color: var(--secondary-text); font-size: 13px; padding: 6px 2px; }
+    .pl-closed { width: 100%; min-height: 44px; margin-top: 4px; background: none; border: 1px solid var(--border-color); border-radius: 8px; color: var(--secondary-text); font-size: 14px; }
   `],
 })
 export class LotoPermitListComponent implements OnInit {
@@ -94,14 +125,23 @@ export class LotoPermitListComponent implements OnInit {
   error = signal('');
   offline = signal(false);
   busyId = signal<number | null>(null);
+  includeClosed = signal(false);
 
   items(phase: Phase): PwaLotoListItem[] { return this.all().filter(i => i.phases.includes(phase)); }
 
+  /** Permits with no step available to this user — visible, but read-only. */
+  others(): PwaLotoListItem[] { return this.all().filter(i => !i.phases.length); }
+
   async ngOnInit(): Promise<void> {
+    await this.load();
+  }
+
+  /** Reload the list. Closed permits are fetched only on request — see PwaLotoService.list. */
+  private async load(): Promise<void> {
     this.loading.set(true);
     this.sync.refresh();
     try {
-      const list = await firstValueFrom(this.api.list());
+      const list = await firstValueFrom(this.api.list(this.includeClosed()));
       this.all.set(list);
       this.store.cacheList(list);
     } catch (e: any) {
@@ -112,6 +152,14 @@ export class LotoPermitListComponent implements OnInit {
       this.loading.set(false);
     }
   }
+
+  async toggleClosed(): Promise<void> {
+    this.includeClosed.update(v => !v);
+    await this.load();
+  }
+
+  /** Open a permit read-only — no grab, since there is nothing to claim. */
+  view(it: PwaLotoListItem): void { this.router.navigate(['/loto', it.id]); }
 
   grabLabel(phase: Phase, it: PwaLotoListItem): string | null {
     const g = phase === 'HANG' ? it.hangGrab : phase === 'VERIFY' ? it.verifyGrab : null;

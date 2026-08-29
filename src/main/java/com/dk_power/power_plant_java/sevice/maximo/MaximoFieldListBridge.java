@@ -4,7 +4,9 @@ import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.field_list.FieldListItemRepo;
+import com.dk_power.power_plant_java.repository.users.UserRepo;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +67,13 @@ public class MaximoFieldListBridge {
     private final MaximoServiceRequestAdapter srAdapter;
     private final MaximoWorkOrderAdapter woAdapter;
     private final FieldListItemRepo repo;
+    /**
+     * Looks up the submitter's User row to translate their email into a Maximo personid
+     * for the record's {@code reportedby}. Without this, Maximo defaults to whoever the
+     * API service account is — every WO/SR from a field list was attributed to that one
+     * account instead of the person who actually submitted.
+     */
+    private final UserRepo userRepo;
 
     // Ambient-tx model (codex round 2):
     // Every caller of this bridge now wraps in its own transaction:
@@ -198,11 +207,23 @@ public class MaximoFieldListBridge {
         // Location from the entity (populated by frontend Maximo picker when used).
         // Null falls through to ops-triage assignment.
         String location = entity.getMaximoLocation();
-        log.info("[MaximoFieldList] WO-SEND id={} worktype={} description='{}' longDescriptionLen={} location={}",
+        String reportedby = resolveSubmitterPersonid(entity);
+        log.info("[MaximoFieldList] WO-SEND id={} worktype={} description='{}' longDescriptionLen={} location={} reportedby={}",
                 entity.getId(), worktype, description,
-                longDescription == null ? 0 : longDescription.length(), location);
-        // Siteid null falls back to the adapter's default (JG on this tenant).
-        MaximoWorkOrderDto created = woAdapter.create(description, longDescription, location, worktype, null);
+                longDescription == null ? 0 : longDescription.length(), location, reportedby);
+        // Map overload so we can send spi:reportedby alongside the base fields. The 5-arg
+        // overload doesn't take reportedby, and omitting it makes Maximo default to the
+        // API service account — every field-list WO would be attributed to that one user
+        // instead of the actual submitter.
+        Map<String, Object> spi = new HashMap<>();
+        if (description != null && !description.isBlank()) spi.put("spi:description", description.trim());
+        if (longDescription != null && !longDescription.isBlank())
+            spi.put("spi:description_longdescription", longDescription.trim());
+        if (location != null && !location.isBlank()) spi.put("spi:location", location.trim());
+        if (worktype != null && !worktype.isBlank()) spi.put("spi:worktype", worktype.trim());
+        if (reportedby != null && !reportedby.isBlank()) spi.put("spi:reportedby", reportedby.trim());
+        // Siteid intentionally NOT set — the map overload defaults it to the adapter's default.
+        MaximoWorkOrderDto created = woAdapter.create(spi);
         if (created == null || created.getWonum() == null) {
             markSyncPending(entity, "empty WO response");
             return false;
@@ -479,7 +500,7 @@ public class MaximoFieldListBridge {
         // POST an all-blank SR that Maximo rejects with BMXAA4213E.
         req.setDescription(defaultIfBlank(entity.getTitle(), "Field List Report"));
         req.setLongDescription(buildLongDescription(entity));
-        req.setReportedby(null); // filled from submitter's Maximo personid when auth-scoped
+        req.setReportedby(resolveSubmitterPersonid(entity));
         // Location + assetnum from the entity (populated by the frontend Maximo picker when
         // used). Both null = ops assigns on triage — same behavior as before.
         req.setLocation(entity.getMaximoLocation());
@@ -488,6 +509,29 @@ public class MaximoFieldListBridge {
             req.setClassstructureid(defaultClassstructureid.trim());
         }
         return req;
+    }
+
+    /**
+     * Resolve the field list submitter to a Maximo personid so {@code spi:reportedby} is
+     * the actual person who submitted, not the API service account (which is Maximo's
+     * default when the field is omitted). Match by email first (unique-ish + the field
+     * every submitter path fills in), fall back to null so Maximo triage still succeeds
+     * on rows whose submitter isn't a known User (external contractor, imported SP row
+     * with an unknown author, etc.). Never throws.
+     */
+    private String resolveSubmitterPersonid(FieldListItem entity) {
+        if (entity == null) return null;
+        String email = entity.getSubmitterEmail();
+        if (email == null || email.isBlank()) return null;
+        try {
+            User u = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(email.trim());
+            if (u == null) return null;
+            String personid = u.getMaximoPersonid();
+            return (personid == null || personid.isBlank()) ? null : personid;
+        } catch (RuntimeException e) {
+            log.warn("[MaximoFieldList] Submitter → personid lookup failed for '{}': {}", email, e.getMessage());
+            return null;
+        }
     }
 
     private String buildLongDescription(FieldListItem entity) {

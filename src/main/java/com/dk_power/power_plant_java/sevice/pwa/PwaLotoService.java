@@ -57,14 +57,39 @@ public class PwaLotoService {
 
     @Transactional(readOnly = true)
     public List<PwaLotoListItem> list() {
+        return list(false);
+    }
+
+    /**
+     * Every LOTO permit, whether or not this user can act on one right now.
+     *
+     * <p>This used to skip any permit with no available phase ({@code if (p.phases.isEmpty()) continue}),
+     * which made the list a to-do list rather than a list of permits. Two whole populations were
+     * invisible on the phone as a result: <b>Building</b> permits before a CA approves them for hanging
+     * (no HANG phase yet), and any <b>Active</b> permit whose snapshots never recorded a verifier, so
+     * {@code aggVerified} is false and it gets no WALKDOWN phase either. Both are permits the crew
+     * legitimately needs to look up in the field, and neither is reachable by any other route.</p>
+     *
+     * <p>Phases still drive what can be DONE — an empty {@code phases} list means view-only, and every
+     * action stays gated server-side. This only decides what is visible.</p>
+     *
+     * @param includeClosed Closed permits are excluded by default. They are unbounded history and
+     *                      nothing acts on them, so they would grow this payload without limit on a
+     *                      cellular connection; the client asks for them explicitly.
+     */
+    @Transactional(readOnly = true)
+    public List<PwaLotoListItem> list(boolean includeClosed) {
         List<PwaLotoListItem> out = new ArrayList<>();
         for (Loto loto : lotoRepo.findAll()) {
             Phases p = computePhases(loto);
-            if (p.phases.isEmpty()) continue;
+            if (!includeClosed && "Closed".equals(p.status)) continue;
+            // Walkdown sessions are a per-permit query, and only the walkdown bucket displays the count.
+            // Skipping it elsewhere keeps this list no more expensive than it was when it showed less.
+            int walkdownSessions = p.phases.contains("WALKDOWN") ? walkdownService.listForLoto(loto.getId()).size() : 0;
             out.add(new PwaLotoListItem(loto.getId(), loto.getPermitNumber(), loto.getLotoRequestor(),
                     loto.getEquipmentSystem(), p.status, p.phases,
                     grabInfo(loto.getId(), "HANG"), grabInfo(loto.getId(), "VERIFY"),
-                    walkdownService.listForLoto(loto.getId()).size(),
+                    walkdownSessions,
                     p.pointCount, p.hungCount, p.verifiedCount, p.verifyBlockedForMe));
         }
         return out;

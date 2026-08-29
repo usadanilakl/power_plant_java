@@ -113,17 +113,24 @@
   }
 
   <div #headerContainer class="header-container">
-    <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0) + (showRowIndex() ? 44 : 0)">
+    <table #headerTable class="table table-header" [style.width.px]="renderedTableWidth()">
       <thead>
         <tr>
           @if (showRowIndex()) {
-            <th class="row-index-header" title="Row number">#</th>
+            <th class="row-index-header" title="Row number"
+                [class.pinned]="hasPinnedColumns()"
+                [style.left.px]="hasPinnedColumns() ? 0 : null">#</th>
           }
           @if (driftEntityType()) {
-            <th class="sync-col-h" [style.width.px]="56" title="Hub / SharePoint sync status">Sync</th>
+            <th class="sync-col-h" [style.width.px]="56" title="Hub / SharePoint sync status"
+                [class.pinned]="hasPinnedColumns()"
+                [style.left.px]="hasPinnedColumns() ? syncColumnLeft() : null">Sync</th>
           }
           <th *ngFor="let column of visibleColumns()"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
+              [class.pinned]="isColumnPinned(column)"
+              [class.pin-edge]="isLastPinnedColumn(column)"
+              [style.left.px]="isColumnPinned(column) ? pinnedLeft(column) : null"
               class="sortable-header">
             <div class="header-content" (click)="sortService.sortColumn(column, true)">
               <span>{{ column.header }}</span>
@@ -167,7 +174,7 @@
       [itemSize]="dataService.rowHeight"
       class="viewport"
     >
-      <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth() + (driftEntityType() ? 56 : 0) + (showRowIndex() ? 44 : 0)">
+      <table #bodyTable class="table table-body" [style.width.px]="renderedTableWidth()">
         <tbody #tableBody>
           <tr
             *cdkVirtualFor="let item of dataService.filteredItems(); let i = index; trackBy: utilService.trackByItemId"
@@ -190,7 +197,11 @@
             (mouseleave)="onRowMouseLeave()"
           >
             @if (showRowIndex()) {
-              <td class="row-index-cell" (mousedown)="$event.stopPropagation()">
+              <td class="row-index-cell"
+                  [class.pinned]="hasPinnedColumns()"
+                  [style.left.px]="hasPinnedColumns() ? 0 : null"
+                  [ngStyle]="leadingCellStyle(item)"
+                  (mousedown)="$event.stopPropagation()">
                 @if (dragService.pickPositionOf(item); as pick) {
                   <span class="pick-badge" title="Position in the order you are building">{{ pick }}</span>
                 } @else {
@@ -200,6 +211,9 @@
             }
             @if (driftEntityType()) {
               <td class="sync-col" [style.width.px]="56"
+                  [class.pinned]="hasPinnedColumns()"
+                  [style.left.px]="hasPinnedColumns() ? syncColumnLeft() : null"
+                  [ngStyle]="leadingCellStyle(item)"
                   (mousedown)="$event.stopPropagation()"
                   (click)="onBadgeClick(item, $event)">
                 @if (driftFor(item); as d) {
@@ -224,7 +238,10 @@
               *ngFor="let column of visibleColumns()"
               [attr.data-column-id]="column.id"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
-              [ngStyle]="clickService.getCellStyleWithHover(item, column)"
+              [ngStyle]="cellStyle(item, column)"
+              [class.pinned]="isColumnPinned(column)"
+              [class.pin-edge]="isLastPinnedColumn(column)"
+              [style.left.px]="isColumnPinned(column) ? pinnedLeft(column) : null"
               [attr.title]="!column.template ? utilService.getCellValue(item, column) : null"
               (mousedown)="clickService.registerCellClick(item, column, $event)"
               (auxclick)="clickService.onRowMiddleClick(item, $event)"
@@ -303,6 +320,11 @@
         @for (row of columnPanelRows(); track row.column.id) {
           <div class="cp-row" cdkDrag [class.cp-hidden]="!row.visible">
             <span class="cp-grip" cdkDragHandle title="Drag to reorder">⠿</span>
+            <button class="cp-pin" type="button"
+                    [class.on]="isColumnPinned(row.column)"
+                    [disabled]="!row.visible"
+                    (click)="togglePin(row.column)"
+                    [title]="isColumnPinned(row.column) ? 'Unpin — let this column scroll' : 'Pin to the left edge'">📌</button>
             <label class="cp-label">
               <input
                 type="checkbox"

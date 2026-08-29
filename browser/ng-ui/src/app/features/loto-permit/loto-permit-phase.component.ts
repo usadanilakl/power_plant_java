@@ -24,7 +24,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
   standalone: true,
   imports: [FormsModule, MainLayoutComponent, LotoDrawingViewerComponent, LotoWoLinkComponent],
   template: `
-    <app-main-layout [header]="mode() === 'HANG' ? 'Hang LOTO' : 'Verify LOTO'">
+    <app-main-layout [header]="mode() === 'HANG' ? 'Hang LOTO' : mode() === 'VERIFY' ? 'Verify LOTO' : 'LOTO Permit'">
       <ng-container main-content>
         <div class="ph">
           <button class="ph-back" (click)="back()">← LOTO</button>
@@ -36,7 +36,14 @@ import { GlobalMessageService } from '../../services/global-message.service';
             @let d = detail()!;
             <div class="ph-head">
               <div class="ph-title">{{ d.permitNumber || ('Permit #' + d.id) }}</div>
-              <div class="ph-sub">{{ d.equipmentSystem }} · {{ doneCount() }}/{{ d.points.length }} {{ mode() === 'HANG' ? 'hung' : 'verified' }}</div>
+              @if (readOnly()) {
+                <div class="ph-sub">{{ d.equipmentSystem }} · {{ d.status }} · {{ hungTotal(d) }}/{{ d.points.length }} hung · {{ verifiedTotal(d) }}/{{ d.points.length }} verified</div>
+              } @else {
+                <div class="ph-sub">{{ d.equipmentSystem }} · {{ doneCount() }}/{{ d.points.length }} {{ mode() === 'HANG' ? 'hung' : 'verified' }}</div>
+              }
+              @if (readOnly()) {
+                <div class="ph-ro">👁 View only — this permit has no step available to you right now.</div>
+              }
             </div>
 
             <app-loto-wo-link [lotoId]="d.id"></app-loto-wo-link>
@@ -53,7 +60,12 @@ import { GlobalMessageService } from '../../services/global-message.service';
                 <div class="ph-p-head">
                   <span class="ph-tag">{{ p.tagNumber || ('#' + p.id) }}</span>
                   <span class="ph-flags">
-                    @if (isServerDone(p)) { <span class="ph-badge ok">✓ {{ mode() === 'HANG' ? p.hungBy : p.verifiedBy }}</span> }
+                    @if (readOnly()) {
+                      @if (p.hungBy) { <span class="ph-badge ok">✓ hung {{ p.hungBy }}</span> }
+                      @if (p.verifiedBy) { <span class="ph-badge ok">✓ verified {{ p.verifiedBy }}</span> }
+                    } @else if (isServerDone(p)) {
+                      <span class="ph-badge ok">✓ {{ mode() === 'HANG' ? p.hungBy : p.verifiedBy }}</span>
+                    }
                     @if (hasDrawing(p.id)) { <button class="ph-dwg" (click)="openDrawing(p)">📄 Drawing</button> }
                   </span>
                 </div>
@@ -65,7 +77,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
                   @if (p.specificLocation || p.generalLocation) { <span>{{ p.specificLocation || p.generalLocation }}</span> }
                 </div>
 
-                @if (!available(p) && !isServerDone(p)) {
+                @if (!readOnly() && !available(p) && !isServerDone(p)) {
                   @if (mode() === 'HANG') {
                     <div class="ph-lock">🔒 Hang predecessor(s) first: {{ predecessorTags(p, d.points) }}</div>
                   } @else {
@@ -73,7 +85,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
                   }
                 }
 
-                @if (!isServerDone(p)) {
+                @if (!readOnly() && !isServerDone(p)) {
                   @if (p.installSafetyConditions?.length) {
                     <div class="ph-safety">
                       <div class="ph-safety-h">Confirm before proceeding:</div>
@@ -90,6 +102,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
               </div>
             }
 
+            @if (!readOnly()) {
             <div class="ph-foot">
               @if (error()) { <p class="ph-err">{{ error() }}</p> }
               <label class="ph-sign" [class.dis]="!allDone()">
@@ -101,6 +114,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
                 {{ submitting() ? 'Submitting…' : 'Submit' }}
               </button>
             </div>
+            }
           }
         </div>
 
@@ -118,6 +132,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
     .ph-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
     .ph-err { color: var(--danger-text); }
     .ph-head { margin-bottom: 10px; }
+    .ph-ro { margin-top: 6px; background: var(--info-bg); color: var(--info-text); border: 1px solid var(--accent-color); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
     .ph-title { font-size: 16px; font-weight: 600; color: var(--primary-text); }
     .ph-sub { color: var(--secondary-text); font-size: 13px; margin-top: 2px; }
     .ph-p { background: var(--card-background); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
@@ -157,7 +172,21 @@ export class LotoPermitPhaseComponent implements OnInit {
   private router = inject(Router);
 
   lotoId = 0;
-  mode = signal<'HANG' | 'VERIFY'>('HANG');
+  /**
+   * HANG and VERIFY are the working modes. VIEW is read-only: the permit renders in full, with every
+   * marking control and the whole submit footer withheld. It is what the list opens for a permit that
+   * has no phase available — Building before CA approval, or an Active one with nothing left to do —
+   * which previously had nowhere to open at all.
+   */
+  mode = signal<'HANG' | 'VERIFY' | 'VIEW'>('HANG');
+  /** True in VIEW: no marking, no drafts, no submit. Display and drawings only. */
+  readOnly = computed(() => this.mode() === 'VIEW');
+  /**
+   * The mode as a WORKING phase, for the draft store and the submit payload — neither of which has a
+   * concept of VIEW. Every caller is guarded by {@link readOnly} first, so the VIEW fallback here is
+   * unreachable rather than a silent reinterpretation of the mode.
+   */
+  private phase(): 'HANG' | 'VERIFY' { return this.mode() === 'VERIFY' ? 'VERIFY' : 'HANG'; }
   detail = signal<PwaLotoDetail | null>(null);
   positions = signal<PositionOptions | null>(null);
   drawingPointIds = signal<Set<number>>(new Set());
@@ -176,7 +205,7 @@ export class LotoPermitPhaseComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.lotoId = Number(this.route.snapshot.paramMap.get('id'));
-    this.mode.set((this.route.snapshot.data['mode'] as 'HANG' | 'VERIFY') || 'HANG');
+    this.mode.set((this.route.snapshot.data['mode'] as 'HANG' | 'VERIFY' | 'VIEW') || 'HANG');
     this.loading.set(true);
     // cache-first
     const cached = this.store.getCachedDetail(this.lotoId);
@@ -202,8 +231,8 @@ export class LotoPermitPhaseComponent implements OnInit {
 
   private seedDraft(): void {
     const d = this.detail();
-    if (!d) return;
-    const existing = this.store.getPhaseDraft(this.lotoId, this.mode());
+    if (!d || this.readOnly()) return; // VIEW never marks anything, so it never needs a draft
+    const existing = this.store.getPhaseDraft(this.lotoId, this.phase());
     for (const p of d.points) {
       const serverDone = this.isServerDone(p);
       const saved = existing?.answers?.[p.id];
@@ -242,6 +271,10 @@ export class LotoPermitPhaseComponent implements OnInit {
     }
     return true;
   }
+
+  /** VIEW-mode totals: both halves of the lifecycle at once, rather than the active mode's one. */
+  hungTotal(d: PwaLotoDetail): number { return d.points.filter(p => !!p.hungBy).length; }
+  verifiedTotal(d: PwaLotoDetail): number { return d.points.filter(p => !!p.verifiedBy).length; }
 
   isAcked(pid: number, sc: string): boolean { this.tick(); return (this.draft[pid]?.acknowledged ?? []).includes(sc); }
   toggleAck(pid: number, sc: string): void {
@@ -298,12 +331,13 @@ export class LotoPermitPhaseComponent implements OnInit {
   }
 
   private persist(): void {
+    if (this.readOnly()) return; // nothing to persist: VIEW has no draft
     this.tick.update(n => n + 1);
     // never demote an already-queued ('pending'/'failed') submit back to 'draft' — that would strand the auto-flush
-    const existing = this.store.getPhaseDraft(this.lotoId, this.mode());
+    const existing = this.store.getPhaseDraft(this.lotoId, this.phase());
     const status = existing && (existing.status === 'pending' || existing.status === 'failed') ? existing.status : 'draft';
     const draft: PhaseDraft = {
-      lotoId: this.lotoId, phase: this.mode(), answers: this.draft, sign: this.sign(),
+      lotoId: this.lotoId, phase: this.phase(), answers: this.draft, sign: this.sign(),
       aggregateNotes: this.aggNotes(), savedAt: Date.now(), status,
     };
     this.store.savePhaseDraft(draft);
@@ -311,7 +345,7 @@ export class LotoPermitPhaseComponent implements OnInit {
 
   submit(): void {
     const d = this.detail();
-    if (!d) return;
+    if (!d || this.readOnly()) return; // the footer is not rendered in VIEW; this closes the path anyway
     this.submitting.set(true);
     this.error.set('');
     // only NEW (not server-done) checked points; server skips anything already done
@@ -320,7 +354,7 @@ export class LotoPermitPhaseComponent implements OnInit {
       if (!this.isServerDone(p) && this.draft[p.id]?.checked) answers[p.id] = this.draft[p.id];
     }
     const draft: PhaseDraft = {
-      lotoId: this.lotoId, phase: this.mode(), answers, sign: this.sign() && this.allDone(),
+      lotoId: this.lotoId, phase: this.phase(), answers, sign: this.sign() && this.allDone(),
       aggregateNotes: this.aggNotes(), savedAt: Date.now(), status: 'pending',
     };
     this.store.savePhaseDraft(draft);

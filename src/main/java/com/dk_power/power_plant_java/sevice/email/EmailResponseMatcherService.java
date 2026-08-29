@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  * 1. In-Reply-To header matching (most reliable — reply to outbound email)
  * 2. Conversation ID matching (thread-based — same email thread)
  * 3. Subject pattern matching via SharePoint ID [SP:xxx] (hub-independent)
- * 4. Subject pattern matching via PWA UUID [PWA:uuid] (pre-SharePoint fallback)
+ * 4. Subject pattern matching via PWA marker [PWA:WR:uuid] / [PWA:uuid] (pre-SharePoint fallback)
  * 5. Sender email matching to WorkRequest.submitterEmail (only "Pending More Info" WRs)
  */
 @Service
@@ -35,8 +35,17 @@ public class EmailResponseMatcherService {
 
     // Pattern for SharePoint-tagged Work Request: [SP:xxx]
     private static final Pattern SP_PATTERN = Pattern.compile("\\[SP:([^\\]]+)\\]");
-    // Pattern for PWA UUID-tagged Work Request: [PWA:uuid]
-    private static final Pattern PWA_PATTERN = Pattern.compile("\\[PWA:([^\\]]+)\\]");
+    // Two PWA subject-marker vocabularies exist and both reach this matcher:
+    //   [PWA:WR:uuid] / [PWA:JHA:uuid] / [PWA:INST]  — minted by the PWA (ng-ui), see
+    //                                                  EmailPollingService.PWA_WR_PATTERN
+    //   [PWA:uuid]                                   — minted by NgWorkRequestService
+    // Only the WR forms identify a WorkRequest.
+    private static final Pattern PWA_WR_PATTERN = Pattern.compile("\\[PWA:WR:([^\\]]+)\\]");
+    // Legacy bare form. [^:\]]+ deliberately cannot span a colon, so this never matches
+    // a typed marker like [PWA:WR:uuid] — but it DOES match [PWA:INST], hence the UUID check.
+    private static final Pattern PWA_LEGACY_PATTERN = Pattern.compile("\\[PWA:([^:\\]]+)\\]");
+    private static final Pattern UUID_PATTERN = Pattern.compile(
+        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
     /**
      * Matches an incoming email to an entity using multiple strategies.
@@ -115,9 +124,8 @@ public class EmailResponseMatcherService {
             }
 
             // Strategy 4: Match via PWA UUID in subject — pre-SharePoint fallback
-            Matcher pwaMatcher = PWA_PATTERN.matcher(subject);
-            if (pwaMatcher.find()) {
-                String pwaUuid = pwaMatcher.group(1);
+            String pwaUuid = extractWorkRequestLocalUuid(subject);
+            if (pwaUuid != null) {
                 WorkRequestLookup lookup = findWorkRequestByLocalUuid(pwaUuid);
                 if (lookup != null) {
                     log.debug("[EmailMatcher] Matched via PWA UUID [PWA:{}] to WorkRequest #{}",
@@ -132,6 +140,13 @@ public class EmailResponseMatcherService {
                     log.warn("[EmailMatcher] PWA UUID [PWA:{}] found in subject but no matching WorkRequest",
                         pwaUuid);
                 }
+            } else if (subject.contains("[PWA:")) {
+                // A PWA marker for something this matcher does not link ([PWA:JHA:uuid],
+                // [PWA:INST]). Debug, not warn: EmailPollingService.retryUnlinkedEmails re-runs
+                // this matcher over every unlinked row every 5 minutes, so warning here repeats
+                // forever for mail that can never resolve to a WorkRequest.
+                log.debug("[EmailMatcher] Non-WorkRequest PWA marker in subject, skipping lookup: {}",
+                    subject);
             }
         }
 
@@ -188,6 +203,32 @@ public class EmailResponseMatcherService {
         } catch (Exception e) {
             log.warn("[EmailMatcher] Error looking up WorkRequest by sharepointId '{}': {}",
                 sharepointId, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Pull the WorkRequest {@code localUuid} out of a subject's PWA marker, or return
+     * {@code null} when the subject has no marker or carries one for something that is not a
+     * WorkRequest — {@code [PWA:JHA:uuid]}, {@code [PWA:INST]}.
+     *
+     * <p>The previous greedy {@code \[PWA:([^\]]+)\]} captured those typed markers verbatim
+     * ({@code "JHA:<uuid>"}, {@code "INST"}) and looked each one up as a WorkRequest localUuid,
+     * which could never hit. That both spammed the log via the 5-minute unlinked-email retry and
+     * silently failed to match genuine {@code [PWA:WR:uuid]} replies (it captured
+     * {@code "WR:<uuid>"} rather than the uuid).
+     */
+    private String extractWorkRequestLocalUuid(String subject) {
+        Matcher wrMatcher = PWA_WR_PATTERN.matcher(subject);
+        if (wrMatcher.find()) {
+            return wrMatcher.group(1);
+        }
+        // Legacy bare form from NgWorkRequestService. Its shape is indistinguishable from a typed
+        // marker such as [PWA:INST], so accept it only when the token is a canonical UUID — which
+        // every localUuid is (crypto.randomUUID / UUID.randomUUID).
+        Matcher legacyMatcher = PWA_LEGACY_PATTERN.matcher(subject);
+        if (legacyMatcher.find() && UUID_PATTERN.matcher(legacyMatcher.group(1)).matches()) {
+            return legacyMatcher.group(1);
         }
         return null;
     }

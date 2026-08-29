@@ -47,6 +47,46 @@ public class HotWorkMapper implements BaseMapper {
         dto.setTimeOfInitialTest(entity.getTimeOfInitialTest());
         dto.setInitialTestResult(entity.getInitialTestResult());
 
+        // ---- 2026-08-27 revision ----
+        dto.setInitialTestInitials(entity.getInitialTestInitials());
+        dto.setFireProtectionApprovalDateTime(entity.getFireProtectionApprovalDateTime());
+        dto.setContMeterModel(entity.getContMeterModel());
+        dto.setContMeterNum(entity.getContMeterNum());
+        dto.setContMeterCalDate(entity.getContMeterCalDate());
+        dto.setFireWatch1Hour(entity.getFireWatch1Hour());
+        dto.setFireWatch30Min(entity.getFireWatch30Min());
+        dto.setFireWatchNotRequired(entity.getFireWatchNotRequired());
+        dto.setIssuerSignature(entity.getIssuerSignature());
+        dto.setApprovedDate(entity.getApprovedDate());
+        dto.setApprovedTime(entity.getApprovedTime());
+        dto.setActualStartTime(entity.getActualStartTime());
+        dto.setActualEndTime(entity.getActualEndTime());
+        dto.setCancelRequestorName(entity.getCancelRequestorName());
+        dto.setCancelRequestorSignature(entity.getCancelRequestorSignature());
+        dto.setCancelRequestorDate(entity.getCancelRequestorDate());
+        dto.setCancelRequestorTime(entity.getCancelRequestorTime());
+        dto.setCancelFireWatchName(entity.getCancelFireWatchName());
+        dto.setCancelFireWatchSignature(entity.getCancelFireWatchSignature());
+        dto.setCancelFireWatchDate(entity.getCancelFireWatchDate());
+        dto.setCancelFireWatchTime(entity.getCancelFireWatchTime());
+        dto.setFireMonitoringMethod(entity.getFireMonitoringMethod());
+        dto.setFireMonitorName(entity.getFireMonitorName());
+        dto.setFireMonitorSignature(entity.getFireMonitorSignature());
+        dto.setFireMonitorDate(entity.getFireMonitorDate());
+        dto.setFireMonitorTime(entity.getFireMonitorTime());
+        dto.setCancelledBy(entity.getCancelledBy());
+        dto.setCancelledDate(entity.getCancelledDate());
+        dto.setCancelledTime(entity.getCancelledTime());
+        dto.setFireProtectionInService(entity.getFireProtectionInService());
+        dto.setFireProtectionNotInService(entity.getFireProtectionNotInService());
+        dto.setWorkCompleted(entity.getWorkCompleted());
+
+        try {
+            dto.setWorkType(entity.getWorkType());
+        } catch (Exception e) {
+            // handle or log
+        }
+
         try {
             dto.setMeasures(entity.getMeasures());
         } catch (Exception e) {
@@ -92,6 +132,44 @@ public class HotWorkMapper implements BaseMapper {
             entity.setIsFireWatchRequired(dto.getIsFireWatchRequired());
         if (dto.getTimeOfInitialTest() != null) entity.setTimeOfInitialTest(dto.getTimeOfInitialTest());
         if (dto.getInitialTestResult() != null) entity.setInitialTestResult(dto.getInitialTestResult());
+
+        // ---- 2026-08-27 revision ----
+        if (dto.getInitialTestInitials() != null) entity.setInitialTestInitials(dto.getInitialTestInitials());
+        if (dto.getFireProtectionApprovalDateTime() != null) entity.setFireProtectionApprovalDateTime(dto.getFireProtectionApprovalDateTime());
+        if (dto.getContMeterModel() != null) entity.setContMeterModel(dto.getContMeterModel());
+        if (dto.getContMeterNum() != null) entity.setContMeterNum(dto.getContMeterNum());
+        if (dto.getContMeterCalDate() != null) entity.setContMeterCalDate(dto.getContMeterCalDate());
+        if (dto.getFireWatch1Hour() != null) entity.setFireWatch1Hour(dto.getFireWatch1Hour());
+        if (dto.getFireWatch30Min() != null) entity.setFireWatch30Min(dto.getFireWatch30Min());
+        if (dto.getFireWatchNotRequired() != null) entity.setFireWatchNotRequired(dto.getFireWatchNotRequired());
+        if (dto.getIssuerSignature() != null) entity.setIssuerSignature(dto.getIssuerSignature());
+        if (dto.getApprovedDate() != null) entity.setApprovedDate(dto.getApprovedDate());
+        if (dto.getApprovedTime() != null) entity.setApprovedTime(dto.getApprovedTime());
+        if (dto.getActualStartTime() != null) entity.setActualStartTime(dto.getActualStartTime());
+        if (dto.getActualEndTime() != null) entity.setActualEndTime(dto.getActualEndTime());
+        if (dto.getCancelRequestorName() != null) entity.setCancelRequestorName(dto.getCancelRequestorName());
+        if (dto.getCancelRequestorSignature() != null) entity.setCancelRequestorSignature(dto.getCancelRequestorSignature());
+        if (dto.getCancelRequestorDate() != null) entity.setCancelRequestorDate(dto.getCancelRequestorDate());
+        if (dto.getCancelRequestorTime() != null) entity.setCancelRequestorTime(dto.getCancelRequestorTime());
+        if (dto.getCancelFireWatchName() != null) entity.setCancelFireWatchName(dto.getCancelFireWatchName());
+        if (dto.getCancelFireWatchSignature() != null) entity.setCancelFireWatchSignature(dto.getCancelFireWatchSignature());
+        if (dto.getCancelFireWatchDate() != null) entity.setCancelFireWatchDate(dto.getCancelFireWatchDate());
+        if (dto.getCancelFireWatchTime() != null) entity.setCancelFireWatchTime(dto.getCancelFireWatchTime());
+        if (dto.getFireMonitoringMethod() != null) entity.setFireMonitoringMethod(dto.getFireMonitoringMethod());
+        if (dto.getFireMonitorName() != null) entity.setFireMonitorName(dto.getFireMonitorName());
+        if (dto.getFireMonitorSignature() != null) entity.setFireMonitorSignature(dto.getFireMonitorSignature());
+        if (dto.getFireMonitorDate() != null) entity.setFireMonitorDate(dto.getFireMonitorDate());
+        if (dto.getFireMonitorTime() != null) entity.setFireMonitorTime(dto.getFireMonitorTime());
+        if (dto.getCancelledBy() != null) entity.setCancelledBy(dto.getCancelledBy());
+        if (dto.getCancelledDate() != null) entity.setCancelledDate(dto.getCancelledDate());
+        if (dto.getCancelledTime() != null) entity.setCancelledTime(dto.getCancelledTime());
+        if (dto.getFireProtectionInService() != null) entity.setFireProtectionInService(dto.getFireProtectionInService());
+        if (dto.getFireProtectionNotInService() != null) entity.setFireProtectionNotInService(dto.getFireProtectionNotInService());
+        if (dto.getWorkCompleted() != null) entity.setWorkCompleted(dto.getWorkCompleted());
+
+        if (dto.getWorkType() != null) {
+            entity.setWorkType(dto.getWorkType());
+        }
 
         try {
             entity.setMeasures(dto.getMeasures());

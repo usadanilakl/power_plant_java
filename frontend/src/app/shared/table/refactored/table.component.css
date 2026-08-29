@@ -921,3 +921,103 @@ td {
   font-weight: 700;
   text-transform: uppercase;
 }
+
+/* ==========================================================================
+   Pinned (frozen) columns
+   --------------------------------------------------------------------------
+   The header and the body scroll horizontally in their own containers whose
+   scrollLeft is kept in sync, and position:sticky resolves against whichever
+   scrollport contains the element — so each table freezes independently and the
+   two stay aligned for free.
+   The left offset is computed per column (leading fixed columns + the widths of
+   the pinned columns before it) and applied inline, because column widths change
+   under the resize handle.
+   ========================================================================== */
+.table-header thead th.pinned {
+  position: sticky;
+  /* Above 10: a NON-pinned header's .resize-handle sits at z-index 10 in the same
+     stacking context, so at 3 the handle of a column scrolling past would paint its
+     hover highlight straight over the frozen header. */
+  z-index: 11;
+}
+
+.table-body tbody td.pinned {
+  position: sticky;
+  z-index: 2;
+}
+
+/* The seam between the frozen block and the scrolling columns. A BORDER, not a
+   box-shadow: the per-cell hover style is applied inline and set box-shadow, so a
+   shadow-based seam disappeared under the pointer. */
+.table-header thead th.pin-edge,
+.table-body tbody td.pin-edge {
+  border-right: 2px solid var(--secondary-text, #888);
+}
+
+/* --- Opaque backgrounds -------------------------------------------------
+   A sticky cell paints nothing of its own, so without this the scrolling rows
+   slide visibly UNDER the frozen block. The row's background lives on the <tr>,
+   which does not paint its sticky children, so every row state needs a matching
+   cell rule. Cells with conditionalStyling set an inline background that wins
+   over all of these, which is what we want — a red "Expired" cell stays red when
+   frozen. The one state CSS cannot see is the inline highlight on the <tr>
+   (TableSyncService.getRowStyle); the component merges that into pinned cells'
+   own ngStyle instead — see TableComponent.cellStyle. */
+.table-body tbody td.pinned {
+  background-color: var(--primary-background, white);
+}
+
+.table-body tbody tr:hover td.pinned {
+  background-color: var(--primary-background, white);
+  background-image: linear-gradient(var(--hover-color, #f9f9f9), var(--hover-color, #f9f9f9));
+}
+
+.table-body tbody tr.selected td.pinned {
+  background-color: color-mix(in srgb, var(--accent-color, #007bff) 30%, var(--primary-background, white));
+}
+
+.table-body tbody tr.external-click td.pinned {
+  background-color: color-mix(in srgb, var(--accent-color, #007bff) 40%, var(--primary-background, white));
+}
+
+.table-body tbody tr.external-hover td.pinned {
+  background-color: color-mix(in srgb, var(--warning-background, #ffeb3b) 45%, var(--primary-background, white));
+}
+
+.table-body tbody tr.picked td.pinned {
+  background-color: color-mix(in srgb, var(--accent-color, #1976d2) 22%, var(--primary-background, white));
+}
+
+.table-body tbody tr.dragged td.pinned,
+.table-body tbody tr.ghost-row td.pinned {
+  background-color: var(--primary-background, white);
+  background-image: linear-gradient(
+    var(--accent-color-shadow, #f0f8ff),
+    var(--accent-color-shadow, #f0f8ff)
+  );
+}
+
+/* Pin toggle in the Columns panel */
+.cp-pin {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.3;
+  filter: grayscale(1);
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+.cp-row:hover .cp-pin { opacity: 0.65; }
+.cp-pin.on,
+.cp-row:hover .cp-pin.on {
+  opacity: 1;
+  filter: none;
+  background: color-mix(in srgb, var(--accent-color, #1976d2) 18%, transparent);
+}
+.cp-pin:disabled { opacity: 0.15; cursor: default; }

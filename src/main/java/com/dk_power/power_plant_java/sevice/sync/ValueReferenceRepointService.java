@@ -80,10 +80,19 @@ public class ValueReferenceRepointService {
         public final Map<String, List<String>> fkColumns;
         /** Per-entity-type JPA descriptors. */
         public final Map<String, EntityDescriptor> entityDescriptors;
+        /**
+         * Subset of {@link #fkColumns} keys that are {@code @ManyToMany} join tables (composite PK).
+         * The residual sweep DELETEs from these — a soft-deleted owner's membership needn't be
+         * preserved, and an UPDATE-to-canonical could collide on the {@code (owner, value)} PK — and
+         * UPDATEs scalar FK tables. Everything not in this set is treated as a scalar FK owner table.
+         */
+        public final Set<String> joinTables;
 
-        Metadata(Map<String, List<String>> fkColumns, Map<String, EntityDescriptor> entityDescriptors) {
+        Metadata(Map<String, List<String>> fkColumns, Map<String, EntityDescriptor> entityDescriptors,
+                 Set<String> joinTables) {
             this.fkColumns = fkColumns;
             this.entityDescriptors = entityDescriptors;
+            this.joinTables = joinTables;
         }
     }
 
@@ -118,6 +127,7 @@ public class ValueReferenceRepointService {
     public Metadata discover() {
         Map<String, List<String>> rawFkColumns = new TreeMap<>();
         Map<String, EntityDescriptor> descriptors = new LinkedHashMap<>();
+        Set<String> joinTableNames = new HashSet<>();
 
         for (EntityType<?> entity : entityManager.getMetamodel().getEntities()) {
             Class<?> entityClass = entity.getJavaType();
@@ -160,6 +170,8 @@ public class ValueReferenceRepointService {
                         field.setAccessible(true);
                         collectionFields.add(field);
                         recordJoinTableFk(field, rawFkColumns);
+                        JoinTable jt = field.getAnnotation(JoinTable.class);
+                        if (jt != null && !jt.name().isEmpty()) joinTableNames.add(jt.name());
                     }
                 }
             }
@@ -180,7 +192,7 @@ public class ValueReferenceRepointService {
         }
 
         Map<String, List<String>> filtered = filterToExistingColumns(rawFkColumns);
-        return new Metadata(filtered, descriptors);
+        return new Metadata(filtered, descriptors, joinTableNames);
     }
 
     /**
@@ -524,6 +536,82 @@ public class ValueReferenceRepointService {
     public static final class CountProbeFailureException extends RuntimeException {
         public CountProbeFailureException(String table, String column, Long valueId, Throwable cause) {
             super("count probe failed for " + table + "." + column + " (valueId=" + valueId + ")", cause);
+        }
+    }
+
+    /**
+     * Repoint/clear residual DB rows that still reference {@code orphanId} but were invisible to the
+     * JPQL repoint because their owner is soft-deleted ({@code @Where(deleted IS NOT TRUE)} hides them).
+     *
+     * <p><b>Why this exists.</b> {@link #repointAllReferences} loads owners via JPQL, so it reaches only
+     * LIVE rows; {@link #countReferencesSql} counts via native SQL, so it sees ALL rows. The two disagree
+     * by exactly the soft-deleted stragglers, {@code verify-before-delete} never reaches 0, and the dedup
+     * pair aborts on every retry — a hub-wide inbound-sync retry storm (confirmed in prod 2026-08-28:
+     * {@code work_request.permit_status_id}, {@code field_list_item.list_type_id/status_id}). This mirrors
+     * the straggler sweep the Category merge path already performs, generalised over the whole FK map so it
+     * covers every scalar Value FK and every ManyToMany join table — the SAME map the verify count iterates,
+     * so repoint and count cannot drift apart.
+     *
+     * <p>Native SQL only: a soft-deleted owner carries no synced state that matters, so no {@code FieldChange}
+     * emission is needed. Call AFTER {@link #repointAllReferences} + flush and BEFORE the verify count,
+     * inside the same pair tx, then flush.
+     *
+     * <ul>
+     *   <li><b>Scalar FK table</b> → {@code UPDATE <table> SET <col>=:canon WHERE <col>=:orphan}. Live rows
+     *       were already flushed to canonical by the JPA repoint, so only soft-deleted stragglers still match
+     *       {@code = orphan}.</li>
+     *   <li><b>ManyToMany join table</b> → {@code DELETE FROM <joinTable> WHERE <inverseCol>=:orphan}. The
+     *       residual membership belongs to a soft-deleted owner; dropping it (rather than repointing to
+     *       canonical) both drives the count to 0 and sidesteps a composite-PK collision when
+     *       {@code (owner, canonical)} already exists.</li>
+     * </ul>
+     *
+     * <p><b>Fail-loud:</b> any statement failure rethrows as {@link ResidualSweepFailureException} so the
+     * caller's pair tx rolls back — better to leave the duplicate un-merged than to soft-delete the orphan
+     * while a straggler still points at it.
+     */
+    public long sweepResidualReferences(Long orphanId, Long canonicalId, Metadata meta) {
+        if (orphanId == null || canonicalId == null || meta == null) return 0;
+        long affected = 0;
+        for (Map.Entry<String, List<String>> entry : meta.fkColumns.entrySet()) {
+            String table = entry.getKey();
+            boolean joinTable = meta.joinTables.contains(table);
+            for (String column : entry.getValue()) {
+                try {
+                    jakarta.persistence.Query q;
+                    if (joinTable) {
+                        q = entityManager.createNativeQuery(
+                                        "DELETE FROM " + table + " WHERE " + column + " = :orphan")
+                                .setParameter("orphan", orphanId);
+                    } else {
+                        q = entityManager.createNativeQuery(
+                                        "UPDATE " + table + " SET " + column + " = :canon WHERE " + column + " = :orphan")
+                                .setParameter("canon", canonicalId)
+                                .setParameter("orphan", orphanId);
+                    }
+                    int n = q.executeUpdate();
+                    if (n > 0) {
+                        affected += n;
+                        log.info("sweepResidualReferences: {} {} residual row(s) at {}.{} (orphan #{} → canonical #{})",
+                                n, joinTable ? "deleted" : "repointed", table, column, orphanId, canonicalId);
+                    }
+                } catch (Exception e) {
+                    log.error("sweepResidualReferences: failed for {}.{} (orphan #{}) — failing loud to keep verify-before-delete safe",
+                            table, column, orphanId, e);
+                    throw new ResidualSweepFailureException(table, column, orphanId, e);
+                }
+            }
+        }
+        return affected;
+    }
+
+    /**
+     * Thrown when the residual straggler sweep ({@link #sweepResidualReferences}) fails on a
+     * (table, column) pair. Always indicates real trouble — never swallow.
+     */
+    public static final class ResidualSweepFailureException extends RuntimeException {
+        public ResidualSweepFailureException(String table, String column, Long orphanId, Throwable cause) {
+            super("residual reference sweep failed for " + table + "." + column + " (orphanId=" + orphanId + ")", cause);
         }
     }
 

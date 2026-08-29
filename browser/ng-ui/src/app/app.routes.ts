@@ -228,6 +228,14 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {
+      // Read-only permit view. Where the list sends a permit with no phase available — Building before
+      // CA approval, or Active with nothing left to do. Same component as hang/verify, actions withheld.
+      path: 'loto/:id',
+      loadComponent: () => import('./features/loto-permit/loto-permit-phase.component').then(m => m.LotoPermitPhaseComponent),
+      data: { mode: 'VIEW' },
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
       path: 'loto/:id/hang',
       loadComponent: () => import('./features/loto-permit/loto-permit-phase.component').then(m => m.LotoPermitPhaseComponent),
       data: { mode: 'HANG' },

@@ -108,9 +108,16 @@ public class PwaLotoController {
 
     // ── read ──
 
+    /**
+     * All LOTO permits — including ones this user cannot act on (Building before CA approval, Active
+     * with nothing left to do). {@code phases} says what is actionable; an empty list means view-only.
+     *
+     * @param includeClosed Closed permits are off by default: unbounded history, nothing to act on.
+     */
     @GetMapping("/list")
-    public ResponseEntity<NgApiResponse<List<PwaLotoListItem>>> list() {
-        return ok(new NgApiResponse<>(service.list(), "loto permits"));
+    public ResponseEntity<NgApiResponse<List<PwaLotoListItem>>> list(
+            @RequestParam(name = "includeClosed", defaultValue = "false") boolean includeClosed) {
+        return ok(new NgApiResponse<>(service.list(includeClosed), "loto permits"));
     }
 
     @GetMapping("/{id}")

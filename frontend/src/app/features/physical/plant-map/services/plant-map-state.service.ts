@@ -22,6 +22,7 @@ export interface MapBox {
 }
 
 export type EquipmentPortRole = 'inlet' | 'outlet' | 'bidirectional';
+export type EquipmentPortFlowBoundary = 'none' | 'supply' | 'consumer';
 
 /** A user-placed physical nozzle/connector. Coordinates are normalized to the equipment footprint. */
 export interface EquipmentPort {
@@ -29,6 +30,8 @@ export interface EquipmentPort {
   label: string;
   circuit: string;
   role: EquipmentPortRole;
+  /** Nominal-flow scenario boundary. Inlet/outlet remains the equipment function; this says where flow originates/ends. */
+  flowBoundary?: EquipmentPortFlowBoundary;
   x: number;
   y: number;
 }
@@ -64,27 +67,34 @@ export interface PipeFitting {
   nodeId?: number; // the fitting's PhysicalObject id (child of the pipe node)
   closed?: boolean; // valve state for the visual flow sim (a closed valve blocks flow through its pipe)
 }
-/** A cross-section connection point on a pipe (like a P&ID off-page connector). `at` = which endpoint carries it
- *  (source = the pipe's END, destination = its START). `linkId` is SHARED by the two ports of one continuation so
- *  they know each other (jump + highlight). `section` = the counterpart's section id when known (dest stores it). */
+/** A stable branch point on a pipe body. Topology refers to it as terminal `T:<id>`. */
+export interface PipeTap { id: string; at: { x: number; y: number }; }
+/** @deprecated Read only during migration to the canonical Plant Map topology API. */
 export interface PipePort { linkId: string; at: 'start' | 'end'; section?: number; }
+
+export type PipeFlowDirection = 'forward' | 'reverse' | 'both';
 
 /** A pipe = a guided, elbowed route (a polyline) with fittings on it. Each pipe is a real PhysicalObject (nodeId,
  *  child of its parent canvas node); it persists as ONE placement (sourceEntityType='Pipe', geometry+fittings in svgPath). */
 export interface PipeGeo {
   id: string; parentId: number; points: { x: number; y: number }[];
-  color?: string; width?: number; name?: string; fittings?: PipeFitting[];
-  aEnd?: number; bEnd?: number;   // PhysicalObject ids the two ends anchor to (cross-area follow)
+  color?: string; width?: number; name?: string; fittings?: PipeFitting[]; taps?: PipeTap[];
+  /** @deprecated Migration input only. */
+  aEnd?: number; bEnd?: number;
   nodeId?: number;                // the pipe's PhysicalObject id
   localId?: number;               // its DiagramPlacement localId on the parent's diagram (stable across saves)
   placementId?: number;           // JPA id of that placement (allows safe updates when its canvas is nested/off-screen)
   groupId?: string;               // shared across the segments of ONE logical pipe that runs through several sections
-  continuesFrom?: number;         // the SECTION node this segment was continued from (backward "jump to origin")
-  ports?: PipePort[];             // cross-section connectors (source end ↔ destination start), matched by linkId
+  /** @deprecated Migration input only. */
+  continuesFrom?: number;
+  /** @deprecated Migration input only. */
+  ports?: PipePort[];
+  /** @deprecated Migration inputs only. */
   startAttachment?: EquipmentPortRef;
   endAttachment?: EquipmentPortRef;
   legacyEdgeLocalId?: number;
-  flowReversed?: boolean;         // visual-flow direction override for this already-drawn section
+  flowDirection?: PipeFlowDirection; // nominal constraint relative to visible ends: A->B, B->A, or either
+  flowReversed?: boolean;         // legacy visual-only flag; read as reverse when flowDirection is absent
 }
 
 export interface BackgroundTransform {
@@ -295,6 +305,7 @@ export class PlantMapStateService {
         label: typeof port.label === 'string' && port.label.trim() ? port.label : `P${index + 1}`,
         circuit: typeof port.circuit === 'string' ? port.circuit : '',
         role: port.role === 'inlet' || port.role === 'outlet' ? port.role : 'bidirectional',
+        flowBoundary: port.flowBoundary === 'supply' || port.flowBoundary === 'consumer' ? port.flowBoundary : 'none',
         x: Math.max(0, Math.min(1, Number.isFinite(port.x) ? port.x : 1)),
         y: Math.max(0, Math.min(1, Number.isFinite(port.y) ? port.y : 0.5)),
       }));
@@ -475,17 +486,19 @@ export class PlantMapStateService {
     const pipes: PipeGeo[] = placements
       .filter(p => p.sourceEntityType === PIPE_SRC && p.sourceEntityId != null && p.localId != null)
       .map(p => {
-        let geo: { points?: any; fittings?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; startAttachment?: EquipmentPortRef; endAttachment?: EquipmentPortRef; legacyEdgeLocalId?: number; flowReversed?: boolean } = {};
+        let geo: { points?: any; fittings?: any; taps?: any; aEnd?: number; bEnd?: number; groupId?: string; continuesFrom?: number; ports?: any; startAttachment?: EquipmentPortRef; endAttachment?: EquipmentPortRef; legacyEdgeLocalId?: number; flowDirection?: PipeFlowDirection; flowReversed?: boolean } = {};
         try { geo = p.svgPath ? JSON.parse(p.svgPath) : {}; } catch { geo = {}; }
         return {
           id: 'pipe-' + p.sourceEntityId!, parentId: this.canvasNode()?.id ?? 0,
           nodeId: p.sourceEntityId!, localId: p.localId!, placementId: p.id,
           points: Array.isArray(geo.points) ? geo.points : [],
           fittings: Array.isArray(geo.fittings) ? geo.fittings : [],
+          taps: Array.isArray(geo.taps) ? geo.taps : [],
           aEnd: geo.aEnd ?? undefined, bEnd: geo.bEnd ?? undefined, groupId: geo.groupId ?? undefined,
           continuesFrom: geo.continuesFrom ?? undefined, ports: Array.isArray(geo.ports) ? geo.ports : undefined,
           startAttachment: geo.startAttachment ?? undefined, endAttachment: geo.endAttachment ?? undefined,
           legacyEdgeLocalId: geo.legacyEdgeLocalId ?? undefined,
+          flowDirection: geo.flowDirection ?? (geo.flowReversed ? 'reverse' : undefined),
           flowReversed: geo.flowReversed ?? undefined,
           color: p.color || undefined, width: p.lineWidth || undefined,
           name: p.label || p.name || 'Pipe',
@@ -900,7 +913,7 @@ export class PlantMapStateService {
         placementDtos.push({
           diagramId: did, localId,
           sourceEntityType: PIPE_SRC, sourceEntityId: p.nodeId, type: 'run',
-          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], aEnd: p.aEnd, bEnd: p.bEnd, groupId: p.groupId, continuesFrom: p.continuesFrom, ports: p.ports, startAttachment: p.startAttachment, endAttachment: p.endAttachment, legacyEdgeLocalId: p.legacyEdgeLocalId, flowReversed: p.flowReversed }),
+          svgPath: JSON.stringify({ points: p.points, fittings: p.fittings ?? [], taps: p.taps ?? [], groupId: p.groupId, legacyEdgeLocalId: p.legacyEdgeLocalId, flowDirection: p.flowDirection }),
           color: p.color, lineWidth: p.width,
           name: p.name || 'Pipe', label: p.name || 'Pipe',
           x: minX, y: minY,

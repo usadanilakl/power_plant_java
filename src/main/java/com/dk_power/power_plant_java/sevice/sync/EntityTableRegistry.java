@@ -139,6 +139,7 @@ public class EntityTableRegistry {
         Map.entry("Diagram", "diagram"),
         Map.entry("DiagramPlacement", "diagram_placement"),
         Map.entry("DiagramConnection", "diagram_connection"),
+        Map.entry("PlantMapTopologyConnection", "plant_map_topology_connection"),
 
         // Simulator
         Map.entry("SimEquipment", "sim_equipment"),
@@ -217,6 +218,7 @@ public class EntityTableRegistry {
         "Diagram",
         "DiagramPlacement",   // ManyToOne Diagram — after it
         "DiagramConnection",  // ManyToOne Diagram — after it
+        "PlantMapTopologyConnection", // logical diagram-node references; no database FK
         "WorkAreaMapShape",
         "WorkArea",
         "WorkCategoryProfile",

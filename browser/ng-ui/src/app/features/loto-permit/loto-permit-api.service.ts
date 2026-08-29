@@ -27,8 +27,9 @@ export class LotoPermitApiService {
   private http = inject(HttpClient);
   private base = `${environment.serverUrl}/api/pwa/secured/loto`;
 
-  list(): Observable<PwaLotoListItem[]> {
-    return this.http.get<{ responseData: PwaLotoListItem[] }>(`${this.base}/list`)
+  /** All permits. `includeClosed` pulls history too — off by default; it is unbounded. */
+  list(includeClosed = false): Observable<PwaLotoListItem[]> {
+    return this.http.get<{ responseData: PwaLotoListItem[] }>(`${this.base}/list?includeClosed=${includeClosed}`)
       .pipe(timeout(30000), map(r => r.responseData ?? []));
   }
 

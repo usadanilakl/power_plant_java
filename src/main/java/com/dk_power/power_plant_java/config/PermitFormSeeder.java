@@ -28,9 +28,21 @@ public class PermitFormSeeder {
 
     // Geometry of the `radio` widget (RadioCheckboxesComponent): two 18px squares, 4px gap.
     // A container using it must be at least RADIO_W wide or the second box is clipped.
-    private static final int RADIO_BOX = 18;
-    private static final int RADIO_PITCH = 22; // box + gap
-    private static final int RADIO_W = 40;     // box + gap + box
+    // CheckboxXComponent and RadioCheckboxesComponent both draw an 18px square; the radio draws
+    // two with a 4px gap. Containers must add the 2px coloured frame on each side or the widget
+    // is squeezed (box-sizing: border-box) and stops lining up with its column header.
+    private static final int TICK = 18;              // the widget's square
+    private static final int FRAME = 2;              // coloured border, per side
+    private static final int TICK_BOX = TICK + 2 * FRAME;        // 22 - one checkbox
+    private static final int RADIO_PITCH = TICK + 4;             // 22 - square + gap
+    private static final int RADIO_W = TICK * 2 + 4 + 2 * FRAME; // 44 - two squares + gap + frame
+    private static final int RADIO_H = TICK + 2 * FRAME;         // 22
+    private static final int TICK_GAP = TICK_BOX + 4;            // 26 - box then label
+
+    // The Hot Work form's own legend: teal = filled by the permit issuer,
+    // purple = filled by the person performing the work and/or Fire Watch.
+    private static final String ISSUER_COLOUR = "#2e7d7d";
+    private static final String WORKER_COLOUR = "#7b2f8f";
 
     /** Available seed types with their default names */
     private static final Map<String, String> SEED_TYPES = Map.of(
@@ -1373,21 +1385,22 @@ public class PermitFormSeeder {
     private int checkRow(PrintableForm form, int x, int y, int w, String key, String label,
                          int page, String group) {
         String prefix = group.endsWith("hazards") ? "hazards." : group.endsWith("permits") ? "permits." : "ppe.";
-        form.addFormContainer(gid(field(x, y + 2, 14, 14, prefix + key, "checkbox", page), group));
-        form.addFormContainer(text(x + 18, y, w - 22, 18, label, page,
+        form.addFormContainer(gid(field(x, y, TICK_BOX, TICK_BOX, prefix + key, "checkbox", page), group));
+        form.addFormContainer(text(x + TICK_GAP, y + 2, w - TICK_GAP - 4, 18, label, page,
                 merge(small(), Map.of("whiteSpace", "normal"))));
-        return y + 18;
+        return y + TICK_BOX;
     }
 
     /** Checkbox + label + a short ruled write-in bound to its own description field. */
     private int checkWithWriteIn(PrintableForm form, int x, int y, int w, String key, String label,
                                  String descKey, int page, String group) {
         String prefix = group.endsWith("hazards") ? "hazards." : group.endsWith("permits") ? "permits." : "ppe.";
-        form.addFormContainer(gid(field(x, y + 2, 14, 14, prefix + key, "checkbox", page), group));
-        form.addFormContainer(text(x + 18, y, w - 22, 18, label, page,
+        form.addFormContainer(gid(field(x, y, TICK_BOX, TICK_BOX, prefix + key, "checkbox", page), group));
+        form.addFormContainer(text(x + TICK_GAP, y + 2, w - TICK_GAP - 4, 18, label, page,
                 merge(small(), Map.of("whiteSpace", "normal"))));
-        form.addFormContainer(gid(field(x + 18, y + 18, w - 22, 16, prefix + descKey, "text", page), group));
-        return y + 36;
+        form.addFormContainer(gid(field(x + TICK_GAP, y + TICK_BOX, w - TICK_GAP - 4, 16,
+                prefix + descKey, "text", page), group));
+        return y + TICK_BOX + 18;
     }
 
     /** A lighter section bar than the inverted one used on Hot Work. */
@@ -1397,9 +1410,50 @@ public class PermitFormSeeder {
         return y + 22;
     }
 
-    /** Tag a container with its section, so the edit-lock policy can be applied per section later. */
+    /**
+     * Tag a container with its section, and reproduce the paper's colour coding.
+     *
+     * <p>The Hot Work form frames each input in the colour of whoever fills it — teal for the
+     * permit issuer, purple for the person performing the work / fire watch — and prints a legend
+     * saying so. That is information, not decoration, so the frame is part of the form. The same
+     * tag drives the agreed per-section edit lock.
+     */
+    private boolean isTickBox(FormContainer c) {
+        Object content = c.getContentJson();
+        if (content instanceof Map<?, ?> m) {
+            Object t = m.get("type");
+            return "checkbox".equals(t) || "radio".equals(t);
+        }
+        return false;
+    }
+
     private FormContainer gid(FormContainer c, String group) {
         c.setGroupId(group);
+        String colour = "issuer".equals(group) ? ISSUER_COLOUR
+                      : "ops:worker".equals(group) ? WORKER_COLOUR
+                      : null;
+        if (colour != null) {
+            Map<String, Object> s = c.getStyleJson() == null
+                    ? new HashMap<>() : new HashMap<>(c.getStyleJson());
+            s.remove("borderBottomWidth");
+            s.remove("borderBottomStyle");
+            s.remove("borderBottomColor");
+            // 2px and per-side, because the client DTO injects borderTopWidth/Right/Bottom/Left
+            // = 1px defaults; setting only the shorthand leaves those longhands to win and the
+            // frame reads as a hairline. The paper's frames are heavy and unmistakably coloured.
+            s.put("borderStyle", "solid");
+            s.put("borderWidth", "2px");
+            s.put("borderColor", colour);
+            s.put("borderTopWidth", "2px");
+            s.put("borderRightWidth", "2px");
+            s.put("borderBottomWidth", "2px");
+            s.put("borderLeftWidth", "2px");
+            s.put("borderTopColor", colour);
+            s.put("borderRightColor", colour);
+            s.put("borderBottomColor", colour);
+            s.put("borderLeftColor", colour);
+            c.setStyleJson(s);
+        }
         return c;
     }
 
@@ -1428,186 +1482,243 @@ public class PermitFormSeeder {
     private void seedHotWorkPage1(PrintableForm form) {
         int p = 1;
         int y = M;
+        String GH = "frozen:header";
+        String GI = "issuer";      // teal on the paper: filled by the permit issuer
+        String GW = "ops:worker";  // purple on the paper: filled by the performer / fire watch
 
-        // --- Title row ---
-        form.addFormContainer(text(M, y, 70, 18, "Permit #:", p, bold(10)));
-        form.addFormContainer(field(M + 72, y, 150, 18, "permitNumber", "text", p));
-        form.addFormContainer(text(280, y - 2, 260, 24, "HOT WORK PERMIT", p, merge(bold(16), centered())));
-        form.addFormContainer(text(590, y, 206, 18, "Permit Is Valid for One Shift Only", p,
+        form.addFormContainer(text(M, y + 4, 60, 18, "Permit #:", p, bold(9)));
+        form.addFormContainer(gid(field(M + 62, y + 4, 190, 18, "permitNumber", "text", p), GH));
+        form.addFormContainer(text(300, y, 260, 24, "HOT WORK PERMIT", p, merge(bold(16), centered())));
+        form.addFormContainer(text(576, y + 4, 220, 16, "Permit Is Valid for One Shift Only", p,
                 merge(bold(9), Map.of("color", "#cc0000", "textDecoration", "underline"))));
         y += 26;
 
-        y = sectionBar(form, "HOT WORK PERMIT ISSUE SECTION", y, p);
-
-        // --- Issue details ---
-        form.addFormContainer(text(M, y, 130, 20, "Location of Hot Work:", p, small()));
-        form.addFormContainer(field(M + 132, y, 420, 20, "location", "text", p));
-        form.addFormContainer(text(600, y, 40, 20, "Date:", p, small()));
-        form.addFormContainer(field(642, y, 154, 20, "date", "date", p));
+        form.addFormContainer(text(M, y, 70, 20, "Location:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 72, y, 500, 20, "location", "text", p), GI));
+        form.addFormContainer(text(600, y, 40, 20, "Date", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(642, y, 154, 20, "date", "date", p), GI));
         y += 24;
 
-        form.addFormContainer(text(M, y, 250, 20, "Name of Requestor (Person Performing Work):", p, small()));
-        form.addFormContainer(field(M + 252, y, 240, 20, "foreman", "text", p));
-        form.addFormContainer(text(540, y, 120, 20, "Name of Fire Watch:", p, small()));
-        form.addFormContainer(field(662, y, 134, 20, "fireWatch", "text", p));
-        y += 24;
-
-        form.addFormContainer(text(M, y, FW, 18,
-                "Note: For open flame winter thawing activities, a fire watch is NOT required.  See Procedure for requirements.",
-                p, merge(bold(9), merge(centered(), Map.of("backgroundColor", "#ffff00")))));
-        y += 22;
-
-        form.addFormContainer(text(M, y, 200, 18, "Atmospheric Monitoring Record:", p, bold(10)));
-        y += 20;
-
-        form.addFormContainer(field(M, y, 14, 14, "isAirMonitoringRegisteredOnConfinedSpace", "checkbox", p));
-        form.addFormContainer(text(M + 20, y - 2, FW - 20, 30,
-                "Check this box If the hot work is in a confined space and the records of monitoring will only be recorded on the "
-                        + "Confined Space Entry Permit or Certification of Reclassification.",
-                p, merge(bold(9), Map.of("fontStyle", "italic", "whiteSpace", "normal"))));
-        y += 34;
-
-        form.addFormContainer(text(M, y, 140, 20, "Test Equipment Model #:", p, small()));
-        form.addFormContainer(field(M + 142, y, 200, 20, "meterModel", "text", p));
-        form.addFormContainer(text(380, y, 60, 20, "Serial #:", p, small()));
-        form.addFormContainer(field(442, y, 180, 20, "meterNum", "text", p));
-        form.addFormContainer(text(632, y, 60, 20, "Cal Date:", p, small()));
-        form.addFormContainer(field(694, y, 102, 20, "meterCalDate", "date", p));
+        // Work Type - new in the 2026-08-27 revision. "Griding" is the spelling on the paper.
+        form.addFormContainer(text(M, y, 80, 20, "Work Type:", p, merge(small(), bold(9))));
+        int wx = M + 84;
+        String[][] wt = {{"welding", "Welding"}, {"griding", "Griding"}, {"cutting", "Cutting"},
+                         {"brazing", "Brazing"}};
+        for (String[] t : wt) {
+            form.addFormContainer(gid(field(wx, y, TICK_BOX, TICK_BOX, "workType." + t[0], "checkbox", p), GI));
+            form.addFormContainer(text(wx + TICK_GAP, y + 2, 62, 18, t[1], p, small()));
+            wx += 92;
+        }
+        form.addFormContainer(gid(field(wx, y, TICK_BOX, TICK_BOX, "workType.other", "checkbox", p), GI));
+        form.addFormContainer(text(wx + TICK_GAP, y + 2, 40, 18, "Other", p, small()));
+        int otherX = wx + TICK_GAP + 44;
+        form.addFormContainer(gid(field(otherX, y, 796 - otherX, TICK_BOX,
+                "workType.otherDescription", "text", p), GI));
         y += 26;
 
-        // --- Fire watch / initial test strip ---
-        form.addFormContainer(text(M, y, 150, 30, "Fire Watch  Required", p, merge(bold(10), boxed())));
-        form.addFormContainer(text(M + 152, y, RADIO_BOX, 14, "Y", p, merge(bold(9), centered())));
-        form.addFormContainer(text(M + 152 + RADIO_PITCH, y, RADIO_BOX, 14, "N", p, merge(bold(9), centered())));
-        // One boolean, two mutually-exclusive boxes: true = Y, false = N.
-        form.addFormContainer(field(M + 152, y + 14, RADIO_W, RADIO_BOX, "isFireWatchRequired", "radio", p));
-        form.addFormContainer(text(230, y, 140, 30, "Time of Initial Test", p, merge(bold(10), boxed())));
-        form.addFormContainer(field(372, y, 80, 30, "timeOfInitialTest", "time", p));
-        form.addFormContainer(text(456, y, 250, 30, "Initial Reading - Combustibles (LEL) Under 10%", p,
-                merge(bold(9), merge(boxed(), Map.of("whiteSpace", "normal")))));
-        form.addFormContainer(field(708, y, 88, 30, "initialTestResult", "text", p));
-        y += 34;
-
-        // --- Additional monitoring: unbound, filled in by hand during the job ---
-        form.addFormContainer(text(M, y, 210, 40, "Additional Monitoring Results If Required", p,
-                merge(bold(9), merge(boxed(), merge(centered(), Map.of("whiteSpace", "normal"))))));
-        form.addFormContainer(text(M, y + 40, 210, 16,
-                "If required - write down results approximately every 2 hours of hot work", p,
-                merge(centered(), Map.of("fontSize", "7px", "fontStyle", "italic", "whiteSpace", "normal"))));
-        int cx = M + 210;
-        int cw = (FW - 210) / 10;
-        for (int i = 0; i < 5; i++) {
-            form.addFormContainer(text(cx, y, cw, 20, "Time", p, merge(bold(8), merge(boxed(), centered()))));
-            form.addFormContainer(box(cx, y + 20, cw, 36, p));
-            cx += cw;
-            form.addFormContainer(text(cx, y, cw, 20, "Reading", p, merge(bold(8), merge(boxed(), centered()))));
-            form.addFormContainer(box(cx, y + 20, cw, 36, p));
-            cx += cw;
-        }
-        y += 60;
-
-        y = sectionBar(form, "HOT WORK PERMIT CHECKLIST AND APPROVAL SECTION", y, p);
-
-        // --- 12-item checklist. One boolean per row rendered as a Y/NA pair: true = Y, false = N/A.
-        // Both boxes are clickable and mutually exclusive, which is what the paper form means. ---
-        form.addFormContainer(text(M + 4, y, RADIO_BOX, 14, "Y", p, merge(bold(9), centered())));
-        form.addFormContainer(text(M + 4 + RADIO_PITCH, y, RADIO_BOX, 14, "NA", p, merge(bold(9), centered())));
+        y = sectionBar(form, "HOT WORK PERMIT CHECKLIST", y, p);
+        form.addFormContainer(text(M + 4 + FRAME, y, TICK, 14, "Y", p, merge(bold(9), centered())));
+        form.addFormContainer(text(M + 4 + FRAME + RADIO_PITCH, y, TICK, 14, "NA", p,
+                merge(bold(9), centered())));
         y += 16;
 
         String[][] checklist = {
-            {"measures.areaIsClean", "General Condition of Area Housekeeping is acceptable."},
             {"measures.flammablesAreSecured", "Remove, cover, or otherwise protect all flammable and combustible materials in area. (35 feet from work area)"},
-            {"measures.noCombustibleDustOrDebrisPresent", "Sweep or vacuum away all combustible dust or debris.  If possible, wet down area after it is cleaned."},
             {"measures.radiativeHeatPreventiveMeasuresAreTaken", "Walls, roofs, ceilings, pipes, tanks and partitions assessed for conductive or radiated heat and preventive measures taken."},
-            {"measures.vesselsArePurged", "Purge or inert piping or vessels prior to hot work (if used for transporting or storing flammables or combustibles) per site procedure."},
+            {"measures.vesselsArePurged", "Piping/vessels are purged or inerted."},
             {"measures.openingsAreCovered", "Openings in floors or walls covered to contain sparks and hot slag."},
             {"measures.ductVentilationIsSecured", "Ductwork shutdown or otherwise protected to prevent causing a fire at a distant location."},
             {"measures.lockOutIsCompleted", "Necessary equipment de-energized and locked out of service per LOTO requirements."},
-            {"measures.communicationIsEstablished", "Communications checked for use in emergency (phones, radios)"},
+            {"measures.communicationIsEstablished", "Communications checked in the area for use in emergency (phones, radios)"},
             {"measures.fireWatchIsAwareOfDuties", "Fire Watch is aware of their duties, is fire extinguisher trained, knows location of fire extinguishers, and emergency procedures"},
             {"measures.fireExtinguisherPresent", "The fire extinguisher immediately available and the backup have been inspected and are suitable for use."},
-            {"measures.fireProtectionIsInService", "Fire Protection System in service."},
         };
         for (String[] item : checklist) {
-            int rowH = 26;
-            form.addFormContainer(field(M + 4, y + 3, RADIO_W, RADIO_BOX, item[0], "radio", p));
-            form.addFormContainer(text(M + 66, y, FW - 66, rowH, item[1], p,
+            form.addFormContainer(gid(field(M + 4, y, RADIO_W, RADIO_H, item[0], "radio", p), GI));
+            form.addFormContainer(text(M + 70, y, FW - 70, RADIO_H, item[1], p,
                     merge(small(), Map.of("whiteSpace", "normal"))));
-            y += rowH;
+            y += 24;
         }
-        // Item 12 carries a red warning clause on the paper.
-        form.addFormContainer(text(M + 66, y - 8, FW - 66, 26,
-                "If area has a fire system and it is out of service, the Plant Manager MUST approve the permit "
-                        + "and notification to insurance carrier is required.",
-                p, merge(bold(9), Map.of("color", "#cc0000", "fontStyle", "italic", "whiteSpace", "normal"))));
-        y += 22;
+        y += 6;
 
-        form.addFormContainer(text(M, y, 110, 20, "Special Instructions:", p, bold(10)));
-        form.addFormContainer(field(M + 112, y, FW - 112, 20, "specialInstructions", "textarea", p));
-        y += 24;
+        int fpTealX = M, fpTealW = 290;
+        int fpRedX = M + 292, fpRedW = 290;          // ends at 602, clear of the Date/Time label
+        int fpDtX = 606, fpDtW = 76;
+        form.addFormContainer(text(fpTealX, y, fpTealW, 22, "Fire Protection System in service", p,
+                merge(bold(10), merge(centered(), merge(boxed(),
+                        Map.of("backgroundColor", ISSUER_COLOUR, "color", "white"))))));
+        form.addFormContainer(text(fpRedX, y, fpRedW, 22, "Fire Protection System NOT in service", p,
+                merge(bold(10), merge(centered(), merge(boxed(),
+                        Map.of("backgroundColor", "#b32017", "color", "white"))))));
+        form.addFormContainer(text(fpDtX, y, fpDtW, 22, "Date/Time:", p, merge(bold(9), boxed())));
+        form.addFormContainer(gid(field(fpDtX + fpDtW + 2, y, 796 - (fpDtX + fpDtW + 2), 22,
+                "fireProtectionApprovalDateTime", "date", p), GI));
+        // Two independently positioned boxes, one centred under each bar - a single radio pair
+        // cannot straddle 290px of header.
+        form.addFormContainer(gid(field(fpTealX + fpTealW / 2 - TICK_BOX / 2, y + 24, TICK_BOX, TICK_BOX,
+                "fireProtectionInService", "checkbox", p), GI));
+        form.addFormContainer(gid(field(fpRedX + 8, y + 24, TICK_BOX, TICK_BOX,
+                "fireProtectionNotInService", "checkbox", p), GI));
+        form.addFormContainer(text(fpRedX + 26, y + 24, fpRedW - 26, 20,
+                "Hot work approved(Plant Manager or designee)", p,
+                merge(bold(8), merge(centered(), Map.of("color", "#b32017")))));
+        y += 50;
 
-        form.addFormContainer(text(M, y, 290, 20, "Hot Work Permit Approved (Issuer Signature):", p, bold(9)));
-        form.addFormContainer(blank(M + 292, y, 290, 20, p));
-        form.addFormContainer(text(600, y, 70, 20, "Date/Time:", p, bold(9)));
-        form.addFormContainer(blank(672, y, 124, 20, p));
-        y += 24;
-
-        form.addFormContainer(text(M, y, 340, 20, "Plant Manager (or Designee) Approval (Fire Systems Disabled):", p, bold(9)));
-        form.addFormContainer(blank(M + 342, y, 240, 20, p));
-        form.addFormContainer(text(600, y, 70, 20, "Date/Time:", p, bold(9)));
-        form.addFormContainer(blank(672, y, 124, 20, p));
+        y = sectionBar(form, "INITIAL AIR TEST", y, p);
+        form.addFormContainer(text(M, y, 46, 20, "Model:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 48, y, 120, 20, "meterModel", "text", p), GI));
+        form.addFormContainer(text(M + 172, y, 48, 20, "Serial #", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 222, y, 84, 20, "meterNum", "text", p), GI));
+        form.addFormContainer(text(M + 310, y, 52, 20, "Cal Date", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 364, y, 104, 20, "meterCalDate", "date", p), GI));
+        form.addFormContainer(text(M + 472, y, 36, 20, "Time:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 510, y, 62, 20, "timeOfInitialTest", "text", p), GI));
+        form.addFormContainer(text(M + 600, y, 46, 20, "Initials:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 648, y, 46, 20, "initialTestInitials", "text", p), GI));
+        form.addFormContainer(text(M + 698, y, 40, 20, "LEL", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 738, y, 38, 20, "initialTestResult", "text", p), GI));
         y += 26;
 
-        y = sectionBar(form, "HOT WORK PERMIT CANCELLATION SECTION", y, p);
+        y = sectionBar(form, "HOT WORK REQUIREMENTS AND APPROVAL SECTION", y, p);
+        form.addFormContainer(text(M, y, FW, 18,
+                "Note: For open flame winter thawing activities, a fire watch is NOT required. See procedure for requirements.",
+                p, merge(bold(9), merge(centered(), Map.of("backgroundColor", "#d9d9d9")))));
+        y += 22;
+        form.addFormContainer(text(M, y, FW, 16, "CONTINOUS AIR MONITORIN IS MANDATORY", p,
+                merge(bold(9), merge(centered(), Map.of("color", "#cc0000")))));
+        y += 18;
 
+        int[] cw = {180, 110, 160, 200};
+        String[] chdr = {"Model:", "Serial #", "Cal Date", "Logged On Conf. Space Perm."};
+        int cx = M;
+        for (int i = 0; i < chdr.length; i++) {
+            form.addFormContainer(text(cx, y, cw[i], 18, chdr[i], p,
+                    merge(bold(8), merge(centered(), merge(boxed(),
+                            Map.of("backgroundColor", "#0f7d7d", "color", "white"))))));
+            cx += cw[i];
+        }
+        int fwX = cx;
+        int fwW = FW - (cx - M);
+        form.addFormContainer(text(fwX, y - 14, fwW, 14, "Fire Watch", p,
+                merge(bold(8), centered())));
+        int subW = fwW / 3;
+        String[] fwLabels = {"1 Hour", "30 Min", "Not Required"};
+        for (int i = 0; i < 3; i++) {
+            form.addFormContainer(text(fwX + i * subW, y, subW, 18, fwLabels[i], p,
+                    merge(bold(8), merge(centered(), merge(boxed(),
+                            Map.of("backgroundColor", "#0f7d7d", "color", "white"))))));
+        }
+        y += 18;
+        cx = M;
+        form.addFormContainer(gid(field(cx, y, cw[0], 22, "contMeterModel", "text", p), GI)); cx += cw[0];
+        form.addFormContainer(gid(field(cx, y, cw[1], 22, "contMeterNum", "text", p), GI)); cx += cw[1];
+        form.addFormContainer(gid(field(cx, y, cw[2], 22, "contMeterCalDate", "date", p), GI)); cx += cw[2];
+        form.addFormContainer(gid(field(cx + cw[3] / 2 - TICK_BOX / 2, y + 2, TICK_BOX, TICK_BOX,
+                "isAirMonitoringRegisteredOnConfinedSpace", "checkbox", p), GI));
+        cx += cw[3];
+        // Three independently positioned checkboxes, one under each printed column header.
+        String[] fwKeys = {"fireWatch1Hour", "fireWatch30Min", "fireWatchNotRequired"};
+        for (int i = 0; i < 3; i++) {
+            form.addFormContainer(gid(field(fwX + i * subW + subW / 2 - TICK_BOX / 2, y + 2, TICK_BOX, TICK_BOX,
+                    fwKeys[i], "checkbox", p), GI));
+        }
+        y += 28;
+
+        form.addFormContainer(text(M, y, 160, 20, "Person Performing Work:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 162, y, 280, 20, "foreman", "text", p), GW));
+        form.addFormContainer(text(M + 448, y, 110, 20, "Fire Watch Name", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 560, y, FW - 560, 20, "fireWatch", "text", p), GW));
+        y += 24;
+        form.addFormContainer(text(M, y, 120, 20, "Special Instructions:", p, merge(small(), bold(9))));
+        form.addFormContainer(gid(field(M + 122, y, FW - 122, 20, "specialInstructions", "textarea", p), GI));
+        y += 24;
+        form.addFormContainer(text(M, y, 290, 20, "Hot Work Permit Approved (Issuer Signature):", p, bold(9)));
+        form.addFormContainer(gid(field(M + 292, y, 250, 20, "issuerSignature", "text", p), GI));
+        form.addFormContainer(text(566, y, 40, 20, "Date:", p, bold(9)));
+        form.addFormContainer(gid(field(608, y, 90, 20, "approvedDate", "date", p), GI));
+        form.addFormContainer(text(702, y, 40, 20, "Time:", p, bold(9)));
+        form.addFormContainer(gid(field(744, y, 52, 20, "approvedTime", "text", p), GI));
+        y += 26;
+
+        form.addFormContainer(text(M, y, FW, 20, "ACTIVE HOT WORK SECTION", p,
+                merge(bold(11), merge(centered(), Map.of("backgroundColor", "#ffff00")))));
+        y += 24;
+        form.addFormContainer(text(M, y, 160, 20, "ACTUAL HOT WORK", p, bold(10)));
+        form.addFormContainer(text(M + 170, y, 90, 20, "Start Time", p, bold(9)));
+        form.addFormContainer(gid(field(M + 262, y, 90, 20, "actualStartTime", "text", p), GW));
+        form.addFormContainer(text(M + 380, y, 80, 20, "End Time", p, bold(9)));
+        form.addFormContainer(gid(field(M + 462, y, 90, 20, "actualEndTime", "text", p), GW));
+        y += 26;
+
+        y = sectionBar(form, "HOT WORK PERMIT CANCELLATION AND MONITORING SECTION", y, p);
         form.addFormContainer(text(M, y, FW, 18,
                 "Fire Watch/Fire Monitoring (as required by the table below) have been completed and all ignition sources have been extinguished.",
                 p, merge(small(), centered())));
         y += 22;
 
-        form.addFormContainer(text(M, y, 150, 20, "Name of Requestor", p, bold(9)));
-        form.addFormContainer(blank(M + 152, y, 190, 20, p));
-        form.addFormContainer(text(370, y, 70, 20, "Signature:", p, bold(9)));
-        form.addFormContainer(blank(442, y, 190, 20, p));
-        form.addFormContainer(text(640, y, 70, 20, "Date/Time:", p, bold(9)));
-        form.addFormContainer(blank(712, y, 84, 20, p));
-        y += 24;
+        y = signatureRow(form, y, p, "Requestor Name", "cancelRequestorName",
+                "cancelRequestorSignature", "cancelRequestorDate", "cancelRequestorTime", GW);
+        y = signatureRow(form, y, p, "FireWatch Name", "cancelFireWatchName",
+                "cancelFireWatchSignature", "cancelFireWatchDate", "cancelFireWatchTime", GW);
 
-        form.addFormContainer(text(M, y, 150, 20, "Name of Fire Watch", p, bold(9)));
-        form.addFormContainer(blank(M + 152, y, 190, 20, p));
-        form.addFormContainer(text(370, y, 70, 20, "Signature", p, bold(9)));
-        form.addFormContainer(blank(442, y, 190, 20, p));
-        form.addFormContainer(text(640, y, 70, 20, "Date/Time:", p, bold(9)));
-        form.addFormContainer(blank(712, y, 84, 20, p));
-        y += 24;
+        form.addFormContainer(text(M, y, FW, 18, "Fire Monitoring Method", p, merge(bold(9), centered())));
+        y += 20;
+        form.addFormContainer(gid(field(M, y, FW, 22, "fireMonitoringMethod", "text", p), GI));
+        y += 26;
+        y = signatureRow(form, y, p, "Fire Monitor Name", "fireMonitorName",
+                "fireMonitorSignature", "fireMonitorDate", "fireMonitorTime", GI);
 
-        form.addFormContainer(box(M, y + 2, 14, p));
-        form.addFormContainer(text(M + 22, y, FW - 22, 18,
+        form.addFormContainer(gid(field(M, y, TICK_BOX, TICK_BOX, "workCompleted", "checkbox", p), GW));
+        form.addFormContainer(text(M + TICK_GAP, y + 2, FW - TICK_GAP, 18,
                 "The Hot Work is completed; the area has been inspected and this permit is closed out.", p, small()));
         y += 22;
-
         form.addFormContainer(text(M, y, 190, 20, "Hot Work Permit Cancelled:", p, bold(9)));
-        form.addFormContainer(blank(M + 192, y, 400, 20, p));
-        form.addFormContainer(text(640, y, 70, 20, "Date/Time:", p, bold(9)));
-        form.addFormContainer(blank(712, y, 84, 20, p));
+        form.addFormContainer(gid(field(M + 192, y, 340, 20, "cancelledBy", "text", p), GI));
+        form.addFormContainer(text(566, y, 40, 20, "Date:", p, bold(9)));
+        form.addFormContainer(gid(field(608, y, 90, 20, "cancelledDate", "date", p), GI));
+        form.addFormContainer(text(702, y, 40, 20, "Time:", p, bold(9)));
+        form.addFormContainer(gid(field(744, y, 52, 20, "cancelledTime", "text", p), GI));
         y += 26;
 
+        form.addFormContainer(text(M, y, 20, 16, "", p, merge(boxed(), Map.of("backgroundColor", "#0f7d7d"))));
+        form.addFormContainer(text(M + 26, y, 300, 16, "Fields filled by the permit issuer.", p, small()));
+        y += 18;
+        form.addFormContainer(text(M, y, 20, 16, "", p, merge(boxed(), Map.of("backgroundColor", "#7d0f7d"))));
+        form.addFormContainer(text(M + 26, y, 420, 16,
+                "Fields filled by person performing work and/or Fire Watch.", p, small()));
+        y += 20;
         form.addFormContainer(text(M, y, FW, 16,
                 "Post Copy at Location - Keep Original in Control Room - Upon Completion, File Original in Binder, Copy May be Destroyed.",
                 p, merge(small(), centered())));
     }
 
-    /** Page 2 is almost entirely static reference content plus hand-filled monitor readings. */
+    /** name + signature + date + time — the repeated shape in the cancellation section. */
+    private int signatureRow(PrintableForm form, int y, int page, String label, String nameKey,
+                             String sigKey, String dateKey, String timeKey, String group) {
+        form.addFormContainer(text(M, y, 130, 20, label, page, bold(9)));
+        form.addFormContainer(gid(field(M + 132, y, 190, 20, nameKey, "text", page), group));
+        form.addFormContainer(text(M + 326, y, 70, 20, "Signature", page, bold(9)));
+        form.addFormContainer(gid(field(M + 398, y, 180, 20, sigKey, "text", page), group));
+        form.addFormContainer(text(M + 582, y, 40, 20, "Date:", page, bold(9)));
+        form.addFormContainer(gid(field(M + 624, y, 80, 20, dateKey, "date", page), group));
+        form.addFormContainer(text(M + 708, y, 36, 20, "Time:", page, bold(9)));
+        form.addFormContainer(gid(field(M + 744, y, 32, 20, timeKey, "text", page), group));
+        return y + 24;
+    }
+
+    /**
+     * Page 2 of the 2026-08-27 revision is purely static reference — the four fire-monitor
+     * Time/Reading blocks that used to live here are gone from the paper form.
+     */
     private void seedHotWorkPage2(PrintableForm form) {
         int p = 2;
-        int y = M;
+        int y = M + 40;
 
         form.addFormContainer(text(M, y, FW, 22,
                 "Construction and Occupancy Factors for Post-Work Fire Watch and Monitoring Periods", p,
                 merge(bold(12), centered())));
-        y += 30;
+        y += 34;
 
-        // --- Static factor matrix: 1 rail + 1 label col + 3 groups x (Watch|Monitor) ---
         int railW = 26;
         int labelX = M + railW;
         int labelW = 250;
@@ -1615,7 +1726,8 @@ public class PermitFormSeeder {
         int colW = (FW - railW - labelW) / 6;
 
         form.addFormContainer(text(gridX, y, colW * 6, 22, "Construction Factors", p,
-                merge(bold(11), merge(centered(), Map.of("backgroundColor", "#000000", "color", "white")))));
+                merge(bold(11), merge(centered(), merge(boxed(),
+                        Map.of("backgroundColor", "#000000", "color", "white"))))));
         y += 22;
 
         String[] groups = {
@@ -1663,7 +1775,7 @@ public class PermitFormSeeder {
                 merge(bold(9), merge(boxed(), merge(centered(),
                         Map.of("backgroundColor", "#000000", "color", "white",
                                "writingMode", "vertical-rl", "transform", "rotate(180deg)"))))));
-        y += 12;
+        y += 16;
 
         form.addFormContainer(text(M, y, 90, 18, "Definitions:", p, bold(10)));
         y += 20;
@@ -1671,29 +1783,11 @@ public class PermitFormSeeder {
                 "Fire Monitor - Provisions implemented to provide early warning of smoldering fire conditions in the hot work "
                         + "area following completion of the established fire watch time period.",
                 p, merge(small(), Map.of("whiteSpace", "normal"))));
-        y += 34;
+        y += 36;
         form.addFormContainer(text(M, y, FW, 32,
                 "Fire Watch - A person or persons responsible for continuously observing the hot work area, maintaining "
                         + "fire-safe conditions, and responding to emergencies during hot work operations and in the established period following.",
                 p, merge(small(), Map.of("whiteSpace", "normal"))));
-        y += 42;
-
-        // --- Four hand-filled fire-monitor blocks ---
-        int mLabelW = 230;
-        int mColW = (FW - mLabelW) / 10;
-        for (int b = 0; b < 4; b++) {
-            form.addFormContainer(text(M, y, mLabelW, 44, "Fire Monitor:", p, merge(bold(9), boxed())));
-            int x = M + mLabelW;
-            for (int i = 0; i < 5; i++) {
-                form.addFormContainer(text(x, y, mColW, 18, "Time", p, merge(bold(8), merge(boxed(), centered()))));
-                form.addFormContainer(box(x, y + 18, mColW, 26, p));
-                x += mColW;
-                form.addFormContainer(text(x, y, mColW, 18, "Reading", p, merge(bold(8), merge(boxed(), centered()))));
-                form.addFormContainer(box(x, y + 18, mColW, 26, p));
-                x += mColW;
-            }
-            y += 48;
-        }
     }
 
     // ---- small layout helpers used by the Hot Work layout ----

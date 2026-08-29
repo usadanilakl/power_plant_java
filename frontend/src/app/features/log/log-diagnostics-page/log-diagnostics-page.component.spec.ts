@@ -1,5 +1,5 @@
 import { Clipboard } from '@angular/cdk/clipboard';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { Observable, Subject, finalize, of } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
@@ -48,6 +48,32 @@ describe('LogDiagnosticsPageComponent', () => {
     expect(cancelled).toBeTrue();
     expect(component.events.map(item => item.eventId)).toEqual(['error-1']);
   });
+
+  it('does not let polling cancel a slow initial request', fakeAsync(() => {
+    const pending = new Subject<SpringApiResponse<LogEventsResponse>>();
+    let cancelled = false;
+    getEvents.and.returnValues(
+      pending.pipe(finalize(() => cancelled = true)),
+      of(apiResponse([event('refresh-1', '2026-08-02T18:01:00Z')], null, false)),
+    );
+    createComponent();
+
+    tick(20_000);
+
+    expect(getEvents).toHaveBeenCalledTimes(1);
+    expect(cancelled).toBeFalse();
+
+    pending.next(apiResponse([event('initial-1', '2026-08-02T18:00:00Z')], null, false));
+    pending.complete();
+    tick();
+
+    expect(component.events.map(item => item.eventId)).toEqual(['initial-1']);
+
+    tick(10_000);
+
+    expect(getEvents).toHaveBeenCalledTimes(2);
+    expect(component.events.map(item => item.eventId)).toEqual(['refresh-1']);
+  }));
 
   it('loads cursor results, upserts a refreshed tail version, and manually refreshes while polling is off', () => {
     const newest = event('newest-v1', '2026-08-02T18:00:00Z', 'newest');
