@@ -100,6 +100,52 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         return workRequestMapper.convertToNgDto(saved);
     }
 
+    // ====================== DTO reads (mapped INSIDE the transaction) ======================
+
+    /*
+     * `spring.jpa.open-in-view=false`, so the persistence session closes when the service method
+     * returns. A controller that takes ENTITIES from here and maps them itself is mapping detached
+     * objects, and the first lazy association it touches throws LazyInitializationException.
+     *
+     * That is not theoretical: WorkRequestMapper embeds a full WorkAreaDto, and WorkAreaMapper
+     * reads WorkArea.constantLotos and WorkArea.locations — both lazy @ManyToMany. Every work
+     * request that HAS a work area was losing all of its associations on every list call, at a
+     * steady two ERROR lines a minute from the monitor's poll. The per-row catch in
+     * convertToNgDtos kept the page rendering, which is exactly why it went unnoticed.
+     *
+     * These methods fetch and map in one transaction, so the associations are still reachable.
+     * They exist for every read path a controller has; the controller's job is to pick one.
+     */
+
+    public List<NgWorkRequestDto> getAllNgDtos() {
+        return workRequestMapper.convertToNgDtos(getAll());
+    }
+
+    public Page<NgWorkRequestDto> getNgDtoPage(Pageable pageable) {
+        Page<WorkRequest> entityPage = workRequestRepo.findAll(pageable);
+        return new org.springframework.data.domain.PageImpl<>(
+                workRequestMapper.convertToNgDtos(entityPage.getContent()),
+                entityPage.getPageable(),
+                entityPage.getTotalElements());
+    }
+
+    public Page<NgWorkRequestDto> searchNgDtoPage(SearchCriteria criteria, Pageable pageable, boolean andLogic) {
+        Page<WorkRequest> entityPage =
+                complexSearchWithPagination(workRequestRepo, criteria, pageable, andLogic);
+        return new org.springframework.data.domain.PageImpl<>(
+                workRequestMapper.convertToNgDtos(entityPage.getContent()),
+                entityPage.getPageable(),
+                entityPage.getTotalElements());
+    }
+
+    public List<NgWorkRequestDto> saveAllFromDtoAsNgDtos(List<NgWorkRequestDto> dtos) {
+        return workRequestMapper.convertToNgDtos(saveAllFromDto(dtos));
+    }
+
+    public NgWorkRequestDto softDeleteAsNgDto(Long id) {
+        return workRequestMapper.convertToNgDto(softDelete(id));
+    }
+
     // ====================== Export Support ======================
 
     public List<WorkRequest> getBySearchCriteria(SearchCriteria criteria) {

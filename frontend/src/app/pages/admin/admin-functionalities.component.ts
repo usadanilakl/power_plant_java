@@ -93,6 +93,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              [active]="rla8.isActive">
             Maximo Drift
           </a>
+          <a mat-tab-link
+             routerLink="jobs"
+             routerLinkActive
+             #rla10="routerLinkActive"
+             [active]="rla10.isActive">
+            Jobs &amp; Packages
+          </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>
           <router-outlet></router-outlet>

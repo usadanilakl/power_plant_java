@@ -71,7 +71,13 @@ public class SafeWorkMapper implements BaseMapper {
 
         if (safeWork.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(safeWork.getWorkArea()));
-            dto.setLocation(safeWork.getWorkArea().getName());
+            // Fallback, not an override — the same fix HotWork and ConfinedSpace already carry and
+            // this mapper was missed by. It clobbered the operator-entered location read above, so
+            // a typed location reverted to the area name on every reload. That became reachable in
+            // one more way once the permits map let an operator assign a work area directly.
+            if (dto.getLocation() == null || dto.getLocation().isBlank()) {
+                dto.setLocation(safeWork.getWorkArea().getName());
+            }
         } else if (safeWork.getLocation() != null && !safeWork.getLocation().isEmpty()) {
             workAreaRepo.findFirstByNameIgnoreCase(safeWork.getLocation())
                 .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));

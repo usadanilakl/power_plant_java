@@ -14,7 +14,18 @@ public interface JobLogRepo extends BaseRepository<JobLog> {
     Optional<JobLog> findByPackageId(@Param("packageId") Long packageId);
 
     @EntityGraph(attributePaths = {"jobStatus", "workArea", "workCategory", "originatingWorkRequest"})
-    @Query("SELECT j FROM JobLog j WHERE j.jobStatus IS NULL OR j.jobStatus.name <> 'Closed'")
+    /*
+     * NOTE on the LEFT JOIN below.
+     *
+     * `j.jobStatus.name` / `p.packageStatus.name` in a WHERE clause is an IMPLICIT INNER JOIN in
+     * JPQL, so every row whose status FK is NULL is dropped before the `IS NULL` branch is ever
+     * evaluated. A null status is not an edge case here: it is the codebase's own convention for
+     * "Building" (see NgDailyPermitPackageService, which reads null as "Building" in four places),
+     * and it is the state of the large majority of open packages. The admin stale sweep reported
+     * 5 candidates against 154 genuinely-open packages until this was made an explicit LEFT JOIN.
+     */
+    @Query("SELECT j FROM JobLog j LEFT JOIN j.jobStatus s "
+            + "WHERE s IS NULL OR s.name <> 'Closed'")
     List<JobLog> findAllOpenJobs();
 
     @Override
@@ -31,10 +42,11 @@ public interface JobLogRepo extends BaseRepository<JobLog> {
      * category, forever, because nothing ever closes a job automatically.
      */
     @EntityGraph(attributePaths = {"jobStatus", "workArea", "workCategory"})
-    @Query("SELECT j FROM JobLog j WHERE j.company = :company " +
+    @Query("SELECT j FROM JobLog j LEFT JOIN j.jobStatus s " +
+           "WHERE j.company = :company " +
            "AND j.workArea.id = :workAreaId " +
            "AND j.workCategory.id = :categoryId " +
-           "AND (j.jobStatus IS NULL OR j.jobStatus.name NOT IN ('Closed', 'Cancelled'))")
+           "AND (s IS NULL OR s.name NOT IN ('Closed', 'Cancelled'))")
     List<JobLog> findOpenJobsByGroupingKey(
         @Param("company") String company,
         @Param("workAreaId") Long workAreaId,

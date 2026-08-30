@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map, of } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { WorkAreaDto, WorkAreaMapShapeDto, WorkAreaPermitCounts } from '../../../../models/permits/work-area.model';
+import { PermitMapAssignRef, PermitMapAssignResult, PermitMapPayload } from '../../../../models/permits/permit-map.model';
 
 interface SpringApiResponse<T> {
   responseData: T;
@@ -60,6 +61,28 @@ export class WorkAreaApiService {
     return this.http.get<SpringApiResponse<any>>(`${this.baseUrl}/permit-counts/${workAreaId}`).pipe(
       map(response => response.responseData)
     );
+  }
+
+  /**
+   * Every open request / permit / LOTO, already placed onto the work areas it touches.
+   *
+   * <p>One call for all five layers: the map is a single picture, and five independent requests
+   * would let the layers disagree with each other while they landed.
+   */
+  getPermitMap(): Observable<PermitMapPayload> {
+    return this.http.get<SpringApiResponse<PermitMapPayload>>(`${this.baseUrl}/permit-map`).pipe(
+      map(response => response.responseData ?? { areas: [], items: [], unplaced: [] })
+    );
+  }
+
+  /**
+   * Point records at a work area. All-or-nothing on the server: a stale reference rejects the whole
+   * request rather than half-applying it, so a failure here means nothing changed.
+   */
+  assignPermitMapItems(workAreaId: number, items: PermitMapAssignRef[]): Observable<PermitMapAssignResult> {
+    return this.http
+      .post<SpringApiResponse<PermitMapAssignResult>>(`${this.baseUrl}/permit-map/assign`, { workAreaId, items })
+      .pipe(map(response => response.responseData));
   }
 
   // --- Map Shape CRUD ---

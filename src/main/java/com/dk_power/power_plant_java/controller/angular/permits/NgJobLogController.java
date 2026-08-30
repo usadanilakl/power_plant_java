@@ -3,8 +3,10 @@ package com.dk_power.power_plant_java.controller.angular.permits;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.JobLogDto;
+import com.dk_power.power_plant_java.sevice.angular.permits.JobPackageMaintenanceService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgJobLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class NgJobLogController {
 
     private final NgJobLogService service;
+    private final JobPackageMaintenanceService maintenanceService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<JobLogDto>>> getAll() {
@@ -219,6 +222,54 @@ public class NgJobLogController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    // ---------------------------------------------------------------- maintenance (Admin)
+
+    /**
+     * What the stale sweep would close right now. Reads only.
+     *
+     * <p>{@code GET /ng/job-logs/maintenance/stale?inactiveDays=30&packageHours=14}
+     */
+    @GetMapping("/maintenance/stale")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> staleDiagnose(
+            @RequestParam(defaultValue = "30") int inactiveDays,
+            @RequestParam(defaultValue = "14") int packageHours) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    maintenanceService.diagnose(inactiveDays, packageHours), "Stale job/package scan."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error scanning: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Close stale packages, and stale jobs together with their still-open packages.
+     *
+     * <p>Dry run: {@code POST /ng/job-logs/maintenance/close-stale}
+     * <br>Apply: {@code POST /ng/job-logs/maintenance/close-stale?dryRun=false}
+     */
+    @PostMapping("/maintenance/close-stale")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> closeStale(
+            @RequestParam(defaultValue = "30") int inactiveDays,
+            @RequestParam(defaultValue = "14") int packageHours,
+            @RequestParam(defaultValue = "true") boolean dryRun,
+            @RequestParam(required = false) String reason) {
+        try {
+            Map<String, Object> result =
+                    maintenanceService.closeStale(inactiveDays, packageHours, dryRun, reason);
+            String msg = dryRun
+                    ? "Dry run: " + result.get("staleJobCount") + " job(s) and "
+                      + result.get("stalePackageCount") + " package(s) would be closed ("
+                      + result.get("cascadedPackageCount") + " more package(s) via cascade)."
+                    : "Closed " + result.get("jobsClosed") + " job(s) and "
+                      + result.get("packagesClosed") + " package(s).";
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error closing: " + e.getMessage()));
         }
     }
 }

@@ -39,12 +39,10 @@ public class WorkRequestRestController {
     public ResponseEntity<NgApiResponse<Page<NgWorkRequestDto>>> getPaginated(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
-        Page<WorkRequest> entityPage = workRequestService.getRepo().findAll(
+        // Fetch AND map inside the service transaction. open-in-view is off, so mapping the
+        // entities out here reaches lazy associations on detached objects and loses them.
+        Page<NgWorkRequestDto> dtoPage = workRequestService.getNgDtoPage(
                 PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
-        // Batch-convert: 2 queries for JHA+attachments instead of 2*N
-        List<NgWorkRequestDto> batchDtos = workRequestMapper.convertToNgDtos(entityPage.getContent());
-        Page<NgWorkRequestDto> dtoPage = new org.springframework.data.domain.PageImpl<>(
-                batchDtos, entityPage.getPageable(), entityPage.getTotalElements());
         return ResponseEntity.ok(new NgApiResponse<>(dtoPage, "Successfully fetched work requests"));
     }
 
@@ -86,8 +84,7 @@ public class WorkRequestRestController {
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<NgWorkRequestDto>> delete(@PathVariable Long id) {
         try {
-            WorkRequest entity = workRequestService.softDelete(id);
-            NgWorkRequestDto dto = workRequestMapper.convertToNgDto(entity);
+            NgWorkRequestDto dto = workRequestService.softDeleteAsNgDto(id);
             return ResponseEntity.ok(new NgApiResponse<>(dto, "Work request deleted successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed to delete: " + e.getMessage()));
@@ -115,13 +112,10 @@ public class WorkRequestRestController {
             boolean andLogic = true;
 
             Sort.Direction direction = Sort.Direction.fromString(sortDirection);
-            Page<WorkRequest> entityPage = workRequestService.complexSearchWithPagination(
-                    workRequestService.getRepo(), criteria,
-                    PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)), andLogic);
-            // Batch-convert: 2 queries for JHA+attachments instead of 2*N
-            List<NgWorkRequestDto> batchDtos = workRequestMapper.convertToNgDtos(entityPage.getContent());
-            Page<NgWorkRequestDto> dtoPage = new org.springframework.data.domain.PageImpl<>(
-                    batchDtos, entityPage.getPageable(), entityPage.getTotalElements());
+            Page<NgWorkRequestDto> dtoPage = workRequestService.searchNgDtoPage(
+                    criteria,
+                    PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)),
+                    andLogic);
             return ResponseEntity.ok(new NgApiResponse<>(dtoPage, "Search completed"));
         } catch (Exception e) {
             // Log it. This used to fail silently: the table showed "no items found"

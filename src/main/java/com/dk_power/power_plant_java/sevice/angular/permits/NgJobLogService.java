@@ -237,6 +237,20 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         return jobLogMapper.convertToDto(entity);
     }
 
+    /**
+     * {@link #closeJob} in a transaction of its own, for the admin bulk sweep.
+     *
+     * <p>The sweep closes many jobs in one request and reports the ones that fail rather than
+     * aborting. That only works if each close is isolated: joining the caller's transaction means
+     * the first failure marks it rollback-only, and the whole sweep then dies at commit with
+     * "Transaction silently rolled back" - having saved nothing, while appearing to have succeeded
+     * for every row before the bad one.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public JobLogDto closeJobIsolated(String id) {
+        return closeJob(id);
+    }
+
     public JobLogDto closeJob(String id) {
         JobLog job = getEntityById(id);
         long openPackages = job.getPackages().stream()

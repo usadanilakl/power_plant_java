@@ -242,6 +242,12 @@ public class SecurityConfigSpring {
                 .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/chat-audit/**").hasRole("ADMIN")
+                // Bulk close of stale jobs and packages. Admin-only: it force-closes permits from
+                // any open state (including Building, which the operator-facing close refuses) and
+                // the change is broadcast over CRDT to every desktop. Without this rule it would
+                // fall through to anyRequest().authenticated() and any signed-in user could mass-
+                // close live work. Must precede any broader /ng/job-logs rule - first match wins.
+                .requestMatchers("/ng/job-logs/maintenance/**").hasRole("ADMIN")
                 // Hub client registry + per-client next-boot directive (list/set/clear) — admin-only, like
                 // every other hub-admin NG surface. Without this it would fall through to anyRequest()
                 // .authenticated(), letting any signed-in user push a mandatory boot directive to any desktop.

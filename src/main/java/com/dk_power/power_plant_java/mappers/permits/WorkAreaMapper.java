@@ -10,13 +10,18 @@ import com.dk_power.power_plant_java.entities.permits.WorkAreaMapShape;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaMapShapeRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
+import org.hibernate.LazyInitializationException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class WorkAreaMapper implements BaseMapper {
@@ -63,21 +68,19 @@ public class WorkAreaMapper implements BaseMapper {
             // handle deserialization issue
         }
 
-        if (entity.getConstantLotos() != null) {
-            dto.setConstantLotoIds(
-                    entity.getConstantLotos().stream()
-                            .map(LotoStandard::getId)
-                            .collect(Collectors.toList())
-            );
-        }
-
-        if (entity.getLocations() != null) {
-            dto.setLocationIds(
-                    entity.getLocations().stream()
-                            .map(Value::getId)
-                            .collect(Collectors.toList())
-            );
-        }
+        // constantLotos and locations are lazy @ManyToMany. With spring.jpa.open-in-view=false a
+        // caller that maps a DETACHED WorkArea (anything mapping entities after the service
+        // transaction has returned) blows up here, and the caller's per-row catch then discards the
+        // whole work area rather than just these two lists.
+        //
+        // Left NULL rather than empty on failure, and that distinction is load-bearing:
+        // NgWorkAreaService.saveFromDto treats null as "the caller has no opinion, leave the
+        // association alone" and a non-null list as "replace it". An empty list would therefore
+        // WIPE every standard and location on the area if such a DTO were ever posted back.
+        dto.setConstantLotoIds(idsOrNullIfDetached(
+                entity.getConstantLotos(), LotoStandard::getId, entity.getId(), "constantLotos"));
+        dto.setLocationIds(idsOrNullIfDetached(
+                entity.getLocations(), Value::getId, entity.getId(), "locations"));
 
         dto.setLocationUnitFilters(entity.getLocationUnitFilters());
 
@@ -88,6 +91,26 @@ public class WorkAreaMapper implements BaseMapper {
         dto.setPhysicalObjectId(entity.getPhysicalObjectId());
 
         return dto;
+    }
+
+    /**
+     * Collect ids from a lazy association, or null when it cannot be read because the owning entity
+     * is detached. Never throws — a work area's identity is still worth returning without its
+     * association lists, and the alternative is the caller losing the area entirely.
+     */
+    private <T> List<Long> idsOrNullIfDetached(Collection<T> association,
+                                               Function<T, Long> idOf,
+                                               Long workAreaId,
+                                               String field) {
+        if (association == null) return null;
+        try {
+            return association.stream().map(idOf).collect(Collectors.toList());
+        } catch (LazyInitializationException e) {
+            log.warn("Work area {} mapped outside a session; '{}' omitted. The caller is mapping "
+                    + "detached entities — it should map inside its service transaction.",
+                    workAreaId, field);
+            return null;
+        }
     }
 
     public WorkArea convertToEntity(WorkAreaDto dto) {

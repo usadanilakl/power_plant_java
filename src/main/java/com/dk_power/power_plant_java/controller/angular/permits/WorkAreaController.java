@@ -1,7 +1,10 @@
 package com.dk_power.power_plant_java.controller.angular.permits;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.permits.PermitMapAssignDto;
+import com.dk_power.power_plant_java.dto.permits.PermitMapDto;
 import com.dk_power.power_plant_java.dto.permits.WorkAreaDto;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgPermitMapService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkAreaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -19,6 +22,7 @@ import java.util.Map;
 public class WorkAreaController {
 
     private final NgWorkAreaService workAreaService;
+    private final NgPermitMapService permitMapService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<WorkAreaDto>>> getAll() {
@@ -119,6 +123,53 @@ public class WorkAreaController {
             e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Everything the permits map view draws: the areas, and every open request / permit / LOTO
+     * placed onto the areas it touches. One call rather than one per layer, so the layers cannot
+     * disagree with each other while they land and the client never has to re-run the placement
+     * rules itself.
+     */
+    @GetMapping("/permit-map")
+    public ResponseEntity<NgApiResponse<PermitMapDto>> getPermitMap() {
+        try {
+            PermitMapDto result = permitMapService.build();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Permit map retrieved", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error building permit map: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Point selected records at a work area, from the map's "Not on the map" list.
+     *
+     * <p>Writes the {@code workArea} FK, so an item placed here is drawn from a recorded decision
+     * afterwards rather than from a text guess. All-or-nothing: a stale reference rejects the whole
+     * request rather than half-applying it.
+     */
+    @PostMapping("/permit-map/assign")
+    public ResponseEntity<NgApiResponse<PermitMapAssignDto.Result>> assignPermitMapItems(
+            @RequestBody PermitMapAssignDto.Request request) {
+        try {
+            PermitMapAssignDto.Result result = permitMapService.assign(request);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result,
+                            "Placed " + result.getAssigned() + " item(s) in " + result.getWorkAreaName(),
+                            LocalDateTime.now()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error placing items: " + e.getMessage()));
         }
     }
 

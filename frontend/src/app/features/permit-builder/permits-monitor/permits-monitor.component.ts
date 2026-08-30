@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -10,6 +10,9 @@ import { SpSyncToolbarComponent } from '../../../shared/sp-sync-toolbar/sp-sync-
 import { WrDetailDialogService } from '../../../shared/wr-detail-dialog/wr-detail-dialog.service';
 import { WorkRequestContextMenuService } from '../work-request/refactored/services/work-request-context-menu.service';
 import { SyncUpdateService } from '../../../services/sync/sync-update.service';
+import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
+import { PermitsMapViewComponent } from './permits-map-view/permits-map-view.component';
 
 interface WorkRequest {
   id: number;
@@ -52,11 +55,18 @@ interface ApiResponse<T> {
 @Component({
   selector: 'app-permits-monitor',
   standalone: true,
-  imports: [CommonModule, RouterModule, CorrespondenceCellComponent, SpSyncToolbarComponent],
+  imports: [
+    CommonModule, RouterModule, CorrespondenceCellComponent, SpSyncToolbarComponent,
+    MainLayoutComponent, RouterMenuComponent, PermitsMapViewComponent,
+  ],
   template: `
+    <app-main-layout header="Permits Monitor">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
     <div class="monitor-container">
       <div class="monitor-header">
-        <h1>Permits Monitor</h1>
         <nav class="monitor-nav">
           <a routerLink="/permits-monitor" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
           <a routerLink="/permit-builder/work-requests" routerLinkActive="nav-active">Work Requests</a>
@@ -67,10 +77,23 @@ interface ApiResponse<T> {
           <a routerLink="/permit-builder/lotos" routerLinkActive="nav-active">LOTO</a>
           <a routerLink="/loto-board" routerLinkActive="nav-active">LOTO Board</a>
         </nav>
-        <button class="refresh-btn" (click)="loadData()" [disabled]="loading">
+        <div class="view-switch" role="group" aria-label="View mode">
+          <button [class.on]="view() === 'list'" (click)="view.set('list')">
+            <span class="material-icons">view_list</span> List
+          </button>
+          <button [class.on]="view() === 'map'" (click)="view.set('map')">
+            <span class="material-icons">map</span> Map
+          </button>
+        </div>
+
+        <button class="refresh-btn" (click)="loadData()" [disabled]="loading" *ngIf="view() === 'list'">
           <span class="material-icons" [class.spinning]="loading">refresh</span>
         </button>
       </div>
+
+      @if (view() === 'map') {
+        <div class="map-host"><app-permits-map-view></app-permits-map-view></div>
+      } @else {
 
       <app-sp-sync-toolbar
         entityType="WorkRequest"
@@ -293,31 +316,92 @@ interface ApiResponse<T> {
         </div>
       </section>
 
-      <div class="loading-overlay" *ngIf="loading">
+      }
+
+      <div class="loading-overlay" *ngIf="loading && view() === 'list'">
         <span class="material-icons spinning">refresh</span>
         <span>Loading...</span>
       </div>
     </div>
-
+      </ng-container>
+    </app-main-layout>
   `,
   styles: [`
+    /* Status pills used to be fixed pastels, which meant white-on-white text once the dark theme
+       was on. They are semantic tokens now, redefined under .dark-theme, so every chip follows the
+       theme with one definition each rather than a second palette scattered through the rules. */
     :host {
       display: block;
       height: 100%;
-      overflow: auto;
+
+      --chip-blue-bg: #dbeafe;   --chip-blue-fg: #1e40af;
+      --chip-green-bg: #d1fae5;  --chip-green-fg: #065f46;
+      --chip-amber-bg: #fef3c7;  --chip-amber-fg: #92400e;
+      --chip-red-bg: #fecaca;    --chip-red-fg: #991b1b;
+      --chip-grey-bg: #e5e7eb;   --chip-grey-fg: #374151;
+
+      --icon-off-bg: rgba(0, 0, 0, 0.05);
+      --icon-off-fg: rgba(0, 0, 0, 0.28);
+    }
+
+    :host-context(.dark-theme) {
+      --chip-blue-bg: rgba(59, 130, 246, 0.22);   --chip-blue-fg: #93c5fd;
+      --chip-green-bg: rgba(34, 197, 94, 0.22);   --chip-green-fg: #86efac;
+      --chip-amber-bg: rgba(245, 158, 11, 0.22);  --chip-amber-fg: #fcd34d;
+      --chip-red-bg: rgba(239, 68, 68, 0.22);     --chip-red-fg: #fca5a5;
+      --chip-grey-bg: rgba(148, 163, 184, 0.18);  --chip-grey-fg: #cbd5e1;
+
+      --icon-off-bg: rgba(255, 255, 255, 0.05);
+      --icon-off-fg: rgba(255, 255, 255, 0.22);
     }
 
     .monitor-container {
-      padding: 24px;
+      /* MainLayout's .main-content already pads by 1rem — this only tops it up. */
+      padding: 8px;
       max-width: 1400px;
       margin: 0 auto;
       position: relative;
+      color: var(--primary-text);
     }
+
+    /* The map fills the page rather than scrolling with it — a map you have to scroll to read
+       defeats the point of having one. */
+    .map-host {
+      display: block;
+      height: calc(100vh - 240px);
+      min-height: 520px;
+    }
+
+    .view-switch {
+      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .view-switch button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--secondary-text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .view-switch button .material-icons { font-size: 17px; }
+    .view-switch button:hover { background: var(--hover-color); color: var(--primary-text); }
+    .view-switch button.on { background: var(--accent-color); color: #fff; }
 
     .monitor-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
       margin-bottom: 24px;
     }
 
@@ -476,25 +560,13 @@ interface ApiResponse<T> {
       box-shadow: 0 0 0 2px var(--accent-color, #3b82f6);
     }
 
-    .badge-active {
-      background-color: #dbeafe;
-      color: #1e40af;
-    }
-
-    .badge-processed {
-      background-color: #d1fae5;
-      color: #065f46;
-    }
-
-    .badge-updated {
-      background-color: #fef3c7;
-      color: #92400e;
-    }
-
-    .badge-expired {
-      background-color: #fecaca;
-      color: #991b1b;
-    }
+    .badge-active { background-color: var(--chip-blue-bg); color: var(--chip-blue-fg); }
+    .badge-processed { background-color: var(--chip-green-bg); color: var(--chip-green-fg); }
+    .badge-updated { background-color: var(--chip-amber-bg); color: var(--chip-amber-fg); }
+    .badge-expired { background-color: var(--chip-red-bg); color: var(--chip-red-fg); }
+    /* Both were used in the template but never had a rule, so they rendered as bare text. */
+    .badge-building { background-color: var(--chip-amber-bg); color: var(--chip-amber-fg); }
+    .badge-closed { background-color: var(--chip-grey-bg); color: var(--chip-grey-fg); }
 
     .card-table {
       overflow-x: auto;
@@ -548,8 +620,8 @@ interface ApiResponse<T> {
       font-weight: 700;
       padding: 2px 4px;
       border-radius: 3px;
-      background: rgba(255,255,255,0.05);
-      color: rgba(255,255,255,0.15);
+      background: var(--icon-off-bg);
+      color: var(--icon-off-fg);
       letter-spacing: 0.5px;
     }
 
@@ -576,25 +648,15 @@ interface ApiResponse<T> {
       border-radius: 4px;
     }
 
-    .status-active {
-      background-color: #dbeafe;
-      color: #1e40af;
-    }
-
-    .status-processed {
-      background-color: #d1fae5;
-      color: #065f46;
-    }
-
-    .status-updated {
-      background-color: #fef3c7;
-      color: #92400e;
-    }
-
-    .status-expired {
-      background-color: #fecaca;
-      color: #991b1b;
-    }
+    .status-chip { background-color: var(--chip-grey-bg); color: var(--chip-grey-fg); }
+    .status-active { background-color: var(--chip-blue-bg); color: var(--chip-blue-fg); }
+    .status-processed { background-color: var(--chip-green-bg); color: var(--chip-green-fg); }
+    .status-updated { background-color: var(--chip-amber-bg); color: var(--chip-amber-fg); }
+    .status-expired { background-color: var(--chip-red-bg); color: var(--chip-red-fg); }
+    /* Package statuses. A package with no status row is "Building" — see NgDailyPermitPackageService. */
+    .status-building { background-color: var(--chip-amber-bg); color: var(--chip-amber-fg); }
+    .status-test { background-color: var(--chip-amber-bg); color: var(--chip-amber-fg); }
+    .status-closed { background-color: var(--chip-grey-bg); color: var(--chip-grey-fg); }
 
     .chip-list {
       display: flex;
@@ -631,6 +693,9 @@ interface ApiResponse<T> {
   `]
 })
 export class PermitsMonitorComponent implements OnInit, OnDestroy {
+  /** List (the tables) or map (the same open work drawn on the plant layout). */
+  view = signal<'list' | 'map'>('list');
+
   loading = false;
 
   activeWorkRequests: WorkRequest[] = [];

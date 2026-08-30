@@ -24,8 +24,9 @@ public class WorkRequestController {
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAll() {
         try {
-            List<WorkRequest> allRequests = workRequestService.getAll();
-            List<NgWorkRequestDto> allDtos = workRequestMapper.convertToNgDtos(allRequests);
+            // Mapping happens in the service, inside its transaction — open-in-view is off, so
+            // mapping entities here would touch lazy associations on detached objects.
+            List<NgWorkRequestDto> allDtos = workRequestService.getAllNgDtos();
             return ResponseEntity.ok(
                     new NgApiResponse<>(allDtos, "Successfully got all requests from local DB")
             );
@@ -45,8 +46,7 @@ public class WorkRequestController {
     @GetMapping("/get-all-by-status/{status}")
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAllByStatus(@PathVariable String status) {
         try {
-            List<WorkRequest> allRequests = workRequestService.getAllByStatus(status);
-            List<NgWorkRequestDto> allDtos = workRequestMapper.convertToNgDtos(allRequests);
+            List<NgWorkRequestDto> allDtos = workRequestService.getAllNgDtosByStatus(status);
             return ResponseEntity.ok(
                     new NgApiResponse<>(allDtos, "Successfully got all requests with status '" + status + "' from local DB")
             );
@@ -104,8 +104,7 @@ public class WorkRequestController {
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<NgWorkRequestDto>> getById(@PathVariable Long id) {
         try {
-            WorkRequest requestById = workRequestService.getEntityById(id);
-            NgWorkRequestDto dto = workRequestMapper.convertToNgDto(requestById);
+            NgWorkRequestDto dto = workRequestService.getNgDtoById(id);
             return ResponseEntity.ok(
                     new NgApiResponse<>(dto, "Successfully got work request by id")
             );
@@ -124,8 +123,7 @@ public class WorkRequestController {
     @PostMapping
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> save(@RequestBody List<NgWorkRequestDto> workRequests) {
         try {
-            List<WorkRequest> savedRequests = workRequestService.saveAllFromDto(workRequests);
-            List<NgWorkRequestDto> savedDtos = workRequestMapper.convertToNgDtos(savedRequests);
+            List<NgWorkRequestDto> savedDtos = workRequestService.saveAllFromDtoAsNgDtos(workRequests);
             return ResponseEntity.ok(
                     new NgApiResponse<>(savedDtos, "Successfully saved work requests.")
             );

@@ -9,6 +9,7 @@ import { AdminSyncComponent } from '../pages/admin/tabs/admin-sync.component';
 import { AdminClientsComponent } from '../pages/admin/tabs/admin-clients.component';
 import { AdminSharepointComponent } from '../pages/admin/tabs/admin-sharepoint.component';
 import { AdminFormsComponent } from '../pages/admin/tabs/admin-forms.component';
+import { AdminJobsComponent } from '../pages/admin/tabs/admin-jobs.component';
 import { AdminMigrationComponent } from '../pages/admin/tabs/admin-migration.component';
 import { AdminSdsComponent } from '../pages/admin/tabs/admin-sds.component';
 import { AdminDbHealthComponent } from '../pages/admin/tabs/admin-db-health.component';
@@ -44,6 +45,7 @@ export const STANDALONE_ROUTES: Routes = [
       { path: 'clients', component: AdminClientsComponent },
       { path: 'sharepoint', component: AdminSharepointComponent },
       { path: 'forms', component: AdminFormsComponent },
+      { path: 'jobs', component: AdminJobsComponent },
       { path: 'migration', component: AdminMigrationComponent },
       { path: 'sds', component: AdminSdsComponent },
       { path: 'db-health', component: AdminDbHealthComponent },

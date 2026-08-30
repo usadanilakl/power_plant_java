@@ -80,4 +80,61 @@ export class JobLogService {
   findMatchingJobs(workRequestId: string): Observable<SpringApiResponse<any[]>> {
     return this.http.get<SpringApiResponse<any[]>>(`${this.apiUrl}/find-matching/${workRequestId}`);
   }
+
+  /** Admin: what the stale sweep would close. Reads only. */
+  staleScan(inactiveDays: number, packageHours: number): Observable<SpringApiResponse<StaleSweepResult>> {
+    return this.http.get<SpringApiResponse<StaleSweepResult>>(
+      `${this.apiUrl}/maintenance/stale`,
+      { params: { inactiveDays, packageHours } as any });
+  }
+
+  /** Admin: close stale packages, and stale jobs with their still-open packages. */
+  closeStale(inactiveDays: number, packageHours: number, dryRun: boolean, reason?: string)
+      : Observable<SpringApiResponse<StaleSweepResult>> {
+    const params: any = { inactiveDays, packageHours, dryRun };
+    if (reason && reason.trim()) params.reason = reason.trim();
+    return this.http.post<SpringApiResponse<StaleSweepResult>>(
+      `${this.apiUrl}/maintenance/close-stale`, null, { params });
+  }
+}
+
+export interface StalePackageRow {
+  packageId: number;
+  permitNumber: string | null;
+  companyName: string | null;
+  personName: string | null;
+  date: string | null;
+  time: string | null;
+  status: string;
+  windowStart: string | null;
+  hoursOpen: number;
+  overdueBy: number;
+}
+
+export interface StaleJobRow {
+  jobId: number;
+  permitNumber: string | null;
+  company: string | null;
+  foreman: string | null;
+  location: string | null;
+  workScope: string | null;
+  status: string;
+  lastActivity: string;
+  idleDays: number;
+  packagesToClose: StalePackageRow[];
+}
+
+export interface StaleSweepResult {
+  inactiveDays: number;
+  packageHours: number;
+  openJobs: number;
+  staleJobCount: number;
+  stalePackageCount: number;
+  cascadedPackageCount: number;
+  staleJobs: StaleJobRow[];
+  stalePackages: StalePackageRow[];
+  dryRun?: boolean;
+  jobsClosed?: number;
+  packagesClosed?: number;
+  failures?: string[];
 }

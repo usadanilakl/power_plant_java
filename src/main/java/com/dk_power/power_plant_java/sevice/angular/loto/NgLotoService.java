@@ -1528,8 +1528,38 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 })
                 .toList();
 
-        // Get all open jobs with their LOTOs
+        // Get all open jobs with their LOTOs.
+        //
+        // The association comes from the job's PACKAGES, not from JobLog.lotos. `job_log_lotos`
+        // exists on the entity but has never had a writer anywhere in the codebase -
+        // attachLoto/detachLoto have no callers, JobLogDto carries no lotos field and JobLogMapper
+        // never maps one - so reading it made every active LOTO report zero jobs, no foremen and
+        // hasNoJobs=true. This screen exists to tell an operator whether a LOTO can be cleared, so
+        // that failed in the dangerous direction: it said "nothing needs this" about everything.
+        // Packages are where LOTOs are actually attached (daily_permit_package_lotos), and a job
+        // owns its packages, so the link is derivable with no second source of truth to drift.
         List<com.dk_power.power_plant_java.entities.permits.JobLog> openJobs = jobLogRepo.findAllOpenJobs();
+
+        Map<Long, List<Map<String, Object>>> jobsByLotoId = new HashMap<>();
+        for (var job : openJobs) {
+            Map<String, Object> jobInfo = new LinkedHashMap<>();
+            jobInfo.put("jobId", job.getId());
+            jobInfo.put("permitNumber", job.getPermitNumber());
+            jobInfo.put("foreman", job.getForeman());
+            jobInfo.put("company", job.getCompany());
+            jobInfo.put("workScope", job.getWorkScope());
+            if (job.getPackages() == null) continue;
+            // Distinct: the same LOTO on several of a job's packages is still one job.
+            job.getPackages().stream()
+                    .filter(pkg -> pkg != null && pkg.getLotos() != null)
+                    .flatMap(pkg -> pkg.getLotos().stream())
+                    .filter(l -> l != null && l.getId() != null)
+                    .map(Loto::getId)
+                    .distinct()
+                    .forEach(lotoId -> jobsByLotoId
+                            .computeIfAbsent(lotoId, k -> new ArrayList<>())
+                            .add(jobInfo));
+        }
 
         for (Loto loto : activeLots) {
             Map<String, Object> row = new LinkedHashMap<>();
@@ -1543,19 +1573,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             row.put("pointCount", loto.getLotoPointDtos() != null ? loto.getLotoPointDtos().size() : 0);
             row.put("lockCount", loto.getLocks() != null ? loto.getLocks().size() : 0);
 
-            // Find associated jobs
-            List<Map<String, Object>> associatedJobs = new ArrayList<>();
-            for (var job : openJobs) {
-                if (job.getLotos() != null && job.getLotos().contains(loto)) {
-                    Map<String, Object> jobInfo = new LinkedHashMap<>();
-                    jobInfo.put("jobId", job.getId());
-                    jobInfo.put("permitNumber", job.getPermitNumber());
-                    jobInfo.put("foreman", job.getForeman());
-                    jobInfo.put("company", job.getCompany());
-                    jobInfo.put("workScope", job.getWorkScope());
-                    associatedJobs.add(jobInfo);
-                }
-            }
+            List<Map<String, Object>> associatedJobs =
+                    jobsByLotoId.getOrDefault(loto.getId(), List.of());
             row.put("associatedJobs", associatedJobs);
 
             // Extract foremen names

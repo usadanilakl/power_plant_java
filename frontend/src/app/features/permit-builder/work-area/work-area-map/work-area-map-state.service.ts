@@ -8,6 +8,7 @@ import { SyncUpdateService } from '../../../../services/sync/sync-update.service
 import { SharedDataService } from '../../../../services/shared-data.service';
 import { LotoStandardService } from '../../../../services/loto/loto-standard.service';
 import { Option } from '../../../../models/option.model';
+import { workAreaShapeToCoordinates, workAreaShapeToRf } from '../work-area-shape.util';
 
 export type WorkAreaMapMode = 'dev' | 'operator' | 'overview';
 
@@ -485,51 +486,6 @@ export class WorkAreaMapStateService {
     mode: WorkAreaMapMode,
     permitCounts: WorkAreaPermitCounts[]
   ): RfRectangleShape {
-    let coords = { x: 0, y: 0, width: 100, height: 100, rotation: 0 };
-    let picW = 1000;
-    let picH = 800;
-
-    // Parse coordinates JSON
-    if (shape.coordinates) {
-      try {
-        // Handle both JSON and custom format: {startX:0,startY:0,...}
-        const cleaned = shape.coordinates
-          .replace(/(\w+):/g, '"$1":')
-          .replace(/'/g, '"');
-        const parsed = JSON.parse(cleaned);
-        coords = {
-          x: parsed.startX ?? parsed.x ?? 0,
-          y: parsed.startY ?? parsed.y ?? 0,
-          width: parsed.width ?? 100,
-          height: parsed.height ?? 100,
-          rotation: parsed.rotation ?? 0,
-        };
-      } catch {
-        // Fallback - try direct parse
-        try {
-          const parsed = JSON.parse(shape.coordinates);
-          coords = {
-            x: parsed.startX ?? parsed.x ?? 0,
-            y: parsed.startY ?? parsed.y ?? 0,
-            width: parsed.width ?? 100,
-            height: parsed.height ?? 100,
-            rotation: parsed.rotation ?? 0,
-          };
-        } catch {
-          // Use defaults
-        }
-      }
-    }
-
-    // Parse original picture size
-    if (shape.originalPictureSize) {
-      const match = shape.originalPictureSize.match(/width:(\d+),height:(\d+)/);
-      if (match) {
-        picW = parseInt(match[1], 10);
-        picH = parseInt(match[2], 10);
-      }
-    }
-
     // Color based on mode
     let color = '#3b82f6'; // Blue default
     if (mode === 'overview') {
@@ -539,27 +495,7 @@ export class WorkAreaMapStateService {
       else if (totalPermits > 0) color = '#22c55e';   // Green - low
       else color = '#94a3b8';                          // Gray - no permits
     }
-
-    return {
-      id: shape.id,
-      fileId: 0,
-      type: 'rectangle' as const,
-      color,
-      originalPictureWidth: picW,
-      originalPictureHeight: picH,
-      originalWidth: coords.width,
-      originalHeight: coords.height,
-      isSelected: false,
-      isBulkSelected: false,
-      currentImgWidth: picW,
-      currentImgHeigth: picH,
-      scaleToCurrentImage: 1,
-      x: coords.x,
-      y: coords.y,
-      width: coords.width,
-      height: coords.height,
-      rotation: coords.rotation,
-    };
+    return workAreaShapeToRf(shape, color);
   }
 
   private getShapeTotalPermits(shape: WorkAreaMapShapeDto, counts: WorkAreaPermitCounts[]): number {
@@ -575,15 +511,7 @@ export class WorkAreaMapStateService {
     const existing = shape.id > 0 ? this.shapes().find(item => item.id === shape.id) : null;
     return {
       id: shape.id > 0 ? shape.id : 0, // 0 for new shapes (server generates ID)
-      coordinates: JSON.stringify({
-        startX: rect.x,
-        startY: rect.y,
-        endX: rect.x + rect.width,
-        endY: rect.y + rect.height,
-        width: rect.width,
-        height: rect.height,
-        rotation: rect.rotation || 0,
-      }).replace(/^"|"$/g, '').replace(/\\/g, '').replace(/"(\w+)":/g, '$1:'),
+      coordinates: workAreaShapeToCoordinates(rect),
       originalPictureSize: `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`,
       label: '',
       workAreaIds: existing?.workAreaIds ?? [],

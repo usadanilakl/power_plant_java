@@ -976,6 +976,44 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return changeStatus(id, "Closed", Set.of("Active", "Test"));
     }
 
+    /**
+     * Close a package from ANY open state, for the admin bulk sweep.
+     *
+     * <p>{@link #closePackage} deliberately refuses anything that is not Active or Test, because an
+     * operator closing a package is asserting the work finished. The stale packages this sweep
+     * targets are frequently still in <em>Building</em> — started, never activated, then abandoned —
+     * or in older states such as <em>Open</em> that predate the current vocabulary, and that guard
+     * makes all of them impossible to clear at all.
+     *
+     * <p>{@code workCompleted} is deliberately NOT set. Nobody knows whether the work happened; the
+     * reason string records that this was an administrative close, so the package is not later read
+     * as a completed job. That also keeps {@code updateParentJobStatus} from auto-closing the job
+     * behind the sweep's back — the job is closed explicitly, with its own audit trail.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public DailyPermitPackageDto adminForceClose(String id, String reason) {
+        DailyPermitPackage pkg = getEntityById(id);
+        String current = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+
+        // Already closed is the one state with nothing to do. Returning quietly keeps a re-run of
+        // the sweep idempotent instead of reporting spurious failures for rows it closed last time.
+        if ("Closed".equals(current)) return dailyPermitPackageMapper.convertToDto(pkg);
+
+        String note = reason == null || reason.isBlank()
+                ? "Closed by administrative sweep (stale)."
+                : reason.trim();
+        String existing = pkg.getClosureComments();
+        pkg.setClosureComments(existing == null || existing.isBlank() ? note : existing + " | " + note);
+        autoSignOffAllPersonnel(pkg);
+        dailyPermitPackageRepo.save(pkg);
+        // The allowed-from set is the package's OWN current status, not a hardcoded list.
+        // Enumerating states here was wrong: a first sweep failed on five packages sitting in
+        // "Open" — a status this service does not even mention, but which exists in the data. Any
+        // status nobody thought to list would break the force-close the same way. "Close it from
+        // whatever state it is in" is the actual rule, and this expresses it directly.
+        return changeStatus(id, "Closed", Set.of(current));
+    }
+
     private DailyPermitPackageDto changeStatus(String id, String targetStatus, Set<String> allowedFromStatuses) {
         DailyPermitPackage pkg = getEntityById(id);
         String currentStatus = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
