@@ -4,6 +4,8 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.JobLogDto;
 import com.dk_power.power_plant_java.sevice.angular.permits.JobPackageMaintenanceService;
+import com.dk_power.power_plant_java.sevice.angular.permits.PackageExpiryService;
+import com.dk_power.power_plant_java.sevice.angular.permits.PermitCleanupService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgJobLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,8 @@ public class NgJobLogController {
 
     private final NgJobLogService service;
     private final JobPackageMaintenanceService maintenanceService;
+    private final PermitCleanupService permitCleanupService;
+    private final PackageExpiryService packageExpiryService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<JobLogDto>>> getAll() {
@@ -242,6 +246,82 @@ public class NgJobLogController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new NgApiResponse<>(null, "Error scanning: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * What the automatic package-expiry sweep would do right now. Reads only.
+     *
+     * <p>{@code GET /ng/job-logs/maintenance/expiry-preview}
+     */
+    @GetMapping("/maintenance/expiry-preview")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> expiryPreview() {
+        try {
+            Map<String, Object> result = packageExpiryService.preview();
+            return ResponseEntity.ok(new NgApiResponse<>(result,
+                    result.get("dueCount") + " package(s) are past their validity window."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error previewing expiry: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Run the expiry sweep now rather than waiting for the hourly schedule.
+     *
+     * <p>Dry run: {@code POST /ng/job-logs/maintenance/expire-packages}
+     * <br>Apply: {@code POST /ng/job-logs/maintenance/expire-packages?dryRun=false}
+     */
+    @PostMapping("/maintenance/expire-packages")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> expirePackages(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            Map<String, Object> result = packageExpiryService.runNow(dryRun);
+            String msg = dryRun
+                    ? "Dry run: " + result.get("dueCount") + " package(s) would be expired."
+                    : "Expired " + result.get("expired") + " package(s).";
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error expiring packages: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Permits whose owner is already closed, already gone, or never existed.
+     *
+     * <p>{@code GET /ng/job-logs/maintenance/stranded-permits}
+     */
+    @GetMapping("/maintenance/stranded-permits")
+    public ResponseEntity<NgApiResponse<PermitCleanupService.Report>> strandedPermits() {
+        try {
+            PermitCleanupService.Report report = permitCleanupService.diagnose();
+            return ResponseEntity.ok(new NgApiResponse<>(report,
+                    report.getRows().size() + " permit(s) outlived their package."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error scanning permits: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Close them.
+     *
+     * <p>Dry run: {@code POST /ng/job-logs/maintenance/close-stranded-permits}
+     * <br>Apply: {@code POST /ng/job-logs/maintenance/close-stranded-permits?dryRun=false}
+     */
+    @PostMapping("/maintenance/close-stranded-permits")
+    public ResponseEntity<NgApiResponse<PermitCleanupService.Report>> closeStrandedPermits(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            PermitCleanupService.Report report = permitCleanupService.closeStrandedPermits(dryRun);
+            String msg = dryRun
+                    ? "Dry run: " + report.getRows().size() + " permit(s) would be closed."
+                    : "Closed " + report.getClosed() + " permit(s).";
+            return ResponseEntity.ok(new NgApiResponse<>(report, msg));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error closing permits: " + e.getMessage()));
         }
     }
 

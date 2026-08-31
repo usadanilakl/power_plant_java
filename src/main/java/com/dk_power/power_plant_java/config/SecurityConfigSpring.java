@@ -114,6 +114,9 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/pwa/secured/loto-standards/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto-points/**").hasAnyRole("PLANT", "ADMIN")
                 .requestMatchers("/api/pwa/secured/loto/**").hasAnyRole("PLANT", "ADMIN")
+                // Air monitoring: the same people in the same places as the LOTO/permit
+                // surfaces, plus safety, who own atmosphere testing.
+                .requestMatchers("/api/pwa/secured/air-monitoring/**").hasAnyRole("PLANT", "SAFETY", "ADMIN")
                 // Scanned-QR tag resolver + drawing/connector lookup (PwaQrController). Same bar as the LOTO
                 // endpoints above: the /qr/{tag} redirect on the hub is public so any phone camera can follow
                 // it, but the P&IDs behind it are plant data. Without this rule it would fall through to
@@ -248,6 +251,13 @@ public class SecurityConfigSpring {
                 // fall through to anyRequest().authenticated() and any signed-in user could mass-
                 // close live work. Must precede any broader /ng/job-logs rule - first match wins.
                 .requestMatchers("/ng/job-logs/maintenance/**").hasRole("ADMIN")
+                // Changing WHICH areas need monitoring is an authorised action. Reading the
+                // list and recording a test fall under the general /ng/** authenticated rule,
+                // because refusing to let somebody log a reading they just took helps nobody.
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/ng/air-monitoring/areas/**")
+                    .hasAnyRole("PLANT", "SAFETY", "ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/ng/air-monitoring/areas/**")
+                    .hasAnyRole("PLANT", "SAFETY", "ADMIN")
                 // Hub client registry + per-client next-boot directive (list/set/clear) — admin-only, like
                 // every other hub-admin NG surface. Without this it would fall through to anyRequest()
                 // .authenticated(), letting any signed-in user push a mandatory boot directive to any desktop.

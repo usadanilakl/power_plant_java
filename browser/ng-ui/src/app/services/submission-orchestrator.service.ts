@@ -755,6 +755,9 @@ export class SubmissionOrchestratorService {
       workCategoryName: workRequest.workCategoryName || undefined,
       workAreaId: workRequest.workAreaId || undefined,
       workAreaName: workRequest.workAreaName || undefined,
+      // The email link is a full submission path, not a summary — it has to carry everything the
+      // server path does or a request sent this way silently loses its extra areas.
+      workAreas: (workRequest.workAreas?.length ?? 0) > 1 ? workRequest.workAreas : undefined,
       attachments: []
     };
     const encoded = btoa(JSON.stringify(dto));

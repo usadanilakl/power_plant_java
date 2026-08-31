@@ -41,6 +41,12 @@ public class NgWorkRequestDto extends BaseDto {
     private Boolean hasJha;
     private Integer attachmentCount;
     private WorkAreaDto workArea;
+
+    /**
+     * Every area this request covers and what is planned in each. `workArea` above stays the
+     * primary one; this drives how many Confined Space and Hot Work permits get generated.
+     */
+    private java.util.List<com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea> workAreas;
     private ValueDto workCategory;
     private Long dailyPermitPackageId;
 

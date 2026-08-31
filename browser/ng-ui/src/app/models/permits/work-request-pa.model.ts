@@ -19,6 +19,12 @@ export interface IWorkRequestPa {
    * This path bypasses the hub entirely, so it is the only channel the declaration has.
    */
   DeclaredHazards: string;
+
+  /**
+   * Every covered area as one JSON envelope, for the SharePoint `WorkAreas` column. Empty string
+   * for a single-area request, which is what every request looked like before this existed.
+   */
+  WorkAreas: string;
 }
 
 export class WorkRequestPa implements IWorkRequestPa {
@@ -39,6 +45,12 @@ export class WorkRequestPa implements IWorkRequestPa {
   WorkAreaName: string;
   DeclaredHazards: string;
 
+  /**
+   * Every covered area as one JSON envelope, for the SharePoint `WorkAreas` column. Empty string
+   * for a single-area request, which is what every request looked like before this existed.
+   */
+  WorkAreas: string;
+
   constructor(data: Partial<IWorkRequestPa> = {}) {
     this.PwaId = data.PwaId ?? '';
     this.Company = data.Company ?? '';
@@ -56,5 +68,6 @@ export class WorkRequestPa implements IWorkRequestPa {
     this.MainWorkScope = data.MainWorkScope ?? '';
     this.WorkAreaName = data.WorkAreaName ?? '';
     this.DeclaredHazards = data.DeclaredHazards ?? '';
+    this.WorkAreas = data.WorkAreas ?? '';
   }
 }

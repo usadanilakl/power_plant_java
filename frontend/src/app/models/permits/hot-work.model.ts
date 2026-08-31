@@ -261,12 +261,17 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       fireProtectionNotInService: this.fireProtectionNotInService,
       workCompleted: this.workCompleted,
       workType: this.workType,
+      // The permit's own work area. Carried informally (the form field already reads it via a
+      // cast) but it MUST survive toJson: the backend mapper resolves the area only from
+      // workArea.id, so a permit generated for a non-primary area would otherwise persist with a
+      // null FK and report as being in the request's primary area.
+      workArea: (this as any).workArea ?? null,
       permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
 
   static override fromJson(json: any): HotWorkDto {
-    return new HotWorkDto({
+    const dto = new HotWorkDto({
       ...super.fromJson(json),
       date: json.date || null,
       location: json.location || null,
@@ -319,6 +324,10 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       workType: json.workType ? new HotWorkType(json.workType) : new HotWorkType(),
       permitStatus: ValueDto.fromJson(json.permitStatus),
     });
+    // Not on the Model interface (the form field reads it via a cast), so it is attached after
+    // construction rather than widening the model's key set and every map derived from it.
+    (dto as any).workArea = json.workArea ?? null;
+    return dto;
   }
 
   static isValidKey(key: string): key is keyof HotWorkModel {

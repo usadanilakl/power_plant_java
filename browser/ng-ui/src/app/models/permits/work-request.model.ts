@@ -28,6 +28,23 @@ import { WorkRequestPa } from "./work-request-pa.model";
 import { Column } from "../inputs/column.model";
 import { IAttachment } from "./attachment.model";
 
+/**
+ * One work area the request covers, and what is planned there.
+ *
+ * <p>Wire shape of the backend `WorkRequestArea`. The single `workAreaId` stays the primary area;
+ * this decides how many Confined Space and Hot Work permits the operator ends up generating.
+ * `hotWork` is a flag only — the hot-work DETAIL is asked once for the whole request, because it is
+ * the same crew doing the same job.
+ */
+export interface WorkRequestAreaDto {
+  id: number | null;
+  name: string;
+  primary: boolean;
+  confinedSpaceEntry: boolean;
+  spaceName: string | null;
+  hotWork: boolean;
+}
+
 export interface IWorkRequest extends IBaseModel {
   id: number;
   sharepointId: string;
@@ -53,6 +70,8 @@ export interface IWorkRequest extends IBaseModel {
   workAreaName: string;
   /** The requester could not place the work on the map and described it in words instead. */
   workAreaUnknown: boolean;
+  /** Every area covered. Empty means the single area above is the whole story. */
+  workAreas: WorkRequestAreaDto[];
   declaredHazards: SwHazards;
   declaredHotWorkMeasures: HotWorkMeasures;
   declaredConfinedSpaceHazards: ConfinedSpaceHazards;
@@ -84,6 +103,8 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   workAreaId: number | null;
   workAreaName: string;
   workAreaUnknown: boolean;
+  /** Every area covered. Empty means the single area above is the whole story. */
+  workAreas: WorkRequestAreaDto[];
   declaredHazards: SwHazards;
   declaredHotWorkMeasures: HotWorkMeasures;
   declaredConfinedSpaceHazards: ConfinedSpaceHazards;
@@ -114,6 +135,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     this.workAreaId = data.workAreaId ?? null;
     this.workAreaName = data.workAreaName ?? '';
     this.workAreaUnknown = data.workAreaUnknown ?? false;
+    this.workAreas = data.workAreas ?? [];
     // Always a concrete object, never null. The reactive form coerces a falsy checkbox-group value
     // to [], which would flip the group into array mode and stop it writing back by key.
     this.declaredHazards = new SwHazards(data.declaredHazards ?? {});
@@ -482,7 +504,11 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       // until the hub polls the item back in.
       DeclaredHazards: declaredHazardsEnvelope(
         this.declaredHazards, this.declaredHotWorkMeasures, this.declaredConfinedSpaceHazards,
-        this.isHotWorkRequired === 'Yes' ? this.hotWorkProfile : null)
+        this.isHotWorkRequired === 'Yes' ? this.hotWorkProfile : null),
+      // Same reasoning as the hazard envelope above, and the same path: this is the hub-is-down
+      // route, so SharePoint is the only place the extra areas will exist until the hub polls the
+      // item back in. Only sent when there is genuinely more than the primary area.
+      WorkAreas: (this.workAreas?.length ?? 0) > 1 ? JSON.stringify(this.workAreas) : ''
     });
   }
 

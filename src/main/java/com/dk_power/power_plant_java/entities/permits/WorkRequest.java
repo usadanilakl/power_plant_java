@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.permits.pojo.DeclaredHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.HotWorkMeasures;
 import com.dk_power.power_plant_java.entities.permits.pojo.HotWorkProfile;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwHazards;
+import com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -118,6 +119,22 @@ public class WorkRequest extends BasePermitEntity {
     @Column(columnDefinition = "TEXT")
     private String hotWorkProfileJson;
 
+    /**
+     * Every area this request covers, and what is planned in each — see {@link WorkRequestArea}.
+     *
+     * <p>A JSON column rather than an association, deliberately. {@code workArea} stays the single
+     * FK every existing reader uses (the job grouping key, the scored job match, the permits map),
+     * so nothing that works today changes; this carries the rest. A real {@code @ManyToMany} would
+     * need a join table, a sync registration and the OR-Set membership machinery, and SharePoint
+     * still could not represent it without a payload column — so it would add this codebase's
+     * most expensive class of sync bug while buying nothing at that boundary.
+     *
+     * <p>Same envelope reasoning as {@link DeclaredHazards}, and the same consequence: the whole
+     * list moves as one last-writer-wins unit. Safe while the requester is its only editor.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String workAreasJson;
+
     private static final ObjectMapper HAZARD_MAPPER = new ObjectMapper();
 
     public SwHazards getDeclaredHazards() {
@@ -142,6 +159,50 @@ public class WorkRequest extends BasePermitEntity {
 
     public void setDeclaredConfinedSpaceHazards(ConfinedSpaceHazards hazards) {
         this.declaredConfinedSpaceHazardsJson = writeHazards(hazards);
+    }
+
+    public java.util.List<WorkRequestArea> getWorkAreas() {
+        return WorkRequestArea.fromJson(workAreasJson);
+    }
+
+    /**
+     * Replace the covered areas, and keep the two summary booleans in step.
+     *
+     * <p>{@code isHotWorkRequired} / {@code isConfinedSpaceEntryRequired} are what SharePoint, the
+     * Power Automate flow, the work-request table and the permit generator all read. Deriving them
+     * here means a multi-area request answers those questions correctly for every existing consumer
+     * without one of them having to learn about areas. They are only ever turned ON: a requester who
+     * said "yes, hot work" for the job as a whole is not contradicted because no individual area was
+     * ticked.
+     */
+    public void setWorkAreas(java.util.List<WorkRequestArea> areas) {
+        this.workAreasJson = WorkRequestArea.toJson(areas);
+        if (areas == null || areas.isEmpty()) return;
+        if (areas.stream().anyMatch(WorkRequestArea::isHotWork)) this.isHotWorkRequired = Boolean.TRUE;
+        if (areas.stream().anyMatch(WorkRequestArea::isConfinedSpaceEntry)) {
+            this.isConfinedSpaceEntryRequired = Boolean.TRUE;
+        }
+    }
+
+    /**
+     * Apply an areas envelope pulled back from SharePoint.
+     *
+     * <p>Blank, {@code "null"} and unreadable values are NO-OPS, never a wipe — the same rule
+     * {@link #applyDeclaredHazardsEnvelope} follows, and for the same reason. The column is added to
+     * an existing list by the provisioner, so every row already in SharePoint returns empty for it
+     * until it is written to; treating that as "clear the areas" would erase every multi-area
+     * declaration in the database on the first sync pass after provisioning.
+     *
+     * <p>An explicit {@code []} IS honoured: that is the requester having removed the extra areas,
+     * which is a real answer. Garbage is not, because {@code fromJson} cannot tell an unparseable
+     * value from a genuinely empty one and the safe reading of "I cannot read this" is to keep what
+     * we already had.
+     */
+    public void applyWorkAreasEnvelope(String json) {
+        if (json == null || json.isBlank() || "null".equals(json.trim())) return;
+        java.util.List<WorkRequestArea> parsed = WorkRequestArea.fromJson(json);
+        if (parsed.isEmpty() && !"[]".equals(json.trim())) return;
+        setWorkAreas(parsed);
     }
 
     public HotWorkProfile getHotWorkProfile() {

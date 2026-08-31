@@ -43,6 +43,12 @@ public class PwaWorkRequestDto {
     private String workAreaName;        // Denormalized area name for downstream integrations
 
     /**
+     * Every area the requester selected, and whether confined-space entry or hot work is planned in
+     * each. Absent on an older PWA build, which is read as "just the one area" rather than "none".
+     */
+    private java.util.List<com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea> workAreas;
+
+    /**
      * Set when the requester could not place their work on the map. The map stays the preferred
      * path; taking this escape hatch makes {@code locationOfWork} the only thing an operator has to
      * go on, so the PWA requires a written description alongside it.

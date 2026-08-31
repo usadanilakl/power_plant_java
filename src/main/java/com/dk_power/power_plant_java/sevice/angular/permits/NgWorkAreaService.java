@@ -100,15 +100,18 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
             entity.setAreaType(areaType);
         }
 
-        // Handle constantLotos
-        if (dto.getConstantLotoIds() != null && !dto.getConstantLotoIds().isEmpty()) {
+        // Handle constantLotos — null means "no opinion, leave the association alone" (matches the
+        // locations handling below AND WorkAreaMapper's documented contract); a non-null list REPLACES it,
+        // and an explicit empty list clears it. entity is the LOADED managed WorkArea, so skipping the
+        // assignment preserves the persisted set. The old `else -> new HashSet<>()` collapsed null into a
+        // wipe: a partial DTO (constantLotoIds omitted) would empty the area's LOTO standards and — via the
+        // FieldChangeTracker emission below — propagate that wipe to every node. null must never do that.
+        if (dto.getConstantLotoIds() != null) {
             Set<LotoStandard> lotos = dto.getConstantLotoIds().stream()
                     .map(id -> entityManager.find(LotoStandard.class, id))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
             entity.setConstantLotos(lotos);
-        } else {
-            entity.setConstantLotos(new HashSet<>());
         }
 
         // Handle locations (Location Values)

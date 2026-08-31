@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FileConnectorShape, RfCircleShape, RfImageShape, RfLineShape, RfRectangleShape, RfShape, RfTextShape, SVGSymbolShape } from '../models/fr-shape.model';
+import { FileConnectorShape, RfCircleShape, RfImageShape, RfLineShape, RfRectangleShape, RfShape, RfTextShape, ShapeCountBadge, SVGSymbolShape } from '../models/fr-shape.model';
 
 @Injectable({
   providedIn: 'root',
@@ -107,6 +107,77 @@ export class CanvasRenderService {
     )) {
       this.drawIndexBadge(ctx, scaledShape as (RfRectangleShape | RfImageShape | SVGSymbolShape | FileConnectorShape), String(shape.pointIndex), scale);
     }
+
+    // Per-category count pills. Independent of pointIndex — a caller may use either or both.
+    if (shape.countBadges?.length && (
+      scaledShape.type === 'rectangle' ||
+      scaledShape.type === 'image' ||
+      scaledShape.type === 'svg-symbol' ||
+      scaledShape.type === 'file-connector'
+    )) {
+      this.drawCountBadges(ctx, scaledShape as (RfRectangleShape | RfImageShape | SVGSymbolShape | FileConnectorShape), shape.countBadges, scale);
+    }
+  }
+
+  /**
+   * Draw category count pills along the top edge of the shape.
+   *
+   * <p>Each pill is the category's own colour with its short code and count, so an area reading
+   * "3 WR · 5 HW" is legible at a glance without opening anything. Colour carries the category and
+   * the code repeats it in text, because colour alone fails for a colour-blind operator and on a
+   * printed copy.
+   *
+   * <p>Laid out left-to-right from the shape's top-left and clipped to the shape's own width: on a
+   * small area the pills would otherwise spill across neighbouring areas and read as belonging to
+   * them. Anything that does not fit is dropped rather than overlapped — the shape stays clickable
+   * and the side panel has the full breakdown.
+   */
+  private drawCountBadges(
+    ctx: CanvasRenderingContext2D,
+    shape: RfRectangleShape | RfImageShape | SVGSymbolShape | FileConnectorShape,
+    badges: ShapeCountBadge[],
+    scale: number
+  ): void {
+    const visible = badges.filter(b => b.count > 0);
+    if (!visible.length) return;
+
+    const height = Math.min(20, Math.max(11, 13 * scale));
+    const fontSize = Math.max(8, height * 0.62);
+    const padX = height * 0.32;
+    const gap = height * 0.22;
+    const radius = height / 2;
+
+    ctx.save();
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    // Sit just above the top edge, falling inside the shape when there is no room above it.
+    const top = shape.y - height - gap < 0 ? shape.y + gap : shape.y - height - gap;
+    let x = shape.x;
+    const maxX = shape.x + shape.width;
+
+    for (const badge of visible) {
+      const text = `${badge.count} ${badge.label}`;
+      const width = ctx.measureText(text).width + padX * 2;
+      if (x + width > maxX && x > shape.x) break; // Always draw at least one.
+
+      ctx.beginPath();
+      // roundRect is recent; a missing implementation would throw inside the render loop and blank
+      // every shape on the canvas, not just the badge. Square corners are a fine degradation.
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(x, top, width, height, radius);
+      else ctx.rect(x, top, width, height);
+      ctx.fillStyle = badge.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = Math.max(0.75, Math.min(scale, 1.5));
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(text, x + padX, top + height / 2);
+      x += width + gap;
+    }
+    ctx.restore();
   }
 
   /**

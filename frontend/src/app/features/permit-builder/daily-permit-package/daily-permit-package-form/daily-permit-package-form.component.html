@@ -41,9 +41,41 @@
     </div>
   }
   <div class="forms-container">
-    @if(isSafeWorkVisible){<app-safe-work-form [values]="safeWork" (formSubmit)="onSumbitSafeWork($event)"></app-safe-work-form>}
-    @if(isHotWorkVisible){<app-hot-work-form [values]="hotWork" (formSubmit)="onSumbitHotWork($event)"></app-hot-work-form>}
-    @if(isConfinedSpaceVisible){<app-confined-space-form [values]="confinedSpace" (formSubmit)="onSumbitConfinedSpace($event)"></app-confined-space-form>}
+    <!--
+      One permit per area where it is needed. Confined Space and Hot Work are inherently per-area —
+      a space has its own readings and entrants, a fire watch cannot be in two places. Safe Work
+      spans by default because nothing in it is location-bound, with the split left to the operator.
+    -->
+    @if (isMultiArea()) {
+      <div class="multi-area-note">
+        This request covers {{ workRequest().workAreas.length }} areas.
+        <label>
+          <input type="checkbox" [checked]="splitSafeWorkPerArea()"
+                 (change)="splitSafeWorkPerArea.set($any($event.target).checked)" />
+          One Safe Work per area
+        </label>
+        <span class="multi-area-counts">
+          {{ safeWorks().length }} SW &middot; {{ hotWorks().length }} HW &middot;
+          {{ confinedSpaces().length }} CS
+        </span>
+      </div>
+    }
+
+    @if(isSafeWorkVisible){
+      @for (sw of safeWorks(); track $index) {
+        <app-safe-work-form [values]="safeWorkAt($index)" (formSubmit)="onSumbitSafeWork($event)"></app-safe-work-form>
+      }
+    }
+    @if(isHotWorkVisible){
+      @for (hw of hotWorks(); track $index) {
+        <app-hot-work-form [values]="hotWorkAt($index)" (formSubmit)="onSumbitHotWork($event)"></app-hot-work-form>
+      }
+    }
+    @if(isConfinedSpaceVisible){
+      @for (cs of confinedSpaces(); track $index) {
+        <app-confined-space-form [values]="confinedSpaceAt($index)" (formSubmit)="onSumbitConfinedSpace($event)"></app-confined-space-form>
+      }
+    }
   </div>
   <div class="loto-section">
     

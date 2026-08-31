@@ -50,9 +50,13 @@ public interface DailyPermitPackageRepo extends BaseRepository<DailyPermitPackag
      * "Building" (see NgDailyPermitPackageService, which reads null as "Building" in four places),
      * and it is the state of the large majority of open packages. The admin stale sweep reported
      * 5 candidates against 154 genuinely-open packages until this was made an explicit LEFT JOIN.
+     *
+     * <p>"Not Closed" is not enough on its own: automatic expiry introduced "Expired", which is
+     * every bit as terminal. Without it the stale sweep would keep offering to close packages the
+     * timer had already dealt with, and the expiry sweep would keep re-reading them.
      */
     @Query("SELECT p FROM DailyPermitPackage p LEFT JOIN p.packageStatus s "
             + "WHERE (p.deleted IS NULL OR p.deleted = false) "
-            + "AND (s IS NULL OR s.name <> 'Closed')")
+            + "AND (s IS NULL OR LOWER(s.name) NOT IN ('closed', 'expired', 'cancelled', 'canceled'))")
     List<DailyPermitPackage> findAllOpenPackages();
 }

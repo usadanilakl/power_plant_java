@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { SubmissionOrchestratorService } from '../../../services/submission-orchestrator.service';
 import { WorkRequest } from '../../../models/permits/work-request.model';
+import { foldHotWorkProfile, foldWorkRequestVirtualFields } from '../work-request-virtual-fields';
 import { HotWorkProfile } from '../../../models/permits/permit-hazards.model';
 import { FormField } from '../../../models/inputs/form-field.model';
 import { Option } from '../../../models/inputs/option.model';
@@ -32,6 +33,8 @@ export class WorkRequestFormComponent implements OnInit {
 
   entityInput = input<WorkRequest>();
   fieldsInput = input<FormField[]>();
+  /** Shown on the full form only — the wizard has its own back/skip navigation. */
+  showClearButton = input<boolean>(false);
 
   private workCategoryOptions = signal<Option[]>([]);
 
@@ -102,6 +105,30 @@ export class WorkRequestFormComponent implements OnInit {
     return categories.map(c => ({ value: c.name, label: c.name }));
   }
 
+  /**
+   * Empty the form but keep who you are.
+   *
+   * <p>The common case for resubmitting is "same person, same company, completely different job".
+   * Clearing the identity fields too would mean re-typing them every time, and they are the fields
+   * least likely to be wrong. Attachments go — they belonged to the previous request, and carrying
+   * a stale photo onto a new one is worse than losing it.
+   */
+  clearForm(): void {
+    if (!confirm('Clear this form? Your name and company will be kept.')) return;
+    const previous = this.entity();
+    const fresh = new WorkRequest();
+    fresh.workRequestedBy = previous?.workRequestedBy ?? '';
+    fresh.company = previous?.company ?? '';
+
+    const userData = this.userSetupService.getUserData();
+    if (userData) {
+      if (!fresh.workRequestedBy) fresh.workRequestedBy = userData.name;
+      if (!fresh.company) fresh.company = userData.company;
+    }
+    this.workRequestStateService.selectWorkRequest(fresh);
+    this.workRequestStateService.saveDraft(fresh);
+  }
+
   emailFallbackData = this.workRequestStateService.emailFallbackData;
   emailRecipient = environment.emailRecipient;
 
@@ -144,23 +171,7 @@ export class WorkRequestFormComponent implements OnInit {
    *  - un-ticking Other clears its free text.
    */
   private applyHotWorkProfile(workRequest: WorkRequest): void {
-    const fd = workRequest as any;
-
-    if (fd.isHotWorkRequired !== 'Yes') {
-      workRequest.hotWorkProfile = new HotWorkProfile();
-    } else {
-      const ticked = fd.hotWorkTypes && typeof fd.hotWorkTypes === 'object' ? fd.hotWorkTypes : {};
-      const profile = new HotWorkProfile({ ...ticked });
-      profile.otherDescription = profile.other ? (fd.hotWorkOtherDescription ?? '').trim() : '';
-      profile.fumeLevel = profile.welding ? (fd.hotWorkFumeLevel ?? '') : '';
-      profile.chromeContent = profile.welding ? (fd.hotWorkChromeContent ?? '') : '';
-      workRequest.hotWorkProfile = profile;
-    }
-
-    delete fd.hotWorkTypes;
-    delete fd.hotWorkOtherDescription;
-    delete fd.hotWorkFumeLevel;
-    delete fd.hotWorkChromeContent;
+    foldHotWorkProfile(workRequest, { strip: true });
   }
 
   /**
@@ -195,54 +206,16 @@ export class WorkRequestFormComponent implements OnInit {
   }
 
   /**
-   * Fold the form's helper controls down into the fields the model actually stores.
+   * Fold the helper controls, then apply the area's confined-space status.
    *
-   * `workAreaMap`, `locationDetail` and `locationDescription` exist only to drive the UI; the model
-   * keeps `workAreaId` / `workAreaName` / `locationOfWork`. This runs on every value change and on
-   * submit, so it has to be idempotent and it has to handle a field being *cleared*, not just set.
+   * <p>The folding itself lives in {@link foldWorkRequestVirtualFields}, shared with the wizard.
+   * `strip: true` because this path both edits and submits — the helper controls must not reach
+   * the server.
    */
   private applyMapValue(workRequest: WorkRequest): void {
-    const unknownArea = (workRequest as any).workAreaUnknown === true;
-    workRequest.workAreaUnknown = unknownArea;
-
-    if (unknownArea) {
-      // They told us they cannot place it. Drop any area picked before they ticked the box, so we
-      // never send a half-remembered guess alongside "not sure".
-      workRequest.workAreaId = null;
-      workRequest.workAreaName = '';
-      workRequest.locationOfWork = ((workRequest as any).locationDescription ?? '').trim();
-      this.autoConfinedSpaceAreaId = null;
-    } else {
-      const mapValue = (workRequest as any).workAreaMap;
-      if (mapValue && typeof mapValue === 'object' && mapValue.id !== undefined) {
-        workRequest.workAreaId = mapValue.id;
-        workRequest.workAreaName = mapValue.name;
-        this.applyAreaConfinedSpace(workRequest, mapValue);
-      } else {
-        workRequest.workAreaId = null;
-        workRequest.workAreaName = '';
-      }
-
-      // Compose locationOfWork: map area name + optional user detail
-      const locationDetail = ((workRequest as any).locationDetail ?? '').trim();
-      if (workRequest.workAreaName) {
-        workRequest.locationOfWork = locationDetail
-          ? `${workRequest.workAreaName} - ${locationDetail}`
-          : workRequest.workAreaName;
-      } else if (locationDetail) {
-        workRequest.locationOfWork = locationDetail;
-      }
-    }
-
-    // Extract equipment tag from picker value (object → string)
-    const equipmentValue = workRequest.affectedEquipment;
-    if (equipmentValue && typeof equipmentValue === 'object' && (equipmentValue as any).tagNumber) {
-      workRequest.affectedEquipment = (equipmentValue as any).tagNumber;
-    }
-    // Clean up virtual fields before saving
-    delete (workRequest as any).workAreaMap;
-    delete (workRequest as any).locationDetail;
-    delete (workRequest as any).locationDescription;
+    const picked = foldWorkRequestVirtualFields(workRequest, { strip: true });
+    if (picked) this.applyAreaConfinedSpace(workRequest, picked);
+    else if ((workRequest as any).workAreaUnknown === true) this.autoConfinedSpaceAreaId = null;
   }
 
   onEmailSent() {

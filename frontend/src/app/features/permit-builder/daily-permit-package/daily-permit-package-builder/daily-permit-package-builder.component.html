@@ -257,6 +257,15 @@
               </app-safe-work-form>
             </ng-template>
             <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate from WR</button>
+            <!-- Only offered when there is genuinely a choice to make. Confined Space and Hot Work
+                 are always per-area, so only Safe Work needs asking about. -->
+            @if (currentDailyPermitPackageService.currentRequestAreaCount() > 1) {
+              <button [disabled]="isReadOnly()"
+                      title="One Safe Work per area instead of one covering them all"
+                      (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest(true)">
+                One per area ({{ currentDailyPermitPackageService.currentRequestAreaCount() }})
+              </button>
+            }
             <button [disabled]="isReadOnly()" (click)="addSafeWork()">Create Blank</button>
           </app-item-carousel>
         }

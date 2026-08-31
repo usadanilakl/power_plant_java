@@ -260,6 +260,7 @@ public class WorkRequestSharePointAdapter {
         dto.setWorkCategoryName(item.path("MainWorkScope").asText(null));
         dto.setWorkAreaName(item.path("WorkAreaName").asText(null));
         dto.setDeclaredHazards(item.path("DeclaredHazards").asText(null));
+        dto.setWorkAreas(item.path("WorkAreas").asText(null));
         dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
         return dto;
     }
@@ -287,6 +288,7 @@ public class WorkRequestSharePointAdapter {
         dto.setWorkCategoryName(str(map, "MainWorkScope"));
         dto.setWorkAreaName(str(map, "WorkAreaName"));
         dto.setDeclaredHazards(str(map, "DeclaredHazards"));
+        dto.setWorkAreas(str(map, "WorkAreas"));
         return dto;
     }
 
@@ -321,6 +323,7 @@ public class WorkRequestSharePointAdapter {
         map.put("MainWorkScope", orEmpty(dto.getWorkCategoryName()));
         map.put("WorkAreaName", orEmpty(dto.getWorkAreaName()));
         map.put("DeclaredHazards", orEmpty(dto.getDeclaredHazards()));
+        map.put("WorkAreas", orEmpty(dto.getWorkAreas()));
         return map;
     }
 

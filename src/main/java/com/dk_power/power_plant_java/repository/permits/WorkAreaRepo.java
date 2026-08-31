@@ -27,6 +27,17 @@ public interface WorkAreaRepo extends BaseRepository<WorkArea> {
     List<WorkArea> findAllWithLocations();
 
     /**
+     * {@code [workAreaId, lotoStandardId]} pairs for every area that has constant standards.
+     *
+     * <p>A projection rather than a second {@code LEFT JOIN FETCH} on {@link #findAllWithLocations}:
+     * the PWA snapshot is built outside a transaction, so touching the lazy {@code constantLotos}
+     * collection on those detached areas throws. Fetch-joining two collections at once would also
+     * multiply the rows out for no benefit — this is one flat query the caller indexes by area.
+     */
+    @Query("SELECT wa.id, s.id FROM WorkArea wa JOIN wa.constantLotos s")
+    List<Object[]> findConstantLotoStandardIdPairs();
+
+    /**
      * Work areas that carry a given LOTO Standard in their {@code constantLotos}
      * many-to-many. Used by the standard-delete flow so we can unlink the
      * standard from every referencing work area before its rows are removed

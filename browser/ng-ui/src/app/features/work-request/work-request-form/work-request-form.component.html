@@ -1,3 +1,9 @@
+@if (showClearButton()) {
+  <div class="form-toolbar">
+    <button type="button" class="clear-button" (click)="clearForm()">Clear form</button>
+  </div>
+}
+
 <app-reactive-form
   [entity]="entity()"
   [fields]="fields()"

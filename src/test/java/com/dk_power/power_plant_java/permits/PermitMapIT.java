@@ -51,6 +51,9 @@ class PermitMapIT {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private com.dk_power.power_plant_java.repository.permits.SafeWorkRepo safeWorkRepo;
+    @Autowired private com.dk_power.power_plant_java.sevice.pwa.PwaReferenceDataService pwaReferenceDataService;
+    @Autowired private com.dk_power.power_plant_java.repository.permits.WorkRequestRepo workRequestRepo;
 
     // SikuliX grabs a screen on construction and throws in a headless JVM, which fails the whole
     // context. Same mock the LOTO ITs use.
@@ -243,6 +246,156 @@ class PermitMapIT {
             if (node.path("id").asLong() == id) return node;
         }
         return null;
+    }
+
+    /**
+     * A Safe Work with no package and no status — "Building", i.e. open. Created through JPA so the
+     * entity listeners behave exactly as they do in production.
+     */
+    private long createLooseSafeWork(String scope, String location, boolean deleted) {
+        com.dk_power.power_plant_java.entities.permits.SafeWork sw =
+                new com.dk_power.power_plant_java.entities.permits.SafeWork();
+        sw.setWorkScope(scope);
+        sw.setLocation(location);
+        sw.setDeleted(deleted);
+        return safeWorkRepo.save(sw).getId();
+    }
+
+    private JsonNode findAny(JsonNode arrayNode, String layer, long id) {
+        for (JsonNode node : arrayNode) {
+            if (node.path("layer").asText().equals(layer) && node.path("id").asLong() == id) return node;
+        }
+        return null;
+    }
+
+    @Test
+    @DisplayName("soft-deleted permits are not listed on the map at all")
+    void softDeletedPermitsAreNotListed() throws Exception {
+        // The bug this guards. @Where(deleted...) lives on BaseIdEntity, a @MappedSuperclass, and
+        // Hibernate does NOT inherit it — SafeWork/HotWork/ConfinedSpace never re-declared it, so
+        // every query on them returns deleted rows unless it filters explicitly. The map listed
+        // them, and staging one came back "SW #... no longer exists" from the assign endpoint's own
+        // delete check: listed by one query, rejected by the next.
+        long deletedId = createLooseSafeWork("map-it deleted", "nowhere", true);
+        long liveId = createLooseSafeWork("map-it live", "nowhere", false);
+
+        JsonNode data = permitMap();
+        assertThat(findAny(data.path("items"), "SW", deletedId)).isNull();
+        assertThat(findAny(data.path("unplaced"), "SW", deletedId))
+                .as("a deleted permit must not reach the map, not even as unplaced")
+                .isNull();
+        assertThat(findAny(data.path("unplaced"), "SW", liveId))
+                .as("the live one still has to show")
+                .isNotNull();
+    }
+
+    @Test
+    @DisplayName("cleanup finds permits with no package and closes them")
+    void cleanupClosesOrphanedPermits() throws Exception {
+        long orphanId = createLooseSafeWork("map-it orphan", "nowhere", false);
+
+        String scan = mockMvc.perform(get("/ng/job-logs/maintenance/stranded-permits").session(session))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode rows = objectMapper.readTree(scan).path("responseData").path("rows");
+        JsonNode found = null;
+        for (JsonNode row : rows) {
+            if (row.path("id").asLong() == orphanId && "SW".equals(row.path("layer").asText())) found = row;
+        }
+        assertThat(found).as("a permit with no package can never be closed by anything else").isNotNull();
+        assertThat(found.path("reason").asText()).isEqualTo("ORPHANED");
+
+        mockMvc.perform(post("/ng/job-logs/maintenance/close-stranded-permits?dryRun=false").session(session))
+                .andExpect(status().isOk());
+
+        assertThat(findAny(permitMap().path("unplaced"), "SW", orphanId))
+                .as("once closed it is no longer open work and leaves the map")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("a dry run reports without changing anything")
+    void cleanupDryRunChangesNothing() throws Exception {
+        long orphanId = createLooseSafeWork("map-it dry run", "nowhere", false);
+
+        mockMvc.perform(post("/ng/job-logs/maintenance/close-stranded-permits").session(session))
+                .andExpect(status().isOk());
+
+        assertThat(findAny(permitMap().path("unplaced"), "SW", orphanId))
+                .as("a dry run must leave the permit exactly as it was")
+                .isNotNull();
+    }
+
+    @Test
+    @DisplayName("the PWA work-area payload carries the hazard profile and LOTO ids")
+    void pwaPayloadCarriesHazardProfile() throws Exception {
+        // The PWA wizard seeds a new request's hazards the moment the requester picks an area on
+        // the map. That is only possible if the reference payload actually carries them — it used
+        // to stop at isConfinedSpace.
+        String body = objectMapper.writeValueAsString(java.util.Map.of(
+                "name", "map-it payload area",
+                "constantHazards", java.util.Map.of("highTemp", true, "fireHazard", true)));
+        mockMvc.perform(post("/ng/work-areas")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+
+        // Called with no transaction open, exactly as the live endpoint and the offline snapshot
+        // builder do. Reading a lazy association here would throw LazyInitializationException —
+        // which is why constantLotoIds comes from a projection, not from the entity.
+        java.util.List<java.util.Map<String, Object>> areas = pwaReferenceDataService.getWorkAreas();
+
+        java.util.Map<String, Object> row = areas.stream()
+                .filter(a -> "map-it payload area".equals(a.get("name")))
+                .findFirst().orElse(null);
+        assertThat(row).as("the area we just created should be in the PWA payload").isNotNull();
+        assertThat(row).containsKeys("constantHazards", "constantHotWorkMeasures",
+                "constantConfinedSpaceHazards", "constantLotoIds", "isConfinedSpace");
+        assertThat(objectMapper.valueToTree(row.get("constantHazards")).path("highTemp").asBoolean())
+                .as("the hazards the area actually carries have to survive into the payload")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("a request covering several areas is drawn on every one of them")
+    void multiAreaRequestDrawsOnAllAreas() throws Exception {
+        long a1 = createWorkArea("map-it multi alpha");
+        long a2 = createWorkArea("map-it multi beta");
+        long wrId = createWorkRequest("map-it multi", "no area name in this text");
+
+        // Assign the primary through the map, then declare the second area on the request itself —
+        // which is what the PWA does when the requester picks two areas.
+        mockMvc.perform(post("/ng/work-areas/permit-map/assign")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "workAreaId", a1,
+                                "items", java.util.List.of(java.util.Map.of("layer", "WR", "id", wrId))))))
+                .andExpect(status().isOk());
+
+        com.dk_power.power_plant_java.entities.permits.WorkRequest wr =
+                workRequestRepo.findById(wrId).orElseThrow();
+        com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea second =
+                new com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea();
+        second.setId(a2);
+        second.setName("map-it multi beta");
+        second.setConfinedSpaceEntry(true);
+        wr.setWorkAreas(java.util.List.of(second));
+        workRequestRepo.save(wr);
+
+        JsonNode placed = findItem(permitMap().path("items"), wrId);
+        assertThat(placed).isNotNull();
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        placed.path("workAreaIds").forEach(n -> ids.add(n.asLong()));
+        assertThat(ids)
+                .as("work covering two areas is happening in both, so it is drawn on both")
+                .contains(a1, a2);
+
+        assertThat(workRequestRepo.findById(wrId).orElseThrow().getIsConfinedSpaceEntryRequired())
+                .as("an area needing entry has to turn the request's own flag on — that boolean is "
+                        + "what SharePoint, the PA flow and the permit generator all read")
+                .isTrue();
     }
 
     @Test

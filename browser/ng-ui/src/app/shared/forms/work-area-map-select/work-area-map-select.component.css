@@ -376,3 +376,69 @@
 .unavailable-state p {
   margin: 0.4rem 0 0;
 }
+
+/* Scope shortcuts + escape hatch, rendered with the map rather than under it. */
+.map-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  margin: 0 0 10px;
+}
+
+.scope-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.scope-label { font-size: 13px; color: var(--secondary-text, #666); margin-right: 2px; }
+
+.scope-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border-color, #d0d0d0);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--primary-text, #222);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.scope-btn:hover { border-color: var(--accent-color, #007bff); }
+
+.scope-btn.active {
+  background: var(--accent-color, #007bff);
+  border-color: var(--accent-color, #007bff);
+  color: #fff;
+  font-weight: 600;
+}
+
+.skip-btn {
+  align-self: flex-start;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: var(--accent-color, #007bff);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.skip-btn:hover { color: var(--accent-color-hover, #0056b3); }
+
+.overlay-skip { align-self: center; margin-right: auto; text-decoration: underline; }
+
+/* Multi-select: the running list of picked areas. */
+.picked-areas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.picked-label { font-size: 13px; color: var(--secondary-text, #666); }
+
+.picked-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 14px;
+  border: 1px solid var(--accent-color, #007bff);
+  background: var(--accent-color, #007bff); color: #fff;
+  font-size: 13px; cursor: pointer;
+}
+
+.primary-tag {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+  background: rgba(255,255,255,.25); border-radius: 8px; padding: 0 5px;
+}
+
+.chip-x { font-size: 15px; line-height: 1; opacity: .8; }
+.picked-chip:hover .chip-x { opacity: 1; }
+.picked-hint { width: 100%; font-size: 12px; color: var(--secondary-text, #777); }

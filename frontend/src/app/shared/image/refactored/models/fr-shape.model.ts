@@ -29,6 +29,24 @@ export interface RfBaseShape {
    * option.
    */
   pointIndex?: number | string;
+
+  /**
+   * Optional per-category count pills drawn along the shape's top edge, e.g. "3 WR · 2 SW · 5 HW".
+   * Used by the permits map, where one total tells an operator nothing useful — five hot-work
+   * permits and five work requests in the same area are very different situations.
+   *
+   * <p>Additive and opt-in: shapes that don't set it draw exactly as before. Rendered by
+   * {@code CanvasRenderService.drawCountBadges}, which is independent of {@link pointIndex} so a
+   * caller can use either or both.
+   */
+  countBadges?: ShapeCountBadge[];
+}
+
+/** One category pill on a shape: a short code, its count, and the category's colour. */
+export interface ShapeCountBadge {
+  label: string;
+  count: number;
+  color: string;
 }
 
 export interface RfRectangleShape extends RfBaseShape {

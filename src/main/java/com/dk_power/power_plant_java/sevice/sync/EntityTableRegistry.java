@@ -90,6 +90,8 @@ public class EntityTableRegistry {
         Map.entry("SafeWork", "safe_work"),
         Map.entry("HotWork", "hot_work"),          // @Table(name = "hot_work")
         Map.entry("ConfinedSpace", "confined_space"), // @Table(name = "confined_space")
+        Map.entry("MonitoredArea", "monitored_area"),
+        Map.entry("AirTest", "air_test"),
         Map.entry("WorkRequest", "work_request"),  // @Table(name = "work_request")
         Map.entry("Jha", "jha"),
         Map.entry("DailyPermitPackage", "daily_permit_package"),
@@ -229,6 +231,10 @@ public class EntityTableRegistry {
         "SafeWork",
         "HotWork",
         "ConfinedSpace",
+        // After the permits it is derived from, and AirTest after the area it hangs off — the
+        // three-pass apply retries a failed ManyToOne, but ordering it right avoids the retry.
+        "MonitoredArea",
+        "AirTest",
         "WorkRequest",
         "Jha",
         "EnergizedWorkPermit",

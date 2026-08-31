@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, input, NgZone, OnDestroy, signal, ViewChild, OnInit
+  ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, input, NgZone, OnDestroy, output, signal, ViewChild, OnInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -82,6 +82,37 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
    */
   excludeConfinedSpaces = input<boolean>(false);
 
+  /**
+   * Plant-wide shortcuts shown above the map, e.g. Site Wide / Unit 1 / Unit 2.
+   *
+   * <p>Some jobs genuinely do not sit in one drawn area — a site-wide inspection, a sweep of a whole
+   * unit — and forcing those onto a shape produces a confident lie about where the work is. Each
+   * label is matched against the loaded work areas by name, so if an admin has created a real
+   * "Site Wide" area the pick behaves exactly like tapping a shape and carries that area's hazards
+   * and LOTO standards. If no such area exists the label is emitted through {@link scopeSelected}
+   * and the host records it as free text — which the hub's own location resolver will place later
+   * if the area is created.
+   */
+  scopeOptions = input<string[]>([]);
+
+  /**
+   * Let the requester pick several areas.
+   *
+   * <p>Off by default, so the equipment picker and every other host keeps the single-select
+   * behaviour and the same `AreaRef | string | null` value it has always written. When on, the CVA
+   * value becomes `AreaRef[]` — a different shape, which is why it is opt-in rather than a mode the
+   * component infers.
+   */
+  multiple = input<boolean>(false);
+
+  /** A scope was picked that has no matching work area; the host decides what to do with it. */
+  scopeSelected = output<string>();
+
+  /** Show the "I can't find it" escape ON the map, where the requester is already looking. */
+  showSkip = input<boolean>(false);
+  skipLabel = input<string>("I can't find it — let me describe it instead");
+  skipRequested = output<void>();
+
   @ViewChild('mapContainer') mapContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('zoomElement') zoomElement!: ElementRef<HTMLDivElement>;
   @ViewChild('mapImage') mapImage!: ElementRef<HTMLImageElement>;
@@ -156,7 +187,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   private readonly TAP_DURATION = 300;
 
   // CVA
-  private onChange: (value: AreaRef | null) => void = () => {};
+  private onChange: (value: AreaRef | AreaRef[] | null) => void = () => {};
   private onTouched: () => void = () => {};
 
   ngOnInit(): void {
@@ -298,7 +329,24 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
   // --- ControlValueAccessor ---
 
-  writeValue(value: AreaRef | string | null): void {
+  writeValue(value: AreaRef | AreaRef[] | string | null): void {
+    if (Array.isArray(value)) {
+      this.selectedAreas.set(value);
+      this.selectedAreaName.set(value.length ? value[value.length - 1].name : null);
+      return;
+    }
+    if (this.multiple()) {
+      // A single value arriving while in multi mode is a request being re-opened from before the
+      // multi-select existed. Keep it rather than dropping it on the floor.
+      const one = value && typeof value === 'object' ? [value] : [];
+      this.selectedAreas.set(one);
+      this.selectedAreaName.set(one.length ? one[0].name : (typeof value === 'string' ? value : null));
+      return;
+    }
+    this.writeSingleValue(value);
+  }
+
+  private writeSingleValue(value: AreaRef | string | null): void {
     if (typeof value === 'string') {
       this.selectedAreaName.set(value);
     } else if (value && typeof value === 'object') {
@@ -308,7 +356,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     }
   }
 
-  registerOnChange(fn: (value: AreaRef | null) => void): void {
+  registerOnChange(fn: (value: AreaRef | AreaRef[] | null) => void): void {
     this.onChange = fn;
   }
 
@@ -369,7 +417,11 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   }
 
   private handleLoadedData(areas: WorkAreaEntry[], shapes: ShapeEntry[]): void {
-    const areaMap = new Map(this.acceptedAreas(areas).map(a => [a.id, a]));
+    const accepted = this.acceptedAreas(areas);
+    // Kept whole, not just the ones on a shape: a "Site Wide" or "Unit 1" area covers everything
+    // and so is never drawn, but a scope shortcut still has to be able to resolve to it.
+    this.allAreas.set(accepted);
+    const areaMap = new Map(accepted.map(a => [a.id, a]));
     // A shape whose every area was filtered out has nothing to offer this picker, so it is not
     // drawn. parseShape's label/"Unknown" placeholders only stand in for shapes that never had
     // areas — they must not resurrect a shape we deliberately emptied.
@@ -508,9 +560,75 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     });
   }
 
+  /** Every area this picker accepts, including those with no shape on the map. */
+  allAreas = signal<AreaRef[]>([]);
+
+  private static normalize(value: string): string {
+    return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  /**
+   * Pick a plant-wide scope. Resolves to a real work area when one is named that way — which is
+   * what makes the hazards and LOTO standards come with it — and otherwise hands the label back to
+   * the host as plain text rather than pretending an area was chosen.
+   */
+  pickScope(label: string): void {
+    const wanted = WorkAreaMapSelectComponent.normalize(label);
+    const match = this.allAreas().find(a => WorkAreaMapSelectComponent.normalize(a.name) === wanted);
+    if (match) {
+      this.setArea(match);
+      this.selectedShape.set(null);
+      this.closeOverlay();
+      return;
+    }
+    this.selectedAreaName.set(label);
+    this.scopeSelected.emit(label);
+    this.closeOverlay();
+  }
+
+  isScopeActive(label: string): boolean {
+    return WorkAreaMapSelectComponent.normalize(this.selectedAreaName() ?? '')
+        === WorkAreaMapSelectComponent.normalize(label);
+  }
+
+  /** Picked areas, in the order chosen — the first is the primary. Multi-select only. */
+  selectedAreas = signal<AreaRef[]>([]);
+
+  /** Any of this shape's areas already picked — so a chosen shape stays highlighted on the map. */
+  isShapePicked(shape: ParsedShape): boolean {
+    if (!this.multiple()) return false;
+    return shape.areas.some(a => this.isAreaSelected(a));
+  }
+
+  isAreaSelected(area: AreaRef): boolean {
+    return this.selectedAreas().some(a => a.id === area.id);
+  }
+
   setArea(area: AreaRef): void {
-    this.selectedAreaName.set(area.name);
-    this.onChange(area);
+    if (!this.multiple()) {
+      this.selectedAreaName.set(area.name);
+      this.onChange(area);
+      this.onTouched();
+      return;
+    }
+
+    // Tapping a chosen area again removes it — the same gesture both ways, so there is no separate
+    // "remove" affordance to find on a phone.
+    const current = this.selectedAreas();
+    const next = current.some(a => a.id === area.id)
+      ? current.filter(a => a.id !== area.id)
+      : [...current, area];
+    this.selectedAreas.set(next);
+    this.selectedAreaName.set(next.length ? next[next.length - 1].name : null);
+    this.onChange(next);
+    this.onTouched();
+  }
+
+  removeArea(area: AreaRef): void {
+    const next = this.selectedAreas().filter(a => a.id !== area.id);
+    this.selectedAreas.set(next);
+    this.selectedAreaName.set(next.length ? next[next.length - 1].name : null);
+    this.onChange(next);
     this.onTouched();
   }
 

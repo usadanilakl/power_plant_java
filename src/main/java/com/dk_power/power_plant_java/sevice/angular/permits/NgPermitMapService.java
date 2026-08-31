@@ -6,10 +6,12 @@ import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -85,6 +87,17 @@ public class NgPermitMapService {
     private static final String BY_PACKAGE = "PACKAGE";
     private static final String BY_STANDARD = "STANDARD";
 
+    /**
+     * SafeWork, HotWork and ConfinedSpace do NOT declare {@code @Where(deleted...)}.
+     *
+     * <p>{@code @Where} sits on {@code BaseIdEntity}, which is a {@code @MappedSuperclass}, and
+     * Hibernate does not inherit it — so unlike WorkRequest and Loto (which re-declare it), these
+     * three return soft-deleted rows from every query. Without this predicate the map listed
+     * deleted permits, and staging one produced a baffling "no longer exists" from the assign
+     * endpoint's own delete check.
+     */
+    private static final String NOT_DELETED = " AND (e.deleted IS NULL OR e.deleted = false)";
+
     private final EntityManager entityManager;
     private final WorkAreaRepo workAreaRepo;
     private final WorkAreaLocationResolver locationResolver;
@@ -131,6 +144,7 @@ public class NgPermitMapService {
             "SW", SafeWork.class,
             "HW", HotWork.class,
             "CS", ConfinedSpace.class,
+            "RC", ConfinedSpace.class,
             "LOTO", Loto.class);
 
     /**
@@ -225,6 +239,13 @@ public class NgPermitMapService {
             item.setLocation(w.getLocation());
             item.setPackageId(w.getDailyPermitPackage() == null ? null : w.getDailyPermitPackage().getId());
             place(item, index, w.getWorkArea(), w.getLocation(), null, null);
+            // A request covering several areas is happening in all of them, so it is drawn on all of
+            // them. The FK stays the primary; these are the rest.
+            for (WorkRequestArea extra : w.getWorkAreas()) {
+                if (extra.getId() != null && !item.getWorkAreaIds().contains(extra.getId())) {
+                    item.getWorkAreaIds().add(extra.getId());
+                }
+            }
             items.add(item);
         }
         return items;
@@ -236,7 +257,7 @@ public class NgPermitMapService {
                         "SELECT DISTINCT e FROM SafeWork e "
                                 + "LEFT JOIN FETCH e.workArea "
                                 + "LEFT JOIN FETCH e.permitStatus s "
-                                + "WHERE s IS NULL OR LOWER(s.name) NOT IN :done", SafeWork.class)
+                                + "WHERE (s IS NULL OR LOWER(s.name) NOT IN :done)" + NOT_DELETED, SafeWork.class)
                 .setParameter("done", PERMIT_DONE)
                 .getResultList();
 
@@ -261,7 +282,7 @@ public class NgPermitMapService {
                         "SELECT DISTINCT e FROM HotWork e "
                                 + "LEFT JOIN FETCH e.workArea "
                                 + "LEFT JOIN FETCH e.permitStatus s "
-                                + "WHERE s IS NULL OR LOWER(s.name) NOT IN :done", HotWork.class)
+                                + "WHERE (s IS NULL OR LOWER(s.name) NOT IN :done)" + NOT_DELETED, HotWork.class)
                 .setParameter("done", PERMIT_DONE)
                 .getResultList();
 
@@ -285,13 +306,16 @@ public class NgPermitMapService {
                         "SELECT DISTINCT e FROM ConfinedSpace e "
                                 + "LEFT JOIN FETCH e.workArea "
                                 + "LEFT JOIN FETCH e.permitStatus s "
-                                + "WHERE s IS NULL OR LOWER(s.name) NOT IN :done", ConfinedSpace.class)
+                                + "WHERE (s IS NULL OR LOWER(s.name) NOT IN :done)" + NOT_DELETED, ConfinedSpace.class)
                 .setParameter("done", PERMIT_DONE)
                 .getResultList();
 
         List<PermitMapDto.Item> items = new ArrayList<>(rows.size());
         for (ConfinedSpace e : rows) {
-            PermitMapDto.Item item = base("CS", e);
+            // Permit-Required and Reclassified are different jobs with different controls, so they
+            // are separate layers rather than one "CS" bucket an operator has to open to tell apart.
+            PermitMapDto.Item item = base(
+                    e.getCsType() == ConfinedSpaceType.RECLASSIFIED ? "RC" : "CS", e);
             item.setTitle(e.getWorkScope());
             item.setDate(e.getDate());
             item.setPerson(e.getIssuedTo());
@@ -328,7 +352,7 @@ public class NgPermitMapService {
             items.add(item);
 
             if (l.getWorkArea() != null && l.getWorkArea().getId() != null) {
-                item.setWorkAreaIds(List.of(l.getWorkArea().getId()));
+                item.setWorkAreaIds(new ArrayList<>(List.of(l.getWorkArea().getId())));
                 item.setMatchedBy(BY_AREA);
                 continue;
             }
@@ -371,13 +395,15 @@ public class NgPermitMapService {
                        Long packageId,
                        Map<Long, List<Long>> areasByPackage) {
         if (ownArea != null && ownArea.getId() != null) {
-            item.setWorkAreaIds(List.of(ownArea.getId()));
+            item.setWorkAreaIds(new ArrayList<>(List.of(ownArea.getId())));
             item.setMatchedBy(BY_AREA);
             return;
         }
         Long byText = index.match(locationText);
         if (byText != null) {
-            item.setWorkAreaIds(List.of(byText));
+            // Mutable: a multi-area request appends its remaining areas to this list afterwards, and
+            // List.of would throw UnsupportedOperationException and fail the entire map response.
+            item.setWorkAreaIds(new ArrayList<>(List.of(byText)));
             item.setMatchedBy(BY_TEXT);
             return;
         }
@@ -397,7 +423,7 @@ public class NgPermitMapService {
      */
     private Map<Long, List<Long>> areasByPackage(WorkAreaLocationResolver.Index index) {
         List<Object[]> rows = entityManager.createQuery(
-                        "SELECT p.id, wa.id, w.location FROM DailyPermitPackage p "
+                        "SELECT p.id, wa.id, w.location, w.workAreasJson FROM DailyPermitPackage p "
                                 + "JOIN p.workRequests w LEFT JOIN w.workArea wa "
                                 + "WHERE p.deleted IS NULL OR p.deleted = false", Object[].class)
                 .getResultList();
@@ -406,11 +432,20 @@ public class NgPermitMapService {
         for (Object[] row : rows) {
             Long packageId = (Long) row[0];
             if (packageId == null) continue;
+            Set<Long> areas = gathered.computeIfAbsent(packageId, k -> new LinkedHashSet<>());
+
             Long areaId = (Long) row[1];
             if (areaId == null) areaId = index.match((String) row[2]);
-            if (areaId == null) continue;
-            gathered.computeIfAbsent(packageId, k -> new LinkedHashSet<>()).add(areaId);
+            if (areaId != null) areas.add(areaId);
+
+            // A request covering several areas makes its package cover them too, so a permit that
+            // inherits from the package — the spanning Safe Work especially — is drawn everywhere
+            // the work actually is, not only on its request's primary area.
+            for (WorkRequestArea extra : WorkRequestArea.fromJson((String) row[3])) {
+                if (extra.getId() != null) areas.add(extra.getId());
+            }
         }
+        gathered.values().removeIf(Set::isEmpty);
         return freeze(gathered);
     }
 

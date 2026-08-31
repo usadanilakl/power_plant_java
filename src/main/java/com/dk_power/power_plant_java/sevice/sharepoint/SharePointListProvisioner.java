@@ -184,7 +184,11 @@ public class SharePointListProvisioner {
                         // column, not a queryable one - kept out of the default view because a
                         // wall of JSON makes the list unreadable. See DeclaredHazards for why the
                         // three blocks share a single column.
-                        payload("DeclaredHazards")),
+                        payload("DeclaredHazards"),
+                        // Every area the request covers, as one JSON envelope. Same payload-not-
+                        // queryable reasoning as DeclaredHazards: SharePoint never reports on an
+                        // individual area, and a column per area is not expressible anyway.
+                        payload("WorkAreas")),
 
                 list("JHA",
                         text("PwaId"), text("JobName"), text("Applicability"), text("AnalysisBy"),

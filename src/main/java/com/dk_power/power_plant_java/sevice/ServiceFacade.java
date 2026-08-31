@@ -120,6 +120,8 @@ public class ServiceFacade {
             @Lazy NgSafeWorkService ngSafeWorkService,
             @Lazy NgHotWorkService ngHotWorkService,
             @Lazy NgConfinedSpaceService ngConfinedSpaceService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.permits.NgMonitoredAreaService ngMonitoredAreaService,
+            @Lazy com.dk_power.power_plant_java.sevice.angular.permits.NgAirTestService ngAirTestService,
             @Lazy NgWorkAreaService ngWorkAreaService,
             @Lazy WorkCategoryProfileSyncService workCategoryProfileSyncService,
             @Lazy NgWorkRequestService ngWorkRequestService,
@@ -236,6 +238,8 @@ public class ServiceFacade {
         serviceMap.put(WorkCategoryProfile.class.getSimpleName(), workCategoryProfileSyncService);
         serviceMap.put(HotWork.class.getSimpleName(), ngHotWorkService);
         serviceMap.put(ConfinedSpace.class.getSimpleName(), ngConfinedSpaceService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.permits.MonitoredArea.class.getSimpleName(), ngMonitoredAreaService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.permits.AirTest.class.getSimpleName(), ngAirTestService);
         serviceMap.put(WorkArea.class.getSimpleName(), ngWorkAreaService);
         serviceMap.put(WorkAreaMapShape.class.getSimpleName(), workAreaMapShapeSyncService);
         serviceMap.put(WorkRequest.class.getSimpleName(), ngWorkRequestService);

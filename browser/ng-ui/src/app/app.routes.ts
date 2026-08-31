@@ -63,6 +63,14 @@ export const routes: Routes = [
       loadComponent: () => import('./features/equipment-finder/equipment-finder-page.component').then(m => m.EquipmentFinderPageComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
+    {
+      // Reached from the plant nav. Guarded like the other plant surfaces: it is the same people in
+      // the same places, and the readings are a safety record.
+      path: 'plant/air-monitoring',
+      loadComponent: () => import('./features/air-monitoring/air-monitoring-page.component')
+        .then(m => m.AirMonitoringPageComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
     { path: '', redirectTo: '/home', pathMatch: 'full' },
     {
       // One landing page for every section, parameterised by slug. Access is enforced by the

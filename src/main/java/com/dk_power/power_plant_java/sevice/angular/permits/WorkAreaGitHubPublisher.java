@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,6 +50,7 @@ public class WorkAreaGitHubPublisher {
         LOCATIONS,
         LOTO_POINTS,
         SDS_CHEMICALS,
+        MONITORED_AREAS,
         ALL
     }
 
@@ -58,6 +60,9 @@ public class WorkAreaGitHubPublisher {
     private final NgValueService valueService;
     private final LotoPointRepo lotoPointRepo;
     private final SdsChemicalRepo sdsChemicalRepo;
+    @org.springframework.context.annotation.Lazy
+    private final NgAirMonitoringService airMonitoringService;
+    private final com.dk_power.power_plant_java.repository.permits.WorkCategoryProfileRepo workCategoryProfileRepo;
     private final ObjectMapper objectMapper;
     /** All configured transports; each decides via isActive() whether it receives this publish. */
     private final List<PwaDataSink> sinks;
@@ -113,6 +118,18 @@ public class WorkAreaGitHubPublisher {
         requestPublish(PublishTarget.LOTO_POINTS);
     }
 
+    /**
+     * The air-monitoring list, so the PWA can read it with no signal.
+     *
+     * <p>Snapshot only. Readings are WRITTEN through the hub with a local outbox covering the gap —
+     * a phone cannot write to anything while it is offline anyway, so the remote store's job here is
+     * purely to answer "what needs testing" when the hub is unreachable.
+     */
+    @Async
+    public void publishMonitoredAreas() {
+        requestPublish(PublishTarget.MONITORED_AREAS);
+    }
+
     @Async
     public void publishSdsChemicals() {
         requestPublish(PublishTarget.SDS_CHEMICALS);
@@ -158,6 +175,9 @@ public class WorkAreaGitHubPublisher {
                 }
                 if (shouldPublishLotoPoints(targetToPublish)) {
                     publishText(active, "loto_points", "loto-points.json", buildLotoPointsJson());
+                }
+                if (shouldPublishMonitoredAreas(targetToPublish)) {
+                    publishText(active, "monitored_areas", "monitored-areas.json", buildMonitoredAreasJson());
                 }
                 if (shouldPublishSdsChemicals(targetToPublish)) {
                     publishText(active, "sds_chemicals", "sds-chemicals.json", buildSdsChemicalsJson());
@@ -258,12 +278,26 @@ public class WorkAreaGitHubPublisher {
         return target == PublishTarget.ALL || target == PublishTarget.SDS_CHEMICALS;
     }
 
+    private boolean shouldPublishMonitoredAreas(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.MONITORED_AREAS;
+    }
+
+    /**
+     * The active list only. An area somebody removed, or whose permit closed, is not something a
+     * phone should be prompting anyone to go and test.
+     */
+    private String buildMonitoredAreasJson() throws IOException {
+        return objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(airMonitoringService.list(false));
+    }
+
     private String buildAreasJson() throws IOException {
         // Same row shape as the live hub endpoint (PwaReferenceDataService.getWorkAreas) — this
         // snapshot is the PWA's offline stand-in for it, so any field the picker relies on
         // (areaTypeName, locationUnitFilters, isConfinedSpace) must be present in both.
+        Map<Long, List<Long>> lotoIds = PwaReferenceDataService.constantLotoIdsByArea(workAreaRepo);
         List<Map<String, Object>> areas = workAreaRepo.findAllWithLocations().stream()
-                .map(PwaReferenceDataService::toWorkAreaMap)
+                .map(wa -> PwaReferenceDataService.toWorkAreaMap(wa, lotoIds.getOrDefault(wa.getId(), List.of())))
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(areas);
     }
@@ -277,8 +311,27 @@ public class WorkAreaGitHubPublisher {
             log.debug("[PWA Publisher] Work Category not found yet, returning empty list");
             categories = List.of();
         }
+        // Each category carries its standard hazard profile. Without it the PWA can only seed hazards
+        // from the work type while ONLINE (via getWorkCategoryProfileByName), so an offline
+        // submission would silently produce a request with fewer hazards than the same work typed
+        // in at a desk — the worst kind of difference to have.
         List<Map<String, Object>> result = categories.stream()
-                .map(cat -> Map.<String, Object>of("id", cat.getId(), "name", cat.getName() != null ? cat.getName() : ""))
+                .map(cat -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", cat.getId());
+                    row.put("name", cat.getName() != null ? cat.getName() : "");
+                    workCategoryProfileRepo.findByWorkCategory_Id(cat.getId()).ifPresent(profile -> {
+                        try {
+                            row.put("standardHazards", profile.getStandardHazards());
+                            row.put("standardHotWorkMeasures", profile.getStandardHotWorkMeasures());
+                            row.put("standardConfinedSpaceHazards", profile.getStandardConfinedSpaceHazards());
+                        } catch (Exception e) {
+                            log.warn("[PWA Publisher] Work category '{}' has unreadable profile JSON; "
+                                    + "publishing it without a hazard profile", cat.getName(), e);
+                        }
+                    });
+                    return row;
+                })
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
     }

@@ -15,12 +15,21 @@
       </button>
     </div>
   </div>
+} @else if (mode() === 'wizard') {
+  <div class="sticky-header">
+    <button class="back-button" (click)="backToSelect()">← Back</button>
+    <button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
+  </div>
+  <app-work-request-wizard
+    (skipToForm)="openFullForm()"
+    (reviewReady)="openFullForm()"
+  ></app-work-request-wizard>
 } @else {
   <div class="sticky-header">
     <button class="back-button" (click)="backToSelect()">← Back</button>
     <button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
   </div>
-  <app-work-request-form></app-work-request-form>
+  <app-work-request-form [showClearButton]="true"></app-work-request-form>
 }
 
 <app-popup

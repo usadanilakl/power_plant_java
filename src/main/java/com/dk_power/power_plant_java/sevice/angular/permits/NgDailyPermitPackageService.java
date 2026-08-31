@@ -899,7 +899,10 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         DailyPermitPackage pkg = getEntityById(id);
         boolean isReactivation = pkg.getActivationSnapshotJson() != null && !pkg.getActivationSnapshotJson().isEmpty();
 
-        DailyPermitPackageDto result = changeStatus(id, "Active", Set.of("Building", "Test"));
+        // "Expired" is here so an automatic expiry is reversible. Without it a package the timer
+        // caught while work was genuinely still running could never be resumed, only reissued —
+        // which loses the audit trail and the sign-on history.
+        DailyPermitPackageDto result = changeStatus(id, "Active", Set.of("Building", "Test", "Expired"));
         takeSnapshot(Long.parseLong(id));
 
         // Attach LOTOs to the parent Job when package is activated
@@ -990,6 +993,34 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
      * as a completed job. That also keeps {@code updateParentJobStatus} from auto-closing the job
      * behind the sweep's back — the job is closed explicitly, with its own audit trail.
      */
+    /**
+     * Mark a package Expired because its validity window ran out.
+     *
+     * <p>Reuses the normal status path, so the change cascades to the child permits, is written to
+     * the modification log, updates the parent job, and emits for sync. Two deliberate differences
+     * from a close:
+     *
+     * <ul>
+     *   <li>{@code workCompleted} is untouched — a timer cannot know whether the work happened.</li>
+     *   <li><b>Personnel are NOT signed off.</b> Closing signs everybody off because a person is
+     *       asserting the crew is out. Expiry asserts only that the paperwork lapsed, and wiping
+     *       the sign-on list would destroy the record of who was in the field — the one thing worth
+     *       having if an expired package turns out to have had people on it.</li>
+     * </ul>
+     *
+     * <p>Its own transaction, so one failing package cannot mark a shared transaction rollback-only
+     * and discard every expiry that already succeeded.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public DailyPermitPackageDto expirePackage(String id) {
+        DailyPermitPackage pkg = getEntityById(id);
+        String current = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+        if ("Expired".equals(current) || "Closed".equals(current)) {
+            return dailyPermitPackageMapper.convertToDto(pkg);
+        }
+        return changeStatus(id, "Expired", Set.of(current));
+    }
+
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public DailyPermitPackageDto adminForceClose(String id, String reason) {
         DailyPermitPackage pkg = getEntityById(id);

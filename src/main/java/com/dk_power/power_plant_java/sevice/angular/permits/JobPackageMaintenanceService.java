@@ -262,6 +262,23 @@ public class JobPackageMaintenanceService {
     }
 
     /**
+     * The start of this package's own work window, or null when its date cannot be parsed.
+     *
+     * <p>Deliberately NOT {@link #packageAnchor}, which falls back to the creation timestamp.
+     * That fallback is right for the manual sweep, where a person reviews the list before anything
+     * happens — an undated package is very likely abandoned and worth showing. It is wrong for the
+     * automatic expiry, which writes without review: "we cannot read the date" is not evidence that
+     * the window has closed, and guessing would expire live work. The automatic path skips those
+     * and lets the reviewed sweep deal with them.
+     */
+    public LocalDateTime packageWindowStart(DailyPermitPackage pkg) {
+        LocalDate date = parseDate(pkg.getDate());
+        if (date == null) return null;
+        LocalTime time = parseTime(pkg.getTime());
+        return time != null ? date.atTime(time) : date.atStartOfDay();
+    }
+
+    /**
      * When work on this job was last scheduled — the newest work window across its packages.
      *
      * <p>Deliberately NOT {@code dateModified}. Two things churn that column and neither means

@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { JobLogService, StaleSweepResult } from '../../../services/permits/job-log.service';
+import { ExpirySweepResult, JobLogService, StaleSweepResult, StrandedPermitReport } from '../../../services/permits/job-log.service';
 
 /**
  * Admin sweep for jobs and packages left open.
@@ -55,6 +55,141 @@ import { JobLogService, StaleSweepResult } from '../../../services/permits/job-l
 
         <div class="error" *ngIf="error()">{{ error() }}</div>
         <div class="success-msg" *ngIf="message()">{{ message() }}</div>
+      </div>
+
+      <!-- Automatic expiry ----------------------------------------------------- -->
+      <div class="admin-section">
+        <h3>Expired packages</h3>
+        <p class="description">
+          A permit authorises <strong>12 hours</strong>; past <strong>{{ expiryHours() }}</strong>
+          the paperwork has lapsed, and the package is marked <strong>Expired</strong> &mdash; not
+          Closed. Closing would assert the work finished and the crew came off the job; a timer
+          knows neither. Personnel stay signed on, <code>workCompleted</code> is untouched, LOTOs are
+          never touched, and an expired package can be re-activated in one click.
+          <br />
+          This runs hourly on the hub. The buttons below just run it now.
+        </p>
+
+        <div class="button-group">
+          <button class="action-btn secondary" [disabled]="expiryBusy()" (click)="previewExpiry()">
+            {{ expiryBusy() ? 'Working...' : 'Preview' }}
+          </button>
+          <button class="action-btn danger"
+                  [disabled]="expiryBusy() || !expiryResult()?.dueCount"
+                  (click)="applyExpiry()">
+            Expire {{ expiryResult()?.dueCount || 0 }} package(s) now
+          </button>
+        </div>
+
+        <div class="error" *ngIf="expiryError()">{{ expiryError() }}</div>
+        <div class="success-msg" *ngIf="expiryMessage()">{{ expiryMessage() }}</div>
+
+        <ng-container *ngIf="expiryResult() as ex">
+          <p class="description" *ngIf="ex.skippedUndated">
+            <strong>{{ ex.skippedUndated }}</strong> package(s) skipped &mdash; their work window
+            could not be read. "We can't read the date" is not evidence the window closed, so the
+            automatic sweep leaves them and the stale sweep below picks them up with a human
+            looking.
+          </p>
+          <p class="error" *ngIf="ex.expiredWithPersonnelOn">
+            <strong>{{ ex.expiredWithPersonnelOn }}</strong> of these still have personnel signed
+            on. Their sign-on record is deliberately preserved &mdash; check whether anyone is
+            still in the field.
+          </p>
+          <p class="error" *ngIf="ex.cappedAt">
+            Capped at {{ ex.cappedAt }} this run; the rest follow on the next pass.
+          </p>
+
+          <table class="forms-table" *ngIf="ex.due.length">
+            <thead>
+              <tr>
+                <th>Package #</th><th>Company</th><th>Status</th>
+                <th>Window start</th><th>Hours open</th><th>Personnel on</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of ex.due">
+                <td>{{ row.permitNumber || ('#' + row.packageId) }}</td>
+                <td>{{ row.companyName }}</td>
+                <td>{{ row.status }}</td>
+                <td>{{ row.windowStart }}</td>
+                <td>{{ row.hoursOpen }}</td>
+                <td>{{ row.personnelStillSignedOn ? 'yes' : '' }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="no-data" *ngIf="!ex.due.length">Nothing is past its validity window.</p>
+          <ul class="failures" *ngIf="ex.failures?.length">
+            <li *ngFor="let f of ex.failures">{{ f }}</li>
+          </ul>
+        </ng-container>
+      </div>
+
+      <!-- Permits whose owner is gone ---------------------------------------- -->
+      <div class="admin-section">
+        <h3>Permits that outlived their package</h3>
+        <p class="description">
+          Closing a package already closes its permits. These never went through that: the package
+          is <strong>Closed</strong> (something wrote it outside the cascade), the permit is
+          <strong>soft-deleted</strong> but still open, or it has <strong>no package at all</strong>
+          so nothing will ever close it. All three show on the permits map as live work.
+        </p>
+
+        <div class="button-group">
+          <button class="action-btn secondary" [disabled]="permitBusy()" (click)="scanPermits()">
+            {{ permitBusy() ? 'Working...' : 'Scan permits' }}
+          </button>
+          <button class="action-btn danger"
+                  [disabled]="permitBusy() || !permitReport()?.rows?.length"
+                  (click)="applyPermits()">
+            Close {{ permitReport()?.rows?.length || 0 }} permit(s)
+          </button>
+        </div>
+
+        <div class="error" *ngIf="permitError()">{{ permitError() }}</div>
+        <div class="success-msg" *ngIf="permitMessage()">{{ permitMessage() }}</div>
+
+        <ng-container *ngIf="permitReport() as pr">
+          <div class="chip-row" *ngIf="pr.rows.length">
+            <span class="pkg-chip" *ngFor="let r of reasonEntries(pr)">
+              {{ reasonLabel(r[0]) }} <em>{{ r[1] }}</em>
+            </span>
+            <span class="pkg-chip" *ngFor="let l of layerEntries(pr)">
+              {{ l[0] }} <em>{{ l[1] }}</em>
+            </span>
+          </div>
+
+          <table class="forms-table" *ngIf="pr.rows.length">
+            <thead>
+              <tr>
+                <th>Type</th><th>Permit #</th><th>Status</th><th>Date</th>
+                <th>Location</th><th>Package</th><th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of pr.rows">
+                <td>{{ row.layer }}</td>
+                <td>{{ row.permitNumber || ('#' + row.id) }}</td>
+                <td>{{ row.status }}</td>
+                <td>{{ row.date }}</td>
+                <td>{{ row.location }}</td>
+                <td>
+                  <ng-container *ngIf="row.packageId; else noPkg">
+                    {{ row.packageNumber || ('#' + row.packageId) }}
+                    <em class="muted">{{ row.packageStatus }}</em>
+                  </ng-container>
+                  <ng-template #noPkg><em class="muted">none</em></ng-template>
+                </td>
+                <td>{{ reasonLabel(row.reason) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="no-data" *ngIf="!pr.rows.length">
+            Every open permit still has an open package. Nothing to clean up.
+          </p>
+        </ng-container>
       </div>
 
       <ng-container *ngIf="result() as r">
@@ -183,6 +318,8 @@ import { JobLogService, StaleSweepResult } from '../../../services/permits/job-l
     .success-msg { color: #66bb6a; margin-top: 8px; font-size: 13px; }
     .no-data { color: var(--secondary-text); font-size: 13px; }
     .failures { color: #ef5350; font-size: 13px; margin: 0; padding-left: 18px; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+    .muted { color: var(--secondary-text); font-style: normal; margin-left: 4px; }
   `],
 })
 export class AdminJobsComponent {
@@ -206,6 +343,105 @@ export class AdminJobsComponent {
     const r = this.result();
     if (!r) return 0;
     return r.staleJobCount + r.stalePackageCount + r.cascadedPackageCount;
+  }
+
+  // ---- Automatic expiry ----------------------------------------------------
+
+  expiryBusy = signal(false);
+  expiryError = signal('');
+  expiryMessage = signal('');
+  expiryResult = signal<ExpirySweepResult | null>(null);
+
+  expiryHours(): string {
+    const h = this.expiryResult()?.expiryHours;
+    return h ? `${h} hours` : '16 hours';
+  }
+
+  previewExpiry(): void {
+    this.runExpiry(true);
+  }
+
+  applyExpiry(): void {
+    const count = this.expiryResult()?.dueCount ?? 0;
+    if (!count) return;
+    if (!confirm(`Expire ${count} package(s) now? They can be re-activated individually.`)) return;
+    this.runExpiry(false);
+  }
+
+  private runExpiry(dryRun: boolean): void {
+    this.expiryBusy.set(true);
+    this.expiryError.set('');
+    this.expiryMessage.set('');
+    const call = dryRun
+      ? this.jobLogService.expiryPreview()
+      : this.jobLogService.expirePackages(false);
+    call.subscribe({
+      next: res => {
+        this.expiryResult.set(res.responseData ?? null);
+        this.expiryMessage.set(res.message ?? '');
+        this.expiryBusy.set(false);
+      },
+      error: err => {
+        this.expiryError.set(err?.error?.message || err?.message || 'Request failed');
+        this.expiryBusy.set(false);
+      },
+    });
+  }
+
+  // ---- Stranded permits ----------------------------------------------------
+
+  permitBusy = signal(false);
+  permitError = signal('');
+  permitMessage = signal('');
+  permitReport = signal<StrandedPermitReport | null>(null);
+
+  /** Explains the reason code in the operator's terms, not the enum's. */
+  reasonLabel(reason: string): string {
+    switch (reason) {
+      case 'STRANDED': return 'package closed';
+      case 'ORPHANED': return 'no package';
+      case 'DELETED': return 'deleted but open';
+      default: return reason;
+    }
+  }
+
+  reasonEntries(report: StrandedPermitReport): [string, number][] {
+    return Object.entries(report.countsByReason ?? {});
+  }
+
+  layerEntries(report: StrandedPermitReport): [string, number][] {
+    return Object.entries(report.countsByLayer ?? {});
+  }
+
+  scanPermits(): void {
+    this.runPermits(true);
+  }
+
+  applyPermits(): void {
+    const count = this.permitReport()?.rows?.length ?? 0;
+    if (!count) return;
+    if (!confirm(`Close ${count} permit(s)? This cannot be undone from here.`)) return;
+    this.runPermits(false);
+  }
+
+  private runPermits(dryRun: boolean): void {
+    this.permitBusy.set(true);
+    this.permitError.set('');
+    this.permitMessage.set('');
+    const call = dryRun
+      ? this.jobLogService.strandedPermitScan()
+      : this.jobLogService.closeStrandedPermits(false);
+    call.subscribe({
+      next: res => {
+        this.permitReport.set(res.responseData ?? null);
+        this.permitMessage.set(res.message ?? '');
+        this.permitBusy.set(false);
+      },
+      error: err => {
+        this.permitError.set(err?.error?.message || err?.message || 'Request failed');
+        this.permitBusy.set(false);
+      },
+    });
   }
 
   scan(): void {

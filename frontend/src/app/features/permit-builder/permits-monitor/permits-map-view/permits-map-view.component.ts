@@ -9,7 +9,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { InteractiveImageComponent } from '../../../../shared/image/refactored/interactive-image/interactive-image.component';
 import { getPreset } from '../../../../shared/image/refactored/models/interactive-image-config.model';
-import { RfShape } from '../../../../shared/image/refactored/models/fr-shape.model';
+import { RfShape, ShapeCountBadge } from '../../../../shared/image/refactored/models/fr-shape.model';
 import { WorkAreaApiService } from '../../work-area/services/work-area-api.service';
 import { workAreaShapeToRf } from '../../work-area/work-area-shape.util';
 import { WorkAreaMapShapeDto } from '../../../../models/permits/work-area.model';
@@ -63,7 +63,7 @@ import { SyncUpdateService } from '../../../../services/sync/sync-update.service
           (click)="toggleLayer(layer)"
           [title]="meta[layer].label"
         >
-          <span class="layer-dot"></span>
+          <span class="material-icons layer-icon">{{ meta[layer].icon }}</span>
           <span class="layer-label">{{ meta[layer].label }}</span>
           <span class="layer-count">{{ layerTotals()[layer] }}</span>
         </button>
@@ -154,9 +154,26 @@ import { SyncUpdateService } from '../../../../services/sync/sync-update.service
 
             <p class="panel-sub">{{ selectedItems().length }} open item(s) here</p>
 
-            <div class="item-list">
+            <!-- One section per category, each headed by its own count. Clicking the count opens
+                 that group — a single total told an operator nothing about what they'd be walking
+                 into. -->
+            <div class="group" *ngFor="let group of selectedGroups()">
+              <button
+                class="group-head"
+                [style.--layer-color]="meta[group.layer].color"
+                (click)="toggleGroup(group.layer)"
+              >
+                <span class="material-icons group-icon">{{ meta[group.layer].icon }}</span>
+                <span class="group-name">{{ meta[group.layer].label }}</span>
+                <span class="group-count">{{ group.items.length }}</span>
+                <span class="material-icons group-chevron">
+                  {{ isGroupOpen(group.layer) ? 'expand_less' : 'expand_more' }}
+                </span>
+              </button>
+
+            <div class="item-list" *ngIf="isGroupOpen(group.layer)">
               <div
-                *ngFor="let item of selectedItems()"
+                *ngFor="let item of group.items"
                 class="item-card"
                 [style.--layer-color]="meta[item.layer].color"
                 [class.staged]="isStaged(item)"
@@ -187,6 +204,7 @@ import { SyncUpdateService } from '../../../../services/sync/sync-update.service
                   <em *ngIf="item.matchedBy === 'TEXT' && item.location">“{{ item.location }}”</em>
                 </div>
               </div>
+            </div>
             </div>
           </ng-container>
 
@@ -341,13 +359,47 @@ import { SyncUpdateService } from '../../../../services/sync/sync-update.service
 
     .layer-chip:hover { border-color: var(--layer-color); }
 
-    .layer-dot {
-      width: 9px; height: 9px; border-radius: 50%;
-      background: var(--layer-color);
-      opacity: 0.35;
+    .layer-icon {
+      font-size: 15px;
+      color: var(--layer-color);
+      opacity: 0.4;
     }
 
-    .layer-chip.on .layer-dot { opacity: 1; }
+    .layer-chip.on .layer-icon { opacity: 1; }
+
+    .group { margin-bottom: 8px; }
+
+    .group-head {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border: 1px solid var(--border-color);
+      border-left: 3px solid var(--layer-color);
+      border-radius: 4px;
+      background: var(--secondary-background);
+      color: var(--primary-text);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .group-head:hover { background: var(--hover-color); }
+    .group-icon { font-size: 16px; color: var(--layer-color); }
+    .group-name { flex: 1; text-align: left; font-weight: 600; }
+
+    .group-count {
+      min-width: 20px;
+      padding: 0 6px;
+      border-radius: 9px;
+      background: var(--layer-color);
+      color: #fff;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .group-chevron { font-size: 16px; color: var(--secondary-text); }
+    .group .item-list { margin: 6px 0 0 8px; }
 
     .layer-count {
       min-width: 18px;
@@ -824,7 +876,9 @@ export class PermitsMapViewComponent implements OnInit {
         : soleLayer
           ? PERMIT_MAP_LAYER_META[soleLayer].color
           : heatColor(count);
-      return workAreaShapeToRf(shape, color, count > 0 ? count : undefined);
+      // The per-category pills replace the single total: "5" on an area could be five hot-work
+      // permits or five requests, and those are not the same situation to walk into.
+      return workAreaShapeToRf(shape, color, undefined, this.badgesForShape(items));
     });
   });
 
@@ -874,6 +928,46 @@ export class PermitsMapViewComponent implements OnInit {
     if (id == null) return null;
     return this.payload().areas.find(a => a.id === id) ?? null;
   });
+
+  /** Which category sections are expanded in the panel. All start open. */
+  private collapsedGroups = signal<Set<PermitMapLayer>>(new Set());
+
+  isGroupOpen(layer: PermitMapLayer): boolean {
+    return !this.collapsedGroups().has(layer);
+  }
+
+  toggleGroup(layer: PermitMapLayer): void {
+    const next = new Set(this.collapsedGroups());
+    if (next.has(layer)) next.delete(layer);
+    else next.add(layer);
+    this.collapsedGroups.set(next);
+  }
+
+  /** The selected shape's items split into per-category sections, in legend order. */
+  selectedGroups = computed<{ layer: PermitMapLayer; items: PermitMapItem[] }[]>(() => {
+    const byLayer = new Map<PermitMapLayer, PermitMapItem[]>();
+    for (const item of this.selectedItems()) {
+      const bucket = byLayer.get(item.layer);
+      if (bucket) bucket.push(item);
+      else byLayer.set(item.layer, [item]);
+    }
+    return PERMIT_MAP_LAYERS
+      .filter(layer => byLayer.has(layer))
+      .map(layer => ({ layer, items: byLayer.get(layer)! }));
+  });
+
+  /** Per-category pills for one shape, in legend order, zero-counts omitted. */
+  private badgesForShape(items: PermitMapItem[]): ShapeCountBadge[] {
+    const counts = new Map<PermitMapLayer, number>();
+    for (const item of items) counts.set(item.layer, (counts.get(item.layer) ?? 0) + 1);
+    return PERMIT_MAP_LAYERS
+      .filter(layer => (counts.get(layer) ?? 0) > 0)
+      .map(layer => ({
+        label: PERMIT_MAP_LAYER_META[layer].short,
+        count: counts.get(layer)!,
+        color: PERMIT_MAP_LAYER_META[layer].color,
+      }));
+  }
 
   selectedItems = computed<PermitMapItem[]>(() => {
     const shapeId = this.selectedShapeId();

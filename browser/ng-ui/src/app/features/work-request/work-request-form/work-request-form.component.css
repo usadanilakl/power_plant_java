@@ -79,3 +79,18 @@
   color: #856404;
   font-style: italic;
 }
+
+/* Sits above the form so "start over" is reachable without scrolling to the bottom of it. */
+.form-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
+.clear-button {
+  background: none;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--secondary-text, #666);
+  cursor: pointer;
+}
+
+.clear-button:hover { color: var(--primary-text, #222); border-color: var(--accent-color, #007bff); }

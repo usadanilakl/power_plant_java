@@ -161,6 +161,10 @@ public class PwaWorkRequestService {
         if (spDto.getWorkAreaName() == null && dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
             spDto.setWorkAreaName(dto.getWorkAreaName());
         }
+        // Every covered area as one envelope, so a request that reaches SharePoint through the
+        // Power Automate fallback keeps its extra areas instead of silently arriving single-area.
+        spDto.setWorkAreas(com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea
+                .toJson(dto.getWorkAreas()));
         return spDto;
     }
 
@@ -179,6 +183,13 @@ public class PwaWorkRequestService {
         entity.setForeman(dto.getForemanName());
         entity.setFireWatch(dto.getFireWatchName());
         entity.setSpace(dto.getSpaceToBeEntered());
+
+        // Areas first: setWorkAreas also turns on the hot-work / confined-space summary flags that
+        // SharePoint, the work-request table and the permit generator all read, so it must run
+        // before nothing — but never after applyDeclaredHazards, which does not touch them.
+        if (dto.getWorkAreas() != null && !dto.getWorkAreas().isEmpty()) {
+            entity.setWorkAreas(dto.getWorkAreas());
+        }
 
         // Resolve workArea from ID, fall back to name if ID is stale
         if (dto.getWorkAreaId() != null) {
@@ -397,6 +408,10 @@ public class PwaWorkRequestService {
         if (dto.getForemanName() != null) entity.setForeman(dto.getForemanName());
         if (dto.getFireWatchName() != null) entity.setFireWatch(dto.getFireWatchName());
         if (dto.getSpaceToBeEntered() != null) entity.setSpace(dto.getSpaceToBeEntered());
+        // Null means "this payload has no opinion" — an older PWA build must not be able to wipe the
+        // areas by staying silent — but a non-empty list is the requester editing where the work is,
+        // and without this the local entity kept the areas from the first submission forever.
+        if (dto.getWorkAreas() != null) entity.setWorkAreas(dto.getWorkAreas());
         entity.setIsLotoRequired(dto.getIsLotoRequired());
         entity.setIsHotWorkRequired(dto.getIsHotWorkRequired());
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());

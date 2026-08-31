@@ -162,3 +162,12 @@
     flex: 1 1 calc(25% - 6px);
   }
 }
+.multi-area-note {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin: 0 0 12px; padding: 8px 12px; border-radius: 6px;
+  background: var(--secondary-background, #f0f2f5);
+  color: var(--primary-text); font-size: 13px;
+}
+
+.multi-area-note label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.multi-area-counts { margin-left: auto; color: var(--secondary-text); font-weight: 600; }

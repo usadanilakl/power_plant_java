@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, map, of, timeout, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { WorkRequest } from '../models/permits/work-request.model';
+import { WorkRequest, WorkRequestAreaDto } from '../models/permits/work-request.model';
 import { Jha } from '../models/permits/jha.model';
 import { IAttachment } from '../models/permits/attachment.model';
 
@@ -50,6 +50,8 @@ export interface PwaWorkRequestDto {
   workAreaName?: string;
   /** The requester could not place the work on the map; locationOfWork is their description. */
   workAreaUnknown?: boolean;
+  /** Every covered area. Absent on an older client, read as "just the one area". */
+  workAreas?: WorkRequestAreaDto[];
   /**
    * Hazards the requester declared. Keys match the Java POJOs exactly - see permit-hazards.model.ts.
    * Sent as plain objects so an added hazard needs no change here.
@@ -77,6 +79,26 @@ export interface PwaWorkAreaRow {
   locationIds?: number[];
   /** `{ [locationId]: '01' | '02' }` — which unit's equipment to surface for a shared location. */
   locationUnitFilters?: Record<string, string>;
+
+  /**
+   * The area's standing hazard profile and LOTO standards, used to seed a new work request the
+   * moment the requester picks the area. Optional because an older hub, or a cached snapshot taken
+   * before these were published, simply will not carry them — the seeder treats absent as "nothing
+   * to add" rather than "no hazards".
+   */
+  constantHazards?: Record<string, boolean> | null;
+  constantHotWorkMeasures?: Record<string, boolean> | null;
+  constantConfinedSpaceHazards?: Record<string, boolean> | null;
+  constantLotoIds?: number[];
+}
+
+/** A work category plus the hazard profile that kind of work normally carries. */
+export interface PwaWorkCategoryRow {
+  id: number;
+  name: string;
+  standardHazards?: Record<string, boolean> | null;
+  standardHotWorkMeasures?: Record<string, boolean> | null;
+  standardConfinedSpaceHazards?: Record<string, boolean> | null;
 }
 
 export interface PwaUserRegistrationDto {
@@ -424,7 +446,7 @@ export class ServerApiService {
     );
   }
 
-  getWorkCategories(): Observable<{ id: number; name: string }[]> {
+  getWorkCategories(): Observable<PwaWorkCategoryRow[]> {
     return this.http.get<{ responseData: { id: number; name: string }[] }>(
       `${this.baseUrl}/api/pwa/work-request/categories`
     ).pipe(
@@ -988,6 +1010,10 @@ export class ServerApiService {
       workAreaId: workRequest.workAreaId || undefined,
       workAreaName: workRequest.workAreaName || undefined,
       workAreaUnknown: workRequest.workAreaUnknown === true,
+      // Only when there is genuinely more than the primary area. Sending a one-element
+      // list for every single-area request would make every existing request look like a
+      // multi-area one to the generator, for no gain.
+      workAreas: (workRequest.workAreas?.length ?? 0) > 1 ? workRequest.workAreas : undefined,
       // Sent even when nothing is ticked: an all-false object is a real answer ("I checked, none of
       // these apply"), and the backend treats only a MISSING value as "no opinion" so an older
       // client cannot blank out a declaration by staying silent.

@@ -87,6 +87,11 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         data: { leftMenu: VentingPermitSideMenuComponent }
       },
       {
+        path: 'air-monitoring',
+        loadComponent: () => import('../features/permit-builder/air-monitoring/air-monitoring.component')
+          .then(m => m.AirMonitoringComponent),
+      },
+      {
         path: 'lotos',
         component: LotoPermitComponent,
         data: { leftMenu: LotoPermitSideMenuComponent }

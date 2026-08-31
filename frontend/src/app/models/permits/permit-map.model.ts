@@ -6,7 +6,7 @@
  */
 
 /** The map layers, in the order they are offered. */
-export const PERMIT_MAP_LAYERS = ['WR', 'SW', 'HW', 'CS', 'LOTO'] as const;
+export const PERMIT_MAP_LAYERS = ['WR', 'SW', 'HW', 'CS', 'RC', 'LOTO'] as const;
 export type PermitMapLayer = (typeof PERMIT_MAP_LAYERS)[number];
 
 /** Which rule placed an item — see `NgPermitMapService` for the ladder. */
@@ -48,12 +48,18 @@ export interface PermitMapPayload {
 }
 
 /** Display metadata per layer. Colours double as the shape fill when a single layer is shown. */
-export const PERMIT_MAP_LAYER_META: Record<PermitMapLayer, { label: string; short: string; color: string }> = {
-  WR: { label: 'Work Requests', short: 'WR', color: '#3b82f6' },
-  SW: { label: 'Safe Work', short: 'SW', color: '#22c55e' },
-  HW: { label: 'Hot Work', short: 'HW', color: '#f97316' },
-  CS: { label: 'Confined Space', short: 'CS', color: '#eab308' },
-  LOTO: { label: 'LOTO', short: 'LO', color: '#a855f7' },
+export const PERMIT_MAP_LAYER_META: Record<
+  PermitMapLayer,
+  { label: string; short: string; color: string; icon: string }
+> = {
+  WR: { label: 'Work Requests', short: 'WR', color: '#3b82f6', icon: 'assignment' },
+  SW: { label: 'Safe Work', short: 'SW', color: '#22c55e', icon: 'health_and_safety' },
+  HW: { label: 'Hot Work', short: 'HW', color: '#f97316', icon: 'local_fire_department' },
+  // Permit-Required and Reclassified confined spaces are different jobs with different controls,
+  // so they are counted apart rather than lumped into one "CS" number.
+  CS: { label: 'Confined Space (PR)', short: 'CS', color: '#eab308', icon: 'warning' },
+  RC: { label: 'Confined Space (Reclassified)', short: 'RC', color: '#14b8a6', icon: 'task_alt' },
+  LOTO: { label: 'LOTO', short: 'LO', color: '#a855f7', icon: 'lock' },
 };
 
 /** How each placement rule is explained to the operator, weakest last. */

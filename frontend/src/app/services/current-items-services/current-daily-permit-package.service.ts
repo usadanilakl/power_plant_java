@@ -3,7 +3,9 @@ import { BehaviorSubject, switchMap, tap, throwError } from "rxjs";
 import { DailyPermitPackageDto } from "../../models/permits/dailt-permit-package.model";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { DailyPermitPackageService } from "../permits/daily-permit-package.service";
-import { WorkRequestDto } from "../../models/permits/work-request.model";
+import { WorkRequestAreaDto, WorkRequestDto } from "../../models/permits/work-request.model";
+import { WorkAreaDto } from "../../models/permits/work-area.model";
+import { WorkAreaApiService } from "../../features/permit-builder/work-area/services/work-area-api.service";
 import { WorkRequestService } from "../permits/work-request.service";
 import { SafeWorkDto } from "../../models/permits/safe-work.model";
 import { ConfinedSpaceService } from "../permits/confined-space.service";
@@ -40,6 +42,7 @@ export class CurrentDailyPermitPackageService {
     private excavationPermitService = inject(ExcavationPermitService);
     private ventingPermitService = inject(VentingPermitService);
     private categoryProfileApi = inject(WorkCategoryProfileApiService);
+    private workAreaApi = inject(WorkAreaApiService);
     private processWrDialogService = inject(ProcessWrDialogService);
     private syncUpdateService = inject(SyncUpdateService);
     private destroyRef = inject(DestroyRef);
@@ -816,18 +819,61 @@ export class CurrentDailyPermitPackageService {
 
 
 
-    generateSafeWorkFromCurrentRequest(){
+    generateSafeWorkFromCurrentRequest(perArea = false){
       const currentRequest = this.currentWorkRequest();
       if (!currentRequest ||!currentRequest.id) {
         console.error('No work request selected or request has no ID.');
         return;
       }
       this.withCategoryProfile(currentRequest, profile => {
-        const newPermit = SafeWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
-        this.createAndAttachSafeWorksToPackage([newPermit]);
+        // One Safe Work spanning every area is the default, because nothing in a Safe Work is
+        // location-bound. Splitting is the operator's call — areas with very different standing
+        // hazards can warrant separate permits, and only the person issuing them knows.
+        if (!perArea) {
+          const newPermit = SafeWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
+          this.createAndAttachSafeWorksToPackage([newPermit]);
+          return;
+        }
+        this.generatePerArea(
+          currentRequest,
+          () => true,
+          (area, areaDto) => {
+            const dto = SafeWorkDto.generatePermitFromRequest(currentRequest, areaDto, profile);
+            dto.location = area.name;
+            (dto as any).workArea = areaDto;
+            return dto;
+          },
+          () => SafeWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile),
+          permits => this.createAndAttachSafeWorksToPackage(permits));
       });
     }
 
+    /**
+     * A minimal area carrying only the identity we already have from the request.
+     *
+     * <p>Used when the full work-area list is unavailable. It has no hazards to seed from, but it
+     * has the right id — so the permit still persists against its OWN area and an operator can fill
+     * the hazards in. Identity is the part that cannot be recovered later by looking at the permit.
+     */
+    private stubAreaFor(area: WorkRequestAreaDto): WorkAreaDto | null {
+      if (area.id == null) return null;
+      return new WorkAreaDto({ id: area.id, name: area.name });
+    }
+
+    /** How many areas the selected request covers — drives the operator's split prompt. */
+    currentRequestAreaCount(): number {
+      return (this.currentWorkRequest()?.workAreas ?? []).length;
+    }
+
+    /**
+     * One Hot Work permit per area where hot work is planned — usually a subset of the areas,
+     * because a fire watch cannot be in two places.
+     *
+     * <p>The hot-work DETAIL (types, welding method, the Cr(VI) assessment) is asked once on the
+     * request and seeded into every permit: same crew, same job. The operator completes each
+     * permit's fire watch, which is the part that genuinely cannot be shared and which the
+     * requester could not have known at submission time.
+     */
     generateHotWorkFromCurrentRequest(){
       const currentRequest = this.currentWorkRequest();
       if (!currentRequest ||!currentRequest.id) {
@@ -835,11 +881,24 @@ export class CurrentDailyPermitPackageService {
         return;
       }
       this.withCategoryProfile(currentRequest, profile => {
-        const newPermit = HotWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
-        this.createAndAttachHotWorksToPackage([newPermit]);
+        this.generatePerArea(
+          currentRequest,
+          area => area.hotWork,
+          (area, areaDto) => {
+            const dto = HotWorkDto.generatePermitFromRequest(currentRequest, areaDto, profile);
+            dto.location = area.name;
+            (dto as any).workArea = areaDto;
+            return dto;
+          },
+          () => HotWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile),
+          permits => this.createAndAttachHotWorksToPackage(permits));
       });
     }
 
+    /**
+     * One Confined Space permit per space — always. Atmosphere readings, entrants and the attendant
+     * all belong to one space, so a single permit could never cover several.
+     */
     generateConfinedSpaceFromCurrentRequest(){
       const currentRequest = this.currentWorkRequest();
       if (!currentRequest ||!currentRequest.id) {
@@ -847,8 +906,61 @@ export class CurrentDailyPermitPackageService {
         return;
       }
       this.withCategoryProfile(currentRequest, profile => {
-        const newPermit = ConfinedSpaceDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
-        this.createAndAttachConfinedSpacesToPackage([newPermit]);
+        this.generatePerArea(
+          currentRequest,
+          area => area.confinedSpaceEntry,
+          (area, areaDto) => {
+            const dto = ConfinedSpaceDto.generatePermitFromRequest(currentRequest, areaDto, profile);
+            dto.space = area.spaceName?.trim() || area.name;
+            (dto as any).workArea = areaDto;
+            return dto;
+          },
+          () => ConfinedSpaceDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile),
+          permits => this.createAndAttachConfinedSpacesToPackage(permits));
+      });
+    }
+
+    /**
+     * Generate one permit per declared area that needs it, or fall back to the single
+     * request-level permit.
+     *
+     * <p>Three cases, and the middle one is the easy mistake:
+     * <ul>
+     *   <li><b>no areas declared</b> — every request submitted before multi-area existed. One
+     *       permit, exactly as before.</li>
+     *   <li><b>areas declared, none needs this type</b> — a real answer meaning "no hot work here",
+     *       NOT missing data. Generates nothing. Treating it as the legacy case would produce a
+     *       phantom permit for work nobody asked for.</li>
+     *   <li><b>areas declared and some need it</b> — one each, seeded from and bound to its OWN
+     *       area. The backend resolves a permit's area from {@code workArea.id} alone, so without
+     *       that a five-space package would report every space as being in the first one.</li>
+     * </ul>
+     */
+    private generatePerArea<T>(
+      request: WorkRequestDto,
+      needsPermit: (area: WorkRequestAreaDto) => boolean,
+      buildForArea: (area: WorkRequestAreaDto, areaDto: WorkAreaDto | null) => T,
+      buildLegacy: () => T,
+      attach: (permits: T[]) => void
+    ): void {
+      const declared = request.workAreas ?? [];
+      if (!declared.length) {
+        attach([buildLegacy()]);
+        return;
+      }
+      const wanted = declared.filter(needsPermit);
+      if (!wanted.length) return;
+
+      this.workAreaApi.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: areas => {
+          const byId = new Map(areas.map(a => [a.id, a]));
+          attach(wanted.map(area => buildForArea(area, byId.get(area.id as number) ?? this.stubAreaFor(area))));
+        },
+        // Without the full list we cannot seed each permit from its area's constant hazards, but we
+        // still know WHICH area each one is for. Falling back to the request's primary would bind
+        // every permit to the same area — so a five-space package would report all five spaces as
+        // being in the first one, which is worse than missing hazard seeds an operator can add.
+        error: () => attach(wanted.map(area => buildForArea(area, this.stubAreaFor(area)))),
       });
     }
 

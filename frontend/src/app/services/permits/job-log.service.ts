@@ -96,6 +96,54 @@ export class JobLogService {
     return this.http.post<SpringApiResponse<StaleSweepResult>>(
       `${this.apiUrl}/maintenance/close-stale`, null, { params });
   }
+
+  /** Admin: what the automatic expiry sweep would do right now. */
+  expiryPreview(): Observable<SpringApiResponse<ExpirySweepResult>> {
+    return this.http.get<SpringApiResponse<ExpirySweepResult>>(
+      `${this.apiUrl}/maintenance/expiry-preview`);
+  }
+
+  /** Admin: run the expiry sweep now instead of waiting for the hourly schedule. */
+  expirePackages(dryRun: boolean): Observable<SpringApiResponse<ExpirySweepResult>> {
+    return this.http.post<SpringApiResponse<ExpirySweepResult>>(
+      `${this.apiUrl}/maintenance/expire-packages`, null, { params: { dryRun } as any });
+  }
+
+  /** Admin: permits whose package is closed, deleted, or was never there. */
+  strandedPermitScan(): Observable<SpringApiResponse<StrandedPermitReport>> {
+    return this.http.get<SpringApiResponse<StrandedPermitReport>>(
+      `${this.apiUrl}/maintenance/stranded-permits`);
+  }
+
+  /** Admin: close them. Dry run by default. */
+  closeStrandedPermits(dryRun: boolean): Observable<SpringApiResponse<StrandedPermitReport>> {
+    return this.http.post<SpringApiResponse<StrandedPermitReport>>(
+      `${this.apiUrl}/maintenance/close-stranded-permits`, null, { params: { dryRun } as any });
+  }
+}
+
+export interface StrandedPermitRow {
+  layer: string;
+  id: number;
+  permitNumber: string | null;
+  status: string;
+  date: string | null;
+  location: string | null;
+  /** STRANDED | ORPHANED | DELETED */
+  reason: string;
+  packageId: number | null;
+  packageNumber: string | null;
+  packageStatus: string | null;
+  deleted: boolean;
+}
+
+export interface StrandedPermitReport {
+  rows: StrandedPermitRow[];
+  countsByReason: Record<string, number>;
+  countsByLayer: Record<string, number>;
+  closed: number;
+  dryRun: boolean;
+  failures?: string[];
 }
 
 export interface StalePackageRow {
@@ -137,4 +185,27 @@ export interface StaleSweepResult {
   jobsClosed?: number;
   packagesClosed?: number;
   failures?: string[];
+}
+
+export interface ExpiryDueRow {
+  packageId: number;
+  permitNumber: string | null;
+  companyName: string | null;
+  status: string;
+  windowStart: string;
+  hoursOpen: number;
+  personnelStillSignedOn: boolean;
+}
+
+export interface ExpirySweepResult {
+  dryRun: boolean;
+  expiryHours: number;
+  dueCount: number;
+  due: ExpiryDueRow[];
+  expired: number;
+  expiredWithPersonnelOn: number;
+  /** Work windows we could not read. Skipped rather than guessed at — see PackageExpiryService. */
+  skippedUndated: number;
+  cappedAt: number | null;
+  failures: string[];
 }

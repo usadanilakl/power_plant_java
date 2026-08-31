@@ -33,6 +33,45 @@
       </p>
     }
 
+
+    <!-- Plant-wide scopes + the escape hatch, both ON the map. The escape used to live below the
+         map inside the host form, so on a phone it was only discoverable by scrolling past the very
+         thing you had just failed to use. -->
+    <!-- Multi-select: the running list of picked areas, first one primary. -->
+    @if (multiple() && selectedAreas().length) {
+      <div class="picked-areas">
+        <span class="picked-label">Selected ({{ selectedAreas().length }}):</span>
+        @for (area of selectedAreas(); track area.id; let i = $index) {
+          <button type="button" class="picked-chip" (click)="removeArea(area)"
+                  [title]="'Remove ' + area.name">
+            @if (i === 0) { <span class="primary-tag">main</span> }
+            {{ area.name }}
+            <span class="chip-x">&times;</span>
+          </button>
+        }
+        <span class="picked-hint">Tap an area again on the map to remove it.</span>
+      </div>
+    }
+
+    @if (scopeOptions().length || showSkip()) {
+      <div class="map-actions">
+        @if (scopeOptions().length) {
+          <div class="scope-row">
+            <span class="scope-label">Covers a large area?</span>
+            @for (scope of scopeOptions(); track scope) {
+              <button type="button" class="scope-btn" [class.active]="isScopeActive(scope)"
+                      (click)="pickScope(scope)">{{ scope }}</button>
+            }
+          </div>
+        }
+        @if (showSkip()) {
+          <button type="button" class="skip-btn" (click)="skipRequested.emit()">
+            {{ skipLabel() }}
+          </button>
+        }
+      </div>
+    }
+
     <!-- Mobile: trigger button -->
     @if (isMobile() && !overlayOpen()) {
       <button type="button" class="map-trigger-btn" [class.has-value]="selectedAreaName()" (click)="openOverlay()">
@@ -106,7 +145,7 @@
             @for (shape of shapes(); track shape.entry.id) {
               <div
                 class="shape-overlay"
-                [class.selected]="selectedShape() === shape"
+                [class.selected]="selectedShape() === shape || isShapePicked(shape)"
                 [ngStyle]="getShapeBorderStyle(shape, selectedShape() === shape)"
                 (click)="selectShape(shape); $event.stopPropagation()">
               </div>
@@ -115,6 +154,11 @@
         </div>
 
         <div class="overlay-footer">
+          @if (showSkip()) {
+            <button type="button" class="skip-btn overlay-skip" (click)="skipRequested.emit()">
+              {{ skipLabel() }}
+            </button>
+          }
           <button type="button" class="reset-btn" (click)="fitToContainerNow()">Fit to view</button>
           <button type="button" class="reset-btn" (click)="resetZoom()">Reset</button>
           @if (selectedShape()) {
@@ -190,7 +234,7 @@
           @for (shape of shapes(); track shape.entry.id) {
             <div
               class="shape-overlay"
-              [class.selected]="isSelected(shape)"
+              [class.selected]="isSelected(shape) || isShapePicked(shape)"
               [ngStyle]="getShapeBorderStyle(shape, isSelected(shape))"
               (click)="selectShape(shape); $event.stopPropagation()"
               (mouseenter)="hoveredShape.set(shape)"

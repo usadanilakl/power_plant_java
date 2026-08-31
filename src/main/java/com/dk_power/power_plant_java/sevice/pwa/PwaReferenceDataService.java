@@ -5,8 +5,10 @@ import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ import java.util.Map;
  * by {@code WorkAreaGitHubPublisher} and written through its configured {@code PwaDataSink}.)
  * See project/architecture/supabase/reference-data.md.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PwaReferenceDataService {
@@ -49,9 +52,29 @@ public class PwaReferenceDataService {
     }
 
     public List<Map<String, Object>> getWorkAreas() {
+        Map<Long, List<Long>> lotoIds = constantLotoIdsByArea(workAreaRepo);
         return workAreaRepo.findAllWithLocations().stream()
-                .map(PwaReferenceDataService::toWorkAreaMap)
+                .map(wa -> toWorkAreaMap(wa, lotoIds.getOrDefault(wa.getId(), List.of())))
                 .toList();
+    }
+
+    /**
+     * {@code workAreaId -> constant LOTO standard ids}, in one query.
+     *
+     * <p>Shared with {@code WorkAreaGitHubPublisher} so the live payload and the offline snapshot
+     * are built the same way. Read as a projection because both callers run OUTSIDE a transaction —
+     * the areas they hold are detached, and touching {@code constantLotos} on a detached area
+     * throws {@code LazyInitializationException}.
+     */
+    public static Map<Long, List<Long>> constantLotoIdsByArea(WorkAreaRepo repo) {
+        Map<Long, List<Long>> out = new LinkedHashMap<>();
+        for (Object[] pair : repo.findConstantLotoStandardIdPairs()) {
+            Long areaId = (Long) pair[0];
+            Long standardId = (Long) pair[1];
+            if (areaId == null || standardId == null) continue;
+            out.computeIfAbsent(areaId, k -> new ArrayList<>()).add(standardId);
+        }
+        return out;
     }
 
     /**
@@ -64,6 +87,14 @@ public class PwaReferenceDataService {
      * shared location's equipment to one unit.
      */
     public static Map<String, Object> toWorkAreaMap(WorkArea wa) {
+        return toWorkAreaMap(wa, List.of());
+    }
+
+    /**
+     * As above, plus the area's constant LOTO standards — passed in rather than read from the
+     * entity, for the detachment reason in {@link #constantLotoIdsByArea}.
+     */
+    public static Map<String, Object> toWorkAreaMap(WorkArea wa, List<Long> constantLotoIds) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", wa.getId());
         map.put("name", wa.getName() != null ? wa.getName() : "");
@@ -77,7 +108,29 @@ public class PwaReferenceDataService {
                 ? wa.getLocations().stream().map(v -> v.getId()).toList()
                 : List.of());
         map.put("locationUnitFilters", wa.getLocationUnitFilters());
+
+        // The area's standing hazard profile. The PWA seeds a new work request from this the moment
+        // the requester picks the area on the map, so a contractor is not asked to know which
+        // hazards a part of the plant always carries.
+        //
+        // Read defensively: these getters deserialize a JSON column and RETHROW on malformed
+        // content. That is survivable on the admin screen that edits one area, but here a single
+        // bad row would fail the whole reference snapshot and take the map picker down with it.
+        map.put("constantHazards", readHazardBlock(wa, WorkArea::getConstantHazards));
+        map.put("constantHotWorkMeasures", readHazardBlock(wa, WorkArea::getConstantHotWorkMeasures));
+        map.put("constantConfinedSpaceHazards", readHazardBlock(wa, WorkArea::getConstantConfinedSpaceHazards));
+        map.put("constantLotoIds", constantLotoIds);
         return map;
+    }
+
+    private static Object readHazardBlock(WorkArea wa, java.util.function.Function<WorkArea, Object> getter) {
+        try {
+            return getter.apply(wa);
+        } catch (Exception e) {
+            log.warn("[PWA Reference] Work area {} has unreadable hazard JSON; omitting that block",
+                    wa.getId(), e);
+            return null;
+        }
     }
 
     public static boolean hasConfinedSpaceHazards(WorkArea wa) {

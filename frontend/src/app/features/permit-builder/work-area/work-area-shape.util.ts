@@ -1,4 +1,4 @@
-import { RfRectangleShape } from '../../../shared/image/refactored/models/fr-shape.model';
+import { RfRectangleShape, ShapeCountBadge } from '../../../shared/image/refactored/models/fr-shape.model';
 import { WorkAreaMapShapeDto } from '../../../models/permits/work-area.model';
 
 /**
@@ -47,11 +47,17 @@ export function parseWorkAreaShapeGeometry(shape: WorkAreaMapShapeDto): WorkArea
   };
 }
 
-/** Build the RfShape the InteractiveImageComponent draws, in the given colour. */
+/**
+ * Build the RfShape the InteractiveImageComponent draws, in the given colour.
+ *
+ * `badge` is the single round index badge; `countBadges` are the per-category pills the permits
+ * map uses. Both are optional and independent — the work-area editor passes neither.
+ */
 export function workAreaShapeToRf(
   shape: WorkAreaMapShapeDto,
   color: string,
-  badge?: number | string
+  badge?: number | string,
+  countBadges?: ShapeCountBadge[]
 ): RfRectangleShape {
   const g = parseWorkAreaShapeGeometry(shape);
   return {
@@ -74,6 +80,7 @@ export function workAreaShapeToRf(
     height: g.height,
     rotation: g.rotation,
     ...(badge === undefined ? {} : { pointIndex: badge }),
+    ...(countBadges?.length ? { countBadges } : {}),
   };
 }
 

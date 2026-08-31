@@ -10,7 +10,29 @@ import { SwHazards } from './safe-work.model';
 import { HotWorkMeasures, HotWorkProfile, hotWorkTypeLabels } from './hot-work.model';
 import { ConfinedSpaceHazards } from './confined-space.model';
 
-export type WorkRequestFieldName = keyof WorkRequestModel;
+/**
+ * Model keys that can be rendered as a form field or a table column.
+ *
+ * <p>`workAreas` is excluded: it is structural data that decides how many permits get generated,
+ * not something a single input or cell could show. Including it would force a meaningless entry in
+ * both the field map and the column map for a value neither can render.
+ */
+export type WorkRequestFieldName = Exclude<keyof WorkRequestModel, 'workAreas'>;
+
+/**
+ * One work area a request covers, and what is planned there.
+ *
+ * <p>Wire shape of the backend `WorkRequestArea`. `workArea` above stays the primary one — this
+ * decides how many Confined Space and Hot Work permits get generated.
+ */
+export interface WorkRequestAreaDto {
+  id: number | null;
+  name: string;
+  primary: boolean;
+  confinedSpaceEntry: boolean;
+  spaceName: string | null;
+  hotWork: boolean;
+}
 
 export interface WorkRequestModel extends BaseModel {
   dateOfWorkToBePerformed: string | null;
@@ -33,6 +55,8 @@ export interface WorkRequestModel extends BaseModel {
   attachmentCount: number | null;
   workCategory: ValueDto | null;
   workArea: WorkAreaDto | null;
+  /** Every area covered. Empty means the single `workArea` above is the whole story. */
+  workAreas: WorkRequestAreaDto[];
   dailyPermitPackageId: number | null;
   /** Derived server-side: no work area is set, so somebody has to pick one before permits. */
   areaNotSpecified: boolean | null;
@@ -69,6 +93,8 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   attachmentCount: number | null;
   workCategory: ValueDto | null;
   workArea: WorkAreaDto | null;
+  /** Every area covered. Empty means the single `workArea` above is the whole story. */
+  workAreas: WorkRequestAreaDto[];
   dailyPermitPackageId: number | null;
   areaNotSpecified: boolean | null;
   suggestedJobLogId: number | null;
@@ -100,6 +126,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.attachmentCount = data.attachmentCount ?? null;
     this.workCategory = data.workCategory ? new ValueDto(data.workCategory) : null;
     this.workArea = data.workArea ? new WorkAreaDto(data.workArea) : null;
+    this.workAreas = data.workAreas ?? [];
     this.dailyPermitPackageId = data.dailyPermitPackageId ?? null;
     this.areaNotSpecified = data.areaNotSpecified ?? null;
     this.suggestedJobLogId = data.suggestedJobLogId ?? null;
@@ -136,6 +163,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       attachmentCount: this.attachmentCount,
       workCategory: this.workCategory?.toJson() ?? null,
       workArea: this.workArea?.toJson() ?? null,
+      workAreas: this.workAreas ?? [],
       dailyPermitPackageId: this.dailyPermitPackageId,
       // areaNotSpecified is derived server-side and never sent back — including it would invite a
       // reader to treat it as settable.
@@ -182,6 +210,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       attachmentCount: json.attachmentCount ?? null,
       workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
       workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
+      workAreas: json.workAreas ?? [],
       dailyPermitPackageId: json.dailyPermitPackageId ?? null,
       areaNotSpecified: json.areaNotSpecified ?? null,
       suggestedJobLogId: json.suggestedJobLogId ?? null,

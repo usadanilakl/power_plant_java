@@ -59,6 +59,12 @@ public class WorkRequestDto {
     private String workAreaName;
 
     /**
+     * Every area the request covers, as one JSON envelope — the same reason {@code declaredHazards}
+     * travels that way. A payload column, not a queryable one.
+     */
+    private String workAreas;
+
+    /**
      * The requester's hazard declaration, as one JSON envelope — SharePoint column
      * {@code DeclaredHazards}. See {@code DeclaredHazards} for the shape and the reasoning.
      */

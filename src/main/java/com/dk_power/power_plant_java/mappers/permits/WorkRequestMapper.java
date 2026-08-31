@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers.permits;
 import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
@@ -47,6 +48,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setBooleanIsLotoRequired(entity.getIsLotoRequired());
         dto.setBooleanIsConfinedSpaceEntryRequired(entity.getIsConfinedSpaceEntryRequired());
         dto.setSpace(entity.getSpace());
+        dto.setWorkAreas(entity.getWorkAreasJson());
         dto.setSharepointId(entity.getSharepointId());
         dto.setLocalUuid(entity.getLocalUuid());
         dto.setWorkCategoryName(entity.getWorkCategory() != null ? entity.getWorkCategory().getName() : null);
@@ -74,6 +76,7 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsLotoRequired(dto.getIsLotoRequired());
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
+        entity.applyWorkAreasEnvelope(dto.getWorkAreas());
         entity.setSharepointId(dto.getSharepointId());
         if (dto.getWorkCategoryName() != null && !dto.getWorkCategoryName().isBlank()) {
             entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
@@ -104,6 +107,7 @@ public class WorkRequestMapper implements BaseMapper {
         ngWorkRequestDto.setIsLotoRequired(workRequestDto.getIsLotoRequired());
         ngWorkRequestDto.setIsConfinedSpaceEntryRequired(workRequestDto.getIsConfinedSpaceEntryRequired());
         ngWorkRequestDto.setSpace(workRequestDto.getSpace());
+        ngWorkRequestDto.setWorkAreas(WorkRequestArea.fromJson(workRequestDto.getWorkAreas()));
         ngWorkRequestDto.setSharepointId(workRequestDto.getSharepointId());
         if (workRequestDto.getWorkCategoryName() != null && !workRequestDto.getWorkCategoryName().isBlank()) {
             ngWorkRequestDto.setWorkCategory(valueService.valueToDto(valueService.createValue("Work Category", workRequestDto.getWorkCategoryName())));
@@ -135,6 +139,7 @@ public class WorkRequestMapper implements BaseMapper {
         workRequestDto.setIsLotoRequired(yesNo(ngWorkRequestDto.getIsLotoRequired()));
         workRequestDto.setIsConfinedSpaceEntryRequired(yesNo(ngWorkRequestDto.getIsConfinedSpaceEntryRequired()));
         workRequestDto.setSpace(ngWorkRequestDto.getSpace());
+        workRequestDto.setWorkAreas(WorkRequestArea.toJson(ngWorkRequestDto.getWorkAreas()));
         workRequestDto.setSharepointId(ngWorkRequestDto.getSharepointId());
         workRequestDto.setWorkCategoryName(ngWorkRequestDto.getWorkCategory() != null ? ngWorkRequestDto.getWorkCategory().getName() : null);
         workRequestDto.setWorkAreaName(ngWorkRequestDto.getWorkArea() != null ? ngWorkRequestDto.getWorkArea().getName() : null);
@@ -232,6 +237,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setIsLotoRequired(entity.getIsLotoRequired());
         dto.setIsConfinedSpaceEntryRequired(entity.getIsConfinedSpaceEntryRequired());
         dto.setSpace(entity.getSpace());
+        dto.setWorkAreas(WorkRequestArea.fromJson(entity.getWorkAreasJson()));
         dto.setSharepointId(entity.getSharepointId());
         dto.setLocalUuid(entity.getLocalUuid());
         if(entity.getPermitStatus()!=null && entity.getPermitStatus().getName()!=null)dto.setStatus(entity.getPermitStatus().getName());
@@ -281,6 +287,7 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsLotoRequired(dto.getIsLotoRequired());
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
+        if (dto.getWorkAreas() != null) entity.setWorkAreas(dto.getWorkAreas());
         entity.setSharepointId(dto.getSharepointId());
         entity.setLocalUuid(dto.getLocalUuid());
 
@@ -338,6 +345,10 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsLotoRequired(spDto.getIsLotoRequired());
         entity.setIsConfinedSpaceEntryRequired(spDto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(spDto.getSpace());
+        // applyWorkAreasEnvelope, not setWorkAreasJson: it repairs isHotWorkRequired /
+        // isConfinedSpaceEntryRequired (which SharePoint may carry stale from before the
+        // envelope existed) AND refuses to wipe local areas on a blank or unreadable value.
+        entity.applyWorkAreasEnvelope(spDto.getWorkAreas());
         entity.setSharepointId(spDto.getSharepointId());
         entity.setLocalUuid(spDto.getLocalUuid());
         entity.setTimeSubmitted(spDto.getTimeSubmitted());
@@ -380,6 +391,10 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsLotoRequired(spDto.getIsLotoRequired());
         entity.setIsConfinedSpaceEntryRequired(spDto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(spDto.getSpace());
+        // applyWorkAreasEnvelope, not setWorkAreasJson: it repairs isHotWorkRequired /
+        // isConfinedSpaceEntryRequired (which SharePoint may carry stale from before the
+        // envelope existed) AND refuses to wipe local areas on a blank or unreadable value.
+        entity.applyWorkAreasEnvelope(spDto.getWorkAreas());
 
         // Preserve submitter fields: fill from SharePoint if local value is missing
         if (entity.getSubmitterName() == null && spDto.getSubmitterName() != null) {

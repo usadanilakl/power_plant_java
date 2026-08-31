@@ -294,6 +294,105 @@ The problem was that a blank plant drawing looks exactly like a quiet day. Three
 > arrives by sync therefore never refreshes the PWA's `work-areas.json`, so that dataset can go
 > stale on any node that receives areas rather than creating them. Not touched here.
 
+## Fix — the map listed permits that could not then be assigned
+
+Staging one returned `SW #2000022657 no longer exists — reload the map.` Listed by one query,
+rejected by the next.
+
+85. **`@Where` is not inherited from a `@MappedSuperclass`.** It sits on `BaseIdEntity`;
+    `WorkRequest` and `Loto` re-declare it, **`SafeWork`, `HotWork`, `ConfinedSpace` and
+    `DailyPermitPackage` never did**. So for those four, `deleted` is a flag every single query has
+    to remember on its own — and the map's did not. It listed soft-deleted permits, and the assign
+    endpoint's own delete guard then refused them with a message that read like a race.
+
+    Fixed with an explicit `NOT_DELETED` predicate on those three layer queries. WorkRequest and
+    Loto need nothing; their own `@Where` already covers it.
+
+## Admin — permits that outlived their package
+
+Closing a package already cascades to its permits (`cascadeStatusToPermits`), so the healthy path
+was fine. `PermitCleanupService` finds the rows that never went through it, in the Admin →
+**Jobs & Packages** tab beside the stale sweep, with the same dry-run-then-apply shape:
+
+| reason | what it means |
+|---|---|
+| **STRANDED** | the package is Closed but the permit is not — something wrote the package outside `changeStatus` (a direct repository save, or an inbound sync applying a status field without replaying the cascade) |
+| **ORPHANED** | no package at all, so nothing will ever close it; it stays open forever |
+| **DELETED** | soft-deleted but still open — harmless until a query forgets the `deleted` filter, which is exactly what happened above |
+
+Scoped to SafeWork / HotWork / ConfinedSpace: work requests have their own expiry service, and
+LOTOs have an independent lifecycle and are deliberately not cascaded by a package close. The close
+sets the permit's status and nothing else — every row here has an owner that is already closed,
+already gone, or never existed, so there is nothing upstream to keep in step, and reaching upward
+from a cleanup is how a tidy-up becomes an incident.
+
+## Per-category counts on the map
+
+A single number per area said nothing useful: five hot-work permits and five work requests are very
+different situations to walk into.
+
+86. **Confined Space split into two layers** — Permit-Required (`CS`) and Reclassified (`RC`), from
+    `ConfinedSpace.csType`. Different jobs, different controls, so they are counted apart.
+87. **`ShapeCountBadge` on `RfBaseShape`** — an additive, opt-in field rendered by
+    `CanvasRenderService.drawCountBadges`. Shapes that do not set it draw exactly as before, so
+    nothing else that uses the shared canvas is affected. Each pill carries the category colour AND
+    its short code, because colour alone fails for a colour-blind operator and on a printout. Pills
+    are clipped to the shape's own width and dropped rather than overlapped, so they never spill
+    onto a neighbouring area and read as belonging to it.
+88. **The side panel is grouped by category**, each section headed by its own count and icon and
+    collapsible — that count is what you click to see the items behind it.
+
+## Automatic package expiry
+
+A package authorises one twelve-hour shift. Past that it is not "work still running" — it is an
+invalid document, and treating it as live is the actual hazard. `PackageExpiryService` runs hourly
+and expires anything past **16 hours** from its own work-window start (12h of validity plus 4h for
+operators to catch up). Configurable via `permits.package.expiry.hours`.
+
+### Expired, not Closed
+
+Closing asserts two things a timer cannot know: that the work finished, and that everybody came off
+the job. Expiring asserts only what is true — the authorisation lapsed.
+
+89. **`workCompleted` is left alone**, and **personnel are NOT auto-signed-off.** The operator close
+    path signs everyone off because a person is stating the crew is out; a clock knows nothing of
+    the sort, and wiping the sign-on list would destroy the only record of who was in the field. A
+    package that expires with people still on it is an alarm, so those are counted and surfaced
+    rather than tidied away.
+90. **LOTO is never touched.** `cascadeStatusToPermits` already excludes it, and this sweep adds no
+    path of its own. Isolation outlives any single package.
+91. **An unreadable work window is skipped, not guessed at.** Dates here are strings in several
+    formats, and "we cannot read it" is not evidence the window closed — guessing would expire live
+    work. Those are counted and left to the manual sweep, which has a human looking at it. (This is
+    the one place the automatic path deliberately differs from `packageAnchor`, whose fall back to
+    the creation timestamp is right for a reviewed list and wrong for an unattended write.)
+
+### Two things this required fixing first
+
+92. **`activatePackage` accepted only Building and Test**, so an auto-expired package could never be
+    resumed — only reissued, losing the audit trail and sign-on history. "Expired" is now in its
+    allowed-from set, which is what makes a wrong expiry cost one click instead of stranding real
+    work.
+93. **`findAllOpenPackages` filtered on `<> 'Closed'` alone.** Expired is every bit as terminal, so
+    without adding it the stale sweep would keep offering to close packages the timer had already
+    dealt with. Now excludes closed / expired / cancelled.
+
+### Guardrails
+
+- `permits.package.expiry.enabled` (default true). Same hub guard as `WorkRequestExpiryService` —
+  and the same trap: `serverAvailable` starts **false**, so a test instance with sync disabled ARMS
+  the sweep rather than disabling it. Set this false on anything holding production data that is not
+  the production hub.
+- `permits.package.expiry.max-per-run` (default 200) — a runaway guard, not a throttle. Whatever it
+  skips is picked up next hour, and the cap is logged rather than silently applied.
+- Each package expires in its own transaction, so one bad row cannot mark a shared transaction
+  rollback-only and discard every expiry that already succeeded.
+- Admin → Jobs & Packages has a preview and a run-now, so the existing backlog can be drained
+  deliberately instead of an hour at a time.
+
+Covered by `PackageExpiryIT` — cascade to child permits, live work untouched, undated skipped,
+personnel preserved, re-activation, and dry-run-writes-nothing.
+
 ## Not done
 
 - **No automatic write-back.** A TEXT match stays a display-time guess until a person places it.
