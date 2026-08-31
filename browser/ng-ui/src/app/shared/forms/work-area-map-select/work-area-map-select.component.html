@@ -13,9 +13,9 @@
         <p>Use the Filters tab to find equipment by tag number, description, type, or location.</p>
       } @else {
         <p>
-          You can still send this request — tick
-          <em>"I'm not sure which area this is"</em> below and describe where you'll be working.
-          An operator will set the area for you.
+          You can still send this request — use
+          <em>"I can't find it"</em> below and describe where you'll be working. An operator will
+          set the area for you.
         </p>
       }
     </div>
@@ -27,16 +27,16 @@
       </p>
     } @else {
       <p class="map-hint">
-        Tap the area of the plant where you'll be working. This tells us the hazards and lock-outs
-        that already apply there. If you can't find it, tick <em>"I'm not sure which area this is"</em>
-        below and describe the spot instead.
+        Tap the area of the plant where you'll be working — tap more than one if the job covers
+        several. This tells us the hazards and lock-outs that already apply there. If you can't find
+        it, use <em>"I can't find it"</em> and describe the spot instead.
       </p>
     }
 
 
-    <!-- Plant-wide scopes + the escape hatch, both ON the map. The escape used to live below the
-         map inside the host form, so on a phone it was only discoverable by scrolling past the very
-         thing you had just failed to use. -->
+    <!-- The map leads. Everything else — the picked list, the scope shortcuts, the escape hatch —
+         sits with it rather than in front of it: the requester was asked to tap their area, so the
+         first thing on screen has to be the thing they tap. -->
     <!-- Multi-select: the running list of picked areas, first one primary. -->
     @if (multiple() && selectedAreas().length) {
       <div class="picked-areas">
@@ -50,25 +50,6 @@
           </button>
         }
         <span class="picked-hint">Tap an area again on the map to remove it.</span>
-      </div>
-    }
-
-    @if (scopeOptions().length || showSkip()) {
-      <div class="map-actions">
-        @if (scopeOptions().length) {
-          <div class="scope-row">
-            <span class="scope-label">Covers a large area?</span>
-            @for (scope of scopeOptions(); track scope) {
-              <button type="button" class="scope-btn" [class.active]="isScopeActive(scope)"
-                      (click)="pickScope(scope)">{{ scope }}</button>
-            }
-          </div>
-        }
-        @if (showSkip()) {
-          <button type="button" class="skip-btn" (click)="skipRequested.emit()">
-            {{ skipLabel() }}
-          </button>
-        }
       </div>
     }
 
@@ -146,11 +127,19 @@
               <div
                 class="shape-overlay"
                 [class.selected]="selectedShape() === shape || isShapePicked(shape)"
-                [ngStyle]="getShapeBorderStyle(shape, selectedShape() === shape)"
+                [ngStyle]="getShapeBorderStyle(shape, selectedShape() === shape || isShapePicked(shape))"
                 (click)="selectShape(shape); $event.stopPropagation()">
               </div>
             }
           </div>
+        </div>
+
+        <div class="overlay-scopes" *ngIf="scopeOptions().length">
+          <span class="scope-label">Large area?</span>
+          @for (scope of scopeOptions(); track scope) {
+            <button type="button" class="scope-btn" [class.active]="isScopeActive(scope)"
+                    (click)="pickScope(scope)">{{ scope }}</button>
+          }
         </div>
 
         <div class="overlay-footer">
@@ -161,7 +150,15 @@
           }
           <button type="button" class="reset-btn" (click)="fitToContainerNow()">Fit to view</button>
           <button type="button" class="reset-btn" (click)="resetZoom()">Reset</button>
-          @if (selectedShape()) {
+          @if (multiple()) {
+            <button type="button" class="confirm-btn" (click)="closeOverlay()">
+              @if (selectedAreas().length) {
+                Done — {{ selectedAreas().length }} selected
+              } @else {
+                Close map
+              }
+            </button>
+          } @else if (selectedShape()) {
             <button type="button"
               class="confirm-btn"
               [disabled]="selectedShape()!.areas.length > 1 && !selectedAreaName()"
@@ -235,7 +232,7 @@
             <div
               class="shape-overlay"
               [class.selected]="isSelected(shape) || isShapePicked(shape)"
-              [ngStyle]="getShapeBorderStyle(shape, isSelected(shape))"
+              [ngStyle]="getShapeBorderStyle(shape, isSelected(shape) || isShapePicked(shape))"
               (click)="selectShape(shape); $event.stopPropagation()"
               (mouseenter)="hoveredShape.set(shape)"
               (mouseleave)="hoveredShape.set(null)">
@@ -249,6 +246,25 @@
         <button type="button" class="reset-btn" (click)="fitToContainerNow()">Fit to view</button>
         <button type="button" class="reset-btn" (click)="resetZoom()">Reset</button>
       </div>
+
+    @if (scopeOptions().length || showSkip()) {
+      <div class="map-actions">
+        @if (scopeOptions().length) {
+          <div class="scope-row">
+            <span class="scope-label">Covers a large area?</span>
+            @for (scope of scopeOptions(); track scope) {
+              <button type="button" class="scope-btn" [class.active]="isScopeActive(scope)"
+                      (click)="pickScope(scope)">{{ scope }}</button>
+            }
+          </div>
+        }
+        @if (showSkip()) {
+          <button type="button" class="skip-btn" (click)="skipRequested.emit()">
+            {{ skipLabel() }}
+          </button>
+        }
+      </div>
+    }
     }
   }
 </div>

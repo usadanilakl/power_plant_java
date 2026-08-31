@@ -80,6 +80,16 @@ public class HubFileService {
             extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1);
         }
 
+        // Soft-delete any prior HubSyncedFile row for the SAME entity+extension whose
+        // hash doesn't match the new one. Without this, rotate-jpg / reattach-split /
+        // any-other in-place bytes update would leave the OLD row alive advertising the
+        // OLD hash, but the canonical on-disk path (which the OLD row's storagePath
+        // points at) now holds the NEW bytes. Peers download both rows via
+        // /download-info, hash-verify the OLD row against the NEW bytes → integrity
+        // mismatch → task fails → recoverFailedDownloads retries forever. Marking
+        // the prior row deleted is idempotent + harmless when there's no stale row.
+        supersedePriorRowsForEntityExt(entityType, entityId, extension, hash);
+
         // Canonical hub storage path: mirror EXACTLY where the desktop stores the same file — under the
         // FileObject's own {ext}/{fileType}/{vendor} folder (buildRelativeFolder) with the original filename
         // (see FileObjectSyncHandler.downloadSingleFile). Deriving it from the hub's OWN replicated FileObject
@@ -436,6 +446,12 @@ public class HubFileService {
             extension = fileName.substring(fileName.lastIndexOf('.') + 1);
         }
 
+        // Same rationale as storeFile: rotate-jpg / reattach-split write new bytes to the
+        // canonical on-disk path but the prior HubSyncedFile row still advertises the OLD
+        // hash. Peer integrity check on download → permanent retry loop. Supersede here so
+        // hub-mode in-place updates converge cleanly.
+        supersedePriorRowsForEntityExt(entityType, entityId, extension, hash);
+
         HubSyncedFile syncedFile = new HubSyncedFile();
         syncedFile.setEntityType(entityType);
         syncedFile.setEntityId(entityId);
@@ -455,6 +471,32 @@ public class HubFileService {
             fileName, file.length(), entityType, entityId);
 
         return syncedFile;
+    }
+
+    /**
+     * Soft-delete any live {@link HubSyncedFile} row for the same entity + extension whose
+     * hash differs from the new one being ingested. Prevents the "stale row + shared canonical
+     * path" retry storm on peers where the old row still advertises OLD_HASH but the on-disk
+     * canonical file now holds NEW bytes (rotate-jpg / reattach-split in-place updates,
+     * regenerateJpg on JPG-only overwrites, etc). Idempotent when no stale row exists.
+     */
+    private void supersedePriorRowsForEntityExt(String entityType, Long entityId, String extension, String newHash) {
+        if (extension == null || extension.isEmpty() || newHash == null) return;
+        List<HubSyncedFile> live = syncedFileRepository
+                .findByEntityTypeAndEntityIdAndDeletedFalse(entityType, entityId);
+        int marked = 0;
+        for (HubSyncedFile row : live) {
+            if (extension.equalsIgnoreCase(row.getExtension()) && !newHash.equals(row.getFileHash())) {
+                row.setDeleted(true);
+                row.setDeletedAt(Instant.now());
+                syncedFileRepository.save(row);
+                marked++;
+            }
+        }
+        if (marked > 0) {
+            log.info("supersedePriorRows: {}/{} ext={} — soft-deleted {} stale row(s) before writing new hash",
+                    entityType, entityId, extension, marked);
+        }
     }
 
     /**

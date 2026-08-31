@@ -96,6 +96,16 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   scopeOptions = input<string[]>([]);
 
   /**
+   * Open straight into the map instead of showing a "Select Work Area" button first.
+   *
+   * <p>On a phone this control normally renders a trigger and keeps the map behind an overlay, which
+   * is right when the map is one field among many. It is wrong when the map IS the question: the
+   * requester was asked to tap their area and got a button and some options instead, with the map
+   * nowhere in sight.
+   */
+  autoOpen = input<boolean>(false);
+
+  /**
    * Let the requester pick several areas.
    *
    * <p>Off by default, so the equipment picker and every other host keeps the single-select
@@ -194,6 +204,8 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.isMobile.set(this.mediaQuery.matches);
     this.mediaQuery.addEventListener('change', this.mediaHandler);
     this.loadData();
+    // Desktop already shows the map inline; only the mobile overlay needs opening.
+    if (this.autoOpen() && this.isMobile()) this.openOverlay();
   }
 
   private listenersAttached = false;
@@ -578,12 +590,12 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     if (match) {
       this.setArea(match);
       this.selectedShape.set(null);
-      this.closeOverlay();
+      if (!this.multiple()) this.closeOverlay();
       return;
     }
     this.selectedAreaName.set(label);
     this.scopeSelected.emit(label);
-    this.closeOverlay();
+    if (!this.multiple()) this.closeOverlay();
   }
 
   isScopeActive(label: string): boolean {
@@ -622,6 +634,8 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.selectedAreaName.set(next.length ? next[next.length - 1].name : null);
     this.onChange(next);
     this.onTouched();
+    // Deliberately NOT closing the overlay: in multi-select the next thing the requester does is
+    // usually pick another area, and closing after each one makes selecting three a chore.
   }
 
   removeArea(area: AreaRef): void {
@@ -854,13 +868,26 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
   getShapeBorderStyle(shape: ParsedShape, selected: boolean): Record<string, string> {
     const inv = 1 / this.currentScale();
-    const bw = selected ? 3 * inv : 2 * inv;
-    return {
+    // In multi-select the CHOSEN areas are what the requester needs to see, not whichever shape
+    // they happen to have tapped last. Without this a picked area looked identical to an unpicked
+    // one the moment focus moved on, and there was no way to tell what was selected.
+    const picked = this.isShapePicked(shape);
+    const on = selected || picked;
+    const bw = on ? 3 * inv : 2 * inv;
+    const style: Record<string, string> = {
       ...shape.style,
       'border-width': `${bw}px`,
       'border-radius': `${4 * inv}px`,
-      'outline-width': selected ? `${3 * inv}px` : '0',
+      'outline-width': on ? `${3 * inv}px` : '0',
     };
+    if (picked) {
+      // A filled wash, not just a thicker edge: on a zoomed-out plant drawing an outline is hard to
+      // pick out, and "which ones have I chosen" has to be answerable at a glance.
+      style['background-color'] = 'rgba(0, 123, 255, 0.28)';
+      style['border-color'] = '#0056b3';
+      style['outline'] = `${2 * inv}px solid #0056b3`;
+    }
+    return style;
   }
 
   getTooltipStyle(): Record<string, string> {

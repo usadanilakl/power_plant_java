@@ -1,6 +1,6 @@
-import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, output, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, Validators } from '@angular/forms';
 
 import { ReactiveFormComponent } from '../../../shared/forms/reactive-form/reactive-form.component';
 import { WorkAreaMapSelectComponent } from '../../../shared/forms/work-area-map-select/work-area-map-select.component';
@@ -56,29 +56,65 @@ const MIN_LOCATION_TEXT = 3;
   imports: [CommonModule, FormsModule, ReactiveFormComponent, WorkAreaMapSelectComponent],
   template: `
     <div class="wizard">
-      <ol class="steps">
-        <li *ngFor="let step of steps; let i = index"
-            class="step"
-            [class.done]="i < index()"
-            [class.current]="i === index()"
-            (click)="jumpTo(i)">
-          <span class="step-num">{{ i + 1 }}</span>
-          <span class="step-title">{{ step.title }}</span>
-        </li>
-      </ol>
+      <!--
+        One bar for the whole wizard.
+
+        There used to be five bands of chrome before the first question: the page's own sticky
+        header (Back + Resubmit), the step chips, the step heading, and the help paragraph. On a
+        phone that was most of the first screen. This row does all three jobs at once - where you
+        are, how to go back, and everything that is not the next question.
+      -->
+      <header class="bar">
+        <button type="button" class="bar-icon" (click)="back()" [attr.aria-label]="backLabel()"
+                [title]="backLabel()">&#8592;</button>
+
+        <div class="bar-progress">
+          <div class="bar-text">
+            <span class="bar-step">Step {{ stepNumber() }} of {{ stepCount() }}</span>
+            <span class="bar-sep">&middot;</span>
+            <span class="bar-title">{{ current()?.title }}</span>
+          </div>
+          <div class="bar-track" role="progressbar" [attr.aria-valuenow]="stepNumber()"
+               aria-valuemin="1" [attr.aria-valuemax]="stepCount()">
+            <span class="bar-fill" [style.width.%]="progress()"></span>
+          </div>
+        </div>
+
+        <!-- Everything that is not the next question lives behind here, so each step has exactly
+             one obvious primary action. "Skip the guide" used to compete with Next on every step. -->
+        <div class="bar-more">
+          <button type="button" class="bar-icon" (click)="menuOpen.set(!menuOpen())"
+                  aria-haspopup="menu" [attr.aria-expanded]="menuOpen()"
+                  aria-label="More options" title="More options">&#8942;</button>
+          @if (menuOpen()) {
+            <div class="menu-scrim" (click)="menuOpen.set(false)"></div>
+            <div class="menu" role="menu">
+              <button type="button" role="menuitem" (click)="chooseFullForm()">
+                Open the full form
+              </button>
+              <button type="button" role="menuitem" (click)="chooseResubmit()">
+                Resubmit a previous request
+              </button>
+              <button type="button" role="menuitem" class="danger" (click)="chooseExit()">
+                Leave this request
+              </button>
+            </div>
+          }
+        </div>
+      </header>
 
       <div class="step-body" *ngIf="current() as step">
-        <h3 class="step-heading">{{ step.title }}</h3>
-        <p class="step-help">{{ step.help }}</p>
+        <p class="step-help" *ngIf="!onMap()">{{ step.help }}</p>
 
         <p class="step-block" *ngIf="blockReason()">{{ blockReason() }}</p>
 
-        <!-- The map IS the first question, so it is the first thing on screen — not a control
+        <!-- The map IS the first question, so it is the first thing on screen - not a control
              buried in a form under a label. The escape hatch and the plant-wide scopes are drawn
              on the map itself, so both ways of answering are visible at the moment of deciding. -->
         <ng-container *ngIf="step.key === 'location' && phase() === 'map'">
           <app-work-area-map-select
             [multiple]="true"
+            [autoOpen]="true"
             [ngModel]="pickedAreas()"
             (ngModelChange)="onAreasPicked($event)"
             [scopeOptions]="scopeOptions"
@@ -91,13 +127,13 @@ const MIN_LOCATION_TEXT = 3;
         <div class="picked" *ngIf="step.key === 'location' && phase() === 'detail'">
           <ng-container *ngIf="pickedAreaName(); else noArea">
             <strong>{{ pickedAreaName() }}</strong>{{ areas().length > 1 ? ' and ' + (areas().length - 1) + ' more' : '' }}
-            — add anything that helps us find you (optional).
+            &mdash; add anything that helps us find you (optional).
           </ng-container>
           <ng-template #noArea>
-            No area selected. Describe where the work is, in your own words — an operator will place
-            it for you.
+            No area selected. Describe where the work is, in your own words &mdash; an operator will
+            place it for you.
           </ng-template>
-          <button class="nav-btn" (click)="phase.set('map')">Change</button>
+          <button type="button" class="link-btn" (click)="phase.set('map')">Change</button>
         </div>
 
         <!-- What happens in each area. Two questions per area and nothing else: they are what
@@ -106,7 +142,7 @@ const MIN_LOCATION_TEXT = 3;
         <div class="area-plan" *ngIf="step.key === 'location' && phase() === 'detail' && areas().length">
           <p class="area-plan-help" *ngIf="areas().length > 1">
             One Confined Space permit is issued per space, and one Hot Work permit per area where
-            hot work happens — so tell us which areas need what.
+            hot work happens &mdash; so tell us which areas need what.
           </p>
           <div class="area-row" *ngFor="let area of areas(); let i = index">
             <div class="area-name">
@@ -129,65 +165,111 @@ const MIN_LOCATION_TEXT = 3;
           </div>
         </div>
 
+        <!-- showSubmitButton=false: the action bar below drives submission by calling this form's
+             own onSubmit(), so the wizard gets one button in one place while the form keeps its
+             validation, its markAllAsTouched and its scroll-to-first-error. -->
         <app-reactive-form
           *ngIf="!(step.key === 'location' && phase() === 'map')"
           [entity]="draft()"
           [fields]="stepFields()"
           [title]="''"
           [showAddEditOption]="false"
-          [submitButtonText]="isLast() ? 'Review and submit' : 'Next'"
+          [showSubmitButton]="false"
           (formValueChange)="onValueChange($event)"
           (formSubmit)="onNext($event)"
         ></app-reactive-form>
+      </div>
 
-        <div class="nav">
-          <button class="nav-btn" *ngIf="index() > 0 || phase() === 'detail'" (click)="back()">
-            ← Back
-          </button>
-          <span class="nav-spacer"></span>
-          <button class="nav-btn ghost" (click)="skipToForm.emit()">
-            Skip the guide — open the full form
-          </button>
-        </div>
+      <!-- One action, always in the same place. Next used to sit inside the form on most steps and
+           under the map on the first one, so the thing to press moved between steps. -->
+      <div class="action-bar">
+        <span class="action-note">{{ actionNote() }}</span>
+        <button type="button" class="action-primary"
+                [disabled]="primaryDisabled()" (click)="primary()">
+          {{ primaryLabel() }}
+        </button>
       </div>
     </div>
   `,
   styles: [`
-    :host { display: block; }
-    .wizard { padding: 8px 0 24px; }
+    :host { display: block; height: 100%; }
 
-    .steps {
-      display: flex; flex-wrap: wrap; gap: 4px;
-      list-style: none; margin: 0 0 16px; padding: 0;
+    .wizard {
+      display: flex; flex-direction: column;
+      min-height: 100%;
     }
 
-    .step {
-      display: flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 14px;
-      background: var(--secondary-background, #f0f2f5);
-      color: var(--secondary-text, #666);
-      font-size: 12px; cursor: pointer;
+    /* ---------------------------------------------------------------- the one bar */
+
+    .bar {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 4px 8px;
+      background: var(--primary-background, #fff);
+      border-bottom: 1px solid var(--border-color, #e6e6e6);
     }
 
-    /* Only completed steps are clickable; a step ahead of the current one has not been validated
-       yet, so jumping into it would show a half-empty form with no explanation. */
-    .step.done { color: var(--primary-text, #222); }
-    .step.current {
-      background: var(--accent-color, #007bff); color: #fff; font-weight: 600;
-    }
-
-    .step-num {
-      width: 18px; height: 18px; border-radius: 50%;
-      background: rgba(0,0,0,0.12);
+    .bar-icon {
+      flex: 0 0 auto;
+      width: 36px; height: 36px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700;
+      border: none; background: none; cursor: pointer;
+      color: var(--primary-text, #222); font-size: 20px; line-height: 1;
     }
-    .step.current .step-num { background: rgba(255,255,255,0.3); }
+    .bar-icon:hover { background: var(--secondary-background, #f0f2f5); }
 
-    .step-heading { margin: 0 0 4px; font-size: 18px; }
+    .bar-progress { flex: 1; min-width: 0; }
+
+    .bar-text {
+      display: flex; align-items: baseline; gap: 5px;
+      font-size: 12px; color: var(--secondary-text, #666);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bar-title { font-weight: 600; color: var(--primary-text, #222); }
+
+    .bar-track {
+      margin-top: 5px; height: 3px; border-radius: 2px;
+      background: var(--secondary-background, #e9ecef); overflow: hidden;
+    }
+    .bar-fill {
+      display: block; height: 100%; border-radius: 2px;
+      background: var(--accent-color, #007bff);
+      transition: width .25s ease;
+    }
+
+    .bar-more { position: relative; flex: 0 0 auto; }
+
+    /* Catches the next tap anywhere so the menu closes without a document listener. */
+    .menu-scrim { position: fixed; inset: 0; z-index: 9; }
+
+    .menu {
+      position: absolute; top: 100%; right: 0; z-index: 10;
+      min-width: 220px; padding: 4px;
+      background: var(--primary-background, #fff);
+      border: 1px solid var(--border-color, #ddd); border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.16);
+    }
+    .menu button {
+      display: block; width: 100%; padding: 9px 12px;
+      border: none; background: none; cursor: pointer;
+      text-align: left; font-size: 14px; border-radius: 5px;
+      color: var(--primary-text, #222);
+    }
+    .menu button:hover { background: var(--secondary-background, #f0f2f5); }
+    .menu button.danger { color: #b71c1c; }
+
+    /* ---------------------------------------------------------------- step body */
+
+    .step-body { flex: 1; padding: 14px 0 4px; }
+
     .step-help {
-      margin: 0 0 14px; font-size: 14px; line-height: 1.5;
-      color: var(--secondary-text, #555);
+      margin: 0 0 14px; font-size: 13px; line-height: 1.5;
+      color: var(--secondary-text, #666);
+    }
+
+    .step-block {
+      margin: 0 0 12px; padding: 8px 12px; border-radius: 6px;
+      background: #fdecea; color: #b71c1c; font-size: 13px;
     }
 
     .picked {
@@ -196,7 +278,12 @@ const MIN_LOCATION_TEXT = 3;
       background: var(--secondary-background, #f0f2f5);
       font-size: 13px; line-height: 1.5;
     }
-    .picked .nav-btn { margin-left: auto; font-size: 13px; }
+
+    .link-btn {
+      margin-left: auto; background: none; border: none; cursor: pointer;
+      color: var(--accent-color, #007bff); font-size: 13px; padding: 4px;
+    }
+    .link-btn:hover { text-decoration: underline; }
 
     .area-plan { margin: 0 0 14px; }
     .area-plan-help { margin: 0 0 8px; font-size: 13px; color: var(--secondary-text, #666); }
@@ -225,24 +312,35 @@ const MIN_LOCATION_TEXT = 3;
       font-size: 13px;
     }
 
-    .step-block {
-      margin: 0 0 12px; padding: 8px 12px; border-radius: 6px;
-      background: #fdecea; color: #b71c1c; font-size: 13px;
+    /* ---------------------------------------------------------------- action bar */
+
+    /* Sticky rather than fixed: it pins to the bottom of the scrolling content area while there is
+       more below, and the flex column above pushes it to the bottom when the step is short. Fixed
+       would have to guess at this page's scroll container. */
+    .action-bar {
+      position: sticky; bottom: 0; z-index: 4;
+      display: flex; align-items: center; gap: 12px;
+      margin-top: 12px; padding: 10px 4px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: var(--primary-background, #fff);
+      border-top: 1px solid var(--border-color, #e6e6e6);
     }
 
-    .nav { display: flex; align-items: center; margin-top: 16px; }
-    .nav-spacer { flex: 1; }
-
-    .nav-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--accent-color, #007bff); font-size: 14px; padding: 6px 4px;
+    .action-note {
+      flex: 1; min-width: 0;
+      font-size: 12px; line-height: 1.4; color: var(--secondary-text, #666);
     }
-    .nav-btn.ghost { color: var(--secondary-text, #777); font-size: 13px; }
-    .nav-btn:hover { text-decoration: underline; }
+
+    .action-primary {
+      flex: 0 0 auto; padding: 11px 24px; border: none; border-radius: 6px;
+      background: var(--accent-color, #007bff); color: #fff;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .action-primary:disabled { opacity: .45; cursor: not-allowed; }
 
     @media (max-width: 600px) {
-      .step-title { display: none; }
-      .step.current .step-title { display: inline; }
+      .action-primary { flex: 1; padding: 13px 20px; }
+      /* On a phone the note competes with the button for the same row; the button wins. */
+      .action-note:empty { display: none; }
     }
   `],
 })
@@ -251,13 +349,73 @@ export class WorkRequestWizardComponent implements OnInit {
   skipToForm = output<void>();
   /** Every step passed; hand over to the full form for a final read-through and submit. */
   reviewReady = output<WorkRequest>();
+  /** Back from the very first step, or "Leave this request" — the host owns where that goes. */
+  exitRequested = output<void>();
+  /** "Resubmit a previous request" — the host owns the picker popup. */
+  resubmitRequested = output<void>();
+
+  /**
+   * The step's form, so the action bar can submit it.
+   *
+   * <p>Calling the form's own `onSubmit()` rather than rebuilding the value here is what keeps the
+   * single action bar honest: the form still decides validity, still marks everything touched and
+   * still scrolls to the first error, exactly as it did when the button lived inside it.
+   */
+  private formRef = viewChild(ReactiveFormComponent);
+
+  /** The overflow menu behind the bar's "more" button. */
+  menuOpen = signal(false);
 
   private state = inject(WorkRequestStateService);
   private userSetup = inject(UserSetupService);
   private seeds = inject(WorkAreaSeedService);
   private destroyRef = inject(DestroyRef);
 
-  draft = signal<WorkRequest>(new WorkRequest());
+  /**
+   * Work-category options for the scope step's dropdown. Read from the same
+   * {@code pwa_work_categories} localStorage cache that WorkRequestFormComponent writes
+   * on every successful hub / Supabase fetch — so the wizard has options the moment
+   * the full form has, without duplicating the load pipeline. The model itself ships
+   * with an empty {@code options: []} because it has no access to hub / cache; every
+   * host is expected to inject its own list, and the wizard silently rendering an
+   * empty select was the previous version of that expectation.
+   */
+  private workCategoryOptions = signal<{ value: string; label: string }[]>(this.readCachedCategoryOptions());
+  private readCachedCategoryOptions(): { value: string; label: string }[] {
+    try {
+      const raw = localStorage.getItem('pwa_work_categories');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<{ value?: string; label?: string; name?: string }>;
+        // The cache is written both as [{value,label}] (form component) and could arrive as
+        // [{id,name}] on cold start before the form runs — tolerate both.
+        if (Array.isArray(parsed)) {
+          const mapped = parsed
+            .map(o => ({ value: o.value ?? o.name ?? '', label: o.label ?? o.name ?? '' }))
+            .filter(o => o.value);
+          if (mapped.length) return mapped;
+        }
+      }
+    } catch { /* fall through to defaults */ }
+    // Cold-start fallback: same 12-entry set the full form ships with, so a first-time
+    // wizard visitor never sees an empty dropdown. Hub-served categories overwrite this
+    // as soon as the full form runs once (its subscribe writes the cache).
+    return ['Mechanical', 'Electrical', 'Insulation', 'Inspection', 'Rigging', 'Cleaning',
+            'Energized', 'I&C', 'Welding / Hot Work', 'Civil', 'Operations', 'Scaffolding']
+      .map(name => ({ value: name, label: name }));
+  }
+
+  /**
+   * The one draft, mutated in place — with identity equality DISABLED.
+   *
+   * <p>Every handler here mutates the same WorkRequest and calls `draft.set(wr)`. A signal compares
+   * with === by default, so setting it to the object it already holds is a no-op: nothing
+   * recomputed, and the Continue button stayed disabled no matter how many areas were tapped.
+   *
+   * <p>Mutating one draft is deliberate — it is what carries an answer from step 1 through to step
+   * 5 — so the honest fix is to tell the signal that identity is not a useful comparison here,
+   * rather than cloning a work request on every keystroke.
+   */
+  draft = signal<WorkRequest>(new WorkRequest(), { equal: () => false });
   index = signal(0);
   blockReason = signal('');
 
@@ -288,7 +446,9 @@ export class WorkRequestWizardComponent implements OnInit {
     {
       key: 'location',
       title: 'Location',
-      help: 'Where will the work be done?',
+      help: 'Tap the area on the map where the work will be done. Tap more than one if the job '
+          + 'covers several. If you cannot find it, use "I cannot find it" on the map and describe '
+          + 'the spot instead.',
       fields: ['locationDetail', 'locationDescription'],
       validate: wr => {
         if (wr.workAreaId) return null;
@@ -366,6 +526,31 @@ export class WorkRequestWizardComponent implements OnInit {
       if (!wr.company) wr.company = user.company;
     }
     this.draft.set(wr);
+    // Refresh / re-entry: if the request already carries picked areas or a plant-wide
+    // scope description, don't slam the map back over the top — jump past the map into
+    // the follow-up 'detail' sub-phase. And when EVERY earlier step is already valid,
+    // advance the index to the first step that still needs an answer, so a returning
+    // user lands on the question they left off on rather than starting from step 1.
+    const hasArea = (wr.workAreas?.length ?? 0) > 0 || wr.workAreaId != null;
+    const scopedText = String((wr as any).locationDescription ?? '').trim().length > 0;
+    if (hasArea || (wr.workAreaUnknown && scopedText)) {
+      this.phase.set('detail');
+      const first = this.firstIncompleteStepIndex(wr);
+      if (first > 0) this.index.set(first);
+    }
+  }
+
+  /**
+   * First step whose {@code validate()} rejects the current draft — where the user
+   * should be dropped on re-entry so they don't retrace steps they already answered.
+   * Returns 0 if step 1 itself is incomplete (the normal cold-start case).
+   */
+  private firstIncompleteStepIndex(wr: WorkRequest): number {
+    const visible = this.visibleSteps();
+    for (let i = 0; i < visible.length; i++) {
+      if (visible[i].validate(wr) != null) return i;
+    }
+    return Math.max(0, visible.length - 1);
   }
 
   /**
@@ -381,6 +566,54 @@ export class WorkRequestWizardComponent implements OnInit {
   current = computed<WizardStep | undefined>(() => this.visibleSteps()[this.index()]);
 
   isLast = computed(() => this.index() >= this.visibleSteps().length - 1);
+
+  // ---------------------------------------------------------------- the bar
+
+  stepNumber = computed(() => this.index() + 1);
+  stepCount = computed(() => this.visibleSteps().length);
+  progress = computed(() => (this.stepNumber() / Math.max(1, this.stepCount())) * 100);
+
+  /** True while the location step is still showing the map rather than the follow-up text. */
+  onMap = computed(() => this.current()?.key === 'location' && this.phase() === 'map');
+
+  backLabel = computed(() => (this.index() === 0 && this.onMap()
+    ? 'Leave this request'
+    : 'Back'));
+
+  // ---------------------------------------------------------------- the action bar
+
+  primaryLabel = computed(() => {
+    if (this.onMap()) return 'Continue';
+    return this.isLast() ? 'Review and submit' : 'Next';
+  });
+
+  /**
+   * Only the map gates its own button — every other step lets the press through and answers with a
+   * reason. A disabled Next that will not say why is the worst version of a wizard.
+   */
+  primaryDisabled = computed(() => this.onMap() && !this.areas().length);
+
+  actionNote = computed(() => {
+    if (!this.onMap()) return '';
+    const n = this.areas().length;
+    return n
+      ? `${n} area${n === 1 ? '' : 's'} selected — tap more if the work covers them.`
+      : 'Pick at least one area to continue.';
+  });
+
+  primary(): void {
+    if (this.onMap()) {
+      this.phase.set('detail');
+      return;
+    }
+    this.formRef()?.onSubmit();
+  }
+
+  // ---------------------------------------------------------------- overflow menu
+
+  chooseFullForm(): void { this.menuOpen.set(false); this.skipToForm.emit(); }
+  chooseResubmit(): void { this.menuOpen.set(false); this.resubmitRequested.emit(); }
+  chooseExit(): void { this.menuOpen.set(false); this.exitRequested.emit(); }
 
   /**
    * Fields are re-derived from the DRAFT on every step, not cached. `toFormFields()` reads the
@@ -400,14 +633,46 @@ export class WorkRequestWizardComponent implements OnInit {
       // returns FALSE when a showWhen's controlling field is absent from the form, so leaving the
       // conditions in place would hide both fields and leave the step blank. Stripping showWhen and
       // picking the branch directly is the honest version of what the condition meant.
+      // One text field, always present. Which one depends on whether an area was picked — detail
+      // to add to it, or a description instead of it — but there is always somewhere to write down
+      // the thing the map could not express ("north side, behind the guard").
       const unknown = (this.draft() as any).workAreaUnknown === true;
       const wanted = unknown ? 'locationDescription' : 'locationDetail';
-      return all.filter(f => f.name === wanted).map(f => ({ ...f, showWhen: undefined }));
+      return all.filter(f => f.name === wanted)
+        .map(f => this.withoutRequired({ ...f, showWhen: undefined }));
     }
 
     const wanted = new Set(step.fields);
-    return all.filter(f => wanted.has(f.name));
+    const cats = this.workCategoryOptions();
+    return all.filter(f => wanted.has(f.name)).map(f => {
+      const withoutReq = this.withoutRequired(f);
+      // Inject the loaded work-category list into the model's empty-options placeholder.
+      // Without this the wizard's Main Work Scope dropdown was permanently empty — the
+      // model can't reach the cache and the wizard skipped the full form's loader.
+      if (withoutReq.name === 'workCategoryName' && cats.length) {
+        return { ...withoutReq, options: cats };
+      }
+      return withoutReq;
+    });
   });
+
+  /**
+   * Drop `Validators.required` from a field.
+   *
+   * <p>The wizard states its own minimum per step, and the model's own `required` flags are a
+   * SECOND gate that disagrees with it — the work-type dropdown is required on the full form, so the
+   * step refused to advance even though the stated minimum is a couple of words of work scope. Two
+   * gates means the one the requester was told about is not the one stopping them.
+   *
+   * <p>Only `required` is removed; anything else a field validates (a pattern, a range) still
+   * applies, because those describe the value rather than whether an answer is owed.
+   */
+  private withoutRequired(field: FormField): FormField {
+    const validators = (field as any).validators as any[] | undefined;
+    if (!validators?.length) return field;
+    const kept = validators.filter(v => v !== Validators.required);
+    return kept.length === validators.length ? field : { ...field, validators: kept } as FormField;
+  }
 
   // ---------------------------------------------------------------- navigation
 
@@ -449,7 +714,8 @@ export class WorkRequestWizardComponent implements OnInit {
     this.draft.set(wr);
     this.state.saveDraft(wr);
     this.blockReason.set('');
-    if (primary) this.phase.set('detail');
+    // Deliberately staying on the map. Advancing on the first pick made a second area impossible to
+    // select — the screen moved on before the requester could tap it. They leave with Continue.
   }
 
   /**
@@ -571,22 +837,25 @@ export class WorkRequestWizardComponent implements OnInit {
     this.index.update(i => i + 1);
   }
 
+  /**
+   * The only Back in the wizard.
+   *
+   * <p>There were three before — the page's own Back, this one, and the browser's — with different
+   * behaviour, so "go back" meant three different things depending on which one was nearest. This
+   * walks one step at a time and hands off to the host at the start, which is what the page header's
+   * Back used to do.
+   */
   back(): void {
     this.blockReason.set('');
     if (this.current()?.key === 'location' && this.phase() === 'detail') {
       this.phase.set('map');
       return;
     }
-    this.index.update(i => Math.max(0, i - 1));
-  }
-
-  /** Only backwards. A step ahead has not been validated, so its form would be half-empty. */
-  jumpTo(i: number): void {
-    if (i < this.index()) {
-      this.blockReason.set('');
-      this.index.set(i);
-      if (this.visibleSteps()[i]?.key === 'location') this.phase.set('map');
+    if (this.index() === 0) {
+      this.exitRequested.emit();
+      return;
     }
+    this.index.update(i => i - 1);
   }
 
   /**

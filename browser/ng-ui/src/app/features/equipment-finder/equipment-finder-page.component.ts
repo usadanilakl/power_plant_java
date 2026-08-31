@@ -1,18 +1,15 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { EquipmentPickerComponent } from '../../shared/forms/equipment-picker/equipment-picker.component';
 import { WorkAreaMapSelectComponent } from '../../shared/forms/work-area-map-select/work-area-map-select.component';
 import { PwaLotoPointEntry } from '../../services/equipment-data.service';
-import { LotoStandardApiService } from '../loto-standard/loto-standard-api.service';
 import { QrApiService, QrForbiddenError } from '../qr/qr-api.service';
 import { QrDrawingHostComponent } from '../qr/qr-drawing-host.component';
 import { QrMatch } from '../qr/qr.model';
 import { EquipmentFinderApiService } from './equipment-finder-api.service';
-import {
-  FINDER_FIELDS, FilterMode, FinderFieldKey, FinderItem, FinderRequest, FinderResult,
-} from './equipment-finder.model';
+import { FinderFiltersComponent } from './finder-filters.component';
+import { FinderItem, FinderRequest, FinderResult } from './equipment-finder.model';
 
 /**
  * Equipment Finder — find a LOTO point or a piece of equipment from what you can remember about it,
@@ -39,7 +36,7 @@ import {
   standalone: true,
   imports: [
     FormsModule, MainLayoutComponent, QrDrawingHostComponent, WorkAreaMapSelectComponent,
-    EquipmentPickerComponent,
+    EquipmentPickerComponent, FinderFiltersComponent,
   ],
   template: `
     <app-main-layout [header]="'Equipment Finder'">
@@ -59,64 +56,10 @@ import {
 
           @if (activeTab() === 'filters') {
           <div class="ef-filter-pane">
-            <div class="ef-filters">
-            @for (f of fields; track f.key) {
-              <div class="ef-filter">
-                <div class="ef-filter-head">
-                  <span class="ef-label">{{ f.label }}</span>
-                  @if (terms()[f.key].length > 1) {
-                    <span class="ef-modes">
-                      <button class="ef-mode" [class.active]="modes()[f.key] === 'OR'"
-                              (click)="setMode(f.key, 'OR')">any</button>
-                      <button class="ef-mode" [class.active]="modes()[f.key] === 'AND'"
-                              (click)="setMode(f.key, 'AND')">all</button>
-                    </span>
-                  }
-                </div>
-
-                @if (terms()[f.key].length) {
-                  <div class="ef-chips">
-                    @for (t of terms()[f.key]; track t) {
-                      <button class="ef-chip" (click)="removeTerm(f.key, t)" [attr.aria-label]="'Remove ' + t">
-                        {{ t }} <span class="ef-chip-x">✕</span>
-                      </button>
-                    }
-                  </div>
-                }
-
-                <!--
-                  No (blur) commit on purpose. Committing turns the typed word into a chip, which adds
-                  a row ABOVE the buttons — and blur fires before the click that caused it, so tapping
-                  Search with a half-typed word would move the button out from under the finger.
-                  search() folds any uncommitted text in instead, so nothing is lost by waiting.
-                -->
-                <div class="ef-input-wrap">
-                  <input class="ef-input" type="search" autocomplete="off" autocapitalize="none"
-                         [placeholder]="f.placeholder"
-                         [value]="pending()[f.key]"
-                         (input)="onInput(f.key, $event)"
-                         (keydown.enter)="commit(f.key)"
-                         (focus)="onFocus(f.key)"
-                         (blur)="onBlur(f.key)">
-                  @if (f.suggest && suggestions(f.key).length) {
-                    <div class="ef-suggest">
-                      @for (o of suggestions(f.key); track o) {
-                        <button type="button" class="ef-suggest-item"
-                                (pointerdown)="pickSuggestion(f.key, o, $event)">{{ o }}</button>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-
-          <div class="ef-actions">
-            <button class="ef-btn" (click)="search()" [disabled]="searching()">
-              {{ searching() ? 'Searching…' : 'Search' }}
-            </button>
-            <button class="ef-btn ef-btn-plain" (click)="clearAll()">Clear</button>
-          </div>
+            <app-finder-filters
+              [searching]="searching()"
+              (searchRequested)="runSearch($event)"
+              (cleared)="clearResults()"></app-finder-filters>
 
           @if (error()) {
             <p class="ef-msg ef-err">{{ error() }}</p>
@@ -247,25 +190,14 @@ import {
     .ef-row-note { color: #e0a030; font-size: 0.78rem; margin-top: 0.15rem; }
   `]
 })
-export class EquipmentFinderPageComponent implements OnInit {
+export class EquipmentFinderPageComponent {
   @ViewChild('mapEquipmentPicker') mapEquipmentPicker?: EquipmentPickerComponent;
 
   private api = inject(EquipmentFinderApiService);
   private qrApi = inject(QrApiService);
-  private lotoApi = inject(LotoStandardApiService);
 
-  readonly fields = FINDER_FIELDS;
   activeTab = signal<'filters' | 'map'>('filters');
   selectedWorkArea: { id: number; name: string } | null = null;
-
-  /** Value names for the boxes that have a known list — see {@link loadOptions}. */
-  options = signal<Record<FinderFieldKey, string[]>>(this.byField<string[]>(() => []));
-  /** Which box has focus, so only that one shows its dropdown. */
-  focusedKey = signal<FinderFieldKey | null>(null);
-
-  terms = signal<Record<FinderFieldKey, string[]>>(this.emptyTerms());
-  modes = signal<Record<FinderFieldKey, FilterMode>>(this.defaultModes());
-  pending = signal<Record<FinderFieldKey, string>>(this.emptyPending());
 
   searching = signal(false);
   error = signal<string | null>(null);
@@ -277,10 +209,6 @@ export class EquipmentFinderPageComponent implements OnInit {
   /** The item whose drawings are open, and which row is mid-fetch (rows are one tap from a network call). */
   selected = signal<QrMatch | null>(null);
   openingKey = signal<string | null>(null);
-
-  async ngOnInit(): Promise<void> {
-    await this.loadOptions();
-  }
 
   /** Open the area-filtered picker after a shape resolves to one concrete work area. */
   onWorkAreaSelected(area: { id: number; name: string } | null): void {
@@ -302,130 +230,12 @@ export class EquipmentFinderPageComponent implements OnInit {
     });
   }
 
-  /**
-   * Fill the Location / Equipment type dropdowns from the Value lists the LOTO walkdown already
-   * serves ({@code /api/pwa/secured/loto-standards/positions}) — same audience, same Values, no new
-   * endpoint. Failure is silent on purpose: both boxes are free text, so a missing list costs a
-   * shortcut, not the search.
-   */
-  private async loadOptions(): Promise<void> {
-    try {
-      const positions = await firstValueFrom(this.lotoApi.getPositions());
-      const names = (list: { name: string }[] | undefined) =>
-        (list ?? []).map(v => v.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
-      this.options.update(o => ({
-        ...o,
-        location: names(positions?.location),
-        eqType: names(positions?.eqType),
-      }));
-    } catch {
-      // No suggestions this session; typing still works.
-    }
-  }
-
-  // ── Filter editing ──────────────────────────────────────────────────────────
-
-  onInput(key: FinderFieldKey, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.pending.update(p => ({ ...p, [key]: value }));
-    // A comma commits immediately; a SPACE deliberately does not. Space-to-commit would fight the
-    // suggestion dropdown — "boiler bui" would chip "boiler" and drop the list mid-word — and the
-    // split below catches spaces at commit time anyway.
-    if (value.includes(',')) this.commit(key);
-  }
-
-  /**
-   * Turn whatever is in the box into chips. Called on Enter, on a typed comma, and once more for every
-   * box at the top of {@link search} — that last pass is what keeps a word the user typed but never
-   * committed from being silently dropped from the query.
-   */
-  commit(key: FinderFieldKey): void {
-    const raw = this.pending()[key];
-    if (!raw || !raw.trim()) {
-      if (raw) this.pending.update(p => ({ ...p, [key]: '' }));
-      return;
-    }
-    // Split on whitespace AS WELL AS commas. This is the bucket-of-words promise: "455 cnd" has to
-    // become two terms that each match a fragment of "1CND455", not one literal string that matches
-    // nothing because no tag contains a space followed by "cnd".
-    const existing = this.terms()[key];
-    const added = raw.split(/[\s,]+/).map(t => t.trim()).filter(Boolean)
-      .filter(t => !existing.some(e => e.toLowerCase() === t.toLowerCase()));
-    if (added.length) this.terms.update(t => ({ ...t, [key]: [...existing, ...added] }));
-    this.pending.update(p => ({ ...p, [key]: '' }));
-  }
-
-  /**
-   * Add one term verbatim, without the word split — for a picked suggestion, where a multi-word Value
-   * name ("Boiler Building") is a single thing the user chose, not two fragments to hunt separately.
-   */
-  private addTerm(key: FinderFieldKey, value: string): void {
-    const existing = this.terms()[key];
-    if (existing.some(e => e.toLowerCase() === value.toLowerCase())) return;
-    this.terms.update(t => ({ ...t, [key]: [...existing, value] }));
-  }
-
-  // ── Suggestions (Location, Equipment type) ──────────────────────────────────
-
-  /**
-   * Known Value names matching what has been typed so far. Empty unless the box is focused AND has
-   * text — the ask was a dropdown that appears as you type, not a list sitting open over the form.
-   */
-  suggestions(key: FinderFieldKey): string[] {
-    if (this.focusedKey() !== key) return [];
-    const typed = (this.pending()[key] || '').trim().toLowerCase();
-    if (!typed) return [];
-    const chosen = this.terms()[key].map(t => t.toLowerCase());
-    return this.options()[key]
-      .filter(o => o.toLowerCase().includes(typed) && !chosen.includes(o.toLowerCase()))
-      .slice(0, 8);
-  }
-
-  /**
-   * Take a suggestion. Bound to pointerdown, not click: a click would be preceded by blur, which
-   * closes the list and cancels the tap. preventDefault keeps focus on the input so the user can
-   * keep typing the next word.
-   */
-  pickSuggestion(key: FinderFieldKey, value: string, event: Event): void {
-    event.preventDefault();
-    this.addTerm(key, value);
-    this.pending.update(p => ({ ...p, [key]: '' }));
-  }
-
-  onFocus(key: FinderFieldKey): void { this.focusedKey.set(key); }
-  onBlur(key: FinderFieldKey): void { if (this.focusedKey() === key) this.focusedKey.set(null); }
-
-  removeTerm(key: FinderFieldKey, term: string): void {
-    this.terms.update(t => ({ ...t, [key]: t[key].filter(x => x !== term) }));
-  }
-
-  setMode(key: FinderFieldKey, mode: FilterMode): void {
-    this.modes.update(m => ({ ...m, [key]: mode }));
-  }
-
-  clearAll(): void {
-    this.terms.set(this.emptyTerms());
-    this.pending.set(this.emptyPending());
-    this.modes.set(this.defaultModes());
-    this.result.set(null);
-    this.error.set(null);
-    this.clearNotice();
-  }
-
   // ── Search ──────────────────────────────────────────────────────────────────
 
-  async search(): Promise<void> {
-    for (const f of this.fields) this.commit(f.key); // fold in anything still sitting in a box
+  /** Run a request the filter form built. It owns the words; this owns the results. */
+  async runSearch(request: FinderRequest): Promise<void> {
     this.error.set(null);
     this.clearNotice();
-
-    const request = this.buildRequest();
-    if (!request) {
-      this.error.set('Add at least one word to search on.');
-      this.result.set(null);
-      return;
-    }
-
     this.searching.set(true);
     try {
       const r = await this.api.search(request);
@@ -441,17 +251,11 @@ export class EquipmentFinderPageComponent implements OnInit {
     }
   }
 
-  /** Null when every box is empty — the server would refuse it anyway, and this says so sooner. */
-  private buildRequest(): FinderRequest | null {
-    const request: FinderRequest = {};
-    let any = false;
-    for (const f of this.fields) {
-      const terms = this.terms()[f.key];
-      if (!terms.length) continue;
-      any = true;
-      request[f.key] = { terms, mode: this.modes()[f.key] };
-    }
-    return any ? request : null;
+  /** Filters were cleared — drop the results too, so a stale list cannot outlive the words behind it. */
+  clearResults(): void {
+    this.result.set(null);
+    this.error.set(null);
+    this.clearNotice();
   }
 
   // ── Opening a row ───────────────────────────────────────────────────────────
@@ -502,21 +306,4 @@ export class EquipmentFinderPageComponent implements OnInit {
     return [item.location, item.eqType, item.specificLocation].filter(Boolean).join(' · ') || '—';
   }
 
-  // ── Initial state ───────────────────────────────────────────────────────────
-
-  /** One entry per filter box, built from the field list so adding a sixth field needs no edits here. */
-  private byField<T>(make: () => T): Record<FinderFieldKey, T> {
-    const out = {} as Record<FinderFieldKey, T>;
-    for (const f of FINDER_FIELDS) out[f.key] = make();
-    return out;
-  }
-
-  private emptyTerms(): Record<FinderFieldKey, string[]> { return this.byField<string[]>(() => []); }
-  private emptyPending(): Record<FinderFieldKey, string> { return this.byField<string>(() => ''); }
-  /**
-   * AND by default. Typing more words is how people narrow a search, and the case that drove this —
-   * "455 cnd" to find 1CND455 — only works if both fragments must appear. "any" is one tap away when
-   * the words are alternatives rather than clues about the same item.
-   */
-  private defaultModes(): Record<FinderFieldKey, FilterMode> { return this.byField<FilterMode>(() => 'AND'); }
 }

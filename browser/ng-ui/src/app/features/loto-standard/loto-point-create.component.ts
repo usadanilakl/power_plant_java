@@ -4,6 +4,8 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { take } from 'rxjs/operators';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
+import { EquipmentDataService } from '../../services/equipment-data.service';
+import { LotoPermitApiService } from '../loto-permit/loto-permit-api.service';
 import { GlobalMessageService } from '../../services/global-message.service';
 import { QrScannerService } from '../../shared/qr-scanner/qr-scanner.service';
 import { QrScannerComponent } from '../../shared/qr-scanner/qr-scanner.component';
@@ -38,9 +40,12 @@ import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.mod
           } @else if (!phase() || phase() === 'tag') {
             <!-- Step 1: tag lookup -->
             <h1 class="p-title">Tag number</h1>
-            <p class="p-hint">Type the tag on the physical device. We'll check the hub for an existing point.</p>
+            <p class="p-hint">Type the tag on the physical device — the whole hub is checked as you type, so a point that already exists turns up before you make a second one.</p>
+            @if (areaId() && areaLocationIds().length) {
+              <p class="p-hint">Location will be set from the area you picked.</p>
+            }
             <label class="p-field">Tag
-              <input class="p-input" type="text" [value]="tag()" (input)="tag.set($any($event.target).value)"
+              <input class="p-input" type="text" [value]="tag()" (input)="onTagInput($any($event.target).value)"
                      placeholder="e.g. 89G-1/Q9" autofocus>
             </label>
             <button class="p-btn-scan" [disabled]="checkingTag()" (click)="scanTag()">
@@ -106,8 +111,10 @@ import { LotoPointRef, LotoValueRef, PositionOptions } from './loto-standard.mod
               <select class="p-input" [value]="form().location?.id ?? ''"
                       (change)="patchValueRef('location', positions().location, $any($event.target).value)">
                 <option value="">—</option>
-                @for (o of positions().location; track o.id) {
-                  <option [value]="o.id" [selected]="o.id === form().location?.id">{{ o.name }}</option>
+                <!-- The chosen area's Location Values float to the top; the full list stays reachable
+                     below it, because an area boundary is not always where the point lives. -->
+                @for (o of orderedLocations(); track o.id) {
+                  <option [value]="o.id" [selected]="o.id === form().location?.id">{{ isAreaLocation(o.id) ? '★ ' : '' }}{{ o.name }}</option>
                 }
               </select>
             </label>
@@ -205,9 +212,20 @@ export class LotoPointCreateComponent implements OnInit {
   private router = inject(Router);
   private messageService = inject(GlobalMessageService);
   private qr = inject(QrScannerService);
+  private equipmentData = inject(EquipmentDataService);
+  private permitApi = inject(LotoPermitApiService);
 
   editingId = signal<number | null>(null);
   addToStandardId = signal<number | null>(null);
+  /** Permit counterpart of addToStandardId — the point is created, then attached to this permit. */
+  addToLotoId = signal<number | null>(null);
+  /**
+   * Work area chosen before landing here (from the map attach flow). It does not constrain anything;
+   * it just puts that area's Location Values at the top of the Location dropdown — and picks one
+   * outright when the area maps to exactly one — so the walker is not hunting a long list in the field.
+   */
+  areaId = signal<number | null>(null);
+  areaLocationIds = signal<number[]>([]);
   phase = signal<'tag' | 'form'>('tag');
   loading = signal(false);
 
@@ -221,6 +239,15 @@ export class LotoPointCreateComponent implements OnInit {
   form = signal<Omit<Partial<LotoPointRef>, 'id'> & { id?: number | null }>({ id: null });
   submitting = signal(false);
   submitError = signal<string | null>(null);
+  private tagDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  /** Location options with the pre-chosen area's Values first — order only, nothing is hidden. */
+  orderedLocations = computed(() => {
+    const all = this.positions().location;
+    const ids = this.areaLocationIds();
+    if (!ids.length) return all;
+    return [...all].sort((a, b) => Number(ids.includes(b.id)) - Number(ids.includes(a.id)));
+  });
 
   isFormValid = computed(() => !!(this.form().tagNumber ?? '').trim() && !!(this.form().description ?? '').trim());
 
@@ -232,6 +259,14 @@ export class LotoPointCreateComponent implements OnInit {
 
     const addId = this.route.snapshot.queryParamMap.get('addToStandard');
     this.addToStandardId.set(addId ? Number(addId) : null);
+    const addLoto = this.route.snapshot.queryParamMap.get('addToLoto');
+    this.addToLotoId.set(addLoto ? Number(addLoto) : null);
+    const area = this.route.snapshot.queryParamMap.get('areaId');
+    this.areaId.set(area ? Number(area) : null);
+    if (this.areaId()) {
+      const locs = this.equipmentData.getLocationsForWorkArea(this.areaId()!);
+      this.areaLocationIds.set(locs.map(l => l.id));
+    }
 
     this.loading.set(true);
     forkJoin({
@@ -239,6 +274,7 @@ export class LotoPointCreateComponent implements OnInit {
     }).subscribe(({ pos }) => {
       if (pos) this.positions.set(pos);
       this.loading.set(false);
+      this.applyAreaLocation();
     });
 
     if (editId) {
@@ -278,6 +314,38 @@ export class LotoPointCreateComponent implements OnInit {
       // Auto-run the lookup so the walker doesn't need a second tap after scanning.
       this.checkTag();
     });
+  }
+
+  /**
+   * Type-ahead existence check. The point of asking for the tag first is to catch a duplicate before
+   * one is created, and that only works if it happens without being asked for — a walker who has to
+   * tap "Check tag" simply will not, and the plant ends up with two rows for one valve.
+   *
+   * <p>Debounced, and it searches the WHOLE hub, not the chosen area: a duplicate filed under the
+   * wrong location is exactly the kind this needs to find. The result never blocks — it warns, and
+   * offers the existing point as a thing to attach instead.</p>
+   */
+  onTagInput(value: string): void {
+    this.tag.set(value);
+    this.lookupDone.set(false);
+    this.lookupMatches.set([]);
+    if (this.tagDebounce) clearTimeout(this.tagDebounce);
+    if (!value.trim()) return;
+    this.tagDebounce = setTimeout(() => this.checkTag(), 450);
+  }
+
+  /** Which Location Values belong to the pre-chosen area — shown first in the dropdown. */
+  isAreaLocation(id: number): boolean { return this.areaLocationIds().includes(id); }
+
+  /**
+   * Apply the pre-chosen area to the form's Location. Only auto-selects when the area maps to exactly
+   * one Location Value; with several there is nothing to infer, so they are merely surfaced first.
+   */
+  private applyAreaLocation(): void {
+    const ids = this.areaLocationIds();
+    if (ids.length !== 1 || this.form().location) return;
+    const match = this.positions().location.find(o => o.id === ids[0]);
+    if (match) this.form.set({ ...this.form(), location: match });
   }
 
   checkTag(): void {
@@ -333,7 +401,14 @@ export class LotoPointCreateComponent implements OnInit {
         const isNew = !this.editingId();
         this.messageService.showSuccess(isNew ? 'LOTO point created.' : 'LOTO point saved.');
         // Go back to whichever context the walker came from.
-        if (this.addToStandardId()) {
+        if (this.addToLotoId() && saved?.id) {
+          // savePoint's addToStandardId param has no permit twin, so the attach is a second call.
+          this.permitApi.addPoint(this.addToLotoId()!, saved.id).subscribe({
+            next: () => this.router.navigate(['/loto', this.addToLotoId()]),
+            error: (err) => this.submitError.set(
+              'Point created, but adding it to the permit failed: ' + (err?.error?.message ?? err?.message ?? 'unknown')),
+          });
+        } else if (this.addToStandardId()) {
           this.router.navigate(['/loto-standards', this.addToStandardId()]);
         } else {
           history.length > 1 ? history.back() : this.router.navigate(['/loto-standards']);

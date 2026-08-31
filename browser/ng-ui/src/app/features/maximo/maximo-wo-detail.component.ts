@@ -64,8 +64,51 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
             <dt>Location</dt><dd>{{ wo.location || '—' }}</dd>
             <dt>Lead</dt><dd>{{ wo.leadCraft || '—' }}</dd>
             <dt>Target start</dt><dd>{{ (wo.targetStart | date:'medium') || '—' }}</dd>
+            @if (wo.targetFinish) { <dt>Target finish</dt><dd>{{ wo.targetFinish | date:'medium' }}</dd> }
             @if (wo.pmnum) { <dt>PM</dt><dd>{{ wo.pmnum }}</dd> }
           </dl>
+
+          <div class="wd-actions">
+            <button class="wd-action" (click)="startTransferLead()">🔄 Transfer lead</button>
+            <button class="wd-action" (click)="startReschedule()">📅 Reschedule</button>
+          </div>
+
+          @if (showTransferLead()) {
+            <div class="wd-panel">
+              <h4 class="wd-sec">Transfer lead</h4>
+              <label class="wd-field">New lead
+                <select [value]="transferPersonid" (change)="transferPersonid = $any($event.target).value">
+                  <option value="">— choose a person —</option>
+                  @for (p of people(); track p.personid) { <option [value]="p.personid">{{ p.name }} ({{ p.personid }})</option> }
+                </select>
+              </label>
+              <input class="wd-panel-manual" type="text" placeholder="…or type a personid"
+                     [value]="transferPersonid" (input)="transferPersonid = $any($event.target).value">
+              @if (actionError()) { <p class="wd-err">{{ actionError() }}</p> }
+              <div class="wd-panel-btns">
+                <button class="wd-complete" [disabled]="transferring()" (click)="submitTransferLead()">{{ transferring() ? 'Transferring…' : 'Transfer lead' }}</button>
+                <button class="wd-cancel" (click)="cancelTransferLead()">Cancel</button>
+              </div>
+            </div>
+          }
+
+          @if (showReschedule()) {
+            <div class="wd-panel">
+              <h4 class="wd-sec">Reschedule</h4>
+              <label class="wd-field">Target start
+                <input type="date" [value]="rescheduleStart" (input)="rescheduleStart = $any($event.target).value">
+              </label>
+              <label class="wd-field">Target finish (optional)
+                <input type="date" [value]="rescheduleFinish" (input)="rescheduleFinish = $any($event.target).value">
+              </label>
+              @if (actionError()) { <p class="wd-err">{{ actionError() }}</p> }
+              <div class="wd-panel-btns">
+                <button class="wd-complete" [disabled]="rescheduling()" (click)="submitReschedule()">{{ rescheduling() ? 'Saving…' : 'Save dates' }}</button>
+                <button class="wd-cancel" (click)="cancelReschedule()">Cancel</button>
+              </div>
+            </div>
+          }
+
           <app-maximo-wo-loto-link [wonum]="wo.wonum"></app-maximo-wo-loto-link>
         }
 
@@ -443,6 +486,14 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
     .wd-reorder-row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; color: var(--primary-text); }
     .wd-reorder-qty { color: var(--secondary-text, #888); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .wd-reorder-done { text-align: center; color: #27ae60; font-weight: 700; font-size: 0.95rem; padding: 0.8rem; }
+    .wd-actions { display: flex; gap: 0.5rem; margin: 0.9rem 0 0.2rem; }
+    .wd-action { flex: 1; background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); border-radius: 10px; padding: 0.6rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .wd-action:hover, .wd-action:active { background: rgba(127,127,127,0.1); }
+    .wd-panel { border: 1px solid var(--border-color); border-radius: 12px; padding: 0.3rem 0.8rem 0.8rem; margin: 0.6rem 0; background: var(--secondary-background); }
+    .wd-panel-manual { width: 100%; padding: 0.5rem 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; font-size: 0.95rem; box-sizing: border-box; margin-bottom: 0.7rem; }
+    .wd-panel-btns { display: flex; gap: 0.5rem; }
+    .wd-panel-btns .wd-complete { flex: 1; }
+    .wd-cancel { background: transparent; color: var(--secondary-text, #888); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.8rem 1rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; }
   `]
 })
 export class MaximoWoDetailComponent implements OnInit {
@@ -477,6 +528,18 @@ export class MaximoWoDetailComponent implements OnInit {
   summary = signal('');
   details = signal('');
   error = signal<string | null>(null);   // validation only (required-field etc.)
+
+  // ── Transfer lead / Reschedule (Details-tab admin actions; ONLINE ONLY — they write straight to Maximo) ──
+  showTransferLead = signal(false);
+  transferPersonid = '';
+  transferring = signal(false);
+  people = signal<{ name: string; personid: string }[]>([]);
+  private peopleLoaded = false;
+  showReschedule = signal(false);
+  rescheduleStart = '';   // yyyy-MM-dd
+  rescheduleFinish = '';  // yyyy-MM-dd
+  rescheduling = signal(false);
+  actionError = signal<string | null>(null);   // transfer/reschedule error banner
 
   // Submit lifecycle is owned by the (root) sync service, keyed by wonum, so it survives this sheet closing —
   // closing mid-submit would otherwise cancel the request while the server kept going (the double-attach trap).
@@ -892,6 +955,72 @@ export class MaximoWoDetailComponent implements OnInit {
       next: h => { this.history.set(h ?? []); this.historyLoading.set(false); },
       error: () => { this.history.set([]); this.historyLoading.set(false); }
     });
+  }
+
+  // ── Transfer lead (writes spi:lead; no status change) ─────────────────────
+  startTransferLead(): void {
+    this.transferPersonid = '';
+    this.actionError.set(null);
+    this.showReschedule.set(false);
+    this.showTransferLead.set(true);
+    if (!this.peopleLoaded) {
+      this.peopleLoaded = true;
+      this.api.getLaborPeople().subscribe({
+        next: p => this.people.set(p ?? []),
+        error: () => this.people.set([]),
+      });
+    }
+  }
+  cancelTransferLead(): void { this.showTransferLead.set(false); this.actionError.set(null); }
+
+  submitTransferLead(): void {
+    if (this.transferring()) return;
+    const pid = (this.transferPersonid || '').trim().toUpperCase();
+    if (!pid) { this.actionError.set('Choose a person to transfer the lead to.'); return; }
+    this.transferring.set(true);
+    this.actionError.set(null);
+    this.api.transferLead(this.wo.href, pid).subscribe({
+      next: updated => {
+        this.transferring.set(false);
+        if (updated) this.wo = updated;
+        this.showTransferLead.set(false);
+        this.completed.emit();   // parent list refreshes the row
+      },
+      error: e => { this.transferring.set(false); this.actionError.set(this.actionErrMsg(e, 'You need a connection to transfer the lead.')); }
+    });
+  }
+
+  // ── Reschedule (Target Start / Finish, one MERGE) ─────────────────────────
+  startReschedule(): void {
+    this.rescheduleStart = (this.wo.targetStart || '').substring(0, 10);
+    this.rescheduleFinish = (this.wo.targetFinish || '').substring(0, 10);
+    this.actionError.set(null);
+    this.showTransferLead.set(false);
+    this.showReschedule.set(true);
+  }
+  cancelReschedule(): void { this.showReschedule.set(false); this.actionError.set(null); }
+
+  submitReschedule(): void {
+    if (this.rescheduling()) return;
+    const start = (this.rescheduleStart || '').trim();
+    if (!start) { this.actionError.set('Pick a target start date.'); return; }
+    const finish = (this.rescheduleFinish || '').trim();
+    if (finish && finish < start) { this.actionError.set('Target finish cannot be before target start.'); return; }
+    this.rescheduling.set(true);
+    this.actionError.set(null);
+    this.api.setTargetDates(this.wo.href, start, finish || undefined).subscribe({
+      next: updated => {
+        this.rescheduling.set(false);
+        if (updated) this.wo = updated;
+        this.showReschedule.set(false);
+        this.completed.emit();   // parent list refreshes the row
+      },
+      error: e => { this.rescheduling.set(false); this.actionError.set(this.actionErrMsg(e, 'You need a connection to reschedule.')); }
+    });
+  }
+
+  private actionErrMsg(e: any, fallback: string): string {
+    return e?.error?.message || e?.message || fallback;
   }
 
   completeTask(t: MaximoWorkOrder): void {

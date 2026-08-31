@@ -79,10 +79,15 @@ public class PwaEquipmentFinderService {
         // LOTO points fill the list first — they are the thing the plant actually locks out.
         Page<LotoPoint> points = lotoPointRepo.findAll(lotoPointSpec(req), PageRequest.of(0, limit, byTag));
         int remaining = Math.max(0, limit - points.getNumberOfElements());
-        Page<Equipment> equipment = remaining > 0
-                ? equipmentRepo.findAll(unreferencedEquipmentSpec(req), PageRequest.of(0, remaining, byTag))
-                // Still ask for the count when the page is already full, so "showing 200 of N" stays honest.
-                : equipmentRepo.findAll(unreferencedEquipmentSpec(req), PageRequest.of(0, 1, byTag));
+        // lotoPointsOnly skips the equipment query outright rather than filtering after the fact —
+        // an unreferenced-equipment row can never be attached to a standard or permit, so running the
+        // query at all would only spend a round trip to produce rows the caller must discard.
+        Page<Equipment> equipment = req.isLotoPointsOnly()
+                ? Page.empty()
+                : remaining > 0
+                    ? equipmentRepo.findAll(unreferencedEquipmentSpec(req), PageRequest.of(0, remaining, byTag))
+                    // Still ask for the count when the page is already full, so "showing 200 of N" stays honest.
+                    : equipmentRepo.findAll(unreferencedEquipmentSpec(req), PageRequest.of(0, 1, byTag));
 
         List<FinderItemDto> items = new ArrayList<>();
         Set<Long> pointsWithDrawing = pointIdsWithDrawing(points.getContent().stream().map(LotoPoint::getId).toList());
@@ -93,7 +98,7 @@ public class PwaEquipmentFinderService {
                     p.getSpecificLocation(),
                     pointsWithDrawing.contains(p.getId())));
         }
-        if (remaining > 0) {
+        if (remaining > 0 && !req.isLotoPointsOnly()) {
             for (Equipment e : equipment) {
                 items.add(new FinderItemDto("equipment", e.getId(), e.getTagNumber(), e.getDescription(),
                         e.getLocation() == null ? null : e.getLocation().getName(),

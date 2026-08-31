@@ -223,6 +223,7 @@ public class SecurityConfigSpring {
                     "/api/files/", "/api/update/", "/api/electron-update/",
                     "/api/resource-packs/", "/api/sync-updates/",
                     "/api/sync-test/", "/api/sync-e2e/", "/api/sync-conformance/",
+                    "/api/file-fixes-test/",
                     "/api/data-integrity/", "/api/backup/",
                     "/api/attachments/",
                     "/h2-console/",

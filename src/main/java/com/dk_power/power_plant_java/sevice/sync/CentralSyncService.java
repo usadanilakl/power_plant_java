@@ -94,6 +94,10 @@ public class CentralSyncService {
     // per-client; resets on restart (a restart legitimately re-attempts).
     private static final int MAX_DEFERRALS = 15;
     private final java.util.Map<java.util.UUID, Integer> deferralAttempts = new java.util.concurrent.ConcurrentHashMap<>();
+    // D6-rescue: change ids for which we've already made ONE hub dependency-pull attempt before giving up,
+    // so a change that still can't converge after its blocking entity was fetched dead-letters instead of
+    // re-pulling forever. In-memory, per-client; resets on restart (like deferralAttempts).
+    private final java.util.Set<java.util.UUID> rescueAttempted = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static final int DEFAULT_SEND_BATCH_SIZE = 5000;
     private static final int DEFAULT_RECEIVE_BATCH_SIZE = 100;
@@ -617,15 +621,46 @@ public class CentralSyncService {
                                 ? deferralAttempts.merge(id, 1, Integer::sum)
                                 : deferralAttempts.getOrDefault(id, 0);
                         if (n >= MAX_DEFERRALS) {
-                            // Giving up and acking is correct — an unresolvable change must not re-pull
-                            // forever and stall the pipeline behind it. But the change IS being
-                            // abandoned, so it must be RECORDED. Without this, the retry budget is just
-                            // a slower silent drop — and now that every incomplete ManyToMany and
-                            // missing parent lands here, this valve drains exactly the LOTO data we care
-                            // about. Dead-letter first, then ack.
                             FieldChange abandoned = batch.stream()
                                     .filter(c -> id.equals(c.getId()))
                                     .findFirst().orElse(null);
+
+                            // Last-resort convergence BEFORE abandoning. A change stuck this long is almost
+                            // always waiting on an entity this node never received — most often a dedup
+                            // CANONICAL the hub merged into and repointed to (e.g. WorkRequest.permitStatus →
+                            // a Value id we never had, so the FK can't resolve). The old behaviour dead-lettered
+                            // + acked here, which acks it (0 pending) while leaving the two nodes STABLY
+                            // DIVERGED. Instead pull that entity + its transitively-missing references from the
+                            // hub (creating the absent canonical) so the next attempt can apply. ONE rescue per
+                            // change: if it still can't converge after the dependency is fetched, fall through
+                            // to dead-letter so an unfetchable change never re-pulls forever.
+                            if (abandoned != null && rescueAttempted.add(id)) {
+                                try {
+                                    SyncResolutionService resolver = applicationContext.getBean(SyncResolutionService.class);
+                                    SyncResolutionService.PullResult pr = resolver.pullWithDependencies(
+                                            abandoned.getEntityType(), abandoned.getEntityId());
+                                    if (pr != null && pr.getChangesApplied() > 0) {
+                                        // The blocking dependency now exists locally. Reset this change's budget
+                                        // so it gets fresh attempts and converges on the next cycle.
+                                        deferralAttempts.put(id, 0);
+                                        log.warn("server_sync.receive.deferred_rescue changeId={} pulled {}#{} + missing deps "
+                                                        + "from hub ({}) — resetting budget to retry", id,
+                                                abandoned.getEntityType(), abandoned.getEntityId(), pr.getMessage());
+                                        return false; // keep deferred (NOT acked) — it should apply next cycle
+                                    }
+                                    log.warn("server_sync.receive.deferred_rescue changeId={} pull for {}#{} applied nothing "
+                                                    + "({}) — dead-lettering", id, abandoned.getEntityType(),
+                                            abandoned.getEntityId(), pr != null ? pr.getMessage() : "null");
+                                } catch (Exception e) {
+                                    log.warn("server_sync.receive.deferred_rescue changeId={} pull for {}#{} failed: {} "
+                                                    + "— dead-lettering", id, abandoned.getEntityType(),
+                                            abandoned.getEntityId(), e.getMessage());
+                                }
+                            }
+
+                            // Rescue unavailable, already attempted, or still couldn't converge: abandon it.
+                            // The change IS being dropped, so it must be RECORDED (never a silent drop).
+                            // Dead-letter first, then ack.
                             log.error("server_sync.receive.deferred_giveup changeId={} attempts={} entity={}#{} field={} "
                                             + "— dead-lettering, then acking to stop the re-pull loop", id, n,
                                     abandoned != null ? abandoned.getEntityType() : "?",
@@ -633,6 +668,7 @@ public class CentralSyncService {
                                     abandoned != null ? abandoned.getFieldName() : "?");
                             syncDeadLetterService.recordUnresolvedAfterRetries(abandoned, n);
                             deferralAttempts.remove(id);
+                            rescueAttempted.remove(id); // free the rescue-guard entry so it can't accumulate forever
                             return true; // drop from deferred -> gets acked (recorded, no longer silent)
                         }
                         return false;

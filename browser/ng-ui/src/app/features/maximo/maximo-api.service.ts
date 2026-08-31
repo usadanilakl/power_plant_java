@@ -242,6 +242,24 @@ export class MaximoApiService {
     );
   }
 
+  /** Transfer a WO's lead to another person (writes spi:lead; no status change). Online only. Returns refreshed WO.
+   *  ERRORS on failure so the caller can surface the real Maximo/validation message. */
+  transferLead(href: string, personid: string, memo?: string): Observable<MaximoWorkOrder | null> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorkOrder }>(
+      `${this.base}/work-orders/transfer-lead`, { personid, memo }, { params }
+    ).pipe(timeout(40000), map(r => r.responseData ?? null));
+  }
+
+  /** Reschedule a WO: set Target Start (+ optional Target Finish), dates as yyyy-MM-dd. Online only. Returns
+   *  refreshed WO. ERRORS on failure so the caller can surface the real message. */
+  setTargetDates(href: string, targetStart: string, targetFinish?: string): Observable<MaximoWorkOrder | null> {
+    const params = new HttpParams().set('href', href);
+    return this.http.post<{ responseData: MaximoWorkOrder }>(
+      `${this.base}/work-orders/reschedule`, { targetStart, targetFinish }, { params }
+    ).pipe(timeout(40000), map(r => r.responseData ?? null));
+  }
+
   /** PM overview buckets (overdue / due / upcoming). mode 'leads' or 'mine'; pmOnly restricts to PM WOs. */
   getOverview(mode: 'leads' | 'mine' | 'custom', personids: string[] = [], pmOnly = true): Observable<MaximoOverview | null> {
     let params = new HttpParams().set('mode', mode).set('pmOnly', String(pmOnly)).set('pageSize', '200');

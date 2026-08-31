@@ -16,13 +16,17 @@
     </div>
   </div>
 } @else if (mode() === 'wizard') {
-  <div class="sticky-header">
-    <button class="back-button" (click)="backToSelect()">← Back</button>
-    <button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
-  </div>
+  <!--
+    No sticky header here. The wizard carries its own bar: Back on the left, where it is now the
+    only Back on the page, and Resubmit moved into that bar's overflow menu. Stacking this header
+    on top of it gave two Back buttons that did different things and a second competing action on
+    every step.
+  -->
   <app-work-request-wizard
     (skipToForm)="openFullForm()"
     (reviewReady)="openFullForm()"
+    (resubmitRequested)="openTablePopup()"
+    (exitRequested)="backToSelect()"
   ></app-work-request-wizard>
 } @else {
   <div class="sticky-header">

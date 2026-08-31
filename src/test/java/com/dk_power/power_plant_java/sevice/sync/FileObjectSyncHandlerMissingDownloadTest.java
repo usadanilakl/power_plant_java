@@ -63,6 +63,9 @@ class FileObjectSyncHandlerMissingDownloadTest {
     @Mock
     private ValueRepo valueRepo;
 
+    @Mock
+    private com.dk_power.power_plant_java.sevice.file.TrashService trashService;
+
     @ParameterizedTest
     @EnumSource(value = HttpStatus.class, names = {"NOT_FOUND", "GONE"})
     void permanentlyMissingDownloadCompletesTerminally(HttpStatus missingStatus) {
@@ -145,7 +148,7 @@ class FileObjectSyncHandlerMissingDownloadTest {
     private FileObjectSyncHandler handlerWithPendingDownload() {
         when(syncConfig.isServerSyncEnabled()).thenReturn(true);
         return new FileObjectSyncHandler(
-            syncConfig, restTemplate, fileRepo, syncContext, pendingFileSyncRepository, valueRepo);
+            syncConfig, restTemplate, fileRepo, syncContext, pendingFileSyncRepository, valueRepo, trashService);
     }
 
     private void stubPendingDownload(PendingFileSync task) {

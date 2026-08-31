@@ -331,6 +331,66 @@ public class NgFileRestController {
     }
 
     /**
+     * Rotate the JPG derivative of a FileObject by 90 / 180 / 270 degrees.
+     * PDF is untouched. Syncs the rotated JPG to peers via the same channel
+     * regenerate-jpg uses. Shapes on the file are NOT auto-re-oriented — the
+     * user re-aligns via Ctrl+A + drag after rotation.
+     */
+    @PostMapping("/{id}/rotate-jpg")
+    public ResponseEntity<NgApiResponse<Map<String, String>>> rotateJpg(
+            @PathVariable Long id,
+            @RequestParam("degrees") int degrees) {
+        try {
+            String jpgLink = ngFileService.rotateJpg(id, degrees);
+            return ResponseEntity.ok(new NgApiResponse<>(Map.of("fileLink", jpgLink),
+                    "JPG rotated " + degrees + "°"));
+        } catch (Exception e) {
+            log.error("rotate-jpg failed for id={} degrees={}", id, degrees, e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * List the split-page siblings of a FileObject: given ANY member of a
+     * {@code {base}_page_N} group, returns every sibling ordered by page index.
+     * Used by the frontend restore dialog to pre-populate the target list.
+     * Returns single-element list when the file isn't part of a split group.
+     */
+    @GetMapping("/{id}/split-siblings")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.files.FileDto>>> splitSiblings(
+            @PathVariable Long id) {
+        try {
+            var siblings = ngFileService.findSplitSiblings(id);
+            return ResponseEntity.ok(new NgApiResponse<>(siblings, "Split siblings"));
+        } catch (Exception e) {
+            log.error("split-siblings failed for id={}", id, e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Re-attach a source PDF to a set of EXISTING split-page FileObject IDs.
+     * The source is split into N pages, each page's bytes are written to the
+     * corresponding target entity's on-disk path (sorted by {@code _page_N}
+     * suffix), and each entity is synced. No new entities are created —
+     * preserves all downstream relationships (LOTO points, coordinates).
+     * Fails hard when source page count doesn't match target count.
+     */
+    @PostMapping("/reattach-split")
+    public ResponseEntity<NgApiResponse<NgFileService.ReattachResult>> reattachSplit(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("targetIds") List<Long> targetIds) {
+        try {
+            NgFileService.ReattachResult result = ngFileService.reattachSplit(file, targetIds);
+            String msg = String.format("Re-attached %d/%d page(s)", result.successCount(), result.total());
+            return ResponseEntity.ok(new NgApiResponse<>(result, msg));
+        } catch (Exception e) {
+            log.error("reattach-split failed", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Scan for FileObjects whose JPGs are likely broken by the pre-fix
      * multi-page split bug (see {@link NgFileService#scanBrokenJpgs}).
      * Returns a list of ids the admin panel previews before offering to

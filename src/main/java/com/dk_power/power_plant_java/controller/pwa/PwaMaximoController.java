@@ -31,6 +31,7 @@ import com.dk_power.power_plant_java.sevice.maximo.MaximoInventoryCatalogService
 import com.dk_power.power_plant_java.sevice.maximo.MaximoLocationAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPmAuditService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoPartsCheckoutService;
+import com.dk_power.power_plant_java.sevice.maximo.PmAssignmentService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
@@ -48,6 +49,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -68,6 +70,7 @@ import java.util.stream.Collectors;
 public class PwaMaximoController {
 
     private final MaximoWorkOrderAdapter workOrders;
+    private final PmAssignmentService pmAssignments;
     private final MaximoServiceRequestAdapter serviceRequests;
     private final MaximoLocationAdapter locations;
     private final MaximoInventoryCatalogService inventoryCatalog;
@@ -196,6 +199,57 @@ public class PwaMaximoController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
+
+    /**
+     * Transfer a WO's lead to another person (writes {@code spi:lead}, NO status change) + an audit worklog note.
+     * Mirrors the desktop {@code POST /ng/maximo/work-orders/{href}/lead}. {@code href} is a query param — Maximo
+     * hrefs contain slashes/colons that break path matching. Online only (writes straight to Maximo).
+     */
+    @PostMapping("/work-orders/transfer-lead")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> transferLead(
+            @RequestParam("href") String href, @RequestBody TransferLeadRequest req) {
+        try {
+            MaximoWorkOrderDto updated = pmAssignments.transferLead(href, req.personid(), req.memo());
+            return ResponseEntity.ok(new NgApiResponse<>(updated, "lead transferred"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] transfer lead failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Reschedule a WO: set Target Start (+ optional Target Finish) in ONE MERGE ({@code spi:targstartdate} +
+     * {@code spi:targcompdate}), then return the refreshed WO. Dates are {@code yyyy-MM-dd}; a blank/absent finish
+     * defaults to start (the adapter clamps finish &gt;= start). Mirrors desktop {@code .../{href}/target-dates}.
+     */
+    @PostMapping("/work-orders/reschedule")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> reschedule(
+            @RequestParam("href") String href, @RequestBody RescheduleRequest req) {
+        try {
+            if (req.targetStart() == null || req.targetStart().isBlank()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Target start is required."));
+            }
+            LocalDate start = LocalDate.parse(req.targetStart().trim());
+            LocalDate finish = (req.targetFinish() != null && !req.targetFinish().isBlank())
+                    ? LocalDate.parse(req.targetFinish().trim()) : start;
+            workOrders.setTargetWindow(href, start, finish);
+            return workOrders.findByHref(href)
+                    .map(wo -> ResponseEntity.ok(new NgApiResponse<>(wo, "rescheduled")))
+                    .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "rescheduled")));
+        } catch (java.time.format.DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Dates must be yyyy-MM-dd."));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] reschedule failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Transfer a WO's lead to {@code personid} (any person); {@code memo} is appended to the audit note. */
+    public record TransferLeadRequest(String personid, String memo) {}
+    /** Reschedule a WO: {@code targetStart} required, {@code targetFinish} optional; both {@code yyyy-MM-dd}. */
+    public record RescheduleRequest(String targetStart, String targetFinish) {}
 
     // ── Work-order attachments (doclinks) & notes (worklog) ────────────────────
     // href is a query param throughout — Maximo hrefs contain slashes/colons that break path matching.

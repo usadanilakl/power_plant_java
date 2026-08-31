@@ -27,6 +27,14 @@ export class LotoPermitApiService {
   private http = inject(HttpClient);
   private base = `${environment.serverUrl}/api/pwa/secured/loto`;
 
+  /**
+   * Attach an existing point to a permit. Server requires CONTROL_AUTHORITY and a structurally
+   * editable status (Building or Modification) — refusals come back as 403/409 with a reason.
+   */
+  addPoint(lotoId: number, pointId: number): Observable<unknown> {
+    return this.http.post(`${this.base}/${lotoId}/points/${pointId}`, {});
+  }
+
   /** All permits. `includeClosed` pulls history too — off by default; it is unbounded. */
   list(includeClosed = false): Observable<PwaLotoListItem[]> {
     return this.http.get<{ responseData: PwaLotoListItem[] }>(`${this.base}/list?includeClosed=${includeClosed}`)

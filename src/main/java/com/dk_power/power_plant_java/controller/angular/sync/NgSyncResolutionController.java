@@ -466,6 +466,41 @@ public class NgSyncResolutionController {
         }
     }
 
+    /**
+     * Bulk recovery: reconcile EVERY synced type from the hub. For each row that differs from the hub or is
+     * missing locally, pull it (and its transitively-missing references). Use to unstick a client left stably
+     * diverged after a jar update (dead-lettered dedup repoints / new-entity changes). State-based — never
+     * deletes local-only rows.
+     */
+    @PostMapping("/reconcile-from-hub")
+    public ResponseEntity<NgApiResponse<java.util.List<SyncResolutionService.ReconcileReport>>> reconcileFromHub() {
+        try {
+            java.util.List<SyncResolutionService.ReconcileReport> reports = syncResolutionService.reconcileAllFromHub();
+            long converged = reports.stream().mapToLong(SyncResolutionService.ReconcileReport::converged).sum();
+            long targets = reports.stream().mapToLong(SyncResolutionService.ReconcileReport::targets).sum();
+            return ResponseEntity.ok(new NgApiResponse<>(reports,
+                    "Reconciled " + converged + "/" + targets + " drifted record(s) from hub across "
+                            + reports.size() + " type(s)"));
+        } catch (Exception e) {
+            log.error("reconcile-from-hub failed: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Reconcile failed: " + e.getMessage()));
+        }
+    }
+
+    /** Reconcile a single type from the hub (the bulk endpoint scoped to one entity type). */
+    @PostMapping("/reconcile-from-hub/{entityType}")
+    public ResponseEntity<NgApiResponse<SyncResolutionService.ReconcileReport>> reconcileTypeFromHub(
+            @PathVariable String entityType) {
+        try {
+            SyncResolutionService.ReconcileReport r = syncResolutionService.reconcileTypeFromHub(entityType);
+            return ResponseEntity.ok(new NgApiResponse<>(r,
+                    "Reconciled " + r.converged() + "/" + r.targets() + " " + entityType + " record(s) from hub"));
+        } catch (Exception e) {
+            log.error("reconcile-from-hub {} failed: {}", entityType, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Reconcile failed: " + e.getMessage()));
+        }
+    }
+
     // ==================== SharePoint Resolution ====================
 
     /**

@@ -10,8 +10,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 @Repository
 public interface FileRepo extends BaseRepository<FileObject> {
+
+    /**
+     * Bypasses the {@code @Where(clause = "deleted IS NOT TRUE")} soft-delete
+     * filter — returns the row even if {@code deleted=true} was already applied.
+     * Needed by sync-side cleanup that must locate the on-disk file paths of a
+     * FileObject AFTER its DELETE FieldChange has been applied.
+     */
+    @Query(value = "SELECT * FROM file_object WHERE id = :id", nativeQuery = true)
+    Optional<FileObject> findByIdIncludingDeleted(@org.springframework.data.repository.query.Param("id") Long id);
     @Query("SELECT DISTINCT e.vendor.name FROM FileObject e")
     List<String> getVendors();
 

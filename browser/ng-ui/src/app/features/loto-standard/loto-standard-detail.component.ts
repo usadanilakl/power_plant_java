@@ -5,6 +5,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
 import { LotoDrawingService } from './loto-drawing.service';
 import { LotoDrawingViewerComponent } from './loto-drawing-viewer.component';
 import { LotoPointActionsComponent } from './loto-point-actions.component';
+import { LotoPointAttachComponent } from './loto-point-attach.component';
 import { LotoStandardApiService } from './loto-standard-api.service';
 import { LotoStandardStore } from './loto-standard-store.service';
 import { LOTO_STANDARD_STATUS, LotoStandard, LotoPointRef, statusPhase } from './loto-standard.model';
@@ -14,7 +15,7 @@ type Tab = 'standard' | 'procedure';
 @Component({
   selector: 'app-loto-standard-detail',
   standalone: true,
-  imports: [MainLayoutComponent, DatePipe, LotoDrawingViewerComponent, LotoPointActionsComponent],
+  imports: [MainLayoutComponent, DatePipe, LotoDrawingViewerComponent, LotoPointActionsComponent, LotoPointAttachComponent],
   template: `
     <app-main-layout [header]="std()?.name || 'LOTO Standard'">
       <ng-container main-content>
@@ -45,9 +46,18 @@ type Tab = 'standard' | 'procedure';
                    or new). The routes handle the CA/gate on the server side. -->
               <div class="d-author-row">
                 <button class="d-author-btn" (click)="openEdit()">✎ Edit standard</button>
-                <button class="d-author-btn" (click)="openAddExistingPoint()">+ Add existing point</button>
+                <button class="d-author-btn" (click)="showAttach.set(!showAttach())">
+                  {{ showAttach() ? '× Close map picker' : '🗺 Add from map' }}
+                </button>
+                <button class="d-author-btn" (click)="openAddExistingPoint()">+ Add by tag</button>
                 <button class="d-author-btn" (click)="openAddNewPoint()">+ Create + add new point</button>
               </div>
+              @if (showAttach()) {
+                <app-loto-point-attach
+                  [target]="{ kind: 'standard', id: std()!.id }"
+                  (attached)="reload()"
+                  (closed)="showAttach.set(false)"></app-loto-point-attach>
+              }
             }
 
             <div class="d-tabs">
@@ -232,6 +242,20 @@ export class LotoStandardDetailComponent implements OnInit {
     ];
   });
   hasAnyProcedure = computed(() => this.procedureBlocks().some(b => !!b.text));
+
+  /** Map-picker panel visibility. Collapsed by default: the authoring row is already three buttons. */
+  showAttach = signal(false);
+
+  /** Re-read the standard after points were attached, so the list below reflects them. */
+  reload(): void {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) return;
+    this.api.getById(id).subscribe({
+      next: st => { if (st) { this.std.set(st); this.store.cacheStandard(st); } },
+      error: () => { /* the attach already reported its own outcome */ },
+    });
+    this.loadDrawings(Number(id));
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

@@ -169,6 +169,8 @@ public class ServiceFacade {
             @Lazy com.dk_power.power_plant_java.sevice.physical.PhysicalObjectSyncService physicalObjectSyncService,
             // Plant Map canonical pipe/equipment connectivity
             @Lazy com.dk_power.power_plant_java.sevice.physical.PlantMapTopologyConnectionSyncService plantMapTopologyConnectionSyncService,
+            // Red-Tag LOTO bypass audit trail (synced so a CA on any desktop sees the same history)
+            @Lazy com.dk_power.power_plant_java.sevice.loto.LotoBypassAuditSyncService lotoBypassAuditSyncService,
             // 2026-07-15 registration-gap closure — diagrams + scheduler templates + sim + etapro report + ESP (all synced)
             @Lazy com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramService ngDiagramService,
             @Lazy com.dk_power.power_plant_java.sevice.angular.scheduler.FlowTemplateService flowTemplateService,
@@ -283,6 +285,7 @@ public class ServiceFacade {
         // Physical hierarchy (plant tree)
         serviceMap.put(com.dk_power.power_plant_java.entities.physical.PhysicalObject.class.getSimpleName(), physicalObjectSyncService);
         serviceMap.put(com.dk_power.power_plant_java.entities.physical.PlantMapTopologyConnection.class.getSimpleName(), plantMapTopologyConnectionSyncService);
+        serviceMap.put(com.dk_power.power_plant_java.entities.loto.LotoBypassAudit.class.getSimpleName(), lotoBypassAuditSyncService);
         // 2026-07-15 registration-gap closure — diagrams, scheduler templates, sim, etapro report, ESP
         serviceMap.put(com.dk_power.power_plant_java.entities.diagrams.Diagram.class.getSimpleName(), ngDiagramService);
         serviceMap.put(com.dk_power.power_plant_java.entities.scheduler.FlowTemplate.class.getSimpleName(), flowTemplateService);

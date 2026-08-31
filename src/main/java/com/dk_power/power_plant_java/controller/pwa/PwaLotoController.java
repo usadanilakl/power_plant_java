@@ -72,6 +72,37 @@ public class PwaLotoController {
     }
 
     /**
+     * Attach an existing LOTO point to a permit — the field counterpart of the picker on the standard.
+     *
+     * <p>Deliberately thin: {@link NgLotoService#addLotoPointToLoto} already requires CONTROL_AUTHORITY
+     * and {@code requireStructurallyEditable} (Building or Modification, never Test — loto-procedure.md
+     * §4.2), and flags a Modification-added point for re-hang. Re-stating any of that here would be a
+     * second copy of the rule that could drift from the one that actually decides. This method only
+     * translates the refusals into status codes the phone can render.</p>
+     */
+    @PostMapping("/{lotoId}/points/{pointId}")
+    public ResponseEntity<NgApiResponse<LotoDto>> addPointToPermit(
+            @PathVariable Long lotoId, @PathVariable Long pointId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(lotoService.addLotoPointToLoto(pointId, lotoId), "Point added"));
+        } catch (SecurityException e) {
+            // Not a CA (nor Qualified, which the delegate accepts in its place) — a permission answer,
+            // not a validation one, so 403 rather than folding it in with the status refusals below.
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("PWA addPointToPermit failed (loto={}, point={})", lotoId, pointId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Failed to add point: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Edit a LOTO permit's basic fields from the PWA — allowed ONLY while the permit is in
      * "Building" (i.e. inactive, pre-activation). Any other status is 409 with a hint.
      *

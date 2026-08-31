@@ -26,6 +26,12 @@ export interface FinderRequest {
   tagNumber?: FinderFilter;
   description?: FinderFilter;
   limit?: number;
+  /**
+   * Drop the unreferenced-equipment half of the search. Set by callers that can only act on a LOTO
+   * point — attaching to a standard or permit — where equipment rows are unselectable noise that
+   * would also eat into the row cap.
+   */
+  lotoPointsOnly?: boolean;
 }
 
 /**

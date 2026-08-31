@@ -442,3 +442,12 @@
 .chip-x { font-size: 15px; line-height: 1; opacity: .8; }
 .picked-chip:hover .chip-x { opacity: 1; }
 .picked-hint { width: 100%; font-size: 12px; color: var(--secondary-text, #777); }
+
+/* Scope shortcuts inside the mobile overlay — without these they disappear the moment the map
+   opens, which is exactly when a "this covers the whole unit" answer is most likely. */
+.overlay-scopes {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  background: var(--secondary-background, #f7f7f7);
+}

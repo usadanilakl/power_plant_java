@@ -1,17 +1,19 @@
+<!--
+  No side menu and no bottom menu on this page.
+
+  The side menu's only content was <app-work-request-table>, which is the same list the "Resubmit
+  Previous Request" button already opens in a popup — so it bought nothing and cost a permanent
+  44px floating toggle button sitting over the form on every phone. The bottom menu was enabled with
+  its content commented out, reserving footer space and a drag handle for nothing at all.
+-->
 <app-main-layout
-  [isBottomMenuEnabled]="true"
-  [isSideMenuEnabled]="true"
+  [isBottomMenuEnabled]="false"
+  [isSideMenuEnabled]="false"
 >
   <ng-container header>
     <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
-  <ng-container left-menu>
-    <app-work-request-left-menu></app-work-request-left-menu>
-  </ng-container>
   <ng-container main-content>
     <router-outlet></router-outlet>
-  </ng-container>
-  <ng-container bottom-menu>
-    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
   </ng-container>
 </app-main-layout>

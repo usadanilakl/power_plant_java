@@ -1259,6 +1259,334 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return jpgLink;
     }
 
+    // =========================================================================
+    // Rotate JPG (in-place, syncs to peers)
+    // =========================================================================
+
+    /**
+     * Rotate the JPG derivative of a FileObject in place by {@code degrees}
+     * (must be one of 90 / 180 / 270 — other values are refused so the caller
+     * can't accidentally submit an arbitrary tilt that would break shape math).
+     *
+     * <p>Only touches the .jpg — the source .pdf stays as-is. Shapes on the
+     * file are drawn against the JPG's dimensions (see
+     * {@code equipment.originalPictureSize}), so rotating just the JPG doesn't
+     * corrupt existing coordinate math. After rotation the perceptual hash is
+     * refreshed and the sync channel is notified so peers pull the corrected
+     * JPG. Same pattern as {@link #regenerateJpg}.
+     *
+     * <p>NOTE: existing shape overlays will be positioned against the OLD
+     * orientation — the user is expected to Ctrl+A + drag / re-align shapes
+     * after rotation. This is by design: automatic shape re-orientation would
+     * mangle files where the user wants to rotate the underlying image but
+     * keep annotations at their original screen locations.
+     */
+    public String rotateJpg(Long fileId, int degrees) throws IOException {
+        if (degrees != 90 && degrees != 180 && degrees != 270) {
+            throw new RuntimeException("Rotation degrees must be 90, 180, or 270 — got " + degrees);
+        }
+        FileObject file = getEntityById(fileId);
+        if (file == null) throw new RuntimeException("File not found: " + fileId);
+        if (file.getFileType() == null || file.getVendor() == null) {
+            throw new RuntimeException("FileObject missing fileType/vendor — cannot resolve JPG path");
+        }
+
+        String jpgLink = file.buildFileLink("jpg");
+        Path jpgPath = resolveToFileSystem(jpgLink);
+        if (!Files.exists(jpgPath)) {
+            throw new IOException("No JPG on disk at " + jpgPath + " — generate one first");
+        }
+
+        Object lock = ensureJpgLocks.computeIfAbsent(fileId, k -> new Object());
+        synchronized (lock) {
+            java.awt.image.BufferedImage src = javax.imageio.ImageIO.read(jpgPath.toFile());
+            if (src == null) throw new IOException("Failed to decode JPG at " + jpgPath);
+
+            // Always encode the destination as TYPE_INT_RGB. JPEG can't carry alpha, and
+            // ImageIO's writer returns false (silently) on any alpha-bearing source type
+            // (TYPE_INT_ARGB, TYPE_4BYTE_ABGR, TYPE_INT_ARGB_PRE) or TYPE_CUSTOM — with
+            // that boolean ignored, the empty temp file would then atomic-move over the
+            // good on-disk JPG and destroy it. Coercing to TYPE_INT_RGB up front means
+            // there is always a writer.
+            int destW = (degrees == 180) ? src.getWidth() : src.getHeight();
+            int destH = (degrees == 180) ? src.getHeight() : src.getWidth();
+            java.awt.image.BufferedImage rotated =
+                    new java.awt.image.BufferedImage(destW, destH, java.awt.image.BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g = rotated.createGraphics();
+            try {
+                java.awt.geom.AffineTransform at = new java.awt.geom.AffineTransform();
+                // Translate so the rotated image origin lands at (0,0) of the destination.
+                if (degrees == 90) {
+                    at.translate(src.getHeight(), 0);
+                } else if (degrees == 180) {
+                    at.translate(src.getWidth(), src.getHeight());
+                } else { // 270
+                    at.translate(0, src.getWidth());
+                }
+                at.rotate(Math.toRadians(degrees));
+                g.drawImage(src, at, null);
+            } finally {
+                g.dispose();
+            }
+
+            // Write to temp then atomic-move so a failed encode doesn't leave a truncated JPG.
+            // If ImageIO.write returns false, the temp file is still 0 bytes — abort BEFORE
+            // the atomic move so the previously-good JPG stays intact.
+            Path tempOut = Files.createTempFile("rotate-", ".jpg");
+            try {
+                boolean ok = javax.imageio.ImageIO.write(rotated, "jpg", tempOut.toFile());
+                if (!ok) {
+                    throw new IOException("No JPEG writer for rotated image (src type=" + src.getType() +
+                            ", file #" + fileId + ") — original JPG on disk preserved");
+                }
+                Files.move(tempOut, jpgPath, StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(tempOut);
+            }
+
+            // Emit a content-affecting FieldChange so peers actually pull the new bytes.
+            // FileObjectSyncHandler.processIncomingSyncChanges gates queueFileDownload on
+            // `hasContentChange = fileHash|extensions` — a perceptualHash-only change is
+            // NOT enough (see FileObjectSyncHandler:325-326). We refresh perceptualHash
+            // AND idempotently re-set extensions to itself so the FieldChange row for
+            // "extensions" fires, triggering peers to pull the rotated JPG.
+            try {
+                file.setPerceptualHash(computePerceptualHash(file));
+                String exts = file.getExtensions();
+                if (exts != null) file.setExtensions(exts); // dirty the field so @PostUpdate emits
+                save(file);
+            } catch (RuntimeException ex) {
+                logger.warn("rotateJpg: field refresh failed for #{}: {}", fileId, ex.getMessage());
+            }
+            try {
+                fileObjectSyncHandler.onLocalFileObjectChanged(file, false);
+            } catch (RuntimeException ex) {
+                logger.warn("rotateJpg: sync-notify failed for FileObject #{}: {}", fileId, ex.getMessage());
+            }
+            logger.info("Rotated JPG for FileObject #{} by {}° at {}", fileId, degrees, jpgPath);
+            return jpgLink;
+        }
+    }
+
+    // =========================================================================
+    // Split-page RESTORE / RE-ATTACH
+    // =========================================================================
+    // Scenario: a multi-page PDF was originally split into N FileObject entities
+    // (each with fileNumber "{base}_page_K"). Later, ALL on-disk copies (.pdf +
+    // .jpg + revisions) go missing from every node — client and hub — but the
+    // entities and their downstream relationships (LOTO points, coordinates,
+    // permits) are intact. The user locates a fresh copy of the source PDF and
+    // wants to re-attach its pages to the EXISTING entity IDs (creating new
+    // entities would lose every downstream FK).
+    //
+    // Reattach preserves entity identity by design: fileNumber / fileType /
+    // vendor / id / all relationships are untouched — only the on-disk bytes
+    // and content hashes are refreshed. Sync propagates via the same hook
+    // regenerateJpg uses (onLocalFileObjectChanged → per-entity file upload).
+
+    /**
+     * Group siblings by the split-page base name. For a FileObject named
+     * {@code "X_page_2"} this returns every FileObject named {@code X_page_1},
+     * {@code X_page_2}, … {@code X_page_N} that shares the same fileType +
+     * vendor. Sorted by page index ascending. Excludes soft-deleted rows via
+     * the default {@code @Where} filter.
+     *
+     * <p>Used by the frontend restore dialog to auto-populate the target list
+     * from any one member of the group.
+     */
+    public List<FileDto> findSplitSiblings(Long fileId) {
+        FileObject anchor = getEntityById(fileId);
+        if (anchor == null) throw new RuntimeException("File not found: " + fileId);
+        String base = stripPageSuffix(anchor.getFileNumber());
+        if (base == null || base.equals(anchor.getFileNumber())) {
+            // Not a split-page entity — no siblings to enumerate.
+            return List.of(toDto(anchor));
+        }
+        java.util.regex.Pattern siblingPattern = java.util.regex.Pattern.compile(
+                java.util.regex.Pattern.quote(base) + "_page_(\\d+)$");
+        Long typeId = anchor.getFileType() != null ? anchor.getFileType().getId() : null;
+        Long vendorId = anchor.getVendor() != null ? anchor.getVendor().getId() : null;
+        List<FileObject> candidates = fileRepo.findByFileNumberContaining(base);
+        return candidates.stream()
+                .filter(f -> f.getFileNumber() != null && siblingPattern.matcher(f.getFileNumber()).matches())
+                .filter(f -> typeId == null || (f.getFileType() != null && typeId.equals(f.getFileType().getId())))
+                .filter(f -> vendorId == null || (f.getVendor() != null && vendorId.equals(f.getVendor().getId())))
+                .sorted((a, b) -> {
+                    int ap = extractPageIndex(a.getFileNumber());
+                    int bp = extractPageIndex(b.getFileNumber());
+                    return Integer.compare(ap, bp);
+                })
+                .map(this::toDto)
+                .toList();
+    }
+
+    private static String stripPageSuffix(String fn) {
+        if (fn == null) return null;
+        return fn.replaceFirst("_page_\\d+$", "");
+    }
+
+    private static int extractPageIndex(String fn) {
+        if (fn == null) return Integer.MAX_VALUE;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("_page_(\\d+)$").matcher(fn);
+        return m.find() ? Integer.parseInt(m.group(1)) : Integer.MAX_VALUE;
+    }
+
+    /**
+     * Re-attach a source PDF to a set of EXISTING split-page FileObject IDs.
+     * The source is split into N pages; each page's bytes are written to the
+     * corresponding target entity's on-disk path (page 1 → target with the
+     * lowest page suffix, etc.). No new entities are created.
+     *
+     * <p>Fails hard when the source's page count doesn't match {@code targetIds.size()}
+     * — the user must confirm the right source before submit to avoid mis-assigning
+     * pages. Also fails if targets don't share fileType + vendor.
+     *
+     * <p>Per-target: writes the PDF, converts + writes the JPG, refreshes
+     * fileHash + perceptualHash + extensions CSV, saves the entity, and calls
+     * {@code onLocalFileObjectChanged} so the sync channel uploads the fresh
+     * bytes to the hub (client mode) or registers with HubFileService (hub mode).
+     */
+    public ReattachResult reattachSplit(MultipartFile source, List<Long> targetIds) throws IOException {
+        if (source == null || source.isEmpty()) throw new RuntimeException("Source PDF is required");
+        if (targetIds == null || targetIds.isEmpty()) throw new RuntimeException("At least one target ID is required");
+
+        String origName = source.getOriginalFilename();
+        if (origName == null || !origName.toLowerCase().endsWith(".pdf")) {
+            throw new RuntimeException("Source must be a .pdf file");
+        }
+
+        // Load + sort targets by page index; validate all present and share fileType/vendor.
+        List<FileObject> targets = new ArrayList<>();
+        for (Long id : targetIds) {
+            FileObject t = getEntityById(id);
+            if (t == null) throw new RuntimeException("Target FileObject not found: " + id);
+            if (t.getFileType() == null || t.getVendor() == null) {
+                throw new RuntimeException("Target #" + id + " missing fileType/vendor — cannot resolve on-disk path");
+            }
+            targets.add(t);
+        }
+        Long typeId = targets.get(0).getFileType().getId();
+        Long vendorId = targets.get(0).getVendor().getId();
+        for (FileObject t : targets) {
+            if (!typeId.equals(t.getFileType().getId()) || !vendorId.equals(t.getVendor().getId())) {
+                throw new RuntimeException("All targets must share the same fileType and vendor (" +
+                        "mismatch at #" + t.getId() + ")");
+            }
+        }
+
+        // SECURITY / DATA-INTEGRITY: enforce that every target belongs to a single
+        // {base}_page_N split group. Without this guard, a caller can POST arbitrary
+        // targetIds that share fileType+vendor but represent unrelated drawings —
+        // the loop would then overwrite each with a page from the source PDF and
+        // sync the corrupt bytes fleet-wide. The frontend restore dialog already
+        // gates via findSplitSiblings; the REST endpoint must too.
+        String base0 = stripPageSuffix(targets.get(0).getFileNumber());
+        if (base0 == null || base0.isEmpty() || base0.equals(targets.get(0).getFileNumber())) {
+            throw new RuntimeException("Target #" + targets.get(0).getId() +
+                    " is not part of a {base}_page_N split group — reattach only works on split-page entities");
+        }
+        java.util.regex.Pattern groupPattern = java.util.regex.Pattern.compile(
+                java.util.regex.Pattern.quote(base0) + "_page_\\d+$");
+        for (FileObject t : targets) {
+            String fn = t.getFileNumber();
+            if (fn == null || !groupPattern.matcher(fn).matches()) {
+                throw new RuntimeException("Target #" + t.getId() + " (fileNumber=" + fn +
+                        ") is not part of the same split group as base '" + base0 + "'");
+            }
+        }
+        targets.sort((a, b) -> Integer.compare(extractPageIndex(a.getFileNumber()), extractPageIndex(b.getFileNumber())));
+
+        // Split source into pages in an owned temp dir so cleanup is deterministic.
+        File tempDir = Files.createTempDirectory("reattach-").toFile();
+        List<Map<String, Object>> perTarget = new ArrayList<>();
+        int successCount = 0;
+        try {
+            // Use the first target's base name for split-file naming so the temp files
+            // have meaningful names in logs.
+            String tempBase = stripPageSuffix(targets.get(0).getFileNumber());
+            List<File> pages = com.dk_power.power_plant_java.util.PdfConverter
+                    .splitPdfIntoSinglePageFiles(source, tempBase != null ? tempBase : "reattach", tempDir);
+
+            if (pages.size() != targets.size()) {
+                throw new RuntimeException("Source has " + pages.size() + " page(s) but " +
+                        targets.size() + " target(s) selected. Cancel and pick the correct source PDF.");
+            }
+
+            for (int i = 0; i < targets.size(); i++) {
+                FileObject target = targets.get(i);
+                File pdfPage = pages.get(i);
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", target.getId());
+                row.put("fileNumber", target.getFileNumber());
+                row.put("page", i + 1);
+                try {
+                    // Serialize per-file writes against concurrent rotateJpg / ensureJpg /
+                    // regenerateJpg on the same entity — they all target the same on-disk
+                    // paths and would otherwise race on Files.move + hash-save, leaving the
+                    // stored fileHash out of sync with disk (see reviewer finding MEDIUM #6).
+                    Object perFileLock = ensureJpgLocks.computeIfAbsent(target.getId(), k -> new Object());
+                    synchronized (perFileLock) {
+                        // Write PDF at the target's on-disk path.
+                        String pdfLink = target.buildFileLink("pdf");
+                        Path pdfPath = resolveToFileSystem(pdfLink);
+                        Files.createDirectories(pdfPath.getParent());
+                        Files.copy(pdfPage.toPath(), pdfPath, StandardCopyOption.REPLACE_EXISTING);
+
+                        // Convert and write JPG at the target's on-disk JPG path.
+                        File jpg = com.dk_power.power_plant_java.util.PdfConverter.convertPdfToJpg(pdfPage);
+                        if (jpg == null) throw new IOException("PDF→JPG conversion returned null for page " + (i + 1));
+                        String jpgLink = target.buildFileLink("jpg");
+                        Path jpgPath = resolveToFileSystem(jpgLink);
+                        Files.createDirectories(jpgPath.getParent());
+                        Files.move(jpg.toPath(), jpgPath, StandardCopyOption.REPLACE_EXISTING);
+
+                        // Refresh entity metadata (extensions list, hash) so peers pull fresh content.
+                        // Hash the split-page bytes on disk so a peer's integrity check post-download
+                        // matches what we just wrote (peer downloads and re-hashes to verify).
+                        target.setFileHash(computeSha256(Files.readAllBytes(pdfPath)));
+                        target.setPerceptualHash(computePerceptualHash(target));
+                        if (target.getExtensions() == null || !target.getExtensions().contains("pdf")) {
+                            target.addExtension("pdf");
+                        }
+                        if (!target.getExtensions().contains("jpg")) {
+                            target.addExtension("jpg");
+                        }
+                        save(target);
+
+                        // Sync — bytes need to reach peers/hub. Mirrors regenerateJpg's pattern.
+                        try {
+                            fileObjectSyncHandler.onLocalFileObjectChanged(target, false);
+                        } catch (RuntimeException ex) {
+                            logger.warn("reattachSplit: sync-notify failed for #{}: {}",
+                                    target.getId(), ex.getMessage());
+                        }
+                    }
+
+                    row.put("status", "restored");
+                    successCount++;
+                } catch (IOException | RuntimeException e) {
+                    row.put("status", "failed");
+                    row.put("error", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                    logger.warn("reattachSplit: page {} → #{} failed: {}", i + 1, target.getId(), e.getMessage());
+                }
+                perTarget.add(row);
+            }
+        } finally {
+            // Best-effort cleanup of the temp split files.
+            try {
+                File[] leftovers = tempDir.listFiles();
+                if (leftovers != null) for (File f : leftovers) Files.deleteIfExists(f.toPath());
+                Files.deleteIfExists(tempDir.toPath());
+            } catch (IOException e) {
+                logger.debug("reattachSplit: temp cleanup failed for {}: {}", tempDir, e.getMessage());
+            }
+        }
+        // Unused variable removal — keep hash for potential future audit hook.
+        return new ReattachResult(targets.size(), successCount, perTarget);
+    }
+
+    public record ReattachResult(int total, int successCount, List<Map<String, Object>> perTarget) {}
+
     /** Add "jpg" to the entity's extensions CSV if not already there. */
     private void ensureJpgListedOnEntity(FileObject file) {
         String exts = file.getExtensions();

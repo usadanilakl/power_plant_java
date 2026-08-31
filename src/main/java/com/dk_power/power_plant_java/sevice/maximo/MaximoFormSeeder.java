@@ -40,6 +40,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(pivAndDelugeValveInspection()));
         out.add(formService.saveTemplate(emergencyDieselGeneratorTest()));
         out.add(formService.saveTemplate(sdiTest()));
+        out.add(formService.saveTemplate(roProbeMonthlyPm()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -717,6 +718,72 @@ public class MaximoFormSeeder {
                 .active(true)
                 .fieldsJson(toJson(f.build()))
                 .build();
+    }
+
+    /**
+     * From the paper "R.O. PROBE MONTHLY PM" sheet. Two RO trains (ALPHA, BRAVO); for each of seven analyzer
+     * points the operator records the installed PROBE reading and a handheld SAMPLE reading, and the app shows
+     * the difference. Each point has a per-row "Max Delta" tolerance — if the probe and the sample differ by more
+     * than that, the probe needs calibration and the operator writes a Service Request (noted at the bottom).
+     * Same seven points on both trains, only the AIT-DWT tag numbers differ.
+     */
+    private MaximoFormTemplateDto roProbeMonthlyPm() {
+        Fields f = new Fields();
+
+        // {measurement, ALPHA tag suffix, BRAVO tag suffix, Max Delta}. Units are intentionally omitted (the paper
+        // shows none); the Max Delta and the SR instruction live in each computed row's note.
+        String[][] rows = {
+                {"Inlet pH",                         "801", "810", "0.5"},
+                {"Inlet Conductivity",               "803", "812", "500"},
+                {"Interstage pH",                    "807", "816", "0.5"},
+                {"1st Pass Concentrate Conductivity","805", "814", "400"},
+                {"1st Pass Permeate Conductivity",   "804", "815", "10"},
+                {"2nd Pass Concentrate Conductivity","808", "817", "50"},
+                {"2nd Pass Permeate Conductivity",   "809", "818", "1.5"},
+        };
+        addProbeTrain(f, "ALPHA", "a", rows, 1);
+        addProbeTrain(f, "BRAVO", "b", rows, 2);
+
+        f.section("Sign-off")
+                .number("time_on_task", "Time on task", "hrs", "laborhours")
+                .textarea("notes", "Notes — list any reading that exceeded its Max Delta and the Service Request "
+                        + "number you raised to calibrate that probe", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("RO_PROBE_MONTHLY_PM")
+                .formName("R.O. Probe Monthly PM")
+                .description("Monthly check of the ALPHA and BRAVO reverse-osmosis analyzer probes against a handheld "
+                        + "sample at seven points each (Inlet pH, Inlet Conductivity, Interstage pH, 1st-Pass "
+                        + "Concentrate & Permeate Conductivity, 2nd-Pass Concentrate & Permeate Conductivity). For every "
+                        + "AIT-DWT tag, enter the probe reading and the sample reading; the app shows the difference. If "
+                        + "the difference is greater than that row's Max Delta, write a Service Request to calibrate the "
+                        + "probe and record the SR number in the notes.")
+                .matchDescriptionContains("probe")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
+    }
+
+    /**
+     * One RO train (ALPHA or BRAVO) of the probe PM: the same seven probe-vs-sample points, using the tag-suffix
+     * column {@code tagCol} (1 = ALPHA, 2 = BRAVO). Each point = a Probe input, a Sample input (both logged to the
+     * WO worklog as READING lines), and a computed Probe−Sample difference whose note carries the Max Delta + the
+     * "write a Service Request" instruction. Field names are prefixed per train so ALPHA/BRAVO never collide.
+     */
+    private void addProbeTrain(Fields f, String section, String prefix, String[][] rows, int tagCol) {
+        f.section(section);
+        for (String[] r : rows) {
+            String measurement = r[0];
+            String tag = "AIT-DWT-" + r[tagCol];
+            String maxDelta = r[3];
+            String base = prefix + "_" + r[tagCol];
+            f.number(base + "_probe", measurement + " — Probe (" + tag + ")", null, "reading")
+                    .number(base + "_sample", measurement + " — Sample (" + tag + ")", null, "reading")
+                    .computed(base + "_delta", "Δ Probe − Sample (" + tag + ")",
+                            base + "_probe - " + base + "_sample", null,
+                            "Max Delta " + maxDelta + " — if the probe and sample differ by more than " + maxDelta
+                                    + ", write a Service Request to calibrate this probe.");
+        }
     }
 
     private static final class Fields {

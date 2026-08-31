@@ -50,6 +50,7 @@ public class EntityTableRegistry {
         Map.entry("LotoStandardPendingChange", "loto_standard_pending_change"),
         Map.entry("LotoStandardApprovalEvent", "loto_standard_approval_event"),
         Map.entry("WalkdownSession", "walkdown_session"),
+        Map.entry("LotoBypassAudit", "loto_bypass_audit"),  // Red-Tag CA bypass audit trail — synced so any desktop's CA sees the history
         Map.entry("LotoBox", "loto_boxes"),        // @Table(name = "loto_boxes")
         Map.entry("Lock", "lock"),
         Map.entry("ZeroEnergy", "zero_energy"),
@@ -194,6 +195,7 @@ public class EntityTableRegistry {
         "ZeroEnergy",       // LotoPoint has a ManyToOne to ZeroEnergy — MUST precede LotoPoint (only depends on Value, above)
         "LotoPoint",
         "Loto",
+        "LotoBypassAudit",  // bypass audit rows reference a Loto by id (plain Long, no DB FK) — place after Loto
         "LotoStandard",
         "RedTagStandard",
         "LotoSnapshot",

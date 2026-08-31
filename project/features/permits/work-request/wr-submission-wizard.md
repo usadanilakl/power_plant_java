@@ -133,3 +133,42 @@ entrapment, engulfment, heat stress, other).
 Worth revisiting: the rule is implicit, and silence means "not a confined space". A genuine confined
 space nobody has filled hazards in for does not register, and nothing anywhere says it should have.
 An explicit flag with the hazards as separate detail would fail safer.
+
+## Three fixes after first use, 2026-08-31
+
+All three were the same class of mistake: the code did what it said, and what it said was not what
+the requester experienced.
+
+### A second area could not be selected
+
+`onAreasPicked` advanced to the detail phase on the first pick, so the screen moved on before the
+requester could tap a second shape. Multi-select was implemented and unreachable.
+
+The map phase now stays put and ends on an explicit **Continue**, disabled until at least one area
+is chosen. The picker stops closing its overlay after each pick too — in multi-select the next thing
+somebody does is usually pick another area, and closing each time makes selecting three a chore.
+
+### The map was not the first thing on screen
+
+Two causes, both fixed:
+
+- On a phone the picker renders a **"Select Work Area" trigger** and keeps the map behind an
+  overlay. That is right when the map is one field among many and wrong when the map IS the
+  question — the requester was told to tap their area and got a button and some options instead.
+  A new `autoOpen` input opens straight into the map; it is off by default so every other host is
+  unaffected.
+- On a wider screen the hint, the scope shortcuts and the escape hatch all rendered ABOVE the map,
+  so the options were what you saw. The bar moved below it. The scope shortcuts are now also
+  rendered inside the mobile overlay, where they were previously invisible — which is exactly when
+  a "this covers the whole unit" answer is most likely.
+
+### Work type blocked the step
+
+`workCategoryName` carries `Validators.required` on the full form, so the reactive form refused to
+advance even though the step's stated minimum is a couple of words of work scope. Two gates, and the
+one stopping the requester was not the one they had been told about.
+
+The wizard now strips `Validators.required` from the fields it renders and relies on its own
+per-step rule, so there is one gate and it is the one on screen. Only `required` is removed —
+anything else a field validates still applies, because those describe the value rather than whether
+an answer is owed. The hot-work chain is still enforced by the step rule when hot work is Yes.

@@ -164,7 +164,14 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       // with no map data cached (first run, hub unreachable) the form simply could not be sent.
       {
         name: 'workAreaMap',
-        label: 'Work Area — tap your area on the map',
+        // Label carries the multi-area summary when the request spans more than one
+        // area — the map picker itself is single-area on the review form, so the ONLY
+        // signal that other areas exist was previously nothing at all. Wizard drives
+        // the multi-area picking; the review is read-through here.
+        label: (this.workAreas?.length ?? 0) > 1
+          ? `Work Area — main: ${this.workAreaName}, plus ${this.workAreas.length - 1} more `
+            + `(${this.workAreas.slice(1).map(a => a.name).join(', ')})`
+          : 'Work Area — tap your area on the map',
         type: 'work-area-map',
         initialValue: this.workAreaId && this.workAreaName ? { id: this.workAreaId, name: this.workAreaName } : null,
         showWhen: { field: 'workAreaUnknown', value: false },
@@ -198,8 +205,15 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         label: 'Main Work Scope',
         type: 'select',
         initialValue: this.workCategoryName,
+        // Options are injected at runtime by the two hosts that render this field
+        // (WorkRequestFormComponent / WorkRequestWizardComponent) — the model has no
+        // access to the hub / Supabase / cache. A hardcoded list here would silently
+        // drift every time ops adds a category on the hub.
         options: [],
-        validators: [Validators.required]
+        // Not required — the wizard's own scope-step validator only asks for a
+        // couple of words of work-scope text, so requiring the dropdown here made
+        // the review form refuse to submit exactly when the wizard said it was
+        // done. Left up to the requester to pick or skip.
       },
       { name: 'workRequestedBy', label: 'Work Requested By', type: 'text', initialValue: this.workRequestedBy, placeholder: 'Full name', validators: [Validators.required] },
       { name: 'affectedEquipment', label: 'Affected Equipment', type: 'equipment-picker', initialValue: this.affectedEquipment, validators: [Validators.required] },

@@ -28,6 +28,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import com.dk_power.power_plant_java.sevice.file.TrashService;
 import com.dk_power.power_plant_java.sevice.hub.HubFileService;
 
 import java.io.File;
@@ -67,6 +68,7 @@ public class FileObjectSyncHandler {
     private final SyncContext syncContext;
     private final PendingFileSyncRepository pendingFileSyncRepository;
     private final ValueRepo valueRepo;
+    private final TrashService trashService;
 
     // Only available in hub mode (@ConditionalOnProperty)
     @Autowired(required = false)
@@ -296,7 +298,16 @@ public class FileObjectSyncHandler {
                     }
                 }
             } else if (entityChange.getChangeType() == FieldChange.ChangeType.DELETE) {
-                log.debug("FileObject #{} was deleted, local files retained", entityId);
+                // Sync-propagated delete: peer / hub deleted the FileObject; mirror it by
+                // moving THIS node's on-disk copies to trash (same fate as user-initiated
+                // delete via NgFileService.deleteRelatedFiles). The entity's `deleted=true`
+                // flip is already handled by field-change sync; this only handles the bytes.
+                //
+                // Uses trash (not permanent rm) so accidental peer-side delete is recoverable
+                // — matches the design intent of NgFileService.hardDelete which is also a
+                // soft-delete + trash-move. Failure to move any single file is logged and
+                // skipped so one missing file (already gone locally) doesn't abort the rest.
+                trashLocalFilesForDeletedEntity(entityId);
             }
             return;
         }
@@ -336,6 +347,59 @@ public class FileObjectSyncHandler {
                 queueFileDownload(fileObject);
             }
         }
+    }
+
+    /**
+     * Move ALL on-disk copies of a soft-deleted FileObject's files to trash.
+     * Walks every registered extension folder and picks up base + all -revN
+     * sibling files via {@link FileUtil#getRevisionsByFileNumber}. Called from
+     * the incoming DELETE branch of {@link #processIncomingSyncChanges} to
+     * mirror what {@link com.dk_power.power_plant_java.sevice.angular.file.NgFileService#deleteRelatedFiles}
+     * does on the originating node.
+     *
+     * Idempotent + best-effort: reads the entity fresh (may already be
+     * soft-deleted so we bypass @Where via findByIdIgnoreDeleted below); each
+     * per-file failure is logged and skipped so one already-gone sibling
+     * doesn't abort the batch.
+     */
+    private void trashLocalFilesForDeletedEntity(Long entityId) {
+        // Look up bypassing the @Where(deleted IS NOT TRUE) filter — the DELETE
+        // FieldChange may have already been applied before this line runs, at
+        // which point findById returns empty. Fall back to a native query.
+        FileObject fileObject = fileRepo.findById(entityId).orElse(null);
+        if (fileObject == null) {
+            fileObject = fileRepo.findByIdIncludingDeleted(entityId).orElse(null);
+        }
+        if (fileObject == null) {
+            log.debug("Sync-delete for #{}: entity not found, nothing to trash", entityId);
+            return;
+        }
+        List<String> exts = fileObject.getExtensionsArray();
+        if (exts.isEmpty() && fileObject.getExtension() != null && !fileObject.getExtension().isEmpty()) {
+            exts = List.of(fileObject.getExtension());
+        }
+        int trashed = 0;
+        for (String ext : exts) {
+            // buildRelativeFolder returns null when fileType/vendor are missing (see
+            // FileObject.java:250-253) — an unresolved-FK entity from mid-sync would
+            // otherwise NPE inside Paths.get and abort the whole DELETE trash pass.
+            String rel = fileObject.buildRelativeFolder(ext);
+            if (rel == null) {
+                log.debug("Sync-delete for #{}: no folder for ext={} (missing fileType/vendor)", entityId, ext);
+                continue;
+            }
+            Path folder = Paths.get(filesRootPath, rel);
+            if (!Files.exists(folder)) continue;
+            List<File> siblings = FileUtil.getRevisionsByFileNumber(fileObject.getFileNumber(), folder.toString());
+            for (File f : siblings) {
+                try {
+                    if (trashService.moveToTrash(f.toPath(), "sync") != null) trashed++;
+                } catch (IOException e) {
+                    log.warn("Sync-delete: failed to trash {}: {}", f, e.getMessage());
+                }
+            }
+        }
+        log.info("Sync-delete for FileObject #{}: moved {} file(s) to trash", entityId, trashed);
     }
 
     /**

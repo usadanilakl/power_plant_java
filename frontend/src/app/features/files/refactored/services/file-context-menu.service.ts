@@ -89,6 +89,18 @@ export class FileContextMenuService extends ContextMenuService {
         action: (item) => this.handleRegenerateJpg(item),
       },
       {
+        id: 'rotate-jpg',
+        label: 'Rotate JPG…',
+        icon: '↻',
+        action: (item) => this.handleRotateJpg(item),
+      },
+      {
+        id: 'restore-missing-files',
+        label: 'Restore Missing Files…',
+        icon: '📎',
+        action: (item) => this.handleRestoreMissingFiles(item),
+      },
+      {
         id: 'import-from-counterpart',
         label: 'Import Points from Counterpart',
         icon: '📥',
@@ -418,6 +430,65 @@ export class FileContextMenuService extends ContextMenuService {
         this.messageService.showError('Re-generate failed: '
           + (err?.error?.message ?? err?.message ?? 'unknown error'));
       },
+    });
+  }
+
+  /**
+   * Rotate the file's JPG derivative by 90 / 180 / 270 degrees. Uses a
+   * lightweight window.prompt for the angle — this is a rare action; a full
+   * dialog would be over-engineered. PDF stays untouched; shape overlays
+   * don't auto-re-orient (see rotateJpg backend comment).
+   */
+  private handleRotateJpg(item: FileDto): void {
+    if (!item?.id) {
+      this.messageService.showWarning('Cannot rotate: no file id');
+      return;
+    }
+    const raw = window.prompt('Rotate JPG by how many degrees? (90, 180, 270)', '90');
+    if (raw === null) return; // user cancelled
+    const parsed = Number(raw.trim());
+    if (parsed !== 90 && parsed !== 180 && parsed !== 270) {
+      this.messageService.showWarning('Rotation must be 90, 180, or 270 — got "' + raw + '"');
+      return;
+    }
+    const degrees = parsed as 90 | 180 | 270;
+    const label = item.name || `File #${item.id}`;
+    this.apiService.rotateJpg(item.id, degrees).subscribe({
+      next: () => {
+        this.messageService.showSuccess(
+          `Rotated JPG ${degrees}° for "${label}". Hard-refresh (Ctrl+F5) if the preview looks unchanged. ` +
+          `Shape overlays are NOT auto-re-oriented — use Ctrl+A on the image and drag to re-align.`);
+        if (item.id) this.refreshFileInList(item.id);
+      },
+      error: (err: any) => {
+        console.error('rotate-jpg failed:', err);
+        this.messageService.showError('Rotate failed: '
+          + (err?.error?.message ?? err?.message ?? 'unknown error'));
+      },
+    });
+  }
+
+  /**
+   * Restore missing files for a split-page group. Opens a dialog that
+   * pre-populates the target list from the backend's split-siblings lookup
+   * (any member of the {base}_page_N group), lets the user pick a source
+   * PDF, and writes each split page's bytes to the corresponding EXISTING
+   * entity. No new entities are created — LOTO points / coordinates on
+   * those IDs stay intact. See RfFileReattachDialogComponent for details.
+   */
+  private handleRestoreMissingFiles(item: FileDto): void {
+    if (!item?.id) {
+      this.messageService.showWarning('Cannot restore: no file id');
+      return;
+    }
+    import('../rf-file-reattach-dialog/rf-file-reattach-dialog.component').then(m => {
+      this.dialog.open(m.RfFileReattachDialogComponent, {
+        data: { fileId: item.id },
+        width: 'auto',
+        maxWidth: '760px',
+      }).afterClosed().subscribe(() => {
+        if (item.id) this.refreshFileInList(item.id);
+      });
     });
   }
 

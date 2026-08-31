@@ -244,6 +244,64 @@ public class SyncResolutionService {
         return new PullResult(countByType.values().stream().mapToInt(Integer::intValue).sum(), applied, countByType, msg);
     }
 
+    /**
+     * Recover a client that has stably diverged from the hub: for every row of {@code entityType} whose
+     * content differs from the hub, OR is present on the hub but missing locally, pull it (and its
+     * transitively-missing references) via {@link #pullWithDependencies}.
+     *
+     * <p>State-based, so it converges a record regardless of WHY it diverged — a dead-lettered change,
+     * a dedup repoint the client never applied (canonical Value it never received), or a latent partition
+     * difference with no queued change at all (the case the change-replay paths can't fix). Report-only
+     * for {@code missingOnHub}: rows that exist only locally need a push, not a pull, so this never
+     * deletes local data — the worst case is a no-op.
+     */
+    public ReconcileReport reconcileTypeFromHub(String entityType) {
+        var drift = syncComparisonService.compareEntityTypeByContent(entityType);
+        if (drift.getError() != null) {
+            return new ReconcileReport(entityType, 0, 0, 0, drift.getError());
+        }
+        java.util.LinkedHashSet<Long> targets = new java.util.LinkedHashSet<>();
+        if (drift.getDiffering() != null) targets.addAll(drift.getDiffering());
+        if (drift.getMissingLocally() != null) targets.addAll(drift.getMissingLocally());
+        if (targets.isEmpty()) {
+            return new ReconcileReport(entityType, 0, 0, 0, null);
+        }
+        int converged = 0, failed = 0;
+        for (Long id : targets) {
+            try {
+                PullResult pr = pullWithDependencies(entityType, id);
+                if (pr != null && pr.getChangesApplied() > 0) converged++; else failed++;
+            } catch (Exception e) {
+                failed++;
+                log.warn("reconcileFromHub: {}#{} pull failed: {}", entityType, id, e.getMessage());
+            }
+        }
+        log.info("reconcileFromHub[{}]: targets={} converged={} failed={}", entityType, targets.size(), converged, failed);
+        return new ReconcileReport(entityType, targets.size(), converged, failed, null);
+    }
+
+    /**
+     * Reconcile EVERY synced type from the hub. Manual recovery for a client left stably diverged (e.g. after
+     * a jar update where dedup repoints / new-entity changes were dead-lettered). Walks SYNC_ORDER so a
+     * referenced type converges before the rows that point at it, and only reports types that actually drifted.
+     */
+    public List<ReconcileReport> reconcileAllFromHub() {
+        List<ReconcileReport> out = new ArrayList<>();
+        for (String type : entityTableRegistry.getSyncOrder()) {
+            try {
+                ReconcileReport r = reconcileTypeFromHub(type);
+                if (r.targets() > 0 || r.error() != null) out.add(r);
+            } catch (Exception e) {
+                log.warn("reconcileFromHub: type {} failed: {}", type, e.getMessage());
+                out.add(new ReconcileReport(type, 0, 0, 0, e.getMessage()));
+            }
+        }
+        return out;
+    }
+
+    /** One type's reconcile-from-hub outcome. */
+    public record ReconcileReport(String entityType, int targets, int converged, int failed, String error) {}
+
     /** Relationship refs (type#id) parsed from a hub entity's serialized fields — the seed for the pull so a
      *  relationship pointing at a locally-missing entity gets that entity pulled. */
     private List<EntityRef> refsFromHubData(String entityType, Map<String, String> hubData) {

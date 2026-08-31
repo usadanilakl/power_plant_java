@@ -46,6 +46,8 @@ export class ReactiveFormComponent {
   groupLayout = input<'row' | 'column' | 'reactive' | 'grid'>('grid');
   title = input<string>('');
   submitButtonText = input<string>('Submit');
+  /** Off when the host renders its own action bar — see the wizard's fixed bottom bar. */
+  showSubmitButton = input<boolean>(true);
   deleteButtonText = input<string>('');
   showAddEditOption = input<boolean>(true);
 
@@ -62,6 +64,21 @@ export class ReactiveFormComponent {
 
 
   Object = Object;
+
+  /**
+   * Area ids to pass into an equipment-picker field. When the entity carries a
+   * multi-area {@code workAreas} list (WorkRequest's multi-area wizard), the picker
+   * unions equipment across all of them. Otherwise null so the picker falls back to
+   * its single-area {@code workAreaId} input driven by the workAreaMap form control.
+   */
+  workAreaIdsFromEntity = computed<number[] | null>(() => {
+    const wr = this.entity();
+    const areas = wr?.workAreas;
+    if (!Array.isArray(areas) || areas.length < 2) return null;
+    const ids = areas.map((a: any) => a?.id).filter((id: any) => typeof id === 'number');
+    return ids.length > 1 ? ids : null;
+  });
+
   groupedFields = computed(() => {
     const allFields = this.fields();
     const groupsMap: { [key: string]: FormField[] } = {};

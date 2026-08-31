@@ -39,7 +39,7 @@ const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; place
           <span class="selected-tag">{{ selectedPoint()!.tagNumber }}</span>
           <span class="selected-desc">{{ selectedPoint()!.description }}</span>
         } @else {
-          <span class="placeholder">Select equipment...</span>
+          <span class="placeholder">{{ triggerLabel() }}</span>
         }
         <span class="chevron">&#9662;</span>
       </button>
@@ -126,7 +126,9 @@ const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; place
                   <div class="empty-message">No equipment matches these tag and description words.</div>
                 }
                 @for (point of searchResults(); track point.id) {
-                  <button type="button" class="point-item" (click)="selectPoint(point)">
+                  <button type="button" class="point-item" [class.picked]="isPicked(point)"
+                          (click)="selectPoint(point)">
+                    @if (multiple()) { <span class="point-check">{{ isPicked(point) ? '☑' : '☐' }}</span> }
                     <span class="point-tag">{{ point.tagNumber }}</span>
                     <span class="point-desc">{{ point.description }}</span>
                     @if (pointMeta(point)) { <span class="point-loc">{{ pointMeta(point) }}</span> }
@@ -157,7 +159,9 @@ const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; place
                   </button>
                   @if (expandedGroups().has(entry[0])) {
                     @for (point of entry[1]; track point.id) {
-                      <button type="button" class="point-item" (click)="selectPoint(point)">
+                      <button type="button" class="point-item" [class.picked]="isPicked(point)"
+                              (click)="selectPoint(point)">
+                        @if (multiple()) { <span class="point-check">{{ isPicked(point) ? '☑' : '☐' }}</span> }
                         <span class="point-tag">{{ point.tagNumber }}</span>
                         <span class="point-desc">{{ point.description }}</span>
                         @if (pointMeta(point)) { <span class="point-loc">{{ pointMeta(point) }}</span> }
@@ -172,8 +176,20 @@ const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; place
               </button>
             }
 
-            <div class="manual-note">Can't find it? Describe the equipment in the Notes field.</div>
+            @if (!multiple()) {
+              <div class="manual-note">Can't find it? Describe the equipment in the Notes field.</div>
+            }
           </div>
+
+          @if (multiple()) {
+            <div class="picker-confirm">
+              <span class="picker-count">{{ picked().length }} selected</span>
+              <button type="button" class="picker-cancel" (click)="close()">Cancel</button>
+              <button type="button" class="picker-add" [disabled]="!picked().length" (click)="confirmPicked()">
+                Add {{ picked().length || '' }}
+              </button>
+            </div>
+          }
       </dialog>
     </div>
   `,
@@ -245,6 +261,15 @@ const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; place
     .type-count { color: var(--secondary-text, #888); font-weight: 400; font-size: 13px; }
     .type-chevron { margin-left: auto; font-size: 10px; transition: transform 0.15s; }
     .type-chevron.expanded { transform: rotate(90deg); }
+    /* Multi-select affordances. The confirm bar sits outside the scrolling body so a long list
+       cannot push it out of reach on a phone. */
+    .point-item.picked { border-color: var(--accent-color); background: var(--info-bg, rgba(21,101,192,0.12)); }
+    .point-check { margin-right: 6px; font-size: 15px; }
+    .picker-confirm { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border-color); background: var(--secondary-background, #1e1e1e); }
+    .picker-count { flex: 1; font-size: 13px; color: var(--secondary-text); }
+    .picker-cancel { min-height: 40px; padding: 0 14px; background: none; border: 1px solid var(--border-color); border-radius: 8px; color: var(--secondary-text); font-family: inherit; font-size: 14px; }
+    .picker-add { min-height: 40px; padding: 0 18px; background: var(--accent-color); border: none; border-radius: 8px; color: #fff; font-weight: 700; font-family: inherit; font-size: 14px; }
+    .picker-add:disabled { opacity: 0.5; }
     .point-item { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 12px;
       border: none; background: none; cursor: pointer; border-radius: 6px; text-align: left;
       color: var(--primary-text); font-family: inherit; }
@@ -267,7 +292,32 @@ const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; place
 })
 export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, OnDestroy {
   workAreaId = input<number | null>(null);
+  /**
+   * Multi-area filter. When set (non-empty), the picker unions the equipment across
+   * every listed area and keeps the "group by equipment type" view intact — grouping
+   * is by eqType, not by area, so multiple areas merge naturally. When null or empty
+   * it falls back to {@link workAreaId} so every existing single-area host is
+   * unaffected. Ordering is preserved as the caller passed it (the first id is the
+   * "primary" area — used for the location tabs so a plant-map user still sees the
+   * area they originally opened).
+   */
+  workAreaIds = input<number[] | null>(null);
   pointSelected = output<PwaLotoPointEntry>();
+
+  /**
+   * Multi-select mode. Rows toggle instead of closing the dialog, and a footer confirms the batch
+   * through {@link pointsSelected}.
+   *
+   * <p>In this mode the component is NOT acting as a form control — {@code onChange} stays silent,
+   * because a ControlValueAccessor value here is a single entry and widening it would change the
+   * contract for every existing consumer (Field List, Work Request, the Finder map tab). Hosts that
+   * want a batch listen to the output instead.</p>
+   */
+  multiple = input<boolean>(false);
+  /** The confirmed batch, in the order it was picked. Only emitted in {@link multiple} mode. */
+  pointsSelected = output<PwaLotoPointEntry[]>();
+  /** Trigger label; hosts that open the dialog programmatically can name the action. */
+  triggerLabel = input<string>('Select equipment...');
 
   @ViewChild('pickerDialog') pickerDialog?: ElementRef<HTMLDialogElement>;
 
@@ -276,6 +326,8 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
 
   isOpen = signal(false);
   selectedPoint = signal<PwaLotoPointEntry | null>(null);
+  /** Multi-select working set. Kept in pick order so the host attaches them the way they were chosen. */
+  picked = signal<PwaLotoPointEntry[]>([]);
   expandedGroups = signal<Set<string>>(new Set());
   searchAllMode = signal(false);
   activeLocationId = signal<number | null>(null);
@@ -286,9 +338,35 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
   private onChange: (value: PwaLotoPointEntry | null) => void = () => {};
   private onTouched: () => void = () => {};
 
+  /**
+   * Effective list of area ids to pull equipment from — {@link workAreaIds} when the
+   * host passes a multi-area list, else the single {@link workAreaId} it always had.
+   * Empty means "no filter, no points" (same behaviour as the pre-multi picker with
+   * a null area id).
+   */
+  private effectiveAreaIds = computed<number[]>(() => {
+    const many = this.workAreaIds();
+    if (many && many.length > 0) return many.filter(id => id != null);
+    const one = this.workAreaId();
+    return one != null ? [one] : [];
+  });
+
   private areaPoints = computed(() => {
-    const areaId = this.workAreaId();
-    return areaId ? this.equipmentService.getPointsForWorkArea(areaId) : [];
+    const ids = this.effectiveAreaIds();
+    if (!ids.length) return [];
+    // Union across every area — dedup by point id (a shared cross-area point
+    // otherwise appears twice under the same eqType group).
+    const seen = new Set<number>();
+    const out: PwaLotoPointEntry[] = [];
+    for (const id of ids) {
+      for (const p of this.equipmentService.getPointsForWorkArea(id)) {
+        if (p.id == null || !seen.has(p.id)) {
+          if (p.id != null) seen.add(p.id);
+          out.push(p);
+        }
+      }
+    }
+    return out;
   });
 
   hasAreaPoints = computed(() => this.areaPoints().length > 0);
@@ -305,9 +383,21 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
   });
 
   locationTabs = computed<LocationTab[]>(() => {
-    const areaId = this.workAreaId();
-    if (!areaId) return [];
-    const locations = this.equipmentService.getLocationsForWorkArea(areaId);
+    const ids = this.effectiveAreaIds();
+    if (!ids.length) return [];
+    // Union locations across every included area, preserving first-seen order and
+    // deduping by id (two areas can share a location). Single-area callers see the
+    // same tabs they always did.
+    const seen = new Set<number>();
+    const locations: PwaLocationEntry[] = [];
+    for (const id of ids) {
+      for (const loc of this.equipmentService.getLocationsForWorkArea(id)) {
+        if (loc.id != null && !seen.has(loc.id)) {
+          seen.add(loc.id);
+          locations.push(loc);
+        }
+      }
+    }
     const labels = this.shortLocationLabels(locations);
     return locations.map((location, index) => ({
       ...location,
@@ -324,7 +414,11 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
 
   constructor() {
     effect(() => {
+      // Track BOTH inputs so a multi-area host swap resets state just like the single-area one.
+      // Reading through effectiveAreaIds() would collapse identical id lists to no-op and miss
+      // the case where the caller swaps single ↔ multi with the same primary.
       this.workAreaId();
+      this.workAreaIds();
       this.activeLocationId.set(null);
       this.expandedGroups.set(new Set());
     });
@@ -359,6 +453,7 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
     this.searchAllMode.set(false);
     this.activeLocationId.set(null);
     this.clearFilters();
+    this.picked.set([]);
     this.isOpen.set(true);
     this.onTouched();
     document.body.style.overflow = 'hidden';
@@ -378,9 +473,27 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
   }
 
   selectPoint(point: PwaLotoPointEntry): void {
+    if (this.multiple()) { this.togglePicked(point); return; }
     this.selectedPoint.set(point);
     this.onChange(point);
     this.pointSelected.emit(point);
+    this.close();
+  }
+
+  /** Add or remove one point from the batch. The dialog stays open — that is the whole point. */
+  togglePicked(point: PwaLotoPointEntry): void {
+    this.picked.update(list => list.some(p => p.id === point.id)
+      ? list.filter(p => p.id !== point.id)
+      : [...list, point]);
+  }
+
+  isPicked(point: PwaLotoPointEntry): boolean { return this.picked().some(p => p.id === point.id); }
+
+  /** Hand the batch to the host and close. */
+  confirmPicked(): void {
+    const batch = this.picked();
+    if (!batch.length) return;
+    this.pointsSelected.emit(batch);
     this.close();
   }
 

@@ -272,6 +272,46 @@ export class RfFileApiService {
   }
 
   /**
+   * Rotate the JPG derivative by 90 / 180 / 270 degrees. PDF is untouched.
+   * Rotated JPG is synced to peers. Shape overlays are NOT auto-re-oriented —
+   * user re-aligns via Ctrl+A + drag afterward.
+   */
+  rotateJpg(fileId: number, degrees: 90 | 180 | 270): Observable<SpringApiResponse<{ fileLink: string }>> {
+    return this.http.post<SpringApiResponse<{ fileLink: string }>>(
+      `${this.apiUrl}/${fileId}/rotate-jpg?degrees=${degrees}`,
+      {}
+    );
+  }
+
+  /**
+   * Split-siblings of a FileObject: given any member of a {base}_page_N group,
+   * returns every sibling ordered by page index. Used by the reattach dialog
+   * to pre-populate the target list. Returns single-element list when the
+   * file isn't part of a split group.
+   */
+  splitSiblings(fileId: number): Observable<SpringApiResponse<any[]>> {
+    return this.http.get<SpringApiResponse<any[]>>(
+      `${this.apiUrl}/${fileId}/split-siblings`
+    );
+  }
+
+  /**
+   * Re-attach a source PDF's pages to an ordered list of existing FileObject
+   * IDs. Page 1 → targets[0], page 2 → targets[1], etc. (backend sorts
+   * targets by the _page_N suffix before assignment). Backend fails hard
+   * when source page count ≠ target count.
+   */
+  reattachSplit(sourceFile: File, targetIds: number[]): Observable<SpringApiResponse<ReattachResult>> {
+    const fd = new FormData();
+    fd.append('file', sourceFile);
+    for (const id of targetIds) fd.append('targetIds', String(id));
+    return this.http.post<SpringApiResponse<ReattachResult>>(
+      `${this.apiUrl}/reattach-split`,
+      fd
+    );
+  }
+
+  /**
    * Clone a processed FileObject to the other unit (U1 ↔ U2). When force=false
    * and a prior clone exists, backend returns status="exists" with the existing
    * clone IDs — the caller should confirm and re-POST with force=true to
@@ -352,6 +392,22 @@ export interface JpgRegenResult {
   total: number;
   successCount: number;
   failures: JpgRegenFailure[];
+}
+
+/** One row in the reattach-split result — per-target status. */
+export interface ReattachTargetResult {
+  id: number;
+  fileNumber: string;
+  page: number;
+  status: 'restored' | 'failed';
+  error?: string;
+}
+
+/** Response shape of POST /ng/files/reattach-split. */
+export interface ReattachResult {
+  total: number;
+  successCount: number;
+  perTarget: ReattachTargetResult[];
 }
 
 /** One revision of a document, with every on-disk format (see getRevisionsMap). */

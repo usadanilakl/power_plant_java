@@ -83,7 +83,8 @@
                 <label class="field-label">{{ field.label }}</label>
                 <app-equipment-picker
                   [formControl]="getFormControl(field.name)"
-                  [workAreaId]="form.get('workAreaMap')?.value?.id ?? null">
+                  [workAreaId]="form.get('workAreaMap')?.value?.id ?? null"
+                  [workAreaIds]="workAreaIdsFromEntity()">
                 </app-equipment-picker>
               }
               @case('maximo-tree-picker'){
@@ -123,12 +124,16 @@
     </fieldset>
   }
 
-  <div [class]="'form-field-layout-' + layout()">
-    <button type="submit">{{ submitButtonText() }}</button>
-    @if (deleteButtonText() !== '') {
-      <button type="button" (click)="onDelete()">{{ deleteButtonText() }}</button>
-    }
-    <ng-content select="[extra-buttons]"></ng-content>
-  </div>
+  <!-- A host that drives submission from its own action bar hides this row entirely; without that
+       the wizard would show two Next buttons in two different places on every step. -->
+  @if (showSubmitButton()) {
+    <div [class]="'form-field-layout-' + layout()">
+      <button type="submit">{{ submitButtonText() }}</button>
+      @if (deleteButtonText() !== '') {
+        <button type="button" (click)="onDelete()">{{ deleteButtonText() }}</button>
+      }
+      <ng-content select="[extra-buttons]"></ng-content>
+    </div>
+  }
 </form>
 

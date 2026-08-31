@@ -16,5 +16,18 @@ public record FinderRequestDto(
         FinderFilterDto specificLocation,
         FinderFilterDto tagNumber,
         FinderFilterDto description,
-        Integer limit
-) {}
+        Integer limit,
+        Boolean lotoPointsOnly
+) {
+    /**
+     * Skip the unreferenced-equipment half of the search.
+     *
+     * <p>For the Finder page the equipment rows are the point: they are the things nobody has built a
+     * LOTO point for yet. For the add-points-to-a-standard/permit picker they are noise — equipment
+     * cannot be attached, only a LOTO point can — and worse than noise, since they would eat into the
+     * row cap and skew the "showing first N" count with rows that can never be selected.</p>
+     */
+    public boolean isLotoPointsOnly() {
+        return Boolean.TRUE.equals(lotoPointsOnly);
+    }
+}

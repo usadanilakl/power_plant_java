@@ -10,6 +10,7 @@ import { LotoPermitApiService } from './loto-permit-api.service';
 import { LotoPermitStore } from './loto-permit-store.service';
 import { LotoPermitSyncService } from './loto-permit-sync.service';
 import { PhaseDraft, PositionOptions, PwaLotoDetail, PwaLotoPoint } from './loto-permit.model';
+import { LotoPointAttachComponent } from '../loto-standard/loto-point-attach.component';
 import { LotoWoLinkComponent } from './loto-wo-link.component';
 import { GlobalMessageService } from '../../services/global-message.service';
 
@@ -22,7 +23,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
 @Component({
   selector: 'app-loto-permit-phase',
   standalone: true,
-  imports: [FormsModule, MainLayoutComponent, LotoDrawingViewerComponent, LotoWoLinkComponent],
+  imports: [FormsModule, MainLayoutComponent, LotoDrawingViewerComponent, LotoWoLinkComponent, LotoPointAttachComponent],
   template: `
     <app-main-layout [header]="mode() === 'HANG' ? 'Hang LOTO' : mode() === 'VERIFY' ? 'Verify LOTO' : 'LOTO Permit'">
       <ng-container main-content>
@@ -43,6 +44,20 @@ import { GlobalMessageService } from '../../services/global-message.service';
               }
               @if (readOnly()) {
                 <div class="ph-ro">👁 View only — this permit has no step available to you right now.</div>
+              }
+              @if (readOnly() && canAddPoints(d)) {
+                <!-- Structural edits are a Control Authority action; the server is what enforces that,
+                     and its refusal names the missing role. Showing the button on an editable permit
+                     and letting the answer come from the rule beats guessing the role on the phone. -->
+                <button class="ph-add" (click)="showAttach.set(!showAttach())">
+                  {{ showAttach() ? '× Close map picker' : '🗺 Add points from map' }}
+                </button>
+                @if (showAttach()) {
+                  <app-loto-point-attach
+                    [target]="{ kind: 'permit', id: d.id }"
+                    (attached)="reloadDetail()"
+                    (closed)="showAttach.set(false)"></app-loto-point-attach>
+                }
               }
             </div>
 
@@ -132,6 +147,7 @@ import { GlobalMessageService } from '../../services/global-message.service';
     .ph-msg { padding: 20px; text-align: center; color: var(--secondary-text); }
     .ph-err { color: var(--danger-text); }
     .ph-head { margin-bottom: 10px; }
+    .ph-add { width: 100%; min-height: 44px; margin-top: 8px; background: none; border: 1px dashed var(--border-color); border-radius: 8px; color: var(--accent-color); font-size: 14px; font-weight: 600; font-family: inherit; }
     .ph-ro { margin-top: 6px; background: var(--info-bg); color: var(--info-text); border: 1px solid var(--accent-color); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
     .ph-title { font-size: 16px; font-weight: 600; color: var(--primary-text); }
     .ph-sub { color: var(--secondary-text); font-size: 13px; margin-top: 2px; }
@@ -270,6 +286,26 @@ export class LotoPermitPhaseComponent implements OnInit {
       if (rp && !this.isDone(rp)) return false;           // hang = predecessors must be done first
     }
     return true;
+  }
+
+  /** Map-picker panel visibility, VIEW mode only. */
+  showAttach = signal(false);
+
+  /**
+   * Whether points may be added at all. Mirrors the server's structurally-editable rule
+   * (loto-procedure.md §4.2): Building is the first build, Modification is a paused Active permit.
+   * Test is a pause-for-rehang, NOT a modification, so it is deliberately absent.
+   */
+  canAddPoints(d: PwaLotoDetail): boolean {
+    return d.status === 'Building' || d.status === 'Modification';
+  }
+
+  /** Re-read the permit after points were attached so the list below shows them. */
+  async reloadDetail(): Promise<void> {
+    try {
+      const d = await firstValueFrom(this.api.getDetail(this.lotoId));
+      if (d) { this.detail.set(d); this.store.cacheDetail(d); }
+    } catch { /* the attach component already reported its own outcome */ }
   }
 
   /** VIEW-mode totals: both halves of the lifecycle at once, rather than the active mode's one. */
