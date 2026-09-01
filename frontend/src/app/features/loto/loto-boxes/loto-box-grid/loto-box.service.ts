@@ -108,4 +108,56 @@ export class LotoBoxService {
   seedInventory(): Observable<SpringApiResponse<string>> {
     return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/seed-inventory`, null);
   }
+
+  // --- Canonical LED layout heal + inspect ---------------------------------
+  // Backing endpoints handle drift between the DB rows for LedStrip.totalLeds /
+  // LotoBox.rangeStart|rangeEnd and the physical wiring. See CanonicalLedLayout
+  // on the server; the runtime WLED write already pins against canonical so
+  // these are for DB hygiene / operator visibility.
+
+  /**
+   * Diagnostic snapshot: per-strip DB {@code totalLeds} vs canonical, and
+   * per-box {@code rangeStart / rangeEnd} vs canonical. Each row includes
+   * {@code drifted: boolean} so the UI can highlight mismatches.
+   */
+  inspectLedLayout(): Observable<SpringApiResponse<LedLayoutInspection>> {
+    return this.http.get<SpringApiResponse<LedLayoutInspection>>(`${this.apiUrl}/inspect-led-layout`);
+  }
+
+  /**
+   * Reset every LedStrip.totalLeds/sequence + every LotoBox.rangeStart/rangeEnd
+   * back to canonical, then queue a full LED push on both ESPs. Does NOT touch
+   * {@code box.loto} FKs — live LOTOs stay lit.
+   */
+  healToCanonical(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/heal-to-canonical`, null);
+  }
+}
+
+/** Shape returned by {@link LotoBoxService.inspectLedLayout}. */
+export interface LedLayoutInspection {
+  stripDriftCount: number;
+  boxDriftCount: number;
+  strips: LedStripDriftRow[];
+  boxes: LotoBoxDriftRow[];
+}
+
+export interface LedStripDriftRow {
+  stripId: number;
+  espIp: string | null;
+  stripNumber: number | null;
+  sequence: number | null;
+  dbTotalLeds: number | null;
+  canonicalTotalLeds: number | null;
+  drifted: boolean;
+}
+
+export interface LotoBoxDriftRow {
+  boxNumber: number | null;
+  stripId: number | null;
+  dbRangeStart: number | null;
+  dbRangeEnd: number | null;
+  canonicalRangeStart: number | null;
+  canonicalRangeEnd: number | null;
+  drifted: boolean;
 }

@@ -72,8 +72,11 @@
               }
               @case('work-area-map'){
                 <label class="field-label">{{ field.label }}</label>
+                <!-- Opt-in per field, not on by default: FieldListItem declares its own
+                     work-area-map field and must stay single-select. -->
                 <app-work-area-map-select
                   [formControl]="getFormControl(field.name)"
+                  [multiple]="field.multiple ?? false"
                   [allowedAreaTypes]="field.allowedAreaTypes ?? null"
                   [excludedAreaTypes]="field.excludedAreaTypes ?? null"
                   [excludeConfinedSpaces]="field.excludeConfinedSpaces ?? false">
@@ -83,8 +86,8 @@
                 <label class="field-label">{{ field.label }}</label>
                 <app-equipment-picker
                   [formControl]="getFormControl(field.name)"
-                  [workAreaId]="form.get('workAreaMap')?.value?.id ?? null"
-                  [workAreaIds]="workAreaIdsFromEntity()">
+                  [workAreaId]="mapControlAreaId()"
+                  [workAreaIds]="pickerAreaIds()">
                 </app-equipment-picker>
               }
               @case('maximo-tree-picker'){

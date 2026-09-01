@@ -6,7 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LotoBoxDto } from '../../../../models/loto/loto-box.model';
 import { LockDto } from '../../../../models/loto/lock.model';
 import { LotoBoxStateService, LotoBoxStatus } from './loto-box-state.service';
-import { LotoBoxService } from './loto-box.service';
+import { LedLayoutInspection, LotoBoxService } from './loto-box.service';
 import { LockService } from '../../../../services/loto/lock.service';
 import { CommentsDialogService } from '../../../../shared/comments-dialog/comments-dialog.service';
 import { CommentService } from '../../../../services/comment.service';
@@ -243,6 +243,65 @@ export class LotoBoxGridComponent implements OnInit {
 
   toggleShowInactive() {
     this.showInactive.set(!this.showInactive());
+  }
+
+  // --- Canonical LED-layout heal + inspect --------------------------------
+  // Both endpoints target the drift class where LedStrip.totalLeds or
+  // LotoBox.rangeStart/rangeEnd sync in wrong from another device and start
+  // firing the wrong LEDs (whole-row shift near the bottom of the array).
+  // The server-side WLED write already pins against canonical so LEDs are
+  // correct regardless; these controls are for DB hygiene + operator sight.
+
+  ledLayoutInspection = signal<LedLayoutInspection | null>(null);
+  showLedLayoutPanel = signal(false);
+  ledLayoutLoading = signal(false);
+
+  inspectLedLayout() {
+    this.ledLayoutLoading.set(true);
+    this.showLedLayoutPanel.set(true);
+    this.boxService.inspectLedLayout().subscribe({
+      next: (resp) => {
+        this.ledLayoutInspection.set(resp.responseData ?? null);
+        this.ledLayoutLoading.set(false);
+        const strips = resp.responseData?.stripDriftCount ?? 0;
+        const boxes = resp.responseData?.boxDriftCount ?? 0;
+        this.statusMessage.set(
+          strips === 0 && boxes === 0
+            ? 'LED layout matches canonical — no drift'
+            : `Drift detected: ${strips} strip(s), ${boxes} box(es)`
+        );
+      },
+      error: (err) => {
+        this.ledLayoutLoading.set(false);
+        this.statusMessage.set(`Inspect failed: ${err?.error?.message ?? err.message}`);
+      },
+    });
+  }
+
+  closeLedLayoutPanel() {
+    this.showLedLayoutPanel.set(false);
+  }
+
+  healLedLayoutToCanonical() {
+    if (!confirm('Reset every LED strip and box range to canonical, then push to ESPs? '
+        + 'Live LOTO→box links stay intact; only LED addressing gets corrected.')) {
+      return;
+    }
+    this.ledLayoutLoading.set(true);
+    this.boxService.healToCanonical().subscribe({
+      next: (resp) => {
+        this.ledLayoutLoading.set(false);
+        this.statusMessage.set(resp.message ?? 'Heal complete');
+        // Re-inspect so the operator can visually confirm all rows now show
+        // {@code drifted: false}.
+        this.inspectLedLayout();
+        this.loadBoxes();
+      },
+      error: (err) => {
+        this.ledLayoutLoading.set(false);
+        this.statusMessage.set(`Heal failed: ${err?.error?.message ?? err.message}`);
+      },
+    });
   }
 
   seedInventory() {

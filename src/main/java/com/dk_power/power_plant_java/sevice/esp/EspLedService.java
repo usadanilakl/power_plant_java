@@ -81,13 +81,34 @@ public class EspLedService {
 
         // Strips in physical order — LotoBox.rangeStart/rangeEnd are relative
         // to each strip's own [0, totalLeds) window, so we chain them by strip
-        // sequence to get absolute WLED indices.
+        // stripNumber (canonical, stable, set at seed time) to get absolute
+        // WLED indices. Sorting by the mutable `sequence` used to be the
+        // primary key but that field can drift via CRDT sync from another
+        // device; stripNumber (0/1/2 per ESP) is set once during seed and
+        // matches the physical wiring on the ESP.
         List<LedStrip> strips = ledStripService.getByEspDeviceId(espDevice.getId());
-        strips.sort(Comparator.comparing(s -> s.getSequence() == null ? Integer.MAX_VALUE : s.getSequence()));
+        strips.sort(Comparator.comparing(s -> s.getStripNumber() == null ? Integer.MAX_VALUE : s.getStripNumber()));
 
-        int totalLeds = strips.stream()
-                .mapToInt(s -> s.getTotalLeds() == null ? 0 : s.getTotalLeds())
-                .sum();
+        // Use CANONICAL per-strip totalLeds — see CanonicalLedLayout. If the DB
+        // value disagrees (drifted via sync, or a bad heal on another device)
+        // we log a WARN with both values and pin the canonical for this write.
+        // Without this a single drifted totalLeds pushes every downstream box's
+        // LED range by that many pixels and the whole bottom of the array
+        // fires the wrong LEDs.
+        int totalLeds = 0;
+        Map<Long, Integer> stripTotals = new HashMap<>();
+        for (LedStrip strip : strips) {
+            Integer canonical = CanonicalLedLayout.canonicalStripTotalLeds(
+                    espDevice.getIpAddress(), strip.getStripNumber());
+            int dbTotal = strip.getTotalLeds() == null ? 0 : strip.getTotalLeds();
+            int effective = canonical != null ? canonical : dbTotal;
+            if (canonical != null && canonical != dbTotal) {
+                log.warn("[EspLedService] LedStrip drift on ESP {} strip#{}: db.totalLeds={} → pinning canonical {}",
+                        espDevice.getName(), strip.getStripNumber(), dbTotal, canonical);
+            }
+            stripTotals.put(strip.getId(), effective);
+            totalLeds += effective;
+        }
         if (totalLeds == 0) {
             log.warn("[EspLedService] ESP {} has no LED strips configured — skipping sync.", espDevice.getName());
             return;
@@ -98,7 +119,7 @@ public class EspLedService {
         int running = 0;
         for (LedStrip strip : strips) {
             stripStartOffset.put(strip.getId(), running);
-            running += strip.getTotalLeds() == null ? 0 : strip.getTotalLeds();
+            running += stripTotals.getOrDefault(strip.getId(), 0);
         }
 
         // Full color buffer — start with the default closed color for every LED,
@@ -112,15 +133,33 @@ public class EspLedService {
 
         List<LotoBox> boxes = lotoBoxRepo.findByEspDeviceId(espDevice.getId());
         for (LotoBox box : boxes) {
-            if (box.getLedStrip() == null || box.getRangeStart() == null || box.getRangeEnd() == null) continue;
+            // Prefer CANONICAL box range over the DB row — same reasoning as
+            // strip totalLeds above. A drifted rangeStart on box #41 will land
+            // that box's LEDs somewhere else on the strip; over the whole
+            // array that produces the "adjacent box lights up" symptom.
+            Integer canonStart = CanonicalLedLayout.canonicalRangeStart(box.getNumber());
+            Integer canonEnd = CanonicalLedLayout.canonicalRangeEnd(box.getNumber());
+            Integer rangeStart = canonStart != null ? canonStart : box.getRangeStart();
+            Integer rangeEnd = canonEnd != null ? canonEnd : box.getRangeEnd();
+            if (canonStart != null && box.getRangeStart() != null
+                    && !canonStart.equals(box.getRangeStart())) {
+                log.warn("[EspLedService] LotoBox #{} rangeStart drift: db={} → pinning canonical {}",
+                        box.getNumber(), box.getRangeStart(), canonStart);
+            }
+            if (canonEnd != null && box.getRangeEnd() != null
+                    && !canonEnd.equals(box.getRangeEnd())) {
+                log.warn("[EspLedService] LotoBox #{} rangeEnd drift: db={} → pinning canonical {}",
+                        box.getNumber(), box.getRangeEnd(), canonEnd);
+            }
+            if (box.getLedStrip() == null || rangeStart == null || rangeEnd == null) continue;
             Integer offset = stripStartOffset.get(box.getLedStrip().getId());
             if (offset == null) continue;
 
             int r = box.getR() == null ? DEFAULT_RGB[0] : box.getR();
             int g = box.getG() == null ? DEFAULT_RGB[1] : box.getG();
             int b = box.getB() == null ? DEFAULT_RGB[2] : box.getB();
-            int start = offset + box.getRangeStart();
-            int end = offset + box.getRangeEnd();
+            int start = offset + rangeStart;
+            int end = offset + rangeEnd;
             for (int i = start; i <= end && i < totalLeds; i++) {
                 leds[i] = new int[]{r, g, b};
             }

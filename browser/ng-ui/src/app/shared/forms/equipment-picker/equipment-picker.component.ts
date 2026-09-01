@@ -9,16 +9,24 @@ import {
   PwaLotoPointEntry,
 } from '../../../services/equipment-data.service';
 
-type PickerFilterKey = 'tagNumber' | 'description';
+type PickerFilterKey = 'tagNumber' | 'description' | 'specificLocation' | 'eqType';
 
 interface LocationTab extends PwaLocationEntry {
   label: string;
   count: number;
 }
 
+/**
+ * The filter boxes, using the Equipment Finder's own labels and placeholders so the two search
+ * surfaces read the same. Every key is a string property of `PwaLotoPointEntry`, which is what lets
+ * this search run entirely against the offline snapshot — the Finder itself is hub-only and gated
+ * on plant access, and the work-request flow is deliberately open to anonymous contractors.
+ */
 const PICKER_FILTERS: ReadonlyArray<{ key: PickerFilterKey; label: string; placeholder: string }> = [
   { key: 'tagNumber', label: 'Tag number', placeholder: 'e.g. cnd 455' },
   { key: 'description', label: 'Description', placeholder: 'e.g. feedwater pump' },
+  { key: 'eqType', label: 'Equipment type', placeholder: 'e.g. valve, breaker' },
+  { key: 'specificLocation', label: 'Specific location', placeholder: 'e.g. elev 20, north wall' },
 ];
 
 @Component({
@@ -583,9 +591,13 @@ export class EquipmentPickerComponent implements ControlValueAccessor, OnInit, O
     return (value ?? '').split(/[\s,]+/).map(term => term.trim()).filter(Boolean);
   }
 
-  private emptyTerms(): Record<PickerFilterKey, string[]> { return { tagNumber: [], description: [] }; }
-  private emptyPending(): Record<PickerFilterKey, string> { return { tagNumber: '', description: '' }; }
+  private emptyTerms(): Record<PickerFilterKey, string[]> {
+    return { tagNumber: [], description: [], eqType: [], specificLocation: [] };
+  }
+  private emptyPending(): Record<PickerFilterKey, string> {
+    return { tagNumber: '', description: '', eqType: '', specificLocation: '' };
+  }
   private defaultModes(): Record<PickerFilterKey, EquipmentFilterMode> {
-    return { tagNumber: 'AND', description: 'AND' };
+    return { tagNumber: 'AND', description: 'AND', eqType: 'AND', specificLocation: 'AND' };
   }
 }

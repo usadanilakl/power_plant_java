@@ -38,10 +38,22 @@ export interface EquipmentWordBucket {
   mode: EquipmentFilterMode;
 }
 
-/** Tag and description are separate buckets; populated buckets combine with AND. */
+/**
+ * One bucket per searchable field; populated buckets combine with AND.
+ *
+ * <p>These mirror the Equipment Finder's boxes for every dimension the OFFLINE snapshot actually
+ * carries. Location is deliberately absent: a point stores `locationId`, not a location name, and
+ * the picker already exposes locations as tabs — a second, text-matched location filter would be a
+ * worse version of a control that is already there.
+ *
+ * <p>`filterPoints` indexes `point[field]` directly, so every key here must name a string property
+ * of {@link PwaLotoPointEntry}.
+ */
 export interface EquipmentPointFilters {
   tagNumber?: EquipmentWordBucket;
   description?: EquipmentWordBucket;
+  specificLocation?: EquipmentWordBucket;
+  eqType?: EquipmentWordBucket;
 }
 
 @Injectable({ providedIn: 'root' })

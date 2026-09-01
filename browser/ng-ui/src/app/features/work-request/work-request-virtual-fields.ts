@@ -1,4 +1,4 @@
-import { WorkRequest } from '../../models/permits/work-request.model';
+import { WorkRequest, WorkRequestAreaDto } from '../../models/permits/work-request.model';
 import { HotWorkProfile } from '../../models/permits/permit-hazards.model';
 
 /** The area picked on the map, as the picker hands it over. */
@@ -31,35 +31,99 @@ export function foldWorkRequestVirtualFields(
   workRequest: WorkRequest,
   options: { strip: boolean }
 ): PickedArea | null {
-  const unknownArea = (workRequest as any).workAreaUnknown === true;
+  const fd = workRequest as any;
+  const unknownArea = fd.workAreaUnknown === true;
   workRequest.workAreaUnknown = unknownArea;
 
   let picked: PickedArea | null = null;
 
   if (unknownArea) {
-    // They told us they cannot place it. Drop any area picked before they ticked the box, so we
-    // never send a half-remembered guess alongside "not sure".
+    // They told us they cannot place it. Drop any area picked before they said so, so we never send
+    // a half-remembered guess alongside "not sure".
     workRequest.workAreaId = null;
     workRequest.workAreaName = '';
-    workRequest.locationOfWork = String((workRequest as any).locationDescription ?? '').trim();
+    workRequest.workAreas = [];
+
+    // Guarded on PRESENCE, not on value. `locationDescription` is a helper control that does not
+    // survive `new WorkRequest(draft)`, and an unguarded assignment wipes locationOfWork to '' on
+    // every resumed draft — then saveDraft persists the empty string, so the requester's typed
+    // description is destroyed in storage as well as on screen.
+    if ('locationDescription' in fd) {
+      workRequest.locationOfWork = String(fd.locationDescription ?? '').trim();
+    }
   } else {
-    const mapValue = (workRequest as any).workAreaMap;
-    if (mapValue && typeof mapValue === 'object' && mapValue.id !== undefined) {
-      picked = mapValue as PickedArea;
-      workRequest.workAreaId = picked.id;
-      workRequest.workAreaName = picked.name;
-    } else {
-      workRequest.workAreaId = null;
-      workRequest.workAreaName = '';
+    switch (mapValueState(fd.workAreaMap)) {
+      case 'ARRAY': {
+        // A rendered multi-select is authoritative, empty included: [] means "I removed them all".
+        workRequest.workAreas = rebuildAreas(workRequest, fd.workAreaMap);
+        const primary = workRequest.workAreas[0] ?? null;
+        workRequest.workAreaId = primary ? primary.id : null;
+        workRequest.workAreaName = primary ? primary.name : '';
+        if (primary && primary.id != null) picked = { id: primary.id, name: primary.name };
+        break;
+      }
+
+      case 'OBJECT': {
+        const value = fd.workAreaMap as PickedArea;
+        picked = { id: value.id, name: value.name };
+        workRequest.workAreaId = value.id;
+        workRequest.workAreaName = value.name;
+
+        // An object can only come from a SINGLE-select control, so the picked area is the whole
+        // set. Without this, changing the area on the review form left `workAreas` describing the
+        // area that is no longer selected — and the permits map plots a request on its work area
+        // AND every id in `workAreas`, so the job appeared in two places at once.
+        const list = workRequest.workAreas ?? [];
+        if (list.length && !list.some(a => a.id === value.id)) {
+          workRequest.workAreas = rebuildAreas(workRequest, [{ id: value.id, name: value.name }]);
+        }
+        break;
+      }
+
+      case 'ABSENT':
+      default: {
+        // ABSENT means "no picker rendered, or the helper key did not survive reconstruction". It
+        // has NEVER meant "no area picked" — reading it that way is what broke the wizard:
+        // `new WorkRequest(draft)` copies declared fields only, so reloading the PWA drops
+        // `workAreaMap`, this branch nulled `workAreaId`, and the location step refused to advance
+        // while the map, driven by the surviving `workAreas`, still showed the areas selected.
+        if (workRequest.workAreaId != null) {
+          fd.workAreaMap = { id: workRequest.workAreaId, name: workRequest.workAreaName };
+          picked = { id: workRequest.workAreaId, name: workRequest.workAreaName };
+        } else {
+          // Recovery for drafts already damaged in the wild, where the null was persisted. Ranked
+          // BELOW workAreaId on purpose: `workAreas` is written only by the wizard, so it goes
+          // stale as soon as someone changes the area on the review form, and preferring it would
+          // silently revert a correction they had just made.
+          const list = workRequest.workAreas ?? [];
+          const fallback = list.find(a => a?.primary && typeof a?.id === 'number')
+            ?? list.find(a => typeof a?.id === 'number');
+          if (fallback && fallback.id != null) {
+            workRequest.workAreaId = fallback.id;
+            workRequest.workAreaName = fallback.name;
+            fd.workAreaMap = { id: fallback.id, name: fallback.name };
+            picked = { id: fallback.id, name: fallback.name };
+          } else {
+            workRequest.workAreaId = null;
+            workRequest.workAreaName = '';
+          }
+        }
+        break;
+      }
     }
 
-    const locationDetail = String((workRequest as any).locationDetail ?? '').trim();
-    if (workRequest.workAreaName) {
-      workRequest.locationOfWork = locationDetail
-        ? `${workRequest.workAreaName} - ${locationDetail}`
-        : workRequest.workAreaName;
-    } else if (locationDetail) {
-      workRequest.locationOfWork = locationDetail;
+    // Same presence guard as the unknown branch. Recomputing from an absent `locationDetail`
+    // truncates "Boiler Room - north side, behind the guard" back to "Boiler Room", and a requester
+    // resumed at a later step never renders the control again, so it can never come back.
+    if ('locationDetail' in fd) {
+      const locationDetail = String(fd.locationDetail ?? '').trim();
+      if (workRequest.workAreaName) {
+        workRequest.locationOfWork = locationDetail
+          ? `${workRequest.workAreaName} - ${locationDetail}`
+          : workRequest.workAreaName;
+      } else if (locationDetail) {
+        workRequest.locationOfWork = locationDetail;
+      }
     }
   }
 
@@ -69,12 +133,60 @@ export function foldWorkRequestVirtualFields(
     workRequest.affectedEquipment = equipmentValue.tagNumber;
   }
 
+  // Typed equipment, for the requester whose kit is not in the snapshot. The picker has no
+  // manual-entry box, so before this a contractor who could not find their equipment simply could
+  // not get past the step — while the step's own help text told them to describe it instead.
+  // The picked value always wins; this only fills a blank.
+  const typedEquipment = String(fd.affectedEquipmentText ?? '').trim();
+  if (typedEquipment && !String(workRequest.affectedEquipment ?? '').trim()) {
+    workRequest.affectedEquipment = typedEquipment;
+  }
+
   if (options.strip) {
-    delete (workRequest as any).workAreaMap;
-    delete (workRequest as any).locationDetail;
-    delete (workRequest as any).locationDescription;
+    delete fd.workAreaMap;
+    delete fd.locationDetail;
+    delete fd.locationDescription;
+    delete fd.affectedEquipmentText;
   }
   return picked;
+}
+
+/** The three states a `workAreaMap` value can be in. See the ABSENT note above — it is not "empty". */
+type MapValueState = 'ARRAY' | 'OBJECT' | 'ABSENT';
+
+function mapValueState(value: unknown): MapValueState {
+  if (Array.isArray(value)) return 'ARRAY';
+  if (value && typeof value === 'object' && (value as any).id !== undefined) return 'OBJECT';
+  return 'ABSENT';
+}
+
+/**
+ * Rebuild `workAreas` from a picked list, preserving the per-area answers already given.
+ *
+ * <p>Matched by id, so ticking a fourth area does not wipe the three answers made about the first
+ * three. An area whose own record says it is a confined space starts with entry ticked, because
+ * that is what its record says; the requester can untick it and the untick survives the next
+ * re-pick.
+ *
+ * <p>This lives here rather than in the wizard so that BOTH surfaces rebuild the list the same way.
+ * It used to exist only in the wizard's `onAreasPicked`, which is why the review form could change
+ * the area without `workAreas` following.
+ */
+function rebuildAreas(workRequest: WorkRequest, list: any[]): WorkRequestAreaDto[] {
+  const existing = new Map((workRequest.workAreas ?? []).map(a => [a.id, a]));
+  return (list ?? [])
+    .filter(area => area && typeof area.id === 'number')
+    .map((area, i) => {
+      const prior = existing.get(area.id);
+      return {
+        id: area.id,
+        name: area.name,
+        primary: i === 0,
+        confinedSpaceEntry: prior ? prior.confinedSpaceEntry : !!area.isConfinedSpace,
+        spaceName: prior ? prior.spaceName : (area.isConfinedSpace ? area.name : null),
+        hotWork: prior ? prior.hotWork : false,
+      };
+    });
 }
 
 /**

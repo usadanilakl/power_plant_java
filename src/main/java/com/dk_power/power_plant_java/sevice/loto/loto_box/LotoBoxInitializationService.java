@@ -126,6 +126,147 @@ public class LotoBoxInitializationService {
     }
 
     /**
+     * Comprehensive DB heal that resets every {@code LedStrip.totalLeds /
+     * stripNumber / sequence} and every {@code LotoBox.rangeStart / rangeEnd}
+     * back to the values in {@link com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout}.
+     *
+     * <p>Handles the run-time drift case: {@code LedStrip} and {@code LotoBox}
+     * both extend {@code BaseIdEntity} and therefore sync across devices. A
+     * stale snapshot pulled from the hub (or another desktop that ran a bad
+     * heal) can bump {@code totalLeds} or shift a box's range at runtime,
+     * pushing every downstream box's LED range and lighting the wrong LEDs.
+     * The startup heal in {@link #seedLotoBoxData()} never catches this because
+     * it only runs on boot.
+     *
+     * <p>The runtime write in {@code EspLedService.syncFullLedArray} is already
+     * canonical-pinned so LEDs fire correctly regardless — this endpoint just
+     * cleans the DB so the WARN logs stop and other devices stop importing the
+     * drifted values.
+     *
+     * <p>Does NOT touch {@code box.loto} FKs or LED colors — safe to call while
+     * live LOTOs are lit.
+     *
+     * @return one-line summary of how many rows were healed
+     */
+    @Transactional
+    public String healToCanonical() {
+        int stripsHealed = 0;
+        int boxesHealed = 0;
+
+        // 1. Strips — key by (esp.ipAddress, stripNumber) → canonical totalLeds.
+        List<LedStrip> allStrips = ledStripRepo.findAll();
+        for (LedStrip s : allStrips) {
+            if (s.getEspDevice() == null || s.getStripNumber() == null) continue;
+            Integer canonical = com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout
+                    .canonicalStripTotalLeds(s.getEspDevice().getIpAddress(), s.getStripNumber());
+            if (canonical == null) continue;
+            boolean changed = false;
+            if (s.getTotalLeds() == null || !s.getTotalLeds().equals(canonical)) {
+                s.setTotalLeds(canonical);
+                changed = true;
+            }
+            // Keep sequence and stripNumber aligned so both sort orders agree.
+            if (s.getSequence() == null || !s.getSequence().equals(s.getStripNumber())) {
+                s.setSequence(s.getStripNumber());
+                changed = true;
+            }
+            if (changed) {
+                ledStripRepo.save(s);
+                stripsHealed++;
+            }
+        }
+
+        // 2. Boxes — key by box.number → canonical rangeStart / rangeEnd.
+        List<LotoBox> allBoxes = lotoBoxRepo.findAll();
+        for (LotoBox b : allBoxes) {
+            if (b.getNumber() == null) continue;
+            Integer canonStart = com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout
+                    .canonicalRangeStart(b.getNumber());
+            Integer canonEnd = com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout
+                    .canonicalRangeEnd(b.getNumber());
+            if (canonStart == null || canonEnd == null) continue;
+            boolean changed = false;
+            if (b.getRangeStart() == null || !b.getRangeStart().equals(canonStart)) {
+                b.setRangeStart(canonStart);
+                changed = true;
+            }
+            if (b.getRangeEnd() == null || !b.getRangeEnd().equals(canonEnd)) {
+                b.setRangeEnd(canonEnd);
+                changed = true;
+            }
+            if (changed) {
+                lotoBoxRepo.save(b);
+                boxesHealed++;
+            }
+        }
+
+        String msg = "Healed to canonical — strips: " + stripsHealed + ", boxes: " + boxesHealed;
+        System.out.println("[LotoBoxInit] " + msg);
+        return msg;
+    }
+
+    /**
+     * Diagnostic snapshot of the LED layout: for every ESP, every strip's DB
+     * {@code totalLeds}/{@code stripNumber}/{@code sequence} vs canonical, and
+     * for every box its {@code rangeStart}/{@code rangeEnd} vs canonical.
+     * Highlights any row where DB drifted from canonical — the operator can
+     * see exactly what's off before deciding to run {@link #healToCanonical()}.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> inspectLedLayout() {
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+
+        List<java.util.Map<String, Object>> stripRows = new ArrayList<>();
+        int stripDrift = 0;
+        for (LedStrip s : ledStripRepo.findAll()) {
+            String ip = s.getEspDevice() != null ? s.getEspDevice().getIpAddress() : null;
+            Integer canonical = com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout
+                    .canonicalStripTotalLeds(ip, s.getStripNumber());
+            boolean drifted = canonical != null && (s.getTotalLeds() == null
+                    || !s.getTotalLeds().equals(canonical));
+            if (drifted) stripDrift++;
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("stripId", s.getId());
+            row.put("espIp", ip);
+            row.put("stripNumber", s.getStripNumber());
+            row.put("sequence", s.getSequence());
+            row.put("dbTotalLeds", s.getTotalLeds());
+            row.put("canonicalTotalLeds", canonical);
+            row.put("drifted", drifted);
+            stripRows.add(row);
+        }
+
+        List<java.util.Map<String, Object>> boxRows = new ArrayList<>();
+        int boxDrift = 0;
+        for (LotoBox b : lotoBoxRepo.findAll()) {
+            Integer canonStart = com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout
+                    .canonicalRangeStart(b.getNumber());
+            Integer canonEnd = com.dk_power.power_plant_java.sevice.esp.CanonicalLedLayout
+                    .canonicalRangeEnd(b.getNumber());
+            boolean drifted = (canonStart != null && (b.getRangeStart() == null
+                    || !b.getRangeStart().equals(canonStart)))
+                    || (canonEnd != null && (b.getRangeEnd() == null
+                    || !b.getRangeEnd().equals(canonEnd)));
+            if (drifted) boxDrift++;
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("boxNumber", b.getNumber());
+            row.put("stripId", b.getLedStrip() != null ? b.getLedStrip().getId() : null);
+            row.put("dbRangeStart", b.getRangeStart());
+            row.put("dbRangeEnd", b.getRangeEnd());
+            row.put("canonicalRangeStart", canonStart);
+            row.put("canonicalRangeEnd", canonEnd);
+            row.put("drifted", drifted);
+            boxRows.add(row);
+        }
+
+        out.put("strips", stripRows);
+        out.put("boxes", boxRows);
+        out.put("stripDriftCount", stripDrift);
+        out.put("boxDriftCount", boxDrift);
+        return out;
+    }
+
+    /**
      * Admin-triggered heal for ESP device rows and LED strip rows. Fixes:
      * <ul>
      *   <li>Missing ESP devices (creates the two known ESPs).</li>

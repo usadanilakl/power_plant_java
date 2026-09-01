@@ -145,6 +145,22 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     this.attachments = data.attachments ?? [];
   }
 
+  /**
+   * The map control's starting value: every area, primary first.
+   *
+   * <p>Falls back to the scalar pair for requests made before multi-area existed, so an old request
+   * opened for resubmission still shows its area rather than an empty map.
+   */
+  private workAreaMapInitialValue(): { id: number; name: string }[] {
+    const areas = (this.workAreas ?? [])
+      .filter(a => typeof a.id === 'number')
+      .map(a => ({ id: a.id as number, name: a.name }));
+    if (areas.length) return areas;
+    return this.workAreaId && this.workAreaName
+      ? [{ id: this.workAreaId, name: this.workAreaName }]
+      : [];
+  }
+
   getFormFields(): FormField[] {
     return [
       { name: 'company', label: 'Company', type: 'text', initialValue: this.company, placeholder: 'e.g. DK Power', validators: [Validators.required] },
@@ -164,16 +180,14 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       // with no map data cached (first run, hub unreachable) the form simply could not be sent.
       {
         name: 'workAreaMap',
-        // Label carries the multi-area summary when the request spans more than one
-        // area — the map picker itself is single-area on the review form, so the ONLY
-        // signal that other areas exist was previously nothing at all. Wizard drives
-        // the multi-area picking; the review is read-through here.
-        label: (this.workAreas?.length ?? 0) > 1
-          ? `Work Area — main: ${this.workAreaName}, plus ${this.workAreas.length - 1} more `
-            + `(${this.workAreas.slice(1).map(a => a.name).join(', ')})`
-          : 'Work Area — tap your area on the map',
+        // Multi-select, so the review form shows and can correct EVERY area. It used to render a
+        // single-area picker and mention the others only as text in this label, which meant a
+        // request covering three areas looked, on the screen the requester actually confirms, like
+        // a request covering one.
+        label: 'Work Areas — tap each area on the map',
         type: 'work-area-map',
-        initialValue: this.workAreaId && this.workAreaName ? { id: this.workAreaId, name: this.workAreaName } : null,
+        multiple: true,
+        initialValue: this.workAreaMapInitialValue(),
         showWhen: { field: 'workAreaUnknown', value: false },
         validators: [Validators.required],
       },

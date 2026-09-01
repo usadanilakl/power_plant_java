@@ -37,29 +37,51 @@
     <!-- The map leads. Everything else — the picked list, the scope shortcuts, the escape hatch —
          sits with it rather than in front of it: the requester was asked to tap their area, so the
          first thing on screen has to be the thing they tap. -->
-    <!-- Multi-select: the running list of picked areas, first one primary. -->
-    @if (multiple() && selectedAreas().length) {
-      <div class="picked-areas">
-        <span class="picked-label">Selected ({{ selectedAreas().length }}):</span>
-        @for (area of selectedAreas(); track area.id; let i = $index) {
-          <button type="button" class="picked-chip" (click)="removeArea(area)"
-                  [title]="'Remove ' + area.name">
-            @if (i === 0) { <span class="primary-tag">main</span> }
-            {{ area.name }}
-            <span class="chip-x">&times;</span>
-          </button>
+    <!--
+      The running list of picked areas, defined ONCE and rendered in two places: here for the
+      desktop inline map, and inside the mobile overlay. The overlay is a fixed, full-screen white
+      surface, so on a phone this band used to be completely hidden during the one activity it
+      exists to support — the only feedback while picking was a bare number on the Done button.
+
+      Declared at this level on purpose: a #ref declared inside the overlay's @if is invisible to
+      the desktop outlet below.
+    -->
+    <ng-template #pickedList>
+      <div class="picked-areas" role="list">
+        @if (selectedAreas().length) {
+          <span class="picked-label">Selected ({{ selectedAreas().length }}):</span>
+          @for (area of selectedAreas(); track area.id; let i = $index) {
+            <button type="button" class="picked-chip" role="listitem" (click)="removeArea(area)"
+                    [attr.aria-label]="'Remove ' + area.name">
+              @if (i === 0) { <span class="primary-tag">main</span> }
+              {{ area.name }}
+              <span class="chip-x" aria-hidden="true">&times;</span>
+            </button>
+          }
+        } @else {
+          <span class="picked-empty">No areas selected yet.</span>
         }
         <span class="picked-hint">Tap an area again on the map to remove it.</span>
       </div>
+    </ng-template>
+
+    @if (multiple()) {
+      <ng-container *ngTemplateOutlet="pickedList"></ng-container>
     }
+
+    <!-- Announced separately so a screen reader hears picks and removals without the chips moving
+         focus. -->
+    <span class="sr-only" aria-live="polite">
+      @if (multiple()) { {{ selectedAreas().length }} areas selected }
+    </span>
 
     <!-- Mobile: trigger button -->
     @if (isMobile() && !overlayOpen()) {
-      <button type="button" class="map-trigger-btn" [class.has-value]="selectedAreaName()" (click)="openOverlay()">
-        @if (selectedAreaName()) {
-          <span class="trigger-selected-name">{{ selectedAreaName() }}</span>
+      <button type="button" class="map-trigger-btn" [class.has-value]="selectionSummary()" (click)="openOverlay()">
+        @if (selectionSummary()) {
+          <span class="trigger-selected-name">{{ selectionSummary() }}</span>
         } @else {
-          <span class="trigger-placeholder">Select Work Area</span>
+          <span class="trigger-placeholder">{{ multiple() ? 'Select Work Areas' : 'Select Work Area' }}</span>
         }
         <span class="trigger-arrow">&#9662;</span>
       </button>
@@ -84,14 +106,28 @@
                  (touchend)="$event.stopPropagation()">
               @if (selectedShape()!.areas.length > 1) {
                 <div class="selected-panel-multi">
-                  <span class="selected-panel-prompt">This area contains multiple zones:</span>
+                  <!-- Counted, not static: "3 areas here" is the fact that makes the list make
+                       sense, and "2 selected" is the state the map alone cannot show. -->
+                  <span class="selected-panel-prompt">
+                    @if (multiple()) {
+                      {{ selectedShape()!.areas.length }} areas here &mdash;
+                      {{ pickedCount(selectedShape()!) }} selected. Tap to add or remove.
+                    } @else {
+                      This area contains multiple zones:
+                    }
+                  </span>
                   <div class="area-option-list">
                     @for (area of selectedShape()!.areas; track area.id) {
                       <button type="button"
                         class="area-option-btn"
-                        [class.active]="selectedAreaName() === area.name"
+                        [class.active]="multiple() ? isAreaSelected(area) : selectedAreaName() === area.name"
                         [class.confined-space]="area.isConfinedSpace"
+                        [attr.aria-pressed]="multiple() ? isAreaSelected(area) : null"
+                        [disabled]="!isAreaSelectable(area)"
                         (click)="setArea(area)">
+                        @if (multiple() && isAreaSelected(area)) {
+                          <span class="area-tick" aria-hidden="true">&#10003;</span>
+                        }
                         {{ area.name }}
                         @if (area.isConfinedSpace) {
                           <span class="cs-badge">Confined Space</span>
@@ -100,6 +136,22 @@
                     }
                   </div>
                 </div>
+              } @else if (multiple()) {
+                <!-- A real button on a phone: nothing else committed a one-area shape there, so
+                     those areas could not be picked at all from the overlay. -->
+                <button type="button" class="selected-panel-name selected-panel-name-btn"
+                        [class.active]="isAreaSelected(selectedShape()!.areas[0])"
+                        [attr.aria-pressed]="isAreaSelected(selectedShape()!.areas[0])"
+                        [disabled]="!isAreaSelectable(selectedShape()!.areas[0])"
+                        (click)="setArea(selectedShape()!.areas[0])">
+                  @if (isAreaSelected(selectedShape()!.areas[0])) {
+                    <span class="area-tick" aria-hidden="true">&#10003;</span>
+                  }
+                  {{ selectedShape()!.areaNames[0] }}
+                  @if (selectedShape()!.areas[0].isConfinedSpace) {
+                    <span class="cs-badge">Confined Space</span>
+                  }
+                </button>
               } @else {
                 <div class="selected-panel-name">
                   {{ selectedShape()!.areaNames[0] }}
@@ -129,10 +181,25 @@
                 [class.selected]="selectedShape() === shape || isShapePicked(shape)"
                 [ngStyle]="getShapeBorderStyle(shape, selectedShape() === shape || isShapePicked(shape))"
                 (click)="selectShape(shape); $event.stopPropagation()">
+                @if (showCountBadge(shape)) {
+                  <span class="count-badge" [ngStyle]="getCountBadgeStyle(shape)"
+                        [attr.aria-label]="pickedCount(shape) + ' of ' + shape.areas.length + ' areas selected'">
+                    {{ pickedCount(shape) }}/{{ shape.areas.length }}
+                  </span>
+                }
+                <!-- Only the open shape gets a label. Showing one per picked shape stacks N
+                     absolutely-positioned nowrap labels on top of each other. -->
+                @if (selectedShape() === shape) {
+                  <span class="shape-tooltip" [ngStyle]="getTooltipStyle()">{{ getDisplayName(shape) }}</span>
+                }
               </div>
             }
           </div>
         </div>
+
+        @if (multiple()) {
+          <ng-container *ngTemplateOutlet="pickedList"></ng-container>
+        }
 
         <div class="overlay-scopes" *ngIf="scopeOptions().length">
           <span class="scope-label">Large area?</span>
@@ -189,14 +256,26 @@
                (touchend)="$event.stopPropagation()">
             @if (selectedShape()!.areas.length > 1) {
               <div class="selected-panel-multi">
-                <span class="selected-panel-prompt">Select work area:</span>
+                <span class="selected-panel-prompt">
+                  @if (multiple()) {
+                    {{ selectedShape()!.areas.length }} areas here &mdash;
+                    {{ pickedCount(selectedShape()!) }} selected. Click to add or remove.
+                  } @else {
+                    Select work area:
+                  }
+                </span>
                 <div class="area-option-list">
                   @for (area of selectedShape()!.areas; track area.id) {
                     <button type="button"
                       class="area-option-btn"
-                      [class.active]="selectedAreaName() === area.name"
+                      [class.active]="multiple() ? isAreaSelected(area) : selectedAreaName() === area.name"
                       [class.confined-space]="area.isConfinedSpace"
+                      [attr.aria-pressed]="multiple() ? isAreaSelected(area) : null"
+                      [disabled]="!isAreaSelectable(area)"
                       (click)="setArea(area)">
+                      @if (multiple() && isAreaSelected(area)) {
+                        <span class="area-tick" aria-hidden="true">&#10003;</span>
+                      }
                       {{ area.name }}
                       @if (area.isConfinedSpace) {
                         <span class="cs-badge">Confined Space</span>
@@ -236,6 +315,12 @@
               (click)="selectShape(shape); $event.stopPropagation()"
               (mouseenter)="hoveredShape.set(shape)"
               (mouseleave)="hoveredShape.set(null)">
+              @if (showCountBadge(shape)) {
+                <span class="count-badge" [ngStyle]="getCountBadgeStyle(shape)"
+                      [attr.aria-label]="pickedCount(shape) + ' of ' + shape.areas.length + ' areas selected'">
+                  {{ pickedCount(shape) }}/{{ shape.areas.length }}
+                </span>
+              }
               <span class="shape-tooltip" [ngStyle]="getTooltipStyle()">{{ getDisplayName(shape) }}</span>
             </div>
           }

@@ -149,6 +149,9 @@ const MIN_LOCATION_TEXT = 3;
               <span class="primary-tag" *ngIf="i === 0">main</span>
               {{ area.name }}
             </div>
+            <!-- Dropping an area used to mean going back to the map and hunting for it. -->
+            <button type="button" class="area-remove" (click)="removeAreaAt(i)"
+                    [attr.aria-label]="'Remove ' + area.name" title="Remove this area">&times;</button>
             <label class="area-toggle">
               <input type="checkbox" [checked]="area.confinedSpaceEntry"
                      (change)="setAreaFlag(i, 'confinedSpaceEntry', $any($event.target).checked)" />
@@ -304,6 +307,14 @@ const MIN_LOCATION_TEXT = 3;
     }
 
     .area-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+    .area-remove {
+      order: 99; margin-left: auto;
+      width: 26px; height: 26px; border-radius: 50%;
+      border: none; background: none; cursor: pointer;
+      color: var(--secondary-text, #777); font-size: 18px; line-height: 1;
+    }
+    .area-remove:hover { background: #fdecea; color: #b71c1c; }
 
     .area-space {
       flex: 1; min-width: 160px; padding: 4px 8px;
@@ -466,9 +477,14 @@ export class WorkRequestWizardComponent implements OnInit {
           + 'cannot find it, just describe it as best you can — a tag number is helpful but not '
           + 'required.',
       fields: ['affectedEquipment'],
-      validate: wr => (String(wr.affectedEquipment ?? '').trim().length > 0
-        ? null
-        : 'Name or describe the affected equipment.'),
+      validate: wr => {
+        // Either answer will do: a tag number off the picker, or a description typed into the
+        // fallback. Reading the helper control directly, because the fold that merges the two runs
+        // in onNext just before this.
+        const picked = String(wr.affectedEquipment ?? '').trim();
+        const typed = String((wr as any).affectedEquipmentText ?? '').trim();
+        return picked || typed ? null : 'Name or describe the affected equipment.';
+      },
     },
     {
       key: 'scope',
@@ -644,7 +660,7 @@ export class WorkRequestWizardComponent implements OnInit {
 
     const wanted = new Set(step.fields);
     const cats = this.workCategoryOptions();
-    return all.filter(f => wanted.has(f.name)).map(f => {
+    const base = all.filter(f => wanted.has(f.name)).map(f => {
       const withoutReq = this.withoutRequired(f);
       // Inject the loaded work-category list into the model's empty-options placeholder.
       // Without this the wizard's Main Work Scope dropdown was permanently empty — the
@@ -654,6 +670,21 @@ export class WorkRequestWizardComponent implements OnInit {
       }
       return withoutReq;
     });
+
+    // The escape hatch this step's help text has always promised. `affectedEquipmentText` is a
+    // helper control, folded into `affectedEquipment` only when the picker found nothing, so a
+    // typed description reaches the server through the field that already exists — no new column,
+    // no schema change.
+    if (step.key === 'equipment') {
+      base.push({
+        name: 'affectedEquipmentText',
+        label: 'Or describe it in your own words',
+        type: 'text',
+        initialValue: (this.draft() as any).affectedEquipmentText ?? '',
+      } as FormField);
+    }
+
+    return base;
   });
 
   /**
@@ -690,26 +721,17 @@ export class WorkRequestWizardComponent implements OnInit {
   onAreasPicked(picked: any): void {
     const list: any[] = Array.isArray(picked) ? picked : picked ? [picked] : [];
     const wr = this.draft();
-    const existing = new Map((wr.workAreas ?? []).map(a => [a.id, a]));
 
-    wr.workAreas = list.map((area, i) => {
-      const prior = existing.get(area.id);
-      return {
-        id: area.id,
-        name: area.name,
-        primary: i === 0,
-        confinedSpaceEntry: prior ? prior.confinedSpaceEntry : !!area.isConfinedSpace,
-        spaceName: prior ? prior.spaceName : (area.isConfinedSpace ? area.name : null),
-        hotWork: prior ? prior.hotWork : false,
-      };
-    });
-
-    // The primary area still drives everything that expects exactly one.
-    const primary = wr.workAreas[0] ?? null;
-    (wr as any).workAreaMap = primary ? { id: primary.id, name: primary.name } : null;
-    (wr as any).workAreaUnknown = !primary;
+    // Hand the whole list to the fold as the ARRAY form and let it own the rebuild. The per-area
+    // merge used to live here, which is why the review form — which folds the same request through
+    // the same function — could change the area without `workAreas` ever following.
+    (wr as any).workAreaMap = list
+      .filter(area => area && typeof area.id === 'number')
+      .map(area => ({ id: area.id, name: area.name, isConfinedSpace: !!area.isConfinedSpace }));
+    (wr as any).workAreaUnknown = (wr as any).workAreaMap.length === 0;
     foldWorkRequestVirtualFields(wr, { strip: false });
     this.applySeedingForAllAreas(wr);
+    this.recordSeeded(wr);
 
     this.draft.set(wr);
     this.state.saveDraft(wr);
@@ -746,6 +768,79 @@ export class WorkRequestWizardComponent implements OnInit {
     if (areas.some(a => a.hotWork)) wr.isHotWorkRequired = 'Yes';
     this.draft.set(wr);
     this.state.saveDraft(wr);
+  }
+
+  /**
+   * Drop one area from the request.
+   *
+   * <p>Goes through `workAreaMap` + the fold rather than writing `workAreas` directly, so the map
+   * picker, the scalars and the list can never disagree about what is selected.
+   */
+  removeAreaAt(index: number): void {
+    const wr = this.draft();
+    const remaining = (wr.workAreas ?? []).filter((_, i) => i !== index);
+
+    (wr as any).workAreaMap = remaining.map(a => ({ id: a.id, name: a.name }));
+    (wr as any).workAreaUnknown = remaining.length === 0;
+    foldWorkRequestVirtualFields(wr, { strip: false });
+    this.reseedHazards(wr);
+
+    this.draft.set(wr);
+    this.state.saveDraft(wr);
+  }
+
+  /**
+   * Rebuild the seeded hazards from scratch for the areas that remain.
+   *
+   * <p>Re-running the seeders is NOT enough: `WorkAreaSeedService.merge` only ever turns a hazard
+   * ON, by design, so a hazard contributed by an area that has just been removed would stay ticked
+   * for ever — the requester would be declaring hazards for a part of the plant they are no longer
+   * working in. So the three declared blocks are cleared first and rebuilt.
+   *
+   * <p>Clearing is safe because the requester's own decisions are not stored in those blocks alone:
+   * every hazard they explicitly UNticked is in `declined`, which the seeders honour, and it is
+   * re-applied here so a rebuild cannot resurrect something they turned off. Hazards they ticked
+   * themselves that no area or work type contributes are re-applied from the snapshot taken below.
+   */
+  private reseedHazards(wr: WorkRequest): void {
+    const blocks = ['declaredHazards', 'declaredHotWorkMeasures', 'declaredConfinedSpaceHazards'] as const;
+
+    // Anything ticked that seeding did NOT put there is the requester's own answer; keep it.
+    const manual: Record<string, string[]> = {};
+    for (const block of blocks) {
+      const current: any = (wr as any)[block] ?? {};
+      manual[block] = Object.keys(current).filter(
+        key => current[key] === true && !this.seeded.has(`${block}.${key}`));
+      (wr as any)[block] = {};
+    }
+
+    this.seeded.clear();
+    this.applySeedingForAllAreas(wr);
+    this.seeds.applyWorkTypeSeeding(wr, this.declined);
+    this.recordSeeded(wr);
+
+    for (const block of blocks) {
+      const target: any = (wr as any)[block] ?? ((wr as any)[block] = {});
+      for (const key of manual[block]) {
+        if (!this.declined.has(`${block}.${key}`)) target[key] = true;
+      }
+    }
+  }
+
+  /**
+   * Hazard keys the SEEDERS turned on, so {@link reseedHazards} can tell a seeded tick from one the
+   * requester made themselves. Without the distinction a rebuild would either keep hazards from a
+   * removed area or silently discard the requester's own additions.
+   */
+  private seeded = new Set<string>();
+
+  private recordSeeded(wr: WorkRequest): void {
+    for (const block of ['declaredHazards', 'declaredHotWorkMeasures', 'declaredConfinedSpaceHazards']) {
+      const current: any = (wr as any)[block] ?? {};
+      for (const key of Object.keys(current)) {
+        if (current[key] === true) this.seeded.add(`${block}.${key}`);
+      }
+    }
   }
 
   setAreaSpace(index: number, value: string): void {
@@ -801,7 +896,6 @@ export class WorkRequestWizardComponent implements OnInit {
     // would blank the picker on the next keystroke.
     foldWorkRequestVirtualFields(wr, { strip: false });
     foldHotWorkProfile(wr, { strip: false });
-    foldHotWorkProfile(wr, { strip: false });
     this.seeds.applyAreaSeeding(wr, this.declined);
     this.seeds.applyWorkTypeSeeding(wr, this.declined);
 
@@ -816,8 +910,18 @@ export class WorkRequestWizardComponent implements OnInit {
     const wr = this.draft();
     Object.assign(wr, value);
     foldWorkRequestVirtualFields(wr, { strip: false });
+    // onValueChange folds hot work but this did not, and the form's valueChanges is debounced a
+    // full second — so a quick tap on Next advanced with the hot-work answers still unfolded.
+    foldHotWorkProfile(wr, { strip: false });
     this.seeds.applyAreaSeeding(wr, this.declined);
     this.seeds.applyWorkTypeSeeding(wr, this.declined);
+
+    // Publish BEFORE validating. The draft signal has identity equality disabled, so set() is what
+    // bumps its version; without it areas(), pickedAreas() and pickedAreaName() went on serving
+    // pre-fold values while blockReason (a separate signal) re-rendered — which is how the screen
+    // came to list the chosen areas directly above a message saying no area had been picked.
+    this.draft.set(wr);
+
     const step = this.current();
     if (!step) return;
 

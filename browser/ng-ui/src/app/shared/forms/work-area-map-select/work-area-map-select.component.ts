@@ -556,20 +556,51 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   }
 
   isSelected(shape: ParsedShape): boolean {
+    // In multi-select this drives the same `.selected` class as the picked wash. Left on
+    // `selectedAreaName` it singled out the most recently picked shape with a different (green)
+    // treatment, so one of N picked areas looked categorically different from the rest.
+    if (this.multiple()) return this.isShapePicked(shape);
     const selected = this.selectedAreaName();
     return !!selected && shape.areaNames.includes(selected);
   }
 
   // --- Selection ---
 
-  selectShape(shape: ParsedShape): void {
+  /**
+   * When a touch-driven selection last happened, so the browser's synthetic click can be ignored.
+   *
+   * <p>A tap on a phone reaches this component TWICE — once through `onTouchEnd` → `handleTap`, and
+   * again through the compatibility `click` on the shape div, which nothing suppresses. That was
+   * invisible while a tap on the overlay did not commit; the moment it toggles, one tap adds an
+   * area and then removes it. Worse with overlapping shapes: `handleTap` picks the FIRST shape in
+   * array order containing the point while the click target is the topmost in DOM order, so one tap
+   * could add one area and remove a different one.
+   */
+  private lastTouchSelectAt = 0;
+  private static readonly TAP_DEDUP_MS = 400;
+
+  selectShape(shape: ParsedShape, fromTouch = false): void {
+    const now = this.nowMs();
+    if (!fromTouch && now - this.lastTouchSelectAt < WorkAreaMapSelectComponent.TAP_DEDUP_MS) {
+      return;
+    }
+    if (fromTouch) this.lastTouchSelectAt = now;
+
     this.ngZone.run(() => {
       this.selectedShape.set(shape);
-      // On mobile overlay: don't auto-select — let user see details first
-      if (shape.areas.length === 1 && !(this.isMobile() && this.overlayOpen())) {
-        this.setArea(shape.areas[0]);
-      }
+      // A single-area shape commits on tap. The old guard also skipped the mobile overlay so the
+      // requester could "see details first" — but in multi-select a tap IS the toggle, and with no
+      // other path from a one-area shape to setArea() those areas were simply unpickable on a
+      // phone.
+      const commit = shape.areas.length === 1
+        && (this.multiple() || !(this.isMobile() && this.overlayOpen()));
+      if (commit) this.setArea(shape.areas[0]);
     });
+  }
+
+  /** Wall clock, isolated so the de-dup gate is testable. */
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   /** Every area this picker accepts, including those with no shape on the map. */
@@ -594,17 +625,52 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       return;
     }
     this.selectedAreaName.set(label);
+    this.pickedScopeLabel.set(label);
     this.scopeSelected.emit(label);
     if (!this.multiple()) this.closeOverlay();
   }
 
+  /**
+   * The plant-wide scope the requester actually chose, if any.
+   *
+   * <p>Tracked explicitly rather than inferred from `selectedAreaName`, which in multi-select is
+   * just "the area picked most recently" — so picking an area that happens to be named "Unit 1" lit
+   * the Unit 1 scope button as though a plant-wide scope had been selected.
+   */
+  private pickedScopeLabel = signal<string | null>(null);
+
   isScopeActive(label: string): boolean {
-    return WorkAreaMapSelectComponent.normalize(this.selectedAreaName() ?? '')
-        === WorkAreaMapSelectComponent.normalize(label);
+    const norm = WorkAreaMapSelectComponent.normalize(label);
+    if (this.multiple()) {
+      return WorkAreaMapSelectComponent.normalize(this.pickedScopeLabel() ?? '') === norm;
+    }
+    return WorkAreaMapSelectComponent.normalize(this.selectedAreaName() ?? '') === norm;
+  }
+
+  /**
+   * What the collapsed mobile trigger says.
+   *
+   * <p>It used to show `selectedAreaName()`, i.e. the last area touched — so after picking three
+   * areas and closing the map, the button announced exactly one of them.
+   */
+  selectionSummary(): string | null {
+    if (!this.multiple()) return this.selectedAreaName();
+    const picked = this.selectedAreas();
+    if (!picked.length) return null;
+    return picked.length === 1 ? picked[0].name : `${picked[0].name} +${picked.length - 1} more`;
   }
 
   /** Picked areas, in the order chosen — the first is the primary. Multi-select only. */
   selectedAreas = signal<AreaRef[]>([]);
+
+  /**
+   * Picked area ids, as a Set.
+   *
+   * <p>`isAreaSelected` and `isShapePicked` are called once per area per shape on every
+   * change-detection pass, and panning re-enters change detection on every frame — a linear scan of
+   * the picked list inside that loop is the wrong shape of work.
+   */
+  private selectedIds = computed(() => new Set(this.selectedAreas().map(a => a.id)));
 
   /** Any of this shape's areas already picked — so a chosen shape stays highlighted on the map. */
   isShapePicked(shape: ParsedShape): boolean {
@@ -613,10 +679,39 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   }
 
   isAreaSelected(area: AreaRef): boolean {
-    return this.selectedAreas().some(a => a.id === area.id);
+    return this.selectedIds().has(area.id);
+  }
+
+  /**
+   * How many of this shape's areas are picked.
+   *
+   * <p>The wash alone answers "did I touch this shape", which is not the question when a shape
+   * covers several areas — one-of-three and three-of-three painted identically.
+   */
+  pickedCount(shape: ParsedShape): number {
+    if (!this.multiple()) return 0;
+    return shape.areas.reduce((n, a) => n + (this.isAreaSelected(a) ? 1 : 0), 0);
+  }
+
+  /** A badge on a single-area shape would only repeat what the wash already says. */
+  showCountBadge(shape: ParsedShape): boolean {
+    return this.multiple() && shape.areas.length > 1 && this.pickedCount(shape) > 0;
+  }
+
+  /**
+   * Whether an area can be picked at all.
+   *
+   * <p>`parseShape` fabricates `{ id: 0 }` placeholders for shapes that carry no work area, and
+   * every selection primitive keys on id — so picking one placeholder would mark EVERY placeholder
+   * as picked, and the host would be handed `workAreaId: 0`. There is no work area behind a
+   * placeholder, so in multi-select it is simply not selectable.
+   */
+  isAreaSelectable(area: AreaRef): boolean {
+    return !this.multiple() || area.id !== 0;
   }
 
   setArea(area: AreaRef): void {
+    if (!this.isAreaSelectable(area)) return;
     if (!this.multiple()) {
       this.selectedAreaName.set(area.name);
       this.onChange(area);
@@ -632,6 +727,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       : [...current, area];
     this.selectedAreas.set(next);
     this.selectedAreaName.set(next.length ? next[next.length - 1].name : null);
+    this.pickedScopeLabel.set(null);
     this.onChange(next);
     this.onTouched();
     // Deliberately NOT closing the overlay: in multi-select the next thing the requester does is
@@ -646,18 +742,17 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.onTouched();
   }
 
-  /** Called from overlay confirm button */
+  /**
+   * Single-select only — the overlay's "Select <area>" button.
+   *
+   * <p>Explicitly guarded against multi-select. `setArea` TOGGLES in that mode, so "just ensure
+   * it's set" would have *removed* the area the requester had come here to confirm. The template
+   * reaches this only through an `@else if`, but the guard keeps the next reader out of the trap.
+   */
   confirmAndClose(): void {
     const shape = this.selectedShape();
-    if (shape) {
-      // If single-area shape was tapped but not yet committed to form, do it now
-      if (shape.areas.length === 1 && !this.selectedAreaName()) {
-        this.setArea(shape.areas[0]);
-      } else if (shape.areas.length === 1) {
-        // Already set from a previous interaction — just ensure it's set
-        this.setArea(shape.areas[0]);
-      }
-      // Multi-area: selectedAreaName should already be set via area button tap
+    if (shape && !this.multiple() && shape.areas.length === 1) {
+      this.setArea(shape.areas[0]);
     }
     this.closeOverlay();
   }
@@ -757,6 +852,9 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
       if (dx < this.TAP_THRESHOLD && dy < this.TAP_THRESHOLD && elapsed < this.TAP_DURATION) {
         this.handleTap(touch.clientX, touch.clientY);
+        // Mark the touch path even when it hit no shape, so the synthetic click that follows cannot
+        // land on a different (topmost) shape than the one the tap resolved to.
+        this.lastTouchSelectAt = this.nowMs();
       }
     }
     this.isPanning = false;
@@ -776,7 +874,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       const sh = shape.height / shape.originalHeight;
 
       if (relX >= sx && relX <= sx + sw && relY >= sy && relY <= sy + sh) {
-        this.selectShape(shape);
+        this.selectShape(shape, true);
         return;
       }
     }
@@ -888,6 +986,34 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       style['outline'] = `${2 * inv}px solid #0056b3`;
     }
     return style;
+  }
+
+  /**
+   * The count badge, counter-scaled like {@link getTooltipStyle} because it is a child of the
+   * transform-scaled `.zoom-element`.
+   *
+   * <p>A PILL, not a fixed square: it renders "2/3", and a square sized for one glyph overflows
+   * across the zoom range. It also moves INSIDE the shape when the shape is too small to carry a
+   * badge on its corner — at fit scale many shapes are a few pixels across, and a badge hanging off
+   * the corner of one of those reads as belonging to its neighbour, which is the exact ambiguity
+   * this is meant to remove.
+   */
+  getCountBadgeStyle(shape: ParsedShape): Record<string, string> {
+    const inv = 1 / this.currentScale();
+    const height = Math.min(Math.max(18 * inv, 10), 26);
+    const shapeWidthOnScreen = shape.width * this.currentScale();
+    const inside = shapeWidthOnScreen < 3 * height * this.currentScale();
+    return {
+      'height': `${height}px`,
+      'min-width': `${height}px`,
+      'padding': `0 ${height * 0.3}px`,
+      'border-radius': `${height}px`,
+      'font-size': `${height * 0.62}px`,
+      'line-height': `${height}px`,
+      'top': inside ? '50%' : `${-height / 2}px`,
+      'right': inside ? '50%' : `${-height / 2}px`,
+      'transform': inside ? 'translate(50%, -50%)' : 'none',
+    };
   }
 
   getTooltipStyle(): Record<string, string> {

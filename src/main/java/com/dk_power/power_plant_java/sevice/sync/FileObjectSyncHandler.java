@@ -312,6 +312,21 @@ public class FileObjectSyncHandler {
             return;
         }
 
+        // ALSO handle the SOFT-DELETE path (the common case). `NgFileService.hardDelete`
+        // actually flips `deleted=true` via softDelete, which fires @PostUpdate → a
+        // FieldChange for the "deleted" column (not the _entity_ DELETE marker above,
+        // which only fires from @PostRemove on hard deletes). Without this branch, a
+        // soft-delete on one node would propagate the metadata (peer's row flips
+        // deleted=true) but the peer's on-disk files would stay forever — orphans.
+        FieldChange deletedFieldChange = changes.stream()
+            .filter(c -> "deleted".equals(c.getFieldName()))
+            .filter(c -> isTrueValue(c.getNewValue()))
+            .findFirst().orElse(null);
+        if (deletedFieldChange != null) {
+            trashLocalFilesForDeletedEntity(entityId);
+            return;
+        }
+
         // Collect all path-affecting changes
         Map<String, FieldChange> pathChanges = changes.stream()
             .filter(c -> isPathAffectingField(c.getFieldName()))
@@ -400,6 +415,17 @@ public class FileObjectSyncHandler {
             }
         }
         log.info("Sync-delete for FileObject #{}: moved {} file(s) to trash", entityId, trashed);
+    }
+
+    /**
+     * Accept the various serializations of boolean-true a FieldChange might carry
+     * on the "deleted" column (Hibernate + FieldChange serializer have historically
+     * emitted any of: "true", "TRUE", "1", "t"). Case-insensitive + trim + null-safe.
+     */
+    private static boolean isTrueValue(String v) {
+        if (v == null) return false;
+        String s = v.trim();
+        return s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("t");
     }
 
     /**

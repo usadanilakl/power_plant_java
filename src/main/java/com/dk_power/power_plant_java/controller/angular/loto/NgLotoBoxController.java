@@ -242,6 +242,46 @@ public class NgLotoBoxController {
     }
 
     /**
+     * Comprehensive heal: resets EVERY LedStrip's totalLeds/sequence AND
+     * EVERY LotoBox's rangeStart/rangeEnd back to the canonical layout in
+     * {@code CanonicalLedLayout}, then pushes the LED array to every ESP so
+     * the physical LEDs reflect current state immediately.
+     *
+     * <p>Use this when boxes on the bottom of the array light the wrong LED
+     * (whole-row offset symptom = drifted strip.totalLeds; wrong-LED-within-row
+     * = drifted box.rangeStart). Does NOT reassign loto→box FKs, so live LOTOs
+     * stay where they are — only the LED coordinates get corrected.
+     */
+    @PostMapping("/heal-to-canonical")
+    public ResponseEntity<NgApiResponse<String>> healToCanonical() {
+        try {
+            String result = lotoBoxInitializationService.healToCanonical();
+            ngLotoBoxService.syncAllBoxesToEsp();
+            return ResponseEntity.ok(new NgApiResponse<>("OK", result + " + ESP push queued"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Diagnostic snapshot — DB vs canonical for every strip and every box.
+     * Call this first when LEDs go wrong; run {@code /heal-to-canonical} if
+     * any row shows {@code drifted: true}.
+     */
+    @GetMapping("/inspect-led-layout")
+    public ResponseEntity<NgApiResponse<java.util.Map<String, Object>>> inspectLedLayout() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    lotoBoxInitializationService.inspectLedLayout(),
+                    "LED layout snapshot"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Hub-side trigger endpoint used by desktops' {@link com.dk_power.power_plant_java.sevice.esp.EspRefreshDispatcher}.
      * A desktop that just updated a box's color calls this after saving locally;
      * the hub enqueues a refresh for the target ESP so its (hub-side) leader loop

@@ -29,7 +29,95 @@
       <button class="btn-secondary" (click)="addBox(true)">+ Add Portable</button>
       <button class="btn-secondary" (click)="seedInventory()" title="Top up missing set locks and singles">Seed Inventory</button>
     }
+    <button class="btn-secondary"
+            (click)="inspectLedLayout()"
+            [disabled]="ledLayoutLoading()"
+            title="Show DB vs canonical LED layout — flag any strip or box whose LED index has drifted">
+      Inspect LED Layout
+    </button>
+    <button class="btn-secondary"
+            (click)="healLedLayoutToCanonical()"
+            [disabled]="ledLayoutLoading()"
+            title="Reset every LedStrip.totalLeds/sequence and LotoBox.rangeStart/rangeEnd back to canonical, then push to ESPs. Fixes wrong-LED-lights-up when boxes drift.">
+      Heal LED Layout
+    </button>
   </div>
+
+  @if (showLedLayoutPanel()) {
+    <div class="led-layout-panel">
+      <div class="led-layout-header">
+        <strong>LED Layout Snapshot</strong>
+        @if (ledLayoutInspection(); as insp) {
+          <span class="led-layout-summary"
+                [class.ok]="insp.stripDriftCount === 0 && insp.boxDriftCount === 0"
+                [class.drift]="insp.stripDriftCount > 0 || insp.boxDriftCount > 0">
+            {{ insp.stripDriftCount }} strip drift · {{ insp.boxDriftCount }} box drift
+          </span>
+        }
+        <button class="btn-secondary" (click)="closeLedLayoutPanel()">Close</button>
+      </div>
+      @if (ledLayoutLoading()) {
+        <p class="led-layout-loading">Loading…</p>
+      } @else if (ledLayoutInspection(); as insp) {
+        <div class="led-layout-tables">
+          <div>
+            <h4>Strips ({{ insp.strips.length }})</h4>
+            <table class="led-layout-table">
+              <thead>
+                <tr>
+                  <th>Strip #</th>
+                  <th>ESP</th>
+                  <th>seq</th>
+                  <th>DB total</th>
+                  <th>Canonical</th>
+                  <th>Drift</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of insp.strips; track s.stripId) {
+                  <tr [class.drifted-row]="s.drifted">
+                    <td>{{ s.stripNumber ?? '—' }}</td>
+                    <td>{{ s.espIp ?? '—' }}</td>
+                    <td>{{ s.sequence ?? '—' }}</td>
+                    <td>{{ s.dbTotalLeds ?? '—' }}</td>
+                    <td>{{ s.canonicalTotalLeds ?? '—' }}</td>
+                    <td>{{ s.drifted ? '⚠' : '✓' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h4>Boxes ({{ insp.boxes.length }}) — drifted only</h4>
+            @if (insp.boxDriftCount === 0) {
+              <p class="led-layout-ok">All boxes match canonical.</p>
+            } @else {
+              <table class="led-layout-table">
+                <thead>
+                  <tr>
+                    <th>Box #</th>
+                    <th>DB start–end</th>
+                    <th>Canonical</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (b of insp.boxes; track b.boxNumber) {
+                    @if (b.drifted) {
+                      <tr class="drifted-row">
+                        <td>{{ b.boxNumber }}</td>
+                        <td>{{ b.dbRangeStart ?? '—' }} – {{ b.dbRangeEnd ?? '—' }}</td>
+                        <td>{{ b.canonicalRangeStart ?? '—' }} – {{ b.canonicalRangeEnd ?? '—' }}</td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
 
   <div class="grid-container">
     @for (box of fixedSlots(); track box.number) {

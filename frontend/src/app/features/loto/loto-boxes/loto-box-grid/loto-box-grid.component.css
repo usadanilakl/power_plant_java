@@ -537,3 +537,64 @@ h1 {
     font-size: 6px;
   }
 }
+
+/* Canonical LED-layout inspect panel — surfaces DB vs canonical drift for
+   every strip/box. Renders inline under the toolbar; scrollable so a full
+   72-box drift dump doesn't blow out the grid below. */
+.led-layout-panel {
+  margin: 8px 0 12px;
+  padding: 10px 14px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #eee;
+  max-height: 60vh;
+  overflow: auto;
+}
+.led-layout-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.led-layout-header strong { font-size: 1rem; }
+.led-layout-header .btn-secondary { margin-left: auto; }
+.led-layout-summary {
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid #444;
+}
+.led-layout-summary.ok    { background: #24593a; color: #cff4d1; border-color: #3f7f52; }
+.led-layout-summary.drift { background: #6a3535; color: #f4cfd0; border-color: #a04f4f; }
+.led-layout-loading { color: #aaa; font-size: 0.85rem; margin: 6px 0; }
+.led-layout-ok      { color: #7fd57f; font-size: 0.85rem; margin: 6px 0; }
+.led-layout-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.led-layout-tables h4 {
+  margin: 6px 0;
+  font-size: 0.9rem;
+  color: #ddd;
+}
+.led-layout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.led-layout-table th,
+.led-layout-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #2a2a2a;
+  text-align: left;
+}
+.led-layout-table th { color: #aaa; background: #202020; }
+.led-layout-table tr.drifted-row {
+  background: #331a1a;
+  color: #f6a6a6;
+}
+@media (max-width: 900px) {
+  .led-layout-tables { grid-template-columns: 1fr; }
+}

@@ -316,6 +316,55 @@ public class FileFixesTestController {
     }
 
     /**
+     * TEST D2 — SOFT-DELETE via the real sync entry point (not reflection).
+     * Constructs a synthetic FieldChange {fieldName="deleted", newValue="true",
+     * changeType=UPDATE} — the exact shape a soft-delete emits — and hands it
+     * to processIncomingSyncChanges via reflection. This exercises the NEW
+     * branch that catches soft-deletes (the previous branch only matched
+     * _entity_ DELETE markers from HARD deletes via @PostRemove).
+     */
+    @PostMapping("/sync-soft-delete")
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, Object> syncSoftDelete(@RequestParam Long id) throws Exception {
+        Map<String, Object> out = new LinkedHashMap<>();
+        FileObject before = fileRepo.findById(id).orElseThrow();
+        Path pdfPath = resolve(before.buildFileLink("pdf"));
+        Path jpgPath = resolve(before.buildFileLink("jpg"));
+        boolean hadPdf = Files.exists(pdfPath);
+        boolean hadJpg = Files.exists(jpgPath);
+
+        // Apply the soft-delete FIRST (like the sync applier does before the
+        // afterCommit hook fires) so the on-disk fileType/vendor lookup via
+        // findByIdIncludingDeleted actually needs the native-query fallback.
+        before.setDeleted(true);
+        fileRepo.save(before);
+
+        // Synthetic "deleted"=true field change — same shape as one that would arrive
+        // from a peer soft-delete via the sync channel.
+        com.dk_power.power_plant_java.entities.sync.FieldChange fc =
+                new com.dk_power.power_plant_java.entities.sync.FieldChange(
+                        "FileObject", id,
+                        "deleted", "false", "true",
+                        "TEST-PEER", "TEST-PEER",
+                        com.dk_power.power_plant_java.entities.sync.FieldChange.ChangeType.UPDATE);
+
+        Object target = unwrapProxy(syncHandler);
+        java.lang.reflect.Method m = FileObjectSyncHandler.class
+                .getDeclaredMethod("processIncomingSyncChanges", Long.class, List.class, boolean.class);
+        m.setAccessible(true);
+        m.invoke(target, id, java.util.List.of(fc), false);
+
+        boolean stillPdf = Files.exists(pdfPath);
+        boolean stillJpg = Files.exists(jpgPath);
+        out.put("hadPdfBefore", hadPdf);
+        out.put("hadJpgBefore", hadJpg);
+        out.put("pdfRemovedFromCanonical", hadPdf && !stillPdf);
+        out.put("jpgRemovedFromCanonical", hadJpg && !stillJpg);
+        out.put("passes", (hadPdf && !stillPdf) && (hadJpg && !stillJpg));
+        return out;
+    }
+
+    /**
      * TEST E — HubFileService.registerLocalFile supersede (HIGH #4). Register
      * two versions of the "same file" (same entity+extension, different bytes).
      * Before the fix, both rows would remain live and the peer would go into a

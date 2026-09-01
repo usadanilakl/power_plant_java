@@ -196,13 +196,27 @@ export class WorkRequestFormComponent implements OnInit {
 
     if (mapValue.isConfinedSpace) {
       workRequest.isConfinedSpaceEntryRequired = 'Yes';
-      workRequest.spaceToBeEntered = mapValue.name;
+      // Only auto-fill a BLANK space name, matching what WorkAreaSeedService already does. Writing
+      // it unconditionally overwrote the specific space the requester typed in the wizard ("Boiler
+      // drum, south manway") with the bare area name — harmless while this path was unreachable,
+      // live now that the review form can re-pick areas.
+      if (!String(workRequest.spaceToBeEntered ?? '').trim()) {
+        workRequest.spaceToBeEntered = mapValue.name;
+      }
       this.autoConfinedSpaceAreaId = areaId;
-    } else if (this.autoConfinedSpaceAreaId !== null) {
+    } else if (this.autoConfinedSpaceAreaId !== null && !this.anyAreaIsConfinedSpace(workRequest)) {
+      // Withdrawal has to consider EVERY area, not just the primary. On a multi-area request the
+      // primary can be open ground while a secondary is a confined space, and withdrawing on the
+      // primary alone would drop the confined-space requirement for a space that is still in scope.
       workRequest.isConfinedSpaceEntryRequired = 'No';
       workRequest.spaceToBeEntered = '';
       this.autoConfinedSpaceAreaId = null;
     }
+  }
+
+  /** Whether any area on the request is still marked for confined-space entry. */
+  private anyAreaIsConfinedSpace(workRequest: WorkRequest): boolean {
+    return (workRequest.workAreas ?? []).some(a => a.confinedSpaceEntry === true);
   }
 
   /**

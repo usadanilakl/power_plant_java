@@ -71,13 +71,60 @@ export class ReactiveFormComponent {
    * unions equipment across all of them. Otherwise null so the picker falls back to
    * its single-area {@code workAreaId} input driven by the workAreaMap form control.
    */
+  /**
+   * Work-area ids taken from the ENTITY, for the equipment picker's area filter.
+   *
+   * <p>One area counts. This used to require two or more, which meant the ordinary single-area
+   * request passed no areas at all: the picker's `effectiveAreaIds()` came back empty, its
+   * grouped-by-equipment-type view was never reached, and the requester was dropped into an empty
+   * "search all equipment" pane. The multi-area case worked only by accident.
+   */
   workAreaIdsFromEntity = computed<number[] | null>(() => {
     const wr = this.entity();
     const areas = wr?.workAreas;
-    if (!Array.isArray(areas) || areas.length < 2) return null;
+    if (!Array.isArray(areas) || !areas.length) return null;
     const ids = areas.map((a: any) => a?.id).filter((id: any) => typeof id === 'number');
-    return ids.length > 1 ? ids : null;
+    return ids.length ? ids : null;
   });
+
+  /**
+   * The primary area id from the LIVE `workAreaMap` control, whatever shape it is in.
+   *
+   * <p>The control is single-select on some forms (an object) and multi-select on others (an
+   * array); reading `.value?.id` returned undefined for the array shape, so turning the review
+   * form multi-area would have silently starved the equipment picker.
+   *
+   * <p>The live control wins over {@link workAreaIdsFromEntity} because `entity()` does not track
+   * edits — `saveDraft` never pushes to the selected-request subject, and the value handed to
+   * `formValueChange` is a merged COPY — so an entity-derived area would go stale the moment the
+   * user re-picked and never recover.
+   */
+  mapControlAreaId(): number | null {
+    const value: any = this.form.get('workAreaMap')?.value;
+    if (Array.isArray(value)) return value[0]?.id ?? null;
+    if (value && typeof value === 'object') return value.id ?? null;
+    return null;
+  }
+
+  /**
+   * Area ids for the equipment picker: the live control if it has any, else the entity's list.
+   *
+   * <p>Order matters. On the review form the user can re-pick areas, and `entity()` does not follow
+   * that — so an entity-derived list would out-rank a just-changed control and stay stale. On the
+   * wizard's equipment step there is no `workAreaMap` control at all (the step renders one field),
+   * which is exactly why the entity fallback has to exist.
+   */
+  pickerAreaIds(): number[] | null {
+    return this.mapControlAreaIds() ?? this.workAreaIdsFromEntity();
+  }
+
+  /** Every area id on the live control, for the picker's multi-area union. */
+  mapControlAreaIds(): number[] | null {
+    const value: any = this.form.get('workAreaMap')?.value;
+    if (!Array.isArray(value)) return null;
+    const ids = value.map((a: any) => a?.id).filter((id: any) => typeof id === 'number');
+    return ids.length ? ids : null;
+  }
 
   groupedFields = computed(() => {
     const allFields = this.fields();
