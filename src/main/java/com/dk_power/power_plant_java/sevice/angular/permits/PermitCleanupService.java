@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.sevice.angular.permits;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
+import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.entities.permits.pojo.HotWorkMeasures;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -40,10 +42,15 @@ import java.util.function.Function;
  *
  * <p><b>Why "deleted" is a category at all:</b> {@code @Where(clause = "deleted IS NOT TRUE")} lives
  * on {@code BaseIdEntity}, a {@code @MappedSuperclass}, and Hibernate does NOT inherit it.
- * {@code WorkRequest} and {@code Loto} re-declare it; {@code SafeWork}, {@code HotWork},
- * {@code ConfinedSpace} and {@code DailyPermitPackage} never did. So for those four, "deleted" is a
- * flag every single query has to remember on its own — and the permits map is proof of how easy
- * that is to miss.
+ * {@code WorkRequest}, {@code Loto}, {@code DailyPermitPackage} and {@code JobLog} re-declare it;
+ * {@code SafeWork}, {@code HotWork} and {@code ConfinedSpace} never did. So for those three,
+ * "deleted" is a flag every single query has to remember on its own — and the permits map is proof
+ * of how easy that is to miss.
+ *
+ * <p>Because {@code DailyPermitPackage} now carries the filter, a permit whose package was
+ * soft-deleted has an FK pointing at a row Hibernate will not return. Initialising that lazy proxy
+ * throws rather than yielding null — see {@link #parentIsOpen}, which is what keeps this tool
+ * working on the very rows it exists to find.
  *
  * <p>Scoped deliberately to SafeWork / HotWork / ConfinedSpace: they are the package-owned permit
  * types. Work requests have their own expiry service, and LOTOs have an independent lifecycle and
@@ -139,8 +146,7 @@ public class PermitCleanupService {
                 reason = "DELETED";
             } else if (pkg == null) {
                 reason = "ORPHANED";
-            } else if (isClosed(pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : null)
-                    || Boolean.TRUE.equals(pkg.getDeleted())) {
+            } else if (!parentIsOpen(pkg)) {
                 reason = "STRANDED";
             } else {
                 continue; // Package is genuinely open — this permit is supposed to be open too.
@@ -162,6 +168,93 @@ public class PermitCleanupService {
                         ? pkg.getPackageStatus().getName() : "Building");
             }
             report.getRows().add(row);
+        }
+    }
+
+    /**
+     * Whether a permit's package is still genuinely open.
+     *
+     * <p>Dereferencing the package can THROW. It is a lazy {@code @ManyToOne} with no
+     * {@code @NotFound}, and {@code DailyPermitPackage} now carries {@code @Where}, so a
+     * soft-deleted package is a row Hibernate refuses to materialise — the proxy blows up on first
+     * access instead of coming back null.
+     *
+     * <p>Catching that is not defensive noise: an unloadable parent IS the stranded case, and
+     * without this the diagnose/close sweep threw wholesale on exactly the rows it exists to find.
+     * {@code @NotFound(IGNORE)} is deliberately not used — it forces the association eager on every
+     * row, which {@code BasePermitEntity} and {@code WorkRequest} both document as unacceptable here.
+     */
+    /**
+     * Work requests carrying hot-work PRECAUTIONS while declaring no hot work.
+     *
+     * <p>Older PWA builds seeded the twelve precautions from the work area and the work-category
+     * profile, and nothing withdrew them when the requester answered "no hot work". Those ticks were
+     * harmless while the desktop re-derived precautions from its own profiles — they are not now:
+     * the work request is the SOLE source for the twelve precautions on a generated Hot Work
+     * permit, so a stored row like this puts affirmations nobody made onto a controlled document.
+     *
+     * <p>Current builds cannot create these any more ({@code foldHotWorkProfile} clears the block
+     * when hot work is switched off), so this is a one-off pass over history, not a recurring sweep.
+     *
+     * <p>Reports by default and only writes when told to, like every other maintenance action here.
+     * The write goes through JPA so the field-change listener fires and the correction reaches the
+     * other nodes rather than being fixed on one machine only.
+     */
+    @Transactional
+    public Report sweepWithdrawnHotWorkMeasures(boolean dryRun) {
+        Report report = new Report();
+        report.setDryRun(dryRun);
+
+        List<WorkRequest> all = entityManager
+                .createQuery("SELECT w FROM WorkRequest w", WorkRequest.class)
+                .getResultList();
+
+        for (WorkRequest wr : all) {
+            if (wr == null || wr.getId() == null) continue;
+            // Boolean on the entity — the 'Yes'/'No' strings live only in the Angular models.
+            if (Boolean.TRUE.equals(wr.getIsHotWorkRequired())) continue;
+
+            HotWorkMeasures measures;
+            try {
+                measures = wr.getDeclaredHotWorkMeasures();
+            } catch (Exception e) {
+                // A malformed JSON column must not fail the whole sweep.
+                continue;
+            }
+            if (measures == null || !anyTicked(measures)) continue;
+
+            Row row = new Row();
+            row.setLayer("WorkRequest");
+            row.setId(wr.getId());
+            row.setPermitNumber(wr.getPermitNumber());
+            row.setReason("HOT_WORK_MEASURES_WITHOUT_HOT_WORK");
+            report.getRows().add(row);
+
+            if (!dryRun) {
+                // An all-false block, not null: the readers treat a MISSING block as "no opinion"
+                // and would leave the old declaration standing.
+                wr.setDeclaredHotWorkMeasures(new HotWorkMeasures());
+                entityManager.merge(wr);
+                report.setClosed(report.getClosed() + 1);
+            }
+        }
+        return report;
+    }
+
+    private static boolean anyTicked(HotWorkMeasures m) {
+        return m.isAreaIsClean() || m.isFlammablesAreSecured() || m.isNoCombustibleDustOrDebrisPresent()
+                || m.isRadiativeHeatPreventiveMeasuresAreTaken() || m.isVesselsArePurged()
+                || m.isOpeningsAreCovered() || m.isDuctVentilationIsSecured() || m.isLockOutIsCompleted()
+                || m.isCommunicationIsEstablished() || m.isFireWatchIsAwareOfDuties()
+                || m.isFireExtinguisherPresent() || m.isFireProtectionIsInService();
+    }
+
+    private boolean parentIsOpen(DailyPermitPackage pkg) {
+        try {
+            if (Boolean.TRUE.equals(pkg.getDeleted())) return false;
+            return !isClosed(pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : null);
+        } catch (jakarta.persistence.EntityNotFoundException | org.hibernate.ObjectNotFoundException e) {
+            return false;
         }
     }
 

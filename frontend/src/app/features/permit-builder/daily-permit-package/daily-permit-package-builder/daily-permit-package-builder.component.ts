@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, effect, inject, Input, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
+import { WrDetailDialogService } from '../../../../shared/wr-detail-dialog/wr-detail-dialog.service';
 import { HttpClient } from '@angular/common/http';
 import { CurrentDailyPermitPackageService } from '../../../../services/current-items-services/current-daily-permit-package.service';
 import { SafeWorkDto, SwHazards } from '../../../../models/permits/safe-work.model';
@@ -83,6 +84,37 @@ import { LotoService } from '../../../../services/loto/loto.service';
   styleUrl: './daily-permit-package-builder.component.css'
 })
 export class DailyPermitPackageBuilderComponent implements OnInit {
+  private wrDetailDialogService = inject(WrDetailDialogService);
+
+  isCancelDialogOpen = signal(false);
+  cancelReason = signal('');
+  cancelWorkRequests = signal(true);
+
+  openCancelDialog(): void {
+    this.cancelReason.set('');
+    this.cancelWorkRequests.set(true);
+    this.isCancelDialogOpen.set(true);
+  }
+
+  confirmCancel(): void {
+    this.currentDailyPermitPackageService.cancelPackage(
+      this.cancelReason(), this.cancelWorkRequests());
+    this.isCancelDialogOpen.set(false);
+  }
+
+  /**
+   * Open the full work request, read-only.
+   *
+   * <p>Read-only because the request reached this package by being processed. The dialog's Cancel
+   * and Revoke only flip `permitStatus` — they neither detach the request from this package nor
+   * touch the permits already generated from it — so offering them here is a way to strand a live
+   * package on a cancelled request.
+   */
+  openWrDetails(wr: any): void {
+    if (!wr?.id) return;
+    this.wrDetailDialogService.open(wr.id, { showActions: false });
+  }
+
   private readonly headerCollapseBreakpointPx = 1400;
   currentDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
   private jobLogService = inject(JobLogService);
@@ -700,9 +732,11 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   }
   addHotWork($event: HotWorkDto = new HotWorkDto()) {
     if (!$event.id) {
+      // No area constants here — a precaution is an attestation, not a property of a place.
+      // Same rule as HotWorkDto.generatePermitFromRequest; see the note there.
       $event.measures = new HotWorkMeasures(this.seedHazards(
         $event.measures,
-        this.parentJob()?.workArea?.constantHotWorkMeasures,
+        null,
         wr => wr.declaredHotWorkMeasures));
     }
     this.currentDailyPermitPackageService.createAndAttachHotWorksToPackage([$event]);

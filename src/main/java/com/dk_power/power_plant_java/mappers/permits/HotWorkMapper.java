@@ -171,10 +171,16 @@ public class HotWorkMapper implements BaseMapper {
             entity.setWorkType(dto.getWorkType());
         }
 
-        try {
-            entity.setMeasures(dto.getMeasures());
-        } catch (Exception e) {
-            // handle or log
+        // Null-guarded, matching SafeWorkMapper and ConfinedSpaceMapper. HotWork.setMeasures(null)
+        // writes the literal string "null", which getMeasures() reads back as an all-false block — so
+        // any save that omitted the measures silently wiped twelve precautions. Angular was safe only
+        // by accident, because HotWorkDto.toJson() always emits the block.
+        if (dto.getMeasures() != null) {
+            try {
+                entity.setMeasures(dto.getMeasures());
+            } catch (Exception e) {
+                // handle or log
+            }
         }
 
         // id 0 is the Angular placeholder shape (BaseDto sets id = data.id || 0). It passes a

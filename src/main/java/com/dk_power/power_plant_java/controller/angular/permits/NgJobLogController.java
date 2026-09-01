@@ -305,6 +305,30 @@ public class NgJobLogController {
     }
 
     /**
+     * Work requests that carry hot-work precautions while declaring no hot work.
+     *
+     * <p>History left by older PWA builds. Since the request is now the only source for the twelve
+     * precautions on a generated Hot Work permit, these rows would put unmade affirmations onto a
+     * controlled document.
+     *
+     * <p>Dry run: {@code POST /ng/job-logs/maintenance/sweep-withdrawn-hot-work-measures}
+     * <br>Apply: {@code ...?dryRun=false}
+     */
+    @PostMapping("/maintenance/sweep-withdrawn-hot-work-measures")
+    public ResponseEntity<NgApiResponse<PermitCleanupService.Report>> sweepWithdrawnHotWorkMeasures(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            PermitCleanupService.Report report = permitCleanupService.sweepWithdrawnHotWorkMeasures(dryRun);
+            return ResponseEntity.ok(new NgApiResponse<>(report,
+                    (dryRun ? "Dry run: " : "Cleared: ") + report.getRows().size()
+                            + " work request(s) carry hot-work precautions without hot work."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error sweeping work requests: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Close them.
      *
      * <p>Dry run: {@code POST /ng/job-logs/maintenance/close-stranded-permits}

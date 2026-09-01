@@ -495,6 +495,8 @@ public class NgValueService {
                 || "inventorytype".equalsIgnoreCase(alias);
         boolean isLocation = "Location".equalsIgnoreCase(name)
                 || "location".equalsIgnoreCase(alias);
+        boolean isSystem = "System".equalsIgnoreCase(name)
+                || "system".equalsIgnoreCase(alias);
 
         if (isFieldListType) {
             WorkAreaGitHubPublisher publisher = workAreaGitHubPublisherProvider.getIfAvailable();
@@ -516,6 +518,17 @@ public class NgValueService {
             WorkAreaGitHubPublisher publisher = workAreaGitHubPublisherProvider.getIfAvailable();
             if (publisher != null) {
                 publisher.publishLocations();
+            }
+            return;
+        }
+
+        // Systems reach the PWA through the same snapshot, so administering one has to republish it
+        // — otherwise a renamed or newly added system never appears in the work-request wizard's
+        // "a whole system" list until somebody happens to trigger a full publish.
+        if (isSystem) {
+            WorkAreaGitHubPublisher publisher = workAreaGitHubPublisherProvider.getIfAvailable();
+            if (publisher != null) {
+                publisher.publishSystems();
             }
             return;
         }

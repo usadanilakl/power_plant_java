@@ -123,13 +123,20 @@ export class WorkAreaSeedService {
    * requester chose themselves is never downgraded, because they may know about an entry the area's
    * own record does not.
    */
-  applyAreaSeeding(wr: WorkRequest, declined: Set<string>): void {
+  applyAreaSeeding(wr: WorkRequest, declined: Set<string>, seeded?: Set<string>): void {
     const area = wr.workAreaId != null ? this.areas.get(wr.workAreaId) : undefined;
     if (!area) return;
 
-    this.merge(wr, 'declaredHazards', area.constantHazards, declined);
-    this.merge(wr, 'declaredHotWorkMeasures', area.constantHotWorkMeasures, declined);
-    this.merge(wr, 'declaredConfinedSpaceHazards', area.constantConfinedSpaceHazards, declined);
+    this.merge(wr, 'declaredHazards', area.constantHazards, declined, seeded);
+    // Precautions are deliberately NOT seeded from the area. They are attestations — "vessels are
+    // purged", "fire watch is aware of duties" — and pre-ticking them from an area profile means
+    // the requester's default answer is "yes, already done" about work they have not started. The
+    // requester ticks what they will actually do; everything downstream then reflects a person's
+    // answer rather than a stored constant.
+    //
+    // The permit shows all twelve boxes regardless, so nothing becomes invisible by not seeding.
+
+    this.merge(wr, 'declaredConfinedSpaceHazards', area.constantConfinedSpaceHazards, declined, seeded);
 
     if (area.isConfinedSpace) {
       wr.isConfinedSpaceEntryRequired = 'Yes';
@@ -147,20 +154,29 @@ export class WorkAreaSeedService {
   }
 
   /** Apply the chosen work type's standard hazard profile. */
-  applyWorkTypeSeeding(wr: WorkRequest, declined: Set<string>): void {
+  applyWorkTypeSeeding(wr: WorkRequest, declined: Set<string>, seeded?: Set<string>): void {
     const category = wr.workCategoryName ? this.categories.get(wr.workCategoryName) : undefined;
     if (!category) return;
-    this.merge(wr, 'declaredHazards', category.standardHazards, declined);
-    this.merge(wr, 'declaredHotWorkMeasures', category.standardHotWorkMeasures, declined);
-    this.merge(wr, 'declaredConfinedSpaceHazards', category.standardConfinedSpaceHazards, declined);
+    this.merge(wr, 'declaredHazards', category.standardHazards, declined, seeded);
+    // Not seeded — see the note in applyAreaSeeding. A work type cannot affirm a precaution either.
+
+    this.merge(wr, 'declaredConfinedSpaceHazards', category.standardConfinedSpaceHazards, declined, seeded);
   }
 
-  /** Turn on every true flag in `source` that the requester has not declined. Never turns one off. */
+  /**
+   * Turn on every true flag in `source` that the requester has not declined. Never turns one off.
+   *
+   * <p>Records what it actually switched on into {@link seeded}, when the caller supplies one. That
+   * is the only reliable way to tell a seeded tick from one the requester made themselves —
+   * inferring it afterwards from "everything currently true" cannot, and mislabelling a requester's
+   * own answer as seeded makes it disposable.
+   */
   private merge(
     wr: WorkRequest,
     block: 'declaredHazards' | 'declaredHotWorkMeasures' | 'declaredConfinedSpaceHazards',
     source: Record<string, boolean> | null | undefined,
-    declined: Set<string>
+    declined: Set<string>,
+    seeded?: Set<string>
   ): void {
     if (!source) return;
     const target: any = (wr as any)[block] ?? {};
@@ -168,6 +184,7 @@ export class WorkAreaSeedService {
       if (on !== true) continue;
       if (declined.has(`${block}.${key}`)) continue;
       target[key] = true;
+      seeded?.add(`${block}.${key}`);
     }
     (wr as any)[block] = target;
   }

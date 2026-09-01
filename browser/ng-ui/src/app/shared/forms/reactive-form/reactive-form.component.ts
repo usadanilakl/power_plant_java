@@ -126,6 +126,11 @@ export class ReactiveFormComponent {
     return ids.length ? ids : null;
   }
 
+  /** Whether a field group has at least one field that will actually render. */
+  hasVisibleField(groupLabel: string): boolean {
+    return (this.groupedFields()[groupLabel] ?? []).some(field => this.shouldShowField(field));
+  }
+
   groupedFields = computed(() => {
     const allFields = this.fields();
     const groupsMap: { [key: string]: FormField[] } = {};

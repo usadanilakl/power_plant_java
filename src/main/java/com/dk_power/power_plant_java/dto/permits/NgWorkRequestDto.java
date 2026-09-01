@@ -64,4 +64,18 @@ public class NgWorkRequestDto extends BaseDto {
 
     /** Derived, read-only: the worksheet's fume x chrome product. 0 when not assessed. */
     private Integer hotWorkExposureScore;
+
+    /**
+     * Who actually submitted this, and when.
+     *
+     * <p>Stored on the entity and set by the PWA on every submission, and carried by the SharePoint
+     * DTO — but absent here, so the operator screens had no way to show who to ring about a request.
+     * Requester provenance only: never mapped back onto the entity, exactly as {@code NgJhaDto} and
+     * {@code JhaMapper} already handle the same five fields.
+     */
+    private String timeSubmitted;
+    private String submitterName;
+    private String submitterEmail;
+    private String submitterPhone;
+    private String submitterCompany;
 }

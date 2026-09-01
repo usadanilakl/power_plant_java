@@ -48,6 +48,7 @@ public class WorkAreaGitHubPublisher {
         FIELD_LIST_TYPES,
         INVENTORY_TYPES,
         LOCATIONS,
+        SYSTEMS,
         LOTO_POINTS,
         SDS_CHEMICALS,
         MONITORED_AREAS,
@@ -114,6 +115,11 @@ public class WorkAreaGitHubPublisher {
     }
 
     @Async
+    public void publishSystems() {
+        requestPublish(PublishTarget.SYSTEMS);
+    }
+
+    @Async
     public void publishLotoPoints() {
         requestPublish(PublishTarget.LOTO_POINTS);
     }
@@ -172,6 +178,9 @@ public class WorkAreaGitHubPublisher {
                 }
                 if (shouldPublishLocations(targetToPublish)) {
                     publishText(active, "locations", "locations.json", buildLocationsJson());
+                }
+                if (shouldPublishSystems(targetToPublish)) {
+                    publishText(active, "systems", "systems.json", buildSystemsJson());
                 }
                 if (shouldPublishLotoPoints(targetToPublish)) {
                     publishText(active, "loto_points", "loto-points.json", buildLotoPointsJson());
@@ -268,6 +277,10 @@ public class WorkAreaGitHubPublisher {
 
     private boolean shouldPublishLocations(PublishTarget target) {
         return target == PublishTarget.ALL || target == PublishTarget.LOCATIONS;
+    }
+
+    private boolean shouldPublishSystems(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.SYSTEMS;
     }
 
     private boolean shouldPublishLotoPoints(PublishTarget target) {
@@ -394,6 +407,32 @@ public class WorkAreaGitHubPublisher {
         }
         List<Map<String, Object>> result = locations.stream()
                 .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName() != null ? v.getName() : ""))
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+    }
+
+    /**
+     * The plant's SYSTEM vocabulary, so a requester can say "the whole HRSG" rather than hunting for
+     * a tag number on something that has none.
+     *
+     * <p>Reuses the existing {@code System} Value category — the same list the LOTO tag-number
+     * generator and {@code LotoPoint.systemValue} already use — rather than inventing a parallel
+     * one. It was the one reference list the PWA had no offline copy of.
+     *
+     * <p>Published by {@code name}, never by alias: several of these values have no alias at all, so
+     * an alias-labelled dropdown would show blanks.
+     */
+    private String buildSystemsJson() throws IOException {
+        List<com.dk_power.power_plant_java.entities.categories.Value> systems;
+        try {
+            systems = valueService.getValuesByCategory("System");
+        } catch (RuntimeException e) {
+            log.debug("[PWA Publisher] System category not found yet, returning empty list");
+            systems = List.of();
+        }
+        List<Map<String, Object>> result = systems.stream()
+                .filter(v -> v.getName() != null && !v.getName().isBlank())
+                .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName()))
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
     }

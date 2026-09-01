@@ -49,11 +49,22 @@ export class CurrentJobLogService {
   private loadJobLogs() {
     this.jobLogService.getAll().pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(response => {
-      if (response?.responseData) {
-        const items = response.responseData.map((j: any) => JobLogDto.fromJson(j));
-        this.allJobLogsSubject.next(items);
-        this.hasLoaded = true;
+    ).subscribe({
+      next: response => {
+        if (response?.responseData) {
+          const items = response.responseData.map((j: any) => JobLogDto.fromJson(j));
+          this.allJobLogsSubject.next(items);
+          this.hasLoaded = true;
+        } else {
+          // Re-emit so subscribers waiting on this load are not left hanging on a response that
+          // arrived with no data. This was the only method in the file with no error path, and its
+          // silence is what left the job menu spinning after a failed refresh.
+          this.allJobLogsSubject.next(this.allJobLogsSubject.value);
+        }
+      },
+      error: err => {
+        console.error('Error loading job logs:', err);
+        this.allJobLogsSubject.next(this.allJobLogsSubject.value);
       }
     });
   }

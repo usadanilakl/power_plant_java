@@ -8,7 +8,7 @@ import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
 import { WorkCategoryProfileDto } from './work-category-profile.model';
-import { mergeConfinedSpaceHazards } from '../../utils/hazard-merge.util';
+import { mergeHazardSources } from './hazard-seeding';
 
 export class ConfinedSpaceHazards {
   oxygenDeficiency: boolean = false;
@@ -472,8 +472,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         space: request.space,
         workScope: request.workScope
       });
-      // Merge hazards: category standard hazards + work area constant hazards (OR-union)
-      dto.hazards = mergeConfinedSpaceHazards(categoryProfile?.standardConfinedSpaceHazards, workArea?.constantConfinedSpaceHazards);
+      // OR-union including the requester's own declaration — see SafeWorkDto.generatePermitFromRequest
+      // for why an un-tick cannot be honoured yet.
+      dto.hazards = mergeHazardSources<ConfinedSpaceHazards>(
+        null,
+        categoryProfile?.standardConfinedSpaceHazards,
+        workArea?.constantConfinedSpaceHazards,
+        request.declaredConfinedSpaceHazards,
+      ) as ConfinedSpaceHazards;
       return dto;
     }
     

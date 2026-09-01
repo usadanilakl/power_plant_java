@@ -56,9 +56,10 @@
         }
         <button class="btn-secondary" (click)="closeLedLayoutPanel()">Close</button>
       </div>
+      @let insp = ledLayoutInspection();
       @if (ledLayoutLoading()) {
         <p class="led-layout-loading">Loading…</p>
-      } @else if (ledLayoutInspection(); as insp) {
+      } @else if (insp) {
         <div class="led-layout-tables">
           <div>
             <h4>Strips ({{ insp.strips.length }})</h4>

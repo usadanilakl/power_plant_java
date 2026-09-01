@@ -12,6 +12,17 @@ export interface PwaLotoPointEntry {
   locationId: number | null;
 }
 
+/**
+ * One entry of the plant's System vocabulary.
+ *
+ * <p>Labelled by `name` and never by alias — several of these values have no alias at all, so an
+ * alias-labelled list would show blanks.
+ */
+export interface PwaSystemEntry {
+  id: number;
+  name: string;
+}
+
 export interface PwaWorkAreaEntry {
   id: number;
   name: string;
@@ -66,6 +77,7 @@ export class EquipmentDataService {
   private lotoPoints = signal<PwaLotoPointEntry[]>([]);
   private workAreas = signal<PwaWorkAreaEntry[]>([]);
   private locations = signal<PwaLocationEntry[]>([]);
+  private systemValues = signal<PwaSystemEntry[]>([]);
   private loadAttempted = false;
   private serverLoaded = false;
 
@@ -75,6 +87,7 @@ export class EquipmentDataService {
     this.loadLotoPoints();
     this.loadWorkAreas();
     this.loadLocations();
+    this.loadSystems();
   }
 
   /** Retry fetching from server (e.g. when server comes online later) */
@@ -139,6 +152,26 @@ export class EquipmentDataService {
         }
       }
     });
+  }
+
+  /**
+   * The plant's system vocabulary — Combustion Turbine, HRSG, Fuel Gas System and the rest.
+   *
+   * <p>No hub call, unlike its siblings. The list is small, changes rarely, and — crucially — work
+   * request submission is deliberately open to anonymous contractors, so reaching for a secured
+   * endpoint here would mean either a 401 for the people who most need it or opening a new
+   * anonymous surface. The publisher keeps both the Supabase snapshot and the static JSON current,
+   * which is enough.
+   */
+  private loadSystems(): void {
+    if (this.systemValues().length) return;
+    this.loadWithSupabaseFallback<PwaSystemEntry[]>('systems',
+      'data/systems.json', 'pwa_systems', systems => this.systemValues.set(systems));
+  }
+
+  /** The plant's systems, alphabetical. Empty until the reference data has loaded. */
+  getSystems(): PwaSystemEntry[] {
+    return [...this.systemValues()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**

@@ -249,6 +249,30 @@ public class NgDailyPermitPackageController {
         }
     }
 
+    /**
+     * Cancel a package — the work is not going ahead.
+     *
+     * <p>{@code cancelWorkRequests} defaults to true: the usual reason to cancel is that the job was
+     * called off, and leaving its requests Active would put them back in front of an operator as
+     * outstanding work. Pass false when the package itself was the mistake and the request should
+     * return to the queue.
+     */
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> cancelPackage(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String reason = body == null ? null : String.valueOf(body.getOrDefault("reason", ""));
+            boolean cancelWrs = body == null || !Boolean.FALSE.equals(body.get("cancelWorkRequests"));
+            DailyPermitPackageDto result = ngDailyPermitPackageService.cancelPackage(id, reason, cancelWrs);
+            return ResponseEntity.ok()
+                .body(new NgApiResponse<>(result, "Package cancelled", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, e.getMessage(), LocalDateTime.now()));
+        }
+    }
+
     @PostMapping("/{id}/close")
     public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> closePackage(
             @PathVariable String id,

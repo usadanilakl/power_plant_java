@@ -172,6 +172,12 @@
                   <button class="status-btn" style="background:#2d5aa0;" (click)="reusePermitsPopupOpen()">Reissue Package</button>
                 }
               }
+              <!-- Cancel is offered from any state except the two terminal ones. Operators were
+                   reaching for Delete Package instead, which records no reason and writes nothing
+                   to the modification log. -->
+              @if (packageStatus() !== 'Closed' && packageStatus() !== 'Cancelled') {
+                <button class="status-btn cancel-pkg" (click)="openCancelDialog()">Cancel Package</button>
+              }
             </div>
           }
         </div>
@@ -236,6 +242,13 @@
             (addItemEvent)="attachNew('Work Request')">
             <ng-template let-wr>
               <app-work-request-display [workRequest]="wr"></app-work-request-display>
+              <!-- The summary card prints 14 fixed values. Everything else the contractor submitted
+                   — the three declared hazard blocks, the hot-work profile, the Cr(VI) worksheet,
+                   the areas, the JHA, the attachments — already arrives in the browser and was
+                   simply never rendered. This opens the dialog that does render it, in read-only
+                   mode: the request has already been processed, so its lifecycle actions do not
+                   belong here. -->
+              <button class="view-wr-btn" (click)="openWrDetails(wr())">View full request</button>
               <button class="remove-permit-btn" (click)="currentDailyPermitPackageService.removePermitFromPackageItem(wr(), 'workRequests')">Remove WR</button>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate from WR</button>
@@ -954,6 +967,46 @@
     <div class="workflow-actions">
       <button class="status-btn activate" (click)="confirmActivation()" [disabled]="activationValidationErrors().length > 0">Confirm Activation</button>
       <button class="status-btn" style="background:#6c757d;" (click)="isActivationPopupOpen = false">Cancel</button>
+    </div>
+  </div>
+</app-popup-projection>
+
+<app-popup-projection
+  [title]="'Cancel Package'"
+  [isOpen]="isCancelDialogOpen()"
+  (close)="isCancelDialogOpen.set(false)">
+  <div class="cancel-dialog">
+    <p class="cancel-lead">
+      This marks the package and its permits <strong>Cancelled</strong>. Use it when the work is not
+      going ahead — to record work that happened and finished, use Close Package instead.
+    </p>
+
+    <label class="cancel-label" for="cancelReason">Why is it being cancelled?</label>
+    <textarea id="cancelReason" class="cancel-reason" rows="3"
+              placeholder="e.g. crew reassigned to an outage"
+              [value]="cancelReason()"
+              (input)="cancelReason.set($any($event.target).value)"></textarea>
+    <p class="cancel-hint">
+      Kept internal — recorded in this package's modification log, not sent to the requester.
+    </p>
+
+    <label class="cancel-check">
+      <input type="checkbox" [checked]="cancelWorkRequests()"
+             (change)="cancelWorkRequests.set($any($event.target).checked)" />
+      Also cancel the work request(s)
+    </label>
+    <p class="cancel-hint">
+      Leave ticked when the job itself is called off. Untick when only this package was a mistake —
+      the request goes back to the operator queue.
+    </p>
+
+    <p class="cancel-hint">
+      LOTO isolations are not affected. De-isolating stays a separate, deliberate step.
+    </p>
+
+    <div class="cancel-actions">
+      <button class="status-btn" (click)="isCancelDialogOpen.set(false)">Keep package</button>
+      <button class="status-btn cancel-pkg" (click)="confirmCancel()">Cancel package</button>
     </div>
   </div>
 </app-popup-projection>

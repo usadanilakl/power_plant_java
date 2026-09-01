@@ -16,8 +16,15 @@ import { ConfinedSpaceHazards } from './confined-space.model';
  * <p>`workAreas` is excluded: it is structural data that decides how many permits get generated,
  * not something a single input or cell could show. Including it would force a meaningless entry in
  * both the field map and the column map for a value neither can render.
+ *
+ * <p>The submitter block is excluded for the same reason from the other direction: it is requester
+ * PROVENANCE, recorded by the PWA and never edited here. Rendering it as an input would offer an
+ * operator an editable field whose value `toJson()` deliberately discards.
  */
-export type WorkRequestFieldName = Exclude<keyof WorkRequestModel, 'workAreas'>;
+export type WorkRequestFieldName = Exclude<
+  keyof WorkRequestModel,
+  'workAreas' | 'timeSubmitted' | 'submitterName' | 'submitterEmail' | 'submitterPhone' | 'submitterCompany'
+>;
 
 /**
  * One work area a request covers, and what is planned there.
@@ -70,6 +77,18 @@ export interface WorkRequestModel extends BaseModel {
   hotWorkProfile: HotWorkProfile | null;
   /** Derived server-side: the worksheet's fume x chrome product. 0 when not assessed. */
   hotWorkExposureScore: number | null;
+
+  /**
+   * Who submitted the request and when — set by the PWA, read-only here.
+   *
+   * <p>Not the same as `requestedBy`/`company`, which name whoever the work is FOR. These name the
+   * person who actually pressed submit, and are what an operator needs to ring somebody about it.
+   */
+  timeSubmitted: string | null;
+  submitterName: string | null;
+  submitterEmail: string | null;
+  submitterPhone: string | null;
+  submitterCompany: string | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -103,6 +122,11 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   declaredConfinedSpaceHazards: ConfinedSpaceHazards | null;
   hotWorkProfile: HotWorkProfile | null;
   hotWorkExposureScore: number | null;
+  timeSubmitted: string | null;
+  submitterName: string | null;
+  submitterEmail: string | null;
+  submitterPhone: string | null;
+  submitterCompany: string | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -137,6 +161,11 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       : null;
     this.hotWorkProfile = data.hotWorkProfile ? new HotWorkProfile(data.hotWorkProfile) : null;
     this.hotWorkExposureScore = data.hotWorkExposureScore ?? null;
+    this.timeSubmitted = data.timeSubmitted ?? null;
+    this.submitterName = data.submitterName ?? null;
+    this.submitterEmail = data.submitterEmail ?? null;
+    this.submitterPhone = data.submitterPhone ?? null;
+    this.submitterCompany = data.submitterCompany ?? null;
   }
 
   // Serialization method
@@ -208,6 +237,11 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       status: json.status || null,
       hasJha: json.hasJha ?? null,
       attachmentCount: json.attachmentCount ?? null,
+      timeSubmitted: json.timeSubmitted || null,
+      submitterName: json.submitterName || null,
+      submitterEmail: json.submitterEmail || null,
+      submitterPhone: json.submitterPhone || null,
+      submitterCompany: json.submitterCompany || null,
       workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
       workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
       workAreas: json.workAreas ?? [],

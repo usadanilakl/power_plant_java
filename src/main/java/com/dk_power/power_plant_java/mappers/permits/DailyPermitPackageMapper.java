@@ -48,12 +48,10 @@ public class DailyPermitPackageMapper implements BaseMapper {
         dto.setName(entity.getName());
 
         if(entity.getWorkRequests() != null && !entity.getWorkRequests().isEmpty()) {
-            dto.setWorkRequests(
-                entity.getWorkRequests()
-                    .stream()
-                    .map(workRequestMapper::convertToNgDto)
-                    .collect(Collectors.toList())
-            );
+            // Batch, not per-entity. The single-entity mapper runs a JHA existence check and an
+            // attachment count per request, so a package with N requests cost 2N queries where the
+            // batch mapper does it in 2.
+            dto.setWorkRequests(workRequestMapper.convertToNgDtos(new java.util.ArrayList<>(entity.getWorkRequests())));
         }
 
         if (entity.getSafeWorks() != null && !entity.getSafeWorks().isEmpty()) {

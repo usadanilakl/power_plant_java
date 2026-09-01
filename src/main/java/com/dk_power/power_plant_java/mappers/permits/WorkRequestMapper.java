@@ -262,6 +262,14 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setHotWorkProfile(entity.getHotWorkProfile());
         dto.setHotWorkExposureScore(entity.getHotWorkProfile().getExposureScore());
 
+        
+        // Requester provenance. Read-only here and never written back — see the DTO.
+        dto.setTimeSubmitted(entity.getTimeSubmitted());
+        dto.setSubmitterName(entity.getSubmitterName());
+        dto.setSubmitterEmail(entity.getSubmitterEmail());
+        dto.setSubmitterPhone(entity.getSubmitterPhone());
+        dto.setSubmitterCompany(entity.getSubmitterCompany());
+
         return dto;
     }
 

@@ -114,8 +114,17 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         // used to persist a brand-new job - burning a permit number - that nothing was ever
         // attached to, while the operator was shown the old job and told it was the new one.
         if (wr.getDailyPermitPackage() != null) {
+            // The permit number is read defensively: the package association is a lazy proxy and
+            // DailyPermitPackage now carries @Where, so a soft-deleted package throws on access —
+            // which would turn this deliberate, readable refusal into an opaque Hibernate error.
+            String pkgLabel;
+            try {
+                pkgLabel = wr.getDailyPermitPackage().getPermitNumber();
+            } catch (jakarta.persistence.EntityNotFoundException | org.hibernate.ObjectNotFoundException e) {
+                pkgLabel = "a deleted package";
+            }
             throw new IllegalStateException("Work request " + workRequestId
-                    + " is already in package " + wr.getDailyPermitPackage().getPermitNumber()
+                    + " is already in package " + pkgLabel
                     + ". Remove it from that package before starting a new job for it.");
         }
 
@@ -272,6 +281,20 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         JobLog job = getEntityById(id);
         if (job == null) throw new RuntimeException("Job not found: " + id);
         job.setOriginatingWorkRequest(null);
+
+        // Detach the packages before hiding the job.
+        //
+        // Now that JobLog carries @Where, a package left pointing at a soft-deleted job holds an FK
+        // to a row Hibernate will not materialise — its lazy proxy then throws on first access
+        // rather than returning null, which is what made such packages unactivatable. Detaching
+        // here stops those rows being created at all, rather than only defending against them at
+        // the far end.
+        //
+        // Through JPA, so FieldChangeEntityListener still fires and the detach reaches other nodes.
+        for (DailyPermitPackage pkg : new ArrayList<>(job.getPackages())) {
+            job.removePackage(pkg);
+        }
+
         softDelete(jobLogRepo.save(job));
     }
 
@@ -349,16 +372,24 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         // would take them - and everything hanging off them - with it. Once the guard has proved
         // the source is empty the delete has nothing left to cascade to.
         //
-        // Deliberately a HARD delete, unlike almost everything else here: JobLog is the one permit
-        // entity that never re-declared BaseIdEntity's @Where(deleted = false) - a @Where on a
-        // @MappedSuperclass is not inherited - so a soft-deleted job would keep showing up in every
-        // job list. Merging is supposed to make the source disappear.
+        // A SOFT delete now. This used to be a hard delete, justified by JobLog never having
+        // re-declared BaseIdEntity's @Where — it does now, so a soft-deleted source genuinely
+        // disappears from the job lists and the original reason is gone.
+        //
+        // The change also removes a real hazard. The emptiness guard below reads
+        // source.getPackages(), which the new @Where on DailyPermitPackage filters, so a
+        // SOFT-DELETED package is invisible to it: the guard passed while the FK
+        // DAILY_PERMIT_PACKAGE.JOB_LOG_ID still pointed at the source, and the hard delete failed
+        // the whole merge with an opaque referential-integrity violation that could never succeed
+        // for that job pair. A soft delete leaves the FK intact and keeps the audit trail, matching
+        // the convention everywhere else in this codebase.
         entityManager.refresh(source);
         if (!source.getPackages().isEmpty()) {
             throw new IllegalStateException("Merge aborted: job " + sourceJobId
                     + " still holds " + source.getPackages().size() + " package(s)");
         }
-        jobLogRepo.delete(source);
+        source.setDeleted(true);
+        jobLogRepo.save(source);
 
         entityManager.refresh(target);
         return jobLogMapper.convertToDto(target);

@@ -8,22 +8,36 @@ import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
 import { WorkCategoryProfileDto } from './work-category-profile.model';
-import { mergeHotWorkMeasures } from '../../utils/hazard-merge.util';
+import { mergeHazardSources } from './hazard-seeding';
 
 
+/**
+ * The twelve hot-work precautions.
+ *
+ * <p>All twelve default to FALSE — meaning "not yet affirmed", which is what an unanswered
+ * precaution is. They used to default to `true` here while the Java POJO and the PWA both defaulted
+ * them to `false`, so every permit generated on the desktop asserted that vessels were purged, the
+ * lock-out was completed, the fire watch was aware of their duties and fire protection was in
+ * service — with nobody having checked any of it. It also made hazard carry-over unobservable: an
+ * OR-merge into an all-true block returns all-true whatever the inputs are.
+ *
+ * <p>Consequence to know about: permits whose stored `measures` block is absent or null now render
+ * all-unticked instead of all-ticked. That is the correct direction — Java already read those same
+ * rows as all-false — but it is a visible change to records already issued.
+ */
 export class HotWorkMeasures {
-  areaIsClean: boolean = true;
-  flammablesAreSecured: boolean = true;
-  noCombustibleDustOrDebrisPresent: boolean = true;
-  radiativeHeatPreventiveMeasuresAreTaken: boolean = true;
-  vesselsArePurged: boolean = true;
-  openingsAreCovered: boolean = true;
-  ductVentilationIsSecured: boolean = true;
-  lockOutIsCompleted: boolean = true;
-  communicationIsEstablished: boolean = true;
-  fireWatchIsAwareOfDuties: boolean = true;
-  fireExtinguisherPresent: boolean = true;
-  fireProtectionIsInService: boolean = true;
+  areaIsClean: boolean = false;
+  flammablesAreSecured: boolean = false;
+  noCombustibleDustOrDebrisPresent: boolean = false;
+  radiativeHeatPreventiveMeasuresAreTaken: boolean = false;
+  vesselsArePurged: boolean = false;
+  openingsAreCovered: boolean = false;
+  ductVentilationIsSecured: boolean = false;
+  lockOutIsCompleted: boolean = false;
+  communicationIsEstablished: boolean = false;
+  fireWatchIsAwareOfDuties: boolean = false;
+  fireExtinguisherPresent: boolean = false;
+  fireProtectionIsInService: boolean = false;
 
   constructor(data: Partial<HotWorkMeasures> = {}) {
     Object.assign(this, data);
@@ -627,8 +641,59 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         workScope: request.workScope,
         fireWatch: request.fireWatch
       });
-      // Merge measures: category standard measures + work area constant measures (OR-union)
-      dto.measures = mergeHotWorkMeasures(categoryProfile?.standardHotWorkMeasures, workArea?.constantHotWorkMeasures);
+      // The precautions come from the WORK REQUEST and nothing else.
+      //
+      // Unlike hazards, a precaution is not a property of a place — it is an action somebody
+      // performed and is attesting to. "Vessels are purged", "lock-out is completed", "fire watch
+      // is aware of duties", "fire extinguisher present": a work area cannot pre-affirm any of
+      // those, and a work-category profile cannot either. Merging them in did not add information,
+      // it added an assertion nobody had made.
+      //
+      // Nothing is lost by dropping those two sources. The permit renders all twelve checkboxes
+      // unconditionally (see getMeasureFields), so a profile could never contribute a precaution
+      // the operator would otherwise not see — its only effect was to arrive pre-ticked.
+      //
+      // Contrast SafeWorkDto and ConfinedSpaceDto above, which DO merge the area and category
+      // profiles: overhead work, hot surfaces and chemical exposure genuinely are properties of a
+      // place, and seeding them is what saves an operator re-entering them.
+      dto.measures = new HotWorkMeasures(request.declaredHotWorkMeasures ?? {});
+
+      // What KIND of hot work. The permit has always had a workType field, rendered and persisted,
+      // that nothing ever populated — so a permit generated from a request declaring welding came
+      // out with a blank work type.
+      dto.workType = hotWorkTypeFromProfile(request.hotWorkProfile);
+
+      // The Cr(VI) assessment, as a line of text on the instructions rather than a new control:
+      // HotWorkProfile explicitly declines to band the score into required precautions, and the
+      // score is computed server-side, so it is reported here, not re-derived or re-interpreted.
+      // A score of ZERO means the worksheet was never answered, not "low risk" — the backend
+      // returns 0 for an unanswered assessment, and wr-detail-dialog's crviAssessed uses the same
+      // rule. Writing "assessment declared ... score 0" onto a controlled permit would assert an
+      // assessment that nobody performed, which is the same mistake as the all-true precautions.
+      const profile = request.hotWorkProfile;
+      const score = request.hotWorkExposureScore;
+      const assessed = (typeof score === 'number' && score > 0)
+        || !!profile?.fumeLevel || !!profile?.chromeContent;
+      if (profile && assessed) {
+        const parts = [
+          typeof score === 'number' && score > 0 ? `score ${score}` : '',
+          profile.fumeLevel ? `method ${profile.fumeLevel}` : '',
+          profile.chromeContent ? `base metal chrome ${profile.chromeContent}` : '',
+        ].filter(Boolean);
+        if (parts.length) {
+          // Worded by how complete the answer actually is. A scored worksheet is a declaration; a
+          // method or chrome content with no score is a half-filled one, and calling that
+          // "declared" on a controlled permit would overstate what the requester did.
+          const scored = typeof score === 'number' && score > 0;
+          const lead = scored
+            ? 'Hexavalent chromium assessment declared on the work request'
+            : 'Hexavalent chromium worksheet started but NOT scored on the work request';
+          dto.specialInstructions = [
+            dto.specialInstructions,
+            `${lead}: ${parts.join(', ')}.`,
+          ].filter(Boolean).join('\n');
+        }
+      }
       return dto;
     }
 
@@ -695,6 +760,40 @@ export class HotWorkProfile {
   constructor(data: Partial<HotWorkProfile> = {}) {
     Object.assign(this, data ?? {});
   }
+}
+
+/**
+ * The declared hot-work profile, collapsed onto the permit's five checkboxes.
+ *
+ * <p>The request asks about eight kinds of hot work; the controlled permit form has five boxes. Only
+ * four map cleanly. Rather than guess an equivalence for the rest — arc gouging is not grinding, and
+ * open-flame heating is not cutting — everything without its own box goes to **Other** and is named
+ * in `otherDescription`, so nothing the requester declared disappears from the permit.
+ *
+ * <p>`plasmaCutting` and `torchCutting` both map to `cutting`: same box, same process family, and
+ * the specific method still reaches the permit through the Cr(VI) line.
+ */
+export function hotWorkTypeFromProfile(p: HotWorkProfile | null | undefined): HotWorkType {
+  const type = new HotWorkType();
+  if (!p) return type;
+
+  type.welding = p.welding === true;
+  type.griding = p.grinding === true;
+  type.cutting = p.torchCutting === true || p.plasmaCutting === true;
+  type.brazing = p.brazingSoldering === true;
+
+  // Everything with no box of its own, named rather than dropped.
+  const unmapped: string[] = [];
+  if (p.arcGouging) unmapped.push('Arc gouging');
+  if (p.openFlameHeating) unmapped.push('Open flame / heating');
+  if (p.other && p.otherDescription) unmapped.push(p.otherDescription);
+  else if (p.other) unmapped.push('Other (unspecified)');
+
+  if (unmapped.length) {
+    type.other = true;
+    type.otherDescription = unmapped.join('; ');
+  }
+  return type;
 }
 
 /** Readable labels for the hot work types this profile has ticked. */

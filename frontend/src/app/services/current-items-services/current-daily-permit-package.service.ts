@@ -311,6 +311,30 @@ export class CurrentDailyPermitPackageService {
       });
     }
 
+    /**
+     * Cancel the selected package.
+     *
+     * <p>The reason is stored in the package's modification log and deliberately not in
+     * closureComments, which is published to the PWA and would put an internal note on the
+     * contractor's phone.
+     */
+    cancelPackage(reason: string, cancelWorkRequests = true) {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.cancelPackage(pkg.id, reason, cancelWorkRequests).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error cancelling package:', err)
+      });
+    }
+
     foremanSignOn(data: { personName: string; company: string }) {
       const pkg = this.selectedDailyPermitPackageSubject.value;
       if (!pkg?.id) return;

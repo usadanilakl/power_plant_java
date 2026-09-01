@@ -1477,3 +1477,19 @@ input[type="text"] {
 .review-btn-close { background: linear-gradient(135deg, #c0392b, #e74c3c); flex: 1; justify-content: center; }
 .review-btn-reissue { background: linear-gradient(135deg, #2d8a4e, #27ae60); flex: 1; justify-content: center; }
 .review-btn-cancel { background: #3a3f55; }
+
+
+/* Cancel is destructive-ish but reversible-ish: red, but not the same red as a delete. */
+.status-btn.cancel-pkg { background: #b71c1c; }
+
+.cancel-dialog { padding: 4px 2px; max-width: 520px; }
+.cancel-lead { margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
+.cancel-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.cancel-reason {
+  width: 100%; box-sizing: border-box; padding: 8px;
+  border: 1px solid var(--border-color, #ccc); border-radius: 4px;
+  font: inherit; font-size: 13px;
+}
+.cancel-hint { margin: 4px 0 12px; font-size: 12px; color: var(--secondary-text, #666); line-height: 1.4; }
+.cancel-check { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.cancel-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }

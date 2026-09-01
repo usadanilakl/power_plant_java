@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LotoBoxDetailFormComponent } from './loto-lotoBox-detail-form.component';
+import { LotoBoxDetailFormComponent } from './loto-box-detail-form.component';
 
 describe('LotBoxDetailFormComponent', () => {
   let component: LotoBoxDetailFormComponent;

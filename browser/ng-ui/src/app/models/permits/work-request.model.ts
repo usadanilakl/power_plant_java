@@ -530,8 +530,15 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       SpaceToBeEntered: this.spaceToBeEntered,
       // This is the hub-is-down path, so SharePoint is the only place the declaration will exist
       // until the hub polls the item back in.
+      // No gating here any more: foldHotWorkProfile withdraws the measures at the source when hot
+      // work is switched to No, so the draft, this envelope and the hub payload all agree. Gating
+      // only here was worse than useless — it hid the problem on the fallback path while the
+      // PRIMARY hub path went on shipping the withdrawn ticks, which made permit content depend on
+      // whether the hub happened to be reachable.
       DeclaredHazards: declaredHazardsEnvelope(
-        this.declaredHazards, this.declaredHotWorkMeasures, this.declaredConfinedSpaceHazards,
+        this.declaredHazards,
+        this.declaredHotWorkMeasures,
+        this.isConfinedSpaceEntryRequired === 'Yes' ? this.declaredConfinedSpaceHazards : null,
         this.isHotWorkRequired === 'Yes' ? this.hotWorkProfile : null),
       // Same reasoning as the hazard envelope above, and the same path: this is the hub-is-down
       // route, so SharePoint is the only place the extra areas will exist until the hub polls the

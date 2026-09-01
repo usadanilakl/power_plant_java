@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Where;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +17,11 @@ import java.util.Set;
 @Getter
 @Setter
 @BatchSize(size = 50)
+// Re-declared, NOT inherited. @Where on a @MappedSuperclass does not apply to the entities that
+// extend it, so BaseAuditEntity's filter never covered this table and soft-deleted rows came back
+// from findAll() — showing up in menus and, worse, being counted by closeJob() as packages still
+// open. Keep the parent's exact clause so a null 'deleted' is treated as not-deleted.
+@Where(clause = "deleted IS NOT TRUE")
 public class JobLog extends BaseAuditEntity {
 
     @JsonIgnore

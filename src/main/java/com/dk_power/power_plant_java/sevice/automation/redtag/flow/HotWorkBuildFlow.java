@@ -122,7 +122,7 @@ public class HotWorkBuildFlow {
 
     // --- Checklist (measures) ------------------------------------------------
 
-    /** Ticks Y/NA for each of the 12 checklist measures. */
+    /** Ticks Y for each affirmed checklist measure, and leaves the rest blank. */
     public String fillMeasures(HotWorkDto hw) {
         HotWorkMeasures m = hw.getMeasures() != null ? hw.getMeasures() : new HotWorkMeasures();
         log.info("[RedTag HW] measures received: {}", m);
@@ -145,17 +145,32 @@ public class HotWorkBuildFlow {
         return "Hot Work checklist filled";
     }
 
-    /** Clicks Y (when {@code yes}) or NA (otherwise) for a checklist row matched by its crop. */
+    /**
+     * Clicks Y for an affirmed measure, and clicks NOTHING for one that is not.
+     *
+     * <p>This used to click NA whenever the measure was false. There is no NA input anywhere in the
+     * permit UI — the measures are plain checkboxes, so false means "not affirmed", never "does not
+     * apply". Stamping NA against, say, <em>fire extinguisher present</em> put a statement on a
+     * controlled document that nobody had made. Leaving the row blank is the honest rendering of an
+     * unanswered precaution, and it is visibly incomplete to the operator who reviews the tag.
+     *
+     * <p>{@code MEASURE_NA_DX} is deliberately kept: if an explicit "not applicable" answer is ever
+     * added to the permit, this is where it plugs back in.
+     */
     private void tickMeasure(Region region, String key, boolean yes) {
+        if (!yes) {
+            log.info("[RedTag HW] {} -> not affirmed, left blank", key);
+            return;
+        }
         Match m = driver.findLabelOpt(HW_LABELS, key, region, 1.0);
         if (m == null) {
             log.warn("[RedTag HW] measure crop '{}' not found — row skipped", key);
             return;
         }
-        int clickX = m.x + (yes ? MEASURE_Y_DX : MEASURE_NA_DX);
+        int clickX = m.x + MEASURE_Y_DX;
         int clickY = m.y + m.h / 2;
-        log.info("[RedTag HW] {} -> {} @ ({},{}) [crop at ({},{}) {}x{}]",
-                key, yes ? "Y" : "NA", clickX, clickY, m.x, m.y, m.w, m.h);
+        log.info("[RedTag HW] {} -> Y @ ({},{}) [crop at ({},{}) {}x{}]",
+                key, clickX, clickY, m.x, m.y, m.w, m.h);
         new Location(clickX, clickY).click();
         driver.sleep(40);
     }

@@ -9,7 +9,8 @@ import { FormField } from '../../../models/inputs/form-field.model';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { UserSetupService } from '../../../services/user-setup.service';
 import { WorkAreaSeedService } from '../work-area-seed.service';
-import { foldHotWorkProfile, foldWorkRequestVirtualFields } from '../work-request-virtual-fields';
+import { EquipmentDataService } from '../../../services/equipment-data.service';
+import { SYSTEM_PREFIX, foldHotWorkProfile, foldWorkRequestVirtualFields } from '../work-request-virtual-fields';
 
 /**
  * One step of the guided submission.
@@ -168,6 +169,57 @@ const MIN_LOCATION_TEXT = 3;
           </div>
         </div>
 
+        <!--
+          What are you working on? A fork, not a guess.
+
+          The picker asks for a specific tagged item, but plenty of work is on a whole system —
+          "the HRSG", "the fuel gas system" — which has no tag number, so the requester was left
+          fighting a search that could never find what they meant. This is one tap on a question
+          anybody can answer instantly, and it decides which tool they get.
+        -->
+        <ng-container *ngIf="step.key === 'equipment'">
+          <div class="what-fork" *ngIf="!equipmentMode()">
+            <button type="button" class="fork-card" (click)="pickEquipmentMode('item')">
+              <span class="fork-icon">&#128295;</span>
+              <span class="fork-title">A specific item</span>
+              <span class="fork-desc">A valve, pump, motor or breaker &mdash; usually has a tag number</span>
+            </button>
+            <button type="button" class="fork-card" (click)="pickEquipmentMode('system')">
+              <span class="fork-icon">&#127981;</span>
+              <span class="fork-title">A whole system</span>
+              <span class="fork-desc">{{ systemExamples() }}</span>
+            </button>
+            <button type="button" class="fork-escape" (click)="pickEquipmentMode('describe')">
+              Not sure? Describe it in your own words
+            </button>
+          </div>
+
+          <div class="fork-chosen" *ngIf="equipmentMode()">
+            <span class="fork-chosen-label">{{ equipmentModeLabel() }}</span>
+            <button type="button" class="link-btn" (click)="clearEquipmentAnswer()">Change</button>
+          </div>
+
+          <div class="system-pick" *ngIf="equipmentMode() === 'system'">
+            <input class="system-search" type="search" autocomplete="off" autocapitalize="none"
+                   placeholder="Search systems&hellip;"
+                   [value]="systemQuery()"
+                   (input)="systemQuery.set($any($event.target).value)" />
+            <p class="system-empty" *ngIf="!systems().length">
+              The system list has not reached this device yet. Use &ldquo;Describe it in your own
+              words&rdquo; instead &mdash; an operator will match it up.
+            </p>
+            <div class="system-list">
+              @for (sys of filteredSystems(); track sys.id) {
+                <button type="button" class="system-option"
+                        [class.active]="isSystemPicked(sys.name)"
+                        (click)="pickSystem(sys.name)">
+                  {{ sys.name }}
+                </button>
+              }
+            </div>
+          </div>
+        </ng-container>
+
         <!-- showSubmitButton=false: the action bar below drives submission by calling this form's
              own onSubmit(), so the wizard gets one button in one place while the form keeps its
              validation, its markAllAsTouched and its scroll-to-first-error. -->
@@ -268,6 +320,51 @@ const MIN_LOCATION_TEXT = 3;
     .step-help {
       margin: 0 0 14px; font-size: 13px; line-height: 1.5;
       color: var(--secondary-text, #666);
+    }
+
+    .what-fork { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 6px; }
+
+    .fork-card {
+      flex: 1 1 220px; min-width: 0;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+      padding: 16px; text-align: left; cursor: pointer;
+      border: 1px solid var(--border-color, #ddd); border-radius: 10px;
+      background: var(--primary-background, #fff); color: var(--primary-text, #222);
+    }
+    .fork-card:hover { border-color: var(--accent-color, #007bff); }
+    .fork-icon { font-size: 24px; line-height: 1; }
+    .fork-title { font-size: 15px; font-weight: 600; }
+    .fork-desc { font-size: 12px; line-height: 1.4; color: var(--secondary-text, #666); }
+
+    .fork-escape {
+      flex: 1 1 100%; padding: 10px; cursor: pointer;
+      border: none; background: none; font-size: 13px;
+      color: var(--accent-color, #007bff);
+    }
+    .fork-escape:hover { text-decoration: underline; }
+
+    .fork-chosen {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px; padding: 8px 12px; border-radius: 6px;
+      background: var(--secondary-background, #f0f2f5); font-size: 13px;
+    }
+    .fork-chosen-label { font-weight: 600; }
+
+    .system-pick { margin-bottom: 14px; }
+    .system-search {
+      width: 100%; box-sizing: border-box; padding: 10px;
+      border: 1px solid var(--border-color, #ddd); border-radius: 6px;
+      font: inherit; font-size: 14px; margin-bottom: 8px;
+    }
+    .system-empty { font-size: 13px; color: var(--secondary-text, #666); line-height: 1.5; }
+    .system-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+    .system-option {
+      padding: 11px 12px; text-align: left; cursor: pointer; font-size: 14px;
+      border: 1px solid var(--border-color, #ddd); border-radius: 6px;
+      background: var(--primary-background, #fff); color: var(--primary-text, #222);
+    }
+    .system-option.active {
+      border-color: #0056b3; background: rgba(0, 123, 255, 0.14); font-weight: 600;
     }
 
     .step-block {
@@ -380,6 +477,7 @@ export class WorkRequestWizardComponent implements OnInit {
   private state = inject(WorkRequestStateService);
   private userSetup = inject(UserSetupService);
   private seeds = inject(WorkAreaSeedService);
+  private equipmentData = inject(EquipmentDataService);
   private destroyRef = inject(DestroyRef);
 
   /**
@@ -437,6 +535,85 @@ export class WorkRequestWizardComponent implements OnInit {
    */
   phase = signal<'map' | 'detail'>('map');
 
+  /**
+   * Which way the requester answered "what are you working on?".
+   *
+   * <p>Null until they choose, which is what makes the fork the first thing on the step rather than
+   * a mode switch above a picker they may not need.
+   */
+  equipmentMode = signal<'item' | 'system' | 'describe' | null>(null);
+  systemQuery = signal('');
+
+  /** The plant's systems, from the offline reference snapshot. */
+  systems = computed(() => this.equipmentData.getSystems());
+
+  /** A few real system names, so the card describes this plant rather than a generic idea. */
+  systemExamples = computed(() => {
+    const names = this.systems().slice(0, 3).map(s => s.name);
+    return names.length
+      ? `${names.join(', ')} and the rest of the plant's systems`
+      : 'HRSG, Combustion Turbine, Fuel Gas System';
+  });
+
+  filteredSystems = computed(() => {
+    const q = this.systemQuery().trim().toLowerCase();
+    const all = this.systems();
+    return q ? all.filter(s => s.name.toLowerCase().includes(q)) : all;
+  });
+
+  equipmentModeLabel = computed(() => {
+    switch (this.equipmentMode()) {
+      case 'item': return 'A specific item';
+      case 'system': return 'A whole system';
+      case 'describe': return 'Described in your own words';
+      default: return '';
+    }
+  });
+
+  isSystemPicked(name: string): boolean {
+    // startsWith, not equality: the optional note is appended to the picked system.
+    return String(this.draft().affectedEquipment ?? '').startsWith(SYSTEM_PREFIX + name);
+  }
+
+  pickEquipmentMode(mode: 'item' | 'system' | 'describe'): void {
+    this.equipmentMode.set(mode);
+    this.blockReason.set('');
+  }
+
+  /**
+   * Go back to the fork, discarding the answer given under the previous mode.
+   *
+   * <p>Resetting only the mode left the old answer behind, and `affectedEquipment` takes precedence
+   * over the typed description in the fold — so picking a pump, pressing Change, then typing a
+   * description submitted the request against the pump and silently ignored what was typed.
+   */
+  clearEquipmentAnswer(): void {
+    const wr = this.draft();
+    wr.affectedEquipment = '';
+    delete (wr as any).affectedEquipmentText;
+    this.draft.set(wr);
+    this.state.saveDraft(wr);
+    this.equipmentMode.set(null);
+    this.blockReason.set('');
+  }
+
+  /**
+   * Record a whole system as the affected equipment.
+   *
+   * <p>Written as `System: <name>` into the plain-string `affectedEquipment` the model already has.
+   * The prefix earns its keep twice: an operator can tell a system from a tag number at a glance,
+   * and when Equipment/LotoPoint/WorkArea become PhysicalObject it is an exact handle for migrating
+   * these rows onto a real reference — PhysicalObject already carries the same System values.
+   */
+  pickSystem(name: string): void {
+    const wr = this.draft();
+    wr.affectedEquipment = SYSTEM_PREFIX + name;
+    delete (wr as any).affectedEquipmentText;
+    this.draft.set(wr);
+    this.state.saveDraft(wr);
+    this.blockReason.set('');
+  }
+
   /** Jobs that genuinely do not sit in one drawn area. */
   readonly scopeOptions = ['Site Wide', 'Unit 1', 'Unit 2'];
 
@@ -481,6 +658,7 @@ export class WorkRequestWizardComponent implements OnInit {
         // Either answer will do: a tag number off the picker, or a description typed into the
         // fallback. Reading the helper control directly, because the fold that merges the two runs
         // in onNext just before this.
+        // A tag off the picker, a system off the list, or a typed description — any of the three.
         const picked = String(wr.affectedEquipment ?? '').trim();
         const typed = String((wr as any).affectedEquipmentText ?? '').trim();
         return picked || typed ? null : 'Name or describe the affected equipment.';
@@ -534,6 +712,12 @@ export class WorkRequestWizardComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    // Pull the reference data in. Nothing else on this route does: EquipmentDataService.loadAll()
+    // is called only by the equipment PICKER component, which is not instantiated until the
+    // requester chooses "a specific item" — so on the fork itself, and on the whole-system branch,
+    // the systems list would have been empty and the second card would have offered no choices.
+    this.equipmentData.loadAll();
+
     const existing = this.state.getSelectedWorkRequest();
     const wr = existing ?? new WorkRequest();
     const user = this.userSetup.getUserData();
@@ -607,9 +791,15 @@ export class WorkRequestWizardComponent implements OnInit {
    * Only the map gates its own button — every other step lets the press through and answers with a
    * reason. A disabled Next that will not say why is the worst version of a wizard.
    */
-  primaryDisabled = computed(() => this.onMap() && !this.areas().length);
+  /** True while the equipment step is still asking which KIND of answer is coming. */
+  private onEquipmentFork = computed(
+    () => this.current()?.key === 'equipment' && !this.equipmentMode());
+
+  primaryDisabled = computed(() =>
+    (this.onMap() && !this.areas().length) || this.onEquipmentFork());
 
   actionNote = computed(() => {
+    if (this.onEquipmentFork()) return 'Choose one of the two above to carry on.';
     if (!this.onMap()) return '';
     const n = this.areas().length;
     return n
@@ -671,11 +861,48 @@ export class WorkRequestWizardComponent implements OnInit {
       return withoutReq;
     });
 
+    // Hot Work Precautions, on a step that does not render its controlling field.
+    //
+    // The block is gated `showWhen: isHotWorkRequired === 'Yes'`, but isHotWorkRequired lives in the
+    // SCOPE step, so on the hazards step there is no such control — and shouldShowField() returns
+    // false whenever a showWhen's controlling field is absent from the form. Result: an empty box
+    // titled "Hot Work Precautions" and twelve precautions the requester never saw here.
+    //
+    // Same mechanism the location step already works around a few lines up. Answering from the
+    // DRAFT rather than the form is the honest version of what the condition meant; stripping
+    // showWhen afterwards is required, not cosmetic, or the field hides itself again. Filtering
+    // (rather than always rendering) also drops the group so the empty box disappears for a job
+    // that is not hot work.
+    //
+    // The confined-space fields are deliberately left alone: their controlling field IS on this
+    // step, so they must stay live-reactive to it.
+    if (step.key === 'hazards') {
+      const hotWork = this.draft().isHotWorkRequired === 'Yes';
+      return base
+        .filter(f => f.name !== 'declaredHotWorkMeasures' || hotWork)
+        .map(f => (f.name === 'declaredHotWorkMeasures' ? { ...f, showWhen: undefined } : f));
+    }
+
     // The escape hatch this step's help text has always promised. `affectedEquipmentText` is a
     // helper control, folded into `affectedEquipment` only when the picker found nothing, so a
     // typed description reaches the server through the field that already exists — no new column,
     // no schema change.
     if (step.key === 'equipment') {
+      const mode = this.equipmentMode();
+      // Nothing until they have chosen — the fork is the question at that point.
+      if (!mode) return [];
+      // The picker belongs to the "specific item" answer only. Showing it under "a whole system"
+      // would put the requester back in the tag-number search they had just said did not apply.
+      if (mode !== 'item') {
+        return base.filter(f => f.name !== 'affectedEquipment').concat([{
+          name: 'affectedEquipmentText',
+          label: mode === 'system'
+            ? 'Which part of it, or anything else we should know (optional)'
+            : 'Describe the equipment',
+          type: 'text',
+          initialValue: (this.draft() as any).affectedEquipmentText ?? '',
+        } as FormField]);
+      }
       base.push({
         name: 'affectedEquipmentText',
         label: 'Or describe it in your own words',
@@ -731,7 +958,6 @@ export class WorkRequestWizardComponent implements OnInit {
     (wr as any).workAreaUnknown = (wr as any).workAreaMap.length === 0;
     foldWorkRequestVirtualFields(wr, { strip: false });
     this.applySeedingForAllAreas(wr);
-    this.recordSeeded(wr);
 
     this.draft.set(wr);
     this.state.saveDraft(wr);
@@ -749,7 +975,7 @@ export class WorkRequestWizardComponent implements OnInit {
     const originalId = wr.workAreaId;
     for (const area of wr.workAreas ?? []) {
       wr.workAreaId = area.id;
-      this.seeds.applyAreaSeeding(wr, this.declined);
+      this.seeds.applyAreaSeeding(wr, this.declined, this.seeded);
     }
     wr.workAreaId = originalId;
   }
@@ -816,8 +1042,7 @@ export class WorkRequestWizardComponent implements OnInit {
 
     this.seeded.clear();
     this.applySeedingForAllAreas(wr);
-    this.seeds.applyWorkTypeSeeding(wr, this.declined);
-    this.recordSeeded(wr);
+    this.seeds.applyWorkTypeSeeding(wr, this.declined, this.seeded);
 
     for (const block of blocks) {
       const target: any = (wr as any)[block] ?? ((wr as any)[block] = {});
@@ -831,17 +1056,13 @@ export class WorkRequestWizardComponent implements OnInit {
    * Hazard keys the SEEDERS turned on, so {@link reseedHazards} can tell a seeded tick from one the
    * requester made themselves. Without the distinction a rebuild would either keep hazards from a
    * removed area or silently discard the requester's own additions.
+   *
+   * <p>Filled BY the seeders, never inferred afterwards. It used to be stamped from a snapshot of
+   * "everything currently true", which labels the requester's own ticks as seeded — and therefore
+   * as disposable. On a resumed draft, whose ticks are all already present before any seeder runs,
+   * the very first map tap marked every one of them seeded, and the next area change deleted them.
    */
   private seeded = new Set<string>();
-
-  private recordSeeded(wr: WorkRequest): void {
-    for (const block of ['declaredHazards', 'declaredHotWorkMeasures', 'declaredConfinedSpaceHazards']) {
-      const current: any = (wr as any)[block] ?? {};
-      for (const key of Object.keys(current)) {
-        if (current[key] === true) this.seeded.add(`${block}.${key}`);
-      }
-    }
-  }
 
   setAreaSpace(index: number, value: string): void {
     const wr = this.draft();
@@ -890,14 +1111,26 @@ export class WorkRequestWizardComponent implements OnInit {
     this.rememberDeclinedHazards(value);
     Object.assign(wr, value);
 
+    // In describe mode the typed box IS the answer, so it must overwrite rather than fill a blank.
+    // The fold only fills a blank (or appends to a picked System), so once the first debounced
+    // change had written the text, every correction after it was ignored — type "big pupm",
+    // fix it to "big pump", and "big pupm" is what gets submitted, with the picker filtered out
+    // so nothing on screen ever shows it.
+    //
+    // Item mode is deliberately excluded: there the picker and the text box render together and a
+    // picked tag must still win.
+    if (this.equipmentMode() === 'describe') {
+      wr.affectedEquipment = String((wr as any).affectedEquipmentText ?? '').trim();
+    }
+
     // Turn workAreaMap into workAreaId BEFORE anything reads it. Without this the picker's value
     // never became an area id, so step 1 could not be completed even with an area plainly selected.
     // strip:false — each step rebuilds its fields from the draft, and stripping workAreaMap here
     // would blank the picker on the next keystroke.
     foldWorkRequestVirtualFields(wr, { strip: false });
     foldHotWorkProfile(wr, { strip: false });
-    this.seeds.applyAreaSeeding(wr, this.declined);
-    this.seeds.applyWorkTypeSeeding(wr, this.declined);
+    this.seeds.applyAreaSeeding(wr, this.declined, this.seeded);
+    this.seeds.applyWorkTypeSeeding(wr, this.declined, this.seeded);
 
     // A new object identity so downstream computeds recompute; the wizard mutates one draft
     // deliberately so a value entered in step 1 is still there in step 5.
@@ -913,8 +1146,8 @@ export class WorkRequestWizardComponent implements OnInit {
     // onValueChange folds hot work but this did not, and the form's valueChanges is debounced a
     // full second — so a quick tap on Next advanced with the hot-work answers still unfolded.
     foldHotWorkProfile(wr, { strip: false });
-    this.seeds.applyAreaSeeding(wr, this.declined);
-    this.seeds.applyWorkTypeSeeding(wr, this.declined);
+    this.seeds.applyAreaSeeding(wr, this.declined, this.seeded);
+    this.seeds.applyWorkTypeSeeding(wr, this.declined, this.seeded);
 
     // Publish BEFORE validating. The draft signal has identity equality disabled, so set() is what
     // bumps its version; without it areas(), pickedAreas() and pickedAreaName() went on serving

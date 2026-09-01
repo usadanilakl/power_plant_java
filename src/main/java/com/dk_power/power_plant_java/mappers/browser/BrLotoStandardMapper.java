@@ -54,6 +54,8 @@ public class BrLotoStandardMapper {
         if(dto.getDescription()!=null && !dto.getDescription().isEmpty()) entity.setDescription(dto.getDescription());
         if(dto.getLotoPoints()!=null && !dto.getLotoPoints().isEmpty()) entity.setLotoPoints(dto.getLotoPoints().stream()
                 .map(lotoPointRepo::findById)
+                .filter(Optional::isPresent) // drop point ids not present locally (unsynced / soft-deleted) instead of
+                                             // Optional::get throwing NoSuchElementException and failing the whole save
                 .map(Optional::get)
                 .toList());
         return entity;

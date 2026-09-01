@@ -71,6 +71,20 @@ export class DailyPermitPackageService {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/close`, closureData ?? {});
   }
 
+  /**
+   * Cancel a package — the work is not going ahead.
+   *
+   * <p>Not the same as Close (the work happened and finished) and not the same as Delete, which is
+   * what operators were reaching for: that records no reason and writes no modification.
+   *
+   * @param cancelWorkRequests true (the default) also cancels the originating requests. False
+   *   returns them to the operator queue, for when the package rather than the job was the mistake.
+   */
+  cancelPackage(id: number, reason: string, cancelWorkRequests = true): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(
+      `${this.apiUrl}/${id}/cancel`, { reason, cancelWorkRequests });
+  }
+
   foremanSignOn(id: number, body: { personName: string; company: string }): Observable<SpringApiResponse<DailyPermitPackageDto>> {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/foreman-sign-on`, body);
   }

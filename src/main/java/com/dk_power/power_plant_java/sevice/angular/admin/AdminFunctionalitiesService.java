@@ -988,6 +988,7 @@ public class AdminFunctionalitiesService {
             case "fieldlisttypes" -> workAreaGitHubPublisher.publishFieldListTypes();
             case "inventorytypes" -> workAreaGitHubPublisher.publishInventoryTypes();
             case "locations" -> workAreaGitHubPublisher.publishLocations();
+            case "systems" -> workAreaGitHubPublisher.publishSystems();
             case "lotopoints" -> workAreaGitHubPublisher.publishLotoPoints();
             case "sdschemicals" -> workAreaGitHubPublisher.publishSdsChemicals();
             case "all" -> workAreaGitHubPublisher.publishAll();

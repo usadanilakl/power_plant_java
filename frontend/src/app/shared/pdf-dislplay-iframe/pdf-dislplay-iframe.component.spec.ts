@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { PdfDislplayIframeComponent } from './pdf-dislplay-iframe.component';
+import { PdfDisplayIframeComponent } from './pdf-dislplay-iframe.component';
 
-describe('PdfDislplayIframeComponent', () => {
-  let component: PdfDislplayIframeComponent;
-  let fixture: ComponentFixture<PdfDislplayIframeComponent>;
+describe('PdfDisplayIframeComponent', () => {
+  let component: PdfDisplayIframeComponent;
+  let fixture: ComponentFixture<PdfDisplayIframeComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PdfDislplayIframeComponent]
+      imports: [PdfDisplayIframeComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(PdfDislplayIframeComponent);
+    fixture = TestBed.createComponent(PdfDisplayIframeComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

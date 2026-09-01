@@ -37,6 +37,7 @@
         "/permits/data/work-categories.json",
         "/permits/data/default-instruments.json",
         "/permits/data/locations.json",
+        "/permits/data/systems.json",
         "/permits/data/loto-points.json",
         "/permits/data/field-list-types.json"
       ],

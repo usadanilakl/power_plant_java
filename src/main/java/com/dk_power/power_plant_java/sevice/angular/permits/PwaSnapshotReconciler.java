@@ -66,7 +66,8 @@ public class PwaSnapshotReconciler {
             lastFingerprint = current;
             publisher.publishAreas();
             publisher.publishMonitoredAreas();
-            log.info("[PWA Snapshot] Work-area data changed{} — republishing ({})",
+            publisher.publishSystems();
+            log.info("[PWA Snapshot] Reference data changed{} — republishing ({})",
                     first ? " since startup" : "", current);
         } catch (Exception e) {
             // A reconciler that can throw on a schedule is worse than a stale snapshot.
@@ -83,7 +84,30 @@ public class PwaSnapshotReconciler {
     @Transactional(readOnly = true)
     protected String fingerprint() {
         return part("WorkArea") + "|" + part("WorkAreaMapShape")
-                + "|" + part("MonitoredArea") + "|" + part("AirTest");
+                + "|" + part("MonitoredArea") + "|" + part("AirTest")
+                + "|" + systemPart();
+    }
+
+    /**
+     * The System vocabulary's own fingerprint.
+     *
+     * <p>The work-request wizard offers these as "a whole system", and they reach the PWA through
+     * this snapshot. {@code NgValueService} republishes them when one is administered HERE, but a
+     * System {@code Value} arriving by CRDT sync never passes through that service — the same hole
+     * this reconciler already exists to close for work areas.
+     *
+     * <p>Scoped by category rather than counting every Value, so an unrelated Location or Work
+     * Category edit does not trigger a republish.
+     */
+    private String systemPart() {
+        List<Object[]> rows = entityManager
+                .createQuery("SELECT COUNT(v), MAX(v.dateModified) FROM Value v "
+                        + "WHERE LOWER(v.category.name) = 'system' OR LOWER(v.category.alias) = 'system'",
+                        Object[].class)
+                .getResultList();
+        if (rows.isEmpty() || rows.get(0) == null) return "System:0:-";
+        Object[] row = rows.get(0);
+        return "System:" + row[0] + ":" + (row[1] == null ? "-" : row[1]);
     }
 
     private String part(String entityName) {

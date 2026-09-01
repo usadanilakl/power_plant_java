@@ -2,7 +2,12 @@
   <h2 class="form-header">{{ title() }}</h2>
 }
 <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout()" (contextmenu)="onContextMenu($event)">
+  <!-- Only render a group that has something visible in it. groupedFields() buckets fields with no
+       visibility filter, and the fieldset/legend sit OUTSIDE the per-field @if below — so a group
+       whose every field is hidden by showWhen still drew a titled empty box. A method, not a
+       computed: group visibility depends on live control values. -->
   @for (groupLabel of Object.keys(groupedFields()); track groupLabel) {
+    @if (hasVisibleField(groupLabel)) {
     <fieldset class="form-group" [class]="'form-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())">
       @if (groupLabel !== 'Ungrouped') {
         <legend class="group-title">{{ groupLabel }}</legend>
@@ -125,6 +130,7 @@
         }
       }
     </fieldset>
+    }
   }
 
   <!-- A host that drives submission from its own action bar hides this row entirely; without that

@@ -7,7 +7,7 @@ import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
 import { WorkCategoryProfileDto } from './work-category-profile.model';
-import { mergeSwHazards } from '../../utils/hazard-merge.util';
+import { mergeHazardSources } from './hazard-seeding';
 
 
 export class SwHazards {
@@ -368,8 +368,23 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       workScope: request.workScope,
       requestedBy: request.requestedBy
     });
-    // Merge hazards: category standard hazards + work area constant hazards (OR-union)
-    dto.hazards = mergeSwHazards(categoryProfile?.standardHazards, workArea?.constantHazards);
+    // OR-union of everything known about this job, INCLUDING what the requester declared.
+    //
+    // The declared block used to be missing from this list, so every hazard a contractor ticked
+    // themselves was dropped on the way to the permit the crew actually works to — the permit
+    // carried only the plant's standing profile. The manual "add permit" path had it right all
+    // along; only generate-from-request was blind.
+    //
+    // A hazard the requester UNticked can still arrive here from the area or category profile.
+    // That is deliberate: the PWA never sends the un-tick, so "deliberately off" and "never on"
+    // cannot be told apart, and over-declaring is the safe direction to fail. The operator remains
+    // free to correct the permit.
+    dto.hazards = mergeHazardSources<SwHazards>(
+      null,
+      categoryProfile?.standardHazards,
+      workArea?.constantHazards,
+      request.declaredHazards,
+    ) as SwHazards;
     return dto;
   }
 

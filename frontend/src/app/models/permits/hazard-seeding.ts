@@ -17,8 +17,9 @@
  * Ticks are OR-ed: a hazard flagged by any source lands on the permit. Nothing here can UNtick
  * anything, so this only ever adds to what the operator sees and they remain free to correct it.
  *
- * Free-text companions (weather / voltage / other descriptions) take the first non-empty value, so
- * a later blank cannot wipe wording an earlier source supplied.
+ * Free-text companions (weather / voltage / other descriptions) ACCUMULATE, joined with "; " and
+ * deduped by content. A blank can never wipe wording an earlier source supplied, and no source's
+ * wording is lost to an earlier one.
  *
  * @param current  what the permit already has (a fresh permit's empty block, normally)
  * @param sources  area constants first, then one entry per work request in the package
@@ -34,8 +35,22 @@ export function mergeHazardSources<T extends object>(
     for (const [key, value] of Object.entries(source)) {
       if (value === true) {
         merged[key] = true;
-      } else if (typeof value === 'string' && value && !merged[key]) {
-        merged[key] = value;
+      } else if (typeof value === 'string' && value.trim()) {
+        // Free text ACCUMULATES. Taking only the first non-empty value silently dropped wording
+        // from every later source — and the requester's own description is the last source, so a
+        // work-area constant like "watch for ice" would suppress "scaffold is iced over" written
+        // by the person who is actually there. The util this replaced concatenated, and losing that
+        // when the two merged into one was a real regression.
+        //
+        // Deduped by content, because the same wording legitimately arrives twice: the PWA seeds a
+        // request from the same area profile the operator merges in here.
+        const existing = String(merged[key] ?? '').trim();
+        const incoming = value.trim();
+        if (!existing) {
+          merged[key] = incoming;
+        } else if (!existing.split('; ').some((part: string) => part.trim() === incoming)) {
+          merged[key] = existing + '; ' + incoming;
+        }
       }
     }
   }

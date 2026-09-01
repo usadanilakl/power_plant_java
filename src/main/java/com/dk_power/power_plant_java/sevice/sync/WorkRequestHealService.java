@@ -310,6 +310,28 @@ public class WorkRequestHealService {
             workAreaRepo.findFirstByNameIgnoreCase(source.getLocation()).ifPresent(entity::setWorkArea);
         }
 
+        // The structural blocks, which this clone used to omit entirely.
+        //
+        // Without them a heal-imported request lands with no declared hazards, no hot-work profile
+        // and no work areas — which the operator screens render as "the contractor declared
+        // nothing" rather than "this node's copy is incomplete". The clone runs inside a
+        // SyncContext, so nothing is emitted and the gap never converges on its own.
+        //
+        // setWorkAreas last: it derives the request-level hot-work / confined-space answers from
+        // the per-area flags, and must not be overwritten by the scalar setters above.
+        entity.setDeclaredHazards(source.getDeclaredHazards());
+        entity.setDeclaredHotWorkMeasures(source.getDeclaredHotWorkMeasures());
+        entity.setDeclaredConfinedSpaceHazards(source.getDeclaredConfinedSpaceHazards());
+        entity.setHotWorkProfile(source.getHotWorkProfile());
+
+        entity.setTimeSubmitted(source.getTimeSubmitted());
+        entity.setSubmitterName(source.getSubmitterName());
+        entity.setSubmitterEmail(source.getSubmitterEmail());
+        entity.setSubmitterPhone(source.getSubmitterPhone());
+        entity.setSubmitterCompany(source.getSubmitterCompany());
+
+        entity.setWorkAreas(source.getWorkAreas());
+
         return entity;
     }
 

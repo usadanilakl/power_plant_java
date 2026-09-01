@@ -907,8 +907,17 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
         // Attach LOTOs to the parent Job when package is activated
         pkg = getEntityById(id);
-        if (pkg.getJobLog() != null && pkg.getLotos() != null) {
-            var job = pkg.getJobLog();
+        // Resolved by query, NOT by dereferencing pkg.getJobLog().
+        //
+        // That association is a lazy proxy, and now that JobLog carries @Where a soft-deleted job
+        // is a row Hibernate will not materialise — so the null check passed and the first access
+        // threw EntityNotFoundException, making any package under a soft-deleted job permanently
+        // unactivatable with an opaque error. A repository lookup returns empty instead, which is
+        // the honest answer: there is no job to attach the LOTOs to, so skip that step and let the
+        // activation itself succeed.
+        JobLog attachTo = jobLogRepo.findByPackageId(pkg.getId()).orElse(null);
+        if (attachTo != null) {
+            var job = attachTo;
             java.util.Set<Long> beforeJobLotoIds = new java.util.HashSet<>();
             if (job.getLotos() != null) for (Loto l : job.getLotos()) if (l != null && l.getId() != null) beforeJobLotoIds.add(l.getId());
             for (var loto : pkg.getLotos()) {
@@ -1019,6 +1028,123 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             return dailyPermitPackageMapper.convertToDto(pkg);
         }
         return changeStatus(id, "Expired", Set.of(current));
+    }
+
+    /**
+     * Cancel a package: the work is not going ahead.
+     *
+     * <p>Distinct from Close, which means the work happened and finished, and from soft-delete,
+     * which operators were reaching for instead — that records no reason, writes no modification,
+     * and (before the {@code @Where} was re-declared on this entity) did not even hide the row.
+     *
+     * <p>The reason is written to the modification log only. It is deliberately NOT put in
+     * {@code closureComments}: that field is published to the PWA as {@code packageClosureComments}
+     * and would put the operator's internal note on the contractor's phone.
+     *
+     * <p>Cancellable from whatever state it is in, except the two terminal ones — the same rule
+     * {@link #adminForceClose} arrived at after a sweep failed on packages sitting in a status
+     * nobody had thought to enumerate.
+     *
+     * <p>LOTO is untouched, because {@link #cascadeStatusToPermits} deliberately excludes it: a LOTO
+     * has its own lifecycle and can be attached to more than one package, so cancelling a package
+     * must never imply that an isolation has been removed. De-isolating stays an explicit act.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public DailyPermitPackageDto cancelPackage(String id, String reason, boolean cancelWorkRequests) {
+        DailyPermitPackage pkg = getEntityById(id);
+        String current = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+
+        // Idempotent, so a double-click or a retry is not an error.
+        if ("Cancelled".equals(current)) return dailyPermitPackageMapper.convertToDto(pkg);
+        if ("Closed".equals(current)) {
+            throw new RuntimeException("Cannot cancel a package that is already Closed");
+        }
+
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("CANCELLED");
+        mod.setFieldName("packageStatus");
+        mod.setOldValue(current);
+        mod.setNewValue("Cancelled");
+        mod.setPerformedBy(getCurrentUsername());
+        mod.setDescription(reason == null || reason.isBlank()
+                ? "Package cancelled."
+                : "Package cancelled: " + reason.trim());
+        pkg.addModification(mod);
+        dailyPermitPackageRepo.save(pkg);
+
+        // Captured BEFORE the status change, because the "return to queue" branch detaches the
+        // requests and the package can no longer name them afterwards.
+        List<WorkRequest> attached = pkg.getWorkRequests() == null
+                ? List.of()
+                : new ArrayList<>(pkg.getWorkRequests());
+
+        DailyPermitPackageDto result = changeStatus(id, "Cancelled", Set.of(current));
+
+        // The originating requests. Cancelled by default — the work is not happening, so leaving
+        // them Active would put them back in front of an operator as outstanding work.
+        if (!cancelWorkRequests) {
+            restoreWorkRequestsToOpen(id);
+            result = dailyPermitPackageMapper.convertToDto(getEntityById(id));
+        }
+
+        pushWorkRequestStatusToSharePoint(attached, cancelWorkRequests ? "Cancelled" : "Active");
+        return result;
+    }
+
+    /**
+     * Mirror a work request's new status onto SharePoint.
+     *
+     * <p>Without this the two disagree after a cancel: the desktop says Cancelled (or Active, when
+     * the request was returned to the queue) while SharePoint goes on reporting Processed — and
+     * SharePoint is what the requester and anyone outside the plant network actually reads. Every
+     * other status transition on a work request already does this; the cancel path was the one that
+     * did not.
+     *
+     * <p>Best-effort, exactly like the flows it mirrors: H2 is the source of truth, and a
+     * SharePoint outage must not roll back a cancellation the operator has already been shown.
+     */
+    private void pushWorkRequestStatusToSharePoint(List<WorkRequest> requests, String status) {
+        for (WorkRequest wr : requests) {
+            if (wr == null || wr.getSharepointId() == null || wr.getSharepointId().isBlank()) continue;
+            try {
+                workRequestSharePointAdapter.changeStatus(wr.getSharepointId(), status);
+            } catch (Exception e) {
+                System.err.println("Warning: could not set SharePoint status '" + status
+                        + "' for work request " + wr.getId() + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Put the package's work requests back in the operator queue after a cancel, and DETACH them.
+     *
+     * <p>For the case where the package was built by mistake rather than the work being called off.
+     * Through JPA, not a native update, so the field-change listener still fires and the change
+     * reaches the other nodes.
+     *
+     * <p>Detaching is the half that makes "back in the queue" true. Resetting the status alone left
+     * {@code dailyPermitPackage} pointing at the cancelled package, so the request still reported a
+     * {@code dailyPermitPackageId} and the operator's Process action opened the cancelled package
+     * instead of letting the request be built into a new one — a request that looked queued but
+     * could not actually be processed.
+     */
+    private void restoreWorkRequestsToOpen(String id) {
+        DailyPermitPackage pkg = getEntityById(id);
+        if (pkg.getWorkRequests() == null) return;
+        // "Active" is what a newly submitted request carries (PwaWorkRequestService sets it on
+        // submission, and the heal service defaults to it) — NOT "Open", which is the JOB status
+        // vocabulary. Putting a work request into a status its own screens do not use would hide it
+        // from the queue it is meant to return to.
+        Value queued = ngValueService.createValue("Permit Status", "Active");
+
+        // Copied first: removeWorkRequest mutates the package's own collection.
+        List<WorkRequest> requests = new ArrayList<>(pkg.getWorkRequests());
+        for (WorkRequest wr : requests) {
+            wr.setPermitStatus(queued);
+            pkg.removeWorkRequest(wr);
+        }
+        dailyPermitPackageRepo.save(pkg);
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -1186,14 +1312,24 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
                 String s = p.getPackageStatus() != null ? p.getPackageStatus().getName() : "Building";
                 return s.equals("Active") || s.equals("Test");
             });
-            boolean allClosed = job.getPackages().stream().allMatch(p -> {
-                String s = p.getPackageStatus() != null ? p.getPackageStatus().getName() : "Building";
-                return s.equals("Closed");
-            });
-            boolean allWorkCompleted = allClosed && job.getPackages().stream()
-                    .allMatch(p -> Boolean.TRUE.equals(p.getWorkCompleted()));
+            // A cancelled package is finished with, so it must not hold the job open — but it is
+            // also not evidence that any work was completed, so it must not close the job on its
+            // own terms either. Treating it as "nothing left to account for" does both: a job is
+            // done when every package is either cancelled or closed-with-work-completed.
+            //
+            // Deliberately NOT a separate "all terminal" branch. An earlier version of this had
+            // one, and because every Closed package satisfies it, it closed jobs whose packages
+            // were closed with work still outstanding — silently defeating the "work continues"
+            // closure that closePackage/adminForceClose rely on, and dropping unfinished jobs out
+            // of the open-job workflows.
+            boolean allAccountedFor = !job.getPackages().isEmpty() && job.getPackages().stream()
+                    .allMatch(p -> {
+                        String s = p.getPackageStatus() != null ? p.getPackageStatus().getName() : "Building";
+                        if (s.equals("Cancelled")) return true;
+                        return s.equals("Closed") && Boolean.TRUE.equals(p.getWorkCompleted());
+                    });
 
-            if (allWorkCompleted) {
+            if (allAccountedFor) {
                 job.setJobStatus(ngValueService.createValue("Job Status", "Closed"));
             } else if (anyActiveOrTest) {
                 job.setJobStatus(ngValueService.createValue("Job Status", "Active"));

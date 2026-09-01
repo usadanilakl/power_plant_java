@@ -1,5 +1,5 @@
 import { WorkRequest, WorkRequestAreaDto } from '../../models/permits/work-request.model';
-import { HotWorkProfile } from '../../models/permits/permit-hazards.model';
+import { HotWorkMeasures, HotWorkProfile } from '../../models/permits/permit-hazards.model';
 
 /** The area picked on the map, as the picker hands it over. */
 export interface PickedArea {
@@ -136,10 +136,20 @@ export function foldWorkRequestVirtualFields(
   // Typed equipment, for the requester whose kit is not in the snapshot. The picker has no
   // manual-entry box, so before this a contractor who could not find their equipment simply could
   // not get past the step — while the step's own help text told them to describe it instead.
-  // The picked value always wins; this only fills a blank.
+  //
+  // Two cases, because the note is offered alongside a picked SYSTEM as well as instead of a pick:
+  //  - nothing picked  -> the typed text IS the answer;
+  //  - a system picked -> the note narrows it ("System: HRSG — lower drum access"), and appending is
+  //    what stops it being silently discarded, which is what happened when this only ever filled a
+  //    blank. A specific tag is left alone: the tag is already exact.
   const typedEquipment = String(fd.affectedEquipmentText ?? '').trim();
-  if (typedEquipment && !String(workRequest.affectedEquipment ?? '').trim()) {
-    workRequest.affectedEquipment = typedEquipment;
+  const currentEquipment = String(workRequest.affectedEquipment ?? '').trim();
+  if (typedEquipment) {
+    if (!currentEquipment) {
+      workRequest.affectedEquipment = typedEquipment;
+    } else if (currentEquipment.startsWith(SYSTEM_PREFIX) && !currentEquipment.includes(typedEquipment)) {
+      workRequest.affectedEquipment = `${currentEquipment} — ${typedEquipment}`;
+    }
   }
 
   if (options.strip) {
@@ -150,6 +160,15 @@ export function foldWorkRequestVirtualFields(
   }
   return picked;
 }
+
+/**
+ * Marks an `affectedEquipment` value as a whole SYSTEM rather than a tagged item.
+ *
+ * <p>Shared with the wizard that writes it. It lets an operator tell the two apart at a glance, and
+ * gives a precise handle for migrating these rows onto a real reference when Equipment/LotoPoint/
+ * WorkArea become PhysicalObject — which already carries the same System values.
+ */
+export const SYSTEM_PREFIX = 'System: ';
 
 /** The three states a `workAreaMap` value can be in. See the ABSENT note above — it is not "empty". */
 type MapValueState = 'ARRAY' | 'OBJECT' | 'ABSENT';
@@ -210,6 +229,18 @@ export function foldHotWorkProfile(workRequest: WorkRequest, options: { strip: b
 
   if (fd.isHotWorkRequired !== 'Yes') {
     workRequest.hotWorkProfile = new HotWorkProfile();
+    // The PRECAUTIONS are withdrawn too, not just the profile.
+    //
+    // Seeding used to tick these, and the requester can now tick them directly, so a request
+    // switched from "hot work: yes" back to "no" carried twelve live precautions with nothing to
+    // clear them. That matters much more than it used to: the work request is now the SOLE source
+    // for the twelve precautions on a generated Hot Work permit, so they arrived pre-affirmed on a
+    // controlled document for a job that had declared no hot work at all.
+    //
+    // An all-false object rather than undefined: the backend reads a MISSING block as "no opinion"
+    // and would leave a previously stored declaration standing, so only an explicit all-false
+    // actually withdraws it on update.
+    workRequest.declaredHotWorkMeasures = new HotWorkMeasures();
   } else {
     const ticked = fd.hotWorkTypes && typeof fd.hotWorkTypes === 'object' ? fd.hotWorkTypes : {};
     const profile = new HotWorkProfile({ ...ticked });

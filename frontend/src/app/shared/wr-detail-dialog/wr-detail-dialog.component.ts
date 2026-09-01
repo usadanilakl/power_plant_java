@@ -169,6 +169,59 @@ import { RfJhaApiService } from '../../features/permit-builder/jha/refactored/se
               </div>
             }
 
+            <!-- Who to ring about this. Distinct from Requested By, which names who the work is
+                 FOR — this is the person who actually submitted it. -->
+            @if (hasSubmitter()) {
+              <div class="hazard-section">
+                <div class="section-title">Submitted by</div>
+                <div class="submitter-grid">
+                  @if (workRequest()!.submitterName) {
+                    <span class="submitter-label">Name</span>
+                    <span>{{ workRequest()!.submitterName }}</span>
+                  }
+                  @if (workRequest()!.submitterCompany) {
+                    <span class="submitter-label">Company</span>
+                    <span>{{ workRequest()!.submitterCompany }}</span>
+                  }
+                  @if (workRequest()!.submitterEmail) {
+                    <span class="submitter-label">Email</span>
+                    <a [href]="'mailto:' + workRequest()!.submitterEmail">{{ workRequest()!.submitterEmail }}</a>
+                  }
+                  @if (workRequest()!.submitterPhone) {
+                    <span class="submitter-label">Phone</span>
+                    <a [href]="'tel:' + workRequest()!.submitterPhone">{{ workRequest()!.submitterPhone }}</a>
+                  }
+                  @if (workRequest()!.timeSubmitted) {
+                    <span class="submitter-label">Submitted</span>
+                    <span>{{ workRequest()!.timeSubmitted }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Every area the request covers, and what is planned in each.
+                 This decides how many Confined Space and Hot Work permits get generated, and it
+                 was not shown anywhere: WorkRequest.setWorkAreas derives the request-level
+                 "Yes"/"No" from these rows and only ever turns them ON, so a three-area request
+                 where two need entry collapsed to a single Yes with no way to see the count. -->
+            @if (workAreaRows().length > 0) {
+              <div class="hazard-section">
+                <div class="section-title">Work areas ({{ workAreaRows().length }})</div>
+                @for (area of workAreaRows(); track area.id) {
+                  <div class="area-row">
+                    <span class="area-name">{{ area.name }}</span>
+                    @if (area.primary) { <span class="area-tag area-tag-main">main</span> }
+                    @if (area.confinedSpaceEntry) {
+                      <span class="area-tag area-tag-cs">
+                        Confined space entry{{ area.spaceName ? ': ' + area.spaceName : '' }}
+                      </span>
+                    }
+                    @if (area.hotWork) { <span class="area-tag area-tag-hw">Hot work</span> }
+                  </div>
+                }
+              </div>
+            }
+
             <!-- What the requester declared. These seed the Safe Work / Hot Work / Confined Space
                  permits generated from this request, merged with the work area's own constants -
                  so an operator reviewing here is seeing exactly what will be pre-ticked. -->
@@ -217,8 +270,10 @@ import { RfJhaApiService } from '../../features/permit-builder/jha/refactored/se
               </div>
             }
 
-            <!-- Action buttons -->
+            <!-- Action buttons. The lifecycle half is suppressed when the dialog was opened to
+                 read a request rather than act on it — see WrDetailDialogService.showActions. -->
             <div class="action-bar">
+              @if (dialogService.showActions()) {
               <button class="action-btn btn-process"
                       (click)="processWorkRequest()"
                       [disabled]="actionInProgress()">
@@ -246,6 +301,7 @@ import { RfJhaApiService } from '../../features/permit-builder/jha/refactored/se
                       [disabled]="actionInProgress()">
                 <span class="material-icons">email</span> Request Details
               </button>
+              }
               <button class="action-btn btn-correspondence"
                       (click)="viewCorrespondence()">
                 <span class="material-icons">mail_outline</span> Correspondence
@@ -364,6 +420,25 @@ import { RfJhaApiService } from '../../features/permit-builder/jha/refactored/se
       font-weight: 600;
       cursor: help;
     }
+
+    .submitter-grid {
+      display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
+      font-size: 13px; align-items: baseline;
+    }
+    .submitter-label { color: var(--secondary-text, #666); }
+
+    .area-row {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      padding: 5px 0;
+    }
+    .area-name { font-weight: 600; }
+    .area-tag {
+      font-size: 11px; border-radius: 10px; padding: 1px 8px;
+      background: #eceff1; color: #37474f;
+    }
+    .area-tag-main { background: #1976d2; color: #fff; text-transform: uppercase; letter-spacing: .5px; }
+    .area-tag-cs { background: #fff3e0; color: #e65100; }
+    .area-tag-hw { background: #ffebee; color: #b71c1c; }
 
     .section-title {
       font-size: 11px;
@@ -517,6 +592,17 @@ export class WrDetailDialogComponent {
       .map(b => ({ group: b.group, items: WrDetailDialogComponent.tickedLabels(b.source) }))
       .filter(b => b.items.length > 0);
   });
+
+  /** Whether anything is known about who submitted this. */
+  hasSubmitter = computed(() => {
+    const wr = this.workRequest();
+    return !!(wr?.submitterName || wr?.submitterEmail || wr?.submitterPhone
+      || wr?.submitterCompany || wr?.timeSubmitted);
+  });
+
+  /** The areas this request covers, with what is planned in each. Empty for a single-area request
+   *  made before multi-area existed, which is correct — there is nothing extra to report. */
+  workAreaRows = computed(() => this.workRequest()?.workAreas ?? []);
 
   /** Hot work types the requester ticked, as readable labels. */
   hotWorkTypes = computed(() => hotWorkTypeLabels(this.workRequest()?.hotWorkProfile));

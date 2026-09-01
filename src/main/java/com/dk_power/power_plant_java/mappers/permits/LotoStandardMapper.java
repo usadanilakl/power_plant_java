@@ -105,6 +105,14 @@ public class LotoStandardMapper implements BaseMapper {
                         .map(points -> points.stream()
                                 .filter(Objects::nonNull)
                                 .map(ls -> lotoPointService.getEntityById(ls.getId()))
+                                .filter(Objects::nonNull) // getEntityById returns null for a point not present locally
+                                                          // (device-prefixed id not synced yet, or soft-deleted) — a
+                                                          // null in the @ManyToMany list scrambles Hibernate's cascade
+                                                          // and flushes join-inserts before the parent → FK violation.
+                                .distinct()               // lotoPoints is a List: a duplicate point (e.g. two source
+                                                          // points resolving to the same counterpart) makes Hibernate
+                                                          // insert the same (standard, point) join row twice → composite
+                                                          // PK violation. Same managed instance per id → distinct dedups.
                                 .toList())
                         .orElse(new ArrayList<>())
         );
@@ -138,6 +146,13 @@ public class LotoStandardMapper implements BaseMapper {
                         .map(points -> points.stream()
                                 .filter(Objects::nonNull)
                                 .map(lotoPointService::getEntityById)
+                                .filter(Objects::nonNull) // drop unresolved point ids (not synced locally / soft-deleted);
+                                                          // a null in the @ManyToMany list causes cascade-ordering FK
+                                                          // violations on the parent LotoStandard insert.
+                                .distinct()               // dedup: a repeated point id would insert the same
+                                                          // (standard, point) join row twice → composite-PK violation
+                                                          // (the actual counterpart-save failure). This is the counterpart
+                                                          // path — the counterpart preview can map two sources to one point.
                                 .toList())
                         .orElse(new ArrayList<>())
         );
