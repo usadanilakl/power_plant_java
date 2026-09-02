@@ -202,3 +202,8 @@ db/*.bak
 db/*.mv.db
 db/*.trace.db
 db/*.old
+
+# Windows reserved device name. A tracked file called "nul" cannot be checked out on
+# Windows at all - it makes `git clone` and `git worktree` fail outright. One got
+# committed by a stray `> nul` redirect; ignore it so it cannot come back.
+nul
